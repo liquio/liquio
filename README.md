@@ -33,9 +33,10 @@ We provide a certification program of Liquio technology for governmental teams a
 - Business analysts / service designers
 
 **Resources:**
-[Liquio website](https://www.liquio.tech/)
-[Kitsoft website](https://kitsoft.ua/)
-[Book a demo meeting](https://www.wixforms.com/f/7378205535620826264)
+
+- [Liquio website](https://www.liquio.tech/)
+- [Kitsoft website](https://kitsoft.ua/)
+- [Book a demo meeting](https://www.wixforms.com/f/7378205535620826264)
 
 
 # **License**
