@@ -30,7 +30,7 @@ We provide a certification program of Liquio technology for governmental teams a
 **Roles we train:**
 
 - Low-code developers
-  - Business analysts / service designers
+- Business analysts / service designers
 
 **Resources:**
 [Liquio website](https://www.liquio.tech/)
