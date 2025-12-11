@@ -34,7 +34,7 @@
     "isolated-vm": "^6.0.2",
     "jsonc-parser": "^3.2.0",
     "jsonpath-plus": "^10.1.0",
-    "jsonwebtoken": "^9.0.0",
+    "jsonwebtoken": "^9.0.3",
     "jwt-decode": "^3.1.2",
     "lodash": "^4.17.21",
     "lru-cache": "^11.2.4",
