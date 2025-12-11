@@ -205,7 +205,7 @@ class RouterService {
       app[requestMethod.toLowerCase()](requestUrl, ...handlers);
     }
 
-    app.all('*', (_req, res, _next) => {
+    app.all(/.*/, (_req, res, _next) => {
       res.status(404).send({
         error: {
           message: 'Page not found.',
