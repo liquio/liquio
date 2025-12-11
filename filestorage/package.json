@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
-    "aws-sdk": "^2.1692.0",
+    "aws-sdk": "^2.1693.0",
     "axios": "^1.11.0",
     "body-parser": "^1.20.2",
     "express": "^5.2.1",
