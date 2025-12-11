@@ -18,7 +18,7 @@
     "migration-clear": "sequelize db:migrate:undo:all --config migrations-config.js"
   },
   "dependencies": {
-    "ajv": "^6.12.6",
+    "ajv": "^8.17.1",
     "axios": "^1.7.9",
     "deepmerge": "^4.3.1",
     "dompurify": "^3.1.6",
