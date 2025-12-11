@@ -21,7 +21,7 @@
     "aws-sdk": "^2.1692.0",
     "axios": "^1.11.0",
     "body-parser": "^1.20.2",
-    "express": "^4.21.2",
+    "express": "^5.2.1",
     "inquirer": "^8.2.6",
     "jsontoxml": "^1.0.1",
     "jszip": "^3.10.1",
