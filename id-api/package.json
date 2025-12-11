@@ -85,7 +85,6 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^8.30.1",
     "@typescript-eslint/parser": "^8.30.1",
-    "esbuild": "^0.25.3",
     "eslint": "^9.24.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-prettier": "^5.2.6",
