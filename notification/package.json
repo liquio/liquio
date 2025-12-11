@@ -41,7 +41,7 @@
     "@eslint/js": "^9.28.0",
     "chai": "^4.3.7",
     "chai-http": "^4.3.0",
-    "eslint-plugin-jsdoc": "^50.7.1",
+    "eslint-plugin-jsdoc": "^61.5.0",
     "mocha": "^10.2.0"
   },
   "overrides": {
