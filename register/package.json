@@ -49,7 +49,6 @@
     "@types/pg": "^8.11.10",
     "@typescript-eslint/eslint-plugin": "^8.6.0",
     "@typescript-eslint/parser": "^8.6.0",
-    "esbuild": "^0.25.1",
     "eslint": "^8.32.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
