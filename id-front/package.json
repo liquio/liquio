@@ -58,7 +58,6 @@
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.28.0",
-    "esbuild": "^0.25.8",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5"
