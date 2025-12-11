@@ -17,7 +17,7 @@ export default class JsonSchema {
     this.recordModel = RecordModel.getInstance();
 
     // Define params.
-    this.ajv = Ajv();
+    this.ajv = new Ajv();
 
     // Use custom function if need it.
     if (schema.customTypes && Object.keys(schema.customTypes).length > 0) {
