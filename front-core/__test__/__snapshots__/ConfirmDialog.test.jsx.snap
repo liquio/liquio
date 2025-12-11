@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`should render ConfirmDialog with all props provided 1`] = `ShallowWrapper {}`;
+
+exports[`should render correctly with minimal props 1`] = `ShallowWrapper {}`;

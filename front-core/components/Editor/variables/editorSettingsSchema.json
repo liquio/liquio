@@ -1,0 +1,462 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Editor Settings Schema",
+  "type": "object",
+  "properties": {
+    "controlHintsEnabled": {
+      "type": "boolean",
+      "description": "Увімкнути підказки для контролів"
+    },
+    "copilot": {
+      "type": "object",
+      "description": "Налаштування Copilot",
+      "control": "form.group",
+      "blockDisplay": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Увімкнути Copilot"
+        },
+        "model": {
+          "type": "string",
+          "description": "Модель Copilot",
+          "checkReadOnly": "(a,b,c,parentValue) => !parentValue?.copilot?.enabled",
+          "sample": "Назва моделі, наприклад, gpt-3.5-turbo"
+        },
+        "maxOutputTokens": {
+          "type": "integer",
+          "description": "Максимальна кількість токенів",
+          "checkReadOnly": "(a,b,c,parentValue) => !parentValue?.copilot?.enabled",
+          "minimum": 1,
+          "maximum": 4096,
+          "value": 1000
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Температура генерації",
+          "checkReadOnly": "(a,b,c,parentValue) => !parentValue?.copilot?.enabled",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.5
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "description": "Опції редактора monaco-editor.options",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "enum": [
+            "vs",
+            "vs-dark",
+            "dracula",
+            "nord",
+            "hc-light",
+            "hc-black"
+          ],
+          "options": [
+            "vs",
+            "vs-dark",
+            "dracula",
+            "nord",
+            "hc-light",
+            "hc-black"
+          ],
+          "description": "Тема оформлення"
+        },
+        "selectOnLineNumbers": {
+          "type": "boolean",
+          "description": "Клік по номеру рядка виділяє весь рядок"
+        },
+        "minimap": {
+          "type": "object",
+          "description": "Налаштування міні-карти",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Увімкнути/вимкнути міні-карту"
+            },
+            "scale": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 3,
+              "description": "Масштаб міні-карти"
+            },
+            "showSlider": {
+              "type": "string",
+              "enum": [
+                "always",
+                "mouseover",
+                "mouseDown"
+              ],
+              "options": [
+                {
+                  "id": "always",
+                  "name": "Завжди"
+                },
+                {
+                  "id": "mouseover",
+                  "name": "При наведенні"
+                },
+                {
+                  "id": "mouseDown",
+                  "name": "При натисканні"
+                }
+              ],
+              "description": "Показувати повзунок міні-карти"
+            }
+          },
+          "additionalProperties": false
+        },
+        "scrollBeyondLastLine": {
+          "type": "boolean",
+          "description": "Заборонити прокручування нижче останнього рядка"
+        },
+        "automaticLayout": {
+          "type": "boolean",
+          "description": "Автоматично підлаштовувати розмір редактора"
+        },
+        "lineNumbers": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "relative",
+            "interval"
+          ],
+          "options": [
+            {
+              "id": "on",
+              "name": "Увімкнено"
+            },
+            {
+              "id": "off",
+              "name": "Вимкнено"
+            },
+            {
+              "id": "relative",
+              "name": "Відносно"
+            },
+            {
+              "id": "interval",
+              "name": "Інтервал"
+            }
+          ],
+          "description": "Відображати номери рядків"
+        },
+        "renderWhitespace": {
+          "type": "string",
+          "enum": [
+            "none",
+            "boundary",
+            "all"
+          ],
+          "options": [
+            {
+              "id": "none",
+              "name": "Вимкнено"
+            },
+            {
+              "id": "boundary",
+              "name": "На межах"
+            },
+            {
+              "id": "all",
+              "name": "Усі"
+            }
+          ],
+          "description": "Відображати пробіли в коді"
+        },
+        "renderControlCharacters": {
+          "type": "boolean",
+          "description": "Відображати контрольні символи"
+        },
+        "renderIndentGuides": {
+          "type": "boolean",
+          "description": "Відображати відступи"
+        },
+        "renderLineHighlight": {
+          "type": "string",
+          "enum": [
+            "none",
+            "gutter",
+            "line",
+            "all"
+          ],
+          "options": [
+            {
+              "id": "none",
+              "name": "Вимкнено"
+            },
+            {
+              "id": "gutter",
+              "name": "Ліва панель"
+            },
+            {
+              "id": "line",
+              "name": "Рядок"
+            },
+            {
+              "id": "all",
+              "name": "Усі"
+            }
+          ],
+          "description": "Відображати виділення рядка"
+        },
+        "renderLineHighlightOnlyWhenFocus": {
+          "type": "boolean",
+          "description": "Вимкнути виділення рядка при втраті фокусу"
+        },
+        "renderFinalNewline": {
+          "type": "boolean",
+          "description": "Вимкнути відображення нового рядка в кінці файлу"
+        },
+        "renderValidationDecorations": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "editable"
+          ],
+          "options": [
+            {
+              "id": "on",
+              "name": "Увімкнено"
+            },
+            {
+              "id": "off",
+              "name": "Вимкнено"
+            },
+            {
+              "id": "editable",
+              "name": "Редаговане"
+            }
+          ],
+          "description": "Відображати помилки в коді"
+        },
+        "selectionHighlight": {
+          "type": "boolean",
+          "description": "Вимкнути виділення однакових символів"
+        },
+        "highlightActiveIndentGuide": {
+          "type": "boolean",
+          "description": "Вимкнути виділення активного відступу"
+        },
+        "highlightActiveLine": {
+          "type": "boolean",
+          "description": "Вимкнути виділення активного рядка"
+        },
+        "cursorBlinking": {
+          "type": "string",
+          "enum": [
+            "blink",
+            "smooth",
+            "phase",
+            "expand",
+            "solid"
+          ],
+          "options": [
+            {
+              "id": "blink",
+              "name": "Блимаючий"
+            },
+            {
+              "id": "smooth",
+              "name": "Плавний"
+            },
+            {
+              "id": "phase",
+              "name": "Фазовий"
+            },
+            {
+              "id": "expand",
+              "name": "Розширений"
+            },
+            {
+              "id": "solid",
+              "name": "Твердий"
+            }
+          ],
+          "description": "Тип курсора"
+        },
+        "cursorStyle": {
+          "type": "string",
+          "enum": [
+            "block",
+            "line",
+            "underline"
+          ],
+          "options": [
+            {
+              "id": "block",
+              "name": "Блок"
+            },
+            {
+              "id": "line",
+              "name": "Лінія"
+            },
+            {
+              "id": "underline",
+              "name": "Підкреслення"
+            }
+          ],
+          "description": "Стиль курсора"
+        },
+        "cursorWidth": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Ширина курсора в пікселях"
+        },
+        "roundedSelection": {
+          "type": "boolean",
+          "description": "Вимкнути округлення виділеного тексту"
+        },
+        "tabSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Розмір табуляції в пробілах"
+        },
+        "wordWrap": {
+          "type": "string",
+          "enum": [
+            "off",
+            "on",
+            "wordWrapColumn",
+            "bounded"
+          ],
+          "options": [
+            {
+              "id": "off",
+              "name": "Вимкнено"
+            },
+            {
+              "id": "on",
+              "name": "Увімкнено"
+            },
+            {
+              "id": "wordWrapColumn",
+              "name": "Стовпець"
+            },
+            {
+              "id": "bounded",
+              "name": "Обмежений"
+            }
+          ],
+          "description": "Увімкнути перенесення довгих рядків"
+        },
+        "autoClosingBrackets": {
+          "type": "string",
+          "enum": [
+            "always",
+            "languageDefined",
+            "beforeWhitespace",
+            "never"
+          ],
+          "options": [
+            {
+              "id": "always",
+              "name": "Завжди"
+            },
+            {
+              "id": "languageDefined",
+              "name": "Визначено мовою"
+            },
+            {
+              "id": "beforeWhitespace",
+              "name": "Перед пробілом"
+            },
+            {
+              "id": "never",
+              "name": "Ніколи"
+            }
+          ],
+          "description": "Автоматично додавати закриваючі дужки"
+        },
+        "autoClosingQuotes": {
+          "type": "string",
+          "enum": [
+            "always",
+            "languageDefined",
+            "beforeWhitespace",
+            "never"
+          ],
+          "options": [
+            {
+              "id": "always",
+              "name": "Завжди"
+            },
+            {
+              "id": "languageDefined",
+              "name": "Визначено мовою"
+            },
+            {
+              "id": "beforeWhitespace",
+              "name": "Перед пробілом"
+            },
+            {
+              "id": "never",
+              "name": "Ніколи"
+            }
+          ],
+          "description": "Автоматично додавати закриваючі лапки"
+        },
+        "formatOnType": {
+          "type": "boolean",
+          "description": "Автоматичне форматування під час введення"
+        },
+        "formatOnPaste": {
+          "type": "boolean",
+          "description": "Автоматичне форматування при вставці коду"
+        },
+        "trimAutoWhitespace": {
+          "type": "boolean",
+          "description": "Видаляти зайві автододані пробіли"
+        },
+        "quickSuggestions": {
+          "type": "boolean",
+          "description": "Показувати підказки під час введення"
+        },
+        "suggestOnTriggerCharacters": {
+          "type": "boolean",
+          "description": "Активувати підказки при введенні символів (. тощо)"
+        },
+        "hover.enabled": {
+          "type": "boolean",
+          "description": "Відображати підказки при наведенні миші"
+        },
+        "parameterHints.enabled": {
+          "type": "boolean",
+          "description": "Показувати підказки до параметрів функцій"
+        },
+        "inlineSuggest.enabled": {
+          "type": "boolean",
+          "description": "Інлайнові підказки прямо в тексті"
+        },
+        "folding": {
+          "type": "boolean",
+          "description": "Дозволяти згортати/розгортати блоки коду"
+        },
+        "stickyScroll.enabled": {
+          "type": "boolean",
+          "description": "Вимкнути «прилипаючі» заголовки при прокрутці"
+        },
+        "fontSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Розмір шрифту в пікселях"
+        },
+        "lineHeight": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Висота рядка в пікселях"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "controlHintsEnabled"
+  ],
+  "additionalProperties": false
+}

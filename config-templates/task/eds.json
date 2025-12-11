@@ -1,0 +1,8 @@
+{
+  "providerName": "pkcs7",
+  "pkcs7": {
+    "timeout": 30000,
+    "signToolUrl": "http://sign-tool:3004"
+  },
+  "timeout": 30000
+}

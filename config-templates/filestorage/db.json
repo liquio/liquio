@@ -1,0 +1,22 @@
+{
+  "host": "0.0.0.0",
+  "port": 5432,
+  "database": "filestorage",
+  "dialect": "postgres",
+  "username": "<removed>",
+  "password": "<removed>",
+  "operatorsAliases": false,
+  "dialectOptions": {
+    "socketPath": "",
+    "supportBigNumbers": true,
+    "bigNumberStrings": true
+  },
+  "pool": {
+    "max": 5,
+    "min": 0,
+    "acquire": 30000,
+    "idle": 10000
+  },
+  "logging": false,
+  "migrationStorageTableName": "sequelize_meta"
+}

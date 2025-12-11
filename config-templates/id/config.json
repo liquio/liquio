@@ -1,0 +1,152 @@
+{
+  "default_env": "production",
+  "production": {
+    "db": {
+      "host": "postgres",
+      "port": 5432,
+      "database": "id",
+      "username": "postgres",
+      "password": "<REDACTED>",
+      "logging": false,
+      "dialect": "postgres"
+    },
+    "port": "8100",
+    "modules": {
+      "denyToUpdateUserName": true,
+      "denyToUpdateUserValidParams": true,
+      "setPhoneOnlyAsNotValid": true
+    },
+    "session": {
+      "secret_key": "<REDACTED>"
+    },
+    "domain": ".internal",
+    "notify": {
+      "url": "http://notification:3003",
+      "authorization": "Basic <removed>"
+    },
+    "jwt": {
+      "secret": "<REDACTED>",
+      "expiresIn": 60
+    },
+    "oauth": {
+      "accessTokenLifetimeInSeconds": 28800,
+      "refreshTokenLifetimeInSeconds": 57600,
+      "secret_key": [
+        "<REDACTED>"
+      ],
+      "defaults": {
+        "client_id": "liquio-portal",
+        "redirect_uri": [
+          "http://localhost:8081/",
+          "http://localhost:8082/"
+        ],
+        "state": "profile",
+        "scope_fields": [
+          "userId",
+          "email",
+          "password",
+          "provider",
+          "gender",
+          "valid",
+          "phone",
+          "status",
+          "avaUrl",
+          "birthday",
+          "middle_name",
+          "last_name",
+          "first_name",
+          "services",
+          "ipn",
+          "role",
+          "useTwoFactorAuth",
+          "edrpou",
+          "companyName",
+          "isLegal",
+          "isIndividualEntrepreneur",
+          "passport_series",
+          "passport_number",
+          "passport_issue_date",
+          "passport_issued_by",
+          "id_card_number",
+          "id_card_issue_date",
+          "id_card_issued_by",
+          "id_card_expiry_date",
+          "onboardingTaskId",
+          "needOnboarding",
+          "address",
+          "addressStruct",
+          "isActive",
+          "is_private_house"
+        ],
+        "need_scope_approve": false,
+        "client_name": "Liquio Portal"
+      }
+    },
+    "auth_providers": {
+      "eds": {
+        "authorizationURL": "https://auth.js.sign.eu.iit.com.ua/",
+        "blacklistAcsk": [
+          "test.gov.ua",
+          "test.gov.ua",
+          "test.com.ua"
+        ],
+        "caServerList": "https://iit.com.ua/download/productfiles/CAs.json",
+        "callbackURL": "http://localhost:8080/authorise/eds/callback",
+        "clientID": "U0000656581",
+        "clientSecret": "294c5b4cbeb537ab04c8111f6fa86aa6b29e5f15de521b556cda61ef505f6249",
+        "customerURL": "https://auth.js.sign.eu.iit.com.ua/get-user-info",
+        "passReqToCallback": "true",
+        "showServerList": true,
+        "tokenURL": "https://auth.js.sign.eu.iit.com.ua/get-access-token"
+      },
+      "local": {
+        "isEnabled": true
+      },
+      "x509": {
+        "isEnabled": true
+      }
+    },
+    "passwordManager": {
+      "minPasswordLength": 8,
+      "maxAttempts": 5,
+      "maxAttemptDelay": 3600,
+      "hashingSaltRounds": 10,
+      "rememberLastPasswords": 5
+    },
+    "pingRoutes": {
+      "notify": "http://localhost:3002/test/ping"
+    },
+    "redis": {
+      "isEnabled": true,
+      "host": "redis",
+      "port": 6379,
+      "defaultTtl": 60
+    },
+    "confirmCodeRetries": 10,
+    "confirmCodeEmailTemplate": "<!DOCTYPE html> <html lang=\"uk\"> <head> <meta charset=\"UTF-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\"/> </head> <body style=\"font-size: 12px;margin: 0;font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;line-height: 1;letter-spacing: -0.02em;padding-top: 20px;padding-bottom: 50px;\"> <div style=\"padding-left: 50px;padding-right: 50px;\"> <div style=\"margin-bottom: 50px;\"> <img style=\"height: 48px;float: left;\" src=\"https://i.ibb.co/ZYbFkwT/image.png\" alt=\"image\" /> <div style=\"font-size: 16px;line-height: 20px;padding-left: 15px;max-width: 80px;display: inline-block;margin-top: 5px;\"> Цифрова держава </div> </div> <div style=\"font-size: 21px;font-weight: bold;line-height: 26px;margin-bottom: 20px;letter-spacing: -0.02em;\"> Код підтвердження email: </div> ​ <div style=\"font-size: 16px;line-height: 20px;color: #000;margin-top: 20px;margin-bottom: 20px;\"> <div style=\"font-size: 20px;\"></div> {{code}} </div> </div> <div style='background-color: #000;padding-top: 20px;padding-bottom: 80px;font-size: 10px;margin-top: 40px;'> <div style='padding-left: 50px;padding-right: 50px;'> <div style='color: #fff;margin-bottom: 5px;'>Михайла Грушевського 12/2, Київ</div> <div style='color: #fff;margin-bottom: 20px;'>Україна</div> </div> </div> </body> </html>",
+    "confirmCodeEmailHeader": "Підтвердження реєстрації",
+    "confirmCodeEmailChangeHeader": "Підтвердження електронної пошти",
+    "swagger": false,
+    "customer": "liquio",
+    "environment": "dev",
+    "x509": {
+      "caCerts": [
+        "-----BEGIN CERTIFICATE-----\nMIIDXzCCAkegAwIBAgIUC5/U/DSHdXbQPiCulgXQ30SIyT8wDQYJKoZIhvcNAQELBQAwPzELMAkGA1UEBhMCVUExFzAVBgNVBAoMDkxpcXVpbyBUZXN0IENBMRcwFQYDVQQDDA5MaXF1aW8gVGVzdCBDQTAeFw0yNTA3MTgwOTU3MjRaFw0zNTA3MTYwOTU3MjRaMD8xCzAJBgNVBAYTAlVBMRcwFQYDVQQKDA5MaXF1aW8gVGVzdCBDQTEXMBUGA1UEAwwOTGlxdWlvIFRlc3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDrNbtEdHyWqUoM5CsQO+V6GTi2J3ZflphbLqe8PrEK2ZrrOqQ2ioYJonMmqvqC2FOqZotefiCFlZlxGNTQL+KBSL5GCW+QdHZ9Xqs6SH+Rv/O59Lysk82MxsyxZhH1E4uohPyKk9AuTHPJnckYqyGIM67h+yOWqkbTo+KbZYkkyo+8zbhhDCQ4YE6fkF/2vQDG9XwzlPmyIPrs5ObnBE38pvHYbRK2tKOQQn0X+0PFOyW8kOE5pfvMUnMEV+bhDM1XDasE5vGzDnywVSLDM+CrA2I/VPpFIikFwmK3nLbdxcOWRWbaSDtD/IvoaKLvND24zx0Z/PwCHjTsJNEyjy9nAgMBAAGjUzBRMB0GA1UdDgQWBBSBz8K70XPT2o1D66btkNEUAgFrjjAfBgNVHSMEGDAWgBSBz8K70XPT2o1D66btkNEUAgFrjjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAkBXYPFIwgzI1du5lLgj6WN0GyVYXqDarmUyfho8YKYxepzf4XijYe90Gjoo81D9xDjpYeRGZEFrVQw3FZdQ27HMlDmnZZ7t+PUie5fC9VWen3frurT7aiJCrHNFTS6n3unAwBbiLXAbo57IoNeHy+B0B6xZcxKsQ4hP03BLv1SFzGcUh/QgaGpaD+sQesrQocozAHHm/49iEH6bclyaVzxTF75HQX/9f3oIHWZt+IIEqSIifqVy154xfCUovm+bMjhLJKcb/CNeCWlik1lX3mbNU+AzRTTz3P8AvKOdfHXS0d9dGjqAAHp5O3+h12+x44XeV9KrkxTrWaiKuJw6vM\n-----END CERTIFICATE-----"
+      ],
+      "externalUrl": "http://sign-tool:3004"
+    },
+    "enabledDeleteUser": false,
+    "log": {
+      "excludeParams": [
+        "token",
+        "authorization",
+        "Authorization",
+        "oauth-token",
+        "secret",
+        "password",
+        "oldPassword",
+        "oldPasswords"
+      ]
+    }
+  }
+}

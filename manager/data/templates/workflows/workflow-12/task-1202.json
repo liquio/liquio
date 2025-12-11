@@ -1,0 +1,124 @@
+{
+  "title": "Реєстрація заявки",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['userDocument','registration']; }",
+  "header": {
+    "applicantName": {
+      "type": "string",
+      "description": "Заявник",
+      "value": "(thisDocument) => { return thisDocument.registration.applicantName; }"
+    },
+    "serviceName": {
+      "type": "string",
+      "description": "Послуга",
+      "value": "(thisDocument) => { return 'Дозвіл на транзитне переміщення не зареєстрованих в Україні генетично модифікованих організмів'; }"
+    }
+  },
+  "properties": {
+    "register": {
+      "type": "object",
+      "description": "Реєстратор",
+      "control": "select.user",
+      "properties": {
+        "id": {
+          "type": "string",
+          "value": "user.id",
+          "hidden": true
+        },
+        "name": {
+          "type": "string",
+          "value": "user.name",
+          "description": "Прізвище, ім'я та по батькові"
+        },
+        "email": {
+          "type": "string",
+          "value": "user.email",
+          "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+$",
+          "sample": "Електронна адреса має бути в форматі \"test@example.com\"",
+          "description": "Електронна пошта"
+        },
+        "phone": {
+          "type": "string",
+          "value": "user.phone",
+          "pattern": "^380[0-9]{9}$",
+          "sample": "Номер у форматі 380XXXXXXXXX",
+          "description": "Контактний номер телефону",
+          "mask": "380999999999"
+        },
+        "address": {
+          "type": "string",
+          "value": "user.address",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Адреса",
+          "sample": "Адреса, не більше 500 символів"
+        },
+        "ipn": {
+          "type": "string",
+          "value": "user.ipn",
+          "description": "РНОКПП"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "userDocument": {
+      "type": "object",
+      "description": "Документи",
+      "control": "preview.document",
+      "documentTemplateIds": [1201]
+    },
+    "registration": {
+      "type": "object",
+      "description": "Реєстрація",
+      "properties": {
+        "applicantName": {
+          "type": "string",
+          "description": "Заявник",
+          "value": "documents.1201.data.applicant.name",
+          "readonly": true,
+          "hidden": true
+        },
+        "accept": {
+          "type": "boolean",
+          "control": "toggle",
+          "offText": "Відхилити",
+          "onText": "Прийняти"
+        },
+        "number": {
+          "type": "string",
+          "description": "Реєстраційний номер",
+          "hidden": "(allStepsData) => { return !!(allStepsData && allStepsData.registration && allStepsData.registration.accept); }"
+        },
+        "reason": {
+          "type": "string",
+          "value": "",
+          "description": "Причина відмови",
+          "options": [
+            {
+              "id": "wrong-documents",
+              "name": "Документи не відповідають вимогам"
+            },
+            {
+              "id": "not-all-needed-documents",
+              "name": "Не повний пакет документів"
+            }
+          ],
+          "hidden": "(allStepsData) => { return !(allStepsData && allStepsData.registration && allStepsData.registration.accept); }"
+        },
+        "comment": {
+          "type": "string",
+          "value": "",
+          "description": "Коментар",
+          "hidden": "(allStepsData) => { return !(allStepsData && allStepsData.registration && allStepsData.registration.accept); }"
+        }
+      },
+      "required": []
+    }
+  },
+  "required": [
+    "registration"
+  ]
+}

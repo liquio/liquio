@@ -1,0 +1,20 @@
+{{- if .Values.services.signTool.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-sign-tool
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sign-tool
+spec:
+  type: {{ .Values.services.signTool.type }}
+  ports:
+    - port: {{ .Values.services.signTool.servicePort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: sign-tool
+{{- end }}

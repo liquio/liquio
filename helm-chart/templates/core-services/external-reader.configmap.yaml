@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-external-reader-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # Auth configuration
+  auth.json: |
+    {
+      "basicAuthTokens": ["external-reader:{{ include "liquio.externalReader.authToken" . | b64dec | splitList ":" | rest | join ":" }}"]
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "port": {{ .Values.services.externalReader.targetPort }},
+      "host": "0.0.0.0",
+      "isSwaggerEnabled": false,
+      "acceptedBodySize": "10mb"
+    }

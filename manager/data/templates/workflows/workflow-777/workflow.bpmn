@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_0r8blxp" targetNamespace="http://bpmn.io/schema/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="3.4.0">
+  <bpmn:process id="process-777" isExecutable="false">
+    <bpmn:startEvent id="start-event-777" name="Start Event">
+      <bpmn:outgoing>start-event-777-to-task-77700</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="task-77700" name="Task 0">
+      <bpmn:incoming>start-event-777-to-task-77700</bpmn:incoming>
+      <bpmn:outgoing>task-77700-to-gateway-77701</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:inclusiveGateway id="gateway-77701" name="OR Gateway">
+      <bpmn:incoming>task-77700-to-gateway-77701</bpmn:incoming>
+      <bpmn:outgoing>gateway-77701-to-task-77701</bpmn:outgoing>
+      <bpmn:outgoing>gateway-77701-to-task-77702</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:task id="task-77701" name="Task 1">
+      <bpmn:incoming>gateway-77701-to-task-77701</bpmn:incoming>
+      <bpmn:outgoing>task-77701-to-task-77703</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="task-77702" name="Task 2">
+      <bpmn:incoming>gateway-77701-to-task-77702</bpmn:incoming>
+      <bpmn:outgoing>task-77702-to-task-77703</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="task-77703" name="Task 3">
+      <bpmn:incoming>task-77701-to-task-77703</bpmn:incoming>
+      <bpmn:incoming>task-77702-to-task-77703</bpmn:incoming>
+      <bpmn:outgoing>task-77703-to-end-event-777</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="end-event-777" name="End Event">
+      <bpmn:incoming>task-77703-to-end-event-777</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="start-event-777-to-task-77700" sourceRef="start-event-777" targetRef="task-77700" />
+    <bpmn:sequenceFlow id="task-77700-to-gateway-77701" sourceRef="task-77700" targetRef="gateway-77701" />
+    <bpmn:sequenceFlow id="gateway-77701-to-task-77701" sourceRef="gateway-77701" targetRef="task-77701" />
+    <bpmn:sequenceFlow id="gateway-77701-to-task-77702" sourceRef="gateway-77701" targetRef="task-77702" />
+    <bpmn:sequenceFlow id="task-77701-to-task-77703" sourceRef="task-77701" targetRef="task-77703" />
+    <bpmn:sequenceFlow id="task-77702-to-task-77703" sourceRef="task-77702" targetRef="task-77703" />
+    <bpmn:sequenceFlow id="task-77703-to-end-event-777" sourceRef="task-77703" targetRef="end-event-777" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="process-777">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event-777">
+        <dc:Bounds x="156" y="81" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="147" y="124" width="55" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task-77701_di" bpmnElement="task-77701">
+        <dc:Bounds x="501" y="59" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="gateway-77701-to-task-77701_di" bpmnElement="gateway-77701-to-task-77701">
+        <di:waypoint x="451" y="99" />
+        <di:waypoint x="501" y="99" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task-77702_di" bpmnElement="task-77702">
+        <dc:Bounds x="501" y="169" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="gateway-77701-to-task-77702_di" bpmnElement="gateway-77701-to-task-77702">
+        <di:waypoint x="426" y="124" />
+        <di:waypoint x="426" y="209" />
+        <di:waypoint x="501" y="209" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task-77703_di" bpmnElement="task-77703">
+        <dc:Bounds x="651" y="59" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="task-77701-to-task-77703_di" bpmnElement="task-77701-to-task-77703">
+        <di:waypoint x="601" y="99" />
+        <di:waypoint x="651" y="99" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="task-77702-to-task-77703_di" bpmnElement="task-77702-to-task-77703">
+        <di:waypoint x="601" y="209" />
+        <di:waypoint x="626" y="209" />
+        <di:waypoint x="626" y="99" />
+        <di:waypoint x="651" y="99" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="end-event-777_di" bpmnElement="end-event-777">
+        <dc:Bounds x="801" y="81" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="794" y="124" width="51" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="task-77703-to-end-event-777_di" bpmnElement="task-77703-to-end-event-777">
+        <di:waypoint x="751" y="99" />
+        <di:waypoint x="801" y="99" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="InclusiveGateway_0h4be0j_di" bpmnElement="gateway-77701">
+        <dc:Bounds x="401" y="74" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="395" y="44" width="63" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task-77700_di" bpmnElement="task-77700">
+        <dc:Bounds x="243" y="59" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="start-event-777-to-task-77700_di" bpmnElement="start-event-777-to-task-77700">
+        <di:waypoint x="192" y="99" />
+        <di:waypoint x="243" y="99" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="task-77700-to-gateway-77701_di" bpmnElement="task-77700-to-gateway-77701">
+        <di:waypoint x="343" y="99" />
+        <di:waypoint x="401" y="99" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

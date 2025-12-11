@@ -1,0 +1,10 @@
+{
+  "host": "redis",
+  "port": 6379,
+  "ttl": 60,
+  "enabled": true,
+  "amqpMessageCache": {
+    "isEnabled": false,
+    "ttl": 7200
+  }
+}

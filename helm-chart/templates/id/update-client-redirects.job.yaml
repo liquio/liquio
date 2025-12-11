@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-update-client-redirects
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: update-client-redirects
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ include "liquio.fullname" . }}-update-client-redirects
+      labels:
+        {{- include "liquio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: update-client-redirects
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
+      containers:
+        - name: update-client-redirects
+          image: {{ .Values.postgresql.image.registry }}{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
+          command: ['sh', '-c']
+          args:
+            - |
+              echo "Updating client redirect URIs for Kubernetes environment..."
+              
+              # Wait a bit for any concurrent migrations to complete
+              sleep 10
+              
+              # Update the liquio-portal client with correct Kubernetes ingress URLs
+              psql "$DATABASE_URL" << 'EOF'
+              UPDATE clients 
+              SET "redirectUri" = ARRAY[
+                'http://cabinet.{{ .Values.global.domain }}/',
+                'http://admin.{{ .Values.global.domain }}/'
+              ]
+              WHERE "clientId" = 'liquio-portal';
+              
+              -- Verify the update
+              SELECT "clientId", "redirectUri" FROM clients WHERE "clientId" = 'liquio-portal';
+              EOF
+              
+              echo "Client redirect URIs updated successfully!"
+          env:
+            - name: DATABASE_URL
+              value: "postgres://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "liquio.fullname" . }}-postgresql:5432/id"
+            - name: PGPASSWORD
+              value: "{{ .Values.postgresql.auth.password }}"
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: var-run-postgresql
+              mountPath: /var/run/postgresql
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: var-run-postgresql
+          emptyDir: {}
+      serviceAccountName: {{ include "liquio.serviceAccountName" . }}

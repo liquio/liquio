@@ -1,0 +1,6 @@
+{
+  "isEnabled": true,
+  "host": "redis",
+  "port": 6379,
+  "defaultTtl": 30
+}

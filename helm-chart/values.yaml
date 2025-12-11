@@ -1,0 +1,579 @@
+# Global configuration that applies to all Liquio components
+global:
+  # Base domain for all Liquio services (used for ingress hostnames)
+  domain: liquio.local
+  # Override image registry for all services (empty = use default Docker Hub)
+  imageRegistry: ""
+  # Secrets for pulling images from private registries
+  imagePullSecrets: []
+
+# Namespace configuration
+namespace:
+  # Whether to create a dedicated namespace for Liquio
+  create: true
+  # Name of the namespace (if empty, uses .Release.Namespace)
+  name: ""
+
+# Database migrations configuration
+migrations:
+  # Whether to run database schema migrations on deployment
+  enabled: true
+
+# Default image configuration for all services
+image:
+  # Override image registry (empty = use global setting)
+  registry: ""
+  # Image pull policy: Always, IfNotPresent, Never
+  pullPolicy: Never
+  # Default image tag for all services
+  tag: "latest"
+
+# Liquio microservices configuration
+services:
+  # Identity Frontend - User authentication and login interface
+  idFront:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8080
+    # Container target port
+    targetPort: 8080
+    # External service port
+    servicePort: 8080
+    image:
+      # Docker image repository name
+      repository: liquio-id-front
+      # Docker image tag (overrides global tag)
+      tag: latest
+
+  # Admin Frontend - Administrative interface for system management
+  adminFront:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8080
+    # Container target port (nginx serves on port 8080)
+    targetPort: 8080
+    # External service port
+    servicePort: 8080
+    image:
+      # Docker image repository name
+      repository: liquio-admin-front
+      # Docker image tag
+      tag: latest
+
+  # Cabinet Frontend - Document management interface
+  cabinetFront:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8080
+    # Container target port (nginx serves on port 8080)
+    targetPort: 8080
+    # External service port
+    servicePort: 8080
+    image:
+      # Docker image repository name
+      repository: liquio-cabinet-front
+      # Docker image tag
+      tag: latest
+
+  # Identity API - Authentication and user management backend
+  idApi:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8100
+    # Container target port
+    targetPort: 8100
+    # External service port
+    servicePort: 8100
+    image:
+      # Docker image repository name
+      repository: liquio-id-api
+      # Docker image tag
+      tag: latest
+
+  # Admin API - Administrative backend services and management operations
+  adminApi:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8102
+    # Container target port
+    targetPort: 8102
+    # External service port
+    servicePort: 8102
+    image:
+      # Docker image repository name
+      repository: liquio-admin-api
+      # Docker image tag
+      tag: latest
+
+  # Cabinet API - Document management and storage backend
+  cabinetApi:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8101
+    # Container target port
+    targetPort: 8101
+    # External service port
+    servicePort: 8101
+    image:
+      # Docker image repository name
+      repository: liquio-cabinet-api
+      # Docker image tag
+      tag: latest
+
+  # External Reader - Service for reading external data sources
+  externalReader:
+    # Whether to deploy this service (disabled by default)
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8106
+    # Container target port
+    targetPort: 8106
+    # External service port
+    servicePort: 8106
+    image:
+      # Docker image repository name
+      repository: liquio-external-reader
+      # Docker image tag
+      tag: latest
+
+  # File Storage - Service for managing file uploads and storage
+  filestorage:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8105
+    # Container target port
+    targetPort: 8105
+    # External service port
+    servicePort: 8105
+    image:
+      # Docker image repository name
+      repository: liquio-filestorage
+      # Docker image tag
+      tag: latest
+
+  # Event Service - Handles system events and messaging
+  event:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 3000
+    # Container target port
+    targetPort: 3000
+    # External service port
+    servicePort: 3000
+    image:
+      # Docker image repository name
+      repository: liquio-event
+      # Docker image tag
+      tag: latest
+
+  # Gateway Service - API gateway and routing
+  gateway:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 7003
+    # Container target port
+    targetPort: 7003
+    # External service port
+    servicePort: 7003
+    image:
+      # Docker image repository name
+      repository: liquio-gateway
+      # Docker image tag
+      tag: latest
+
+  # Manager Service - Core business logic and workflow management
+  manager:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 3002
+    # Container target port
+    targetPort: 3002
+    # External service port
+    servicePort: 3002
+    image:
+      # Docker image repository name
+      repository: liquio-manager
+      # Docker image tag
+      tag: latest
+
+  # Notification Service - Handles system notifications and alerts
+  notification:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 3003
+    # Container target port
+    targetPort: 3003
+    # External service port
+    servicePort: 3003
+    image:
+      # Docker image repository name
+      repository: liquio-notification
+      # Docker image tag
+      tag: latest
+
+  # Register Service - Registry and metadata management
+  register:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 8103
+    # Container target port
+    targetPort: 8103
+    # External service port
+    servicePort: 8103
+    image:
+      # Docker image repository name
+      repository: liquio-register
+      # Docker image tag
+      tag: latest
+
+  # Sign Tool Service - Digital signature and cryptographic operations
+  signTool:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 3004
+    # Container target port
+    targetPort: 3004
+    # External service port
+    servicePort: 3004
+    image:
+      # Docker image repository name
+      repository: liquio-sign-tool
+      # Docker image tag
+      tag: latest
+
+  # Task Service - Task management and scheduling
+  task:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    # Kubernetes service port
+    port: 3000
+    # Container target port
+    targetPort: 3000
+    # External service port
+    servicePort: 3000
+    image:
+      # Docker image repository name
+      repository: liquio-task
+      # Docker image tag
+      tag: latest
+
+# PostgreSQL database configuration
+postgresql:
+  # Whether to deploy PostgreSQL database
+  enabled: true
+  image:
+    # Override image registry (empty = use default)
+    registry: ""
+    # PostgreSQL Docker image repository
+    repository: postgres
+    # PostgreSQL version tag
+    tag: "17"
+  # Database authentication configuration
+  auth:
+    # Database username
+    username: postgres
+    # Database password
+    password: "testpassword"
+    # Default database name
+    database: postgres
+  # Primary database instance configuration
+  primary:
+    persistence:
+      # Whether to enable persistent storage for database
+      enabled: false
+    # Resource limits and requests for the database pod
+    resources:
+      requests:
+        # Minimum memory allocation
+        memory: "256Mi"
+        # Minimum CPU allocation
+        cpu: "100m"
+      limits:
+        # Maximum memory allocation
+        memory: "512Mi"
+        # Maximum CPU allocation
+        cpu: "500m"
+  # Persistence configuration (legacy, use primary.persistence instead)
+  persistence:
+    # Whether to enable persistent storage
+    enabled: false
+    # Storage size
+    size: 1Gi
+
+# RabbitMQ message broker configuration
+rabbitmq:
+  # Whether to deploy RabbitMQ
+  enabled: true
+  # Authentication configuration
+  auth:
+    # RabbitMQ username
+    username: guest
+    # RabbitMQ password
+    password: "testpassword"
+  # Persistence configuration
+  persistence:
+    # Whether to enable persistent storage for messages
+    enabled: false
+    # Storage size
+    size: 1Gi
+  # Resource limits and requests for RabbitMQ pod
+  resources:
+    requests:
+      # Minimum memory allocation
+      memory: "256Mi"
+      # Minimum CPU allocation
+      cpu: "100m"
+    limits:
+      # Maximum memory allocation
+      memory: "512Mi"
+      # Maximum CPU allocation
+      cpu: "500m"
+
+# Redis cache and session store configuration
+redis:
+  # Whether to deploy Redis
+  enabled: true
+  # Authentication configuration
+  auth:
+    # Whether to enable Redis authentication (disabled for simplicity)
+    enabled: false
+  # Master instance configuration
+  master:
+    persistence:
+      # Whether to enable persistent storage for Redis data
+      enabled: false
+    # Resource limits and requests for Redis pod
+    resources:
+      requests:
+        # Minimum memory allocation
+        memory: "128Mi"
+        # Minimum CPU allocation
+        cpu: "50m"
+      limits:
+        # Maximum memory allocation
+        memory: "256Mi"
+        # Maximum CPU allocation
+        cpu: "200m"
+  # Persistence configuration (legacy, use master.persistence instead)
+  persistence:
+    # Whether to enable persistent storage
+    enabled: false
+    # Storage size
+    size: 1Gi
+
+# Ingress configuration for external access to services
+ingress:
+  # Whether to enable ingress controllers
+  enabled: true
+  # Ingress class name (nginx for nginx-ingress controller)
+  className: "nginx"
+  # Ingress annotations for configuration
+  annotations:
+    # Rewrite target URL for proper routing
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  # Host configuration for different services
+  hosts:
+    # Identity frontend service
+    - host: id.liquio.local
+      paths:
+        - path: /
+          # Path matching type
+          pathType: Prefix
+          # Target service name
+          service: id-front
+    # Identity API service
+    - host: id-api.liquio.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: id-api
+    # Admin frontend service
+    - host: admin.liquio.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: admin-front
+    # Admin API service
+    - host: admin-api.liquio.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: admin-api
+    # Cabinet frontend service
+    - host: cabinet.liquio.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: cabinet-front
+    # Cabinet API service
+    - host: cabinet-api.liquio.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: cabinet-api
+
+# Global persistence configuration
+persistence:
+  # Whether to enable persistent volumes for services
+  enabled: false
+
+# Service account configuration
+serviceAccount:
+  # Whether to create a service account
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use (if not set, a name is generated)
+  name: ""
+
+# Pod security context
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+  # fsGroup: 2000
+
+# Container security context
+securityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  seccompProfile:
+    type: RuntimeDefault
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Default resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Resource limits for init containers
+initContainerResources:
+  limits:
+    cpu: 100m
+    memory: 64Mi
+  requests:
+    cpu: 50m
+    memory: 32Mi
+
+# Node selector for pod assignment
+nodeSelector: {}
+
+# Tolerations for pod assignment
+tolerations: []
+
+# Affinity for pod assignment
+affinity: {}
+
+# Application configuration settings
+config:
+  # Database connection configuration
+  database:
+    # PostgreSQL hostname (Kubernetes service name)
+    host: "liquio-test-postgresql"
+    # PostgreSQL port
+    port: 5432
+    # Database username
+    username: postgres
+    # Database password
+    password: "testpassword"
+
+  # RabbitMQ message broker configuration
+  rabbitmq:
+    # RabbitMQ hostname (Kubernetes service name)
+    host: "liquio-test-rabbitmq"
+    # RabbitMQ port
+    port: 5672
+    # RabbitMQ username
+    username: guest
+    # RabbitMQ password
+    password: "testpassword"
+
+  # Redis cache configuration
+  redis:
+    # Redis hostname (Kubernetes service name)
+    host: "liquio-test-redis-master"
+    # Redis port
+    port: 6379
+
+# Secret values for secure configuration
+secrets:
+  # PostgreSQL authentication secrets
+  postgresql:
+    # Database password
+    password: "testpassword"
+  # RabbitMQ authentication secrets
+  rabbitmq:
+    # Message broker password
+    password: "testpassword"
+  # OAuth authentication secrets
+  oauth:
+    # Secret key for OAuth token signing
+    secretKey: "test-oauth-secret-key-12345"
+  # JWT token secrets
+  jwt:
+    # Secret key for JWT token signing and verification
+    secret: "test-jwt-secret-key-12345"
+  # Register service secrets
+  register:
+    # Encryption key for register data
+    encryptionKey: "test-encryption-key-12345"
+    # Authentication token for register service
+    authToken: "cmVnaXN0ZXI6dGVzdC1hdXRoLXRva2VuLTEyMzQ1"
+  # External reader service secrets
+  externalReader:
+    # Authentication token for external reader service
+    authToken: "test-external-reader-token"
+  # File storage service secrets
+  filestorage:
+    # Authentication token for file storage service
+    authToken: "test-filestorage-token"

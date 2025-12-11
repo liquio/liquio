@@ -1,0 +1,10 @@
+{
+  "manager": {
+    "url": "https://manager.liquio.local/test/ping"
+  },
+  "healthz": {
+    "db": {
+      "enabled": true
+    }
+  }
+}

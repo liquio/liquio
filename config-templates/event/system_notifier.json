@@ -1,0 +1,19 @@
+{
+  "adminUrl": "https://admin-front-dev-oe.liquio.local",
+  "email": {
+    "server": "https://notify-dev-oe.liquio.local",
+    "port": 443,
+    "routes": {
+      "sendEmail": "/message/emailsList",
+      "sendToUser": "/message/usersList",
+      "ping": "/test/ping"
+    },
+    "timeout": 30000,
+    "user": "<removed>",
+    "hashedPassword": "<removed>",
+    "emails": [],
+    "subject": "Workflow process problem.",
+    "body": "<html><body>Відбулась помилка в процесі {url}<br/>Event {eventTemplateId} {eventTemplateName}<br/>{error}</body></html>"
+  },
+  "maxLoops": 50
+}

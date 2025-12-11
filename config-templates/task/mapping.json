@@ -1,0 +1,8 @@
+{
+  "taskBusiness": {
+    "frontUrl": {
+      "template": "{{frontUrl}}",
+      "replace": "https://cabinet.politdata.liquio.local"
+    }
+  }
+}

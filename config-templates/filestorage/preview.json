@@ -1,0 +1,19 @@
+{
+  "server": "http://10.10.172.128:3345",
+  "routes": {
+    "generatePreview": "/preview",
+    "ping": "/test/ping"
+  },
+  "contentTypes": [
+    "image/png",
+    "image/jpg",
+    "image/jpeg",
+    "image/gif",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/rtf",
+    "application/vnd.oasis.opendocument.text"
+  ],
+  "timeout": 5000
+}

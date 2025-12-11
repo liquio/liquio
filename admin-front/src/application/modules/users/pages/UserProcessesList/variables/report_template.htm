@@ -1,0 +1,355 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0041)file:///home/alex/NAZK_log_templ_form.htm -->
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <title></title>
+    <style type="text/css">
+        @page {
+            size: 11.69in 8.27in;
+            margin-left: 0.79in;
+            margin-right: 0.53in;
+            margin-top: 0.79in;
+            margin-bottom: 0.79in
+        }
+
+        p {
+            margin-bottom: 0.1in;
+            line-height: 115%;
+            background: transparent
+        }
+
+        td p {
+            orphans: 0;
+            widows: 0;
+            background: transparent
+        }
+    </style>
+</head>
+
+<body lang="en-US">
+    <!--div id="pageFooter" style="text-align: center">
+        <span style="color: #444;">\{{page}}</span> з <span>\{{pages}}</span>
+    </div-->
+
+    <div title="header">
+        <p align="right" style="margin-bottom: 0in; line-height: 100%">
+            Журнал дій користувачів</p>
+        <p align="right" style="margin-bottom: 0.2in; line-height: 100%">
+            <!-- <font size="2" style="font-size: 10pt">8.09.2020</font> -->
+        </p>
+    </div>
+    <p style="margin-bottom: 0in; line-height: 100%"><br>
+
+    </p>
+    <p style="margin-bottom: 0in; line-height: 100%">
+        <font face="Arial, sans-serif">
+            <font size="4" style="font-size: 14pt">
+                <font color="#000000"><b>ЖУРНАЛ ДІЙ КОРИСТУВАЧІВ</b></font>
+            </font>
+        </font>
+    </p>
+    <p style="margin-bottom: 0in; line-height: 100%"><br>
+
+    </p>
+    <p style="margin-bottom: 0in; line-height: 100%">
+        <font face="Arial, sans-serif">
+            <font color="#000000">
+                <font size="3" style="font-size: 12pt"><span style="font-weight: normal">дата:</span></font>
+            </font>
+            <font color="#000000">
+                <font size="3" style="font-size: 12pt"><b>
+                    </b></font>
+            </font>
+            <font color="#000000">
+                <!-- <font size="3" style="font-size: 12pt"><b>28.09.2020</b></font> -->
+            </font>
+        </font>
+    </p>
+    <p style="margin-bottom: 0in; line-height: 100%"><br>
+
+    </p>
+    <p style="margin-bottom: 0in; line-height: 100%">
+        <font face="Arial, sans-serif">
+            <font color="#000000">
+                <font size="3" style="font-size: 12pt"><b>Параметри відбору:</b></font>
+            </font>
+        </font>
+    </p>
+    <table width="1342" cellpadding="0" cellspacing="0">
+        <colgroup>
+            <col width="239">
+
+            <col width="475">
+
+            <col width="160">
+
+            <col width="468">
+
+        </colgroup>
+        <tbody>
+            <tr valign="top">
+                <td width="239" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="font-weight: normal; orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">
+                                <font color="#000000">
+                                    <font size="3" style="font-size: 12pt">Дія:</font>
+                                </font>
+                            </font>
+                        </font>
+                    </p>
+                </td>
+                <td width="475" style="border: none; padding: 0in">
+                    <p>
+                        <font face="Arial, sans-serif"><i><b>{{#if filters.type}} {{filters.type}} {{else}} -
+                                    {{/if}}</b></i></font>
+                    </p>
+                </td>
+                <td width="160" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="font-weight: normal; orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">Ідентифікатор:</font>
+                        </font>
+                    </p>
+                </td>
+                <td width="468" style="border: none; padding: 0in">
+                    <p>
+                        <font face="Arial, sans-serif"><b>{{#if filters.documentId}} {{filters.documentId}} {{else}} -
+                                {{/if}}</b></font>
+                    </p>
+                </td>
+            </tr>
+            <tr valign="top">
+                <td width="239" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="font-weight: normal; orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">ID користувача:</font>
+                        </font>
+                    </p>
+                </td>
+                <td width="475" style="border: none; padding: 0in">
+                    <p>
+                        <font face="Arial, sans-serif"><b>{{#if filters.userId}} {{filters.userId}} {{else}} -
+                                {{/if}}</b></font>
+                    </p>
+                </td>
+                <td width="160" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">IP-адреса:</font>
+                        </font>
+                    </p>
+                </td>
+                <td width="468" style="border: none; padding: 0in">
+                    <p>
+                        <font face="Arial, sans-serif"><b>{{#if filters.ip}} {{filters.ip}} {{else}} - {{/if}}</b>
+                        </font>
+                    </p>
+                </td>
+            </tr>
+            <tr valign="top">
+                <td width="239" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="font-weight: normal; orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">ПІБ користувача:</font>
+                        </font>
+                    </p>
+                </td>
+                <td width="475" style="border: none; padding: 0in">
+                    <p>
+                        <font face="Arial, sans-serif"><b>{{#if filters.userName}} {{filters.userName}} {{else}}
+                                - {{/if}}</b></font>
+                    </p>
+                </td>
+                <td width="160" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt"></font>
+                        </font>
+                    </p>
+                </td>
+                <td width="468" style="border: none; padding: 0in">
+                    <p>
+                        <font face="Arial, sans-serif"><b></b></font>
+                    </p>
+                </td>
+            </tr>
+            <tr valign="top">
+                <td width="239" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="font-weight: normal; orphans: 2; widows: 2">
+                        <br>
+
+                    </p>
+                </td>
+                <td width="475" style="border: none; padding: 0in">
+                    <p><br>
+
+                    </p>
+                </td>
+                <td width="160" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="orphans: 2; widows: 2">
+                        <br>
+
+                    </p>
+                </td>
+                <td width="468" style="border: none; padding: 0in">
+                    <p><br>
+
+                    </p>
+                </td>
+            </tr>
+            <tr valign="top">
+                <td width="239" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="font-weight: normal; orphans: 2; widows: 2">
+                        <br>
+
+                    </p>
+                </td>
+                <td width="475" style="border: none; padding: 0in">
+                    <p><br>
+
+                    </p>
+                </td>
+                <td width="160" style="border: none; padding: 0in">
+                    <p lang="uk-UA" align="left" style="orphans: 2; widows: 2">
+                        <br>
+
+                    </p>
+                </td>
+                <td width="468" style="border: none; padding: 0in">
+                    <p><br>
+
+                    </p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="margin-bottom: 0in; line-height: 100%"><br>
+
+    </p>
+    <p style="margin-bottom: 0in; line-height: 100%"><br>
+
+    </p>
+    <p style="margin-bottom: 0in; line-height: 100%">
+        <font face="Arial, sans-serif">
+            <font color="#000000">
+                <font size="3" style="font-size: 12pt"><b>Кількість
+                        записів: {{count}}</b></font>
+            </font>
+        </font>
+    </p>
+    <p style="margin-bottom: 0in; line-height: 100%"><br>
+
+    </p>
+
+    <table width="1374" cellpadding="10" cellspacing="0">
+        <colgroup>
+            <col width="77">
+
+            <col width="80">
+
+            <col width="136">
+
+            <col width="115">
+
+            <col width="94">
+
+            <col width="122">
+
+            <col width="131">
+
+            <col width="99">
+
+            <col width="155">
+
+            <col width="162">
+
+        </colgroup>
+        <tbody>
+            <tr valign="top">
+                {{#if showColumns.type}}
+                <td width="77" style="border: 1px solid #000000; padding: 0in 0.08in">
+                    <p lang="uk-UA" align="center" style="orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">Дія</font>
+                        </font>
+                    </p>
+                </td>
+                {{/if}}
+                {{#if showColumns.createdAt}}
+                <td width="80" style="border: 1px solid #000000; padding: 0in 0.08in">
+                    <p lang="uk-UA" align="center" style="orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">Дата та час дії</font>
+                        </font>
+                    </p>
+                </td>
+                {{/if}}
+                {{#if showColumns.userName}}
+                <td width="136" style="border: 1px solid #000000; padding: 0in 0.08in">
+                    <p lang="uk-UA" align="center" style="orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">ПІБ користувача
+                            </font>
+                        </font>
+                    </p>
+                </td>
+                {{/if}}
+                {{#if showColumns.userId}}
+                <td width="115" style="border: 1px solid #000000; padding: 0in 0.08in">
+                    <p lang="uk-UA" align="center" style="orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">ID користувача
+                            </font>
+                        </font>
+                    </p>
+                </td>
+                {{/if}}
+                {{#if showColumns.documentId}}
+                <td width="155" style="border: 1px solid #000000; padding: 0in 0.08in">
+                    <p lang="uk-UA" align="center" style="orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">Ідентифікатор</font>
+                        </font>
+                    </p>
+                </td>
+                {{/if}}
+                {{#if showColumns.ip}}
+                <td width="162" style="border: 1px solid #000000; padding: 0in 0.08in">
+                    <p lang="uk-UA" align="center" style="orphans: 2; widows: 2">
+                        <font face="Arial, sans-serif">
+                            <font size="2" style="font-size: 11pt">IP-адреса</font>
+                        </font>
+                    </p>
+                </td>
+                {{/if}}
+            </tr>
+            {{#logs}}
+            <tr>
+                {{#if showColumns.type}}
+                <td>{{type}}</td>
+                {{/if}}
+                {{#if showColumns.createdAt}}
+                <td>{{createdAt}}</td>
+                {{/if}}
+                {{#if showColumns.userName}}
+                <td>{{userName}}</td>
+                {{/if}}
+                {{#if showColumns.userId}}
+                <td>{{userId}}</td>
+                {{/if}}
+                {{#if showColumns.documentId}}
+                <td>{{documentId}}</td>
+                {{/if}}
+                {{#if showColumns.ip}}
+                <td>{{ip}}</td>
+                {{/if}}
+            </tr>
+            {{/logs}}
+        </tbody>
+    </table>
+</body>
+</html>

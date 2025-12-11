@@ -1,0 +1,32 @@
+{
+  "main": {
+    "resultsCount": 10,
+    "doNotSearchThisWords": [],
+    "replace": []
+  },
+  "456": {
+    "resultsCount": 5,
+    "doNotSearchThisWords": [
+      "вул",
+      "вулиця",
+      "район",
+      "р",
+      "м",
+      "місто",
+      "с",
+      "сел",
+      "село",
+      "селище",
+      "смт",
+      "пр",
+      "пров",
+      "провулок"
+    ],
+    "replaceWords": [
+      {
+        "from": "київ",
+        "to": "м.київ"
+      }
+    ]
+  }
+}

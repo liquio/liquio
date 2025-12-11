@@ -1,0 +1,8 @@
+# ignore files
+.git/
+.git
+readme.md
+.gitlab-ci.yml
+helm-chart/
+coverage/
+node_modules/

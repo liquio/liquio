@@ -1,0 +1,32 @@
+# System.
+.DS_Store
+
+# IDE.
+.vscode/
+.vs/
+.idea/
+.dccache
+
+# External modules.
+node_modules/
+
+# Logs.
+*.log
+
+# Build.
+build/
+builds/
+
+# User defined configs.
+config/*.json
+src/config.json
+
+# WTF...
+public/avs/hash.txt
+*.bk
+
+# After build components
+core
+
+# Built artifacts.
+bundle/

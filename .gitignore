@@ -1,0 +1,31 @@
+/config
+.env
+*.p12
+test/data
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Cache
+.eslintcache
+.nyc_output/
+.cache/
+.yarn/
+.npm
+
+# Windows
+Thumbs.db

@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-admin-front-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  config.json: |
+    {
+      "application": {
+        "name": "Admin Panel",
+        "environment": "development",
+        "type": "adminpanel"
+      },
+      "customers": [
+        {
+          "id": 1,
+          "name": "bpmn"
+        }
+      ],
+      "registry": {
+        "useReindex": true,
+        "useAfterhandlersReindex": true
+      },
+      "reports": {
+        "enabled": true
+      },
+      "useUIFilters": true,
+      "customInterfaces": true,
+      "plugins": [],
+      "backendUrl": "http://admin-api.{{ .Values.global.domain }}",
+      "authLink": "http://admin-api.{{ .Values.global.domain }}/redirect/auth",
+      "adminPanelUrl": "http://admin.{{ .Values.global.domain }}",
+      "cabinetUrl": "http://cabinet.{{ .Values.global.domain }}",
+      "sentryDns1": "https://sentry",
+      "sessionLifeTime": 480,
+      "enabledMock": false,
+      "clientId": "liquio-portal",
+      "idAuthLink": "http://id.{{ .Values.global.domain }}/authorise",
+      "enabledDeleteUser": false,
+      "enabledMocksPage": false,
+      "defaultLanguage": "en"
+    }

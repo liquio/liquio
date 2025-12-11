@@ -1,0 +1,8 @@
+{
+  "versions": {
+      "services": [
+        { "name": "eds", "minVersion": "0.1.0" },
+        { "name": "notify", "minVersion": "0.1.0" }
+      ]
+    }
+}

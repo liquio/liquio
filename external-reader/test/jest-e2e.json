@@ -1,0 +1,16 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "collectCoverage": true,
+  "moduleNameMapper": {
+    "^src/(.*)": "<rootDir>/../src/$1",
+    "^@common/(.*)": "<rootDir>/../src/common/$1",
+    "^@components/(.*)": "<rootDir>/../src/components/$1",
+    "^@integrations/(.*)": "<rootDir>/../src/integrations/$1"
+  }
+}

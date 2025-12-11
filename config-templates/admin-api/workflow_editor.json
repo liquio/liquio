@@ -1,0 +1,7 @@
+{
+  "disabled": false,
+  "debugMode": {
+    "enabled": false,
+    "repeats": [1, 2, 2, 5, 10]
+  }
+}

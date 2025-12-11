@@ -1,0 +1,11 @@
+{
+  "LiquioId": {
+    "server": "https://id-dev-oe.liquio.local",
+    "port": 443,
+    "timeout": 30000,
+    "clientId": "<removed>",
+    "clientSecret": "<removed>",
+    "basicAuthToken": "<removed>"
+  },
+  "searchUsersLimit": 10
+}

@@ -1,0 +1,7 @@
+{
+  "amqpConnection": "amqp://rabbitmq",
+  "maxHandlingMessages": 2,
+  "readingQueueName": "bpmn-event-incoming",
+  "writingQueueName": "bpmn-manager-incoming",
+  "retryConnectionTime": 10000
+}

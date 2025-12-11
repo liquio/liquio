@@ -1,0 +1,20 @@
+{{- if .Values.services.filestorage.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-filestorage
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: filestorage
+spec:
+  type: {{ .Values.services.filestorage.type }}
+  ports:
+    - port: {{ .Values.services.filestorage.servicePort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: filestorage
+{{- end }}

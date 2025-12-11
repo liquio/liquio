@@ -1,0 +1,7 @@
+.git
+dist/
+node_modules/
+coverage/
+config/*.json
+Dockerfile
+config

@@ -1,0 +1,12 @@
+{
+    "isAllowedCreateByOtherSystems": true,
+    "allowedToCreateByTokens": [
+        "Basic <removed>"
+    ],
+    "allowedToUpdateDocumentAndCommit": [
+        "Basic <removed>"
+    ],
+    "tasksTemplateIds": [
+        "31009003"
+    ]
+}

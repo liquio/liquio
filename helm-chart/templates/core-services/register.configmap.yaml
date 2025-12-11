@@ -1,0 +1,209 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-register-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # Database configuration
+  db.json: |
+    {
+      "database": "register",
+      "host": "{{ include "liquio.postgresql.host" . }}",
+      "port": {{ .Values.config.database.port }},
+      "dialect": "postgres",
+      "username": "{{ .Values.config.database.username }}",
+      "password": "{{ include "liquio.postgresql.password" . }}",
+      "operatorsAliases": false,
+      "dialectOptions": {
+        "socketPath": "",
+        "supportBigNumbers": true,
+        "bigNumberStrings": true
+      },
+      "pool": {
+        "max": 5,
+        "min": 0,
+        "acquire": 30000,
+        "idle": 10000
+      },
+      "logging": false,
+      "migrationStorageTableName": "sequelize_meta"
+    }
+
+  # Encryption configuration
+  encryption.json: |
+    {
+      "key": "{{ include "liquio.register.encryptionKey" . }}",
+      "iv_size": 12,
+      "batch_job_size": 100,
+      "check_on_startup": false
+    }
+
+  # Auth configuration
+  auth.json: |
+    {
+      "tokens": ["Basic {{ include "liquio.register.authToken" . }}"],
+      "limitedAccess": []
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "hostname": "0.0.0.0",
+      "port": {{ .Values.services.register.targetPort }},
+      "maxBodySize": "500mb",
+      "customer": "liquio",
+      "environment": "dev"
+    }
+
+  # Redis configuration
+  redis.json: |
+    {
+      "host": "{{ include "liquio.redis.host" . }}",
+      "port": {{ .Values.config.redis.port }},
+      "options": {}
+    }
+
+  # Cache configuration
+  cache.json: |
+    {
+      "key": {
+        "getAll": 300,
+        "findById": 300
+      },
+      "register": {
+        "getAll": 300,
+        "findByPk": 300
+      }
+    }
+
+  # Logging configuration
+  log.json: |
+    {
+      "console": [],
+      "responsesData": false,
+      "excludeParams": [
+        "token",
+        "authorization",
+        "Authorization"
+      ]
+    }
+
+  # App configuration
+  app.json: |
+    {
+      "processTitle": "bpmn-register"
+    }
+
+  # Admin configuration
+  admin.json: |
+    {
+      "swagger": true
+    }
+
+  # Access log configuration
+  access_log.json: |
+    {
+      "keyIds": [
+        16,
+        505
+      ]
+    }
+
+  # After handler configuration
+  afterhandler.json: |
+    {
+      "options": {
+        "reindexLimit": 100
+      },
+      "blockchain": {
+        "isActive": false,
+        "handlingTimeout": 2000,
+        "waitingTimeout": 10000,
+        "keys": [],
+        "options": {
+          "providerName": "hyperledger-fabric",
+          "providerParams": {
+            "apiUrl": "http://openenvironment.itl-dev.com:3003",
+            "apiMethods": {
+              "getData": {
+                "requestType": "GET",
+                "urlSuffix": "/api/documents/{id}"
+              },
+              "createData": {
+                "requestType": "POST",
+                "urlSuffix": "/api/documents"
+              }
+            }
+          }
+        }
+      }
+    }
+
+  # Filters configuration
+  filters.json: |
+    {
+      "wrongValues": [
+        "@"
+      ]
+    }
+
+  # Key signature configuration
+  key_signature.json: |
+    {
+      "<keyId>": {
+        "validationIdentity": ["<RNOKPP>", "<EDRPOU>"]
+      }
+    }
+
+  # Pagination configuration
+  pagination.json: |
+    {
+      "maxLimit": 100000,
+      "maxExportLimit": 1000000,
+      "packetLimit": 1000
+    }
+
+  # Search configuration
+  search.json: |
+    {
+      "main": {
+        "resultsCount": 10,
+        "doNotSearchThisWords": [],
+        "replace": []
+      },
+      "456": {
+        "resultsCount": 5,
+        "doNotSearchThisWords": [
+          "вул",
+          "вулиця",
+          "район",
+          "р",
+          "м",
+          "місто",
+          "с",
+          "сел",
+          "село",
+          "селище",
+          "смт",
+          "пр",
+          "пров",
+          "провулок"
+        ],
+        "replaceWords": [
+          {
+            "from": "київ",
+            "to": "м.київ"
+          }
+        ]
+      }
+    }
+
+  # Sign configuration
+  sign.json: |
+    {
+      "timeout": 10000,
+      "url": "http://{{ include "liquio.fullname" . }}-sign-tool:{{ .Values.services.signTool.servicePort }}",
+      "token": ""
+    }

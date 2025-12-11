@@ -1,0 +1,8 @@
+const SYSTEM_USER = 'system';
+
+const FILE_DOCUMENT_TEMPLATE_ID = 999999999;
+
+module.exports = {
+  SYSTEM_USER,
+  FILE_DOCUMENT_TEMPLATE_ID
+};

@@ -1,0 +1,9 @@
+{
+  "phones": "(documents) => { const phone = documents.find(item => item.documentTemplateId === 1).data.shipping.phone; return phone ? [phone] : []; }",
+  "emails": "(documents) => { const email = documents.find(item => item.documentTemplateId === 1).data.shipping.email; return email ? [email] : []; }",
+  "phonesByUserId": "(documents) => { const userId = documents.find(item => item.documentTemplateId === 1).data.shipping.userId; return userId ? [userId] : []; }",
+  "emailsByUserId": "(documents) => { const userId = documents.find(item => item.documentTemplateId === 1).data.shipping.userId; return userId ? [userId] : []; }",
+  "shortText": "(documents) => { return 'Замовлення прийнято.'; }",
+  "fullText": "(documents) => { const userName = documents.find(item => item.documentTemplateId === 1).data.shipping.userName; return 'Шановний <b>' + (userName || 'користувач') + '</b>, Ваше замовлення прийнято.'; }",
+  "subject": "(documents) => { return 'Ваше замовлення прийнято.'; }"
+}

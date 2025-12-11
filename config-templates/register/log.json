@@ -1,0 +1,9 @@
+{
+  "console": [],
+  "responsesData": false,
+  "excludeParams": [
+    "token",
+    "authorization",
+    "Authorization"
+  ]
+}

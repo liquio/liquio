@@ -1,0 +1,8 @@
+{
+  "amqpConnection": "amqp://rabbitmq:5672",
+  "maxHandlingMessages": 2,
+  "writingQueueManager": "bpmn-manager-incoming",
+  "writingQueueTask": "bpmn-task-incoming",
+  "writingQueueEvent": "bpmn-event-incoming",
+  "writingQueueGateway": "bpmn-gateway-incoming"
+}

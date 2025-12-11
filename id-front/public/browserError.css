@@ -1,0 +1,75 @@
+.browserError {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    z-index: 9999;
+    background-color: rgba(0, 0, 0, 0.3);
+    font-family: Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.browserError.ie {
+    display: block;
+}
+
+.browserError > div {
+    margin: 30px auto;
+    padding: 0 15px;
+    background: #fff;
+    border-radius: 4px;
+    text-align: center;
+    display: inline-block;
+    box-shadow: 0px 11px 15px -7px rgba(0, 0, 0, 0.2), 0px 24px 38px 3px rgba(0, 0, 0, 0.14), 0px 9px 46px 8px rgba(0, 0, 0, 0.12);
+}
+
+.browserError.closed {
+    transition: margin-left 1s;
+    margin-left: -100%;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.browserError button {
+    color: #000;
+    font-weight: bold;
+    background-color: #fcd700;
+    border: none;
+    margin: 10px 1px;
+    cursor: pointer;
+    padding: 12px 30px;
+    position: relative;
+    font-size: 12px;
+    box-shadow: 0 2px 2px 0 rgba(153, 153, 153, 0.14), 0 3px 1px -2px rgba(153, 153, 153, 0.2), 0 1px 5px 0 rgba(153, 153, 153, 0.12);
+    transition: box-shadow 0.2s cubic-bezier(0.4, 0, 1, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: center;
+    will-change: box-shadow, transform;
+    line-height: 1.42857143;
+    white-space: nowrap;
+    touch-action: manipulation;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    vertical-align: middle;
+    box-sizing: border-box;
+    min-height: 36px;
+    outline: none;
+    text-decoration: none;
+    float: right;
+}
+
+.browserError button:hover {
+    box-shadow: 0 14px 26px -12px rgba(153, 153, 153, 0.42), 0 4px 23px 0px rgba(0, 0, 0, 0.12), 0 8px 10px -5px rgba(153, 153, 153, 0.2);
+}
+
+.browserError .title {
+    color: #f44336;
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 24px;
+    padding: 24px 0 0;
+    margin: 0;
+    text-align: left;
+}

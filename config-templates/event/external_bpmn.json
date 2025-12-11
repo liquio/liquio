@@ -1,0 +1,7 @@
+{
+  "test": {
+    "url": "https://task-dev-oe.liquio.local",
+    "token": "Basic <removed>",
+    "requestTimeout": 30000
+  }
+}

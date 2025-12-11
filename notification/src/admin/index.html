@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Адмін панель</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <!-- Latest compiled and minified JavaScript -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.3/angular.min.js"></script>
+    <script src="/static/js/translit.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/controllers/list.js"></script>
+</head>
+<body ng-app="admin">
+
+<div class="preloader ng-hide" ng-show="loading==true">
+    <div class="preloader-wrap">
+        <img src="/static/imgs/preloader.gif" alt="">
+    </div>
+</div>
+
+<ng-include src="'/admin/navbar'"></ng-include>
+<div ng-controller="list">
+    <div class="col-md-6">
+        <h2>Останні 10 відправлені повідомлення</h2>
+        <table class="table">
+            <thead>
+            <th>ID</th>
+            <th>Створено</th>
+            <th>Текст</th>
+            <th>Тема</th>
+            </thead>
+            <tbody>
+            <tr ng-repeat="row in messages">
+                <td>{{row.id}}</td>
+                <td>{{row.Created | date:'dd.MM.yyyy HH:mm'}}</td>
+                <td>{{row.text}}</td>
+                <td>{{row.ListType}}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-6">
+        <h2>Форма відправки нового SMS повідомлення</h2>
+        <form ng-submit="sendForm()">
+            <div class="form-group" ng-if="events">
+                <label for="eventSelect">Тема</label>
+                <select name="event" id="eventSelect" class="form-control" ng-model="data.eventSelected">
+                    <option value="">Не обрано</option>
+                    <option value="{{option.id}}" ng-repeat="option in events">{{option.name}}</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <p>Залишилось символів:<span class="label label-default" id='smsLength'>{{short_text_length-short_text_translit.length}}</span>/<span id='smsMaxLen'>{{short_text_length}}</span></p>
+                <textarea id='inputText' class="form-control" rows="5" placeholer="Message"
+                          ng-model="short_text"
+                          ng-translit-target="short_text_translit"
+                          translit
+                ></textarea>
+            </div>
+            <div class="form-group">
+                <label>
+                    <!--<input type="checkbox" ng-model="useTranslit">-->
+                    Трансліт
+                </label>
+                <p style="color:gray">Текст смс повідомлення, що буде відправленний:</p>
+                <textarea id="translit" class="form-control" rows="5" placeholer="Message" disabled>{{short_text_translit}}</textarea>
+            </div>
+            <hr>
+            <p>Тестове повідомлення відправляється із затримкою до 5 хвилин</p>
+            <div class="form-inline">
+                <div class="form-group">
+                    <label>+38</label>
+                </div>
+                <div class="form-group">
+                    <select name="" class="form-control" ng-model="testMessage.code">
+                        <option value="039">039</option>
+                        <option value="050">050</option>
+                        <option value="063">063</option>
+                        <option value="066">066</option>
+                        <option value="067">067</option>
+                        <option value="068">068</option>
+                        <option value="073">073</option>
+                        <option value="093">093</option>
+                        <option value="095">095</option>
+                        <option value="096">096</option>
+                        <option value="097">097</option>
+                        <option value="098">098</option>
+                        <option value="099">099</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="text" ng-model="testMessage.number" class="form-control" maxlength="7">
+                </div>
+                <button ng-click="sendTest()" type="button"  class="btn btn-default">Відправити тестове повідомлення</button>
+            </div>
+            <br>
+            <hr>
+            <div class="col-md-6">
+                <button type="submit" class="btn btn-info">Відправити всім</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

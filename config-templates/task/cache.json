@@ -1,0 +1,33 @@
+{
+  "unit": {
+    "ttl": 60
+  },
+  "unitAccess": {
+    "getAllWithCache": 300
+  },
+  "documentTemplate": {
+    "findById": 300,
+    "substituteJsonProps": 300
+  },
+  "eventTemplate": {
+    "findById": 300,
+    "findByIds": 300
+  },
+  "gatewayTemplate": {
+    "findById": 300
+  },
+  "numberTemplate": {
+    "findById": 300
+  },
+  "taskTemplate": {
+    "findById": 300,
+    "getAll": 300
+  },
+  "workflowTemplateCategory": {
+    "getAll": 300
+  },
+  "workflowTemplate": {
+    "findById": 300,
+    "getAll": 300
+  }
+}

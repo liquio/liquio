@@ -1,0 +1,7 @@
+{
+  "healthz": {
+    "db": {
+      "enabled": true
+    }
+  }
+}

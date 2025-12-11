@@ -1,0 +1,45 @@
+{
+  "title": "Підписати  ліцензію / лист про відмову",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['attachments']; }",
+  "properties": {
+    "attachments": {
+      "type": "array",
+      "description": "ліцензя / лист про відмову",
+      "addItem": {
+        "text": "Завантажити ліцензію / лист про відмову"
+      },
+      "control": "select.files",
+      "accept": "image/*,application/pdf",
+      "maxSize": 10485760,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "attachType": {
+            "type": "string",
+            "control": "select.attachType",
+            "dictionary": "attachTypes"
+          },
+          "id": {
+            "type": "integer",
+            "control": "input.file"
+          },
+          "mimeType": {
+            "type": "string",
+            "dictionary": "attachMimeTypes",
+            "hidden": true
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": ["name", "id", "mimeType"]
+      }
+    }
+  },
+  "required": ["attachments"]
+}

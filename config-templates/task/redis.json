@@ -1,0 +1,10 @@
+{
+  "isEnabled": false,
+  "host": "<url>",
+  "port": 6379,
+  "defaultTtl": 30,
+  "amqpMessageCache": {
+    "isEnabled": false,
+    "ttl": 7200
+  }
+}

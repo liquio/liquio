@@ -1,0 +1,55 @@
+{
+  "name": "liquio-notification",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN ../LICENSE.md",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node ./src/index.js",
+    "start-dev": "NODE_ENV=dev npm start",
+    "lint": "eslint \"**/*.js\"",
+    "lint:fix": "eslint \"**/*.js\" --fix",
+    "migration-up": "sequelize db:migrate"
+  },
+  "dependencies": {
+    "amqplib": "^0.8.0",
+    "axios": "^1.6.1",
+    "iconv-lite": "^0.6.2",
+    "moment": "^2.18.1",
+    "multiconf": "^3.3.1",
+    "mysql": "^2.12.0",
+    "nconf": "^0.12.0",
+    "node-cache": "^4.1.1",
+    "node-cron": "^1.2.0",
+    "nodemailer": "^6.9.1",
+    "pg": "^8.9.0",
+    "portastic": "^1.0.1",
+    "restify": "^4.3.0",
+    "restify-cookies": "^0.2.2",
+    "restify-plugins": "^1.6.0",
+    "restify-router": "^0.6.2",
+    "sequelize": "^6.29.0",
+    "sequelize-cli": "^6.6.0",
+    "soap": "^1.1.10",
+    "soap-cookie": "^0.10.1",
+    "uuid-random": "^1.3.2",
+    "xml-stream": "^0.4.5",
+    "xmlbuilder": "^9.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "chai": "^4.3.7",
+    "chai-http": "^4.3.0",
+    "esbuild": "^0.25.1",
+    "eslint-plugin-jsdoc": "^50.7.1",
+    "mocha": "^10.2.0"
+  },
+  "overrides": {
+    "form-data": "2.5.5",
+    "semver": "7.5.4",
+    "tough-cookie": "4.1.3",
+    "cookie": "0.7.0",
+    "cross-spawn": "^7.0.5"
+  }
+}

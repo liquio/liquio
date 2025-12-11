@@ -1,0 +1,9 @@
+{
+  "phones": "(documents) => { const phone = documents.find(item => item.documentTemplateId === 4).data.applicant.phone; return phone ? [phone] : []; }",
+  "emails": "(documents) => { const email = documents.find(item => item.documentTemplateId === 4).data.applicant.email; return email ? [email] : []; }",
+  "phonesByUserId": "(documents) => { const userId = documents.find(item => item.documentTemplateId === 4).data.applicant.id; return userId ? [userId] : []; }",
+  "emailsByUserId": "(documents) => { const userId = documents.find(item => item.documentTemplateId === 4).data.applicant.id; return userId ? [userId] : []; }",
+  "shortText": "(documents) => { return 'Дозвіл надано.'; }",
+  "fullText": "(documents) => { const userName = documents.find(item => item.documentTemplateId === 4).data.applicant.name; return 'Шановний <b>' + (userName || 'користувач') + '</b>, дозвіл згідно вашої заявки надано.'; }",
+  "subject": "(documents) => { return 'Дозвіл надано'; }"
+}

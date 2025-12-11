@@ -1,0 +1,14 @@
+{
+  "crypto": {
+      "algorithm": "aes-256-ctr",
+      "iv": "<REDACTED>",
+      "password": "<REDACTED>"
+  },
+  "customer": "liquio",
+  "environment": "dev",
+  "hostname": "0.0.0.0",
+  "maxBodySize": "500mb",
+  "port": 8102,
+  "swagger": false,
+  "token": "<REDACTED>"
+}

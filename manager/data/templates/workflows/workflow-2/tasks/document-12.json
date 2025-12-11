@@ -1,0 +1,27 @@
+{
+  "title": "Перегляд негативної відповіді ДСЕС",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['cancellation']; }",
+  "properties": {
+    "cancellation": {
+      "type": "object",
+      "description": "Причини відмови",
+      "properties": {
+        "text": {
+          "type": "string",
+          "control": "textArea",
+          "sample": "Описані причини відмови ДСЕС",
+          "value": "documents.11.data.cancellation.text",
+          "readonly": true
+        }
+      },
+      "required": [
+        "text"
+      ]
+    }
+  },
+  "required": [
+    "cancellation"
+  ]
+}

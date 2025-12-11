@@ -1,0 +1,27 @@
+.preloader{
+    position: fixed;
+    display: table;
+    z-index: 1000;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: #fff;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+}
+.preloader .preloader-wrap{
+    display: table-cell;
+    vertical-align: middle;
+}
+.preloader .preloader-wrap img{
+    display: inline-block;
+}
+.preloader-wrap .big{
+    position: absolute;
+    top: 46%;
+    margin-left: -40px;
+    left: 50%;
+    width: 80px;
+}

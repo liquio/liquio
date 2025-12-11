@@ -1,0 +1,20 @@
+{{- if .Values.services.event.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-event
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: event
+spec:
+  type: {{ .Values.services.event.type }}
+  ports:
+    - port: {{ .Values.services.event.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: event
+{{- end }}

@@ -1,0 +1,55 @@
+{{- if .Values.migrations.enabled }}
+{{- if .Values.services.idApi.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-id-migrations
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: id-migrations
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "liquio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: id-migrations
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
+        {{- include "liquio.initContainer.waitForRabbitmq" . | nindent 8 }}
+        {{- include "liquio.initContainer.waitForRedis" . | nindent 8 }}
+      containers:
+        - name: id-migrations
+          image: {{ include "liquio.image" (dict "component" "id-api" "Values" .Values "Chart" .Chart) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["npm", "run", "migration-up"]
+          env:
+            - name: NODE_ENV
+              value: "production"
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /var/www/config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "liquio.fullname" . }}-id-config
+        - name: tmp
+          emptyDir: {}
+{{- end }}
+{{- end }}

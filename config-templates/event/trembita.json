@@ -1,0 +1,12 @@
+{
+  "host": "http://192.168.60.151",
+  "client": {
+    "xRoadInstance": "SEVDEIR-TEST",
+    "memberClass": "GOV",
+    "memberCode": "35508814",
+    "subsystemCode": "DiiaDev_cons"
+  },
+  "id": "?",
+  "protocolVersion": "4.0",
+  "userId": "?"
+}

@@ -1,0 +1,5 @@
+{
+  "allowedGenders": ["male", "female"],
+  "allowSetUnconfirmedPhone": true,
+  "allowSetUnconfirmedEmail": false
+}

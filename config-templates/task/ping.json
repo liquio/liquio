@@ -1,0 +1,38 @@
+{
+  "id": {
+    "url": "https://id.liquio.local/test/ping"
+  },
+  "event": {
+    "url": "https://event.liquio.local/test/ping"
+  },
+  "manager": {
+    "url": "https://manager.liquio.local/test/ping"
+  },
+  "gateway": {
+    "url": "https://gw.liquio.local/test/ping"
+  },
+  "workflow": {
+    "url": "https://workflow.liquio.local/test/ping"
+  },
+  "register": {
+    "url": "https://register.liquio.local/test/ping"
+  },
+  "filestorage": {
+    "url": "https://filestorage.liquio.local/test/ping"
+  },
+  "externalReader": {
+    "url": "https://external-reader.liquio.local/test/ping"
+  },
+  "notification": {
+    "url": "https://notify.liquio.local/test/ping"
+  },
+  "front": {
+    "url": "https://front.liquio.local/version.json"
+  },
+  "frontAdmin": {
+    "url": "https://admin-front.liquio.local/version.json"
+  },
+  "signTool": {
+    "url": "https://sign-tool.liquio.local/test/ping"
+  }
+}

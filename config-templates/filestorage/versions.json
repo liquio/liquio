@@ -1,0 +1,7 @@
+{
+  "services": [
+    { "name": "pwgen", "minVersion": "0.0.0" }
+  ],
+  "customer": 1,
+  "environment": 0
+}

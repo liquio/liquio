@@ -1,0 +1,4 @@
+include:
+  - project: 'kitsoft/ci-pipelines'
+    file: '/gitlab-ci-bpmn.yml'
+    ref: 'master'

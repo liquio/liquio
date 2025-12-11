@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-id-front-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    upstream id-api-upstream {
+        server {{ include "liquio.fullname" . }}-id-api:{{ .Values.services.idApi.port }};
+    }
+
+    server {
+      resolver 127.0.0.11 valid=10s;
+
+      listen 8080;
+
+      error_log /dev/stderr;
+      access_log /dev/stdout;
+
+      gzip on;
+      gzip_disable "msie6";
+      gzip_vary on;
+      gzip_proxied any;
+      gzip_comp_level 6;
+      gzip_buffers 16 8k;
+      gzip_http_version 1.1;
+      gzip_types
+        text/plain
+        text/css
+        application/json
+        application/javascript
+        application/x-javascript
+        text/xml
+        application/xml
+        application/xml+rss
+        text/javascript;
+      client_max_body_size 100M;
+
+      location = / {
+        root /usr/share/nginx/html;
+        index index.html;
+      }
+
+      location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        error_page 404 = @id-api;
+        try_files $uri $uri/ =404;
+      }
+
+      location @id-api {
+        proxy_pass http://id-api-upstream;
+        proxy_cache off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header If-None-Match "";
+        proxy_set_header If-Modified-Since "";
+      }
+
+      # Health check endpoint. This will be used by Kubernetes to determine if the
+      # container is ready/alive.
+      location = /healthz {
+        return 200 'OK';
+      }
+
+      error_page 500 502 503 504 /50x.html;
+
+      location = /50x.html {
+        root /usr/share/nginx/html;
+      }
+    }

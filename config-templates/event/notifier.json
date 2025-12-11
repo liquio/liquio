@@ -1,0 +1,48 @@
+{
+  "email": {
+    "provider": "liquio",
+    "server": "https://notify-dev-oe.liquio.local",
+    "port": 3003,
+    "routes": {
+      "sendSms": "/message/phonesList",
+      "sendEmail": "/message/emailsList",
+      "sendToUser": "/message/usersList",
+      "hideImportantMessage": "/message/important/<message-id>/set-unimportant",
+      "getMessagesList": "/message",
+      "ping": "/test/ping"
+    },
+    "timeout": 30000,
+    "user": "<removed>",
+    "hashedPassword": "<removed>",
+    "templateParams": {
+      "frontUrl": "https://front-dev-oe.liquio.local"
+    },
+    "defaultTemplateId": 1,
+    "clientId": ""
+  },
+  "sms": {
+    "provider": "liquio",
+    "server": "https://notify-dev-oe.liquio.local",
+    "port": 3003,
+    "routes": {
+      "sendSms": "/message/phonesList",
+      "ping": "/test/ping"
+    },
+    "user": "<removed>",
+    "hashedPassword": "<removed>",
+    "templateParams": {
+      "frontUrl": "https://front-dev-oe.liquio.local"
+    }
+  },
+  "digest": {
+    "provider": "mailerlite",
+    "apiKey": "<removed>",
+    "groupId": "<removed>",
+    "routes": {
+      "getStats": "/api/v2/stats",
+      "addSubscribersToGroup": "/api/v2/groups/{{groupId}}/subscribers/import"
+    },
+    "serviceUrl": "https://api.mailerlite.com",
+    "timeout": 30000
+  }
+}

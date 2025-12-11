@@ -1,0 +1,22 @@
+# System.
+.DS_Store
+
+# IDE.
+.vscode/
+.vs/
+.idea/
+.dccache
+
+# External modules.
+node_modules/
+
+coverage/
+
+# Tests
+/coverage
+
+# Logs.
+*.log
+
+# User defined configs.
+config/*.json

@@ -1,0 +1,20 @@
+{{- if .Values.services.manager.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-manager
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: manager
+spec:
+  type: {{ .Values.services.manager.type }}
+  ports:
+    - port: {{ .Values.services.manager.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: manager
+{{- end }}

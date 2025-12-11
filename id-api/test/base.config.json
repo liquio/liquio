@@ -1,0 +1,177 @@
+{
+  "db": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "postgres",
+    "username": "postgres",
+    "password": "postgres",
+    "logging": false,
+    "dialect": "postgres"
+  },
+  "host": "localhost",
+  "port": 60000,
+  "modules": {
+    "denyToUpdateUserName": true,
+    "denyToUpdateUserValidParams": true,
+    "setPhoneOnlyAsNotValid": true
+  },
+  "notifyServer": {
+    "host": "http://notification.liquio.local"
+  },
+  "session": {
+    "secret_key": [
+      "BASE64:login:pass"
+    ]
+  },
+  "domain": ".liquio.local",
+  "notify": {
+    "url": "http://notification.liquio.local",
+    "authorization": "Basic <removed>"
+  },
+  "jwt": {
+    "secret": "<removed>",
+    "expiresIn": 60
+  },
+  "oauth": {
+    "accessTokenLifetimeInSeconds": 28800,
+    "refreshTokenLifetimeInSeconds": 57600,
+    "secret_key": ["YWRtaW46YWRtaW4="],
+    "defaults": {
+      "client_id": "liquio-portal",
+      "redirect_uri": ["http://test-client-site"],
+      "state": "profile",
+      "scope_fields": [
+        "userId",
+        "email",
+        "password",
+        "provider",
+        "gender",
+        "valid",
+        "phone",
+        "status",
+        "avaUrl",
+        "birthday",
+        "middle_name",
+        "last_name",
+        "first_name",
+        "services",
+        "ipn",
+        "role",
+        "useTwoFactorAuth",
+        "edrpou",
+        "companyName",
+        "isLegal",
+        "isIndividualEntrepreneur",
+        "passport_series",
+        "passport_number",
+        "passport_issue_date",
+        "passport_issued_by",
+        "id_card_number",
+        "id_card_issue_date",
+        "id_card_issued_by",
+        "id_card_expiry_date",
+        "onboardingTaskId",
+        "needOnboarding",
+        "address",
+        "addressStruct",
+        "isActive",
+        "is_private_house"
+      ],
+      "need_scope_approve": false,
+      "client_name": "Liquio Portal"
+    }
+  },
+  "mail": {
+    "gateway": "dmz1.liquio.local",
+    "from": "Liquio <no-reply@liquio.local>"
+  },
+  "auth_providers": {
+    "bankid": {
+      "authorizationURL": "http://bankid.liquio.opensource/DataAccessService/das/authorize",
+      "tokenURL": "https://bankid.liquio.opensource/DataAccessService/oauth/token",
+      "customerURL": "https://bankid.liquio.opensource/ResourceService/checked/data",
+      "clientID": "<removed>",
+      "clientSecret": "<removed>",
+      "callbackURL": "http://id.liquio.local/authorise/bankid/callback",
+      "privateKey": "cert/bankid.pem",
+      "passReqToCallback": "true"
+    },
+    "eds": {
+      "clientID": "<removed>",
+      "clientSecret": "<removed>"
+    },
+    "local": {
+      "isEnabled": false,
+      "isForgotPasswordEnabled": false
+    }
+  },
+  "passwordManager": {
+    "minPasswordLength": 8,
+    "maxAttempts": 5,
+    "maxAttemptDelay": 3600,
+    "hashingSaltRounds": 10,
+    "rememberLastPasswords": 5
+  },
+  "pingRoutes": {
+    "notify": "http://notification.liquio.local/test/ping",
+    "eds": "https://eds-service.liquio.local/api/v1/test/ping"
+  },
+  "redis": {
+    "isEnabled": false,
+    "host": "localhost",
+    "port": 6379,
+    "defaultTtl": 60
+  },
+  "confirmCodeRetries": 10,
+  "confirmCodeEmailTemplate": "<!DOCTYPE html> <html lang=\"uk\"> <head> <meta charset=\"UTF-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\"/> </head> <body style=\"font-size: 12px;margin: 0;font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;line-height: 1;letter-spacing: -0.02em;padding-top: 20px;padding-bottom: 50px;\"> <div style=\"padding-left: 50px;padding-right: 50px;\"> <div style=\"margin-bottom: 50px;\"> <img style=\"height: 48px;float: left;\" src=\"https://i.ibb.co/ZYbFkwT/image.png\" alt=\"image\" /> <div style=\"font-size: 16px;line-height: 20px;padding-left: 15px;max-width: 80px;display: inline-block;margin-top: 5px;\"> Цифрова держава </div> </div> <div style=\"font-size: 21px;font-weight: bold;line-height: 26px;margin-bottom: 20px;letter-spacing: -0.02em;\"> Код підтвердження email: </div> ​ <div style=\"font-size: 16px;line-height: 20px;color: #000;margin-top: 20px;margin-bottom: 20px;\"> <div style=\"font-size: 20px;\"></div> {{code}} </div> </div> <div style='background-color: #000;padding-top: 20px;padding-bottom: 80px;font-size: 10px;margin-top: 40px;'> <div style='padding-left: 50px;padding-right: 50px;'> <div style='color: #fff;margin-bottom: 5px;'>Михайла Грушевського 12/2, Київ</div> <div style='color: #fff;margin-bottom: 20px;'>Україна</div> </div> </div> </body> </html>",
+  "confirmCodeEmailHeader": "Підтвердження реєстрації",
+  "confirmCodeEmailChangeHeader": "Підтвердження електронної пошти",
+  "swagger": false,
+  "customer": "1",
+  "environment": "0",
+  "x509": {
+    "externalUrl": "http://sign-tool"
+  },
+  "enabledDeleteUser": false,
+  "ldap": {
+    "isEnabled": false,
+    "isRequired": false,
+    "url": "ldap://domain.loc",
+    "baseDN": "dc=DOMAIN,dc=LOC",
+    "username": "admin@domain.loc",
+    "password": "<removed>"
+  },
+  "log": {
+    "excludeParams": [
+      "token",
+      "access_token",
+      "refresh_token",
+      "oauth-token",
+      "authorization",
+      "Authorization",
+      "secret",
+      "password",
+      "oldPassword",
+      "oldPasswords",
+      "client_secret",
+      "_token=",
+      "client_id=",
+      "client_secret="
+    ]
+  },
+  "signUp": {
+    "isEnabled": false
+  },
+  "versions": {
+    "services": [
+      {
+        "name": "eds",
+        "minVersion": "0.0.0"
+      },
+      {
+        "name": "notify",
+        "minVersion": "0.0.0"
+      }
+    ]
+  }
+}

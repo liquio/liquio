@@ -1,0 +1,20 @@
+{{- if .Values.services.task.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-task
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: task
+spec:
+  type: {{ .Values.services.task.type }}
+  ports:
+    - port: {{ .Values.services.task.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: task
+{{- end }}

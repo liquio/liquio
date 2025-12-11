@@ -1,0 +1,8 @@
+{
+  "hostname": "0.0.0.0",
+  "port": 3000,
+  "maxBodySize": "10mb",
+  "serverName": "http://task.liquio",
+  "customer": "liquio",
+  "environment": "dev"
+}

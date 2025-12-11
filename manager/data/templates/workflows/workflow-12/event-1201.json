@@ -1,0 +1,9 @@
+{
+    "phones": "(documents) => { const phone = documents.find(item => item.documentTemplateId === 1201).data.applicant.phone; return phone ? [phone] : []; }",
+    "emails": "(documents) => { const email = documents.find(item => item.documentTemplateId === 1201).data.applicant.email; return email ? [email] : []; }",
+    "phonesByUserId": "(documents) => { const userId = documents.find(item => item.documentTemplateId === 1201).data.applicant.id; return userId ? [userId] : []; }",
+    "emailsByUserId": "(documents) => { const userId = documents.find(item => item.documentTemplateId === 1201).data.applicant.id; return userId ? [userId] : []; }",
+    "shortText": "(documents) => { return 'Відмовлено в реєстрації документів на транзитне переміщення ГМО'; }",
+    "fullText": "(documents) => { const userName = documents.find(item => item.documentTemplateId === 1201).data.applicant.name; return 'Шановний <b>' + (userName || 'користувач') + '</b>, в реєстрації клопотання про видачу дозволу на транзитне переміщення не зареєстрованих в Україні генетично модифікованих організмів відмовлено.'; }",
+    "subject": "(documents) => { return 'Відмовлено в реєстрації документів на транзитне переміщення ГМО'; }"
+  }

@@ -1,0 +1,18 @@
+{
+  "adminUrl": "https://admin-front-dev-oe.liquio.local",
+  "email": {
+    "server": "http://localhost",
+    "port": 3002,
+    "routes": {
+      "sendEmail": "/message/emailsList",
+      "sendToUser": "/message/usersList",
+      "ping": "/test/ping"
+    },
+    "timeout": 30000,
+    "user": "<removed>",
+    "hashedPassword": "<removed>",
+    "emails": [],
+    "subject": "Workflow process problem.",
+    "body": "<html><body>Відбулась помилка в процесі {url}<br/>{error}</body></html>"
+  }
+}

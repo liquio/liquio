@@ -1,0 +1,12 @@
+{
+  "formulas": [
+    {
+      "condition": "(documents) => { return documents.find(item => item.documentTemplateId === 10).data.form.approved; }",
+      "isDefault": true
+    },
+    {
+      "condition": "(documents) => { return !documents.find(item => item.documentTemplateId === 10).data.form.approved; }",
+      "isDefault": false
+    }
+  ]
+}

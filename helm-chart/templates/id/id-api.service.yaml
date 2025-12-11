@@ -1,0 +1,20 @@
+{{- if .Values.services.idApi.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-id-api
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: id-api
+spec:
+  type: {{ .Values.services.idApi.type }}
+  ports:
+    - port: {{ .Values.services.idApi.servicePort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: id-api
+{{- end }}

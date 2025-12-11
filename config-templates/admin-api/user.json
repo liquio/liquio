@@ -1,0 +1,9 @@
+{
+  "allowSetAdminTestUser": false,
+  "shouldSetupAdmin": true,
+  "adminUnitId": [
+    1000001,
+    1000002,
+    1000000041
+  ]
+}

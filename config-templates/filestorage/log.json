@@ -1,0 +1,8 @@
+{
+  "console": [],
+  "excludeParams": [
+    "token",
+    "authorization",
+    "Authorization"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "title": "Замовлення піци",
+  "templateType": "request",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['pizza', 'shipping']; }",
+  "properties": {
+    "pizza": {
+      "description": "Виберіть піцу",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Назва"
+        },
+        "quantity": {
+          "type": "number",
+          "value": "1",
+          "description": "Кількість"
+        }
+      },
+      "required": ["name", "quantity"]
+    },
+    "shipping": {
+      "description": "Параметри доставки",
+      "type": "object",
+      "signer": true,
+      "properties": {
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Адреса доставки"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Контактний телефон"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email"
+        }
+      },
+      "required": ["address", "phone", "email"]
+    }
+  },
+  "required": ["pizza", "shipping"]
+}

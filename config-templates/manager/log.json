@@ -1,0 +1,11 @@
+{
+  "console": [],
+  "file": [
+    "./logs/"
+  ],
+  "excludeParams": [
+    "token",
+    "authorization",
+    "Authorization"
+  ]
+}

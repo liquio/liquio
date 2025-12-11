@@ -1,0 +1,6 @@
+{
+  "key": "<REDACTED>",
+  "iv_size": 12,
+  "batch_job_size": 100,
+  "check_on_startup": false
+}

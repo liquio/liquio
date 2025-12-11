@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Адмін панель</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+          integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+            integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+            crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.3/angular.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/controllers/queue.js"></script>
+</head>
+<body ng-app="admin">
+<ng-include src="'/admin/navbar'"></ng-include>
+<h1 style="text-align: center">Панель розсилки смс оповіщення</h1>
+
+<div class="container" ng-controller="queue">
+
+    <table class="table table-bordered table-striped">
+        <thead>
+        <tr>
+            <th>id</th>
+            <th>smsHistoryId</th>
+            <th>date</th>
+            <!-- th>status</th -->
+            <th>Phone</th>
+            <th>text</th>
+            <th>status</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="message in items">
+                <td>{{message.id}}</td>
+                <td>{{message.smsHistoryId}}</td>
+                <td>{{message.Created}}</td>
+                <td>{{message.Phone}}</td>
+                <td>{{message.text}}</td>
+                <td>{{message.status}}</td>
+                <td>
+                    <a class="btn btn-link" ng-click="clearQueue(message.id)">Видалити</a>
+                    <a class="btn btn-link" ng-click="resendSMS(message.id)">Повторити відправку</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <ul ng-if="pager.pages.length" class="pagination">
+        <li ng-class="{disabled:pager.currentPage === 1}">
+            <a ng-click="setPage(1)">Перша</a>
+        </li>
+        <li ng-class="{disabled:pager.currentPage === 1}">
+            <a ng-click="setPage(pager.currentPage - 1)">Попередня</a>
+        </li>
+        <li ng-repeat="page in pager.pages" ng-class="{active:pager.currentPage === page}">
+            <a ng-click="setPage(page)">{{page}}</a>
+        </li>
+        <li ng-class="{disabled:pager.currentPage === pager.totalPages}">
+            <a ng-click="setPage(pager.currentPage + 1)">Наступна</a>
+        </li>
+        <li ng-class="{disabled:pager.currentPage === pager.totalPages}">
+            <a ng-click="setPage(pager.totalPages)">Остання</a>
+        </li>
+    </ul>
+    <p><a class="btn btn-link" ng-disabled="queue.length == 0" ng-click="clearQueue()">Видалити всі</a></p>
+    <p><a class="btn btn-link" ng-disabled="queue.length == 0" ng-click="resendSMS()">Повторити відправку всіх повідомлень</a></p>
+</div>
+</body>
+</html>

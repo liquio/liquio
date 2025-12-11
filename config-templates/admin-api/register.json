@@ -1,0 +1,8 @@
+{
+  "limit": 10000,
+  "port": "8103",
+  "server": "http://register",
+  "timeout": 30000,
+  "token": "Basic cmVnaXN0ZXI6T2FVaVo3MGt1SExq",
+  "importXlsx": { "batchSize": 100 }
+}

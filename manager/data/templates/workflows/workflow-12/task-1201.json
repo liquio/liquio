@@ -1,0 +1,364 @@
+{
+  "title": "Клопотання про видачу дозволу на транзитне переміщення не зареєстрованих в Україні генетично модифікованих організмів",
+  "type": "object",
+  "stepOrders": "(allStepsData) => { return ['applicant', 'gmo', 'transporter', 'transportation', 'attachments']; }",
+  "properties": {
+    "applicant": {
+      "type": "object",
+      "description": "Заявник",
+      "control": "select.user",
+      "tabs": [
+        {
+          "id": 1,
+          "description": "Фізична особа - підприємець",
+          "set": [
+            {
+              "key": "isLegal",
+              "value": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "description": "Юридична особа",
+          "set": [
+            {
+              "key": "isLegal",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "value": "user.id",
+          "hidden": true,
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "isLegal": {
+          "type": "boolean",
+          "value": "user.isLegal",
+          "hidden": true,
+          "description": "Ознака юридичної особи",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "name": {
+          "type": "string",
+          "value": "user.name",
+          "description": "Прізвище, ім’я, по батькові заявника",
+          "tabsIds": [
+            1
+          ]
+        },
+        "companyName": {
+          "type": "string",
+          "value": "user.companyName",
+          "description": "Найменування юридичної особи",
+          "tabsIds": [
+            2
+          ]
+        },
+        "address": {
+          "type": "string",
+          "value": "user.address",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Місце проживання фізичної особи - підприємця",
+          "sample": "Адреса, не більше 500 символів",
+          "tabsIds": [
+            1
+          ]
+        },
+        "companyAddress": {
+          "type": "string",
+          "value": "user.address",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Місцезнаходження юридичної особи",
+          "sample": "Адреса, не більше 500 символів",
+          "tabsIds": [
+            2
+          ]
+        },
+        "ipn": {
+          "type": "string",
+          "value": "user.ipn",
+          "hidden": true,
+          "description": "Реєстраційний номер облікової картки платника податків (РНОКПП) (раніше індивідуальний податковий номер (ІПН))",
+          "tabsIds": [
+            1
+          ]
+        },
+        "edrpou": {
+          "type": "string",
+          "value": "user.edrpou",
+          "hidden": true,
+          "description": "Код згідно з ЄДРПОУ",
+          "tabsIds": [
+            2
+          ]
+        },
+        "phone": {
+          "type": "string",
+          "value": "user.phone",
+          "pattern": "^380[0-9]{9}$",
+          "sample": "Номер у форматі 380XXXXXXXXX",
+          "description": "Телефон",
+          "mask": "380999999999",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "fax": {
+          "type": "string",
+          "value": "",
+          "description": "Факс",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "email": {
+          "type": "string",
+          "value": "user.email",
+          "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+$",
+          "sample": "Електронна адреса має бути в форматі \"test@example.com\"",
+          "description": "Електронна пошта",
+          "tabsIds": [
+            1,
+            2
+          ]
+        }
+      },
+      "required": []
+    },
+    "gmo": {
+      "type": "object",
+      "description": "ГМО",
+      "properties": {
+        "gmoName": {
+          "type": "string",
+          "value": "",
+          "description": "Наукова назва генетично модифікованого організму",
+          "sample": "Українською та латинською мовами"
+        },
+        "gmoModification": {
+          "type": "string",
+          "value": "",
+          "description": "Генетична модифікація і код унікальної ідентифікації"
+        },
+        "gmoAmmount": {
+          "type": "string",
+          "value": "",
+          "description": "Об'єм та/або вага генетично модифікованого організму в одиниці СІ"
+        },
+        "gmoRegistration": {
+          "type": "string",
+          "value": "",
+          "description": "Місце і дата реєстрації генетично модифікованих організмів в державі експорту"
+        }
+      },
+      "required": []
+    },
+    "transporter": {
+      "type": "object",
+      "description": "Перевізник",
+      "control": "select.user",
+      "tabs": [
+        {
+          "id": 1,
+          "description": "Фізична особа - підприємець",
+          "set": [
+            {
+              "key": "isLegal",
+              "value": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "description": "Юридична особа",
+          "set": [
+            {
+              "key": "isLegal",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "hidden": true,
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "isLegal": {
+          "type": "boolean",
+          "hidden": true,
+          "description": "Ознака юридичної особи",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Прізвище, ім’я, по батькові перевізника",
+          "tabsIds": [
+            1
+          ]
+        },
+        "companyName": {
+          "type": "string",
+          "description": "Найменування юридичної особи",
+          "tabsIds": [
+            2
+          ]
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Місце проживання фізичної особи - підприємця",
+          "sample": "Адреса, не більше 500 символів",
+          "tabsIds": [
+            1
+          ]
+        },
+        "companyAddress": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Місцезнаходження юридичної особи",
+          "sample": "Адреса, не більше 500 символів",
+          "tabsIds": [
+            2
+          ]
+        },
+        "ipn": {
+          "type": "string",
+          "hidden": true,
+          "description": "Реєстраційний номер облікової картки платника податків (РНОКПП) (раніше індивідуальний податковий номер (ІПН))",
+          "tabsIds": [
+            1
+          ]
+        },
+        "edrpou": {
+          "type": "string",
+          "hidden": true,
+          "description": "Код згідно з ЄДРПОУ",
+          "tabsIds": [
+            2
+          ]
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^380[0-9]{9}$",
+          "sample": "Номер у форматі 380XXXXXXXXX",
+          "description": "Телефон",
+          "mask": "380999999999",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "fax": {
+          "type": "string",
+          "description": "Факс",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "email": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+$",
+          "sample": "Електронна адреса має бути в форматі \"test@example.com\"",
+          "description": "Електронна пошта",
+          "tabsIds": [
+            1,
+            2
+          ]
+        }
+      },
+      "required": []
+    },
+    "transportation": {
+      "type": "object",
+      "description": "Переміщення",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "value": "",
+          "description": "Запланований час та маршрут транзитного переміщення",
+          "sample": "Із зазначенням початкового, проміжного і кінцевого пунктів"
+        },
+        "license": {
+          "type": "string",
+          "value": "",
+          "description": "Реєстраційний номер, дата видачі та строк дії ліцензії на здійснення вантажних перевезень"
+        },
+        "typeOfTransport": {
+          "type": "string",
+          "value": "",
+          "description": "Вид транспортного засобу, що застосовується для транзитного переміщення"
+        }
+      },
+      "required": []
+    },
+    "attachments": {
+      "type": "array",
+      "description": "Додатки",
+      "addItem": {
+        "text": "Завантажити додатки"
+      },
+      "control": "select.files",
+      "accept": "image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "maxSize": 10485760,
+      "sample": "Для кожного генетично модифікованого організму додайте:<br>1) копії:<br>технічного опису генетично модифікованого організму;<br>дозволу на ввезення генетично модифікованого організму, виданого в державі імпорту, або дозволу на транзитне переміщення такого організму, виданого в іншій державі (у разі транзитного переміщення не лише територію України);<br>документів, що підтверджують реєстрацію генетично модифікованого організму в державі експорту;<br>договору з перевізником;<br>договору страхування діяльності, пов'язаної з транзитним переміщенням генетично модифікованих організмів;<br>2) відомості про назву, ідентифікаційні дані, в тому числі код унікальної ідентифікації, та національну класифікацію рівня біобезпеки генетично модифікованого організму;<br>3) відомості про центри походження та центри генетичного різноманіття, якщо такі існують, організму-реципієнта та/або батьківських організмів;<br>4) результати оцінки ризику, проведеної в державі експорту/імпорту із зазначенням рівня ризику для навколишнього природного середовища, якщо такий існує;<br>5) план заходів із запобігання та ліквідації наслідків неконтрольованого вивільнення генетично модифікованих організмів у навколишнє природне середовище, надзвичайної ситуації, а також перелік і опис методів обмеження контактів з генетично модифікованими організмами, забезпечення високого рівня екологічної безпеки під час їх транзитного переміщення;<br>6) інструкція із застосування методів виявлення і знищення генетично модифікованих організмів і тари, в якій вони транспортуються, а також методів, що забезпечують біологічну і генетичну безпеку в процесі транспортування таких організмів;<br>7) письмове підтвердження достовірності відомостей, що містяться у поданих документах (матеріалах), засвідчене підписом суб'єкта регулювання та скріплене його печаткою",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "attachType": {
+            "type": "string",
+            "control": "select.attachType",
+            "dictionary": "attachTypes"
+          },
+          "id": {
+            "type": "string",
+            "control": "input.file"
+          },
+          "type": {
+            "type": "string",
+            "dictionary": "attachMimeTypes",
+            "hidden": true
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "id",
+          "type"
+        ]
+      }
+    }
+  },
+  "required": [
+  ]
+}

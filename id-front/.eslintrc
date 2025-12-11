@@ -1,0 +1,208 @@
+{
+  "parser": "@babel/eslint-parser",
+  "env": {
+    "es6": true,
+    "node": true
+  },
+  "globals": {
+    "Worker": true,
+    "console": true,
+    "log": true,
+    "document": true,
+    "window": true,
+    "localStorage": true,
+    "FileReader": true,
+    "Blob": true,
+    "process": true
+  },
+  "parserOptions": {
+    "requireConfigFile": false,
+    "sourceType": "module",
+    "ecmaVersion": 2022,
+    "babelOptions": {
+      "presets": ["@babel/preset-react"]
+    },
+    "ecmaFeatures": {
+      "experimentalObjectRestSpread": true,
+      "jsx": true
+    }
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    },
+    "import/ignore": [
+      "node_modules",
+      "\\.(png|svg)$"
+    ]
+  },
+  "plugins": [
+    "react",
+    "import",
+    "jsx-a11y"
+  ],
+  "rules": {
+    "no-bitwise": "off",
+    "function-paren-newline": "off",
+    "no-shadow": "off",
+    "no-use-before-define": "off",
+    "no-console": "off",
+    "no-debugger": "warn",
+    "prefer-const": "off",
+    "no-await-in-loop": "off",
+    "lines-between-class-members": "off",
+    "prefer-destructuring": "off",
+    "prefer-object-spread": "off",
+    "brace-style": "off",
+    "operator-assignment": "off",
+    "newline-per-chained-call": "off",
+    "no-cond-assign": "off",
+    "quote-props": "off",
+    "no-underscore-dangle": "off",
+    "no-trailing-spaces": "off",
+    "class-methods-use-this": "off",
+    "semi": "off",
+    "eol-last": "off",
+    "consistent-return": "off",
+    "no-nested-ternary": "off",
+    "padded-blocks": "off",
+    "implicit-arrow-linebreak": "off",
+    "arrow-body-style": "off",
+    "spaced-comment": "off",
+    "operator-linebreak": "off",
+    "no-plusplus": "off",
+    "no-multiple-empty-lines": "off",
+    "no-unused-vars": "warn",
+    "react/jsx-curly-newline": [
+      "off",
+      {
+        "multiline": "consistent",
+        "singleline": "consistent"
+      }
+    ],
+    "arrow-parens": 0,
+    "quotes": [
+      2,
+      "single",
+      "avoid-escape"
+    ],
+    "indent": [
+      0,
+      "tab",
+      {
+        "SwitchCase": 1
+      }
+    ],
+    "key-spacing": [
+      0,
+      {
+        "align": "value"
+      }
+    ],
+    "comma-dangle": "off",
+    "func-names": 0,
+    "linebreak-style": 0,
+    "no-param-reassign": 0,
+    "object-curly-spacing": 0,
+    "new-cap": [
+      2,
+      {
+        "capIsNew": false
+      }
+    ],
+    "jsx-quotes": 2,
+    "space-before-function-paren": 0,
+    "no-multi-spaces": "off",
+    "max-len": 0,
+    "no-extra-parens": [
+      2,
+      "functions"
+    ],
+    "no-unused-expressions": 0,
+    "space-before-blocks": 0,
+    "object-curly-newline": 0,
+    "prefer-template": 0,
+    "react/jsx-boolean-value": "off",
+    "react/jsx-uses-react": "error",
+    "react/jsx-uses-vars": "error",
+    "react/jsx-closing-bracket-location": [
+      2,
+      "line-aligned"
+    ],
+    "react/jsx-curly-spacing": 2,
+    "react/jsx-first-prop-new-line": 2,
+    "react/jsx-curly-brace-presence": 0,
+    "react/jsx-indent-props": [
+      0,
+      "tab"
+    ],
+    "react/jsx-indent": [
+      0,
+      "tab"
+    ],
+    "react/jsx-tag-spacing": 0,
+    "react/jsx-filename-extension": [
+      "error",
+      {
+        "extensions": [
+          ".js",
+          ".jsx"
+        ]
+      }
+    ],
+    "react/forbid-prop-types": [
+      1,
+      {
+        "forbid": [
+          "any"
+        ]
+      }
+    ],
+    "react/jsx-key": "warn",
+    "react/jsx-max-props-per-line": 0,
+    "react/jsx-no-duplicate-props": 2,
+    "react/jsx-no-undef": 2,
+    "react/jsx-no-bind": 0,
+    "react/no-danger": 2,
+    "react/no-direct-mutation-state": 2,
+    "react/prefer-es6-class": 2,
+    "react/sort-comp": 0,
+    "react/prop-types": 0,
+    "react/no-array-index-key": 0,
+    "react/require-default-props": 1,
+    "import/extensions": 0,
+    "import/no-unresolved": 0,
+    "import/named": 2,
+    "import/default": 2,
+    "import/namespace": 2,
+    "import/export": 2,
+    "import/no-named-as-default": 2,
+    "import/no-named-as-default-member": 2,
+    "import/no-extraneous-dependencies": 0,
+    "import/no-mutable-exports": 2,
+    "import/no-commonjs": 2,
+    "import/no-amd": 2,
+    "import/imports-first": 2,
+    "import/no-duplicates": 2,
+    "import/newline-after-import": 2,
+    "jsx-a11y/label-has-for": [
+      2,
+      {
+        "components": [
+          "Label"
+        ],
+        "required": {
+          "every": [
+            "nesting",
+            "id"
+          ]
+        },
+        "allowChildren": true
+      }
+    ],
+    "jsx-a11y/anchor-is-valid": 0,
+    "jsx-a11y/no-static-element-interactions": 0,
+    "jsx-a11y/click-events-have-key-events": 0,
+    "jsx-a11y/no-noninteractive-element-interactions": 0
+  }
+}

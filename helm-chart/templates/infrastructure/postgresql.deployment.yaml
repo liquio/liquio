@@ -1,0 +1,68 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-postgresql
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+    app.kubernetes.io/tier: infrastructure
+    app.kubernetes.io/exposure: internal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "liquio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  template:
+    metadata:
+      labels:
+        {{- include "liquio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
+        app.kubernetes.io/tier: infrastructure
+        app.kubernetes.io/exposure: internal
+    spec:
+      containers:
+        - name: postgresql
+          image: {{ .Values.postgresql.image.registry }}{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.config.database.name }}
+            - name: POSTGRES_USER
+              value: {{ .Values.config.database.username }}
+            - name: POSTGRES_PASSWORD
+              value: {{ include "liquio.postgresql.password" . }}
+          volumeMounts:
+            - name: postgresql-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgresql-init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: var-run-postgresql
+              mountPath: /var/run/postgresql
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: postgresql-data
+          {{- if .Values.postgresql.primary.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "liquio.fullname" . }}-postgresql-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: postgresql-init
+          configMap:
+            name: {{ include "liquio.fullname" . }}-postgresql-init
+        - name: tmp
+          emptyDir: {}
+        - name: var-run-postgresql
+          emptyDir: {}
+{{- end }}

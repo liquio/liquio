@@ -1,0 +1,7 @@
+{
+  "elastic": false,
+  "port": 3000,
+  "server": "http://task",
+  "timeout": 10000,
+  "token": "Basic dGFzazp0YXNr"
+}

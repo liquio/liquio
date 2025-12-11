@@ -1,0 +1,24 @@
+[
+  {
+    "type": "object",
+    "description": "Користувачі",
+    "properties": {
+      "members": {
+        "control": "user.list",
+        "description": "Користувачі"
+      }
+    },
+    "required": ["members"]
+  },
+  {
+    "type": "object",
+    "description": "Користувачі",
+    "properties": {
+      "heads": {
+        "description": "Керівники",
+        "control": "user.list"
+      }
+    },
+    "required": ["heads"]
+  }
+]

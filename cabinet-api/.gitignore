@@ -1,0 +1,17 @@
+# System.
+.DS_Store
+
+# IDE.
+.vscode/
+.vs/
+.idea/
+
+# External modules.
+node_modules/
+
+# Logs.
+*.log
+
+# User defined configs.
+config/*.json
+

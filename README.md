@@ -8,20 +8,20 @@ The platform is developed and supported by Kitsoft.
 
 # **Why Liquio?**
 
-- **Open source**  
+- **Open source**
   You keep control of the product—your team can continue development without the risk of vendor lock-in.
-- **Average time to launch a service: 1.5 months**  
+- **Average time to launch a service: 1.5 months**
   You can devote most of the timeline to service design. Citizens will get essential, user-friendly services as quickly as possible.
-- **Engineered for thousands of requests per second**  
+- **Engineered for thousands of requests per second**
   Stay confident in stable service operation even during nationwide traffic peaks. Liquio’s microservices architecture automatically scales to meet demand.
-- **Cost-efficient adaptability**  
+- **Cost-efficient adaptability**
   Respond flexibly to legislative changes and update services without full rewrites—saving time and budget.
-- **Best-practice modules**  
+- **Best-practice modules**
   Use ready-made components built on our experience delivering over 200 public-sector projects.
-- **Multiple teams, parallel outcomes**  
-   Enable different teams to build and launch services simultaneously, accelerating digital transformation.
-- **Simplicity without engineering complexity**  
-   Liquio reduces the need for large back-end teams. Analysts and service designers can focus on service quality rather than complex code.
+- **Multiple teams, parallel outcomes**
+  Enable different teams to build and launch services simultaneously, accelerating digital transformation.
+- **Simplicity without engineering complexity**
+  Liquio reduces the need for large back-end teams. Analysts and service designers can focus on service quality rather than complex code.
 
 **Trainings & Certifications**
 
@@ -38,7 +38,14 @@ We provide a certification program of Liquio technology for governmental teams a
 - [Kitsoft website](https://kitsoft.ua/)
 - [Book a demo meeting](https://www.wixforms.com/f/7378205535620826264)
 
+## Contributing and Community
+
+We welcome contributions from the community! To get started:
+
+- **[Contributing Guide](CONTRIBUTING.md)**: Learn how to contribute to the project, including development setup, coding standards, and pull request process.
+- **[Code of Conduct](CODE_OF_CONDUCT.md)**: Our community guidelines for respectful and inclusive interactions.
+- **[Security Policy](SECURITY.md)**: Report security vulnerabilities and learn about our security practices.
 
 # **License**
 
-This platform is published under AGPLv3 license. Please read [license.md](./license.md) for details.
+This platform is published under AGPLv3 license. Please read [LICENSE.md](./LICENSE.md) for details.

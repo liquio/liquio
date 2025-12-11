@@ -1,0 +1,169 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-admin-api-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # Auth configuration
+  auth.json: |
+    {
+      "authRedirectUrl": "http://{{ .Values.global.domain }}/",
+      "basicAuthToken": "{{ include "liquio.oauth.secretKey" . }}",
+      "clientId": "liquio-portal",
+      "clientSecret": "{{ include "liquio.oauth.secretKey" . }}",
+      "jwtSecret": "{{ include "liquio.jwt.secret" . }}",
+      "logoutRedirectUrl": "http://{{ .Values.global.domain }}/",
+      "serverPublicUrl": "http://{{ .Values.global.domain }}",
+      "port": {{ .Values.services.idApi.servicePort }},
+      "server": "http://{{ include "liquio.fullname" . }}-id-api",
+      "timeout": 30000
+    }
+
+  # Database configuration
+  db.json: |
+    {
+      "database": "bpmn",
+      "dialect": "postgres",
+      "dialectOptions": {
+        "bigNumberStrings": true,
+        "socketPath": "",
+        "supportBigNumbers": true
+      },
+      "host": "{{ include "liquio.postgresql.host" . }}",
+      "migrationStorageTableName": "sequelize_meta",
+      "password": "{{ include "liquio.postgresql.password" . }}",
+      "pool": {
+        "acquire": 60000,
+        "idle": 30000,
+        "max": 5,
+        "min": 0
+      },
+      "port": {{ .Values.config.database.port }},
+      "timezone": "Europe/Kyiv",
+      "username": "{{ .Values.config.database.username }}"
+    }
+
+  # Message queue configuration
+  message_queue.json: |
+    {
+      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.password" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
+      "maxHandlingMessages": 2,
+      "writingQueueManager": "bpmn-manager-incoming",
+      "writingQueueTask": "bpmn-task-incoming",
+      "writingQueueEvent": "bpmn-event-incoming",
+      "writingQueueGateway": "bpmn-gateway-incoming"
+    }
+
+  # Filestorage configuration
+  filestorage.json: |
+    {
+      "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
+      "token": "{{ include "liquio.filestorage.authToken" . }}",
+      "containerId": 1
+    }
+
+  # Register configuration
+  register.json: |
+    {
+      "limit": 10000,
+      "port": {{ .Values.services.register.servicePort }},
+      "server": "http://{{ include "liquio.fullname" . }}-register",
+      "timeout": 30000,
+      "token": "Basic {{ include "liquio.register.authToken" . }}",
+      "importXlsx": { "batchSize": 100 }
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "crypto": {
+        "algorithm": "aes-256-ctr",
+        "iv": "{{ include "liquio.oauth.secretKey" . }}",
+        "password": "{{ include "liquio.jwt.secret" . }}"
+      },
+      "customer": "liquio",
+      "environment": "dev",
+      "hostname": "0.0.0.0",
+      "maxBodySize": "500mb",
+      "port": {{ .Values.services.adminApi.targetPort }},
+      "swagger": false,
+      "token": "{{ include "liquio.oauth.secretKey" . }}"
+    }
+
+  # Logging configuration
+  log.json: |
+    {
+      "console": [],
+      "excludeParams": [
+        "token",
+        "authorization"
+      ]
+    }
+
+  # Elastic configuration
+  elastic.json: |
+    {
+      "headers": {
+        "Authorization": "Basic {{ include "liquio.oauth.secretKey" . }}"
+      },
+      "host": "elasticsearch:9200",
+      "method": "POST",
+      "protocol": "http",
+      "template": "template_bpmn_liquio_search",
+      "uri": "/bpmn_liquio_admin_logs/_search/template",
+      "enabled": false
+    }
+
+  # Notifier configuration
+  notifier.json: |
+    {
+      "server": "http://{{ include "liquio.fullname" . }}-notification",
+      "port": {{ .Values.services.notification.servicePort }},
+      "timeout": 30000,
+      "user": "admin-api",
+      "hashedPassword": "{{ include "liquio.oauth.secretKey" . }}",
+      "routes": {
+        "ping": "/test/ping",
+        "sendToUserList": "/message/usersList",
+        "sendToUserEmails": "/message/emailsList",
+        "toAll": "/message/toAll"
+      }
+    }
+
+  # Proxy configuration
+  proxy.json: |
+    {
+      "proxyList": []
+    }
+
+  # Task configuration
+  task.json: |
+    {
+      "elastic": false,
+      "port": {{ .Values.services.task.servicePort }},
+      "server": "http://{{ include "liquio.fullname" . }}-task",
+      "timeout": 10000,
+      "token": "Basic dGFzazp0YXNr"
+    }
+
+  # User configuration
+  user.json: |
+    {
+      "allowSetAdminTestUser": false,
+      "shouldSetupAdmin": true,
+      "adminUnitId": [
+        1000001,
+        1000002,
+        1000000041
+      ]
+    }
+
+  # Sign configuration
+  sign.json: |
+    {
+      "timeout": 30000,
+      "url": "http://{{ include "liquio.fullname" . }}-sign-tool",
+      "token": "{{ include "liquio.oauth.secretKey" . }}"
+    }

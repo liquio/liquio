@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-gateway-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # Database configuration
+  db.json: |
+    {
+      "host": "{{ include "liquio.postgresql.host" . }}",
+      "port": {{ .Values.config.database.port }},
+      "database": "bpmn",
+      "username": "{{ .Values.config.database.username }}",
+      "password": "{{ include "liquio.postgresql.password" . }}",
+      "dialect": "postgres",
+      "dialectOptions": {
+        "socketPath": "",
+        "supportBigNumbers": true,
+        "bigNumberStrings": true
+      },
+      "timezone": "Europe/Kyiv",
+      "logging": false,
+      "pool": {
+        "max": 5,
+        "min": 0,
+        "acquire": 30000,
+        "idle": 10000
+      },
+      "migrationStorageTableName": "sequelize_meta"
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "hostname": "0.0.0.0",
+      "port": {{ .Values.services.gateway.port }},
+      "maxBodySize": "10mb",
+      "customer": "liquio",
+      "environment": "dev"
+    }
+
+  # Message queue configuration
+  message_queue.json: |
+    {
+      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.password" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/"
+    }
+
+  # Redis configuration
+  redis.json: |
+    {
+      "hostname": "{{ include "liquio.redis.host" . }}",
+      "port": {{ .Values.config.redis.port }},
+      "db": 0
+    }
+
+  # Logging configuration
+  log.json: |
+    {
+      "console": [],
+      "file": [
+        "./logs/"
+      ],
+      "excludeParams": [
+        "token",
+        "Authorization",
+        "authorization"
+      ]
+    }
+
+  # Ping configuration
+  ping.json: |
+    {
+      "enabled": true
+    }
+
+  # System notifier configuration
+  system_notifier.json: |
+    {
+      "adminUrl": "https://admin-front-dev-oe.liquio.local",
+      "email": {
+        "server": "http://{{ include "liquio.fullname" . }}-notification",
+        "port": {{ .Values.services.notification.port }},
+        "routes": {
+          "sendEmail": "/message/emailsList",
+          "sendToUser": "/message/usersList",
+          "ping": "/test/ping"
+        },
+        "timeout": 30000,
+        "user": "<removed>",
+        "hashedPassword": "<removed>",
+        "emails": [],
+        "subject": "Workflow process problem.",
+        "body": "<html><body>Відбулась помилка в процесі {url}<br/>Gateway {gatewayTemplateId} {gatewayTemplateName}<br/>{error}</body></html>"
+      }
+    }
+
+  # Versions configuration
+  versions.json: |
+    {
+      "api": "1.0.0"
+    }
+
+  # Logs broadcasting configuration
+  logs_broadcasting.json: |
+    {
+      "isEnabled": false,
+      "port": 5000
+    }

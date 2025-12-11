@@ -1,0 +1,25 @@
+{
+  "server": "http://0.0.0.0",
+  "port": 3350,
+  "token": "",
+  "limit": 10000,
+  "accessCacheLifetime": 60000,
+  "registerKeysForAddresses": [],
+  "strictAccess": {
+    "keys": []
+  },
+  "access": [
+    {
+      "unit": 1,
+      "allowSeeAllRecords": true,
+      "keys": {
+        "allowRead": [],
+        "allowCreate": [],
+        "allowUpdate": [],
+        "allowDelete": [],
+        "allowHistory": []
+      }
+    }
+  ],
+  "timeout": 30000
+}

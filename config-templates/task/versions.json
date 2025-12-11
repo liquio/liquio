@@ -1,0 +1,16 @@
+{
+  "services": [
+    { "name": "id", "minVersion": "0.7.7" },
+    { "name": "eds", "minVersion": "1.0.11" },
+    { "name": "event", "minVersion": "1.37.6" },
+    { "name": "manager", "minVersion": "1.10.16" },
+    { "name": "gateway", "minVersion": "1.3.13" },
+    { "name": "workflow", "minVersion": "0.0.0" },
+    { "name": "register", "minVersion": "1.41.0" },
+    { "name": "filestorage", "minVersion": "2.3.2" },
+    { "name": "pwgen", "minVersion": "0.0.5" },
+    { "name": "plink", "minVersion": "1.0.5" },
+    { "name": "externalReader", "minVersion": "1.2.66" },
+    { "name": "notify", "minVersion": "1.3.52" }
+  ]
+}

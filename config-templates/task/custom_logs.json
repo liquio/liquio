@@ -1,0 +1,7 @@
+{
+  "templatesCacheLifetime": 60000,
+  "cacheEnabled": false,
+  "redis": {
+    "ttl": 60
+  }
+}

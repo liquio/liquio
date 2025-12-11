@@ -1,0 +1,32 @@
+{
+  "application": {
+    "name": "Адмінпанель",
+    "environment": "development",
+    "type": "adminpanel"
+  },
+  "customers": [
+    {
+      "id": 1,
+      "name": "bpmn"
+    }
+  ],
+  "registry": {
+    "useReindex": false,
+    "useAfterhandlersReindex": false
+  },
+  "useUIFilters": true,
+  "customInterfaces": true,
+  "plugins": [],
+  "backendUrl": "http://localhost:8102",
+  "authLink": "http://localhost:8102/redirect/auth",
+  "adminPanelUrl": "http://localhost:8000",
+  "cabinetUrl": "http://localhost:8081",
+  "sessionLifeTime": 480,
+  "enabledMock": false,
+  "clientId": "liquio-portal",
+  "idAuthLink": "http://localhost:8080/authorise",
+  "enabledDeleteUser": false,
+  "enabledMocksPage": false,
+  "defaultLanguage": "en",
+  "testCategory": 29
+}

@@ -1,0 +1,42 @@
+{
+  "name": "liquio-cabinet-api",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN ../LICENSE.md",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "lint": "eslint \"**/*.js\"",
+    "lint:fix": "eslint \"**/*.js\" --fix"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "body-parser": "^1.19.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "cyrillic-to-translit-js": "^3.1.0",
+    "express": "^4.21.2",
+    "express-form-data": "^2.0.14",
+    "express-http-proxy": "^2.1.1",
+    "express-xml-bodyparser": "^0.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "lodash": "^4.17.21",
+    "multiconf": "^2.0.0",
+    "pg": "^8.9.0",
+    "prop-by-path": "^1.0.5",
+    "redis": "^4.7.0",
+    "sequelize": "^6.29.0",
+    "uuid-random": "^1.3.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.1",
+    "eslint": "^7.18.0",
+    "eslint-plugin-jsdoc": "^31.3.3"
+  },
+  "overrides": {
+    "form-data": "2.5.5",
+    "semver": "7.5.4",
+    "tough-cookie": "4.1.3",
+    "xml2js": "0.6.2"
+  }
+}

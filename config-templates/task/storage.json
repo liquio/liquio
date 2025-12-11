@@ -1,0 +1,26 @@
+{
+  "OpenStack": {
+    "server": "http://test-storage.liquio.local",
+    "port": 5000,
+    "routes": {
+      "getTokens": "/v2.0/tokens"
+    },
+    "timeout": 30000,
+    "tenantName": "liquio",
+    "admin": {
+      "login": "liquio",
+      "password": "<removed>"
+    },
+    "user": {
+      "login": "liquio",
+      "password": "<removed>"
+    },
+    "container": "liquio",
+    "isFilesCanBeDeleted": false
+  },
+  "FileStorage": {
+    "apiHost": "https://filestorage.liquio.local",
+    "token": "Basic <removed>",
+    "containerId": 1
+  }
+}

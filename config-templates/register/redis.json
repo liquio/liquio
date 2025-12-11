@@ -1,0 +1,6 @@
+{
+  "isEnabled": false,
+  "host": "",
+  "port": 6379,
+  "defaultTtl": 30
+}

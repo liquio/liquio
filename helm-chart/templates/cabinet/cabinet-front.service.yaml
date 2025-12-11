@@ -1,0 +1,20 @@
+{{- if .Values.services.cabinetFront.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-cabinet-front
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cabinet-front
+spec:
+  type: {{ .Values.services.cabinetFront.type }}
+  ports:
+    - port: {{ .Values.services.cabinetFront.servicePort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: cabinet-front
+{{- end }}

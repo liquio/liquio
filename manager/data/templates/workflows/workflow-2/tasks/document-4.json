@@ -1,0 +1,198 @@
+{
+  "title": "Заявка на дозвіл на викид забруднюючої речовини",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['applicant', 'form', 'attachments']; }",
+  "properties": {
+    "applicant": {
+      "type": "object",
+      "description": "Заявник",
+      "control": "select.user",
+      "tabs": [
+        {
+          "id": 1,
+          "description": "Фізична особа",
+          "set": [
+            {
+              "key": "isLegal",
+              "value": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "description": "Юридична особа",
+          "set": [
+            {
+              "key": "isLegal",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "value": "user.id",
+          "readonly": true,
+          "hidden": true,
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "isLegal": {
+          "type": "boolean",
+          "value": "user.isLegal",
+          "readonly": false,
+          "hidden": true,
+          "description": "Ознака юридичної особи",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "name": {
+          "type": "string",
+          "value": "user.name",
+          "description": "Прізвище, ім'я та по батькові",
+          "readonly": true,
+          "tabsIds": [
+            1
+          ]
+        },
+        "companyName": {
+          "type": "string",
+          "value": "user.companyName",
+          "description": "Назва компанії",
+          "readonly": true,
+          "tabsIds": [
+            2
+          ]
+        },
+        "email": {
+          "type": "string",
+          "value": "user.email",
+          "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+$",
+          "sample": "Електронна адреса має бути в форматі \"test@example.com\"",
+          "description": "Електронна пошта",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "phone": {
+          "type": "string",
+          "value": "user.phone",
+          "pattern": "^380[0-9]{9}$",
+          "sample": "Номер у форматі 380XXXXXXXXX",
+          "description": "Контактний номер телефону",
+          "mask": "380999999999",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "address": {
+          "type": "string",
+          "value": "user.address",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Адреса",
+          "sample": "Адреса, не більше 500 символів",
+          "tabsIds": [
+            1,
+            2
+          ]
+        },
+        "ipn": {
+          "type": "string",
+          "value": "user.ipn",
+          "description": "РНОКПП",
+          "readonly": true,
+          "tabsIds": [
+            1
+          ]
+        },
+        "edrpou": {
+          "type": "string",
+          "value": "user.edrpou",
+          "description": "ЄДРПОУ",
+          "readonly": true,
+          "tabsIds": [
+            2
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "companyName",
+        "ipn",
+        "edrpou",
+        "address"
+      ]
+    },
+    "form": {
+      "type": "object",
+      "description": "Текст заяви",
+      "properties": {
+        "text": {
+          "type": "string",
+          "control": "textArea",
+          "sample": "Опишіть суть заяви",
+          "hint": "Прошу дозволити викидати забруднюючі речовини.",
+          "minLength": 10,
+          "maxLength": 50000
+        }
+      },
+      "required": [
+        "text"
+      ]
+    },
+    "attachments": {
+      "type": "array",
+      "description": "Додатки",
+      "addItem": {
+        "text": "Завантажити додатки до заяви"
+      },
+      "control": "select.files",
+      "accept": "image/*,application/pdf",
+      "maxSize": 10485760,
+      "sample": "Документи що підтверджують необхідність викиду небезпечних речовин",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "attachType": {
+            "type": "string",
+            "control": "select.attachType",
+            "dictionary": "attachTypes"
+          },
+          "id": {
+            "type": "string",
+            "control": "input.file"
+          },
+          "type": {
+            "type": "string",
+            "dictionary": "attachMimeTypes",
+            "hidden": true
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "id",
+          "type"
+        ]
+      }
+    }
+  },
+  "required": [
+    "applicant",
+    "form"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "APP_NAME": "liquio",
+  "APP_TITLE": "Liquio",
+  "APP_ENV": "stage",
+  "BACKEND_URL": "/",
+  "BUILD_ID": "false",
+  "ONLINE_HELP": false,
+  "SHOW_PHONE": false,
+  "SHOW_PHONE_CONFIRM": false,
+  "FORCE_REGISTER": true,
+  "passwordAuth": true,
+  "defaultLanguage": "en"
+}

@@ -1,0 +1,20 @@
+{{- if .Values.services.adminApi.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-admin-api
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: admin-api
+spec:
+  type: {{ .Values.services.adminApi.type }}
+  ports:
+    - port: {{ .Values.services.adminApi.servicePort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: admin-api
+{{- end }}

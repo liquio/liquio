@@ -1,0 +1,56 @@
+{
+  "name": "liquio-filestorage",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/app.js",
+  "license": "SEE LICENSE IN ../LICENSE.md",
+  "scripts": {
+    "start": "node src/app.js",
+    "lint": "eslint ./",
+    "lint:fix": "eslint ./ --fix",
+    "migration-up": "sequelize db:migrate",
+    "migration-clear": "sequelize db:migrate:undo:all",
+    "seed-up": "sequelize db:seed:all",
+    "seed-clear": "sequelize db:seed:undo:all",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "aws-sdk": "^2.1692.0",
+    "axios": "^1.11.0",
+    "body-parser": "^1.20.2",
+    "express": "^4.21.2",
+    "inquirer": "^8.2.6",
+    "jsontoxml": "^1.0.1",
+    "jszip": "^3.10.1",
+    "lodash": "^4.17.21",
+    "mime-types": "^2.1.35",
+    "moment": "^2.30.1",
+    "multiconf": "^3.2.0",
+    "pg": "^8.10.0",
+    "sequelize": "^6.30.0",
+    "sequelize-cli": "^6.6.0",
+    "swagger-ui-express": "^4.6.2",
+    "transliteration": "^2.3.5",
+    "ua-en-translit": "^3.1.2",
+    "uuid-random": "^1.3.2",
+    "xml2js": "^0.6.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "@types/jest": "^30.0.0",
+    "eslint": "^9.38.0",
+    "eslint-plugin-jsdoc": "^50.8.0",
+    "globals": "^16.4.0",
+    "jest": "^30.1.3",
+    "nock": "^14.0.10",
+    "proxyquire": "^2.1.3"
+  },
+  "overrides": {
+    "semver": "7.5.4",
+    "tough-cookie": "4.1.3",
+    "form-data": "2.5.5"
+  }
+}

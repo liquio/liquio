@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-sign-tool-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # X509 configuration
+  x509.json: |
+    {
+      "caCerts": ["-----BEGIN CERTIFICATE-----\nMIIDiTCCAnGgAwIBAgIUAbEt8Gn58xDZxGfPQi7RmGeBRMQwDQYJKoZIhvcNAQEL\nBQAwVDELMAkGA1UEBhMCVUExDTALBgNVBAcMBEt5aXYxDzANBgNVBAoMBkxpcXVp\nbzEUMBIGA1UECwwLRGV2ZWxvcG1lbnQxDzANBgNVBAMMBkxpcXVpbzAeFw0yNTA4\nMDgwNzU4MThaFw0zNTA4MDYwNzU4MThaMFQxCzAJBgNVBAYTAlVBMQ0wCwYDVQQH\nDARLeWl2MQ8wDQYDVQQKDAZMaXF1aW8xFDASBgNVBAsMC0RldmVsb3BtZW50MQ8w\nDQYDVQQDDAZMaXF1aW8wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCg\nd6+UcaSJCO4Qpn9ydutcdleutgFJ/hqwE5Qs9D6NYDs3tB8pYeDIAFSeuoq6KtsX\n4vnv8+o9EOOi4zGCSc0kjjm6UGfdRNm3oye8iqdoAyx7qG1cKqAdmeJNgYPSmdht\nvsiGrNpUyq58lZgLwLResZMXKlu9dXzmJUqpWv3D07BSf9KFtQPKsvxelYvVB2HD\n4km9Bynl4CX8CF8P6uhsrEX2usFHfpTHoWu2CmsQUN6QSxSzTsG0/06GZnq4tF1e\n5jHGbFGGm30nldGRIu9uN5ajtOQ0zHb/8MYuJiykAWT1dmOpLCQxGUt/22e3yA9g\nrtZ2qQosE63q1oyxCpTnAgMBAAGjUzBRMB0GA1UdDgQWBBQouuUrz74p6GzmuS9w\nFDV61uTxPjAfBgNVHSMEGDAWgBQouuUrz74p6GzmuS9wFDV61uTxPjAPBgNVHRMB\nAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBQGqvXCFCxwTwjv2QNZAT5Qt5K\nHA6hMfxOtL/p/GjtfUsRz1jdavcS9VvRw1zNMoNa4NOq2nIs/C249Cfb3G6TQ3ME\nm4MFNQnDzNa2lwsnL7FHDeO1m9ADsjnqXrVq++++r9bJkbADwjPouA/qs8wHV4xI\nv9j7dZpigVGLuf9GPtqLKI8/IaWQ4tLs1W8g5uPmvChzNCM0hxqkgbNVUpzV5LoI\n0vAVsVtIhskHZ76SSjNTWwzG9PIIpm2Rw7pinjmkpZDPGW5GqHtxKS5l0vw88Gkh\npsnP+ip6YQdBACkTUtGzcC51el5r9bLU3HH0Do4rtB+Pn1uCru4mQiPNtLiS\n-----END CERTIFICATE-----"]
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "port": {{ .Values.services.signTool.targetPort }},
+      "host": "0.0.0.0",
+      "isSwaggerEnabled": false,
+      "acceptedBodySize": "10mb"
+    }

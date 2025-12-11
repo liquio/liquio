@@ -1,0 +1,306 @@
+version: 2
+updates:
+  # Root package.json dependencies (if any)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    target-branch: "main"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+    reviewers:
+      - "owner"
+    allow:
+      - dependency-type: "all"
+
+  # Admin API
+  - package-ecosystem: "npm"
+    directory: "/admin-api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "admin-api"
+    versioning-strategy: "increase"
+
+  # Admin Frontend
+  - package-ecosystem: "npm"
+    directory: "/admin-front"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "admin-front"
+
+  # Cabinet API
+  - package-ecosystem: "npm"
+    directory: "/cabinet-api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "cabinet-api"
+
+  # Cabinet Frontend
+  - package-ecosystem: "npm"
+    directory: "/cabinet-front"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "cabinet-front"
+
+  # ID API
+  - package-ecosystem: "npm"
+    directory: "/id-api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "id-api"
+
+  # ID Frontend
+  - package-ecosystem: "npm"
+    directory: "/id-front"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "id-front"
+
+  # Task Service
+  - package-ecosystem: "npm"
+    directory: "/task"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "task"
+
+  # Gateway
+  - package-ecosystem: "npm"
+    directory: "/gateway"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "gateway"
+
+  # Manager
+  - package-ecosystem: "npm"
+    directory: "/manager"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "manager"
+
+  # Notification Service
+  - package-ecosystem: "npm"
+    directory: "/notification"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "notification"
+
+  # Register Service
+  - package-ecosystem: "npm"
+    directory: "/register"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "register"
+
+  # Event Service
+  - package-ecosystem: "npm"
+    directory: "/event"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "event"
+
+  # File Storage Service
+  - package-ecosystem: "npm"
+    directory: "/filestorage"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "filestorage"
+
+  # External Reader
+  - package-ecosystem: "npm"
+    directory: "/external-reader"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "external-reader"
+
+  # PDF Generator
+  - package-ecosystem: "npm"
+    directory: "/pdf-generator"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "04:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "pdf-generator"
+
+  # Sign Tool
+  - package-ecosystem: "npm"
+    directory: "/sign-tool"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "04:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "sign-tool"
+
+  # Front Core (shared frontend)
+  - package-ecosystem: "npm"
+    directory: "/front-core"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "04:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "front-core"
+
+  # Test Suite
+  - package-ecosystem: "npm"
+    directory: "/test"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "04:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "test"
+
+  # Helm Chart updates (if applicable)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "1"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"

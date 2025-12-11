@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-notification-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  config.json: |
+    {
+      "default_env": "production",
+      "production": {
+        "processTitle": "notify",
+        "port": "{{ .Values.services.notification.port }}",
+        "username": "{{ .Values.config.database.username }}",
+        "password": "{{ include "liquio.postgresql.password" . }}",
+        "database": "notify",
+        "host": "{{ include "liquio.postgresql.host" . }}",
+        "dialect": "postgres",
+        "defaultMailer": "unisender",
+        "emailAdapter": "diiaRmqEmailAdapter",
+        "defaultMessenger": "testConsoleSmsAdapter",
+        "customAdapter": {},
+        "db": {
+          "username": "{{ .Values.config.database.username }}",
+          "password": "{{ include "liquio.postgresql.password" . }}",
+          "database": "notify",
+          "host": "{{ include "liquio.postgresql.host" . }}",
+          "dialect": "postgres"
+        },
+        "auth_server": {
+          "host": "http://localhost:8080",
+          "user": "AuthorizationBasicLogin",
+          "password": "secretPassword"
+        },
+        "unisender": {
+          "api_key": "secretToken",
+          "sender_email": "noreply@example.com",
+          "hardcode_subject": "Новое сообщение"
+        },
+        "smsServer": {
+          "url": "https://test.liquio.local/Subscribe/SendSmsQ.php",
+          "access_token": ""
+        },
+        "adminConfig": {
+          "login": "adminConfigLogin",
+          "password": "secretPassword"
+        },
+        "corezoidConfig": {
+          "apiLogin": "",
+          "apiKey": "",
+          "processId": ""
+        },
+        "sendSmsByNotifyhubAPI": true,
+        "smtpServer": {
+          "host": "mail.local",
+          "secure": false,
+          "port": 25,
+          "tls": {
+            "rejectUnauthorized": false
+          },
+          "auth": {
+            "user": "username",
+            "pass": "<REDACTED>"
+          }
+        },
+        "customer": "liquio",
+        "environment": "dev"
+      }
+    }
+
+  # Versions configuration
+  versions.json: |
+    {
+      "versions": {
+        "services": [
+          {
+            "name": "id",
+            "minVersion": "0.7.2"
+          },
+          {
+            "name": "plink",
+            "minVersion": "1.0.4"
+          }
+        ]
+      }
+    }
+
+  # Default versions configuration
+  versions.default.json: |
+    {
+      "versions": {
+        "services": [
+          {
+            "name": "id",
+            "minVersion": "0.7.2"
+          },
+          {
+            "name": "plink",
+            "minVersion": "1.0.4"
+          }
+        ]
+      }
+    }

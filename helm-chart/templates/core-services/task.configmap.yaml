@@ -1,0 +1,491 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-task-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # Database configuration
+  db.json: |
+    {
+      "host": "{{ include "liquio.postgresql.host" . }}",
+      "port": {{ .Values.config.database.port }},
+      "database": "bpmn",
+      "username": "{{ .Values.config.database.username }}",
+      "password": "{{ include "liquio.postgresql.password" . }}",
+      "dialect": "postgres",
+      "dialectOptions": {
+        "socketPath": "",
+        "supportBigNumbers": true,
+        "bigNumberStrings": true
+      },
+      "timezone": "Europe/Kyiv",
+      "logging": false,
+      "pool": {
+        "max": 5,
+        "min": 0,
+        "acquire": 30000,
+        "idle": 10000
+      },
+      "migrationStorageTableName": "sequelize_meta"
+    }
+
+  # Message queue configuration
+  message_queue.json: |
+    {
+      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.password" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
+      "amqpConnectionParams": {
+        "heartbeat": 300
+      },
+      "maxHandlingMessages": 2,
+      "readingQueueName": "bpmn-task-incoming",
+      "writingQueueName": "bpmn-manager-incoming",
+      "enabledReadingGeneratingPdfMessages": true,
+      "maxHandlingGeneratingPdfMessages": 1,
+      "retryConnectionTime": 10000
+    }
+
+  # Auth configuration
+  auth.json: |
+    {
+      "LiquioId": {
+        "server": "http://{{ include "liquio.fullname" . }}-id-api",
+        "front": "http://{{ include "liquio.fullname" . }}-id-front",
+        "port": {{ .Values.services.idApi.servicePort }},
+        "routes": {
+          "getCode": "/authorise",
+          "getToken": "/oauth/token/",
+          "getUserInfo": "/user/info",
+          "searchUsers": "/user/info/search",
+          "getUserByCode": "/user/info/ipn",
+          "logout": "/logout",
+          "sendSms": "/sign_up/confirmation/phone/send",
+          "verifyPhone": "/sign_up/confirmation/phone/verify",
+          "changeEmail": "/user/info/email/send",
+          "confirmChangeEmail": "/user/info/email/set",
+          "addTestCode": "/oauth/token/test_code",
+          "ping": "/test/ping",
+          "pingWithAuth": "/test/ping_with_auth",
+          "prepareUser": "/user/prepare"
+        },
+        "timeout": 30000,
+        "clientId": "liquio-portal",
+        "clientSecret": "{{ include "liquio.oauth.secretKey" . }}",
+        "basicAuthToken": "{{ include "liquio.oauth.secretKey" . }}"
+      },
+      "authRedirectUrl": "http://localhost:8001/",
+      "logoutRedirectUrl": "http://localhost:8001/",
+      "jwtSecret": "{{ include "liquio.jwt.secret" . }}",
+      "jwtOptions": {
+        "expiresIn": "1d"
+      },
+      "allowedTestAuth": false,
+      "allowedTestSign": false,
+      "allowedTestPem": true,
+      "defaultUnits": [
+        1000013
+      ],
+      "doNotLogoutOtherSessions": true,
+      "caching": {
+        "isEnabled": false,
+        "getCheckMiddleware": {
+          "isEnabled": false,
+          "ttl": 30
+        }
+      },
+      "ldap": {
+        "isEnabled": false,
+        "url": "ldap://domain.loc",
+        "baseDN": "dc=DOMAIN,dc=LOC",
+        "username": "admin@domain.loc",
+        "password": "<removed>"
+      }
+    }
+
+  # Register configuration
+  register.json: |
+    {
+      "server": "http://{{ include "liquio.fullname" . }}-register",
+      "port": {{ .Values.services.register.servicePort }},
+      "token": "Basic {{ include "liquio.register.authToken" . }}",
+      "limit": 10000,
+      "accessCacheLifetime": 60000,
+      "registerKeysForAddresses": [],
+      "strictAccess": {
+        "keys": []
+      },
+      "access": [
+        {
+          "unit": 1,
+          "allowSeeAllRecords": true,
+          "keys": {
+            "allowRead": [],
+            "allowCreate": [],
+            "allowUpdate": [],
+            "allowDelete": [],
+            "allowHistory": []
+          }
+        }
+      ],
+      "timeout": 30000
+    }
+
+  # External reader configuration
+  external_reader.json: |
+    {
+      "url": "http://{{ include "liquio.fullname" . }}-external-reader:{{ .Values.services.externalReader.servicePort }}",
+      "basicAuthToken": "{{ include "liquio.externalReader.authToken" . }}",
+      "timeout": 30000
+    }
+
+  # Filestorage configuration
+  filestorage.json: |
+    {
+      "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
+      "token": "{{ include "liquio.filestorage.authToken" . }}",
+      "containerId": 1,
+      "signatureTimeout": 40000,
+      "downloadUploadTimeout": 60000,
+      "timeout": 10000
+    }
+
+  # Storage configuration
+  storage.json: |
+    {
+      "OpenStack": {
+        "server": "http://test-storage.liquio.local",
+        "port": 5000,
+        "routes": {
+          "getTokens": "/v2.0/tokens"
+        },
+        "timeout": 30000,
+        "tenantName": "liquio",
+        "admin": {
+          "login": "liquio",
+          "password": "<removed>"
+        },
+        "user": {
+          "login": "liquio",
+          "password": "<removed>"
+        },
+        "container": "liquio",
+        "isFilesCanBeDeleted": false
+      },
+      "FileStorage": {
+        "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
+        "token": "{{ include "liquio.filestorage.authToken" . }}",
+        "containerId": 1
+      }
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "hostname": "0.0.0.0",
+      "port": {{ .Values.services.task.targetPort }},
+      "maxBodySize": "10mb",
+      "serverName": "http://{{ include "liquio.fullname" . }}-task:{{ .Values.services.task.servicePort }}",
+      "customer": "liquio",
+      "environment": "dev"
+    }
+
+  # Redis configuration
+  redis.json: |
+    {
+      "host": "{{ include "liquio.redis.host" . }}",
+      "port": {{ .Values.config.redis.port }},
+      "options": {}
+    }
+
+  # Logging configuration
+  log.json: |
+    {
+      "isFullLogsEnabled": false,
+      "console": [],
+      "file": [
+        "./logs/"
+      ],
+      "skipLoggingRoutesList": [
+        {
+          "comment": "Skip dictionaries list.",
+          "pattern": "^/dictionaries$"
+        },
+        {
+          "comment": "Skip documents.",
+          "pattern": "^/registers/keys/.{1,}/records_tree$"
+        }
+      ],
+      "responsesData": false,
+      "stackTrace": false,
+      "excludeParams": [
+        "token",
+        "access_token",
+        "refresh_token",
+        "oauth-token",
+        "authorization",
+        "Authorization",
+        "secret",
+        "password",
+        "oldPassword",
+        "oldPasswords",
+        "client_secret",
+        "_token=",
+        "client_id=",
+        "client_secret="
+      ]
+    }
+
+  # Access configuration
+  access.json: |
+    {
+      "usersIpnToIpList": {
+        "19999999999": ["office"]
+      },
+      "allowableUnits": [],
+      "routeGroupsExceptions": ["public", "auth", "user", "message"]
+    }
+
+  # Admin configuration
+  admin.json: |
+    {
+      "swagger": false,
+      "adminUnitId": [1000001, 1000000041]
+    }
+
+  # Basic auth configuration
+  basic_auth.json: |
+    {
+      "tokens": [
+        "Basic dGFzazp0YXNr"
+      ],
+      "protectedRoutes": [
+        {
+          "route": "/some/protected-route",
+          "basicAuthUsers": ["external-reader"]
+        }
+      ]
+    }
+
+  # Cache configuration
+  cache.json: |
+    {
+      "unit": {
+        "ttl": 60
+      },
+      "unitAccess": {
+        "getAllWithCache": 300
+      },
+      "documentTemplate": {
+        "findById": 300,
+        "substituteJsonProps": 300
+      },
+      "eventTemplate": {
+        "findById": 300,
+        "findByIds": 300
+      },
+      "gatewayTemplate": {
+        "findById": 300
+      },
+      "numberTemplate": {
+        "findById": 300
+      },
+      "taskTemplate": {
+        "findById": 300,
+        "getAll": 300
+      },
+      "workflowTemplateCategory": {
+        "getAll": 300
+      },
+      "workflowTemplate": {
+        "findById": 300,
+        "getAll": 300
+      }
+    }
+
+  # Custom logs configuration
+  custom_logs.json: |
+    {
+      "templatesCacheLifetime": 60000,
+      "cacheEnabled": false,
+      "redis": {
+        "ttl": 60
+      }
+    }
+
+  # Download token configuration
+  download_token.json: |
+    {
+      "jwtSecret": "{{ include "liquio.jwt.secret" . }}",
+      "lifetimeInSeconds": 3600
+    }
+
+  # EDS configuration
+  eds.json: |
+    {
+      "providerName": "pkcs7",
+      "pkcs7": {
+        "timeout": 30000,
+        "signToolUrl": "http://{{ include "liquio.fullname" . }}-sign-tool:{{ .Values.services.signTool.servicePort }}"
+      },
+      "timeout": 30000
+    }
+
+  # File generator configuration
+  file_generator.json: |
+    {
+      "timeout": "120000",
+      "htmlTemplateDelimiter": "<pdf-delimiter>",
+      "htmlTemplateDelimiterEnd": "</pdf-delimiter>",
+      "variables": {
+        "publicUrl": "http://localhost:8081"
+      },
+      "persons": {
+        "allContentKey": "all",
+        "keyTextPrefix": "<b>",
+        "keyTextSuffix": "</b>",
+        "keysSeparator": "<br /><br />",
+        "keyAndSubkeysSeparator": "<br />",
+        "subkeysSeparator": "<br />",
+        "keys": [],
+        "subkeys": []
+      }
+    }
+
+  # Mapping configuration
+  mapping.json: |
+    {
+      "taskBusiness": {
+        "frontUrl": {
+          "template": "{{`{{frontUrl}}`}}",
+          "replace": "https://cabinet.{{ .Values.global.domain }}"
+        }
+      }
+    }
+
+  # Model configuration
+  model.json: |
+    {
+      "pagination": {
+        "limitPerPage": 50
+      }
+    }
+
+  # Modules configuration
+  modules.json: |
+    {
+      "main": {
+        "observerUnits": false
+      },
+      "externalReader": {}
+    }
+
+  # Notifier configuration
+  notifier.json: |
+    {
+      "server": "http://{{ include "liquio.fullname" . }}-notification",
+      "port": {{ .Values.services.notification.servicePort }},
+      "timeout": 30000,
+      "user": "<removed>",
+      "hashedPassword": "<removed>",
+      "clientId": "",
+      "routes": {
+        "ping": "/test/ping",
+        "sendToUserList": "/message/usersList",
+        "sendToUserEmails": "/message/emailsList"
+      }
+    }
+
+  # Onboarding configuration
+  onboarding.json: |
+    {
+      "onboardingTemplate": {
+        "workflowTemplateId": null,
+        "taskTemplateId": null
+      }
+    }
+
+  # Persist link configuration
+  persist_link.json: |
+    {
+      "server": "https://plink-dev-oe.liquio.local",
+      "port": 443,
+      "routes": {
+        "generateQr": "/link?qr=svg",
+        "ping": "/test/ping",
+        "pingWithAuth": "/test/ping_with_auth"
+      },
+      "token": "<removed>",
+      "serverName": "bpmn_dev",
+      "getLinkToFilestorageTimeout": 30000,
+      "qrFrontUrl": "https://qr-dev.liquio.local"
+    }
+
+  # Sign configuration
+  sign.json: |
+    {
+      "timeout": 10000,
+      "url": "http://{{ include "liquio.fullname" . }}-sign-tool:{{ .Values.services.signTool.servicePort }}",
+      "token": ""
+    }
+
+  # System notifier configuration
+  system_notifier.json: |
+    {
+      "adminUrl": "http://localhost:8000",
+      "email": {
+        "server": "http://{{ include "liquio.fullname" . }}-notification",
+        "port": {{ .Values.services.notification.servicePort }},
+        "routes": {
+          "sendEmail": "/message/emailsList",
+          "sendToUser": "/message/usersList",
+          "ping": "/test/ping"
+        },
+        "timeout": 30000,
+        "user": "<removed>",
+        "hashedPassword": "<removed>",
+        "emails": [],
+        "subject": "Workflow process problem.",
+        "body": "<html><body>Відбулась помилка в процесі {url}<br/>Task {taskTemplateId} {taskTemplateName}<br/>{error}</body></html>"
+      }
+    }
+
+  # System task configuration
+  system_task.json: |
+    {
+      "isAllowedCreateByOtherSystems": true,
+      "allowedToCreateByTokens": [
+        "Basic <removed>"
+      ],
+      "allowedToUpdateDocumentAndCommit": [
+        "Basic <removed>"
+      ],
+      "tasksTemplateIds": [
+        "31009003"
+      ]
+    }
+
+  # Task finish configuration
+  task_finish.json: |
+    {
+      "addTaskCommiterAsPerformer": true
+    }
+
+  # Versions configuration
+  versions.json: |
+    {
+      "services": [
+        { "name": "id", "minVersion": "0.7.7" },
+        { "name": "eds", "minVersion": "1.0.11" },
+        { "name": "event", "minVersion": "1.37.6" },
+        { "name": "manager", "minVersion": "1.10.16" },
+        { "name": "gateway", "minVersion": "1.3.13" },
+        { "name": "workflow", "minVersion": "0.0.0" },
+        { "name": "register", "minVersion": "1.41.0" },
+        { "name": "filestorage", "minVersion": "2.3.2" },
+        { "name": "pwgen", "minVersion": "0.0.5" },
+        { "name": "plink", "minVersion": "1.0.5" },
+        { "name": "externalReader", "minVersion": "1.2.66" },
+        { "name": "notify", "minVersion": "1.3.52" }
+      ]
+    }

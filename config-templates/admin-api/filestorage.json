@@ -1,0 +1,5 @@
+{
+  "apiHost": "http://localhost:8105",
+  "token": "Basic <removed>",
+  "containerId": 1
+}

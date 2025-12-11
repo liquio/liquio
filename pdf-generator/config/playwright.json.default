@@ -1,0 +1,5 @@
+{
+  "workerTimeout": 30000,
+  "maxWorkers": 5,
+  "maxConcurrentJobs": 200
+}

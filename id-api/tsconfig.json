@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "commonjs",
+    "rootDir": "./src",
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "sourceMap": true
+  },
+  "exclude": [
+    "jest.config.js",
+    "eslint.config.js",
+    "migrations-config.js",
+    "bundle.cjs",
+    "dist",
+    "bundle",
+    "node_modules",
+    "migrations",
+    "test",
+    "coverage"
+  ]
+}

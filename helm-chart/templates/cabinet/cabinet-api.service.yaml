@@ -1,0 +1,20 @@
+{{- if .Values.services.cabinetApi.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-cabinet-api
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cabinet-api
+spec:
+  type: {{ .Values.services.cabinetApi.type }}
+  ports:
+    - port: {{ .Values.services.cabinetApi.servicePort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: cabinet-api
+{{- end }}

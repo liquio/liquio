@@ -1,0 +1,5 @@
+{
+  "url": "http://pdf-generator:7007/pdf",
+  "basicAuthToken": "Basic <REDACTED>",
+  "requestTimeout": 120000
+}

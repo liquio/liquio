@@ -1,0 +1,21 @@
+{
+  "title": "Карточка підтвердження доставки",
+  "templateType": "request",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['shipping']; }",
+  "properties": {
+    "shipping": {
+      "description": "Доставка",
+      "type": "object",
+      "properties": {
+        "approved": {
+          "type": "boolean",
+          "description": "Доставлено"
+        }
+      },
+      "required": ["approved"]
+    }
+  },
+  "required": ["shipping"]
+}

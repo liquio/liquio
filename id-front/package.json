@@ -1,0 +1,98 @@
+{
+  "name": "liquio-id",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN ../LICENSE.md",
+  "dependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@csstools/normalize.css": "^12.1.1",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/lab": "^5.0.0-alpha.177",
+    "@mui/material": "^5.16.7",
+    "@mui/styles": "^5.16.7",
+    "@mui/x-date-pickers": "^5.0.20",
+    "ajv": "^6.12.6",
+    "babel-preset-react-app": "^10.0.1",
+    "buffer": "^6.0.3",
+    "classnames": "^2.5.1",
+    "crypto-browserify": "^3.12.0",
+    "dayjs": "^1.11.13",
+    "events": "^3.3.0",
+    "history": "^4.10.1",
+    "https-browserify": "^1.0.0",
+    "isomorphic-fetch": "^3.0.0",
+    "lodash": "4.17.21",
+    "mobile-detect": "^1.4.5",
+    "moment": "2.30.1",
+    "node-forge": "^1.3.1",
+    "object-path": "0.11.8",
+    "os-browserify": "^0.3.0",
+    "password-generator": "^2.3.2",
+    "process": "^0.11.10",
+    "prop-types": "^15.8.1",
+    "querystring": "^0.2.1",
+    "react": "18.2.0",
+    "react-app-rewired": "^2.2.1",
+    "react-dom": "18.2.0",
+    "react-dropzone": "^14.3.8",
+    "react-input-mask": "^2.0.4",
+    "react-perfect-scrollbar": "^1.5.8",
+    "react-redux": "^8.1.3",
+    "react-render-html": "^0.6.0",
+    "react-resize-detector": "^10.0.1",
+    "react-router-dom": "^5.3.4",
+    "react-scripts": "^5.0.1",
+    "react-translate": "^6.1.0",
+    "redux": "^4.2.1",
+    "redux-logger": "^3.0.6",
+    "sanitize-html": "^2.13.1",
+    "sanitize.css": "^13.0.0",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "util": "^0.12.5"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "devDependencies": {
+    "@babel/eslint-parser": "^7.28.0",
+    "esbuild": "^0.25.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5"
+  },
+  "overrides": {
+    "form-data": "2.5.5",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "lodash": "4.17.21",
+    "object-path": "0.11.8",
+    "ansi-html": "^0.0.9",
+    "glob-parent": "^6.0.2",
+    "node-forge": "^1.3.1",
+    "braces": "^3.0.3",
+    "nth-check": "^2.1.1",
+    "postcss": "^8.4.31",
+    "svgo": "^3.3.2"
+  },
+  "scripts": {
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "lint": "eslint 'src/**/*.{js,jsx}'",
+    "lint:fix": "eslint 'src/**/*.{js,jsx}' --fix"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

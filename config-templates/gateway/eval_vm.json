@@ -1,0 +1,6 @@
+{
+  "enabled": false,
+  "timeout": 1000,
+  "globalLibList": ["console"],
+  "globalObject": {}
+}

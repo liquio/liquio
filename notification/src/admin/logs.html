@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Адмін панель</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+          integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+            integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+            crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.3/angular.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/controllers/logs.js"></script>
+</head>
+<body ng-app="admin" ng-controller="logs">
+<ng-include src="'/admin/navbar'"></ng-include>
+<h1 style="text-align: center">ЛОГ повідомлень</h1>
+<div class="container">
+    <button type="button" class="btn btn-default col-sx-12" ng-click="showAll()">Показати всі повідомлення</button>
+    <form class="form-inline pull-right" ng-submit="sendForm()" style="margin-bottom: 10px">
+        <div class="form-group">
+            <label>+38</label>
+        </div>
+        <div class="form-group">
+            <select name="" class="form-control" ng-model="logObject.code">
+                <option value="039">039</option>
+                <option value="050">050</option>
+                <option value="063">063</option>
+                <option value="066">066</option>
+                <option value="067">067</option>
+                <option value="068">068</option>
+                <option value="073">073</option>
+                <option value="093">093</option>
+                <option value="095">095</option>
+                <option value="096">096</option>
+                <option value="097">097</option>
+                <option value="098">098</option>
+                <option value="099">099</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <input type="text" ng-model="logObject.number" class="form-control" maxlength="7">
+        </div>
+        <button type="submit" class="btn btn-default col-sx-12">Показати повідомлення за номером</button>
+    </form>
+</div>
+<div class="container">
+
+    <table class="table table-bordered table-striped">
+        <thead>
+        <tr>
+            <th>id</th>
+            <th>date</th>
+            <th>phone</th>
+            <th>text</th>
+        </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="message in items">
+                <td>{{message.id}}</td>
+                <td>{{message.date}}</td>
+                <td>{{message.phone}}</td>
+                <td>{{message.text}}</td>
+            </tr>
+        </tbody>
+    </table>
+    <ul ng-if="pager.pages.length" class="pagination">
+        <li ng-class="{disabled:pager.currentPage === 1}">
+            <a ng-click="setPage(1)">Перша</a>
+        </li>
+        <li ng-class="{disabled:pager.currentPage === 1}">
+            <a ng-click="setPage(pager.currentPage - 1)">Попередня</a>
+        </li>
+        <li ng-repeat="page in pager.pages" ng-class="{active:pager.currentPage === page}">
+            <a ng-click="setPage(page)">{{page}}</a>
+        </li>
+        <li ng-class="{disabled:pager.currentPage === pager.totalPages}">
+            <a ng-click="setPage(pager.currentPage + 1)">Наступна</a>
+        </li>
+        <li ng-class="{disabled:pager.currentPage === pager.totalPages}">
+            <a ng-click="setPage(pager.totalPages)">Остання</a>
+        </li>
+    </ul>
+</div>
+</body>
+</html>

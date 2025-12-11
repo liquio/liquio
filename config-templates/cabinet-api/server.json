@@ -1,0 +1,8 @@
+{
+  "hostname": "0.0.0.0",
+  "port": 8101,
+  "maxBodySize": "10mb",
+  "swagger": true,
+  "customer": "liquio",
+  "environment": "dev"
+}

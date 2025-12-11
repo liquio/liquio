@@ -1,0 +1,8 @@
+{
+  "apiHost": "https://filestorage-dev-oe.liquio.local",
+  "token": "Basic <removed>",
+  "containerId": 1,
+  "signatureTimeout": 40000,
+  "downloadUploadTimeout": 60000,
+  "timeout": 10000
+}

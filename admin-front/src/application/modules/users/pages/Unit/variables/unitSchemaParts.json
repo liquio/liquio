@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "description": "Токени",
+  "properties": {
+    "allowTokens": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "darkTheme": true,
+        "variant": "outlined",
+        "maxLength": 255
+      }
+    }
+  }
+}

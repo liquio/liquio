@@ -1,0 +1,10 @@
+{
+  "key": {
+    "getAll": 300,
+    "findById": 300
+  },
+  "register": {
+    "getAll": 300,
+    "findByPk": 300
+  }
+}

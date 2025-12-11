@@ -1,0 +1,1711 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "File Storage",
+    "description": "File storage with containers"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "basePath": "/",
+  "paths": {
+    "/test/ping": {
+      "get": {
+        "tags": [
+          "Test"
+        ],
+        "summary": "Ping API",
+        "description": "Returns test response.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Test response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "processPid": {
+                          "type": "number",
+                          "example": 12345
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "pong"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/containers": {
+      "get": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Get containers",
+        "description": "Returns containers list.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/offset"
+          },
+          {
+            "$ref": "#/definitions/limit"
+          },
+          {
+            "$ref": "#/definitions/parentIdFilter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Containers list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/container"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/definitions/responseMetaWithPagination"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Create container",
+        "description": "Returns created container.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "name": "data",
+            "description": "Container object.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/containerToCreateOrUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created container.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/container"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/containers/{id}": {
+      "get": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Get container",
+        "description": "Returns containers list.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/containerIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/container"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Update container",
+        "description": "Returns created container.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/containerIdParam"
+          },
+          {
+            "name": "data",
+            "description": "Container object.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/containerToCreateOrUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated container.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/container"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Delete container",
+        "description": "Returns deleted rows count.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/containerIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/deletionResult"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Get files",
+        "description": "Returns files list.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/offset"
+          },
+          {
+            "$ref": "#/definitions/limit"
+          },
+          {
+            "$ref": "#/definitions/parentIdFilter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Files list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/fileInfo"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/definitions/responseMetaWithPagination"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Create file",
+        "description": "Returns created file.",
+        "produces": [
+          "application/json"
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/contentTypeHeader"
+          },
+          {
+            "$ref": "#/definitions/contentLengthHeader"
+          },
+          {
+            "$ref": "#/definitions/createFileNameQueryParam"
+          },
+          {
+            "$ref": "#/definitions/createFileDescriptionQueryParam"
+          },
+          {
+            "$ref": "#/definitions/createFileContainerIdQueryParam"
+          },
+          {
+            "$ref": "#/definitions/createFileMetaQueryParam"
+          },
+          {
+            "$ref": "#/definitions/withPreviewQueryParam"
+          },
+          {
+            "name": "data",
+            "description": "File.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created file.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/fileInfo"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/{id}": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Get file",
+        "description": "Returns file.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/fileIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File.",
+            "type": "string"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Update file",
+        "description": "Returns created file.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/fileIdParam"
+          },
+          {
+            "name": "data",
+            "description": "File object.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/fileToUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated file.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/fileInfo"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Delete file",
+        "description": "Returns deleted rows count.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/fileIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/deletionResult"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/{id}/info": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Get file info",
+        "description": "Returns file info.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/fileIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File info.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/fileInfo"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/{id}/preview": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Get file",
+        "description": "Returns file preview.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/fileIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File preview.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "/files/{ids}/zip": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Get files as ZIP archive",
+        "description": "Returns files as ZIP archive.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/filesIdsParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Files as ZIP archive.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "/files/{id}/p7s": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Get file P7S signature",
+        "description": "Returns file P7S signature.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/fileIdParam"
+          },
+          {
+            "$ref": "#/definitions/getP7sSignatureAsFileQueryParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File P7S signature.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "/files/{id}/copy": {
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Copy file",
+        "description": "Returns file copy info.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/fileIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File copy info.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/fileInfo"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/asicmanifest": {
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Create ASIC manifest",
+        "description": "Returns created ASIC manifest file info.",
+        "produces": [
+          "application/json"
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/contentTypeHeader"
+          },
+          {
+            "$ref": "#/definitions/createFileDescriptionQueryParam"
+          },
+          {
+            "$ref": "#/definitions/createFileContainerIdQueryParam"
+          },
+          {
+            "$ref": "#/definitions/createFileMetaQueryParam"
+          },
+          {
+            "name": "data",
+            "description": "ASIC manifest options.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/asicManifestToCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created ASIC manifest file info.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/fileInfo"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/asic": {
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Create ASIC-E container",
+        "description": "Returns created ASIC-E container.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "name": "data",
+            "description": "ASIC options.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/asiceToCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created ASIC-E as file."
+          }
+        }
+      }
+    },
+    "/files/asice": {
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Create ASIC-E container",
+        "description": "Returns created ASIC-E container.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/definitions/asiceToCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created ASIC-E as file."
+          }
+        }
+      }
+    },
+    "/files/asics": {
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Create ASIC-S container",
+        "description": "Returns created ASIC-S container.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/definitions/asicsToCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created ASIC-S as file."
+          }
+        }
+      }
+    },
+    "/signatures": {
+      "get": {
+        "tags": [
+          "Signatures"
+        ],
+        "summary": "Get signatures",
+        "description": "Returns signatures list.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/offset"
+          },
+          {
+            "$ref": "#/definitions/limit"
+          },
+          {
+            "$ref": "#/definitions/fileIdFilter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signatures list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/signature"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/definitions/responseMetaWithPagination"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Signatures"
+        ],
+        "summary": "Create signature",
+        "description": "Returns created signature.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "name": "data",
+            "description": "Signature object.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/signatureToCreateOrUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created signature.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/signature"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/signatures/{id}": {
+      "get": {
+        "tags": [
+          "Signatures"
+        ],
+        "summary": "Get signature",
+        "description": "Returns signature.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/signatureIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signature.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/signature"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Signatures"
+        ],
+        "summary": "Update signature",
+        "description": "Returns updated signature.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/signatureIdParam"
+          },
+          {
+            "name": "data",
+            "description": "Signature object.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/signatureToCreateOrUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated signature.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/signature"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Signatures"
+        ],
+        "summary": "Delete signature",
+        "description": "Returns deleted rows count.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/signatureIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signature deletion result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/deletionResult"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p7s_signatures": {
+      "post": {
+        "tags": [
+          "P7S signatures"
+        ],
+        "summary": "Create P7S signature",
+        "description": "Returns created P7S signature.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "name": "data",
+            "description": "P7S signature object.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/p7sSignatureToCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created P7S signature.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/p7sSignature"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p7s_signatures/{id}": {
+      "get": {
+        "tags": [
+          "P7S signatures"
+        ],
+        "summary": "Get P7S signature",
+        "description": "Returns P7S signature.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/p7sSignatureIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "P7S signature.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/p7sSignature"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "P7S signatures"
+        ],
+        "summary": "Update P7S signature",
+        "description": "Returns updated P7S signature.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/p7sSignatureIdParam"
+          },
+          {
+            "name": "data",
+            "description": "P7S signature object.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/p7sSignatureToUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated P7S signature.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/p7sSignature"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "P7S signatures"
+        ],
+        "summary": "Delete P7S signature",
+        "description": "Returns deleted rows count.",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/definitions/tokenHeader"
+          },
+          {
+            "$ref": "#/definitions/p7sSignatureIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "P7S signature deletion result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/deletionResult"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "container": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "example": 1
+        },
+        "name": {
+          "type": "string",
+          "example": "default"
+        },
+        "description": {
+          "type": "string",
+          "example": "Контейнер за замовчуванням"
+        },
+        "parentId": {
+          "type": "number",
+          "example": null
+        },
+        "meta": {
+          "type": "object",
+          "example": {
+            "isTest": true
+          }
+        },
+        "createdBy": {
+          "type": "string",
+          "example": "user1"
+        },
+        "updatedBy": {
+          "type": "string",
+          "example": "user1"
+        },
+        "createdAt": {
+          "type": "string",
+          "example": "2019-02-18T12:48:07.336Z"
+        },
+        "updatedAt": {
+          "type": "string",
+          "example": "2019-02-18T12:50:32.539Z"
+        }
+      }
+    },
+    "containerToCreateOrUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "default"
+        },
+        "description": {
+          "type": "string",
+          "example": "Контейнер за замовчуванням"
+        },
+        "parentId": {
+          "type": "number",
+          "example": null
+        },
+        "meta": {
+          "type": "object",
+          "example": {
+            "isTest": true
+          }
+        }
+      }
+    },
+    "fileInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "example": "59cf9c30-3c4c-11e9-9523-2b494265f035"
+        },
+        "name": {
+          "type": "string",
+          "example": "scan.png"
+        },
+        "contentType": {
+          "type": "string",
+          "example": "image/png"
+        },
+        "contentLength": {
+          "type": "number",
+          "example": 120000
+        },
+        "description": {
+          "type": "string",
+          "example": "Скан паспорта"
+        },
+        "containerId": {
+          "type": "number",
+          "example": 1
+        },
+        "hash": {
+          "type": "object",
+          "example": {
+            "md5": "b848e0c7dc41a38bc01debf1e84c3953",
+            "sha1": "1a8772f296901762072cc5bdd09d8fe711a403aa",
+            "sha256": "82b2500da6c87da58bdca7c5dc3acc7c420ef713665f3b779afe85027a63803c"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "example": {
+            "isTest": true
+          }
+        },
+        "createdBy": {
+          "type": "string",
+          "example": "user1"
+        },
+        "updatedBy": {
+          "type": "string",
+          "example": "user1"
+        },
+        "createdAt": {
+          "type": "string",
+          "example": "2019-02-18T12:48:07.336Z"
+        },
+        "updatedAt": {
+          "type": "string",
+          "example": "2019-02-18T12:50:32.539Z"
+        }
+      }
+    },
+    "fileToUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "example": "scan.png"
+        },
+        "description": {
+          "type": "string",
+          "required": true,
+          "example": "Скан паспорта"
+        },
+        "containerId": {
+          "type": "number",
+          "required": true,
+          "example": 1
+        },
+        "meta": {
+          "type": "object",
+          "required": true,
+          "example": {
+            "isTest": true
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "example": "114c2c90-3d9f-11e9-af4c-77dd2ce8254e"
+        },
+        "fileId": {
+          "type": "string",
+          "example": "59cf9c30-3c4c-11e9-9523-2b494265f035"
+        },
+        "signedData": {
+          "type": "string",
+          "example": "10756f558f615522289172a3a3bd1bfa9cfa72f5",
+          "description": "File SHA1 hash"
+        },
+        "signature": {
+          "type": "string",
+          "example": "SIGNATURE"
+        },
+        "certificate": {
+          "type": "string",
+          "example": "CERTIFICATE_PEM"
+        },
+        "meta": {
+          "type": "object",
+          "example": {
+            "isTest": true
+          }
+        },
+        "createdBy": {
+          "type": "string",
+          "example": "user1"
+        },
+        "updatedBy": {
+          "type": "string",
+          "example": "user1"
+        },
+        "createdAt": {
+          "type": "string",
+          "example": "2019-02-18T12:48:07.336Z"
+        },
+        "updatedAt": {
+          "type": "string",
+          "example": "2019-02-18T12:50:32.539Z"
+        }
+      }
+    },
+    "signatureToCreateOrUpdate": {
+      "type": "object",
+      "properties": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "example": "59cf9c30-3c4c-11e9-9523-2b494265f035"
+        },
+        "signedData": {
+          "type": "string",
+          "description": "File SHA1 hash",
+          "required": true,
+          "example": "10756f558f615522289172a3a3bd1bfa9cfa72f5"
+        },
+        "signature": {
+          "type": "string",
+          "required": true,
+          "example": "SIGNATURE"
+        },
+        "certificate": {
+          "type": "string",
+          "required": true,
+          "example": "CERTIFICATE_PEM"
+        },
+        "meta": {
+          "type": "object",
+          "required": true,
+          "example": {
+            "isTest": true
+          }
+        }
+      }
+    },
+    "p7sSignature": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "example": "114c2c90-3d9f-11e9-af4c-77dd2ce8254e"
+        },
+        "fileId": {
+          "type": "string",
+          "example": "59cf9c30-3c4c-11e9-9523-2b494265f035"
+        },
+        "p7s": {
+          "type": "string",
+          "example": "SIGNATURE"
+        },
+        "meta": {
+          "type": "object",
+          "example": {
+            "isTest": true
+          }
+        },
+        "createdBy": {
+          "type": "string",
+          "example": "user1"
+        },
+        "updatedBy": {
+          "type": "string",
+          "example": "user1"
+        },
+        "createdAt": {
+          "type": "string",
+          "example": "2019-02-18T12:48:07.336Z"
+        },
+        "updatedAt": {
+          "type": "string",
+          "example": "2019-02-18T12:50:32.539Z"
+        }
+      }
+    },
+    "p7sSignatureToCreate": {
+      "type": "object",
+      "properties": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "example": "59cf9c30-3c4c-11e9-9523-2b494265f035"
+        },
+        "p7s": {
+          "type": "string",
+          "required": true,
+          "example": "SIGNATURE"
+        },
+        "meta": {
+          "type": "object",
+          "required": true,
+          "example": {
+            "isTest": true
+          }
+        }
+      }
+    },
+    "p7sSignatureToUpdate": {
+      "type": "object",
+      "properties": {
+        "p7s": {
+          "type": "string",
+          "required": true,
+          "example": "SIGNATURE"
+        },
+        "meta": {
+          "type": "object",
+          "required": true,
+          "example": {
+            "isTest": true
+          }
+        }
+      }
+    },
+    "asicManifestToCreate": {
+      "type": "object",
+      "properties": {
+        "filesIds": {
+          "type": "array",
+          "required": true,
+          "example": [
+            "5a4af030-bc10-11e9-aacf-1d0af49a37ff",
+            "1410dc80-babf-11e9-a67d-c773170682b3"
+          ]
+        }
+      }
+    },
+    "asiceToCreate": {
+      "type": "object",
+      "properties": {
+        "manifestFileId": {
+          "type": "string",
+          "required": true,
+          "example": "85bbdb80-bc1f-11e9-85ee-9fe6716a17b2"
+        },
+        "filesIds": {
+          "type": "array",
+          "required": true,
+          "example": [
+            "5a4af030-bc10-11e9-aacf-1d0af49a37ff",
+            "1410dc80-babf-11e9-a67d-c773170682b3"
+          ]
+        }
+      }
+    },
+    "asicsToCreate": {
+      "type": "object",
+      "properties": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "example": "0f7cae00-8edc-11ea-9208-db11df6ff89f"
+        }
+      }
+    },
+    "createFileNameQueryParam": {
+      "name": "name",
+      "description": "File name.",
+      "in": "query",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "example": "scan.png"
+      }
+    },
+    "createFileDescriptionQueryParam": {
+      "name": "description",
+      "description": "Description.",
+      "in": "query",
+      "schema": {
+        "type": "string",
+        "example": "Скан паспорта"
+      }
+    },
+    "createFileContainerIdQueryParam": {
+      "name": "container_id",
+      "description": "Container ID.",
+      "in": "query",
+      "required": true,
+      "schema": {
+        "type": "number",
+        "example": 1
+      }
+    },
+    "createFileMetaQueryParam": {
+      "name": "meta",
+      "description": "Meta as BASE64 of JSON string.",
+      "in": "query",
+      "schema": {
+        "type": "string",
+        "example": "eyJ0ZXN0IjogdHJ1ZX0="
+      }
+    },
+    "withPreviewQueryParam": {
+      "name": "with_preview",
+      "description": "Generate preview indicator.",
+      "in": "query",
+      "schema": {
+        "type": "boolean",
+        "example": true
+      }
+    },
+    "getP7sSignatureAsFileQueryParam": {
+      "name": "as_file",
+      "description": "As file.",
+      "in": "query",
+      "required": true,
+      "schema": {
+        "type": "boolean",
+        "example": true
+      }
+    },
+    "deletionResult": {
+      "type": "object",
+      "properties": {
+        "deletedRowsCount": {
+          "type": "number",
+          "example": 1
+        }
+      }
+    },
+    "responseMetaWithPagination": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number",
+          "example": 125
+        },
+        "offset": {
+          "type": "number",
+          "example": 0
+        },
+        "limit": {
+          "type": "number",
+          "example": 20
+        }
+      }
+    },
+    "containerIdParam": {
+      "name": "id",
+      "description": "Container ID.",
+      "in": "path",
+      "required": true,
+      "schema": {
+        "type": "number",
+        "example": 1
+      }
+    },
+    "fileIdParam": {
+      "name": "id",
+      "description": "File ID.",
+      "in": "path",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "example": "59cf9c30-3c4c-11e9-9523-2b494265f035"
+      }
+    },
+    "filesIdsParam": {
+      "name": "ids",
+      "description": "Files IDs separated by comma.",
+      "in": "path",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "example": "59cf9c30-3c4c-11e9-9523-2b494265f035,59cf9c30-3c4c-11e9-9523-2b494265f035"
+      }
+    },
+    "signatureIdParam": {
+      "name": "id",
+      "description": "Signature ID.",
+      "in": "path",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "example": "114c2c90-3d9f-11e9-af4c-77dd2ce8254e"
+      }
+    },
+    "p7sSignatureIdParam": {
+      "name": "id",
+      "description": "P7S signature ID.",
+      "in": "path",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "example": "114c2c90-3d9f-11e9-af4c-77dd2ce8254e"
+      }
+    },
+    "fileIdFilter": {
+      "name": "file_id",
+      "description": "Filter by file ID.",
+      "in": "query",
+      "schema": {
+        "type": "string",
+        "example": "d64c47d0-337e-11e9-aa76-03fbdd91a82b"
+      }
+    },
+    "parentIdFilter": {
+      "name": "parent_id",
+      "description": "Filter by parent ID.",
+      "in": "query",
+      "schema": {
+        "type": "number",
+        "example": 20
+      }
+    },
+    "offset": {
+      "name": "offset",
+      "description": "Result list offset.",
+      "in": "query",
+      "schema": {
+        "type": "number",
+        "example": 0
+      }
+    },
+    "limit": {
+      "name": "limit",
+      "description": "Result list limit.",
+      "in": "query",
+      "schema": {
+        "type": "number",
+        "example": 20
+      }
+    },
+    "tokenHeader": {
+      "name": "token",
+      "description": "API token header.",
+      "in": "header",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "example": "Basic dGVzdDE6YmFpcmVpOG1vaGdpZXF1N1JlZWdhaFRlQ2lUaG9vcXU0dXNpZVRhZ2llNWllc2hpYWw0c2hvaEYwZWlLN2FnaA=="
+      }
+    },
+    "contentTypeHeader": {
+      "name": "Content-Type",
+      "description": "Content-type header.",
+      "in": "header",
+      "schema": {
+        "type": "string",
+        "example": "image/png"
+      }
+    },
+    "contentLengthHeader": {
+      "name": "Content-Length",
+      "description": "Content-length header.",
+      "in": "header",
+      "schema": {
+        "type": "number",
+        "example": 120000
+      }
+    }
+  }
+}

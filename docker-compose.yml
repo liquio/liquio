@@ -1,0 +1,284 @@
+services:
+  id-front:
+    build:
+      context: ./id-front
+    restart: on-failure
+    ports:
+      - "${SVC_ID_PORT}:8080"
+    volumes:
+      - ./config/id/config.json:/usr/share/nginx/html/config.json:ro
+    depends_on:
+      - id-api
+
+  id-api:
+    build:
+      context: ./id-api
+    restart: on-failure
+    ports:
+      - "${SVC_ID_API_PORT}:8100"
+    volumes:
+      - ./config/id:/var/www/config:ro
+    depends_on:
+      - id-migrations
+      - rabbitmq
+      - redis
+
+  id-migrations:
+    build:
+      context: ./id-api
+    command: ["npm", "run", "migration-up"]
+    restart: on-failure
+    volumes:
+      - ./config/id:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  admin-api:
+    build:
+      context: ./admin-api
+    restart: on-failure
+    ports:
+      - "${SVC_ADMIN_API_PORT}:8102"
+    volumes:
+      - ./config/admin-api:/var/www/config:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  admin-front:
+    build:
+      context: ./admin-front
+      args:
+        NODE_MAX_OLD_SPACE_SIZE: 1536
+      additional_contexts:
+        core: ./front-core
+    restart: on-failure
+    ports:
+      - "${SVC_ADMIN_FRONT_PORT}:8080"
+    volumes:
+      - ./config/admin-front/config.json:/usr/share/nginx/html/config.json:ro
+    depends_on:
+      - admin-api
+
+  cabinet-api:
+    build:
+      context: ./cabinet-api
+    restart: on-failure
+    ports:
+      - "${SVC_CABINET_API_PORT}:8101"
+    volumes:
+      - ./config/cabinet-api:/var/www/config:ro
+    depends_on:
+      - postgres
+      - redis
+
+  cabinet-front:
+    build:
+      context: ./cabinet-front
+      args:
+        NODE_MAX_OLD_SPACE_SIZE: 1536
+      additional_contexts:
+        core: ./front-core
+    restart: on-failure
+    ports:
+      - "${SVC_CABINET_FRONT_PORT}:8080"
+    volumes:
+      - ./config/cabinet-front/config.json:/usr/share/nginx/html/config.json:ro
+    depends_on:
+      - cabinet-api
+
+  manager-migrations:
+    build:
+      context: ./manager
+    command: ["npm", "run", "migration-up"]
+    restart: on-failure
+    volumes:
+      - ./config/manager:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  manager:
+    build:
+      context: ./manager
+    restart: on-failure
+    volumes:
+      - ./config/manager:/var/www/config:ro
+    depends_on:
+      - manager-migrations
+      - rabbitmq
+      - redis
+
+  register:
+    build:
+      context: ./register
+    restart: on-failure
+    ports:
+      - "${SVC_REGISTER_PORT}:8103"
+    volumes:
+      - ./config/register:/var/www/config:ro
+    depends_on:
+      - register-migrations
+
+  register-migrations:
+    build:
+      context: ./register
+    command: ["npm", "run", "migration-up"]
+    restart: on-failure
+    volumes:
+      - ./config/register:/var/www/config:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  event:
+    build:
+      context: ./event
+    restart: on-failure
+    volumes:
+      - ./config/event:/var/www/config:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  gateway:
+    build:
+      context: ./gateway
+    restart: on-failure
+    volumes:
+      - ./config/gateway:/var/www/config:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  sign-tool:
+    build:
+      context: ./sign-tool
+    restart: on-failure
+    ports:
+      - "${SVC_SIGN_TOOL_PORT}:3004"
+    volumes:
+      - ./config/sign-tool:/var/www/config:ro
+
+  task:
+    build:
+      context: ./task
+    restart: on-failure
+    volumes:
+      - ./config/task:/var/www/config:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  notification:
+    build:
+      context: ./notification
+    restart: on-failure
+    volumes:
+      - ./config/notification:/var/www/config:ro
+    depends_on:
+      - notification-migrations
+
+  notification-migrations:
+    build:
+      context: ./notification
+    command: ["npm", "run", "migration-up"]
+    restart: on-failure
+    volumes:
+      - ./config/notification:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  external-reader:
+    build:
+      context: ./external-reader
+    restart: on-failure
+    ports:
+      - "${SVC_EXTERNAL_READER_PORT}:8104"
+    volumes:
+      - ./config/external-reader:/var/www/config:ro
+
+  pdf-generator:
+    build:
+      context: ./pdf-generator
+    restart: on-failure
+    ports:
+      - "${SVC_PDF_GENERATOR_PORT}:7007"
+    volumes:
+      - ./config/pdf-generator:/var/www/app/config:ro
+
+  filestorage:
+    build:
+      context: ./filestorage
+    restart: on-failure
+    ports:
+      - "${SVC_FILESTORAGE_PORT}:8105"
+    volumes:
+      - ./config/filestorage:/var/www/config:ro
+    depends_on:
+      - filestorage-migrations
+
+  filestorage-migrations:
+    build:
+      context: ./filestorage
+    command: ["npm", "run", "migration-up"]
+    restart: on-failure
+    volumes:
+      - ./config/filestorage:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_NAME: ${POSTGRES_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init/db/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:

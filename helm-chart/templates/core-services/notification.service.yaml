@@ -1,0 +1,20 @@
+{{- if .Values.services.notification.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-notification
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: notification
+spec:
+  type: {{ .Values.services.notification.type }}
+  ports:
+    - port: {{ .Values.services.notification.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: notification
+{{- end }}

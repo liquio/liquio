@@ -1,0 +1,66 @@
+.ExcelTable {
+  border: 1px solid #b0cbef;
+  border-width: 1px 0px 0px 1px;
+  font-size: 11pt;
+  font-weight: 100;
+  border-spacing: 0px;
+  border-collapse: collapse;
+  padding: 10px;
+  min-width: 100%;
+  padding: 0;
+}
+
+.ExcelTable TH {
+  background-color: #efefef;
+  font-weight: bold;
+  font-size: 14px;
+  border: 1px solid #9eb6ce;
+  border-width: 0px 1px 1px 0px;
+  height: 17px;
+  line-height: 17px;
+}
+
+.ExcelTable TD {
+  border: 0px;
+  background-color: white;
+  padding: 0px 4px 0px 2px;
+  border: 1px solid #d0d7e5;
+  border-width: 0px 1px 1px 0px;
+}
+
+.ExcelTable TD B {
+  border: 0px;
+  background-color: white;
+  font-weight: bold;
+}
+
+.ExcelTable TD.heading {
+  background-color: #efefef;
+  text-align: center;
+  border: 1px solid #9eb6ce;
+  border-width: 0px 1px 1px 0px;
+  font-weight: bold;
+}
+
+TH {
+  text-align: center;
+}
+
+.ExcelTableTab {
+  background: #efefef;
+  border: 1px solid #767676;
+  padding: 2px;
+  cursor: pointer;
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+
+.ExcelTableTabsWrapper {
+  display: flex;
+}
+
+.ExcelTableDarkTheme.ExcelTable TH,
+.ExcelTableDarkTheme.ExcelTable TD.heading,
+.ExcelTableDarkTheme.ExcelTable TD {
+  color: #000;
+}

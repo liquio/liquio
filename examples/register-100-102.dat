@@ -1,0 +1,237 @@
+{
+  "key": {
+    "data": {},
+    "id": 102,
+    "registerId": 100,
+    "name": "Groups",
+    "description": "This register contains information about educational groups within institutions, including group codes, names, and institutional affiliations.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "institutionCode": {
+          "type": "string",
+          "description": "Institution Code",
+          "public": true
+        },
+        "institutionName": {
+          "type": "string",
+          "description": "Institution Name",
+          "public": true
+        },
+        "groupCode": {
+          "type": "string",
+          "description": "Group Code",
+          "public": true
+        },
+        "groupName": {
+          "type": "string",
+          "description": "Group Name",
+          "public": true
+        },
+        "groupType": {
+          "type": "string",
+          "description": "Group Type (e.g., Class, Course, Department)",
+          "public": true
+        },
+        "academicYear": {
+          "type": "string",
+          "description": "Academic Year",
+          "public": true
+        },
+        "capacity": {
+          "type": "number",
+          "description": "Group Capacity",
+          "public": true
+        },
+        "currentEnrollment": {
+          "type": "number",
+          "description": "Current Enrollment Count",
+          "public": true
+        },
+        "supervisorName": {
+          "type": "string",
+          "description": "Group Supervisor/Teacher Name",
+          "public": true
+        }
+      },
+      "required": [
+        "institutionCode",
+        "institutionName",
+        "groupCode",
+        "groupName",
+        "groupType",
+        "academicYear"
+      ]
+    },
+    "parentId": null,
+    "meta": {
+      "isPersonal": false,
+      "createdByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      },
+      "updatedByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      }
+    },
+    "toString": "(record) => record.data.groupName + ' (' + record.data.groupCode + ') - ' + record.data.institutionName;",
+    "toSearchString": "(record) => { return [record.data.groupCode, record.data.groupName, record.data.institutionCode]; }",
+    "createdBy": "register",
+    "updatedBy": "register",
+    "accessMode": "full",
+    "isEncrypted": false,
+    "toExport": "(record) => { return null; }",
+    "createdAt": "2025-07-29T10:43:45.800Z",
+    "updatedAt": "2025-07-29T10:43:45.800Z"
+  },
+  "register": {
+    "data": {},
+    "id": 100,
+    "name": "Education",
+    "description": "This register contains information about educational institutions, groups, and students.",
+    "parentId": null,
+    "meta": {
+      "createdByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      },
+      "updatedByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      }
+    },
+    "createdBy": "register",
+    "updatedBy": "register",
+    "createdAt": "2025-07-29T10:43:16.637Z",
+    "updatedAt": "2025-07-29T10:43:45.794Z"
+  },
+  "records": [
+    {
+      "data": {
+        "capacity": 30,
+        "groupCode": "CS-2025-A",
+        "groupName": "Computer Science A",
+        "groupType": "Class",
+        "academicYear": "2025/2026",
+        "institutionCode": "1234567890",
+        "institutionName": "Kyiv Polytechnic Institute",
+        "currentEnrollment": 28
+      },
+      "id": "47569640-6c91-11f0-8f7e-0f958f5b6fab",
+      "registerId": 100,
+      "keyId": 102,
+      "meta": {
+        "user": "register",
+        "person": {
+          "id": "000000000000000000000001",
+          "name": ""
+        },
+        "historyMeta": {
+          "accessInfo": {
+            "systemId": null,
+            "userId": "000000000000000000000001",
+            "userName": "",
+            "orgName": null,
+            "position": null,
+            "remarks": null
+          }
+        }
+      },
+      "allowTokens": [],
+      "createdBy": "register",
+      "updatedBy": "register",
+      "createdAt": "2025-07-29T15:32:47.140Z",
+      "updatedAt": "2025-07-29T15:32:47.140Z",
+      "signature": null,
+      "searchString": "cs-2025-a",
+      "searchString2": "computer science a",
+      "searchString3": "1234567890"
+    },
+    {
+      "data": {
+        "capacity": 25,
+        "groupCode": "ENG-BA-1",
+        "groupName": "English BA First Year",
+        "groupType": "Course",
+        "academicYear": "2025/2026",
+        "institutionCode": "0987654321",
+        "institutionName": "Lviv National University",
+        "currentEnrollment": 25
+      },
+      "id": "5c5b7240-6c91-11f0-8f7e-0f958f5b6fab",
+      "registerId": 100,
+      "keyId": 102,
+      "meta": {
+        "user": "register",
+        "person": {
+          "id": "000000000000000000000001",
+          "name": ""
+        },
+        "historyMeta": {
+          "accessInfo": {
+            "systemId": null,
+            "userId": "000000000000000000000001",
+            "userName": "",
+            "orgName": null,
+            "position": null,
+            "remarks": null
+          }
+        }
+      },
+      "allowTokens": [],
+      "createdBy": "register",
+      "updatedBy": "register",
+      "createdAt": "2025-07-29T15:33:22.404Z",
+      "updatedAt": "2025-07-29T15:33:22.404Z",
+      "signature": null,
+      "searchString": "eng-ba-1",
+      "searchString2": "english ba first year",
+      "searchString3": "0987654321"
+    },
+    {
+      "data": {
+        "capacity": 20,
+        "groupCode": "DS-MAG-2",
+        "groupName": "Data Science Master Group",
+        "groupType": "Department",
+        "academicYear": "2025/2026",
+        "institutionCode": "1234567890",
+        "institutionName": "Kyiv Polytechnic Institute",
+        "currentEnrollment": 18
+      },
+      "id": "6f8043a0-6c91-11f0-8f7e-0f958f5b6fab",
+      "registerId": 100,
+      "keyId": 102,
+      "meta": {
+        "user": "register",
+        "person": {
+          "id": "000000000000000000000001",
+          "name": ""
+        },
+        "historyMeta": {
+          "accessInfo": {
+            "systemId": null,
+            "userId": "000000000000000000000001",
+            "userName": "",
+            "orgName": null,
+            "position": null,
+            "remarks": null
+          }
+        }
+      },
+      "allowTokens": [],
+      "createdBy": "register",
+      "updatedBy": "register",
+      "createdAt": "2025-07-29T15:33:54.522Z",
+      "updatedAt": "2025-07-29T15:33:54.522Z",
+      "signature": null,
+      "searchString": "ds-mag-2",
+      "searchString2": "data science master group",
+      "searchString3": "1234567890"
+    }
+  ],
+  "options": {
+    "onlySchema": false
+  }
+}

@@ -1,0 +1,14 @@
+# System.
+.DS_Store
+
+# IDE.
+.vscode/
+.vs/
+.idea/
+.dccache
+
+# External modules.
+node_modules/
+
+# Tests
+/coverage

@@ -1,0 +1,7 @@
+{
+  "services": [
+    { "name": "event", "minVersion": "0.1.0" },
+    { "name": "task", "minVersion": "0.1.0" },
+    { "name": "gateway", "minVersion": "0.1.0" }
+  ]
+}

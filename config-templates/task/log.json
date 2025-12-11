@@ -1,0 +1,35 @@
+{
+  "isFullLogsEnabled": false,
+  "console": [],
+  "file": [
+    "./logs/"
+  ],
+  "skipLoggingRoutesList": [
+    {
+      "comment": "Skip dictionaries list.",
+      "pattern": "^/dictionaries$"
+    },
+    {
+      "comment": "Skip documents.",
+      "pattern": "^/registers/keys/.{1,}/records_tree$"
+    }
+  ],
+  "responsesData": false,
+  "stackTrace": false,
+  "excludeParams": [
+    "token",
+    "access_token",
+    "refresh_token",
+    "oauth-token",
+    "authorization",
+    "Authorization",
+    "secret",
+    "password",
+    "oldPassword",
+    "oldPasswords",
+    "client_secret",
+    "_token=",
+    "client_id=",
+    "client_secret="
+  ]
+}

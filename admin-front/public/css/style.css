@@ -1,0 +1,96 @@
+body,
+.djs-direct-editing-content,
+.rst__rowTitle,
+.djs-popup-body .entry > span,
+.djs-popup .entry:before {
+    color: #000;
+}
+
+.djs-overlay .djs-context-pad .entry {
+    box-shadow: 0 0 0px 1px #ccc;
+    box-sizing: border-box;
+    background: #fafafa;
+    color: #000;
+}
+
+.ps__rail-y {
+    z-index: 10000;
+}
+
+svg.new-parent.hover {
+    background: #ddd!important;
+    
+}
+
+a {
+    color: #BB86FC;
+}
+
+body, #root {
+    background: #4E4E4E!important;
+}
+
+.rst__rowContents {
+    background-color: rgba(0, 0, 0, 0.1)!important;
+}
+
+.rst__rowTitle {
+    color: #fff!important;
+}
+
+.rst__moveHandle {
+    width: 30px!important;
+    background-color: #393939!important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' class='MuiSvgIcon-root' focusable='false' viewBox='0 0 24 24' aria-hidden='true'%3E%3Cpath fill='rgba(255, 255, 255, 0.7)' d='M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'%3E%3C/path%3E%3C/svg%3E")!important;
+    background-position: center center!important;
+    background-repeat: no-repeat!important;
+    box-shadow: none! important;
+}
+
+.rst__moveHandle {
+    border-radius: 0px!important;
+}
+
+.rst__rowContents {
+    box-shadow: none!important;
+    border-radius: 0px!important;
+}
+
+.rst__lineHalfHorizontalRight::before,
+.rst__lineFullVertical::after,
+.rst__lineHalfVerticalTop::after,
+.rst__lineHalfVerticalBottom::after,
+.rst__lineChildren::after {
+    background-color: rgba(255, 255, 255, 0.6)!important;
+}
+
+.pg-viewer-wrapper .document-container {
+    background: #ffffffc4;
+    color: #000
+}
+
+.error-marker {
+    position: absolute;
+    background-color: #FFD600;
+}
+
+.recharts-tooltip-label {
+    color: #000;
+}
+
+.recharts-default-tooltip {
+    overflow-y: auto; 
+}
+
+.recharts-tooltip-item-list {
+    height: 300
+}
+
+.react-resizable-handle {
+    width: 30px;
+    height: 30px;
+}
+
+.bjs-powered-by {
+    display: none;
+}

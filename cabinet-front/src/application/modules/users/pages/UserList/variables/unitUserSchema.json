@@ -1,0 +1,63 @@
+{
+  "type": "object",
+  "required": ["ipn", "lastName", "firstName"],
+  "properties": {
+    "ipn": {
+      "type": "string",
+      "description": "РНОКПП або серія та номер паспорта або номер ID-картки",
+      "checkValid": [
+        {
+          "isValid": "(propertyData) => !!propertyData && propertyData.length === 8 || !!propertyData && propertyData.length === 9 || !!propertyData && propertyData.length === 10",
+          "errorText": "Некоректне значення"
+        }
+      ],
+      "snippet": "Ipn"
+    },
+    "lastName": {
+      "type": "string",
+      "description": "Прізвище",
+      "useTrim": true,
+      "checkValid": [
+        {
+          "isValid": "(propertyValue, stepValue, documentValue) => /^[-'‘’ а-яА-ЯїЇіІєЄґҐ]+$/.test(propertyValue)",
+          "errorText": "Не може містити латинські букви та символи, окрім дефісу та пробілу"
+        },
+        {
+          "isValid": "(propertyValue, stepValue, documentValue) => propertyValue !== '-' && propertyValue !== '–' && propertyValue !== '—' && propertyValue !== '\\'' &&  propertyValue !== ' '",
+          "errorText": "Має містити букви"
+        }
+      ],
+      "snippet": "LastName"
+    },
+    "firstName": {
+      "type": "string",
+      "description": "Ім'я",
+      "useTrim": true,
+      "checkValid": [
+        {
+          "isValid": "(propertyValue, stepValue, documentValue) => /^[-'‘’ а-яА-ЯїЇіІєЄґҐ]+$/.test(propertyValue)",
+          "errorText": "Не може містити латинські букви та символи, окрім дефісу та пробілу"
+        },
+        {
+          "isValid": "(propertyValue, stepValue, documentValue) => propertyValue !== '-' && propertyValue !== '–' && propertyValue !== '—' && propertyValue !== '\\'' &&  propertyValue !== ' '",
+          "errorText": "Має містити букви"
+        }
+      ]
+    },
+    "middleName": {
+      "type": "string",
+      "useTrim": true,
+      "description": "По батькові",
+      "checkValid": [
+        {
+          "isValid": "(propertyValue, stepValue, documentValue) => /^[-'‘’ а-яА-ЯїЇіІєЄґҐ]+$/.test(propertyValue)",
+          "errorText": "Не може містити латинські букви та символи, окрім дефісу та пробілу"
+        },
+        {
+          "isValid": "(propertyValue, stepValue, documentValue) => propertyValue !== '-' && propertyValue !== '–' && propertyValue !== '—' && propertyValue !== '\\'' &&  propertyValue !== ' '",
+          "errorText": "Має містити букви"
+        }
+      ]
+    }
+  }
+}

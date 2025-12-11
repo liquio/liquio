@@ -1,0 +1,23 @@
+{
+  "title": "Рішення про ліцензію",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['decision']; }",
+  "properties": {
+    "decision": {
+      "type": "object",
+      "description": "Причини видачі або відмови",
+      "properties": {
+        "text": {
+          "type": "string",
+          "control": "textArea",
+          "sample": "Опишіть причини видачі або відмови",
+          "minLength": 10,
+          "maxLength": 50000
+        }
+      },
+      "required": ["text"]
+    }
+  },
+  "required": ["decision"]
+}

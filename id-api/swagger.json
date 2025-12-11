@@ -1,0 +1,569 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "ID",
+    "description": "Auth service"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "basePath": "/",
+  "paths": {
+    "/test/ping": {
+      "get": {
+        "tags": [
+          "Test"
+        ],
+        "summary": "Ping API",
+        "description": "Returns test response.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Test response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "processPid": {
+                      "type": "number",
+                      "example": 12345
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "pong"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/test/ping_with_auth": {
+      "get": {
+        "tags": [
+          "Test"
+        ],
+        "summary": "Ping API",
+        "description": "Returns test response.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Test response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "processPid": {
+                      "type": "number",
+                      "example": 12345
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "pong"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logout": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout user",
+        "description": "Logout and redirect to root page.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "301": {
+            "description": "Redirect to root page."
+          }
+        }
+      }
+    },
+    "/authorise/eds/sign": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get data to sign",
+        "description": "Returns data to sign.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Test response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0aW1lc3RhbXAiOjE1NzE0MDYzMzM2NzcsInJhbmRvbSI6ImQwMTRkMGI2ZjdmMTIxOThiMDA5NmRhNGY1OGI3MzdhMmM4MDU0MDBiZGZmOGM1MzUwMTQ1Y2RjYzdiYTNiMWRmN2U5NzJjZjE4YzA3ZjJkNGZjMjgzZDg5OTU0MTg0ZjM2YjQzMTNjYjQ1YTBiNjA5MzRmYjZlYjBiZGJkNWE1IiwiaWF0IjoxNTcxNDA2MzMzLCJleHAiOjE1NzE0MDY5MzN9.PUqFx8g-f0jppuxORY24QJAsqw3dJh7mmRrp_1m_iDM"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Check signed data.",
+        "description": "Returns sign info."
+      }
+    },
+    "/authorise/eds": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Auth user with EDS strategy.",
+        "description": "Auth user or redirect to registration."
+      }
+    },
+    "/authorise/eds/serverList": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "EDS servers list",
+        "description": "Returns EDS servers list."
+      }
+    },
+    "/authorise/govid/info": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Info to auth via GovID",
+        "description": "Returns info to auth via GovID."
+      }
+    },
+    "/authorise/govid": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Auth user with GovID strategy.",
+        "description": "Auth user or redirect to registration."
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get users",
+        "description": "Returns users list."
+      },
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Create user"
+      }
+    },
+    "/api/users/:id": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get user"
+      },
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update user"
+      },
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Delete user"
+      }
+    },
+    "/auth": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get auth info",
+        "description": "Returns auth info (redirect URL, user info, provider info, two factor indicator)."
+      }
+    },
+    "/sign_in": {
+      "get": {
+        "tags": [
+          "Sign in"
+        ],
+        "summary": "Get sign in info or redirect to root"
+      }
+    },
+    "/sign_in/requirements": {
+      "get": {
+        "tags": [
+          "Sign in"
+        ],
+        "summary": "Render sign in requirements page"
+      }
+    },
+    "/sign_in/requirements_phone": {
+      "get": {
+        "tags": [
+          "Sign in"
+        ],
+        "summary": "Redirect to registration based on provider and phone validation indicator (?)"
+      }
+    },
+    "/sign_in/requirements_phone_set": {
+      "get": {
+        "tags": [
+          "Sign in"
+        ],
+        "summary": "Render sign in requirements page"
+      }
+    },
+    "/sign_in/requirements_phone_set/confirm": {
+      "post": {
+        "tags": [
+          "Sign in"
+        ],
+        "summary": "Set phone is valid"
+      }
+    },
+    "/relogin": {
+      "get": {
+        "tags": [
+          "Sign in"
+        ],
+        "summary": "Logout and redirect to '/sign_in/requirements_phone' (?)"
+      }
+    },
+    "/sign_up": {
+      "get": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Render sign up confirmation page"
+      }
+    },
+    "/sign_up/confirmation/email/exist": {
+      "get": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Check email exists"
+      }
+    },
+    "/sign_up/confirmation/email/send": {
+      "get": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Send email with confirmation code"
+      }
+    },
+    "/sign_up/confirmation/email/verify": {
+      "get": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Confirm email by code"
+      }
+    },
+    "/sign_up/confirmation/phone/exist": {
+      "get": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Check phone exists"
+      }
+    },
+    "/sign_up/confirmation/phone/send": {
+      "get": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Send SMS with confirmation code"
+      }
+    },
+    "/sign_up/confirmation/phone/verify": {
+      "get": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Check code but do not confirm phone"
+      },
+      "post": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Confirm phone by code"
+      }
+    },
+    "/sign_up/confirmation/phone/check": {
+      "post": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Confirm current user phone by code"
+      }
+    },
+    "/sign_up/confirmation": {
+      "get": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Get sign up process info"
+      },
+      "post": {
+        "tags": [
+          "Sign up"
+        ],
+        "summary": "Sign up user"
+      }
+    },
+    "/authorise": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Auth user - redirect with auth code"
+      }
+    },
+    "/oauth/token": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Check auth token"
+      },
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Create auth token by auth code"
+      }
+    },
+    "/authorise/continue": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get user state"
+      },
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Save user state"
+      }
+    },
+    "/api/clients": {
+      "get": {
+        "tags": [
+          "Client"
+        ],
+        "summary": "Get clients"
+      },
+      "post": {
+        "tags": [
+          "Client"
+        ],
+        "summary": "Create client"
+      }
+    },
+    "/api/clients/getByUrl": {
+      "get": {
+        "tags": [
+          "Client"
+        ],
+        "summary": "Get client by URL"
+      }
+    },
+    "/api/clients/all_scope_fields": {
+      "get": {
+        "tags": [
+          "Client"
+        ],
+        "summary": "Get default scope"
+      }
+    },
+    "/api/clients/:id": {
+      "get": {
+        "tags": [
+          "Client"
+        ],
+        "summary": "Get client info"
+      },
+      "put": {
+        "tags": [
+          "Client"
+        ],
+        "summary": "Update client"
+      },
+      "delete": {
+        "tags": [
+          "Client"
+        ],
+        "summary": "Delete client"
+      }
+    },
+    "/logoff/:service": {
+      "get": {
+        "tags": [
+          "Service"
+        ],
+        "summary": "Logoff user for provider"
+      }
+    },
+    "/user/info/setValidPhone": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Set current user phone validation indicator"
+      }
+    },
+    "/removeConfirmCode": {
+      "get": {
+        "tags": [
+          "Confirmation code"
+        ],
+        "summary": "Remove confirmation code"
+      }
+    },
+    "/subscribe": {
+      "get": {
+        "tags": [
+          "Subscription"
+        ],
+        "summary": "Subscribe user to promo"
+      }
+    },
+    "/user/info/email/send": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Send code to confirm new email"
+      }
+    },
+    "/user/info/email/check": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Check email exist"
+      }
+    },
+    "/user/info/email/set": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Set new email"
+      }
+    },
+    "/user/info": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get user info"
+      },
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update user info"
+      }
+    },
+    "/user/info/phone": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get user info by phone"
+      }
+    },
+    "/user/info/id": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get user info by ID"
+      }
+    },
+    "/user/info/ipn": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get users info by IPNs list"
+      }
+    },
+    "/user/info/search": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Search users"
+      }
+    },
+    "/user/logout_other_sessions": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Logout user other sessions"
+      }
+    },
+    "/user": {
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Delete current user"
+      }
+    },
+    "/oauth/token/debug_user_code": {
+      "post": {
+        "tags": [
+          "Debug"
+        ],
+        "summary": "Create auth code for debug user"
+      }
+    },
+    "/oauth/token/test_code": {
+      "post": {
+        "tags": [
+          "Debug"
+        ],
+        "summary": "Add test code for user"
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "console": [],
+  "file": [
+    "./logs/"
+  ],
+  "excludeParams": [
+    "token",
+    "access_token",
+    "refresh_token",
+    "oauth-token",
+    "authorization",
+    "Authorization",
+    "secret",
+    "password",
+    "oldPassword",
+    "oldPasswords",
+    "client_secret",
+    "_token=",
+    "client_id=",
+    "client_secret="
+  ]
+}

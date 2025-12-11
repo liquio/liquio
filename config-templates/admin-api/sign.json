@@ -1,0 +1,5 @@
+{
+  "timeout": 30000,
+  "url": "http://eds-service",
+  "token": "<REDACTED>"
+}

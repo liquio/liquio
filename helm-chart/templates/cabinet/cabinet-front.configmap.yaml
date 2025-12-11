@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-cabinet-front-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  config.json: |
+    {
+      "application": {
+        "name": "liquio",
+        "environment": "dev",
+        "type": "manager",
+        "version": "0.1.0"
+      },
+      "certificateExpWarning": 10,
+      "variables": {
+        "dateFormat": "DD/MM/YYYY",
+        "dateTimeFormat": "DD/MM/YYYY HH:mm"
+      },
+      "defaultRoute": "/messages",
+      "backendUrl": "http://cabinet-api.{{ .Values.global.domain }}",
+      "authLink": "http://cabinet-api.{{ .Values.global.domain }}/redirect/auth",
+      "idAuthLink": "http://id.{{ .Values.global.domain }}/authorise",
+      "clientId": "liquio-portal",
+      "defaultLanguage": "en-GB"
+    }

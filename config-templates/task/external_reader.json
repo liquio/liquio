@@ -1,0 +1,5 @@
+{
+  "url": "http://external-reader:8104",
+  "basicAuthToken": "Basic <removed>",
+  "timeout": 30000
+}

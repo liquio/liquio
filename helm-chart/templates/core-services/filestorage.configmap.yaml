@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-filestorage-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # Database configuration
+  db.json: |
+    {
+      "host": "{{ include "liquio.postgresql.host" . }}",
+      "port": {{ .Values.config.database.port }},
+      "database": "filestorage",
+      "dialect": "postgres",
+      "username": "{{ .Values.config.database.username }}",
+      "password": "{{ include "liquio.postgresql.password" . }}",
+      "operatorsAliases": false,
+      "dialectOptions": {
+        "socketPath": "",
+        "supportBigNumbers": true,
+        "bigNumberStrings": true
+      },
+      "pool": {
+        "max": 5,
+        "min": 0,
+        "acquire": 30000,
+        "idle": 10000
+      },
+      "logging": false,
+      "migrationStorageTableName": "sequelize_meta"
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "hostname": "0.0.0.0",
+      "port": {{ .Values.services.filestorage.port }},
+      "maxBodySize": "10mb"
+    }
+
+  # Application configuration
+  app.json: |
+    {
+      "customer": "liquio",
+      "environment": "dev"
+    }
+
+  # Authentication configuration
+  auth.json: |
+    {
+      "token": "{{ include "liquio.filestorage.authToken" . }}"
+    }
+
+  # Admin configuration
+  admin.json: |
+    {
+      "enabled": true
+    }
+
+  # Logging configuration
+  log.json: |
+    {
+      "level": "info",
+      "excludeParams": [
+        "token",
+        "authorization",
+        "Authorization",
+        "oauth-token",
+        "secret",
+        "password",
+        "oldPassword",
+        "oldPasswords"
+      ]
+    }
+
+  # Pagination configuration
+  pagination.json: |
+    {
+      "defaultLimit": 20,
+      "maxLimit": 100
+    }
+
+  # Versions configuration
+  versions.json: |
+    {
+      "api": "1.0.0"
+    }
+
+  # Providers configuration
+  providers.json: |
+    {
+      "activeProvider": null,
+      "list": {
+        "openstack": {
+          "authVersion": 3,
+          "server": "https://id.os.g-cloud.de-novo.biz",
+          "routes": {
+            "getTokens": "/v3/auth/tokens"
+          },
+          "timeout": 30000,
+          "tenantName": "dev",
+          "account": {
+            "login": "test-user",
+            "password": "test-password",
+            "domainId": "default",
+            "projectId": "dia"
+          },
+          "container": "dev",
+          "isFilesCanBeDeleted": false,
+          "authCacheTtl": 60000
+        },
+        "minio": {
+          "server": "http://localhost:9000",
+          "bucket": "default",
+          "timeout": 30000,
+          "account": {
+            "login": "test-user",
+            "password": "test-password"
+          },
+          "isFilesCanBeDeleted": false
+        }
+      }
+    }
+
+  # Modules settings configuration
+  modules_settings.json: |
+    {}
+
+  # Preview configuration
+  preview.json: |
+    {
+      "server": "http://10.10.172.128:3345",
+      "routes": {
+        "generatePreview": "/preview",
+        "ping": "/test/ping"
+      },
+      "contentTypes": [
+        "image/png",
+        "image/jpg",
+        "image/jpeg",
+        "image/gif",
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/rtf",
+        "application/vnd.oasis.opendocument.text"
+      ],
+      "timeout": 5000
+    }

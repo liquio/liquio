@@ -1,0 +1,797 @@
+{
+  "workflowTemplate": {
+    "id": 1000,
+    "workflowTemplateCategoryId": 10,
+    "name": "Student editing",
+    "description": "",
+    "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\">\n  <bpmn2:collaboration id=\"Collaboration_0nuraky\">\n    <bpmn2:participant id=\"Participant_13s6x49\" name=\"Student editing\" processRef=\"Process_1\" />\n  </bpmn2:collaboration>\n  <bpmn2:process id=\"Process_1\" isExecutable=\"false\">\n    <bpmn2:laneSet id=\"LaneSet_0tuesg5\">\n      <bpmn2:lane id=\"Lane_1pta498\" name=\"Student\">\n        <bpmn2:flowNodeRef>event-1000005</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>event-1000006</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>event-1000007</bpmn2:flowNodeRef>\n      </bpmn2:lane>\n      <bpmn2:lane id=\"Lane_14qq1zh\" name=\"Authorized persons\">\n        <bpmn2:flowNodeRef>StartEvent_1</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>task-1000001</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>event-1000001</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>gateway-1000002</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>event-1000003</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>gateway-1000003</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>event-1000004</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>end-event-1</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>event-1000008</bpmn2:flowNodeRef>\n        <bpmn2:flowNodeRef>gateway-1000004</bpmn2:flowNodeRef>\n      </bpmn2:lane>\n    </bpmn2:laneSet>\n    <bpmn2:startEvent id=\"StartEvent_1\">\n      <bpmn2:outgoing>Flow_1r5juoh</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000001\" name=\"Student editing\">\n      <bpmn2:incoming>Flow_1r5juoh</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_04ktync</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:intermediateCatchEvent id=\"event-1000001\" name=\"Removing students from register (keyId: 100; registerId: 100)\">\n      <bpmn2:incoming>Flow_0urrw52</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0ymgr4r</bpmn2:outgoing>\n      <bpmn2:conditionalEventDefinition id=\"ConditionalEventDefinition_1v3sr6w\">\n        <bpmn2:condition xsi:type=\"bpmn2:tFormalExpression\" />\n      </bpmn2:conditionalEventDefinition>\n    </bpmn2:intermediateCatchEvent>\n    <bpmn2:sequenceFlow id=\"Flow_0ymgr4r\" sourceRef=\"event-1000001\" targetRef=\"event-1000005\" />\n    <bpmn2:sequenceFlow id=\"Flow_125zdim\" sourceRef=\"event-1000005\" targetRef=\"gateway-1000002\" />\n    <bpmn2:sequenceFlow id=\"Flow_1nufidu\" sourceRef=\"event-1000003\" targetRef=\"event-1000006\" />\n    <bpmn2:sequenceFlow id=\"Flow_1ag4arh\" sourceRef=\"event-1000006\" targetRef=\"gateway-1000003\" />\n    <bpmn2:sequenceFlow id=\"Flow_1ilc6c0\" sourceRef=\"event-1000004\" targetRef=\"event-1000007\" />\n    <bpmn2:sequenceFlow id=\"Flow_0swfqnl\" sourceRef=\"event-1000007\" targetRef=\"event-1000008\" />\n    <bpmn2:sequenceFlow id=\"Flow_1r5juoh\" sourceRef=\"StartEvent_1\" targetRef=\"task-1000001\" />\n    <bpmn2:exclusiveGateway id=\"gateway-1000002\" name=\"Students updated?\">\n      <bpmn2:incoming>Flow_125zdim</bpmn2:incoming>\n      <bpmn2:incoming>Flow_0yjwb91</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_1uw7d05</bpmn2:outgoing>\n      <bpmn2:outgoing>Flow_0wl3yku</bpmn2:outgoing>\n    </bpmn2:exclusiveGateway>\n    <bpmn2:intermediateCatchEvent id=\"event-1000003\" name=\"Updating students in register (keyId: 100; registerId: 100)\">\n      <bpmn2:incoming>Flow_1uw7d05</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_1nufidu</bpmn2:outgoing>\n      <bpmn2:conditionalEventDefinition id=\"ConditionalEventDefinition_0ene86g\">\n        <bpmn2:condition xsi:type=\"bpmn2:tFormalExpression\" />\n      </bpmn2:conditionalEventDefinition>\n    </bpmn2:intermediateCatchEvent>\n    <bpmn2:sequenceFlow id=\"Flow_1uw7d05\" name=\"Yes\" sourceRef=\"gateway-1000002\" targetRef=\"event-1000003\" />\n    <bpmn2:sequenceFlow id=\"Flow_0wl3yku\" name=\"No\" sourceRef=\"gateway-1000002\" targetRef=\"gateway-1000003\" />\n    <bpmn2:exclusiveGateway id=\"gateway-1000003\" name=\"Students added?\">\n      <bpmn2:incoming>Flow_0wl3yku</bpmn2:incoming>\n      <bpmn2:incoming>Flow_1ag4arh</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_1c9aa15</bpmn2:outgoing>\n      <bpmn2:outgoing>Flow_0wfvq1w</bpmn2:outgoing>\n    </bpmn2:exclusiveGateway>\n    <bpmn2:intermediateCatchEvent id=\"event-1000004\" name=\"Adding students to register (keyId: 100; registerId: 100)\">\n      <bpmn2:incoming>Flow_1c9aa15</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_1ilc6c0</bpmn2:outgoing>\n      <bpmn2:conditionalEventDefinition id=\"ConditionalEventDefinition_0z3tbz6\">\n        <bpmn2:condition xsi:type=\"bpmn2:tFormalExpression\" />\n      </bpmn2:conditionalEventDefinition>\n    </bpmn2:intermediateCatchEvent>\n    <bpmn2:endEvent id=\"end-event-1\" name=\"end-event-1\">\n      <bpmn2:incoming>Flow_07vjupt</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:intermediateThrowEvent id=\"event-1000008\" name=\"Notification of Student Update to Authorized Person\">\n      <bpmn2:incoming>Flow_0wfvq1w</bpmn2:incoming>\n      <bpmn2:incoming>Flow_0swfqnl</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_07vjupt</bpmn2:outgoing>\n      <bpmn2:messageEventDefinition id=\"MessageEventDefinition_0fwe2x8\" />\n    </bpmn2:intermediateThrowEvent>\n    <bpmn2:sequenceFlow id=\"Flow_1c9aa15\" name=\"Yes\" sourceRef=\"gateway-1000003\" targetRef=\"event-1000004\" />\n    <bpmn2:sequenceFlow id=\"Flow_0wfvq1w\" name=\"No\" sourceRef=\"gateway-1000003\" targetRef=\"event-1000008\" />\n    <bpmn2:sequenceFlow id=\"Flow_07vjupt\" sourceRef=\"event-1000008\" targetRef=\"end-event-1\" />\n    <bpmn2:intermediateThrowEvent id=\"event-1000005\" name=\"Notification of Removal from Directory to Students\">\n      <bpmn2:incoming>Flow_0ymgr4r</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_125zdim</bpmn2:outgoing>\n      <bpmn2:messageEventDefinition id=\"MessageEventDefinition_1ueddw1\" />\n    </bpmn2:intermediateThrowEvent>\n    <bpmn2:intermediateThrowEvent id=\"event-1000006\" name=\"Notification of Directory Update to Students\">\n      <bpmn2:incoming>Flow_1nufidu</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_1ag4arh</bpmn2:outgoing>\n      <bpmn2:messageEventDefinition id=\"MessageEventDefinition_1mzbazk\" />\n    </bpmn2:intermediateThrowEvent>\n    <bpmn2:intermediateThrowEvent id=\"event-1000007\" name=\"Notification of Directory Addition to Students\">\n      <bpmn2:incoming>Flow_1ilc6c0</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0swfqnl</bpmn2:outgoing>\n      <bpmn2:messageEventDefinition id=\"MessageEventDefinition_0x2firp\" />\n    </bpmn2:intermediateThrowEvent>\n    <bpmn2:sequenceFlow id=\"Flow_0urrw52\" name=\"Yes\" sourceRef=\"gateway-1000004\" targetRef=\"event-1000001\" />\n    <bpmn2:sequenceFlow id=\"Flow_0yjwb91\" name=\"No\" sourceRef=\"gateway-1000004\" targetRef=\"gateway-1000002\" />\n    <bpmn2:sequenceFlow id=\"Flow_04ktync\" sourceRef=\"task-1000001\" targetRef=\"gateway-1000004\" />\n    <bpmn2:exclusiveGateway id=\"gateway-1000004\" name=\"Students removed?\">\n      <bpmn2:incoming>Flow_04ktync</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0urrw52</bpmn2:outgoing>\n      <bpmn2:outgoing>Flow_0yjwb91</bpmn2:outgoing>\n    </bpmn2:exclusiveGateway>\n  </bpmn2:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Collaboration_0nuraky\">\n      <bpmndi:BPMNShape id=\"Participant_13s6x49_di\" bpmnElement=\"Participant_13s6x49\" isHorizontal=\"true\">\n        <dc:Bounds x=\"330\" y=\"580\" width=\"1130\" height=\"860\" />\n        <bpmndi:BPMNLabel />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Lane_14qq1zh_di\" bpmnElement=\"Lane_14qq1zh\" isHorizontal=\"true\">\n        <dc:Bounds x=\"360\" y=\"770\" width=\"1100\" height=\"670\" />\n        <bpmndi:BPMNLabel />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Lane_1pta498_di\" bpmnElement=\"Lane_1pta498\" isHorizontal=\"true\">\n        <dc:Bounds x=\"360\" y=\"580\" width=\"1100\" height=\"190\" />\n        <bpmndi:BPMNLabel />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_07vjupt_di\" bpmnElement=\"Flow_07vjupt\">\n        <di:waypoint x=\"1298\" y=\"1330\" />\n        <di:waypoint x=\"1372\" y=\"1330\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_0wfvq1w_di\" bpmnElement=\"Flow_0wfvq1w\">\n        <di:waypoint x=\"1060\" y=\"1245\" />\n        <di:waypoint x=\"1060\" y=\"1330\" />\n        <di:waypoint x=\"1262\" y=\"1330\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1068\" y=\"1263\" width=\"15\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1c9aa15_di\" bpmnElement=\"Flow_1c9aa15\">\n        <di:waypoint x=\"1085\" y=\"1220\" />\n        <di:waypoint x=\"1152\" y=\"1220\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1101\" y=\"1202\" width=\"19\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_0wl3yku_di\" bpmnElement=\"Flow_0wl3yku\">\n        <di:waypoint x=\"860\" y=\"1065\" />\n        <di:waypoint x=\"860\" y=\"1220\" />\n        <di:waypoint x=\"1035\" y=\"1220\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"868\" y=\"1089\" width=\"15\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1uw7d05_di\" bpmnElement=\"Flow_1uw7d05\">\n        <di:waypoint x=\"885\" y=\"1040\" />\n        <di:waypoint x=\"942\" y=\"1040\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"891\" y=\"1022\" width=\"19\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1r5juoh_di\" bpmnElement=\"Flow_1r5juoh\">\n        <di:waypoint x=\"428\" y=\"858\" />\n        <di:waypoint x=\"460\" y=\"858\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_0swfqnl_di\" bpmnElement=\"Flow_0swfqnl\">\n        <di:waypoint x=\"1280\" y=\"718\" />\n        <di:waypoint x=\"1280\" y=\"1312\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1ilc6c0_di\" bpmnElement=\"Flow_1ilc6c0\">\n        <di:waypoint x=\"1170\" y=\"1202\" />\n        <di:waypoint x=\"1170\" y=\"700\" />\n        <di:waypoint x=\"1262\" y=\"700\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1ag4arh_di\" bpmnElement=\"Flow_1ag4arh\">\n        <di:waypoint x=\"1060\" y=\"718\" />\n        <di:waypoint x=\"1060\" y=\"1195\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1nufidu_di\" bpmnElement=\"Flow_1nufidu\">\n        <di:waypoint x=\"960\" y=\"1022\" />\n        <di:waypoint x=\"960\" y=\"700\" />\n        <di:waypoint x=\"1042\" y=\"700\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_125zdim_di\" bpmnElement=\"Flow_125zdim\">\n        <di:waypoint x=\"860\" y=\"718\" />\n        <di:waypoint x=\"860\" y=\"1015\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_0ymgr4r_di\" bpmnElement=\"Flow_0ymgr4r\">\n        <di:waypoint x=\"760\" y=\"840\" />\n        <di:waypoint x=\"760\" y=\"700\" />\n        <di:waypoint x=\"842\" y=\"700\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_0urrw52_di\" bpmnElement=\"Flow_0urrw52\">\n        <di:waypoint x=\"665\" y=\"858\" />\n        <di:waypoint x=\"742\" y=\"858\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"680\" y=\"833\" width=\"19\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_0yjwb91_di\" bpmnElement=\"Flow_0yjwb91\">\n        <di:waypoint x=\"640\" y=\"883\" />\n        <di:waypoint x=\"640\" y=\"1040\" />\n        <di:waypoint x=\"835\" y=\"1040\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"648\" y=\"903\" width=\"15\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_04ktync_di\" bpmnElement=\"Flow_04ktync\">\n        <di:waypoint x=\"560\" y=\"858\" />\n        <di:waypoint x=\"615\" y=\"858\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"_BPMNShape_StartEvent_2\" bpmnElement=\"StartEvent_1\">\n        <dc:Bounds x=\"392\" y=\"840\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_0s3qdhg_di\" bpmnElement=\"task-1000001\">\n        <dc:Bounds x=\"460\" y=\"818\" width=\"100\" height=\"80\" />\n        <bpmndi:BPMNLabel />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_032mktr_di\" bpmnElement=\"event-1000001\">\n        <dc:Bounds x=\"742\" y=\"840\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"718\" y=\"886\" width=\"83\" height=\"66\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_15v9tb7_di\" bpmnElement=\"gateway-1000002\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"835\" y=\"1015\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"796\" y=\"986\" width=\"48\" height=\"27\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_0hk0paf_di\" bpmnElement=\"event-1000003\">\n        <dc:Bounds x=\"942\" y=\"1022\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"918\" y=\"1068\" width=\"83\" height=\"66\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_0tc7hff_di\" bpmnElement=\"gateway-1000003\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"1035\" y=\"1195\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"957\" y=\"1193\" width=\"86\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_0j77kfm_di\" bpmnElement=\"event-1000004\">\n        <dc:Bounds x=\"1152\" y=\"1202\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1128\" y=\"1248\" width=\"83\" height=\"53\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_0rcmwh1_di\" bpmnElement=\"end-event-1\">\n        <dc:Bounds x=\"1372\" y=\"1312\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1360\" y=\"1355\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_0jy6bnk_di\" bpmnElement=\"event-1000008\">\n        <dc:Bounds x=\"1262\" y=\"1312\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1242\" y=\"1355\" width=\"79\" height=\"53\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_19mf52x_di\" bpmnElement=\"event-1000005\">\n        <dc:Bounds x=\"842\" y=\"682\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"825\" y=\"623\" width=\"71\" height=\"53\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_0mxkvyz_di\" bpmnElement=\"event-1000006\">\n        <dc:Bounds x=\"1042\" y=\"682\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1019\" y=\"640\" width=\"85\" height=\"40\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_1i9yqqs_di\" bpmnElement=\"event-1000007\">\n        <dc:Bounds x=\"1262\" y=\"682\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1236\" y=\"640\" width=\"89\" height=\"40\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_1gvu9a2_di\" bpmnElement=\"gateway-1000004\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"615\" y=\"833\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"614\" y=\"795.5\" width=\"51\" height=\"27\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
+    "data": {
+      "statuses": [
+        {
+          "statusId": 1,
+          "label": "BEING PROCESSED",
+          "taskOrEventTemplateId": "{\"id\":1000001,\"type\":\"task\",\"name\":\"Student editing\",\"sourceId\":1000001}",
+          "taskTemplateId": 1000001
+        },
+        {
+          "statusId": 2,
+          "label": "EDITED",
+          "taskOrEventTemplateId": "{\"id\":1000008,\"type\":\"event\",\"name\":\"Пустий івент завершення процесу\",\"sourceId\":1000008}",
+          "eventTemplateId": 1000008
+        }
+      ],
+      "entryTaskTemplateIds": [
+        {
+          "name": "Start",
+          "id": "() => 1000001;",
+          "hidden": false
+        }
+      ],
+      "numberTemplateId": 1000001,
+      "timeline": {
+        "steps": [
+          {
+            "taskTemplateId": 1000001,
+            "label": "BEING PROCESSED"
+          },
+          {
+            "eventTemplateId": 1000008,
+            "label": "EDITED"
+          }
+        ]
+      }
+    },
+    "isActive": true,
+    "accessUnits": [],
+    "createdAt": "2025-07-23T12:38:24.978Z",
+    "updatedAt": "2025-07-23T12:39:40.995Z",
+    "meta": {}
+  },
+  "workflowTemplateCategory": {
+    "id": 10,
+    "parentId": null,
+    "name": "Test Process",
+    "createdAt": "2022-12-02T11:32:34.679Z",
+    "updatedAt": "2022-12-02T11:32:34.679Z"
+  },
+  "taskTemplates": [
+    {
+      "id": 1000001,
+      "name": "Student editing",
+      "documentTemplateId": 1000001,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<!DOCTYPE html>\n<html lang=\"uk\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\" />\n    <style>\n      body {\n        font-size: 12px;\n        margin: 0;\n        font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;\n        line-height: 1;\n        padding-right: 80px;\n        padding-left: 80px;\n        padding-top: 56px;\n        padding-bottom: 56px;\n        letter-spacing: -0.02em;\n      }\n          </style>\n  </head>\n  <body>\n    \n  </body>\n</html>",
+      "createdAt": "2025-07-23T12:38:24.988Z",
+      "updatedAt": "2024-11-14T20:18:55.519Z"
+    }
+  ],
+  "documentTemplates": [
+    {
+      "id": 1000001,
+      "name": "Student editing",
+      "jsonSchema": {
+        "title": "Student editing",
+        "type": "object",
+        "pdfRequired": true,
+        "signRequired": true,
+        "isP7sSign": true,
+        "signDataNaming": {
+          "manifest": "List of files for signing",
+          "pdfHash": "Hash of the application",
+          "additionalHash": "Hash of the attachments",
+          "attachment": "Attachments to the application",
+          "pdf": "Students"
+        },
+        "showNextTaskButton": false,
+        "fileName": "(documentData) => { return 'Students'; }",
+        "finishBtn": "Edit",
+        "finalScreen": {
+          "title": "Thank you!",
+          "subtitle": "The student information has been updated. You will receive a report in PDF format outlining the actions performed via email."
+        },
+        "calcTriggers": [
+          {
+            "step": "institutionInfo",
+            "target": "studentInfo.dataTable",
+            "calculate": "(value, stepData, documentData) => {const studentsRegister = documentData?.institutionInfo?.studentsRegister;if (studentsRegister && studentsRegister?.length > 0) return studentsRegister?.map((el => {const nameParts = el?.fullName.split(' ');const lastName = nameParts[0];const firstName = nameParts[1] || '';const middleName = nameParts?.slice(2)?.join(' ') || '';return {id: el?.id,lastName,firstName,middleName,studentCode: el?.studentCode,ipn: el?.ipn,gender: (el?.gender && el?.gender === 'female' ? 'female' : 'male'),state: el?.state,region: el?.region,district: el?.district,phone: el?.phone,email: el?.email}}));return};"
+          },
+          {
+            "source": "studentInfo.dataTable",
+            "target": "calculated.dataTableUpdate",
+            "calculate": "(value, stepData, documentData) => {const studentsRegister = documentData?.institutionInfo?.studentsRegister;const arrayAddPerson = documentData?.studentInfo?.dataTable;const changes = [];const modifiedMap = arrayAddPerson?.map((el => ({id: el?.id,ipn: el?.ipn,studentCode: el?.studentCode,email: el?.email,phone: el?.phone,state: el?.state ? el?.state : '',region: el?.region ? el?.region : '',district: el?.district ? el?.district : '',fullName: el?.lastName + ' ' + el?.firstName + (el?.middleName ? ' ' + el?.middleName : ''),gender: el?.gender && el?.gender === 'male' ? 'male' : 'female'})))?.reduce(((map, person) => {map[person?.id] = person;return map}), {});for (const originalPerson of studentsRegister) {const modifiedPerson = modifiedMap[originalPerson?.id];if (modifiedPerson) {const hasStudentNameChanged = originalPerson?.fullName !== modifiedPerson?.fullName;const hasStudentCodeChanged = originalPerson?.studentCode !== modifiedPerson?.studentCode;const hasStudentEmailChanged = originalPerson?.email !== modifiedPerson?.email;const hasStudentPhoneChanged = originalPerson?.phone !== modifiedPerson?.phone;const hasStudentStateChanged = originalPerson?.state !== modifiedPerson?.state;const hasStudentRegionChanged = originalPerson?.region !== modifiedPerson?.region;const hasStudentDistrictChanged = originalPerson?.district !== modifiedPerson?.district;const hasStudentGenderChanged = originalPerson?.gender !== modifiedPerson?.gender;const hasStudentNumberChanged = originalPerson?.ipn !== modifiedPerson?.ipn;if (hasStudentNameChanged || hasStudentNameChanged || hasStudentCodeChanged || hasStudentEmailChanged || hasStudentPhoneChanged || hasStudentStateChanged || hasStudentRegionChanged || hasStudentDistrictChanged || hasStudentGenderChanged) {changes?.push(modifiedPerson)}}}return changes.length > 0 ? changes : []};"
+          },
+          {
+            "callBeforePdf": true,
+            "target": "calculated.dataTableUpdatePdf",
+            "calculate": "(value, stepData, documentData) => {const dataTableUpdate = documentData?.calculated?.dataTableUpdate;const arrayUpdatePerson = documentData?.studentInfo?.dataTable; return arrayUpdatePerson?.filter((el => dataTableUpdate?.some((item => item?.id === el?.id))));return [];};"
+          },
+          {
+            "callBeforePdf": true,
+            "target": "calculated.dataTableDeletePdf",
+            "calculate": "(value, stepData, documentData) => {const dataTableUpdate = documentData?.institutionInfo?.studentsRegister;const arrayUpdatePerson = documentData?.studentInfo?.dataTable; return dataTableUpdate?.filter((el => !arrayUpdatePerson?.some(item => item?.id === el?.id)))?.map((el => {const nameParts = el?.fullName.split(' ');const lastName = nameParts[0];const firstName = nameParts[1] || '';const middleName = nameParts?.slice(2)?.join(' ') || '';return {id: el?.id,lastName,firstName,middleName,studentCode: el?.studentCode,ipn: el?.ipn,gender: (el?.gender && el?.gender === 'female' ? 'female' : 'male'),state: el?.state,region: el?.region,district: el?.district,phone: el?.phone,email: el?.email}}));return [];};"
+          },
+          {
+            "callBeforePdf": true,
+            "target": "calculated.dataTableAddPdf",
+            "calculate": "(value, stepData, documentData) => {const arrayUpdatePerson = documentData?.studentInfo?.dataTable; return arrayUpdatePerson?.filter(el => !el?.id);return [];};"
+          },
+          {
+            "source": "institutionInfo.group",
+            "target": "studentInfo",
+            "calculate": "(value, step, documentData) =>  {if (!documentData?.institutionInfo?.group?.groupCode) return {}; }"
+          }
+        ],
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "description": "Calculated data",
+            "checkStepHidden": "() => true",
+            "properties": {
+              "docNumber": {
+                "type": "string",
+                "description": "Process number",
+                "value": "workflow.number",
+                "checkRequired": "() => { return  true }",
+                "readOnly": true,
+                "hidden": true
+              },
+              "userId": {
+                "type": "string",
+                "description": "Authorized person ID",
+                "checkRequired": "() => true",
+                "value": "user.id",
+                "readOnly": true,
+                "hidden": true
+              },
+              "userName": {
+                "type": "string",
+                "description": "Authorized person Name",
+                "checkRequired": "() => true",
+                "value": "user.name",
+                "readOnly": true,
+                "hidden": true
+              },
+              "userNameModified": {
+                "type": "string",
+                "description": "Authorized person (Formatted)",
+                "value": "({documents,events,documentData,user}) => {const map = {'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'H', 'Ґ': 'G', 'Д': 'D', 'Е': 'E', 'Є': 'Ye', 'Ж': 'Zh', 'З': 'Z', 'И': 'Y', 'І': 'I', 'Ї': 'Yi', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 'Ю': 'Yu', 'Я': 'Ya', 'Ь': '', '’': '', 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'h', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ie', 'ж': 'zh', 'з': 'z', 'и': 'y', 'і': 'i', 'ї': 'i', 'й': 'i', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ю': 'iu', 'я': 'ia', 'ь': '', '’': '', '‘': '', '’': '', '`': ''} ; return documentData?.calculated?.userName?.trim()?.split(' ')?.map((el => el?.charAt(0) + el?.slice(1)?.toLowerCase()))?.join(' ').split('').map(char => {const lowerChar = char.toLowerCase();const transliterated = map[lowerChar];if (transliterated === undefined) return char; return char === lowerChar ? transliterated : transliterated.toUpperCase();}).join('');}",
+                "checkRequired": "() => true",
+                "hidden": true,
+                "readOnly": true
+              },
+              "userIpn": {
+                "type": "string",
+                "description": "Authorized person TIN",
+                "checkRequired": "() => true",
+                "value": "user.ipn",
+                "readOnly": true,
+                "hidden": true
+              }
+            }
+          },
+          "institutionInfo": {
+            "type": "object",
+            "description": "Educational institution",
+            "properties": {
+              "messageText": {
+                "control": "text.block",
+                "checkHidden": "(value, step, documentData) => { return false;}",
+                "htmlBlock": "<div class='info-block' style='margin: 0;'><p style='font-size:38px; padding:0 17px 0 0; margin:0px 0 0 0;'>👇</p️><p style='width: 100%; margin:0;'>Please specify the educational institution and group where you would like to edit or add students</p> </div>"
+              },
+              "institution": {
+                "description": "Educational institution",
+                "type": "object",
+                "control": "register",
+                "multiple": false,
+                "keyId": 101,
+                "filters": [],
+                "checkRequired": "(value, step, documentData) => { return true; }",
+                "checkHidden": "(value, step, documentData) => {return false; }",
+                "sortBy": {
+                  "data.institutionName": "asc"
+                }
+              },
+              "group": {
+                "description": "Group",
+                "type": "object",
+                "control": "register",
+                "multiple": false,
+                "keyId": 102,
+                "searchEqual3": "(data) => { return (data?.institutionInfo?.institution?.institutionCode || 'unknown')}",
+                "checkRequired": "(value, step, documentData) => { return true; }",
+                "checkHidden": "(value, step, documentData) => !documentData?.institutionInfo?.institution?.institutionCode;",
+                "cleanWhenHidden": true,
+                "filters": [],
+                "sortBy": {
+                  "data.groupName": "asc"
+                },
+                "listenedValuesForRequest": [
+                  "institutionInfo.institution"
+                ]
+              },
+              "studentsRegister": {
+                "type": "array",
+                "description": "Students",
+                "control": "register",
+                "keyId": 100,
+                "multiple": true,
+                "checkHidden": "(value, step, documentData) => {return true;}",
+                "listenedValuesForRequest": [
+                  "institutionInfo.institution",
+                  "institutionInfo.institution.institutionCode",
+                  "institutionInfo.group",
+                  "institutionInfo.group.groupCode"
+                ],
+                "filters": [
+                  {
+                    "name": "institutionCode",
+                    "value": "data.institutionInfo.institution.institutionCode"
+                  },
+                  {
+                    "name": "groupCode",
+                    "value": "data.institutionInfo.group.groupCode"
+                  }
+                ],
+                "sortBy": {
+                  "data.fullName": "asc"
+                },
+                "setDefined": true
+              }
+            }
+          },
+          "studentInfo": {
+            "type": "object",
+            "description": "Students",
+            "checkValid": [
+              {
+                "isValid": "(value, step, documentData) => {const studentsRegister = documentData?.institutionInfo?.studentsRegister;const arrayAddPerson = documentData?.studentInfo?.dataTable;if (!studentsRegister || studentsRegister?.length === 0 || studentsRegister && studentsRegister?.length > 0 && arrayAddPerson && arrayAddPerson?.length > 0 && arrayAddPerson?.length !== studentsRegister?.length) return true;const changes = [];const modifiedMap = arrayAddPerson?.map((el => ({id: el?.id,ipn: el?.ipn,studentCode: el?.studentCode,email: el?.email,phone: el?.phone,state: el?.state ? el?.state : '',region: el?.region ? el?.region : '',district: el?.district ? el?.district : '',fullName: el?.lastName + ' ' + el?.firstName + (el?.middleName ? ' ' + el?.middleName : ''),gender: el?.gender && el?.gender === 'male' ? 'male' : 'female'})))?.reduce(((map, person) => {map[person?.id] = person;return map}), {});for (const originalPerson of studentsRegister) {const modifiedPerson = modifiedMap[originalPerson?.id];if (modifiedPerson) {const hasStudentNameChanged = originalPerson?.fullName !== modifiedPerson?.fullName;const hasStudentCodeChanged = originalPerson?.studentCode !== modifiedPerson?.studentCode;const hasStudentEmailChanged = originalPerson?.email !== modifiedPerson?.email;const hasStudentPhoneChanged = originalPerson?.phone !== modifiedPerson?.phone;const hasStudentStateChanged = originalPerson?.state !== modifiedPerson?.state;const hasStudentRegionChanged = originalPerson?.region !== modifiedPerson?.region;const hasStudentDistrictChanged = originalPerson?.district !== modifiedPerson?.district;const hasStudentGenderChanged = originalPerson?.gender !== modifiedPerson?.gender;const hasStudentNumberChanged = originalPerson?.ipn !== modifiedPerson?.ipn;if (hasStudentNameChanged || hasStudentNameChanged || hasStudentCodeChanged || hasStudentEmailChanged || hasStudentPhoneChanged || hasStudentStateChanged || hasStudentRegionChanged || hasStudentDistrictChanged || hasStudentGenderChanged) {changes?.push(modifiedPerson)}}}if (changes && changes?.length > 0) return true;return false};",
+                "errorText": "Changes are required"
+              }
+            ],
+            "properties": {
+              "messageText": {
+                "control": "text.block",
+                "checkHidden": "(value, step, documentData) => { if (!!documentData?.institutionInfo?.studentsRegister && documentData?.institutionInfo?.studentsRegister?.length > 0) return false; return true;}",
+                "htmlBlock": "<div class='info-block' style='margin: 0;'><p style='font-size:38px; padding:0 17px 0 0; margin:0px 0 0 0;'>👇</p️><p style='width: 100%; margin:0;'>If necessary, you can edit the student's last name, first name, patronymic, and contact information</p> </div>"
+              },
+              "dataTableTitle": {
+                "control": "text.block",
+                "htmlBlock": "<h3 style='font-weight: normal;'>List of students</h3>"
+              },
+              "dataTable": {
+                "type": "array",
+                "control": "spreadsheet.lite",
+                "maxItems": 1000,
+                "hideColumnChooser": true,
+                "isImportBtn": true,
+                "isClearDataBtn": true,
+                "checkRequired": "(value, step, documentData) => {return true;}",
+                "checkHidden": "(value, step, documentData) => {return false;}",
+                "cleanWhenHidden": true,
+                "checkValid": [
+                  {
+                    "isValid": "(value, step, documentData) => value?.length > 0",
+                    "errorText": "Required field"
+                  },
+                  {
+                    "isValid": "(value, step, documentData) => value?.length <= 1000;",
+                    "errorText": "The number of rows should not exceed 1000"
+                  },
+                  {
+                    "isValid": "(value, step, documentData) => {const rnokppArray = (value || [])?.map((el => el?.ipn?.trim()))?.filter((el => !!el));const uniqueValues = new Set;for (const value of rnokppArray) {if (uniqueValues?.has(value)) {return false}uniqueValues?.add(value)}return true};",
+                    "errorText": "Duplicate Student Numbers found"
+                  },
+                  {
+                    "isValid": "(value, step, documentData) => {const idArray = (value || [])?.map((el => el?.studentCode?.trim()))?.filter((el => !!el));const uniqueValues = new Set;for (const value of idArray) {if (uniqueValues?.has(value)) {return false}uniqueValues?.add(value)}return true};",
+                    "errorText": "Duplicate Student ID found"
+                  }
+                ],
+                "items": {
+                  "type": "object",
+                  "checkValid": [
+                    {
+                      "isValid": "(value, step, documentData, parent) => !(!value?.ipn?.trim())",
+                      "errorText": "Student Numbers must be filled in"
+                    },
+                    {
+                      "isValid": "(value, step, documentData, parent) => !(!value?.studentCode?.trim())",
+                      "errorText": "Student ID must be filled in"
+                    }
+                  ],
+                  "properties": {
+                    "lastName": {
+                      "description": "Last Name",
+                      "type": "string",
+                      "useTrim": true,
+                      "changeOnBlur": true,
+                      "changeCase": "capitalizeLetters",
+                      "maxLength": 50,
+                      "checkValid": [
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)",
+                          "errorText": "It can only contain Latin letters, spaces, hyphens, and apostrophes"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)",
+                          "errorText": "It must contain Latin letters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) ",
+                          "errorText": "It cannot contain more than one hyphen or space in a row"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && value?.trim()?.length <= 50;",
+                          "errorText": "The maximum length is 50 characters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)",
+                          "errorText": "It cannot contain spaces at the beginning or end of the word"
+                        }
+                      ],
+                      "checkRequired": "(value, step, documentData) => true"
+                    },
+                    "firstName": {
+                      "type": "string",
+                      "description": "First Name",
+                      "useTrim": true,
+                      "changeOnBlur": true,
+                      "changeCase": "capitalizeLetters",
+                      "maxLength": 50,
+                      "checkValid": [
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)",
+                          "errorText": "It can only contain Latin letters, spaces, hyphens, and apostrophes"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)",
+                          "errorText": "It must contain Latin letters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) ",
+                          "errorText": "It cannot contain more than one hyphen or space in a row"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && value?.trim()?.length <= 50;",
+                          "errorText": "The maximum length is 50 characters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)",
+                          "errorText": "It cannot contain spaces at the beginning or end of the word"
+                        }
+                      ],
+                      "checkRequired": "(value, step, documentData) => true"
+                    },
+                    "middleName": {
+                      "type": "string",
+                      "description": "Middle Name",
+                      "useTrim": true,
+                      "changeOnBlur": true,
+                      "changeCase": "capitalizeLetters",
+                      "maxLength": 50,
+                      "checkRequired": "(value, step, documentData) => false",
+                      "checkValid": [
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)",
+                          "errorText": "It can only contain Latin letters, spaces, hyphens, and apostrophes"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)",
+                          "errorText": "It must contain Latin letters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) ",
+                          "errorText": "It cannot contain more than one hyphen or space in a row"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && value?.trim()?.length <= 50;",
+                          "errorText": "The maximum length is 50 characters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)",
+                          "errorText": "It cannot contain spaces at the beginning or end of the word"
+                        }
+                      ]
+                    },
+                    "studentCode": {
+                      "type": "string",
+                      "description": "Student ID",
+                      "width": 1,
+                      "minWidth": 100,
+                      "useTrim": true,
+                      "maxLength": 10
+                    },
+                    "ipn": {
+                      "type": "string",
+                      "description": "Student Number",
+                      "width": 1,
+                      "minWidth": 100,
+                      "useTrim": true
+                    },
+                    "gender": {
+                      "type": "string",
+                      "description": "Gender",
+                      "options": [
+                        {
+                          "id": "female",
+                          "name": "female"
+                        },
+                        {
+                          "id": "male",
+                          "name": "male"
+                        }
+                      ],
+                      "checkRequired": "(value, step, documentData) => true"
+                    },
+                    "state": {
+                      "type": "string",
+                      "description": "State",
+                      "useTrim": true,
+                      "changeOnBlur": true,
+                      "maxLength": 150,
+                      "checkRequired": "(value, step, documentData) => false",
+                      "checkValid": [
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)",
+                          "errorText": "It can only contain Latin letters, spaces, hyphens, and apostrophes"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)",
+                          "errorText": "It must contain Latin letters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) ",
+                          "errorText": "It cannot contain more than one hyphen or space in a row"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && value?.trim()?.length <= 150;",
+                          "errorText": "The maximum length is 150 characters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)",
+                          "errorText": "It cannot contain spaces at the beginning or end of the word"
+                        }
+                      ]
+                    },
+                    "region": {
+                      "type": "string",
+                      "description": "Region",
+                      "useTrim": true,
+                      "changeOnBlur": true,
+                      "maxLength": 150,
+                      "checkRequired": "(value, step, documentData) => false",
+                      "checkValid": [
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)",
+                          "errorText": "It can only contain Latin letters, spaces, hyphens, and apostrophes"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)",
+                          "errorText": "It must contain Latin letters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) ",
+                          "errorText": "It cannot contain more than one hyphen or space in a row"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && value?.trim()?.length <= 150;",
+                          "errorText": "The maximum length is 150 characters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)",
+                          "errorText": "It cannot contain spaces at the beginning or end of the word"
+                        }
+                      ]
+                    },
+                    "district": {
+                      "type": "string",
+                      "description": "District",
+                      "useTrim": true,
+                      "changeOnBlur": true,
+                      "maxLength": 150,
+                      "checkRequired": "(value, step, documentData) => false",
+                      "checkValid": [
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)",
+                          "errorText": "It can only contain Latin letters, spaces, hyphens, and apostrophes"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)",
+                          "errorText": "It must contain Latin letters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) ",
+                          "errorText": "It cannot contain more than one hyphen or space in a row"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => value && value?.trim()?.length <= 150;",
+                          "errorText": "The maximum length is 150 characters"
+                        },
+                        {
+                          "isValid": "(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)",
+                          "errorText": "It cannot contain spaces at the beginning or end of the word"
+                        }
+                      ]
+                    },
+                    "email": {
+                      "type": "string",
+                      "useTrim": true,
+                      "description": "Email",
+                      "checkRequired": "(value, step, documentData) => true",
+                      "checkValid": [
+                        {
+                          "isValid": "(value, step, documentData) => !!value && /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+$/.test(value)",
+                          "errorText": "The email address must be in the format \"test@example.com\""
+                        }
+                      ]
+                    },
+                    "phone": {
+                      "description": "Phone",
+                      "checkRequired": "(value, step, documentData) => true"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Student editing\",\n    \"type\": \"object\",\n    \"pdfRequired\": true,\n    \"signRequired\": true,\n    \"isP7sSign\": true,\n    \"signDataNaming\": {\n        \"manifest\": \"List of files for signing\",\n        \"pdfHash\": \"Hash of the application\",\n        \"additionalHash\": \"Hash of the attachments\",\n        \"attachment\": \"Attachments to the application\",\n        \"pdf\": \"Students\"\n    },\n    \"showNextTaskButton\": false,\n    \"fileName\": \"(documentData) => { return 'Students'; }\",\n    \"finishBtn\": \"Edit\",\n    \"finalScreen\": {\n        \"title\": \"Thank you!\",\n        \"subtitle\": \"The student information has been updated. You will receive a report in PDF format outlining the actions performed via email.\"\n    },\n    \"calcTriggers\": [\n        {\n            \"step\": \"institutionInfo\",\n            \"target\": \"studentInfo.dataTable\",\n            \"calculate\": \"(value, stepData, documentData) => {const studentsRegister = documentData?.institutionInfo?.studentsRegister;if (studentsRegister && studentsRegister?.length > 0) return studentsRegister?.map((el => {const nameParts = el?.fullName.split(' ');const lastName = nameParts[0];const firstName = nameParts[1] || '';const middleName = nameParts?.slice(2)?.join(' ') || '';return {id: el?.id,lastName,firstName,middleName,studentCode: el?.studentCode,ipn: el?.ipn,gender: (el?.gender && el?.gender === 'female' ? 'female' : 'male'),state: el?.state,region: el?.region,district: el?.district,phone: el?.phone,email: el?.email}}));return};\"\n        },\n        {\n            \"source\": \"studentInfo.dataTable\",\n            \"target\": \"calculated.dataTableUpdate\",\n            \"calculate\": \"(value, stepData, documentData) => {const studentsRegister = documentData?.institutionInfo?.studentsRegister;const arrayAddPerson = documentData?.studentInfo?.dataTable;const changes = [];const modifiedMap = arrayAddPerson?.map((el => ({id: el?.id,ipn: el?.ipn,studentCode: el?.studentCode,email: el?.email,phone: el?.phone,state: el?.state ? el?.state : '',region: el?.region ? el?.region : '',district: el?.district ? el?.district : '',fullName: el?.lastName + ' ' + el?.firstName + (el?.middleName ? ' ' + el?.middleName : ''),gender: el?.gender && el?.gender === 'male' ? 'male' : 'female'})))?.reduce(((map, person) => {map[person?.id] = person;return map}), {});for (const originalPerson of studentsRegister) {const modifiedPerson = modifiedMap[originalPerson?.id];if (modifiedPerson) {const hasStudentNameChanged = originalPerson?.fullName !== modifiedPerson?.fullName;const hasStudentCodeChanged = originalPerson?.studentCode !== modifiedPerson?.studentCode;const hasStudentEmailChanged = originalPerson?.email !== modifiedPerson?.email;const hasStudentPhoneChanged = originalPerson?.phone !== modifiedPerson?.phone;const hasStudentStateChanged = originalPerson?.state !== modifiedPerson?.state;const hasStudentRegionChanged = originalPerson?.region !== modifiedPerson?.region;const hasStudentDistrictChanged = originalPerson?.district !== modifiedPerson?.district;const hasStudentGenderChanged = originalPerson?.gender !== modifiedPerson?.gender;const hasStudentNumberChanged = originalPerson?.ipn !== modifiedPerson?.ipn;if (hasStudentNameChanged || hasStudentNameChanged || hasStudentCodeChanged || hasStudentEmailChanged || hasStudentPhoneChanged || hasStudentStateChanged || hasStudentRegionChanged || hasStudentDistrictChanged || hasStudentGenderChanged) {changes?.push(modifiedPerson)}}}return changes.length > 0 ? changes : []};\"\n        },\n        {\n            \"callBeforePdf\": true,\n            \"target\": \"calculated.dataTableUpdatePdf\",\n            \"calculate\": \"(value, stepData, documentData) => {const dataTableUpdate = documentData?.calculated?.dataTableUpdate;const arrayUpdatePerson = documentData?.studentInfo?.dataTable; return arrayUpdatePerson?.filter((el => dataTableUpdate?.some((item => item?.id === el?.id))));return [];};\"\n        },\n        {\n            \"callBeforePdf\": true,\n            \"target\": \"calculated.dataTableDeletePdf\",\n            \"calculate\": \"(value, stepData, documentData) => {const dataTableUpdate = documentData?.institutionInfo?.studentsRegister;const arrayUpdatePerson = documentData?.studentInfo?.dataTable; return dataTableUpdate?.filter((el => !arrayUpdatePerson?.some(item => item?.id === el?.id)))?.map((el => {const nameParts = el?.fullName.split(' ');const lastName = nameParts[0];const firstName = nameParts[1] || '';const middleName = nameParts?.slice(2)?.join(' ') || '';return {id: el?.id,lastName,firstName,middleName,studentCode: el?.studentCode,ipn: el?.ipn,gender: (el?.gender && el?.gender === 'female' ? 'female' : 'male'),state: el?.state,region: el?.region,district: el?.district,phone: el?.phone,email: el?.email}}));return [];};\"\n        },\n        {\n            \"callBeforePdf\": true,\n            \"target\": \"calculated.dataTableAddPdf\",\n            \"calculate\": \"(value, stepData, documentData) => {const arrayUpdatePerson = documentData?.studentInfo?.dataTable; return arrayUpdatePerson?.filter(el => !el?.id);return [];};\"\n        },\n        {\n            \"source\": \"institutionInfo.group\",\n            \"target\": \"studentInfo\",\n            \"calculate\": \"(value, step, documentData) =>  {if (!documentData?.institutionInfo?.group?.groupCode) return {}; }\"\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Calculated data\",\n            \"checkStepHidden\": \"() => true\",\n            \"properties\": {\n                \"docNumber\": {\n                    \"type\": \"string\",\n                    \"description\": \"Process number\",\n                    \"value\": \"workflow.number\",\n                    \"checkRequired\": \"() => { return  true }\",\n                    \"readOnly\": true,\n                    \"hidden\": true\n                },\n                \"userId\": {\n                    \"type\": \"string\",\n                    \"description\": \"Authorized person ID\",\n                    \"checkRequired\": \"() => true\",\n                    \"value\": \"user.id\",\n                    \"readOnly\": true,\n                    \"hidden\": true\n                },\n                \"userName\": {\n                    \"type\": \"string\",\n                    \"description\": \"Authorized person Name\",\n                    \"checkRequired\": \"() => true\",\n                    \"value\": \"user.name\",\n                    \"readOnly\": true,\n                    \"hidden\": true\n                },\n                \"userNameModified\": {\n                    \"type\": \"string\",\n                    \"description\": \"Authorized person (Formatted)\",\n                    \"value\": \"({documents,events,documentData,user}) => {const map = {'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'H', 'Ґ': 'G', 'Д': 'D', 'Е': 'E', 'Є': 'Ye', 'Ж': 'Zh', 'З': 'Z', 'И': 'Y', 'І': 'I', 'Ї': 'Yi', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 'Ю': 'Yu', 'Я': 'Ya', 'Ь': '', '’': '', 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'h', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ie', 'ж': 'zh', 'з': 'z', 'и': 'y', 'і': 'i', 'ї': 'i', 'й': 'i', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ю': 'iu', 'я': 'ia', 'ь': '', '’': '', '‘': '', '’': '', '`': ''} ; return documentData?.calculated?.userName?.trim()?.split(' ')?.map((el => el?.charAt(0) + el?.slice(1)?.toLowerCase()))?.join(' ').split('').map(char => {const lowerChar = char.toLowerCase();const transliterated = map[lowerChar];if (transliterated === undefined) return char; return char === lowerChar ? transliterated : transliterated.toUpperCase();}).join('');}\",\n                    \"checkRequired\": \"() => true\",\n                    \"hidden\": true,\n                    \"readOnly\": true\n                },\n                \"userIpn\": {\n                    \"type\": \"string\",\n                    \"description\": \"Authorized person TIN\",\n                    \"checkRequired\": \"() => true\",\n                    \"value\": \"user.ipn\",\n                    \"readOnly\": true,\n                    \"hidden\": true\n                }\n            }\n        },\n        \"institutionInfo\": {\n            \"type\": \"object\",\n            \"description\": \"Educational institution\",\n            \"properties\": {\n                \"messageText\": {\n                    \"control\": \"text.block\",\n                    \"checkHidden\": \"(value, step, documentData) => { return false;}\",\n                    \"htmlBlock\": \"<div class='info-block' style='margin: 0;'><p style='font-size:38px; padding:0 17px 0 0; margin:0px 0 0 0;'>👇</p️><p style='width: 100%; margin:0;'>Please specify the educational institution and group where you would like to edit or add students</p> </div>\"\n                },\n                \"institution\": {\n                    \"description\": \"Educational institution\",\n                    \"type\": \"object\",\n                    \"control\": \"register\",\n                    \"multiple\": false,\n                    \"keyId\": 101,\n                    \"filters\": [],\n                    \"checkRequired\": \"(value, step, documentData) => { return true; }\",\n                    \"checkHidden\": \"(value, step, documentData) => {return false; }\",\n                    \"sortBy\": {\n                        \"data.institutionName\": \"asc\"\n                    }\n                },\n                \"group\": {\n                    \"description\": \"Group\",\n                    \"type\": \"object\",\n                    \"control\": \"register\",\n                    \"multiple\": false,\n                    \"keyId\": 102,\n                    \"searchEqual3\": \"(data) => { return (data?.institutionInfo?.institution?.institutionCode || 'unknown')}\",\n                    \"checkRequired\": \"(value, step, documentData) => { return true; }\",\n                    \"checkHidden\": \"(value, step, documentData) => !documentData?.institutionInfo?.institution?.institutionCode;\",\n                    \"cleanWhenHidden\": true,\n                    \"filters\": [],\n                    \"sortBy\": {\n                        \"data.groupName\": \"asc\"\n                    },\n                    \"listenedValuesForRequest\": [\n                        \"institutionInfo.institution\"\n                    ]\n                },\n                \"studentsRegister\": {\n                    \"type\": \"array\",\n                    \"description\": \"Students\",\n                    \"control\": \"register\",\n                    \"keyId\": 100,\n                    \"multiple\": true,\n                    \"checkHidden\": \"(value, step, documentData) => {return true;}\",\n                    \"listenedValuesForRequest\": [\n                        \"institutionInfo.institution\",\n                        \"institutionInfo.institution.institutionCode\",\n                        \"institutionInfo.group\",\n                        \"institutionInfo.group.groupCode\"\n                    ],\n                    \"filters\": [\n                        {\n                            \"name\": \"institutionCode\",\n                            \"value\": \"data.institutionInfo.institution.institutionCode\"\n                        },\n                        {\n                            \"name\": \"groupCode\",\n                            \"value\": \"data.institutionInfo.group.groupCode\"\n                        }\n                    ],\n                    \"sortBy\": {\n                        \"data.fullName\": \"asc\"\n                    },\n                    \"setDefined\": true\n                }\n            }\n        },\n        \"studentInfo\": {\n            \"type\": \"object\",\n            \"description\": \"Students\",\n            \"checkValid\": [\n                {\n                    \"isValid\": \"(value, step, documentData) => {const studentsRegister = documentData?.institutionInfo?.studentsRegister;const arrayAddPerson = documentData?.studentInfo?.dataTable;if (!studentsRegister || studentsRegister?.length === 0 || studentsRegister && studentsRegister?.length > 0 && arrayAddPerson && arrayAddPerson?.length > 0 && arrayAddPerson?.length !== studentsRegister?.length) return true;const changes = [];const modifiedMap = arrayAddPerson?.map((el => ({id: el?.id,ipn: el?.ipn,studentCode: el?.studentCode,email: el?.email,phone: el?.phone,state: el?.state ? el?.state : '',region: el?.region ? el?.region : '',district: el?.district ? el?.district : '',fullName: el?.lastName + ' ' + el?.firstName + (el?.middleName ? ' ' + el?.middleName : ''),gender: el?.gender && el?.gender === 'male' ? 'male' : 'female'})))?.reduce(((map, person) => {map[person?.id] = person;return map}), {});for (const originalPerson of studentsRegister) {const modifiedPerson = modifiedMap[originalPerson?.id];if (modifiedPerson) {const hasStudentNameChanged = originalPerson?.fullName !== modifiedPerson?.fullName;const hasStudentCodeChanged = originalPerson?.studentCode !== modifiedPerson?.studentCode;const hasStudentEmailChanged = originalPerson?.email !== modifiedPerson?.email;const hasStudentPhoneChanged = originalPerson?.phone !== modifiedPerson?.phone;const hasStudentStateChanged = originalPerson?.state !== modifiedPerson?.state;const hasStudentRegionChanged = originalPerson?.region !== modifiedPerson?.region;const hasStudentDistrictChanged = originalPerson?.district !== modifiedPerson?.district;const hasStudentGenderChanged = originalPerson?.gender !== modifiedPerson?.gender;const hasStudentNumberChanged = originalPerson?.ipn !== modifiedPerson?.ipn;if (hasStudentNameChanged || hasStudentNameChanged || hasStudentCodeChanged || hasStudentEmailChanged || hasStudentPhoneChanged || hasStudentStateChanged || hasStudentRegionChanged || hasStudentDistrictChanged || hasStudentGenderChanged) {changes?.push(modifiedPerson)}}}if (changes && changes?.length > 0) return true;return false};\",\n                    \"errorText\": \"Changes are required\"\n                }\n            ],\n            \"properties\": {\n                \"messageText\": {\n                    \"control\": \"text.block\",\n                    \"checkHidden\": \"(value, step, documentData) => { if (!!documentData?.institutionInfo?.studentsRegister && documentData?.institutionInfo?.studentsRegister?.length > 0) return false; return true;}\",\n                    \"htmlBlock\": \"<div class='info-block' style='margin: 0;'><p style='font-size:38px; padding:0 17px 0 0; margin:0px 0 0 0;'>👇</p️><p style='width: 100%; margin:0;'>If necessary, you can edit the student's last name, first name, patronymic, and contact information</p> </div>\"\n                },\n                \"dataTableTitle\": {\n                    \"control\": \"text.block\",\n                    \"htmlBlock\": \"<h3 style='font-weight: normal;'>List of students</h3>\"\n                },\n                \"dataTable\": {\n                    \"type\": \"array\",\n                    \"control\": \"spreadsheet.lite\",\n                    \"maxItems\": 1000,\n                    \"hideColumnChooser\": true,\n                    \"isImportBtn\": true,\n                    \"isClearDataBtn\": true,\n                    \"checkRequired\": \"(value, step, documentData) => {return true;}\",\n                    \"checkHidden\": \"(value, step, documentData) => {return false;}\",\n                    \"cleanWhenHidden\": true,\n                    \"checkValid\": [\n                        {\n                            \"isValid\": \"(value, step, documentData) => value?.length > 0\",\n                            \"errorText\": \"Required field\"\n                        },\n                        {\n                            \"isValid\": \"(value, step, documentData) => value?.length <= 1000;\",\n                            \"errorText\": \"The number of rows should not exceed 1000\"\n                        },\n                        {\n                            \"isValid\": \"(value, step, documentData) => {const rnokppArray = (value || [])?.map((el => el?.ipn?.trim()))?.filter((el => !!el));const uniqueValues = new Set;for (const value of rnokppArray) {if (uniqueValues?.has(value)) {return false}uniqueValues?.add(value)}return true};\",\n                            \"errorText\": \"Duplicate Student Numbers found\"\n                        },\n                        {\n                            \"isValid\": \"(value, step, documentData) => {const idArray = (value || [])?.map((el => el?.studentCode?.trim()))?.filter((el => !!el));const uniqueValues = new Set;for (const value of idArray) {if (uniqueValues?.has(value)) {return false}uniqueValues?.add(value)}return true};\",\n                            \"errorText\": \"Duplicate Student ID found\"\n                        }\n                    ],\n                    \"items\": {\n                        \"type\": \"object\",\n                        \"checkValid\": [\n                            {\n                                \"isValid\": \"(value, step, documentData, parent) => !(!value?.ipn?.trim())\",\n                                \"errorText\": \"Student Numbers must be filled in\"\n                            },\n                            {\n                                \"isValid\": \"(value, step, documentData, parent) => !(!value?.studentCode?.trim())\",\n                                \"errorText\": \"Student ID must be filled in\"\n                            }\n                        ],\n                        \"properties\": {\n                            \"lastName\": {\n                                \"description\": \"Last Name\",\n                                \"type\": \"string\",\n                                \"useTrim\": true,\n                                \"changeOnBlur\": true,\n                                \"changeCase\": \"capitalizeLetters\",\n                                \"maxLength\": 50,\n                                \"checkValid\": [\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)\",\n                                        \"errorText\": \"It can only contain Latin letters, spaces, hyphens, and apostrophes\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)\",\n                                        \"errorText\": \"It must contain Latin letters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) \",\n                                        \"errorText\": \"It cannot contain more than one hyphen or space in a row\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && value?.trim()?.length <= 50;\",\n                                        \"errorText\": \"The maximum length is 50 characters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)\",\n                                        \"errorText\": \"It cannot contain spaces at the beginning or end of the word\"\n                                    }\n                                ],\n                                \"checkRequired\": \"(value, step, documentData) => true\"\n                            },\n                            \"firstName\": {\n                                \"type\": \"string\",\n                                \"description\": \"First Name\",\n                                \"useTrim\": true,\n                                \"changeOnBlur\": true,\n                                \"changeCase\": \"capitalizeLetters\",\n                                \"maxLength\": 50,\n                                \"checkValid\": [\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)\",\n                                        \"errorText\": \"It can only contain Latin letters, spaces, hyphens, and apostrophes\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)\",\n                                        \"errorText\": \"It must contain Latin letters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) \",\n                                        \"errorText\": \"It cannot contain more than one hyphen or space in a row\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && value?.trim()?.length <= 50;\",\n                                        \"errorText\": \"The maximum length is 50 characters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)\",\n                                        \"errorText\": \"It cannot contain spaces at the beginning or end of the word\"\n                                    }\n                                ],\n                                \"checkRequired\": \"(value, step, documentData) => true\"\n                            },\n                            \"middleName\": {\n                                \"type\": \"string\",\n                                \"description\": \"Middle Name\",\n                                \"useTrim\": true,\n                                \"changeOnBlur\": true,\n                                \"changeCase\": \"capitalizeLetters\",\n                                \"maxLength\": 50,\n                                \"checkRequired\": \"(value, step, documentData) => false\",\n                                \"checkValid\": [\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)\",\n                                        \"errorText\": \"It can only contain Latin letters, spaces, hyphens, and apostrophes\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)\",\n                                        \"errorText\": \"It must contain Latin letters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) \",\n                                        \"errorText\": \"It cannot contain more than one hyphen or space in a row\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && value?.trim()?.length <= 50;\",\n                                        \"errorText\": \"The maximum length is 50 characters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)\",\n                                        \"errorText\": \"It cannot contain spaces at the beginning or end of the word\"\n                                    }\n                                ]\n                            },\n                            \"studentCode\": {\n                                \"type\": \"string\",\n                                \"description\": \"Student ID\",\n                                \"width\": 1,\n                                \"minWidth\": 100,\n                                \"useTrim\": true,\n                                \"maxLength\": 10\n                            },\n                            \"ipn\": {\n                                \"type\": \"string\",\n                                \"description\": \"Student Number\",\n                                \"width\": 1,\n                                \"minWidth\": 100,\n                                \"useTrim\": true\n                            },\n                            \"gender\": {\n                                \"type\": \"string\",\n                                \"description\": \"Gender\",\n                                \"options\": [\n                                    {\n                                        \"id\": \"female\",\n                                        \"name\": \"female\"\n                                    },\n                                    {\n                                        \"id\": \"male\",\n                                        \"name\": \"male\"\n                                    }\n                                ],\n                                \"checkRequired\": \"(value, step, documentData) => true\"\n                            },\n                            \"state\": {\n                                \"type\": \"string\",\n                                \"description\": \"State\",\n                                \"useTrim\": true,\n                                \"changeOnBlur\": true,\n                                \"maxLength\": 150,\n                                \"checkRequired\": \"(value, step, documentData) => false\",\n                                \"checkValid\": [\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)\",\n                                        \"errorText\": \"It can only contain Latin letters, spaces, hyphens, and apostrophes\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)\",\n                                        \"errorText\": \"It must contain Latin letters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) \",\n                                        \"errorText\": \"It cannot contain more than one hyphen or space in a row\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && value?.trim()?.length <= 150;\",\n                                        \"errorText\": \"The maximum length is 150 characters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)\",\n                                        \"errorText\": \"It cannot contain spaces at the beginning or end of the word\"\n                                    }\n                                ]\n                            },\n                            \"region\": {\n                                \"type\": \"string\",\n                                \"description\": \"Region\",\n                                \"useTrim\": true,\n                                \"changeOnBlur\": true,\n                                \"maxLength\": 150,\n                                \"checkRequired\": \"(value, step, documentData) => false\",\n                                \"checkValid\": [\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)\",\n                                        \"errorText\": \"It can only contain Latin letters, spaces, hyphens, and apostrophes\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)\",\n                                        \"errorText\": \"It must contain Latin letters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) \",\n                                        \"errorText\": \"It cannot contain more than one hyphen or space in a row\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && value?.trim()?.length <= 150;\",\n                                        \"errorText\": \"The maximum length is 150 characters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)\",\n                                        \"errorText\": \"It cannot contain spaces at the beginning or end of the word\"\n                                    }\n                                ]\n                            },\n                            \"district\": {\n                                \"type\": \"string\",\n                                \"description\": \"District\",\n                                \"useTrim\": true,\n                                \"changeOnBlur\": true,\n                                \"maxLength\": 150,\n                                \"checkRequired\": \"(value, step, documentData) => false\",\n                                \"checkValid\": [\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /^[-'‘’`ʼ A-Za-z]+$/.test(value)\",\n                                        \"errorText\": \"It can only contain Latin letters, spaces, hyphens, and apostrophes\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !value?.trim() || /[A-Za-z]/.test(value)\",\n                                        \"errorText\": \"It must contain Latin letters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && !/[-]{2,}/.test(value) && !/[ ]{2,}/.test(value) \",\n                                        \"errorText\": \"It cannot contain more than one hyphen or space in a row\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => value && value?.trim()?.length <= 150;\",\n                                        \"errorText\": \"The maximum length is 150 characters\"\n                                    },\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !!value && /^[A-Za-z'][-'‘’`ʼ A-Za-z]*[A-Za-z']$/.test(value)\",\n                                        \"errorText\": \"It cannot contain spaces at the beginning or end of the word\"\n                                    }\n                                ]\n                            },\n                            \"email\": {\n                                \"type\": \"string\",\n                                \"useTrim\": true,\n                                \"description\": \"Email\",\n                                \"checkRequired\": \"(value, step, documentData) => true\",\n                                \"checkValid\": [\n                                    {\n                                        \"isValid\": \"(value, step, documentData) => !!value && /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\.[a-zA-Z]+$/.test(value)\",\n                                        \"errorText\": \"The email address must be in the format \\\"test@example.com\\\"\"\n                                    }\n                                ]\n                            },\n                            \"phone\": {\n                                \"description\": \"Phone\",\n                                \"checkRequired\": \"(value, step, documentData) => true\"\n                            }\n                        }\n                    }\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<!DOCTYPE html>\n<html lang=\"uk\">\n    <head>\n        <meta charset=\"UTF-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\" />\n        <style>\n            \n            body {\n                font-size: 12px;\n                margin: 0;\n                font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;\n                line-height: 1;\n                padding-right: 20px;\n                padding-left: 20px;\n                letter-spacing: -0.02em;\n            }\n            \n            .qr-entity {\n                position: absolute;\n                top: 0;\n                right: 0;\n                width: 100px;\n                height: 100px;\n            }\n            \n            .header-wrap {\n\t\t\t    position: relative;\n\t\t\t}\n            \n            .header-wrap__title {\n\t\t\t    font-size: 24px;\n\t\t\t    line-height: 25px;\n\t\t\t    margin: 25px 0 0 0;\n\t\t\t}\n\t\t\t\n\t\t\t.header-wrap__subtitle {\n\t\t\t    margin-bottom: 30px;\n\t\t\t    font-size: 16px;\n\t\t\t    padding: 0;\n\t\t\t}\n\t\t\t\n\t\t\t.header-wrap__title, .header-wrap__subtitle {\n\t\t\t    font-weight: 600;\n\t\t\t}\n\t\t\t\n\t\t\t.separator {\n\t\t\t    margin-bottom: 15px;\n    \t\t\tpadding-bottom: 10px;\n    \t\t\tborder-bottom: 2px solid #000;\n    \t\t\tfont-weight: 600;\n\t\t\t}\n\t\t\t\n\t\t\t.general-title {\n\t\t\t    font-weight: 600;\n\t\t\t    font-size: 15px;\n\t\t\t    margin: 40px 0 20px 0;\n\t\t\t}\n\t\t\t\n\t\t\t.secondary-title {\n\t\t\t    font-weight: 600;\n\t\t\t    font-size: 13px;\n\t\t\t    margin: 25px 0 15px 0;\n\t\t\t}\n\t\t\t\n\t\t\t.form-label {\n\t\t\t    margin: 0;\n\t\t\t    padding: 0;\n    \t\t\tfont-size: 9px;\n    \t\t\tcolor: #888;\n\t\t\t}\n\t\t\t\n\t\t\t.input {\n    \t\t\tpadding: 0 0 5px 0;\n    \t\t\tmargin: 5px 0 15px 0;\n    \t\t\twidth: 100%;\n    \t\t\tborder-bottom: 1px solid #bbb;\n    \t\t\tword-break: break-word;\n\t\t\t}\n\t\t\t\n\t\t    .additional-text {\n\t\t\t    font-size: 75%\n\t\t    }\n\t\t\t\n\t\t\t.date-short {\n\t\t\t    width: 12%;\n\t\t\t}\n\t\t\t\n\t\t\t.inline-dates, .inline-house {\n\t\t\t    margin: 0;\n\t\t\t    padding: 0;\n\t\t\t    border: none;\n\t\t\t}\n\t\t\t\n\t\t\t.inline-dates__date-wrapper, .inline-house__info-wrapper {\n\t\t\t   padding-right: 5px;\n\t\t\t}\n\t\t\t\n\t\t\t.page-break-before {\n\t\t\t    page-break-before: always!important;\n\t\t\t}\n\t\t\t\n\t\t\t.prevent-separate {\n                page-break-inside: avoid!important;\n                break-inside: avoid!important;\n            }\n            \n            .details-table, .details-table td, .details-table th {\n    \t\t\tborder-collapse: collapse;\n    \t\t\tborder: 1px solid #E7EEF2;\n    \t\t\ttext-align: center;\n    \t\t\tpadding: 5px;\n    \t\t\tvertical-align: center;\n    \t\t\tfont-weight: 400;\n    \t\t\t}\n    \t\t\n    \t\t.details-table .details-table__header {\n    \t\t    background-color: #E7EEF2;\n    \t\t    font-size: 8px;\n    \t\t}\n    \t\t\n    \t\t.details-table .details-table__item_center {\n    \t\t    text-align: center;\n    \t\t     font-size: 12px;\n    \t\t}\n    \t\t\n    \t\t.details-table .details-table__item_left {\n    \t\t    text-align: left;\n    \t\t     font-size: 12px;\n    \t\t}\n    \t\t\n    \t\t.details-table .details-table__item_right {\n    \t\t    text-align: left;\n    \t\t    font-size: 12px;\n    \t\t}\n    \t\t\n    \t\t.address-additions-item {\n                display: inline-block;\n                width: 50%;\n                margin: 10px 0 0 0;\n            }\n            \n            .checkbox-grid {\n                border: 0px; \n                border-spacing: 10px;\n            }\n            \n            .checkbox-wrap_center td {\n                vertical-align: middle;\n            }\n            \n            .checkbox-wrap_top .checkbox {\n                vertical-align: middle;\n                display: block;\n                position: relative;\n            }\n            \n\t\t\t.sign_wrap, .multisign_wrap {\n                margin-top: 50px;\n            }\n    \n            .sign_wrap .date, .sign_wrap .name  {\n                padding: 0 0 5px 0;\n            }\n            \n            .sign_wrap .date {\n                float: left;\n                border-bottom: 1px solid #bbb;\n            }\n            \n            .sign_wrap .sing_header {\n                float: right;\n            }\n    \n            .sign_wrap .name {\n                float: right;\n                border-bottom: 1px solid #bbb;\n            }\n    \n            .clearfix {\n                clear: both;\n            }\n\t\t\t\n\t\t\t.multisign {\n\t\t\t    border: none; \n\t\t\t    width: 100%;\n\t\t\t    margin-top: 25px;\n\t\t\t}\n\t\t\t\n\t\t\t.multisign-wrap-date {\n\t\t\t    text-align: left;\n\t\t\t    width: 20%;\n\t\t\t}\n\t\t\t\n\t\t\t.multisign-wrap-signer {\n\t\t\t    text-align: right;\n\t\t\t    width: 80%;\n\t\t\t}\n\t\t\t\n\t\t\t.multisign-wrap-date__item, .multisign-wrap-signer__item {\n    \t\t\tdisplay: inline-block;\n    \t\t\tmargin: 0;\n    \t\t\tpadding: 0 0 5px 0;\n    \t\t\tborder-bottom: 1px solid #bbb;\n\t\t\t}\n\t\t\t\n\t\t\tth, td, th {\n                word-wrap: break-word; /* перенос слова на новий рядок, якщо не вміщується */\n                overflow-wrap: break-word;  /* Перенос слова на наступний рядок */\n            }\n        </style>\n    </head>\n    <body>\n        <landscape_orientation>\n        \n        \n        <!-- PDF HEADER -->\n        <header class=\"separator header-wrap\">  \n            <p class=\"header-wrap__title\">Application №{{calculated.docNumber}} </p>\n            <p class=\"header-wrap__subtitle\">for editing students</p>\n        </header>\n        \n        <!-- PDF GENERAL INFO -->\n        <section>\n            \n            <p class='general-title'>Information about the authorized person who made the changes</p>\n            \n            {{#if calculated.userNameModified}}\n                <div class=\"prevent-separate\">\n                    <p class=\"form-label\">Authorized person's full name</p>\n                    <p class=\"input\">{{calculated.userNameModified}}</p>\n                </div>\n            {{/if}}\n            \n            {{#if calculated.userIpn}}\n                <div class=\"prevent-separate\">\n                    <p class=\"form-label\">Authorized person's number</p>\n                    <p class=\"input\">{{calculated.userIpn}}</p>\n                </div>\n            {{/if}}\n            \n            <div class=\"prevent-separate\">\n                <p class=\"form-label\">Position</p>\n                <p class=\"input\">Authorized person</p>\n            </div>\n            \n            \n            <p class='general-title'>Educational institution</p>\n            \n            {{#if institutionInfo.institution.institutionName}}\n                <div class=\"prevent-separate\">\n                    <p class=\"form-label\">Institution name</p>\n                    <p class=\"input\">{{institutionInfo.institution.institutionName}}</p>\n                </div>\n            {{/if}}\n            \n            {{#if institutionInfo.group.groupName}}\n                <div class=\"prevent-separate\">\n                    <p class=\"form-label\">Group</p>\n                    <p class=\"input\">{{institutionInfo.group.groupName}}</p>\n                </div>\n            {{/if}}\n                \n            \n            {{#if (gt calculated.dataTableAddPdf.length 0)}}\n                {{#if calculated.dataTableAddPdf}}\n                    <div class=\"prevent-separate\" >\n                \t\t<p class='general-title'>Students to be added</p>\n            \t\t    <table class=\"details-table prevent-separate\">\n                            <tr class=\"details-table__header\">\n                                <th class=\"details-table__item_center\"  style=\"max-width: 85px;\">\n                                    №\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 100px;\">\n                                    Last Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 100px;\">\n                                    First Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 120px;\">\n                                    Middle Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Student ID\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Student Number\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Gender\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   State\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   Region\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   District\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 170px;\">\n                                   Email\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 170px;\">\n                                   Phone\n                                </th>\n                            </tr>\n                            {{#each calculated.dataTableAddPdf}}\n                                <tr >\n                                    <td class=\"details-table__item_center\" style=\"max-width: 85px;\">\n                                        {{increment @index}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.lastName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.firstName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.middleName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.studentCode}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.ipn}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.gender}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.state}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.region}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.district}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 170px;\">\n                                        {{this.email}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 170px;\">\n                                        {{this.phone}}\n                                    </td>\n                                </tr>\n                            {{/each}}\n                        </table>\n                    </div>\n                {{/if}}\n            {{/if}}\n            \n            {{#if (gt calculated.dataTableUpdatePdf.length 0)}}\n                {{#if calculated.dataTableUpdatePdf}}\n                    <div class=\"prevent-separate\" >\n                \t\t<p class='general-title'>Students to be updated</p>\n            \t\t    <table class=\"details-table prevent-separate\">\n                            <tr class=\"details-table__header\">\n                                <th class=\"details-table__item_center\"  style=\"max-width: 85px;\">\n                                    №\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 100px;\">\n                                    Last Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 100px;\">\n                                    First Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 120px;\">\n                                    Middle Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Student ID\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Student Number\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Gender\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   State\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   Region\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   District\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 170px;\">\n                                   Email\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 170px;\">\n                                   Phone\n                                </th>\n                            </tr>\n                            {{#each calculated.dataTableUpdatePdf}}\n                                <tr >\n                                    <td class=\"details-table__item_center\" style=\"max-width: 85px;\">\n                                        {{increment @index}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.lastName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.firstName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.middleName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.studentCode}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.ipn}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.gender}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.state}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.region}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.district}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 170px;\">\n                                        {{this.email}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 170px;\">\n                                        {{this.phone}}\n                                    </td>\n                                </tr>\n                            {{/each}}\n                        </table>\n                    </div>\n                {{/if}}\n            {{/if}}\n            \n            {{#if (gt calculated.dataTableDeletePdf.length 0)}}\n                {{#if calculated.dataTableDeletePdf}}\n                    <div class=\"prevent-separate\" >\n                \t\t<p class='general-title'>Students to be removed</p>\n            \t\t    <table class=\"details-table prevent-separate\">\n                            <tr class=\"details-table__header\">\n                                <th class=\"details-table__item_center\"  style=\"max-width: 85px;\">\n                                    №\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 100px;\">\n                                    Last Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 100px;\">\n                                    First Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 120px;\">\n                                    Middle Name\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Student ID\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Student Number\n                                </th>\n                                <th class=\"details-table__item_left\"  style=\"max-width: 90px;\">\n                                    Gender\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   State\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   Region\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 120px;\">\n                                   District\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 170px;\">\n                                   Email\n                                </th>\n                                <th class=\"details-table__item_right\"  style=\"max-width: 170px;\">\n                                   Phone\n                                </th>\n                            </tr>\n                            {{#each calculated.dataTableDeletePdf}}\n                                <tr >\n                                    <td class=\"details-table__item_center\" style=\"max-width: 85px;\">\n                                        {{increment @index}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.lastName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.firstName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 100px;\">\n                                        {{this.middleName}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.studentCode}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.ipn}}\n                                    </td>\n                                    <td class=\"details-table__item_left\" style=\"max-width: 90px;\">\n                                        {{this.gender}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.state}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.region}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 120px;\">\n                                        {{this.district}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 170px;\">\n                                        {{this.email}}\n                                    </td>\n                                    <td class=\"details-table__item_right\" style=\"max-width: 170px;\">\n                                        {{this.phone}}\n                                    </td>\n                                </tr>\n                            {{/each}}\n                        </table>\n                    </div>\n                {{/if}}\n            {{/if}}\n\n        </section>\n        \n        <footer class=\"sign_wrap\">\n            <p class=\"date\">\n                {global.currentDate}\n            </p>\n            <p class=\"name\">\n                {{calculated.userNameModified}}\n            </p>\n            <div class=\"clearfix\"></div>\n        </footer>\n        </landscape_orientation>\n    </body>\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "createdAt": "2025-07-23T12:38:24.984Z",
+      "updatedAt": "2024-11-14T20:18:55.518Z"
+    }
+  ],
+  "gatewayTemplates": [
+    {
+      "id": 1000002,
+      "gatewayTypeId": 1,
+      "name": "Students updated?",
+      "description": "",
+      "jsonSchema": {
+        "formulas": [
+          {
+            "isDefault": false,
+            "id": "Yes",
+            "condition": "(documents, events) => { const dataTableUpdatePdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableUpdatePdf; if (dataTableUpdatePdf && dataTableUpdatePdf?.length > 0) return true; return false; };"
+          },
+          {
+            "isDefault": false,
+            "id": "No",
+            "condition": "(documents, events) => { const dataTableUpdatePdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableUpdatePdf; if (dataTableUpdatePdf && dataTableUpdatePdf?.length === 0) return true; return false; };"
+          }
+        ],
+        "isCurrentOnly": true
+      },
+      "jsonSchemaRaw": "{\n    \"formulas\": [\n        {\n            \"isDefault\": false,\n            \"id\": \"Yes\",\n            \"condition\": \"(documents, events) => { const dataTableUpdatePdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableUpdatePdf; if (dataTableUpdatePdf && dataTableUpdatePdf?.length > 0) return true; return false; };\"\n        },\n        {\n            \"isDefault\": false,\n            \"id\": \"No\",\n            \"condition\": \"(documents, events) => { const dataTableUpdatePdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableUpdatePdf; if (dataTableUpdatePdf && dataTableUpdatePdf?.length === 0) return true; return false; };\"\n        }\n    ],\n    \"isCurrentOnly\": true\n}",
+      "createdAt": "2025-07-23T12:38:24.990Z",
+      "updatedAt": "2024-11-15T11:20:25.841Z"
+    },
+    {
+      "id": 1000003,
+      "gatewayTypeId": 1,
+      "name": "Students added?",
+      "description": "",
+      "jsonSchema": {
+        "formulas": [
+          {
+            "isDefault": false,
+            "id": "Yes",
+            "condition": "(documents, events) => { const dataTableAddPdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableAddPdf; if (dataTableAddPdf && dataTableAddPdf?.length > 0) return true; return false; };"
+          },
+          {
+            "isDefault": false,
+            "id": "No",
+            "condition": "(documents, events) => { const dataTableAddPdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableAddPdf; if (dataTableAddPdf && dataTableAddPdf?.length === 0) return true; return false; };"
+          }
+        ],
+        "isCurrentOnly": true
+      },
+      "jsonSchemaRaw": "{\n    \"formulas\": [\n        {\n            \"isDefault\": false,\n            \"id\": \"Yes\",\n            \"condition\": \"(documents, events) => { const dataTableAddPdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableAddPdf; if (dataTableAddPdf && dataTableAddPdf?.length > 0) return true; return false; };\"\n        },\n        {\n            \"isDefault\": false,\n            \"id\": \"No\",\n            \"condition\": \"(documents, events) => { const dataTableAddPdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableAddPdf; if (dataTableAddPdf && dataTableAddPdf?.length === 0) return true; return false; };\"\n        }\n    ],\n    \"isCurrentOnly\": true\n}",
+      "createdAt": "2025-07-23T12:38:24.994Z",
+      "updatedAt": "2024-11-15T11:20:55.256Z"
+    },
+    {
+      "id": 1000004,
+      "gatewayTypeId": 1,
+      "name": "Students removed?",
+      "description": "",
+      "jsonSchema": {
+        "formulas": [
+          {
+            "isDefault": false,
+            "id": "Yes",
+            "condition": "(documents, events) => { const dataTableDeletePdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableDeletePdf; if (dataTableDeletePdf && dataTableDeletePdf?.length > 0) return true; return false; };"
+          },
+          {
+            "isDefault": false,
+            "id": "No",
+            "condition": "(documents, events) => { const dataTableDeletePdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableDeletePdf; if (dataTableDeletePdf && dataTableDeletePdf?.length === 0) return true; return false; };"
+          }
+        ],
+        "isCurrentOnly": true
+      },
+      "jsonSchemaRaw": "{\n    \"formulas\": [\n        {\n            \"isDefault\": false,\n            \"id\": \"Yes\",\n            \"condition\": \"(documents, events) => { const dataTableDeletePdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableDeletePdf; if (dataTableDeletePdf && dataTableDeletePdf?.length > 0) return true; return false; };\"\n        },\n        {\n            \"isDefault\": false,\n            \"id\": \"No\",\n            \"condition\": \"(documents, events) => { const dataTableDeletePdf = documents.find(item => item.documentTemplateId === 1000001).data?.calculated?.dataTableDeletePdf; if (dataTableDeletePdf && dataTableDeletePdf?.length === 0) return true; return false; };\"\n        }\n    ],\n    \"isCurrentOnly\": true\n}",
+      "createdAt": "2025-07-23T12:38:24.995Z",
+      "updatedAt": "2024-11-18T11:59:50.14Z"
+    }
+  ],
+  "numberTemplates": [
+    {
+      "id": 1000001,
+      "name": "Student ID",
+      "template": "{{idZerosPrefix 8}}\/{{date 'YY'}}",
+      "created_at": "2024-11-14T23:54:15.404Z",
+      "updated_at": "2024-11-14T23:54:15.404Z"
+    }
+  ],
+  "eventTemplates": [
+    {
+      "id": 1000001,
+      "eventTypeId": 3,
+      "name": "Removing students from register (keyId: 100; registerId: 100)",
+      "description": "",
+      "jsonSchema": {
+        "deleteRegistersList": {
+          "returnDeletedRecords": true,
+          "recordIds": "(documents, events) => {const recordIds = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((v => v.documentTemplateId === 1000001)).data?.calculated.dataTableDeletePdf?.map((v => v?.id));return recordIds};",
+          "registerId": 100,
+          "keyId": 100
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"deleteRegistersList\": {\n        \"returnDeletedRecords\": true,\n        \"recordIds\": \"(documents, events) => {const recordIds = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((v => v.documentTemplateId === 1000001)).data?.calculated.dataTableDeletePdf?.map((v => v?.id));return recordIds};\",\n        \"registerId\": 100,\n        \"keyId\": 100\n    }\n}",
+      "htmlTemplate": "",
+      "createdAt": "2025-07-23T12:38:24.996Z",
+      "updatedAt": "2024-11-14T20:19:16.157Z"
+    },
+    {
+      "id": 1000005,
+      "eventTypeId": 1,
+      "name": "Notification of Removal from Directory to Students",
+      "description": "",
+      "jsonSchema": {
+        "emails": "(documents, events) => { const emails = documents.sort((a, b) => b.createdAt - a.createdAt).find((item => item.documentTemplateId === 1000001)).data.calculated?.dataTableDeletePdf?.map(el => el?.email); return emails ? emails : []; }",
+        "subject": "(documents, events) => { return `You have been removed from the student list of the educational institution`; }",
+        "fullText": "(documents) => {const doc = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((item => item.documentTemplateId === 1000001)).data;const step = doc?.institutionInfo;const institutionName = step?.institution?.institutionName;const groupName = step?.group?.groupName;return `<tr style='font-size: 18px; line-height: 27px;'><td style='padding: 60px 0px; text-align: left;'><p style='margin-bottom: 20px; color: #000000; margin: 0px; margin-bottom: 30px;'>😔 Unfortunately, you have been removed from the student list of the educational institution «${institutionName}», group «${groupName}».</p><p style='margin-bottom: 20px; color: #000000;'>If you notice any discrepancies or need further assistance, feel free to reach out to our <a href='{{frontUrl}}/tasks/create/987810/987810001' style='color: #0054AC; text-decoration: none;'>support team</a>.</p><p style='margin-bottom: 40px;'>Thank you for using our services!</p></td></tr>`};",
+        "emailTemplateId": "(documents, events) => { return 239; }"
+      },
+      "jsonSchemaRaw": "{\n    \"emails\": \"(documents, events) => { const emails = documents.sort((a, b) => b.createdAt - a.createdAt).find((item => item.documentTemplateId === 1000001)).data.calculated?.dataTableDeletePdf?.map(el => el?.email); return emails ? emails : []; }\",\n    \"subject\": \"(documents, events) => { return `You have been removed from the student list of the educational institution`; }\",\n    \"fullText\": \"(documents) => {const doc = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((item => item.documentTemplateId === 1000001)).data;const step = doc?.institutionInfo;const institutionName = step?.institution?.institutionName;const groupName = step?.group?.groupName;return `<tr style='font-size: 18px; line-height: 27px;'><td style='padding: 60px 0px; text-align: left;'><p style='margin-bottom: 20px; color: #000000; margin: 0px; margin-bottom: 30px;'>😔 Unfortunately, you have been removed from the student list of the educational institution «${institutionName}», group «${groupName}».</p><p style='margin-bottom: 20px; color: #000000;'>If you notice any discrepancies or need further assistance, feel free to reach out to our <a href='{{frontUrl}}/tasks/create/987810/987810001' style='color: #0054AC; text-decoration: none;'>support team</a>.</p><p style='margin-bottom: 40px;'>Thank you for using our services!</p></td></tr>`};\",\n    \"emailTemplateId\": \"(documents, events) => { return 239; }\"\n}",
+      "htmlTemplate": "",
+      "createdAt": "2025-07-23T12:38:24.998Z",
+      "updatedAt": "2024-11-15T11:22:30.220Z"
+    },
+    {
+      "id": 1000003,
+      "eventTypeId": 3,
+      "name": "Updating students in register (keyId: 100; registerId: 100)",
+      "description": "",
+      "jsonSchema": {
+        "updateRegistersList": {
+          "recordIds": "(documents, events) => {const recordIds = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((v => v.documentTemplateId === 1000001)).data.calculated.dataTableUpdatePdf?.map((v => v.id));return recordIds};",
+          "registerId": 100,
+          "keyId": 100,
+          "person": "(documents, events) => {const doc = documents.find((item => item.documentTemplateId === 1000001)).data;return {id: doc?.calculated?.userId,name: doc?.calculated?.userNameModified}};",
+          "arrayToDefineLength": "(documents, events) => {const recordIds = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((v => v.documentTemplateId === 1000001)).data.calculated.dataTableUpdatePdf?.map((v => v.id));return recordIds};",
+          "map": {
+            "institutionCode": "(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.institution?.institutionCode; }",
+            "institutionName": "(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.institution?.institutionName; }",
+            "groupCode": "(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.group?.groupCode; }",
+            "groupName": "(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.group?.groupName; }",
+            "fullName": "(documents, events) => { const dataTableUpdatePdf = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf; const lastName = dataTableUpdatePdf[X]?.lastName; const firstName = dataTableUpdatePdf[X]?.firstName; const middleName = dataTableUpdatePdf[X]?.middleName; return lastName+' '+firstName+(middleName?' '+middleName:''); }",
+            "studentCode": "(documents, events) => { const studentCode = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.studentCode; return studentCode; }",
+            "ipn": "(documents, events) => { const ipn = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.ipn; return ipn; }",
+            "hashIpn": "(documents, events) => { const ipn = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.ipn; return getSha256Hash(ipn); }",
+            "gender": "(documents, events) => { const gender = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.gender; return gender; }",
+            "state": "(documents, events) => { const state = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.state; if (!!state) return state; return ''; }",
+            "region": "(documents, events) => { const region = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.region; if (!!region) return region; return ''; }",
+            "district": "(documents, events) => { const district = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.district; if (district) return district; return ''; }",
+            "phone": "(documents, events) => { const phone = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.calculated.dataTableUpdatePdf[X]?.phone; return phone; }",
+            "email": "(documents, events) => { const email = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.calculated.dataTableUpdatePdf[X]?.email; return email; }"
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"updateRegistersList\": {\n        \"recordIds\": \"(documents, events) => {const recordIds = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((v => v.documentTemplateId === 1000001)).data.calculated.dataTableUpdatePdf?.map((v => v.id));return recordIds};\",\n        \"registerId\": 100,\n        \"keyId\": 100,\n        \"person\": \"(documents, events) => {const doc = documents.find((item => item.documentTemplateId === 1000001)).data;return {id: doc?.calculated?.userId,name: doc?.calculated?.userNameModified}};\",\n        \"arrayToDefineLength\": \"(documents, events) => {const recordIds = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((v => v.documentTemplateId === 1000001)).data.calculated.dataTableUpdatePdf?.map((v => v.id));return recordIds};\",\n        \"map\": {\n            \"institutionCode\": \"(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.institution?.institutionCode; }\",\n            \"institutionName\": \"(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.institution?.institutionName; }\",\n            \"groupCode\": \"(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.group?.groupCode; }\",\n            \"groupName\": \"(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.group?.groupName; }\",\n            \"fullName\": \"(documents, events) => { const dataTableUpdatePdf = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf; const lastName = dataTableUpdatePdf[X]?.lastName; const firstName = dataTableUpdatePdf[X]?.firstName; const middleName = dataTableUpdatePdf[X]?.middleName; return lastName+' '+firstName+(middleName?' '+middleName:''); }\",\n            \"studentCode\": \"(documents, events) => { const studentCode = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.studentCode; return studentCode; }\",\n            \"ipn\": \"(documents, events) => { const ipn = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.ipn; return ipn; }\",\n            \"hashIpn\": \"(documents, events) => { const ipn = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.ipn; return getSha256Hash(ipn); }\",\n            \"gender\": \"(documents, events) => { const gender = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.gender; return gender; }\",\n            \"state\": \"(documents, events) => { const state = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.state; if (!!state) return state; return ''; }\",\n            \"region\": \"(documents, events) => { const region = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.region; if (!!region) return region; return ''; }\",\n            \"district\": \"(documents, events) => { const district = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableUpdatePdf[X]?.district; if (district) return district; return ''; }\",\n            \"phone\": \"(documents, events) => { const phone = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.calculated.dataTableUpdatePdf[X]?.phone; return phone; }\",\n            \"email\": \"(documents, events) => { const email = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.calculated.dataTableUpdatePdf[X]?.email; return email; }\"\n        }\n    }\n}",
+      "htmlTemplate": "",
+      "createdAt": "2025-07-23T12:38:25.000Z",
+      "updatedAt": "2024-11-15T11:20:44.398Z"
+    },
+    {
+      "id": 1000006,
+      "eventTypeId": 1,
+      "name": "Notification of Directory Update to Students",
+      "description": "",
+      "jsonSchema": {
+        "emails": "(documents, events) => { const emails = documents.sort((a, b) => b.createdAt - a.createdAt).find((item => item.documentTemplateId === 1000001)).data.calculated?.dataTableUpdatePdf?.map(el => el?.email); return emails ? emails : []; }",
+        "subject": "(documents, events) => { return `Your student information for the educational institution has been updated`; }",
+        "fullText": "(documents) => {const doc = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((item => item.documentTemplateId === 1000001)).data;const step = doc?.institutionInfo;const institutionName = step?.institution?.institutionName;const groupName = step?.group?.groupName;return `<tr style='font-size: 18px; line-height: 27px;'><td style='padding: 60px 0px; text-align: left;'><h1 style='font-size: 36px; font-weight: 700; line-height: 44px; color: rgba(23, 43, 77, 1); margin: 0px; margin-bottom: 30px;'>👋 Greetings!</h1><p style='margin-bottom: 20px; color: #000000; margin: 0px; margin-bottom: 30px;'>Your student data for the educational institution «${institutionName}», group «${groupName}», has been updated.</p><p style='margin-bottom: 20px; color: #000000;'>If you notice any discrepancies or need further assistance, feel free to reach out to our <a href='{{frontUrl}}/tasks/create/987810/987810001' style='color: #0054AC; text-decoration: none;'>support team</a>.</p><p style='margin-bottom: 40px;'>Thank you for using our services!</p></td></tr>`};",
+        "emailTemplateId": "(documents, events) => { return 239; }"
+      },
+      "jsonSchemaRaw": "{\n    \"emails\": \"(documents, events) => { const emails = documents.sort((a, b) => b.createdAt - a.createdAt).find((item => item.documentTemplateId === 1000001)).data.calculated?.dataTableUpdatePdf?.map(el => el?.email); return emails ? emails : []; }\",\n    \"subject\": \"(documents, events) => { return `Your student information for the educational institution has been updated`; }\",\n    \"fullText\": \"(documents) => {const doc = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((item => item.documentTemplateId === 1000001)).data;const step = doc?.institutionInfo;const institutionName = step?.institution?.institutionName;const groupName = step?.group?.groupName;return `<tr style='font-size: 18px; line-height: 27px;'><td style='padding: 60px 0px; text-align: left;'><h1 style='font-size: 36px; font-weight: 700; line-height: 44px; color: rgba(23, 43, 77, 1); margin: 0px; margin-bottom: 30px;'>👋 Greetings!</h1><p style='margin-bottom: 20px; color: #000000; margin: 0px; margin-bottom: 30px;'>Your student data for the educational institution «${institutionName}», group «${groupName}», has been updated.</p><p style='margin-bottom: 20px; color: #000000;'>If you notice any discrepancies or need further assistance, feel free to reach out to our <a href='{{frontUrl}}/tasks/create/987810/987810001' style='color: #0054AC; text-decoration: none;'>support team</a>.</p><p style='margin-bottom: 40px;'>Thank you for using our services!</p></td></tr>`};\",\n    \"emailTemplateId\": \"(documents, events) => { return 239; }\"\n}",
+      "htmlTemplate": "",
+      "createdAt": "2025-07-23T12:38:25.001Z",
+      "updatedAt": "2024-11-15T11:22:49.382Z"
+    },
+    {
+      "id": 1000004,
+      "eventTypeId": 3,
+      "name": "Adding students to register (keyId: 100; registerId: 100)",
+      "description": "",
+      "jsonSchema": {
+        "saveToRegistersList": {
+          "registerId": 100,
+          "keyId": 100,
+          "person": "(documents, events) => {const doc = documents.find((item => item.documentTemplateId === 1000001)).data;return {id: doc?.calculated?.userId,name: doc?.calculated?.userNameModified}};",
+          "arrayToDefineLength": "(documents, events) => {const dataTableAddPdf = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((v => v.documentTemplateId === 1000001)).data.calculated.dataTableAddPdf.map((el => el.ipn));return dataTableAddPdf};",
+          "map": {
+            "institutionCode": "(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.institution?.institutionCode; }",
+            "institutionName": "(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.institution?.institutionName; }",
+            "groupCode": "(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.group?.groupCode; }",
+            "groupName": "(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.group?.groupName; }",
+            "fullName": "(documents, events) => { const dataTableAddPdf = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf; const lastName = dataTableAddPdf[X]?.lastName; const firstName = dataTableAddPdf[X]?.firstName; const middleName = dataTableAddPdf[X]?.middleName; return lastName+' '+firstName+(middleName?' '+middleName:''); }",
+            "studentCode": "(documents, events) => { const studentCode = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.studentCode; return studentCode; }",
+            "ipn": "(documents, events) => { const ipn = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.ipn; return ipn; }",
+            "hashIpn": "(documents, events) => { const ipn = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.ipn; return getSha256Hash(ipn); }",
+            "gender": "(documents, events) => { const gender = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.gender; return gender; }",
+            "state": "(documents, events) => { const state = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.state; if (!!state) return state; return ''; }",
+            "region": "(documents, events) => { const region = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.region; if (!!region) return region; return ''; }",
+            "district": "(documents, events) => { const district = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.district; if (district) return district; return ''; }",
+            "phone": "(documents, events) => { const phone = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.calculated.dataTableAddPdf[X]?.phone; return phone; }",
+            "email": "(documents, events) => { const email = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.calculated.dataTableAddPdf[X]?.email; return email; }"
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"saveToRegistersList\": {\n        \"registerId\": 100,\n        \"keyId\": 100,\n        \"person\": \"(documents, events) => {const doc = documents.find((item => item.documentTemplateId === 1000001)).data;return {id: doc?.calculated?.userId,name: doc?.calculated?.userNameModified}};\",\n        \"arrayToDefineLength\": \"(documents, events) => {const dataTableAddPdf = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((v => v.documentTemplateId === 1000001)).data.calculated.dataTableAddPdf.map((el => el.ipn));return dataTableAddPdf};\",\n        \"map\": {\n            \"institutionCode\": \"(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.institution?.institutionCode; }\",\n            \"institutionName\": \"(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.institution?.institutionName; }\",\n            \"groupCode\": \"(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.group?.groupCode; }\",\n            \"groupName\": \"(documents, events) => { return documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.institutionInfo?.group?.groupName; }\",\n            \"fullName\": \"(documents, events) => { const dataTableAddPdf = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf; const lastName = dataTableAddPdf[X]?.lastName; const firstName = dataTableAddPdf[X]?.firstName; const middleName = dataTableAddPdf[X]?.middleName; return lastName+' '+firstName+(middleName?' '+middleName:''); }\",\n            \"studentCode\": \"(documents, events) => { const studentCode = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.studentCode; return studentCode; }\",\n            \"ipn\": \"(documents, events) => { const ipn = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.ipn; return ipn; }\",\n            \"hashIpn\": \"(documents, events) => { const ipn = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.ipn; return getSha256Hash(ipn); }\",\n            \"gender\": \"(documents, events) => { const gender = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.gender; return gender; }\",\n            \"state\": \"(documents, events) => { const state = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.state; if (!!state) return state; return ''; }\",\n            \"region\": \"(documents, events) => { const region = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.region; if (!!region) return region; return ''; }\",\n            \"district\": \"(documents, events) => { const district = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data.calculated.dataTableAddPdf[X]?.district; if (district) return district; return ''; }\",\n            \"phone\": \"(documents, events) => { const phone = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.calculated.dataTableAddPdf[X]?.phone; return phone; }\",\n            \"email\": \"(documents, events) => { const email = documents.sort((a, b) => b.createdAt - a.createdAt).find(v => v.documentTemplateId === 1000001).data?.calculated.dataTableAddPdf[X]?.email; return email; }\"\n        }\n    }\n}",
+      "htmlTemplate": "",
+      "createdAt": "2025-07-23T12:38:25.002Z",
+      "updatedAt": "2024-11-15T11:20:58.171Z"
+    },
+    {
+      "id": 1000007,
+      "eventTypeId": 1,
+      "name": "Notification of Directory Addition to Students",
+      "description": "",
+      "jsonSchema": {
+        "emails": "(documents, events) => { const emails = documents.sort((a, b) => b.createdAt - a.createdAt).find((item => item.documentTemplateId === 1000001)).data.calculated?.dataTableAddPdf?.map(el => el?.email); return emails ? emails : []; }",
+        "subject": "(documents, events) => { return `You have been added to the student list of the educational institution`; }",
+        "fullText": "(documents) => {const doc = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((item => item.documentTemplateId === 1000001)).data;const step = doc?.institutionInfo;const institutionName = step?.institution?.institutionName;const groupName = step?.group?.groupName;return `<tr style='font-size: 18px; line-height: 27px;'><td style='padding: 60px 0px; text-align: left;'><h1 style='font-size: 36px; font-weight: 700; line-height: 44px; color: rgba(23, 43, 77, 1); margin: 0px; margin-bottom: 30px;'>🥳 Congratulations!</h1><p style='margin-bottom: 20px; color: #000000; margin: 0px; margin-bottom: 30px;'>You have been added to the student list of the educational institution «${institutionName}», group «${groupName}».</p><p style='margin-bottom: 20px; color: #000000;'>If you notice any discrepancies or need further assistance, feel free to reach out to our <a href='{{frontUrl}}/tasks/create/987810/987810001' style='color: #0054AC; text-decoration: none;'>support team</a>.</p><p style='margin-bottom: 40px;'>Thank you for using our services!</p></td></tr>`};",
+        "emailTemplateId": "(documents, events) => { return 239; }"
+      },
+      "jsonSchemaRaw": "{\n    \"emails\": \"(documents, events) => { const emails = documents.sort((a, b) => b.createdAt - a.createdAt).find((item => item.documentTemplateId === 1000001)).data.calculated?.dataTableAddPdf?.map(el => el?.email); return emails ? emails : []; }\",\n    \"subject\": \"(documents, events) => { return `You have been added to the student list of the educational institution`; }\",\n    \"fullText\": \"(documents) => {const doc = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((item => item.documentTemplateId === 1000001)).data;const step = doc?.institutionInfo;const institutionName = step?.institution?.institutionName;const groupName = step?.group?.groupName;return `<tr style='font-size: 18px; line-height: 27px;'><td style='padding: 60px 0px; text-align: left;'><h1 style='font-size: 36px; font-weight: 700; line-height: 44px; color: rgba(23, 43, 77, 1); margin: 0px; margin-bottom: 30px;'>🥳 Congratulations!</h1><p style='margin-bottom: 20px; color: #000000; margin: 0px; margin-bottom: 30px;'>You have been added to the student list of the educational institution «${institutionName}», group «${groupName}».</p><p style='margin-bottom: 20px; color: #000000;'>If you notice any discrepancies or need further assistance, feel free to reach out to our <a href='{{frontUrl}}/tasks/create/987810/987810001' style='color: #0054AC; text-decoration: none;'>support team</a>.</p><p style='margin-bottom: 40px;'>Thank you for using our services!</p></td></tr>`};\",\n    \"emailTemplateId\": \"(documents, events) => { return 239; }\"\n}",
+      "htmlTemplate": "",
+      "createdAt": "2025-07-23T12:38:25.003Z",
+      "updatedAt": "2024-11-15T11:22:57.861Z"
+    },
+    {
+      "id": 1000008,
+      "eventTypeId": 1,
+      "name": "Notification of Student Update to Authorized Person",
+      "description": "",
+      "jsonSchema": {
+        "emailsByUnitId": "(documents) => { return [1000002290]; }",
+        "subject": "(documents, events) => { return `Student Data Update Report`; }",
+        "fullText": "(documents) => {const doc = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((item => item.documentTemplateId === 1000001)).data;return `<tr style='font-size: 18px; line-height: 27px;'><td style='padding: 60px 0px; text-align: left;'><h1 style='font-size: 36px; font-weight: 700; line-height: 44px; color: rgba(23, 43, 77, 1); margin: 0px; margin-bottom: 30px;'>👋 Greetings!</h1><p style='margin-bottom: 20px; color: #000000;'>We’re pleased to inform you that your requested data update has been successfully processed. Our records now reflect the changes you provided. </p><p style='margin-bottom: 20px; color: #000000;'>If you notice any discrepancies or need further assistance, feel free to reach out to our <a href='{{frontUrl}}/tasks/create/987810/987810001' style='color: #0054AC; text-decoration: none;'>support team</a>.</p><div style='padding: 24px; margin-bottom: 30px; background: rgba(20, 107, 255, 0.1); color: rgba(23, 43, 77, 1);'><h2 style='font-size: 20px; line-height: 30px; font-weight: 700; margin: 0; margin-bottom: 10px;'>Important information</h2><p>Details regarding the update of student information can be viewed in the attached PDF file or accessed online in your <a href='{{frontUrl}}/registry?keyId=100' style='color: #0054AC; text-decoration: none;'>electronic dashboard</a>.</p></div><p style='margin-bottom: 40px;'>Thank you for using our services!</p></td></tr>`};",
+        "fileIds": "(documents) => {const sortedDoc = documents.sort(((a, b) => b.createdAt - a.createdAt));const document = sortedDoc.find((item => item.documentTemplateId === 1000001));return [...document.attachments.map((v => v.link)), document.fileId]};",
+        "emailTemplateId": "(documents, events) => { return 239; }"
+      },
+      "jsonSchemaRaw": "{\n    \"emailsByUnitId\": \"(documents) => { return [1000002290]; }\",\n    \"subject\": \"(documents, events) => { return `Student Data Update Report`; }\",\n    \"fullText\": \"(documents) => {const doc = documents.sort(((a, b) => b.createdAt - a.createdAt)).find((item => item.documentTemplateId === 1000001)).data;return `<tr style='font-size: 18px; line-height: 27px;'><td style='padding: 60px 0px; text-align: left;'><h1 style='font-size: 36px; font-weight: 700; line-height: 44px; color: rgba(23, 43, 77, 1); margin: 0px; margin-bottom: 30px;'>👋 Greetings!</h1><p style='margin-bottom: 20px; color: #000000;'>We’re pleased to inform you that your requested data update has been successfully processed. Our records now reflect the changes you provided. </p><p style='margin-bottom: 20px; color: #000000;'>If you notice any discrepancies or need further assistance, feel free to reach out to our <a href='{{frontUrl}}/tasks/create/987810/987810001' style='color: #0054AC; text-decoration: none;'>support team</a>.</p><div style='padding: 24px; margin-bottom: 30px; background: rgba(20, 107, 255, 0.1); color: rgba(23, 43, 77, 1);'><h2 style='font-size: 20px; line-height: 30px; font-weight: 700; margin: 0; margin-bottom: 10px;'>Important information</h2><p>Details regarding the update of student information can be viewed in the attached PDF file or accessed online in your <a href='{{frontUrl}}/registry?keyId=100' style='color: #0054AC; text-decoration: none;'>electronic dashboard</a>.</p></div><p style='margin-bottom: 40px;'>Thank you for using our services!</p></td></tr>`};\",\n    \"fileIds\": \"(documents) => {const sortedDoc = documents.sort(((a, b) => b.createdAt - a.createdAt));const document = sortedDoc.find((item => item.documentTemplateId === 1000001));return [...document.attachments.map((v => v.link)), document.fileId]};\",\n    \"emailTemplateId\": \"(documents, events) => { return 239; }\"\n}",
+      "htmlTemplate": "",
+      "createdAt": "2025-07-23T12:38:25.004Z",
+      "updatedAt": "2024-11-15T11:23:29.591Z"
+    }
+  ]
+}

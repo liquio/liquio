@@ -1,0 +1,20 @@
+{{- if .Values.services.externalReader.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-external-reader
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: external-reader
+spec:
+  type: {{ .Values.services.externalReader.type }}
+  ports:
+    - port: {{ .Values.services.externalReader.servicePort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "liquio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: external-reader
+{{- end }}

@@ -1,0 +1,13 @@
+{
+  "server": "http://notification",
+  "port": 3003,
+  "timeout": 30000,
+  "user": "admin-api",
+  "hashedPassword": "<REDACTED>",
+  "routes": {
+    "ping": "/test/ping",
+    "sendToUserList": "/message/usersList",
+    "sendToUserEmails": "/message/emailsList",
+    "toAll": "/message/toAll"
+  }
+}

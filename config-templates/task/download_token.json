@@ -1,0 +1,4 @@
+{
+  "jwtSecret": "<removed>",
+  "lifetimeInSeconds": 3600
+}

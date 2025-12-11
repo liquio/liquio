@@ -1,0 +1,38 @@
+{
+    "entryTaskTemplateIds": [
+        1201
+    ],
+    "timeline": {
+        "steps": [
+            {
+                "taskTemplateId": 1201,
+                "label": "Клопотання подано"
+            },
+            {
+                "taskTemplateId": 1202,
+                "label": "Документи зареєстровано"
+            },
+            {
+                "taskTemplateId": 1203,
+                "label": "Документи перевірено"
+            },
+            {
+                "taskTemplateId": 1204,
+                "label": "Відмовлено"
+            },
+            {
+                "taskTemplateId": 1205,
+                "label": "Схвалено"
+            },
+            {
+                "taskTemplateId": 1206,
+                "label": "Готово до видачі"
+            },
+            {
+                "taskTemplateId": 1207,
+                "label": "Видано"
+            }
+        ]
+    },
+    "info": []
+}

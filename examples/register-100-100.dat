@@ -1,0 +1,147 @@
+{
+  "key": {
+    "data": {},
+    "id": 100,
+    "registerId": 100,
+    "name": "Students",
+    "description": "This register contains information about students, including their personal details, institutional affiliations, and contact information.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "institutionCode": {
+          "type": "string",
+          "description": "School Number",
+          "public": true
+        },
+        "institutionName": {
+          "type": "string",
+          "description": "School Name",
+          "public": true
+        },
+        "groupCode": {
+          "type": "string",
+          "description": "Group Number",
+          "public": true
+        },
+        "groupName": {
+          "type": "string",
+          "description": "Group Name",
+          "public": true
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Student Name",
+          "public": true
+        },
+        "studentCode": {
+          "type": "string",
+          "description": "Student ID",
+          "maxLength": 10,
+          "public": true
+        },
+        "ipn": {
+          "type": "string",
+          "description": "Roll Number",
+          "maxLength": 10,
+          "public": true
+        },
+        "hashIpn": {
+          "type": "string",
+          "description": "Student hash"
+        },
+        "gender": {
+          "type": "string",
+          "description": "Gender",
+          "public": true
+        },
+        "state": {
+          "type": "string",
+          "description": "State",
+          "public": true
+        },
+        "region": {
+          "type": "string",
+          "description": "Region",
+          "public": true
+        },
+        "district": {
+          "type": "string",
+          "description": "District",
+          "public": true
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact Phone Number",
+          "public": true
+        },
+        "email": {
+          "type": "string",
+          "description": "Email Address",
+          "isEmail": true,
+          "public": true
+        }
+      },
+      "customTypes": {
+        "isEmail": "(recordFieldValue, currentKeywordValueInSchema) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z][a-zA-Z]+$/.test(recordFieldValue) === currentKeywordValueInSchema"
+      },
+      "required": [
+        "institutionCode",
+        "institutionName",
+        "groupCode",
+        "groupName",
+        "fullName",
+        "studentCode",
+        "ipn",
+        "hashIpn",
+        "gender",
+        "phone",
+        "email"
+      ]
+    },
+    "parentId": null,
+    "meta": {
+      "isPersonal": true,
+      "createdByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      },
+      "updatedByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      }
+    },
+    "toString": "(record) => record.data.fullName + ' - ' + record.data.ipn;",
+    "toSearchString": "(record) => { return [record.data.ipn, record.data.institutionCode, record.data.groupCode]; }",
+    "createdBy": "liquio",
+    "updatedBy": "liquio",
+    "accessMode": "full",
+    "isEncrypted": false,
+    "toExport": "(record) => { return null; }",
+    "createdAt": "2024-11-14T10:12:22.429Z",
+    "updatedAt": "2024-11-16T22:11:13.057Z"
+  },
+  "register": {
+    "data": {},
+    "id": 100,
+    "name": "Education",
+    "description": "This register contains information about educational institutions, groups, and students.",
+    "parentId": null,
+    "meta": {
+      "createdByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      },
+      "updatedByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      }
+    },
+    "createdBy": "liquio",
+    "updatedBy": "liquio",
+    "createdAt": "2024-11-14T09:50:28.117Z",
+    "updatedAt": "2024-12-13T09:43:51.617Z"
+  },
+  "options": {
+    "onlySchema": true
+  }
+}

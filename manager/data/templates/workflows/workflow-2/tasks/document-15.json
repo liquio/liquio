@@ -1,0 +1,85 @@
+{
+  "title": "Надати дозвіл замовнику",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['register', 'resolution', 'provision']; }",
+  "properties": {
+    "register": {
+      "type": "object",
+      "description": "Реєстратор",
+      "control": "select.user",
+      "properties": {
+        "id": {
+          "type": "string",
+          "value": "user.id",
+          "readonly": true,
+          "hidden": true
+        },
+        "name": {
+          "type": "string",
+          "value": "user.name",
+          "description": "Прізвище, ім'я та по батькові",
+          "readonly": true
+        },
+        "email": {
+          "type": "string",
+          "value": "user.email",
+          "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+$",
+          "sample": "Електронна адреса має бути в форматі \"test@example.com\"",
+          "description": "Електронна пошта"
+        },
+        "phone": {
+          "type": "string",
+          "value": "user.phone",
+          "pattern": "^380[0-9]{9}$",
+          "sample": "Номер у форматі 380XXXXXXXXX",
+          "description": "Контактний номер телефону",
+          "mask": "380999999999"
+        },
+        "address": {
+          "type": "string",
+          "value": "user.address",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Адреса",
+          "sample": "Адреса, не більше 500 символів"
+        },
+        "ipn": {
+          "type": "string",
+          "value": "user.ipn",
+          "description": "РНОКПП",
+          "readonly": true
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "resolution": {
+      "type": "object",
+      "description": "Дозвіл",
+      "properties": {
+        "documentPreview": {
+          "type": "object",
+          "control": "preview.document",
+          "documentTemplateId": 14
+        }
+      }
+    },
+    "provision": {
+      "type": "object",
+      "description": "Надання замовнику",
+      "properties": {
+        "date": {
+          "description": "Дата передачі замовнику",
+          "type": "string",
+          "control": "date"
+        }
+      }
+    }
+  },
+  "required": [
+    "register",
+    "provision"
+  ]
+}

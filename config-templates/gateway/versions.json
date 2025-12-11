@@ -1,0 +1,7 @@
+{
+  "services": [
+    { "name": "event", "minVersion": "1.37.6" },
+    { "name": "task", "minVersion": "2.56.35" },
+    { "name": "manager", "minVersion": "1.10.16" }
+  ]
+}

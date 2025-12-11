@@ -1,0 +1,22 @@
+{
+  "database": "register",
+  "host": "postgres",
+  "port": 5432,
+  "dialect": "postgres",
+  "username": "postgres",
+  "password": "<REDACTED>",
+  "operatorsAliases": false,
+  "dialectOptions": {
+    "socketPath": "",
+    "supportBigNumbers": true,
+    "bigNumberStrings": true
+  },
+  "pool": {
+    "max": 5,
+    "min": 0,
+    "acquire": 30000,
+    "idle": 10000
+  },
+  "logging": false,
+  "migrationStorageTableName": "sequelize_meta"
+}

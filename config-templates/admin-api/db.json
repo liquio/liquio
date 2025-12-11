@@ -1,0 +1,21 @@
+{
+  "database": "bpmn",
+  "dialect": "postgres",
+  "dialectOptions": {
+    "bigNumberStrings": true,
+    "socketPath": "",
+    "supportBigNumbers": true
+  },
+  "host": "postgres",
+  "migrationStorageTableName": "sequelize_meta",
+  "password": "<REDACTED>",
+  "pool": {
+    "acquire": 60000,
+    "idle": 30000,
+    "max": 5,
+    "min": 0
+  },
+  "port": 5432,
+  "timezone": "Europe/Kyiv",
+  "username": "postgres"
+}

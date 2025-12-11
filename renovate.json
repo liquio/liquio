@@ -1,0 +1,130 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Liquio Opensource monorepo dependency update configuration",
+  "extends": [
+    "config:base",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "timezone": "UTC",
+  "schedule": [
+    "after 10pm every weekday",
+    "before 5am every weekday",
+    "every weekend"
+  ],
+  "rangeStrategy": "bump",
+  "grouping": {
+    "major": {
+      "groupName": "Major updates",
+      "schedule": ["after 10pm on monday"]
+    },
+    "minor": {
+      "groupName": "Minor updates",
+      "schedule": ["after 10pm on wednesday"]
+    },
+    "patch": {
+      "groupName": "Patch & pin updates",
+      "schedule": ["after 10pm on friday"]
+    }
+  },
+  "ignoreDeps": [],
+  "packageRules": [
+    {
+      "description": "Disable major updates for production-critical dependencies",
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false,
+      "matchPackagePatterns": [
+        "express",
+        "sequelize",
+        "postgres",
+        "redis"
+      ]
+    },
+    {
+      "description": "Auto-merge minor and patch updates for dependencies",
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Group dev dependencies together",
+      "matchDatasources": ["npm"],
+      "groupName": "Development dependencies",
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true,
+      "minimumReleaseAge": "2 days"
+    },
+    {
+      "description": "Group frontend framework updates",
+      "matchDatasources": ["npm"],
+      "groupName": "React ecosystem",
+      "matchPackagePatterns": ["react", "react-dom", "@react-*"],
+      "automerge": false,
+      "schedule": ["after 10pm on tuesday"]
+    },
+    {
+      "description": "Quick patch updates",
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "Patch updates",
+      "schedule": ["after 10pm"]
+    },
+    {
+      "description": "Security updates - high priority",
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["patch"],
+      "classificaton": "security",
+      "priority": 10,
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Group eslint packages",
+      "matchDatasources": ["npm"],
+      "groupName": "Linting (ESLint)",
+      "matchPackagePatterns": ["eslint*", "prettier"]
+    },
+    {
+      "description": "Group test dependencies",
+      "matchDatasources": ["npm"],
+      "groupName": "Testing tools",
+      "matchPackagePatterns": ["jest", "@testing-library*", "playwright", "vitest"]
+    }
+  ],
+  "postUpdateOptions": [
+    "npmDedupe",
+    "yarnDedupeHighest",
+    "gomodTidy"
+  ],
+  "prConcurrentLimit": 3,
+  "prCreation": "not-pending",
+  "semanticCommits": "enabled",
+  "commitMessagePrefix": "chore(deps):",
+  "prBodyColumns": [
+    "Package",
+    "Type",
+    "Update",
+    "Change"
+  ],
+  "labels": [
+    "dependencies",
+    "renovate"
+  ],
+  "assignees": [],
+  "reviewers": [],
+  "enableVulnerabilityAlerts": true,
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "dist/**",
+    "build/**"
+  ],
+  "ignorePresets": [
+    ":preCautionSourceThrottledMS",
+    ":preSensitiveSyntaxThrottledMS"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "tokens": [
+    "Basic dGFzazp0YXNr"
+  ],
+  "protectedRoutes": [
+    {
+      "route": "/some/protected-route",
+      "basicAuthUsers": ["external-reader"]
+    }
+  ]
+}

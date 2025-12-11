@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-cabinet-api-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # Auth configuration
+  auth.json: |
+    {
+      "LiquioId": {
+        "server": "http://{{ include "liquio.fullname" . }}-id-api",
+        "port": {{ .Values.services.idApi.servicePort }},
+        "routes": {
+          "getCode": "/authorise",
+          "getToken": "/oauth/token/",
+          "getUserInfo": "/user/info",
+          "searchUsers": "/user/info/search",
+          "getUserByCode": "/user/info/ipn",
+          "logout": "/logout",
+          "sendSms": "/sign_up/confirmation/phone/send",
+          "verifyPhone": "/sign_up/confirmation/phone/verify",
+          "changeEmail": "/user/info/email/send",
+          "confirmChangeEmail": "/user/info/email/set",
+          "addTestCode": "/oauth/token/test_code",
+          "ping": "/test/ping",
+          "pingWithAuth": "/test/ping_with_auth",
+          "prepareUser": "/user/prepare"
+        },
+        "timeout": 30000,
+        "clientId": "liquio-portal",
+        "clientSecret": "{{ include "liquio.oauth.secretKey" . }}",
+        "basicAuthToken": "{{ include "liquio.oauth.secretKey" . }}"
+      },
+      "authRedirectUrl": "http://{{ .Values.global.domain }}/",
+      "logoutRedirectUrl": "http://{{ .Values.global.domain }}/",
+      "jwtSecret": "{{ include "liquio.jwt.secret" . }}",
+      "allowedTestAuth": false,
+      "allowedTestSign": false,
+      "allowedTestPem": true,
+      "defaultUnits": [],
+      "doNotLogoutOtherSessions": true,
+      "caching": {
+        "isEnabled": false,
+        "getCheckMiddleware": {
+          "isEnabled": false,
+          "ttl": 30
+        }
+      }
+    }
+
+  # Database configuration
+  db.json: |
+    {
+      "database": "bpmn",
+      "dialect": "postgres",
+      "dialectOptions": {
+        "bigNumberStrings": true,
+        "socketPath": "",
+        "supportBigNumbers": true
+      },
+      "host": "{{ include "liquio.postgresql.host" . }}",
+      "logging": false,
+      "migrationStorageTableName": "sequelize_meta",
+      "operatorsAliases": false,
+      "password": "{{ include "liquio.postgresql.password" . }}",
+      "pool": {
+        "acquire": 30000,
+        "idle": 10000,
+        "max": 5,
+        "min": 0
+      },
+      "port": {{ .Values.config.database.port }},
+      "timezone": "Europe/Kyiv",
+      "username": "{{ .Values.config.database.username }}"
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "hostname": "0.0.0.0",
+      "port": {{ .Values.services.cabinetApi.targetPort }},
+      "maxBodySize": "10mb",
+      "swagger": true,
+      "customer": "liquio",
+      "environment": "dev"
+    }
+
+  # Redis configuration
+  redis.json: |
+    {
+      "isEnabled": true,
+      "host": "{{ include "liquio.redis.host" . }}",
+      "port": {{ .Values.config.redis.port }},
+      "defaultTtl": 30
+    }
+
+  # Logging configuration
+  log.json: |
+    {
+      "console": [],
+      "file": [
+        "./logs/"
+      ],
+      "excludeParams": [
+        "token",
+        "authorization",
+        "Authorization",
+        "oauth-token",
+        "secret",
+        "password",
+        "oldPassword",
+        "oldPasswords"
+      ]
+    }
+
+  # Discovery configuration
+  discovery.json: |
+    {
+      "customApis": [],
+      "mainProxy": "http://{{ include "liquio.fullname" . }}-task:{{ .Values.services.task.servicePort }}"
+    }

@@ -1,0 +1,45 @@
+{
+  "blockchain": {
+    "provider": "liquio",
+    "server": "http://openenvironment.itl-dev.com",
+    "port": 3003,
+    "routes": {
+      "documentsCRUD": "/api/documents",
+      "documentsRevoke": "/api/documents/revoke"
+    },
+    "user": "<removed>",
+    "hashedPassword": "<removed>"
+  },
+  "registers": {
+    "provider": "liquio",
+    "url": "https://register-dev-oe.liquio.local",
+    "apiMethods": {
+      "getRecord": "/records",
+      "createRecord": "/records",
+      "updateRecord": "/records",
+      "deleteRecord": "/records",
+      "ping": "/test/ping"
+    },
+    "token": "<removed>"
+  },
+  "externalService": {},
+  "document": {},
+  "servicesRepository": {
+    "url": "https://stage.repository.becausewhynot.dev/api/v1/",
+    "apiMethods": {
+      "createServiceRequest": "repository/create/",
+      "getServiceRequest": "register/repository/detail/",
+      "createServiceStatus": "repository/statuses/create/",
+      "getServiceStatus": "repository/statuses/detail/",
+      "getAllUserServices": "repository/list/",
+      "checkHealth": "health/"
+    },
+    "token": "<removed>",
+    "serviceIdsMap": {
+      "fopRegistration": "00106",
+      "changeFop": "00108",
+      "cancelFop": "00107"
+    },
+    "timeout": 20000
+  }
+}

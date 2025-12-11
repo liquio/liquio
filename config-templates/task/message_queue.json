@@ -1,0 +1,12 @@
+{
+  "amqpConnection": "amqp://rabbitmq",
+  "amqpConnectionParams": {
+    "heartbeat": 300
+  },
+  "maxHandlingMessages": 2,
+  "readingQueueName": "bpmn-task-incoming",
+  "writingQueueName": "bpmn-manager-incoming",
+  "enabledReadingGeneratingPdfMessages": true,
+  "maxHandlingGeneratingPdfMessages": 1,
+  "retryConnectionTime": 10000
+}

@@ -1,0 +1,196 @@
+{
+  "key": {
+    "data": {},
+    "id": 101,
+    "registerId": 100,
+    "name": "Institutions",
+    "description": "This register contains information about educational institutions, including their codes, names, and administrative details.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "institutionCode": {
+          "type": "string",
+          "description": "Institution Code",
+          "public": true
+        },
+        "institutionName": {
+          "type": "string",
+          "description": "Institution Name",
+          "public": true
+        },
+        "state": {
+          "type": "string",
+          "description": "State",
+          "public": true
+        },
+        "region": {
+          "type": "string",
+          "description": "Region",
+          "public": true
+        },
+        "district": {
+          "type": "string",
+          "description": "District",
+          "public": true
+        },
+        "address": {
+          "type": "string",
+          "description": "Institution Address",
+          "public": true
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact Phone Number",
+          "public": true
+        },
+        "email": {
+          "type": "string",
+          "description": "Email Address",
+          "isEmail": true,
+          "public": true
+        },
+        "directorName": {
+          "type": "string",
+          "description": "Director Name",
+          "public": true
+        }
+      },
+      "customTypes": {
+        "isEmail": "(recordFieldValue, currentKeywordValueInSchema) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z][a-zA-Z]+$/.test(recordFieldValue) === currentKeywordValueInSchema"
+      },
+      "required": [
+        "institutionCode",
+        "institutionName",
+        "state",
+        "region",
+        "district",
+        "address"
+      ]
+    },
+    "parentId": null,
+    "meta": {
+      "isPersonal": false,
+      "createdByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      },
+      "updatedByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      }
+    },
+    "toString": "(record) => record.data.institutionName + ' (' + record.data.institutionCode + ')';",
+    "toSearchString": "(record) => { return [record.data.institutionCode, record.data.institutionName]; }",
+    "createdBy": "register",
+    "updatedBy": "register",
+    "accessMode": "full",
+    "isEncrypted": false,
+    "toExport": "(record) => { return null; }",
+    "createdAt": "2025-07-29T10:43:31.666Z",
+    "updatedAt": "2025-07-29T10:43:31.666Z"
+  },
+  "register": {
+    "data": {},
+    "id": 100,
+    "name": "Education",
+    "description": "This register contains information about educational institutions, groups, and students.",
+    "parentId": null,
+    "meta": {
+      "createdByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      },
+      "updatedByPerson": {
+        "userId": "000000000000000000000001",
+        "name": "admin"
+      }
+    },
+    "createdBy": "register",
+    "updatedBy": "register",
+    "createdAt": "2025-07-29T10:43:16.637Z",
+    "updatedAt": "2025-07-29T10:43:45.794Z"
+  },
+  "records": [
+    {
+      "data": {
+        "state": "Kyiv City",
+        "region": "Kyivska",
+        "address": "37 Peremohy Ave, Kyiv, 03056",
+        "district": "Solomianskyi",
+        "institutionCode": "1234567890",
+        "institutionName": "Kyiv Polytechnic Institute"
+      },
+      "id": "f94deed0-6c90-11f0-8f7e-0f958f5b6fab",
+      "registerId": 100,
+      "keyId": 101,
+      "meta": {
+        "user": "register",
+        "person": {
+          "id": "000000000000000000000001",
+          "name": ""
+        },
+        "historyMeta": {
+          "accessInfo": {
+            "systemId": null,
+            "userId": "000000000000000000000001",
+            "userName": "",
+            "orgName": null,
+            "position": null,
+            "remarks": null
+          }
+        }
+      },
+      "allowTokens": [],
+      "createdBy": "register",
+      "updatedBy": "register",
+      "createdAt": "2025-07-29T15:30:36.222Z",
+      "updatedAt": "2025-07-29T15:30:36.222Z",
+      "signature": null,
+      "searchString": "1234567890",
+      "searchString2": "kyiv polytechnic institute",
+      "searchString3": null
+    },
+    {
+      "data": {
+        "state": "Lviv Oblast",
+        "region": "Lvivska",
+        "address": "1 Universytetska St, Lviv, 79000",
+        "district": "Halytskyi",
+        "institutionCode": "0987654321",
+        "institutionName": "Lviv National University"
+      },
+      "id": "11703770-6c91-11f0-8f7e-0f958f5b6fab",
+      "registerId": 100,
+      "keyId": 101,
+      "meta": {
+        "user": "register",
+        "person": {
+          "id": "000000000000000000000001",
+          "name": ""
+        },
+        "historyMeta": {
+          "accessInfo": {
+            "systemId": null,
+            "userId": "000000000000000000000001",
+            "userName": "",
+            "orgName": null,
+            "position": null,
+            "remarks": null
+          }
+        }
+      },
+      "allowTokens": [],
+      "createdBy": "register",
+      "updatedBy": "register",
+      "createdAt": "2025-07-29T15:31:16.711Z",
+      "updatedAt": "2025-07-29T15:31:16.711Z",
+      "signature": null,
+      "searchString": "0987654321",
+      "searchString2": "lviv national university",
+      "searchString3": null
+    }
+  ],
+  "options": {
+    "onlySchema": false
+  }
+}

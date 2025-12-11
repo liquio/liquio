@@ -1,0 +1,24 @@
+{
+  "title": "Перегляд негативної відповіді",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['cancellation']; }",
+  "properties": {
+    "cancellation": {
+      "type": "object",
+      "description": "Причини відмови",
+      "properties": {
+        "text": {
+          "type": "string",
+          "control": "textArea",
+          "sample": "Опишіть причини відмови",
+          "hint": "Відмовлено у зв'язку з недостачею необхідних документів.",
+          "minLength": 10,
+          "maxLength": 50000
+        }
+      },
+      "required": ["text"]
+    }
+  },
+  "required": ["cancellation"]
+}

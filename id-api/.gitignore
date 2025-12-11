@@ -1,0 +1,7 @@
+config/*.json
+node_modules/
+dist/
+bundle/
+coverage/
+tsconfig.tsbuildinfo
+.vscode/

@@ -1,0 +1,76 @@
+{
+  "options": {
+    "reindexLimit": 100
+  },
+  "blockchain": {
+    "isActive": false,
+    "handlingTimeout": 2000,
+    "waitingTimeout": 10000,
+    "keys": [],
+    "options": {
+      "providerName": "hyperledger-fabric",
+      "providerParams": {
+        "apiUrl": "http://openenvironment.itl-dev.com:3003",
+        "apiMethods": {
+          "getData": {
+            "requestType": "GET",
+            "urlSuffix": "/api/documents/{id}"
+          },
+          "createData": {
+            "requestType": "POST",
+            "urlSuffix": "/api/documents"
+          },
+          "updateData": {
+            "requestType": "PUT",
+            "urlSuffix": "/api/documents"
+          },
+          "deleteData": {
+            "requestType": "POST",
+            "urlSuffix": "/api/documents/revoke"
+          }
+        },
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<removed>"
+        }
+      }
+    }
+  },
+  "elastic": {
+    "isActive": false,
+    "handlingTimeout": 2000,
+    "waitingTimeout": 10000,
+    "keys": [],
+    "options": {
+      "apiUrl": "http://localhost:9200",
+      "apiMethods": {
+        "createOrUpdateData": {
+          "requestType": "PUT",
+          "urlSuffix": "/register_key_{key-id}/_doc/{id}"
+        },
+        "deleteData": {
+          "requestType": "DELETE",
+          "urlSuffix": "/register_key_{key-id}/_doc/{id}"
+        },
+        "dropIndex": {
+          "requestType": "DELETE",
+          "urlSuffix": "/register_key_{key-id}"
+        },
+        "createIndex": {
+          "requestType": "PUT",
+          "urlSuffix": "/register_key_{key-id}"
+        },
+        "getIndexCount": {
+          "requestType": "GET",
+          "urlSuffix": "/register_key_{key-id}/_count"
+        }
+      },
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Basic <removed>"
+      }
+    }
+  }
+}

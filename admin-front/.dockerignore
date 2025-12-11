@@ -1,0 +1,8 @@
+Dockerfile
+.git
+*.md
+.idea
+.vscode
+node_modules/
+build/
+public/config.json

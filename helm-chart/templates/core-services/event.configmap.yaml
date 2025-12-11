@@ -1,0 +1,393 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-event-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+data:
+  # Database configuration
+  db.json: |
+    {
+      "host": "{{ include "liquio.postgresql.host" . }}",
+      "port": {{ .Values.config.database.port }},
+      "database": "bpmn",
+      "username": "{{ .Values.config.database.username }}",
+      "password": "{{ include "liquio.postgresql.password" . }}",
+      "dialect": "postgres",
+      "dialectOptions": {
+        "socketPath": "",
+        "supportBigNumbers": true,
+        "bigNumberStrings": true
+      },
+      "timezone": "Europe/Kyiv",
+      "logging": false,
+      "pool": {
+        "max": 5,
+        "min": 0,
+        "acquire": 30000,
+        "idle": 10000
+      },
+      "migrationStorageTableName": "sequelize_meta"
+    }
+
+  # Message queue configuration
+  message_queue.json: |
+    {
+      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.password" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
+      "maxHandlingMessages": 2,
+      "readingQueueName": "bpmn-event-incoming",
+      "writingQueueName": "bpmn-manager-incoming",
+      "retryConnectionTime": 10000
+    }
+
+  # Filestorage configuration
+  filestorage.json: |
+    {
+      "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
+      "token": "{{ include "liquio.filestorage.authToken" . }}",
+      "containerId": 1,
+      "getFileTimeout": 60000,
+      "downloadFileTimeout": 60000,
+      "getSetSignatureTimeout": 40000,
+      "createAsicTimeout": 60000
+    }
+
+  # Server configuration
+  server.json: |
+    {
+      "hostname": "0.0.0.0",
+      "port": {{ .Values.services.event.port }},
+      "maxBodySize": "10mb",
+      "customer": "liquio",
+      "environment": "dev"
+    }
+
+  # Redis configuration
+  redis.json: |
+    {
+      "host": "{{ include "liquio.redis.host" . }}",
+      "port": {{ .Values.config.redis.port }},
+      "options": {}
+    }
+
+  # Logging configuration
+  log.json: |
+    {
+      "console": [],
+      "file": [
+        "./logs/"
+      ],
+      "excludeParams": [
+        "token",
+        "access_token",
+        "refresh_token",
+        "oauth-token",
+        "authorization",
+        "Authorization",
+        "secret",
+        "password",
+        "oldPassword",
+        "oldPasswords",
+        "client_secret",
+        "_token=",
+        "client_id=",
+        "client_secret="
+      ]
+    }
+
+  # App configuration
+  app.json: |
+    {
+      "enabledReadMessageQueueMode": true,
+      "enabledRunDaemonMode": true
+    }
+
+  # Ping configuration
+  ping.json: |
+    {
+      "manager": {
+        "url": "https://manager-dev-oe.liquio.local/test/ping"
+      },
+      "healthz": {
+        "db": {
+          "enabled": true
+        }
+      },
+      "trembita": {
+        "url": "http://10.128.4.11/wsdl?xRoadInstance=SEVDEIR&memberClass=GOV&memberCode=00015622&subsystemCode=3_MJU_DRACS_prod&serviceCode=PostPetition"
+      }
+    }
+
+  # Notifier configuration
+  notifier.json: |
+    {
+      "email": {
+        "provider": "liquio",
+        "server": "http://{{ include "liquio.fullname" . }}-notification",
+        "port": {{ .Values.services.notification.port }},
+        "routes": {
+          "sendSms": "/message/phonesList",
+          "sendEmail": "/message/emailsList",
+          "sendToUser": "/message/usersList",
+          "hideImportantMessage": "/message/important/<message-id>/set-unimportant",
+          "getMessagesList": "/message",
+          "ping": "/test/ping"
+        },
+        "timeout": 30000,
+        "user": "admin",
+        "hashedPassword": "password",
+        "templateParams": {
+          "frontUrl": "http://localhost:3000"
+        },
+        "defaultTemplateId": 1,
+        "clientId": ""
+      },
+      "sms": {
+        "provider": "liquio",
+        "server": "http://{{ include "liquio.fullname" . }}-notification",
+        "port": {{ .Values.services.notification.port }},
+        "routes": {
+          "sendSms": "/message/phonesList",
+          "ping": "/test/ping"
+        },
+        "user": "admin",
+        "hashedPassword": "password",
+        "templateParams": {
+          "frontUrl": "http://localhost:3000"
+        }
+      },
+      "digest": {
+        "provider": "mailerlite",
+        "apiKey": "test-key",
+        "groupId": "test-group",
+        "routes": {
+          "getStats": "/api/v2/stats",
+          "addSubscribersToGroup": "/api/v2/groups/{{`{{groupId}}`}}/subscribers/import"
+        },
+        "serviceUrl": "https://api.mailerlite.com",
+        "timeout": 30000
+      }
+    }
+
+  # Sign configuration
+  sign.json: |
+    {
+      "timeout": 10000,
+      "url": "http://{{ include "liquio.fullname" . }}-sign-tool:{{ .Values.services.signTool.servicePort }}",
+      "token": ""
+    }
+
+  # User configuration
+  user.json: |
+    {
+      "LiquioId": {
+        "server": "http://{{ include "liquio.fullname" . }}-id-api",
+        "port": {{ .Values.services.idApi.servicePort }},
+        "timeout": 30000,
+        "clientId": "test-client",
+        "clientSecret": "test-secret",
+        "basicAuthToken": "test-token"
+      },
+      "searchUsersLimit": 10
+    }
+
+  # Versions configuration
+  versions.json: |
+    {
+      "services": [
+        { "name": "id", "minVersion": "0.0.0" },
+        { "name": "eds", "minVersion": "0.0.0" },
+        { "name": "event", "minVersion": "0.0.0" },
+        { "name": "manager", "minVersion": "1.15.0" },
+        { "name": "gateway", "minVersion": "0.0.0" },
+        { "name": "workflow", "minVersion": "0.0.0" },
+        { "name": "register", "minVersion": "0.0.0" },
+        { "name": "filestorage", "minVersion": "0.0.0" },
+        { "name": "pwgen", "minVersion": "0.0.0" },
+        { "name": "plink", "minVersion": "0.0.0" },
+        { "name": "externalReader", "minVersion": "0.0.0" },
+        { "name": "notify", "minVersion": "1.3.41" }
+      ]
+    }
+
+  # Additional configurations with defaults
+  custom.json: |
+    {
+      "workflowExtraPermissions": {
+        "allowUpdateFromAnotherWorkflow": []
+      }
+    }
+
+  custom_logs.json: |
+    {
+      "templatesCacheLifetime": 60000,
+      "cacheEnabled": false,
+      "redis": {
+        "ttl": 60
+      }
+    }
+
+  delayer.json: |
+    {
+      "interval": 60
+    }
+
+  external_bpmn.json: |
+    {
+      "test": {
+        "url": "https://task-dev-oe.liquio.local",
+        "token": "Basic test-token",
+        "requestTimeout": 30000
+      }
+    }
+
+  http_client.json: |
+    {
+      "requestTimeout": 60000
+    }
+
+  logs_broadcasting.json: |
+    {
+      "isEnabled": false,
+      "port": 5000
+    }
+
+  persist_link.json: |
+    {
+      "server": "https://plink-dev-oe.liquio.local",
+      "port": 443,
+      "routes": {
+        "generateQr": "/link?qr=svg",
+        "ping": "/test/ping",
+        "pingWithAuth": "/test/ping_with_auth"
+      },
+      "token": "test-token",
+      "serverName": "bpmn_dev",
+      "getLinkToFilestorageTimeout": 30000
+    }
+
+  requester.json: |
+    {
+      "blockchain": {
+        "provider": "liquio",
+        "server": "http://openenvironment.itl-dev.com",
+        "port": 3003,
+        "routes": {
+          "documentsCRUD": "/api/documents",
+          "documentsRevoke": "/api/documents/revoke"
+        },
+        "user": "test-user",
+        "hashedPassword": "test-password"
+      },
+      "registers": {
+        "provider": "liquio",
+        "url": "https://register-dev-oe.liquio.local",
+        "timeout": 20000
+      },
+      "externalService": {
+        "trembita": {
+          "trembitaUrl": "https://trembita-client.liquio.local",
+          "trembitaHeader": {
+            "client": {
+              "objectType": "SUBSYSTEM",
+              "xRoadInstance": "SEVDEIR-TEST",
+              "memberClass": "GOV",
+              "memberCode": "35508814",
+              "subsystemCode": "DiiaDev_cons"
+            },
+            "service": {
+              "objectType": "SERVICE",
+              "xRoadInstance": "SEVDEIR-TEST",
+              "memberClass": "GOV",
+              "memberCode": "22956058",
+              "subsystemCode": "TEST_DRAC",
+              "serviceCode": "PostPetition",
+              "serviceVersion": "?"
+            },
+            "userId": "?",
+            "id": "20191217-1128-01",
+            "protocolVersion": "4.0"
+          },
+          "timeout": 20000,
+          "debug": false,
+          "claims": {
+            "birthCertDuplicate": {
+              "memberClass": "GOV",
+              "memberCode": "22956058",
+              "subsystemCode": "TEST_DRAC",
+              "serviceCode": "PostPetition",
+              "serviceVersion": "?"
+            }
+          }
+        },
+        "standard": {
+          "providersConfigPath": ""
+        },
+        "standardTrembita": {
+          "providersConfigPath": ""
+        }
+      }
+    }
+
+  stopper.json: |
+    {}
+
+  system_notifier.json: |
+    {
+      "adminUrl": "https://admin-front-dev-oe.liquio.local",
+      "email": {
+        "server": "https://notify-dev-oe.liquio.local",
+        "port": 443,
+        "routes": {
+          "sendEmail": "/message/emailsList",
+          "sendToUser": "/message/usersList",
+          "ping": "/test/ping"
+        },
+        "timeout": 30000,
+        "user": "test-user",
+        "hashedPassword": "test-password",
+        "emails": [],
+        "subject": "Workflow process problem.",
+        "body": "<html><body>Відбулась помилка в процесі {url}<br/>Event {eventTemplateId} {eventTemplateName}<br/>{error}</body></html>"
+      },
+      "maxLoops": 50
+    }
+
+  trembita.json: |
+    {
+      "host": "http://192.168.60.151",
+      "client": {
+        "xRoadInstance": "SEVDEIR-TEST",
+        "memberClass": "GOV",
+        "memberCode": "35508814",
+        "subsystemCode": "DiiaDev_cons"
+      },
+      "id": "?",
+      "protocolVersion": "4.0",
+      "userId": "?"
+    }
+
+  # Email configuration
+  email.json: |
+    {
+      "provider": "liquio",
+      "server": "http://{{ include "liquio.fullname" . }}-notification",
+      "port": {{ .Values.services.notification.port }},
+      "routes": {
+        "sendSms": "/message/phonesList",
+        "sendEmail": "/message/emailsList",
+        "sendToUser": "/message/usersList",
+        "hideImportantMessage": "/message/important/<message-id>/set-unimportant",
+        "getMessagesList": "/message",
+        "ping": "/test/ping"
+      },
+      "timeout": 30000,
+      "user": "admin",
+      "hashedPassword": "password",
+      "templateParams": {
+        "frontUrl": "http://localhost:3000"
+      },
+      "defaultTemplateId": 1,
+      "clientId": ""
+    }

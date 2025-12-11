@@ -1,0 +1,21 @@
+{
+  "title": "Карточка підтвердження замовлення",
+  "templateType": "request",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['order']; }",
+  "properties": {
+    "order": {
+      "description": "Замовлення",
+      "type": "object",
+      "properties": {
+        "approved": {
+          "type": "boolean",
+          "description": "Підтверджено"
+        }
+      },
+      "required": ["approved"]
+    }
+  },
+  "required": ["order"]
+}

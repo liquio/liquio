@@ -1,0 +1,7 @@
+{
+  "usersIpnToIpList": {
+    "19999999999": ["office"]
+  },
+  "allowableUnits": [],
+  "routeGroupsExceptions": ["public", "auth", "user", "message"]
+}

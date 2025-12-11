@@ -1,0 +1,13 @@
+{
+  "server": "https://plink-dev-oe.liquio.local",
+  "port": 443,
+  "routes": {
+    "generateQr": "/link?qr=svg",
+    "ping": "/test/ping",
+    "pingWithAuth": "/test/ping_with_auth"
+  },
+  "token": "<removed>",
+  "serverName": "bpmn_dev",
+  "getLinkToFilestorageTimeout": 30000,
+  "qrFrontUrl": "https://qr-dev.liquio.local"
+}

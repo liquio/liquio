@@ -1,0 +1,138 @@
+{
+  "title": "Передача підписаного дозволу",
+  "type": "object",
+  "useEncryption": true,
+  "stepOrders": "(allStepsData) => { return ['moderator', 'resolution', 'form', 'attachments']; }",
+  "properties": {
+    "moderator": {
+      "type": "object",
+      "description": "Модератор",
+      "control": "select.user",
+      "properties": {
+        "id": {
+          "type": "string",
+          "value": "user.id",
+          "readonly": true,
+          "hidden": true
+        },
+        "name": {
+          "type": "string",
+          "value": "user.name",
+          "description": "Прізвище, ім'я та по батькові",
+          "readonly": true
+        },
+        "email": {
+          "type": "string",
+          "value": "user.email",
+          "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+$",
+          "sample": "Електронна адреса має бути в форматі \"test@example.com\"",
+          "description": "Електронна пошта"
+        },
+        "phone": {
+          "type": "string",
+          "value": "user.phone",
+          "pattern": "^380[0-9]{9}$",
+          "sample": "Номер у форматі 380XXXXXXXXX",
+          "description": "Контактний номер телефону",
+          "mask": "380999999999"
+        },
+        "address": {
+          "type": "string",
+          "value": "user.address",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Адреса",
+          "sample": "Адреса, не більше 500 символів"
+        },
+        "ipn": {
+          "type": "string",
+          "value": "user.ipn",
+          "description": "РНОКПП",
+          "readonly": true
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "resolution": {
+      "type": "object",
+      "description": "Проект дозволу",
+      "properties": {
+        "documentPreview": {
+          "type": "object",
+          "control": "preview.document",
+          "documentTemplateId": 13
+        }
+      }
+    },
+    "form": {
+      "type": "object",
+      "description": "Дозвіл",
+      "properties": {
+        "resolution": {
+          "type": "string",
+          "control": "textArea",
+          "sample": "Текст дозволу",
+          "value": "documents.13.data.form.resolutionProject",
+          "readonly": true
+        },
+        "sentDate": {
+          "description": "Дата передачі на видачу замовнику",
+          "type": "string",
+          "control": "date"
+        }
+      },
+      "required": [
+        "resolution",
+        "sentDate"
+      ]
+    },
+    "attachments": {
+      "type": "array",
+      "description": "Додатки",
+      "addItem": {
+        "text": "Завантажити додатки щодо дозволу"
+      },
+      "control": "select.files",
+      "accept": "image/*,application/pdf",
+      "maxSize": 10485760,
+      "sample": "Документи щодо дозволу",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "attachType": {
+            "type": "string",
+            "control": "select.attachType",
+            "dictionary": "attachTypes"
+          },
+          "id": {
+            "type": "string",
+            "control": "input.file"
+          },
+          "type": {
+            "type": "string",
+            "dictionary": "attachMimeTypes",
+            "hidden": true
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "id",
+          "type"
+        ]
+      }
+    }
+  },
+  "required": [
+    "moderator",
+    "resolution",
+    "form"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "activeProvider": null,
+  "list": {
+    "openstack": {
+      "authVersion": 3,
+      "server": "https://id.os.g-cloud.de-novo.biz",
+      "routes": {
+        "getTokens": "/v3/auth/tokens"
+      },
+      "timeout": 30000,
+      "tenantName": "dev",
+      "account": {
+        "login": "<removed>",
+        "password": "<removed>",
+        "domainId": "default",
+        "projectId": "dia"
+      },
+      "container": "dev",
+      "isFilesCanBeDeleted": false,
+      "authCacheTtl": 60000
+    },
+    "minio": {
+      "server": "http://localhost:9000",
+      "bucket": "default",
+      "timeout": 30000,
+      "account": {
+        "login": "<removed>",
+        "password": "<removed>"
+      },
+      "isFilesCanBeDeleted": false
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "versions": {
+    "services": [
+      {
+        "name": "id",
+        "minVersion": "0.7.2"
+      },
+      {
+        "name": "plink",
+        "minVersion": "1.0.4"
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "default_env": "production",
+  "production": {
+    "processTitle": "notify",
+    "port": "3003",
+    "username": "postgres",
+    "password": "<REDACTED>",
+    "database": "notify",
+    "host": "postgres",
+    "dialect": "postgres",
+    "defaultMessenger": "testConsoleSmsAdapter",
+    "customAdapter": {},
+    "db": {
+      "username": "postgres",
+      "password": "postgres",
+      "database": "notify",
+      "host": "postgres",
+      "dialect": "postgres"
+    },
+    "auth_server": {
+      "host": "http://localhost:8080",
+      "user": "AuthorizationBasicLogin",
+      "password": "secretPassword"
+    },
+    "smsServer": {
+      "url": "https://test.liquio.local/Subscribe/SendSmsQ.php",
+      "access_token": ""
+    },
+    "adminConfig": {
+      "login": "adminConfigLogin",
+      "password": "secretPassword"
+    },
+    "corezoidConfig": {
+      "apiLogin": "",
+      "apiKey": "",
+      "processId": ""
+    },
+    "sendSmsByNotifyhubAPI": true,
+    "smtpServer": {
+      "host": "mail.local",
+      "secure": false,
+      "port": 25,
+      "tls": {
+        "rejectUnauthorized": false
+      },
+      "auth": {
+        "user": "username",
+        "pass": "<REDACTED>"
+      }
+    },
+    "customer": "liquio",
+    "environment": "dev"
+  }
+}
