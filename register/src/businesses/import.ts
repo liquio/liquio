@@ -461,7 +461,7 @@ export default class ImportBusiness extends Business {
    */
   async checkExistingRecordsByJsonSchema(keyId, jsonSchema) {
     // Create JSON schema validator.
-    const ajv = Ajv();
+    const ajv = new Ajv();
     const validation = ajv.compile(jsonSchema);
 
     // Check existing records by JSON schema.
