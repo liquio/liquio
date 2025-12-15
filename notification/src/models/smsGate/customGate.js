@@ -1,5 +1,4 @@
 const AbstractGate = require('./abstractSmsGate');
-let { conf } = global;
 
 /**
  * Custom gate.

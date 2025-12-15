@@ -1,4 +1,4 @@
-/* global describe, beforeEach, after */
+/* global after */
 function importTest(name, path) {
   describe(name, function () {
     require(path);

@@ -84,9 +84,10 @@ const Lists = class extends Auth {
     next();
   }
 
-  async getTransportData(req, res, _next) {
+  async getTransport(req, res, next) {
     let result = await Communication.findAll();
     res.send(result);
+    next();
   }
 
   async removeTransport(req, res, _next) {
@@ -119,7 +120,6 @@ const Lists = class extends Auth {
       });
       res.send(result);
     } catch (e) {
-      console.error(e);
       return res.send(500, e.message);
     }
   }
@@ -136,12 +136,13 @@ const Lists = class extends Auth {
     }
   }
 
-  async getEvents(req, res, _next) {
+  async getEvents(req, res, next) {
     const result = await Events.findAll();
     res.send(result);
+    next();
   }
 
-  async getUsersByEvent(req, res, _next) {
+  async getUsersByEvent(req, res, next) {
     const { event_id } = req.params;
 
     if (!event_id) {
@@ -246,11 +247,7 @@ const Lists = class extends Auth {
   }
 
   async getUsers(list_user_id) {
-    try {
-      var usersFull = await this.getUsersInfo(list_user_id);
-    } catch (e) {
-      throw e;
-    }
+    const usersFull = await this.getUsersInfo(list_user_id);
     return usersFull;
   }
 };

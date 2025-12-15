@@ -26,11 +26,11 @@ if (typeof envConfig === 'string') {
   try {
     envConfig = JSON.parse(envConfig);
     console.log('Successful parsed ENV[LIQUIO_NOTIFY_CONFIG].');
-  } catch (error) {
+  } catch {
     throw new Error('LIQUIO_NOTIFY_CONFIG is invalid json.');
   }
 
-  if (typeof envConfig[env] === undefined) {
+  if (typeof envConfig[env] === 'undefined') {
     throw new Error(`LIQUIO_NOTIFY_CONFIG [${env}] is not defined object config.`);
   }
 

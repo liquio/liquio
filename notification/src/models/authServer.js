@@ -13,71 +13,59 @@ const Auth = class {
   }
 
   async checkToken(token) {
-    try {
-      // Check cache.
-      if (this.cache[token]) {
-        if (this.cache[token].expiredAt < +new Date()) {
-          this.cache[token] = undefined;
-        } else {
-          return this.cache[token].data;
-        }
+    // Check cache.
+    if (this.cache[token]) {
+      if (this.cache[token].expiredAt < +new Date()) {
+        this.cache[token] = undefined;
+      } else {
+        return this.cache[token].data;
       }
-
-      // Get user data.
-      let user = await axios(`${conf.auth_server.host}/user/info?access_token=${token}`).then((res) => res.data);
-      if ('userId' in user) {
-        user._id = user.userId;
-        this.cache[token] = {
-          expiredAt: +new Date() + 1000 * 60 * 10,
-          data: user,
-        };
-      }
-      return user;
-    } catch (e) {
-      throw e;
     }
+
+    // Get user data.
+    let user = await axios(`${conf.auth_server.host}/user/info?access_token=${token}`).then((res) => res.data);
+    if ('userId' in user) {
+      user._id = user.userId;
+      this.cache[token] = {
+        expiredAt: +new Date() + 1000 * 60 * 10,
+        data: user,
+      };
+    }
+    return user;
   }
 
   async getUsersInfo(array) {
-    try {
-      let users = await axios(`${conf.auth_server.host}/user/info/id`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${this.pass}`,
-        },
-        data: {
-          id: array,
-        },
-      }).then((res) => res.data);
-      for (let user of users) {
-        if ('userId' in user) user._id = user.userId;
-        delete user.password;
-      }
-      return users;
-    } catch (e) {
-      throw e;
+    let users = await axios(`${conf.auth_server.host}/user/info/id`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${this.pass}`,
+      },
+      data: {
+        id: array,
+      },
+    }).then((res) => res.data);
+    for (let user of users) {
+      if ('userId' in user) user._id = user.userId;
+      delete user.password;
     }
+    return users;
   }
 
   async getUsersInfoByIpn(array) {
-    try {
-      let users = await axios(`${conf.auth_server.host}/user/info/ipn`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${this.pass}`,
-        },
-        data: {
-          ipn: array,
-        },
-      }).then((res) => res.data);
-      for (let user of users) {
-        if ('userId' in user) user._id = user.userId;
-        delete user.password;
-      }
-      return users;
-    } catch (e) {
-      throw e;
+    let users = await axios(`${conf.auth_server.host}/user/info/ipn`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${this.pass}`,
+      },
+      data: {
+        ipn: array,
+      },
+    }).then((res) => res.data);
+    for (let user of users) {
+      if ('userId' in user) user._id = user.userId;
+      delete user.password;
     }
+    return users;
   }
 
   async getUserInfoByPhone(phone) {
@@ -91,17 +79,13 @@ const Auth = class {
   }
 
   async getAllUsers(startFrom = 0, limit = 20) {
-    try {
-      let users = await axios(`${conf.auth_server.host}/user?offset=${startFrom}&limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Basic ${this.pass}`,
-        },
-      }).then((res) => res.data);
-      return users;
-    } catch (e) {
-      throw e;
-    }
+    let users = await axios(`${conf.auth_server.host}/user?offset=${startFrom}&limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Basic ${this.pass}`,
+      },
+    }).then((res) => res.data);
+    return users;
   }
 };
 
