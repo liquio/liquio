@@ -157,7 +157,7 @@ class BpmnWorkflowBusiness {
           try {
             const keyIdEvalResult = this.sandbox.eval(keyId);
             isKeyIdFunction = typeof keyIdEvalResult === 'function';
-          } catch (e) {
+          } catch {
             // keyId is not a function
           }
 

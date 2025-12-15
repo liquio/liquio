@@ -937,7 +937,10 @@ export default class RecordsController extends Controller {
     try {
       const recordsToCreate = recordsData.map((data) => {
         const isolate = new Isolation();
-        const toSearchString = isolate.set('toSearchStringFunction', toSearchStringFunction).set('data', data).eval(`toSearchStringFunction({ data: data })`);
+        const toSearchString = isolate
+          .set('toSearchStringFunction', toSearchStringFunction)
+          .set('data', data)
+          .eval(`toSearchStringFunction({ data: data })`);
         const [searchString = null, searchString2 = null, searchString3 = null] =
           global.typeOf(toSearchString) === 'array' ? toSearchString : [toSearchString];
         return {

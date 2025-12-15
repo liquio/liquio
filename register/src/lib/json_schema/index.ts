@@ -25,7 +25,10 @@ export default class JsonSchema {
         this.ajv.addKeyword(keyWord, {
           compile: (currentKeyWordValueInSchema, curentFieldInSchema) => (recordFieldValue) => {
             const isolate = new Isolation();
-            isolate.set('recordFieldValue', recordFieldValue).set('currentKeyWordValueInSchema', currentKeyWordValueInSchema).set('curentFieldInSchema', curentFieldInSchema);
+            isolate
+              .set('recordFieldValue', recordFieldValue)
+              .set('currentKeyWordValueInSchema', currentKeyWordValueInSchema)
+              .set('curentFieldInSchema', curentFieldInSchema);
             return isolate.eval(`(${func as string})(recordFieldValue, currentKeyWordValueInSchema, curentFieldInSchema)`);
           }
         });

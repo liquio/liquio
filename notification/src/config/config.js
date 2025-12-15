@@ -15,8 +15,8 @@ const versionsConfText = fs.readFileSync(path.join(process.cwd(), './src/config/
 const versionsConf = JSON.parse(versionsConfText || '{}');
 
 // Get NODE_ENV.
-const env = process.env.NODE_ENV || fileConfig.get('default_env') || process.env.NODE_ENV || 'test';
-let envConfig = process.env['LIQUIO_NOTIFY_CONFIG'];
+const env = process.env.NODE_ENV || fileConfig.get('default_env') || 'test';
+let envConfig = process.env.LIQUIO_NOTIFY_CONFIG;
 if (typeof env !== 'string' || !env) {
   throw new Error(`ENV [${env}] is not defined.`);
 }

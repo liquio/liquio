@@ -71,7 +71,9 @@ describe('ProvidersModule', () => {
     expect(loggerService).toBeDefined();
 
     expect(logMockFn).toHaveBeenCalledWith('provider-service|loaded', { name: 'exampleService1' });
-    expect(warnMockFn).toHaveBeenCalledWith('provider-service|disabled', { name: 'exampleService2' });
+    expect(warnMockFn).toHaveBeenCalledWith('provider-service|disabled', {
+      name: 'exampleService2',
+    });
     expect(errorMockFn).toHaveBeenCalledWith('provider-service|class-not-found', {
       name: 'exampleService3',
       class: 'NonexistentProvider',

@@ -21,32 +21,32 @@ const Queue = class extends MessangerModel {
     routerInstance.get('/log', checkAuth, this.SMSLog.bind(this));
   }
 
-  async SMSQueue(req, res, next) {
-    let t = await this.getSMSQueue();
+  async SMSQueue(req, res, _next) {
+    const t = await this.getSMSQueue();
     res.send(t);
   }
 
-  async SMSQueueClear(req, res, next) {
-    let t = await this.removeFromQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
+  async SMSQueueClear(req, res, _next) {
+    const t = await this.removeFromQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
     res.send(t);
   }
 
-  async resendSMS(req, res, next) {
+  async resendSMS(req, res, _next) {
     try {
-      var t = await this.retrySendInQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
+      const t = await this.retrySendInQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
+      res.send(t);
     } catch (e) {
       return res.send(500, e);
     }
+  }
+
+  async SMSQueueCounter(req, res, _next) {
+    const t = await this.getSMSQueueCounter();
     res.send(t);
   }
 
-  async SMSQueueCounter(req, res, next) {
-    let t = await this.getSMSQueueCounter();
-    res.send(t);
-  }
-
-  async SMSLog(req, res, next) {
-    let t = await this.getSMSLog(req.query.phone);
+  async SMSLog(req, res, _next) {
+    const t = await this.getSMSLog(req.query.phone);
     res.send(t);
   }
 };

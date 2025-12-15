@@ -1,5 +1,4 @@
 const Sequelize = require('sequelize');
-const iconv = require('iconv-lite');
 const Auth = require('../models/authServer');
 const UserSubscribesModel = require('../models/user_subscribes');
 const CommunicationModel = require('../models/communications');
@@ -193,7 +192,7 @@ const Message = class extends Auth {
       return updatedMessage;
     } catch (error) {
       log.save('set-decrypted-message-error', { error: (error && error.message) || error }, 'error');
-      return res.send(500, { error: (error && error.message) || error });
+      throw error;
     }
   }
 

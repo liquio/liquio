@@ -1,4 +1,5 @@
 /* global translit, XRegExp */
+/* eslint-disable no-redeclare, no-global-assign */
 /*******************************************************************************
  https://github.com/andyhu/node-transliteration
  *******************************************************************************/
