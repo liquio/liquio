@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "eslint": "^7.18.0",
-    "eslint-plugin-jsdoc": "^31.3.3"
+    "eslint-plugin-jsdoc": "^61.5.0"
   },
   "overrides": {
     "form-data": "2.5.5",
