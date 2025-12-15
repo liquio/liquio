@@ -1,6 +1,9 @@
 {
   "name": "liquio-external-reader",
   "version": "0.1.0",
+  "engines": {
+    "node": "22"
+  },
   "description": "External reader service for Liquio",
   "private": true,
   "license": "SEE LICENSE IN ../LICENSE.md",

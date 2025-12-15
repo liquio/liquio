@@ -1,5 +1,4 @@
 const Sequelize = require('sequelize');
-const iconv = require('iconv-lite');
 const Auth = require('../models/authServer');
 const UserSubscribesModel = require('../models/user_subscribes');
 const CommunicationModel = require('../models/communications');
@@ -193,7 +192,7 @@ const Message = class extends Auth {
       return updatedMessage;
     } catch (error) {
       log.save('set-decrypted-message-error', { error: (error && error.message) || error }, 'error');
-      return res.send(500, { error: (error && error.message) || error });
+      throw error;
     }
   }
 
@@ -279,7 +278,7 @@ const Message = class extends Auth {
     let usersInfo;
     try {
       usersInfo = await this.getUsers([userId]);
-    } catch (e) {
+    } catch (error) {
       return res.send({ error: { code: error.errorCode, message: error.message } });
     }
 
@@ -367,7 +366,7 @@ const Message = class extends Auth {
         MsgSubject: normalizedText,
         MsgBody: normalizedText,
       };
-      const { processingId, rawResponse } = await this.sendToEConsultingComplexService(sendingOptionsObject);
+      const { processingId } = await this.sendToEConsultingComplexService(sendingOptionsObject);
       processingIdsList.push(processingId);
     }
     const isConnectionToEConsultApi = processingIdsList.some((v) => typeof v === 'string');
@@ -377,7 +376,7 @@ const Message = class extends Auth {
     res.send({ data: { isConnectionToEConsultApi, processingIdsList } });
   }
 
-  async sendMessageByUsersList(req, res, next) {
+  async sendMessageByUsersList(req, res, _next) {
     // Define params.
     let { body } = req;
 
@@ -402,8 +401,8 @@ const Message = class extends Auth {
 
     let ipnNotFound = [];
 
+    let usersInfo;
     try {
-      var usersInfo;
       if (this.issetUserList(body)) {
         usersInfo = await this.getUsers(body.list_user_id);
       } else if (this.issetUserIpnList(body)) {
@@ -540,8 +539,6 @@ const Message = class extends Auth {
     // Define params.
     const { body } = req;
     const { workflowId, transfers, destination, options, text } = body || {};
-    const eConsultingConf = (global.conf && global.conf.eConsultingService) || {};
-    const { logAll } = eConsultingConf;
     log.save('send-message-by-complex-option-request');
 
     // Check main params.
@@ -786,9 +783,7 @@ const Message = class extends Auth {
     const requestPersistLinkOptions = {
       url: createLinkUrl || 'http://0.0.0.0:3346/link',
       method: 'POST',
-      headers: {
-        token: token || 'Basic djdTSnV1Q3BxYVl3UHdRSmpmTUtnYWc4cDhHOWFCNnBwVWJZTENNdDg0Zzg3RjNXSmh1ZWtlWTVmdzZaOGplOA==',
-      },
+      headers: { token },
       data: {
         type: 'openStack',
         options: {
@@ -817,9 +812,7 @@ const Message = class extends Auth {
     const requestPersistLinkOptions = {
       url: createLinkUrl || 'http://0.0.0.0:3346/link',
       method: 'POST',
-      headers: {
-        token: token || 'Basic djdTSnV1Q3BxYVl3UHdRSmpmTUtnYWc4cDhHOWFCNnBwVWJZTENNdDg0Zzg3RjNXSmh1ZWtlWTVmdzZaOGplOA==',
-      },
+      headers: { token },
       data: {
         type: 'simple',
         options: {
@@ -919,7 +912,7 @@ const Message = class extends Auth {
     return errors;
   }
 
-  async sendMessageByEmailsList(req, res, next) {
+  async sendMessageByEmailsList(req, res, _next) {
     let { body } = req,
       result;
     const { sendBy } = body;
@@ -954,7 +947,7 @@ const Message = class extends Auth {
     return res.send(result);
   }
 
-  async sendMessageByPhonesList(req, res, next) {
+  async sendMessageByPhonesList(req, res, _next) {
     let { body } = req,
       result;
 
@@ -1003,8 +996,10 @@ const Message = class extends Auth {
     if (!this.isValidShortMessageTranslit(body) && this.isValidShortMessage(body)) {
       body.short_message_translit = this.createTranslitMesssage(body.short_message);
     }
+
+    let msg;
     try {
-      var msg = await IncommingMessages.create({ ...body });
+      msg = await IncommingMessages.create({ ...body });
     } catch (e) {
       return res.send(500, e);
     }
@@ -1025,7 +1020,7 @@ const Message = class extends Auth {
         idxCache.set(sendBySender.ref, { list_phone: allowedPhones, short_message_translit: body.short_message_translit });
         result = sendBySender.response;
         return res.send(result);
-      } catch (e) {
+      } catch {
         return res.send();
       }
     } else {
@@ -1033,19 +1028,23 @@ const Message = class extends Auth {
     }
   }
 
-  async sendMessageByEventId(req, res, next) {
+  async sendMessageByEventId(req, res, _next) {
     let { body } = req,
       result;
     if (!this.issetEventId(body)) {
       return res.send(400, { message: 'Event ID empty' });
     }
+
+    let msg;
     try {
-      var msg = await IncommingMessages.create({ ...body });
+      msg = await IncommingMessages.create({ ...body });
     } catch (e) {
       return res.send(500, e);
     }
+
+    let events;
     try {
-      var events = await this.findEvents(body);
+      events = await this.findEvents(body);
     } catch (e) {
       return res.send(e.statusCode, e.error);
     }
@@ -1081,7 +1080,7 @@ const Message = class extends Auth {
     return res.send(result);
   }
 
-  async getMessages(req, res, next) {
+  async getMessages(req, res, _next) {
     // Define params.
     const showAll = req.query.showAll === 'true';
 
@@ -1126,38 +1125,33 @@ const Message = class extends Auth {
     const count = parseInt(queryParams.count) || PAGINATION_TO;
 
     let messages;
-    try {
-      const queryOptions = {
-        offset: startFrom,
-        limit: count,
-        where: {
-          event_id: {
-            $ne: null,
-            $or: {
-              $ne: 0,
-            },
+    const queryOptions = {
+      offset: startFrom,
+      limit: count,
+      where: {
+        event_id: {
+          $ne: null,
+          $or: {
+            $ne: 0,
           },
         },
-        include: [
-          {
-            model: Events,
-            where: {
-              enable: true,
-              name: {
-                $notILike: '%комунал%', //Этот код убирает с телефончика в футере сообщения по аварии
-              },
-              private: false,
+      },
+      include: [
+        {
+          model: Events,
+          where: {
+            enable: true,
+            name: {
+              $notILike: '%комунал%', //Этот код убирает с телефончика в футере сообщения по аварии
             },
+            private: false,
           },
-        ],
-        limit: 10,
-        order: [['date_create', 'desc']],
-      };
-      log.save('get-all-messages-query-options', { queryOptions });
-      messages = await IncommingMessages.findAll(queryOptions);
-    } catch (e) {
-      throw e;
-    }
+        },
+      ],
+      order: [['date_create', 'desc']],
+    };
+    log.save('get-all-messages-query-options', { queryOptions });
+    messages = await IncommingMessages.findAll(queryOptions);
 
     return messages.map((v) => {
       return {
@@ -1185,8 +1179,9 @@ const Message = class extends Auth {
 
     let user_id;
     if ('access_token' in obj) {
+      let userId;
       try {
-        var userId = await this.checkToken(obj.access_token);
+        userId = await this.checkToken(obj.access_token);
       } catch (e) {
         console.error(e);
         throw e;
@@ -1255,8 +1250,9 @@ const Message = class extends Auth {
   async getUserMessagesCount(obj) {
     let user_id;
     if ('access_token' in obj) {
+      let userId;
       try {
-        var userId = await this.checkToken(obj.access_token);
+        userId = await this.checkToken(obj.access_token);
       } catch (e) {
         console.error(e);
         throw e;
@@ -1326,8 +1322,9 @@ const Message = class extends Auth {
     // Define user.
     let user_id;
     if ('access_token' in queryParams) {
+      let userId;
       try {
-        var userId = await this.checkToken(queryParams.access_token);
+        userId = await this.checkToken(queryParams.access_token);
       } catch (e) {
         console.error(e);
         throw e;
@@ -1436,8 +1433,9 @@ const Message = class extends Auth {
     // Define user.
     let user_id;
     if ('access_token' in queryParams) {
+      let userId;
       try {
-        var userId = await this.checkToken(queryParams.access_token);
+        userId = await this.checkToken(queryParams.access_token);
       } catch (e) {
         console.error(e);
         throw e;
@@ -1508,7 +1506,7 @@ const Message = class extends Auth {
       messageIdsArray = messageIds.map((v) => {
         return parseInt(v);
       });
-    } catch (error) {
+    } catch {
       return res.send(500, { error: 'Message ids should be defined in query.' });
     }
 
@@ -1541,8 +1539,9 @@ const Message = class extends Auth {
     // Define user.
     let user_id;
     if ('access_token' in queryParams) {
+      let userId;
       try {
-        var userId = await this.checkToken(queryParams.access_token);
+        userId = await this.checkToken(queryParams.access_token);
       } catch (e) {
         console.error(e);
         throw e;
@@ -1601,8 +1600,9 @@ const Message = class extends Auth {
     // Define user.
     let user_id;
     if ('access_token' in queryParams) {
+      let userId;
       try {
-        var userId = await this.checkToken(queryParams.access_token);
+        userId = await this.checkToken(queryParams.access_token);
       } catch (e) {
         console.error(e);
         throw e;
@@ -1651,8 +1651,9 @@ const Message = class extends Auth {
     // Define user.
     let user_id;
     if ('access_token' in queryParams) {
+      let userId;
       try {
-        var userId = await this.checkToken(queryParams.access_token);
+        userId = await this.checkToken(queryParams.access_token);
       } catch (e) {
         console.error(e);
         throw e;
@@ -1724,8 +1725,9 @@ const Message = class extends Auth {
     // Define user.
     let user_id;
     if ('access_token' in queryParams) {
+      let userId;
       try {
-        var userId = await this.checkToken(queryParams.access_token);
+        userId = await this.checkToken(queryParams.access_token);
       } catch (e) {
         console.error(e);
         throw e;
@@ -1766,7 +1768,7 @@ const Message = class extends Auth {
       messageId: message.incomming_message.message_id,
       createdAt: message.incomming_message.date_create,
       eventId: message.incomming_message.event_id,
-      event: message.incomming_message.event ? v.incomming_message.event.name : null,
+      event: message.incomming_message.event || null,
       titleMessage: message.incomming_message.title_message,
       fullMessage: message.incomming_message.full_message,
       shortMessage: message.incomming_message.short_message,
@@ -1804,8 +1806,9 @@ const Message = class extends Auth {
       };
     });
 
+    let usersInfos;
     try {
-      var usersInfos = await this.getUsersInfo([...users_idx]);
+      usersInfos = await this.getUsersInfo([...users_idx]);
     } catch (e) {
       console.error(e);
       throw e;
@@ -1830,33 +1833,20 @@ const Message = class extends Auth {
     let sendBySms, sendByEmail;
     if (this.isValidShortMessageTranslit(body) && (this.isValidShortMessage(body) || body.short_message == '')) {
       sendBySms = communications.find((v) => v.name === 'sms');
-      let txt;
-      if (body.short_message.trim().length > 0) {
-        txt = body.short_message;
-      } else {
-        txt = body.short_message_translit;
-      }
-      try {
-        sendBySms = await this.sendByPhones(
-          sendBySms.users.map((v) => v.phone),
-          body.short_message_translit,
-          msgid,
-        );
-      } catch (e) {
-        throw e;
-      }
+
+      sendBySms = await this.sendByPhones(
+        sendBySms.users.map((v) => v.phone),
+        body.short_message_translit,
+        msgid,
+      );
     }
     if (this.isValidFullMessage(body) && this.isValidTitleMessage(body)) {
       sendByEmail = communications.find((v) => v.name === 'email');
-      try {
-        sendByEmail = await this.sendByEmails(
-          sendByEmail.users.map((v) => v.email),
-          events.name,
-          body.full_message,
-        );
-      } catch (e) {
-        throw e;
-      }
+      sendByEmail = await this.sendByEmails(
+        sendByEmail.users.map((v) => v.email),
+        events.name,
+        body.full_message,
+      );
     }
 
     return { sendBySms, sendByEmail };
@@ -1954,11 +1944,7 @@ const Message = class extends Auth {
    * @returns {{id, phone, email, valid: {phone: boolean}, isLegal, companyName, last_name, first_name, middle_name, edrpou, ipn}[]} Users contact info.
    */
   async getUsers(list_user_id) {
-    try {
-      var usersFull = await this.getUsersInfo(list_user_id);
-    } catch (e) {
-      throw e;
-    }
+    const usersFull = await this.getUsersInfo(list_user_id);
     return usersFull.map((v) => {
       return {
         phone: v.phone,
@@ -1982,42 +1968,33 @@ const Message = class extends Auth {
    * @returns {{id, phone, email, valid: {phone: boolean}, isLegal, companyName, last_name, first_name, middle_name, edrpou, ipn}[]} Users contact info.
    */
   async getUsersByIpn(ipn) {
-    try {
-      const users = await this.getUsersInfoByIpn(ipn);
+    const users = await this.getUsersInfoByIpn(ipn);
 
-      return users.map((v) => {
-        return {
-          phone: v.phone,
-          email: v.email,
-          id: v._id,
-          valid: v.valid,
-          isLegal: v.isLegal,
-          companyName: v.companyName,
-          last_name: v.last_name,
-          first_name: v.first_name,
-          middle_name: v.middle_name,
-          edrpou: v.edrpou,
-          ipn: v.ipn,
-        };
-      });
-    } catch (e) {
-      throw e;
-    }
+    return users.map((v) => {
+      return {
+        phone: v.phone,
+        email: v.email,
+        id: v._id,
+        valid: v.valid,
+        isLegal: v.isLegal,
+        companyName: v.companyName,
+        last_name: v.last_name,
+        first_name: v.first_name,
+        middle_name: v.middle_name,
+        edrpou: v.edrpou,
+        ipn: v.ipn,
+      };
+    });
   }
 
   async sendByPhones(users, short_message_translit, msgid) {
     let sendBySms;
-    console.log(`Users: ${users}.`);
-    try {
-      if (users.length == 1) {
-        sendBySms = await messangerGate.sendOneSms(users[0], short_message_translit, msgid);
-      } else if (users.length > 1) {
-        sendBySms = await messangerGate.sendSms(users, short_message_translit, msgid);
-      }
-      return sendBySms;
-    } catch (e) {
-      throw e;
+    if (users.length == 1) {
+      sendBySms = await messangerGate.sendOneSms(users[0], short_message_translit, msgid);
+    } else if (users.length > 1) {
+      sendBySms = await messangerGate.sendSms(users, short_message_translit, msgid);
     }
+    return sendBySms;
   }
 
   /**
@@ -2087,25 +2064,28 @@ const Message = class extends Auth {
     return message;
   }
 
-  async addMessage(req, res, next) {
+  async addMessage(req, res, _next) {
     let { body } = req,
       result;
 
     if (this.issetEventId(body) && this.issetUserList(body)) {
+      let msg;
       try {
-        var msg = await IncommingMessages.create({ ...body });
+        msg = await IncommingMessages.create({ ...body });
       } catch (e) {
         return res.send(500, e);
       }
+
+      let events;
       try {
-        var events = await this.findEvents(body);
+        events = await this.findEvents(body);
       } catch (e) {
         return res.send(e.statusCode, e.error);
       }
 
       let settingsIdx = await this.prepareUserToEvent(body, events);
       let filter = function () {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
           let arr = [];
           for (let i in settingsIdx) {
             let v = settingsIdx[i];
@@ -2253,36 +2233,28 @@ const Message = class extends Auth {
     return res.send({ isDeleted });
   }
 
-  async senderErrorCallack(req, res, next) {
-    //TODO
+  async senderErrorCallack(req, res, _next) {
     let { id } = req.query;
-    console.log('id', id);
     try {
       let value = idxCache.get(id, true);
       let sendBySms = await this.sendByPhones(value.list_phone, value.short_message_translit);
       let result = { sendBySms };
-      console.log('result', result);
       return res.send(result);
     } catch (err) {
       // ENOTFOUND: Key `not-existing-key` not found
-      console.error('err', err);
       res.send(err);
     }
   }
 
-  async gmsuCallback(req, res, next) {
-    //TODO
-    let { extra_id, status } = req.body;
+  async gmsuCallback(req, res, _next) {
+    let { message_id, status } = req.body;
     if (~~status == 2) {
       try {
-        let value = idxCache.get(id, true);
         let removed = await messangerGate.removeFromQueue(message_id);
         let result = { removed };
-        console.log('result', result);
         return res.send(result);
       } catch (err) {
         // ENOTFOUND: Key `not-existing-key` not found
-        console.error('err', err);
         res.send(err);
       }
     } else {

@@ -3,7 +3,6 @@ export default function (s, _b) {
   s = String(s);
   opt = Object(opt);
 
-  // eslint-disable-next-line no-undef
   let defaults = {
     delimiter: ' ',
     limit: undefined,

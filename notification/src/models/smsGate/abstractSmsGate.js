@@ -1,5 +1,6 @@
 const axios = require('axios');
 const conf = require('../../config/config');
+const SmsQueue = require('../sms_queue').SmsQueue;
 
 const AbstractGate = class {
   constructor() {
@@ -81,20 +82,16 @@ const AbstractGate = class {
   async sendOneSms(phone, text, _msgid) {
     if (!!phone == false) throw { errorCode: 400, message: 'phone empty' };
     phone = phone.replace(/(\+38)?(38)?(3838)?/, '38');
-    try {
-      this.options.url = (conf.smsServer && conf.smsServer.url ? conf.smsServer.url : 'https://test.liquio.local') + '/Subscribe/SendSmsQ.php';
-      this.options.method = 'POST';
-      this.options.form = {
-        tel: phone,
-        // msgid,//if OTP => msgid = undefined
-        text,
-        pass: crypto.createHash('md5').update(`${text}SaLt${phone}`).digest('hex'),
-      };
-      let t = await this.sendRequest(this.options);
-      return t;
-    } catch (e) {
-      throw e;
-    }
+    this.options.url = (conf.smsServer && conf.smsServer.url ? conf.smsServer.url : 'https://test.liquio.local') + '/Subscribe/SendSmsQ.php';
+    this.options.method = 'POST';
+    this.options.form = {
+      tel: phone,
+      // msgid,//if OTP => msgid = undefined
+      text,
+      pass: crypto.createHash('md5').update(`${text}SaLt${phone}`).digest('hex'),
+    };
+    let t = await this.sendRequest(this.options);
+    return t;
   }
 
   async getSMSQueue(_clear) {

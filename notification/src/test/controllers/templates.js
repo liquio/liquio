@@ -1,7 +1,6 @@
 const common = require('../common');
 
 const server = common.server;
-const should = common.should;
 const chai = common.chai;
 const checkResponceFormatAndCode = common.checkResponceFormatAndCode;
 

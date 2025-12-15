@@ -1,4 +1,5 @@
 const { cloneDeep } = require('lodash');
+const typeOf = require('./type_of');
 
 class Helpers {
   /**
@@ -12,7 +13,7 @@ class Helpers {
     if (typeOf(strOrObj) === 'string') {
       try {
         strOrObjPrepared = JSON.parse(strOrObj);
-      } catch (error) {
+      } catch {
         strOrObjPrepared = strOrObj;
       }
     } else {

@@ -1,6 +1,9 @@
 {
   "name": "liquio-filestorage",
   "version": "0.1.0",
+  "engines": {
+    "node": "22"
+  },
   "private": true,
   "main": "src/app.js",
   "license": "SEE LICENSE IN ../LICENSE.md",

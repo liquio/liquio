@@ -90,7 +90,7 @@ const Lists = class extends Auth {
     next();
   }
 
-  async removeTransport(req, res, next) {
+  async removeTransport(req, res, _next) {
     if (!!req.query.communication_id == false) {
       return res.send(400, { message: 'communication_id empty' });
     }
@@ -103,13 +103,13 @@ const Lists = class extends Auth {
     res.send();
   }
 
-  async addEvents(req, res, next) {
+  async addEvents(req, res, _next) {
     if (!req.body.name || req.body.name == '') {
       return res.send(400, { message: 'Name empty' });
     }
 
     try {
-      var result = await Events.findOrCreate({
+      const result = await Events.findOrCreate({
         where: {
           name: req.body.name,
           description: req.body.description,
@@ -118,36 +118,32 @@ const Lists = class extends Auth {
           enable: req.body.enable,
         },
       });
+      res.send(result);
     } catch (e) {
-      console.error(e);
       return res.send(500, e.message);
     }
-    res.send(result);
-    next();
   }
 
-  async updateEvents(req, res, next) {
+  async updateEvents(req, res, _next) {
     if (!req.body.name || req.body.name == '') {
       return res.send(400, { message: 'Name empty' });
     }
-    // console.log(req.body, req.params);
     try {
-      var result = await Events.update(req.body, { where: { event_id: req.params.event_id } });
+      const result = await Events.update(req.body, { where: { event_id: req.params.event_id } });
+      res.send(result);
     } catch (e) {
       return res.send(500, e);
     }
-    res.send(result);
-    next();
   }
 
   async getEvents(req, res, next) {
-    let result = await Events.findAll();
+    const result = await Events.findAll();
     res.send(result);
     next();
   }
 
   async getUsersByEvent(req, res, next) {
-    let { event_id } = req.params;
+    const { event_id } = req.params;
 
     if (!event_id) {
       return res.send(400, {
@@ -185,7 +181,7 @@ const Lists = class extends Auth {
     next();
   }
 
-  async removeEvents(req, res, next) {
+  async removeEvents(req, res, _next) {
     if (!!req.query.event_id == false) {
       return res.send(400, { message: 'event_id empty' });
     }
@@ -198,7 +194,7 @@ const Lists = class extends Auth {
     res.send();
   }
 
-  async addRelation(req, res, next) {
+  async addRelation(req, res, _next) {
     if (!!req.body.event_id == false) {
       return res.send(400, { message: 'event_id empty' });
     }
@@ -237,7 +233,7 @@ const Lists = class extends Auth {
     res.send(resp);
   }
 
-  async removeRelation(req, res, next) {
+  async removeRelation(req, res, _next) {
     if (!!req.query.setting_id == false) {
       return res.send(400, { message: 'setting_id empty' });
     }
@@ -251,11 +247,7 @@ const Lists = class extends Auth {
   }
 
   async getUsers(list_user_id) {
-    try {
-      var usersFull = await this.getUsersInfo(list_user_id);
-    } catch (e) {
-      throw e;
-    }
+    const usersFull = await this.getUsersInfo(list_user_id);
     return usersFull;
   }
 };

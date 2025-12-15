@@ -42,13 +42,8 @@ const CorezoidGate = class extends AbstractGate {
     this.options.headers = {
       'Content-Type': 'application/json; charset=utf8',
     };
-    try {
-      let response = await this.sendRequest(this.options);
-      console.log(response);
-      return { response, ref };
-    } catch (e) {
-      throw e;
-    }
+    let response = await this.sendRequest(this.options);
+    return { response, ref };
   }
 };
 // let t = new CorezoidGate();
