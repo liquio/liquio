@@ -40,7 +40,7 @@
     "gost89": "^0.1.11",
     "got": "^11.8.2",
     "handlebars": "^4.7.8",
-    "iconv-lite": "^0.7.0",
+    "iconv-lite": "^0.7.1",
     "isolated-vm": "^6.0.1",
     "jcopy": "^1.0.3",
     "jksreader": "^1.0.0",
