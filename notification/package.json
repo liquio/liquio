@@ -45,7 +45,7 @@
     "chai": "^6.2.1",
     "chai-http": "^4.3.0",
     "eslint-plugin-jsdoc": "^61.5.0",
-    "mocha": "^10.2.0"
+    "mocha": "^11.7.5"
   },
   "overrides": {
     "form-data": "2.5.5",
