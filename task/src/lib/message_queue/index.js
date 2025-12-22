@@ -2,7 +2,7 @@
 const _ = require('lodash');
 const qs = require('qs');
 const amqp = require('amqplib/callback_api');
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 const { runInAsyncLocalStorage } = require('../async_local_storage');
 
 // Constants.
@@ -273,7 +273,7 @@ class MessageQueue {
     let preparedMessage;
     try {
       // Append message.
-      message.amqpMessageId = uuid();
+      message.amqpMessageId = randomUUID();
 
       // Prepare message.
       messageString = JSON.stringify(message);

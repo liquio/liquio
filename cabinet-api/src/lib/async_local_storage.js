@@ -1,5 +1,5 @@
 const { AsyncLocalStorage } = require('async_hooks');
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 
 // Init storage.
 const storage = new AsyncLocalStorage();
@@ -11,7 +11,7 @@ const storage = new AsyncLocalStorage();
  * @param {object} next Next request handler.
  */
 module.exports.asyncLocalStorageMiddleware = (req, res, next) => {
-  const traceId = req.headers['x-trace-id'] || req.headers['global-trace-id'] || req.traceId || uuid();
+  const traceId = req.headers['x-trace-id'] || req.headers['global-trace-id'] || req.traceId || randomUUID();
 
   res.set('x-trace-id', traceId);
 
@@ -74,7 +74,7 @@ function initStorageIfNeedIt(cb = () => undefined, traceId, traceMeta) {
   // Init storage.
   storage.run(new Map(), () => {
     const store = storage.getStore();
-    store.set('traceId', traceId || uuid());
+    store.set('traceId', traceId || randomUUID());
     store.set('traceMeta', traceMeta || {});
     return cb();
   });

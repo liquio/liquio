@@ -15,7 +15,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { translate } from 'react-translate';
 import { bindActionCreators } from 'redux';
-import uuid from 'uuid-random';
+import { generateUUID } from 'utils/uuid';
 
 import { addMessage } from 'actions/error';
 import { checkRestoreRegisterStatus, restoreRegistry } from 'actions/registry';
@@ -199,7 +199,7 @@ const RestoreRecordButton = ({ t, actions, selectedKey }) => {
           return (
             <>
               {value || typeof value === 'number' ? (
-                <Typography key={uuid()}>{t(key, { value })}</Typography>
+                <Typography key={generateUUID()}>{t(key, { value })}</Typography>
               ) : null}
             </>
           );

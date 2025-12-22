@@ -3,7 +3,7 @@ import { translate } from 'react-translate';
 import { history } from 'store';
 import { bindActionCreators } from 'redux';
 import { connect, useDispatch } from 'react-redux';
-import uuid from 'uuid-random';
+import { generateUUID } from 'utils/uuid';
 import {
   IconButton,
   Tooltip,
@@ -500,7 +500,7 @@ const ProcessesListPage = ({
               <FormControl component="fieldset" error={helperText.length}>
                 {(Object.keys(chosenRestartPoint || {}) || []).map((type) => (
                   <RadioGroup
-                    key={uuid()}
+                    key={generateUUID()}
                     aria-label={type}
                     name={type}
                     value={valuePoint[type]}
@@ -508,7 +508,7 @@ const ProcessesListPage = ({
                   >
                     {(chosenRestartPoint[type] || []).map(({ id, name }) => (
                       <FormControlLabel
-                        key={uuid()}
+                        key={generateUUID()}
                         value={id}
                         control={
                           <Radio
