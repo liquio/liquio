@@ -29,6 +29,7 @@ export default class ExportBusiness extends Business {
   keyModel: KeyModel;
   recordModel: RecordModel;
   toExport: { [key: string]: any };
+  exportTimeouts: Map<string, NodeJS.Timeout>;
 
   constructor(config: Config) {
     // Define singleton.
@@ -38,6 +39,7 @@ export default class ExportBusiness extends Business {
       this.keyModel = KeyModel.getInstance();
       this.recordModel = RecordModel.getInstance();
       this.toExport = {}; // { exportId: { keyId, options, data: { key, register, records }, status, createdAt: new Date() } }
+      this.exportTimeouts = new Map(); // Track setTimeout IDs for cleanup
       ExportBusiness.singleton = this;
     }
     return ExportBusiness.singleton;
@@ -259,5 +261,19 @@ export default class ExportBusiness extends Business {
     } catch (error) {
       this.log.save('update-to-export-state-error', { exportId, error: error?.message, stack: error?.stack });
     }
+  }
+
+  /**
+   * Clear all pending export timeouts.
+   * Useful for cleanup during shutdown or testing.
+   * @example
+   * exportBusiness.clearAllTimeouts();
+   */
+  clearAllTimeouts() {
+    this.exportTimeouts.forEach((timeoutId, exportId) => {
+      clearTimeout(timeoutId);
+      this.log.save('clear-export-timeout', { exportId });
+    });
+    this.exportTimeouts.clear();
   }
 }

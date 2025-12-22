@@ -725,9 +725,100 @@ test('testApp', async () => {
   expect(process.title).toBe(config.app?.processTitle);
 });
 
+export async function teardownApp(pgContainer: any, app: any, db: any) {
+  const testDebug = debug('test:log');
+  testDebug('Starting teardown...');
+
+  // Add a small delay to allow async operations to complete
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  // Close the main server
+  if (app?.server) {
+    testDebug('Closing main server...');
+    await new Promise<void>((resolve) => {
+      app.server.close(() => {
+        testDebug('Main server closed');
+        resolve();
+      });
+    });
+  }
+
+  // Stop and dispose afterhandler workers
+  if (global.afterhandler) {
+    testDebug('Stopping afterhandler workers...');
+    try {
+      const workers = global.afterhandler.workers || [];
+      // First stop all workers to exit their processing loops
+      await Promise.all(
+        workers.map((worker: any) => {
+          return worker.stop?.() || Promise.resolve();
+        })
+      );
+      testDebug('Afterhandler workers stopped');
+
+      // Then dispose of them
+      testDebug('Disposing afterhandler workers...');
+      workers.forEach((worker: any) => {
+        worker.dispose?.();
+      });
+      testDebug('Afterhandler workers disposed');
+    } catch (error) {
+      testDebug('Error stopping afterhandler workers:', error);
+    }
+  }
+
+  // Add delay before closing DB to allow in-flight queries to complete
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  // Clear all timers to prevent Jest from hanging
+  testDebug('Clearing timers...');
+  try {
+    jest.clearAllTimers();
+    testDebug('Timers cleared');
+  } catch (error) {
+    testDebug('Error clearing timers:', error);
+  }
+
+  // Close database connection
+  if (db) {
+    testDebug('Closing database connection...');
+    try {
+      await db.close();
+      testDebug('Database connection closed');
+    } catch (error) {
+      testDebug('Error closing database:', error);
+    }
+  }
+
+  // Close Redis client if it exists
+  if (global.redis) {
+    testDebug('Closing Redis client...');
+    try {
+      await global.redis.close();
+      testDebug('Redis client closed');
+    } catch (error) {
+      testDebug('Error closing Redis client:', error);
+    }
+  }
+
+  // Stop PostgreSQL container
+  if (pgContainer) {
+    testDebug('Stopping PostgreSQL container...');
+    try {
+      await pgContainer.stop();
+      testDebug('PostgreSQL container stopped');
+    } catch (error) {
+      testDebug('Error stopping PostgreSQL container:', error);
+    }
+  }
+
+  testDebug('Teardown complete');
+}
+
 module.exports = {
   config,
   startApp,
   runMigrations,
-  insertData
+  insertData,
+  teardownApp
 };
