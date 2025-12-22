@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const PropByPath = require('prop-by-path');
-const uuid = require('uuid-random');
+const { randomUUID } = crypto;
 
 const PersistLink = require('./persist_link');
 const Filestorage = require('./filestorage');
@@ -614,7 +614,7 @@ function getIdAsString() {
  */
 // eslint-disable-next-line no-unused-vars
 function uuidv4() {
-  const generatedUuidv4 = uuid();
+  const generatedUuidv4 = randomUUID();
   return generatedUuidv4;
 }
 

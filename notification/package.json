@@ -36,7 +36,6 @@
     "sequelize-cli": "^6.6.0",
     "soap": "^1.6.1",
     "soap-cookie": "^0.10.1",
-    "uuid-random": "^1.3.2",
     "xml-stream": "^0.4.5",
     "xmlbuilder": "^9.0.1"
   },

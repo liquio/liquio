@@ -1,5 +1,5 @@
 
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 
 const Controller = require('./controller');
 const ExternalReader = require('../lib/external_reader');
@@ -145,7 +145,7 @@ class ExternalReaderController extends Controller {
       return this.responseError(res, 'Incorrect service or method name.', 400);
     }
 
-    requestId = uuid();
+    requestId = randomUUID();
 
     await global.redisClient.set(`external-reader-request-id:${requestId}`, {
       status: 'processing'

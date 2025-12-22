@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 
 import { Global, MiddlewareConsumer, Module } from '@nestjs/common';
 import type { Request } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 import { LoggerService } from '@components/observability/logger.service';
 
@@ -34,7 +34,7 @@ export class ObservabilityModule {
     consumer
       .apply((req: Request, _res: unknown, next: () => void) => {
         const store: AsyncLocalStorageContext = {
-          traceId: (req.headers['x-trace-id'] as string) || uuidv4(),
+          traceId: (req.headers['x-trace-id'] as string) || randomUUID(),
         };
         this.als.run(store, () => next());
       })

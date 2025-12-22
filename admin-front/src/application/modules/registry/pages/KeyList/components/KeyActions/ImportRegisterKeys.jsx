@@ -21,7 +21,7 @@ import storage from 'helpers/storage';
 import { readFileAsync } from 'helpers/parseFile';
 import DownloadIcon from 'assets/icons/gg_import.svg';
 import RenderOneLine from 'helpers/renderOneLine';
-import uuid from 'uuid-random';
+import { generateUUID } from 'utils/uuid';
 import { addMessage } from 'actions/error';
 import Message from 'components/Snackbars/Message';
 
@@ -237,7 +237,7 @@ const ImportRegisterKeys = ({ ColorButton, actions, loading: loadingOrigin }) =>
         const isFailed = status === STATUSES.failed;
 
         return (
-          <div className={classes.listWrapper} key={uuid()}>
+          <div className={classes.listWrapper} key={generateUUID()}>
             <Typography
               className={classNames({
                 [classes.keysListItem]: true,
@@ -268,7 +268,7 @@ const ImportRegisterKeys = ({ ColorButton, actions, loading: loadingOrigin }) =>
                 return (
                   <>
                     {value || typeof value === 'number' ? (
-                      <Typography key={uuid()}>{t(key, { value })}</Typography>
+                      <Typography key={generateUUID()}>{t(key, { value })}</Typography>
                     ) : null}
                   </>
                 );
