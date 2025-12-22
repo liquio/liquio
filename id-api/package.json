@@ -41,7 +41,7 @@
     "gost89": "^0.1.11",
     "jksreader": "^1.0.0",
     "js-lzma": "^0.1.0",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "ldapts": "^7.4.0",
     "lodash": "^4.17.21",
     "mappr": "^6.1.0",
