@@ -1,5 +1,5 @@
 const { AsyncLocalStorage } = require('async_hooks');
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 
 // Init storage.
 const storage = new AsyncLocalStorage();
@@ -13,7 +13,7 @@ const storage = new AsyncLocalStorage();
  */
 module.exports.asyncLocalStorageMiddleware = (req, res, next) => {
   storage.run(new Map(), () => {
-    storage.getStore().set('traceId', uuid());
+    storage.getStore().set('traceId', randomUUID());
     next();
   });
 };
@@ -25,7 +25,7 @@ module.exports.asyncLocalStorageMiddleware = (req, res, next) => {
  */
 module.exports.runInAsyncLocalStorage = (handler) => {
   storage.run(new Map(), () => {
-    storage.getStore().set('traceId', uuid());
+    storage.getStore().set('traceId', randomUUID());
     handler();
   });
 };

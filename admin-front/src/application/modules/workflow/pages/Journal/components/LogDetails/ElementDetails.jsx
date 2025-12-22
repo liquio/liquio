@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslate } from 'react-translate';
 import { useDispatch } from 'react-redux';
-import { uuid } from 'uuidv4';
+import { generateUUID } from 'utils/uuid';
 import { Typography, IconButton, Tooltip } from '@mui/material';
 import withStyles from '@mui/styles/withStyles';
 import RepeatIcon from '@mui/icons-material/Repeat';
@@ -43,7 +43,7 @@ const ElementDetails = ({
     const result = await restartProcessFromPoint(processId, {
       taskId: details?.id,
       workflowId: details?.workflowId,
-      amqpMessageId: uuid(),
+      amqpMessageId: generateUUID(),
     })(dispatch);
 
     if (result instanceof Error) {

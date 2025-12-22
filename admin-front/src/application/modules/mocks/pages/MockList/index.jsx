@@ -5,7 +5,7 @@ import { bindActionCreators } from 'redux';
 import { useTranslate } from 'react-translate';
 import classNames from 'classnames';
 import { EditorDialog } from 'components/Editor';
-import uuid from 'uuid-random';
+import { generateUUID } from 'utils/uuid';
 import {
   getOneMock,
   createOneMock,
@@ -426,7 +426,7 @@ const EnabledMockPage = ({ actions, location, title }) => {
               return (
                 <>
                   <TableRow
-                    key={uuid()}
+                    key={generateUUID()}
                     className={classes.tableRow}
                     classes={{
                       root: classNames({
@@ -469,7 +469,7 @@ const EnabledMockPage = ({ actions, location, title }) => {
                     </TableCell>
                   </TableRow>
 
-                  <TableRow key={uuid()} className={classes.tableRow}>
+                  <TableRow key={generateUUID()} className={classes.tableRow}>
                     <TableCell
                       classes={{
                         root: classNames({
@@ -515,7 +515,7 @@ const EnabledMockPage = ({ actions, location, title }) => {
                                 return (
                                   <>
                                     <TableRow
-                                      key={uuid()}
+                                      key={generateUUID()}
                                       className={classes.mockslist}
                                     >
                                       <TableCell
@@ -579,7 +579,7 @@ const EnabledMockPage = ({ actions, location, title }) => {
                                     </TableRow>
 
                                     <TableRow
-                                      key={uuid()}
+                                      key={generateUUID()}
                                       className={classes.tableRow}
                                     >
                                       <TableCell
@@ -638,7 +638,7 @@ const EnabledMockPage = ({ actions, location, title }) => {
                                                   ({ data: mockId, name }) => {
                                                     return (
                                                       <TableRow
-                                                        key={uuid()}
+                                                        key={generateUUID()}
                                                         className={
                                                           classes.mockslist
                                                         }
