@@ -41,7 +41,7 @@
     "xmlbuilder": "^9.0.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.28.0",
+    "@eslint/js": "^9.39.2",
     "chai": "^6.2.1",
     "chai-http": "^4.3.0",
     "eslint-plugin-jsdoc": "^61.5.0",
