@@ -35,7 +35,7 @@
     "@swc/core": "^1.11.24",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.10.7",
+    "@types/node": "^25.0.3",
     "@types/supertest": "^6.0.2",
     "altcha-lib": "^1.4.1",
     "axios": "^1.11.0",
