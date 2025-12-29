@@ -46,7 +46,7 @@
     "lodash": "^4.17.21",
     "mappr": "^6.1.0",
     "nconf": "^0.13.0",
-    "node-cache": "^4.2.1",
+    "node-cache": "^5.1.2",
     "node-jose": "^2.2.0",
     "node-rsa": "^1.1.1",
     "node-schedule": "^2.1.1",
