@@ -69,7 +69,7 @@
     "redis": "^3.0.2",
     "sequelize": "^6.29.0",
     "sequelize-cli": "^6.6.0",
-    "transliteration": "^2.1.4",
+    "transliteration": "^2.6.0",
     "validator": "^13.6.0",
     "ws": "^8.11.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
