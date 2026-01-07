@@ -391,4 +391,5 @@ describe('MessageQueue', () => {
       expect(exitSpy).not.toHaveBeenCalled();
       exitSpy.mockRestore();
     });
-  });});
+  });
+});
