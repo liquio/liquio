@@ -1,5 +1,5 @@
 const qs = require('qs');
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 const axios = require('axios');
 
 const Filestorage = require('../../../lib/filestorage');
@@ -31,7 +31,7 @@ class EventWorkflow {
   async createWorkflows({ workflowParentId, createWorkflows }) {
     const workflowIds = [];
     for (const createWorkflow of createWorkflows) {
-      const workflowId = uuid();
+      const workflowId = randomUUID();
       const {
         initData,
         fileIds = [],

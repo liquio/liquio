@@ -1,7 +1,7 @@
 const fs = require('fs');
 const stream = require('stream');
 const axios = require('axios');
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 const _ = require('lodash');
 
 const Rmq = require('../../../../../lib/rmq');
@@ -50,7 +50,7 @@ class StandardProvider extends Provider {
     const { service } = destination;
 
     // Define trace log id.
-    const traceLogId = uuid();
+    const traceLogId = randomUUID();
 
     // Get options.
     const {

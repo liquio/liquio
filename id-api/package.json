@@ -60,7 +60,7 @@
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.3",
     "swagger-ui-express": "^5.0.1",
-    "typescript-eslint": "^8.30.1"
+    "typescript-eslint": "^8.50.1"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^10.24.2",

@@ -4,7 +4,6 @@ const moment = require('moment');
 const _ = require('lodash');
 const crypto = require('crypto');
 const acorn = require('acorn');
-const { randomUUID } = crypto;
 const { literal } = require('sequelize');
 const { LRUCache } = require('lru-cache');
 
@@ -45,7 +44,7 @@ class Sandbox {
       _,
       iconv,
       moment,
-      randomUUID,
+      uuid: crypto.randomUUID,
       getMd5Hash,
       getSha512Hash,
       base64Decode,
