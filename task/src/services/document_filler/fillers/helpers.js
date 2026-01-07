@@ -1,6 +1,6 @@
 
 const crypto = require('crypto');
-const uuid = require('uuid-random');
+const { randomUUID } = crypto;
 const Filler = require('./filler');
 
 /**
@@ -40,7 +40,7 @@ class HelpersFiller extends Filler {
       let valueToSet;
       switch (currentValue) {
         case 'helpers.uuidv4':
-          valueToSet = uuid();
+          valueToSet = randomUUID();
           break;
         case 'helpers.deepLink':
           valueToSet = {

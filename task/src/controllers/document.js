@@ -1,4 +1,4 @@
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 const crypto = require('crypto');
 const axios = require('axios');
 const _ = require('lodash');
@@ -1738,7 +1738,7 @@ class DocumentController extends Controller {
       return this.responseData(res, requestData);
     }
 
-    requestId = uuid();
+    requestId = randomUUID();
 
     await global.redisClient.set(
       `external-reader-request-id:${requestId}`,

@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 
 // Constants.
 const ERROR_WRONG_QUEUE_NAME = 'Wrong queue name.';
@@ -69,7 +69,7 @@ class WorkflowHandlerBusiness {
     }
 
     // Replace/Create new amqp message id.
-    message.amqpMessageId = uuid();
+    message.amqpMessageId = randomUUID();
 
     global.messageQueue.produce(name, message);
 

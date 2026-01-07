@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import Multiconf = require('multiconf');
+import Multiconf from 'multiconf';
 
 import { LoggerService } from '../observability/logger.service';
 

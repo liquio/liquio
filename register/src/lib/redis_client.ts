@@ -189,4 +189,14 @@ export class RedisClient {
 
     return this.client.del(keys);
   }
+
+  /**
+   * Close the Redis connection.
+   */
+  async close(): Promise<void> {
+    if (this.client) {
+      await this.client.quit();
+      RedisClient.singleton = undefined as any;
+    }
+  }
 }
