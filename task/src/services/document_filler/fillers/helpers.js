@@ -1,6 +1,6 @@
 
 const crypto = require('crypto');
-const { randomUUID } = crypto;
+const { randomUUID } = require('crypto');
 const Filler = require('./filler');
 
 /**

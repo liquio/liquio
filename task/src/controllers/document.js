@@ -1,5 +1,5 @@
-const { randomUUID } = require('crypto');
 const crypto = require('crypto');
+const { randomUUID } = crypto;
 const axios = require('axios');
 const _ = require('lodash');
 const jcopy = require('jcopy');
