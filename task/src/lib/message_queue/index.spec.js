@@ -26,6 +26,14 @@ jest.mock('amqplib/callback_api', () => ({
   }),
 }));
 
+jest.mock('../async_local_storage', () => ({
+  runInAsyncLocalStorage: jest.fn((handler) => {
+    if (typeof handler === 'function') {
+      return handler();
+    }
+  }),
+}));
+
 describe('MessageQueue', () => {
   let messageQueue;
 
@@ -37,6 +45,7 @@ describe('MessageQueue', () => {
     messageQueue = new MessageQueue({
       amqpConnection: 'amqp://localhost',
       maxHandlingMessages: 10,
+      maxHandlingGeneratingPdfMessages: 5,
       readingQueueName: 'readingQueue',
       writingQueueName: 'writingQueue',
     });
@@ -44,6 +53,116 @@ describe('MessageQueue', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    MessageQueue.singleton = null;
+  });
+
+  describe('constructor', () => {
+    it('should create a singleton instance', () => {
+      const instance1 = new MessageQueue({
+        amqpConnection: 'amqp://localhost',
+        readingQueueName: 'queue1',
+        writingQueueName: 'queue2',
+      });
+
+      const instance2 = new MessageQueue({
+        amqpConnection: 'amqp://different',
+        readingQueueName: 'queue3',
+        writingQueueName: 'queue4',
+      });
+
+      expect(instance1).toBe(instance2);
+      expect(instance1.config.amqpConnection).toBe('amqp://localhost');
+    });
+
+    it('should set error queue names based on reading queue name', () => {
+      expect(messageQueue.config.errorQueueName10M).toBe('readingQueue-errors-10m');
+      expect(messageQueue.config.errorQueueName1H).toBe('readingQueue-errors-1h');
+      expect(messageQueue.config.errorQueueName2H).toBe('readingQueue-errors-2h');
+      expect(messageQueue.config.errorQueueName8H).toBe('readingQueue-errors-8h');
+      expect(messageQueue.config.errorQueueName1D).toBe('readingQueue-errors-1d');
+    });
+  });
+
+  describe('initConnection', () => {
+    it('should establish amqp connection and subscribe to events', async () => {
+      await messageQueue.initConnection();
+
+      expect(amqp.connect).toHaveBeenCalledWith(
+        'amqp://localhost',
+        expect.any(Function),
+      );
+      expect(messageQueue.connection).toBeDefined();
+      expect(messageQueue.connection.on).toHaveBeenCalledWith('error', expect.any(Function));
+      expect(messageQueue.connection.on).toHaveBeenCalledWith('close', expect.any(Function));
+    });
+
+    it('should call reconnect on connection error', async () => {
+      const reconnectSpy = jest.spyOn(messageQueue, 'reconnect');
+      
+      amqp.connect.mockImplementationOnce((url, callback) => {
+        const err = new Error('Connection failed');
+        callback(err);
+      });
+
+      await messageQueue.initConnection();
+
+      expect(reconnectSpy).toHaveBeenCalled();
+      reconnectSpy.mockRestore();
+    });
+  });
+
+  describe('initChannels', () => {
+    it('should create 6 channels and set prefetch options', async () => {
+      await messageQueue.initConnection();
+      await messageQueue.initChannels();
+
+      expect(messageQueue.channels).toBeDefined();
+      expect(messageQueue.channels.reading).toBeDefined();
+      expect(messageQueue.channels.writing).toBeDefined();
+      expect(messageQueue.channels.readingPdf).toBeDefined();
+      expect(messageQueue.channels.writingPdf).toBeDefined();
+      expect(messageQueue.channels.errors).toBeDefined();
+      expect(messageQueue.channels.delayedAutoCommit).toBeDefined();
+
+      expect(messageQueue.channels.reading.prefetch).toHaveBeenCalledWith(10);
+      expect(messageQueue.channels.readingPdf.prefetch).toHaveBeenCalledWith(5);
+    });
+  });
+
+  describe('initQueues', () => {
+    it('should assert main queues', async () => {
+      await messageQueue.initConnection();
+      await messageQueue.initChannels();
+      messageQueue.initQueues();
+
+      expect(messageQueue.channels.reading.assertQueue).toHaveBeenCalledWith(
+        'readingQueue',
+        { durable: true },
+      );
+      expect(messageQueue.channels.writing.assertQueue).toHaveBeenCalledWith(
+        'writingQueue',
+        { durable: true },
+      );
+    });
+
+    it('should assert error queues with ttl and dead letter routing', async () => {
+      await messageQueue.initConnection();
+      await messageQueue.initChannels();
+      messageQueue.initQueues();
+
+      const errorQueueCalls = messageQueue.channels.errors.assertQueue.mock.calls;
+
+      // Check that error queues are created
+      expect(errorQueueCalls.length).toBeGreaterThan(0);
+
+      // Verify at least one error queue has proper configuration
+      const errorQueueCall = errorQueueCalls.find(
+        call => call[0] === 'readingQueue-errors-10m'
+      );
+      expect(errorQueueCall).toBeDefined();
+      expect(errorQueueCall[1].arguments['x-message-ttl']).toBe(10 * 60 * 1000);
+      expect(errorQueueCall[1].arguments['x-dead-letter-routing-key']).toBe('readingQueue');
+    });
   });
 
   describe('init', () => {
@@ -55,31 +174,84 @@ describe('MessageQueue', () => {
         expect.any(Function),
       );
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
+      expect(messageQueue.channels).toBeDefined();
       expect(global.log.save).toHaveBeenCalled();
+    });
+
+    it('should call onInit callback if provided', async () => {
+      const onInitCallback = jest.fn();
+      MessageQueue.singleton = null;
+      
+      const mqWithCallback = new MessageQueue(
+        {
+          amqpConnection: 'amqp://localhost',
+          maxHandlingMessages: 10,
+          readingQueueName: 'readingQueue',
+          writingQueueName: 'writingQueue',
+        },
+        { onInit: onInitCallback }
+      );
+
+      await mqWithCallback.init();
+
+      // onInit is called synchronously after initQueues
+      expect(onInitCallback).toHaveBeenCalled();
     });
   });
 
   describe('produce', () => {
-    it('should send the message to the writing queue', async () => {
+    it('should send the message to the writing queue with amqpMessageId', async () => {
       await messageQueue.init();
       const message = { type: 'test', data: { foo: 'bar' } };
-      const preparedMessage = message;
 
-      messageQueue.produce(message);
+      await messageQueue.produce(message);
 
-      expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledWith(
-        'writingQueue',
-        Buffer.from(JSON.stringify(preparedMessage)),
-        { persistent: true },
-      );
-      expect(global.log.save).toHaveBeenCalledWith('amqp-message-sent', {
-        messageString: JSON.stringify(message),
-      });
+      const sendCall = messageQueue.channels.writing.sendToQueue.mock.calls[0];
+      expect(sendCall[0]).toBe('writingQueue');
+      expect(sendCall[2]).toEqual({ persistent: true });
+
+      const sentMessage = JSON.parse(sendCall[1].toString());
+      expect(sentMessage.type).toBe('test');
+      expect(sentMessage.amqpMessageId).toBeDefined();
+
+      expect(global.log.save).toHaveBeenCalledWith('amqp-message-sent', expect.any(Object));
+    });
+
+    it('should support producing to custom channel and queue', async () => {
+      await messageQueue.init();
+      const message = { type: 'pdf', data: { id: 123 } };
+
+      await messageQueue.produce(message, 'writingPdf', 'custom-pdf-queue');
+
+      const sendCall = messageQueue.channels.writingPdf.sendToQueue.mock.calls[0];
+      expect(sendCall[0]).toBe('custom-pdf-queue');
+    });
+
+    it('should retry sending message on transient error', async () => {
+      jest.useFakeTimers();
+      await messageQueue.init();
+
+      messageQueue.channels.writing.sendToQueue
+        .mockImplementationOnce(() => {
+          throw new Error('Transient error');
+        })
+        .mockImplementationOnce(() => undefined);
+
+      const message = { type: 'test', data: { foo: 'bar' } };
+      const producePromise = messageQueue.produce(message);
+
+      jest.advanceTimersByTime(60 * 1000 + 100);
+      await producePromise;
+
+      expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledTimes(2);
+      expect(global.log.save).toHaveBeenCalledWith('amqp-message-try-to-send-again', expect.any(Object));
+
+      jest.useRealTimers();
     });
   });
 
   describe('subscribeToConsuming', () => {
-    it('should handle the message and acknowledge it if it is successfully handled', async () => {
+    it('should handle the message and acknowledge it if successfully handled', async () => {
       const message = { type: 'test', data: { foo: 'bar' } };
       const handler = jest.fn().mockReturnValue(true);
 
@@ -101,7 +273,7 @@ describe('MessageQueue', () => {
       );
     });
 
-    it('should not handle the message and not acknowledge it if it is not successfully handled', async () => {
+    it('should not acknowledge message if handler returns false', async () => {
       const message = { type: 'test', data: { foo: 'bar' } };
       const handler = jest.fn().mockReturnValue(false);
 
@@ -122,5 +294,101 @@ describe('MessageQueue', () => {
         },
       );
     });
+
+    it('should support subscribing to custom channel and queue', async () => {
+      const handler = jest.fn();
+      await messageQueue.init();
+
+      messageQueue.subscribeToConsuming(handler, 'readingPdf', 'custom-pdf-queue');
+
+      const consumeCall = messageQueue.channels.readingPdf.consume.mock.calls[0];
+      expect(consumeCall[0]).toBe('custom-pdf-queue');
+    });
   });
-});
+
+  describe('close', () => {
+    it('should close the connection', async () => {
+      await messageQueue.init();
+      await messageQueue.close();
+
+      expect(messageQueue.connection.close).toHaveBeenCalled();
+      expect(messageQueue.isClosing).toBe(false);
+      expect(global.log.save).toHaveBeenCalledWith('connection-closed-by-app');
+    });
+
+    it('should handle error when closing connection', async () => {
+      await messageQueue.init();
+
+      messageQueue.connection.close.mockImplementationOnce((callback) => {
+        callback(new Error('Close failed'));
+      });
+
+      await messageQueue.close();
+
+      expect(global.log.save).toHaveBeenCalledWith(
+        'can-not-close-connection',
+        'Close failed',
+      );
+    });
+
+    it('should handle closing when no connection exists', async () => {
+      messageQueue.connection = null;
+      await messageQueue.close();
+
+      expect(global.log.save).toHaveBeenCalledWith('connection-has-already-been-closed');
+      expect(messageQueue.isClosing).toBe(false);
+    });
+  });
+
+  describe('reconnect', () => {
+    it('should set reconnectTimeout and schedule reconnection', () => {
+      messageQueue.reconnect();
+
+      expect(messageQueue.reconnectTimeout).toBeDefined();
+      // Cleanup
+      clearTimeout(messageQueue.reconnectTimeout);
+    });
+
+    it('should not reconnect if already closing', async () => {
+      messageQueue.isClosing = true;
+      const closeSpy = jest.spyOn(messageQueue, 'close');
+
+      messageQueue.reconnect();
+
+      expect(closeSpy).not.toHaveBeenCalled();
+      expect(messageQueue.reconnectTimeout).toBeNull();
+      closeSpy.mockRestore();
+    });
+
+    it('should not reconnect if already reconnecting', async () => {
+      messageQueue.reconnectTimeout = setTimeout(() => {}, 10000);
+
+      const closeSpy = jest.spyOn(messageQueue, 'close');
+      messageQueue.reconnect();
+
+      expect(closeSpy).not.toHaveBeenCalled();
+      closeSpy.mockRestore();
+    });
+  });
+
+  describe('checkErrorAndExitIfNeedIt', () => {
+    it('should exit app if error message matches restart errors', () => {
+      const exitSpy = jest.spyOn(messageQueue, 'exitApp').mockImplementation(() => {});
+
+      const error = new Error('Error: socket hang up');
+      messageQueue.checkErrorAndExitIfNeedIt(error);
+
+      expect(exitSpy).toHaveBeenCalled();
+      exitSpy.mockRestore();
+    });
+
+    it('should not exit app if error message does not match restart errors', () => {
+      const exitSpy = jest.spyOn(messageQueue, 'exitApp').mockImplementation(() => {});
+
+      const error = new Error('Some other error');
+      messageQueue.checkErrorAndExitIfNeedIt(error);
+
+      expect(exitSpy).not.toHaveBeenCalled();
+      exitSpy.mockRestore();
+    });
+  });});
