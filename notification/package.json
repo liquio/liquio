@@ -16,7 +16,6 @@
     "migration-up": "sequelize db:migrate"
   },
   "dependencies": {
-    "amqplib": "^0.10.9",
     "axios": "^1.6.1",
     "iconv-lite": "^0.6.2",
     "moment": "^2.18.1",
