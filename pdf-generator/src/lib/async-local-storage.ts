@@ -25,7 +25,7 @@ export const asyncLocalStorageMiddleware = (
       return next();
     }
 
-    store.set('traceId', traceId || uuidv4());
+    store.set('traceId', traceId || randomUUID());
     return next();
   });
 };
