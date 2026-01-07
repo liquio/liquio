@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'async_hooks';
-import uuid from 'uuid-random';
+import { randomUUID } from 'crypto';
 
 import { Express, NextFunction, Request, Response } from '../types';
 
@@ -29,7 +29,7 @@ export function useAsyncLocalStorage(express: Express) {
  * @param {object} next Next request handler.
  */
 export function asyncLocalStorageMiddleware(req: Request, res: Response, next: NextFunction) {
-  let traceId = req.headers['x-trace-id'] || req.headers['global-trace-id'] || req.traceId || uuid();
+  let traceId = req.headers['x-trace-id'] || req.headers['global-trace-id'] || req.traceId || randomUUID();
 
   if (Array.isArray(traceId)) traceId = traceId[0];
 
@@ -94,7 +94,7 @@ function initStorageIfNeedIt(cb: NextFunction = () => undefined, traceId?: strin
   storage.run(new Store(), () => {
     const store = storage.getStore();
     if (store) {
-      store.set('traceId', traceId ?? uuid());
+      store.set('traceId', traceId ?? randomUUID());
       store.set('traceMeta', traceMeta || {});
     }
     return cb();

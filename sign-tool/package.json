@@ -1,6 +1,9 @@
 {
   "name": "liquio-sign-tool",
   "version": "0.1.0",
+  "engines": {
+    "node": "22"
+  },
   "private": true,
   "license": "SEE LICENSE IN ../LICENSE.md",
   "scripts": {
@@ -30,8 +33,7 @@
     "multiconf": "^3.2.1",
     "pkijs": "^3.2.5",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1",
-    "uuid-random": "^1.3.2"
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
@@ -49,14 +51,14 @@
     "@typescript-eslint/eslint-plugin": "^8.49.0",
     "@typescript-eslint/parser": "^8.49.0",
     "eslint": "^9.39.1",
-    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.2.1",
     "jest": "^30.2.0",
-    "prettier": "^3.0.0",
+    "prettier": "^3.7.4",
     "rimraf": "^6.0.1",
     "source-map-support": "^0.5.21",
-    "supertest": "^7.0.0",
-    "ts-jest": "^29.2.3",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.6",
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",

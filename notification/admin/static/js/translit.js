@@ -1,8 +1,8 @@
-/* global translit, XRegExp */
+/* global XRegExp */
 /*******************************************************************************
  https://github.com/andyhu/node-transliteration
  *******************************************************************************/
-translit = function (s, _b) {
+global.translit = function (s, _b) {
   let opt = null;
   s = String(s);
   opt = Object(opt);

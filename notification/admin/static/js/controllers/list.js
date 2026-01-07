@@ -2,6 +2,9 @@
 /**
  * Created by lomaka on 27.03.17.
  */
+
+const basicAuthToken = process.env.BASIC_AUTH || 'test:test';
+
 angular.module('admin').controller('list', function ($scope, $http,$rootScope) {
 
   $scope.data = {eventSelected: undefined};
@@ -59,7 +62,7 @@ angular.module('admin').controller('list', function ($scope, $http,$rootScope) {
       method: 'POST',
       url: '/message/phonesList',
       headers: {
-        Authorization: 'Basic kyiv-notify:858E1F21C7542634940243BB35F1C02E1C6AA21310C3C330B7326772A2A35D74ADBBDDC1247F4027E035B490C3051F0C5D9FBF80C65C0FD6F20EF8E0303B8A7B'
+        Authorization: `Basic ${basicAuthToken}`
       },
       data: {
         list_phone: ['+38'+$scope.testMessage.code+$scope.testMessage.number],
@@ -84,7 +87,7 @@ angular.module('admin').controller('list', function ($scope, $http,$rootScope) {
       method: 'POST',
       url: '/message/eventId',
       headers: {
-        Authorization: 'Basic kyiv-notify:858E1F21C7542634940243BB35F1C02E1C6AA21310C3C330B7326772A2A35D74ADBBDDC1247F4027E035B490C3051F0C5D9FBF80C65C0FD6F20EF8E0303B8A7B'
+        Authorization: `Basic ${basicAuthToken}`
       },
       data: {
         event_id: $scope.data.eventSelected,

@@ -1,6 +1,9 @@
 {
   "name": "liquio-admin-api",
   "version": "0.1.0",
+  "engines": {
+    "node": "22"
+  },
   "private": true,
   "license": "SEE LICENSE IN ../LICENSE.md",
   "main": "src/index.js",
@@ -43,7 +46,6 @@
     "sequelize": "^6.29.0",
     "sequelize-cli": "^6.6.0",
     "transliteration": "^2.1.11",
-    "uuid-random": "^1.3.2",
     "ws": "^8.11.0",
     "xml2js": "^0.6.0"
   },

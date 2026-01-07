@@ -1,5 +1,4 @@
 const Sequelize = require('sequelize');
-const SqlString = require('sequelize/lib/sql-string');
 
 const Model = require('./model');
 const NumberTemplateEntity = require('../entities/number_template');

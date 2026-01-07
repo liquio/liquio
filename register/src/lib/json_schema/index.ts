@@ -1,4 +1,4 @@
-import Ajv from 'ajv';
+import Ajv, { ValidateFunction } from 'ajv';
 
 import ValidatorError from './validator_error';
 import RecordModel from '../../models/record';
@@ -9,15 +9,15 @@ import Isolation from '../isolation';
  */
 export default class JsonSchema {
   recordModel: RecordModel;
-  ajv: Ajv.Ajv;
+  ajv: Ajv;
   schema: any;
-  validation: any;
+  validation: ValidateFunction<unknown>;
 
-  constructor(schema) {
+  constructor(schema: { customTypes?: Record<string, string>; [key: string]: any }) {
     this.recordModel = RecordModel.getInstance();
 
     // Define params.
-    this.ajv = new Ajv();
+    this.ajv = new Ajv({ strictSchema: false });
 
     // Use custom function if need it.
     if (schema.customTypes && Object.keys(schema.customTypes).length > 0) {
@@ -25,10 +25,13 @@ export default class JsonSchema {
         this.ajv.addKeyword(keyWord, {
           compile: (currentKeyWordValueInSchema, curentFieldInSchema) => (recordFieldValue) => {
             const isolate = new Isolation();
-            isolate.set('recordFieldValue', recordFieldValue).set('currentKeyWordValueInSchema', currentKeyWordValueInSchema).set('curentFieldInSchema', curentFieldInSchema);
+            isolate
+              .set('recordFieldValue', recordFieldValue)
+              .set('currentKeyWordValueInSchema', currentKeyWordValueInSchema)
+              .set('curentFieldInSchema', curentFieldInSchema);
             return isolate.eval(`(${func as string})(recordFieldValue, currentKeyWordValueInSchema, curentFieldInSchema)`);
           }
-        });
+        } as any);
       });
     }
 
@@ -68,7 +71,7 @@ export default class JsonSchema {
     }
     if (jsonFieldsToSearch.length > 0) {
       const records = await this.recordModel.countByJsonFields(keyId, jsonFieldsToSearch, recordId);
-      if (records > 0) validatorErrors.push({ message: 'Unique error.' });
+      if (records > 0) validatorErrors.push(new ValidatorError({ message: 'Unique error.' } as any));
     }
 
     // Remove records to ignore.

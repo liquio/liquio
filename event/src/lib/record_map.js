@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const PropByPath = require('prop-by-path');
-const { randomUUID } = require('crypto');
+const { randomUUID } = crypto;
 
 const PersistLink = require('./persist_link');
 const Filestorage = require('./filestorage');

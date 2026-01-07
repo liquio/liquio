@@ -1,6 +1,9 @@
 {
   "name": "liquio-gateway",
   "version": "0.1.0",
+  "engines": {
+    "node": "22"
+  },
   "private": true,
   "license": "SEE LICENSE IN ../LICENSE.md",
   "main": "src/index.js",
@@ -16,7 +19,7 @@
   },
   "dependencies": {
     "acorn": "^8.15.0",
-    "amqplib": "^0.8.0",
+    "amqplib": "^0.10.9",
     "axios": "^1.11.0",
     "ccolor": "^1.3.1",
     "express": "^5.2.1",
@@ -25,13 +28,12 @@
     "lru-cache": "^10.4.3",
     "moment": "^2.29.4",
     "moment-business-days": "^1.2.0",
-    "multiconf": "^2.0.2",
+    "multiconf": "^3.3.1",
     "pg": "^8.9.0",
     "pg-hstore": "^2.3.4",
     "redis": "^4.5.1",
     "sequelize": "^6.29.0",
-    "sequelize-cli": "^6.6.0",
-    "uuid-random": "^1.3.2",
+    "sequelize-cli": "^6.6.5",
     "ws": "^8.12.0"
   },
   "devDependencies": {

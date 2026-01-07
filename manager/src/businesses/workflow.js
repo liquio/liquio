@@ -1,4 +1,4 @@
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 
 const XmlJsConverter = require('../lib/xml_js_converter');
 const SystemNotifier = require('../lib/system_notifier');
@@ -240,7 +240,7 @@ class WorkflowBusiness {
               taskTemplateId: nextTaskId,
               userId: SYSTEM_USER,
               retryIterator: messageObject.retryIterator,
-              amqpMessageId: uuid(),
+              amqpMessageId: randomUUID(),
             };
 
             // Debug mode.
@@ -294,7 +294,7 @@ class WorkflowBusiness {
               sequenceIds: sequenceIds,
               userId: SYSTEM_USER,
               retryIterator: messageObject.retryIterator,
-              amqpMessageId: uuid(),
+              amqpMessageId: randomUUID(),
             };
 
             // Debug mode.
@@ -320,7 +320,7 @@ class WorkflowBusiness {
               eventTemplateId: nextEventId,
               userId: SYSTEM_USER,
               retryIterator: messageObject.retryIterator,
-              amqpMessageId: uuid(),
+              amqpMessageId: randomUUID(),
             };
 
             // Debug mode.

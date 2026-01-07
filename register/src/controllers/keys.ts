@@ -211,6 +211,7 @@ export default class KeysController extends Controller {
     if (!oldKeyModelResponse) {
       return this.responseError(res, 'Key not found.', 404);
     }
+
     if (isEncrypted !== undefined && isEncrypted !== oldKeyModelResponse.data.isEncrypted) {
       const recordsCount = await this.recordsModel.countAll({ filter: { key_id: id } });
       if (recordsCount > 0) {

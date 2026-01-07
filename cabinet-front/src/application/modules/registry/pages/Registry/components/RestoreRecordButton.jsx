@@ -4,7 +4,7 @@ import { translate } from 'react-translate';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import moment from 'moment';
-import uuid from 'uuid-random';
+import { generateUUID } from 'utils/uuid';
 import {
   Template,
   TemplatePlaceholder,
@@ -173,7 +173,7 @@ const RestoreRecordButton = ({ t, classes, actions, selectedKey }) => {
             return (
               <>
                 {value || typeof value === 'number' ? (
-                  <Typography key={uuid()}>{t(key, { value })}</Typography>
+                  <Typography key={generateUUID()}>{t(key, { value })}</Typography>
                 ) : null}
               </>
             );

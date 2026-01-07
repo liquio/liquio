@@ -1,6 +1,4 @@
 const AbstractDB = require('./DB');
-let { _conf } = global;
-const _MailerModel = require('./emailGate/mailerModel');
 
 const TemplatesModel = class extends AbstractDB {
   constructor() {

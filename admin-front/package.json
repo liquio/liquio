@@ -1,6 +1,9 @@
 {
   "name": "liquio-admin-front",
   "version": "0.1.0",
+  "engines": {
+    "node": "22"
+  },
   "private": true,
   "license": "SEE LICENSE IN ../LICENSE.md",
   "scripts": {
@@ -153,8 +156,6 @@
     "stream-browserify": "3.0.0",
     "terser": "5.15.1",
     "util": "0.12.5",
-    "uuid-random": "1.3.2",
-    "uuidv4": "6.2.13",
     "vm-browserify": "1.1.2",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "buffer": "^6.0.3",
