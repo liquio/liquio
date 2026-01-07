@@ -1,6 +1,6 @@
 const _ = require('lodash');
-const amqp = require('amqplib/callback_api');
 const { randomUUID } = require('crypto');
+const amqp = require('amqplib/callback_api');
 
 const { runInAsyncLocalStorage } = require('../async_local_storage');
 
