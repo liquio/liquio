@@ -1624,89 +1624,89 @@ export default class RecordsController extends Controller {
       const window = new JSDOM('').window;
       const DOMPurify = createDOMPurify(window);
 
-    const allowedHTML = {
-      ALLOWED_TAGS: [
-        'b',
-        'i',
-        'em',
-        'strong',
-        'a',
-        'div',
-        'p',
-        'span',
-        'img',
-        'pre',
-        'code',
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'ul',
-        'ol',
-        'li',
-        'table',
-        'tbody',
-        'td',
-        'tr',
-        'svg',
-        'style',
-        'br',
-        'blockquote',
-        'button',
-        'sup',
-        'th',
-        'colgroup',
-        'col',
-        'mark',
-        'details',
-        'summary',
-        'iframe',
-        'header',
-        'footer',
-        'a'
-      ],
-      ALLOWED_ATTR: [
-        'style',
-        'class',
-        'id',
-        'width',
-        'height',
-        'colspan',
-        'rowspan',
-        'cellpadding',
-        'cellspacing',
-        'role',
-        'aria-label',
-        'tabIndex',
-        'title',
-        'href',
-        'rel',
-        'target'
-      ]
-    };
+      const allowedHTML = {
+        ALLOWED_TAGS: [
+          'b',
+          'i',
+          'em',
+          'strong',
+          'a',
+          'div',
+          'p',
+          'span',
+          'img',
+          'pre',
+          'code',
+          'h1',
+          'h2',
+          'h3',
+          'h4',
+          'h5',
+          'h6',
+          'ul',
+          'ol',
+          'li',
+          'table',
+          'tbody',
+          'td',
+          'tr',
+          'svg',
+          'style',
+          'br',
+          'blockquote',
+          'button',
+          'sup',
+          'th',
+          'colgroup',
+          'col',
+          'mark',
+          'details',
+          'summary',
+          'iframe',
+          'header',
+          'footer',
+          'a'
+        ],
+        ALLOWED_ATTR: [
+          'style',
+          'class',
+          'id',
+          'width',
+          'height',
+          'colspan',
+          'rowspan',
+          'cellpadding',
+          'cellspacing',
+          'role',
+          'aria-label',
+          'tabIndex',
+          'title',
+          'href',
+          'rel',
+          'target'
+        ]
+      };
 
-    const flattenRecordData = flattenjs.flatten(recordData);
-    const errors = [];
+      const flattenRecordData = flattenjs.flatten(recordData);
+      const errors = [];
 
-    for (const key in flattenRecordData) {
-      const value = flattenRecordData[key];
-      if (typeOf(value) !== 'string') continue;
-      const sanitizedValue = DOMPurify.sanitize(value, allowedHTML);
-      if (value !== sanitizedValue) {
-        errors.push({
-          key,
-          value
-        });
+      for (const key in flattenRecordData) {
+        const value = flattenRecordData[key];
+        if (typeOf(value) !== 'string') continue;
+        const sanitizedValue = DOMPurify.sanitize(value, allowedHTML);
+        if (value !== sanitizedValue) {
+          errors.push({
+            key,
+            value
+          });
+        }
       }
-    }
-    if (errors.length) {
-      const error = new Error('Detected potential XSS.');
-      (error as any).details = errors;
-      throw error;
-    }
-    return true;
+      if (errors.length) {
+        const error = new Error('Detected potential XSS.');
+        (error as any).details = errors;
+        throw error;
+      }
+      return true;
     } catch (error) {
       // If XSS check fails due to jsdom issues, log but don't block in test env
       if (process.env.NODE_ENV === 'test') {

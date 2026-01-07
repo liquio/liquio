@@ -28,12 +28,12 @@
     "pg-hstore": "^2.3.3",
     "redis": "^4.0.6",
     "sequelize": "^6.29.0",
-    "sequelize-cli": "^6.6.0",
+    "sequelize-cli": "^6.6.5",
     "xml2js": "^0.6.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "eslint": "^9.1.1",
+    "eslint": "^9.39.2",
     "eslint-plugin-jsdoc": "^61.5.0",
     "jest": "^30.2.0",
     "nock": "^14.0.10"
