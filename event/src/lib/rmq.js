@@ -1,6 +1,6 @@
 const amqp = require('amqplib/callback_api');
 const axios = require('axios');
-const uuid = require('uuid-random');
+const { randomUUID } = require('crypto');
 
 const { prepareAxiosErrorToLog } = require('./helpers');
 
@@ -88,7 +88,7 @@ class Rmq {
     getIncomingMessageTimeout,
   }) {
     // Generate UUID.
-    const generatedUuid = uuid();
+    const generatedUuid = randomUUID();
     const mergedId = `${id}-${generatedUuid}`;
 
     // Prepare message.
