@@ -29,7 +29,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schematics": "^11.0.0",
-    "@nestjs/swagger": "^11.2.0",
+    "@nestjs/swagger": "^11.2.4",
     "@nestjs/testing": "^11.0.1",
     "@swc/cli": "^0.7.9",
     "@swc/core": "^1.11.24",
