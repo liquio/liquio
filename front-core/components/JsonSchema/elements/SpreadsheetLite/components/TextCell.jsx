@@ -1,5 +1,4 @@
 import React from 'react';
-import uuid from 'uuid-random';
 import MobileDetect from 'mobile-detect';
 import { makeStyles } from '@mui/styles';
 import MaterialInput from '@mui/material/Input';
@@ -28,7 +27,7 @@ const useStyles = makeStyles(() => ({
 const TextCell = (props) => {
   const { rowData, columnData, setRowData, focus } = props;
   const ref = React.useRef(null);
-  const [id] = React.useState(uuid());
+  const [id] = React.useState(crypto.randomUUID());
   const classes = useStyles();
   const [isMobile] = React.useState(() => {
     const md = new MobileDetect(window.navigator.userAgent);

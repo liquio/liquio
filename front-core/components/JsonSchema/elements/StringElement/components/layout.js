@@ -20,7 +20,6 @@ import Masked from 'components/JsonSchema/elements/StringElement/components/mask
 import EJVError from 'components/JsonSchema/components/EJVError';
 import FieldLabel from 'components/JsonSchema/components/FieldLabel';
 import FormControlMessage from 'components/JsonSchema/components/FormControlMessage';
-import uuid from 'uuid-random';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ClearIcon from '@mui/icons-material/Clear';
 import {
@@ -265,7 +264,7 @@ const Layout = ({
   const [hovered, setHovered] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(value || '');
   const [ariaClearHint, setAriaClearHint] = React.useState('');
-  const [randomLabelId] = React.useState(uuid());
+  const [randomLabelId] = React.useState(crypto.randomUUID());
   const [wrapperId] = React.useState(`${randomLabelId}-${path.join('-')}`);
   let [timeout] = React.useState(null);
   const md = new MobileDetect(window.navigator.userAgent);
