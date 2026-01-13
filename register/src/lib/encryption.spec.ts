@@ -2,7 +2,7 @@ import Encryption from './encryption';
 import crypto from 'crypto';
 
 describe('Encryption - GCM Authentication Tag Validation', () => {
-  const testKey = Buffer.alloc(32); // 32-byte key for AES-256
+  const testKey = Buffer.alloc(32).toString('hex'); // 32-byte key for AES-256
   let encryption: Encryption;
 
   beforeEach(() => {
@@ -136,23 +136,17 @@ describe('Encryption - GCM Authentication Tag Validation', () => {
       // Test with 15 bytes
       const tag15 = Buffer.alloc(15).toString('base64');
       const invalid15 = `${parts[0]}:${tag15}:${parts[2]}`;
-      expect(() => encryption.decrypt(invalid15)).toThrow(
-        'Invalid authentication tag length. Expected 16 bytes.'
-      );
+      expect(() => encryption.decrypt(invalid15)).toThrow('Invalid authentication tag length. Expected 16 bytes.');
 
       // Test with 17 bytes
       const tag17 = Buffer.alloc(17).toString('base64');
       const invalid17 = `${parts[0]}:${tag17}:${parts[2]}`;
-      expect(() => encryption.decrypt(invalid17)).toThrow(
-        'Invalid authentication tag length. Expected 16 bytes.'
-      );
+      expect(() => encryption.decrypt(invalid17)).toThrow('Invalid authentication tag length. Expected 16 bytes.');
 
       // Test with 16 bytes should pass length check
       const tag16 = Buffer.alloc(16).toString('base64');
       const valid16 = `${parts[0]}:${tag16}:${parts[2]}`;
-      expect(() => encryption.decrypt(valid16)).not.toThrow(
-        'Invalid authentication tag length. Expected 16 bytes.'
-      );
+      expect(() => encryption.decrypt(valid16)).not.toThrow('Invalid authentication tag length. Expected 16 bytes.');
     });
   });
 
