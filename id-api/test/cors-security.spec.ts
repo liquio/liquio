@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 /**
  * CORS Security Tests
  * Validates that CORS configuration properly restricts origins
@@ -38,7 +40,8 @@ function setCorsForTest(req: Request, res: Response, next: NextFunction): void {
   }
 
   if (oneof && req.method === 'OPTIONS') {
-    return res.status(204).send();
+    res.status(204).send();
+    return;
   }
   
   next();
@@ -47,9 +50,9 @@ function setCorsForTest(req: Request, res: Response, next: NextFunction): void {
 describe('CORS Security - id-api', () => {
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
-  let mockNext: NextFunction;
-  let headerSpy: jest.SpyInstance;
-  let statusSpy: jest.SpyInstance;
+  let mockNext: jest.Mock;
+  let headerSpy: jest.SpyInstance<Response>;
+  let statusSpy: jest.SpyInstance<Response>;
 
   beforeEach(() => {
     mockRes = {
