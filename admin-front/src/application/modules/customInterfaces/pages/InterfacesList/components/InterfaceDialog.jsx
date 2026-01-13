@@ -77,9 +77,9 @@ const InterfaceDialog = ({ t, open, value, onCommit, onClose, readOnly }) => {
       if (!dataCallback) onClose();
     } catch (e) {
       const errorList = (e.response ? e.response.errors : []).map(
-        ({ msg, param }) => ({
+        ({ msg, path }) => ({
           message: t(msg),
-          path: param,
+          path,
         }),
       );
 

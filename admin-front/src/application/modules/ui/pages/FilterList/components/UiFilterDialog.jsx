@@ -67,9 +67,9 @@ const UiFilterDialog = ({ t, open, value, onCommit, onDelete, onClose }) => {
       await onCommit(data);
       onClose();
     } catch (e) {
-      const errorList = (e.response ? e.response.errors : []).map(({ msg, param }) => ({
+      const errorList = (e.response ? e.response.errors : []).map(({ msg, path }) => ({
         message: t(msg),
-        path: param
+        path
       }));
 
       if (errorList.length) {
