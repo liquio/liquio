@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import AfterhandlerWorker from '../worker';
 import HttpRequest from '../../../http_request';
 import KeyModel from '../../../../models/key';

@@ -165,7 +165,6 @@ export default class Log {
           responseTime: Date.now() - time
         };
         if (body instanceof Error) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (data as any).error = {
             message: body.message,
             stack: body.stack

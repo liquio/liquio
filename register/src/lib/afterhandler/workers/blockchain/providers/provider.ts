@@ -50,7 +50,7 @@ export default class BlockchainProvider {
    * @param {string} entity Entity name.
    * @param {string} id Entity record ID.
    */
-  /* eslint-disable-next-line no-unused-vars */
+
   async getData(_entity, _id) {
     throw new Error('Method should be redefined in child class.');
   }
@@ -62,7 +62,7 @@ export default class BlockchainProvider {
    * @param {string} userId User ID.
    * @param {object} data Data.
    */
-  /* eslint-disable-next-line no-unused-vars */
+
   async createData(_entity, _id, _userId, _data) {
     throw new Error('Method should be redefined in child class.');
   }
@@ -74,7 +74,7 @@ export default class BlockchainProvider {
    * @param {string} userId User ID.
    * @param {object} data Data.
    */
-  /* eslint-disable-next-line no-unused-vars */
+
   async updateData(_entity, _id, _userId, _data) {
     throw new Error('Method should be redefined in child class.');
   }
@@ -85,7 +85,7 @@ export default class BlockchainProvider {
    * @param {string} id Entity record ID.
    * @param {string} userId User ID.
    */
-  /* eslint-disable-next-line no-unused-vars */
+
   async deleteData(_entity, _id, _userId) {
     throw new Error('Method should be redefined in child class.');
   }

@@ -44,7 +44,7 @@ export default class AfterhandlerWorker {
    * @param {HistoryEntity} history History entity to handle.
    * @returns {Promise<boolean>} Handled indicator promise.
    */
-  // eslint-disable-next-line no-unused-vars
+
   async handle(_history): Promise<boolean> {
     throw new Error('Abstract method should be redefined in child classes.');
   }
@@ -57,7 +57,7 @@ export default class AfterhandlerWorker {
    * @param {object} options Options.
    * @returns {Promise<boolean>} Handled indicator promise.
    */
-  // eslint-disable-next-line no-unused-vars
+
   async reindexReset(_keyId: number, _options: any): Promise<boolean> {
     throw new Error('Abstract method should be redefined in child classes.');
   }
@@ -69,7 +69,7 @@ export default class AfterhandlerWorker {
    * @param {RecordEntity} record Record.
    * @returns {Promise<boolean>} Handled indicator promise.
    */
-  // eslint-disable-next-line no-unused-vars
+
   async reindexAdd(_record: any): Promise<boolean> {
     throw new Error('Abstract method should be redefined in child classes.');
   }
@@ -225,6 +225,6 @@ export default class AfterhandlerWorker {
    * @param {string} operation Operation.
    * @returns {Promise} Resolved promise.
    */
-  // eslint-disable-next-line no-unused-vars
+
   async validateRecord(_record, _operation) {}
 }

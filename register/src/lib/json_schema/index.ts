@@ -86,7 +86,7 @@ export default class JsonSchema {
    * @param {ValidatorError} validatorError Validator error.
    * @returns {boolean} Is validation should be ignored indicator.
    */
-  // eslint-disable-next-line no-unused-vars
+
   isValidationErrorShouldBeIgnored(_validatorError) {
     // Return false. Change here to ignore some errors.
     return false;
