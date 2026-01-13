@@ -3,6 +3,12 @@ const plugins = require('restify-plugins');
 const CookieParser = require('restify-cookies');
 
 const { asyncLocalStorageMiddleware } = require('./lib/async_local_storage');
+const {
+  securityHeadersMiddleware,
+  inputSanitizationMiddleware,
+  corsValidationMiddleware,
+  responseEncodingMiddleware,
+} = require('./middleware/security');
 
 let { env } = global;
 
@@ -18,6 +24,11 @@ server.use(plugins.bodyParser());
 server.use(CookieParser.parse);
 
 server.pre(asyncLocalStorageMiddleware);
+
+// Security middleware - applied before routes
+server.use(securityHeadersMiddleware());
+server.use(responseEncodingMiddleware());
+server.use(inputSanitizationMiddleware());
 
 // Log all requests.
 server.pre(global.log.logRouter.bind(global.log));
@@ -42,27 +53,27 @@ server.controllers = {
 };
 
 if (env == 'localhost') {
-  server.pre(restify.CORS());
+  server.use(corsValidationMiddleware({
+    allowedOrigins: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:8080',
+    ],
+  }));
   server.pre(restify.fullResponse());
 
   function unknownMethodHandler(req, res) {
     if (req.method.toLowerCase() === 'options') {
-      const allowHeaders = ['Accept', 'Accept-Version', 'Content-Type', 'Api-Version', 'Origin', 'X-Requested-With', 'Authorization']; // added Origin & X-Requested-With & **Authorization**
-
-      if (res.methods.indexOf('OPTIONS') === -1) res.methods.push('OPTIONS');
-
-      res.header('Access-Control-Allow-Credentials', true);
-      res.header('Access-Control-Allow-Headers', allowHeaders.join(', '));
-      res.header('Access-Control-Allow-Methods', res.methods.join(', '));
-      res.header('Access-Control-Allow-Origin', req.headers.origin);
-
-      return res.send(200);
+      return res.send(204);
     } else {
       return res.send(new restify.MethodNotAllowedError());
     }
   }
 
   server.on('MethodNotAllowed', unknownMethodHandler);
+} else {
+  // Production: stricter CORS validation
+  server.use(corsValidationMiddleware());
 }
 
 server.get(

@@ -9,7 +9,6 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import objectPath from 'object-path';
 import qs from 'qs';
-import uuid from 'uuid-random';
 import Select from 'components/Select';
 import { ChangeEvent } from 'components/JsonSchema';
 import defaultProps from 'components/JsonSchema/elements/Register/defaultProps';
@@ -52,7 +51,7 @@ class SingleKeyRegister extends React.Component {
       search: '',
       page: 0,
       loading: false,
-      id: `${uuid()}-${path.join('-')}`,
+      id: `${crypto.randomUUID()}-${path.join('-')}`,
     };
 
     const {

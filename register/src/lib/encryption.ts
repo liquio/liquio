@@ -59,6 +59,11 @@ export default class Encryption {
       // Split the IV, authentication tag, and encrypted data.
       const { iv, authTag, buffer } = this.unpackEncrypted(encryptedData);
 
+      // Validate authentication tag length (GCM requires 16 bytes / 128 bits).
+      if (!authTag || authTag.length !== 16) {
+        throw new Error('Invalid authentication tag length. Expected 16 bytes.');
+      }
+
       // Using AES-256-GCM decryption algorithm.
       const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.key), iv);
 

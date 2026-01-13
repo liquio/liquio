@@ -2,7 +2,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useDispatch } from 'react-redux';
-import uuid from 'uuid-random';
 import { useTranslate } from 'react-translate';
 import {
   MapContainer,
@@ -159,7 +158,7 @@ const Map = ({
   const dispatch = useDispatch();
   const mapRefs = React.useRef(null);
   const snackbarRef = React.useRef(null);
-  const [mapId, setMapId] = React.useState(uuid());
+  const [mapId, setMapId] = React.useState(crypto.randomUUID());
   const [noApiData, setNoApiData] = React.useState(false);
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
@@ -503,7 +502,7 @@ const Map = ({
                 },
                 true,
                 () => {
-                  setMapId(uuid());
+                  setMapId(crypto.randomUUID());
                 },
               );
             } else {

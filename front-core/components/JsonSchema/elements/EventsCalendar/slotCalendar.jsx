@@ -29,7 +29,6 @@ import { ReactComponent as BigFair } from './assets/fair_148x148.svg';
 import { ReactComponent as SmallFair } from './assets/fair_80x80.svg';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
-import uuid from 'uuid-random';
 import { makeStyles } from '@mui/styles';
 import storage from 'helpers/storage';
 
@@ -950,7 +949,7 @@ const SlotCalendar = ({
                 const currentDay = moment(day);
                 return (
                   <div
-                    key={uuid()}
+                    key={crypto.randomUUID()}
                     className={classNames({
                       [classes.dayItem]: true,
                       [classes.active]: activeDay === currentDay.format('DD.MM.YYYY'),

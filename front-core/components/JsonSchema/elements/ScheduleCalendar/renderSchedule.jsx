@@ -1,6 +1,5 @@
 /* eslint-disable no-underscore-dangle */
 import React from 'react';
-import uuid from 'uuid-random';
 import { makeStyles } from '@mui/styles';
 import { IconButton, Button, Tooltip, Hidden } from '@mui/material';
 import moment from 'moment-timezone';
@@ -932,7 +931,7 @@ const RenderSchedule = ({
             ) : null}
 
             <div
-              key={uuid()}
+              key={crypto.randomUUID()}
               tabIndex={0}
               aria-label={slot?.disabled ? disableTitle : slot.title}
               role="button"
@@ -1274,7 +1273,7 @@ const RenderSchedule = ({
         >
           <Hidden smDown={true}>
             {togglePeriodDate.map(({ title, value, icon, iconW }) => (
-              <Tooltip title={title} key={uuid()}>
+              <Tooltip title={title} key={crypto.randomUUID()}>
                 <IconButton
                   className={classNames({
                     [classes.periodButton]: true,
@@ -1290,7 +1289,7 @@ const RenderSchedule = ({
           <Hidden smUp={true}>
             {togglePeriodDate.map(({ title, value, icon, iconW }) => (
               <Button
-                key={uuid()}
+                key={crypto.randomUUID()}
                 className={classNames({
                   [classes.periodButton]: true,
                   [classes.activePeriod]: period === value,
@@ -1322,7 +1321,7 @@ const RenderSchedule = ({
 
                 return (
                   <div
-                    key={uuid()}
+                    key={crypto.randomUUID()}
                     className={classNames({
                       [classes.dayItem]: true,
                       [classes.active]:
@@ -1384,7 +1383,7 @@ const RenderSchedule = ({
             <ScrollBarWrapper>
               {Object.keys(groupScheduleDaysByWeek).map((week) => (
                 <div
-                  key={uuid()}
+                  key={crypto.randomUUID()}
                   className={classNames({
                     [classes.dayItem]: true,
                     [classes.active]: !diff(
@@ -1441,7 +1440,7 @@ const RenderSchedule = ({
                 moment(day, 'DD.MM.YYYY').format('dddd') === showMore;
 
               return (
-                <div key={uuid()}>
+                <div key={crypto.randomUUID()}>
                   <div className={classes.activeSubHeadline}>
                     <Button
                       onClick={() => {
@@ -1504,7 +1503,7 @@ const RenderSchedule = ({
             <ScrollBarWrapper>
               {Object.keys(groupScheduleWeeksByMonth).map((month) => (
                 <div
-                  key={uuid()}
+                  key={crypto.randomUUID()}
                   className={classNames({
                     [classes.dayItem]: true,
                     [classes.active]: activeMonth === month,
@@ -1544,7 +1543,7 @@ const RenderSchedule = ({
 
             {Object.keys(monthSlots).map((week) => (
               <div
-                key={uuid()}
+                key={crypto.randomUUID()}
                 className={classes.weekWrapper}
                 onClick={() => {
                   handleChangePeriod('week');
