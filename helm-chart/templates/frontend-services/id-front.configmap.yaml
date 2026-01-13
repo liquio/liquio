@@ -54,9 +54,7 @@ data:
         proxy_pass http://id-api-upstream;
         proxy_cache off;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+        proxy_set_header Host {{ include "liquio.fullname" . }}-id-api;
         proxy_cache_bypass $http_upgrade;
         proxy_set_header If-None-Match "";
         proxy_set_header If-Modified-Since "";
