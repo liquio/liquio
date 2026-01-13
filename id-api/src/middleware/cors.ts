@@ -3,9 +3,7 @@ import { Express, NextFunction, Request, Response } from 'express';
 export const ACCESS_CONTROL_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 // Allowlist of authorized origins - configure via environment variables or hardcoded values
-const ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001')
-  .split(',')
-  .map(origin => origin.trim());
+const ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001').split(',').map((origin) => origin.trim());
 
 export function useCors(express: Express) {
   express.use(setCors as any);
@@ -14,7 +12,7 @@ export function useCors(express: Express) {
 function setCors(req: Request, res: Response, next: NextFunction): void {
   res.header('Access-Control-Expose-Headers', 'Name, Version, Customer, Environment');
   let oneof = false;
-  
+
   // Only allow origins from the allowlist
   const origin = req.headers.origin;
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
@@ -22,7 +20,7 @@ function setCors(req: Request, res: Response, next: NextFunction): void {
     res.header('Access-Control-Allow-Credentials', 'true');
     oneof = true;
   }
-  
+
   if (req.headers['access-control-request-method']) {
     res.header('Access-Control-Allow-Methods', req.headers['access-control-request-method']);
     oneof = true;
