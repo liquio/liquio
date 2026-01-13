@@ -20,6 +20,7 @@ async function importWorkflow(page, filePath, isTest = false) {
 
   // Click the Continue button
   await page.getByRole('button', { name: 'Yes' }).click();
+  await page.pause(100);
   debug('importWorkflow: Clicked Continue in dialog');
 
   const fileChooser = await fileChooserPromise;

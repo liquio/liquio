@@ -2,7 +2,6 @@ import React from 'react';
 import { useTranslate } from 'react-translate';
 import cleenDeep from 'clean-deep';
 import MobileDetect from 'mobile-detect';
-import uuid from 'uuid-random';
 import AutoSizer from 'react-virtualized/dist/commonjs/AutoSizer';
 import FullScreenDialog from 'components/FullScreenDialog';
 import useUndo from 'hooks/useUndo';
@@ -73,7 +72,7 @@ export const SpreadsheetLite = (props) => {
   } = props;
 
   const t = useTranslate('Elements');
-  const [key, setKeyId] = React.useState(uuid());
+  const [key, setKeyId] = React.useState(crypto.randomUUID());
   const [open, setOpen] = React.useState(false);
   const [activeCell, setActiveCell] = React.useState(null);
   const [activeCellRef, setActiveCellRef] = React.useState(null);
@@ -121,7 +120,7 @@ export const SpreadsheetLite = (props) => {
       if (changes?.length > maxItems && maxItems) {
         changes = changes.slice(0, maxItems - changes.length);
         onChange(changes.map((item) => cleenDeep(item)));
-        setKeyId(uuid());
+        setKeyId(crypto.randomUUID());
         return;
       }
 
@@ -132,7 +131,7 @@ export const SpreadsheetLite = (props) => {
 
   const clearData = React.useCallback(async () => {
     await onChange(new ChangeEvent([{}], true));
-    setKeyId(uuid());
+    setKeyId(crypto.randomUUID());
     setImportTrigger(true);
   }, [onChange]);
 
@@ -167,7 +166,7 @@ export const SpreadsheetLite = (props) => {
 
       onChange(new ChangeEvent(mappedData, true, true));
 
-      setKeyId(uuid());
+      setKeyId(crypto.randomUUID());
     },
     [onChange, maxItems, items, maxItemsReached, columns],
   );

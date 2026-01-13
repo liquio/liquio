@@ -67,7 +67,7 @@ test('Authorize with admin and import register/workflow', async ({ page }) => {
 
     log('Verifying the imported workflow');
     await page.goto('http://localhost:8082/workflow/1000');
-    await expect(page).toHaveTitle(/^Process Editor/);
+    await expect(page).toHaveTitle(/^Student editing/);
   }
 });
 
