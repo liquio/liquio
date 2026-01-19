@@ -44,7 +44,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@emotion/react": "11.10.5",
+    "@emotion/react": "11.14.0",
     "@emotion/styled": "11.10.5",
     "@fast-csv/parse": "4.3.6",
     "@fullcalendar/core": "6.1.20",
