@@ -59,13 +59,17 @@ describe('AuthController - wso', () => {
       const response = await app.request().get('/authorise/wso2');
       expect(response.status).toBe(302);
 
+      const actualUrl = new URL(response.headers.location);
       const expectedRedirectUrl = new URL(wso2OpenidConfiguration.authorization_endpoint);
       expectedRedirectUrl.searchParams.append('response_type', 'code');
       expectedRedirectUrl.searchParams.append('redirect_uri', 'http://localhost:8080/authorise/wso2/callback');
       expectedRedirectUrl.searchParams.append('client_id', 'test-client-id');
       expectedRedirectUrl.searchParams.append('scope', 'openid');
 
-      expect(new URL(response.headers.location)).toEqual(expectedRedirectUrl);
+      // Compare URL components separately to ignore query parameter order
+      expect(actualUrl.origin).toBe(expectedRedirectUrl.origin);
+      expect(actualUrl.pathname).toBe(expectedRedirectUrl.pathname);
+      expect(Object.fromEntries(actualUrl.searchParams)).toEqual(Object.fromEntries(expectedRedirectUrl.searchParams));
     });
 
     let cookies: any;

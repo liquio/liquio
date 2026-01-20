@@ -45,6 +45,7 @@ export async function wso2(app: Express) {
         clientID,
         clientSecret,
         callbackURL,
+        scope: 'openid',
       },
       async (accessToken: string, refreshToken: string, profile: any, done: CallbackFn) => {
         let userInfo;

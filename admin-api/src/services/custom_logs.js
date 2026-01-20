@@ -23,11 +23,16 @@ class CustomLogs {
       // Save params.
       const { cacheEnabled, redis: { host, port, ttl } = {} } = config;
       this.cacheEnabled = !!cacheEnabled;
-      this.client = (this.cacheEnabled && redis.createClient(port, host)) || null;
+      this.client = (this.cacheEnabled && redis.createClient({ socket: { host, port } })) || null;
       this.ttl = ttl;
       this.sandbox = new Sandbox();
       if (this.client) {
         log.save('custom-logs-cache-initialized', { cacheEnabled, host, port });
+        this.client.connect().catch(err => {
+          log.save('custom-logs-cache-connection-error', {
+            error: err && err.message,
+          });
+        });
       } else {
         log.save('custom-logs-cache-not-initialized', { cacheEnabled });
       }
@@ -116,7 +121,7 @@ class CustomLogs {
     // Save data to cache.
     const cacheKey = CustomLogEntity.getCacheKey(logParams);
     const dataString = JSON.stringify(logParams);
-    this.client.set(cacheKey, dataString, 'EX', this.ttl);
+    await this.client.set(cacheKey, dataString, { EX: this.ttl });
   }
 
   /**
@@ -127,12 +132,7 @@ class CustomLogs {
   async isCacheExist(logParams) {
     // Get data from cache.
     const cacheKey = CustomLogEntity.getCacheKey(logParams);
-    const dataString = await new Promise((resolve, reject) => {
-      this.client.get(cacheKey, (error, value) => {
-        if (error) return reject(error);
-        resolve(value);
-      });
-    });
+    const dataString = await this.client.get(cacheKey);
 
     // Return cache exist indicator.
     return !!dataString;
