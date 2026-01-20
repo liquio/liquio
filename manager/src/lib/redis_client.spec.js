@@ -7,11 +7,13 @@ describe('RedisClient', () => {
     RedisClient = require('./redis_client');
     RedisClient.singleton = null;
 
-    // Mock the redis client
+    // Mock the redis client with v5 Promise API
+    /** @type {!Partial<import('redis').RedisClientType>} */
     mockClient = {
-      set: jest.fn((key, data, ex, ttl, cb) => cb(null, 'OK')),
-      get: jest.fn((key, cb) => cb(null, null)),
-      del: jest.fn((key, cb) => cb(null, 0)),
+      connect: jest.fn().mockReturnValue(Promise.resolve(undefined)),
+      set: jest.fn().mockResolvedValue('OK'),
+      get: jest.fn().mockResolvedValue(null),
+      del: jest.fn().mockResolvedValue(0),
     };
 
     // Mock the redis.createClient
@@ -41,9 +43,9 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
       new RedisClient(config);
 
+      // v5: createClient expects socket object
       expect(require('redis').createClient).toHaveBeenCalledWith({
-        host: 'localhost',
-        port: 6379,
+        socket: { host: 'localhost', port: 6379 },
       });
     });
 
@@ -71,182 +73,141 @@ describe('RedisClient', () => {
     });
 
     describe('set', () => {
-      it('should set string data', (done) => {
-        mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-          cb(null, 'OK');
-        });
+      it('should set string data', async () => {
+        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
+        const instance = new RedisClient(config);
 
-        instance.set('key', 'value').then((result) => {
-          expect(result).toBe('OK');
-          expect(mockClient.set).toHaveBeenCalledWith('key', 'value', 'EX', 300, expect.any(Function));
-          done();
-        });
+        const result = await instance.set('key', 'value');
+
+        // v5: set uses Promise API with options object
+        expect(result).toBe('OK');
+        expect(mockClient.set).toHaveBeenCalledWith('key', 'value', { EX: 300 });
       });
 
-      it('should stringify object data', (done) => {
+      it('should stringify object data', async () => {
+        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
+        const instance = new RedisClient(config);
         const obj = { id: 1, name: 'test' };
-        mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-          cb(null, 'OK');
-        });
 
-        instance.set('key', obj).then(() => {
-          expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(obj), 'EX', 300, expect.any(Function));
-          done();
-        });
+        await instance.set('key', obj);
+
+        expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(obj), { EX: 300 });
       });
 
-      it('should use provided TTL', (done) => {
-        mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-          cb(null, 'OK');
-        });
+      it('should use provided TTL', async () => {
+        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
+        const instance = new RedisClient(config);
 
-        instance.set('key', 'value', 600).then(() => {
-          expect(mockClient.set).toHaveBeenCalledWith('key', 'value', 'EX', 600, expect.any(Function));
-          done();
-        });
+        await instance.set('key', 'value', 600);
+
+        expect(mockClient.set).toHaveBeenCalledWith('key', 'value', { EX: 600 });
       });
 
-      it('should use default TTL if not provided', (done) => {
-        mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-          cb(null, 'OK');
-        });
+      it('should use default TTL if not provided', async () => {
+        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
+        const instance = new RedisClient(config);
 
-        instance.set('key', 'value').then(() => {
-          expect(mockClient.set).toHaveBeenCalledWith('key', 'value', 'EX', 300, expect.any(Function));
-          done();
-        });
+        await instance.set('key', 'value');
+
+        expect(mockClient.set).toHaveBeenCalledWith('key', 'value', { EX: 300 });
       });
 
-      it('should return OK on success', (done) => {
-        mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-          cb(null, 'OK');
-        });
+      it('should return OK on success', async () => {
+        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
+        const instance = new RedisClient(config);
 
-        instance.set('key', 'value').then((result) => {
-          expect(result).toBe('OK');
-          done();
-        });
+        const result = await instance.set('key', 'value');
+
+        expect(result).toBe('OK');
       });
 
-      it('should reject on error', (done) => {
+      it('should reject on error', async () => {
+        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
+        const instance = new RedisClient(config);
         const error = new Error('Connection failed');
-        mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-          cb(error);
-        });
+        mockClient.set.mockRejectedValueOnce(error);
 
-        instance.set('key', 'value').catch((err) => {
-          expect(err).toBe(error);
-          done();
-        });
+        await expect(instance.set('key', 'value')).rejects.toBe(error);
       });
 
-      it('should handle empty string values', (done) => {
-        mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-          cb(null, 'OK');
-        });
+      it('should handle empty string values', async () => {
+        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
+        const instance = new RedisClient(config);
 
-        instance.set('key', '').then(() => {
-          expect(mockClient.set).toHaveBeenCalledWith('key', '', 'EX', 300, expect.any(Function));
-          done();
-        });
+        await instance.set('key', '');
+
+        expect(mockClient.set).toHaveBeenCalledWith('key', '', { EX: 300 });
       });
 
-      it('should handle objects with null values', (done) => {
+      it('should handle objects with null values', async () => {
+        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
+        const instance = new RedisClient(config);
         const objWithNull = { id: 1, value: null };
-        mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-          cb(null, 'OK');
-        });
 
-        instance.set('key', objWithNull).then(() => {
-          expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(objWithNull), 'EX', 300, expect.any(Function));
-          done();
-        });
+        await instance.set('key', objWithNull);
+
+        expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(objWithNull), { EX: 300 });
       });
     });
 
     describe('get', () => {
-      it('should get data from redis', (done) => {
-        mockClient.get.mockImplementation((key, cb) => {
-          cb(null, 'value');
-        });
+      it('should get data from redis', async () => {
+        mockClient.get.mockResolvedValueOnce('value');
 
-        instance.get('key').then((result) => {
-          expect(result).toBe('value');
-          expect(mockClient.get).toHaveBeenCalledWith('key', expect.any(Function));
-          done();
-        });
+        const result = await instance.get('key');
+
+        expect(result).toBe('value');
+        expect(mockClient.get).toHaveBeenCalledWith('key');
       });
 
-      it('should return null if key not found', (done) => {
-        mockClient.get.mockImplementation((key, cb) => {
-          cb(null, null);
-        });
+      it('should return null if key not found', async () => {
+        mockClient.get.mockResolvedValueOnce(null);
 
-        instance.get('key').then((result) => {
-          expect(result).toBeNull();
-          done();
-        });
+        const result = await instance.get('key');
+
+        expect(result).toBeNull();
       });
 
-      it('should handle JSON data', (done) => {
+      it('should handle JSON data', async () => {
         const obj = { id: 1, name: 'test' };
-        mockClient.get.mockImplementation((key, cb) => {
-          cb(null, JSON.stringify(obj));
-        });
+        mockClient.get.mockResolvedValueOnce(JSON.stringify(obj));
 
-        instance.get('key').then((result) => {
-          expect(result).toBe(JSON.stringify(obj));
-          done();
-        });
+        const result = await instance.get('key');
+
+        expect(result).toBe(JSON.stringify(obj));
       });
 
-      it('should reject on error', (done) => {
+      it('should reject on error', async () => {
         const error = new Error('Connection failed');
-        mockClient.get.mockImplementation((key, cb) => {
-          cb(error);
-        });
+        mockClient.get.mockRejectedValueOnce(error);
 
-        instance.get('key').catch((err) => {
-          expect(err).toBe(error);
-          done();
-        });
+        await expect(instance.get('key')).rejects.toBe(error);
       });
     });
 
     describe('delete', () => {
-      it('should delete a key', (done) => {
-        mockClient.del.mockImplementation((key, cb) => {
-          cb(null, 1);
-        });
+      it('should delete a key', async () => {
+        mockClient.del.mockResolvedValueOnce(1);
 
-        instance.delete('key').then((result) => {
-          expect(result).toBe(1);
-          expect(mockClient.del).toHaveBeenCalledWith('key', expect.any(Function));
-          done();
-        });
+        const result = await instance.delete('key');
+
+        expect(result).toBe(1);
+        expect(mockClient.del).toHaveBeenCalledWith('key');
       });
 
-      it('should return 0 if key not found', (done) => {
-        mockClient.del.mockImplementation((key, cb) => {
-          cb(null, 0);
-        });
+      it('should return 0 if key not found', async () => {
+        mockClient.del.mockResolvedValueOnce(0);
 
-        instance.delete('key').then((result) => {
-          expect(result).toBe(0);
-          done();
-        });
+        const result = await instance.delete('key');
+
+        expect(result).toBe(0);
       });
 
-      it('should reject on error', (done) => {
+      it('should reject on error', async () => {
         const error = new Error('Connection failed');
-        mockClient.del.mockImplementation((key, cb) => {
-          cb(error);
-        });
+        mockClient.del.mockRejectedValueOnce(error);
 
-        instance.delete('key').catch((err) => {
-          expect(err).toBe(error);
-          done();
-        });
+        await expect(instance.delete('key')).rejects.toBe(error);
       });
     });
   });
@@ -259,30 +220,24 @@ describe('RedisClient', () => {
       instance = new RedisClient(config);
     });
 
-    it('should handle special characters in keys', (done) => {
+    it('should handle special characters in keys', async () => {
       const specialKey = 'key:with:colons:and:dots.';
-      mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-        cb(null, 'OK');
-      });
+      mockClient.set.mockResolvedValueOnce('OK');
 
-      instance.set(specialKey, 'value').then(() => {
-        expect(mockClient.set).toHaveBeenCalledWith(specialKey, 'value', 'EX', 300, expect.any(Function));
-        done();
-      });
+      await instance.set(specialKey, 'value');
+
+      expect(mockClient.set).toHaveBeenCalledWith(specialKey, 'value', { EX: 300 });
     });
 
-    it('should handle very large TTL values', (done) => {
-      mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-        cb(null, 'OK');
-      });
+    it('should handle very large TTL values', async () => {
+      mockClient.set.mockResolvedValueOnce('OK');
 
-      instance.set('key', 'value', 999999).then(() => {
-        expect(mockClient.set).toHaveBeenCalledWith('key', 'value', 'EX', 999999, expect.any(Function));
-        done();
-      });
+      await instance.set('key', 'value', 999999);
+
+      expect(mockClient.set).toHaveBeenCalledWith('key', 'value', { EX: 999999 });
     });
 
-    it('should handle complex nested objects', (done) => {
+    it('should handle complex nested objects', async () => {
       const complexObj = {
         users: [
           { id: 1, name: 'Alice', tags: ['admin', 'user'] },
@@ -291,14 +246,11 @@ describe('RedisClient', () => {
         metadata: { created: '2024-01-01', version: 1 },
       };
 
-      mockClient.set.mockImplementation((key, data, ex, ttl, cb) => {
-        cb(null, 'OK');
-      });
+      mockClient.set.mockResolvedValueOnce('OK');
 
-      instance.set('key', complexObj).then(() => {
-        expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(complexObj), 'EX', 300, expect.any(Function));
-        done();
-      });
+      await instance.set('key', complexObj);
+
+      expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(complexObj), { EX: 300 });
     });
   });
 });

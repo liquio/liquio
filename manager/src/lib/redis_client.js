@@ -11,8 +11,16 @@ class RedisClient {
     // Singleton.
     if (!RedisClient.singleton) {
       const { host, port, defaultTtl } = config;
-      this.client = redis.createClient({ host, port });
+      // v5: use socket object
+      this.client = redis.createClient({ 
+        socket: { host, port } 
+      });
       this.defaultTtl = defaultTtl;
+
+      // Connect to redis in background (don't wait for it)
+      this.client.connect().catch(err => {
+        console.error('Redis connection error:', err);
+      });
 
       // Define singleton.
       RedisClient.singleton = this;
@@ -29,16 +37,12 @@ class RedisClient {
    * @param {number} ttl Time to live.
    * @return {Promise<string>} OK.
    */
-  set(key, data, ttl = this.defaultTtl) {
+  async set(key, data, ttl = this.defaultTtl) {
     if (typeof data === 'object') {
       data = JSON.stringify(data);
     }
-    return new Promise((resolve, reject) => {
-      this.client.set(key, data, 'EX', ttl, (err, data) => {
-        err && reject(err);
-        resolve(data);
-      });
-    });
+    // v5: Promise API with options object
+    return this.client.set(key, data, { EX: ttl });
   }
 
   /**
@@ -46,13 +50,9 @@ class RedisClient {
    * @param {string} key Key for data.
    * @return {Promise<string>}.
    */
-  get(key) {
-    return new Promise((resolve, reject) => {
-      this.client.get(key, (err, data) => {
-        err && reject(err);
-        resolve(data);
-      });
-    });
+  async get(key) {
+    // v5: Direct Promise return
+    return this.client.get(key);
   }
 
   /**
@@ -60,13 +60,9 @@ class RedisClient {
    * @param {string} key Key for data.
    * @return {Promise<number>} Deleted keys.
    */
-  delete(key) {
-    return new Promise((resolve, reject) => {
-      this.client.del(key, (err, data) => {
-        err && reject(err);
-        resolve(data);
-      });
-    });
+  async delete(key) {
+    // v5: use del() instead of delete()
+    return this.client.del(key);
   }
 }
 

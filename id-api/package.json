@@ -56,7 +56,7 @@
     "passport-oauth2": "^1.8.0",
     "pg": "^8.14.1",
     "pkijs": "^3.2.5",
-    "redis": "^4.7.0",
+    "redis": "^5.10.0",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.3",
     "swagger-ui-express": "^5.0.1",

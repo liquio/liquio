@@ -26,7 +26,7 @@
     "multiconf": "^2.0.0",
     "pg": "^8.9.0",
     "pg-hstore": "^2.3.3",
-    "redis": "^4.0.6",
+    "redis": "^5.10.0",
     "sequelize": "^6.29.0",
     "sequelize-cli": "^6.6.5",
     "xml2js": "^0.6.0"

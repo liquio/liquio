@@ -18,8 +18,12 @@ class RedisClient {
     // Singleton.
     if (!RedisClient.singleton) {
       const { host, port, defaultTtl } = config;
-      this.client = redis.createClient({ host, port });
+      this.client = redis.createClient({ socket: { host, port } });
       this.defaultTtl = defaultTtl || DEFAULT_TTL_IN_SECONDS;
+      
+      this.client.connect().catch(err => {
+        console.error('Redis connection error:', err);
+      });
 
       // Define singleton.
       RedisClient.singleton = this;
@@ -118,14 +122,9 @@ class RedisClient {
    * @param {number} ttl Time to live.
    * @return {Promise<string>} OK.
    */
-  set(key, data, ttl = this.defaultTtl) {
+  async set(key, data, ttl = this.defaultTtl) {
     if (typeof data === 'object') data = JSON.stringify(data);
-    return new Promise((resolve, reject) => {
-      this.client.set(key, data, 'EX', ttl, (err, data) => {
-        err && reject(err);
-        resolve(data);
-      });
-    });
+    return this.client.set(key, data, { EX: ttl });
   }
 
   /**
@@ -133,13 +132,8 @@ class RedisClient {
    * @param {string} key Key for data.
    * @return {Promise<string>}.
    */
-  get(key) {
-    return new Promise((resolve, reject) => {
-      this.client.get(key, (err, data) => {
-        err && reject(err);
-        resolve(data);
-      });
-    });
+  async get(key) {
+    return this.client.get(key);
   }
 
   /**
@@ -147,13 +141,8 @@ class RedisClient {
    * @param {string} key Key for data.
    * @return {Promise<number>} Deleted keys.
    */
-  delete(key) {
-    return new Promise((resolve, reject) => {
-      this.client.del(key, (err, data) => {
-        err && reject(err);
-        resolve(data);
-      });
-    });
+  async delete(key) {
+    return this.client.del(key);
   }
 
   /**
@@ -161,13 +150,8 @@ class RedisClient {
    * @param {string} pattern
    * @return {Promise<string[]>}
    */
-  getKeys(pattern) {
-    return new Promise((resolve, reject) => {
-      this.client.keys(pattern, (err, data) => {
-        err && reject(err);
-        resolve(data);
-      });
-    });
+  async getKeys(pattern) {
+    return this.client.keys(pattern);
   }
 
   /**
@@ -177,20 +161,8 @@ class RedisClient {
    * @param {number} count
    * @return {Promise<string|Array[]>}
    */
-  scan(cursor = 0, pattern, count = 10) {
-    return new Promise((resolve, reject) => {
-      this.client.scan(
-        cursor,
-        'MATCH',
-        pattern,
-        'COUNT',
-        count,
-        (err, data) => {
-          err && reject(err);
-          resolve(data);
-        },
-      );
-    });
+  async scan(cursor = 0, pattern, count = 10) {
+    return this.client.scan(cursor, { MATCH: pattern, COUNT: count });
   }
 
   /**
@@ -204,12 +176,7 @@ class RedisClient {
       return 0;
     }
 
-    return new Promise((resolve, reject) => {
-      this.client.del(keys, (err, data) => {
-        err && reject(err);
-        resolve(data);
-      });
-    });
+    return this.client.del(keys);
   }
 }
 
