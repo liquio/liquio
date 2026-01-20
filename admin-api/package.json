@@ -42,7 +42,7 @@
     "prop-by-path": "^1.0.5",
     "qs": "^6.9.4",
     "queue": "^6.0.2",
-    "redis": "^4.7.0",
+    "redis": "^5.10.0",
     "sequelize": "^6.29.0",
     "sequelize-cli": "^6.6.0",
     "transliteration": "^2.1.11",
