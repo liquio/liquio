@@ -95,7 +95,7 @@ describe('RedisClient', () => {
     });
 
     it('should set static prefix from npm_package_name', () => {
-      const instance = new RedisClient();
+      new RedisClient();
       expect(RedisClient.prefix).toBe('liquio-event');
     });
   });

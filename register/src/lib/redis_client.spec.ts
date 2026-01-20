@@ -7,8 +7,8 @@ jest.mock('redis', () => {
       connect: jest.fn().mockResolvedValue(undefined),
       set: jest.fn().mockResolvedValue('OK'),
       get: jest.fn().mockResolvedValue(null),
-      del: jest.fn().mockResolvedValue(0),
-    })),
+      del: jest.fn().mockResolvedValue(0)
+    }))
   };
 });
 
@@ -30,7 +30,7 @@ describe('RedisClient', () => {
       connect: jest.fn().mockResolvedValue(undefined),
       set: jest.fn().mockResolvedValue('OK'),
       get: jest.fn().mockResolvedValue(null),
-      del: jest.fn().mockResolvedValue(0),
+      del: jest.fn().mockResolvedValue(0)
     };
 
     // Update createClient mock to return our mock
@@ -56,7 +56,7 @@ describe('RedisClient', () => {
     it('should accept RedisConfig interface', () => {
       const config: RedisConfig = {
         host: 'localhost',
-        port: 6379,
+        port: 6379
       };
       expect(config).toBeDefined();
       expect(config.host).toBe('localhost');
@@ -67,7 +67,7 @@ describe('RedisClient', () => {
       const config: RedisConfig = {
         host: 'localhost',
         port: 6379,
-        defaultTtl: 300,
+        defaultTtl: 300
       };
 
       const instance1 = new RedisClient(config);
@@ -79,7 +79,7 @@ describe('RedisClient', () => {
     it('should set default TTL to 300 seconds', () => {
       const config: RedisConfig = {
         host: 'localhost',
-        port: 6379,
+        port: 6379
       };
 
       const instance = new RedisClient(config);
@@ -91,7 +91,7 @@ describe('RedisClient', () => {
       const config: RedisConfig = {
         host: 'localhost',
         port: 6379,
-        defaultTtl: 600,
+        defaultTtl: 600
       };
 
       const instance = new RedisClient(config);
@@ -102,7 +102,7 @@ describe('RedisClient', () => {
     it('should set prefix from npm_package_name', () => {
       const config: RedisConfig = {
         host: 'localhost',
-        port: 6379,
+        port: 6379
       };
 
       new RedisClient(config);
@@ -113,7 +113,7 @@ describe('RedisClient', () => {
     it('should use default prefix if npm_package_name not set', () => {
       const config: RedisConfig = {
         host: 'localhost',
-        port: 6379,
+        port: 6379
       };
 
       new RedisClient(config);
@@ -126,7 +126,7 @@ describe('RedisClient', () => {
     it('should connect to redis', async () => {
       const config: RedisConfig = {
         host: 'localhost',
-        port: 6379,
+        port: 6379
       };
 
       const instance = new RedisClient(config);
@@ -140,7 +140,7 @@ describe('RedisClient', () => {
 
       const config: RedisConfig = {
         host: 'localhost',
-        port: 9999,
+        port: 9999
       };
 
       const instance = new RedisClient(config);
@@ -171,10 +171,7 @@ describe('RedisClient', () => {
         const obj = { id: 1, name: 'test' };
         const key = RedisClient.createKey('data', obj);
 
-        const expectedHash = crypto
-          .createHash('md5')
-          .update(JSON.stringify(obj))
-          .digest('hex');
+        const expectedHash = crypto.createHash('md5').update(JSON.stringify(obj)).digest('hex');
 
         expect(key).toContain('register-service');
         expect(key).toContain('data');
@@ -211,7 +208,7 @@ describe('RedisClient', () => {
       it('should return cached data if available', async () => {
         const config: RedisConfig = {
           host: 'localhost',
-          port: 6379,
+          port: 6379
         };
 
         new RedisClient(config);
@@ -229,7 +226,7 @@ describe('RedisClient', () => {
       it('should call function if cache miss', async () => {
         const config: RedisConfig = {
           host: 'localhost',
-          port: 6379,
+          port: 6379
         };
 
         new RedisClient(config);
@@ -246,7 +243,7 @@ describe('RedisClient', () => {
       it('should set data in cache with TTL', async () => {
         const config: RedisConfig = {
           host: 'localhost',
-          port: 6379,
+          port: 6379
         };
 
         new RedisClient(config);
@@ -277,7 +274,7 @@ describe('RedisClient', () => {
       it('should return fresh data if no cache exists', async () => {
         const config: RedisConfig = {
           host: 'localhost',
-          port: 6379,
+          port: 6379
         };
 
         new RedisClient(config);
@@ -296,7 +293,7 @@ describe('RedisClient', () => {
       it('should invalidate cache if new timestamp is later', async () => {
         const config: RedisConfig = {
           host: 'localhost',
-          port: 6379,
+          port: 6379
         };
 
         new RedisClient(config);
@@ -341,7 +338,7 @@ describe('RedisClient', () => {
       const config: RedisConfig = {
         host: 'localhost',
         port: 6379,
-        defaultTtl: 300,
+        defaultTtl: 300
       };
 
       instance = new RedisClient(config);
@@ -440,7 +437,6 @@ describe('RedisClient', () => {
 
     describe('deleteMany', () => {
       it('should delete multiple keys matching pattern', async () => {
-        const keys = ['key1', 'key2', 'key3'];
         mockClient.get.mockResolvedValue(null);
 
         // Mock scan or keys
@@ -459,7 +455,7 @@ describe('RedisClient', () => {
       const config: RedisConfig = {
         host: 'localhost',
         port: 6379,
-        defaultTtl: 300,
+        defaultTtl: 300
       };
 
       instance = new RedisClient(config);
@@ -497,9 +493,9 @@ describe('RedisClient', () => {
       const complexObj = {
         workflows: [
           { id: 1, name: 'wf1', templates: [{ id: 100 }] },
-          { id: 2, name: 'wf2', templates: [{ id: 200 }] },
+          { id: 2, name: 'wf2', templates: [{ id: 200 }] }
         ],
-        metadata: { version: 1 },
+        metadata: { version: 1 }
       };
 
       await instance.set('key', complexObj);

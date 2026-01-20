@@ -185,10 +185,7 @@ describe('RedisService', () => {
       const obj = { id: 1, name: 'test' };
       const key = service.createKey('data', obj);
 
-      const expectedHash = crypto
-        .createHash('md5')
-        .update(JSON.stringify(obj))
-        .digest('hex');
+      const expectedHash = crypto.createHash('md5').update(JSON.stringify(obj)).digest('hex');
 
       expect(key).toContain('test-id');
       expect(key).toContain('data');
