@@ -38,7 +38,7 @@ export default class Encryption {
 
       // Using AES-256-GCM encryption algorithm.
       // https://en.wikipedia.org/wiki/Galois/Counter_Mode
-      const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(this.key), iv);
+      const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(this.key, 'hex'), iv);
 
       // Encrypt the data.
       let encrypted = cipher.update(data, 'utf8', 'base64');
@@ -65,7 +65,7 @@ export default class Encryption {
       }
 
       // Using AES-256-GCM decryption algorithm.
-      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.key), iv);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.key, 'hex'), iv);
 
       // Set the authentication tag.
       decipher.setAuthTag(authTag);

@@ -13,7 +13,7 @@ describe('Encryption - GCM Authentication Tag Validation', () => {
 
   describe('basic functionality', () => {
     it('should encrypt and decrypt data', () => {
-      const key = 'bladDk3HluhCyeObdsMeMWWPXYIyHnTe';
+      const key = Buffer.alloc(32).toString('hex'); // 32-byte key for AES-256
 
       // Reset singleton
       (Encryption as any).singleton = undefined;
