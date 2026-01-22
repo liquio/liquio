@@ -32,7 +32,7 @@
     "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "fetch-to-curl": "^0.5.2",
-    "got": "^11.8.6",
+    "got": "^14.6.6",
     "iconv-lite": "^0.6.3",
     "isolated-vm": "^6.0.2",
     "jsonc-parser": "^3.2.0",
