@@ -453,10 +453,10 @@ class LiquioIdProvider extends Provider {
       encodeCert: user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.encodeCert,
       services: withPrivateProps
         ? user.services || {
-            ldap: user.user_services && user.user_services[0] && user.user_services[0].provider === 'ldap' ? user.user_services[0] : undefined,
-            eds: user.user_services && user.user_services[0] && user.user_services[0].provider === 'eds' ? user.user_services[0] : undefined,
-            govid: user.user_services && user.user_services[0] && user.user_services[0].provider === 'govid' ? user.user_services[0] : undefined,
-          }
+          ldap: user.user_services && user.user_services[0] && user.user_services[0].provider === 'ldap' ? user.user_services[0] : undefined,
+          eds: user.user_services && user.user_services[0] && user.user_services[0].provider === 'eds' ? user.user_services[0] : undefined,
+          govid: user.user_services && user.user_services[0] && user.user_services[0].provider === 'govid' ? user.user_services[0] : undefined,
+        }
         : undefined,
     };
   }

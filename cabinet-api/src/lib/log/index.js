@@ -78,7 +78,7 @@ class Log {
       this.providers.forEach((logProvider) => {
         try {
           logProvider.save(timestamp, type, data, logId, appInfoAll, level, traceId, traceMeta);
-        } catch (err) {
+        } catch {
           console.error(ERROR_MESSAGE_LOG_SAVING_ERROR.replace(LOG_SAVING_ERROR_PROPERTY_PROVIDER_NAME, logProvider && logProvider.name));
         }
       });

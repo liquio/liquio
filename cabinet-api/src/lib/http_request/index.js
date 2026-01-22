@@ -212,7 +212,7 @@ function parseBody(body) {
   try {
     const bodyObject = JSON.parse(body);
     return bodyObject;
-  } catch (err) {
+  } catch {
     return body;
   }
 }
