@@ -32,7 +32,7 @@
     "restify-plugins": "^1.6.0",
     "restify-router": "^0.6.2",
     "sequelize": "^6.29.0",
-    "sequelize-cli": "^6.6.0",
+    "sequelize-cli": "^6.6.5",
     "soap": "^1.6.1",
     "soap-cookie": "^0.10.1",
     "xml-stream": "^0.4.5",
