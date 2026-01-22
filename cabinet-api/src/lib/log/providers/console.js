@@ -43,7 +43,7 @@ class ConsoleLogProvider extends LogProvider {
     let dataStringToSave;
     try {
       dataStringToSave = sensitiveReplace(JSON.stringify(dataObjectToSave), this.options.excludeParams);
-    } catch (err) {
+    } catch {
       dataStringToSave = `${dataObjectToSave}`;
     }
 
