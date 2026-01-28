@@ -25,7 +25,7 @@
     "express": "^5.2.1",
     "isolated-vm": "^6.0.2",
     "jsonc-parser": "^3.2.0",
-    "lru-cache": "^10.4.3",
+    "lru-cache": "^11.2.5",
     "moment": "^2.29.4",
     "moment-business-days": "^1.2.0",
     "multiconf": "^3.3.1",
