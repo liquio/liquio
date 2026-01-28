@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "amqplib": "^0.10.9",
-    "axios": "^1.11.0",
+    "axios": "^1.13.4",
     "ccolor": "^1.3.1",
     "express": "^5.2.1",
     "multiconf": "^3.3.1",
