@@ -1,0 +1,37 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  mirror:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          echo "${{ secrets.GITLAB_SSH_KEY }}" | base64 -d > ~/.ssh/id_ed25519
+
+          chmod 600 ~/.ssh/id_ed25519
+
+          ssh-keyscan -H gitlab.opencode.de >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+          ssh-keygen -lf ~/.ssh/id_ed25519
+
+
+      - name: Push main -> main-mirror
+        run: |
+          git remote add gitlab "${{ secrets.GITLAB_SSH_URL }}"
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
+          git push gitlab main:main-mirror --force
