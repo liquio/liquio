@@ -29,7 +29,7 @@
     "moment": "^2.29.4",
     "moment-business-days": "^1.2.0",
     "multiconf": "^3.3.1",
-    "pg": "^8.17.2",
+    "pg": "^8.18.0",
     "pg-hstore": "^2.3.4",
     "redis": "^5.10.0",
     "sequelize": "^6.29.0",
