@@ -21,17 +21,27 @@ jobs:
           chmod 700 ~/.ssh
 
           echo "${{ secrets.GITLAB_SSH_KEY }}" | base64 -d > ~/.ssh/id_ed25519
-
           chmod 600 ~/.ssh/id_ed25519
 
           ssh-keyscan -H gitlab.opencode.de >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-          ssh-keygen -lf ~/.ssh/id_ed25519
-
-
-      - name: Push main -> main-mirror
+      - name: Configure git identity (required for rebase)
         run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Configure SSH for git
+        run: |
+          git config --global core.sshCommand "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes"
+
+      - name: Rebase on GitLab main and push
+        run: |
+          set -euo pipefail
+          git remote remove gitlab 2>/dev/null || true
           git remote add gitlab "${{ secrets.GITLAB_SSH_URL }}"
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
-          git push gitlab main:main-mirror --force
+
+          git fetch gitlab main
+          git rebase gitlab/main
+
+          git push gitlab HEAD:main --force-with-lease
