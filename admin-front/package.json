@@ -60,7 +60,7 @@
     "@lupus-ai/mui-currency-textfield": "1.0.3",
     "@monaco-editor/react": "^4.6.0",
     "@mui/icons-material": "5.14.1",
-    "@mui/material": "5.10.14",
+    "@mui/material": "7.3.7",
     "@mui/styles": "5.10.14",
     "@mui/system": "5.10.14",
     "@mui/x-data-grid": "6.18.2",
