@@ -151,7 +151,7 @@ export class RedisService extends BaseService {
       .exec()
       .then((result) => {
         if (Array.isArray(result)) {
-          return result[0] as number;
+          return result[0] as unknown as number;
         }
         return 0;
       });

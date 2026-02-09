@@ -141,7 +141,7 @@ export class RedisClient {
   async set(key: string | any[], data: any, ttl: number = this.defaultTtl): Promise<string> {
     key = Array.isArray(key) ? RedisClient.createKey(...key) : key;
     if (typeof data === 'object') data = JSON.stringify(data);
-    return this.client.set(key, data, { EX: ttl });
+    return (await this.client.set(key, data, { EX: ttl })) as string;
   }
 
   /**
@@ -151,7 +151,7 @@ export class RedisClient {
    */
   async get(key: string | any[]): Promise<string | null> {
     key = Array.isArray(key) ? RedisClient.createKey(...key) : key;
-    return this.client.get(key);
+    return (await this.client.get(key)) as unknown as string | null;
   }
 
   /**
@@ -161,7 +161,7 @@ export class RedisClient {
    */
   async delete(key: string | any[]): Promise<number> {
     key = Array.isArray(key) ? RedisClient.createKey(...key) : key;
-    return this.client.del(key);
+    return (await this.client.del(key)) as unknown as number;
   }
 
   /**
@@ -187,7 +187,7 @@ export class RedisClient {
       return 0;
     }
 
-    return this.client.del(keys);
+    return (await this.client.del(keys)) as unknown as number;
   }
 
   /**
