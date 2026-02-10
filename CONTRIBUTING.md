@@ -78,11 +78,24 @@ The basic local deployment includes an automatically generated Central Authority
 8. Let's log out and open the cabinet: http://localhost:8081. Use the demo key this time.
 9. Click "Order a service" and select "Student editing".
 
-3. Install dependencies for the service you're working on:
-   ```bash
-   cd <service-name>
-   npm install
-   ## Kubernetes Setup
+**Running Tests**
+
+After the environment is set up, you can run Playwright tests:
+
+```bash
+cd test
+
+# Run tests in headless mode
+npm run test
+
+# Run tests in headed mode (see browser automation)
+npm run test:headed
+
+# Run tests with Playwright UI
+npm run test:ui
+```
+
+## Kubernetes Setup
 
 For Kubernetes development and testing:
 
