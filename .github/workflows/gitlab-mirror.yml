@@ -14,43 +14,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup SSH
+      - name: Configure git identity
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-
-          echo "${{ secrets.GITLAB_SSH_KEY }}" | base64 -d > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-
-          ssh-keyscan -H gitlab.opencode.de >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-
-      - name: Configure git identity
-        run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global core.compression 0
 
-      - name: Configure SSH for git
-        run: |
-          printf '%s\n' \
-            'Host gitlab.opencode.de' \
-            '  HostName gitlab.opencode.de' \
-            '  User git' \
-            '  IdentityFile ~/.ssh/id_ed25519' \
-            '  IdentitiesOnly yes' \
-            '  ServerAliveInterval 30' \
-            '  ServerAliveCountMax 6' \
-            '  TCPKeepAlive yes' \
-            >> ~/.ssh/config
-          chmod 600 ~/.ssh/config
-
-      - name: Rebase on GitLab main and push
+      - name: Mirror to GitLab (HTTPS Deploy Token)
+        shell: bash
+        env:
+          GITLAB_HTTPS_URL: ${{ secrets.GITLAB_HTTPS_URL }}
+          GITLAB_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
+          GITLAB_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
         run: |
           set -euo pipefail
+
+          git config --global http.postBuffer 524288000
+          git config --global http.lowSpeedLimit 1
+          git config --global http.lowSpeedTime 600
+          git config --global http.version HTTP/1.1
+          git config --global core.compression 0
+
           git remote remove gitlab 2>/dev/null || true
-          git remote add gitlab "${{ secrets.GITLAB_SSH_URL }}"
+
+          git remote add gitlab "https://${GITLAB_DEPLOY_USER}:${GITLAB_DEPLOY_TOKEN}@${GITLAB_HTTPS_URL}"
 
           git fetch gitlab main
           git rebase gitlab/main
@@ -63,4 +51,5 @@ jobs:
             echo "Push failed, retrying in $((i*10))s..."
             sleep $((i*10))
           done
+
           exit 1
