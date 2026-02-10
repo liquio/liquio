@@ -1,0 +1,252 @@
+{
+  "workflowTemplate": {
+    "id": 900001,
+    "workflowTemplateCategoryId": 29,
+    "name": "Attention Notice",
+    "description": "",
+    "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\"><bpmn2:process id=\"Process_1\" isExecutable=\"false\"><bpmn2:startEvent id=\"StartEvent_1\"><bpmn2:outgoing>Flow_0ms495f</bpmn2:outgoing></bpmn2:startEvent><bpmn2:intermediateThrowEvent id=\"event-900001001\" name=\"New Event\"><bpmn2:incoming>Flow_0i8zkyy</bpmn2:incoming></bpmn2:intermediateThrowEvent><bpmn2:sequenceFlow id=\"Flow_0ms495f\" sourceRef=\"StartEvent_1\" targetRef=\"task-900001001\" /><bpmn2:task id=\"task-900001001\" name=\"New Task\"><bpmn2:incoming>Flow_0ms495f</bpmn2:incoming><bpmn2:outgoing>Flow_0i8zkyy</bpmn2:outgoing></bpmn2:task><bpmn2:sequenceFlow id=\"Flow_0i8zkyy\" sourceRef=\"task-900001001\" targetRef=\"event-900001001\" /></bpmn2:process><bpmndi:BPMNDiagram id=\"BPMNDiagram_1\"><bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Process_1\"><bpmndi:BPMNEdge id=\"Flow_0i8zkyy_di\" bpmnElement=\"Flow_0i8zkyy\"><di:waypoint x=\"550\" y=\"170\" /><di:waypoint x=\"596\" y=\"170\" /><di:waypoint x=\"596\" y=\"240\" /><di:waypoint x=\"642\" y=\"240\" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id=\"Flow_0ms495f_di\" bpmnElement=\"Flow_0ms495f\"><di:waypoint x=\"430\" y=\"240\" /><di:waypoint x=\"430\" y=\"225\" /><di:waypoint x=\"500\" y=\"225\" /><di:waypoint x=\"500\" y=\"210\" /></bpmndi:BPMNEdge><bpmndi:BPMNShape id=\"_BPMNShape_StartEvent_2\" bpmnElement=\"StartEvent_1\"><dc:Bounds x=\"412\" y=\"240\" width=\"36\" height=\"36\" /></bpmndi:BPMNShape><bpmndi:BPMNShape id=\"Event_1xcvydy_di\" bpmnElement=\"event-900001001\"><dc:Bounds x=\"642\" y=\"222\" width=\"36\" height=\"36\" /><bpmndi:BPMNLabel><dc:Bounds x=\"631\" y=\"265\" width=\"58\" height=\"14\" /></bpmndi:BPMNLabel></bpmndi:BPMNShape><bpmndi:BPMNShape id=\"Activity_1rkvgfv_di\" bpmnElement=\"task-900001001\"><dc:Bounds x=\"450\" y=\"130\" width=\"100\" height=\"80\" /><bpmndi:BPMNLabel /></bpmndi:BPMNShape></bpmndi:BPMNPlane></bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
+    "data": {
+      "statuses": [],
+      "entryTaskTemplateIds": [
+        {
+          "name": "Start",
+          "id": "() => 900001001;",
+          "hidden": false
+        }
+      ]
+    },
+    "isActive": true,
+    "accessUnits": [],
+    "createdAt": "2024-08-02T09:31:11.344Z",
+    "updatedAt": "2025-09-18T14:27:01.790Z",
+    "meta": {}
+  },
+  "workflowTemplateCategory": {
+    "id": 29,
+    "parentId": null,
+    "name": "testProcess",
+    "createdAt": "2022-12-02T11:32:34.679Z",
+    "updatedAt": "2022-12-02T11:32:34.679Z"
+  },
+  "taskTemplates": [
+    {
+      "id": 900001001,
+      "name": "New Task",
+      "documentTemplateId": 900001001,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\"setPermissions\": [{\"performerUsersIsWorkflowOwner\": true}]\n}",
+      "htmlTemplate": "<!DOCTYPE html>\n<html lang=\"uk\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\" /><style>body {font-size: 12px;margin: 0;font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;line-height: 1;padding-right: 80px;padding-left: 80px;padding-top: 56px;padding-bottom: 56px;letter-spacing: -0.02em;}@font-face {font-family: uaFontReg;src: url(https://my.diia.gov.ua/fonts/e-Ukraine-Regular.woff);}</style></head><body style=\"font-family: uaFontReg\"></body>\n</html>",
+      "createdAt": "2024-08-02T09:38:50.618Z",
+      "updatedAt": "2024-08-02T09:38:50.618Z"
+    }
+  ],
+  "documentTemplates": [
+    {
+      "id": 900001001,
+      "name": "New Task",
+      "jsonSchema": {
+        "title": "Test Application Submission",
+        "type": "object",
+        "pdfRequired": false,
+        "signRequired": false,
+        "forceRedirect": true,
+        "calcTriggers": [],
+        "fileName": "({executiveDocumentInfo}) =>  (`Executive Document`).substring(0,255)",
+        "finalScreen": {
+          "title": "() =>  `<p>👍 Thank you, the application has been sent!</p>`",
+          "subtitle": "  "
+        },
+        "checkPdfStepTitle": "Review the draft executive document",
+        "pdfStepDetails": {
+          "subtitle": "<p>If you need to save the application on your computer or print it, select one of the options below.</p>"
+        },
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "description": "Calculated data",
+            "checkStepHidden": "() => true",
+            "properties": {
+              "workflowId": {
+                "type": "string",
+                "description": "workflowId",
+                "value": "workflow.id",
+                "checkRequired": "() => true",
+                "readOnly": true
+              },
+              "userId": {
+                "type": "string",
+                "value": "user.id",
+                "hidden": true,
+                "readOnly": true,
+                "checkRequired": "() => true",
+                "description": "Applicant ID"
+              },
+              "userName": {
+                "type": "string",
+                "description": "Applicant full name",
+                "value": "user.name",
+                "checkRequired": "() => true",
+                "hidden": true,
+                "readOnly": true
+              },
+              "lastName": {
+                "type": "string",
+                "value": "user.lastName",
+                "description": "Last name",
+                "checkRequired": "() => true",
+                "hidden": true,
+                "readOnly": true
+              },
+              "firstName": {
+                "type": "string",
+                "value": "user.firstName",
+                "description": "First name",
+                "checkRequired": "() => true",
+                "hidden": true,
+                "readOnly": true
+              },
+              "middleName": {
+                "type": "string",
+                "value": "user.middleName",
+                "description": "Patronymic",
+                "hidden": true,
+                "readOnly": true
+              },
+              "position": {
+                "type": "string",
+                "value": "user.position",
+                "description": "Position",
+                "hidden": true,
+                "readOnly": true
+              },
+              "ipn": {
+                "type": "string",
+                "value": "user.ipn",
+                "description": "ipn",
+                "checkRequired": "() => true",
+                "hidden": true,
+                "readOnly": true
+              },
+              "userAddress": {
+                "type": "string",
+                "value": "user.address",
+                "description": "userAddress",
+                "checkRequired": "() => false",
+                "hidden": true,
+                "readOnly": true
+              },
+              "edrpou": {
+                "type": "string",
+                "value": "user.edrpou",
+                "description": "edrpou",
+                "hidden": true,
+                "readOnly": true
+              },
+              "userUnits": {
+                "description": "Array of units",
+                "value": "user.units",
+                "hidden": true,
+                "readOnly": true
+              },
+              "userUnitExecutiveIssuer": {
+                "description": "Registrar unit",
+                "hidden": true,
+                "readOnly": true,
+                "calcBack": "({calculated}) => calculated.userUnits.all.find(el => el.basedOn.indexOf(1000000207) > -1)"
+              },
+              "userUnitDebtCollector": {
+                "description": "Registrar unit",
+                "hidden": true,
+                "readOnly": true,
+                "calcBack": "({calculated}) => calculated.userUnits.all.find(el => el.basedOn.indexOf(1000000209) > -1)"
+              },
+              "isEdrAvailable": {
+                "type": "boolean",
+                "hidden": true,
+                "calcBack": "(documentData) => {return false;}",
+                "readonly": true,
+                "description": "Is EDR available?"
+              },
+              "isUserActiveFopCalculated": {
+                "type": "boolean",
+                "hidden": true,
+                "readOnly": true,
+                "calcBack": "documentData => { return false;}"
+              },
+              "isUserTovManager": {
+                "type": "boolean",
+                "hidden": true,
+                "readOnly": true,
+                "calcBack": "documentData => { return false;}"
+              },
+              "isFiz": {
+                "type": "boolean",
+                "hidden": true,
+                "calcBack": "documentData => { return false;}",
+                "readOnly": true,
+                "description": "Is EDR available?"
+              }
+            }
+          },
+          "dataCheckInfo": {
+            "type": "object",
+            "description": "Applicant information",
+            "checkStepHidden": "() => false",
+            "properties": {
+              "personMainInfo": {
+                "control": "text.block",
+                "hidden": "(allStepsData) => {return false}",
+                "dataMapping": "(step, document) =>{return { userLastName: document.calculated.lastName.charAt(0).toUpperCase() + document.calculated.lastName.slice(1).toLowerCase(),firstName: document.calculated.firstName.charAt(0).toUpperCase() + document.calculated.firstName.slice(1).toLowerCase(), middleName: document.calculated.middleName.charAt(0).toUpperCase() + document.calculated.middleName.slice(1).toLowerCase(), ipn:document.calculated?.ipn, position:document?.calculated?.position }}",
+                "htmlBlock": "<div style='width: 100%; margin-bottom: 30px;' class='user-info-fop'><div style='display: flex; flex-wrap: wrap' class='user-info-fop-content'><div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px; width: 100%'>Last name</p> <p style='font-size:18px; line-height:28px; width: 100%'>{{userLastName}}</p></div><div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px; width: 100%'>First name</p> <p style='font-size:18px; line-height:28px; width: 100%'>{{userName}}</p></div>{{#if userMiddleName}}<div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px;'>Patronymic</p> <p style='margin-top:5px;'>{{userMiddleName}}</p></div>{{/if}}{{#if position}}<div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px;'>Position</p> <p style='margin-top:5px;'>{{position}}</p></div>{{/if}}  </div> </div></div>",
+                "params": {
+                  "ipn": "ipn",
+                  "userLastName": "userLastName",
+                  "userName": "firstName",
+                  "userMiddleName": "middleName",
+                  "position": "position"
+                }
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\"title\": \"Test Application Submission\",\"type\": \"object\",\"pdfRequired\": false,\"signRequired\": false,\"forceRedirect\": true,\"calcTriggers\": [],\"fileName\": \"({executiveDocumentInfo}) =>  (`Executive Document`).substring(0,255)\",\"finalScreen\": {\"title\": \"() =>  `<p>👍 Thank you, the application has been sent!</p>`\",\"subtitle\": \"  \"},\"checkPdfStepTitle\": \"Review the draft executive document\",\"pdfStepDetails\": {\"subtitle\": \"<p>If you need to save the application on your computer or print it, select one of the options below.</p>\"},\"properties\": {\"calculated\": {\"type\": \"object\",\"description\": \"Calculated data\",\"checkStepHidden\": \"() => true\",\"properties\": {\"workflowId\": {\"type\": \"string\",\"description\": \"workflowId\",\"value\": \"workflow.id\",\"checkRequired\": \"() => true\",\"readOnly\": true},\"userId\": {\"type\": \"string\",\"value\": \"user.id\",\"hidden\": true,\"readOnly\": true,\"checkRequired\": \"() => true\",\"description\": \"Applicant ID\"},\"userName\": {\"type\": \"string\",\"description\": \"Applicant full name\",\"value\": \"user.name\",\"checkRequired\": \"() => true\",\"hidden\": true,\"readOnly\": true},\"lastName\": {\"type\": \"string\",\"value\": \"user.lastName\",\"description\": \"Last name\",\"checkRequired\": \"() => true\",\"hidden\": true,\"readOnly\": true},\"firstName\": {\"type\": \"string\",\"value\": \"user.firstName\",\"description\": \"First name\",\"checkRequired\": \"() => true\",\"hidden\": true,\"readOnly\": true},\"middleName\": {\"type\": \"string\",\"value\": \"user.middleName\",\"description\": \"Patronymic\",\"hidden\": true,\"readOnly\": true},\"position\": {\"type\": \"string\",\"value\": \"user.position\",\"description\": \"Position\",\"hidden\": true,\"readOnly\": true},\"ipn\": {\"type\": \"string\",\"value\": \"user.ipn\",\"description\": \"ipn\",\"checkRequired\": \"() => true\",\"hidden\": true,\"readOnly\": true},\"userAddress\": {\"type\": \"string\",\"value\": \"user.address\",\"description\": \"userAddress\",\"checkRequired\": \"() => false\",\"hidden\": true,\"readOnly\": true},\"edrpou\": {\"type\": \"string\",\"value\": \"user.edrpou\",\"description\": \"edrpou\",\"hidden\": true,\"readOnly\": true},\"userUnits\": {\"description\": \"Array of units\",\"value\": \"user.units\",\"hidden\": true,\"readOnly\": true},\"userUnitExecutiveIssuer\": {\"description\": \"Registrar unit\",\"hidden\": true,\"readOnly\": true,\"calcBack\": \"({calculated}) => calculated.userUnits.all.find(el => el.basedOn.indexOf(1000000207) > -1)\"},\"userUnitDebtCollector\": {\"description\": \"Registrar unit\",\"hidden\": true,\"readOnly\": true,\"calcBack\": \"({calculated}) => calculated.userUnits.all.find(el => el.basedOn.indexOf(1000000209) > -1)\"},\"isEdrAvailable\": {\"type\": \"boolean\",\"hidden\": true,\"calcBack\": \"(documentData) => {return false;}\",\"readonly\": true,\"description\": \"Is EDR available?\"},\"isUserActiveFopCalculated\": {\"type\": \"boolean\",\"hidden\": true,\"readOnly\": true,\"calcBack\": \"documentData => { return false;}\"},\"isUserTovManager\": {\"type\": \"boolean\",\"hidden\": true,\"readOnly\": true,\"calcBack\": \"documentData => { return false;}\"},\"isFiz\": {\"type\": \"boolean\",\"hidden\": true,\"calcBack\": \"documentData => { return false;}\",\"readOnly\": true,\"description\": \"Is EDR available?\"}}},\"dataCheckInfo\": {\"type\": \"object\",\"description\": \"Applicant information\",\"checkStepHidden\": \"() => false\",\"properties\": {\"personMainInfo\": {\"control\": \"text.block\",\"hidden\": \"(allStepsData) => {return false}\",\"dataMapping\":\"(step, document) =>{return { userLastName: document.calculated.lastName.charAt(0).toUpperCase() + document.calculated.lastName.slice(1).toLowerCase(),firstName: document.calculated.firstName.charAt(0).toUpperCase() + document.calculated.firstName.slice(1).toLowerCase(), middleName: document.calculated.middleName.charAt(0).toUpperCase() + document.calculated.middleName.slice(1).toLowerCase(), ipn:document.calculated?.ipn, position:document?.calculated?.position }}\",\"htmlBlock\": \"<div style='width: 100%; margin-bottom: 30px;' class='user-info-fop'><div style='display: flex; flex-wrap: wrap' class='user-info-fop-content'><div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px; width: 100%'>Last name</p> <p style='font-size:18px; line-height:28px; width: 100%'>{{userLastName}}</p></div><div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px; width: 100%'>First name</p> <p style='font-size:18px; line-height:28px; width: 100%'>{{userName}}</p></div>{{#if userMiddleName}}<div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px;'>Patronymic</p> <p style='margin-top:5px;'>{{userMiddleName}}</p></div>{{/if}}{{#if position}}<div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px;'>Position</p> <p style='margin-top:5px;'>{{position}}</p></div>{{/if}}  </div> </div></div>\",\"params\": {\"ipn\": \"ipn\",\"userLastName\": \"userLastName\",\"userName\": \"firstName\",\"userMiddleName\": \"middleName\",\"position\": \"position\"}}}}}\r\n}",
+      "htmlTemplate": "<!DOCTYPE html>\n<html lang=\"uk\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\" /><style>body {font-size: 12px;margin: 0;font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;line-height: 1;padding-right: 80px;padding-left: 80px;padding-top: 56px;padding-bottom: 56px;letter-spacing: -0.02em;}@font-face {font-family: uaFontReg;src: url(https://my.diia.gov.ua/fonts/e-Ukraine-Regular.woff);}</style></head><body style=\"font-family: uaFontReg\"></body>\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "createdAt": "2024-08-02T09:38:50.617Z",
+      "updatedAt": "2024-08-02T09:38:50.617Z"
+    }
+  ],
+  "gatewayTemplates": [],
+  "eventTemplates": [
+    {
+      "id": 900001001,
+      "eventTypeId": 1,
+      "name": "New Event",
+      "description": "",
+      "jsonSchema": {
+        "emailsByUserId": "(documents) => { const userId = documents.find(doc => doc.documentTemplateId === 900001001).data.calculated.userId; return userId ? [userId] : []; }",
+        "subject": "(documents) => 'Test notification'",
+        "fullText": "(documents, events, workflowId) => {return `You have successfully received a test notification in the Attention tab. Make sure the Show full notification button is displayed.<p style='margin-top:50px'>Make sure that after clicking the Show full notification button, the full notification is displayed.</p>`};"
+      },
+      "jsonSchemaRaw": "{\"emailsByUserId\": \"(documents) => { const userId = documents.find(doc => doc.documentTemplateId === 900001001).data.calculated.userId; return userId ? [userId] : []; }\",\"subject\": \"(documents) => 'Test notification'\",\"fullText\": \"(documents, events, workflowId) => {return `You have successfully received a test notification in the Attention tab. Make sure the Show full notification button is displayed.<p style='margin-top:50px'>Make sure that after clicking the Show full notification button, the full notification is displayed.</p>`};\"\n}",
+      "htmlTemplate": "",
+      "createdAt": "2024-08-02T09:32:30.431Z",
+      "updatedAt": "2024-08-02T09:32:30.431Z"
+    }
+  ]
+}

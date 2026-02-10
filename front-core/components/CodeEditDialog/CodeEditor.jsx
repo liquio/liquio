@@ -109,7 +109,15 @@ const MonacoEditor = ({
 }) => {
   const [functionEditorData, setFunctionEditorData] = React.useState(null);
   const [editorInstance, setEditorInstance] = React.useState(null);
+  const isMountedRef = React.useRef(false);
   const { settings } = useUserSettings('editor');
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useJson5Validator(editorInstance);
 
@@ -142,7 +150,7 @@ const MonacoEditor = ({
   } = useSelectionMonacoEditor(editorInstance);
 
   const setDefaultValue = (value, mode) => {
-    if (!mounted && mode === 'html' && !value.length) {
+    if (!isMountedRef.current && mode === 'html' && !value.length) {
       return defaultHtml(defaultHtmlValue);
     }
 

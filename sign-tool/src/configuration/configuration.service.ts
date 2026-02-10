@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import Multiconf from 'multiconf';
 
 import { LoggerService } from '../observability/logger.service';
+
+// Use require() instead of ES6 import for CommonJS module
+const Multiconf = require('multiconf');
 
 export const CONFIG_PATH = process.env.CONFIG_PATH || '../config/sign-tool';
 export const LIQUIO_CONFIG_PREFIX =
@@ -28,7 +30,10 @@ export class ConfigurationService {
     try {
       this.config = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
     } catch (e) {
-      this.logger.error('configuration-error', { error: e.message });
+      this.logger.error('configuration-error', {
+        error: e.message,
+        stack: e.stack,
+      });
       throw new Error('Unable to load configuration');
     }
   }
