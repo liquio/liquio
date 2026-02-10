@@ -10,6 +10,10 @@ export interface Config {
   allowIdentificationTypes?: string[];
   allowEdrpou?: string[];
   allowRnokpp?: string[];
+  cors?: {
+    allowedOrigins?: string[];
+    maxAge?: number;
+  };
   db: {
     host: string;
     port: number;
@@ -238,8 +242,8 @@ export function loadConfig(): Config {
   const nconf = require('nconf');
 
   const file = process.env.CONFIG_PATH ? `${process.env.CONFIG_PATH}/config.json` : process.cwd() + '/config/config.json';
-  if (!fs.existsSync(file) && !process.env['KITSOFT_ID_CONFIG']) {
-    throw new Error(`Unable to load config: neither ${file} exists, nor KITSOFT_ID_CONFIG variable is set.`);
+  if (!fs.existsSync(file) && !process.env['LIQUIO_ID_CONFIG']) {
+    throw new Error(`Unable to load config: neither ${file} exists, nor LIQUIO_ID_CONFIG variable is set.`);
   }
 
   // Init config file.
@@ -251,7 +255,7 @@ export function loadConfig(): Config {
   const versionsConf = JSON.parse(versionsConfText || '{}');
 
   const env = process.env.NODE_ENV ?? fileConfig.get('default_env') ?? 'localhost';
-  let envConfig = process.env['KITSOFT_ID_CONFIG'];
+  let envConfig = process.env['LIQUIO_ID_CONFIG'];
   if (typeof env !== 'string' || !env) {
     throw new Error(`ENV [${env}] is not defined.`);
   }
@@ -262,11 +266,11 @@ export function loadConfig(): Config {
     try {
       parsedEnvConfig = JSON.parse(envConfig);
     } catch (error) {
-      throw new Error(`KITSOFT_ID_CONFIG is invalid json: ${error}`);
+      throw new Error(`LIQUIO_ID_CONFIG is invalid json: ${error}`);
     }
 
     if (typeof parsedEnvConfig[env] === 'undefined') {
-      throw new Error(`KITSOFT_ID_CONFIG [${env}] is not defined object config.`);
+      throw new Error(`LIQUIO_ID_CONFIG [${env}] is not defined object config.`);
     }
 
     currentEnvConf = parsedEnvConfig[env];

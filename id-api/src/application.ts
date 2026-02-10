@@ -21,7 +21,7 @@ import { Services } from './services';
 import { Express } from './types';
 
 export class Application {
-  protected express: Express;
+  protected express: Express & { config: Config };
   protected log: Log;
   protected models: Models;
   protected services: Services;
