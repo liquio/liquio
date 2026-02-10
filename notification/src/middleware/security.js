@@ -9,6 +9,8 @@
  * - X-XSS-Protection legacy header
  */
 
+const cors = require('cors');
+
 /**
  * CSP Middleware Factory
  * Configurable Content Security Policy headers
@@ -149,43 +151,17 @@ function inputSanitizationMiddleware(_options = {}) {
 
 /**
  * CORS Origin Validation Middleware
- * Strict whitelist-based CORS configuration
+ * Strict whitelist-based CORS configuration using cors package
  */
 function corsValidationMiddleware(options = {}) {
-  const allowedOrigins = options.allowedOrigins || [
-    'http://localhost:3000',
-    'http://localhost:3001',
-  ];
+  const allowedOrigins = options.allowedOrigins || ['*'];
 
-  // Add production origins if provided
-  if (process.env.ALLOWED_ORIGINS) {
-    const prodOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
-    allowedOrigins.push(...prodOrigins);
-  }
-
-  return (req, res, next) => {
-    const origin = req.headers.origin;
-
-    if (origin && allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader(
-        'Access-Control-Allow-Methods',
-        'GET, POST, PUT, DELETE, OPTIONS, PATCH'
-      );
-      res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, X-Requested-With'
-      );
-    }
-
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-      return res.send(204);
-    }
-
-    next();
-  };
+  return cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  });
 }
 
 /**

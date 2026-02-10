@@ -12,6 +12,13 @@ const {
 
 let { env } = global;
 
+// CORS configuration from global.conf
+const corsConfig = {
+  allowedOrigins: global.conf?.cors?.allowedOrigins || (env === 'localhost' 
+    ? ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8080']
+    : ['http://localhost:3000', 'http://localhost:3001']),
+};
+
 const server = restify.createServer({
   name: 'notification',
   version: '1.0.0',
@@ -52,16 +59,12 @@ server.controllers = {
   test: testController,
 };
 
-if (env == 'localhost') {
-  server.use(corsValidationMiddleware({
-    allowedOrigins: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:8080',
-    ],
-  }));
-  server.pre(restify.fullResponse());
+// CORS middleware with configuration
+server.use(corsValidationMiddleware(corsConfig));
+server.pre(restify.fullResponse());
 
+// Handle OPTIONS requests for localhost development
+if (env === 'localhost') {
   function unknownMethodHandler(req, res) {
     if (req.method.toLowerCase() === 'options') {
       return res.send(204);
@@ -71,9 +74,6 @@ if (env == 'localhost') {
   }
 
   server.on('MethodNotAllowed', unknownMethodHandler);
-} else {
-  // Production: stricter CORS validation
-  server.use(corsValidationMiddleware());
 }
 
 server.get(
