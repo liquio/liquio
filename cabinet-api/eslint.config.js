@@ -10,6 +10,7 @@ export default [
       parser: tseslint.parser,
       parserOptions: {
         project: 'tsconfig.json',
+        tsconfigRootDir: import.meta.dirname,
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
@@ -34,6 +35,7 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
         ecmaVersion: 'latest',
         sourceType: 'module',
       },

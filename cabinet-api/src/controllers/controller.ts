@@ -8,7 +8,7 @@ import type UnitEntity from '../entities/unit';
 const HTTP_STATUS_CODE_OK = 200;
 const HTTP_STATUS_CODE_SERVER_ERROR = 500;
 const DEFAULT_ERROR_MESSAGE = 'Server error.';
-const EMPTY_DATA = null;
+const EMPTY_DATA: any = null;
 
 /**
  * Controller.
@@ -156,9 +156,9 @@ export default class Controller {
    */
   getRequestUserUnitAllowTokens(req: any): string[] {
     const units = this.getRequestUserUnitEntities(req);
-    const { all } = units || { all: [] };
+    const { all }: any = units || { all: [] };
 
-    return [...new Set(_.flattenDeep(all.map((v) => v.allowTokens)))];
+    return [...new Set(_.flattenDeep(all.map((v: any) => v.allowTokens)))];
   }
 
   /**
