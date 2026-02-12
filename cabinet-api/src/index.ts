@@ -1,24 +1,26 @@
-const Multiconf = require('multiconf');
+import multiconf from 'multiconf';
 
-const Log = require('./lib/log');
-const Db = require('./lib/db');
-const Models = require('./models');
-const Router = require('./router');
-const RedisClient = require('./lib/redis_client');
-const ConsoleLogProvider = require('./lib/log/providers/console');
-const typeOf = require('./lib/type_of');
+import Log from './lib/log';
+import Db from './lib/db';
+import Models from './models';
+import Router from './router';
+import RedisClient from './lib/redis_client';
+import ConsoleLogProvider from './lib/log/providers/console';
+import typeOf from './lib/type_of';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/cabinet-api';
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_CABINET';
 
 // Start async thread.
-(async () => {
+async function main(): Promise<void> {
   // Init config.
-  const config = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
-  global.config = config;
+  const config = multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
+  global.config = config as any;
 
   // Init log.
-  const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
+  const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
+    excludeParams: config.log.excludeParams,
+  });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;
 
@@ -43,4 +45,6 @@ const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_CAB
   // Start server.
   const router = new Router();
   await router.init();
-})();
+}
+
+main();
