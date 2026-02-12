@@ -67,47 +67,24 @@ export default class Notifier {
    * @param queryParams Query params.
    * @returns Promise of messages.
    */
-  async getMessages(
-    accessToken: string,
-    eventId?: number,
-    queryParams?: QueryParams,
-  ): Promise<any> {
+  async getMessages(accessToken: string, eventId?: number, queryParams?: QueryParams): Promise<any> {
     const paginationQueryParams =
-      queryParams &&
-      queryParams.start &&
-      queryParams.count &&
-      !isNaN(parseInt(queryParams.start)) &&
-      !isNaN(parseInt(queryParams.count))
+      queryParams && queryParams.start && queryParams.count && !isNaN(parseInt(queryParams.start)) && !isNaN(parseInt(queryParams.count))
         ? `&start=${queryParams.start}&count=${queryParams.count}`
         : '';
     const isReadQueryParam =
-      queryParams &&
-      queryParams.filters &&
-      queryParams.filters.is_read &&
-      !isNaN(parseInt(queryParams.filters.is_read))
+      queryParams && queryParams.filters && queryParams.filters.is_read && !isNaN(parseInt(queryParams.filters.is_read))
         ? `&is_read=${queryParams.filters.is_read}`
         : '';
-    const orderByDateQueryParam =
-      queryParams && queryParams.sort && queryParams.sort.date
-        ? `&order_date=${queryParams.sort.date}`
-        : '';
-    const searchQueryParam =
-      queryParams && queryParams.search
-        ? `&search=${encodeURIComponent(queryParams.search)}`
-        : '';
+    const orderByDateQueryParam = queryParams && queryParams.sort && queryParams.sort.date ? `&order_date=${queryParams.sort.date}` : '';
+    const searchQueryParam = queryParams && queryParams.search ? `&search=${encodeURIComponent(queryParams.search)}` : '';
     const fromCreatedAtQueryParam =
-      queryParams && queryParams.from_created_at
-        ? `&from_created_at=${encodeURIComponent(queryParams.from_created_at)}`
-        : '';
-    const toCreatedAtQueryParam =
-      queryParams && queryParams.to_created_at
-        ? `&to_created_at=${encodeURIComponent(queryParams.to_created_at)}`
-        : '';
+      queryParams && queryParams.from_created_at ? `&from_created_at=${encodeURIComponent(queryParams.from_created_at)}` : '';
+    const toCreatedAtQueryParam = queryParams && queryParams.to_created_at ? `&to_created_at=${encodeURIComponent(queryParams.to_created_at)}` : '';
 
     try {
       // Do request to get message list.
-      const eventIdQueryParam =
-        typeof eventId === 'number' ? `&event_id=${eventId}` : '';
+      const eventIdQueryParam = typeof eventId === 'number' ? `&event_id=${eventId}` : '';
       const messageQueryParams = `?access_token=${accessToken}&needEmails=true&showAll=true${eventIdQueryParam}${paginationQueryParams}${isReadQueryParam}${orderByDateQueryParam}${searchQueryParam}${fromCreatedAtQueryParam}${toCreatedAtQueryParam}`;
       const url = `${this.server}:${this.port}${ROUTES.getMessages}${messageQueryParams}`;
       global.log.save('get-message-list-request', url);
@@ -137,10 +114,7 @@ export default class Notifier {
    * @param messageId Message ID.
    * @returns Promise of response.
    */
-  async setMessageStateIsRead(
-    accessToken: string,
-    messageId: number,
-  ): Promise<any> {
+  async setMessageStateIsRead(accessToken: string, messageId: number): Promise<any> {
     try {
       const messageQueryParams = `?access_token=${accessToken}&messages=${messageId}`;
       const url = `${this.server}:${this.port}${ROUTES.getMessages}/is_read${messageQueryParams}`;
@@ -196,10 +170,7 @@ export default class Notifier {
    * @param messageId Message ID.
    * @returns Promise of response.
    */
-  async hideImportantMessage(
-    accessToken: string,
-    messageId: number,
-  ): Promise<any> {
+  async hideImportantMessage(accessToken: string, messageId: number): Promise<any> {
     try {
       // Prepare params.
       const route = ROUTES.hideImportantMessage.replace(MESSAGE_ID_KEY, messageId.toString());
@@ -233,11 +204,7 @@ export default class Notifier {
    * @param decryptedBase64 Decrypted BASE64 text.
    * @returns Promise of decrypted message.
    */
-  async decrypt(
-    accessToken: string,
-    messageId: number,
-    decryptedBase64: string,
-  ): Promise<any> {
+  async decrypt(accessToken: string, messageId: number, decryptedBase64: string): Promise<any> {
     try {
       // Prepare params.
       const route = ROUTES.decrypt.replace(MESSAGE_ID_KEY, messageId.toString());
@@ -271,14 +238,9 @@ export default class Notifier {
    * @param userId User ID.
    * @returns Promise of response.
    */
-  async getCountUnreadMessages(
-    accessToken: string,
-    userId: string,
-  ): Promise<any> {
+  async getCountUnreadMessages(accessToken: string, userId: string): Promise<any> {
     try {
-      const messageQueryParams = accessToken
-        ? `?access_token=${accessToken}`
-        : `?user_id=${userId}`;
+      const messageQueryParams = accessToken ? `?access_token=${accessToken}` : `?user_id=${userId}`;
       const url = `${this.server}:${this.port}${ROUTES.getCountUnreadMessages}${messageQueryParams}`;
       global.log.save('get-count-unread-messages-request', url);
 
@@ -334,12 +296,7 @@ export default class Notifier {
    * @param templateId Template ID.
    * @returns Promise of send result.
    */
-  async sendToUser(
-    to: string | string[],
-    subject: string,
-    html: string,
-    templateId: number,
-  ): Promise<boolean> {
+  async sendToUser(to: string | string[], subject: string, html: string, templateId: number): Promise<boolean> {
     let response;
     try {
       // Define request body.
@@ -366,11 +323,7 @@ export default class Notifier {
       global.log.save('sending-to-user-error', error.message);
     }
 
-    return response &&
-      response.sendByEmail &&
-      response.sendByEmail.length
-      ? true
-      : false;
+    return response && response.sendByEmail && response.sendByEmail.length ? true : false;
   }
 
   /**
@@ -381,15 +334,8 @@ export default class Notifier {
    * @param templateId Template ID.
    * @returns Promise of send result.
    */
-  async sendByEmails(
-    emailsList: string | string[],
-    subject: string,
-    message: string,
-    templateId: number,
-  ): Promise<{ response: any }> {
-    const finalEmailsList = Array.isArray(emailsList)
-      ? emailsList
-      : [emailsList];
+  async sendByEmails(emailsList: string | string[], subject: string, message: string, templateId: number): Promise<{ response: any }> {
+    const finalEmailsList = Array.isArray(emailsList) ? emailsList : [emailsList];
     try {
       // Define request body.
       const bodyObject = {
@@ -415,11 +361,7 @@ export default class Notifier {
         response,
       };
     } catch (error: any) {
-      global.log.save(
-        'system-notifier-email-sending-error',
-        error.message,
-        'error',
-      );
+      global.log.save('system-notifier-email-sending-error', error.message, 'error');
       throw error;
     }
   }

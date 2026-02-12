@@ -11,8 +11,8 @@
     "start": "node --max-http-header-size=65535 src/index.js",
     "start:ts": "node --max-http-header-size=65535 -r ts-node/register src/index.ts",
     "build": "tsc",
-    "lint": "eslint \"**/*.js\"",
-    "lint:fix": "eslint \"**/*.js\" --fix",
+    "lint": "eslint \"**/*.ts\"",
+    "lint:fix": "eslint \"**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"

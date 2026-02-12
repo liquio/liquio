@@ -31,12 +31,7 @@ export default class Controller {
    * @param {number} [httpStatusCode] HTTP status code.
    * @param {boolean} [isRawResponse] Is RAW response indicator. Do not pack response inside `data` object if equals `true`.
    */
-  responseData(
-    res: Response,
-    data: unknown = EMPTY_DATA,
-    httpStatusCode: number = HTTP_STATUS_CODE_OK,
-    isRawResponse: boolean = false
-  ): void {
+  responseData(res: Response, data: unknown = EMPTY_DATA, httpStatusCode: number = HTTP_STATUS_CODE_OK, isRawResponse: boolean = false): void {
     // Define response object.
     const responseObject = isRawResponse ? data : { data };
 
@@ -55,7 +50,7 @@ export default class Controller {
     res: Response,
     error: string | Error | null = DEFAULT_ERROR_MESSAGE,
     httpStatusCode: number = HTTP_STATUS_CODE_SERVER_ERROR,
-    details?: unknown
+    details?: unknown,
   ): void {
     // Define params.
     const message = (error && (error as Error).message) || error;
@@ -109,9 +104,7 @@ export default class Controller {
    * @param {object} req HTTP request.
    * @returns {{head: UnitEntity[], member: UnitEntity[], all: UnitEntity[]}} Unit entities.
    */
-  getRequestUserUnitEntities(
-    req: any
-  ): { head: UnitEntity[]; member: UnitEntity[]; all: UnitEntity[] } | null {
+  getRequestUserUnitEntities(req: any): { head: UnitEntity[]; member: UnitEntity[]; all: UnitEntity[] } | null {
     return req && req.authUserUnitEntities;
   }
 

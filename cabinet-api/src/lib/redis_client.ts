@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { createClient, RedisClientType, RedisClientOptions } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 
 const DEFAULT_TTL_IN_SECONDS = 300; // 5 minutes
 
@@ -22,6 +22,28 @@ class RedisClient {
   private static prefix: string;
   private client: RedisClientType;
   private defaultTtl: number;
+
+  // Test helpers - expose static members for testing
+  static get _singleton(): RedisClient | undefined {
+    return RedisClient.singleton;
+  }
+
+  static set _singleton(value: RedisClient | undefined) {
+    RedisClient.singleton = value as any;
+  }
+
+  static get _prefix(): string {
+    return RedisClient.prefix;
+  }
+
+  static set _prefix(value: string) {
+    RedisClient.prefix = value;
+  }
+
+  // Instance test helpers
+  get _defaultTtl(): number {
+    return this.defaultTtl;
+  }
 
   /**
    * Redis client constructor
@@ -58,11 +80,7 @@ class RedisClient {
   static createKey(...args: any[]): string {
     const parts = [RedisClient.prefix, ...args];
 
-    return parts
-      .map((item) =>
-        typeof item === 'object' ? crypto.createHash('md5').update(JSON.stringify(item)).digest('hex') : item
-      )
-      .join('.');
+    return parts.map((item) => (typeof item === 'object' ? crypto.createHash('md5').update(JSON.stringify(item)).digest('hex') : item)).join('.');
   }
 
   /**
@@ -103,7 +121,7 @@ class RedisClient {
     key: string,
     timeFn: () => Promise<string | number>,
     setFn: () => Promise<T>,
-    ttl?: number
+    ttl?: number,
   ): Promise<CacheResult<T>> {
     const redis = RedisClient.singleton;
 
@@ -162,6 +180,15 @@ class RedisClient {
    */
   private async getKeys(pattern: string): Promise<string[]> {
     return this.client.keys(pattern);
+  }
+
+  /**
+   * Get keys matching pattern (test helper)
+   * @param pattern - Key pattern
+   * @returns Promise with matching keys
+   */
+  async _getKeys(pattern: string): Promise<string[]> {
+    return this.getKeys(pattern);
   }
 
   /**

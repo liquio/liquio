@@ -49,7 +49,7 @@ class ConsoleLogProvider extends LogProvider {
     appInfo: Record<string, any>,
     level: string,
     traceId?: string,
-    traceMeta?: Record<string, any>
+    traceMeta?: Record<string, any>,
   ): Promise<void> {
     const now = new Date(timestamp);
     const createdAt = now.toISOString();
@@ -99,7 +99,7 @@ class ConsoleLogProvider extends LogProvider {
             createdAt,
           },
           null,
-          4
+          4,
         ),
       };
     }

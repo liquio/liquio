@@ -10,7 +10,7 @@ const DEFAULT_EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oaut
 const sensitiveReplace = (
   targetObject: string | Record<string, unknown>,
   excludeParams: string[] = DEFAULT_EXCLUDE_PARAMS,
-  replaceMask: string = '****'
+  replaceMask: string = '****',
 ): string | Record<string, unknown> => {
   if (typeof targetObject !== 'string') {
     return targetObject;

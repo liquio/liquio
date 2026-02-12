@@ -1,7 +1,3 @@
-// Constants.
-const ERROR_MESSAGE_SAVE_METHOD_NOT_DEFINED = 'Save method not defined in current log provider.';
-const ERROR_MESSAGE_CAN_NOT_SAVE_DATA = "Can't save data.";
-
 /**
  * Log provider abstract base class.
  */
@@ -30,6 +26,6 @@ export default abstract class LogProvider {
     appInfo: Record<string, any>,
     level: string,
     traceId?: string,
-    traceMeta?: Record<string, any>
+    traceMeta?: Record<string, any>,
   ): Promise<void>;
 }

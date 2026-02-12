@@ -80,9 +80,7 @@ class Log {
         try {
           logProvider.save(timestamp, type, data, logId, appInfoAll as Record<string, any>, level, traceId, traceMeta);
         } catch {
-          console.error(
-            ERROR_MESSAGE_LOG_SAVING_ERROR.replace(LOG_SAVING_ERROR_PROPERTY_PROVIDER_NAME, logProvider?.name || 'unknown')
-          );
+          console.error(ERROR_MESSAGE_LOG_SAVING_ERROR.replace(LOG_SAVING_ERROR_PROPERTY_PROVIDER_NAME, logProvider?.name || 'unknown'));
         }
       });
     })();
@@ -167,17 +165,17 @@ class Log {
       }
     };
 
-    res.send = function(body: any) {
+    res.send = function (body: any) {
       logResponse(body);
       return originalSend.call(this, body);
     };
 
-    res.end = function(body: any) {
+    res.end = function (body: any) {
       logResponse(body);
       return originalEnd.call(this, body);
     };
 
-    res.json = function(body: any) {
+    res.json = function (body: any) {
       logResponse(body);
       return originalJson.call(this, body);
     };

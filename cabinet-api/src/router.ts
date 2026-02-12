@@ -57,7 +57,7 @@ class Router {
         methods: 'GET, POST, PUT, DELETE, OPTIONS',
         allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, token, Authorization, debug-user-id, enabled-mocks',
         exposedHeaders: 'Name, Version, Customer, Environment, returned-mocks, external-reader-errors',
-      })
+      }),
     );
 
     // Init routes.
@@ -87,7 +87,7 @@ class Router {
       '/test/ping',
       bodyParser.json({ limit: (global.config as any).server.maxBodySize }),
       AppIdentHeaders.middleware,
-      testController.ping.bind(testController)
+      testController.ping.bind(testController),
     );
 
     // Proxy to custom APIs.
@@ -132,23 +132,9 @@ class Router {
 
                 // Check access.
                 if (
-                  !allowedPaths.find(
-                    ({
-                      method,
-                      path,
-                      authorizationHeader,
-                    }: {
-                      method: string;
-                      path: string;
-                      authorizationHeader: string;
-                    }) => {
-                      return (
-                        reqMethod === method &&
-                        reqPath === path &&
-                        reqAuthorizationHeader === authorizationHeader
-                      );
-                    }
-                  )
+                  !allowedPaths.find(({ method, path, authorizationHeader }: { method: string; path: string; authorizationHeader: string }) => {
+                    return reqMethod === method && reqPath === path && reqAuthorizationHeader === authorizationHeader;
+                  })
                 ) {
                   return reject('Not allowed');
                 }
@@ -172,18 +158,7 @@ class Router {
 
               // Set User Data.
               if (sendUserData && (req as any).authUserInfo && (req as any).authUserUnits) {
-                const {
-                  userId,
-                  email,
-                  provider,
-                  phone,
-                  ipn,
-                  edrpou,
-                  firstName,
-                  lastName,
-                  middleName,
-                  companyName,
-                } = (req as any).authUserInfo;
+                const { userId, email, provider, phone, ipn, edrpou, firstName, lastName, middleName, companyName } = (req as any).authUserInfo;
                 const userInfo = JSON.stringify({
                   userId,
                   email,
@@ -198,19 +173,14 @@ class Router {
                   authUserUnits: (req as any).authUserUnits,
                   companyName,
                 });
-                proxyReqOpts.headers[USER_DATA_HEADER] = Buffer.from(userInfo, 'utf8').toString(
-                  'base64'
-                );
+                proxyReqOpts.headers[USER_DATA_HEADER] = Buffer.from(userInfo, 'utf8').toString('base64');
 
                 const allowTokens = []
                   .concat(...(req as any).authUserUnitEntities.all.map(({ allowTokens }: any) => allowTokens))
                   .filter(Boolean)
                   .filter((token: string, index: number, self: string[]) => self.indexOf(token) === index);
 
-                proxyReqOpts.headers[ALLOW_TOKENS_HEADER] = Buffer.from(
-                  JSON.stringify(allowTokens),
-                  'utf8'
-                ).toString('base64');
+                proxyReqOpts.headers[ALLOW_TOKENS_HEADER] = Buffer.from(JSON.stringify(allowTokens), 'utf8').toString('base64');
               }
 
               proxyReqOpts.headers['x-trace-id'] = getTraceId();
@@ -220,7 +190,7 @@ class Router {
               resolve(proxyReqOpts);
             });
           },
-        })
+        }),
       );
     }
 
@@ -242,12 +212,12 @@ class Router {
             (global.log as any).save(
               'proxy-error',
               { error: { message: err.message, stack: err.stack }, route: res.req.originalUrl, method: res.req.method },
-              'error'
+              'error',
             );
             res.status(500).json({ error: { message: 'Proxy error' } });
             next();
           },
-        })
+        }),
       );
     }
 

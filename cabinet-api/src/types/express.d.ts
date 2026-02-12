@@ -1,7 +1,7 @@
 declare namespace Express {
   interface Request {
     authAccessToken?: string;
-    authUserInfo?: any;      // UserInfo — type later
+    authUserInfo?: any; // UserInfo — type later
     authUserId?: string;
     authUserRoles?: string[];
     authUserUnitEntities?: { head: any[]; member: any[]; all: any[] };

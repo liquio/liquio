@@ -40,28 +40,13 @@ class AuthController extends Controller {
   }
 
   initRoutes(app: Express): void {
-    app.post(
-      '/local/change_password',
-      bodyParser.json(),
-      this.getAuthMiddleware(),
-      this.changePassword.bind(this)
-    );
+    app.post('/local/change_password', bodyParser.json(), this.getAuthMiddleware(), this.changePassword.bind(this));
 
     app.get('/totp/generate', this.getAuthMiddleware(), this.generateUserTotp.bind(this));
 
-    app.post(
-      '/totp/enable',
-      this.getAuthMiddleware(),
-      bodyParser.json(),
-      this.enableUserTotpSecret.bind(this)
-    );
+    app.post('/totp/enable', this.getAuthMiddleware(), bodyParser.json(), this.enableUserTotpSecret.bind(this));
 
-    app.post(
-      '/totp/disable',
-      this.getAuthMiddleware(),
-      bodyParser.json(),
-      this.disableUserTotpSecret.bind(this)
-    );
+    app.post('/totp/disable', this.getAuthMiddleware(), bodyParser.json(), this.disableUserTotpSecret.bind(this));
 
     app.delete('/user', bodyParser.json(), this.getAuthMiddleware(), this.deleteUser.bind(this));
   }
@@ -144,9 +129,7 @@ class AuthController extends Controller {
 
       // Append userId and name to response object.
       const userId = authUserInfo && authUserInfo.userId;
-      const userName =
-        authUserInfo &&
-        `${authUserInfo.last_name || ''} ${authUserInfo.first_name || ''} ${authUserInfo.middle_name || ''}`;
+      const userName = authUserInfo && `${authUserInfo.last_name || ''} ${authUserInfo.first_name || ''} ${authUserInfo.middle_name || ''}`;
       (res as any).responseMeta = (res as any).responseMeta
         ? { ...(res as any).responseMeta, user: { id: userId, name: userName } }
         : { user: { id: userId, name: userName } };
@@ -169,9 +152,7 @@ class AuthController extends Controller {
    * @param {number[]} [units] Needed units.
    * @returns {function(req, res, next)} Middleware function.
    */
-  getCheckUserInOneOfUnits(
-    units: number[] = []
-  ): (req: Request, res: Response, next: NextFunction) => Promise<void> {
+  getCheckUserInOneOfUnits(units: number[] = []): (req: Request, res: Response, next: NextFunction) => Promise<void> {
     return (req: Request, res: Response, next: NextFunction): any => {
       // Check if no need to verify access.
       if (units.length === 0) {
@@ -196,9 +177,7 @@ class AuthController extends Controller {
    * @param {string} userId User ID.
    * @returns {Promise<{head: UnitEntity[], member: UnitEntity[], all: UnitEntity[]}>} Unit info.
    */
-  async getUserUnitEntities(
-    userId: string
-  ): Promise<{ head: UnitEntity[]; member: UnitEntity[]; all: UnitEntity[] }> {
+  async getUserUnitEntities(userId: string): Promise<{ head: UnitEntity[]; member: UnitEntity[]; all: UnitEntity[] }> {
     const units = await this.unitModel.getAll();
 
     const defaultUnits = (global.config as any).auth.defaultUnits || [];
@@ -214,11 +193,7 @@ class AuthController extends Controller {
    * @param {{all, head, member}} authUserUnitEntities Auth user entities.
    * @returns {number[]} Unit info.
    */
-  getUserUnits(authUserUnitEntities: {
-    all: UnitEntity[];
-    head: UnitEntity[];
-    member: UnitEntity[];
-  }): number[] {
+  getUserUnits(authUserUnitEntities: { all: UnitEntity[]; head: UnitEntity[]; member: UnitEntity[] }): number[] {
     const { all: allUserUnits } = authUserUnitEntities;
     return allUserUnits.map((v) => v.id);
   }
@@ -228,11 +203,11 @@ class AuthController extends Controller {
    * @param {{all, head, member}} authUserUnitEntities Auth user entities.
    * @returns {{head: number[], member: number[], all: number[]}} Unit info.
    */
-  getSeparatedUserUnits(authUserUnitEntities: {
-    all: UnitEntity[];
-    head: UnitEntity[];
-    member: UnitEntity[];
-  }): { head: number[]; member: number[]; all: number[] } {
+  getSeparatedUserUnits(authUserUnitEntities: { all: UnitEntity[]; head: UnitEntity[]; member: UnitEntity[] }): {
+    head: number[];
+    member: number[];
+    all: number[];
+  } {
     const { head: headUserUnits, member: memberUserUnits, all: allUserUnits } = authUserUnitEntities;
     return {
       head: headUserUnits.map((v) => v.id),

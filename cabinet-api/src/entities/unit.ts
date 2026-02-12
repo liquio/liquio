@@ -87,18 +87,7 @@ export default class UnitEntity extends Entity {
    * @returns Filtered properties list.
    */
   getFilterProperties(): string[] {
-    return [
-      'id',
-      'parentId',
-      'basedOn',
-      'name',
-      'description',
-      'members',
-      'heads',
-      'data',
-      'menuConfig',
-      'requestedMembers',
-    ];
+    return ['id', 'parentId', 'basedOn', 'name', 'description', 'members', 'heads', 'data', 'menuConfig', 'requestedMembers'];
   }
 
   /**

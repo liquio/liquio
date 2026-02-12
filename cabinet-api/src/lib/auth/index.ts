@@ -15,14 +15,10 @@ export default class AuthService {
    * Constructor.
    * @param Provider Auth provider class.
    */
-  constructor(
-    Provider: typeof BaseProvider = LiquioIdProvider as any,
-  ) {
+  constructor(Provider: typeof BaseProvider = LiquioIdProvider as any) {
     if (!AuthService.singleton) {
       const providerName = (Provider as any).providerName || (Provider as any).name;
-      this.provider = new (Provider as any)(
-        global.config.auth[providerName],
-      );
+      this.provider = new (Provider as any)(global.config.auth[providerName]);
 
       if (!(this.provider instanceof BaseProvider)) {
         throw new Error(ERROR_MESSAGE_WRONG_PROVIDER);

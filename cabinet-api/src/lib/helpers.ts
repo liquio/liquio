@@ -2,10 +2,6 @@ import * as _ from 'lodash';
 import { AxiosError } from 'axios';
 import typeOf from './type_of';
 
-interface CutStringsOptions {
-  limit?: number;
-}
-
 interface AxiosErrorLog {
   error: string;
   code?: string;
@@ -59,9 +55,7 @@ export default class Helpers {
     const limitForObjValues = limit > 1000 ? limit / 100 : 10;
     let replacedObj = this.replaceObjValues(_.cloneDeep(strOrObjPrepared), (value) => {
       if (typeOf(value) === 'string') {
-        return (value as string).length > limitForObjValues
-          ? `${(value as string).substring(0, limitForObjValues - ending.length)}${ending}`
-          : value;
+        return (value as string).length > limitForObjValues ? `${(value as string).substring(0, limitForObjValues - ending.length)}${ending}` : value;
       }
       return value;
     });

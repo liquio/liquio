@@ -172,11 +172,7 @@ class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       {
-        requested_members: Sequelize.fn(
-          'array_append',
-          Sequelize.col('requested_members'),
-          JSON.stringify(requestedMember),
-        ),
+        requested_members: Sequelize.fn('array_append', Sequelize.col('requested_members'), JSON.stringify(requestedMember)),
       },
       { where: { id: unitId }, returning: true },
     );
@@ -205,22 +201,14 @@ class UnitModel extends Model {
    * @param requestedMemberIpn Requested member IPN.
    * @returns Unit entity.
    */
-  async removeRequestedMember(
-    unitId: number,
-    requestedMemberIpn: string,
-  ): Promise<UnitEntity> {
+  async removeRequestedMember(unitId: number, requestedMemberIpn: string): Promise<UnitEntity> {
     // Get unit.
     const unit = await this.findById(unitId);
     const { requestedMembers } = unit!;
 
     // Remove requested member.
-    const requestedMembersToUpdate = requestedMembers.filter(
-      (v: any) => v.ipn !== requestedMemberIpn,
-    );
-    const [, unitsRaw] = await this.model.update(
-      { requested_members: requestedMembersToUpdate },
-      { where: { id: unitId }, returning: true },
-    );
+    const requestedMembersToUpdate = requestedMembers.filter((v: any) => v.ipn !== requestedMemberIpn);
+    const [, unitsRaw] = await this.model.update({ requested_members: requestedMembersToUpdate }, { where: { id: unitId }, returning: true });
 
     // Define and return first updated row entity.
     const [updatedUnitRaw] = unitsRaw;
@@ -265,10 +253,7 @@ class UnitModel extends Model {
    * @param userId User ID.
    * @returns Unit entity.
    */
-  async removeMember(
-    unitId: number,
-    userId: string,
-  ): Promise<UnitEntity | null> {
+  async removeMember(unitId: number, userId: string): Promise<UnitEntity | null> {
     // Update.
     const [, unitsRaw] = await this.model.update(
       {

@@ -35,22 +35,14 @@ const DEFAULT_ROUTES = {
 };
 const USER_INFO_UPDATED_RESPONSE = 'ok';
 const SEARCH_USERS_LIMIT = 10;
-const ERROR_MESSAGE_TOKENS_NOT_RESPONSED =
-  'Access or refresh tokens not responsed from auth server.';
-const ERROR_MESSAGE_USER_ID_NOT_RESPONSED =
-  'User ID not responsed from auth server.';
-const ERROR_MESSAGE_USERS_LIST_NOT_RESPONSED =
-  'Users list not responsed from auth server.';
-const ERROR_MESSAGE_USER_NOT_RESPONSED =
-  'User not responsed from auth server.';
-const ERROR_MESSAGE_USER_SMS_NOT_RESPONSED =
-  'Phone verification not responsed from auth server.';
-const ERROR_MESSAGE_USER_CHANGE_EMAIL_NOT_RESPONSED =
-  'Change email not responsed from auth server.';
-const ERROR_MESSAGE_USER_CONFIRMATION_CHANGE_EMAIL_NOT_RESPONSED =
-  'Confirmation change email not responsed from auth server.';
-const ERROR_MESSAGE_EMAIL_EXISTENCE_NOT_RESPONSED =
-  'Email existence status not responsed from auth server.';
+const ERROR_MESSAGE_TOKENS_NOT_RESPONSED = 'Access or refresh tokens not responsed from auth server.';
+const ERROR_MESSAGE_USER_ID_NOT_RESPONSED = 'User ID not responsed from auth server.';
+const ERROR_MESSAGE_USERS_LIST_NOT_RESPONSED = 'Users list not responsed from auth server.';
+const ERROR_MESSAGE_USER_NOT_RESPONSED = 'User not responsed from auth server.';
+const ERROR_MESSAGE_USER_SMS_NOT_RESPONSED = 'Phone verification not responsed from auth server.';
+const ERROR_MESSAGE_USER_CHANGE_EMAIL_NOT_RESPONSED = 'Change email not responsed from auth server.';
+const ERROR_MESSAGE_USER_CONFIRMATION_CHANGE_EMAIL_NOT_RESPONSED = 'Confirmation change email not responsed from auth server.';
+const ERROR_MESSAGE_EMAIL_EXISTENCE_NOT_RESPONSED = 'Email existence status not responsed from auth server.';
 const ERROR_MESSAGE_WRONG_RESPONSE_FORMAT = 'Wrong response format.';
 const ERROR_MESSAGE_WRONG_RESPONSE_DATA_FORMAT = 'Wrong response data format.';
 const SUCCESSFUL_SENT_SMS = 'confirm';
@@ -201,18 +193,11 @@ export default class LiquioIdProvider extends BaseProvider {
     });
 
     if (!response.userId) {
-      global.log.save(
-        'login-error-id-response-without-user-id',
-        response,
-        'error',
-      );
+      global.log.save('login-error-id-response-without-user-id', response, 'error');
       throw new Error(ERROR_MESSAGE_USER_ID_NOT_RESPONSED);
     }
     if (!response.services) {
-      global.log.save(
-        'login-error-id-response-without-user-eds-pem',
-        response,
-      );
+      global.log.save('login-error-id-response-without-user-eds-pem', response);
     }
 
     return response;
@@ -225,11 +210,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param options Update options.
    * @returns Is updated indicator.
    */
-  async updateUser(
-    userId: string,
-    accessToken: string,
-    options: Record<string, any> = {},
-  ): Promise<boolean> {
+  async updateUser(userId: string, accessToken: string, options: Record<string, any> = {}): Promise<boolean> {
     const bodyRequiredProperties = `MIME+Type=application%2Fx-www-form-urlencoded&userId=${userId}&access_token=${accessToken}`;
     const updatingParams: Record<string, any> = {
       gender: options.gender,
@@ -239,18 +220,10 @@ export default class LiquioIdProvider extends BaseProvider {
       isValidPhone: options.isValidPhone && 'true',
       'valid[phone]': options.valid && options.valid.phone && 'true',
       useTwoFactorAuth: options.useTwoFactorAuth,
-      twoFactorType: options.useTwoFactorAuth
-        ? options.twoFactorType || 'phone'
-        : undefined,
-      isIndividualEntrepreneur:
-        options.isIndividualEntrepreneur === true
-          ? 'true'
-          : options.isIndividualEntrepreneur === false
-            ? 'false'
-            : undefined,
+      twoFactorType: options.useTwoFactorAuth ? options.twoFactorType || 'phone' : undefined,
+      isIndividualEntrepreneur: options.isIndividualEntrepreneur === true ? 'true' : options.isIndividualEntrepreneur === false ? 'false' : undefined,
       address: options.address,
-      addressStruct:
-        options.addressStruct && JSON.stringify(options.addressStruct),
+      addressStruct: options.addressStruct && JSON.stringify(options.addressStruct),
       passport_series: options.passportSeries,
       passport_number: options.passportNumber,
       passport_issue_date: options.passportIssueDate,
@@ -259,12 +232,7 @@ export default class LiquioIdProvider extends BaseProvider {
       id_card_issue_date: options.idCardIssueDate,
       id_card_issued_by: options.idCardIssuedBy,
       id_card_expiry_date: options.idCardExpiryDate,
-      is_private_house:
-        options.isPrivateHouse === true
-          ? 'true'
-          : options.isPrivateHouse === false
-            ? 'false'
-            : undefined,
+      is_private_house: options.isPrivateHouse === true ? 'true' : options.isPrivateHouse === false ? 'false' : undefined,
     };
 
     const bodyUpdatingParamsArray = Object.entries(updatingParams)
@@ -296,13 +264,8 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param withPrivateProps With private properties.
    * @returns Users info.
    */
-  async getUsersByIds(
-    usersIds: string | string[],
-    withPrivateProps = false,
-  ): Promise<UserInfo[]> {
-    const normalizedUserIds = (
-      Array.isArray(usersIds) ? usersIds : [usersIds]
-    ).filter((v: string) => typeof v === 'string' && v.length === 24);
+  async getUsersByIds(usersIds: string | string[], withPrivateProps = false): Promise<UserInfo[]> {
+    const normalizedUserIds = (Array.isArray(usersIds) ? usersIds : [usersIds]).filter((v: string) => typeof v === 'string' && v.length === 24);
 
     if (normalizedUserIds.length === 0) {
       return [];
@@ -332,9 +295,7 @@ export default class LiquioIdProvider extends BaseProvider {
       throw new Error(ERROR_MESSAGE_USER_NOT_RESPONSED);
     }
 
-    return response.map((user: any) =>
-      this.getMainUserInfo(user, withPrivateProps),
-    );
+    return response.map((user: any) => this.getMainUserInfo(user, withPrivateProps));
   }
 
   /**
@@ -342,10 +303,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param userId User ID.
    * @param params Params.
    */
-  async updateUserOnboarding(
-    userId: string,
-    params: { onboardingTaskId: string; needOnboarding: boolean },
-  ): Promise<void> {
+  async updateUserOnboarding(userId: string, params: { onboardingTaskId: string; needOnboarding: boolean }): Promise<void> {
     const bodyObject = {
       userId,
       onboardingTaskId: params.onboardingTaskId,
@@ -394,9 +352,7 @@ export default class LiquioIdProvider extends BaseProvider {
       throw new Error(ERROR_MESSAGE_USERS_LIST_NOT_RESPONSED);
     }
 
-    const mainUsersInfo = response.map((user: any) =>
-      this.getMainUserInfo(user),
-    );
+    const mainUsersInfo = response.map((user: any) => this.getMainUserInfo(user));
 
     return mainUsersInfo;
   }
@@ -407,10 +363,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param withPrivateProps With private properties.
    * @returns User or users info.
    */
-  async getUserByCode(
-    code: number | number[],
-    withPrivateProps = false,
-  ): Promise<any> {
+  async getUserByCode(code: number | number[], withPrivateProps = false): Promise<any> {
     const bodyObject = { ipn: code };
 
     global.log.save('user-find-by-code-request', bodyObject);
@@ -431,9 +384,7 @@ export default class LiquioIdProvider extends BaseProvider {
       throw new Error(ERROR_MESSAGE_USER_NOT_RESPONSED);
     }
 
-    const mainUsersInfo = response.map((user: any) =>
-      this.getMainUserInfo(user, withPrivateProps),
-    );
+    const mainUsersInfo = response.map((user: any) => this.getMainUserInfo(user, withPrivateProps));
     const [mainUserInfo = null] = mainUsersInfo;
     const needsReturnArray = Array.isArray(code);
     const infoToReturn = needsReturnArray ? mainUsersInfo : mainUserInfo;
@@ -474,11 +425,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param myInfo My info indicator.
    * @returns User info.
    */
-  getMainUserInfo(
-    user: any,
-    withPrivateProps = false,
-    myInfo = false,
-  ): UserInfo | undefined {
+  getMainUserInfo(user: any, withPrivateProps = false, myInfo = false): UserInfo | undefined {
     if (!user) {
       return undefined;
     }
@@ -492,12 +439,8 @@ export default class LiquioIdProvider extends BaseProvider {
       userId: user.userId,
       address: user.address,
       addressStruct: user.addressStruct,
-      name: user.isLegal
-        ? user.companyName
-        : `${user.last_name || ''} ${user.first_name || ''} ${user.middle_name || ''}`.trim(),
-      ceoName: user.isLegal
-        ? `${user.last_name || ''} ${user.first_name || ''} ${user.middle_name || ''}`.trim()
-        : undefined,
+      name: user.isLegal ? user.companyName : `${user.last_name || ''} ${user.first_name || ''} ${user.middle_name || ''}`.trim(),
+      ceoName: user.isLegal ? `${user.last_name || ''} ${user.first_name || ''} ${user.middle_name || ''}`.trim() : undefined,
       isLegal: user.isLegal,
       isIndividualEntrepreneur: user.isIndividualEntrepreneur,
       companyName: user.companyName,
@@ -516,47 +459,15 @@ export default class LiquioIdProvider extends BaseProvider {
       valid: user.valid,
       position: myInfo
         ? PropByPath.get(user, 'services.eds.data.title')
-        : (user.user_services &&
-            user.user_services[0] &&
-            user.user_services[0].data &&
-            user.user_services[0].data.title) ||
-          undefined,
-      pem:
-        user.user_services &&
-        user.user_services[0] &&
-        user.user_services[0].data &&
-        user.user_services[0].data.pem,
-      encodeCertSerial:
-        user.user_services &&
-        user.user_services[0] &&
-        user.user_services[0].data &&
-        user.user_services[0].data.encodeCertSerial,
-      encodeCert:
-        user.user_services &&
-        user.user_services[0] &&
-        user.user_services[0].data &&
-        user.user_services[0].data.encodeCert,
+        : (user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.title) || undefined,
+      pem: user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.pem,
+      encodeCertSerial: user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.encodeCertSerial,
+      encodeCert: user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.encodeCert,
       services: withPrivateProps
-        ? user.services ||
-          {
-            ldap:
-              user.user_services &&
-              user.user_services[0] &&
-              user.user_services[0].provider === 'ldap'
-                ? user.user_services[0]
-                : undefined,
-            eds:
-              user.user_services &&
-              user.user_services[0] &&
-              user.user_services[0].provider === 'eds'
-                ? user.user_services[0]
-                : undefined,
-            govid:
-              user.user_services &&
-              user.user_services[0] &&
-              user.user_services[0].provider === 'govid'
-                ? user.user_services[0]
-                : undefined,
+        ? user.services || {
+            ldap: user.user_services && user.user_services[0] && user.user_services[0].provider === 'ldap' ? user.user_services[0] : undefined,
+            eds: user.user_services && user.user_services[0] && user.user_services[0].provider === 'eds' ? user.user_services[0] : undefined,
+            govid: user.user_services && user.user_services[0] && user.user_services[0].provider === 'govid' ? user.user_services[0] : undefined,
           }
         : undefined,
     } as UserInfo;
@@ -614,11 +525,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param accessToken User access token.
    * @returns Phone verification result.
    */
-  async verifyPhoneAndSet(
-    phone: number,
-    code: number,
-    accessToken: string,
-  ): Promise<any> {
+  async verifyPhoneAndSet(phone: number, code: number, accessToken: string): Promise<any> {
     global.log.save('user-phone-verification-request', {
       phone,
       code,
@@ -645,9 +552,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param phone User phone.
    * @returns Phone existing info.
    */
-  async checkPhoneExist(
-    phone: number,
-  ): Promise<{ isExist: boolean; isConfirmed: boolean }> {
+  async checkPhoneExist(phone: number): Promise<{ isExist: boolean; isConfirmed: boolean }> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.phoneExist}?phone=${phone}`,
       method: HttpRequest.Methods.GET,
@@ -698,11 +603,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param accessToken User access token.
    * @returns Result.
    */
-  async confirmChangeEmail(
-    email: string,
-    code: number,
-    accessToken: string,
-  ): Promise<any> {
+  async confirmChangeEmail(email: string, code: number, accessToken: string): Promise<any> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.confirmChangeEmail}?email=${email}&code_email=${code}&access_token=${accessToken}`,
       method: HttpRequest.Methods.GET,
@@ -713,9 +614,7 @@ export default class LiquioIdProvider extends BaseProvider {
     global.log.save('user-confirm-change-email', response);
 
     if (!response || !response.userId) {
-      throw new Error(
-        ERROR_MESSAGE_USER_CONFIRMATION_CHANGE_EMAIL_NOT_RESPONSED,
-      );
+      throw new Error(ERROR_MESSAGE_USER_CONFIRMATION_CHANGE_EMAIL_NOT_RESPONSED);
     }
 
     return response;
@@ -799,11 +698,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param refreshToken Refresh token.
    * @returns Is accepted indicator.
    */
-  async logoutOtherSessions(
-    userId: string,
-    accessToken: string,
-    refreshToken: string,
-  ): Promise<boolean> {
+  async logoutOtherSessions(userId: string, accessToken: string, refreshToken: string): Promise<boolean> {
     const bodyRequiredProperties = `MIME+Type=application%2Fx-www-form-urlencoded&userId=${userId}&access_token=${accessToken}&refresh_token=${refreshToken}`;
     const body = `${bodyRequiredProperties}`;
 
@@ -844,13 +739,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param email Email.
    * @returns Prepared user.
    */
-  async prepareUser(
-    name: string,
-    surname: string,
-    middleName: string,
-    ipn: string,
-    email: string,
-  ): Promise<any> {
+  async prepareUser(name: string, surname: string, middleName: string, ipn: string, email: string): Promise<any> {
     const cyrillicTranslit = CyrillicToTranslit({ preset: 'uk' });
     const translitedIpn = cyrillicTranslit.transform(ipn);
 
@@ -893,11 +782,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param newPassword New password.
    * @returns Success indicator.
    */
-  async changePassword(
-    email: string,
-    oldPassword: string,
-    newPassword: string,
-  ): Promise<any> {
+  async changePassword(email: string, oldPassword: string, newPassword: string): Promise<any> {
     try {
       const options = {
         url: `${this.server}:${this.port}${this.routes.changePassword}`,
@@ -958,11 +843,7 @@ export default class LiquioIdProvider extends BaseProvider {
       const { secret, uri, error } = await HttpRequest.send(options);
 
       if (error) {
-        global.log.save(
-          'generate-user-totp-error',
-          { error: error.message, stack: error.stack },
-          'error',
-        );
+        global.log.save('generate-user-totp-error', { error: error.message, stack: error.stack }, 'error');
         return { success: false };
       }
 
@@ -973,11 +854,7 @@ export default class LiquioIdProvider extends BaseProvider {
 
       return { success: true, secret, uri };
     } catch (error: any) {
-      global.log.save(
-        'generate-user-totp-error',
-        { error: error.message, stack: error.stack },
-        'error',
-      );
+      global.log.save('generate-user-totp-error', { error: error.message, stack: error.stack }, 'error');
       return { success: false };
     }
   }
@@ -989,11 +866,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param code TOTP code.
    * @returns Success indicator.
    */
-  async enableUserTotpSecret(
-    userId: string,
-    secret: string,
-    code: string,
-  ): Promise<any> {
+  async enableUserTotpSecret(userId: string, secret: string, code: string): Promise<any> {
     try {
       const options = {
         url: `${this.server}:${this.port}${this.routes.enableUserTotpSecret}`,
@@ -1034,10 +907,7 @@ export default class LiquioIdProvider extends BaseProvider {
    * @param code TOTP code.
    * @returns Success indicator.
    */
-  async disableUserTotpSecret(
-    userId: string,
-    code: string,
-  ): Promise<any> {
+  async disableUserTotpSecret(userId: string, code: string): Promise<any> {
     try {
       const options = {
         url: `${this.server}:${this.port}${this.routes.disableUserTotpSecret}`,

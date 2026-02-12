@@ -37,22 +37,16 @@ export default class Model {
    * @param data Data object.
    * @returns Paginated results.
    */
-  async paginate({
-    currentPage = 1,
-    perPage = 15,
-    ...params
-  }: PaginationParams = {}): Promise<PaginatedResult<unknown>> {
+  async paginate({ currentPage = 1, perPage = 15, ...params }: PaginationParams = {}): Promise<PaginatedResult<unknown>> {
     const options: any = {
       order: [],
     };
 
     if (perPage > global.config.model.pagination.limitPerPage) {
-      // eslint-disable-next-line no-param-reassign
       perPage = global.config.model.pagination.limitPerPage;
     }
 
     if (currentPage < 1) {
-      // eslint-disable-next-line no-param-reassign
       currentPage = 1;
     }
 
@@ -122,9 +116,7 @@ export default class Model {
   }): Promise<Record<string, unknown>> {
     try {
       for (const relation of relations) {
-        const items = await (sequelizeModel as any)[
-          `get${_.upperFirst(relation)}`
-        ]();
+        const items = await (sequelizeModel as any)[`get${_.upperFirst(relation)}`]();
         if (items) {
           entity[relation] = items.map((item: any) => item.prepareEntity(item));
         }

@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import * as bodyParser from 'body-parser';
 import * as formData from 'express-form-data';
 import * as xmlparser from 'express-xml-bodyparser';
@@ -108,7 +108,7 @@ class HttpRequest {
           requestOptions: axiosOptions,
           ...Helpers.prepareAxiosErrorToLog(error),
         },
-        'error'
+        'error',
       );
       throw error;
     }
@@ -138,7 +138,7 @@ class HttpRequest {
           requestOptions: axiosOptions,
           ...Helpers.prepareAxiosErrorToLog(error),
         },
-        'error'
+        'error',
       );
       throw error;
     }

@@ -21,12 +21,7 @@ class Db {
   static async getInstance(config: SequelizeOptions): Promise<Sequelize> {
     if (!Db.singleton) {
       try {
-        const sequelize = new Sequelize(
-          config.database as string,
-          config.username as string,
-          config.password as string,
-          config
-        );
+        const sequelize = new Sequelize(config.database as string, config.username as string, config.password as string, config);
 
         await sequelize.authenticate();
         log.save('db-connection', 'Connection to DB has been established successfully.');

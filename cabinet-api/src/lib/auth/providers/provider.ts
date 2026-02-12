@@ -1,6 +1,3 @@
-// Constants.
-const ERROR_OVERRIDE = 'Method must be override.';
-
 /**
  * Abstract auth provider base class
  */
