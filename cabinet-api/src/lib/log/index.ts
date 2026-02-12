@@ -1,8 +1,7 @@
-const crypto = require('crypto');
-
-const LogProvider = require('./providers/log_provider');
-const AppInfo = require('../app_info');
-const { getTraceId, getTraceMeta } = require('../async_local_storage');
+import * as crypto from 'crypto';
+import LogProvider from './providers/log_provider';
+import AppInfo from '../app_info';
+import { getTraceId, getTraceMeta } from '../async_local_storage';
 
 // Constants.
 const ERROR_MESSAGE_WRONG_PROVIDER = 'Wrong provider.';
@@ -13,16 +12,19 @@ const WARNING_LEVEL = 'warning';
 const ERROR_LEVEL = 'error';
 
 /**
- * Log.
+ * Log manager with provider pattern (singleton)
  */
 class Log {
+  private static singleton: Log;
+  private providers: LogProvider[];
+  private appInfo: AppInfo;
+
   /**
-   * Log constructor.
-   * @param {LogProvider[]} [logProviders] Log providers.
-   * @param {string[]} [activeProviders] Active providers.
+   * Log constructor
+   * @param logProviders - Array of log providers
+   * @param activeProviders - Array of active provider names to use
    */
-  constructor(logProviders = [], activeProviders = []) {
-    // Define singleton.
+  constructor(logProviders: LogProvider[] = [], activeProviders: string[] = []) {
     if (!Log.singleton) {
       if (!logProviders.every((v) => v instanceof LogProvider)) {
         throw new Error(ERROR_MESSAGE_WRONG_PROVIDER);
@@ -35,7 +37,7 @@ class Log {
   }
 
   /**
-   * Log levels.
+   * Log levels
    */
   get Levels() {
     return {
@@ -46,10 +48,10 @@ class Log {
   }
 
   /**
-   * Add provider.
-   * @param {LogProvider} logProvider Log provider.
+   * Add log provider
+   * @param logProvider - Log provider to add
    */
-  addProvider(logProvider) {
+  addProvider(logProvider: LogProvider): void {
     if (!(logProvider instanceof LogProvider)) {
       throw new Error(ERROR_MESSAGE_WRONG_PROVIDER);
     }
@@ -57,47 +59,46 @@ class Log {
   }
 
   /**
-   * Save.
-   * @param {string} type Log type.
-   * @param {any} [data] Log data.
-   * @param {string} [level] Log level.
-   * @returns {Promise<string>} Log ID promise.
+   * Save log entry
+   * @param type - Log type
+   * @param data - Log data (optional, default true)
+   * @param level - Log level (optional, default 'info')
+   * @returns Promise with unique log ID
    */
-  async save(type, data = true, level = this.Levels.INFO_LEVEL) {
+  async save(type: string, data: any = true, level: string = this.Levels.INFO_LEVEL): Promise<string | null> {
     if (process.env.DISABLE_LOG) return null;
-    // Define params.
+
     const timestamp = Date.now();
     const logId = crypto.randomBytes(6).toString('hex');
     const appInfoAll = this.appInfo.all;
     const traceId = getTraceId();
     const traceMeta = getTraceMeta();
 
-    // Start async thread without waiting result.
+    // Start async save without waiting
     (async () => {
-      // Save log using all providers.
       this.providers.forEach((logProvider) => {
         try {
-          logProvider.save(timestamp, type, data, logId, appInfoAll, level, traceId, traceMeta);
+          logProvider.save(timestamp, type, data, logId, appInfoAll as Record<string, any>, level, traceId, traceMeta);
         } catch {
-          console.error(ERROR_MESSAGE_LOG_SAVING_ERROR.replace(LOG_SAVING_ERROR_PROPERTY_PROVIDER_NAME, logProvider && logProvider.name));
+          console.error(
+            ERROR_MESSAGE_LOG_SAVING_ERROR.replace(LOG_SAVING_ERROR_PROPERTY_PROVIDER_NAME, logProvider?.name || 'unknown')
+          );
         }
       });
     })();
 
-    // Return generated log ID.
     return logId;
   }
 
   /**
-   * Log router.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
-   * @param {object} next Next handler.
+   * Router logging middleware
+   * @param req - Express request
+   * @param res - Express response
+   * @param next - Next middleware
    */
-  async logRouter(req, res, next) {
-    // Define params.
-    const method = req && req.method;
-    const url = req && req.url;
+  async logRouter(req: any, res: any, next: () => void): Promise<void> {
+    const method = req?.method;
+    const url = req?.url;
     const handlingInfo = res.handlingInfo;
     const remoteAddress = req.connection.remoteAddress;
     const xForwardedFor = req.headers['x-forwarded-for'] || null;
@@ -106,7 +107,6 @@ class Log {
     const traceId = getTraceId();
     const traceMeta = getTraceMeta();
 
-    // Define user params.
     const requestMeta = {
       method,
       url,
@@ -116,35 +116,29 @@ class Log {
       uriPattern: `${method}:${url}`,
     };
 
-    // Define response meta.
     req.requestMeta = { ...requestMeta };
     res.responseMeta = { ...requestMeta };
 
-    // Save.
     this.save('http-request', { handlingInfo, ...requestMeta });
 
-    // Append handling info.
     if (typeof res.handlingInfo === 'object' && res.handlingInfo !== null) {
       res.handlingInfo.requestMeta = { ...requestMeta, method, url };
     }
 
-    // Append trace params.
     req.traceId = traceId;
     req.traceMeta = traceMeta;
 
     this.attachResponseLogger(req, res);
 
-    // Go next.
     next();
   }
 
   /**
-   * Attach logger to response handling.
-   * @private
-   * @param {object} req Express request object.
-   * @param {object} res Express response object.
+   * Attach logger to response handling
+   * @param req - Express request
+   * @param res - Express response
    */
-  attachResponseLogger(req, res) {
+  private attachResponseLogger(req: any, res: any): void {
     const time = Date.now();
 
     const originalSend = res.send;
@@ -152,18 +146,18 @@ class Log {
     const originalJson = res.json;
     let responseLogged = false;
 
-    const logResponse = (body) => {
+    const logResponse = (body: any) => {
       if (!responseLogged) {
         const data = {
           requestId: req.requestMeta?.requestId,
           method: req.method,
           url: req.url,
           statusCode: res.statusCode,
-          responseSize: body ? body.length : 0,
+          responseSize: body ? (typeof body === 'string' ? body.length : JSON.stringify(body).length) : 0,
           responseTime: Date.now() - time,
         };
         if (body instanceof Error) {
-          data.error = {
+          (data as any).error = {
             message: body.message,
             stack: body.stack,
           };
@@ -173,21 +167,21 @@ class Log {
       }
     };
 
-    res.send = (body) => {
+    res.send = function(body: any) {
       logResponse(body);
-      originalSend.call(res, body);
+      return originalSend.call(this, body);
     };
 
-    res.end = (body) => {
+    res.end = function(body: any) {
       logResponse(body);
-      originalEnd.call(res, body);
+      return originalEnd.call(this, body);
     };
 
-    res.json = (body) => {
+    res.json = function(body: any) {
       logResponse(body);
-      originalJson.call(res, body);
+      return originalJson.call(this, body);
     };
   }
 }
 
-module.exports = Log;
+export default Log;

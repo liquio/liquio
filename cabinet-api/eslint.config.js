@@ -29,6 +29,6 @@ export default [
     },
   },
   {
-    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js'],
+    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js', 'eslint.config.js', 'jest.config.js', 'node_modules/**'],
   },
 ];

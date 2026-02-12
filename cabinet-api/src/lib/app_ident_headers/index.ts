@@ -1,32 +1,30 @@
-const AppInfo = require('../app_info');
+import AppInfo from '../app_info';
 
 // Constants.
 const DEFAULT_CUSTOMER = '1';
 const DEFAULT_ENVIRONMENT = '0';
 
 /**
- * App ident version.
+ * Application identification headers middleware
  */
 class AppIdentHeaders {
   /**
-   * Add.
-   * @param {object} app Express app instance.
+   * Add middleware to Express app
+   * @param app - Express app instance
    */
-  static add(app) {
-    // Use middleware for all.
+  static add(app: any): void {
     app.use(AppIdentHeaders.middleware);
   }
 
   /**
-   * Middleware.
+   * Middleware function that sets app identification headers
    */
   static get middleware() {
-    // Define app info.
     const appInfo = new AppInfo();
     const customer = (config && config.server && config.server.customer) || DEFAULT_CUSTOMER;
     const environment = (config && config.server && config.server.environment) || DEFAULT_ENVIRONMENT;
-    // Set headers.
-    return (req, res, next) => {
+
+    return (req: any, res: any, next: () => void): void => {
       res.setHeader('Name', appInfo.name);
       res.setHeader('Version', appInfo.version);
       res.setHeader('Customer', customer);
@@ -36,4 +34,4 @@ class AppIdentHeaders {
   }
 }
 
-module.exports = AppIdentHeaders;
+export default AppIdentHeaders;
