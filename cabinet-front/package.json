@@ -58,7 +58,7 @@
     "@mui/material": "5.10.14",
     "@mui/styles": "5.10.14",
     "@mui/system": "5.10.14",
-    "@mui/x-data-grid": "6.18.2",
+    "@mui/x-data-grid": "8.25.0",
     "@mui/x-date-pickers": "5.0.11",
     "@sentry/browser": "7.119.1",
     "@testing-library/jest-dom": "6.6.3",
