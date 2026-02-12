@@ -6,9 +6,11 @@
   },
   "private": true,
   "license": "SEE LICENSE IN ../LICENSE.md",
-  "main": "src/index.js",
+  "main": "src/index.ts",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node --max-http-header-size=65535 src/index.js",
+    "start:ts": "node --max-http-header-size=65535 -r ts-node/register src/index.ts",
+    "build": "tsc",
     "lint": "eslint \"**/*.js\"",
     "lint:fix": "eslint \"**/*.js\" --fix",
     "test": "jest",
@@ -34,10 +36,23 @@
     "sequelize": "^6.29.0"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/express-http-proxy": "^1.6.7",
     "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/lodash": "^4.17.23",
+    "@types/node": "^22.19.11",
     "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^62.0.0",
-    "jest": "^30.1.3"
+    "eslint-plugin-prettier": "^5.5.5",
+    "jest": "^30.1.3",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.55.0"
   },
   "overrides": {
     "form-data": "2.5.5",

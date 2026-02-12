@@ -190,15 +190,15 @@ function createSerializableResponse(axiosResponse) {
       url: axiosResponse.config.url,
       method: axiosResponse.config.method,
       headers: axiosResponse.config.headers,
-      timeout: axiosResponse.config.timeout
+      timeout: axiosResponse.config.timeout,
     },
     request: {
       method: axiosResponse.config.method,
       url: axiosResponse.config.url,
       headers: axiosResponse.config.headers,
       data: axiosResponse.config.data,
-      timeout: axiosResponse.config.timeout
-    }
+      timeout: axiosResponse.config.timeout,
+    },
   };
 }
 

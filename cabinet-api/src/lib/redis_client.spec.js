@@ -118,7 +118,7 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       new RedisClient(config);
 
-      const readyCallback = mockClient.on.mock.calls.find(call => call[0] === 'ready')?.[1];
+      const readyCallback = mockClient.on.mock.calls.find((call) => call[0] === 'ready')?.[1];
       if (readyCallback) {
         readyCallback();
         expect(global.log.save).toHaveBeenCalledWith('redis-connected');
@@ -129,7 +129,7 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       new RedisClient(config);
 
-      const errorCallback = mockClient.on.mock.calls.find(call => call[0] === 'error')?.[1];
+      const errorCallback = mockClient.on.mock.calls.find((call) => call[0] === 'error')?.[1];
       const testError = new Error('Connection failed');
       if (errorCallback) {
         errorCallback(testError);
@@ -157,10 +157,7 @@ describe('RedisClient', () => {
         const obj = { id: 1, name: 'test' };
         const key = RedisClient.createKey('user', obj);
 
-        const expectedHash = crypto
-          .createHash('md5')
-          .update(JSON.stringify(obj))
-          .digest('hex');
+        const expectedHash = crypto.createHash('md5').update(JSON.stringify(obj)).digest('hex');
 
         expect(key).toContain('test-service.user.');
         expect(key).toContain(expectedHash);
@@ -247,11 +244,7 @@ describe('RedisClient', () => {
 
         await RedisClient.getOrSet('test-key', fn, 600);
 
-        expect(mockClient.set).toHaveBeenCalledWith(
-          'test-key',
-          JSON.stringify(freshData),
-          { EX: 600 }
-        );
+        expect(mockClient.set).toHaveBeenCalledWith('test-key', JSON.stringify(freshData), { EX: 600 });
       });
 
       it('should use instance default TTL if not provided', async () => {
@@ -263,11 +256,7 @@ describe('RedisClient', () => {
 
         await RedisClient.getOrSet('test-key', fn);
 
-        expect(mockClient.set).toHaveBeenCalledWith(
-          'test-key',
-          JSON.stringify({ data: 'test' }),
-          { EX: 500 }
-        );
+        expect(mockClient.set).toHaveBeenCalledWith('test-key', JSON.stringify({ data: 'test' }), { EX: 500 });
       });
 
       it('should work without redis client', async () => {
@@ -312,9 +301,7 @@ describe('RedisClient', () => {
         const oldTimestamp = new Date('2024-01-01');
         const newTimestamp = new Date('2024-01-02');
 
-        mockClient.get
-          .mockResolvedValueOnce(JSON.stringify(oldTimestamp))
-          .mockResolvedValueOnce(null);
+        mockClient.get.mockResolvedValueOnce(JSON.stringify(oldTimestamp)).mockResolvedValueOnce(null);
 
         const timeFn = jest.fn().mockResolvedValue(newTimestamp);
         const setFn = jest.fn().mockResolvedValue({ id: 1 });

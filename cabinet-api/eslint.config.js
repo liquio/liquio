@@ -1,43 +1,34 @@
-const globals = require('globals');
-const js = require('@eslint/js');
-const jsdoc = require('eslint-plugin-jsdoc');
+import tseslint from 'typescript-eslint';
+import prettierPlugin from 'eslint-plugin-prettier';
+import prettierConfig from 'eslint-config-prettier';
 
-module.exports = [
-  js.configs.recommended,
+export default [
   {
+    files: ['**/*.ts', '**/*.js'],
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
-      globals: {
-        ...globals.node,
-        ...globals.jest,
-        config: 'readonly',
-        db: 'readonly',
-        log: 'readonly',
-        models: 'readonly',
-        businesses: 'readonly',
+      parser: tseslint.parser,
+      parserOptions: {
+        project: 'tsconfig.json',
+        ecmaVersion: 'latest',
+        sourceType: 'module',
       },
     },
-    plugins: { jsdoc },
-    rules: {
-      'max-len': [
-        'error',
-        {
-          code: 150,
-          ignoreComments: true,
-          ignoreStrings: true,
-          ignoreTemplateLiterals: true,
-        },
-      ],
-      indent: ['error', 2, { SwitchCase: 1 }],
-      'linebreak-style': ['error', 'unix'],
-      'eol-last': ['error', 'always'],
-      quotes: ['warn', 'single'],
-      semi: ['error', 'always'],
-      'no-console': 'off',
-      'no-var': 'error',
-      'brace-style': ['error', '1tbs', { allowSingleLine: true }],
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+      prettier: prettierPlugin,
     },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      ...prettierConfig.rules,
+      'prettier/prettier': 'error',
+      '@typescript-eslint/interface-name-prefix': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js'],
   },
 ];

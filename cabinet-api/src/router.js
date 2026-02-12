@@ -203,10 +203,14 @@ class Router {
             return proxyReqOpts;
           },
           proxyErrorHandler: (err, res, next) => {
-            log.save('proxy-error', { error: { message: err.message, stack: err.stack }, route: res.req.originalUrl, method: res.req.method }, 'error');
+            log.save(
+              'proxy-error',
+              { error: { message: err.message, stack: err.stack }, route: res.req.originalUrl, method: res.req.method },
+              'error',
+            );
             res.status(500).json({ error: { message: 'Proxy error' } });
             next();
-          }
+          },
         }),
       );
     }
@@ -261,8 +265,7 @@ class Router {
     next();
   }
 
-  // eslint-disable-next-line no-unused-vars
-  jsonErrorHandler(err, req, res, next) {
+  jsonErrorHandler(err, req, res, _next) {
     global.log.save('proxy-error', err);
 
     let status = 500;

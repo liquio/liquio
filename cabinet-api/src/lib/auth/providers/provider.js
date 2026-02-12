@@ -30,11 +30,11 @@ class Provider {
 
   /**
    * Get user info.
-   * @param {string} accessToken Access token.
+   * @param {string} _accessToken Access token.
    * @returns {Promise<object>}
    */
-  /* eslint-disable-next-line no-unused-vars */
-  async getUser(accessToken) {
+
+  async getUser(_accessToken) {
     throw new Error(ERROR_OVERRIDE);
   }
 
