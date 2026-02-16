@@ -129,7 +129,7 @@
     "react-dnd-html5-backend": "11.1.3",
     "react-dom": "18.3.1",
     "react-draggable-bottom-sheet": "1.17.0",
-    "react-dropzone": "10.2.1",
+    "react-dropzone": "14.3.8",
     "react-file-icon": "1.0.0",
     "react-input-mask": "2.0.4",
     "react-jss": "10.10.0",
