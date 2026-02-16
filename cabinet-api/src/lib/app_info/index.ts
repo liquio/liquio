@@ -1,12 +1,24 @@
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Constants.
 const PACKAGE_JSON_FILE_NAME = path.join(process.cwd(), 'package.json');
 const PACKAGE_JSON_FILE_ENCODING = 'utf8';
 
-// App info.
-class AppInfo {
+interface AppInfoData {
+  name?: string;
+  version?: string;
+}
+
+/**
+ * Application info singleton
+ * Reads package.json and provides app name and version
+ */
+export default class AppInfo {
+  private static singleton: AppInfo;
+  private _name?: string;
+  private _version?: string;
+
   constructor() {
     if (!AppInfo.singleton) {
       this.init();
@@ -16,37 +28,32 @@ class AppInfo {
   }
 
   /**
-   * Name.
-   * @returns {string} App name.
+   * Application name
    */
-  get name() {
+  get name(): string | undefined {
     return this._name;
   }
 
   /**
-   * Version.
-   * @returns {string} App version.
+   * Application version
    */
-  get version() {
+  get version(): string | undefined {
     return this._version;
   }
 
   /**
-   * All app info.
-   * @returns {{name: string, version: string}} All app info.
+   * All app info
    */
-  get all() {
+  get all(): AppInfoData {
     return { name: this.name, version: this.version };
   }
 
   /**
-   * Init.
-   * @private
+   * Initialize app info from package.json
    */
-  init() {
-    // Read data from "package.json".
+  private init(): void {
     const packageJsonFilePath = PACKAGE_JSON_FILE_NAME;
-    let packageJsonFileData = {};
+    let packageJsonFileData: AppInfoData = {};
     try {
       const packageJsonFileContent = fs.readFileSync(packageJsonFilePath, { encoding: PACKAGE_JSON_FILE_ENCODING });
       packageJsonFileData = JSON.parse(packageJsonFileContent);
@@ -54,10 +61,7 @@ class AppInfo {
       console.log(error);
     }
 
-    // Save app info.
     this._name = packageJsonFileData.name;
     this._version = packageJsonFileData.version;
   }
 }
-
-module.exports = AppInfo;

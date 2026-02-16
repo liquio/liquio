@@ -1,14 +1,16 @@
-const crypto = require('crypto');
+import crypto from 'crypto';
+import type { RedisClientType } from 'redis';
+import * as redis from 'redis';
 
 describe('RedisClient', () => {
-  let RedisClient;
-  let mockClient;
-  let originalGlobal;
+  let RedisClient: typeof import('./redis_client').default;
+  let mockClient: jest.Mocked<Partial<RedisClientType>>;
+  let originalGlobal: any;
 
   beforeEach(() => {
     // Clear the singleton before each test
-    RedisClient = require('./redis_client');
-    RedisClient.singleton = null;
+    RedisClient = require('./redis_client').default;
+    RedisClient._singleton = undefined;
 
     // Mock the redis client
     mockClient = {
@@ -21,13 +23,13 @@ describe('RedisClient', () => {
     };
 
     // Mock the redis.createClient
-    jest.spyOn(require('redis'), 'createClient').mockReturnValue(mockClient);
+    jest.spyOn(redis, 'createClient').mockReturnValue(mockClient as any);
 
     // Mock global log
     originalGlobal = global.log;
     global.log = {
       save: jest.fn(),
-    };
+    } as any;
   });
 
   afterEach(() => {
@@ -56,7 +58,7 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       new RedisClient(config);
 
-      expect(require('redis').createClient).toHaveBeenCalledWith({
+      expect(redis.createClient).toHaveBeenCalledWith({
         socket: { host: 'localhost', port: 6379 },
       });
       expect(mockClient.connect).toHaveBeenCalled();
@@ -66,14 +68,14 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       const instance = new RedisClient(config);
 
-      expect(instance.defaultTtl).toBe(300);
+      expect(instance._defaultTtl).toBe(300);
     });
 
     it('should use custom TTL from config', () => {
       const config = { host: 'localhost', port: 6379, defaultTtl: 600 };
       const instance = new RedisClient(config);
 
-      expect(instance.defaultTtl).toBe(600);
+      expect(instance._defaultTtl).toBe(600);
     });
 
     it('should set prefix from npm_package_name', () => {
@@ -83,7 +85,7 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       new RedisClient(config);
 
-      expect(RedisClient.prefix).toBe('test-service');
+      expect(RedisClient._prefix).toBe('test-service');
 
       process.env.npm_package_name = originalEnv;
     });
@@ -95,7 +97,7 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       new RedisClient(config);
 
-      expect(RedisClient.prefix).toBe('cabinet-api');
+      expect(RedisClient._prefix).toBe('cabinet-api');
 
       process.env.npm_package_name = originalEnv;
     });
@@ -118,7 +120,7 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       new RedisClient(config);
 
-      const readyCallback = mockClient.on.mock.calls.find(call => call[0] === 'ready')?.[1];
+      const readyCallback = (mockClient.on as jest.Mock).mock.calls.find((call) => call[0] === 'ready')?.[1];
       if (readyCallback) {
         readyCallback();
         expect(global.log.save).toHaveBeenCalledWith('redis-connected');
@@ -129,7 +131,7 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       new RedisClient(config);
 
-      const errorCallback = mockClient.on.mock.calls.find(call => call[0] === 'error')?.[1];
+      const errorCallback = (mockClient.on as jest.Mock).mock.calls.find((call) => call[0] === 'error')?.[1];
       const testError = new Error('Connection failed');
       if (errorCallback) {
         errorCallback(testError);
@@ -146,28 +148,25 @@ describe('RedisClient', () => {
       });
 
       it('should create a key with prefix and string arguments', () => {
-        RedisClient.prefix = 'test-service';
+        RedisClient._prefix = 'test-service';
         const key = RedisClient.createKey('user', 'profile', 'name');
 
         expect(key).toBe('test-service.user.profile.name');
       });
 
       it('should hash object arguments', () => {
-        RedisClient.prefix = 'test-service';
+        RedisClient._prefix = 'test-service';
         const obj = { id: 1, name: 'test' };
         const key = RedisClient.createKey('user', obj);
 
-        const expectedHash = crypto
-          .createHash('md5')
-          .update(JSON.stringify(obj))
-          .digest('hex');
+        const expectedHash = crypto.createHash('md5').update(JSON.stringify(obj)).digest('hex');
 
         expect(key).toContain('test-service.user.');
         expect(key).toContain(expectedHash);
       });
 
       it('should handle multiple object arguments', () => {
-        RedisClient.prefix = 'test-service';
+        RedisClient._prefix = 'test-service';
         const obj1 = { id: 1 };
         const obj2 = { name: 'test' };
         const key = RedisClient.createKey(obj1, obj2);
@@ -177,7 +176,7 @@ describe('RedisClient', () => {
       });
 
       it('should handle mixed string and object arguments', () => {
-        RedisClient.prefix = 'test-service';
+        RedisClient._prefix = 'test-service';
         const obj = { id: 1 };
         const key = RedisClient.createKey('prefix', obj, 'suffix');
 
@@ -187,14 +186,14 @@ describe('RedisClient', () => {
       });
 
       it('should handle empty arguments', () => {
-        RedisClient.prefix = 'test-service';
+        RedisClient._prefix = 'test-service';
         const key = RedisClient.createKey();
 
         expect(key).toBe('test-service');
       });
 
       it('should handle numeric arguments', () => {
-        RedisClient.prefix = 'test-service';
+        RedisClient._prefix = 'test-service';
         const key = RedisClient.createKey('cache', 123, 'item');
 
         expect(key).toBe('test-service.cache.123.item');
@@ -212,7 +211,7 @@ describe('RedisClient', () => {
         new RedisClient(config);
 
         const cachedData = { id: 1, name: 'cached' };
-        mockClient.get.mockResolvedValue(JSON.stringify(cachedData));
+        (mockClient.get as jest.Mock).mockResolvedValue(JSON.stringify(cachedData));
 
         const fn = jest.fn();
         const result = await RedisClient.getOrSet('test-key', fn);
@@ -225,7 +224,7 @@ describe('RedisClient', () => {
         const config = { host: 'localhost', port: 6379 };
         new RedisClient(config);
 
-        mockClient.get.mockResolvedValue(null);
+        (mockClient.get as jest.Mock).mockResolvedValue(null);
 
         const freshData = { id: 2, name: 'fresh' };
         const fn = jest.fn().mockResolvedValue(freshData);
@@ -240,39 +239,31 @@ describe('RedisClient', () => {
         const config = { host: 'localhost', port: 6379 };
         new RedisClient(config);
 
-        mockClient.get.mockResolvedValue(null);
+        (mockClient.get as jest.Mock).mockResolvedValue(null);
 
         const freshData = { id: 2, name: 'fresh' };
         const fn = jest.fn().mockResolvedValue(freshData);
 
         await RedisClient.getOrSet('test-key', fn, 600);
 
-        expect(mockClient.set).toHaveBeenCalledWith(
-          'test-key',
-          JSON.stringify(freshData),
-          { EX: 600 }
-        );
+        expect(mockClient.set).toHaveBeenCalledWith('test-key', JSON.stringify(freshData), { EX: 600 });
       });
 
       it('should use instance default TTL if not provided', async () => {
         const config = { host: 'localhost', port: 6379, defaultTtl: 500 };
         new RedisClient(config);
 
-        mockClient.get.mockResolvedValue(null);
+        (mockClient.get as jest.Mock).mockResolvedValue(null);
         const fn = jest.fn().mockResolvedValue({ data: 'test' });
 
         await RedisClient.getOrSet('test-key', fn);
 
-        expect(mockClient.set).toHaveBeenCalledWith(
-          'test-key',
-          JSON.stringify({ data: 'test' }),
-          { EX: 500 }
-        );
+        expect(mockClient.set).toHaveBeenCalledWith('test-key', JSON.stringify({ data: 'test' }), { EX: 500 });
       });
 
       it('should work without redis client', async () => {
         // Don't initialize RedisClient
-        RedisClient.singleton = null;
+        RedisClient._singleton = undefined;
 
         const freshData = { id: 2, name: 'fresh' };
         const fn = jest.fn().mockResolvedValue(freshData);
@@ -294,7 +285,7 @@ describe('RedisClient', () => {
         const config = { host: 'localhost', port: 6379 };
         new RedisClient(config);
 
-        mockClient.get.mockResolvedValue(null);
+        (mockClient.get as jest.Mock).mockResolvedValue(null);
 
         const freshData = { id: 1 };
         const timeFn = jest.fn().mockResolvedValue(new Date());
@@ -312,9 +303,7 @@ describe('RedisClient', () => {
         const oldTimestamp = new Date('2024-01-01');
         const newTimestamp = new Date('2024-01-02');
 
-        mockClient.get
-          .mockResolvedValueOnce(JSON.stringify(oldTimestamp))
-          .mockResolvedValueOnce(null);
+        (mockClient.get as jest.Mock).mockResolvedValueOnce(JSON.stringify(oldTimestamp)).mockResolvedValueOnce(null);
 
         const timeFn = jest.fn().mockResolvedValue(newTimestamp);
         const setFn = jest.fn().mockResolvedValue({ id: 1 });
@@ -329,7 +318,7 @@ describe('RedisClient', () => {
         new RedisClient(config);
 
         const sameTimestamp = new Date('2024-01-01');
-        mockClient.get.mockResolvedValueOnce(JSON.stringify(sameTimestamp));
+        (mockClient.get as jest.Mock).mockResolvedValueOnce(JSON.stringify(sameTimestamp));
 
         const timeFn = jest.fn().mockResolvedValue(sameTimestamp);
         const setFn = jest.fn().mockResolvedValue({ id: 1 });
@@ -341,7 +330,7 @@ describe('RedisClient', () => {
       });
 
       it('should work without redis client', async () => {
-        RedisClient.singleton = null;
+        RedisClient._singleton = undefined;
 
         const freshData = { id: 1 };
         const timeFn = jest.fn();
@@ -356,7 +345,7 @@ describe('RedisClient', () => {
   });
 
   describe('Instance Methods', () => {
-    let instance;
+    let instance: InstanceType<typeof RedisClient>;
 
     beforeEach(() => {
       const config = { host: 'localhost', port: 6379 };
@@ -385,7 +374,7 @@ describe('RedisClient', () => {
 
       it('should use default TTL if not provided', async () => {
         const config = { host: 'localhost', port: 6379, defaultTtl: 500 };
-        RedisClient.singleton = null;
+        RedisClient._singleton = undefined;
         const customInstance = new RedisClient(config);
 
         await customInstance.set('key', 'value');
@@ -394,7 +383,7 @@ describe('RedisClient', () => {
       });
 
       it('should return OK on success', async () => {
-        mockClient.set.mockResolvedValue('OK');
+        (mockClient.set as jest.Mock).mockResolvedValue('OK');
         const result = await instance.set('key', 'value');
 
         expect(result).toBe('OK');
@@ -403,7 +392,7 @@ describe('RedisClient', () => {
 
     describe('get', () => {
       it('should get data from redis', async () => {
-        mockClient.get.mockResolvedValue('value');
+        (mockClient.get as jest.Mock).mockResolvedValue('value');
         const result = await instance.get('key');
 
         expect(result).toBe('value');
@@ -411,7 +400,7 @@ describe('RedisClient', () => {
       });
 
       it('should return null if key not found', async () => {
-        mockClient.get.mockResolvedValue(null);
+        (mockClient.get as jest.Mock).mockResolvedValue(null);
         const result = await instance.get('key');
 
         expect(result).toBeNull();
@@ -419,7 +408,7 @@ describe('RedisClient', () => {
 
       it('should handle JSON data', async () => {
         const obj = { id: 1, name: 'test' };
-        mockClient.get.mockResolvedValue(JSON.stringify(obj));
+        (mockClient.get as jest.Mock).mockResolvedValue(JSON.stringify(obj));
         const result = await instance.get('key');
 
         expect(result).toBe(JSON.stringify(obj));
@@ -428,7 +417,7 @@ describe('RedisClient', () => {
 
     describe('delete', () => {
       it('should delete a key', async () => {
-        mockClient.del.mockResolvedValue(1);
+        (mockClient.del as jest.Mock).mockResolvedValue(1);
         const result = await instance.delete('key');
 
         expect(result).toBe(1);
@@ -436,27 +425,27 @@ describe('RedisClient', () => {
       });
 
       it('should return 0 if key not found', async () => {
-        mockClient.del.mockResolvedValue(0);
+        (mockClient.del as jest.Mock).mockResolvedValue(0);
         const result = await instance.delete('key');
 
         expect(result).toBe(0);
       });
     });
 
-    describe('getKeys', () => {
+    describe('_getKeys', () => {
       it('should get keys matching pattern', async () => {
         const keys = ['key1', 'key2', 'key3'];
-        mockClient.keys.mockResolvedValue(keys);
+        (mockClient.keys as jest.Mock).mockResolvedValue(keys);
 
-        const result = await instance.getKeys('key*');
+        const result = await instance._getKeys('key*');
 
         expect(result).toEqual(keys);
         expect(mockClient.keys).toHaveBeenCalledWith('key*');
       });
 
       it('should return empty array if no keys match', async () => {
-        mockClient.keys.mockResolvedValue([]);
-        const result = await instance.getKeys('nonexistent*');
+        (mockClient.keys as jest.Mock).mockResolvedValue([]);
+        const result = await instance._getKeys('nonexistent*');
 
         expect(result).toEqual([]);
       });
@@ -465,8 +454,8 @@ describe('RedisClient', () => {
     describe('deleteMany', () => {
       it('should delete multiple keys matching pattern', async () => {
         const keys = ['key1', 'key2', 'key3'];
-        mockClient.keys.mockResolvedValue(keys);
-        mockClient.del.mockResolvedValue(3);
+        (mockClient.keys as jest.Mock).mockResolvedValue(keys);
+        (mockClient.del as jest.Mock).mockResolvedValue(3);
 
         const result = await instance.deleteMany('key*');
 
@@ -476,7 +465,7 @@ describe('RedisClient', () => {
       });
 
       it('should return 0 if no keys match pattern', async () => {
-        mockClient.keys.mockResolvedValue([]);
+        (mockClient.keys as jest.Mock).mockResolvedValue([]);
         const result = await instance.deleteMany('nonexistent*');
 
         expect(result).toBe(0);
@@ -485,8 +474,8 @@ describe('RedisClient', () => {
 
       it('should handle partial deletions', async () => {
         const keys = ['key1', 'key2', 'key3'];
-        mockClient.keys.mockResolvedValue(keys);
-        mockClient.del.mockResolvedValue(2); // Only 2 deleted
+        (mockClient.keys as jest.Mock).mockResolvedValue(keys);
+        (mockClient.del as jest.Mock).mockResolvedValue(2); // Only 2 deleted
 
         const result = await instance.deleteMany('key*');
 

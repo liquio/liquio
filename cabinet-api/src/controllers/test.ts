@@ -1,4 +1,5 @@
-const Controller = require('./controller');
+import type { Request, Response } from 'express';
+import Controller from './controller';
 
 // Constants.
 const MESSAGE_PONG = 'pong';
@@ -7,6 +8,8 @@ const MESSAGE_PONG = 'pong';
  * Test controller.
  */
 class TestController extends Controller {
+  private static singleton: TestController;
+
   /**
    * Test controller constructor.
    */
@@ -29,7 +32,7 @@ class TestController extends Controller {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async ping(req, res) {
+  async ping(req: Request, res: Response): Promise<void> {
     // Prepare response data.
     const processPid = process.pid;
     const responseData = {
@@ -42,4 +45,4 @@ class TestController extends Controller {
   }
 }
 
-module.exports = TestController;
+export default TestController;

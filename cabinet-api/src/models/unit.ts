@@ -1,11 +1,17 @@
-const Sequelize = require('sequelize');
-const Model = require('./model');
-const UnitEntity = require('../entities/unit');
-const RedisClient = require('../lib/redis_client');
+import { Sequelize, DataTypes } from 'sequelize';
+import Model from './model';
+import UnitEntity from '../entities/unit';
+import RedisClient from '../lib/redis_client';
 
 const DEFAULT_CACHE_TTL = 600;
 
+/**
+ * Unit model.
+ */
 class UnitModel extends Model {
+  model: any;
+  static singleton: UnitModel;
+
   constructor() {
     if (!UnitModel.singleton) {
       super();
@@ -17,20 +23,20 @@ class UnitModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER,
+            type: DataTypes.INTEGER,
           },
-          parent_id: Sequelize.INTEGER,
-          based_on: Sequelize.ARRAY(Sequelize.INTEGER),
-          name: Sequelize.STRING,
-          description: Sequelize.STRING,
-          members: Sequelize.ARRAY(Sequelize.STRING),
-          heads: Sequelize.ARRAY(Sequelize.STRING),
-          data: Sequelize.JSON,
-          menu_config: Sequelize.JSON,
-          allow_tokens: Sequelize.ARRAY(Sequelize.STRING),
-          heads_ipn: Sequelize.ARRAY(Sequelize.STRING),
-          members_ipn: Sequelize.ARRAY(Sequelize.STRING),
-          requested_members: Sequelize.ARRAY(Sequelize.JSONB),
+          parent_id: DataTypes.INTEGER,
+          based_on: DataTypes.ARRAY(DataTypes.INTEGER),
+          name: DataTypes.STRING,
+          description: DataTypes.STRING,
+          members: DataTypes.ARRAY(DataTypes.STRING),
+          heads: DataTypes.ARRAY(DataTypes.STRING),
+          data: DataTypes.JSON,
+          menu_config: DataTypes.JSON,
+          allow_tokens: DataTypes.ARRAY(DataTypes.STRING),
+          heads_ipn: DataTypes.ARRAY(DataTypes.STRING),
+          members_ipn: DataTypes.ARRAY(DataTypes.STRING),
+          requested_members: DataTypes.ARRAY(DataTypes.JSON),
         },
         {
           tableName: 'units',
@@ -48,40 +54,40 @@ class UnitModel extends Model {
 
   /**
    * Get all.
-   * @returns {Promise<UnitEntity[]>}
+   * @returns Promise of unit entities.
    */
-  async getAll() {
-    let { data: unitsRaw } = await RedisClient.getOrSetWithTimestamp(
+  async getAll(): Promise<UnitEntity[]> {
+    const { data: unitsRaw } = await RedisClient.getOrSetWithTimestamp(
       RedisClient.createKey('unit', 'getAll'),
       () => this.model.max('updated_at'),
       () => this.model.findAll(),
       DEFAULT_CACHE_TTL,
     );
 
-    return unitsRaw.map(this.prepareEntity);
+    return (unitsRaw as any[]).map((u: any) => this.prepareEntity(u));
   }
 
   /**
    * Get by IDs.
-   * @param {number[]} ids Unit IDs list.
-   * @returns {Promise<UnitEntity[]>} Units promise list.
+   * @param ids Unit IDs list.
+   * @returns List of unit entities.
    */
-  async getByIds(ids) {
+  async getByIds(ids: number[]): Promise<UnitEntity[]> {
     const unitsRaw = await this.model.findAll({ where: { id: ids } });
 
-    return unitsRaw.map(this.prepareEntity);
+    return unitsRaw.map((u: any) => this.prepareEntity(u));
   }
 
   /**
    * Find by ID.
-   * @param {number} id
-   * @returns {Promise<UnitEntity>}
+   * @param id Unit ID.
+   * @returns Unit entity.
    */
-  async findById(id) {
+  async findById(id: number): Promise<UnitEntity | undefined> {
     const unitRaw = await this.model.findByPk(id);
 
     if (!unitRaw) {
-      return;
+      return undefined;
     }
 
     return this.prepareEntity(unitRaw);
@@ -89,11 +95,11 @@ class UnitModel extends Model {
 
   /**
    * Add member.
-   * @param {number} unitId Unit ID.
-   * @param {string} userId User ID.
-   * @returns {Promise<UnitEntity>} Unit entity promise.
+   * @param unitId Unit ID.
+   * @param userId User ID.
+   * @returns Unit entity.
    */
-  async addMember(unitId, userId) {
+  async addMember(unitId: number, userId: string): Promise<UnitEntity | null> {
     // Update.
     const [, unitsRaw] = await this.model.update(
       {
@@ -104,7 +110,7 @@ class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      log.save('unit-add-member|error', { unitId, userId });
+      global.log.save('unit-add-member|error', { unitId, userId });
       return null;
     }
 
@@ -112,27 +118,29 @@ class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    log.save('unit-add-member', { unitId, userId });
+    global.log.save('unit-add-member', { unitId, userId });
 
     return unit;
   }
 
   /**
    * Add head.
-   * @param {number} unitId Unit ID.
-   * @param {string} userId User ID.
-   * @returns {Promise<UnitEntity>} Unit entity promise.
+   * @param unitId Unit ID.
+   * @param userId User ID.
+   * @returns Unit entity.
    */
-  async addHead(unitId, userId) {
+  async addHead(unitId: number, userId: string): Promise<UnitEntity | null> {
     // Update.
     const [, unitsRaw] = await this.model.update(
-      { heads: Sequelize.fn('array_append', Sequelize.col('heads'), userId) },
+      {
+        heads: Sequelize.fn('array_append', Sequelize.col('heads'), userId),
+      },
       { where: { id: unitId }, returning: true },
     );
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      log.save('unit-add-head|error', { unitId, userId });
+      global.log.save('unit-add-head|error', { unitId, userId });
       return null;
     }
 
@@ -140,18 +148,27 @@ class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    log.save('unit-add-head', { unitId, userId });
+    global.log.save('unit-add-head', { unitId, userId });
 
     return unit;
   }
 
   /**
    * Add requested member.
-   * @param {number} unitId Unit ID.
-   * @param {{ipn: string, firstName: string, middleName: string, lastName: string, wrongUserInfo: boolean}} requestedMember Requested member.
-   * @returns {Promise<UnitEntity>} Unit entity promise.
+   * @param unitId Unit ID.
+   * @param requestedMember Requested member object.
+   * @returns Unit entity.
    */
-  async addRequestedMember(unitId, requestedMember) {
+  async addRequestedMember(
+    unitId: number,
+    requestedMember: {
+      ipn: string;
+      firstName: string;
+      middleName: string;
+      lastName: string;
+      wrongUserInfo: boolean;
+    },
+  ): Promise<UnitEntity | null> {
     // Update.
     const [, unitsRaw] = await this.model.update(
       {
@@ -162,7 +179,10 @@ class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      log.save('unit-remove-requested-member|error', { unitId, requestedMember });
+      global.log.save('unit-remove-requested-member|error', {
+        unitId,
+        requestedMember,
+      });
       return null;
     }
 
@@ -170,40 +190,40 @@ class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    log.save('unit-remove-requested-member', { unitId, requestedMember });
+    global.log.save('unit-remove-requested-member', { unitId, requestedMember });
 
     return unit;
   }
 
   /**
    * Remove requested member.
-   * @param {number} unitId Unit ID.
-   * @param {string} requestedMemberIpn Requested member IPN.
-   * @returns {Promise<UnitEntity>} Unit entity promise.
+   * @param unitId Unit ID.
+   * @param requestedMemberIpn Requested member IPN.
+   * @returns Unit entity.
    */
-  async removeRequestedMember(unitId, requestedMemberIpn) {
+  async removeRequestedMember(unitId: number, requestedMemberIpn: string): Promise<UnitEntity> {
     // Get unit.
     const unit = await this.findById(unitId);
-    const { requestedMembers } = unit;
+    const { requestedMembers } = unit!;
 
     // Remove requested member.
-    const requestedMembersToUpdate = requestedMembers.filter((v) => v.ipn !== requestedMemberIpn);
+    const requestedMembersToUpdate = requestedMembers.filter((v: any) => v.ipn !== requestedMemberIpn);
     const [, unitsRaw] = await this.model.update({ requested_members: requestedMembersToUpdate }, { where: { id: unitId }, returning: true });
 
     // Define and return first updated row entity.
     const [updatedUnitRaw] = unitsRaw;
     const updatedUnit = this.prepareEntity(updatedUnitRaw);
-    log.save('unit-remove-requested-member', { unitId, requestedMemberIpn });
+    global.log.save('unit-remove-requested-member', { unitId, requestedMemberIpn });
     return updatedUnit;
   }
 
   /**
    * Remove head ipn.
-   * @param {number} unitId Unit ID.
-   * @param {string} ipn Ipn.
-   * @returns {Promise<UnitEntity>} Unit entity promise.
+   * @param unitId Unit ID.
+   * @param ipn IPN value.
+   * @returns Unit entity.
    */
-  async removeHeadIpn(unitId, ipn) {
+  async removeHeadIpn(unitId: number, ipn: string): Promise<UnitEntity | null> {
     // Update.
     const [, unitsRaw] = await this.model.update(
       {
@@ -214,7 +234,7 @@ class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      log.save('unit-remove-head-ipn|error', { unitId, ipn });
+      global.log.save('unit-remove-head-ipn|error', { unitId, ipn });
       return null;
     }
 
@@ -222,18 +242,18 @@ class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    log.save('unit-remove-head-ipn', { unitId, ipn });
+    global.log.save('unit-remove-head-ipn', { unitId, ipn });
 
     return unit;
   }
 
   /**
    * Remove member.
-   * @param {number} unitId Unit ID.
-   * @param {string} userId User ID.
-   * @returns {Promise<UnitEntity>} Unit entity promise.
+   * @param unitId Unit ID.
+   * @param userId User ID.
+   * @returns Unit entity.
    */
-  async removeMember(unitId, userId) {
+  async removeMember(unitId: number, userId: string): Promise<UnitEntity | null> {
     // Update.
     const [, unitsRaw] = await this.model.update(
       {
@@ -244,7 +264,7 @@ class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      log.save('unit-remove-member|error', { unitId, userId });
+      global.log.save('unit-remove-member|error', { unitId, userId });
       return null;
     }
 
@@ -252,18 +272,18 @@ class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    log.save('unit-remove-member', { unitId, userId });
+    global.log.save('unit-remove-member', { unitId, userId });
 
     return unit;
   }
 
   /**
    * Remove member ipn.
-   * @param {number} unitId Unit ID.
-   * @param {string} ipn Ipn.
-   * @returns {Promise<UnitEntity>} Unit entity promise.
+   * @param unitId Unit ID.
+   * @param ipn IPN value.
+   * @returns Unit entity.
    */
-  async removeMemberIpn(unitId, ipn) {
+  async removeMemberIpn(unitId: number, ipn: string): Promise<UnitEntity | null> {
     // Update.
     const [, unitsRaw] = await this.model.update(
       {
@@ -274,7 +294,7 @@ class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      log.save('unit-remove-member-ipn|error', { unitId, ipn });
+      global.log.save('unit-remove-member-ipn|error', { unitId, ipn });
       return null;
     }
 
@@ -282,17 +302,17 @@ class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    log.save('unit-remove-member-ipn', { unitId, ipn });
+    global.log.save('unit-remove-member-ipn', { unitId, ipn });
 
     return unit;
   }
 
   /**
-   * Prepare entity.
-   * @param {object} unitRaw RAW unit from DB.
-   * @returns {UnitEntity} Unit entity.
+   * Prepare entity from raw database row.
+   * @param unitRaw Raw unit from DB.
+   * @returns Unit entity.
    */
-  prepareEntity(unitRaw) {
+  prepareEntity(unitRaw: any): UnitEntity {
     return new UnitEntity({
       id: unitRaw.id,
       parentId: unitRaw.parent_id,
@@ -311,4 +331,4 @@ class UnitModel extends Model {
   }
 }
 
-module.exports = UnitModel;
+export default UnitModel;

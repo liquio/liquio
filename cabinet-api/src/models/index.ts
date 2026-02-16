@@ -1,11 +1,17 @@
-const UnitModel = require('./unit');
+import UnitModel from './unit';
 
 // Constants.
 const MODELS_CLASSES_LIST = {
   UnitModel,
 };
 
+/**
+ * Models registry.
+ */
 class Models {
+  models: Record<string, any>;
+  static singleton: Models;
+
   /**
    * Models constructor.
    */
@@ -22,7 +28,7 @@ class Models {
   /**
    * Classes list.
    */
-  static get List() {
+  static get List(): typeof MODELS_CLASSES_LIST {
     return MODELS_CLASSES_LIST;
   }
 
@@ -30,7 +36,7 @@ class Models {
    * Init models.
    * @private
    */
-  initModels() {
+  private initModels(): void {
     // Define names of model classes.
     const namesOfModels = {
       unit: UnitModel,
@@ -38,15 +44,11 @@ class Models {
 
     // Init models.
     this.models = Object.entries(namesOfModels)
-      .map((v) => [v[0], new v[1]()])
+      .map((v) => [v[0], new (v[1] as any)()])
       .reduce(
         (t, v) => ({
           ...t,
-          ...(() => {
-            let n = {};
-            n[v[0]] = v[1];
-            return n;
-          })(),
+          [v[0]]: v[1],
         }),
         {},
       );
@@ -58,7 +60,9 @@ class Models {
    * Init relationships.
    * @private
    */
-  initRelationships() {}
+  private initRelationships(): void {
+    // Empty for now
+  }
 }
 
-module.exports = Models;
+export default Models;

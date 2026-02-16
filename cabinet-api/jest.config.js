@@ -4,20 +4,9 @@
  */
 
 /** @type {import('jest').Config} */
-const config = {
-  // Indicates which provider should be used to instrument code for coverage
-  coverageProvider: 'v8',
-
-  // The glob patterns Jest uses to detect test files
-  testMatch: [
-    '**/__tests__/**/*.{spec,test}.[jt]s?(x)',
-    '**/*.{spec,test}.[tj]s?(x)'
-  ],
-  // Exclude non-test files named test.js
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/src/controllers/test.js'
-  ],
-};
-
-module.exports = config;
+export const preset = 'ts-jest/presets/js-with-ts';
+export const bail = true;
+export const testEnvironment = 'node';
+export const testMatch = ['**/__tests__/**/*.+(spec|e2e.spec).[tj]s?(x)', '**/(*.)+(spec|test).[tj]s?(x)'];
+export const verbose = true;
+export const testPathIgnorePatterns = ['/dist/', '/node_modules/', '/src/controllers/test.ts'];

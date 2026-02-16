@@ -1,9 +1,9 @@
-const cyrillicToTranslit = require('cyrillic-to-translit-js');
-const PropByPath = require('prop-by-path');
+import CyrillicToTranslit from 'cyrillic-to-translit-js';
+import PropByPath from 'prop-by-path';
 
-const Provider = require('./provider');
-const HttpRequest = require('../../http_request');
-const { getTraceId } = require('../../async_local_storage');
+import BaseProvider from './provider';
+import HttpRequest from '../../http_request';
+import { getTraceId } from '../../async_local_storage';
 
 // Constants.
 const DEFAULT_ROUTES = {
@@ -47,12 +47,60 @@ const ERROR_MESSAGE_WRONG_RESPONSE_FORMAT = 'Wrong response format.';
 const ERROR_MESSAGE_WRONG_RESPONSE_DATA_FORMAT = 'Wrong response data format.';
 const SUCCESSFUL_SENT_SMS = 'confirm';
 
-class LiquioIdProvider extends Provider {
+export interface TokenResult {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface UserInfo {
+  userId: string;
+  address?: string;
+  addressStruct?: Record<string, unknown>;
+  name: string;
+  ceoName?: string;
+  isLegal: boolean;
+  isIndividualEntrepreneur?: boolean;
+  companyName?: string;
+  first_name?: string;
+  firstName?: string;
+  last_name?: string;
+  lastName?: string;
+  middle_name?: string;
+  middleName?: string;
+  email?: string;
+  phone?: string;
+  gender?: string;
+  birthday?: string;
+  avaUrl?: string;
+  status?: string;
+  valid?: Record<string, unknown>;
+  position?: string;
+  pem?: string;
+  encodeCertSerial?: string;
+  encodeCert?: string;
+  services?: any;
+}
+
+/**
+ * Liquio ID provider.
+ */
+export default class LiquioIdProvider extends BaseProvider {
+  server: string;
+  port: number;
+  routes: typeof DEFAULT_ROUTES;
+  timeout: number;
+  clientId: string;
+  clientSecret: string;
+  basicAuthHeader: string;
+  canDeleteUser: boolean;
+  config: any;
+  static singleton: LiquioIdProvider;
+
   /**
    * Constructor.
-   * @param {object} authConfig Auth config object.
+   * @param authConfig Auth config object.
    */
-  constructor(authConfig) {
+  constructor(authConfig: any) {
     if (!LiquioIdProvider.singleton) {
       super();
 
@@ -63,7 +111,7 @@ class LiquioIdProvider extends Provider {
       this.timeout = authConfig.timeout || 30000;
       this.clientId = authConfig.clientId;
       this.clientSecret = authConfig.clientSecret;
-      this.basicAuthHeader = `Basic ${authConfig.basicAuthToken}`; // Header "Authorization".
+      this.basicAuthHeader = `Basic ${authConfig.basicAuthToken}`;
       this.canDeleteUser = authConfig.canDeleteUser || false;
       LiquioIdProvider.singleton = this;
     }
@@ -73,19 +121,17 @@ class LiquioIdProvider extends Provider {
 
   /**
    * Get provider name.
-   * @returns {string}
    */
-  static get name() {
+  static get providerName(): string {
     return 'LiquioId';
   }
 
   /**
    * Get tokens.
-   * @param {string} code Auth code.
-   * @returns {Promise<{accessToken: string, refreshToken: string}>}
+   * @param code Auth code.
+   * @returns Token result.
    */
-  async getTokens(code) {
-    // Do request to get Liquio ID token.
+  async getTokens(code: string): Promise<TokenResult> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.getToken}`,
       method: HttpRequest.Methods.POST,
@@ -96,13 +142,11 @@ class LiquioIdProvider extends Provider {
       body: `grant_type=authorization_code&code=${code}&client_id=${this.clientId}&client_secret=${this.clientSecret}`,
     });
 
-    // Check response.
     if (!response.access_token || !response.refresh_token) {
-      log.save('login-error-id-response-without-tokens', response);
+      global.log.save('login-error-id-response-without-tokens', response);
       throw new Error(ERROR_MESSAGE_TOKENS_NOT_RESPONSED);
     }
 
-    // Return tokens.
     return {
       accessToken: response.access_token,
       refreshToken: response.refresh_token,
@@ -111,11 +155,10 @@ class LiquioIdProvider extends Provider {
 
   /**
    * Renew tokens.
-   * @param {string} refreshToken Refresh token.
-   * @returns {Promise<{accessToken: string, refreshToken: string}>}
+   * @param refreshToken Refresh token.
+   * @returns Token result.
    */
-  async renewTokens(refreshToken) {
-    // Do request to get Liquio ID token.
+  async renewTokens(refreshToken: string): Promise<TokenResult> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.getToken}`,
       method: HttpRequest.Methods.POST,
@@ -126,12 +169,10 @@ class LiquioIdProvider extends Provider {
       body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=${this.clientId}&client_secret=${this.clientSecret}`,
     });
 
-    // Check response.
     if (!response.access_token || !response.refresh_token) {
       throw new Error(ERROR_MESSAGE_TOKENS_NOT_RESPONSED);
     }
 
-    // Return tokens.
     return {
       accessToken: response.access_token,
       refreshToken: response.refresh_token,
@@ -140,11 +181,10 @@ class LiquioIdProvider extends Provider {
 
   /**
    * Get user info.
-   * @param {string} accessToken Liquio ID access token.
-   * @returns {Promise<{userId: string; services: { eds: { data: { pem: string } } }}>}
+   * @param accessToken Liquio ID access token.
+   * @returns User data.
    */
-  async getUser(accessToken) {
-    // Do request to get Liquio ID token.
+  async getUser(accessToken: string): Promise<any> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.getUserInfo}?access_token=${accessToken}`,
       method: HttpRequest.Methods.GET,
@@ -152,40 +192,27 @@ class LiquioIdProvider extends Provider {
       timeout: this.timeout,
     });
 
-    // Check response.
     if (!response.userId) {
-      log.save('login-error-id-response-without-user-id', response, 'error');
+      global.log.save('login-error-id-response-without-user-id', response, 'error');
       throw new Error(ERROR_MESSAGE_USER_ID_NOT_RESPONSED);
     }
     if (!response.services) {
-      log.save('login-error-id-response-without-user-eds-pem', response);
-      // throw new Error(ERROR_MESSAGE_USER_CERTIFICATE_PEM_NOT_RESPONSED);
+      global.log.save('login-error-id-response-without-user-eds-pem', response);
     }
 
-    // Return tokens.
     return response;
   }
 
   /**
    * Update user info.
-   * @param {string} userId User ID.
-   * @param {string} accessToken Liquio ID access token.
-   * @param {object} options Update options.
-   * @param {string} [options.firstName] First name.
-   * @param {string} [options.lastName] Last name.
-   * @param {string} [options.middleName] Middle name.
-   * @param {string} [options.gender] Gender. Values: "male", "female".
-   * @param {string} [options.birthday] Birthday. Value format: "DD/MM/YYYY".
-   * @param {string} [options.email] Email.
-   * @param {string} [options.phone] Phone.
-   * @param {string} [options.useTwoFactorAuth] Use two factor auth indicator.
-   * @param {string} [options.twoFactorType] Two factor auth type. Values: "phone", "totp".
-   * @returns {Promise<boolean>} Is updated indicator propmise.
+   * @param userId User ID.
+   * @param accessToken Liquio ID access token.
+   * @param options Update options.
+   * @returns Is updated indicator.
    */
-  async updateUser(userId, accessToken, options = {}) {
-    // Define request body.
+  async updateUser(userId: string, accessToken: string, options: Record<string, any> = {}): Promise<boolean> {
     const bodyRequiredProperties = `MIME+Type=application%2Fx-www-form-urlencoded&userId=${userId}&access_token=${accessToken}`;
-    const updatingParams = {
+    const updatingParams: Record<string, any> = {
       gender: options.gender,
       birthday: options.birthday,
       legalEntityDateRegistration: options.legalEntityDateRegistration,
@@ -210,12 +237,11 @@ class LiquioIdProvider extends Provider {
 
     const bodyUpdatingParamsArray = Object.entries(updatingParams)
       .filter((v) => typeof v[1] === 'string')
-      .map((v) => `&${v[0]}=${encodeURIComponent(v[1])}`);
+      .map((v) => `&${v[0]}=${encodeURIComponent(v[1] as string)}`);
     const bodyUpdatingParams = bodyUpdatingParamsArray.join('');
     const body = `${bodyRequiredProperties}${bodyUpdatingParams}`;
 
-    // Do request to update user info.
-    log.save('user-info-updating-request', body);
+    global.log.save('user-info-updating-request', body);
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.updateUserInfo}`,
       method: HttpRequest.Methods.POST,
@@ -226,32 +252,28 @@ class LiquioIdProvider extends Provider {
       body,
       timeout: this.timeout,
     });
-    log.save('user-info-updating-response', response);
+    global.log.save('user-info-updating-response', response);
 
-    // Return is update indicator.
     const isUpdated = response === USER_INFO_UPDATED_RESPONSE;
     return isUpdated;
   }
 
   /**
    * Get user by ID or IDs.
-   * @param {string|string[]} usersIds User ID or IDs list.
-   * @param {boolean} [withPrivateProps] With private properties.
-   * @returns {Promise<{}[]>} Users info promise.
+   * @param usersIds User ID or IDs list.
+   * @param withPrivateProps With private properties.
+   * @returns Users info.
    */
-  async getUsersByIds(usersIds, withPrivateProps = false) {
-    const normalizedUserIds = (Array.isArray(usersIds) ? usersIds : [usersIds]).filter((v) => typeof v === 'string' && v.length === 24);
+  async getUsersByIds(usersIds: string | string[], withPrivateProps = false): Promise<UserInfo[]> {
+    const normalizedUserIds = (Array.isArray(usersIds) ? usersIds : [usersIds]).filter((v: string) => typeof v === 'string' && v.length === 24);
 
-    // Check if empty.
     if (normalizedUserIds.length === 0) {
       return [];
     }
 
-    // Define request body.
     const bodyObject = { id: normalizedUserIds };
 
-    // Do request to search users.
-    log.save('get-user-by-id-request', bodyObject);
+    global.log.save('get-user-by-id-request', bodyObject);
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.getUserInfoById}`,
       method: HttpRequest.Methods.POST,
@@ -263,29 +285,32 @@ class LiquioIdProvider extends Provider {
       body: JSON.stringify(bodyObject),
       timeout: this.timeout,
     });
-    log.save('get-user-by-id-response', { usersIds, normalizedUserIds, response });
+    global.log.save('get-user-by-id-response', {
+      usersIds,
+      normalizedUserIds,
+      response,
+    });
 
-    // Check response.
     if (!Array.isArray(response)) {
       throw new Error(ERROR_MESSAGE_USER_NOT_RESPONSED);
     }
 
-    return response.map((user) => this.getMainUserInfo(user, withPrivateProps));
+    return response.map((user: any) => this.getMainUserInfo(user, withPrivateProps));
   }
 
   /**
    * Update user onboarding.
-   * @param {string} userId User ID.
-   * @param {object} params Params.
-   * @param {string} params.onboardingTaskId OnboardingTaskId.
-   * @param {boolean} params.needOnboarding NeedOnboarding.
+   * @param userId User ID.
+   * @param params Params.
    */
-  async updateUserOnboarding(userId, { onboardingTaskId, needOnboarding }) {
-    // Define request body.
-    const bodyObject = { userId, onboardingTaskId, needOnboarding };
+  async updateUserOnboarding(userId: string, params: { onboardingTaskId: string; needOnboarding: boolean }): Promise<void> {
+    const bodyObject = {
+      userId,
+      onboardingTaskId: params.onboardingTaskId,
+      needOnboarding: params.needOnboarding,
+    };
 
-    // Do request to search users.
-    log.save('update-user-onboarding-request', bodyObject);
+    global.log.save('update-user-onboarding-request', bodyObject);
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.updateUserOnboarding}`,
       method: HttpRequest.Methods.PUT,
@@ -294,25 +319,22 @@ class LiquioIdProvider extends Provider {
         'x-trace-id': getTraceId(),
         Authorization: this.basicAuthHeader,
       },
-      json: true,
-      body: bodyObject,
+      body: JSON.stringify(bodyObject),
       timeout: this.timeout,
     });
 
-    log.save('update-user-onboarding-response', response);
+    global.log.save('update-user-onboarding-response', response);
   }
 
   /**
    * Search users.
-   * @param {string} searchString Search string.
-   * @returns {Promise<{}[]>}
+   * @param searchString Search string.
+   * @returns Users info.
    */
-  async searchUsers(searchString) {
-    // Define request body.
+  async searchUsers(searchString: string): Promise<UserInfo[]> {
     const bodyObject = { searchString, limit: SEARCH_USERS_LIMIT };
 
-    // Do request to search users.
-    log.save('user-searching-request', bodyObject);
+    global.log.save('user-searching-request', bodyObject);
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.searchUsers}`,
       method: HttpRequest.Methods.POST,
@@ -324,31 +346,27 @@ class LiquioIdProvider extends Provider {
       body: JSON.stringify(bodyObject),
       timeout: this.timeout,
     });
-    log.save('user-searching-response', response);
+    global.log.save('user-searching-response', response);
 
-    // Check response.
     if (!Array.isArray(response)) {
       throw new Error(ERROR_MESSAGE_USERS_LIST_NOT_RESPONSED);
     }
 
-    const mainUsersInfo = response.map(this.getMainUserInfo.bind(this));
+    const mainUsersInfo = response.map((user: any) => this.getMainUserInfo(user));
 
-    // Return main users info.
     return mainUsersInfo;
   }
 
   /**
    * Get user by code.
-   * @param {number} code Code.
-   * @param {boolean} [withPrivateProps] With private properties.
-   * @returns {Promise<object>} User or users info promise.
+   * @param code Code.
+   * @param withPrivateProps With private properties.
+   * @returns User or users info.
    */
-  async getUserByCode(code, withPrivateProps = false) {
-    // Define request body.
+  async getUserByCode(code: number | number[], withPrivateProps = false): Promise<any> {
     const bodyObject = { ipn: code };
 
-    // Do request to search users.
-    log.save('user-find-by-code-request', bodyObject);
+    global.log.save('user-find-by-code-request', bodyObject);
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.getUserByCode}`,
       method: HttpRequest.Methods.POST,
@@ -360,31 +378,27 @@ class LiquioIdProvider extends Provider {
       body: JSON.stringify(bodyObject),
       timeout: this.timeout,
     });
-    log.save('user-find-by-code-response', response);
+    global.log.save('user-find-by-code-response', response);
 
-    // Check response.
     if (!Array.isArray(response)) {
       throw new Error(ERROR_MESSAGE_USER_NOT_RESPONSED);
     }
 
-    // Prepare data to return. Needs to return array if input IPN is array too.
-    const mainUsersInfo = response.map((user) => this.getMainUserInfo(user, withPrivateProps));
+    const mainUsersInfo = response.map((user: any) => this.getMainUserInfo(user, withPrivateProps));
     const [mainUserInfo = null] = mainUsersInfo;
     const needsReturnArray = Array.isArray(code);
     const infoToReturn = needsReturnArray ? mainUsersInfo : mainUserInfo;
 
-    // Return main user or users info.
     return infoToReturn;
   }
 
   /**
    * Check email.
-   * @param {string} email Email to check.
-   * @returns {boolean} Is email exist indicator.
+   * @param email Email to check.
+   * @returns Is email exist indicator.
    */
-  async checkEmail(email) {
-    // Do request to check email existence.
-    log.save('email-existance-request', email);
+  async checkEmail(email: string): Promise<boolean> {
+    global.log.save('email-existance-request', email);
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.checkEmail}?email=${email}`,
       method: HttpRequest.Methods.GET,
@@ -394,34 +408,32 @@ class LiquioIdProvider extends Provider {
       },
       timeout: this.timeout,
     });
-    log.save('email-existance-response', response);
+    global.log.save('email-existance-response', response);
 
-    // Check response.
     if (typeof response !== 'object') {
       throw new Error(ERROR_MESSAGE_EMAIL_EXISTENCE_NOT_RESPONSED);
     }
 
-    // Response existence.
     const isExist = !!response.isExist;
     return isExist;
   }
 
   /**
    * Get main user info.
-   * @param {object} user User object.
-   * @param {boolean} [withPrivateProps] With private properties.
-   * @param {boolean} [myInfo] My info indicator.
+   * @param user User object.
+   * @param withPrivateProps With private properties.
+   * @param myInfo My info indicator.
+   * @returns User info.
    */
-  getMainUserInfo(user, withPrivateProps = false, myInfo = false) {
-    // Check.
+  getMainUserInfo(user: any, withPrivateProps = false, myInfo = false): UserInfo | undefined {
     if (!user) {
-      return;
+      return undefined;
     }
 
-    const cyrillicIpn = cyrillicToTranslit({ preset: 'uk' }).reverse(user.ipn);
+    const cyrillicTranslit = CyrillicToTranslit({ preset: 'uk' });
+    const cyrillicIpn = cyrillicTranslit.reverse(user.ipn);
     user.cyrillicIpnPassport = cyrillicIpn;
 
-    // Define and return.
     return {
       ...(withPrivateProps ? user : {}),
       userId: user.userId,
@@ -453,20 +465,20 @@ class LiquioIdProvider extends Provider {
       encodeCert: user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.encodeCert,
       services: withPrivateProps
         ? user.services || {
-          ldap: user.user_services && user.user_services[0] && user.user_services[0].provider === 'ldap' ? user.user_services[0] : undefined,
-          eds: user.user_services && user.user_services[0] && user.user_services[0].provider === 'eds' ? user.user_services[0] : undefined,
-          govid: user.user_services && user.user_services[0] && user.user_services[0].provider === 'govid' ? user.user_services[0] : undefined,
-        }
+            ldap: user.user_services && user.user_services[0] && user.user_services[0].provider === 'ldap' ? user.user_services[0] : undefined,
+            eds: user.user_services && user.user_services[0] && user.user_services[0].provider === 'eds' ? user.user_services[0] : undefined,
+            govid: user.user_services && user.user_services[0] && user.user_services[0].provider === 'govid' ? user.user_services[0] : undefined,
+          }
         : undefined,
-    };
+    } as UserInfo;
   }
 
   /**
    * Send sms for phone verification.
-   * @param {number} phone User phone.
-   * @returns {string}
+   * @param phone User phone.
+   * @returns SMS send result.
    */
-  async sendSms(phone) {
+  async sendSms(phone: number): Promise<string> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.sendSms}?phone=${phone}`,
       method: HttpRequest.Methods.GET,
@@ -474,9 +486,8 @@ class LiquioIdProvider extends Provider {
       timeout: this.timeout,
     });
 
-    log.save('user-send-sms', response);
+    global.log.save('user-send-sms', response);
 
-    // Check response.
     if (!response.sendBySms) {
       throw new Error(ERROR_MESSAGE_USER_SMS_NOT_RESPONSED);
     }
@@ -486,11 +497,11 @@ class LiquioIdProvider extends Provider {
 
   /**
    * Verify phone.
-   * @param {number} phone User phone.
-   * @param {number} code Sms code.
-   * @returns {boolean}
+   * @param phone User phone.
+   * @param code Sms code.
+   * @returns Is verified indicator.
    */
-  async verifyPhone(phone, code) {
+  async verifyPhone(phone: number, code: number): Promise<boolean> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.verifyPhone}?phone=${phone}&code=${code}`,
       method: HttpRequest.Methods.GET,
@@ -498,7 +509,7 @@ class LiquioIdProvider extends Provider {
       timeout: this.timeout,
     });
 
-    log.save('user-phone-verification', response);
+    global.log.save('user-phone-verification', response);
 
     if (response === SUCCESSFUL_SENT_SMS) {
       return true;
@@ -509,33 +520,39 @@ class LiquioIdProvider extends Provider {
 
   /**
    * Verify phone and set.
-   * @param {number} phone User phone.
-   * @param {number} code Sms code.
-   * @param {string} accessToken User access token.
-   * @returns {Promise<{data: {isConfirmed: boolean, user?: object}}|{error: {message: string, type: string}}}>} Phone verification result promise.
+   * @param phone User phone.
+   * @param code Sms code.
+   * @param accessToken User access token.
+   * @returns Phone verification result.
    */
-  async verifyPhoneAndSet(phone, code, accessToken) {
-    // Request phone verification.
-    log.save('user-phone-verification-request', { phone, code, accessToken });
+  async verifyPhoneAndSet(phone: number, code: number, accessToken: string): Promise<any> {
+    global.log.save('user-phone-verification-request', {
+      phone,
+      code,
+      accessToken,
+    });
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.verifyPhoneAndSet}?phone=${phone}&code=${code}&access_token=${accessToken}`,
       method: HttpRequest.Methods.POST,
       headers: { 'x-trace-id': getTraceId() },
       timeout: this.timeout,
     });
-    log.save('user-phone-verification-response', { phone, code, accessToken, response });
+    global.log.save('user-phone-verification-response', {
+      phone,
+      code,
+      accessToken,
+      response,
+    });
 
-    // Return Liquio ID response as is.
     return response;
   }
 
   /**
    * Check phone exist.
-   * @param {number} phone User phone.
-   * @returns {Promise<{isExist: boolean, isConfirmed: boolean}>} Phone existing info promise.
+   * @param phone User phone.
+   * @returns Phone existing info.
    */
-  async checkPhoneExist(phone) {
-    // Do request.
+  async checkPhoneExist(phone: number): Promise<{ isExist: boolean; isConfirmed: boolean }> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.phoneExist}?phone=${phone}`,
       method: HttpRequest.Methods.GET,
@@ -543,10 +560,8 @@ class LiquioIdProvider extends Provider {
       timeout: this.timeout,
     });
 
-    // Log result.
-    log.save('user-phone-existing-verification', response);
+    global.log.save('user-phone-existing-verification', response);
 
-    // Check result, define and return info.
     let isExist = false;
     let isConfirmed = false;
     if (response && response.text && response.text !== 'null') {
@@ -561,10 +576,10 @@ class LiquioIdProvider extends Provider {
 
   /**
    * Change email.
-   * @param {string} email User email.
-   * @returns {string}
+   * @param email User email.
+   * @returns Result.
    */
-  async changeEmail(email) {
+  async changeEmail(email: string): Promise<any> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.changeEmail}?email=${email}`,
       method: HttpRequest.Methods.GET,
@@ -572,9 +587,8 @@ class LiquioIdProvider extends Provider {
       timeout: this.timeout,
     });
 
-    log.save('user-change-email', response);
+    global.log.save('user-change-email', response);
 
-    // Check response.
     if (typeof response === 'undefined') {
       throw new Error(ERROR_MESSAGE_USER_CHANGE_EMAIL_NOT_RESPONSED);
     }
@@ -584,12 +598,12 @@ class LiquioIdProvider extends Provider {
 
   /**
    * Confirm change email.
-   * @param {string} email User email.
-   * @param {number} code User code.
-   * @param {string} accessToken User access token.
-   * @returns {string}
+   * @param email User email.
+   * @param code User code.
+   * @param accessToken User access token.
+   * @returns Result.
    */
-  async confirmChangeEmail(email, code, accessToken) {
+  async confirmChangeEmail(email: string, code: number, accessToken: string): Promise<any> {
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.confirmChangeEmail}?email=${email}&code_email=${code}&access_token=${accessToken}`,
       method: HttpRequest.Methods.GET,
@@ -597,9 +611,8 @@ class LiquioIdProvider extends Provider {
       timeout: this.timeout,
     });
 
-    log.save('user-confirm-change-email', response);
+    global.log.save('user-confirm-change-email', response);
 
-    // Check response.
     if (!response || !response.userId) {
       throw new Error(ERROR_MESSAGE_USER_CONFIRMATION_CHANGE_EMAIL_NOT_RESPONSED);
     }
@@ -609,13 +622,12 @@ class LiquioIdProvider extends Provider {
 
   /**
    * Add test code.
-   * @param {string} code Code to initialize.
-   * @param {string} userId User ID to login with defined code.
-   * @returns {Promise<boolean>} Is initialized indicator promise.
+   * @param code Code to initialize.
+   * @param userId User ID to login with defined code.
+   * @returns Is initialized indicator.
    */
-  async addTestCode(code, userId) {
-    // Do request to check email existence.
-    log.save('add-test-code-request', { code, userId });
+  async addTestCode(code: string, userId: string): Promise<boolean> {
+    global.log.save('add-test-code-request', { code, userId });
     const response = await HttpRequest.send({
       url: `${this.server}:${this.port}${this.routes.addTestCode}`,
       method: HttpRequest.Methods.POST,
@@ -627,9 +639,8 @@ class LiquioIdProvider extends Provider {
       body: JSON.stringify({ code, userId }),
       timeout: this.timeout,
     });
-    log.save('add-test-code-response', response);
+    global.log.save('add-test-code-response', response);
 
-    // Check response.
     if (typeof response !== 'object') {
       throw new Error(ERROR_MESSAGE_WRONG_RESPONSE_FORMAT);
     }
@@ -640,16 +651,15 @@ class LiquioIdProvider extends Provider {
       throw new Error(ERROR_MESSAGE_WRONG_RESPONSE_DATA_FORMAT);
     }
 
-    // Response is initialized indicator.
     const isInitialized = response.data.code === code;
     return isInitialized;
   }
 
   /**
    * Send ping request.
-   * @returns {Promise<{}>}
+   * @returns Ping response.
    */
-  async sendPingRequest() {
+  async sendPingRequest(): Promise<any> {
     const fullResponse = true;
 
     try {
@@ -665,7 +675,10 @@ class LiquioIdProvider extends Provider {
         },
         fullResponse,
       );
-      log.save('send-ping-request-to-liquio-id', { response: response.toString(), body });
+      global.log.save('send-ping-request-to-liquio-id', {
+        response: response.toString(),
+        body,
+      });
 
       const headers = response.headers;
       const version = headers && headers.version;
@@ -673,25 +686,23 @@ class LiquioIdProvider extends Provider {
       const environment = headers && headers.environment;
 
       return { version, customer, environment, body };
-    } catch (error) {
-      log.save('send-ping-request-to-liquio-id-error', error.message);
+    } catch (error: any) {
+      global.log.save('send-ping-request-to-liquio-id-error', error.message);
     }
   }
 
   /**
    * Logout other sessions.
-   * @param {string} userId User ID.
-   * @param {string} accessToken Access token.
-   * @param {string} refreshToken Refresh token.
-   * @returns {Promise<boolean>} Is accepted indicator promise.
+   * @param userId User ID.
+   * @param accessToken Access token.
+   * @param refreshToken Refresh token.
+   * @returns Is accepted indicator.
    */
-  async logoutOtherSessions(userId, accessToken, refreshToken) {
-    // Define request body.
+  async logoutOtherSessions(userId: string, accessToken: string, refreshToken: string): Promise<boolean> {
     const bodyRequiredProperties = `MIME+Type=application%2Fx-www-form-urlencoded&userId=${userId}&access_token=${accessToken}&refresh_token=${refreshToken}`;
     const body = `${bodyRequiredProperties}`;
 
-    // Do request to logout other sessions.
-    log.save('logout-other-sessions-request', { body, userId });
+    global.log.save('logout-other-sessions-request', { body, userId });
     let response;
     const options = {
       url: `${this.server}:${this.port}${this.routes.logoutOtherSessions}`,
@@ -703,37 +714,39 @@ class LiquioIdProvider extends Provider {
       body,
       timeout: this.timeout,
     };
-    log.save('logout-other-sessions-options', { options }, 'info');
+    global.log.save('logout-other-sessions-options', { options }, 'info');
     try {
       response = await HttpRequest.send(options);
-    } catch (error) {
-      log.save('logout-other-sessions-request-error', { error: error && error.message, body, userId });
+    } catch (error: any) {
+      global.log.save('logout-other-sessions-request-error', {
+        error: error && error.message,
+        body,
+        userId,
+      });
     }
-    log.save('logout-other-sessions-response', { response, userId });
+    global.log.save('logout-other-sessions-response', { response, userId });
 
-    // Return is update indicator.
     const isAccepted = response && response.data && response.data.accepted;
     return isAccepted;
   }
 
   /**
    * Prepare user.
-   * @param {string} name First name.
-   * @param {string} surname Surname.
-   * @param {string} middleName Middle name.
-   * @param {string} ipn IPN.
-   * @param {string} email Email.
+   * @param name First name.
+   * @param surname Surname.
+   * @param middleName Middle name.
+   * @param ipn IPN.
+   * @param email Email.
+   * @returns Prepared user.
    */
-  async prepareUser(name, surname, middlename, ipn, email) {
-    // Transliterate ipn.
-    const translitedIpn = cyrillicToTranslit({ preset: 'uk' }).transform(ipn);
+  async prepareUser(name: string, surname: string, middleName: string, ipn: string, email: string): Promise<any> {
+    const cyrillicTranslit = CyrillicToTranslit({ preset: 'uk' });
+    const translitedIpn = cyrillicTranslit.transform(ipn);
 
-    // Define request body.
-    const bodyRequiredProperties = `MIME+Type=application%2Fx-www-form-urlencoded&name=${name}&surname=${surname}&middlename=${middlename}&ipn=${translitedIpn}&email=${email}`;
+    const bodyRequiredProperties = `MIME+Type=application%2Fx-www-form-urlencoded&name=${name}&surname=${surname}&middlename=${middleName}&ipn=${translitedIpn}&email=${email}`;
     const body = `${bodyRequiredProperties}`;
 
-    // Do request.
-    log.save('prepare-user-request', { body }, 'info');
+    global.log.save('prepare-user-request', { body }, 'info');
     let response;
     const options = {
       url: `${this.server}:${this.port}${this.routes.prepareUser}`,
@@ -746,24 +759,30 @@ class LiquioIdProvider extends Provider {
       body,
       timeout: this.timeout,
     };
-    log.save('prepare-user-options', { options }, 'info');
+    global.log.save('prepare-user-options', { options }, 'info');
     try {
       response = await HttpRequest.send(options);
-    } catch (error) {
-      log.save('prepare-user-error', { error: error && error.message, body });
+    } catch (error: any) {
+      global.log.save('prepare-user-error', { error: error && error.message, body });
     }
 
-    // Check response.
     if (!response.userId) {
-      log.save('prepare-user-response-error', { response }, 'error');
+      global.log.save('prepare-user-response-error', { response }, 'error');
       return undefined;
     }
-    log.save('prepare-user-response', { response }, 'info');
+    global.log.save('prepare-user-response', { response }, 'info');
 
     return response;
   }
 
-  async changePassword(email, oldPassword, newPassword) {
+  /**
+   * Change password.
+   * @param email User email.
+   * @param oldPassword Old password.
+   * @param newPassword New password.
+   * @returns Success indicator.
+   */
+  async changePassword(email: string, oldPassword: string, newPassword: string): Promise<any> {
     try {
       const options = {
         url: `${this.server}:${this.port}${this.routes.changePassword}`,
@@ -777,25 +796,33 @@ class LiquioIdProvider extends Provider {
         timeout: this.timeout,
       };
 
-      log.save('change-user-password-request', { ...options, headers: { ...options.headers, Authorization: 'Basic ***' } });
+      global.log.save('change-user-password-request', {
+        ...options,
+        headers: { ...options.headers, Authorization: 'Basic ***' },
+      });
 
       const { success, error } = await HttpRequest.send(options);
 
       if (error) {
-        log.save('change-user-password-error', error);
+        global.log.save('change-user-password-error', error);
         return { success: false, error };
       }
 
-      log.save('change-user-password-response', { success });
+      global.log.save('change-user-password-response', { success });
 
       return { success };
-    } catch (error) {
-      log.save('change-user-password-error', error.message);
+    } catch (error: any) {
+      global.log.save('change-user-password-error', error.message);
       return { success: false };
     }
   }
 
-  async generateUserTotp(userId) {
+  /**
+   * Generate user TOTP.
+   * @param userId User ID.
+   * @returns TOTP generation result.
+   */
+  async generateUserTotp(userId: string): Promise<any> {
     try {
       const options = {
         url: `${this.server}:${this.port}${this.routes.generateUserTotp}?userId=${userId}`,
@@ -808,25 +835,38 @@ class LiquioIdProvider extends Provider {
         timeout: this.timeout,
       };
 
-      log.save('generate-user-totp-request', { ...options, headers: { ...options.headers, Authorization: 'Basic ***' } });
+      global.log.save('generate-user-totp-request', {
+        ...options,
+        headers: { ...options.headers, Authorization: 'Basic ***' },
+      });
 
       const { secret, uri, error } = await HttpRequest.send(options);
 
       if (error) {
-        log.save('generate-user-totp-error', { error: error.message, stack: error.stack }, 'error');
+        global.log.save('generate-user-totp-error', { error: error.message, stack: error.stack }, 'error');
         return { success: false };
       }
 
-      log.save('generate-user-totp-response', { secret: secret && '***', uri: uri && uri.replace(secret, '***') });
+      global.log.save('generate-user-totp-response', {
+        secret: secret && '***',
+        uri: uri && uri.replace(secret, '***'),
+      });
 
       return { success: true, secret, uri };
-    } catch (error) {
-      log.save('generate-user-totp-error', { error: error.message, stack: error.stack }, 'error');
+    } catch (error: any) {
+      global.log.save('generate-user-totp-error', { error: error.message, stack: error.stack }, 'error');
       return { success: false };
     }
   }
 
-  async enableUserTotpSecret(userId, secret, code) {
+  /**
+   * Enable user TOTP secret.
+   * @param userId User ID.
+   * @param secret TOTP secret.
+   * @param code TOTP code.
+   * @returns Success indicator.
+   */
+  async enableUserTotpSecret(userId: string, secret: string, code: string): Promise<any> {
     try {
       const options = {
         url: `${this.server}:${this.port}${this.routes.enableUserTotpSecret}`,
@@ -840,25 +880,34 @@ class LiquioIdProvider extends Provider {
         timeout: this.timeout,
       };
 
-      log.save('enable-user-totp-request', { ...options, headers: { ...options.headers, Authorization: 'Basic ***' } });
+      global.log.save('enable-user-totp-request', {
+        ...options,
+        headers: { ...options.headers, Authorization: 'Basic ***' },
+      });
 
       const { success, error } = await HttpRequest.send(options);
 
       if (error) {
-        log.save('enable-user-totp-error', error);
+        global.log.save('enable-user-totp-error', error);
         return { success: false };
       }
 
-      log.save('enable-user-totp-response', { success });
+      global.log.save('enable-user-totp-response', { success });
 
       return { success };
-    } catch (error) {
-      log.save('enable-user-totp-error', error.message);
+    } catch (error: any) {
+      global.log.save('enable-user-totp-error', error.message);
       return { success: false };
     }
   }
 
-  async disableUserTotpSecret(userId, code) {
+  /**
+   * Disable user TOTP secret.
+   * @param userId User ID.
+   * @param code TOTP code.
+   * @returns Success indicator.
+   */
+  async disableUserTotpSecret(userId: string, code: string): Promise<any> {
     try {
       const options = {
         url: `${this.server}:${this.port}${this.routes.disableUserTotpSecret}`,
@@ -872,25 +921,33 @@ class LiquioIdProvider extends Provider {
         timeout: this.timeout,
       };
 
-      log.save('disable-user-totp-request', { ...options, headers: { ...options.headers, Authorization: 'Basic ***' } });
+      global.log.save('disable-user-totp-request', {
+        ...options,
+        headers: { ...options.headers, Authorization: 'Basic ***' },
+      });
 
       const { success, error } = await HttpRequest.send(options);
 
       if (error) {
-        log.save('disable-user-totp-error', error);
+        global.log.save('disable-user-totp-error', error);
         return { success: false };
       }
 
-      log.save('disable-user-totp-response', { success });
+      global.log.save('disable-user-totp-response', { success });
 
       return { success };
-    } catch (error) {
-      log.save('disable-user-totp-error', error.message);
+    } catch (error: any) {
+      global.log.save('disable-user-totp-error', error.message);
       return { success: false };
     }
   }
 
-  async deleteUser(userId) {
+  /**
+   * Delete user.
+   * @param userId User ID.
+   * @returns Success indicator.
+   */
+  async deleteUser(userId: string): Promise<any> {
     if (!this.canDeleteUser) {
       return { success: false, message: 'Method is not allowed' };
     }
@@ -904,26 +961,26 @@ class LiquioIdProvider extends Provider {
           'x-trace-id': getTraceId(),
           Authorization: this.basicAuthHeader,
         },
-
         body: JSON.stringify({ userId }),
         timeout: this.timeout,
       };
 
-      log.save('delete-user-request', { ...options, headers: { ...options.headers, Authorization: 'Basic ***' } });
+      global.log.save('delete-user-request', {
+        ...options,
+        headers: { ...options.headers, Authorization: 'Basic ***' },
+      });
 
       const { success, error } = await HttpRequest.send(options);
 
       if (error) {
-        log.save('delete-user-error', error);
+        global.log.save('delete-user-error', error);
         return { success: false };
       }
-      log.save('delete-user-response', { success });
+      global.log.save('delete-user-response', { success });
       return { success };
-    } catch (error) {
-      log.save('delete-user-error', error.message);
+    } catch (error: any) {
+      global.log.save('delete-user-error', error.message);
       return { success: false };
     }
   }
 }
-
-module.exports = LiquioIdProvider;

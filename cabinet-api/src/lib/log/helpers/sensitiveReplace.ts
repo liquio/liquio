@@ -1,12 +1,17 @@
 /**
  * Sensitive properties replace
- * @param {string} targetObject
- * @param {array} excludeParams
- * @param {string} replaceMask
- * @returns
+ * @param targetObject - The target object (usually JSON string)
+ * @param excludeParams - Array of parameter names to mask
+ * @param replaceMask - The mask string to replace sensitive values with
+ * @returns The target object with sensitive values masked
  */
 const DEFAULT_EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oauth-token'];
-const sensitiveReplace = (targetObject, excludeParams = DEFAULT_EXCLUDE_PARAMS, replaceMask = '****') => {
+
+const sensitiveReplace = (
+  targetObject: string | Record<string, unknown>,
+  excludeParams: string[] = DEFAULT_EXCLUDE_PARAMS,
+  replaceMask: string = '****',
+): string | Record<string, unknown> => {
   if (typeof targetObject !== 'string') {
     return targetObject;
   }
@@ -27,4 +32,4 @@ const sensitiveReplace = (targetObject, excludeParams = DEFAULT_EXCLUDE_PARAMS, 
   return resultString;
 };
 
-module.exports = sensitiveReplace;
+export default sensitiveReplace;
