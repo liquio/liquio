@@ -158,7 +158,7 @@ export default class Controller {
     const units = this.getRequestUserUnitEntities(req);
     const { all }: any = units || { all: [] };
 
-    return [...new Set(_.flattenDeep(all.map((v: any) => v.allowTokens)))];
+    return [...new Set(_.flattenDeep(all.map((v: any) => v.allowTokens)))] as string[];
   }
 
   /**
