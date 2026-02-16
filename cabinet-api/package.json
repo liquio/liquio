@@ -44,7 +44,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash": "^4.17.23",
     "@types/node": "^22.19.11",
-    "eslint": "^9.39.2",
+    "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^62.5.4",
     "eslint-plugin-prettier": "^5.5.5",
