@@ -44,7 +44,7 @@
     "react-perfect-scrollbar": "^1.5.8",
     "react-redux": "^8.1.3",
     "react-render-html": "^0.6.0",
-    "react-resize-detector": "^10.0.1",
+    "react-resize-detector": "^12.3.0",
     "react-router-dom": "^5.3.4",
     "react-scripts": "^5.0.1",
     "react-translate": "^6.1.0",
