@@ -55,7 +55,7 @@ async function certResultSetStatus({
     taskId = task.id;
   } catch (error) {
     log.save('external-services-controller|set-cert-result|cannot-find-task-and-document', { error: error && error.message }, 'error');
-    throw new Error('Task to update getting error.');
+    throw new Error('Task to update getting error.', { cause: error });
   }
 
   if (!taskId) {
@@ -132,7 +132,7 @@ async function certResultSetStatus({
     await businesses.document.updateByExternalService(documentId, parsedResultData, externalServiceUser, true);
   } catch (error) {
     log.save('external-services-controller|set-cert-result|cannot-update-document', { error: error && error.message }, 'error');
-    throw new Error(`Cannot update document: ${error.message}`);
+    throw new Error(`Cannot update document: ${error.message}`, { cause: error });
   }
 
   // Update workflow number.
@@ -140,7 +140,7 @@ async function certResultSetStatus({
     await models.workflow.setNumber(workflowId, certNum);
   } catch (error) {
     log.save('external-services-controller|set-cert-result|cannot-set-workflow-number', { error: error && error.message }, 'error');
-    throw new Error(`Cannot update workflow number: ${error.message}`);
+    throw new Error(`Cannot update workflow number: ${error.message}`, { cause: error });
   }
 
   // Commit task.
@@ -156,7 +156,7 @@ async function certResultSetStatus({
       error.message += ' (' + error.details.map(errorDetailed => errorDetailed.dataPath + ' ' + errorDetailed.message).join(', ') + ')';
     }
     log.save('external-services-controller|set-cert-result|cannot-commit-task', { error: error && error.message }, 'error');
-    throw new Error('Cannot commit task.');
+    throw new Error('Cannot commit task.', { cause: error });
   }
 }
 

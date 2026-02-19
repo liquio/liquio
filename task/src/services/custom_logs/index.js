@@ -59,7 +59,7 @@ class CustomLogs {
       task
     } = options;
 
-    let customLogTemplates = [];
+    let customLogTemplates;
     if (document || task) {
       // Define document template ID or task template ID.
       const { documentTemplateId } = document || {};

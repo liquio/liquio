@@ -169,7 +169,7 @@ class DocumentTemplateModel extends Model {
         jsonSchema = jsoncParser.parse(documentTemplate.json_schema);
       } catch (error) {
         log.save('substitute-json-schema-parse-error', error.toString(), 'error');
-        throw new Error(`Cannot parse JSON schema from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`);
+        throw new Error(`Cannot parse JSON schema from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`, { cause: error });
       }
 
       if (!jsonSchema.properties?.[key]) {

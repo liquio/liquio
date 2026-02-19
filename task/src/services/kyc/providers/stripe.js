@@ -125,7 +125,7 @@ class StripeProvider extends KycProvider {
         },
         'error'
       );
-      throw new Error(`Stripe request failed: ${error.message}`);
+      throw new Error(`Stripe request failed: ${error.message}`, { cause: error });
     }
   }
 }

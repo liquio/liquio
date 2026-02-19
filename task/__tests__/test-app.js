@@ -212,7 +212,7 @@ class TestApp extends BpmnTaskCore {
             .catch((err) => `Failed to seed data: ${err}`),
         );
       } catch (error) {
-        throw new Error(`Unable to load test data: ${error.message}`);
+        throw new Error(`Unable to load test data: ${error.message}`, { cause: error });
       }
       await client.end();
     }

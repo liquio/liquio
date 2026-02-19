@@ -157,6 +157,7 @@ class StandardPaymentReceiptDocumentRequesterProvider {
         });
         throw new Error(
           `StandardPaymentReceiptDocumentRequesterProvider.getPaymentReceipt. Cannot upload receipt to file storage. ${error?.toString()}`,
+          { cause: error },
         );
       }
 
@@ -182,6 +183,7 @@ class StandardPaymentReceiptDocumentRequesterProvider {
         });
         throw new Error(
           `StandardPaymentReceiptDocumentRequesterProvider.getPaymentReceipt. Cannot create document attachments. ${error?.toString()}`,
+          { cause: error },
         );
       }
 
@@ -288,7 +290,7 @@ class StandardPaymentReceiptDocumentRequesterProvider {
       return jwt.sign(payloadString, rsaPrivateKeyString, { algorithm: SIGN_ALGORITHM });
     } catch (error) {
       log.save('standard-payment-receipt-document-request-provider|generate-jwt-token|sign-error', { error: error?.toString() }, 'error');
-      throw new Error('StandardPaymentReceiptDocumentRequesterProvider.generateJwtToken. Cannot generate token');
+      throw new Error('StandardPaymentReceiptDocumentRequesterProvider.generateJwtToken. Cannot generate token', { cause: error });
     }
   }
 }

@@ -42,7 +42,7 @@ async function prepareFixtures(app) {
       await app.model('userInbox').create(userInbox);
     }
   } catch (error) {
-    throw new Error(`Unable to prepare fixtures: ${error.message}`);
+    throw new Error(`Unable to prepare fixtures: ${error.message}`, { cause: error });
   }
 }
 

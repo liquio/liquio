@@ -29,7 +29,7 @@ class PaymentService {
       result = await this.providers[providerName].calculatePayment(data);
     } catch (error) {
       log.save('calculate-payment-data-error', { error: error && error.message }, 'error');
-      throw new Error(error);
+      throw new Error(error.message || error, { cause: error });
     }
     log.save('calculate-payment-data-provider-result', { result });
 
@@ -53,7 +53,7 @@ class PaymentService {
       result = await this.providers[providerName].handleStatus(data, providerOptions, status, queryParamsObject, headersObject, checkPrevTransaction);
     } catch (error) {
       log.save('handle-payment-status-on-provider-error', { error }, 'error');
-      throw new Error(error);
+      throw new Error(error.message || error, { cause: error });
     }
     log.save('handle-payment-status-on-provider-result', { result });
 

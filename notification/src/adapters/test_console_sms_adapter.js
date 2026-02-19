@@ -10,7 +10,7 @@ class TestConsoleSmsAdapter {
    */
   async sendSms(phones = [], text, msgid) {
     // Send SMS for all phones from list.
-    let responses;
+    const responses = [];
     for (const phone of phones) {
       const response = await this.sendOneSms(phone, text, msgid);
       responses.push(response);

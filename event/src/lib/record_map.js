@@ -120,7 +120,7 @@ class RecordMap {
         recordData[mapEntryKey] = await this.getRecordDataValueAsFunctionString(mapEntryValue);
       } catch (error) {
         log.save('eval-error', { error: error && error.message });
-        throw new Error(MAP_ENTRIES_EVAL_ERROR.replace('%s', mapEntryKey).replace('%d', (error && error.message) || error));
+        throw new Error(MAP_ENTRIES_EVAL_ERROR.replace('%s', mapEntryKey).replace('%d', (error && error.message) || error), { cause: error });
       }
     }
 

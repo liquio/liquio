@@ -19,7 +19,7 @@ async function prepareFixtures(app) {
         await app.model(name).create(fixtures[i]);
       } catch (error) {
         console.error(`Detailed error for ${name} fixture at index ${i}:`, error);
-        throw new Error(`Unable to create ${name} fixture at index ${i}: ${error.message}`);
+        throw new Error(`Unable to create ${name} fixture at index ${i}: ${error.message}`, { cause: error });
       }
     }
   }

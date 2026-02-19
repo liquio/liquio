@@ -442,6 +442,7 @@ const Message = class extends Auth {
         // Inform SMS can not be sent.
         log.save('send-message-by-user-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
         sendBySms = { error: 'Some phones denied by blacklist.', blockedPhones };
+        sendBySmsPromise = Promise.resolve(sendBySms);
       } else {
         // Send SMS.
         if (!not_send) {
@@ -590,7 +591,7 @@ const Message = class extends Auth {
 
     // Get options.
     const { attach } = (options && options.postal) || {};
-    let attachLinks = [];
+    let attachLinks;
     try {
       attachLinks = await this.getAttachLinks(attach);
     } catch (error) {

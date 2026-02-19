@@ -253,7 +253,7 @@ class DocumentBusiness extends Business {
       return [asicManifestHash, ...filesHashes];
     } catch (error) {
       log.save('try-to-get-asic-manifest-error', { message: error.message, stack: error.stack }, 'error');
-      throw new Error(ERROR_GET_DATA_FOR_SIGN);
+      throw new Error(ERROR_GET_DATA_FOR_SIGN, { cause: error });
     }
   }
 
@@ -661,7 +661,7 @@ class DocumentBusiness extends Business {
           'error',
         );
 
-        throw new Error('Can\'t save p7s signature.');
+        throw new Error('Can\'t save p7s signature.', { cause: error });
       }
     }
 
@@ -729,7 +729,8 @@ class DocumentBusiness extends Business {
         break;
       }
 
-      let { content, pem } = {};
+      let content;
+      let pem;
       if (signatureType !== SIGNATURE_TYPE_TAX_SIGN_ENCRYPT_SIGN) {
         // Get signature info.
         const signatureInfo = await this.eds.getSignatureInfo(
@@ -781,7 +782,7 @@ class DocumentBusiness extends Business {
           'error',
         );
 
-        throw new Error('Can\'t save additional p7s signature.');
+        throw new Error('Can\'t save additional p7s signature.', { cause: error });
       }
     }
 
@@ -864,7 +865,7 @@ class DocumentBusiness extends Business {
         additionalDataToSign,
         document: documentString ?? document,
       });
-      throw new Error(ERROR_GET_DATA_FOR_SIGN);
+      throw new Error(ERROR_GET_DATA_FOR_SIGN, { cause: error });
     }
 
     // Return additional data to sign.
@@ -1092,7 +1093,7 @@ class DocumentBusiness extends Business {
       log.save('sign-available-function-result', { documentId, isSignAvailableFunction, isSignAvailable });
     } catch (error) {
       log.save('sign-available-function-error', { documentId, isSignAvailableFunction, error: error && error.message, document }, 'error');
-      throw new Error('Sign available function error.');
+      throw new Error('Sign available function error.', { cause: error });
     }
 
     // Return is sign available indicator.
@@ -1148,7 +1149,7 @@ class DocumentBusiness extends Business {
         },
         'error',
       );
-      throw new Error('Continue sign available function error.');
+      throw new Error('Continue sign available function error.', { cause: error });
     }
 
     // Return is sign available indicator.
@@ -1219,7 +1220,7 @@ class DocumentBusiness extends Business {
     try {
       document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, strict);
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message, { cause: error });
     }
     return document;
   }
@@ -2085,7 +2086,7 @@ class DocumentBusiness extends Business {
           try {
             await this.updateOneRegisterRecord(handler, document, statusInfo);
           } catch (error) {
-            throw new Error(`${paymentControlPath}.onReceiveStatusHandlers.register.update-one-record. Cannot update record. ${error.toString()}`);
+            throw new Error(`${paymentControlPath}.onReceiveStatusHandlers.register.update-one-record. Cannot update record. ${error.toString()}`, { cause: error });
           }
         }
       }
@@ -2209,8 +2210,8 @@ class DocumentBusiness extends Business {
     const { transactionId } = calculatedData;
 
     // Send confirmation code.
-    let confirmCodeRes = 0,
-      paymentId;
+    let confirmCodeRes = 0;
+    let paymentId = undefined;
     try {
       await this.paymentService.confirmBySmsCode(providerOptions, calculatedData, smsCode);
     } catch (error) {
@@ -2302,7 +2303,7 @@ class DocumentBusiness extends Business {
       });
     } catch (error) {
       log.save('unhold-payment-while-commit-error', error, 'error');
-      throw new Error(error);
+      throw new Error(error.message, { cause: error });
     }
     if (!unholdPaymentRes) {
       log.save('unhold-payment-empty-res-while-commit-error', { unholdPaymentRes, documentId }, 'error');
@@ -2338,7 +2339,7 @@ class DocumentBusiness extends Business {
     try {
       taskAndDocumentEntities = await models.task.findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId);
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message || String(error), { cause: error });
     }
     if (!taskAndDocumentEntities) {
       throw new Error('Can\'t find task or document entities.');
@@ -2386,7 +2387,7 @@ class DocumentBusiness extends Business {
       signersData = await this.auth.getUsersByIds(signers, privateProps);
     } catch (error) {
       log.save('decline-multisigns-get-users-info-error', error, 'error');
-      throw new Error(error);
+      throw new Error(error.message, { cause: error });
     }
 
     const rejectSignLetterTemplateFormula = multisignerControl.rejectSignLetterTemplate;
@@ -2637,7 +2638,7 @@ class DocumentBusiness extends Business {
           ? multiSignControl.isKeepSignersOrder
           : this.sandbox.evalWithArgs(multiSignControl.isKeepSignersOrder, [{ document }], { checkArrow: true });
     } catch (error) {
-      throw new Error(`checkSignersOrderAndGetNextSigner. Evaluate multiSignControl.isKeepSignersOrder error. ${error?.toString()}`);
+      throw new Error(`checkSignersOrderAndGetNextSigner. Evaluate multiSignControl.isKeepSignersOrder error. ${error?.toString()}`, { cause: error });
     }
 
     if (!isKeepSignersOrder) {
@@ -2677,7 +2678,7 @@ class DocumentBusiness extends Business {
     try {
       [userData] = await this.auth.getUsersByIds([nextSignerUserId], true);
     } catch (error) {
-      throw new Error(`sendLetterToNextSigner. Cannot get user data from ID. ${error?.toString()}`);
+      throw new Error(`sendLetterToNextSigner. Cannot get user data from ID. ${error?.toString()}`, { cause: error });
     }
     const { userId, firstName, lastName, middleName = '', ipn, email } = userData;
 
@@ -2694,7 +2695,7 @@ class DocumentBusiness extends Business {
       const letterTemplateArgs = [document, firstName, lastName, middleName, ipn, email, signerUrl];
       letterTemplate = this.sandbox.evalWithArgs(multiSignControl.letterTemplate, letterTemplateArgs, { checkArrow: true });
     } catch (error) {
-      throw new Error(`sendLetterToNextSigner. Evaluate multiSignerControl.letterTitle/letterTemplate error. ${error?.toString()}`);
+      throw new Error(`sendLetterToNextSigner. Evaluate multiSignerControl.letterTitle/letterTemplate error. ${error?.toString()}`, { cause: error });
     }
 
     const templateId = multiSignControl.templateId || LETTER_FOR_SIGNERS_TEMPLATE_ID;
@@ -2768,7 +2769,7 @@ class DocumentBusiness extends Business {
       signersData = await this.auth.getUsersByIds(signerNotPerformerIds, withPrivateProps);
     } catch (error) {
       log.save('send-letter-to-signers-error', error, 'error');
-      throw new Error(error);
+      throw new Error(error.message, { cause: error });
     }
 
     // Form task url for signers.
@@ -3066,7 +3067,7 @@ class DocumentBusiness extends Business {
         try {
           attachments = await this.documentAttachmentModel.getByDocumentIdAndMeta(documentId, { fromExternalReader: `${service}.${method}` });
         } catch (error) {
-          throw new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot get old attachments info for rewriting. ${error.toString()}`);
+          throw new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot get old attachments info for rewriting. ${error.toString()}`, { cause: error });
         }
 
         try {
@@ -3083,7 +3084,7 @@ class DocumentBusiness extends Business {
         try {
           await Promise.all(attachments.map((v) => this.documentAttachmentModel.delete(v.id)));
         } catch (error) {
-          throw new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot delete old attachments. ${error.toString()}`);
+          throw new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot delete old attachments. ${error.toString()}`, { cause: error });
         }
       }
     }
@@ -4314,7 +4315,7 @@ class DocumentBusiness extends Business {
           try {
             p7sSignature = await this.eds.hashToInternalSignature(p7sSignature, fileContentBuffer);
           } catch (error) {
-            throw new Error(`TaskBusiness.saveAttachmentsSignatures. Cannot convert hash to internal signature. ${error.toString()}`);
+            throw new Error(`TaskBusiness.saveAttachmentsSignatures. Cannot convert hash to internal signature. ${error.toString()}`, { cause: error });;
           }
         }
 

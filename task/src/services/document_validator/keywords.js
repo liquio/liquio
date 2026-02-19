@@ -504,7 +504,7 @@ class Keywords {
       try {
         requiredFields = Keywords.sandbox.evalWithArgs(propertySchema?.calculateFields, [documentDataObject]);
       } catch (error) {
-        throw new Error(`Keywords.checkVerifiedUserInfo. evaluate calculateFields function error. ${error?.toString()}`);
+        throw new Error(`Keywords.checkVerifiedUserInfo. evaluate calculateFields function error. ${error?.toString()}`, { cause: error });
       }
     } else {
       requiredFields = propertySchema?.fields || [];

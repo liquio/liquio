@@ -52,7 +52,7 @@ class CustomLogs {
     // Parse options.
     const { operationType, event, workflowId } = options;
 
-    let customLogTemplates = [];
+    let customLogTemplates;
     if (event) {
       // Define event template ID.
       const { eventTemplateId } = event;

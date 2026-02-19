@@ -1231,6 +1231,9 @@ class EventBusiness {
         dueDate: undefined,
       };
 
+      // Assign dueDate from result context
+      dueDate = resultContext.dueDate;
+
       // Calculate all event data
       const calculated = await this.calculateEventData(workflowId, jsonSchemaObject, documents, events, eventTemplate.id);
 

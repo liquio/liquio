@@ -53,7 +53,7 @@ class Sign {
         error: error && error.message,
         requestOptions: { ...requestOptions, body: '*****', headers: '*****' }
       });
-      throw new Error(`Sign.decrypt. ${error?.toString()}`);
+      throw new Error(`Sign.decrypt. ${error?.toString()}`, { cause: error });
     }
   }
 }

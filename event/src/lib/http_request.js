@@ -77,7 +77,7 @@ class HttpRequest {
       log.save('http-request-error', prepareAxiosErrorToLog(error), 'error');
       if (error.response?.data) {
         const strError = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
-        throw new Error(strError);
+        throw new Error(strError, { cause: error });
       } else {
         throw error;
       }

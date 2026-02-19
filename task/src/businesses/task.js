@@ -439,7 +439,7 @@ class TaskBusiness extends Business {
         workflowNameSchema;
     } catch (error) {
       log.save('can-not-define-workflow-name', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define workflow name.');
+      throw new Error('Can not define workflow name.', { cause: error });
     }
     let taskName;
     try {
@@ -451,7 +451,7 @@ class TaskBusiness extends Business {
         taskNameSchema;
     } catch (error) {
       log.save('can-not-define-task-name', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define task name.');
+      throw new Error('Can not define task name.', { cause: error });
     }
     let documentName;
     try {
@@ -463,7 +463,7 @@ class TaskBusiness extends Business {
         documentNameSchema;
     } catch (error) {
       log.save('can-not-define-document-name', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define document name.');
+      throw new Error('Can not define document name.', { cause: error });
     }
     let createdByIpn;
     try {
@@ -475,7 +475,7 @@ class TaskBusiness extends Business {
         createdByIpnSchema;
     } catch (error) {
       log.save('can-not-define-created-by-ipn', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define created by ipn.');
+      throw new Error('Can not define created by ipn.', { cause: error });
     }
     let createdByUnits;
     try {
@@ -487,7 +487,7 @@ class TaskBusiness extends Business {
         createdByUnitsSchema;
     } catch (error) {
       log.save('can-not-define-created-by-units', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define created by units.');
+      throw new Error('Can not define created by units.', { cause: error });
     }
     let createdByUnitHeads;
     try {
@@ -502,7 +502,7 @@ class TaskBusiness extends Business {
         workflowNameSchema,
         error: (error && error.message) || error,
       });
-      throw new Error('Can not define created by unit heads.');
+      throw new Error('Can not define created by unit heads.', { cause: error });
     }
     let labels;
     try {
@@ -512,18 +512,18 @@ class TaskBusiness extends Business {
         labelsSchema;
     } catch (error) {
       log.save('can-not-define-labels', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define labels.');
+      throw new Error('Can not define labels.', { cause: error });
     }
 
     // Calculate meta.
-    let meta = {};
+    let meta;
     try {
       meta =
         (metaFunction && this.sandbox.evalWithArgs(metaFunction, [documents], { meta: { fn: 'calculateNewTaskParams.meta', taskTemplateSchema } })) ||
         {};
     } catch (error) {
       log.save('can-not-calc-meta', { metaFunction, error: (error && error.message) || error });
-      throw new Error('Can not calculate task meta.');
+      throw new Error('Can not calculate task meta.', { cause: error });
     }
 
     // Calculate copyPdfByDocumentId.
@@ -541,7 +541,7 @@ class TaskBusiness extends Business {
         }
       } catch (error) {
         log.save('can-not-calc-copy-pdf', { copyPdfByDocumentIdFunction, error: (error && error.message) || error });
-        throw new Error('Can not calculate task copy pdf.');
+        throw new Error('Can not calculate task copy pdf.', { cause: error });
       }
     }
 
@@ -563,7 +563,7 @@ class TaskBusiness extends Business {
           copyPdfWithoutSignaturesByDocumentIdFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task copy pdf without signatures.');
+        throw new Error('Can not calculate task copy pdf without signatures.', { cause: error });
       }
     }
 
@@ -582,7 +582,7 @@ class TaskBusiness extends Business {
         }
       } catch (error) {
         log.save('can-not-calc-copy-attachments-by-document-id', { copyAttachmentsByDocumentIdFunction, error: (error && error.message) || error });
-        throw new Error('Can not calculate task copy attachments by document id.');
+        throw new Error('Can not calculate task copy attachments by document id.', { cause: error });
       }
     }
 
@@ -604,7 +604,7 @@ class TaskBusiness extends Business {
           copyAttachmentsByEventSavedDocumentIdFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task copy attachments by event saved document id.');
+        throw new Error('Can not calculate task copy attachments by event saved document id.', { cause: error });
       }
     }
 
@@ -627,7 +627,7 @@ class TaskBusiness extends Business {
           copyAttachmentsWithoutSignaturesByDocumentIdFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task copy attachments without signatures.');
+        throw new Error('Can not calculate task copy attachments without signatures.', { cause: error });
       }
     }
 
@@ -646,7 +646,7 @@ class TaskBusiness extends Business {
         }
       } catch (error) {
         log.save('can-not-calc-copy-pdf-as-attachment', { copyPdfAsAttachmentByDocumentIdFunction, error: (error && error.message) || error });
-        throw new Error('Can not calculate task copy pdf as attachment.');
+        throw new Error('Can not calculate task copy pdf as attachment.', { cause: error });
       }
     }
 
@@ -666,7 +666,7 @@ class TaskBusiness extends Business {
           filterCopyAttachmentsByFileIdsFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task filter copy attachments.');
+        throw new Error('Can not calculate task filter copy attachments.', { cause: error });
       }
     }
 
@@ -688,7 +688,7 @@ class TaskBusiness extends Business {
           copyAdditionalDataSignaturesByDocumentIdFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task copy additional data signatures.');
+        throw new Error('Can not calculate task copy additional data signatures.', { cause: error });
       }
     }
 
@@ -1045,7 +1045,7 @@ class TaskBusiness extends Business {
       performerUsersDataByIpn = (performerUsersIpn || []).length > 0 ? await this.auth.getUserByCode(performerUsersIpn, withPrivateProps) : [];
       performerUsersDataByEmail = (performerUsersEmail || []).length > 0 ? await this.auth.getUserByEmail(performerUsersEmail, withPrivateProps) : [];
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message || error, { cause: error });
     }
 
     // Define performers user names.
@@ -1613,7 +1613,6 @@ class TaskBusiness extends Business {
 
     // Create and return new document data object.
     const newDocumentData = JSON.parse(documentDataString);
-    documentData = newDocumentData;
     return newDocumentData;
   }
 
@@ -1975,7 +1974,7 @@ class TaskBusiness extends Business {
       log.save('commit-available-function-result', { documentId, isCommitAvailableFunction, isCommitAvailable });
     } catch (error) {
       log.save('commit-available-function-error', { documentId, isCommitAvailableFunction, error: error && error.message, document }, 'error');
-      throw new Error('Commit available function error.');
+      throw new Error('Commit available function error.', { cause: error });
     }
 
     // Return is commit available indicator.
@@ -2129,7 +2128,7 @@ class TaskBusiness extends Business {
             p7sMetaArray = await this.storageService.provider.getP7sMetadata([...fileIds]);
           } catch (error) {
             log.save('commit|get-p7s-meta|error', { message: (error && error.message) || error });
-            throw new Error('Can not get P7S meta.');
+            throw new Error('Can not get P7S meta.', { cause: error });
           }
 
           // Check if p7s exist.
@@ -2196,7 +2195,7 @@ class TaskBusiness extends Business {
           await businesses.document.unholdPayment(document, taskMeta, jsonSchema, userId);
         } catch (error) {
           log.save('commit-task-unhold-payment-error');
-          throw new Error(`Can not commit task - unhold payment error: ${error && error.message}`);
+          throw new Error(`Can not commit task - unhold payment error: ${error && error.message}`, { cause: error });
         }
       }
     }
@@ -2216,7 +2215,7 @@ class TaskBusiness extends Business {
       performerUsersData =
         performerUsersToSet && performerUsersToSet.length > 0 ? await this.auth.getUsersByIds(performerUsersToSet, withPrivateProps) : [];
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message || error, { cause: error });
     }
     const performerUserNamesToSet = performerUsersData.map((v) => v.name);
 
@@ -2646,7 +2645,7 @@ class TaskBusiness extends Business {
     try {
       performerUsersData = await this.auth.getUsersByIds(performerUsers, withPrivateProps);
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message || error, { cause: error });
     }
     const performerUserNames = performerUsersData.map((v) => v.name);
 
@@ -2722,21 +2721,18 @@ class TaskBusiness extends Business {
       Object.entries(oldTaskMeta).filter(([key, value]) => TaskBusiness.OnceDefinedMetaFields.includes(key) && value),
     );
     const safeMetaObj = { ...metaObj, ...oldTaskOnceDefinedMetaFields };
-    let newTaskMeta = oldTaskMeta;
+    let newTaskMeta;
     if (!oldTaskMeta || (oldTaskMeta && override)) {
       newTaskMeta = safeMetaObj;
     } else {
+      newTaskMeta = { ...oldTaskMeta };
       for (let prop in safeMetaObj) {
         newTaskMeta[prop] = safeMetaObj[prop];
       }
     }
 
-    // Update task.
-    const updateTaskMetaObj = { meta: task.meta };
-
     // Update task meta.
-    const updatedTask = await models.task.update(taskId, userId, updateTaskMetaObj);
-    return updatedTask;
+    return await models.task.update(taskId, userId, { meta: newTaskMeta });
   }
 
   /**
@@ -3577,21 +3573,21 @@ class TaskBusiness extends Business {
       try {
         draftExpiredAt = deleteDraftAtFunction(task);
       } catch (error) {
-        throw new Error(`${ERROR_PREFIX} evaluation error. Details: ${error.message}.`);
+        throw new Error(`${ERROR_PREFIX} evaluation error. Details: ${error.message}.`, { cause: error });
       }
     }
     if (deleteDraftAfterCreateAt) {
       try {
         draftExpiredAt = this.prepareDraftExpiredAt(deleteDraftAfterCreateAt, task.createdAt);
       } catch (error) {
-        throw new Error(`${ERROR_PREFIX} defined not valid deleteDraftAfterCreateAt param. Details: ${error.message}.`);
+        throw new Error(`${ERROR_PREFIX} defined not valid deleteDraftAfterCreateAt param. Details: ${error.message}.`, { cause: error });
       }
     }
     if (deleteDraftAfterUpdateAt) {
       try {
         draftExpiredAt = this.prepareDraftExpiredAt(deleteDraftAfterUpdateAt, task.document.updatedAt);
       } catch (error) {
-        throw new Error(`${ERROR_PREFIX} defined not valid deleteDraftAfterUpdateAt param. Details: ${error.message}.`);
+        throw new Error(`${ERROR_PREFIX} defined not valid deleteDraftAfterUpdateAt param. Details: ${error.message}.`, { cause: error });
       }
     }
     let draftExpiredAtDate = typeOf(draftExpiredAt) === 'date' ? draftExpiredAt : new Date(draftExpiredAt);
@@ -3652,7 +3648,7 @@ class TaskBusiness extends Business {
           'error',
         );
 
-        throw new Error(`Delete expired user drafts: cannot delete related entities. TaskId: ${taskId}. Error: ${error?.message || error}.`);
+        throw new Error(`Delete expired user drafts: cannot delete related entities. TaskId: ${taskId}. Error: ${error?.message || error}.`, { cause: error });
       }
     }
     const draftIds = expiredDrafts.map(({ id }) => id);

@@ -174,7 +174,7 @@ class ExternalServicesController extends Controller {
     const signature = parsedRequest['ext:signature'] && parsedRequest['ext:signature'][0];
     const certificatePem = parsedRequest['ext:certificate'] && parsedRequest['ext:certificate'][0];
 
-    let attachmentsSignatures = [];
+    let attachmentsSignatures;
     try {
       attachmentsSignatures = parsedRequest['ext:attachmentsSignature']?.map((item) => Buffer.from(item, 'base64'));
     } catch {

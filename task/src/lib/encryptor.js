@@ -52,7 +52,7 @@ class Encryptor {
 
       return this.pack(encrypted, iv, authTag);
     } catch (error) {
-      throw new Error(`Error while encrypting data: ${error.message}`);
+      throw new Error(`Error while encrypting data: ${error.message}`, { cause: error });
     }
   }
 
@@ -91,7 +91,7 @@ class Encryptor {
 
       return decrypted;
     } catch (error) {
-      throw new Error(`Error while decrypting data: ${error.message}`);
+      throw new Error(`Error while decrypting data: ${error.message}`, { cause: error });
     }
   }
 
@@ -125,7 +125,7 @@ class Encryptor {
       const encryptedData = Buffer.from(textParts.join(':'), 'base64');
       return { iv, authTag, encryptedData };
     } catch (error) {
-      throw new Error(`Error while unpacking: ${error.message}`);
+      throw new Error(`Error while unpacking: ${error.message}`, { cause: error });
     }
   }
 }

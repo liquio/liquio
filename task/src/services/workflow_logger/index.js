@@ -49,7 +49,7 @@ class WorkflowLoggerService {
 
     const workflowMessages = workflow.data.messages || [];
     for (const workflowMessage of workflowMessages) {
-      let type = '';
+      let type;
       if (workflowMessage.type === 'in') {
         type = 'workflow_incoming_message';
       } else if (workflowMessage.type === 'out') {

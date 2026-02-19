@@ -104,11 +104,11 @@ class Pkcs7EdsProvider extends EdsProvider {
       if (error.response && error.response.status === 400) {
         const responseData = error.response.data;
         if (responseData && responseData.message === 'Invalid signature data') {
-          throw new Error('Sign-tool rejected signature: Invalid signature format. This may not be a valid PKCS#7 signature.');
+          throw new Error('Sign-tool rejected signature: Invalid signature format. This may not be a valid PKCS#7 signature.', { cause: error });
         }
       }
 
-      throw new Error(`Sign-tool request failed: ${error.message}`);
+      throw new Error(`Sign-tool request failed: ${error.message}`, { cause: error });
     }
   }
 

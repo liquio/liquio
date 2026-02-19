@@ -86,7 +86,7 @@ class HttpClient {
         'error',
       );
 
-      throw new Error('Server sent an HTTP request and got an network error.');
+      throw new Error('Server sent an HTTP request and got an network error.', { cause: error });
     }
 
     this.logger('http-client-response', { meta, response: `${response.status} ${response.statusText}` });

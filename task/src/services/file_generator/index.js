@@ -78,7 +78,7 @@ class FileGeneratorService {
         return `${formatedPart}${floatPart}`;
       },
       generateQr: (link) => {
-        let preparedLink = '';
+        let preparedLink;
         if (typeof link === 'string' && link !== '') {
           preparedLink = link;
         } else if (typeof link === 'object' && typeof link.host !== 'undefined' && typeof link.hash !== 'undefined') {

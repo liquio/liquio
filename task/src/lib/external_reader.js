@@ -243,7 +243,7 @@ class ExternalReader {
         try {
           await this.documentAttachmentModel.deleteByDocumentId(extraParams.documentId);
         } catch (error) {
-          throw new Error(`ExternalReader.getDataByUser. Cannot delete old attachments. ${error.toString()}`);
+          throw new Error(`ExternalReader.getDataByUser. Cannot delete old attachments. ${error.toString()}`, { cause: error });
         }
       } else if (extraParams.isRewriteAttachmentsOnEachRequest) {
         // Remove old attachments with the same external-reader method.
@@ -253,7 +253,7 @@ class ExternalReader {
             fromExternalReader: `${service}.${method}`,
           });
         } catch (error) {
-          throw new Error(`ExternalReader.getDataByUser. Cannot get old attachments info for rewriting. ${error.toString()}`);
+          throw new Error(`ExternalReader.getDataByUser. Cannot get old attachments info for rewriting. ${error.toString()}`, { cause: error });
         }
 
         try {
@@ -266,7 +266,7 @@ class ExternalReader {
         try {
           await Promise.all(attachments.map((v) => this.documentAttachmentModel.delete(v.id)));
         } catch (error) {
-          throw new Error(`ExternalReader.getDataByUser. Cannot delete old attachments. ${error.toString()}`);
+          throw new Error(`ExternalReader.getDataByUser. Cannot delete old attachments. ${error.toString()}`, { cause: error });
         }
       }
 
@@ -291,7 +291,7 @@ class ExternalReader {
             'application/pdf',
           );
         } catch (error) {
-          throw new Error(`ExternalReader.getDataByUser. Cannot upload attachment to file storage. ${error.toString()}`);
+          throw new Error(`ExternalReader.getDataByUser. Cannot upload attachment to file storage. ${error.toString()}`, { cause: error });
         }
 
         // Insert file as attachment to document.
@@ -307,7 +307,7 @@ class ExternalReader {
             meta: { fromExternalReader: `${service}.${method}` },
           });
         } catch (error) {
-          throw new Error(`ExternalReader.getDataByUser. Cannot insert attachment to DB. ${error.toString()}`);
+          throw new Error(`ExternalReader.getDataByUser. Cannot insert attachment to DB. ${error.toString()}`, { cause: error });
         }
 
         // Remove base64 data.

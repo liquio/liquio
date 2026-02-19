@@ -117,7 +117,7 @@ class DecoratorStandard extends Decorator {
             { meta: { fn: 'additionalDataSignatureIndex', caller: 'DecoratorStandard.transformExternalServiceData' } },
           );
         } catch (error) {
-          throw new Error(`DecoratorStandard.transform. additionalDataSignatureIndex function throw error. ${error.toString()}`);
+          throw new Error(`DecoratorStandard.transform. additionalDataSignatureIndex function throw error. ${error.toString()}`, { cause: error });
         }
         additionalSignatures = [additionalDataSignatures[index].signature];
       } else if (typeOf(additionalDataSignatureFilter) === 'string') {
@@ -129,7 +129,7 @@ class DecoratorStandard extends Decorator {
             { meta: { fn: 'additionalDataSignatureFilter', caller: 'DecoratorStandard.transform' } },
           );
         } catch (error) {
-          throw new Error(`DecoratorStandard.transform. additionalDataSignatureFilter function throw error. ${error.toString()}`);
+          throw new Error(`DecoratorStandard.transform. additionalDataSignatureFilter function throw error. ${error.toString()}`, { cause: error });
         }
         if (typeOf(filteredAdditionalSignatures) !== 'array') {
           throw new Error('DecoratorStandard.transform. additionalDataSignatureFilter function should return an array.');

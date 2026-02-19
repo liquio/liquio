@@ -350,7 +350,7 @@ class PingController extends Controller {
    * @returns {object}
    */
   prepareResponse({ response, body }) {
-    let preparedResponse = {};
+    let preparedResponse;
 
     if (body.data) {
       preparedResponse = {

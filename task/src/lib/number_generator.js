@@ -71,7 +71,7 @@ class NumberGenerator {
       template = handlebars.compile(numberTemplate.template);
     } catch (error) {
       log.save('handlebars-compile-error', { error: error && error.message || error });
-      throw new Error('Handlebars number generator error.');
+      throw new Error('Handlebars number generator error.', { cause: error });
     }
     const number = template({ ...options, id: currentIncrement });
     return number;
@@ -116,7 +116,7 @@ class NumberGenerator {
       generator = handlebars.compile(template);
     } catch (error) {
       log.save('handlebars-compile-error', { error: error && error.message || error });
-      throw new Error('Handlebars number generator error.');
+      throw new Error('Handlebars number generator error.', { cause: error });
     }
     const number = generator();
     return number;

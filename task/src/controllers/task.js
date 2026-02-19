@@ -186,8 +186,8 @@ class TaskController extends Controller {
     const systemName = req.basicAuthUser;
 
     // Get original document if need it.
-    let originalDocument;
-    let originalWorkflowTemplateId;
+    let originalDocument = undefined;
+    let originalWorkflowTemplateId = undefined;
 
     // Append user data to request. Case - request make AI assistent.
     let isForwardedFromRegularUser = false;
