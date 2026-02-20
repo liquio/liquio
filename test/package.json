@@ -22,7 +22,7 @@
     "playwright": "^1.56.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "^10.0.1",
     "eslint": "^10.0.0",
     "eslint-plugin-jsdoc": "^62.0.0",
     "globals": "^17.0.0"
