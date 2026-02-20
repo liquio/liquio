@@ -23,7 +23,7 @@
     "event"
   ],
   "dependencies": {
-    "acorn": "^8.15.0",
+    "acorn": "^8.16.0",
     "adm-zip": "^0.5.10",
     "amqplib": "^0.10.9",
     "archiver": "^5.3.1",
