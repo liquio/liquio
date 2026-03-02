@@ -18,7 +18,7 @@
     "test:cov": "jest --coverage"
   },
   "dependencies": {
-    "acorn": "^8.15.0",
+    "acorn": "^8.16.0",
     "amqplib": "^0.10.9",
     "axios": "^1.13.5",
     "ccolor": "^1.3.1",
