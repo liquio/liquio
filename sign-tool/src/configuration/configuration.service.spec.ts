@@ -3,25 +3,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigurationService } from './configuration.service';
 import { ObservabilityModule } from '../observability/observability.module';
 
-jest.mock('multiconf', () => {
-  return {
-    __esModule: true,
-    default: {
-      get: jest.fn().mockReturnValue({
-        x509: {
-          caCerts: [],
-        },
-        server: {
-          host: 'localhost',
-          port: 3000,
-          isSwaggerEnabled: true,
-          acceptedBodySize: '10mb',
-        },
-      }),
-    },
-  };
-});
-
 jest.mock('../observability/logger.service', () => {
   return {
     LoggerService: jest.fn().mockImplementation(() => {
@@ -29,6 +10,10 @@ jest.mock('../observability/logger.service', () => {
         setContext: jest.fn(),
         printMessages: jest.fn(),
         error: jest.fn(),
+        log: jest.fn(),
+        debug: jest.fn(),
+        warn: jest.fn(),
+        info: jest.fn(),
       };
     }),
   };
