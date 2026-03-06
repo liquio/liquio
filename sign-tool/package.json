@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.1.11",
-    "@nestjs/core": "^11.1.12",
+    "@nestjs/core": "^11.1.16",
     "@nestjs/platform-express": "^11.1.15",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/swagger": "^11.2.0",
