@@ -1,9 +1,9 @@
 const nock = require('nock');
-const bodyParser = require('body-parser');
+const express = require('express');
 const HttpRequest = require('./http_request');
 
-// Mock body-parser
-jest.mock('body-parser', () => ({
+// Mock express body parsing middleware
+jest.mock('express', () => ({
   json: jest.fn(() => 'jsonParser'),
   urlencoded: jest.fn(() => 'urlencodedParser'),
 }));
@@ -237,7 +237,7 @@ describe('HttpRequest', () => {
     it('should configure JSON body parser with default max size', () => {
       HttpRequest.parseBodyJson(mockApp);
 
-      expect(bodyParser.json).toHaveBeenCalledWith({ limit: '10mb' });
+      expect(express.json).toHaveBeenCalledWith({ limit: '10mb' });
       expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
     });
 
@@ -246,14 +246,14 @@ describe('HttpRequest', () => {
 
       HttpRequest.parseBodyJson(mockApp, customMaxSize);
 
-      expect(bodyParser.json).toHaveBeenCalledWith({ limit: customMaxSize });
+      expect(express.json).toHaveBeenCalledWith({ limit: customMaxSize });
       expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
     });
 
     it('should handle undefined max size parameter', () => {
       HttpRequest.parseBodyJson(mockApp, undefined);
 
-      expect(bodyParser.json).toHaveBeenCalledWith({ limit: '10mb' });
+      expect(express.json).toHaveBeenCalledWith({ limit: '10mb' });
       expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
     });
   });
@@ -270,7 +270,7 @@ describe('HttpRequest', () => {
     it('should configure URL-encoded body parser with extended false', () => {
       HttpRequest.parseBodyUrlencoded(mockApp);
 
-      expect(bodyParser.urlencoded).toHaveBeenCalledWith({ extended: false });
+      expect(express.urlencoded).toHaveBeenCalledWith({ extended: false });
       expect(mockApp.use).toHaveBeenCalledWith('urlencodedParser');
     });
   });

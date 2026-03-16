@@ -1,5 +1,5 @@
 const axios = require('axios');
-const bodyParser = require('body-parser');
+const express = require('express');
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -116,7 +116,7 @@ class HttpRequest {
    */
   static parseBodyJson(app, maxBodySize = DEFAULT_MAX_BODY_SIZE) {
     // Parse body for content-type "application/json".
-    app.use(bodyParser.json({ limit: maxBodySize }));
+    app.use(express.json({ limit: maxBodySize }));
   }
 
   /**
@@ -125,7 +125,7 @@ class HttpRequest {
    */
   static parseBodyUrlencoded(app) {
     // Parse body for content-type "application/x-www-form-urlencoded".
-    app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(express.urlencoded({ extended: false }));
   }
 }
 

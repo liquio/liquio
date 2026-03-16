@@ -1,7 +1,7 @@
 const express = require('express');
 const proxy = require('express-http-proxy');
 const WebSocket = require('ws');
-const bodyParser = require('body-parser');
+
 const cors = require('cors');
 const compression = require('compression');
 
@@ -105,7 +105,7 @@ class RouterService {
       }),
     );
 
-    app.use(bodyParser.json({ limit: this.config.server.maxBodySize }));
+    app.use(express.json({ limit: this.config.server.maxBodySize }));
 
     // App info in headers.
     AppIdentHeaders.add(app, config);
@@ -1735,7 +1735,7 @@ class RouterService {
       );
     }
 
-    app.all('*', (req, res, _next) => {
+    app.all('/{*splat}', (req, res, _next) => {
       res.status(404).send({
         error: {
           message: 'Page not found.',
