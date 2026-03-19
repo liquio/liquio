@@ -43,6 +43,7 @@ class Sandbox {
       randomUUID,
       uuidv4: randomUUID,
       getMd5Hash,
+      getSha256Hash,
       getSha512Hash,
       base64Decode,
       base64Encode,
@@ -353,6 +354,15 @@ function getLog(meta) {
  */
 function getMd5Hash(data) {
   return crypto.createHash('md5').update(data).digest('hex');
+}
+
+/**
+ * Get sha256 hash.
+ * @param {string} data Data.
+ * @returns {string} SHA256 hex digest.
+ */
+function getSha256Hash(data) {
+  return crypto.createHash('sha256').update(data).digest('hex');
 }
 
 /**
