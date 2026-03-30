@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@testcontainers/postgresql": "^11.5.1",
+    "@testcontainers/postgresql": "^11.13.0",
     "@testcontainers/redis": "^11.13.0",
     "@types/jest": "^30.0.0",
     "debug": "^4.3.7",
