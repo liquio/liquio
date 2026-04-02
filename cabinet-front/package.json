@@ -101,7 +101,7 @@
     "lodash": "4.17.21",
     "material-ui-phone-number": "^3.0.0",
     "mgr-pdf-viewer-react": "1.0.3",
-    "mobile-detect": "1.4.4",
+    "mobile-detect": "1.4.5",
     "moment": "2.29.4",
     "moment-timezone": "0.5.45",
     "mustache": "4.2.0",
