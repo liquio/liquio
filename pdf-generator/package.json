@@ -4,10 +4,8 @@
   "engines": {
     "node": "22"
   },
-  "description": "",
-  "author": "",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "SEE LICENSE IN ../LICENSE.md",
   "scripts": {
     "postinstall": "playwright install chromium && playwright install-deps",
     "build": "nest build",
