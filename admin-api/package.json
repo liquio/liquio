@@ -44,13 +44,13 @@
     "sequelize": "^6.29.0",
     "sequelize-cli": "^6.6.0",
     "transliteration": "^2.1.11",
-    "ws": "^8.11.0",
+    "ws": "^8.20.0",
     "xml2js": "^0.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@testcontainers/postgresql": "^11.5.1",
-    "@testcontainers/redis": "^11.5.1",
+    "@testcontainers/postgresql": "^11.13.0",
+    "@testcontainers/redis": "^11.13.0",
     "@types/jest": "^30.0.0",
     "debug": "^4.3.7",
     "eslint": "^10.0.3",
