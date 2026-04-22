@@ -2,6 +2,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable no-template-curly-in-string */
+import { generateUUID } from 'utils/uuid';
 import React from 'react';
 import PropTypes from 'prop-types';
 import { translate } from 'react-translate';
@@ -51,7 +52,7 @@ class SingleKeyRegister extends React.Component {
       search: '',
       page: 0,
       loading: false,
-      id: `${crypto.randomUUID()}-${path.join('-')}`,
+      id: `${generateUUID()}-${path.join('-')}`,
     };
 
     const {

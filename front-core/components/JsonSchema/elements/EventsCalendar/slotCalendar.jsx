@@ -1,3 +1,4 @@
+import { generateUUID } from 'utils/uuid';
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useTranslate } from 'react-translate';
@@ -949,7 +950,7 @@ const SlotCalendar = ({
                 const currentDay = moment(day);
                 return (
                   <div
-                    key={crypto.randomUUID()}
+                    key={generateUUID()}
                     className={classNames({
                       [classes.dayItem]: true,
                       [classes.active]: activeDay === currentDay.format('DD.MM.YYYY'),

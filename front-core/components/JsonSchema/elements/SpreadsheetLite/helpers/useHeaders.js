@@ -1,3 +1,4 @@
+import { generateUUID } from 'utils/uuid';
 import { useEffect, useState } from 'react';
 import makeStyles from '@mui/styles/makeStyles';
 
@@ -32,7 +33,7 @@ export const useStyles = makeStyles(() => ({
 
 const useHeaders = (headers) => {
   const classes = useStyles();
-  const [className] = useState(crypto.randomUUID());
+  const [className] = useState(generateUUID());
 
   useEffect(() => {
     const rootContainer = document.getElementsByClassName(className)[0];

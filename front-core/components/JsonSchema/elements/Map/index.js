@@ -1,4 +1,5 @@
 /* eslint-disable camelcase */
+import { generateUUID } from 'utils/uuid';
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useDispatch } from 'react-redux';
@@ -158,7 +159,7 @@ const Map = ({
   const dispatch = useDispatch();
   const mapRefs = React.useRef(null);
   const snackbarRef = React.useRef(null);
-  const [mapId, setMapId] = React.useState(crypto.randomUUID());
+  const [mapId, setMapId] = React.useState(generateUUID());
   const [noApiData, setNoApiData] = React.useState(false);
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
@@ -502,7 +503,7 @@ const Map = ({
                 },
                 true,
                 () => {
-                  setMapId(crypto.randomUUID());
+                  setMapId(generateUUID());
                 },
               );
             } else {

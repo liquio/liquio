@@ -1,3 +1,4 @@
+import { generateUUID } from 'utils/uuid';
 import React from 'react';
 import PropTypes from 'prop-types';
 import objectPath from 'object-path';
@@ -264,7 +265,7 @@ const Layout = ({
   const [hovered, setHovered] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(value || '');
   const [ariaClearHint, setAriaClearHint] = React.useState('');
-  const [randomLabelId] = React.useState(crypto.randomUUID());
+  const [randomLabelId] = React.useState(generateUUID());
   const [wrapperId] = React.useState(`${randomLabelId}-${path.join('-')}`);
   let [timeout] = React.useState(null);
   const md = new MobileDetect(window.navigator.userAgent);

@@ -1,3 +1,4 @@
+import { generateUUID } from 'utils/uuid';
 import React from 'react';
 import MobileDetect from 'mobile-detect';
 import InputMask from 'react-input-mask';
@@ -31,7 +32,7 @@ const ForwardedMaterialInput = React.forwardRef((props, ref) => (
 const MaskedCell = (props) => {
   const { rowData, columnData, setRowData, focus } = props;
   const ref = React.useRef(null);
-  const [id] = React.useState(crypto.randomUUID());
+  const [id] = React.useState(generateUUID());
   const classes = useStyles();
   const [isMobile] = React.useState(() => {
     const md = new MobileDetect(window.navigator.userAgent);

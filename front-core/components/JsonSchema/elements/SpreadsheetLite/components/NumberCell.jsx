@@ -1,3 +1,4 @@
+import { generateUUID } from 'utils/uuid';
 import React from 'react';
 import { makeStyles } from '@mui/styles';
 import MaterialInput from '@mui/material/Input';
@@ -36,7 +37,7 @@ const useStyles = makeStyles(() => ({
 const NumberCell = (props) => {
   const { rowData, columnData, setRowData } = props;
   const toFixed = columnData?.toFixed;
-  const [id] = React.useState(crypto.randomUUID());
+  const [id] = React.useState(generateUUID());
   const classes = useStyles();
 
   const handleChange = React.useCallback(

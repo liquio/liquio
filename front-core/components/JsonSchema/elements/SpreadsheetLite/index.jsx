@@ -1,3 +1,4 @@
+import { generateUUID } from 'utils/uuid';
 import React from 'react';
 import { useTranslate } from 'react-translate';
 import cleenDeep from 'clean-deep';
@@ -72,7 +73,7 @@ export const SpreadsheetLite = (props) => {
   } = props;
 
   const t = useTranslate('Elements');
-  const [key, setKeyId] = React.useState(crypto.randomUUID());
+  const [key, setKeyId] = React.useState(generateUUID());
   const [open, setOpen] = React.useState(false);
   const [activeCell, setActiveCell] = React.useState(null);
   const [activeCellRef, setActiveCellRef] = React.useState(null);
@@ -120,7 +121,7 @@ export const SpreadsheetLite = (props) => {
       if (changes?.length > maxItems && maxItems) {
         changes = changes.slice(0, maxItems - changes.length);
         onChange(changes.map((item) => cleenDeep(item)));
-        setKeyId(crypto.randomUUID());
+        setKeyId(generateUUID());
         return;
       }
 
@@ -131,7 +132,7 @@ export const SpreadsheetLite = (props) => {
 
   const clearData = React.useCallback(async () => {
     await onChange(new ChangeEvent([{}], true));
-    setKeyId(crypto.randomUUID());
+    setKeyId(generateUUID());
     setImportTrigger(true);
   }, [onChange]);
 
@@ -166,7 +167,7 @@ export const SpreadsheetLite = (props) => {
 
       onChange(new ChangeEvent(mappedData, true, true));
 
-      setKeyId(crypto.randomUUID());
+      setKeyId(generateUUID());
     },
     [onChange, maxItems, items, maxItemsReached, columns],
   );
