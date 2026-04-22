@@ -28,6 +28,7 @@ const RunningEvents = require('../lib/running_events');
 const { EvaluateSchemaFunctionError } = require('../lib/errors');
 const { SYSTEM_USER } = require('../constants/common');
 const { CRUD_TYPE } = require('../constants/http');
+const { getConfig } = require('../lib/config');
 
 // Constants.
 const ERROR_WRONG_EVENT_TYPE = 'Wrong event type.';
@@ -44,7 +45,7 @@ class EventBusiness {
   constructor(config) {
     // Define singleton.
     if (!EventBusiness.singleton) {
-      this.config = config;
+      this.config = getConfig();
       this.filestorage = new Filestorage();
       this.sign = new Sign();
       this.systemNotifier = new SystemNotifier();
