@@ -14,7 +14,7 @@ data:
       "port": {{ .Values.config.database.port }},
       "dialect": "postgres",
       "username": "{{ .Values.config.database.username }}",
-      "password": "{{ include "liquio.postgresql.password" . }}",
+      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "operatorsAliases": false,
       "dialectOptions": {
         "socketPath": "",
@@ -34,7 +34,7 @@ data:
   # Encryption configuration
   encryption.json: |
     {
-      "key": "{{ include "liquio.register.encryptionKey" . }}",
+      "key": "{{ include "liquio.register.encryptionKeyValue" . }}",
       "iv_size": 12,
       "batch_job_size": 100,
       "check_on_startup": false
@@ -43,7 +43,7 @@ data:
   # Auth configuration
   auth.json: |
     {
-      "tokens": ["Basic {{ include "liquio.register.authToken" . }}"],
+      "tokens": ["Basic {{ include "liquio.register.authTokenValue" . }}"],
       "limitedAccess": []
     }
 

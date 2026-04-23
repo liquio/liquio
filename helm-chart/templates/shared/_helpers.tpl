@@ -105,9 +105,16 @@ Create a default image name
 {{- end }}
 
 {{/*
-Generate PostgreSQL password
+Secret name helper
 */}}
-{{- define "liquio.postgresql.password" -}}
+{{- define "liquio.secrets.name" -}}
+{{- .Values.secrets.existingSecret | default (printf "%s-secrets" (include "liquio.fullname" .)) }}
+{{- end }}
+
+{{/*
+Generate PostgreSQL password value
+*/}}
+{{- define "liquio.postgresql.passwordValue" -}}
 {{- if .Values.secrets.postgresql.password }}
 {{- .Values.secrets.postgresql.password }}
 {{- else }}
@@ -116,9 +123,20 @@ Generate PostgreSQL password
 {{- end }}
 
 {{/*
-Generate RabbitMQ password
+PostgreSQL secret key/value helper
 */}}
-{{- define "liquio.rabbitmq.password" -}}
+{{- define "liquio.postgresql.password" -}}
+{{- if .Values.secrets.existingSecret }}
+{{- "postgresql-password" -}}
+{{- else }}
+{{- include "liquio.postgresql.passwordValue" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate RabbitMQ password value
+*/}}
+{{- define "liquio.rabbitmq.passwordValue" -}}
 {{- if .Values.secrets.rabbitmq.password }}
 {{- .Values.secrets.rabbitmq.password }}
 {{- else }}
@@ -127,9 +145,20 @@ Generate RabbitMQ password
 {{- end }}
 
 {{/*
-Generate OAuth secret key
+RabbitMQ secret key/value helper
 */}}
-{{- define "liquio.oauth.secretKey" -}}
+{{- define "liquio.rabbitmq.password" -}}
+{{- if .Values.secrets.existingSecret }}
+{{- "rabbitmq-password" -}}
+{{- else }}
+{{- include "liquio.rabbitmq.passwordValue" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate OAuth secret key value
+*/}}
+{{- define "liquio.oauth.secretKeyValue" -}}
 {{- if .Values.secrets.oauth.secretKey }}
 {{- .Values.secrets.oauth.secretKey }}
 {{- else }}
@@ -138,9 +167,20 @@ Generate OAuth secret key
 {{- end }}
 
 {{/*
-Generate JWT secret
+OAuth secret key/key helper
 */}}
-{{- define "liquio.jwt.secret" -}}
+{{- define "liquio.oauth.secretKey" -}}
+{{- if .Values.secrets.existingSecret }}
+{{- "oauth-secret-key" -}}
+{{- else }}
+{{- include "liquio.oauth.secretKeyValue" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate JWT secret value
+*/}}
+{{- define "liquio.jwt.secretValue" -}}
 {{- if .Values.secrets.jwt.secret }}
 {{- .Values.secrets.jwt.secret }}
 {{- else }}
@@ -149,9 +189,20 @@ Generate JWT secret
 {{- end }}
 
 {{/*
-Generate Register encryption key
+JWT secret key/value helper
 */}}
-{{- define "liquio.register.encryptionKey" -}}
+{{- define "liquio.jwt.secret" -}}
+{{- if .Values.secrets.existingSecret }}
+{{- "jwt-secret" -}}
+{{- else }}
+{{- include "liquio.jwt.secretValue" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate Register encryption key value
+*/}}
+{{- define "liquio.register.encryptionKeyValue" -}}
 {{- if .Values.secrets.register.encryptionKey }}
 {{- .Values.secrets.register.encryptionKey }}
 {{- else }}
@@ -160,9 +211,20 @@ Generate Register encryption key
 {{- end }}
 
 {{/*
-Generate Register auth token
+Register encryption key/key helper
 */}}
-{{- define "liquio.register.authToken" -}}
+{{- define "liquio.register.encryptionKey" -}}
+{{- if .Values.secrets.existingSecret }}
+{{- "register-encryption-key" -}}
+{{- else }}
+{{- include "liquio.register.encryptionKeyValue" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate Register auth token value
+*/}}
+{{- define "liquio.register.authTokenValue" -}}
 {{- if .Values.secrets.register.authToken }}
 {{- .Values.secrets.register.authToken }}
 {{- else }}
@@ -171,9 +233,20 @@ Generate Register auth token
 {{- end }}
 
 {{/*
-Generate External Reader auth token
+Register auth token key/value helper
 */}}
-{{- define "liquio.externalReader.authToken" -}}
+{{- define "liquio.register.authToken" -}}
+{{- if .Values.secrets.existingSecret }}
+{{- "register-auth-token" -}}
+{{- else }}
+{{- include "liquio.register.authTokenValue" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate External Reader auth token value
+*/}}
+{{- define "liquio.externalReader.authTokenValue" -}}
 {{- if .Values.secrets.externalReader.authToken }}
 {{- .Values.secrets.externalReader.authToken }}
 {{- else }}
@@ -182,13 +255,35 @@ Generate External Reader auth token
 {{- end }}
 
 {{/*
-Generate File Storage auth token
+External Reader auth token key/value helper
 */}}
-{{- define "liquio.filestorage.authToken" -}}
+{{- define "liquio.externalReader.authToken" -}}
+{{- if .Values.secrets.existingSecret }}
+{{- "external-reader-auth-token" -}}
+{{- else }}
+{{- include "liquio.externalReader.authTokenValue" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate File Storage auth token value
+*/}}
+{{- define "liquio.filestorage.authTokenValue" -}}
 {{- if .Values.secrets.filestorage.authToken }}
 {{- .Values.secrets.filestorage.authToken }}
 {{- else }}
 {{- printf "Basic %s" (printf "filestorage:%s" (randAlphaNum 32) | b64enc) }}
+{{- end }}
+{{- end }}
+
+{{/*
+File Storage auth token key/value helper
+*/}}
+{{- define "liquio.filestorage.authToken" -}}
+{{- if .Values.secrets.existingSecret }}
+{{- "filestorage-auth-token" -}}
+{{- else }}
+{{- include "liquio.filestorage.authTokenValue" . }}
 {{- end }}
 {{- end }}
 

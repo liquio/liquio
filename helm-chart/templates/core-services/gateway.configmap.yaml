@@ -13,7 +13,7 @@ data:
       "port": {{ .Values.config.database.port }},
       "database": "bpmn",
       "username": "{{ .Values.config.database.username }}",
-      "password": "{{ include "liquio.postgresql.password" . }}",
+      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "dialect": "postgres",
       "dialectOptions": {
         "socketPath": "",
@@ -44,7 +44,7 @@ data:
   # Message queue configuration
   message_queue.json: |
     {
-      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.password" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/"
+      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.passwordValue" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/"
     }
 
   # Redis configuration

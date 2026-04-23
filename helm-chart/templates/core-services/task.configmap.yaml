@@ -13,7 +13,7 @@ data:
       "port": {{ .Values.config.database.port }},
       "database": "bpmn",
       "username": "{{ .Values.config.database.username }}",
-      "password": "{{ include "liquio.postgresql.password" . }}",
+      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "dialect": "postgres",
       "dialectOptions": {
         "socketPath": "",
@@ -34,7 +34,7 @@ data:
   # Message queue configuration
   message_queue.json: |
     {
-      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.password" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
+      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.passwordValue" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
       "amqpConnectionParams": {
         "heartbeat": 300
       },
@@ -71,12 +71,12 @@ data:
         },
         "timeout": 30000,
         "clientId": "liquio-portal",
-        "clientSecret": "{{ include "liquio.oauth.secretKey" . }}",
-        "basicAuthToken": "{{ include "liquio.oauth.secretKey" . }}"
+        "clientSecret": "{{ include "liquio.oauth.secretKeyValue" . }}",
+        "basicAuthToken": "{{ include "liquio.oauth.secretKeyValue" . }}"
       },
       "authRedirectUrl": "http://localhost:8001/",
       "logoutRedirectUrl": "http://localhost:8001/",
-      "jwtSecret": "{{ include "liquio.jwt.secret" . }}",
+      "jwtSecret": "{{ include "liquio.jwt.secretValue" . }}",
       "jwtOptions": {
         "expiresIn": "1d"
       },
@@ -108,7 +108,7 @@ data:
     {
       "server": "http://{{ include "liquio.fullname" . }}-register",
       "port": {{ .Values.services.register.servicePort }},
-      "token": "Basic {{ include "liquio.register.authToken" . }}",
+      "token": "Basic {{ include "liquio.register.authTokenValue" . }}",
       "limit": 10000,
       "accessCacheLifetime": 60000,
       "registerKeysForAddresses": [],
@@ -135,7 +135,7 @@ data:
   external_reader.json: |
     {
       "url": "http://{{ include "liquio.fullname" . }}-external-reader:{{ .Values.services.externalReader.servicePort }}",
-      "basicAuthToken": "{{ include "liquio.externalReader.authToken" . }}",
+      "basicAuthToken": "{{ include "liquio.externalReader.authTokenValue" . }}",
       "timeout": 30000
     }
 
@@ -143,7 +143,7 @@ data:
   filestorage.json: |
     {
       "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-      "token": "{{ include "liquio.filestorage.authToken" . }}",
+      "token": "{{ include "liquio.filestorage.authTokenValue" . }}",
       "containerId": 1,
       "signatureTimeout": 40000,
       "downloadUploadTimeout": 60000,
@@ -174,7 +174,7 @@ data:
       },
       "FileStorage": {
         "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-        "token": "{{ include "liquio.filestorage.authToken" . }}",
+        "token": "{{ include "liquio.filestorage.authTokenValue" . }}",
         "containerId": 1
       }
     }
@@ -316,7 +316,7 @@ data:
   # Download token configuration
   download_token.json: |
     {
-      "jwtSecret": "{{ include "liquio.jwt.secret" . }}",
+      "jwtSecret": "{{ include "liquio.jwt.secretValue" . }}",
       "lifetimeInSeconds": 3600
     }
 

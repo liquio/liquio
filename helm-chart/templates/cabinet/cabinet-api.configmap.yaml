@@ -30,12 +30,12 @@ data:
         },
         "timeout": 30000,
         "clientId": "liquio-portal",
-        "clientSecret": "{{ include "liquio.oauth.secretKey" . }}",
-        "basicAuthToken": "{{ include "liquio.oauth.secretKey" . }}"
+        "clientSecret": "{{ include "liquio.oauth.secretKeyValue" . }}",
+        "basicAuthToken": "{{ include "liquio.oauth.secretKeyValue" . }}"
       },
       "authRedirectUrl": "http://{{ .Values.global.domain }}/",
       "logoutRedirectUrl": "http://{{ .Values.global.domain }}/",
-      "jwtSecret": "{{ include "liquio.jwt.secret" . }}",
+      "jwtSecret": "{{ include "liquio.jwt.secretValue" . }}",
       "allowedTestAuth": false,
       "allowedTestSign": false,
       "allowedTestPem": true,
@@ -64,7 +64,7 @@ data:
       "logging": false,
       "migrationStorageTableName": "sequelize_meta",
       "operatorsAliases": false,
-      "password": "{{ include "liquio.postgresql.password" . }}",
+      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "pool": {
         "acquire": 30000,
         "idle": 10000,

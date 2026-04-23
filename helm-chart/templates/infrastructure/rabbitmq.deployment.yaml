@@ -53,8 +53,16 @@ spec:
           env:
             - name: RABBITMQ_DEFAULT_USER
               value: {{ .Values.config.rabbitmq.username }}
+            {{- if .Values.secrets.existingSecret }}
             - name: RABBITMQ_DEFAULT_PASS
-              value: {{ .Values.config.rabbitmq.password }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "liquio.secrets.name" . }}
+                  key: {{ include "liquio.rabbitmq.password" . }}
+            {{- else }}
+            - name: RABBITMQ_DEFAULT_PASS
+              value: {{ include "liquio.rabbitmq.passwordValue" . }}
+            {{- end }}
           volumeMounts:
             - name: rabbitmq-data
               mountPath: /var/lib/rabbitmq

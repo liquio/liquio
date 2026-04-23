@@ -10,10 +10,10 @@ data:
   auth.json: |
     {
       "authRedirectUrl": "http://{{ .Values.global.domain }}/",
-      "basicAuthToken": "{{ include "liquio.oauth.secretKey" . }}",
+      "basicAuthToken": "{{ include "liquio.oauth.secretKeyValue" . }}",
       "clientId": "liquio-portal",
-      "clientSecret": "{{ include "liquio.oauth.secretKey" . }}",
-      "jwtSecret": "{{ include "liquio.jwt.secret" . }}",
+      "clientSecret": "{{ include "liquio.oauth.secretKeyValue" . }}",
+      "jwtSecret": "{{ include "liquio.jwt.secretValue" . }}",
       "logoutRedirectUrl": "http://{{ .Values.global.domain }}/",
       "serverPublicUrl": "http://{{ .Values.global.domain }}",
       "port": {{ .Values.services.idApi.servicePort }},
@@ -33,7 +33,7 @@ data:
       },
       "host": "{{ include "liquio.postgresql.host" . }}",
       "migrationStorageTableName": "sequelize_meta",
-      "password": "{{ include "liquio.postgresql.password" . }}",
+      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "pool": {
         "acquire": 60000,
         "idle": 30000,
@@ -48,7 +48,7 @@ data:
   # Message queue configuration
   message_queue.json: |
     {
-      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.password" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
+      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.passwordValue" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
       "maxHandlingMessages": 2,
       "writingQueueManager": "bpmn-manager-incoming",
       "writingQueueTask": "bpmn-task-incoming",
@@ -60,7 +60,7 @@ data:
   filestorage.json: |
     {
       "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-      "token": "{{ include "liquio.filestorage.authToken" . }}",
+      "token": "{{ include "liquio.filestorage.authTokenValue" . }}",
       "containerId": 1
     }
 
@@ -71,7 +71,7 @@ data:
       "port": {{ .Values.services.register.servicePort }},
       "server": "http://{{ include "liquio.fullname" . }}-register",
       "timeout": 30000,
-      "token": "Basic {{ include "liquio.register.authToken" . }}",
+      "token": "Basic {{ include "liquio.register.authTokenValue" . }}",
       "importXlsx": { "batchSize": 100 }
     }
 
@@ -80,8 +80,8 @@ data:
     {
       "crypto": {
         "algorithm": "aes-256-ctr",
-        "iv": "{{ include "liquio.oauth.secretKey" . }}",
-        "password": "{{ include "liquio.jwt.secret" . }}"
+        "iv": "{{ include "liquio.oauth.secretKeyValue" . }}",
+        "password": "{{ include "liquio.jwt.secretValue" . }}"
       },
       "customer": "liquio",
       "environment": "dev",
@@ -89,7 +89,7 @@ data:
       "maxBodySize": "500mb",
       "port": {{ .Values.services.adminApi.targetPort }},
       "swagger": false,
-      "token": "{{ include "liquio.oauth.secretKey" . }}"
+      "token": "{{ include "liquio.oauth.secretKeyValue" . }}"
     }
 
   # Logging configuration
@@ -106,7 +106,7 @@ data:
   elastic.json: |
     {
       "headers": {
-        "Authorization": "Basic {{ include "liquio.oauth.secretKey" . }}"
+        "Authorization": "Basic {{ include "liquio.oauth.secretKeyValue" . }}"
       },
       "host": "elasticsearch:9200",
       "method": "POST",
@@ -123,7 +123,7 @@ data:
       "port": {{ .Values.services.notification.servicePort }},
       "timeout": 30000,
       "user": "admin-api",
-      "hashedPassword": "{{ include "liquio.oauth.secretKey" . }}",
+      "hashedPassword": "{{ include "liquio.oauth.secretKeyValue" . }}",
       "routes": {
         "ping": "/test/ping",
         "sendToUserList": "/message/usersList",
@@ -165,5 +165,5 @@ data:
     {
       "timeout": 30000,
       "url": "http://{{ include "liquio.fullname" . }}-sign-tool",
-      "token": "{{ include "liquio.oauth.secretKey" . }}"
+      "token": "{{ include "liquio.oauth.secretKeyValue" . }}"
     }

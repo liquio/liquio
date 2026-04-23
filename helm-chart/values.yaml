@@ -554,6 +554,10 @@ config:
 
 # Secret values for secure configuration
 secrets:
+  # Existing Kubernetes Secret name with Liquio secret keys.
+  # When set, Helm does not create liquio-managed secrets and referenced
+  # workloads read secret values from this Secret.
+  existingSecret: ""
   # PostgreSQL authentication secrets
   postgresql:
     # Database password

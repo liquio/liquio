@@ -9,7 +9,7 @@ data:
   # Auth configuration
   auth.json: |
     {
-      "basicAuthTokens": ["external-reader:{{ include "liquio.externalReader.authToken" . | b64dec | splitList ":" | rest | join ":" }}"]
+      "basicAuthTokens": ["external-reader:{{ include "liquio.externalReader.authTokenValue" . | b64dec | splitList ":" | rest | join ":" }}"]
     }
 
   # Server configuration
