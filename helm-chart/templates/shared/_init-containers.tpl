@@ -7,12 +7,14 @@ Individual database waiters
   command: ['sh', '-c']
   args:
     - |
-      until nc -z {{ include "liquio.fullname" . }}-postgresql 5432; do
+      until nc -z {{ include "liquio.postgresql.host" . }} {{ .Values.config.database.port }}; do
         echo "Waiting for PostgreSQL to be ready..."
         sleep 5
       done
       echo "PostgreSQL is ready!"
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
     readOnlyRootFilesystem: true
     allowPrivilegeEscalation: false
     capabilities:
@@ -31,12 +33,14 @@ Individual database waiters
   command: ['sh', '-c']
   args:
     - |
-      until nc -z {{ include "liquio.fullname" . }}-rabbitmq 5672; do
+      until nc -z {{ include "liquio.rabbitmq.host" . }} {{ .Values.config.rabbitmq.port }}; do
         echo "Waiting for RabbitMQ to be ready..."
         sleep 5
       done
       echo "RabbitMQ is ready!"
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
     readOnlyRootFilesystem: true
     allowPrivilegeEscalation: false
     capabilities:
@@ -55,12 +59,14 @@ Individual database waiters
   command: ['sh', '-c']
   args:
     - |
-      until nc -z {{ include "liquio.fullname" . }}-redis-master 6379; do
+      until nc -z {{ include "liquio.redis.host" . }} {{ .Values.config.redis.port }}; do
         echo "Waiting for Redis to be ready..."
         sleep 5
       done
       echo "Redis is ready!"
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
     readOnlyRootFilesystem: true
     allowPrivilegeEscalation: false
     capabilities:
@@ -97,6 +103,8 @@ Usage: {{ include "liquio.initContainer.waitForMigrations" (dict "migrationJob" 
         fi
       done
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
     readOnlyRootFilesystem: true
     allowPrivilegeEscalation: false
     capabilities:

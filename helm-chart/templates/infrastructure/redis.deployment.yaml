@@ -23,8 +23,24 @@ spec:
         app.kubernetes.io/tier: infrastructure
         app.kubernetes.io/exposure: internal
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+            seccompProfile:
+              type: RuntimeDefault
           image: redis:7
           imagePullPolicy: IfNotPresent
           ports:

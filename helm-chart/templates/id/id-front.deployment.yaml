@@ -43,6 +43,8 @@ spec:
             - name: nginx-config-writable
               mountPath: /config-target
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
@@ -51,6 +53,8 @@ spec:
       containers:
         - name: id-front
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
             readOnlyRootFilesystem: false
             allowPrivilegeEscalation: false
             capabilities:

@@ -78,24 +78,62 @@ Each service can be individually enabled/disabled and configured:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `postgresql.enabled` | Deploy PostgreSQL | `true` |
+| `postgresql.enabled` | Deploy bundled PostgreSQL (local/non-production) | `true` |
 | `postgresql.auth.username` | PostgreSQL username | `postgres` |
 | `postgresql.auth.password` | PostgreSQL password | `changeme` |
+| `config.database.host` | External PostgreSQL host when `postgresql.enabled=false` | `liquio-test-postgresql` |
+| `config.database.port` | External PostgreSQL port | `5432` |
 
 ### Message Queue Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `rabbitmq.enabled` | Deploy RabbitMQ | `true` |
+| `rabbitmq.enabled` | Deploy bundled RabbitMQ (local/non-production) | `true` |
 | `rabbitmq.auth.username` | RabbitMQ username | `guest` |
 | `rabbitmq.auth.password` | RabbitMQ password | `changeme` |
+| `config.rabbitmq.host` | External RabbitMQ host when `rabbitmq.enabled=false` | `liquio-test-rabbitmq` |
+| `config.rabbitmq.port` | External RabbitMQ port | `5672` |
 
 ### Cache Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `redis.enabled` | Deploy Redis | `true` |
+| `redis.enabled` | Deploy bundled Redis (local/non-production) | `true` |
 | `redis.auth.enabled` | Enable Redis auth | `false` |
+| `config.redis.host` | External Redis host when `redis.enabled=false` | `liquio-test-redis-master` |
+| `config.redis.port` | External Redis port | `6379` |
+
+### External Infrastructure (Production)
+
+Bundled PostgreSQL, RabbitMQ, and Redis deployments are intended for local and non-production use.
+
+For production, disable bundled infrastructure and point Liquio services to managed/external dependencies:
+
+```yaml
+postgresql:
+  enabled: false
+
+rabbitmq:
+  enabled: false
+
+redis:
+  enabled: false
+
+config:
+  database:
+    host: my-postgres.example.internal
+    port: 5432
+    username: postgres
+    password: "<from-secret>"
+  rabbitmq:
+    host: my-rabbitmq.example.internal
+    port: 5672
+    username: guest
+    password: "<from-secret>"
+  redis:
+    host: my-redis.example.internal
+    port: 6379
+```
 
 ## Architecture
 

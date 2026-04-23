@@ -23,8 +23,25 @@ spec:
         app.kubernetes.io/tier: infrastructure
         app.kubernetes.io/exposure: internal
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgresql
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+            seccompProfile:
+              type: RuntimeDefault
           image: {{ .Values.postgresql.image.registry }}{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
           imagePullPolicy: IfNotPresent
           ports:
@@ -40,7 +57,7 @@ spec:
               value: {{ include "liquio.postgresql.password" . }}
           volumeMounts:
             - name: postgresql-data
-              mountPath: /var/lib/postgresql/data
+              mountPath: /var/lib/postgresql
             - name: postgresql-init
               mountPath: /docker-entrypoint-initdb.d
               readOnly: true

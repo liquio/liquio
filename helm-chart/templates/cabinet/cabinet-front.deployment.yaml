@@ -31,6 +31,8 @@ spec:
       containers:
         - name: cabinet-front
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
             readOnlyRootFilesystem: false
             allowPrivilegeEscalation: false
             capabilities:

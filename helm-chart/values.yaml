@@ -302,7 +302,8 @@ services:
 
 # PostgreSQL database configuration
 postgresql:
-  # Whether to deploy PostgreSQL database
+  # Deploy bundled PostgreSQL for local/non-production environments.
+  # For production, set enabled: false and configure external DB via config.database.*
   enabled: true
   image:
     # Override image registry (empty = use default)
@@ -310,7 +311,7 @@ postgresql:
     # PostgreSQL Docker image repository
     repository: postgres
     # PostgreSQL version tag
-    tag: "17"
+    tag: "18"
   # Database authentication configuration
   auth:
     # Database username
@@ -345,7 +346,8 @@ postgresql:
 
 # RabbitMQ message broker configuration
 rabbitmq:
-  # Whether to deploy RabbitMQ
+  # Deploy bundled RabbitMQ for local/non-production environments.
+  # For production, set enabled: false and configure external broker via config.rabbitmq.*
   enabled: true
   # Authentication configuration
   auth:
@@ -374,7 +376,8 @@ rabbitmq:
 
 # Redis cache and session store configuration
 redis:
-  # Whether to deploy Redis
+  # Deploy bundled Redis for local/non-production environments.
+  # For production, set enabled: false and configure external Redis via config.redis.*
   enabled: true
   # Authentication configuration
   auth:
@@ -470,13 +473,19 @@ serviceAccount:
   name: ""
 
 # Pod security context
+# runAsUser / runAsGroup are intentionally not set globally because backend
+# services run as node (UID 1000) and frontend services run as nginx (UID 101).
+# Set per-service overrides in the service's deployment values if needed.
 podSecurityContext:
+  runAsNonRoot: true
   seccompProfile:
     type: RuntimeDefault
   # fsGroup: 2000
 
 # Container security context
 securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
   readOnlyRootFilesystem: true
   allowPrivilegeEscalation: false
   capabilities:
@@ -484,8 +493,6 @@ securityContext:
     - ALL
   seccompProfile:
     type: RuntimeDefault
-  # runAsNonRoot: true
-  # runAsUser: 1000
 
 # Default resource limits and requests
 resources:
