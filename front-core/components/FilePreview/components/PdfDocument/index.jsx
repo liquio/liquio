@@ -121,13 +121,13 @@ const ZOOM_PERCENTAGES = [25, 50, 75, 100, 125, 150];
 const PdfDocument = ({ file, customToolbar, open, withPrint, isPdfBlock }) => {
   const config = getConfig();
 
-  if (config?.pdfWorkerLocal) {
+  if (config?.pdfWorkerLocal === false) {
+    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+  } else {
     pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      'js/pdfjs/pdf.worker.min.js',
+      'js/pdfjsLib/pdf.worker.min.js',
       `${window.location.origin}`
     ).toString();
-  } else {
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
   }
 
   const isMobile = window.innerWidth < 1024;

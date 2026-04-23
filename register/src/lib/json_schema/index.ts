@@ -29,7 +29,7 @@ export default class JsonSchema {
               .set('recordFieldValue', recordFieldValue)
               .set('currentKeyWordValueInSchema', currentKeyWordValueInSchema)
               .set('curentFieldInSchema', curentFieldInSchema);
-            return isolate.eval(`(${func as string})(recordFieldValue, currentKeyWordValueInSchema, curentFieldInSchema)`);
+            return isolate.eval(`(${func as string})(recordFieldValue.copySync(), currentKeyWordValueInSchema.copySync(), curentFieldInSchema.copySync())`);
           }
         } as any);
       });

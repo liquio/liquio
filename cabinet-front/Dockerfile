@@ -16,7 +16,10 @@ COPY --from=core . /app/src/core
 # Update the version and build the application
 RUN VERSION="$(npm pkg get version)" && \
     sed -ri "s|\"SETVERSION\"|$VERSION|" public/version.json && \
-    npm run build
+    npm run build && \
+    WORKER_SRC=$(find /app/node_modules -path "*/pdfjs-dist/build/pdf.worker.min.js" | head -1) && \
+    echo "Using pdfjs worker: $WORKER_SRC" && \
+    cp "$WORKER_SRC" /app/build/js/pdfjsLib/pdf.worker.min.js
 
 # Serve the built application with Nginx
 FROM nginx:1.19-alpine
