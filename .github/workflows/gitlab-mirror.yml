@@ -41,11 +41,11 @@ jobs:
           git remote add gitlab "https://${GITLAB_DEPLOY_USER}:${GITLAB_DEPLOY_TOKEN}@${GITLAB_HTTPS_URL}"
 
           git fetch gitlab main
-          git rebase gitlab/main
+          git merge -X ours --no-edit gitlab/main
 
           for i in 1 2 3; do
             echo "Push attempt $i..."
-            if git push gitlab HEAD:main --force-with-lease; then
+            if git push gitlab HEAD:main; then
               exit 0
             fi
             echo "Push failed, retrying in $((i*10))s..."
