@@ -20,6 +20,8 @@ Individual database waiters
     capabilities:
       drop:
       - ALL
+    seccompProfile:
+      type: RuntimeDefault
   volumeMounts:
     - name: tmp
       mountPath: /tmp
@@ -46,6 +48,8 @@ Individual database waiters
     capabilities:
       drop:
       - ALL
+    seccompProfile:
+      type: RuntimeDefault
   volumeMounts:
     - name: tmp
       mountPath: /tmp
@@ -72,6 +76,8 @@ Individual database waiters
     capabilities:
       drop:
       - ALL
+    seccompProfile:
+      type: RuntimeDefault
   volumeMounts:
     - name: tmp
       mountPath: /tmp
@@ -110,6 +116,8 @@ Usage: {{ include "liquio.initContainer.waitForMigrations" (dict "migrationJob" 
     capabilities:
       drop:
       - ALL
+    seccompProfile:
+      type: RuntimeDefault
   volumeMounts:
     - name: tmp
       mountPath: /tmp
