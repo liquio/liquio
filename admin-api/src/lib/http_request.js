@@ -105,7 +105,7 @@ class HttpRequest {
         return body;
       }
       // Network or other errors - throw a clean error message
-      throw new Error(error.message || 'Network error');
+      throw new Error(error.message || 'Network error', { cause: error });
     }
   }
 

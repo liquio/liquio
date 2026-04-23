@@ -79,10 +79,10 @@ class Preview {
     } catch (error) {
       if (error.code === 'ECONNABORTED') {
         // Timeout error
-        throw new Error('Timeout');
+        throw new Error('Timeout', { cause: error });
       } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
         // Network error
-        throw new Error('Network error');
+        throw new Error('Network error', { cause: error });
       } else {
         // Re-throw other errors as-is
         throw error;
@@ -117,7 +117,7 @@ class Preview {
         try {
           result = JSON.parse(result);
         } catch (parseError) {
-          throw new Error(`Failed to parse response JSON: ${parseError.message}`);
+          throw new Error(`Failed to parse response JSON: ${parseError.message}`, { cause: parseError });
         }
       }
 
@@ -148,10 +148,10 @@ class Preview {
     } catch (error) {
       if (error.response) {
         // HTTP error response
-        throw new Error(`HTTP ${error.response.status}: ${error.response.statusText}`);
+        throw new Error(`HTTP ${error.response.status}: ${error.response.statusText}`, { cause: error });
       } else if (error.request) {
         // Network error
-        throw new Error('Network error');
+        throw new Error('Network error', { cause: error });
       } else {
         // Other error
         throw error;

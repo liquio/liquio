@@ -42,7 +42,7 @@ class EventBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(_config) {
     // Define singleton.
     if (!EventBusiness.singleton) {
       this.config = getConfig();

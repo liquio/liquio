@@ -117,7 +117,7 @@ class HttpRequest {
         return parseBody(error.response.data);
       }
       // Network or other errors - throw a clean error message
-      throw new Error(error.message || 'Network error');
+      throw new Error(error.message || 'Network error', { cause: error });
     }
   }
 
@@ -187,7 +187,7 @@ class HttpRequest {
         };
       }
       // Network or other errors - throw a clean error message
-      throw new Error(error.message || 'Network error');
+      throw new Error(error.message || 'Network error', { cause: error });
     }
   }
 

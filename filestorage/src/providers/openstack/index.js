@@ -313,7 +313,7 @@ class OpenStack extends Provider {
       bytesUsedCountNumber = Number(bytesUsedCount);
     } catch (error) {
       log.save('get-openstack-bytes-used-count-error', { bytesUsedCount, error });
-      throw new Error(error);
+      throw new Error(error, { cause: error });
     }
     const gigabytesUsedCount = (bytesUsedCountNumber / BYTES_IN_GIGABYTES).toFixed(2);
     const gigabytesUsedCountRound = Math.round(gigabytesUsedCount);

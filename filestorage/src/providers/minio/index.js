@@ -273,7 +273,7 @@ class Minio extends Provider {
       bytesUsedCountNumber = Number(bytesUsedCount);
     } catch (error) {
       !global.silentUpload && log.save('get-minio-bytes-used-count-error', { bytesUsedCount, error });
-      throw new Error(error);
+      throw new Error(error, { cause: error });
     }
     const gigabytesUsedCount = (bytesUsedCountNumber / BYTES_IN_GIGABYTES).toFixed(2);
     const gigabytesUsedCountRound = Math.round(gigabytesUsedCount);

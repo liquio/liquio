@@ -21,7 +21,7 @@ async function prepareFixtures(app) {
       await app.model('workflow').create(workflow);
     }
   } catch (error) {
-    throw new Error(`Unable to prepare fixtures: ${error.message}`);
+    throw new Error(`Unable to prepare fixtures: ${error.message}`, { cause: error });
   }
 }
 

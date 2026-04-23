@@ -53,7 +53,7 @@ class CustomLogs {
     // Parse options.
     const { operationType, document, unitBefore, unitAfter } = options;
 
-    let customLogTemplates = [];
+    let customLogTemplates;
     if (document) {
       // Define document template ID.
       const { documentTemplateId } = document;
