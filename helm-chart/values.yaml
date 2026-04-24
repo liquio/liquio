@@ -413,6 +413,22 @@ ingress:
   enabled: true
   # Ingress class name (nginx for nginx-ingress controller)
   className: "nginx"
+  # Raw nginx configuration snippet injected via the ingress controller.
+  # Maps to nginx.ingress.kubernetes.io/configuration-snippet annotation.
+  # Use this to override the Content-Security-Policy set by the frontend
+  # images when deploying to environments that serve APIs over plain HTTP
+  # (e.g. local Kubernetes with custom domains).
+  #
+  # The `more_set_headers` directive replaces the upstream CSP response header
+  # so the ingress-level value wins. Leave empty in production — the nginx.conf
+  # baked into each frontend image already allows https://* in connect-src,
+  # which covers all HTTPS API endpoints.
+  #
+  # Local dev example (minikube with *.liquio.local):
+  # configurationSnippet: |
+  #   more_set_headers "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-ancestors 'self';";
+  configurationSnippet: |
+    more_set_headers "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-ancestors 'self';";
   # Ingress annotations for configuration
   annotations:
     # Rewrite target URL for proper routing
@@ -588,3 +604,51 @@ secrets:
   filestorage:
     # Authentication token for file storage service
     authToken: "test-filestorage-token"
+
+# NetworkPolicy configuration
+# When enabled, NetworkPolicy resources are created for every service,
+# enforcing least-privilege traffic rules by tier:
+#   frontend  — ingress from ingress-controller only; egress DNS only
+#   backend   — ingress from ingress-controller + intra-namespace Liquio pods;
+#               egress DNS + configured infra + optional SMTP/SMS
+#   gateway   — ingress from ingress-controller; egress to all backend pods
+#   infra     — ingress from any Liquio pod; egress DNS only
+#
+# NOTE: For FQDN-based egress to external smtp/sms hosts, use
+#       CiliumNetworkPolicy in addition to this standard NetworkPolicy.
+networkPolicy:
+  # Set to false to disable all NetworkPolicy resources (e.g. CNI without NP support)
+  enabled: true
+  egress:
+    postgres:
+      # Restrict backend egress to PostgreSQL port
+      enabled: true
+    redis:
+      # Restrict backend egress to Redis port
+      enabled: true
+    rabbitmq:
+      # Restrict backend egress to RabbitMQ port
+      enabled: true
+    smtp:
+      # Allow backend egress to an SMTP relay (port-based, any IP)
+      enabled: false
+      host: ""
+      port: 587
+    sms:
+      # Allow backend egress to an SMS gateway (port-based, any IP)
+      enabled: false
+      host: ""
+      port: 443
+  ingress:
+    ingressController:
+      # Allow ingress from the ingress-nginx namespace
+      enabled: true
+      # Override namespace label selector for the ingress-controller namespace.
+      # When empty the default label kubernetes.io/metadata.name: ingress-nginx is used.
+      namespaceSelector: {}
+    prometheus:
+      # Allow ingress from a Prometheus scraping namespace
+      enabled: false
+      # Override namespace label selector for the Prometheus namespace.
+      # When empty the default label kubernetes.io/metadata.name: monitoring is used.
+      namespaceSelector: {}
