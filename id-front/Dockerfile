@@ -18,20 +18,7 @@ RUN VERSION="$(npm pkg get version)" && \
     npm run build
 
 # Stage 2: Serve the frontend with nginx
-FROM nginx:1-alpine
-
-# Clean the default nginx html directory
-RUN rm -rf /usr/share/nginx/html/*
-
-# Create nginx cache directories and set ownership
-RUN mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp \
-             /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp \
-             /var/cache/nginx/scgi_temp && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chmod -R 755 /var/cache/nginx && \
-    chown -R nginx:nginx /var/run && \
-    chown -R nginx:nginx /var/log/nginx && \
-    sed -i 's|pid.*|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf
+FROM nginxinc/nginx-unprivileged:1-alpine-slim
 
 # Asset the built frontend files
 COPY --from=frontend /var/www/app/build/ /usr/share/nginx/html
