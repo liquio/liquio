@@ -10,7 +10,93 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  # ── Detect which services have changed ────────────────────────────────────
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      any: ${{ steps.build-matrix.outputs.any }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build service matrix from changed paths
+        id: build-matrix
+        run: |
+          # Determine diff range
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            # New branch — no previous commit, build everything
+            BASE=""
+            HEAD=""
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="HEAD"
+          fi
+
+          if [ -z "$BASE" ]; then
+            CHANGED=""
+            BUILD_ALL=true
+          else
+            CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
+            BUILD_ALL=false
+          fi
+
+          echo "Changed files:"
+          echo "${CHANGED:-<all>}"
+
+          # Special triggers
+          FRONT_CORE=$(echo "$CHANGED" | grep -c '^front-core/' || true)
+          WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/docker-build\.yml' || true)
+
+          # Returns 0 (true) if the service should be built
+          should_build() {
+            local svc=$1
+            [ "$BUILD_ALL" = "true" ] && return 0
+            [ "$WORKFLOW" -gt 0 ] && return 0
+            echo "$CHANGED" | grep -q "^${svc}/" && return 0
+            if [ "$FRONT_CORE" -gt 0 ]; then
+              { [ "$svc" = "admin-front" ] || [ "$svc" = "cabinet-front" ]; } && return 0
+            fi
+            return 1
+          }
+
+          INCLUDES=()
+
+          # Plain services (no extra build context)
+          for svc in admin-api cabinet-api event external-reader filestorage \
+                     gateway id-api id-front manager notification \
+                     pdf-generator register sign-tool task; do
+            if should_build "$svc"; then
+              INCLUDES+=("{\"service\":\"$svc\"}")
+            fi
+          done
+
+          # Front services that need front-core as an additional build context
+          for svc in admin-front cabinet-front; do
+            if should_build "$svc"; then
+              INCLUDES+=("{\"service\":\"$svc\",\"build-contexts\":\"core=./front-core\"}")
+            fi
+          done
+
+          if [ "${#INCLUDES[@]}" -eq 0 ]; then
+            echo "No service changes detected — skipping build."
+            echo "matrix={\"include\":[]}" >> "$GITHUB_OUTPUT"
+            echo "any=false" >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(printf '%s\n' "${INCLUDES[@]}" | jq -sc '{"include": .}')
+            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Build and push only the changed services ──────────────────────────────
   build:
+    needs: detect
+    if: needs.detect.outputs.any == 'true'
     name: ${{ matrix.service }}
     runs-on: ubuntu-latest
     permissions:
@@ -19,26 +105,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - service: admin-api
-          - service: admin-front
-            build-contexts: core=./front-core
-          - service: cabinet-api
-          - service: cabinet-front
-            build-contexts: core=./front-core
-          - service: event
-          - service: external-reader
-          - service: filestorage
-          - service: gateway
-          - service: id-api
-          - service: id-front
-          - service: manager
-          - service: notification
-          - service: pdf-generator
-          - service: register
-          - service: sign-tool
-          - service: task
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v6
