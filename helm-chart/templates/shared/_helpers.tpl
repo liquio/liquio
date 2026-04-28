@@ -87,9 +87,12 @@ Create a default image name
 {{- define "liquio.image" -}}
 {{- $registry := .Values.global.imageRegistry | default .Values.image.registry -}}
 {{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
-{{- $services := .Values.services -}}
 {{- $component := .component -}}
-{{- $repository := printf "liquio-%s" .component -}}
+{{- $repository := .component -}}
+{{- if hasKey .Values.serviceVersions $component -}}
+  {{- $tag = index .Values.serviceVersions $component -}}
+{{- end -}}
+{{- $services := .Values.services -}}
 {{- if hasKey $services $component -}}
   {{- if hasKey (index $services $component) "image" -}}
     {{- if hasKey (index $services $component "image") "repository" -}}

@@ -33,12 +33,33 @@ migrations:
 
 # Default image configuration for all services
 image:
-  # Override image registry (empty = use global setting)
-  registry: ""
+  # Image registry — default points to GHCR under the liquio org.
+  # Override to use a private registry, e.g. registry.example.com/liquio
+  registry: ghcr.io/liquio
   # Image pull policy: Always, IfNotPresent, Never
-  pullPolicy: Never
-  # Default image tag for all services
-  tag: "latest"
+  pullPolicy: IfNotPresent
+  # Global fallback tag used when a service has no entry in serviceVersions
+  tag: "0.1.0"
+
+# Per-service image versions — keyed by component name (kebab-case).
+# Each value is used as the image tag for that service.
+# Override individual entries to roll out a new version of a single service.
+serviceVersions:
+  admin-api: "0.1.0"
+  admin-front: "0.1.0"
+  cabinet-api: "0.1.0"
+  cabinet-front: "0.1.0"
+  event: "0.1.0"
+  external-reader: "0.1.0"
+  filestorage: "0.1.0"
+  gateway: "0.1.0"
+  id-api: "0.1.0"
+  id-front: "0.1.0"
+  manager: "0.1.0"
+  notification: "0.1.0"
+  register: "0.1.0"
+  sign-tool: "0.1.0"
+  task: "0.1.0"
 
 # Liquio microservices configuration
 services:
@@ -55,10 +76,7 @@ services:
     # External service port
     servicePort: 8080
     image:
-      # Docker image repository name
-      repository: liquio-id-front
-      # Docker image tag (overrides global tag)
-      tag: latest
+      repository: id-front
 
   # Admin Frontend - Administrative interface for system management
   adminFront:
@@ -73,10 +91,7 @@ services:
     # External service port
     servicePort: 8080
     image:
-      # Docker image repository name
-      repository: liquio-admin-front
-      # Docker image tag
-      tag: latest
+      repository: admin-front
 
   # Cabinet Frontend - Document management interface
   cabinetFront:
@@ -91,10 +106,7 @@ services:
     # External service port
     servicePort: 8080
     image:
-      # Docker image repository name
-      repository: liquio-cabinet-front
-      # Docker image tag
-      tag: latest
+      repository: cabinet-front
 
   # Identity API - Authentication and user management backend
   idApi:
@@ -109,10 +121,7 @@ services:
     # External service port
     servicePort: 8100
     image:
-      # Docker image repository name
-      repository: liquio-id-api
-      # Docker image tag
-      tag: latest
+      repository: id-api
 
   # Admin API - Administrative backend services and management operations
   adminApi:
@@ -127,10 +136,7 @@ services:
     # External service port
     servicePort: 8102
     image:
-      # Docker image repository name
-      repository: liquio-admin-api
-      # Docker image tag
-      tag: latest
+      repository: admin-api
 
   # Cabinet API - Document management and storage backend
   cabinetApi:
@@ -145,10 +151,7 @@ services:
     # External service port
     servicePort: 8101
     image:
-      # Docker image repository name
-      repository: liquio-cabinet-api
-      # Docker image tag
-      tag: latest
+      repository: cabinet-api
 
   # External Reader - Service for reading external data sources
   externalReader:
@@ -163,10 +166,7 @@ services:
     # External service port
     servicePort: 8106
     image:
-      # Docker image repository name
-      repository: liquio-external-reader
-      # Docker image tag
-      tag: latest
+      repository: external-reader
 
   # File Storage - Service for managing file uploads and storage
   filestorage:
@@ -181,10 +181,7 @@ services:
     # External service port
     servicePort: 8105
     image:
-      # Docker image repository name
-      repository: liquio-filestorage
-      # Docker image tag
-      tag: latest
+      repository: filestorage
 
   # Event Service - Handles system events and messaging
   event:
@@ -199,10 +196,7 @@ services:
     # External service port
     servicePort: 3000
     image:
-      # Docker image repository name
-      repository: liquio-event
-      # Docker image tag
-      tag: latest
+      repository: event
 
   # Gateway Service - API gateway and routing
   gateway:
@@ -217,10 +211,7 @@ services:
     # External service port
     servicePort: 7003
     image:
-      # Docker image repository name
-      repository: liquio-gateway
-      # Docker image tag
-      tag: latest
+      repository: gateway
 
   # Manager Service - Core business logic and workflow management
   manager:
@@ -235,10 +226,7 @@ services:
     # External service port
     servicePort: 3002
     image:
-      # Docker image repository name
-      repository: liquio-manager
-      # Docker image tag
-      tag: latest
+      repository: manager
 
   # Notification Service - Handles system notifications and alerts
   notification:
@@ -253,10 +241,7 @@ services:
     # External service port
     servicePort: 3003
     image:
-      # Docker image repository name
-      repository: liquio-notification
-      # Docker image tag
-      tag: latest
+      repository: notification
 
   # Register Service - Registry and metadata management
   register:
@@ -271,10 +256,7 @@ services:
     # External service port
     servicePort: 8103
     image:
-      # Docker image repository name
-      repository: liquio-register
-      # Docker image tag
-      tag: latest
+      repository: register
 
   # Sign Tool Service - Digital signature and cryptographic operations
   signTool:
@@ -289,10 +271,7 @@ services:
     # External service port
     servicePort: 3004
     image:
-      # Docker image repository name
-      repository: liquio-sign-tool
-      # Docker image tag
-      tag: latest
+      repository: sign-tool
 
   # Task Service - Task management and scheduling
   task:
@@ -307,10 +286,7 @@ services:
     # External service port
     servicePort: 3000
     image:
-      # Docker image repository name
-      repository: liquio-task
-      # Docker image tag
-      tag: latest
+      repository: task
 
 # PostgreSQL database configuration
 postgresql:
