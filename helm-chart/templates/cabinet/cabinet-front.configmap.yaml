@@ -20,9 +20,9 @@ data:
         "dateTimeFormat": "DD/MM/YYYY HH:mm"
       },
       "defaultRoute": "/messages",
-      "backendUrl": "http://cabinet-api.{{ .Values.global.domain }}",
-      "authLink": "http://cabinet-api.{{ .Values.global.domain }}/redirect/auth",
-      "idAuthLink": "http://id.{{ .Values.global.domain }}/authorise",
+      "backendUrl": "{{ include "liquio.scheme" . }}://cabinet-api.{{ .Values.global.domain }}",
+      "authLink": "{{ include "liquio.scheme" . }}://cabinet-api.{{ .Values.global.domain }}/redirect/auth",
+      "idAuthLink": "{{ include "liquio.scheme" . }}://id.{{ .Values.global.domain }}/authorise",
       "clientId": "liquio-portal",
       "defaultLanguage": "en-GB"
     }

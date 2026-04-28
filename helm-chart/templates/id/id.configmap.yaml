@@ -54,8 +54,8 @@ data:
           "defaults": {
             "client_id": "liquio-portal",
             "redirect_uri": [
-              "http://{{ include "liquio.fullname" . }}-cabinet-front:{{ .Values.services.cabinetFront.servicePort }}/",
-              "http://{{ include "liquio.fullname" . }}-admin-front:{{ .Values.services.adminFront.servicePort }}/"
+              "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
+              "{{ include "liquio.scheme" . }}://admin.{{ .Values.global.domain }}/"
             ],
             "state": "profile",
             "scope_fields": [
@@ -78,7 +78,7 @@ data:
               "test.com.ua"
             ],
             "caServerList": "https://iit.com.ua/download/productfiles/CAs.json",
-            "callbackURL": "http://{{ include "liquio.fullname" . }}-id-front:{{ .Values.services.idFront.servicePort }}/authorise/eds/callback",
+            "callbackURL": "{{ include "liquio.scheme" . }}://id.{{ .Values.global.domain }}/authorise/eds/callback",
             "clientID": "U0000656581",
             "clientSecret": "294c5b4cbeb537ab04c8111f6fa86aa6b29e5f15de521b556cda61ef505f6249",
             "customerURL": "https://auth.js.sign.eu.iit.com.ua/get-user-info",
@@ -140,9 +140,9 @@ data:
 
   front-config.json: |
     {
-      "apiUrl": "http://{{ include "liquio.fullname" . }}-id-api:{{ .Values.services.idApi.servicePort }}",
-      "cabinetUrl": "http://{{ include "liquio.fullname" . }}-cabinet-front:{{ .Values.services.cabinetFront.servicePort }}",
-      "adminUrl": "http://{{ include "liquio.fullname" . }}-admin-front:{{ .Values.services.adminFront.servicePort }}"
+      "apiUrl": "{{ include "liquio.scheme" . }}://id-api.{{ .Values.global.domain }}",
+      "cabinetUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}",
+      "adminUrl": "{{ include "liquio.scheme" . }}://admin.{{ .Values.global.domain }}"
     }
 
   versions.json: |

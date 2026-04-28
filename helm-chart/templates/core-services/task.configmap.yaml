@@ -51,7 +51,7 @@ data:
     {
       "LiquioId": {
         "server": "http://{{ include "liquio.fullname" . }}-id-api",
-        "front": "http://{{ include "liquio.fullname" . }}-id-front",
+        "front": "{{ include "liquio.scheme" . }}://id.{{ .Values.global.domain }}",
         "port": {{ .Values.services.idApi.servicePort }},
         "routes": {
           "getCode": "/authorise",
@@ -74,8 +74,8 @@ data:
         "clientSecret": "{{ include "liquio.oauth.secretKeyValue" . }}",
         "basicAuthToken": "{{ include "liquio.oauth.secretKeyValue" . }}"
       },
-      "authRedirectUrl": "http://localhost:8001/",
-      "logoutRedirectUrl": "http://localhost:8001/",
+      "authRedirectUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
+      "logoutRedirectUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
       "jwtSecret": "{{ include "liquio.jwt.secretValue" . }}",
       "jwtOptions": {
         "expiresIn": "1d"

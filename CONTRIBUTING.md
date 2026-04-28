@@ -106,19 +106,18 @@ For Kubernetes development and testing:
 2. Start minikube: `minikube start`.
 3. Add ingress addon: `minikube addons enable ingress`.
 4. Patch ingress controller to use LoadBalancer type: `kubectl patch svc ingress-nginx-controller -n ingress-nginx -p '{"spec": {"type": "LoadBalancer"}}'`.
-5. Setup minikube's Docker environment: `eval $(minikube docker-env)`.
-6. Build the images in the environment: `./scripts/build-images.sh`.
-7. Install the Helm chart: `helm install liquio ./helm-chart -f ./helm-chart/values.yaml --create-namespace --namespace liquio`.
-8. Set default namespace: `kubectl config set-context --current --namespace=liquio`
-9. Wait for the deployment to be ready: `kubectl get pods -w`.
-10. Setup domain name resolution:
-    10.1. Start minikube tunnel (in a separate terminal, keep it running): `minikube tunnel`
-    10.2. Get the LoadBalancer ClusterIP: `CLUSTER_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.clusterIP}')`
-    10.3. Add service domain names to hosts file (mapped to ClusterIP): `echo "$CLUSTER_IP admin.liquio.local admin-api.liquio.local cabinet.liquio.local cabinet-api.liquio.local id.liquio.local id-api.liquio.local" | sudo tee -a /etc/hosts`
-11. Generate user keys:
-    11.1. `./scripts/generate-user.sh --k8s-secret "liquio-ca-certs" --first-name "Admin" --last-name "Liquio" --serial-number "0000000001" --password "admin" --output admin.p12`
-    11.2. `./scripts/generate-user.sh --k8s-secret "liquio-ca-certs" --first-name "Demo" --last-name "Liquio" --serial-number "3123456789" --password "demo" --output demo.p12`
-12. Access http://admin.liquio.local from the browser.
+5. Install the Helm chart: `helm install liquio ./helm-chart -f ./helm-chart/values.yaml --create-namespace --namespace liquio`.
+   > Images are pulled automatically from `ghcr.io/liquio` — no local build step required.
+6. Set default namespace: `kubectl config set-context --current --namespace=liquio`
+7. Wait for the deployment to be ready: `kubectl get pods -w`.
+8. Setup domain name resolution:
+    8.1. Start minikube tunnel (in a separate terminal, keep it running): `minikube tunnel`
+    8.2. Get the LoadBalancer ClusterIP: `CLUSTER_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.clusterIP}')`
+    8.3. Add service domain names to hosts file (mapped to ClusterIP): `echo "$CLUSTER_IP admin.liquio.local admin-api.liquio.local cabinet.liquio.local cabinet-api.liquio.local id.liquio.local id-api.liquio.local" | sudo tee -a /etc/hosts`
+9. Generate user keys:
+    9.1. `./scripts/generate-user.sh --k8s-secret "liquio-ca-certs" --first-name "Admin" --last-name "Liquio" --serial-number "0000000001" --password "admin" --output admin.p12`
+    9.2. `./scripts/generate-user.sh --k8s-secret "liquio-ca-certs" --first-name "Demo" --last-name "Liquio" --serial-number "3123456789" --password "demo" --output demo.p12`
+10. Access http://admin.liquio.local from the browser.
 
 ## Development Workflow
 

@@ -2,17 +2,14 @@
 global:
   # Base domain for all Liquio services (used for ingress hostnames)
   domain: liquio.local
+  # URL scheme used in frontend config.json files. Set to "https" when TLS is
+  # enabled (e.g. ingress.selfSigned.enabled=true) so browser requests to APIs
+  # are not blocked as mixed content.
+  scheme: http
   # Override image registry for all services (empty = use default Docker Hub)
   imageRegistry: ""
   # Secrets for pulling images from private registries
   imagePullSecrets: []
-
-# Namespace configuration
-namespace:
-  # Whether to create a dedicated namespace for Liquio
-  create: true
-  # Name of the namespace (if empty, uses .Release.Namespace)
-  name: ""
 
 # Database migrations configuration
 migrations:
@@ -417,6 +414,14 @@ ingress:
   #   more_set_headers "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-ancestors 'self';";
   configurationSnippet: |
     more_set_headers "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-ancestors 'self';";
+  # Self-signed TLS certificate for local/dev deployments.
+  # When enabled, a kubernetes.io/tls Secret is generated at helm render time
+  # using Helm's built-in genSelfSignedCert function. The cert covers all hosts
+  # defined in ingress.hosts and is reused on subsequent upgrades (via lookup).
+  # Enable this for minikube/local deployments to get HTTPS (required for
+  # crypto.randomUUID and other Secure Context browser APIs).
+  selfSigned:
+    enabled: false
   # Ingress annotations for configuration
   annotations:
     # Rewrite target URL for proper routing

@@ -37,8 +37,8 @@ spec:
               psql "$DATABASE_URL" << 'EOF'
               UPDATE clients 
               SET "redirectUri" = ARRAY[
-                'http://cabinet.{{ .Values.global.domain }}/',
-                'http://admin.{{ .Values.global.domain }}/'
+                '{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/',
+                '{{ include "liquio.scheme" . }}://admin.{{ .Values.global.domain }}/'
               ]
               WHERE "clientId" = 'liquio-portal';
               

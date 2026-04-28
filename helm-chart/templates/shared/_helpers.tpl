@@ -31,6 +31,20 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
+URL scheme for browser-facing URLs (http or https).
+Derive from global.scheme; falls back to "https" if any TLS is configured.
+*/}}
+{{- define "liquio.scheme" -}}
+{{- if .Values.global.scheme -}}
+{{- .Values.global.scheme -}}
+{{- else if or .Values.ingress.selfSigned.enabled .Values.ingress.tls -}}
+https
+{{- else -}}
+http
+{{- end -}}
+{{- end }}
+
+{{/*
 Common labels
 */}}
 {{- define "liquio.labels" -}}
@@ -54,11 +68,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Namespace name
 */}}
 {{- define "liquio.namespace" -}}
-{{- if .Values.namespace.name }}
-{{- .Values.namespace.name }}
-{{- else }}
 {{- .Release.Namespace }}
-{{- end }}
 {{- end }}
 
 {{/*
