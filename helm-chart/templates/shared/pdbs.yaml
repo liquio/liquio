@@ -1,0 +1,50 @@
+{{- /* ── Frontend services ────────────────────────────────────────── */}}
+{{- if .Values.services.idFront.enabled }}
+{{- include "liquio.pdb" (dict "component" "id-front" "replicaCount" .Values.services.idFront.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.adminFront.enabled }}
+{{- include "liquio.pdb" (dict "component" "admin-front" "replicaCount" .Values.services.adminFront.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.cabinetFront.enabled }}
+{{- include "liquio.pdb" (dict "component" "cabinet-front" "replicaCount" .Values.services.cabinetFront.replicaCount "context" .) }}
+{{- end }}
+
+{{- /* ── API gateway ───────────────────────────────────────────────── */}}
+{{- if .Values.services.gateway.enabled }}
+{{- include "liquio.pdb" (dict "component" "gateway" "replicaCount" .Values.services.gateway.replicaCount "context" .) }}
+{{- end }}
+
+{{- /* ── Backend services ─────────────────────────────────────────── */}}
+{{- if .Values.services.idApi.enabled }}
+{{- include "liquio.pdb" (dict "component" "id-api" "replicaCount" .Values.services.idApi.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.adminApi.enabled }}
+{{- include "liquio.pdb" (dict "component" "admin-api" "replicaCount" .Values.services.adminApi.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.cabinetApi.enabled }}
+{{- include "liquio.pdb" (dict "component" "cabinet-api" "replicaCount" .Values.services.cabinetApi.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.event.enabled }}
+{{- include "liquio.pdb" (dict "component" "event" "replicaCount" .Values.services.event.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.externalReader.enabled }}
+{{- include "liquio.pdb" (dict "component" "external-reader" "replicaCount" .Values.services.externalReader.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.filestorage.enabled }}
+{{- include "liquio.pdb" (dict "component" "filestorage" "replicaCount" .Values.services.filestorage.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.manager.enabled }}
+{{- include "liquio.pdb" (dict "component" "manager" "replicaCount" .Values.services.manager.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.notification.enabled }}
+{{- include "liquio.pdb" (dict "component" "notification" "replicaCount" .Values.services.notification.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.register.enabled }}
+{{- include "liquio.pdb" (dict "component" "register" "replicaCount" .Values.services.register.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.signTool.enabled }}
+{{- include "liquio.pdb" (dict "component" "sign-tool" "replicaCount" .Values.services.signTool.replicaCount "context" .) }}
+{{- end }}
+{{- if .Values.services.task.enabled }}
+{{- include "liquio.pdb" (dict "component" "task" "replicaCount" .Values.services.task.replicaCount "context" .) }}
+{{- end }}

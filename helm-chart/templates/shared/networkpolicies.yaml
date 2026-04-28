@@ -27,28 +27,28 @@
 
 {{- /* ── Internal backend services ───────────────────────────────────── */}}
 {{- if .Values.services.event.enabled }}
-{{- include "liquio.networkPolicy.backend" (dict "component" "event" "context" .) }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "event" "context" .) }}
 {{- end }}
 {{- if .Values.services.externalReader.enabled }}
-{{- include "liquio.networkPolicy.backend" (dict "component" "external-reader" "context" .) }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "external-reader" "context" .) }}
 {{- end }}
 {{- if .Values.services.filestorage.enabled }}
-{{- include "liquio.networkPolicy.backend" (dict "component" "filestorage" "context" .) }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "filestorage" "context" .) }}
 {{- end }}
 {{- if .Values.services.manager.enabled }}
-{{- include "liquio.networkPolicy.backend" (dict "component" "manager" "context" .) }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "manager" "context" .) }}
 {{- end }}
 {{- if .Values.services.notification.enabled }}
-{{- include "liquio.networkPolicy.backend" (dict "component" "notification" "context" .) }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "notification" "context" .) }}
 {{- end }}
 {{- if .Values.services.register.enabled }}
-{{- include "liquio.networkPolicy.backend" (dict "component" "register" "context" .) }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "register" "context" .) }}
 {{- end }}
 {{- if .Values.services.signTool.enabled }}
-{{- include "liquio.networkPolicy.backend" (dict "component" "sign-tool" "context" .) }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "sign-tool" "context" .) }}
 {{- end }}
 {{- if .Values.services.task.enabled }}
-{{- include "liquio.networkPolicy.backend" (dict "component" "task" "context" .) }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "task" "context" .) }}
 {{- end }}
 
 {{- /* ── Internal infrastructure (only when deployed in-cluster) ────── */}}

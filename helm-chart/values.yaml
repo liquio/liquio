@@ -652,3 +652,21 @@ networkPolicy:
       # Override namespace label selector for the Prometheus namespace.
       # When empty the default label kubernetes.io/metadata.name: monitoring is used.
       namespaceSelector: {}
+
+# PodDisruptionBudget configuration
+# A PDB is only created for a service when BOTH conditions are met:
+#   1. podDisruptionBudget.enabled is true
+#   2. the service's replicaCount is >= 2
+# This prevents accidental disruption of high-availability deployments during
+# voluntary events such as node drains and rolling upgrades.
+podDisruptionBudget:
+  # Set to false to disable all PodDisruptionBudget resources globally
+  enabled: true
+  # Minimum number of pods that must remain available during voluntary disruptions.
+  # Can be an absolute number (e.g. 1) or a percentage string (e.g. "50%").
+  minAvailable: 1
+  # Policy for evicting unhealthy pods to allow disruptions to proceed.
+  # AlwaysAllow: unhealthy pods are always counted as available (allows nodes to drain even if pods are broken).
+  # IfHealthyBudget: only allow evicting unhealthy pods when the healthy pod count exceeds minAvailable.
+  # Requires Kubernetes >= 1.26. Set to "" to omit this field for older clusters.
+  unhealthyPodEvictionPolicy: AlwaysAllow
