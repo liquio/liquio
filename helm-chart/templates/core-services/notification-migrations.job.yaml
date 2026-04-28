@@ -14,6 +14,7 @@ metadata:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
   template:
     metadata:
       labels:
@@ -32,11 +33,15 @@ spec:
             - name: NODE_ENV
               value: "production"
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
               - ALL
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
           volumeMounts:
             - name: config
               mountPath: /var/www/config

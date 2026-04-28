@@ -18,6 +18,18 @@ namespace:
 migrations:
   # Whether to run database schema migrations on deployment
   enabled: true
+  # Automatically delete completed Job pods after this many seconds.
+  # Set to 0 to delete immediately; unset (null) to keep indefinitely.
+  ttlSecondsAfterFinished: 600
+  # Resource requests and limits for migration job containers.
+  # Migration jobs are short-lived; these values are intentionally conservative.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
 
 # Default image configuration for all services
 image:

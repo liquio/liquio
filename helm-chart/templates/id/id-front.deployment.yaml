@@ -50,6 +50,8 @@ spec:
             capabilities:
               drop:
               - ALL
+          resources:
+            {{- toYaml .Values.initContainerResources | nindent 12 }}
       containers:
         - name: id-front
           securityContext:

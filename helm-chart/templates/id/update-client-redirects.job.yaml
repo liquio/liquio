@@ -11,6 +11,7 @@ metadata:
     "helm.sh/hook-weight": "5"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
   template:
     metadata:
       name: {{ include "liquio.fullname" . }}-update-client-redirects
@@ -52,11 +53,15 @@ spec:
             - name: PGPASSWORD
               value: "{{ .Values.postgresql.auth.password }}"
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
               - ALL
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
           volumeMounts:
             - name: tmp
               mountPath: /tmp

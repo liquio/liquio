@@ -12,6 +12,7 @@ metadata:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
   template:
     metadata:
       labels:
