@@ -108,6 +108,18 @@ For Kubernetes development and testing:
 4. Patch ingress controller to use LoadBalancer type: `kubectl patch svc ingress-nginx-controller -n ingress-nginx -p '{"spec": {"type": "LoadBalancer"}}'`.
 5. Install the Helm chart: `helm install liquio ./helm-chart -f ./helm-chart/values.yaml --create-namespace --namespace liquio`.
    > Images are pulled automatically from `ghcr.io/liquio` — no local build step required.
+   > **For local development:** if you have made code changes and need to rebuild images, point your shell at minikube's Docker daemon and run the build script before installing:
+   > ```bash
+   > eval $(minikube docker-env)
+   > ./scripts/build-images.sh --registry ghcr.io/liquio --tag 0.1.0
+   > # or rebuild a single service:
+   > ./scripts/build-images.sh --registry ghcr.io/liquio --tag 0.1.0 --image cabinet-api
+   > ```
+   > Then install with `image.pullPolicy=IfNotPresent` so Kubernetes uses the locally built images instead of pulling from the registry:
+   > ```bash
+   > helm install liquio ./helm-chart -f ./helm-chart/values.yaml --create-namespace --namespace liquio \
+   >   --set image.pullPolicy=IfNotPresent
+   > ```
 6. Set default namespace: `kubectl config set-context --current --namespace=liquio`
 7. Wait for the deployment to be ready: `kubectl get pods -w`.
 8. Setup domain name resolution:
