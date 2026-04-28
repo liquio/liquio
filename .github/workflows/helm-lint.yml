@@ -1,0 +1,54 @@
+name: Helm Lint
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'helm-chart/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'helm-chart/**'
+
+env:
+  HELM_VERSION: v4.1.4
+  KUBECONFORM_VERSION: v0.7.0
+  KUBE_LINTER_VERSION: v0.8.3
+
+jobs:
+  helm-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install kubeconform
+        run: |
+          curl -sLo /tmp/kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${{ env.KUBECONFORM_VERSION }}/kubeconform-linux-amd64.tar.gz"
+          tar -xzf /tmp/kubeconform.tar.gz -C /usr/local/bin kubeconform
+          chmod +x /usr/local/bin/kubeconform
+
+      - name: Install kube-linter
+        run: |
+          curl -sLo /tmp/kube-linter.tar.gz \
+            "https://github.com/stackrox/kube-linter/releases/download/${{ env.KUBE_LINTER_VERSION }}/kube-linter-linux.tar.gz"
+          tar -xzf /tmp/kube-linter.tar.gz -C /usr/local/bin kube-linter
+          chmod +x /usr/local/bin/kube-linter
+
+      - name: helm lint
+        run: helm lint helm-chart/
+
+      - name: kubeconform
+        run: |
+          helm template liquio helm-chart/ \
+            | kubeconform -strict -summary -kubernetes-version 1.29.0
+
+      - name: kube-linter
+        run: |
+          helm template liquio helm-chart/ \
+            | kube-linter lint -
