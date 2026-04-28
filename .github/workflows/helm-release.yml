@@ -1,0 +1,57 @@
+name: Helm Release
+
+on:
+  push:
+    tags:
+      - 'helm-v*'
+
+env:
+  HELM_VERSION: v4.1.4
+  REGISTRY: ghcr.io
+  CHART_PATH: helm-chart/
+
+jobs:
+  helm-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Strip "helm-v" prefix from the tag name: helm-v1.2.3 → 1.2.3
+          VERSION="${GITHUB_REF_NAME#helm-v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Update chart version
+        run: |
+          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" \
+            ${{ env.CHART_PATH }}Chart.yaml
+
+      - name: Helm package
+        run: helm package ${{ env.CHART_PATH }} --destination /tmp/chart-packages/
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | helm registry login ${{ env.REGISTRY }} \
+              --username ${{ github.repository_owner }} \
+              --password-stdin
+
+      - name: Push chart to GHCR
+        run: |
+          helm push /tmp/chart-packages/liquio-${{ steps.version.outputs.version }}.tgz \
+            oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts
+
+      - name: Log out of GHCR
+        if: always()
+        run: helm registry logout ${{ env.REGISTRY }}

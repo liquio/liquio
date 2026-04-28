@@ -12,6 +12,25 @@ This Helm chart deploys the Liquio platform on Kubernetes.
 
 ## Installation
 
+### OCI Registry (Recommended)
+
+Charts are published to GitHub Container Registry on every `helm-v*` tag.
+
+```bash
+# Install latest release
+helm install liquio oci://ghcr.io/liquio/charts/liquio --version <version>
+
+# Upgrade
+helm upgrade liquio oci://ghcr.io/liquio/charts/liquio --version <version>
+
+# Inspect values before installing
+helm show values oci://ghcr.io/liquio/charts/liquio --version <version>
+```
+
+Replace `<version>` with a published chart version, e.g. `0.1.0`.
+
+### From Source (Development)
+
 ### Quick Start
 
 1. Build Docker images for all components:
