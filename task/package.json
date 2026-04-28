@@ -81,7 +81,7 @@
     "@testcontainers/postgresql": "^11.13.0",
     "@testcontainers/redis": "^11.13.0",
     "escape-regex-string": "^1.0.6",
-    "eslint": "^10.0.3",
+    "eslint": "^10.2.1",
     "eslint-plugin-jsdoc": "^62.8.0",
     "globals": "^17.4.0",
     "jest": "^30.3.0",
