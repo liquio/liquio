@@ -154,6 +154,95 @@ config:
     port: 6379
 ```
 
+### Secrets — `existingSecret`
+
+By default the chart generates a Kubernetes `Secret` from the plaintext values in `values.yaml`. For production, supply a pre-existing secret instead (e.g. from Vault, Sealed Secrets, or ESO) and the chart will not create its own:
+
+```yaml
+secrets:
+  existingSecret: "my-liquio-secret"  # name of a pre-existing K8s Secret
+```
+
+The secret must contain these keys (see `helm show values oci://ghcr.io/liquio/charts/liquio` for the full list):
+
+```
+postgresql-password
+jwt-secret
+oauth-client-secret
+# ... other keys as shown in templates/shared/secrets.yaml
+```
+
+When `existingSecret` is set the chart-generated `Secret` resource is suppressed entirely.
+
+### NetworkPolicy
+
+NetworkPolicy resources are created for every service when `networkPolicy.enabled: true` (the default). They follow a least-privilege model:
+
+| Service type | Ingress allowed from | Egress allowed to |
+|---|---|---|
+| Frontends (`id-front`, `admin-front`, `cabinet-front`) | Ingress controller | DNS only |
+| Public backends (`id-api`, `admin-api`, `cabinet-api`) | Ingress controller + Liquio pods | PostgreSQL, Redis, RabbitMQ |
+| Internal backends (all other services) | Liquio pods only | PostgreSQL, Redis, RabbitMQ |
+| Gateway | Ingress controller | All Liquio pods |
+| Infrastructure (PostgreSQL, Redis, RabbitMQ) | Liquio pods | — |
+
+```yaml
+networkPolicy:
+  enabled: true
+  egress:
+    postgres:
+      enabled: true
+    redis:
+      enabled: true
+    rabbitmq:
+      enabled: true
+    smtp:
+      enabled: false
+      host: ""
+      port: 587
+    sms:
+      enabled: false
+      host: ""
+      port: 443
+  ingress:
+    ingressController:
+      enabled: true
+      namespaceSelector: {}   # match the ingress-controller namespace by label
+    prometheus:
+      enabled: false
+      namespaceSelector: {}
+```
+
+To disable NetworkPolicy entirely (e.g. if your CNI does not support it):
+
+```yaml
+networkPolicy:
+  enabled: false
+```
+
+### PodDisruptionBudget
+
+A `PodDisruptionBudget` is created for each service that has `replicaCount >= 2`. This prevents voluntary disruptions (node drain, rolling upgrades) from taking down all replicas simultaneously.
+
+```yaml
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+```
+
+To take effect, scale the relevant services to at least 2 replicas:
+
+```yaml
+services:
+  gateway:
+    replicaCount: 2
+  idApi:
+    replicaCount: 2
+```
+
+PDBs are silently skipped for services with `replicaCount: 1` to avoid blocking single-node clusters.
+
 ## Architecture
 
 The Liquio platform consists of several microservices:
@@ -215,11 +304,7 @@ The chart supports persistent storage for:
 
 ## Security
 
-The chart automatically generates secrets for:
-- Database passwords
-- OAuth keys
-- JWT secrets
-- Service authentication tokens
+The chart generates a `Secret` containing database passwords, OAuth keys, JWT secrets, and service tokens from the plaintext values in `values.yaml`. For production deployments use `secrets.existingSecret` to supply a pre-existing secret instead — see [Secrets — existingSecret](#secrets--existingsecret) above.
 
 ## Monitoring
 
