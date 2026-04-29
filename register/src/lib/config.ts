@@ -8,7 +8,7 @@ export const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_
 
 export const config: Config = Multiconf.get(
   [CONFIG_PATH, ...(SECRET_PATH && existsSync(SECRET_PATH) ? [SECRET_PATH] : [])],
-  `${LIQUIO_CONFIG_PREFIX}_`,
+  `${LIQUIO_CONFIG_PREFIX}_`
 ) as unknown as Config;
 
 export interface Config {
