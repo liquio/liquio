@@ -97,7 +97,10 @@ Usage: {{ include "liquio.initContainer.waitForMigrations" (dict "migrationJob" 
     - |
       echo "Waiting for {{ .migrationJob }} to complete..."
       while true; do
-        if kubectl get job {{ include "liquio.fullname" .Context }}-{{ .migrationJob }} -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null | grep -q "True"; then
+        if ! kubectl get job {{ include "liquio.fullname" .Context }}-{{ .migrationJob }} 2>/dev/null; then
+          echo "{{ .migrationJob | title }} job not found (already cleaned up, assuming success)."
+          break
+        elif kubectl get job {{ include "liquio.fullname" .Context }}-{{ .migrationJob }} -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null | grep -q "True"; then
           echo "{{ .migrationJob | title }} completed successfully!"
           break
         elif kubectl get job {{ include "liquio.fullname" .Context }}-{{ .migrationJob }} -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null | grep -q "True"; then

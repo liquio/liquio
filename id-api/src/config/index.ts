@@ -1,4 +1,5 @@
 import fs from 'fs';
+import Multiconf from 'multiconf';
 import { StrategyOptions } from 'passport-oauth2';
 import { Dialect } from 'sequelize';
 
@@ -233,17 +234,8 @@ export interface Config {
   };
 }
 
-function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
-  const result = { ...target };
-  for (const key of Object.keys(source)) {
-    if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key]) && typeof result[key] === 'object') {
-      result[key] = deepMerge(result[key], source[key]);
-    } else {
-      result[key] = source[key];
-    }
-  }
-  return result;
-}
+const CONFIG_PATH = process.env.CONFIG_PATH || process.cwd() + '/config';
+const SECRET_PATH = process.env.SECRET_PATH;
 
 let config: Config;
 export function loadConfig(): Config {
@@ -251,62 +243,38 @@ export function loadConfig(): Config {
     return config;
   }
 
-  const nconf = require('nconf');
+  const envConfigVar = process.env['LIQUIO_ID_CONFIG'];
+  const env = process.env.NODE_ENV ?? 'localhost';
 
-  const file = process.env.CONFIG_PATH ? `${process.env.CONFIG_PATH}/config.json` : process.cwd() + '/config/config.json';
-  if (!fs.existsSync(file) && !process.env['LIQUIO_ID_CONFIG']) {
-    throw new Error(`Unable to load config: neither ${file} exists, nor LIQUIO_ID_CONFIG variable is set.`);
-  }
-
-  // Init config file.
-  const fileConfig = nconf.env().file({ file });
-
-  // Init config versions.
-  const versionsFile = process.env.CONFIG_PATH ? `${process.env.CONFIG_PATH}/versions.json` : process.cwd() + '/config/versions.json.default';
-  const versionsConfText = fs.readFileSync(versionsFile, 'utf8');
-  const versionsConf = JSON.parse(versionsConfText || '{}');
-
-  const env = process.env.NODE_ENV ?? fileConfig.get('default_env') ?? 'localhost';
-  let envConfig = process.env['LIQUIO_ID_CONFIG'];
-  if (typeof env !== 'string' || !env) {
-    throw new Error(`ENV [${env}] is not defined.`);
-  }
-
-  let currentEnvConf = fileConfig.get(env);
-  if (typeof envConfig === 'string') {
+  if (typeof envConfigVar === 'string') {
     let parsedEnvConfig;
     try {
-      parsedEnvConfig = JSON.parse(envConfig);
+      parsedEnvConfig = JSON.parse(envConfigVar);
     } catch (error) {
       throw new Error(`LIQUIO_ID_CONFIG is invalid json: ${error}`);
     }
-
     if (typeof parsedEnvConfig[env] === 'undefined') {
       throw new Error(`LIQUIO_ID_CONFIG [${env}] is not defined object config.`);
     }
-
-    currentEnvConf = parsedEnvConfig[env];
+    config = parsedEnvConfig[env] as Config;
+    return config;
   }
 
-  if (typeof currentEnvConf === 'undefined' || typeof currentEnvConf.db === 'undefined') {
-    throw new Error('Variable currentEnvConf.db is not defined.');
-  }
+  const paths = [CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])];
+  const raw = Multiconf.get(paths, 'LIQUIO_CFG_ID_') as any;
 
-  // Merge secret config if SECRET_PATH is set and the directory exists.
-  const secretPath = process.env.SECRET_PATH;
-  if (secretPath && fs.existsSync(secretPath)) {
-    const secretFile = `${secretPath}/config.json`;
-    if (fs.existsSync(secretFile)) {
-      const secretConf = JSON.parse(fs.readFileSync(secretFile, 'utf8'));
-      const secretEnvConf = secretConf[env] ?? secretConf;
-      currentEnvConf = deepMerge(currentEnvConf, secretEnvConf);
-    }
+  const configData = raw.config;
+  const resolvedEnv = env !== 'localhost' ? env : (configData?.default_env ?? 'localhost');
+  const envConf = configData?.[resolvedEnv];
+
+  if (!envConf || !envConf.db) {
+    throw new Error(`Config for env [${resolvedEnv}] is not defined or missing 'db' section.`);
   }
 
   config = {
-    ...currentEnvConf,
-    ...versionsConf,
-  };
+    ...envConf,
+    ...(raw.versions?.versions !== undefined ? { versions: raw.versions.versions } : {}),
+  } as Config;
 
   return config;
 }

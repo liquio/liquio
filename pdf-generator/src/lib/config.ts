@@ -10,9 +10,9 @@ export class Config {
   private constructor() {}
 
   static get<T>(path: string): T {
-    return Multiconf.get(
+    return (Multiconf.get(
       [CONFIG_PATH, ...(SECRET_PATH && existsSync(SECRET_PATH) ? [SECRET_PATH] : [])],
       'KITSOFT_PDF_GENERATOR_',
-    )[path];
+    ) as Record<string, unknown>)[path] as T;
   }
 }
