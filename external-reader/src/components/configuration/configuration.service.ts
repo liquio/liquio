@@ -20,7 +20,9 @@ export class ConfigurationService<TConfig extends Configuration = Configuration>
         `${LIQUIO_CONFIG_PREFIX}_`,
       ) as TConfig;
     } catch (error) {
-      this.logger.error('configuration-error', { error: error instanceof Error ? error.message : String(error) });
+      this.logger.error('configuration-error', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw new Error('Unable to load configuration');
     }
   }
