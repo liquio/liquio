@@ -12,6 +12,7 @@ env:
 jobs:
   # ── Detect which services have changed ────────────────────────────────────
   detect:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
