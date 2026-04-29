@@ -2,11 +2,7 @@ name: Helm Lint
 
 on:
   push:
-    branches: [main, develop]
-    paths:
-      - 'helm-chart/**'
-  pull_request:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - 'helm-chart/**'
 
