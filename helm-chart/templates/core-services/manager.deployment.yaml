@@ -50,6 +50,8 @@ spec:
               value: "production"
             - name: PORT
               value: "{{ .Values.services.manager.targetPort }}"
+            - name: CONFIG_PATH
+              value: "/var/www/config"
             - name: SECRET_PATH
               value: {{ .Values.secrets.secretConfigPath | quote }}
           volumeMounts:
