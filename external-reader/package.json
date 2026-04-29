@@ -23,7 +23,7 @@
     "test:e2e": "jest --verbose --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@nestjs/cli": "^11.0.0",
+    "@nestjs/cli": "^11.0.17",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.1.17",
     "@nestjs/passport": "^11.0.5",
