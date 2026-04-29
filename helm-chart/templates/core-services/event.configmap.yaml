@@ -13,28 +13,24 @@ data:
       "port": {{ .Values.config.database.port }},
       "database": "bpmn",
       "username": "{{ .Values.config.database.username }}",
-      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "dialect": "postgres",
       "dialectOptions": {
         "socketPath": "",
         "supportBigNumbers": true,
         "bigNumberStrings": true
       },
-      "timezone": "Europe/Kyiv",
       "logging": false,
       "pool": {
         "max": 5,
         "min": 0,
         "acquire": 30000,
         "idle": 10000
-      },
-      "migrationStorageTableName": "sequelize_meta"
+      }
     }
 
   # Message queue configuration
   message_queue.json: |
     {
-      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.passwordValue" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
       "maxHandlingMessages": 2,
       "readingQueueName": "bpmn-event-incoming",
       "writingQueueName": "bpmn-manager-incoming",
@@ -45,7 +41,6 @@ data:
   filestorage.json: |
     {
       "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-      "token": "{{ include "liquio.filestorage.authTokenValue" . }}",
       "containerId": 1,
       "getFileTimeout": 60000,
       "downloadFileTimeout": 60000,
@@ -136,7 +131,6 @@ data:
         },
         "timeout": 30000,
         "user": "admin",
-        "hashedPassword": "password",
         "templateParams": {
           "frontUrl": "http://localhost:3000"
         },
@@ -152,7 +146,6 @@ data:
           "ping": "/test/ping"
         },
         "user": "admin",
-        "hashedPassword": "password",
         "templateParams": {
           "frontUrl": "http://localhost:3000"
         }
@@ -346,7 +339,6 @@ data:
         },
         "timeout": 30000,
         "user": "test-user",
-        "hashedPassword": "test-password",
         "emails": [],
         "subject": "Workflow process problem.",
         "body": "<html><body>Відбулась помилка в процесі {url}<br/>Event {eventTemplateId} {eventTemplateName}<br/>{error}</body></html>"

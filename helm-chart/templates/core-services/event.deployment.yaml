@@ -49,9 +49,14 @@ spec:
               value: "production"
             - name: PORT
               value: "{{ .Values.services.event.targetPort }}"
+            - name: SECRET_PATH
+              value: {{ .Values.secrets.secretConfigPath | quote }}
           volumeMounts:
             - name: config
               mountPath: /var/www/config
+              readOnly: true
+            - name: secret-config
+              mountPath: {{ .Values.secrets.secretConfigPath }}
               readOnly: true
             - name: tmp
               mountPath: /tmp
@@ -73,6 +78,9 @@ spec:
         - name: config
           configMap:
             name: {{ include "liquio.fullname" . }}-event-config
+        - name: secret-config
+          secret:
+            secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "event") }}
         - name: tmp
           emptyDir: {}
       {{- with .Values.nodeSelector }}

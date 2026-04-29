@@ -567,6 +567,12 @@ secrets:
   # When set, Helm does not create liquio-managed secrets and referenced
   # workloads read secret values from this Secret.
   existingSecret: ""
+  # Existing Kubernetes Secret name to mount as SECRET_PATH file volume.
+  # When set, per-service secret-config Secrets are not created and this Secret
+  # is mounted in every service instead.
+  existingSecretConfig: ""
+  # Mount path for the per-service secret config volume (set as SECRET_PATH env var).
+  secretConfigPath: /var/www/secret
   # PostgreSQL authentication secrets
   postgresql:
     # Database password
@@ -597,6 +603,12 @@ secrets:
   filestorage:
     # Authentication token for file storage service
     authToken: "test-filestorage-token"
+  # Notification service secrets
+  notification:
+    # Username for notification service authentication
+    user: "notification"
+    # Password for notification service authentication
+    password: "test-notification-password"
 
 # NetworkPolicy configuration
 # When enabled, NetworkPolicy resources are created for every service,

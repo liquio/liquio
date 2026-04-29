@@ -48,9 +48,14 @@ spec:
               value: "production"
             - name: PORT
               value: "{{ .Values.services.filestorage.targetPort }}"
+            - name: SECRET_PATH
+              value: {{ .Values.secrets.secretConfigPath | quote }}
           volumeMounts:
             - name: config
               mountPath: /var/www/config
+              readOnly: true
+            - name: secret-config
+              mountPath: {{ .Values.secrets.secretConfigPath }}
               readOnly: true
             - name: tmp
               mountPath: /tmp
@@ -72,6 +77,9 @@ spec:
         - name: config
           configMap:
             name: {{ include "liquio.fullname" . }}-filestorage-config
+        - name: secret-config
+          secret:
+            secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "filestorage") }}
         - name: tmp
           emptyDir: {}
       {{- with .Values.nodeSelector }}

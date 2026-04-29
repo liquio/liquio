@@ -13,28 +13,24 @@ data:
       "port": {{ .Values.config.database.port }},
       "database": "bpmn",
       "username": "{{ .Values.config.database.username }}",
-      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "dialect": "postgres",
       "dialectOptions": {
         "socketPath": "",
         "supportBigNumbers": true,
         "bigNumberStrings": true
       },
-      "timezone": "Europe/Kyiv",
       "logging": false,
       "pool": {
         "max": 5,
         "min": 0,
         "acquire": 30000,
         "idle": 10000
-      },
-      "migrationStorageTableName": "sequelize_meta"
+      }
     }
 
   # Message queue configuration
   message_queue.json: |
     {
-      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.passwordValue" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/",
       "amqpConnectionParams": {
         "heartbeat": 300
       },
@@ -70,13 +66,10 @@ data:
           "prepareUser": "/user/prepare"
         },
         "timeout": 30000,
-        "clientId": "liquio-portal",
-        "clientSecret": "{{ include "liquio.oauth.secretKeyValue" . }}",
-        "basicAuthToken": "{{ include "liquio.oauth.secretKeyValue" . }}"
+        "clientId": "liquio-portal"
       },
       "authRedirectUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
       "logoutRedirectUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
-      "jwtSecret": "{{ include "liquio.jwt.secretValue" . }}",
       "jwtOptions": {
         "expiresIn": "1d"
       },
@@ -108,7 +101,6 @@ data:
     {
       "server": "http://{{ include "liquio.fullname" . }}-register",
       "port": {{ .Values.services.register.servicePort }},
-      "token": "Basic {{ include "liquio.register.authTokenValue" . }}",
       "limit": 10000,
       "accessCacheLifetime": 60000,
       "registerKeysForAddresses": [],
@@ -135,7 +127,6 @@ data:
   external_reader.json: |
     {
       "url": "http://{{ include "liquio.fullname" . }}-external-reader:{{ .Values.services.externalReader.servicePort }}",
-      "basicAuthToken": "{{ include "liquio.externalReader.authTokenValue" . }}",
       "timeout": 30000
     }
 
@@ -143,7 +134,6 @@ data:
   filestorage.json: |
     {
       "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-      "token": "{{ include "liquio.filestorage.authTokenValue" . }}",
       "containerId": 1,
       "signatureTimeout": 40000,
       "downloadUploadTimeout": 60000,
@@ -174,7 +164,6 @@ data:
       },
       "FileStorage": {
         "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-        "token": "{{ include "liquio.filestorage.authTokenValue" . }}",
         "containerId": 1
       }
     }
@@ -316,7 +305,6 @@ data:
   # Download token configuration
   download_token.json: |
     {
-      "jwtSecret": "{{ include "liquio.jwt.secretValue" . }}",
       "lifetimeInSeconds": 3600
     }
 
@@ -386,8 +374,6 @@ data:
       "server": "http://{{ include "liquio.fullname" . }}-notification",
       "port": {{ .Values.services.notification.servicePort }},
       "timeout": 30000,
-      "user": "<removed>",
-      "hashedPassword": "<removed>",
       "clientId": "",
       "routes": {
         "ping": "/test/ping",
@@ -442,8 +428,6 @@ data:
           "ping": "/test/ping"
         },
         "timeout": 30000,
-        "user": "<removed>",
-        "hashedPassword": "<removed>",
         "emails": [],
         "subject": "Workflow process problem.",
         "body": "<html><body>Відбулась помилка в процесі {url}<br/>Task {taskTemplateId} {taskTemplateName}<br/>{error}</body></html>"

@@ -14,7 +14,6 @@ data:
       "database": "filestorage",
       "dialect": "postgres",
       "username": "{{ .Values.config.database.username }}",
-      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "operatorsAliases": false,
       "dialectOptions": {
         "socketPath": "",
@@ -27,8 +26,7 @@ data:
         "acquire": 30000,
         "idle": 10000
       },
-      "logging": false,
-      "migrationStorageTableName": "sequelize_meta"
+      "logging": false
     }
 
   # Server configuration
@@ -48,9 +46,7 @@ data:
 
   # Authentication configuration
   auth.json: |
-    {
-      "token": "{{ include "liquio.filestorage.authTokenValue" . }}"
-    }
+    {}
 
   # Admin configuration
   admin.json: |

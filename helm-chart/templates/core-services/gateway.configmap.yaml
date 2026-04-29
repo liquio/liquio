@@ -13,22 +13,19 @@ data:
       "port": {{ .Values.config.database.port }},
       "database": "bpmn",
       "username": "{{ .Values.config.database.username }}",
-      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "dialect": "postgres",
       "dialectOptions": {
         "socketPath": "",
         "supportBigNumbers": true,
         "bigNumberStrings": true
       },
-      "timezone": "Europe/Kyiv",
       "logging": false,
       "pool": {
         "max": 5,
         "min": 0,
         "acquire": 30000,
         "idle": 10000
-      },
-      "migrationStorageTableName": "sequelize_meta"
+      }
     }
 
   # Server configuration
@@ -43,9 +40,7 @@ data:
 
   # Message queue configuration
   message_queue.json: |
-    {
-      "amqpConnection": "amqp://{{ .Values.config.rabbitmq.username }}:{{ include "liquio.rabbitmq.passwordValue" . }}@{{ include "liquio.rabbitmq.host" . }}:{{ .Values.config.rabbitmq.port }}/"
-    }
+    {}
 
   # Redis configuration
   redis.json: |
@@ -89,7 +84,6 @@ data:
         },
         "timeout": 30000,
         "user": "<removed>",
-        "hashedPassword": "<removed>",
         "emails": [],
         "subject": "Workflow process problem.",
         "body": "<html><body>Відбулась помилка в процесі {url}<br/>Gateway {gatewayTemplateId} {gatewayTemplateName}<br/>{error}</body></html>"

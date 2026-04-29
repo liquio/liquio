@@ -332,3 +332,33 @@ Redis connection string
 {{- .Values.config.redis.host }}
 {{- end }}
 {{- end }}
+
+{{/*
+Per-service secret-config Secret name.
+Usage: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "gateway") }}
+*/}}
+{{- define "liquio.secretConfig.name" -}}
+{{- if .ctx.Values.secrets.existingSecretConfig }}
+{{- .ctx.Values.secrets.existingSecretConfig }}
+{{- else }}
+{{- printf "%s-%s-secret-config" (include "liquio.fullname" .ctx) .service }}
+{{- end }}
+{{- end }}
+
+{{/*
+Notification service password value
+*/}}
+{{- define "liquio.notification.passwordValue" -}}
+{{- if .Values.secrets.notification.password }}
+{{- .Values.secrets.notification.password }}
+{{- else }}
+{{- randAlphaNum 32 }}
+{{- end }}
+{{- end }}
+
+{{/*
+Notification service username value
+*/}}
+{{- define "liquio.notification.userValue" -}}
+{{- .Values.secrets.notification.user | default "notification" }}
+{{- end }}

@@ -16,7 +16,6 @@ data:
           "host": "{{ include "liquio.postgresql.host" . }}",
           "port": {{ .Values.config.database.port }},
           "username": "{{ .Values.config.database.username }}",
-          "password": "{{ include "liquio.postgresql.passwordValue" . }}",
           "logging": false,
           "pool": {
             "max": 5,
@@ -35,22 +34,18 @@ data:
           "denyToUpdateUserValidParams": true,
           "setPhoneOnlyAsNotValid": true
         },
-        "session": {
-          "secret_key": "{{ include "liquio.oauth.secretKeyValue" . }}"
-        },
+        "session": {},
         "domain": ".internal",
         "notify": {
-          "url": "http://{{ include "liquio.fullname" . }}-notification:3002",
-          "authorization": "Basic notification-auth-token"
+          "url": "http://{{ include "liquio.fullname" . }}-notification:3002"
         },
         "jwt": {
-          "secret": "{{ include "liquio.jwt.secretValue" . }}",
           "expiresIn": 60
         },
         "oauth": {
           "accessTokenLifetimeInSeconds": 28800,
           "refreshTokenLifetimeInSeconds": 57600,
-          "secret_key": ["{{ include "liquio.oauth.secretKeyValue" . }}"],
+          "secret_key": [],
           "defaults": {
             "client_id": "liquio-portal",
             "redirect_uri": [

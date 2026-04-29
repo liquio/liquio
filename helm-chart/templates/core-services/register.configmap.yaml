@@ -14,7 +14,6 @@ data:
       "port": {{ .Values.config.database.port }},
       "dialect": "postgres",
       "username": "{{ .Values.config.database.username }}",
-      "password": "{{ include "liquio.postgresql.passwordValue" . }}",
       "operatorsAliases": false,
       "dialectOptions": {
         "socketPath": "",
@@ -27,14 +26,12 @@ data:
         "acquire": 30000,
         "idle": 10000
       },
-      "logging": false,
-      "migrationStorageTableName": "sequelize_meta"
+      "logging": false
     }
 
   # Encryption configuration
   encryption.json: |
     {
-      "key": "{{ include "liquio.register.encryptionKeyValue" . }}",
       "iv_size": 12,
       "batch_job_size": 100,
       "check_on_startup": false
@@ -43,7 +40,7 @@ data:
   # Auth configuration
   auth.json: |
     {
-      "tokens": ["Basic {{ include "liquio.register.authTokenValue" . }}"],
+      "tokens": [],
       "limitedAccess": []
     }
 

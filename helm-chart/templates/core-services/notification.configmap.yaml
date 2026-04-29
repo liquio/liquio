@@ -13,7 +13,6 @@ data:
         "processTitle": "notify",
         "port": "{{ .Values.services.notification.port }}",
         "username": "{{ .Values.config.database.username }}",
-        "password": "{{ include "liquio.postgresql.passwordValue" . }}",
         "database": "notify",
         "host": "{{ include "liquio.postgresql.host" . }}",
         "dialect": "postgres",
@@ -23,7 +22,6 @@ data:
         "customAdapter": {},
         "db": {
           "username": "{{ .Values.config.database.username }}",
-          "password": "{{ include "liquio.postgresql.passwordValue" . }}",
           "database": "notify",
           "host": "{{ include "liquio.postgresql.host" . }}",
           "dialect": "postgres"
