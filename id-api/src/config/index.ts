@@ -233,6 +233,18 @@ export interface Config {
   };
 }
 
+function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key]) && typeof result[key] === 'object') {
+      result[key] = deepMerge(result[key], source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+}
+
 let config: Config;
 export function loadConfig(): Config {
   if (config) {
@@ -278,6 +290,17 @@ export function loadConfig(): Config {
 
   if (typeof currentEnvConf === 'undefined' || typeof currentEnvConf.db === 'undefined') {
     throw new Error('Variable currentEnvConf.db is not defined.');
+  }
+
+  // Merge secret config if SECRET_PATH is set and the directory exists.
+  const secretPath = process.env.SECRET_PATH;
+  if (secretPath && fs.existsSync(secretPath)) {
+    const secretFile = `${secretPath}/config.json`;
+    if (fs.existsSync(secretFile)) {
+      const secretConf = JSON.parse(fs.readFileSync(secretFile, 'utf8'));
+      const secretEnvConf = secretConf[env] ?? secretConf;
+      currentEnvConf = deepMerge(currentEnvConf, secretEnvConf);
+    }
   }
 
   config = {

@@ -1,4 +1,5 @@
 const Multiconf = require('multiconf');
+const fs = require('fs');
 
 const Db = require('./lib/db');
 const Log = require('./lib/log');
@@ -10,6 +11,7 @@ const RedisClient = require('./lib/redis_client');
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/manager';
+const SECRET_PATH = process.env.SECRET_PATH;
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_MANAGER';
 
 // Set proxess title.
@@ -17,7 +19,7 @@ process.title = 'bpmn-manager';
 
 module.exports = (async () => {
   // Init config.
-  const config = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
+  const config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`);
   global.config = config;
 
   // Init redis.

@@ -1,4 +1,5 @@
 const Multiconf = require('multiconf');
+const fs = require('fs');
 
 let config = {};
 
@@ -18,7 +19,8 @@ function getConfig() {
  * @param {string} configPath Path to config directory.
  */
 function loadConfig(configPath) {
-  const config = Multiconf.get(configPath, 'LIQUIO_BPMN_TASK_');
+  const SECRET_PATH = process.env.SECRET_PATH;
+  const config = Multiconf.get([configPath, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], 'LIQUIO_BPMN_TASK_');
   global.config = config;
   return config;
 }

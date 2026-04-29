@@ -1,4 +1,5 @@
 const Multiconf = require('multiconf');
+const fs = require('fs');
 const redis = require('redis');
 
 const Db = require('./lib/db');
@@ -17,11 +18,12 @@ const typeOf = require('./lib/type_of');
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
+const SECRET_PATH = process.env.SECRET_PATH;
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_ADMIN_API';
 
 module.exports = (async () => {
   // Init config.
-  const config = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_HANDLER_`);
+  const config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_HANDLER_`);
   if (config.server.token === '') {
     throw new Error('Token must\'n be empty.');
   }

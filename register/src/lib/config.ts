@@ -1,9 +1,15 @@
+import { existsSync } from 'fs';
+
 import Multiconf from 'multiconf';
 
 export const CONFIG_PATH = process.env.CONFIG_PATH || '../config/register';
+export const SECRET_PATH = process.env.SECRET_PATH;
 export const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_REGISTER';
 
-export const config: Config = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
+export const config: Config = Multiconf.get(
+  [CONFIG_PATH, ...(SECRET_PATH && existsSync(SECRET_PATH) ? [SECRET_PATH] : [])],
+  `${LIQUIO_CONFIG_PREFIX}_`,
+);
 
 export interface Config {
   access_log: { keyIds: string[] };
