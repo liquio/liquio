@@ -53,16 +53,11 @@ spec:
               value: {{ .Values.config.database.name }}
             - name: POSTGRES_USER
               value: {{ .Values.config.database.username }}
-            {{- if .Values.secrets.existingSecret }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "liquio.secrets.name" . }}
-                  key: {{ include "liquio.postgresql.password" . }}
-            {{- else }}
-            - name: POSTGRES_PASSWORD
-              value: {{ include "liquio.postgresql.passwordValue" . }}
-            {{- end }}
+                  name: {{ printf "%s-infra-secrets" (include "liquio.fullname" .) }}
+                  key: postgresql-password
           volumeMounts:
             - name: postgresql-data
               mountPath: /var/lib/postgresql

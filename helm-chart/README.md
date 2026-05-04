@@ -154,25 +154,65 @@ config:
     port: 6379
 ```
 
-### Secrets — `existingSecret`
+### Secrets — Deploy With Your Own Secrets
 
-By default the chart generates a Kubernetes `Secret` from the plaintext values in `values.yaml`. For production, supply a pre-existing secret instead (e.g. from Vault, Sealed Secrets, or ESO) and the chart will not create its own:
+The chart supports two explicit secret modes via `secrets.createSecrets`.
+
+#### Mode A: Auto-generate (`createSecrets: true`, default)
+
+On install, a pre-install hook Job creates all required secrets:
+
+- `<release>-infra-secrets` (internal: PostgreSQL and RabbitMQ passwords)
+- `<release>-ca-certs` (self-signed CA key/cert for sign-tool)
+- `<release>-<service>-secret-config` for each backend service
+
+The hook runs on `pre-install` only. Upgrades do not rotate or recreate secrets.
+
+#### Mode B: Bring your own (`createSecrets: false`)
+
+Helm does not create any secrets. You must pre-create all required secrets in the namespace before install.
+
+Use:
+
+The names below are the default secret names for release name `liquio`.
+For any other release, replace the `liquio-` prefix with `<release>-`.
 
 ```yaml
 secrets:
-  existingSecret: "my-liquio-secret"  # name of a pre-existing K8s Secret
+  createSecrets: false
+  existingSecrets:
+    caCerts: liquio-ca-certs
+    id: liquio-id-secret-config
+    admin-api: liquio-admin-api-secret-config
+    cabinet-api: liquio-cabinet-api-secret-config
+    event: liquio-event-secret-config
+    external-reader: liquio-external-reader-secret-config
+    filestorage: liquio-filestorage-secret-config
+    gateway: liquio-gateway-secret-config
+    manager: liquio-manager-secret-config
+    notification: liquio-notification-secret-config
+    register: liquio-register-secret-config
+    sign-tool: liquio-sign-tool-secret-config
+    task: liquio-task-secret-config
 ```
 
-The secret must contain these keys (see `helm show values oci://ghcr.io/liquio/charts/liquio` for the full list):
+Notes:
 
-```
-postgresql-password
-jwt-secret
-oauth-client-secret
-# ... other keys as shown in templates/shared/secrets.yaml
-```
+- You can omit `existingSecrets` entirely if your pre-created secrets use the default names.
+- `existingSecrets` is optional; any missing service key falls back to `<release>-<service>-secret-config`.
+- Backend services read credentials from JSON files mounted via `SECRET_PATH` from these per-service secrets.
+  - Sign-tool loads `x509.json` from the `sign-tool` secret (default: `<release>-sign-tool-secret-config`).
+- `infra-secrets` is an internal chart secret used by PostgreSQL and RabbitMQ pods only.
 
-When `existingSecret` is set the chart-generated `Secret` resource is suppressed entirely.
+#### Install with your values
+
+```bash
+helm upgrade --install liquio ./helm-chart \
+  -f ./helm-chart/values.yaml \
+  -f ./my-values.yaml \
+  --namespace liquio \
+  --create-namespace
+```
 
 ### NetworkPolicy
 
@@ -304,7 +344,10 @@ The chart supports persistent storage for:
 
 ## Security
 
-The chart generates a `Secret` containing database passwords, OAuth keys, JWT secrets, and service tokens from the plaintext values in `values.yaml`. For production deployments use `secrets.existingSecret` to supply a pre-existing secret instead — see [Secrets — existingSecret](#secrets--existingsecret) above.
+The chart no longer stores application credential values in `values.yaml`.
+
+- With `secrets.createSecrets: true`, a pre-install hook job generates secrets at install time.
+- With `secrets.createSecrets: false`, provide all required secrets out-of-band and map names through `secrets.existingSecrets`.
 
 ## Monitoring
 
