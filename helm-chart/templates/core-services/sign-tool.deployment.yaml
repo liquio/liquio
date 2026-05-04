@@ -72,7 +72,7 @@ spec:
               - configMap:
                   name: {{ include "liquio.fullname" . }}-sign-tool-config
               - secret:
-                  secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "sign-tool") }}
+                  name: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "sign-tool") }}
         - name: tmp
           emptyDir: {}
       {{- with .Values.nodeSelector }}
