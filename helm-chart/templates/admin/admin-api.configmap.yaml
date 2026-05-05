@@ -5,148 +5,142 @@ metadata:
   name: {{ include "liquio.fullname" . }}-admin-api-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $authBase := dict
+  "authRedirectUrl" (printf "http://%s/" .Values.global.domain)
+  "clientId" "liquio-portal"
+  "logoutRedirectUrl" (printf "http://%s/" .Values.global.domain)
+  "serverPublicUrl" (printf "http://%s" .Values.global.domain)
+  "port" .Values.services.idApi.servicePort
+  "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
+  "timeout" 30000
+-}}
+{{ $dbBase := mergeOverwrite
+  (include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson)
+  (dict "pool" (dict "acquire" 60000 "idle" 30000 "max" 5 "min" 0))
+-}}
+{{ $messageQueueBase := dict
+  "maxHandlingMessages" 2
+  "writingQueueManager" "bpmn-manager-incoming"
+  "writingQueueTask" "bpmn-task-incoming"
+  "writingQueueEvent" "bpmn-event-incoming"
+  "writingQueueGateway" "bpmn-gateway-incoming"
+-}}
+{{ $filestorageBase := dict
+  "apiHost" (printf "http://%s-filestorage:%d" (include "liquio.fullname" .) .Values.services.filestorage.servicePort)
+  "containerId" 1
+-}}
+{{ $registerBase := dict
+  "limit" 10000
+  "port" .Values.services.register.servicePort
+  "server" (printf "http://%s-register" (include "liquio.fullname" .))
+  "timeout" 30000
+  "importXlsx" (dict
+    "batchSize" 100
+  )
+-}}
+{{ $serverBase := dict
+  "crypto" (dict
+    "algorithm" "aes-256-ctr"
+  )
+  "customer" .Release.Name
+  "environment" .Values.config.server.environment
+  "hostname" (default "0.0.0.0" .Values.config.server.hostname)
+  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "port" .Values.services.adminApi.targetPort
+  "swagger" false
+-}}
+{{ $logBase := dict
+  "console" (list)
+  "excludeParams" (list "token" "authorization")
+-}}
+{{ $elasticBase := dict
+  "headers" (dict)
+  "host" "elasticsearch:9200"
+  "method" "POST"
+  "protocol" "http"
+  "template" "template_bpmn_liquio_search"
+  "uri" "/bpmn_liquio_admin_logs/_search/template"
+  "enabled" false
+-}}
+{{ $notifierBase := dict
+  "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+  "port" .Values.services.notification.servicePort
+  "timeout" 30000
+  "routes" (dict
+    "ping" "/test/ping"
+    "sendToUserList" "/message/usersList"
+    "sendToUserEmails" "/message/emailsList"
+    "toAll" "/message/toAll"
+  )
+-}}
+{{ $proxyBase := dict
+  "proxyList" (list)
+-}}
+{{ $taskBase := dict
+  "elastic" false
+  "port" .Values.services.task.servicePort
+  "server" (printf "http://%s-task" (include "liquio.fullname" .))
+  "timeout" 10000
+  "token" "Basic dGFzazp0YXNr"
+-}}
+{{ $userBase := dict
+  "allowSetAdminTestUser" false
+  "shouldSetupAdmin" true
+  "adminUnitId" (list 1000001 1000002 1000000041)
+-}}
+{{ $signBase := dict
+  "timeout" 30000
+  "url" (printf "http://%s-sign-tool" (include "liquio.fullname" .))
+-}}
 data:
   # Auth configuration
   auth.json: |
-    {
-      "authRedirectUrl": "http://{{ .Values.global.domain }}/",
-      "clientId": "liquio-portal",
-      "logoutRedirectUrl": "http://{{ .Values.global.domain }}/",
-      "serverPublicUrl": "http://{{ .Values.global.domain }}",
-      "port": {{ .Values.services.idApi.servicePort }},
-      "server": "http://{{ include "liquio.fullname" . }}-id-api",
-      "timeout": 30000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "auth.json" "base" $authBase) | nindent 4 }}
 
   # Database configuration
   db.json: |
-    {
-      "database": "bpmn",
-      "dialect": "postgres",
-      "dialectOptions": {
-        "bigNumberStrings": true,
-        "socketPath": "",
-        "supportBigNumbers": true
-      },
-      "host": "{{ include "liquio.postgresql.host" . }}",
-      "pool": {
-        "acquire": 60000,
-        "idle": 30000,
-        "max": 5,
-        "min": 0
-      },
-      "port": {{ .Values.config.database.port }},
-      "username": "{{ .Values.config.database.username }}"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "db.json" "base" $dbBase) | nindent 4 }}
 
   # Message queue configuration
   message_queue.json: |
-    {
-      "maxHandlingMessages": 2,
-      "writingQueueManager": "bpmn-manager-incoming",
-      "writingQueueTask": "bpmn-task-incoming",
-      "writingQueueEvent": "bpmn-event-incoming",
-      "writingQueueGateway": "bpmn-gateway-incoming"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "message_queue.json" "base" $messageQueueBase) | nindent 4 }}
 
   # Filestorage configuration
   filestorage.json: |
-    {
-      "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-      "containerId": 1
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "filestorage.json" "base" $filestorageBase) | nindent 4 }}
 
   # Register configuration
   register.json: |
-    {
-      "limit": 10000,
-      "port": {{ .Values.services.register.servicePort }},
-      "server": "http://{{ include "liquio.fullname" . }}-register",
-      "timeout": 30000,
-      "importXlsx": { "batchSize": 100 }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "register.json" "base" $registerBase) | nindent 4 }}
 
   # Server configuration
   server.json: |
-    {
-      "crypto": {
-        "algorithm": "aes-256-ctr"
-      },
-      "customer": "liquio",
-      "environment": "dev",
-      "hostname": "0.0.0.0",
-      "maxBodySize": "500mb",
-      "port": {{ .Values.services.adminApi.targetPort }},
-      "swagger": false
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "server.json" "base" $serverBase) | nindent 4 }}
 
   # Logging configuration
   log.json: |
-    {
-      "console": [],
-      "excludeParams": [
-        "token",
-        "authorization"
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "log.json" "base" $logBase) | nindent 4 }}
 
   # Elastic configuration
   elastic.json: |
-    {
-      "headers": {},
-      "host": "elasticsearch:9200",
-      "method": "POST",
-      "protocol": "http",
-      "template": "template_bpmn_liquio_search",
-      "uri": "/bpmn_liquio_admin_logs/_search/template",
-      "enabled": false
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "elastic.json" "base" $elasticBase) | nindent 4 }}
 
   # Notifier configuration
   notifier.json: |
-    {
-      "server": "http://{{ include "liquio.fullname" . }}-notification",
-      "port": {{ .Values.services.notification.servicePort }},
-      "timeout": 30000,
-      "routes": {
-        "ping": "/test/ping",
-        "sendToUserList": "/message/usersList",
-        "sendToUserEmails": "/message/emailsList",
-        "toAll": "/message/toAll"
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "notifier.json" "base" $notifierBase) | nindent 4 }}
 
   # Proxy configuration
   proxy.json: |
-    {
-      "proxyList": []
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "proxy.json" "base" $proxyBase) | nindent 4 }}
 
   # Task configuration
   task.json: |
-    {
-      "elastic": false,
-      "port": {{ .Values.services.task.servicePort }},
-      "server": "http://{{ include "liquio.fullname" . }}-task",
-      "timeout": 10000,
-      "token": "Basic dGFzazp0YXNr"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "task.json" "base" $taskBase) | nindent 4 }}
 
   # User configuration
   user.json: |
-    {
-      "allowSetAdminTestUser": false,
-      "shouldSetupAdmin": true,
-      "adminUnitId": [
-        1000001,
-        1000002,
-        1000000041
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "user.json" "base" $userBase) | nindent 4 }}
 
   # Sign configuration
   sign.json: |
-    {
-      "timeout": 30000,
-      "url": "http://{{ include "liquio.fullname" . }}-sign-tool"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "sign.json" "base" $signBase) | nindent 4 }}

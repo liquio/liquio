@@ -5,471 +5,470 @@ metadata:
   name: {{ include "liquio.fullname" . }}-task-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson -}}
+{{ $messageQueueBase := dict
+  "amqpConnectionParams" (dict
+    "heartbeat" 300
+  )
+  "maxHandlingMessages" 2
+  "readingQueueName" "bpmn-task-incoming"
+  "writingQueueName" "bpmn-manager-incoming"
+  "enabledReadingGeneratingPdfMessages" true
+  "maxHandlingGeneratingPdfMessages" 1
+  "retryConnectionTime" 10000
+-}}
+{{ $authBase := dict
+  "LiquioId" (dict
+    "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
+    "front" (printf "%s://id.%s" (include "liquio.scheme" .) .Values.global.domain)
+    "port" .Values.services.idApi.servicePort
+    "routes" (dict
+      "getCode" "/authorise"
+      "getToken" "/oauth/token/"
+      "getUserInfo" "/user/info"
+      "searchUsers" "/user/info/search"
+      "getUserByCode" "/user/info/ipn"
+      "logout" "/logout"
+      "sendSms" "/sign_up/confirmation/phone/send"
+      "verifyPhone" "/sign_up/confirmation/phone/verify"
+      "changeEmail" "/user/info/email/send"
+      "confirmChangeEmail" "/user/info/email/set"
+      "addTestCode" "/oauth/token/test_code"
+      "ping" "/test/ping"
+      "pingWithAuth" "/test/ping_with_auth"
+      "prepareUser" "/user/prepare"
+    )
+    "timeout" 30000
+    "clientId" "liquio-portal"
+  )
+  "authRedirectUrl" (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
+  "logoutRedirectUrl" (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
+  "jwtOptions" (dict
+    "expiresIn" "1d"
+  )
+  "allowedTestAuth" false
+  "allowedTestSign" false
+  "allowedTestPem" true
+  "defaultUnits" (list 1000013)
+  "doNotLogoutOtherSessions" true
+  "caching" (dict
+    "isEnabled" false
+    "getCheckMiddleware" (dict
+      "isEnabled" false
+      "ttl" 30
+    )
+  )
+  "ldap" (dict
+    "isEnabled" false
+    "url" "ldap://domain.loc"
+    "baseDN" "dc=DOMAIN,dc=LOC"
+    "username" "admin@domain.loc"
+    "password" "<removed>"
+  )
+-}}
+{{ $registerBase := dict
+  "server" (printf "http://%s-register" (include "liquio.fullname" .))
+  "port" .Values.services.register.servicePort
+  "limit" 10000
+  "accessCacheLifetime" 60000
+  "registerKeysForAddresses" (list)
+  "strictAccess" (dict
+    "keys" (list)
+  )
+  "access" (list
+    (dict
+      "unit" 1
+      "allowSeeAllRecords" true
+      "keys" (dict
+        "allowRead" (list)
+        "allowCreate" (list)
+        "allowUpdate" (list)
+        "allowDelete" (list)
+        "allowHistory" (list)
+      )
+    )
+  )
+  "timeout" 30000
+-}}
+{{ $externalReaderBase := dict
+  "url" (printf "http://%s-external-reader:%d" (include "liquio.fullname" .) .Values.services.externalReader.servicePort)
+  "timeout" 30000
+-}}
+{{ $filestorageBase := dict
+  "apiHost" (printf "http://%s-filestorage:%d" (include "liquio.fullname" .) .Values.services.filestorage.servicePort)
+  "containerId" 1
+  "signatureTimeout" 40000
+  "downloadUploadTimeout" 60000
+  "timeout" 10000
+-}}
+{{ $storageBase := dict
+  "OpenStack" (dict
+    "server" "http://test-storage.liquio.local"
+    "port" 5000
+    "routes" (dict
+      "getTokens" "/v2.0/tokens"
+    )
+    "timeout" 30000
+    "tenantName" "liquio"
+    "admin" (dict
+      "login" "liquio"
+      "password" "<removed>"
+    )
+    "user" (dict
+      "login" "liquio"
+      "password" "<removed>"
+    )
+    "container" "liquio"
+    "isFilesCanBeDeleted" false
+  )
+  "FileStorage" (dict
+    "apiHost" (printf "http://%s-filestorage:%d" (include "liquio.fullname" .) .Values.services.filestorage.servicePort)
+    "containerId" 1
+  )
+-}}
+{{ $serverBase := dict
+  "hostname" (default "0.0.0.0" .Values.config.server.hostname)
+  "port" .Values.services.task.targetPort
+  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "serverName" (printf "http://%s-task:%d" (include "liquio.fullname" .) .Values.services.task.servicePort)
+  "customer" .Release.Name
+  "environment" .Values.config.server.environment
+-}}
+{{ $redisBase := dict
+  "host" (include "liquio.redis.host" .)
+  "port" .Values.config.redis.port
+  "options" (dict)
+-}}
+{{ $logBase := dict
+  "isFullLogsEnabled" false
+  "console" (list)
+  "file" (list "./logs/")
+  "skipLoggingRoutesList" (list
+    (dict
+      "comment" "Skip dictionaries list."
+      "pattern" "^/dictionaries$"
+    )
+    (dict
+      "comment" "Skip documents."
+      "pattern" "^/registers/keys/.{1,}/records_tree$"
+    )
+  )
+  "responsesData" false
+  "stackTrace" false
+  "excludeParams" (list
+    "token"
+    "access_token"
+    "refresh_token"
+    "oauth-token"
+    "authorization"
+    "Authorization"
+    "secret"
+    "password"
+    "oldPassword"
+    "oldPasswords"
+    "client_secret"
+    "_token="
+    "client_id="
+    "client_secret="
+  )
+-}}
+{{ $accessBase := dict
+  "usersIpnToIpList" (dict
+    "19999999999" (list "office")
+  )
+  "allowableUnits" (list)
+  "routeGroupsExceptions" (list "public" "auth" "user" "message")
+-}}
+{{ $adminBase := dict
+  "swagger" false
+  "adminUnitId" (list 1000001 1000000041)
+-}}
+{{ $basicAuthBase := dict
+  "tokens" (list "Basic dGFzazp0YXNr")
+  "protectedRoutes" (list
+    (dict
+      "route" "/some/protected-route"
+      "basicAuthUsers" (list "external-reader")
+    )
+  )
+-}}
+{{ $cacheBase := dict
+  "unit" (dict
+    "ttl" 60
+  )
+  "unitAccess" (dict
+    "getAllWithCache" 300
+  )
+  "documentTemplate" (dict
+    "findById" 300
+    "substituteJsonProps" 300
+  )
+  "eventTemplate" (dict
+    "findById" 300
+    "findByIds" 300
+  )
+  "gatewayTemplate" (dict
+    "findById" 300
+  )
+  "numberTemplate" (dict
+    "findById" 300
+  )
+  "taskTemplate" (dict
+    "findById" 300
+    "getAll" 300
+  )
+  "workflowTemplateCategory" (dict
+    "getAll" 300
+  )
+  "workflowTemplate" (dict
+    "findById" 300
+    "getAll" 300
+  )
+-}}
+{{ $customLogsBase := dict
+  "templatesCacheLifetime" 60000
+  "cacheEnabled" false
+  "redis" (dict
+    "ttl" 60
+  )
+-}}
+{{ $downloadTokenBase := dict
+  "lifetimeInSeconds" 3600
+-}}
+{{ $edsBase := dict
+  "providerName" "pkcs7"
+  "pkcs7" (dict
+    "timeout" 30000
+    "signToolUrl" (printf "http://%s-sign-tool:%d" (include "liquio.fullname" .) .Values.services.signTool.servicePort)
+  )
+  "timeout" 30000
+-}}
+{{ $fileGeneratorBase := dict
+  "timeout" "120000"
+  "htmlTemplateDelimiter" "<pdf-delimiter>"
+  "htmlTemplateDelimiterEnd" "</pdf-delimiter>"
+  "variables" (dict
+    "publicUrl" "http://localhost:8081"
+  )
+  "persons" (dict
+    "allContentKey" "all"
+    "keyTextPrefix" "<b>"
+    "keyTextSuffix" "</b>"
+    "keysSeparator" "<br /><br />"
+    "keyAndSubkeysSeparator" "<br />"
+    "subkeysSeparator" "<br />"
+    "keys" (list)
+    "subkeys" (list)
+  )
+-}}
+{{ $mappingBase := dict
+  "taskBusiness" (dict
+    "frontUrl" (dict
+      "template" "{{`{{frontUrl}}`}}"
+      "replace" (printf "https://cabinet.%s" .Values.global.domain)
+    )
+  )
+-}}
+{{ $modelBase := dict
+  "pagination" (dict
+    "limitPerPage" 50
+  )
+-}}
+{{ $modulesBase := dict
+  "main" (dict
+    "observerUnits" false
+  )
+  "externalReader" (dict)
+-}}
+{{ $notifierBase := dict
+  "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+  "port" .Values.services.notification.servicePort
+  "timeout" 30000
+  "clientId" ""
+  "routes" (dict
+    "ping" "/test/ping"
+    "sendToUserList" "/message/usersList"
+    "sendToUserEmails" "/message/emailsList"
+  )
+-}}
+{{ $onboardingBase := dict
+  "onboardingTemplate" (dict
+    "workflowTemplateId" nil
+    "taskTemplateId" nil
+  )
+-}}
+{{ $persistLinkBase := dict
+  "server" "https://plink-dev-oe.liquio.local"
+  "port" 443
+  "routes" (dict
+    "generateQr" "/link?qr=svg"
+    "ping" "/test/ping"
+    "pingWithAuth" "/test/ping_with_auth"
+  )
+  "token" "<removed>"
+  "serverName" "bpmn_dev"
+  "getLinkToFilestorageTimeout" 30000
+  "qrFrontUrl" "https://qr-dev.liquio.local"
+-}}
+{{ $signBase := dict
+  "timeout" 10000
+  "url" (printf "http://%s-sign-tool:%d" (include "liquio.fullname" .) .Values.services.signTool.servicePort)
+  "token" ""
+-}}
+{{ $systemNotifierBase := dict
+  "adminUrl" "http://localhost:8000"
+  "email" (dict
+    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "port" .Values.services.notification.servicePort
+    "routes" (dict
+      "sendEmail" "/message/emailsList"
+      "sendToUser" "/message/usersList"
+      "ping" "/test/ping"
+    )
+    "timeout" 30000
+    "emails" (list)
+    "subject" "Workflow process problem."
+    "body" "<html><body>An error occurred in process {url}<br/>Task {taskTemplateId} {taskTemplateName}<br/>{error}</body></html>"
+  )
+-}}
+{{ $systemTaskBase := dict
+  "isAllowedCreateByOtherSystems" true
+  "allowedToCreateByTokens" (list "Basic <removed>")
+  "allowedToUpdateDocumentAndCommit" (list "Basic <removed>")
+  "tasksTemplateIds" (list "31009003")
+-}}
+{{ $taskFinishBase := dict
+  "addTaskCommiterAsPerformer" true
+-}}
+{{ $versionsBase := dict
+  "services" (list
+    (dict "name" "id" "minVersion" "0.7.7")
+    (dict "name" "eds" "minVersion" "1.0.11")
+    (dict "name" "event" "minVersion" "1.37.6")
+    (dict "name" "manager" "minVersion" "1.10.16")
+    (dict "name" "gateway" "minVersion" "1.3.13")
+    (dict "name" "workflow" "minVersion" "0.0.0")
+    (dict "name" "register" "minVersion" "1.41.0")
+    (dict "name" "filestorage" "minVersion" "2.3.2")
+    (dict "name" "pwgen" "minVersion" "0.0.5")
+    (dict "name" "plink" "minVersion" "1.0.5")
+    (dict "name" "externalReader" "minVersion" "1.2.66")
+    (dict "name" "notify" "minVersion" "1.3.52")
+  )
+-}}
 data:
   # Database configuration
   db.json: |
-    {
-      "host": "{{ include "liquio.postgresql.host" . }}",
-      "port": {{ .Values.config.database.port }},
-      "database": "bpmn",
-      "username": "{{ .Values.config.database.username }}",
-      "dialect": "postgres",
-      "dialectOptions": {
-        "socketPath": "",
-        "supportBigNumbers": true,
-        "bigNumberStrings": true
-      },
-      "logging": false,
-      "pool": {
-        "max": 5,
-        "min": 0,
-        "acquire": 30000,
-        "idle": 10000
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "db.json" "base" $dbBase) | nindent 4 }}
 
   # Message queue configuration
   message_queue.json: |
-    {
-      "amqpConnectionParams": {
-        "heartbeat": 300
-      },
-      "maxHandlingMessages": 2,
-      "readingQueueName": "bpmn-task-incoming",
-      "writingQueueName": "bpmn-manager-incoming",
-      "enabledReadingGeneratingPdfMessages": true,
-      "maxHandlingGeneratingPdfMessages": 1,
-      "retryConnectionTime": 10000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "message_queue.json" "base" $messageQueueBase) | nindent 4 }}
 
   # Auth configuration
   auth.json: |
-    {
-      "LiquioId": {
-        "server": "http://{{ include "liquio.fullname" . }}-id-api",
-        "front": "{{ include "liquio.scheme" . }}://id.{{ .Values.global.domain }}",
-        "port": {{ .Values.services.idApi.servicePort }},
-        "routes": {
-          "getCode": "/authorise",
-          "getToken": "/oauth/token/",
-          "getUserInfo": "/user/info",
-          "searchUsers": "/user/info/search",
-          "getUserByCode": "/user/info/ipn",
-          "logout": "/logout",
-          "sendSms": "/sign_up/confirmation/phone/send",
-          "verifyPhone": "/sign_up/confirmation/phone/verify",
-          "changeEmail": "/user/info/email/send",
-          "confirmChangeEmail": "/user/info/email/set",
-          "addTestCode": "/oauth/token/test_code",
-          "ping": "/test/ping",
-          "pingWithAuth": "/test/ping_with_auth",
-          "prepareUser": "/user/prepare"
-        },
-        "timeout": 30000,
-        "clientId": "liquio-portal"
-      },
-      "authRedirectUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
-      "logoutRedirectUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
-      "jwtOptions": {
-        "expiresIn": "1d"
-      },
-      "allowedTestAuth": false,
-      "allowedTestSign": false,
-      "allowedTestPem": true,
-      "defaultUnits": [
-        1000013
-      ],
-      "doNotLogoutOtherSessions": true,
-      "caching": {
-        "isEnabled": false,
-        "getCheckMiddleware": {
-          "isEnabled": false,
-          "ttl": 30
-        }
-      },
-      "ldap": {
-        "isEnabled": false,
-        "url": "ldap://domain.loc",
-        "baseDN": "dc=DOMAIN,dc=LOC",
-        "username": "admin@domain.loc",
-        "password": "<removed>"
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "auth.json" "base" $authBase) | nindent 4 }}
 
   # Register configuration
   register.json: |
-    {
-      "server": "http://{{ include "liquio.fullname" . }}-register",
-      "port": {{ .Values.services.register.servicePort }},
-      "limit": 10000,
-      "accessCacheLifetime": 60000,
-      "registerKeysForAddresses": [],
-      "strictAccess": {
-        "keys": []
-      },
-      "access": [
-        {
-          "unit": 1,
-          "allowSeeAllRecords": true,
-          "keys": {
-            "allowRead": [],
-            "allowCreate": [],
-            "allowUpdate": [],
-            "allowDelete": [],
-            "allowHistory": []
-          }
-        }
-      ],
-      "timeout": 30000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "register.json" "base" $registerBase) | nindent 4 }}
 
   # External reader configuration
   external_reader.json: |
-    {
-      "url": "http://{{ include "liquio.fullname" . }}-external-reader:{{ .Values.services.externalReader.servicePort }}",
-      "timeout": 30000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "external_reader.json" "base" $externalReaderBase) | nindent 4 }}
 
   # Filestorage configuration
   filestorage.json: |
-    {
-      "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-      "containerId": 1,
-      "signatureTimeout": 40000,
-      "downloadUploadTimeout": 60000,
-      "timeout": 10000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "filestorage.json" "base" $filestorageBase) | nindent 4 }}
 
   # Storage configuration
   storage.json: |
-    {
-      "OpenStack": {
-        "server": "http://test-storage.liquio.local",
-        "port": 5000,
-        "routes": {
-          "getTokens": "/v2.0/tokens"
-        },
-        "timeout": 30000,
-        "tenantName": "liquio",
-        "admin": {
-          "login": "liquio",
-          "password": "<removed>"
-        },
-        "user": {
-          "login": "liquio",
-          "password": "<removed>"
-        },
-        "container": "liquio",
-        "isFilesCanBeDeleted": false
-      },
-      "FileStorage": {
-        "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-        "containerId": 1
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "storage.json" "base" $storageBase) | nindent 4 }}
 
   # Server configuration
   server.json: |
-    {
-      "hostname": "0.0.0.0",
-      "port": {{ .Values.services.task.targetPort }},
-      "maxBodySize": "10mb",
-      "serverName": "http://{{ include "liquio.fullname" . }}-task:{{ .Values.services.task.servicePort }}",
-      "customer": "liquio",
-      "environment": "dev"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "server.json" "base" $serverBase) | nindent 4 }}
 
   # Redis configuration
   redis.json: |
-    {
-      "host": "{{ include "liquio.redis.host" . }}",
-      "port": {{ .Values.config.redis.port }},
-      "options": {}
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "redis.json" "base" $redisBase) | nindent 4 }}
 
   # Logging configuration
   log.json: |
-    {
-      "isFullLogsEnabled": false,
-      "console": [],
-      "file": [
-        "./logs/"
-      ],
-      "skipLoggingRoutesList": [
-        {
-          "comment": "Skip dictionaries list.",
-          "pattern": "^/dictionaries$"
-        },
-        {
-          "comment": "Skip documents.",
-          "pattern": "^/registers/keys/.{1,}/records_tree$"
-        }
-      ],
-      "responsesData": false,
-      "stackTrace": false,
-      "excludeParams": [
-        "token",
-        "access_token",
-        "refresh_token",
-        "oauth-token",
-        "authorization",
-        "Authorization",
-        "secret",
-        "password",
-        "oldPassword",
-        "oldPasswords",
-        "client_secret",
-        "_token=",
-        "client_id=",
-        "client_secret="
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "log.json" "base" $logBase) | nindent 4 }}
 
   # Access configuration
   access.json: |
-    {
-      "usersIpnToIpList": {
-        "19999999999": ["office"]
-      },
-      "allowableUnits": [],
-      "routeGroupsExceptions": ["public", "auth", "user", "message"]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "access.json" "base" $accessBase) | nindent 4 }}
 
   # Admin configuration
   admin.json: |
-    {
-      "swagger": false,
-      "adminUnitId": [1000001, 1000000041]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "admin.json" "base" $adminBase) | nindent 4 }}
 
   # Basic auth configuration
   basic_auth.json: |
-    {
-      "tokens": [
-        "Basic dGFzazp0YXNr"
-      ],
-      "protectedRoutes": [
-        {
-          "route": "/some/protected-route",
-          "basicAuthUsers": ["external-reader"]
-        }
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "basic_auth.json" "base" $basicAuthBase) | nindent 4 }}
 
   # Cache configuration
   cache.json: |
-    {
-      "unit": {
-        "ttl": 60
-      },
-      "unitAccess": {
-        "getAllWithCache": 300
-      },
-      "documentTemplate": {
-        "findById": 300,
-        "substituteJsonProps": 300
-      },
-      "eventTemplate": {
-        "findById": 300,
-        "findByIds": 300
-      },
-      "gatewayTemplate": {
-        "findById": 300
-      },
-      "numberTemplate": {
-        "findById": 300
-      },
-      "taskTemplate": {
-        "findById": 300,
-        "getAll": 300
-      },
-      "workflowTemplateCategory": {
-        "getAll": 300
-      },
-      "workflowTemplate": {
-        "findById": 300,
-        "getAll": 300
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "cache.json" "base" $cacheBase) | nindent 4 }}
 
   # Custom logs configuration
   custom_logs.json: |
-    {
-      "templatesCacheLifetime": 60000,
-      "cacheEnabled": false,
-      "redis": {
-        "ttl": 60
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "custom_logs.json" "base" $customLogsBase) | nindent 4 }}
 
   # Download token configuration
   download_token.json: |
-    {
-      "lifetimeInSeconds": 3600
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "download_token.json" "base" $downloadTokenBase) | nindent 4 }}
 
   # EDS configuration
   eds.json: |
-    {
-      "providerName": "pkcs7",
-      "pkcs7": {
-        "timeout": 30000,
-        "signToolUrl": "http://{{ include "liquio.fullname" . }}-sign-tool:{{ .Values.services.signTool.servicePort }}"
-      },
-      "timeout": 30000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "eds.json" "base" $edsBase) | nindent 4 }}
 
   # File generator configuration
   file_generator.json: |
-    {
-      "timeout": "120000",
-      "htmlTemplateDelimiter": "<pdf-delimiter>",
-      "htmlTemplateDelimiterEnd": "</pdf-delimiter>",
-      "variables": {
-        "publicUrl": "http://localhost:8081"
-      },
-      "persons": {
-        "allContentKey": "all",
-        "keyTextPrefix": "<b>",
-        "keyTextSuffix": "</b>",
-        "keysSeparator": "<br /><br />",
-        "keyAndSubkeysSeparator": "<br />",
-        "subkeysSeparator": "<br />",
-        "keys": [],
-        "subkeys": []
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "file_generator.json" "base" $fileGeneratorBase) | nindent 4 }}
 
   # Mapping configuration
   mapping.json: |
-    {
-      "taskBusiness": {
-        "frontUrl": {
-          "template": "{{`{{frontUrl}}`}}",
-          "replace": "https://cabinet.{{ .Values.global.domain }}"
-        }
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "mapping.json" "base" $mappingBase) | nindent 4 }}
 
   # Model configuration
   model.json: |
-    {
-      "pagination": {
-        "limitPerPage": 50
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "model.json" "base" $modelBase) | nindent 4 }}
 
   # Modules configuration
   modules.json: |
-    {
-      "main": {
-        "observerUnits": false
-      },
-      "externalReader": {}
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "modules.json" "base" $modulesBase) | nindent 4 }}
 
   # Notifier configuration
   notifier.json: |
-    {
-      "server": "http://{{ include "liquio.fullname" . }}-notification",
-      "port": {{ .Values.services.notification.servicePort }},
-      "timeout": 30000,
-      "clientId": "",
-      "routes": {
-        "ping": "/test/ping",
-        "sendToUserList": "/message/usersList",
-        "sendToUserEmails": "/message/emailsList"
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "notifier.json" "base" $notifierBase) | nindent 4 }}
 
   # Onboarding configuration
   onboarding.json: |
-    {
-      "onboardingTemplate": {
-        "workflowTemplateId": null,
-        "taskTemplateId": null
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "onboarding.json" "base" $onboardingBase) | nindent 4 }}
 
   # Persist link configuration
   persist_link.json: |
-    {
-      "server": "https://plink-dev-oe.liquio.local",
-      "port": 443,
-      "routes": {
-        "generateQr": "/link?qr=svg",
-        "ping": "/test/ping",
-        "pingWithAuth": "/test/ping_with_auth"
-      },
-      "token": "<removed>",
-      "serverName": "bpmn_dev",
-      "getLinkToFilestorageTimeout": 30000,
-      "qrFrontUrl": "https://qr-dev.liquio.local"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "persist_link.json" "base" $persistLinkBase) | nindent 4 }}
 
   # Sign configuration
   sign.json: |
-    {
-      "timeout": 10000,
-      "url": "http://{{ include "liquio.fullname" . }}-sign-tool:{{ .Values.services.signTool.servicePort }}",
-      "token": ""
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "sign.json" "base" $signBase) | nindent 4 }}
 
   # System notifier configuration
   system_notifier.json: |
-    {
-      "adminUrl": "http://localhost:8000",
-      "email": {
-        "server": "http://{{ include "liquio.fullname" . }}-notification",
-        "port": {{ .Values.services.notification.servicePort }},
-        "routes": {
-          "sendEmail": "/message/emailsList",
-          "sendToUser": "/message/usersList",
-          "ping": "/test/ping"
-        },
-        "timeout": 30000,
-        "emails": [],
-        "subject": "Workflow process problem.",
-        "body": "<html><body>Відбулась помилка в процесі {url}<br/>Task {taskTemplateId} {taskTemplateName}<br/>{error}</body></html>"
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "system_notifier.json" "base" $systemNotifierBase) | nindent 4 }}
 
   # System task configuration
   system_task.json: |
-    {
-      "isAllowedCreateByOtherSystems": true,
-      "allowedToCreateByTokens": [
-        "Basic <removed>"
-      ],
-      "allowedToUpdateDocumentAndCommit": [
-        "Basic <removed>"
-      ],
-      "tasksTemplateIds": [
-        "31009003"
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "system_task.json" "base" $systemTaskBase) | nindent 4 }}
 
   # Task finish configuration
   task_finish.json: |
-    {
-      "addTaskCommiterAsPerformer": true
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "task_finish.json" "base" $taskFinishBase) | nindent 4 }}
 
   # Versions configuration
   versions.json: |
-    {
-      "services": [
-        { "name": "id", "minVersion": "0.7.7" },
-        { "name": "eds", "minVersion": "1.0.11" },
-        { "name": "event", "minVersion": "1.37.6" },
-        { "name": "manager", "minVersion": "1.10.16" },
-        { "name": "gateway", "minVersion": "1.3.13" },
-        { "name": "workflow", "minVersion": "0.0.0" },
-        { "name": "register", "minVersion": "1.41.0" },
-        { "name": "filestorage", "minVersion": "2.3.2" },
-        { "name": "pwgen", "minVersion": "0.0.5" },
-        { "name": "plink", "minVersion": "1.0.5" },
-        { "name": "externalReader", "minVersion": "1.2.66" },
-        { "name": "notify", "minVersion": "1.3.52" }
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "versions.json" "base" $versionsBase) | nindent 4 }}

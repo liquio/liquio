@@ -5,12 +5,13 @@ metadata:
   name: {{ include "liquio.fullname" . }}-sign-tool-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $serverBase := dict
+  "port" .Values.services.signTool.targetPort
+  "host" "0.0.0.0"
+  "isSwaggerEnabled" false
+  "acceptedBodySize" "10mb"
+}}
 data:
   # Server configuration
   server.json: |
-    {
-      "port": {{ .Values.services.signTool.targetPort }},
-      "host": "0.0.0.0",
-      "isSwaggerEnabled": false,
-      "acceptedBodySize": "10mb"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "signTool" "config" "server" "base" $serverBase) | nindent 4 }}

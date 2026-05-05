@@ -5,24 +5,25 @@ metadata:
   name: {{ include "liquio.fullname" . }}-cabinet-front-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $configBase := dict
+  "application" (dict
+    "name" "liquio"
+    "environment" "dev"
+    "type" "manager"
+    "version" "0.1.0"
+  )
+  "certificateExpWarning" 10
+  "variables" (dict
+    "dateFormat" "DD/MM/YYYY"
+    "dateTimeFormat" "DD/MM/YYYY HH:mm"
+  )
+  "defaultRoute" "/messages"
+  "backendUrl" (printf "%s://cabinet-api.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "authLink" (printf "%s://cabinet-api.%s/redirect/auth" (include "liquio.scheme" .) .Values.global.domain)
+  "idAuthLink" (printf "%s://id.%s/authorise" (include "liquio.scheme" .) .Values.global.domain)
+  "clientId" "liquio-portal"
+  "defaultLanguage" "en-GB"
+}}
 data:
   config.json: |
-    {
-      "application": {
-        "name": "liquio",
-        "environment": "dev",
-        "type": "manager",
-        "version": "0.1.0"
-      },
-      "certificateExpWarning": 10,
-      "variables": {
-        "dateFormat": "DD/MM/YYYY",
-        "dateTimeFormat": "DD/MM/YYYY HH:mm"
-      },
-      "defaultRoute": "/messages",
-      "backendUrl": "{{ include "liquio.scheme" . }}://cabinet-api.{{ .Values.global.domain }}",
-      "authLink": "{{ include "liquio.scheme" . }}://cabinet-api.{{ .Values.global.domain }}/redirect/auth",
-      "idAuthLink": "{{ include "liquio.scheme" . }}://id.{{ .Values.global.domain }}/authorise",
-      "clientId": "liquio-portal",
-      "defaultLanguage": "en-GB"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "cabinetFront" "config" "config" "base" $configBase) | nindent 4 }}

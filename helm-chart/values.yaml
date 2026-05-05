@@ -562,6 +562,37 @@ config:
     # Redis port
     port: 6379
 
+  # Global server settings — applied to all API services.
+  # Any field can be overridden per-service using the config.<service> mechanism below.
+  server:
+    # Override listen hostname for all services. Defaults to "0.0.0.0" if not set.
+    # hostname: "0.0.0.0"
+    # Override maximum request body size for all services. Defaults to "100mb" if not set.
+    # maxBodySize: "100mb"
+    # Application environment label sent in service configs (e.g. "stage", "production").
+    environment: "stage"
+
+  # Per-service config overrides for ConfigMap JSON payloads.
+  # Each service key maps to JSON file keys rendered in that service ConfigMap.
+  # You can use either key style: "server" or "server.json".
+  # Values are deep-merged into chart defaults.
+  # Example:
+  # signTool:
+  #   server:
+  #     acceptedBodySize: "25mb"
+  #     isSwaggerEnabled: true
+
+  # Services that handle large file uploads retain a higher maxBodySize default.
+  adminApi:
+    server:
+      maxBodySize: "500mb"
+  manager:
+    server:
+      maxBodySize: "500mb"
+  register:
+    server:
+      maxBodySize: "500mb"
+
 # Secret configuration
 secrets:
   # Whether Helm should generate all required secrets on install.

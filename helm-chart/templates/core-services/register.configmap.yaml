@@ -5,202 +5,171 @@ metadata:
   name: {{ include "liquio.fullname" . }}-register-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "register" "username" .Values.config.database.username) | fromJson -}}
+{{ $_ := set $dbBase "operatorsAliases" false -}}
+{{ $encryptionBase := dict
+  "iv_size" 12
+  "batch_job_size" 100
+  "check_on_startup" false
+-}}
+{{ $authBase := dict
+  "tokens" (list)
+  "limitedAccess" (list)
+-}}
+{{ $serverBase := dict
+  "hostname" (default "0.0.0.0" .Values.config.server.hostname)
+  "port" .Values.services.register.targetPort
+  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "customer" .Release.Name
+  "environment" .Values.config.server.environment
+-}}
+{{ $redisBase := dict
+  "host" (include "liquio.redis.host" .)
+  "port" .Values.config.redis.port
+  "options" (dict)
+-}}
+{{ $cacheBase := dict
+  "key" (dict
+    "getAll" 300
+    "findById" 300
+  )
+  "register" (dict
+    "getAll" 300
+    "findByPk" 300
+  )
+-}}
+{{ $logBase := dict
+  "console" (list)
+  "responsesData" false
+  "excludeParams" (list "token" "authorization" "Authorization")
+-}}
+{{ $appBase := dict
+  "processTitle" "bpmn-register"
+-}}
+{{ $adminBase := dict
+  "swagger" true
+-}}
+{{ $accessLogBase := dict
+  "keyIds" (list 16 505)
+-}}
+{{ $afterhandlerBase := dict
+  "options" (dict
+    "reindexLimit" 100
+  )
+  "blockchain" (dict
+    "isActive" false
+    "handlingTimeout" 2000
+    "waitingTimeout" 10000
+    "keys" (list)
+    "options" (dict
+      "providerName" "hyperledger-fabric"
+      "providerParams" (dict
+        "apiUrl" "http://openenvironment.itl-dev.com:3003"
+        "apiMethods" (dict
+          "getData" (dict
+            "requestType" "GET"
+            "urlSuffix" "/api/documents/{id}"
+          )
+          "createData" (dict
+            "requestType" "POST"
+            "urlSuffix" "/api/documents"
+          )
+        )
+      )
+    )
+  )
+-}}
+{{ $filtersBase := dict
+  "wrongValues" (list "@")
+-}}
+{{ $keySignatureBase := dict
+  "<keyId>" (dict
+    "validationIdentity" (list "<RNOKPP>" "<EDRPOU>")
+  )
+-}}
+{{ $paginationBase := dict
+  "maxLimit" 100000
+  "maxExportLimit" 1000000
+  "packetLimit" 1000
+-}}
+{{ $searchBase := dict
+  "main" (dict
+    "resultsCount" 10
+    "doNotSearchThisWords" (list)
+    "replace" (list)
+  )
+  "456" (dict
+    "resultsCount" 5
+    "doNotSearchThisWords" (list "st" "street" "district" "dist" "city" "town" "vill" "village" "settlement" "township" "ave" "avenue" "ln" "lane")
+    "replaceWords" (list)
+  )
+-}}
+{{ $signBase := dict
+  "timeout" 10000
+  "url" (printf "http://%s-sign-tool:%d" (include "liquio.fullname" .) .Values.services.signTool.servicePort)
+  "token" ""
+-}}
 data:
   # Database configuration
   db.json: |
-    {
-      "database": "register",
-      "host": "{{ include "liquio.postgresql.host" . }}",
-      "port": {{ .Values.config.database.port }},
-      "dialect": "postgres",
-      "username": "{{ .Values.config.database.username }}",
-      "operatorsAliases": false,
-      "dialectOptions": {
-        "socketPath": "",
-        "supportBigNumbers": true,
-        "bigNumberStrings": true
-      },
-      "pool": {
-        "max": 5,
-        "min": 0,
-        "acquire": 30000,
-        "idle": 10000
-      },
-      "logging": false
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "db.json" "base" $dbBase) | nindent 4 }}
 
   # Encryption configuration
   encryption.json: |
-    {
-      "iv_size": 12,
-      "batch_job_size": 100,
-      "check_on_startup": false
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "encryption.json" "base" $encryptionBase) | nindent 4 }}
 
   # Auth configuration
   auth.json: |
-    {
-      "tokens": [],
-      "limitedAccess": []
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "auth.json" "base" $authBase) | nindent 4 }}
 
   # Server configuration
   server.json: |
-    {
-      "hostname": "0.0.0.0",
-      "port": {{ .Values.services.register.targetPort }},
-      "maxBodySize": "500mb",
-      "customer": "liquio",
-      "environment": "dev"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "server.json" "base" $serverBase) | nindent 4 }}
 
   # Redis configuration
   redis.json: |
-    {
-      "host": "{{ include "liquio.redis.host" . }}",
-      "port": {{ .Values.config.redis.port }},
-      "options": {}
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "redis.json" "base" $redisBase) | nindent 4 }}
 
   # Cache configuration
   cache.json: |
-    {
-      "key": {
-        "getAll": 300,
-        "findById": 300
-      },
-      "register": {
-        "getAll": 300,
-        "findByPk": 300
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "cache.json" "base" $cacheBase) | nindent 4 }}
 
   # Logging configuration
   log.json: |
-    {
-      "console": [],
-      "responsesData": false,
-      "excludeParams": [
-        "token",
-        "authorization",
-        "Authorization"
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "log.json" "base" $logBase) | nindent 4 }}
 
   # App configuration
   app.json: |
-    {
-      "processTitle": "bpmn-register"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "app.json" "base" $appBase) | nindent 4 }}
 
   # Admin configuration
   admin.json: |
-    {
-      "swagger": true
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "admin.json" "base" $adminBase) | nindent 4 }}
 
   # Access log configuration
   access_log.json: |
-    {
-      "keyIds": [
-        16,
-        505
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "access_log.json" "base" $accessLogBase) | nindent 4 }}
 
   # After handler configuration
   afterhandler.json: |
-    {
-      "options": {
-        "reindexLimit": 100
-      },
-      "blockchain": {
-        "isActive": false,
-        "handlingTimeout": 2000,
-        "waitingTimeout": 10000,
-        "keys": [],
-        "options": {
-          "providerName": "hyperledger-fabric",
-          "providerParams": {
-            "apiUrl": "http://openenvironment.itl-dev.com:3003",
-            "apiMethods": {
-              "getData": {
-                "requestType": "GET",
-                "urlSuffix": "/api/documents/{id}"
-              },
-              "createData": {
-                "requestType": "POST",
-                "urlSuffix": "/api/documents"
-              }
-            }
-          }
-        }
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "afterhandler.json" "base" $afterhandlerBase) | nindent 4 }}
 
   # Filters configuration
   filters.json: |
-    {
-      "wrongValues": [
-        "@"
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "filters.json" "base" $filtersBase) | nindent 4 }}
 
   # Key signature configuration
   key_signature.json: |
-    {
-      "<keyId>": {
-        "validationIdentity": ["<RNOKPP>", "<EDRPOU>"]
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "key_signature.json" "base" $keySignatureBase) | nindent 4 }}
 
   # Pagination configuration
   pagination.json: |
-    {
-      "maxLimit": 100000,
-      "maxExportLimit": 1000000,
-      "packetLimit": 1000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "pagination.json" "base" $paginationBase) | nindent 4 }}
 
   # Search configuration
   search.json: |
-    {
-      "main": {
-        "resultsCount": 10,
-        "doNotSearchThisWords": [],
-        "replace": []
-      },
-      "456": {
-        "resultsCount": 5,
-        "doNotSearchThisWords": [
-          "вул",
-          "вулиця",
-          "район",
-          "р",
-          "м",
-          "місто",
-          "с",
-          "сел",
-          "село",
-          "селище",
-          "смт",
-          "пр",
-          "пров",
-          "провулок"
-        ],
-        "replaceWords": [
-          {
-            "from": "київ",
-            "to": "м.київ"
-          }
-        ]
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "search.json" "base" $searchBase) | nindent 4 }}
 
   # Sign configuration
   sign.json: |
-    {
-      "timeout": 10000,
-      "url": "http://{{ include "liquio.fullname" . }}-sign-tool:{{ .Values.services.signTool.servicePort }}",
-      "token": ""
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "register" "config" "sign.json" "base" $signBase) | nindent 4 }}
