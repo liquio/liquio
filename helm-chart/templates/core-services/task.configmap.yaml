@@ -103,7 +103,7 @@ metadata:
 -}}
 {{ $storageBase := dict
   "OpenStack" (dict
-    "server" "http://test-storage.liquio.local"
+    "server" (printf "%s://storage.%s" (include "liquio.scheme" .) .Values.global.domain)
     "port" 5000
     "routes" (dict
       "getTokens" "/v2.0/tokens"
@@ -298,7 +298,7 @@ metadata:
   )
 -}}
 {{ $persistLinkBase := dict
-  "server" "https://plink-dev-oe.liquio.local"
+  "server" (printf "%s://plink.%s" (include "liquio.scheme" .) .Values.global.domain)
   "port" 443
   "routes" (dict
     "generateQr" "/link?qr=svg"
@@ -308,7 +308,7 @@ metadata:
   "token" "<removed>"
   "serverName" "bpmn_dev"
   "getLinkToFilestorageTimeout" 30000
-  "qrFrontUrl" "https://qr-dev.liquio.local"
+  "qrFrontUrl" (printf "%s://qr.%s" (include "liquio.scheme" .) .Values.global.domain)
 -}}
 {{ $signBase := dict
   "timeout" 10000
@@ -316,7 +316,7 @@ metadata:
   "token" ""
 -}}
 {{ $systemNotifierBase := dict
-  "adminUrl" "http://localhost:8000"
+  "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
   "email" (dict
     "server" (printf "http://%s-notification" (include "liquio.fullname" .))
     "port" .Values.services.notification.servicePort

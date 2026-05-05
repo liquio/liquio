@@ -28,7 +28,7 @@ metadata:
   "enabled" true
 -}}
 {{ $systemNotifierBase := dict
-  "adminUrl" (printf "https://admin.%s" .Values.global.domain)
+  "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
   "email" (dict
     "server" (printf "http://%s-notification" (include "liquio.fullname" .))
     "port" .Values.services.notification.port

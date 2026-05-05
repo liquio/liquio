@@ -58,7 +58,7 @@ metadata:
 -}}
 {{ $pingBase := dict
   "manager" (dict
-    "url" "https://manager-dev-oe.liquio.local/test/ping"
+    "url" (printf "%s://manager.%s/test/ping" (include "liquio.scheme" .) .Values.global.domain)
   )
   "healthz" (dict
     "db" (dict
@@ -164,7 +164,7 @@ metadata:
 -}}
 {{ $externalBpmnBase := dict
   "test" (dict
-    "url" "https://task-dev-oe.liquio.local"
+    "url" (printf "%s://task.%s" (include "liquio.scheme" .) .Values.global.domain)
     "token" "Basic test-token"
     "requestTimeout" 30000
   )
@@ -177,7 +177,7 @@ metadata:
   "port" 5000
 -}}
 {{ $persistLinkBase := dict
-  "server" "https://plink.liquio.local"
+  "server" (printf "%s://plink.%s" (include "liquio.scheme" .) .Values.global.domain)
   "port" 443
   "routes" (dict
     "generateQr" "/link?qr=svg"
@@ -191,7 +191,7 @@ metadata:
 {{ $requesterBase := dict
   "blockchain" (dict
     "provider" "liquio"
-    "server" "http://blockchain-node.liquio.local"
+    "server" (printf "%s://blockchain-node.%s" (include "liquio.scheme" .) .Values.global.domain)
     "port" 3003
     "routes" (dict
       "documentsCRUD" "/api/documents"
@@ -202,12 +202,12 @@ metadata:
   )
   "registers" (dict
     "provider" "liquio"
-    "url" "https://register-dev-oe.liquio.local"
+    "url" (printf "%s://register.%s" (include "liquio.scheme" .) .Values.global.domain)
     "timeout" 20000
   )
   "externalService" (dict
     "trembita" (dict
-      "trembitaUrl" "https://trembita-client.liquio.local"
+      "trembitaUrl" (printf "%s://trembita-client.%s" (include "liquio.scheme" .) .Values.global.domain)
       "trembitaHeader" (dict
         "client" (dict
           "objectType" "SUBSYSTEM"
@@ -251,9 +251,9 @@ metadata:
 -}}
 {{ $stopperBase := dict }}
 {{ $systemNotifierBase := dict
-  "adminUrl" "https://admin.liquio.local"
+  "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
   "email" (dict
-    "server" "https://notify.liquio.local"
+    "server" (printf "%s://notification.%s" (include "liquio.scheme" .) .Values.global.domain)
     "port" 443
     "routes" (dict
       "sendEmail" "/message/emailsList"
@@ -269,7 +269,7 @@ metadata:
   "maxLoops" 50
 -}}
 {{ $trembitaBase := dict
-  "host" "http://trembita.liquio.local"
+  "host" (printf "%s://trembita.%s" (include "liquio.scheme" .) .Values.global.domain)
   "client" (dict
     "xRoadInstance" "INSTANCE"
     "memberClass" "CLASS"

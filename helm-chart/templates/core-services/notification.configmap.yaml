@@ -35,7 +35,7 @@ metadata:
       "hardcode_subject" "New message"
     )
     "smsServer" (dict
-      "url" "https://test.liquio.local/Subscribe/SendSmsQ.php"
+      "url" (printf "%s://sms.%s/Subscribe/SendSmsQ.php" (include "liquio.scheme" .) .Values.global.domain)
       "access_token" ""
     )
     "adminConfig" (dict

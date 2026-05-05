@@ -35,7 +35,7 @@ metadata:
   )
 -}}
 {{ $systemNotifierBase := dict
-  "adminUrl" "https://admin-front-dev-oe.liquio.local"
+  "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
   "email" (dict
     "server" (printf "http://%s-notification" (include "liquio.fullname" .))
     "port" .Values.services.notification.port
