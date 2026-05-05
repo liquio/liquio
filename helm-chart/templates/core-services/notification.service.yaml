@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.services.notification.type }}
   ports:
-    - port: {{ .Values.services.notification.port }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http

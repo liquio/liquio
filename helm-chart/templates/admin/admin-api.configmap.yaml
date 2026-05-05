@@ -10,7 +10,7 @@ metadata:
   "clientId" "liquio-portal"
   "logoutRedirectUrl" (printf "http://%s/" .Values.global.domain)
   "serverPublicUrl" (printf "http://%s" .Values.global.domain)
-  "port" .Values.services.idApi.servicePort
+  "port" 80
   "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
   "timeout" 30000
 -}}
@@ -26,12 +26,12 @@ metadata:
   "writingQueueGateway" "bpmn-gateway-incoming"
 -}}
 {{ $filestorageBase := dict
-  "apiHost" (printf "http://%s-filestorage:%d" (include "liquio.fullname" .) .Values.services.filestorage.servicePort)
+  "apiHost" (printf "http://%s-filestorage:80")
   "containerId" 1
 -}}
 {{ $registerBase := dict
   "limit" 10000
-  "port" .Values.services.register.servicePort
+  "port" 80
   "server" (printf "http://%s-register" (include "liquio.fullname" .))
   "timeout" 30000
   "importXlsx" (dict
@@ -46,7 +46,7 @@ metadata:
   "environment" .Values.config.server.environment
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
-  "port" .Values.services.adminApi.targetPort
+  "port" (default 8080 .Values.services.adminApi.containerPort)
   "swagger" false
 -}}
 {{ $logBase := dict
@@ -64,7 +64,7 @@ metadata:
 -}}
 {{ $notifierBase := dict
   "server" (printf "http://%s-notification" (include "liquio.fullname" .))
-  "port" .Values.services.notification.servicePort
+  "port" 80
   "timeout" 30000
   "routes" (dict
     "ping" "/test/ping"
@@ -78,7 +78,7 @@ metadata:
 -}}
 {{ $taskBase := dict
   "elastic" false
-  "port" .Values.services.task.servicePort
+  "port" 80
   "server" (printf "http://%s-task" (include "liquio.fullname" .))
   "timeout" 10000
   "token" "Basic dGFzazp0YXNr"

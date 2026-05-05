@@ -7,7 +7,7 @@ metadata:
     {{- include "liquio.labels" . | nindent 4 }}
 {{ $authBase := dict }}
 {{ $serverBase := dict
-  "port" .Values.services.externalReader.targetPort
+  "port" (default 8080 .Values.services.externalReader.containerPort)
   "host" "0.0.0.0"
   "isSwaggerEnabled" false
   "acceptedBodySize" "10mb"

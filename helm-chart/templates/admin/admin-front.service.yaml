@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.services.adminFront.type }}
   ports:
-    - port: {{ .Values.services.adminFront.servicePort }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http

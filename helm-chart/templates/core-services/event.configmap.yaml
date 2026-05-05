@@ -13,7 +13,7 @@ metadata:
   "retryConnectionTime" 10000
 -}}
 {{ $filestorageBase := dict
-  "apiHost" (printf "http://%s-filestorage:%d" (include "liquio.fullname" .) .Values.services.filestorage.servicePort)
+  "apiHost" (printf "http://%s-filestorage:80")
   "containerId" 1
   "getFileTimeout" 60000
   "downloadFileTimeout" 60000
@@ -22,7 +22,7 @@ metadata:
 -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
-  "port" .Values.services.event.port
+  "port" (default 8080 .Values.services.event.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
   "customer" .Release.Name
   "environment" .Values.config.server.environment
@@ -73,7 +73,7 @@ metadata:
   "email" (dict
     "provider" "liquio"
     "server" (printf "http://%s-notification" (include "liquio.fullname" .))
-    "port" .Values.services.notification.port
+    "port" 80
     "routes" (dict
       "sendSms" "/message/phonesList"
       "sendEmail" "/message/emailsList"
@@ -93,7 +93,7 @@ metadata:
   "sms" (dict
     "provider" "liquio"
     "server" (printf "http://%s-notification" (include "liquio.fullname" .))
-    "port" .Values.services.notification.port
+    "port" 80
     "routes" (dict
       "sendSms" "/message/phonesList"
       "ping" "/test/ping"
@@ -117,13 +117,13 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:%d" (include "liquio.fullname" .) .Values.services.signTool.servicePort)
+  "url" (printf "http://%s-sign-tool:80")
   "token" ""
 -}}
 {{ $userBase := dict
   "LiquioId" (dict
     "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
-    "port" .Values.services.idApi.servicePort
+    "port" 80
     "timeout" 30000
     "clientId" "test-client"
     "clientSecret" "test-secret"
@@ -283,7 +283,7 @@ metadata:
 {{ $emailBase := dict
   "provider" "liquio"
   "server" (printf "http://%s-notification" (include "liquio.fullname" .))
-  "port" .Values.services.notification.port
+  "port" 80
   "routes" (dict
     "sendSms" "/message/phonesList"
     "sendEmail" "/message/emailsList"

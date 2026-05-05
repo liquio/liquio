@@ -43,13 +43,13 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.services.idApi.targetPort }}
+              containerPort: {{ (default 8080 .Values.services.idApi.containerPort) }}
               protocol: TCP
           env:
             - name: NODE_ENV
               value: "production"
             - name: PORT
-              value: "{{ .Values.services.idApi.targetPort }}"
+              value: "{{ (default 8080 .Values.services.idApi.containerPort) }}"
             - name: CONFIG_PATH
               value: "/var/www/config"
             - name: SECRET_PATH

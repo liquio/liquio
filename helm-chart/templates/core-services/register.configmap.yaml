@@ -18,7 +18,7 @@ metadata:
 -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
-  "port" .Values.services.register.targetPort
+  "port" (default 8080 .Values.services.register.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
   "customer" .Release.Name
   "environment" .Values.config.server.environment
@@ -106,7 +106,7 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:%d" (include "liquio.fullname" .) .Values.services.signTool.servicePort)
+  "url" (printf "http://%s-sign-tool:80")
   "token" ""
 -}}
 data:

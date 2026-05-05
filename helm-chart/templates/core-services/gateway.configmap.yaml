@@ -8,7 +8,7 @@ metadata:
 {{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
-  "port" .Values.services.gateway.port
+  "port" (default 8080 .Values.services.gateway.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
   "customer" .Release.Name
   "environment" .Values.config.server.environment
@@ -31,7 +31,7 @@ metadata:
   "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
   "email" (dict
     "server" (printf "http://%s-notification" (include "liquio.fullname" .))
-    "port" .Values.services.notification.port
+    "port" 80
     "routes" (dict
       "sendEmail" "/message/emailsList"
       "sendToUser" "/message/usersList"

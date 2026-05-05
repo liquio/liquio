@@ -91,7 +91,7 @@ metadata:
   "pingRoutes" (dict
     "notify" (printf "http://%s-notification:3002/test/ping" (include "liquio.fullname" .))
   )
-  "port" (toString .Values.services.idApi.targetPort)
+  "port" (toString (default 8080 .Values.services.idApi.containerPort))
   "redis" (dict
     "defaultTtl" 60
     "host" (include "liquio.redis.host" .)

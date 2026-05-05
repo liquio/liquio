@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.services.idApi.type }}
   ports:
-    - port: {{ .Values.services.idApi.servicePort }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http

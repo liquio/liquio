@@ -8,7 +8,7 @@ metadata:
 {{ $authBase := dict
   "LiquioId" (dict
     "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
-    "port" .Values.services.idApi.servicePort
+    "port" 80
     "routes" (dict
       "getCode" "/authorise"
       "getToken" "/oauth/token/"
@@ -47,7 +47,7 @@ metadata:
 {{ $_ := set $dbBase "operatorsAliases" false -}}
 {{- $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
-  "port" .Values.services.cabinetApi.targetPort
+  "port" (default 8080 .Values.services.cabinetApi.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
   "swagger" true
   "customer" .Release.Name
@@ -75,7 +75,7 @@ metadata:
 -}}
 {{- $discoveryBase := dict
   "customApis" (list)
-  "mainProxy" (printf "http://%s-task:%v" (include "liquio.fullname" .) .Values.services.task.servicePort)
+  "mainProxy" (printf "http://%s-task:80" (include "liquio.fullname" .))
 -}}
 data:
   # Auth configuration

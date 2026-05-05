@@ -21,7 +21,7 @@ metadata:
   "LiquioId" (dict
     "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
     "front" (printf "%s://id.%s" (include "liquio.scheme" .) .Values.global.domain)
-    "port" .Values.services.idApi.servicePort
+    "port" 80
     "routes" (dict
       "getCode" "/authorise"
       "getToken" "/oauth/token/"
@@ -68,7 +68,7 @@ metadata:
 -}}
 {{ $registerBase := dict
   "server" (printf "http://%s-register" (include "liquio.fullname" .))
-  "port" .Values.services.register.servicePort
+  "port" 80
   "limit" 10000
   "accessCacheLifetime" 60000
   "registerKeysForAddresses" (list)
@@ -91,11 +91,11 @@ metadata:
   "timeout" 30000
 -}}
 {{ $externalReaderBase := dict
-  "url" (printf "http://%s-external-reader:%d" (include "liquio.fullname" .) .Values.services.externalReader.servicePort)
+  "url" (printf "http://%s-external-reader:80")
   "timeout" 30000
 -}}
 {{ $filestorageBase := dict
-  "apiHost" (printf "http://%s-filestorage:%d" (include "liquio.fullname" .) .Values.services.filestorage.servicePort)
+  "apiHost" (printf "http://%s-filestorage:80")
   "containerId" 1
   "signatureTimeout" 40000
   "downloadUploadTimeout" 60000
@@ -122,15 +122,15 @@ metadata:
     "isFilesCanBeDeleted" false
   )
   "FileStorage" (dict
-    "apiHost" (printf "http://%s-filestorage:%d" (include "liquio.fullname" .) .Values.services.filestorage.servicePort)
+    "apiHost" (printf "http://%s-filestorage:80")
     "containerId" 1
   )
 -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
-  "port" .Values.services.task.targetPort
+  "port" (default 8080 .Values.services.task.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
-  "serverName" (printf "http://%s-task:%d" (include "liquio.fullname" .) .Values.services.task.servicePort)
+  "serverName" (printf "http://%s-task:80")
   "customer" .Release.Name
   "environment" .Values.config.server.environment
 -}}
@@ -239,7 +239,7 @@ metadata:
   "providerName" "pkcs7"
   "pkcs7" (dict
     "timeout" 30000
-    "signToolUrl" (printf "http://%s-sign-tool:%d" (include "liquio.fullname" .) .Values.services.signTool.servicePort)
+    "signToolUrl" (printf "http://%s-sign-tool:80")
   )
   "timeout" 30000
 -}}
@@ -282,7 +282,7 @@ metadata:
 -}}
 {{ $notifierBase := dict
   "server" (printf "http://%s-notification" (include "liquio.fullname" .))
-  "port" .Values.services.notification.servicePort
+  "port" 80
   "timeout" 30000
   "clientId" ""
   "routes" (dict
@@ -312,14 +312,14 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:%d" (include "liquio.fullname" .) .Values.services.signTool.servicePort)
+  "url" (printf "http://%s-sign-tool:80")
   "token" ""
 -}}
 {{ $systemNotifierBase := dict
   "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
   "email" (dict
     "server" (printf "http://%s-notification" (include "liquio.fullname" .))
-    "port" .Values.services.notification.servicePort
+    "port" 80
     "routes" (dict
       "sendEmail" "/message/emailsList"
       "sendToUser" "/message/usersList"

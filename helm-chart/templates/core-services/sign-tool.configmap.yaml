@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
 {{ $serverBase := dict
-  "port" .Values.services.signTool.targetPort
+  "port" (default 8080 .Values.services.signTool.containerPort)
   "host" "0.0.0.0"
   "isSwaggerEnabled" false
   "acceptedBodySize" "10mb"

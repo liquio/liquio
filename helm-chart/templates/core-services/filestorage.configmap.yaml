@@ -9,7 +9,7 @@ metadata:
 {{ $_ := set $dbBase "operatorsAliases" false -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
-  "port" .Values.services.filestorage.port
+  "port" (default 8080 .Values.services.filestorage.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
 -}}
 {{ $appBase := dict

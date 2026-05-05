@@ -14,7 +14,7 @@ data:
     }
 
     upstream id-api-upstream {
-        server {{ include "liquio.fullname" . }}-id-api:{{ .Values.services.idApi.port }};
+        server {{ include "liquio.fullname" . }}-id-api:80;
     }
 
     server {

@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.services.filestorage.type }}
   ports:
-    - port: {{ .Values.services.filestorage.servicePort }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http

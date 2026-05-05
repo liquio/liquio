@@ -9,7 +9,7 @@ metadata:
   "default_env" "production"
   "production" (dict
     "processTitle" "notify"
-    "port" (.Values.services.notification.port | toString)
+    "port" ((default 8080 .Values.services.notification.containerPort) | toString)
     "username" .Values.config.database.username
     "database" "notify"
     "host" (include "liquio.postgresql.host" .)
