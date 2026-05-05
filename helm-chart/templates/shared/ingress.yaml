@@ -1,12 +1,12 @@
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "liquio.fullname" . -}}
 {{- $serviceMap := dict 
-  "id-front" .Values.services.idFront.servicePort
-  "id-api" .Values.services.idApi.servicePort
-  "admin-front" .Values.services.adminFront.servicePort
-  "admin-api" .Values.services.adminApi.servicePort
-  "cabinet-front" .Values.services.cabinetFront.servicePort
-  "cabinet-api" .Values.services.cabinetApi.servicePort
+  "id-front" 80
+  "id-api" 80
+  "admin-front" 80
+  "admin-api" 80
+  "cabinet-front" 80
+  "cabinet-api" 80
 -}}
 {{- if and .Values.ingress.className (not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class")) }}
   {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}

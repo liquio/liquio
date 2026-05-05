@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.services.signTool.type }}
   ports:
-    - port: {{ .Values.services.signTool.servicePort }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http

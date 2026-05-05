@@ -41,13 +41,13 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.services.cabinetApi.targetPort }}
+              containerPort: {{ (default 8080 .Values.services.cabinetApi.containerPort) }}
               protocol: TCP
           env:
             - name: NODE_ENV
               value: "production"
             - name: PORT
-              value: "{{ .Values.services.cabinetApi.targetPort }}"
+              value: "{{ (default 8080 .Values.services.cabinetApi.containerPort) }}"
             - name: CONFIG_PATH
               value: "/var/www/config"
             - name: SECRET_PATH

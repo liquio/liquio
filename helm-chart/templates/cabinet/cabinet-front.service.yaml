@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.services.cabinetFront.type }}
   ports:
-    - port: {{ .Values.services.cabinetFront.servicePort }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http

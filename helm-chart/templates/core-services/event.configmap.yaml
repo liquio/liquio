@@ -5,381 +5,385 @@ metadata:
   name: {{ include "liquio.fullname" . }}-event-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson -}}
+{{ $messageQueueBase := dict
+  "maxHandlingMessages" 2
+  "readingQueueName" "bpmn-event-incoming"
+  "writingQueueName" "bpmn-manager-incoming"
+  "retryConnectionTime" 10000
+-}}
+{{ $filestorageBase := dict
+  "apiHost" (printf "http://%s-filestorage:80")
+  "containerId" 1
+  "getFileTimeout" 60000
+  "downloadFileTimeout" 60000
+  "getSetSignatureTimeout" 40000
+  "createAsicTimeout" 60000
+-}}
+{{ $serverBase := dict
+  "hostname" (default "0.0.0.0" .Values.config.server.hostname)
+  "port" (default 8080 .Values.services.event.containerPort)
+  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "customer" .Release.Name
+  "environment" .Values.config.server.environment
+-}}
+{{ $redisBase := dict
+  "host" (include "liquio.redis.host" .)
+  "port" .Values.config.redis.port
+  "options" (dict)
+-}}
+{{ $logBase := dict
+  "console" (list)
+  "file" (list "./logs/")
+  "excludeParams" (list
+    "token"
+    "access_token"
+    "refresh_token"
+    "oauth-token"
+    "authorization"
+    "Authorization"
+    "secret"
+    "password"
+    "oldPassword"
+    "oldPasswords"
+    "client_secret"
+    "_token="
+    "client_id="
+    "client_secret="
+  )
+-}}
+{{ $appBase := dict
+  "enabledReadMessageQueueMode" true
+  "enabledRunDaemonMode" true
+-}}
+{{ $pingBase := dict
+  "manager" (dict
+    "url" (printf "%s://manager.%s/test/ping" (include "liquio.scheme" .) .Values.global.domain)
+  )
+  "healthz" (dict
+    "db" (dict
+      "enabled" true
+    )
+  )
+  "trembita" (dict
+    "url" "http://trembita-host/wsdl"
+  )
+-}}
+{{ $notifierBase := dict
+  "email" (dict
+    "provider" "liquio"
+    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "port" 80
+    "routes" (dict
+      "sendSms" "/message/phonesList"
+      "sendEmail" "/message/emailsList"
+      "sendToUser" "/message/usersList"
+      "hideImportantMessage" "/message/important/<message-id>/set-unimportant"
+      "getMessagesList" "/message"
+      "ping" "/test/ping"
+    )
+    "timeout" 30000
+    "user" "admin"
+    "templateParams" (dict
+      "frontUrl" "http://localhost:3000"
+    )
+    "defaultTemplateId" 1
+    "clientId" ""
+  )
+  "sms" (dict
+    "provider" "liquio"
+    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "port" 80
+    "routes" (dict
+      "sendSms" "/message/phonesList"
+      "ping" "/test/ping"
+    )
+    "user" "admin"
+    "templateParams" (dict
+      "frontUrl" "http://localhost:3000"
+    )
+  )
+  "digest" (dict
+    "provider" "mailerlite"
+    "apiKey" "test-key"
+    "groupId" "test-group"
+    "routes" (dict
+      "getStats" "/api/v2/stats"
+      "addSubscribersToGroup" "/api/v2/groups/{{`{{groupId}}`}}/subscribers/import"
+    )
+    "serviceUrl" "https://api.mailerlite.com"
+    "timeout" 30000
+  )
+-}}
+{{ $signBase := dict
+  "timeout" 10000
+  "url" (printf "http://%s-sign-tool:80")
+  "token" ""
+-}}
+{{ $userBase := dict
+  "LiquioId" (dict
+    "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
+    "port" 80
+    "timeout" 30000
+    "clientId" "test-client"
+    "clientSecret" "test-secret"
+    "basicAuthToken" "test-token"
+  )
+  "searchUsersLimit" 10
+-}}
+{{ $versionsBase := dict
+  "services" (list
+    (dict "name" "id" "minVersion" "0.0.0")
+    (dict "name" "eds" "minVersion" "0.0.0")
+    (dict "name" "event" "minVersion" "0.0.0")
+    (dict "name" "manager" "minVersion" "1.15.0")
+    (dict "name" "gateway" "minVersion" "0.0.0")
+    (dict "name" "workflow" "minVersion" "0.0.0")
+    (dict "name" "register" "minVersion" "0.0.0")
+    (dict "name" "filestorage" "minVersion" "0.0.0")
+    (dict "name" "pwgen" "minVersion" "0.0.0")
+    (dict "name" "plink" "minVersion" "0.0.0")
+    (dict "name" "externalReader" "minVersion" "0.0.0")
+    (dict "name" "notify" "minVersion" "1.3.41")
+  )
+-}}
+{{ $customBase := dict
+  "workflowExtraPermissions" (dict
+    "allowUpdateFromAnotherWorkflow" (list)
+  )
+-}}
+{{ $customLogsBase := dict
+  "templatesCacheLifetime" 60000
+  "cacheEnabled" false
+  "redis" (dict
+    "ttl" 60
+  )
+-}}
+{{ $delayerBase := dict
+  "interval" 60
+-}}
+{{ $externalBpmnBase := dict
+  "test" (dict
+    "url" (printf "%s://task.%s" (include "liquio.scheme" .) .Values.global.domain)
+    "token" "Basic test-token"
+    "requestTimeout" 30000
+  )
+-}}
+{{ $httpClientBase := dict
+  "requestTimeout" 60000
+-}}
+{{ $logsBroadcastingBase := dict
+  "isEnabled" false
+  "port" 5000
+-}}
+{{ $persistLinkBase := dict
+  "server" (printf "%s://plink.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "port" 443
+  "routes" (dict
+    "generateQr" "/link?qr=svg"
+    "ping" "/test/ping"
+    "pingWithAuth" "/test/ping_with_auth"
+  )
+  "token" "test-token"
+  "serverName" "bpmn_dev"
+  "getLinkToFilestorageTimeout" 30000
+-}}
+{{ $requesterBase := dict
+  "blockchain" (dict
+    "provider" "liquio"
+    "server" (printf "%s://blockchain-node.%s" (include "liquio.scheme" .) .Values.global.domain)
+    "port" 3003
+    "routes" (dict
+      "documentsCRUD" "/api/documents"
+      "documentsRevoke" "/api/documents/revoke"
+    )
+    "user" "test-user"
+    "hashedPassword" "test-password"
+  )
+  "registers" (dict
+    "provider" "liquio"
+    "url" (printf "%s://register.%s" (include "liquio.scheme" .) .Values.global.domain)
+    "timeout" 20000
+  )
+  "externalService" (dict
+    "trembita" (dict
+      "trembitaUrl" (printf "%s://trembita-client.%s" (include "liquio.scheme" .) .Values.global.domain)
+      "trembitaHeader" (dict
+        "client" (dict
+          "objectType" "SUBSYSTEM"
+          "xRoadInstance" "INSTANCE"
+          "memberClass" "CLASS"
+          "memberCode" "CODE"
+          "subsystemCode" "SUBSYSTEM"
+        )
+        "service" (dict
+          "objectType" "SERVICE"
+          "xRoadInstance" "INSTANCE"
+          "memberClass" "CLASS"
+          "memberCode" "CODE"
+          "subsystemCode" "SUBSYSTEM"
+          "serviceCode" "SERVICE_CODE"
+          "serviceVersion" "?"
+        )
+        "userId" "?"
+        "id" "20191217-1128-01"
+        "protocolVersion" "4.0"
+      )
+      "timeout" 20000
+      "debug" false
+      "claims" (dict
+        "birthCertDuplicate" (dict
+          "memberClass" "CLASS"
+          "memberCode" "CODE"
+          "subsystemCode" "SUBSYSTEM"
+          "serviceCode" "SERVICE_CODE"
+          "serviceVersion" "?"
+        )
+      )
+    )
+    "standard" (dict
+      "providersConfigPath" ""
+    )
+    "standardTrembita" (dict
+      "providersConfigPath" ""
+    )
+  )
+-}}
+{{ $stopperBase := dict }}
+{{ $systemNotifierBase := dict
+  "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "email" (dict
+    "server" (printf "%s://notification.%s" (include "liquio.scheme" .) .Values.global.domain)
+    "port" 443
+    "routes" (dict
+      "sendEmail" "/message/emailsList"
+      "sendToUser" "/message/usersList"
+      "ping" "/test/ping"
+    )
+    "timeout" 30000
+    "user" "test-user"
+    "emails" (list)
+    "subject" "Workflow process problem."
+    "body" "<html><body>An error occurred in process {url}<br/>Event {eventTemplateId} {eventTemplateName}<br/>{error}</body></html>"
+  )
+  "maxLoops" 50
+-}}
+{{ $trembitaBase := dict
+  "host" (printf "%s://trembita.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "client" (dict
+    "xRoadInstance" "INSTANCE"
+    "memberClass" "CLASS"
+    "memberCode" "CODE"
+    "subsystemCode" "SUBSYSTEM"
+  )
+  "id" "?"
+  "protocolVersion" "4.0"
+  "userId" "?"
+-}}
+{{ $emailBase := dict
+  "provider" "liquio"
+  "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+  "port" 80
+  "routes" (dict
+    "sendSms" "/message/phonesList"
+    "sendEmail" "/message/emailsList"
+    "sendToUser" "/message/usersList"
+    "hideImportantMessage" "/message/important/<message-id>/set-unimportant"
+    "getMessagesList" "/message"
+    "ping" "/test/ping"
+  )
+  "timeout" 30000
+  "user" "admin"
+  "hashedPassword" "password"
+  "templateParams" (dict
+    "frontUrl" "http://localhost:3000"
+  )
+  "defaultTemplateId" 1
+  "clientId" ""
+-}}
 data:
   # Database configuration
   db.json: |
-    {
-      "host": "{{ include "liquio.postgresql.host" . }}",
-      "port": {{ .Values.config.database.port }},
-      "database": "bpmn",
-      "username": "{{ .Values.config.database.username }}",
-      "dialect": "postgres",
-      "dialectOptions": {
-        "socketPath": "",
-        "supportBigNumbers": true,
-        "bigNumberStrings": true
-      },
-      "logging": false,
-      "pool": {
-        "max": 5,
-        "min": 0,
-        "acquire": 30000,
-        "idle": 10000
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "db.json" "base" $dbBase) | nindent 4 }}
 
   # Message queue configuration
   message_queue.json: |
-    {
-      "maxHandlingMessages": 2,
-      "readingQueueName": "bpmn-event-incoming",
-      "writingQueueName": "bpmn-manager-incoming",
-      "retryConnectionTime": 10000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "message_queue.json" "base" $messageQueueBase) | nindent 4 }}
 
   # Filestorage configuration
   filestorage.json: |
-    {
-      "apiHost": "http://{{ include "liquio.fullname" . }}-filestorage:{{ .Values.services.filestorage.servicePort }}",
-      "containerId": 1,
-      "getFileTimeout": 60000,
-      "downloadFileTimeout": 60000,
-      "getSetSignatureTimeout": 40000,
-      "createAsicTimeout": 60000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "filestorage.json" "base" $filestorageBase) | nindent 4 }}
 
   # Server configuration
   server.json: |
-    {
-      "hostname": "0.0.0.0",
-      "port": {{ .Values.services.event.port }},
-      "maxBodySize": "10mb",
-      "customer": "liquio",
-      "environment": "dev"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "server.json" "base" $serverBase) | nindent 4 }}
 
   # Redis configuration
   redis.json: |
-    {
-      "host": "{{ include "liquio.redis.host" . }}",
-      "port": {{ .Values.config.redis.port }},
-      "options": {}
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "redis.json" "base" $redisBase) | nindent 4 }}
 
   # Logging configuration
   log.json: |
-    {
-      "console": [],
-      "file": [
-        "./logs/"
-      ],
-      "excludeParams": [
-        "token",
-        "access_token",
-        "refresh_token",
-        "oauth-token",
-        "authorization",
-        "Authorization",
-        "secret",
-        "password",
-        "oldPassword",
-        "oldPasswords",
-        "client_secret",
-        "_token=",
-        "client_id=",
-        "client_secret="
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "log.json" "base" $logBase) | nindent 4 }}
 
   # App configuration
   app.json: |
-    {
-      "enabledReadMessageQueueMode": true,
-      "enabledRunDaemonMode": true
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "app.json" "base" $appBase) | nindent 4 }}
 
   # Ping configuration
   ping.json: |
-    {
-      "manager": {
-        "url": "https://manager-dev-oe.liquio.local/test/ping"
-      },
-      "healthz": {
-        "db": {
-          "enabled": true
-        }
-      },
-      "trembita": {
-        "url": "http://10.128.4.11/wsdl?xRoadInstance=SEVDEIR&memberClass=GOV&memberCode=00015622&subsystemCode=3_MJU_DRACS_prod&serviceCode=PostPetition"
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "ping.json" "base" $pingBase) | nindent 4 }}
 
   # Notifier configuration
   notifier.json: |
-    {
-      "email": {
-        "provider": "liquio",
-        "server": "http://{{ include "liquio.fullname" . }}-notification",
-        "port": {{ .Values.services.notification.port }},
-        "routes": {
-          "sendSms": "/message/phonesList",
-          "sendEmail": "/message/emailsList",
-          "sendToUser": "/message/usersList",
-          "hideImportantMessage": "/message/important/<message-id>/set-unimportant",
-          "getMessagesList": "/message",
-          "ping": "/test/ping"
-        },
-        "timeout": 30000,
-        "user": "admin",
-        "templateParams": {
-          "frontUrl": "http://localhost:3000"
-        },
-        "defaultTemplateId": 1,
-        "clientId": ""
-      },
-      "sms": {
-        "provider": "liquio",
-        "server": "http://{{ include "liquio.fullname" . }}-notification",
-        "port": {{ .Values.services.notification.port }},
-        "routes": {
-          "sendSms": "/message/phonesList",
-          "ping": "/test/ping"
-        },
-        "user": "admin",
-        "templateParams": {
-          "frontUrl": "http://localhost:3000"
-        }
-      },
-      "digest": {
-        "provider": "mailerlite",
-        "apiKey": "test-key",
-        "groupId": "test-group",
-        "routes": {
-          "getStats": "/api/v2/stats",
-          "addSubscribersToGroup": "/api/v2/groups/{{`{{groupId}}`}}/subscribers/import"
-        },
-        "serviceUrl": "https://api.mailerlite.com",
-        "timeout": 30000
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "notifier.json" "base" $notifierBase) | nindent 4 }}
 
   # Sign configuration
   sign.json: |
-    {
-      "timeout": 10000,
-      "url": "http://{{ include "liquio.fullname" . }}-sign-tool:{{ .Values.services.signTool.servicePort }}",
-      "token": ""
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "sign.json" "base" $signBase) | nindent 4 }}
 
   # User configuration
   user.json: |
-    {
-      "LiquioId": {
-        "server": "http://{{ include "liquio.fullname" . }}-id-api",
-        "port": {{ .Values.services.idApi.servicePort }},
-        "timeout": 30000,
-        "clientId": "test-client",
-        "clientSecret": "test-secret",
-        "basicAuthToken": "test-token"
-      },
-      "searchUsersLimit": 10
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "user.json" "base" $userBase) | nindent 4 }}
 
   # Versions configuration
   versions.json: |
-    {
-      "services": [
-        { "name": "id", "minVersion": "0.0.0" },
-        { "name": "eds", "minVersion": "0.0.0" },
-        { "name": "event", "minVersion": "0.0.0" },
-        { "name": "manager", "minVersion": "1.15.0" },
-        { "name": "gateway", "minVersion": "0.0.0" },
-        { "name": "workflow", "minVersion": "0.0.0" },
-        { "name": "register", "minVersion": "0.0.0" },
-        { "name": "filestorage", "minVersion": "0.0.0" },
-        { "name": "pwgen", "minVersion": "0.0.0" },
-        { "name": "plink", "minVersion": "0.0.0" },
-        { "name": "externalReader", "minVersion": "0.0.0" },
-        { "name": "notify", "minVersion": "1.3.41" }
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "versions.json" "base" $versionsBase) | nindent 4 }}
 
   # Additional configurations with defaults
   custom.json: |
-    {
-      "workflowExtraPermissions": {
-        "allowUpdateFromAnotherWorkflow": []
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "custom.json" "base" $customBase) | nindent 4 }}
 
   custom_logs.json: |
-    {
-      "templatesCacheLifetime": 60000,
-      "cacheEnabled": false,
-      "redis": {
-        "ttl": 60
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "custom_logs.json" "base" $customLogsBase) | nindent 4 }}
 
   delayer.json: |
-    {
-      "interval": 60
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "delayer.json" "base" $delayerBase) | nindent 4 }}
 
   external_bpmn.json: |
-    {
-      "test": {
-        "url": "https://task-dev-oe.liquio.local",
-        "token": "Basic test-token",
-        "requestTimeout": 30000
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "external_bpmn.json" "base" $externalBpmnBase) | nindent 4 }}
 
   http_client.json: |
-    {
-      "requestTimeout": 60000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "http_client.json" "base" $httpClientBase) | nindent 4 }}
 
   logs_broadcasting.json: |
-    {
-      "isEnabled": false,
-      "port": 5000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "logs_broadcasting.json" "base" $logsBroadcastingBase) | nindent 4 }}
 
   persist_link.json: |
-    {
-      "server": "https://plink-dev-oe.liquio.local",
-      "port": 443,
-      "routes": {
-        "generateQr": "/link?qr=svg",
-        "ping": "/test/ping",
-        "pingWithAuth": "/test/ping_with_auth"
-      },
-      "token": "test-token",
-      "serverName": "bpmn_dev",
-      "getLinkToFilestorageTimeout": 30000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "persist_link.json" "base" $persistLinkBase) | nindent 4 }}
 
   requester.json: |
-    {
-      "blockchain": {
-        "provider": "liquio",
-        "server": "http://openenvironment.itl-dev.com",
-        "port": 3003,
-        "routes": {
-          "documentsCRUD": "/api/documents",
-          "documentsRevoke": "/api/documents/revoke"
-        },
-        "user": "test-user",
-        "hashedPassword": "test-password"
-      },
-      "registers": {
-        "provider": "liquio",
-        "url": "https://register-dev-oe.liquio.local",
-        "timeout": 20000
-      },
-      "externalService": {
-        "trembita": {
-          "trembitaUrl": "https://trembita-client.liquio.local",
-          "trembitaHeader": {
-            "client": {
-              "objectType": "SUBSYSTEM",
-              "xRoadInstance": "SEVDEIR-TEST",
-              "memberClass": "GOV",
-              "memberCode": "35508814",
-              "subsystemCode": "DiiaDev_cons"
-            },
-            "service": {
-              "objectType": "SERVICE",
-              "xRoadInstance": "SEVDEIR-TEST",
-              "memberClass": "GOV",
-              "memberCode": "22956058",
-              "subsystemCode": "TEST_DRAC",
-              "serviceCode": "PostPetition",
-              "serviceVersion": "?"
-            },
-            "userId": "?",
-            "id": "20191217-1128-01",
-            "protocolVersion": "4.0"
-          },
-          "timeout": 20000,
-          "debug": false,
-          "claims": {
-            "birthCertDuplicate": {
-              "memberClass": "GOV",
-              "memberCode": "22956058",
-              "subsystemCode": "TEST_DRAC",
-              "serviceCode": "PostPetition",
-              "serviceVersion": "?"
-            }
-          }
-        },
-        "standard": {
-          "providersConfigPath": ""
-        },
-        "standardTrembita": {
-          "providersConfigPath": ""
-        }
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "requester.json" "base" $requesterBase) | nindent 4 }}
 
   stopper.json: |
-    {}
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "stopper.json" "base" $stopperBase) | nindent 4 }}
 
   system_notifier.json: |
-    {
-      "adminUrl": "https://admin-front-dev-oe.liquio.local",
-      "email": {
-        "server": "https://notify-dev-oe.liquio.local",
-        "port": 443,
-        "routes": {
-          "sendEmail": "/message/emailsList",
-          "sendToUser": "/message/usersList",
-          "ping": "/test/ping"
-        },
-        "timeout": 30000,
-        "user": "test-user",
-        "emails": [],
-        "subject": "Workflow process problem.",
-        "body": "<html><body>Відбулась помилка в процесі {url}<br/>Event {eventTemplateId} {eventTemplateName}<br/>{error}</body></html>"
-      },
-      "maxLoops": 50
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "system_notifier.json" "base" $systemNotifierBase) | nindent 4 }}
 
   trembita.json: |
-    {
-      "host": "http://192.168.60.151",
-      "client": {
-        "xRoadInstance": "SEVDEIR-TEST",
-        "memberClass": "GOV",
-        "memberCode": "35508814",
-        "subsystemCode": "DiiaDev_cons"
-      },
-      "id": "?",
-      "protocolVersion": "4.0",
-      "userId": "?"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "trembita.json" "base" $trembitaBase) | nindent 4 }}
 
   # Email configuration
   email.json: |
-    {
-      "provider": "liquio",
-      "server": "http://{{ include "liquio.fullname" . }}-notification",
-      "port": {{ .Values.services.notification.port }},
-      "routes": {
-        "sendSms": "/message/phonesList",
-        "sendEmail": "/message/emailsList",
-        "sendToUser": "/message/usersList",
-        "hideImportantMessage": "/message/important/<message-id>/set-unimportant",
-        "getMessagesList": "/message",
-        "ping": "/test/ping"
-      },
-      "timeout": 30000,
-      "user": "admin",
-      "hashedPassword": "password",
-      "templateParams": {
-        "frontUrl": "http://localhost:3000"
-      },
-      "defaultTemplateId": 1,
-      "clientId": ""
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "email.json" "base" $emailBase) | nindent 4 }}

@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.services.gateway.type }}
   ports:
-    - port: {{ .Values.services.gateway.port }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http

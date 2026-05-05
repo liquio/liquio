@@ -5,142 +5,135 @@ metadata:
   name: {{ include "liquio.fullname" . }}-filestorage-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "filestorage" "username" .Values.config.database.username) | fromJson -}}
+{{ $_ := set $dbBase "operatorsAliases" false -}}
+{{ $serverBase := dict
+  "hostname" (default "0.0.0.0" .Values.config.server.hostname)
+  "port" (default 8080 .Values.services.filestorage.containerPort)
+  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+-}}
+{{ $appBase := dict
+  "customer" .Release.Name
+  "environment" .Values.config.server.environment
+-}}
+{{ $authBase := dict }}
+{{ $adminBase := dict
+  "enabled" true
+-}}
+{{ $logBase := dict
+  "level" "info"
+  "excludeParams" (list
+    "token"
+    "authorization"
+    "Authorization"
+    "oauth-token"
+    "secret"
+    "password"
+    "oldPassword"
+    "oldPasswords"
+  )
+-}}
+{{ $paginationBase := dict
+  "defaultLimit" 20
+  "maxLimit" 100
+-}}
+{{ $versionsBase := dict
+  "api" "1.0.0"
+-}}
+{{ $providersBase := dict
+  "activeProvider" nil
+  "list" (dict
+    "openstack" (dict
+      "authVersion" 3
+      "server" "https://openstack-host"
+      "routes" (dict
+        "getTokens" "/v3/auth/tokens"
+      )
+      "timeout" 30000
+      "tenantName" "dev"
+      "account" (dict
+        "login" "test-user"
+        "password" "test-password"
+        "domainId" "default"
+        "projectId" "dia"
+      )
+      "container" "dev"
+      "isFilesCanBeDeleted" false
+      "authCacheTtl" 60000
+    )
+    "minio" (dict
+      "server" "http://localhost:9000"
+      "bucket" "default"
+      "timeout" 30000
+      "account" (dict
+        "login" "test-user"
+        "password" "test-password"
+      )
+      "isFilesCanBeDeleted" false
+    )
+  )
+-}}
+{{ $modulesSettingsBase := dict }}
+{{ $previewBase := dict
+  "server" (printf "%s://preview.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "routes" (dict
+    "generatePreview" "/preview"
+    "ping" "/test/ping"
+  )
+  "contentTypes" (list
+    "image/png"
+    "image/jpg"
+    "image/jpeg"
+    "image/gif"
+    "application/pdf"
+    "application/msword"
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    "application/rtf"
+    "application/vnd.oasis.opendocument.text"
+  )
+  "timeout" 5000
+-}}
 data:
   # Database configuration
   db.json: |
-    {
-      "host": "{{ include "liquio.postgresql.host" . }}",
-      "port": {{ .Values.config.database.port }},
-      "database": "filestorage",
-      "dialect": "postgres",
-      "username": "{{ .Values.config.database.username }}",
-      "operatorsAliases": false,
-      "dialectOptions": {
-        "socketPath": "",
-        "supportBigNumbers": true,
-        "bigNumberStrings": true
-      },
-      "pool": {
-        "max": 5,
-        "min": 0,
-        "acquire": 30000,
-        "idle": 10000
-      },
-      "logging": false
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "db.json" "base" $dbBase) | nindent 4 }}
 
   # Server configuration
   server.json: |
-    {
-      "hostname": "0.0.0.0",
-      "port": {{ .Values.services.filestorage.port }},
-      "maxBodySize": "10mb"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "server.json" "base" $serverBase) | nindent 4 }}
 
   # Application configuration
   app.json: |
-    {
-      "customer": "liquio",
-      "environment": "dev"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "app.json" "base" $appBase) | nindent 4 }}
 
   # Authentication configuration
   auth.json: |
-    {}
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "auth.json" "base" $authBase) | nindent 4 }}
 
   # Admin configuration
   admin.json: |
-    {
-      "enabled": true
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "admin.json" "base" $adminBase) | nindent 4 }}
 
   # Logging configuration
   log.json: |
-    {
-      "level": "info",
-      "excludeParams": [
-        "token",
-        "authorization",
-        "Authorization",
-        "oauth-token",
-        "secret",
-        "password",
-        "oldPassword",
-        "oldPasswords"
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "log.json" "base" $logBase) | nindent 4 }}
 
   # Pagination configuration
   pagination.json: |
-    {
-      "defaultLimit": 20,
-      "maxLimit": 100
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "pagination.json" "base" $paginationBase) | nindent 4 }}
 
   # Versions configuration
   versions.json: |
-    {
-      "api": "1.0.0"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "versions.json" "base" $versionsBase) | nindent 4 }}
 
   # Providers configuration
   providers.json: |
-    {
-      "activeProvider": null,
-      "list": {
-        "openstack": {
-          "authVersion": 3,
-          "server": "https://id.os.g-cloud.de-novo.biz",
-          "routes": {
-            "getTokens": "/v3/auth/tokens"
-          },
-          "timeout": 30000,
-          "tenantName": "dev",
-          "account": {
-            "login": "test-user",
-            "password": "test-password",
-            "domainId": "default",
-            "projectId": "dia"
-          },
-          "container": "dev",
-          "isFilesCanBeDeleted": false,
-          "authCacheTtl": 60000
-        },
-        "minio": {
-          "server": "http://localhost:9000",
-          "bucket": "default",
-          "timeout": 30000,
-          "account": {
-            "login": "test-user",
-            "password": "test-password"
-          },
-          "isFilesCanBeDeleted": false
-        }
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "providers.json" "base" $providersBase) | nindent 4 }}
 
   # Modules settings configuration
   modules_settings.json: |
-    {}
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "modules_settings.json" "base" $modulesSettingsBase) | nindent 4 }}
 
   # Preview configuration
   preview.json: |
-    {
-      "server": "http://10.10.172.128:3345",
-      "routes": {
-        "generatePreview": "/preview",
-        "ping": "/test/ping"
-      },
-      "contentTypes": [
-        "image/png",
-        "image/jpg",
-        "image/jpeg",
-        "image/gif",
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/rtf",
-        "application/vnd.oasis.opendocument.text"
-      ],
-      "timeout": 5000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "filestorage" "config" "preview.json" "base" $previewBase) | nindent 4 }}

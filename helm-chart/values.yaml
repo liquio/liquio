@@ -62,12 +62,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8080
-    # Container target port
-    targetPort: 8080
-    # External service port
-    servicePort: 8080
     image:
       repository: id-front
 
@@ -77,12 +71,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8080
-    # Container target port (nginx serves on port 8080)
-    targetPort: 8080
-    # External service port
-    servicePort: 8080
     image:
       repository: admin-front
 
@@ -92,12 +80,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8080
-    # Container target port (nginx serves on port 8080)
-    targetPort: 8080
-    # External service port
-    servicePort: 8080
     image:
       repository: cabinet-front
 
@@ -107,12 +89,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8100
-    # Container target port
-    targetPort: 8100
-    # External service port
-    servicePort: 8100
     image:
       repository: id-api
 
@@ -122,12 +98,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8102
-    # Container target port
-    targetPort: 8102
-    # External service port
-    servicePort: 8102
     image:
       repository: admin-api
 
@@ -137,12 +107,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8101
-    # Container target port
-    targetPort: 8101
-    # External service port
-    servicePort: 8101
     image:
       repository: cabinet-api
 
@@ -152,12 +116,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8106
-    # Container target port
-    targetPort: 8106
-    # External service port
-    servicePort: 8106
     image:
       repository: external-reader
 
@@ -167,12 +125,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8105
-    # Container target port
-    targetPort: 8105
-    # External service port
-    servicePort: 8105
     image:
       repository: filestorage
 
@@ -182,12 +134,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 3000
-    # Container target port
-    targetPort: 3000
-    # External service port
-    servicePort: 3000
     image:
       repository: event
 
@@ -197,12 +143,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 7003
-    # Container target port
-    targetPort: 7003
-    # External service port
-    servicePort: 7003
     image:
       repository: gateway
 
@@ -212,12 +152,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 3002
-    # Container target port
-    targetPort: 3002
-    # External service port
-    servicePort: 3002
     image:
       repository: manager
 
@@ -227,12 +161,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 3003
-    # Container target port
-    targetPort: 3003
-    # External service port
-    servicePort: 3003
     image:
       repository: notification
 
@@ -242,12 +170,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 8103
-    # Container target port
-    targetPort: 8103
-    # External service port
-    servicePort: 8103
     image:
       repository: register
 
@@ -257,12 +179,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 3004
-    # Container target port
-    targetPort: 3004
-    # External service port
-    servicePort: 3004
     image:
       repository: sign-tool
 
@@ -272,12 +188,6 @@ services:
     enabled: true
     # Number of pod replicas
     replicaCount: 1
-    # Kubernetes service port
-    port: 3000
-    # Container target port
-    targetPort: 3000
-    # External service port
-    servicePort: 3000
     image:
       repository: task
 
@@ -561,6 +471,37 @@ config:
     host: "liquio-test-redis-master"
     # Redis port
     port: 6379
+
+  # Global server settings — applied to all API services.
+  # Any field can be overridden per-service using the config.<service> mechanism below.
+  server:
+    # Override listen hostname for all services. Defaults to "0.0.0.0" if not set.
+    # hostname: "0.0.0.0"
+    # Override maximum request body size for all services. Defaults to "100mb" if not set.
+    # maxBodySize: "100mb"
+    # Application environment label sent in service configs (e.g. "stage", "production").
+    environment: "stage"
+
+  # Per-service config overrides for ConfigMap JSON payloads.
+  # Each service key maps to JSON file keys rendered in that service ConfigMap.
+  # You can use either key style: "server" or "server.json".
+  # Values are deep-merged into chart defaults.
+  # Example:
+  # signTool:
+  #   server:
+  #     acceptedBodySize: "25mb"
+  #     isSwaggerEnabled: true
+
+  # Services that handle large file uploads retain a higher maxBodySize default.
+  adminApi:
+    server:
+      maxBodySize: "500mb"
+  manager:
+    server:
+      maxBodySize: "500mb"
+  register:
+    server:
+      maxBodySize: "500mb"
 
 # Secret configuration
 secrets:

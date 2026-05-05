@@ -5,40 +5,38 @@ metadata:
   name: {{ include "liquio.fullname" . }}-admin-front-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $configBase := dict
+  "application" (dict
+    "name" "Admin Panel"
+    "environment" "development"
+    "type" "adminpanel"
+  )
+  "customers" (list
+    (dict "id" 1 "name" "bpmn")
+  )
+  "registry" (dict
+    "useReindex" true
+    "useAfterhandlersReindex" true
+  )
+  "reports" (dict
+    "enabled" true
+  )
+  "useUIFilters" true
+  "customInterfaces" true
+  "plugins" (list)
+  "backendUrl" (printf "%s://admin-api.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "authLink" (printf "%s://admin-api.%s/redirect/auth" (include "liquio.scheme" .) .Values.global.domain)
+  "adminPanelUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "cabinetUrl" (printf "%s://cabinet.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "sentryDns1" "https://sentry"
+  "sessionLifeTime" 480
+  "enabledMock" false
+  "clientId" "liquio-portal"
+  "idAuthLink" (printf "%s://id.%s/authorise" (include "liquio.scheme" .) .Values.global.domain)
+  "enabledDeleteUser" false
+  "enabledMocksPage" false
+  "defaultLanguage" "en"
+}}
 data:
   config.json: |
-    {
-      "application": {
-        "name": "Admin Panel",
-        "environment": "development",
-        "type": "adminpanel"
-      },
-      "customers": [
-        {
-          "id": 1,
-          "name": "bpmn"
-        }
-      ],
-      "registry": {
-        "useReindex": true,
-        "useAfterhandlersReindex": true
-      },
-      "reports": {
-        "enabled": true
-      },
-      "useUIFilters": true,
-      "customInterfaces": true,
-      "plugins": [],
-      "backendUrl": "{{ include "liquio.scheme" . }}://admin-api.{{ .Values.global.domain }}",
-      "authLink": "{{ include "liquio.scheme" . }}://admin-api.{{ .Values.global.domain }}/redirect/auth",
-      "adminPanelUrl": "{{ include "liquio.scheme" . }}://admin.{{ .Values.global.domain }}",
-      "cabinetUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}",
-      "sentryDns1": "https://sentry",
-      "sessionLifeTime": 480,
-      "enabledMock": false,
-      "clientId": "liquio-portal",
-      "idAuthLink": "{{ include "liquio.scheme" . }}://id.{{ .Values.global.domain }}/authorise",
-      "enabledDeleteUser": false,
-      "enabledMocksPage": false,
-      "defaultLanguage": "en"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminFront" "config" "config" "base" $configBase) | nindent 4 }}

@@ -5,98 +5,81 @@ metadata:
   name: {{ include "liquio.fullname" . }}-notification-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $configBase := dict
+  "default_env" "production"
+  "production" (dict
+    "processTitle" "notify"
+    "port" ((default 8080 .Values.services.notification.containerPort) | toString)
+    "username" .Values.config.database.username
+    "database" "notify"
+    "host" (include "liquio.postgresql.host" .)
+    "dialect" "postgres"
+    "defaultMailer" "unisender"
+    "emailAdapter" "diiaRmqEmailAdapter"
+    "defaultMessenger" "testConsoleSmsAdapter"
+    "customAdapter" (dict)
+    "db" (dict
+      "username" .Values.config.database.username
+      "database" "notify"
+      "host" (include "liquio.postgresql.host" .)
+      "dialect" "postgres"
+    )
+    "auth_server" (dict
+      "host" "http://localhost:8080"
+      "user" "AuthorizationBasicLogin"
+      "password" "secretPassword"
+    )
+    "unisender" (dict
+      "api_key" "secretToken"
+      "sender_email" "noreply@example.com"
+      "hardcode_subject" "New message"
+    )
+    "smsServer" (dict
+      "url" (printf "%s://sms.%s/Subscribe/SendSmsQ.php" (include "liquio.scheme" .) .Values.global.domain)
+      "access_token" ""
+    )
+    "adminConfig" (dict
+      "login" "adminConfigLogin"
+      "password" "secretPassword"
+    )
+    "corezoidConfig" (dict
+      "apiLogin" ""
+      "apiKey" ""
+      "processId" ""
+    )
+    "sendSmsByNotifyhubAPI" true
+    "smtpServer" (dict
+      "host" "mail.local"
+      "secure" false
+      "port" 25
+      "tls" (dict
+        "rejectUnauthorized" false
+      )
+      "auth" (dict
+        "user" "username"
+        "pass" "<REDACTED>"
+      )
+    )
+    "customer" .Release.Name
+    "environment" .Values.config.server.environment
+  )
+-}}
+{{ $versionsBase := dict
+  "versions" (dict
+    "services" (list
+      (dict "name" "id" "minVersion" "0.7.2")
+      (dict "name" "plink" "minVersion" "1.0.4")
+    )
+  )
+-}}
 data:
   config.json: |
-    {
-      "default_env": "production",
-      "production": {
-        "processTitle": "notify",
-        "port": "{{ .Values.services.notification.port }}",
-        "username": "{{ .Values.config.database.username }}",
-        "database": "notify",
-        "host": "{{ include "liquio.postgresql.host" . }}",
-        "dialect": "postgres",
-        "defaultMailer": "unisender",
-        "emailAdapter": "diiaRmqEmailAdapter",
-        "defaultMessenger": "testConsoleSmsAdapter",
-        "customAdapter": {},
-        "db": {
-          "username": "{{ .Values.config.database.username }}",
-          "database": "notify",
-          "host": "{{ include "liquio.postgresql.host" . }}",
-          "dialect": "postgres"
-        },
-        "auth_server": {
-          "host": "http://localhost:8080",
-          "user": "AuthorizationBasicLogin",
-          "password": "secretPassword"
-        },
-        "unisender": {
-          "api_key": "secretToken",
-          "sender_email": "noreply@example.com",
-          "hardcode_subject": "Новое сообщение"
-        },
-        "smsServer": {
-          "url": "https://test.liquio.local/Subscribe/SendSmsQ.php",
-          "access_token": ""
-        },
-        "adminConfig": {
-          "login": "adminConfigLogin",
-          "password": "secretPassword"
-        },
-        "corezoidConfig": {
-          "apiLogin": "",
-          "apiKey": "",
-          "processId": ""
-        },
-        "sendSmsByNotifyhubAPI": true,
-        "smtpServer": {
-          "host": "mail.local",
-          "secure": false,
-          "port": 25,
-          "tls": {
-            "rejectUnauthorized": false
-          },
-          "auth": {
-            "user": "username",
-            "pass": "<REDACTED>"
-          }
-        },
-        "customer": "liquio",
-        "environment": "dev"
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "notification" "config" "config.json" "base" $configBase) | nindent 4 }}
 
   # Versions configuration
   versions.json: |
-    {
-      "versions": {
-        "services": [
-          {
-            "name": "id",
-            "minVersion": "0.7.2"
-          },
-          {
-            "name": "plink",
-            "minVersion": "1.0.4"
-          }
-        ]
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "notification" "config" "versions.json" "base" $versionsBase) | nindent 4 }}
 
   # Default versions configuration
   versions.default.json: |
-    {
-      "versions": {
-        "services": [
-          {
-            "name": "id",
-            "minVersion": "0.7.2"
-          },
-          {
-            "name": "plink",
-            "minVersion": "1.0.4"
-          }
-        ]
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "notification" "config" "versions.default.json" "base" $versionsBase) | nindent 4 }}

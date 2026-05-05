@@ -5,107 +5,92 @@ metadata:
   name: {{ include "liquio.fullname" . }}-manager-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson -}}
+{{ $messageQueueBase := dict }}
+{{ $serverBase := dict
+  "hostname" (default "0.0.0.0" .Values.config.server.hostname)
+  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "port" (default 8080 .Values.services.manager.containerPort)
+  "customer" .Release.Name
+  "environment" .Values.config.server.environment
+-}}
+{{ $redisBase := dict
+  "host" (include "liquio.redis.host" .)
+  "port" .Values.config.redis.port
+  "options" (dict)
+-}}
+{{ $cacheBase := dict
+  "reloadBpmnSchemasInterval" 60000
+-}}
+{{ $logBase := dict
+  "console" (list)
+  "file" (list "./logs/")
+  "excludeParams" (list "token" "authorization" "Authorization")
+-}}
+{{ $pingBase := dict
+  "healthz" (dict
+    "db" (dict
+      "enabled" true
+    )
+  )
+-}}
+{{ $systemNotifierBase := dict
+  "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "email" (dict
+    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "port" 80
+    "routes" (dict
+      "sendEmail" "/message/emailsList"
+      "sendToUser" "/message/usersList"
+      "ping" "/test/ping"
+    )
+    "timeout" 30000
+    "user" "<removed>"
+    "emails" (list)
+    "subject" "Workflow process problem."
+    "body" "<html><body>An error occurred in process {url}<br/>{error}</body></html>"
+  )
+-}}
+{{ $versionsBase := dict
+  "services" (list
+    (dict "name" "event" "minVersion" "1.37.6")
+    (dict "name" "task" "minVersion" "2.56.35")
+    (dict "name" "gateway" "minVersion" "1.3.13")
+  )
+-}}
 data:
   # Database configuration
   db.json: |
-    {
-      "host": "{{ include "liquio.postgresql.host" . }}",
-      "port": {{ .Values.config.database.port }},
-      "database": "bpmn",
-      "username": "{{ .Values.config.database.username }}",
-      "dialect": "postgres",
-      "dialectOptions": {
-        "socketPath": "",
-        "supportBigNumbers": true,
-        "bigNumberStrings": true
-      },
-      "logging": false,
-      "pool": {
-        "max": 5,
-        "min": 0,
-        "acquire": 30000,
-        "idle": 10000
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "db.json" "base" $dbBase) | nindent 4 }}
 
   # Message queue configuration
   message_queue.json: |
-    {}
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "message_queue.json" "base" $messageQueueBase) | nindent 4 }}
 
   # Server configuration
   server.json: |
-    {
-      "hostname": "0.0.0.0",
-      "maxBodySize": "500mb",
-      "port": {{ .Values.services.manager.port }},
-      "customer": "liquio",
-      "environment": "dev"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "server.json" "base" $serverBase) | nindent 4 }}
 
   # Redis configuration
   redis.json: |
-    {
-      "host": "{{ include "liquio.redis.host" . }}",
-      "port": {{ .Values.config.redis.port }},
-      "options": {}
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "redis.json" "base" $redisBase) | nindent 4 }}
 
   # Cache configuration
   cache.json: |
-    {
-      "reloadBpmnSchemasInterval": 60000
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "cache.json" "base" $cacheBase) | nindent 4 }}
 
   # Logging configuration
   log.json: |
-    {
-      "console": [],
-      "file": [
-        "./logs/"
-      ],
-      "excludeParams": [
-        "token",
-        "authorization",
-        "Authorization"
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "log.json" "base" $logBase) | nindent 4 }}
 
   # Ping configuration
   ping.json: |
-    {
-      "healthz": {
-        "db": {
-          "enabled": true
-        }
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "ping.json" "base" $pingBase) | nindent 4 }}
 
   # System notifier configuration
   system_notifier.json: |
-    {
-      "adminUrl": "https://admin-front-dev-oe.liquio.local",
-      "email": {
-        "server": "http://{{ include "liquio.fullname" . }}-notification",
-        "port": {{ .Values.services.notification.port }},
-        "routes": {
-          "sendEmail": "/message/emailsList",
-          "sendToUser": "/message/usersList",
-          "ping": "/test/ping"
-        },
-        "timeout": 30000,
-        "user": "<removed>",
-        "emails": [],
-        "subject": "Workflow process problem.",
-        "body": "<html><body>Відбулась помилка в процесі {url}<br/>{error}</body></html>"
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "system_notifier.json" "base" $systemNotifierBase) | nindent 4 }}
 
   # Versions configuration
   versions.json: |
-    {
-      "services": [
-        { "name": "event", "minVersion": "1.37.6" },
-        { "name": "task", "minVersion": "2.56.35" },
-        { "name": "gateway", "minVersion": "1.3.13" }
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "manager" "config" "versions.json" "base" $versionsBase) | nindent 4 }}

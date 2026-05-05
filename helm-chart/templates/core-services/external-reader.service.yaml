@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.services.externalReader.type }}
   ports:
-    - port: {{ .Values.services.externalReader.servicePort }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http

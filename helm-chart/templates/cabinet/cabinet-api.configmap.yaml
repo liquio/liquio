@@ -5,113 +5,99 @@ metadata:
   name: {{ include "liquio.fullname" . }}-cabinet-api-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $authBase := dict
+  "LiquioId" (dict
+    "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
+    "port" 80
+    "routes" (dict
+      "getCode" "/authorise"
+      "getToken" "/oauth/token/"
+      "getUserInfo" "/user/info"
+      "searchUsers" "/user/info/search"
+      "getUserByCode" "/user/info/ipn"
+      "logout" "/logout"
+      "sendSms" "/sign_up/confirmation/phone/send"
+      "verifyPhone" "/sign_up/confirmation/phone/verify"
+      "changeEmail" "/user/info/email/send"
+      "confirmChangeEmail" "/user/info/email/set"
+      "addTestCode" "/oauth/token/test_code"
+      "ping" "/test/ping"
+      "pingWithAuth" "/test/ping_with_auth"
+      "prepareUser" "/user/prepare"
+    )
+    "timeout" 30000
+    "clientId" "liquio-portal"
+  )
+  "authRedirectUrl" (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
+  "logoutRedirectUrl" (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
+  "allowedTestAuth" false
+  "allowedTestSign" false
+  "allowedTestPem" true
+  "defaultUnits" (list)
+  "doNotLogoutOtherSessions" true
+  "caching" (dict
+    "isEnabled" false
+    "getCheckMiddleware" (dict
+      "isEnabled" false
+      "ttl" 30
+    )
+  )
+-}}
+{{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson -}}
+{{ $_ := set $dbBase "operatorsAliases" false -}}
+{{- $serverBase := dict
+  "hostname" (default "0.0.0.0" .Values.config.server.hostname)
+  "port" (default 8080 .Values.services.cabinetApi.containerPort)
+  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "swagger" true
+  "customer" .Release.Name
+  "environment" .Values.config.server.environment
+-}}
+{{- $redisBase := dict
+  "isEnabled" true
+  "host" (include "liquio.redis.host" .)
+  "port" .Values.config.redis.port
+  "defaultTtl" 30
+-}}
+{{- $logBase := dict
+  "console" (list)
+  "file" (list "./logs/")
+  "excludeParams" (list
+    "token"
+    "authorization"
+    "Authorization"
+    "oauth-token"
+    "secret"
+    "password"
+    "oldPassword"
+    "oldPasswords"
+  )
+-}}
+{{- $discoveryBase := dict
+  "customApis" (list)
+  "mainProxy" (printf "http://%s-task:80" (include "liquio.fullname" .))
+-}}
 data:
   # Auth configuration
   auth.json: |
-    {
-      "LiquioId": {
-        "server": "http://{{ include "liquio.fullname" . }}-id-api",
-        "port": {{ .Values.services.idApi.servicePort }},
-        "routes": {
-          "getCode": "/authorise",
-          "getToken": "/oauth/token/",
-          "getUserInfo": "/user/info",
-          "searchUsers": "/user/info/search",
-          "getUserByCode": "/user/info/ipn",
-          "logout": "/logout",
-          "sendSms": "/sign_up/confirmation/phone/send",
-          "verifyPhone": "/sign_up/confirmation/phone/verify",
-          "changeEmail": "/user/info/email/send",
-          "confirmChangeEmail": "/user/info/email/set",
-          "addTestCode": "/oauth/token/test_code",
-          "ping": "/test/ping",
-          "pingWithAuth": "/test/ping_with_auth",
-          "prepareUser": "/user/prepare"
-        },
-        "timeout": 30000,
-        "clientId": "liquio-portal"
-      },
-      "authRedirectUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
-      "logoutRedirectUrl": "{{ include "liquio.scheme" . }}://cabinet.{{ .Values.global.domain }}/",
-      "allowedTestAuth": false,
-      "allowedTestSign": false,
-      "allowedTestPem": true,
-      "defaultUnits": [],
-      "doNotLogoutOtherSessions": true,
-      "caching": {
-        "isEnabled": false,
-        "getCheckMiddleware": {
-          "isEnabled": false,
-          "ttl": 30
-        }
-      }
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "cabinetApi" "config" "auth.json" "base" $authBase) | nindent 4 }}
 
   # Database configuration
   db.json: |
-    {
-      "database": "bpmn",
-      "dialect": "postgres",
-      "dialectOptions": {
-        "bigNumberStrings": true,
-        "socketPath": "",
-        "supportBigNumbers": true
-      },
-      "host": "{{ include "liquio.postgresql.host" . }}",
-      "logging": false,
-      "operatorsAliases": false,
-      "pool": {
-        "acquire": 30000,
-        "idle": 10000,
-        "max": 5,
-        "min": 0
-      },
-      "port": {{ .Values.config.database.port }},
-      "username": "{{ .Values.config.database.username }}"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "cabinetApi" "config" "db.json" "base" $dbBase) | nindent 4 }}
 
   # Server configuration
   server.json: |
-    {
-      "hostname": "0.0.0.0",
-      "port": {{ .Values.services.cabinetApi.targetPort }},
-      "maxBodySize": "10mb",
-      "swagger": true,
-      "customer": "liquio",
-      "environment": "dev"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "cabinetApi" "config" "server.json" "base" $serverBase) | nindent 4 }}
 
   # Redis configuration
   redis.json: |
-    {
-      "isEnabled": true,
-      "host": "{{ include "liquio.redis.host" . }}",
-      "port": {{ .Values.config.redis.port }},
-      "defaultTtl": 30
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "cabinetApi" "config" "redis.json" "base" $redisBase) | nindent 4 }}
 
   # Logging configuration
   log.json: |
-    {
-      "console": [],
-      "file": [
-        "./logs/"
-      ],
-      "excludeParams": [
-        "token",
-        "authorization",
-        "Authorization",
-        "oauth-token",
-        "secret",
-        "password",
-        "oldPassword",
-        "oldPasswords"
-      ]
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "cabinetApi" "config" "log.json" "base" $logBase) | nindent 4 }}
 
   # Discovery configuration
   discovery.json: |
-    {
-      "customApis": [],
-      "mainProxy": "http://{{ include "liquio.fullname" . }}-task:{{ .Values.services.task.servicePort }}"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "cabinetApi" "config" "discovery.json" "base" $discoveryBase) | nindent 4 }}

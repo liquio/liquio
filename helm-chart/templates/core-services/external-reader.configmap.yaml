@@ -5,16 +5,18 @@ metadata:
   name: {{ include "liquio.fullname" . }}-external-reader-config
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
+{{ $authBase := dict }}
+{{ $serverBase := dict
+  "port" (default 8080 .Values.services.externalReader.containerPort)
+  "host" "0.0.0.0"
+  "isSwaggerEnabled" false
+  "acceptedBodySize" "10mb"
+}}
 data:
   # Auth configuration
   auth.json: |
-    {}
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "externalReader" "config" "auth" "base" $authBase) | nindent 4 }}
 
   # Server configuration
   server.json: |
-    {
-      "port": {{ .Values.services.externalReader.targetPort }},
-      "host": "0.0.0.0",
-      "isSwaggerEnabled": false,
-      "acceptedBodySize": "10mb"
-    }
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "externalReader" "config" "server" "base" $serverBase) | nindent 4 }}
