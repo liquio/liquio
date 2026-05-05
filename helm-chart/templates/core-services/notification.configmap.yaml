@@ -34,9 +34,9 @@ metadata:
       "sender_email" "noreply@example.com"
       "hardcode_subject" "New message"
     )
-    "smsServer" (dict
-      "url" (printf "%s://sms.%s/Subscribe/SendSmsQ.php" (include "liquio.scheme" .) .Values.global.domain)
-      "access_token" ""
+     "smsServer" (dict
+       "url" (printf "%s://%s/Subscribe/SendSmsQ.php" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "sms")))
+       "access_token" ""
     )
     "adminConfig" (dict
       "login" "adminConfigLogin"
@@ -63,7 +63,7 @@ metadata:
     "customer" .Release.Name
     "environment" .Values.config.server.environment
   )
--}}
+ }}
 {{ $versionsBase := dict
   "versions" (dict
     "services" (list

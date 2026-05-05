@@ -28,8 +28,8 @@ metadata:
     "timeout" 30000
     "clientId" "liquio-portal"
   )
-  "authRedirectUrl" (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
-  "logoutRedirectUrl" (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
+  "authRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet")))
+  "logoutRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet")))
   "allowedTestAuth" false
   "allowedTestSign" false
   "allowedTestPem" true

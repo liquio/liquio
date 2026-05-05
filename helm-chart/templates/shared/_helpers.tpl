@@ -39,6 +39,34 @@ https
 {{- end }}
 
 {{/*
+Return base public domain without leading separator.
+Examples:
+  .liquio.local -> liquio.local
+  -frankfurt-liquio-stg.kitsoft.ua -> frankfurt-liquio-stg.kitsoft.ua
+*/}}
+{{- define "liquio.publicDomain" -}}
+{{- $domain := default ".liquio.local" .Values.global.domain -}}
+{{- $domain | trimPrefix "." | trimPrefix "-" -}}
+{{- end }}
+
+{{/*
+Build public host for a service using global.domain.
+If global.domain starts with '.' or '-', concatenate directly: id + .liquio.local, id + -frankfurt...
+Otherwise fall back to dotted host: id.liquio.local
+Usage: {{ include "liquio.publicHost" (dict "ctx" . "service" "id") }}
+*/}}
+{{- define "liquio.publicHost" -}}
+{{- $ctx := .ctx -}}
+{{- $service := .service -}}
+{{- $domain := default ".liquio.local" $ctx.Values.global.domain -}}
+{{- if or (hasPrefix "." $domain) (hasPrefix "-" $domain) -}}
+{{- printf "%s%s" $service $domain -}}
+{{- else -}}
+{{- printf "%s.%s" $service $domain -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Common labels
 */}}
 {{- define "liquio.labels" -}}

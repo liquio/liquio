@@ -20,7 +20,7 @@ metadata:
 {{ $authBase := dict
   "LiquioId" (dict
     "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
-    "front" (printf "%s://id.%s" (include "liquio.scheme" .) .Values.global.domain)
+    "front" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
     "port" 80
     "routes" (dict
       "getCode" "/authorise"
@@ -41,8 +41,8 @@ metadata:
     "timeout" 30000
     "clientId" "liquio-portal"
   )
-  "authRedirectUrl" (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
-  "logoutRedirectUrl" (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
+  "authRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet")))
+  "logoutRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet")))
   "jwtOptions" (dict
     "expiresIn" "1d"
   )
@@ -91,11 +91,11 @@ metadata:
   "timeout" 30000
 -}}
 {{ $externalReaderBase := dict
-  "url" (printf "http://%s-external-reader:80")
+  "url" (printf "http://%s-external-reader:80" (include "liquio.fullname" .))
   "timeout" 30000
 -}}
 {{ $filestorageBase := dict
-  "apiHost" (printf "http://%s-filestorage:80")
+  "apiHost" (printf "http://%s-filestorage:80" (include "liquio.fullname" .))
   "containerId" 1
   "signatureTimeout" 40000
   "downloadUploadTimeout" 60000
@@ -103,7 +103,7 @@ metadata:
 -}}
 {{ $storageBase := dict
   "OpenStack" (dict
-    "server" (printf "%s://storage.%s" (include "liquio.scheme" .) .Values.global.domain)
+    "server" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "storage")))
     "port" 5000
     "routes" (dict
       "getTokens" "/v2.0/tokens"
@@ -122,7 +122,7 @@ metadata:
     "isFilesCanBeDeleted" false
   )
   "FileStorage" (dict
-    "apiHost" (printf "http://%s-filestorage:80")
+    "apiHost" (printf "http://%s-filestorage:80" (include "liquio.fullname" .))
     "containerId" 1
   )
 -}}
@@ -130,7 +130,7 @@ metadata:
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
   "port" (default 8080 .Values.services.task.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
-  "serverName" (printf "http://%s-task:80")
+  "serverName" (printf "http://%s-task:80" (include "liquio.fullname" .))
   "customer" .Release.Name
   "environment" .Values.config.server.environment
 -}}
@@ -239,7 +239,7 @@ metadata:
   "providerName" "pkcs7"
   "pkcs7" (dict
     "timeout" 30000
-    "signToolUrl" (printf "http://%s-sign-tool:80")
+    "signToolUrl" (printf "http://%s-sign-tool:80" (include "liquio.fullname" .))
   )
   "timeout" 30000
 -}}
@@ -265,7 +265,7 @@ metadata:
   "taskBusiness" (dict
     "frontUrl" (dict
       "template" "{{`{{frontUrl}}`}}"
-      "replace" (printf "https://cabinet.%s" .Values.global.domain)
+      "replace" (printf "https://%s" (include "liquio.publicHost" (dict "ctx" . "service" "cabinet")))
     )
   )
 -}}
@@ -298,7 +298,7 @@ metadata:
   )
 -}}
 {{ $persistLinkBase := dict
-  "server" (printf "%s://plink.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "server" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "plink")))
   "port" 443
   "routes" (dict
     "generateQr" "/link?qr=svg"
@@ -308,15 +308,15 @@ metadata:
   "token" "<removed>"
   "serverName" "bpmn_dev"
   "getLinkToFilestorageTimeout" 30000
-  "qrFrontUrl" (printf "%s://qr.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "qrFrontUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "qr")))
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:80")
+  "url" (printf "http://%s-sign-tool:80" (include "liquio.fullname" .))
   "token" ""
 -}}
 {{ $systemNotifierBase := dict
-  "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "adminUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "email" (dict
     "server" (printf "http://%s-notification" (include "liquio.fullname" .))
     "port" 80

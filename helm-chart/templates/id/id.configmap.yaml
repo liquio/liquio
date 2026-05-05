@@ -18,8 +18,8 @@ metadata:
     "client_name" "Liquio Portal"
     "need_scope_approve" false
     "redirect_uri" (list
-      (printf "%s://cabinet.%s/" (include "liquio.scheme" .) .Values.global.domain)
-      (printf "%s://admin.%s/" (include "liquio.scheme" .) .Values.global.domain)
+      (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet")))
+      (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
     )
     "scope_fields" (list
       "userId" "email" "password" "provider" "gender" "valid" "phone" "status"
@@ -39,7 +39,7 @@ metadata:
     "authorizationURL" "https://auth.js.sign.eu.iit.com.ua/"
     "blacklistAcsk" (list "test.gov.ua" "test.gov.ua" "test.com.ua")
     "caServerList" "https://iit.com.ua/download/productfiles/CAs.json"
-    "callbackURL" (printf "%s://id.%s/authorise/eds/callback" (include "liquio.scheme" .) .Values.global.domain)
+    "callbackURL" (printf "%s://%s/authorise/eds/callback" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
     "clientID" "U0000656581"
     "clientSecret" "294c5b4cbeb537ab04c8111f6fa86aa6b29e5f15de521b556cda61ef505f6249"
     "customerURL" "https://auth.js.sign.eu.iit.com.ua/get-user-info"
@@ -107,9 +107,9 @@ metadata:
   "production" $idProductionBase
 -}}
 {{ $frontConfigBase := dict
-  "adminUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
-  "apiUrl" (printf "%s://id-api.%s" (include "liquio.scheme" .) .Values.global.domain)
-  "cabinetUrl" (printf "%s://cabinet.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "adminUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
+  "apiUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id-api")))
+  "cabinetUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet")))
 -}}
 {{ $versionsBase := dict
   "api" "1.0.0"

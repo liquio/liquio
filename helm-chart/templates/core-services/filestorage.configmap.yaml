@@ -75,7 +75,7 @@ metadata:
 -}}
 {{ $modulesSettingsBase := dict }}
 {{ $previewBase := dict
-  "server" (printf "%s://preview.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "server" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "preview")))
   "routes" (dict
     "generatePreview" "/preview"
     "ping" "/test/ping"

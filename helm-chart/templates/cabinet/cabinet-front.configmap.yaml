@@ -18,9 +18,9 @@ metadata:
     "dateTimeFormat" "DD/MM/YYYY HH:mm"
   )
   "defaultRoute" "/messages"
-  "backendUrl" (printf "%s://cabinet-api.%s" (include "liquio.scheme" .) .Values.global.domain)
-  "authLink" (printf "%s://cabinet-api.%s/redirect/auth" (include "liquio.scheme" .) .Values.global.domain)
-  "idAuthLink" (printf "%s://id.%s/authorise" (include "liquio.scheme" .) .Values.global.domain)
+  "backendUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet-api")))
+  "authLink" (printf "%s://%s/redirect/auth" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet-api")))
+  "idAuthLink" (printf "%s://%s/authorise" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "clientId" "liquio-portal"
   "defaultLanguage" "en-GB"
 }}

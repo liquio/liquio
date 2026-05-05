@@ -24,15 +24,15 @@ metadata:
   "useUIFilters" true
   "customInterfaces" true
   "plugins" (list)
-  "backendUrl" (printf "%s://admin-api.%s" (include "liquio.scheme" .) .Values.global.domain)
-  "authLink" (printf "%s://admin-api.%s/redirect/auth" (include "liquio.scheme" .) .Values.global.domain)
-  "adminPanelUrl" (printf "%s://admin.%s" (include "liquio.scheme" .) .Values.global.domain)
-  "cabinetUrl" (printf "%s://cabinet.%s" (include "liquio.scheme" .) .Values.global.domain)
+  "backendUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin-api")))
+  "authLink" (printf "%s://%s/redirect/auth" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin-api")))
+  "adminPanelUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
+  "cabinetUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "cabinet")))
   "sentryDns1" "https://sentry"
   "sessionLifeTime" 480
   "enabledMock" false
   "clientId" "liquio-portal"
-  "idAuthLink" (printf "%s://id.%s/authorise" (include "liquio.scheme" .) .Values.global.domain)
+  "idAuthLink" (printf "%s://%s/authorise" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "enabledDeleteUser" false
   "enabledMocksPage" false
   "defaultLanguage" "en"

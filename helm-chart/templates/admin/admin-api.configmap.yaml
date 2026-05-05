@@ -6,10 +6,10 @@ metadata:
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
 {{ $authBase := dict
-  "authRedirectUrl" (printf "http://%s/" .Values.global.domain)
+  "authRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "clientId" "liquio-portal"
-  "logoutRedirectUrl" (printf "http://%s/" .Values.global.domain)
-  "serverPublicUrl" (printf "http://%s" .Values.global.domain)
+  "logoutRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
+  "serverPublicUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "port" 80
   "server" (printf "http://%s-id-api" (include "liquio.fullname" .))
   "timeout" 30000
@@ -26,7 +26,7 @@ metadata:
   "writingQueueGateway" "bpmn-gateway-incoming"
 -}}
 {{ $filestorageBase := dict
-  "apiHost" (printf "http://%s-filestorage:80")
+  "apiHost" (printf "http://%s-filestorage:80" (include "liquio.fullname" .))
   "containerId" 1
 -}}
 {{ $registerBase := dict

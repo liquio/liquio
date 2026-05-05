@@ -106,7 +106,7 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:80")
+  "url" (printf "http://%s-sign-tool:80" (include "liquio.fullname" .))
   "token" ""
 -}}
 data:
