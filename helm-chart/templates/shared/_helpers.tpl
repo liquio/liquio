@@ -31,17 +31,11 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-URL scheme for browser-facing URLs (http or https).
-Derive from global.scheme; falls back to "https" if any TLS is configured.
+URL scheme for browser-facing URLs.
+Liquio Helm now supports HTTPS only.
 */}}
 {{- define "liquio.scheme" -}}
-{{- if .Values.global.scheme -}}
-{{- .Values.global.scheme -}}
-{{- else if or .Values.ingress.selfSigned.enabled .Values.ingress.tls -}}
 https
-{{- else -}}
-http
-{{- end -}}
 {{- end }}
 
 {{/*
@@ -118,186 +112,28 @@ Create a default image name
 {{- end }}
 
 {{/*
-Secret name helper
+Per-service secret-config Secret name.
+Usage: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "gateway") }}
 */}}
-{{- define "liquio.secrets.name" -}}
-{{- .Values.secrets.existingSecret | default (printf "%s-secrets" (include "liquio.fullname" .)) }}
+{{- define "liquio.secretConfig.name" -}}
+{{- $existingSecrets := .ctx.Values.secrets.existingSecrets | default dict -}}
+{{- if and (kindIs "map" $existingSecrets) (hasKey $existingSecrets .service) -}}
+{{- index $existingSecrets .service -}}
+{{- else -}}
+{{- printf "%s-%s-secret-config" (include "liquio.fullname" .ctx) .service -}}
+{{- end -}}
 {{- end }}
 
 {{/*
-Generate PostgreSQL password value
+Whether the init-secrets Job should run (i.e. Helm manages secret creation).
+Defaults to true when secrets.createSecrets is not set.
 */}}
-{{- define "liquio.postgresql.passwordValue" -}}
-{{- if .Values.secrets.postgresql.password }}
-{{- .Values.secrets.postgresql.password }}
-{{- else }}
-{{- randAlphaNum 32 }}
-{{- end }}
-{{- end }}
-
-{{/*
-PostgreSQL secret key/value helper
-*/}}
-{{- define "liquio.postgresql.password" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- "postgresql-password" -}}
-{{- else }}
-{{- include "liquio.postgresql.passwordValue" . }}
-{{- end }}
-{{- end }}
-
-{{/*
-Generate RabbitMQ password value
-*/}}
-{{- define "liquio.rabbitmq.passwordValue" -}}
-{{- if .Values.secrets.rabbitmq.password }}
-{{- .Values.secrets.rabbitmq.password }}
-{{- else }}
-{{- randAlphaNum 32 }}
-{{- end }}
-{{- end }}
-
-{{/*
-RabbitMQ secret key/value helper
-*/}}
-{{- define "liquio.rabbitmq.password" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- "rabbitmq-password" -}}
-{{- else }}
-{{- include "liquio.rabbitmq.passwordValue" . }}
-{{- end }}
-{{- end }}
-
-{{/*
-Generate OAuth secret key value
-*/}}
-{{- define "liquio.oauth.secretKeyValue" -}}
-{{- if .Values.secrets.oauth.secretKey }}
-{{- .Values.secrets.oauth.secretKey }}
-{{- else }}
-{{- randAlphaNum 32 }}
-{{- end }}
-{{- end }}
-
-{{/*
-OAuth secret key/key helper
-*/}}
-{{- define "liquio.oauth.secretKey" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- "oauth-secret-key" -}}
-{{- else }}
-{{- include "liquio.oauth.secretKeyValue" . }}
-{{- end }}
-{{- end }}
-
-{{/*
-Generate JWT secret value
-*/}}
-{{- define "liquio.jwt.secretValue" -}}
-{{- if .Values.secrets.jwt.secret }}
-{{- .Values.secrets.jwt.secret }}
-{{- else }}
-{{- randAlphaNum 32 }}
-{{- end }}
-{{- end }}
-
-{{/*
-JWT secret key/value helper
-*/}}
-{{- define "liquio.jwt.secret" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- "jwt-secret" -}}
-{{- else }}
-{{- include "liquio.jwt.secretValue" . }}
-{{- end }}
-{{- end }}
-
-{{/*
-Generate Register encryption key value
-*/}}
-{{- define "liquio.register.encryptionKeyValue" -}}
-{{- if .Values.secrets.register.encryptionKey }}
-{{- .Values.secrets.register.encryptionKey }}
-{{- else }}
-{{- randAlphaNum 32 }}
-{{- end }}
-{{- end }}
-
-{{/*
-Register encryption key/key helper
-*/}}
-{{- define "liquio.register.encryptionKey" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- "register-encryption-key" -}}
-{{- else }}
-{{- include "liquio.register.encryptionKeyValue" . }}
-{{- end }}
-{{- end }}
-
-{{/*
-Generate Register auth token value
-*/}}
-{{- define "liquio.register.authTokenValue" -}}
-{{- if .Values.secrets.register.authToken }}
-{{- .Values.secrets.register.authToken }}
-{{- else }}
-{{- printf "Basic %s" (printf "register:%s" (randAlphaNum 32) | b64enc) }}
-{{- end }}
-{{- end }}
-
-{{/*
-Register auth token key/value helper
-*/}}
-{{- define "liquio.register.authToken" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- "register-auth-token" -}}
-{{- else }}
-{{- include "liquio.register.authTokenValue" . }}
-{{- end }}
-{{- end }}
-
-{{/*
-Generate External Reader auth token value
-*/}}
-{{- define "liquio.externalReader.authTokenValue" -}}
-{{- if .Values.secrets.externalReader.authToken }}
-{{- .Values.secrets.externalReader.authToken }}
-{{- else }}
-{{- printf "Basic %s" (printf "external-reader:%s" (randAlphaNum 32) | b64enc) }}
-{{- end }}
-{{- end }}
-
-{{/*
-External Reader auth token key/value helper
-*/}}
-{{- define "liquio.externalReader.authToken" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- "external-reader-auth-token" -}}
-{{- else }}
-{{- include "liquio.externalReader.authTokenValue" . }}
-{{- end }}
-{{- end }}
-
-{{/*
-Generate File Storage auth token value
-*/}}
-{{- define "liquio.filestorage.authTokenValue" -}}
-{{- if .Values.secrets.filestorage.authToken }}
-{{- .Values.secrets.filestorage.authToken }}
-{{- else }}
-{{- printf "Basic %s" (printf "filestorage:%s" (randAlphaNum 32) | b64enc) }}
-{{- end }}
-{{- end }}
-
-{{/*
-File Storage auth token key/value helper
-*/}}
-{{- define "liquio.filestorage.authToken" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- "filestorage-auth-token" -}}
-{{- else }}
-{{- include "liquio.filestorage.authTokenValue" . }}
-{{- end }}
+{{- define "liquio.secrets.create" -}}
+{{- $create := true -}}
+{{- if and .Values.secrets (hasKey .Values.secrets "createSecrets") -}}
+  {{- $create = .Values.secrets.createSecrets -}}
+{{- end -}}
+{{- if $create -}}true{{- else -}}false{{- end -}}
 {{- end }}
 
 {{/*
@@ -331,34 +167,4 @@ Redis connection string
 {{- else }}
 {{- .Values.config.redis.host }}
 {{- end }}
-{{- end }}
-
-{{/*
-Per-service secret-config Secret name.
-Usage: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "gateway") }}
-*/}}
-{{- define "liquio.secretConfig.name" -}}
-{{- if .ctx.Values.secrets.existingSecretConfig }}
-{{- .ctx.Values.secrets.existingSecretConfig }}
-{{- else }}
-{{- printf "%s-%s-secret-config" (include "liquio.fullname" .ctx) .service }}
-{{- end }}
-{{- end }}
-
-{{/*
-Notification service password value
-*/}}
-{{- define "liquio.notification.passwordValue" -}}
-{{- if .Values.secrets.notification.password }}
-{{- .Values.secrets.notification.password }}
-{{- else }}
-{{- randAlphaNum 32 }}
-{{- end }}
-{{- end }}
-
-{{/*
-Notification service username value
-*/}}
-{{- define "liquio.notification.userValue" -}}
-{{- .Values.secrets.notification.user | default "notification" }}
 {{- end }}

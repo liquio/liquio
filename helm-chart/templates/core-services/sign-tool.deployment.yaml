@@ -67,8 +67,12 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: config
-          configMap:
-            name: {{ include "liquio.fullname" . }}-sign-tool-config
+          projected:
+            sources:
+              - configMap:
+                  name: {{ include "liquio.fullname" . }}-sign-tool-config
+              - secret:
+                  name: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "sign-tool") }}
         - name: tmp
           emptyDir: {}
       {{- with .Values.nodeSelector }}
