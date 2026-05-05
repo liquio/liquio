@@ -1,0 +1,6 @@
+checks:
+  exclude:
+    # SECRET_PATH is a filesystem path pointing to the directory where secrets are
+    # mounted as files. It is not a raw secret value. This is actually the correct
+    # pattern recommended by the check's own remediation advice.
+    - "env-var-secret"

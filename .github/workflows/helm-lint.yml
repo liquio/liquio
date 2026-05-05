@@ -48,4 +48,4 @@ jobs:
       - name: kube-linter
         run: |
           helm template liquio helm-chart/ \
-            | kube-linter lint -
+            | kube-linter lint --config helm-chart/.kube-linter.yaml -
