@@ -86,6 +86,38 @@ Individual database waiters
 {{- end -}}
 
 {{/*
+Init container to wait for a TCP service to be reachable.
+Usage: {{ include "liquio.initContainer.waitForService" (dict "name" "sign-tool" "host" "liquio-sign-tool" "port" "3004" "Values" .Values) }}
+*/}}
+{{- define "liquio.initContainer.waitForService" -}}
+- name: wait-for-{{ .name }}
+  image: busybox:1.35
+  command: ['sh', '-c']
+  args:
+    - |
+      until nc -z {{ .host }} {{ .port }}; do
+        echo "Waiting for {{ .name }} to be ready..."
+        sleep 5
+      done
+      echo "{{ .name }} is ready!"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  volumeMounts:
+    - name: tmp
+      mountPath: /tmp
+  resources:
+    {{- toYaml .Values.initContainerResources | nindent 4 }}
+{{- end -}}
+
+{{/*
 Init container to wait for a specific migration job to complete
 Usage: {{ include "liquio.initContainer.waitForMigrations" (dict "migrationJob" "id-migrations" "Context" .) }}
 */}}
