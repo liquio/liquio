@@ -9,6 +9,8 @@ metadata:
     app.kubernetes.io/component: manager
     app.kubernetes.io/tier: backend
     app.kubernetes.io/exposure: internal
+  annotations:
+    "argocd.argoproj.io/sync-wave": "2"
 spec:
   replicas: {{ .Values.services.manager.replicaCount }}
   selector:

@@ -9,6 +9,8 @@ metadata:
     app.kubernetes.io/component: id-api
     app.kubernetes.io/tier: backend
     app.kubernetes.io/exposure: public
+  annotations:
+    "argocd.argoproj.io/sync-wave": "2"
 spec:
   replicas: {{ .Values.services.idApi.replicaCount }}
   selector:
