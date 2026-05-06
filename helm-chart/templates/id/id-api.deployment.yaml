@@ -37,7 +37,7 @@ spec:
         {{- include "liquio.initContainer.waitForRabbitmq" . | nindent 8 }}
         {{- include "liquio.initContainer.waitForRedis" . | nindent 8 }}
         {{- include "liquio.initContainer.waitForMigrations" (dict "migrationJob" "id-migrations" "Context" .) | nindent 8 }}
-        {{- include "liquio.initContainer.waitForService" (dict "name" "sign-tool" "host" (printf "%s-sign-tool" (include "liquio.fullname" .)) "port" (default 3004 .Values.services.signTool.containerPort | toString) "Values" .Values) | nindent 8 }}
+        {{- include "liquio.initContainer.waitForService" (dict "name" "sign-tool" "host" (printf "%s-sign-tool" (include "liquio.fullname" .)) "port" "80" "Values" .Values) | nindent 8 }}
       containers:
         - name: id-api
           securityContext:
