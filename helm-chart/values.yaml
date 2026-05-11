@@ -39,7 +39,7 @@ image:
 # Each value is used as the image tag for that service.
 # Override individual entries to roll out a new version of a single service.
 serviceVersions:
-  admin-api: "0.1.0"
+  admin-api: "0.1.1"
   admin-front: "0.1.0"
   cabinet-api: "0.1.0"
   cabinet-front: "0.1.0"
