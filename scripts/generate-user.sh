@@ -20,6 +20,7 @@ OUTPUT_FILE=""
 CA_CERT_PATH=""
 CA_KEY_PATH=""
 K8S_SECRET_NAME=""
+K8S_NAMESPACE="liquio"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -63,8 +64,12 @@ while [ $# -gt 0 ]; do
       K8S_SECRET_NAME="$2"
       shift 2
       ;;
+    --k8s-namespace)
+      K8S_NAMESPACE="$2"
+      shift 2
+      ;;
     -h|--help)
-      echo "Usage: $0 [--common-name <name>] [--first-name <name>] [--middle-name <name>] [--last-name <name>] [--serial-number <number>] [--password <password>] [--output <file>] [--ca-cert <path>] [--ca-key <path>] [--k8s-secret <secret-name>]"
+      echo "Usage: $0 [--common-name <name>] [--first-name <name>] [--middle-name <name>] [--last-name <name>] [--serial-number <number>] [--password <password>] [--output <file>] [--ca-cert <path>] [--ca-key <path>] [--k8s-secret <secret-name>] [--k8s-namespace <namespace>]"
       echo ""
       echo "Options:"
       echo "  --common-name <name>     Common name for the certificate (e.g., 'John Doe')"
@@ -77,6 +82,7 @@ while [ $# -gt 0 ]; do
       echo "  --ca-cert <path>         Path to CA certificate file (defaults to config/certificates/ca.crt)"
       echo "  --ca-key <path>          Path to CA private key file (defaults to config/certificates/ca.key)"
       echo "  --k8s-secret <name>      Extract CA certificate and key from specified Kubernetes secret"
+      echo "  --k8s-namespace <name>   Kubernetes namespace for the secret (defaults to liquio)"
       echo "  -h, --help              Show this help message"
       echo ""
       echo "Note: You can use either --common-name OR the combination of --first-name, --middle-name, --last-name."
@@ -94,6 +100,7 @@ done
 # Handle Kubernetes secret extraction if --k8s-secret flag is used
 if [ -n "$K8S_SECRET_NAME" ]; then
   echo "==> Extracting CA certificate and key from Kubernetes secret: $K8S_SECRET_NAME"
+  echo "==> Using Kubernetes namespace: $K8S_NAMESPACE"
   
   # Check if we have kubectl access
   if ! command -v kubectl >/dev/null 2>&1; then
@@ -112,24 +119,24 @@ if [ -n "$K8S_SECRET_NAME" ]; then
   trap cleanup_k8s EXIT
 
   # Check if the specified secret exists
-  if ! kubectl get secret "$K8S_SECRET_NAME" >/dev/null 2>&1; then
+  if ! kubectl get secret "$K8S_SECRET_NAME" -n "$K8S_NAMESPACE" >/dev/null 2>&1; then
     echo "Error: Secret '$K8S_SECRET_NAME' not found."
     echo "Available secrets:"
-    kubectl get secrets
+    kubectl get secrets -n "$K8S_NAMESPACE"
     exit 1
   fi
 
   echo "==> Using CA secret: $K8S_SECRET_NAME"
 
   # Get the CA certificate
-  kubectl get secret "$K8S_SECRET_NAME" -o jsonpath='{.data.ca\.crt}' | base64 -d > "$TEMP_DIR/ca.crt"
+  kubectl get secret "$K8S_SECRET_NAME" -n "$K8S_NAMESPACE" -o jsonpath='{.data.ca\.crt}' | base64 -d > "$TEMP_DIR/ca.crt"
   if [ ! -s "$TEMP_DIR/ca.crt" ]; then
     echo "Error: Failed to fetch CA certificate from secret"
     exit 1
   fi
 
   # Get the CA private key
-  kubectl get secret "$K8S_SECRET_NAME" -o jsonpath='{.data.ca\.key}' | base64 -d > "$TEMP_DIR/ca.key"
+  kubectl get secret "$K8S_SECRET_NAME" -n "$K8S_NAMESPACE" -o jsonpath='{.data.ca\.key}' | base64 -d > "$TEMP_DIR/ca.key"
   if [ ! -s "$TEMP_DIR/ca.key" ]; then
     echo "Error: Failed to fetch CA private key from secret"
     exit 1
