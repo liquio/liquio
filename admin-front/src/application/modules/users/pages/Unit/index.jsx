@@ -39,7 +39,6 @@ import schemaParts from './variables/unitSchemaParts.json';
 import UsersPart from './components/UsersPart';
 import UnitList from './components/UnitList';
 import InterfacePart from './components/InterfacePart';
-import PluginAccessPart from './components/PluginAccessPart';
 import BlocksAccess from './components/BlocksAccess';
 
 const styles = (theme) => ({
@@ -623,9 +622,6 @@ class UnitPage extends ModulePage {
         hidden: !userHasUnit
       },
       {
-        title: t('Plugins').toUpperCase()
-      },
-      {
         title: t('Tokens').toUpperCase()
       },
       {
@@ -639,11 +635,10 @@ class UnitPage extends ModulePage {
     const basedOnModule = activePart === 2;
     const ipnUsersModule = activePart === 3;
     const interfaceModule = userHasUnit ? activePart === 4 : false;
-    const pluginsModule = userHasUnit ? activePart === 5 : activePart === 4;
-    const tokensModule = userHasUnit ? activePart === 6 : activePart === 5;
+    const tokensModule = userHasUnit ? activePart === 5 : activePart === 4;
     const blockAcessesModule = userHasUnit
-      ? allowTokens && activePart === 7
-      : allowTokens && activePart === 6;
+      ? allowTokens && activePart === 6
+      : allowTokens && activePart === 5;
 
     return (
       <>
@@ -732,14 +727,6 @@ class UnitPage extends ModulePage {
 
           {blockAcessesModule ? (
             <BlocksAccess
-              value={unit}
-              readOnly={!hasAccess}
-              onChange={handleChangeAdapter(unit, this.handleChange)}
-            />
-          ) : null}
-
-          {pluginsModule ? (
-            <PluginAccessPart
               value={unit}
               readOnly={!hasAccess}
               onChange={handleChangeAdapter(unit, this.handleChange)}

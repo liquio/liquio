@@ -234,7 +234,6 @@ export default {
     meta: 'мета',
     clear: 'очистка',
     file: 'файл',
-    noPlagins: 'Немає доступних плагінів',
     CopyWorkflow: 'Дублювати',
     StopCopy: 'зупинити копіювання',
     LeaveOld: 'залишити старий',

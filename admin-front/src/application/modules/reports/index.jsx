@@ -1,6 +1,3 @@
-import React from 'react';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-
 import ReportListPage from './pages/ReportList';
 import ReportTemplatesPage from './pages/ReportTemplates';
 import { getConfig } from 'core/helpers/configLoader';
@@ -28,25 +25,7 @@ export default function getReportsModule() {
             access
           }
         ],
-        navigation: [
-          {
-            id: 'Reports',
-            icon: <AssessmentIcon />,
-            path: '/reports',
-            access,
-            children: [
-              {
-                id: 'ReportList',
-                title: 'List',
-                path: '/reports'
-              },
-              {
-                id: 'ReportTemplates',
-                path: '/reports/templates'
-              }
-            ]
-          }
-        ]
+        navigation: []
       }
     : {};
 }
