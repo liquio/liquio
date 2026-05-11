@@ -36,7 +36,7 @@ class WorkflowController extends Controller {
     let savedWorkflowTemplateEntity;
     try {
       const bodyData = matchedData(req, { locations: ['body'] });
-      if (config.workflow_editor.disabled === true) {
+      if (this.config.workflow_editor?.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
       if (!bodyData.id) {
@@ -71,7 +71,7 @@ class WorkflowController extends Controller {
       const { id } = matchedData(req, { locations: ['params'] });
       const bodyData = matchedData(req, { locations: ['body'] });
 
-      if (config.workflow_editor.disabled === true) {
+      if (this.config.workflow_editor?.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -205,7 +205,7 @@ class WorkflowController extends Controller {
     const id = paramsData.id;
 
     try {
-      if (config.workflow_editor.disabled === true) {
+      if (this.config.workflow_editor?.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -260,7 +260,7 @@ class WorkflowController extends Controller {
   async subscribeOnWorkflowErrors(req, res) {
     try {
       // Check workflowEditor disabled.
-      if (config.workflow_editor.disabled === true) {
+      if (this.config.workflow_editor?.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -294,7 +294,7 @@ class WorkflowController extends Controller {
   async unsubscribeFromWorkflowErrors(req, res) {
     try {
       // Check workflowEditor disabled.
-      if (config.workflow_editor.disabled === true) {
+      if (this.config.workflow_editor?.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
