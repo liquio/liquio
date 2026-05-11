@@ -951,11 +951,13 @@ export default {
     RemovePermanent: 'Remove from Cart',
     Reload: 'Refresh',
     Search: 'Search',
+    SearchBy: 'Search by',
     Select: 'Choose',
     SwitchView: 'Switch Display',
     Show: 'Show:',
     EmptyData: 'No data',
     AddItem: 'Add Entry',
+    CustomizateColumns: 'Columns',
     CustomizeColumns: 'Columns',
     WithoutGroup: 'Without Category',
     Close: 'Close',
@@ -1664,7 +1666,8 @@ export default {
     'Error: Unit id already exists.': 'Unit with this ID already exists',
     Id: 'Number',
     BasedOn: 'Base Unit',
-    name: 'Unit name'
+    name: 'Unit name',
+    ExportUsers: 'Export users'
   },
   UnitPage: {
     UploadCSV: 'Upload CSV',
@@ -2089,6 +2092,7 @@ export default {
     withErrors: 'Only with errors',
     withoutErrors: 'Without Errors',
     isDraft: 'Draft',
+    isNotDraft: 'All except drafts',
     EmptyList: 'The list is empty'
   },
   SelectUserDialog: {
@@ -2721,7 +2725,6 @@ export default {
     'builderSettings': 'Builder settings',
     'builderMode': 'Builder mode',
     'builderModeSample': 'Choose between insert and edit modes',
-    'noPlugins': 'No plugins found',
     'EventType': 'Event Type',
     'EventSchema': 'Event schema',
     'EditForm': 'Edit Form',
@@ -2876,7 +2879,6 @@ export default {
     meta: 'meta',
     clear: 'clearing',
     file: 'file',
-    noPlugins: 'No plugins available',
     CopyWorkflow: 'Duplicate',
     StopCopy: 'stop copying',
     LeaveOld: 'leave old',

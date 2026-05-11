@@ -1138,6 +1138,7 @@ export default {
     EmptyData: 'Немає даних',
     AddItem: 'Додати запис',
     CustomizateColumns: 'Колонки',
+    CustomizeColumns: 'Колонки',
     WithoutGroup: 'Без категорії',
     Close: 'Закрити',
     ToggleGrouping: 'Групування',
