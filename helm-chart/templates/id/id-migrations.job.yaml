@@ -32,7 +32,7 @@ spec:
       containers:
         - name: id-migrations
           image: {{ include "liquio.image" (dict "component" "id-api" "Values" .Values "Chart" .Chart) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
           command: ["npm", "run", "migration-up"]
           env:
             - name: NODE_ENV

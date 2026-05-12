@@ -83,6 +83,34 @@ The following table lists the configurable parameters and their default values:
 | `global.imageRegistry` | Global Docker image registry | `""` |
 | `global.imagePullSecrets` | Global Docker registry secret names | `[]` |
 
+### Image Defaults And Overrides
+
+Default image behavior is defined in chart templates (`templates/shared/_service-helpers.tpl`) so `values.yaml` stays minimal by default.
+
+- Default registry: `ghcr.io/liquio`
+- Default pull policy: `IfNotPresent`
+- Default fallback tag: `0.1.0`
+- Per-service default tags are defined in template helpers and used automatically.
+
+You can still override all of these in your own values file:
+
+```yaml
+image:
+  registry: registry.example.com/liquio
+  pullPolicy: Always
+  tag: 9.9.9
+
+serviceVersions:
+  admin-api: 0.1.777
+  admin-front: 0.1.3
+```
+
+Precedence for a service tag is:
+
+1. `serviceVersions.<component>`
+2. Template-defined per-service default tag
+3. `image.tag`
+
 ### Service Configuration
 
 Each service can be individually enabled/disabled and configured:

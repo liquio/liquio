@@ -25,36 +25,6 @@ migrations:
       cpu: 500m
       memory: 256Mi
 
-# Default image configuration for all services
-image:
-  # Image registry — default points to GHCR under the liquio org.
-  # Override to use a private registry, e.g. registry.example.com/liquio
-  registry: ghcr.io/liquio
-  # Image pull policy: Always, IfNotPresent, Never
-  pullPolicy: IfNotPresent
-  # Global fallback tag used when a service has no entry in serviceVersions
-  tag: "0.1.0"
-
-# Per-service image versions — keyed by component name (kebab-case).
-# Each value is used as the image tag for that service.
-# Override individual entries to roll out a new version of a single service.
-serviceVersions:
-  admin-api: "0.1.1"
-  admin-front: "0.1.3"
-  cabinet-api: "0.1.0"
-  cabinet-front: "0.1.1"
-  event: "0.1.0"
-  external-reader: "0.1.0"
-  filestorage: "0.1.0"
-  gateway: "0.1.0"
-  id-api: "0.1.0"
-  id-front: "0.1.0"
-  manager: "0.1.0"
-  notification: "0.1.0"
-  register: "0.1.0"
-  sign-tool: "0.1.0"
-  task: "0.1.0"
-
 # Liquio microservices configuration
 services:
   # Identity Frontend - User authentication and login interface

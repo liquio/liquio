@@ -63,7 +63,7 @@ spec:
               drop:
               - ALL
           image: {{ include "liquio.image" (dict "component" "id-front" "Values" .Values "Chart" .Chart) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
           ports:
             - name: http
               containerPort: {{ (default 8080 .Values.services.idFront.containerPort) }}

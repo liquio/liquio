@@ -35,7 +35,7 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "liquio.image" (dict "component" "external-reader" "Values" .Values "Chart" .Chart) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
           ports:
             - name: http
               containerPort: {{ (default 8080 .Values.services.externalReader.containerPort) }}

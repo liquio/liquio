@@ -39,7 +39,7 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "liquio.image" (dict "component" "register" "Values" .Values "Chart" .Chart) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
           command: ["npm", "run", "migration-up"]
           env:
             - name: NODE_ENV

@@ -117,13 +117,10 @@ Create the name of the service account to use
 Create a default image name
 */}}
 {{- define "liquio.image" -}}
-{{- $registry := .Values.global.imageRegistry | default .Values.image.registry -}}
-{{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
+{{- $registry := include "liquio.imageRegistry" . -}}
+{{- $tag := include "liquio.serviceTag" (dict "component" .component "Values" .Values "Chart" .Chart) -}}
 {{- $component := .component -}}
 {{- $repository := .component -}}
-{{- if hasKey .Values.serviceVersions $component -}}
-  {{- $tag = index .Values.serviceVersions $component -}}
-{{- end -}}
 {{- $services := .Values.services -}}
 {{- if hasKey $services $component -}}
   {{- if hasKey (index $services $component) "image" -}}
