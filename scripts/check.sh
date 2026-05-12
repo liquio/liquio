@@ -24,9 +24,10 @@ Usage: $0 [options]
 
 Options:
   -h, --help              Show this help message
-  -s, --skip STAGE        Skip a stage (lint, test, audit, or comma-separated)
+  -s, --skip STAGE        Skip a stage (lint, test, audit, translation, or comma-separated)
   -l, --lint              Run only linting
   -t, --test              Run only tests
+  -T, --translation       Run only translation parity check
   -a, --audit             Run only audit
   -f, --fix               Auto-fix lint and audit issues
   -c, --coverage          Run tests with coverage
@@ -39,6 +40,7 @@ Examples:
   $0 --fix                # Auto-fix all fixable issues
   $0 --skip test,audit    # Run only linting
   $0 --lint               # Run only linting
+  $0 --translation        # Run translation parity check only
   $0 --test --coverage    # Run tests with coverage
 EOF
 }
@@ -48,6 +50,7 @@ main() {
   local run_lint=true
   local run_test=true
   local run_audit=true
+  local run_translation=false
   local fix_flag=""
   local coverage_flag=""
   local production_flag=""
@@ -70,6 +73,7 @@ main() {
             lint) run_lint=false ;;
             test) run_test=false ;;
             audit) run_audit=false ;;
+            translation) run_translation=false ;;
           esac
         done
         shift 2
@@ -82,6 +86,13 @@ main() {
       -t|--test)
         run_lint=false
         run_audit=false
+        shift
+        ;;
+      -T|--translation)
+        run_lint=false
+        run_test=false
+        run_audit=false
+        run_translation=true
         shift
         ;;
       -a|--audit)
@@ -152,6 +163,13 @@ main() {
     [[ -n "$quiet_flag" ]] && audit_cmd="$audit_cmd $quiet_flag"
     commands+=("$audit_cmd")
     descriptions+=("Auditing")
+  fi
+
+  if [[ "$run_translation" == true ]]; then
+    local translation_cmd="$SCRIPT_DIR/translation.sh"
+    [[ -n "$quiet_flag" ]] && translation_cmd="$translation_cmd $quiet_flag"
+    commands+=("$translation_cmd")
+    descriptions+=("Translation")
   fi
 
   # Run commands sequentially (parallel not yet fully supported)
