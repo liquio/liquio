@@ -151,6 +151,7 @@ export default {
     noData: 'Aucune donnée',
     ReadTasks: 'En cours de traitement',
     Workflow: 'Service',
+    WorkflowName: 'Nom du processus',
     Number: 'Numéro de la demande',
     EmptyListTitleArchive: 'Aucune tâche archivée pour le moment',
     EmptyListDescriptionArchive:
@@ -322,6 +323,8 @@ export default {
     RemoveDraft: 'Supprimer le brouillon',
     "Sign certificate PEM not match user's PEM.":
       'Vous ne pouvez pas signer le document avec cette clé. Veuillez utiliser la clé avec laquelle vous vous êtes authentifié dans le cabinet.',
+    "Sign certificate PEM does not match user's PEM.":
+      'Vous ne pouvez pas signer le document avec cette clé. Veuillez utiliser la clé avec laquelle vous vous êtes authentifié dans le cabinet.',
     "P7S sign certificate PEM not match user's PEM.":
       'Vous ne pouvez pas signer le document avec cette clé. Veuillez utiliser la clé avec laquelle vous vous êtes authentifié dans le cabinet.',
     GoToNextTask: 'Passer à la tâche suivante',
@@ -331,12 +334,14 @@ export default {
     ErrorLoadingTasks: 'Impossible de charger la tâche',
     "User doesn't have any access to task.":
       "Vous n'avez pas accès à cette tâche.",
+    "User doesn't have any access to task": "Vous n'avez pas accès à cette demande",
     ErrorLoadingTemplate: 'Impossible de charger le modèle de tâche',
     ErrorCommitDocument: "Une erreur est survenue lors de l'envoi du document",
     DueDate: "Date d'échéance",
     Cancel: 'Annuler',
     ErrorDialogTitle: 'Oups !',
     BackToList: 'Retour à la liste',
+    BackToStartOfPdf: 'Retour au début du contenu PDF',
     'Document has already committed.': 'Le document a déjà été envoyé.',
     '404 File not found': "Erreur lors de l'opération du document",
     MinDateMessage: 'Expiré',
@@ -358,11 +363,19 @@ export default {
     RejectSign: 'Envoyer',
     Start: 'Démarrer',
     ImportData: 'Importer depuis un fichier XLSX',
+    'Commit not available': "L'envoi est indisponible",
+    "Error: Ipn from sign certificate not match user's ipn.":
+      "Impossible de finaliser la signature. La clé de signature électronique ne correspond pas à l'IPN de l'utilisateur.",
+    "Ipn from sign certificate does not match user's ipn":
+      "Ipn from sign certificate does not match user's ipn",
     'Signed name not match needed.':
       "Le nom complet indiqué dans la clé électronique ne correspond pas au nom complet de l'utilisateur.",
     RequiredField: 'Champ obligatoire',
+    "Signer doesn't have access to task before performer sign it.":
+      "Veuillez attendre que l'initiateur signe la demande.",
     'User doesn’t have any access to task.':
       "Vous n'avez pas accès à cette demande",
+    "User doesn't have any access to task": "Vous n'avez pas accès à cette demande",
     'User names are not equal.':
       "Le nom complet indiqué dans votre clé électronique ne correspond pas au nom complet dans la liste des signataires. Veuillez contacter l'initiateur de la signature pour corriger l'erreur.",
     "Can't update - document contains signatures.":
@@ -378,9 +391,19 @@ export default {
     'Sign not available.':
       "Signature non disponible, vous n'avez pas le droit de signer",
     'Commit not available.': "Vous n'avez pas le droit d'envoyer des données",
+    SkipPdfContent: 'Ignorer le contenu PDF précédent',
+    "Sign certificate PEM not match user's PEM.":
+      'Vous ne pouvez pas signer le document avec cette clé. Veuillez utiliser la clé avec laquelle vous vous êtes authentifié dans le cabinet.',
+    'Signed content not match needed': 'Le contenu signé ne correspond pas à ce qui est requis.',
+    'Signed name does not match required.':
+      "Le nom complet indiqué dans la clé électronique ne correspond pas au nom complet de l'utilisateur.",
     'User is not in signerUsers list.':
       "L'utilisateur n'est pas dans la liste des signataires",
+    'User is not in signerUsers list':
+      "L'utilisateur n'est pas dans la liste des signataires",
+    'StepNotConfigured': "Le service n'est pas configuré",
     StepNotConfigurated: "Le service n'est pas configuré",
+    'Workflow template not found': 'Processus inconnu',
     Attachments: 'Pièces jointes',
     '404 not found': 'Page introuvable',
     SignProcessSignFile:
@@ -688,6 +711,16 @@ export default {
       'Document envoyé. La révocation de la signature est impossible.',
     FailInformingSigners:
       "Une erreur est survenue lors de l'invitation des signataires",
+    'This key has been locked.': 'Cette clé a été verrouillée pour édition',
+    'Authorization error. Contact issuer bank.':
+      'Erreur d\'autorisation. Contactez la banque émettrice',
+    'Authorization error. Contact issuer bank':
+      'Erreur d\'autorisation. Contactez la banque émettrice',
+    'Failed to verify the card for participation in 3DSecure':
+      'Échec de la vérification de la carte pour la participation à 3DSecure',
+    'Failed to verify the card for participation in 3DSecure.':
+      'Échec de la vérification de la carte pour la participation à 3DSecure.',
+    'Validation error.': "Le document n'a pas passé la validation",
     ErrorGettingMocks: 'Erreur lors du chargement des mocks',
     ErrorCreatingMocks: 'Erreur lors de la création du mock',
     ErrorUpdatingMocks: 'Erreur lors de la mise à jour du mock',
@@ -729,6 +762,10 @@ export default {
       'Les données ne sont plus valides, veuillez créer un nouvel enregistrement',
     TagExists: 'Une balise avec ce nom existe déjà',
     TagNotCreated: 'Impossible de créer la balise',
+    'WorkflowAdminPage.setPermissions_exists':
+      'setPermissions a été déplacé dans une section distincte pour la configuration - "Exécuteurs et signataires"',
+    'WorkflowAdminPage.deadline_exists':
+      'deadline a été déplacé dans une section distincte pour la configuration - "Délai"',
     OutOfBoundError: 'Vous avez dépassé la plage autorisée',
     GetAddressError: "Erreur lors de l'obtention de l'adresse",
     GeolocationNotSupported: "La géolocalisation n'est pas prise en charge. Veuillez mettre à jour votre navigateur.",
@@ -739,7 +776,15 @@ export default {
     GeolocationRetryWithTimeout: 'Tentative avec un délai plus long...',
     GeolocationTimeout: "Délai d'attente expiré. Vérifiez la connexion GPS ou Wi-Fi.",
     GeolocationUnknownError: "Erreur inconnue lors de l'obtention des coordonnées.",
-    GeolocationGloballyDisabled: 'La géolocalisation est globalement désactivée dans le navigateur.'
+    GeolocationGloballyDisabled: 'La géolocalisation est globalement désactivée dans le navigateur.',
+    ImportTranslatesError: "Erreur d'importation des traductions",
+    ExportTranslationError: "Erreur d'exportation des traductions",
+    ExportTranslatesSuccess: 'Traductions exportées',
+    ImportTranslatesSuccess: 'Traductions importées',
+    'SequelizeUniqueConstraintError: Validation error': 'Cette clé existe déjà',
+    'Validation error': 'Erreur de validation',
+    'value too long for type character varying(5)':
+      'Valeur trop longue. Longueur maximale : 5 caractères'
   },
   Geolocation: {
     ButtonTextDetermining: 'Détermination... (cliquez pour annuler)',
@@ -779,6 +824,17 @@ export default {
     switchMode: 'Changer de mode',
     ClearAll: 'Tout effacer',
     FiltersNumber: 'Vous avez sélectionné {{number}} filtres',
+    DisplayOptionsInARow: 'Afficher les options dans une ligne',
+    Path: 'Chemin',
+    OldValue: 'Ancienne valeur',
+    NewValue: 'Nouvelle valeur',
+    Kind: 'Opération',
+    ModifyTypeNew: 'Création',
+    ModifyTypeDeleted: 'Suppression',
+    ModifyTypeAdded: 'Ajout',
+    ModifyTypeEdit: 'Modification',
+    NoChanges: 'Aucun changement détecté',
+    Preview: 'Aperçu',
     NotRobot: 'Je ne suis pas un robot',
     RedirectToApp: "Accéder à l'application",
     RenewCode: 'Renouveler le code',
@@ -848,8 +904,10 @@ export default {
     SHOW_SAMPLE_DIALOG: 'Comment remplir',
     SAMPLE_EXPAND: 'Comment remplir',
     CLOSE: 'Fermer',
+    Close: 'Fermer',
     CloseModal: 'Fermer la boîte de dialogue',
     Cancel: 'Annuler',
+    'Сancel': 'Annuler',
     CustomValue: 'Votre propre option',
     Accept: 'Oui',
     Yes: 'Oui',
@@ -1123,9 +1181,9 @@ export default {
     changeContactInfo: 'Vous pouvez modifier vos coordonnées dans',
     profileLinkText: 'le profil',
     indexErrorText:
-      'L\'index ne correspond pas à l\'adresse. Veuillez vous assurer que l\'index est correctement indiqué. <a href="https://index.ukrposhta.ua/find-post-index/" target="_blank" rel="noreferrer">Trouver votre index</a>',
+      'L\'index ne correspond pas à l\'adresse. Veuillez vous assurer que l\'index est correctement indiqué.',
     indexErrorTextUnExists:
-      'Veuillez vous assurer que l\'adresse d\'enregistrement et l\'index sont correctement saisis. <a href="https://index.ukrposhta.ua/find-post-index/" target="_blank" rel="noreferrer">Trouver votre index</a>',
+      'Veuillez vous assurer que l\'adresse d\'enregistrement et l\'index sont correctement saisis.',
     noUnzr: "Pas d'UNZR",
     addressTitle: 'Lieu de résidence enregistré',
     unzrText:
@@ -1198,9 +1256,15 @@ export default {
       "Impossible de finaliser la signature. L'EDRPOU du certificat de signature ne correspond pas à l'EDRPOU de l'initiateur.",
     "Error: EDRPOU from sign certificate not match user's EDRPOU.":
       "Impossible de finaliser la signature. L'EDRPOU du certificat de signature ne correspond pas à l'EDRPOU de l'initiateur.",
+    "Error: Ipn from sign certificate not match user's ipn.":
+      'Impossible de finaliser la signature. La clé de signature électronique (KED) ne correspond pas au compte utilisateur.',
     "Error: CNIB from sign certificate not match user's CNIB.":
       'Impossible de finaliser la signature. La clé de signature électronique (KED) ne correspond pas au compte utilisateur.',
     "TaskPage.Error: CNIB from sign certificate not match user's CNIB.":
+      'Impossible de finaliser la signature. La clé de signature électronique (KED) ne correspond pas au compte utilisateur.',
+    "TaskPage.Error: Ipn from sign certificate not match user's ipn.":
+      'Impossible de finaliser la signature. La clé de signature électronique (KED) ne correspond pas au compte utilisateur.',
+    "Ipn from sign certificate not match user's ipn.":
       'Impossible de finaliser la signature. La clé de signature électronique (KED) ne correspond pas au compte utilisateur.',
     '413 Payload Too Large':
       'Vous essayez de signer un fichier trop volumineux.',
@@ -1210,6 +1274,8 @@ export default {
     Continue: 'Continuer',
     ExpiringTitle: 'Attention !',
     ExpiringDescription: 'Votre clé privée expire dans {{days}}.',
+    Visibility: 'Afficher le mot de passe',
+    VisibilityOff: 'Masquer le mot de passe',
   },
   DataTable: {
     DISPLAYED_ROWS: 'de {{from}} à {{to}} sur {{total}}',
@@ -1388,6 +1454,7 @@ export default {
     ShouldNotInclude: 'Ne doit pas avoir de champs supplémentaires',
     NotEquilsTo: 'Ne correspond pas aux paramètres spécifiés',
     HaveNoDepencies: 'Dépendances manquantes',
+    HaveNoDependencies: 'Dépendances manquantes',
     MustBe: 'Doit être {{cond}}',
     InvalidSchema: 'schéma invalide',
     MustHaveFormat: 'Corrigez les données saisies',
@@ -1559,6 +1626,7 @@ export default {
     Messages: 'Messages reçus',
   },
   UserProfile: {
+    ChangePassword: 'Changer le mot de passe',
     EmailNotAuthorized: "Cette adresse e-mail n'est pas autorisée",
     EditUserHeader: 'Mon profil',
     EditUserHeaderHint: 'Modifier le profil',
@@ -1787,6 +1855,19 @@ export default {
     choseValue: 'Liste des rapports',
     ForExample: 'Par exemple : {{filter}}',
     Cancel: 'Fermer',
+    'Оновлення dueDate івента на "через 10 хвилин"':
+      'Mettre à jour la dueDate de l’événement à "dans 10 minutes"',
+    'Отримання списку процесів з помилками, приклад на будівельних':
+      'Obtenir une liste de processus avec erreurs, exemple sur la construction',
+    'Список процесів, які пройшли івент, але без результату, за період':
+      'Liste des processus ayant passé l’événement mais sans résultat, pour la période',
+    'Закоммічені процеси за весь період':
+      'Processus commités pour toute la période',
+    'Закоммічені процеси за певний період':
+      'Processus commités pour une période donnée',
+    'Список процессов ФОП, без статуса':
+      'Liste des processus FOP, sans statut',
+    'Динаміка процесів': 'Dynamique des processus',
   },
   MetricsPage: {
     MetricsProcessesTitle: 'Erreurs de processus',
@@ -1809,20 +1890,6 @@ export default {
     notWork: 'Ne répond pas',
     work: 'En fonctionnement',
     withErrors: 'Avec des erreurs'
-  },
-  Errors: {
-    ImportTranslatesError: "Erreur d'importation des traductions",
-    ExportTranslationError: "Erreur d'exportation des traductions",
-    'Validation error': 'Erreur de validation',
-    'SequelizeUniqueConstraintError: Validation error': 'Cette clé existe déjà',
-    ExportTranslatesSuccess: 'Traductions exportées',
-    ImportTranslatesSuccess: 'Traductions importées',
-    'value too long for type character varying(5)':
-      'Valeur trop longue. Longueur maximale : 5 caractères',
-    'WorkflowAdminPage.setPermissions_exists':
-      'setPermissions a été déplacé dans une section distincte pour la configuration - "Exécuteurs et signataires"',
-    'WorkflowAdminPage.deadline_exists':
-      'deadline a été déplacé dans une section distincte pour la configuration - "Délai"',
   },
   WorkflowDynamicsPage: {
     WorkflowDynamicsPageTitle: 'Dynamique des processus',
@@ -1852,6 +1919,7 @@ export default {
     ClearChat: 'Effacer le chat',
     Response: 'Résultat',
     Responses: 'Résultats',
+    CleanSingleResult: 'Nettoyer le résultat',
     GoodAIResponse: 'Bonne réponse',
     BadAIResponse: 'Mauvaise réponse',
     InteractiveOptionsTitle:
@@ -1974,6 +2042,9 @@ export default {
     UpdatedDate: 'Date de mise à jour',
     FromUpdatedAt: 'Date de mise à jour du',
     ToUpdatedAt: 'Date de mise à jour au',
+    Cancel: 'Annuler',
+    CreateNew: 'Créer une requête',
+    Reindex: 'Réindexer',
   },
   MessagesNotify: {
     AllMessages: 'Tous les messages',
@@ -1985,9 +2056,11 @@ export default {
     Close: 'Fermer',
     Open: 'Ouvrir',
     Clear: 'Effacer',
+    OpenTreeList: 'Ouvrir {{fieldName}}',
     TreeListTitle: 'Sélectionner un élément dans la liste',
   },
   WorkflowListAdminPage: {
+    IgnoreErrorsAsk: 'Importer sans validation',
     AdminWorkflowList: 'BPMN et formulaires',
     Journal: 'Afficher le journal',
     WorkflowName: 'Nom du processus',
@@ -2055,6 +2128,7 @@ export default {
     CreatedAt: 'Date de création',
     UpdatedAt: 'Date de mise à jour',
     UpdatedBy: 'Mis à jour par',
+    WorkflowNamePlaceholder: "Rechercher par nom d'étiquette",
     SearchByTagNamePlaceholder: "Rechercher par nom d'étiquette",
     SearchByTagName: "Nom de l'étiquette",
     CreateTag: 'Créer une étiquette',
@@ -2179,6 +2253,7 @@ export default {
     UploadCSV: 'Télécharger depuis CSV',
     HomePage: "Page d'accueil",
     Exemple: 'Par exemple, /tâches',
+    Example: 'Par exemple, /tâches',
     DebugMode: 'Traiter le bloc de débogage (Ctrl + X)',
     Documents: 'Documents reçus',
     Registry: 'Registre',
@@ -2268,6 +2343,8 @@ export default {
     DeleteRegister: 'Supprimer',
     DeletePrompt: 'Confirmation de suppression',
     DeletePropmtDescription:
+      'Voulez-vous vraiment supprimer le registre "{{register}}" ? Cette action est irréversible. Si vous supprimez le registre, il sera impossible de le restaurer.',
+    DeletePromptDescription:
       'Voulez-vous vraiment supprimer le registre "{{register}}" ? Cette action est irréversible. Si vous supprimez le registre, il sera impossible de le restaurer.',
     DeleteError: 'Erreur lors de la suppression du registre',
     'Can not delete.': 'Le registre contient des données remplies.',
@@ -2378,9 +2455,13 @@ export default {
     Access: 'Accès',
     EditKeyAccess: "Droits d'accès à la clé",
     ReguiredFiled: 'Champ obligatoire',
+    RequiredFiled: 'Champ obligatoire',
+    Encrypted: 'Chiffrer les données',
     KeyNameExists: 'Dans ce registre, une clé avec ce nom existe déjà',
     FieldDescriptionText: 'Description du champ',
     SignatureDetails: 'Détails de la signature',
+    "Can't change encryption status for a key with existing records.":
+      'Impossible de changer le statut de chiffrement pour une clé avec des enregistrements existants.',
     'Cannot set the key as personal when strict access is enabled.':
       "Impossible de définir la clé comme personnelle lorsque l'accès strict est activé.",
     Synchronization: 'Synchronisation avec Elastic',
@@ -2551,6 +2632,12 @@ export default {
     DeleteSignPromtDescription: 'Cette action est irréversible',
     CancelBtn: 'Non, ne pas supprimer',
     AcceptBtn: 'Oui, supprimer',
+    ExportToPdf: 'Exporter en PDF',
+    ExportToXlsx: 'Exporter en XLSX',
+    RestartPropmtDescription: 'Les processus sélectionnés seront redémarrés',
+    Cancel: 'Annuler',
+    CreateNew: 'Créer une requête',
+    Reindex: 'Réindexer',
   },
   KibanaReports: {
     KibanaReports: 'Kibana',
@@ -2625,10 +2712,12 @@ export default {
     'EventType': "Type d'événement",
     'EventSchema': "Schéma de l'événement",
     'EditForm': 'Édition du formulaire',
+    'EditJSON': 'Modifier JSON',
     'JournalView': 'Afficher le journal',
     'TokenExpiring':
       "La session expirera dans moins de {{diff}} min. N'oubliez pas d'enregistrer les modifications.",
     'TaskTemplateJsonSchema': 'Schéma du modèle de tâche',
+    'TasTemplatekJsonSchema': 'Schéma du modèle de tâche',
     'CopyElement': "Copier l'élément",
     'PasteElement': "Coller l'élément",
     'AdminWorkflow': 'Éditeur de processus',
@@ -2836,6 +2925,8 @@ export default {
     'added-to-admin': "Accès au panneau d'administration accordé",
     'deleted-from-admin': "Accès au panneau d'administration supprimé",
     ByAdmin: "Par l'administrateur manuellement",
+    ExportToPdf: 'Exporter au format PDF',
+    ExportToXlsx: 'Exporter au format XLSX',
   },
   UserLoginJournal: {
     UserLoginJournal: 'Autorisations',
@@ -2853,6 +2944,8 @@ export default {
     SessionTime: 'Durée de la session',
     UserOperations: 'Opérations utilisateur',
     createdBy: 'Créé par',
+    ExportToPdf: 'Exporter au format PDF',
+    ExportToXlsx: 'Exporter au format XLSX',
   },
   UserProcessesListPage: {
     UserProcessesListPageTitle: 'Actions dans le système',
@@ -2940,12 +3033,20 @@ export default {
     Performer: 'Exécuteur',
     FileName: 'Nom du fichier',
     Close: 'Fermer',
+    '{"error":"Password must be at least 8 characters long."}':
+      'Le mot de passe doit contenir au moins 8 caractères',
     '{"error":"Password must be at least 8 characters long."}"':
       'Le mot de passe doit contenir au moins 8 caractères',
+    '{"error":"Password must contain at least one digit."}':
+      'Le mot de passe doit contenir au moins un chiffre',
     '{"error":"Password must contain at least one digit."}"':
       'Le mot de passe doit contenir au moins un chiffre',
+    '{"error":"Password must contain at least one special character."}':
+      'Le mot de passe doit contenir au moins un caractère spécial',
     '{"error":"Password must contain at least one special character."}"':
       'Le mot de passe doit contenir au moins un caractère spécial',
+    '{"error":"Password must contain at least one capital letter."}':
+      'Le mot de passe doit contenir au moins une lettre majuscule',
     '{"error":"Password must contain at least one capital letter."}"':
       'Le mot de passe doit contenir au moins une lettre majuscule',
     'User with this email already exists.':
@@ -3022,6 +3123,13 @@ export default {
     UserAccessJournal: "Historique des modifications des droits d'accès",
     UserWorkflowJournal: 'Processus',
     UserProcesses: 'Documents',
+    WorkflowProcesses: 'Documents',
+    TaskTemplate: 'Modèle',
+    UserIds: 'ID utilisateurs',
+    PerformerUsers: 'Ont accès',
+    ShowAllPerformerUsers: 'Afficher',
+    FromShort: 'De',
+    ToShort: 'À',
     'Requested member already in unit by ID.':
       "L'utilisateur est déjà présent dans l'unité.",
     'Requested member with wrong name.':
@@ -3199,6 +3307,10 @@ export default {
     DeleteGroupPrompt: 'Attention',
     DeleteGroupPromptDescription:
       'Voulez-vous vraiment supprimer le groupe "{{name}}" ?',
+    Clear: 'Effacer la valeur',
+    VoiceOverText:
+      'Pour effacer la valeur sélectionnée, appuyez sur la touche Suppr ou Retour arrière',
+    addItemText: 'Texte pour ajouter un élément',
     replaceLatinAnalogs: 'Remplacer les caractères latins',
     'cutTags': 'Supprimer les balises HTML',
     'emptyValue': 'Valeur vide',
@@ -3265,6 +3377,8 @@ export default {
     EmptySearchResults: 'Aucun utilisateur trouvé',
     Apply: 'Appliquer',
     Others: 'encore {{length}}...',
+    SaveWarningTitle: 'Avertissement',
+    SaveWarningMessage: "L'utilisation des titres h1 et h2 est interdite. Utilisez plutôt les titres de niveaux h3 à h6.",
   },
   StringFilterHandlerSearchable: {
     loadingText: 'Chargement...',
@@ -3342,6 +3456,7 @@ export default {
     ReportDraft: 'Basé sur',
     Rendering: 'Génération du rapport, veuillez patienter...',
     RenderProcessSuccesed: 'Le rapport basé sur le modèle a été créé.',
+    RenderProcessSuccessed: 'Le rapport basé sur le modèle a été créé.',
     ResultDialog: 'Message',
     OK: 'OK',
     ReportTemplates: 'Modèles de rapport',
@@ -3373,6 +3488,10 @@ export default {
     SigningDataError: 'Erreur',
     OpenQrButton: "Ouvrir l'application Diia pour la signature",
     "Error: CNIB from sign certificate not match user's CNIB.":
+      'Impossible de terminer la signature. La clé de signature électronique (KEP) ne correspond pas au compte utilisateur.',
+    "Error: Ipn from sign certificate not match user's ipn.":
+      'Impossible de terminer la signature. La clé de signature électronique (KEP) ne correspond pas au compte utilisateur.',
+    "Ipn from sign certificate not match user's ipn.":
       'Impossible de terminer la signature. La clé de signature électronique (KEP) ne correspond pas au compte utilisateur.',
     QrTimer: 'Ce code sera actif pendant encore {{timerValue}}',
     QrTimerRiched:
@@ -3445,9 +3564,12 @@ export default {
     Cancel: 'Fermer',
     Save: 'Enregistrer',
     DublicateTemplateTitle: 'Duplication des identifiants',
+    DuplicateTemplateTitle: 'Duplication des identifiants',
     Identifier:
       "L'identifiant {{id}} est déjà utilisé. Vous pouvez réécrire le modèle ou l'enregistrer avec un nouvel identifiant.",
     Recomend:
+      "Vous pouvez réécrire le modèle ou l'enregistrer avec un nouvel identifiant.",
+    Recommend:
       "Vous pouvez réécrire le modèle ou l'enregistrer avec un nouvel identifiant.",
     Rewrite: 'Réécrire',
     SaveWithNewId: 'Enregistrer avec un nouvel ID',
@@ -3470,6 +3592,7 @@ export default {
     Cancel: 'Fermer',
     QrExcerpt: 'Extraction QR',
     MapppingFields: 'Mappage des champs',
+    MappingFields: 'Mappage des champs',
     Template: 'Modèle',
     GeneratedDeepLink: "Générer un lien profond pour l'extraction QR",
     QrExcerptSettings: "Paramètres d'extraction QR",
@@ -3482,6 +3605,11 @@ export default {
     MetricsPageTitle: 'Métriques',
     MetricsIntegrationTitle: 'Métriques des intégrations',
     MetricsProcessesTitle: 'Métriques des processus',
+    RegistryMetricsTitle: 'Métriques des registres',
+    Synchronization: 'Synchronisation',
+    AiAnalyze: 'Analyse AI',
+    AiAnalyzeTooltip:
+      "Effectuer une analyse des goulots d'étranglement des processus à l'aide de l'IA.",
     name: 'Nom',
     lintTo: 'aperçu',
     TotalTasks: 'Soumis',
@@ -3509,6 +3637,19 @@ export default {
     search: 'Rechercher',
     ProviderName: 'Nom du fournisseur',
     ProviderNamePlaceholder: 'Rechercher par nom du fournisseur',
+    Actions: 'Actions',
+    Metrics: 'Métriques',
+    status: 'Statut',
+    MetricTitle: 'Mesures de la méthode {{method}}',
+    minutes: '5 minutes',
+    hours: '1 heure',
+    days: '1 jour',
+    request: 'Requêtes',
+    error: 'Erreurs',
+    notActive: 'Inactif',
+    notWork: 'Ne répond pas',
+    work: 'En fonctionnement',
+    withErrors: 'Avec des erreurs',
   },
   FavoritesPage: {
     FavoritesListTitle: 'Favoris',
@@ -3611,6 +3752,8 @@ export default {
     NotReadTasks: 'Nouveau',
     Filters: 'Filtrer',
     Status: 'Statut',
+    ClearAll: 'Tout effacer',
+    FiltersNumber: '{{number}} filtres sélectionnés',
   },
   BreadCrumbs: {
     TasksTitle: 'Mes tâches',
@@ -3647,6 +3790,8 @@ export default {
       'Pour sélectionner une période, cliquez sur le premier créneau sélectionné en maintenant la touche ⇧ Shift, puis cliquez sur le dernier.',
     FetchingActiveSlots: 'Rechercher de créneaux actifs...',
     DisableTitle: '{{slot}} - ce créneau est déjà réservé',
+    applicant: 'Demandeur',
+    recipient: 'Bénéficiaire',
   },
   UserSelect: {
     Name: 'Nom complet',
@@ -3670,6 +3815,7 @@ export default {
     PasswordNotChanged: 'Mot de passe non modifié',
     PasswordIncorrect: 'Mot de passe incorrect',
     RequiredField: 'Champ obligatoire',
+    InitialLoading: 'Chargement de LiquioIntel...',
     ChangePasswordFailed:
       'Échec de la modification du mot de passe. Veuillez vérifier les données saisies.',
   },
@@ -3736,6 +3882,7 @@ export default {
   Dropbox: {
     StartDropbox: 'Démarrer',
     Success: 'Signé',
+    Retry: 'Réessayer',
   },
   PdfBlock: {
     Print: 'Imprimer',
