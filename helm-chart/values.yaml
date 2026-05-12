@@ -325,7 +325,7 @@ ingress:
   #   add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-ancestors 'self';" always;
   configurationSnippet: |
     proxy_hide_header Content-Security-Policy;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-ancestors 'self';" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-ancestors 'self';" always;
   # Self-signed TLS certificate for local/dev deployments.
   # When enabled, a kubernetes.io/tls Secret is generated at helm render time
   # using Helm's built-in genSelfSignedCert function. The cert covers all hosts
