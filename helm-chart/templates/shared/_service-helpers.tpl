@@ -39,7 +39,7 @@ Per-service image tag versions managed in chart templates.
   "id-front" "0.1.0"
   "manager" "0.1.0"
   "notification" "0.1.0"
-  "pdf-generator" "0.1.0"
+  "pdf-generator" "0.1.1"
   "register" "0.1.0"
   "sign-tool" "0.1.0"
   "task" "0.1.0"

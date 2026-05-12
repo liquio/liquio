@@ -7,7 +7,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 WORKDIR /build
 
 # Install pnpm
-RUN npm i -g pnpm
+RUN npm i -g pnpm@9
 
 # Copy package.json and package-lock.json
 COPY package*.json pnpm-lock.yaml ./
@@ -30,7 +30,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 WORKDIR /var/www/app
 
 # Install curl for healthcheck and pnpm
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* && npm i -g pnpm
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* && npm i -g pnpm@9
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
