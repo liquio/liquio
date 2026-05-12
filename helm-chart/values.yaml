@@ -153,6 +153,15 @@ services:
     image:
       repository: sign-tool
 
+  # PDF Generator Service - HTML to PDF conversion backend
+  pdfGenerator:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    image:
+      repository: pdf-generator
+
   # Task Service - Task management and scheduling
   task:
     # Whether to deploy this service
@@ -496,6 +505,7 @@ secrets:
   #   notification:     liquio-notification-secret-config
   #   register:         liquio-register-secret-config
   #   sign-tool:        liquio-sign-tool-secret-config
+  #   pdf-generator:    liquio-pdf-generator-secret-config
   #   task:             liquio-task-secret-config
   existingSecrets: {}
 

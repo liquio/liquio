@@ -261,6 +261,11 @@ metadata:
     "subkeys" (list)
   )
 -}}
+{{ $pdfGeneratorBase := dict
+  "url" (printf "http://%s-pdf-generator:80/pdf" (include "liquio.fullname" .))
+  "basicAuthToken" "Basic <REDACTED>"
+  "requestTimeout" 120000
+-}}
 {{ $mappingBase := dict
   "taskBusiness" (dict
     "frontUrl" (dict
@@ -428,6 +433,10 @@ data:
   # File generator configuration
   file_generator.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "file_generator.json" "base" $fileGeneratorBase) | nindent 4 }}
+
+  # PDF generator configuration
+  pdf_generator.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "pdf_generator.json" "base" $pdfGeneratorBase) | nindent 4 }}
 
   # Mapping configuration
   mapping.json: |

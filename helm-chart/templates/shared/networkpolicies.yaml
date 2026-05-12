@@ -47,6 +47,9 @@
 {{- if .Values.services.signTool.enabled }}
 {{- include "liquio.networkPolicy.backendInternal" (dict "component" "sign-tool" "context" .) }}
 {{- end }}
+{{- if .Values.services.pdfGenerator.enabled }}
+{{- include "liquio.networkPolicy.backendInternal" (dict "component" "pdf-generator" "context" .) }}
+{{- end }}
 {{- if .Values.services.task.enabled }}
 {{- include "liquio.networkPolicy.backendInternal" (dict "component" "task" "context" .) }}
 {{- end }}

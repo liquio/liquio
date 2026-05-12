@@ -48,6 +48,7 @@ Replace `<version>` with a published chart version, e.g. `0.1.0`.
    docker build -t notification:latest ./notification
    docker build -t register:latest ./register
    docker build -t sign-tool:latest ./sign-tool
+   docker build -t pdf-generator:latest ./pdf-generator
    docker build -t task:latest ./task
    docker build -t external-reader:latest ./external-reader
    docker build -t filestorage:latest ./filestorage
@@ -219,6 +220,7 @@ secrets:
     gateway: liquio-gateway-secret-config
     manager: liquio-manager-secret-config
     notification: liquio-notification-secret-config
+    pdf-generator: liquio-pdf-generator-secret-config
     register: liquio-register-secret-config
     sign-tool: liquio-sign-tool-secret-config
     task: liquio-task-secret-config
