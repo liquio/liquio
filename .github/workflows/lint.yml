@@ -5,42 +5,88 @@ on:
     branches: [main]
 
 jobs:
-  lint:
+  detect:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service:
-          - admin-api
-          - admin-front
-          - cabinet-api
-          - cabinet-front
-          - event
-          - external-reader
-          - filestorage
-          - gateway
-          - id-api
-          - id-front
-          - manager
-          - notification
-          - pdf-generator
-          - register
-          - sign-tool
-          - task
-          - test
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      any: ${{ steps.build-matrix.outputs.any }}
+
     steps:
       - uses: actions/checkout@v6
-      
+        with:
+          fetch-depth: 0
+
+      - name: Build service matrix from changed paths
+        id: build-matrix
+        run: |
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            CHANGED=""
+            LINT_ALL=true
+          else
+            CHANGED=$(git diff --name-only "${{ github.event.before }}...HEAD")
+            LINT_ALL=false
+          fi
+
+          echo "Changed files:"
+          echo "${CHANGED:-<all>}"
+
+          FRONT_CORE=$(echo "$CHANGED" | grep -c '^front-core/' || true)
+          WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/lint\.yml' || true)
+
+          should_lint() {
+            local svc=$1
+            [ "$LINT_ALL" = "true" ] && return 0
+            [ "$WORKFLOW" -gt 0 ] && return 0
+            echo "$CHANGED" | grep -q "^${svc}/" && return 0
+            if [ "$FRONT_CORE" -gt 0 ]; then
+              { [ "$svc" = "admin-front" ] || [ "$svc" = "cabinet-front" ]; } && return 0
+            fi
+            return 1
+          }
+
+          INCLUDES=()
+          for svc in admin-api admin-front cabinet-api cabinet-front event \
+                     external-reader filestorage gateway id-api id-front \
+                     manager notification pdf-generator register sign-tool \
+                     task test; do
+            if should_lint "$svc"; then
+              INCLUDES+=("{\"service\":\"$svc\"}")
+            fi
+          done
+
+          if [ "${#INCLUDES[@]}" -eq 0 ]; then
+            echo "No service changes detected - skipping lint."
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'any=false' >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(printf '%s\n' "${INCLUDES[@]}" | jq -sc '{"include": .}')
+            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+            echo 'any=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  lint:
+    needs: detect
+    if: needs.detect.outputs.any == 'true'
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: '${{ matrix.service }}/package-lock.json'
-      
+
       - name: Install dependencies for ${{ matrix.service }}
         run: npm ci
         working-directory: ${{ matrix.service }}
-      
+
       - name: Lint ${{ matrix.service }}
         run: npm run lint
         working-directory: ${{ matrix.service }}
