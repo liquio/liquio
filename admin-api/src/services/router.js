@@ -86,6 +86,9 @@ class RouterService {
     // Init Express app.
     const app = express();
 
+    // Parse nested query params (e.g. filters[name]) into objects.
+    app.set('query parser', 'extended');
+
     app.use(asyncLocalStorageMiddleware);
 
     // Add gzip support
