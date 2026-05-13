@@ -3,7 +3,7 @@ import { existsSync } from 'fs';
 
 import Multiconf from 'multiconf';
 
-const CONFIG_PATH = join(__dirname, '..', '..', 'config');
+const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '..', '..', 'config');
 const SECRET_PATH = process.env.SECRET_PATH;
 
 export class Config {
