@@ -42,7 +42,7 @@ Per-service image tag versions managed in chart templates.
   "pdf-generator" "0.1.2"
   "register" "0.1.0"
   "sign-tool" "0.1.0"
-  "task" "0.1.0"
+  "task" "0.1.1"
 -}}
 {{- if and (kindIs "map" $overrides) (hasKey $overrides $component) -}}
 {{- index $overrides $component -}}
