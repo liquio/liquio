@@ -245,40 +245,45 @@ class Pkcs7EdsProvider extends EdsProvider {
       let ipnDRFO = null;
       let ipnEDRPOU = null;
 
+      const extractIdentifierPair = (rawValue) => {
+        if (rawValue === undefined || rawValue === null) {
+          return { primary: null, secondary: null };
+        }
+
+        const normalized = String(rawValue).trim();
+        if (!normalized) {
+          return { primary: null, secondary: null };
+        }
+
+        const [primaryRaw, secondaryRaw] = normalized.split('-', 2);
+        const primary = primaryRaw ? primaryRaw.trim() : null;
+        const secondary = secondaryRaw ? secondaryRaw.trim() : null;
+
+        return {
+          primary: primary || null,
+          secondary: secondary || null,
+        };
+      };
+
       // Strategy 1: Get IPN from the certificate subject's serialNumber field
       if (signatureInfo.subject && signatureInfo.subject.serialNumber) {
-        const serialNumber = String(signatureInfo.subject.serialNumber).trim();
-        if (serialNumber) {
-          // Handle cases where serialNumber contains both IPN and EDRPOU separated by dash
-          // Format: IPN-EDRPOU or just IPN
-          const serialParts = serialNumber.split('-');
-          const potentialIpn = serialParts[0].trim();
-
-          // Validate that it looks like an IPN (should be numeric, 8-10 digits)
-          if (/^\d{8,10}$/.test(potentialIpn)) {
-            ipnDRFO = potentialIpn;
-            if (serialParts.length > 1 && /^\d{8,10}$/.test(serialParts[1].trim())) {
-              ipnEDRPOU = serialParts[1].trim();
-            }
-          }
+        const serialIds = extractIdentifierPair(signatureInfo.subject.serialNumber);
+        if (serialIds.primary) {
+          ipnDRFO = serialIds.primary;
+        }
+        if (serialIds.secondary) {
+          ipnEDRPOU = serialIds.secondary;
         }
       }
 
       // Strategy 2: Fallback to personIdentifier if available and IPN not found yet
       if (!ipnDRFO && signatureInfo.subject && signatureInfo.subject.personIdentifier) {
-        const personId = String(signatureInfo.subject.personIdentifier).trim();
-        if (personId) {
-          // personIdentifier might also contain IPN information
-          const personIdParts = personId.split('-');
-          const potentialIpn = personIdParts[0].trim();
-
-          // Validate that it looks like an IPN
-          if (/^\d{8,10}$/.test(potentialIpn)) {
-            ipnDRFO = potentialIpn;
-            if (personIdParts.length > 1 && /^\d{8,10}$/.test(personIdParts[1].trim())) {
-              ipnEDRPOU = personIdParts[1].trim();
-            }
-          }
+        const personIds = extractIdentifierPair(signatureInfo.subject.personIdentifier);
+        if (personIds.primary) {
+          ipnDRFO = personIds.primary;
+        }
+        if (!ipnEDRPOU && personIds.secondary) {
+          ipnEDRPOU = personIds.secondary;
         }
       }
 
@@ -295,7 +300,7 @@ class Pkcs7EdsProvider extends EdsProvider {
       // Strategy 4: Check organizationIdentifier for EDRPOU if not found yet
       if (!ipnEDRPOU && signatureInfo.subject && signatureInfo.subject.organizationIdentifier) {
         const orgId = String(signatureInfo.subject.organizationIdentifier).trim();
-        if (/^\d{8,10}$/.test(orgId)) {
+        if (orgId) {
           ipnEDRPOU = orgId;
         }
       }
