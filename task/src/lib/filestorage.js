@@ -311,8 +311,8 @@ class FileStorage {
         body: buffer,
       });
 
-      // Parse response body - axios should automatically parse JSON, but handle both cases
-      let responseData = response.data;
+      // Support both response shapes: body object and legacy { data: body }.
+      let responseData = response && Object.prototype.hasOwnProperty.call(response, 'data') ? response.data : response;
       if (typeof responseData === 'string') {
         try {
           responseData = JSON.parse(responseData);
@@ -320,6 +320,12 @@ class FileStorage {
           log.save('filestorage-upload-from-stream-error', { name, body: responseData, error: parseError && parseError.message });
           throw parseError;
         }
+      }
+
+      if (!responseData) {
+        const error = new Error('Empty response body from filestorage upload');
+        log.save('filestorage-upload-from-stream-error', { name, error: error.message });
+        throw error;
       }
 
       // Check for API error in response
