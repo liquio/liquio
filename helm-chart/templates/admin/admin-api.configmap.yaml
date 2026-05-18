@@ -92,6 +92,13 @@ metadata:
   "timeout" 30000
   "url" (printf "http://%s-sign-tool" (include "liquio.fullname" .))
 -}}
+{{ $workflowEditorBase := dict
+  "disabled" false
+  "debugMode" (dict
+    "enabled" false
+    "repeats" (list 1 2 2 5 10)
+  )
+-}}
 data:
   # Auth configuration
   auth.json: |
@@ -144,3 +151,7 @@ data:
   # Sign configuration
   sign.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "sign.json" "base" $signBase) | nindent 4 }}
+
+  # Workflow editor configuration
+  workflow_editor.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "workflow_editor.json" "base" $workflowEditorBase) | nindent 4 }}
