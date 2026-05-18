@@ -6,7 +6,14 @@ metadata:
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
 {{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson -}}
-{{ $messageQueueBase := dict }}
+{{ $messageQueueBase := dict
+  "maxHandlingMessages" 2
+  "readingQueueName" "bpmn-manager-incoming"
+  "writingQueueTask" "bpmn-task-incoming"
+  "writingQueueEvent" "bpmn-event-incoming"
+  "writingQueueGateway" "bpmn-gateway-incoming"
+  "retryConnectionTime" 10000
+-}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
