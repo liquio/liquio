@@ -58,7 +58,7 @@ metadata:
 -}}
 {{ $pingBase := dict
   "manager" (dict
-    "url" (printf "%s://%s/test/ping" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "manager")))
+    "url" (printf "http://%s-manager/test/ping" (include "liquio.fullname" .))
   )
   "healthz" (dict
     "db" (dict
@@ -164,7 +164,7 @@ metadata:
 -}}
 {{ $externalBpmnBase := dict
   "test" (dict
-    "url" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "task")))
+    "url" (printf "http://%s-task" (include "liquio.fullname" .))
     "token" "Basic test-token"
     "requestTimeout" 30000
   )
@@ -202,7 +202,7 @@ metadata:
   )
   "registers" (dict
     "provider" "liquio"
-    "url" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "register")))
+    "url" (printf "http://%s-register" (include "liquio.fullname" .))
     "timeout" 20000
   )
   "externalService" (dict
@@ -253,8 +253,8 @@ metadata:
 {{ $systemNotifierBase := dict
   "adminUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "email" (dict
-    "server" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "notification")))
-    "port" 443
+    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "port" 80
     "routes" (dict
       "sendEmail" "/message/emailsList"
       "sendToUser" "/message/usersList"
