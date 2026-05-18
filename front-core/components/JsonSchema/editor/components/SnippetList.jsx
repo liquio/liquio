@@ -146,8 +146,7 @@ const SnippetList = () => {
       setGroupsLoading(true);
       const result = await dispatch(getSnippetsGroups());
       setGroupsLoading(false);
-      if (result instanceof Error) return;
-      setGroups(result);
+      setGroups(Array.isArray(result) ? result : []);
     };
 
     if (['development', 'stage'].includes(config?.application?.environment)) {
@@ -160,8 +159,7 @@ const SnippetList = () => {
       setSnippetsLoading(true);
       const result = await dispatch(requestSnippets());
       setSnippetsLoading(false);
-      if (result instanceof Error) return;
-      setSnippets(result);
+      setSnippets(Array.isArray(result) ? result : []);
     };
 
     if (['development', 'stage'].includes(config?.application?.environment)) {

@@ -5,7 +5,6 @@ import { useOptions } from './hooks/useOptions';
 import { useLanguageProvider } from './hooks/useLanguageProvider';
 import { useMonacoEditorThemes } from './hooks/useMonacoEditorThemes';
 import { useDiagnosticsOptions } from './hooks/useDiagnosticsOptions';
-import { useInlineCompletionProvider } from './hooks/useInlineCompletionProvider';
 import { DragProvider } from './DragProvider';
 
 export const Editor = (props) => {
@@ -35,7 +34,6 @@ export const Editor = (props) => {
   useMonacoEditorThemes();
   useDiagnosticsOptions();
   useLanguageProvider(props.value);
-  useInlineCompletionProvider(props.language);
 
   const editorDidMount = (editor, monaco) => {
     setEditorInstance(editor);

@@ -57,11 +57,7 @@ const ElementDesktop = ({ readOnly }) => {
             icon={<SettingsIcon />}
             schema={editorSettingsSchema}
             defaults={{
-              controlHintsEnabled: true,
-              copilot: {
-                enabled: true,
-                model: 'liquio-copilot',
-              }
+              controlHintsEnabled: true
             }}
           />
         </div>

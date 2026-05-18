@@ -15,7 +15,18 @@ export const useControlDictionary = () => {
 
   React.useEffect(() => {
     if (!list) {
-      api.get('dictionary/controls/list', 'DICTIONARY/LOAD_CONTROLS', dispatch);
+      api
+        .get('dictionary/controls/list', 'DICTIONARY/LOAD_CONTROLS', dispatch)
+        .then((result) => {
+          if (!Array.isArray(result)) {
+            dispatch({ type: 'DICTIONARY/LOAD_CONTROLS_SUCCESS', payload: [] });
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching control dictionary:', error);
+          dispatch({ type: 'DICTIONARY/LOAD_CONTROLS_SUCCESS', payload: [] });
+          return [];
+        });
     }
   }, [list, dispatch]);
 
@@ -34,12 +45,12 @@ export const useControlDictionary = () => {
       )
       .catch((error) => {
         console.error('Error fetching control contents:', error);
-        return null;
+        return [];
       });
   };
 
   return {
-    list: list?.filter(Boolean),
+    list: Array.isArray(list) ? list.filter(Boolean) : [],
     getControlContents
   };
 };
