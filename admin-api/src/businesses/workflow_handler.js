@@ -17,6 +17,16 @@ class WorkflowHandlerBusiness {
     // Define singleton.
     if (!WorkflowHandlerBusiness.singleton) {
       this.config = config;
+      this.defaultDebugRepeats = [1, 2, 2, 5, 10];
+
+      const workflowEditorConfig = global.config?.workflow_editor;
+      const debugModeConfig = workflowEditorConfig?.debugMode;
+
+      this.debugModeEnabled = debugModeConfig?.enabled === true;
+      this.debugRepeats = Array.isArray(debugModeConfig?.repeats) && debugModeConfig.repeats.length > 0
+        ? debugModeConfig.repeats
+        : this.defaultDebugRepeats;
+
       WorkflowHandlerBusiness.singleton = this;
     }
 
@@ -73,16 +83,15 @@ class WorkflowHandlerBusiness {
 
     global.messageQueue.produce(name, message);
 
-    if (config.workflow_editor.debugMode && typeof message.debug !== 'undefined' && message.debug === true) {
-      if (config.workflow_editor.debugMode.enabled === false) {
+    if (message.debug === true) {
+      if (this.debugModeEnabled === false) {
         return { error: 'Debug mode is disabled.' };
       }
 
-      let repeat = config.workflow_editor.debugMode.repeats.length;
       let debug;
-      for (let i = 0; i < repeat; i++) {
+      for (let i = 0; i < this.debugRepeats.length; i++) {
         // Wait response.
-        await new Promise((resolve) => setTimeout(resolve, config.workflow_editor.debugMode.repeats[i] * 1000));
+        await new Promise((resolve) => setTimeout(resolve, this.debugRepeats[i] * 1000));
 
         debug = await models.workflowDebug.findById(message.debugId);
         if (debug && debug.data) {
