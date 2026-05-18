@@ -13,7 +13,12 @@ metadata:
   "customer" .Release.Name
   "environment" .Values.config.server.environment
 -}}
-{{ $messageQueueBase := dict }}
+{{ $messageQueueBase := dict
+  "maxHandlingMessages" 2
+  "readingQueueName" "bpmn-gateway-incoming"
+  "writingQueueName" "bpmn-manager-incoming"
+  "retryConnectionTime" 10000
+-}}
 {{ $redisBase := dict
   "hostname" (include "liquio.redis.host" .)
   "port" .Values.config.redis.port
