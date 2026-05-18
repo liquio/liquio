@@ -12,17 +12,25 @@ export default function dictionaryReducer(state = initialState, action) {
         ...state,
         controls: {
           ...state.controls,
-          list: [...action.payload],
+          list: Array.isArray(action.payload) ? [...action.payload] : [],
+        }
+      };
+    case 'DICTIONARY/LOAD_CONTROLS_FAIL':
+      return {
+        ...state,
+        controls: {
+          ...state.controls,
+          list: [],
         }
       };
     case 'DICTIONARY/LOAD_CONTROL_CONTENTS_SUCCESS':
-      const contents = [...action.payload];
+      const contents = Array.isArray(action.payload) ? [...action.payload] : [];
       const { key, control } = action.request;
       return {
         ...state,
         controls: {
           ...state.controls,
-          list: [...state.controls.list, control],
+          list: [...(state.controls.list || []), control],
           map: {
             ...state.controls.map,
             [[control, key].join('.')]: contents

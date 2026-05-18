@@ -19,7 +19,6 @@ const DELETE_CODE_GENERATION_CHAT_HISTORY = 'AI_DELETE_CODE_GENERATION_CHAT_HIST
 const SEND_ANOMALIES_ANALYZE = 'AI_SEND_ANOMALIES_ANALYZE';
 const SEND_SCHEMA_TO_GENERATE_TECH_SPECS = 'AI_SEND_SCHEMA_TO_GENERATE_TECH_SPECS';
 const SET_EXTERNAL_COMMAND = 'AI_SET_EXTERNAL_COMMAND';
-const SET_COPILOT_STATUS = 'AI_SET_COPILOT_STATUS';
 
 function customHeaders() {
   const config = getConfig();
@@ -206,9 +205,4 @@ export const generateTechSpecBySchema = (body) => (dispatch) =>
 export const sendExternalCommand = (externalCommand) => ({
   type: SET_EXTERNAL_COMMAND,
   payload: externalCommand
-});
-
-export const setCopilotStatus = (status) => ({
-  type: SET_COPILOT_STATUS,
-  payload: status
 });

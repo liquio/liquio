@@ -246,11 +246,7 @@ CodeEditor.Settings = () => {
       icon={<SettingsIcon />}
       schema={editorSettingsSchema || {}}
       defaults={{
-        controlHintsEnabled: true,
-        copilot: {
-          enabled: true,
-          model: 'liquio-copilot',
-        }
+        controlHintsEnabled: true
       }}
     />
   );

@@ -16,6 +16,8 @@ const EventTemplateEntity = require('../entities/event_template');
 const WorkflowHistoryEntity = require('../entities/workflow_history');
 const NumberTemplateEntity = require('../entities/number_template');
 
+const DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS = 1800;
+
 /**
  * BPMN workflow business.
  */
@@ -499,7 +501,12 @@ class BpmnWorkflowBusiness {
       return this.saveVersion(workflowTemplateId, { user });
     }
 
-    const autoSaveVersionAfter = config.workflow_history.autoSaveVersionAfter;
+    const configuredAutoSaveVersionAfter = Number(
+      config.workflow_history?.autoSaveVersionAfter ?? DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS,
+    );
+    const autoSaveVersionAfter = Number.isFinite(configuredAutoSaveVersionAfter)
+      ? configuredAutoSaveVersionAfter
+      : DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS;
     const lastSavedDatetimeWithDelay = moment(lastWorkflowHistory.createdAt).add(autoSaveVersionAfter, 'seconds');
     const currentDateTime = moment();
 

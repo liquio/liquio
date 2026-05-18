@@ -2,7 +2,8 @@ import * as api from 'services/api';
 
 export const requestSnippets = () => (dispatch) =>
   api.get('snippets', 'REQUEST_SNIPPETS', dispatch).catch((error) => {
-    return error;
+    console.error('Error fetching snippets:', error);
+    return [];
   });
 
 export const createSnippet = (data) => (dispatch) =>
@@ -44,7 +45,8 @@ export const exportSnippets = (body) => (dispatch) =>
 
 export const getSnippetsGroups = () => (dispatch) =>
   api.get('snippet-groups', 'GET_SNIPPET_GROUPS', dispatch).catch((error) => {
-    return error;
+    console.error('Error fetching snippet groups:', error);
+    return [];
   });
 
 export const createSnippetsGroup = (data) => (dispatch) =>

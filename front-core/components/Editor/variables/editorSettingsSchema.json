@@ -7,40 +7,6 @@
       "type": "boolean",
       "description": "Увімкнути підказки для контролів"
     },
-    "copilot": {
-      "type": "object",
-      "description": "Налаштування Copilot",
-      "control": "form.group",
-      "blockDisplay": true,
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "description": "Увімкнути Copilot"
-        },
-        "model": {
-          "type": "string",
-          "description": "Модель Copilot",
-          "checkReadOnly": "(a,b,c,parentValue) => !parentValue?.copilot?.enabled",
-          "sample": "Назва моделі, наприклад, gpt-3.5-turbo"
-        },
-        "maxOutputTokens": {
-          "type": "integer",
-          "description": "Максимальна кількість токенів",
-          "checkReadOnly": "(a,b,c,parentValue) => !parentValue?.copilot?.enabled",
-          "minimum": 1,
-          "maximum": 4096,
-          "value": 1000
-        },
-        "temperature": {
-          "type": "number",
-          "description": "Температура генерації",
-          "checkReadOnly": "(a,b,c,parentValue) => !parentValue?.copilot?.enabled",
-          "minimum": 0,
-          "maximum": 1,
-          "default": 0.5
-        }
-      }
-    },
     "options": {
       "type": "object",
       "description": "Опції редактора monaco-editor.options",
