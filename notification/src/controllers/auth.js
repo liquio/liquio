@@ -23,7 +23,7 @@ const checkAuth = async function (req, res, next) {
   let decodedAuthData;
   try {
     decodedAuthData = Buffer.from(authData, 'base64').toString('utf8');
-  } catch (error) {
+  } catch {
     return sendAuthError(res, undefined, 'Authorization token not valid');
   }
 
