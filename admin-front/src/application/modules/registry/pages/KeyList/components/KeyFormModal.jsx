@@ -41,6 +41,11 @@ class KeyFormModal extends React.Component {
 
   componentDidMount() {
     this.init();
+    if (this.props.open) {
+      const { value, t, type, newKey } = this.props;
+      const schemaResult = schema({ t, type, newKey });
+      this.setState({ value: this.applyDefaults(value, schemaResult) });
+    }
   }
 
   init = async () => {
@@ -54,18 +59,51 @@ class KeyFormModal extends React.Component {
     this.setState({ options });
   };
 
+  applyDefaults = (value, schemaResult) => {
+    const result = { ...(value || {}) };
+    if (typeof result.schema !== 'object') {
+      result.schema = schemaResult.properties.schema.defaultSchema;
+    }
+    if (!Object.prototype.hasOwnProperty.call(result, 'toString')) {
+      result.toString = schemaResult.properties.toString.defaultSchema;
+    }
+    if (!Object.prototype.hasOwnProperty.call(result, 'toSearchString')) {
+      result.toSearchString = schemaResult.properties.toSearchString.defaultSchema;
+    }
+    if (typeof result.toString !== 'function') {
+      Object.defineProperty(result, Symbol.toPrimitive, {
+        value: () => '[object Object]',
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      });
+    }
+    return result;
+  };
+
   componentDidUpdate = (prevProps) => {
-    const { open, value } = this.props;
+    const { open, value, t, type, newKey } = this.props;
 
     if (open !== prevProps.open) {
+      const schemaResult = schema({ t, type, newKey });
       this.setState({
-        value,
+        value: this.applyDefaults(value, schemaResult),
         errors: [],
       });
     }
   };
 
-  handleChange = (value) => this.setState({ value });
+  handleChange = (value) => {
+    if (value && typeof value.toString !== 'function') {
+      Object.defineProperty(value, Symbol.toPrimitive, {
+        value: () => '[object Object]',
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      });
+    }
+    this.setState({ value });
+  };
 
   handleSave = async () => {
     const { t, onChange, registerId } = this.props;

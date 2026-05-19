@@ -108,6 +108,7 @@ const FavoritesList = ({
       <DataTableStated
         data={loading ? [] : list}
         onRowClick={onRowClick}
+        updateOnChangeSearch={false}
         actions={{
           load
         }}

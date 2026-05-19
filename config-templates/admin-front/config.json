@@ -27,6 +27,7 @@
   "idAuthLink": "http://localhost:8080/authorise",
   "enabledDeleteUser": false,
   "enabledMocksPage": false,
+  "hideQr": true,
   "defaultLanguage": "en",
   "testCategory": 29
 }
