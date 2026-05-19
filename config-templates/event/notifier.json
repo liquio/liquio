@@ -13,7 +13,7 @@
     },
     "timeout": 30000,
     "user": "<removed>",
-    "hashedPassword": "<removed>",
+    "password": "<removed>",
     "templateParams": {
       "frontUrl": "https://front-dev-oe.liquio.local"
     },
@@ -29,7 +29,7 @@
       "ping": "/test/ping"
     },
     "user": "<removed>",
-    "hashedPassword": "<removed>",
+    "password": "<removed>",
     "templateParams": {
       "frontUrl": "https://front-dev-oe.liquio.local"
     }

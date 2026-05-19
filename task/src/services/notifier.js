@@ -29,11 +29,11 @@ class NotifierService {
       this.port = config.notifier.port;
       this.user = config.notifier.user;
       this.routes = { ...ROUTES, ...(config.notifier.routes || {}) };
-      this.hashedPassword = config.notifier.hashedPassword;
+      this.password = config.notifier.password;
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        Authorization: `Basic ${this.user}:${this.hashedPassword}`
+        Authorization: `Basic ${Buffer.from(`${this.user}:${this.password}`, 'utf8').toString('base64')}`
       };
       this.timeout = config.notifier.timeout || 30000;
       this.clientId = config.notifier.clientId;

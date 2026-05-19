@@ -20,11 +20,11 @@ class LiquioProvider extends Provider {
       this.port = config.port;
       this.routes = config.routes;
       this.user = config.user;
-      this.hashedPassword = config.hashedPassword;
+      this.password = config.password;
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        Authorization: `Basic ${this.user}:${this.hashedPassword}`,
+        Authorization: `Basic ${Buffer.from(`${this.user}:${this.password}`, 'utf8').toString('base64')}`,
       };
       LiquioProvider.singleton = this;
     }
