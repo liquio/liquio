@@ -1,5 +1,5 @@
 const AppInfo = require('./app_info');
-const conf = require('../config/config');
+const { conf } = require('../config/config');
 
 // Constants.
 const DEFAULT_CUSTOMER = '1';

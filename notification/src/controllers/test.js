@@ -2,7 +2,7 @@
 const { checkAuth } = require('./auth');
 const Router = require('restify-router').Router;
 const axios = require('axios');
-const conf = require('../config/config');
+const { conf } = require('../config/config');
 
 const routerInstance = new Router();
 
