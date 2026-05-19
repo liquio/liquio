@@ -3,7 +3,7 @@
   "port": 3003,
   "timeout": 30000,
   "user": "<removed>",
-  "hashedPassword": "<removed>",
+  "password": "<removed>",
   "clientId": "",
   "routes": {
     "ping": "/test/ping",

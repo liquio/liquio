@@ -16,11 +16,11 @@ class SystemNotifier {
       this.emailRoutes = global.config.system_notifier.email.routes;
       this.emailTimeout = global.config.system_notifier.email.timeout;
       this.emailUser = global.config.system_notifier.email.user;
-      this.emailHashedPassword = global.config.system_notifier.email.hashedPassword;
+      this.emailPassword = global.config.system_notifier.email.password;
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        Authorization: `Basic ${global.config.system_notifier.email.user}:${global.config.system_notifier.email.hashedPassword}`,
+        Authorization: `Basic ${Buffer.from(`${global.config.system_notifier.email.user}:${global.config.system_notifier.email.password}`, 'utf8').toString('base64')}`,
       };
       this.emails = global.config.system_notifier.email.emails;
       this.emailSubject = global.config.system_notifier.email.subject;

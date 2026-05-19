@@ -436,61 +436,60 @@ jq --arg key "$(generate_secret)" \
   server="http://notification"
   login="notification"
   password=$(generate_secret)
-  login_hash=$(node -e 'process.stdout.write(require("crypto").createHmac("sha512", process.argv[1]).update(process.argv[2]).digest("hex").toUpperCase())' $login $password)
-  token="Basic $login:$password"
+  token="Basic $(echo -n "$login:$password" | base64 -w0)"
 
   file="config/notification/config.json"
   echo "$file"
-  jq --arg login "$login_hash" \
-    --arg hash "$password" \
-    '.production.authorization.list = [{ user: $login, password: $hash }]' \
+  jq --arg login "$login" \
+    --arg password "$password" \
+    '.production.authorization.list = [{ user: $login, password: $password }]' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/admin-api/notifier.json"
   echo "$file"
   jq --arg login "$login" \
-    --arg hashedPassword "$password" \
+    --arg password "$password" \
     --arg server "$server" \
-    '.user = $login | .hashedPassword = $hashedPassword | .server = $server' \
+    '.user = $login | .password = $password | .server = $server' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/task/notifier.json"
   echo "$file"
   jq --arg login "$login" \
-    --arg hashedPassword "$password" \
-    '.user = $login | .hashedPassword = $hashedPassword' \
+    --arg password "$password" \
+    '.user = $login | .password = $password' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/event/notifier.json"
   echo "$file"
   jq --arg login "$login" \
-    --arg hashedPassword "$password" \
+    --arg password "$password" \
     --arg server "$server" \
-    '.email.user = $login | .email.hashedPassword = $hashedPassword | .email.server = $server | .sms.user = $login | .sms.hashedPassword = $hashedPassword | .sms.server = $server' \
+    '.email.user = $login | .email.password = $password | .email.server = $server | .sms.user = $login | .sms.password = $password | .sms.server = $server' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/event/system_notifier.json"
   echo "$file"
   jq --arg login "$login" \
-    --arg hashedPassword "$password" \
+    --arg password "$password" \
     --arg server "$server" \
-    '.email.user = $login | .email.hashedPassword = $hashedPassword | .email.server = $server' \
+    '.email.user = $login | .email.password = $password | .email.server = $server' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/gateway/system_notifier.json"
   echo "$file"
   jq --arg login "$login" \
-    --arg hashedPassword "$password" \
+    --arg password "$password" \
     --arg server "$server" \
-    '.email.user = $login | .email.hashedPassword = $hashedPassword | .email.server = $server' \
+    '.email.user = $login | .email.password = $password | .email.server = $server' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/manager/system_notifier.json"
   echo "$file"
   jq --arg login "$login" \
-    --arg hashedPassword "$password" \
+    --arg password "$password" \
     --arg server "$server" \
-    '.email.user = $login | .email.hashedPassword = $hashedPassword | .email.server = $server' \
+    '.email.user = $login | .email.password = $password | .email.server = $server' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/id/config.json"

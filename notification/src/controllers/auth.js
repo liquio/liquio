@@ -20,17 +20,29 @@ const checkAuth = async function (req, res, next) {
     return sendAuthError(res);
   }
 
-  const [login, pass] = authData.split(':');
+  let decodedAuthData;
+  try {
+    decodedAuthData = Buffer.from(authData, 'base64').toString('utf8');
+  } catch (error) {
+    return sendAuthError(res, undefined, 'Authorization token not valid');
+  }
+
+  const separatorIndex = decodedAuthData.indexOf(':');
+  if (separatorIndex === -1) {
+    return sendAuthError(res, undefined, 'Authorization token not valid');
+  }
+
+  const login = decodedAuthData.slice(0, separatorIndex);
+  const pass = decodedAuthData.slice(separatorIndex + 1);
   if (!pass) {
     return sendAuthError(res, undefined, 'Password not match');
   }
 
-  const hmacLogin = crypto.createHmac('sha512', login).update(pass).digest('hex').toUpperCase();
-
   let existedClient;
   if (authConfig.list && Array.isArray(authConfig.list)) {
-    existedClient = authConfig.list.find(({ user, password }) => user === hmacLogin && pass === password);
+    existedClient = authConfig.list.find(({ user, password }) => user === login && pass === password);
   } else {
+    const hmacLogin = crypto.createHmac('sha512', login).update(pass).digest('hex').toUpperCase();
     existedClient = await Authorize.findOne({ where: { login: hmacLogin, password: pass } });
   }
 
