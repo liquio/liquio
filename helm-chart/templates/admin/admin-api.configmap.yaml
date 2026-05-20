@@ -84,7 +84,7 @@ metadata:
   "token" "Basic dGFzazp0YXNr"
 -}}
 {{ $userBase := dict
-  "allowSetAdminTestUser" false
+  "allowSetAdminTestUser" true
   "shouldSetupAdmin" true
   "adminUnitId" (list 1000001 1000002 1000000041)
 -}}
