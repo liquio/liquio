@@ -35,8 +35,13 @@ export const setAdmin = (userId) => (dispatch) =>
   api
     .post(`users/${userId}/set-admin`, {}, SET_USER_ADMIN, dispatch, { userId })
     .catch((error) => {
+      const errorMessage =
+        error?.response?.error?.message ||
+        error?.response?.message ||
+        error?.message;
+
       if (
-        error?.message ===
+        errorMessage ===
         'Assigning the administrator role to test users is prohibited'
       ) {
         dispatch(addError(new Error('FailSetAdminTestUser')));
