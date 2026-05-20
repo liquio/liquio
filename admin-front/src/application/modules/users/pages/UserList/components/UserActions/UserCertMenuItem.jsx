@@ -64,26 +64,40 @@ const UserCertMenuItem = ({
             setOpen(true);
             onClose();
             const signer = edsService.getSigner();
-            const {
-              services: { eds },
-            } = await actions.getUserInfo(userId);
+            const { services } = await actions.getUserInfo(userId);
 
             setError(null);
             setInfo(null);
 
-            if (!eds) {
+            // Try to get certificate from eds, govid, diia, or x509 service
+            const certService = services?.eds || services?.govid || services?.diia || services?.x509;
+
+            if (!certService) {
               setError(new Error(t('PemNotFound')));
               return;
             }
 
-            signer
-              .execute('ParseCertificate', eds.data.pem)
-              .then((value) => {
-                setInfo(value);
-              })
-              .catch((e) => {
-                setError(new Error(t(e.message)));
-              });
+            const pemData = certService.data?.pem || certService.data?.commonName;
+
+            if (!pemData) {
+              setError(new Error(t('PemNotFound')));
+              return;
+            }
+
+            // Only parse if it's a PEM certificate
+            if (certService.data?.pem) {
+              signer
+                .execute('ParseCertificate', certService.data.pem)
+                .then((value) => {
+                  setInfo(value);
+                })
+                .catch((e) => {
+                  setError(new Error(t(e.message)));
+                });
+            } else {
+              // For x509 or other services, just display the service data
+              setInfo(certService.data);
+            }
           }}
           size="large"
         >
