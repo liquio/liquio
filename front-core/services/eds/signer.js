@@ -46,7 +46,7 @@ export default class Signer {
       case 'DevelopData':
         return this._developData(message.commandData[0]);
       case 'VerifyDataInternal':
-        return this._verifyDataInternal(message.commandData[0]);
+        return this._verifyDataInternal(message.commandData[0], message.commandData[1]);
       case 'VerifyHash':
         return this._verifyHash(message.commandData[0], message.commandData[1]);
       case 'HashData':
@@ -428,11 +428,103 @@ export default class Signer {
    * Verify data internal
    * @param {string|object} certificate - Certificate to verify with
    */
-  async _verifyDataInternal(certificate) {
+  async _verifyDataInternal(base64Data, fallbackSignTime = null) {
     try {
-      // Implement signature verification logic
-      console.warn('EDS subsystem: Internal data verification not implemented yet');
-      return { valid: true, certificate: certificate };
+      const der = forge.util.decode64(base64Data);
+      const asn1 = forge.asn1.fromDer(der);
+      const p7 = forge.pkcs7.messageFromAsn1(asn1);
+
+      const getAttrValue = (attrs = [], shortName) => {
+        const attr = attrs.find((item) => item.shortName === shortName);
+        return attr ? attr.value : null;
+      };
+
+      const formatDn = (attrs = []) =>
+        attrs
+          .map((item) => `${item.shortName || item.name || 'attr'}=${item.value}`)
+          .join(', ');
+
+      const formatDate = (date) =>
+        date instanceof Date && !Number.isNaN(date.getTime())
+          ? date.toISOString()
+          : null;
+
+      let certificateDetails = {
+        subjCN: null,
+        subjOrg: null,
+        subjUnit: null,
+        subjCountry: null,
+        issuerCN: null,
+        issuerOrg: null,
+        issuerUnit: null,
+        issuerCountry: null,
+        serialNumber: null,
+        validFrom: null,
+        validTo: null,
+        subjectDN: null,
+        issuerDN: null,
+      };
+
+      if (p7.certificates && p7.certificates.length > 0) {
+        const cert = p7.certificates[0];
+        certificateDetails = {
+          subjCN: getAttrValue(cert.subject.attributes, 'CN'),
+          subjOrg: getAttrValue(cert.subject.attributes, 'O'),
+          subjUnit: getAttrValue(cert.subject.attributes, 'OU'),
+          subjCountry: getAttrValue(cert.subject.attributes, 'C'),
+          issuerCN: getAttrValue(cert.issuer.attributes, 'CN'),
+          issuerOrg: getAttrValue(cert.issuer.attributes, 'O'),
+          issuerUnit: getAttrValue(cert.issuer.attributes, 'OU'),
+          issuerCountry: getAttrValue(cert.issuer.attributes, 'C'),
+          serialNumber: cert.serialNumber || null,
+          validFrom: formatDate(cert.validity?.notBefore),
+          validTo: formatDate(cert.validity?.notAfter),
+          subjectDN: formatDn(cert.subject.attributes),
+          issuerDN: formatDn(cert.issuer.attributes),
+        };
+      }
+
+      // Extract signing time from authenticated attributes (OID 1.2.840.113549.1.9.5)
+      let signTimeStamp = null;
+      const signingTimeOid = '1.2.840.113549.1.9.5';
+      const authAttrs = p7.rawCapture && p7.rawCapture.authenticatedAttributes;
+      if (authAttrs && authAttrs.value) {
+        for (const attrSeq of authAttrs.value) {
+          if (!attrSeq.value || attrSeq.value.length < 2) continue;
+          if (attrSeq.value[0].value === signingTimeOid) {
+            const timeNode = attrSeq.value[1].value && attrSeq.value[1].value[0];
+            if (timeNode) {
+              if (timeNode.type === forge.asn1.Type.UTCTIME) {
+                signTimeStamp = forge.asn1.utcTimeToDate(timeNode.value).toISOString();
+              } else if (timeNode.type === forge.asn1.Type.GENERALIZEDTIME) {
+                signTimeStamp = forge.asn1.generalizedTimeToDate(timeNode.value).toISOString();
+              } else {
+                signTimeStamp = timeNode.value;
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      return {
+        ownerInfo: {
+          subjCN: certificateDetails.subjCN,
+          subjOrg: certificateDetails.subjOrg,
+          subjUnit: certificateDetails.subjUnit,
+          subjCountry: certificateDetails.subjCountry,
+        },
+        timeInfo: { signTimeStamp: signTimeStamp || fallbackSignTime },
+        issuerCN: certificateDetails.issuerCN,
+        issuerOrg: certificateDetails.issuerOrg,
+        issuerUnit: certificateDetails.issuerUnit,
+        issuerCountry: certificateDetails.issuerCountry,
+        serialNumber: certificateDetails.serialNumber,
+        validFrom: certificateDetails.validFrom,
+        validTo: certificateDetails.validTo,
+        subjectDN: certificateDetails.subjectDN,
+        issuerDN: certificateDetails.issuerDN,
+      };
     } catch (error) {
       console.error('EDS subsystem: Failed to verify data internally:', error);
       throw error;
