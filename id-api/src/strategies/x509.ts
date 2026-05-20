@@ -7,6 +7,7 @@ import { SignatureInfoSigner, X509Service } from '../services/x509.service';
 import { Services } from '../services';
 import { Helpers } from '../lib/helpers';
 import { Models, UserAttributes, UserServicesAttributes } from '../models';
+import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 
 export interface X509StrategyOptions {
   passReqToCallback?: boolean;
@@ -166,6 +167,12 @@ export async function x509(app: Express) {
   app.post('/authorise/x509', passport.authenticate('x509', { keepSessionInfo: true }), async (req: Request, res: Response) => {
     log.save('x509-strategy|authorise|success', { user: Helpers.shorten(JSON.stringify(req.user)) }, 'info');
     await saveSession(req, req.user);
+
+    const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'login' });
+    if (loginHistoryData) {
+      await Models.model('loginHistory').create(loginHistoryData);
+    }
+
     res.send({ error: null, redirect: '/authorise/continue/' });
   });
 
