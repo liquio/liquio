@@ -153,8 +153,9 @@ async function createRequest(
     }
 
     if (response.status === 403) {
-      const error = new Error('403 forbidden');
+      const error = new Error(responseBody?.error?.message || '403 forbidden');
       error.details = responseBody?.error?.details;
+      error.response = responseBody;
       throw error;
     }
 
