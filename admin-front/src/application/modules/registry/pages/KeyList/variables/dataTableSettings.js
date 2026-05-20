@@ -1,7 +1,6 @@
 import React from 'react';
 import moment from 'moment';
 import KeyActions from '../components/KeyActions';
-import SyncStatus from '../components/SyncStatusColumn';
 
 const styles = {
   value: {
@@ -22,21 +21,6 @@ const styles = {
 };
 
 export default ({ t, registerId, actions, readOnly, userUnits }) => {
-  const elasticAdmin = userUnits.find(({ id }) => id === 1000012);
-
-  const syncStatusColumn = elasticAdmin
-    ? {
-        id: 'sync',
-        align: 'left',
-        sortable: false,
-        name: t('Synchronization'),
-        width: 200,
-        disableTooltip: true,
-        disableClick: true,
-        render: (value, row) => <SyncStatus t={t} value={value} row={row} />,
-      }
-    : null;
-
   return {
     controls: {
       pagination: true,
@@ -102,7 +86,6 @@ export default ({ t, registerId, actions, readOnly, userUnits }) => {
           );
         },
       },
-      syncStatusColumn,
       {
         id: 'actions',
         align: 'right',
