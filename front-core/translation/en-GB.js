@@ -2325,7 +2325,7 @@ export default {
     Workflow: 'Process',
     UserName: 'User',
     UserId: 'User ID',
-    Ipn: 'User ID',
+    Ipn: 'National ID',
     UnitName: 'Unit',
     UnitId: 'Unit ID',
     FromShort: 'From',
