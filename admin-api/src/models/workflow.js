@@ -208,8 +208,6 @@ class WorkflowModel extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    sequelizeOptions.maxLimit = true;
-
     let workflows = await this.model.paginate(sequelizeOptions, { briefInfo });
 
     const promises = workflows.data.map(async (item) => {
