@@ -7,6 +7,8 @@
   "private": true,
   "license": "SEE LICENSE IN ../LICENSE.md",
   "scripts": {
+    "prebuild": "node scripts/sync-pdf-worker.js",
+    "prestart": "node scripts/sync-pdf-worker.js",
     "build": "craco build",
     "eject": "craco eject",
     "format": "prettier --write 'src/**/*.{js,jsx,ts,tsx,css,md,json}'",

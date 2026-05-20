@@ -15,6 +15,38 @@ const DocumentPreview = ({ t, details, actions, onClose }) => {
   const [file, setFile] = React.useState(null);
   const { fileId, fileName, fileType } = details.document;
 
+  const normalizePdfPayload = React.useCallback((payload) => {
+    if (typeof payload !== 'string') {
+      return payload;
+    }
+
+    if (!payload) {
+      return payload;
+    }
+
+    // Backend can return octet-stream data URLs or raw base64 for PDFs.
+    if (payload.startsWith('data:application/octet-stream;base64,')) {
+      return payload.replace(
+        'data:application/octet-stream;base64,',
+        'data:application/pdf;base64,',
+      );
+    }
+
+    if (payload.startsWith('data:application/pdf;base64,')) {
+      return payload;
+    }
+
+    if (payload.startsWith('data:') && payload.includes(';base64,')) {
+      return payload.replace(/^data:[^;]+;base64,/, 'data:application/pdf;base64,');
+    }
+
+    if (!payload.startsWith('data:')) {
+      return `data:application/pdf;base64,${payload}`;
+    }
+
+    return payload;
+  }, []);
+
   const getFile = async () => {
     onClose();
     const result = await actions.requestWorkflowProcessAttach(details.id, {
@@ -27,7 +59,7 @@ const DocumentPreview = ({ t, details, actions, onClose }) => {
       return;
     }
 
-    setFile(result);
+    setFile(normalizePdfPayload(result));
   };
 
   const getExtension = () =>

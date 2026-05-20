@@ -58,6 +58,7 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: 4,
     background: '#FFFFFF',
     boxShadow: '0px 4px 10px 0px rgba(0, 0, 0, 0.04)',
+    color: '#000',
     paddingLeft: 6,
     paddingRight: 6,
     display: 'flex',
@@ -74,7 +75,8 @@ const useStyles = makeStyles((theme) => ({
     }
   },
   select: {
-    padding: '0 49px 0 0 !important'
+    color: '#000',
+    padding: '7px 40px 7px 10px !important'
   },
   selectRoot: {
     border: '1px solid #CFD4DA',
@@ -82,10 +84,11 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: 4,
     marginLeft: 8,
     marginRight: 8,
-    height: 6,
+    minHeight: 36,
     paddingRight: 0
   },
   selectIcon: {
+    color: '#000',
     borderLeft: '1px solid #CFD4DA',
     right: 1
   },
@@ -117,18 +120,34 @@ const useStyles = makeStyles((theme) => ({
 const TOOLBAR_WIDTH = 300;
 const DEFAULT_ZOOM = window.innerWidth > 1060 ? 1060 : window.innerWidth;
 const ZOOM_PERCENTAGES = [25, 50, 75, 100, 125, 150];
+let configuredWorkerMode = null;
+
+const configurePdfWorker = (config) => {
+  const useCdnWorker = config?.pdfWorkerCdn === true || config?.pdfWorkerLocal === false;
+  const nextMode = useCdnWorker ? 'cdn' : 'local';
+
+  if (configuredWorkerMode === nextMode) {
+    return;
+  }
+
+  if (useCdnWorker) {
+    pdfjs.GlobalWorkerOptions.workerPort = null;
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+    configuredWorkerMode = nextMode;
+    return;
+  }
+
+  pdfjs.GlobalWorkerOptions.workerPort = null;
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'js/pdfjs/pdf.worker.min.js',
+    `${window.location.origin}`
+  ).toString();
+  configuredWorkerMode = nextMode;
+};
 
 const PdfDocument = ({ file, customToolbar, open, withPrint, isPdfBlock }) => {
   const config = getConfig();
-
-  if (config?.pdfWorkerLocal === false) {
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-  } else {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      'js/pdfjsLib/pdf.worker.min.js',
-      `${window.location.origin}`
-    ).toString();
-  }
+  configurePdfWorker(config);
 
   const isMobile = window.innerWidth < 1024;
   const t = useTranslate('TaskPage');
@@ -238,8 +257,43 @@ const PdfDocument = ({ file, customToolbar, open, withPrint, isPdfBlock }) => {
     [numPages, t]
   );
 
+  const normalizedPdfFile = React.useMemo(() => {
+    if (typeof file !== 'string' || !file.startsWith('data:')) {
+      return file;
+    }
+
+    try {
+      const base64 = file.split(',')[1] || '';
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+
+      return { data: bytes };
+    } catch (_error) {
+      return file;
+    }
+  }, [file]);
+
   const handlePrint = () => {
-    const pdfBlob = base64ToBlob(file.split(',').pop());
+    let base64Payload = null;
+
+    if (typeof file === 'string') {
+      base64Payload = file.split(',').pop();
+    } else if (file?.data instanceof Uint8Array) {
+      const binary = Array.from(file.data)
+        .map((byte) => String.fromCharCode(byte))
+        .join('');
+      base64Payload = btoa(binary);
+    }
+
+    if (!base64Payload) {
+      return;
+    }
+
+    const pdfBlob = base64ToBlob(base64Payload);
     const url = URL.createObjectURL(pdfBlob);
     printJS(url);
   };
@@ -247,7 +301,7 @@ const PdfDocument = ({ file, customToolbar, open, withPrint, isPdfBlock }) => {
   const renderDocument = React.useMemo(() => {
     return () => (
       <Document
-        file={file}
+        file={normalizedPdfFile}
         loading={t('Loading')}
         noData={t('NoData')}
         onLoadSuccess={({ numPages }) => setNumPages(numPages)}
@@ -259,7 +313,7 @@ const PdfDocument = ({ file, customToolbar, open, withPrint, isPdfBlock }) => {
         ))}
       </Document>
     );
-  }, [file, numPagesToArray, salt, setNumPages, t, width]);
+  }, [normalizedPdfFile, numPagesToArray, salt, setNumPages, t, width]);
 
   if (open === false) {
     return null;
