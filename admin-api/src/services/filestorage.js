@@ -58,6 +58,32 @@ class FileStorageService {
    * @param {boolean} [asBase64] Get as Base64 indicator.
    * @returns {Promise<ReadableData>}
    */
+  async downloadP7s(id, asFile = false, asBase64 = false) {
+    const response = await global.httpClient.request(
+      `${this.apiHost}/files/${id}/p7s?as_file=${asFile}&as_base64=${asBase64}`,
+      {
+        method: 'GET',
+        headers: {
+          token: this.token,
+        },
+      },
+      'filestorage-download-p7s',
+    );
+
+    return new ReadableData({
+      readableStream: response.body,
+      dataType: response.headers.get('content-type'),
+      dataLength: response.headers.get('content-length'),
+    });
+  }
+
+  /**
+   * Download file.
+   * @param {string} id ID.
+   * @param {boolean} [asFile] Get as file indicator.
+   * @param {boolean} [asBase64] Get as Base64 indicator.
+   * @returns {Promise<ReadableData>}
+   */
   async download(id, asFile = false, asBase64 = false) {
     const response = await global.httpClient.request(
       `${this.apiHost}/files/${id}?as_file=${asFile}&as_base64=${asBase64}`,

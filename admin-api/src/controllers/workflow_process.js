@@ -437,15 +437,20 @@ class WorkflowProcessController extends Controller {
       // Get P7S with readable stream.
       p7s = await this.workflowProcessBusiness.downloadP7s(fileId, asFile, asBase64);
     } catch (error) {
+      const causeResponse = error?.cause?.response;
+      const isNotFound =
+        error?.httpStatusCode === 404 ||
+        (typeof causeResponse === 'string' && causeResponse.includes('404'));
+
       // Response if not found.
-      if (error.cause?.response === '404 Not Found') {
+      if (isNotFound) {
         try {
           // Handle if task ID not defined.
           if (!taskId) {
             return this.responseError(
               res,
               {
-                message: error.cause?.response || 'P7S not found.',
+                message: causeResponse || 'P7S not found.',
               },
               404,
             );
@@ -458,7 +463,7 @@ class WorkflowProcessController extends Controller {
             return this.responseError(
               res,
               {
-                message: error.cause?.response || 'P7S not found.',
+                message: causeResponse || 'P7S not found.',
               },
               404,
               [{ message: 'This document does not provide a P7S' }],
@@ -469,15 +474,26 @@ class WorkflowProcessController extends Controller {
           return this.responseError(
             res,
             {
-              message: error.cause?.response || 'P7S not found.',
+              message: causeResponse || 'P7S not found.',
             },
             404,
           );
         }
+
+        return this.responseError(
+          res,
+          {
+            message: causeResponse || 'P7S not found.',
+          },
+          404,
+        );
       }
 
       // Respone error.
-      return this.responseError(res, { message: error.cause?.response });
+      return this.responseError(
+        res,
+        { message: causeResponse || error.message || 'P7S download failed.' },
+      );
     }
 
     // Response P7S.
