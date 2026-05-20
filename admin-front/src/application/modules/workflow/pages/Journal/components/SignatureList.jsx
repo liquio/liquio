@@ -300,6 +300,7 @@ const SignatureList = ({
             const signer = edsService.getSigner();
 
             const singDetails = [];
+
             const verifyData = async (index) => {
               if (!signatures[index]) {
                 return;
@@ -310,6 +311,7 @@ const SignatureList = ({
                 const signDetail = await signer.execute(
                   'VerifyDataInternal',
                   signature,
+                  signatures[index].createdAt,
                 );
                 singDetails.push(signDetail);
               } catch (e) {
