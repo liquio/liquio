@@ -66,7 +66,10 @@ class DynamicCheckboxGroup extends React.Component {
   };
 
   uniq = (array) => {
+    const { hidden } = this.props;
+
     if (!array) return [];
+    if (hidden) return [];
 
     const addId = array.map((item, index) => ({
       ...item,
