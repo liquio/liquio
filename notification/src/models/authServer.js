@@ -3,13 +3,12 @@ let { conf } = global;
 
 const Auth = class {
   constructor() {
-    if (conf.auth_server.host == 'https://id.test.liquio.local') {
-      conf.auth_server.user = 999;
-      conf.auth_server.password = 999;
-    }
-    this.pass = Buffer(`${conf.auth_server.user}:${conf.auth_server.password}`).toString('base64');
-    // this.getUsersInfo(["588b54786c7749c1b73fa08d","588b67106c7749c1b73fa0a7"]).then((e)=>{console.log(e);})
+    this.basicAuthToken = conf.auth_server.basicAuthToken || Buffer(`${conf.auth_server.user}:${conf.auth_server.password}`).toString('base64');
     this.cache = {}; // { "some-user-id": { "expiredAt": "...", "data": { ... } } }
+  }
+
+  get authorizationHeader() {
+    return this.basicAuthToken.startsWith('Basic ') ? this.basicAuthToken : `Basic ${this.basicAuthToken}`;
   }
 
   async checkToken(token) {
@@ -38,7 +37,7 @@ const Auth = class {
     let users = await axios(`${conf.auth_server.host}/user/info/id`, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${this.pass}`,
+        Authorization: this.authorizationHeader,
       },
       data: {
         id: array,
@@ -55,7 +54,7 @@ const Auth = class {
     let users = await axios(`${conf.auth_server.host}/user/info/ipn`, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${this.pass}`,
+        Authorization: this.authorizationHeader,
       },
       data: {
         ipn: array,
@@ -73,7 +72,7 @@ const Auth = class {
       url: `${conf.auth_server.host}/user/info/phone?phone=${phone}`,
       method: 'GET',
       headers: {
-        Authorization: `Basic ${this.pass}`,
+        Authorization: this.authorizationHeader,
       },
     }).then((res) => res.data);
   }
@@ -82,7 +81,7 @@ const Auth = class {
     let users = await axios(`${conf.auth_server.host}/user?offset=${startFrom}&limit=${limit}`, {
       method: 'GET',
       headers: {
-        Authorization: `Basic ${this.pass}`,
+        Authorization: this.authorizationHeader,
       },
     }).then((res) => res.data);
     return users;

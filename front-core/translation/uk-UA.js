@@ -764,6 +764,7 @@ export default {
     AddMock: 'Додати мок',
     NewMock: 'Новий мок',
     noMocksDefined: 'Моки не створені',
+    noData: 'Немає даних',
     switchMode: 'Змінити режим',
     DisplayOptionsInARow: 'Показувати опції в одному рядку',
     Path: 'Шлях',

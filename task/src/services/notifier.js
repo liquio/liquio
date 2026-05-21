@@ -94,21 +94,27 @@ class NotifierService {
       });
       log.save('get-message-list-response', response);
 
+      // Notification may return an empty body for successful requests.
+      // Normalize the payload so callers always receive a consistent structure.
+      const responseResult = Array.isArray(response?.result) ? response.result : [];
+      const responseMeta = response?.meta && typeof response.meta === 'object' ? response.meta : {};
+
       // Append download token to attachments.
-      for (const result of response.result) {
+      for (const result of responseResult) {
         if (result?.meta?.attachments?.length) {
           result.meta.attachments = result.meta.attachments.map(v => ({ ...v, downloadToken: this.downloadToken.generate(v.fileId) }));
         }
       }
 
       const data = {
-        data: response.result,
-        meta: response.meta
+        data: responseResult,
+        meta: responseMeta
       };
 
       return data;
     } catch (error) {
       log.save('get-message-list-error', error.message);
+      return { data: [], meta: {} };
     }
   }
 

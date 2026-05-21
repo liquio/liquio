@@ -773,6 +773,7 @@ export default {
     AddMock: 'Add Mock',
     NewMock: 'New Mock',
     noMocksDefined: 'No mocks defined',
+    noData: 'No data',
     switchMode: 'Switch mode',
     ClearAll: 'Clear all',
     FiltersNumber: 'You selected {{number}} filters',

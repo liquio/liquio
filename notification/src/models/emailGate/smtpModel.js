@@ -10,8 +10,22 @@ const phpListModel = class {
     this.senderEmail = this.config.sender_email || '\'noreply\' <noreply@localhost>';
   }
 
+  get isEnabled() {
+    return this.config.isEnabled !== false;
+  }
+
+  getDisabledResult() {
+    return { skipped: true, reason: 'SMTP is disabled in config.' };
+  }
+
   async sendMail(body) {
     const { users, text, subject, sendBy, doNotEscapeEmail, attachments } = body;
+
+    if (!this.isEnabled) {
+      const result = this.getDisabledResult();
+      this.log.save('send-email-skipped', { users, subject, reason: result.reason }, 'info');
+      return { result: Array.isArray(users) ? users.map(() => result) : [] };
+    }
 
     const responsesList = [];
     if (Array.isArray(users)) {
@@ -35,6 +49,12 @@ const phpListModel = class {
 
   async sendOneMail(body) {
     const { sendBy } = body;
+
+    if (!this.isEnabled) {
+      const result = this.getDisabledResult();
+      this.log.save('send-one-email-skipped', { email: body.email, subject: body.subject, reason: result.reason }, 'info');
+      return { result };
+    }
 
     let transport;
     try {

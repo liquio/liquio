@@ -821,6 +821,7 @@ export default {
     AddMock: 'Ajouter un mock',
     NewMock: 'Nouveau mock',
     noMocksDefined: 'Aucun mock défini',
+    noData: 'Aucune donnée',
     switchMode: 'Changer de mode',
     ClearAll: 'Tout effacer',
     FiltersNumber: 'Vous avez sélectionné {{number}} filtres',

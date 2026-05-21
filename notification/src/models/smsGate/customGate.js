@@ -22,6 +22,12 @@ const CustomGate = class extends AbstractGate {
     // Log.
     console.log('CustomGate - sendSms');
 
+    if (!this.isEnabled) {
+      const result = (phones || []).map((phone) => this.getDisabledResult(phone));
+      log.save('send-sms-skipped', { phones, text, reason: 'SMS is disabled in config.' }, 'info');
+      return result;
+    }
+
     // Define adapter method.
     this.adapter = global.extensions.adapters.sms;
     if (this.adapter) {
@@ -57,6 +63,12 @@ const CustomGate = class extends AbstractGate {
   async sendOneSms(phone, text, msgid) {
     // Log.
     console.log('CustomGate - sendOneSms');
+
+    if (!this.isEnabled) {
+      const result = this.getDisabledResult(phone);
+      log.save('send-one-sms-skipped', { phone, text, reason: result.reason }, 'info');
+      return result;
+    }
 
     // Define adapter method.
     this.adapter = global.extensions.adapters.sms;

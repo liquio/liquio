@@ -423,6 +423,23 @@ const Message = class extends Auth {
     let sendBySmsPromise;
     log.save('send-message-by-user-request', { phones: sendBySms, emails: sendByEmail });
 
+    usersMessages = await UsersMessages.bulkCreate(
+      usersInfo.map((v) => {
+        return {
+          user_id: v.id,
+          message_id: msg.message_id,
+        };
+      }),
+      { returning: true },
+    );
+    usersMessages = usersMessages.map((v) => {
+      return {
+        userMessageId: v.user_message_id,
+        userId: v.user_id,
+        messageId: v.message_id,
+      };
+    });
+
     // Check if need to send by SMS.
     if (this.isValidShortMessageTranslit(body) && this.isValidShortMessage(body) && !not_send) {
       // Check phones prefix in SMS blacklist.
@@ -453,23 +470,6 @@ const Message = class extends Auth {
 
     // Check if need to send by email.
     if (this.isValidFullMessage(body) && this.isValidTitleMessage(body)) {
-      usersMessages = await UsersMessages.bulkCreate(
-        usersInfo.map((v) => {
-          let obj = {
-            user_id: v.id,
-            message_id: msg.message_id,
-          };
-          return obj;
-        }),
-        { returning: true },
-      );
-      usersMessages = usersMessages.map((v) => {
-        return {
-          userMessageId: v.user_message_id,
-          userId: v.user_id,
-          messageId: v.message_id,
-        };
-      });
       if (!not_send) {
         sendByEmailPromise = this.sendByEmails(sendByEmail, body.title_message, body.full_message, undefined, body.template_id, body.attachments);
       }
@@ -1104,7 +1104,12 @@ const Message = class extends Auth {
           readQuantityPromise,
         ]);
       } catch (e) {
-        return res.send(e.statusCode, e);
+        const statusCode = e?.statusCode || e?.response?.status || 500;
+        const error = {
+          message: e?.message || 'Can not get messages.',
+        };
+        log.save('get-messages-error', { statusCode, error }, 'error');
+        return res.send(statusCode, { error });
       }
     } else {
       result = await this.getAllMessages(req.query);

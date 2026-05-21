@@ -442,7 +442,8 @@ jq --arg key "$(generate_secret)" \
   echo "$file"
   jq --arg login "$login" \
     --arg password "$password" \
-    '.production.authorization.list = [{ user: $login, password: $password }]' \
+      --arg authToken "Basic $OAUTH_SECRET" \
+      '.production.authorization.list = [{ user: $login, password: $password }] | .production.auth_server.basicAuthToken = $authToken' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/admin-api/notifier.json"

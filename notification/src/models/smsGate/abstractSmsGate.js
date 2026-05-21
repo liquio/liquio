@@ -7,6 +7,14 @@ const AbstractGate = class {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   }
 
+  get isEnabled() {
+    return !conf.smsServer || conf.smsServer.isEnabled !== false;
+  }
+
+  getDisabledResult(target) {
+    return { skipped: true, reason: 'SMS is disabled in config.', target };
+  }
+
   async sendRequest(object) {
     object.json = true;
     try {
@@ -20,6 +28,12 @@ const AbstractGate = class {
 
   async sendSms(phones, text, _msgid) {
     phones = phones.filter((v) => !!v == true);
+
+    if (!this.isEnabled) {
+      const result = phones.map((phone) => this.getDisabledResult(phone));
+      log.save('send-sms-skipped', { phones, text, reason: 'SMS is disabled in config.' }, 'info');
+      return result;
+    }
 
     phones = phones.map((v) => v.replace(/(\+38)?(38)?(3838)?/, '38'));
     if (phones.length <= 100) {
@@ -81,6 +95,13 @@ const AbstractGate = class {
 
   async sendOneSms(phone, text, _msgid) {
     if (!!phone == false) throw { errorCode: 400, message: 'phone empty' };
+
+    if (!this.isEnabled) {
+      const result = this.getDisabledResult(phone);
+      log.save('send-one-sms-skipped', { phone, text, reason: result.reason }, 'info');
+      return result;
+    }
+
     phone = phone.replace(/(\+38)?(38)?(3838)?/, '38');
     this.options.url = (conf.smsServer && conf.smsServer.url ? conf.smsServer.url : 'https://test.liquio.local') + '/Subscribe/SendSmsQ.php';
     this.options.method = 'POST';

@@ -25,16 +25,16 @@ metadata:
       "dialect" "postgres"
     )
     "auth_server" (dict
-      "host" "http://localhost:8080"
-      "user" "AuthorizationBasicLogin"
-      "password" "secretPassword"
+      "host" (printf "http://%s-id-api:80" (include "liquio.fullname" .))
+      "basicAuthToken" "Basic <REDACTED>"
     )
     "unisender" (dict
       "api_key" "secretToken"
       "sender_email" "noreply@example.com"
       "hardcode_subject" "New message"
     )
-     "smsServer" (dict
+    "smsServer" (dict
+       "isEnabled" false
        "url" (printf "%s://%s/Subscribe/SendSmsQ.php" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "sms")))
        "access_token" ""
     )
@@ -49,6 +49,7 @@ metadata:
     )
     "sendSmsByNotifyhubAPI" true
     "smtpServer" (dict
+      "isEnabled" false
       "host" "mail.local"
       "secure" false
       "port" 25

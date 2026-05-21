@@ -18,11 +18,11 @@
       "dialect": "postgres"
     },
     "auth_server": {
-      "host": "http://localhost:8080",
-      "user": "AuthorizationBasicLogin",
-      "password": "secretPassword"
+      "host": "http://id-api:8100",
+      "basicAuthToken": "Basic <REDACTED>"
     },
     "smsServer": {
+      "isEnabled": false,
       "url": "https://test.liquio.local/Subscribe/SendSmsQ.php",
       "access_token": ""
     },
@@ -37,6 +37,7 @@
     },
     "sendSmsByNotifyhubAPI": true,
     "smtpServer": {
+      "isEnabled": false,
       "host": "mail.local",
       "secure": false,
       "port": 25,
