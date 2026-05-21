@@ -1,13 +1,13 @@
-import React from "react";
-import PropTypes from "prop-types";
-import { useTranslate } from "react-translate";
-import { Alert, Box } from "@mui/material";
+import React from 'react';
+import PropTypes from 'prop-types';
+import { useTranslate } from 'react-translate';
+import { Alert, Box } from '@mui/material';
 
-import { ElementGroupContainer } from "components/JsonSchema";
+import { ElementGroupContainer } from 'components/JsonSchema';
 
-import VIDEO_PROVIDERS from "./providers";
-import useStyles from "./styles";
-import useVideoPlayer from "./useVideoPlayer";
+import VIDEO_PROVIDERS from './providers';
+import useStyles from './styles';
+import useVideoPlayer from './useVideoPlayer';
 
 const VideoPlayer = ({
   hidden,
@@ -37,8 +37,8 @@ const VideoPlayer = ({
   noMargin,
 }) => {
   const classes = useStyles();
-  const t = useTranslate("JsonSchemaEditor");
-  const normalizedProvider = String(provider || "youtube").toLowerCase();
+  const t = useTranslate('JsonSchemaEditor');
+  const normalizedProvider = String(provider || 'youtube').toLowerCase();
   const providerConfig = VIDEO_PROVIDERS[normalizedProvider];
 
   const player = useVideoPlayer({
@@ -140,17 +140,17 @@ VideoPlayer.defaultProps = {
   error: null,
   path: [],
   jsonSchema: null,
-  notRequiredLabel: "",
-  className: "",
+  notRequiredLabel: '',
+  className: '',
   rootDocument: {},
-  stepName: "",
-  value: "",
+  stepName: '',
+  value: '',
   onChange: () => null,
-  videoId: "",
-  url: "",
-  provider: "youtube",
-  title: "",
-  ariaLabel: "",
+  videoId: '',
+  url: '',
+  provider: 'youtube',
+  title: '',
+  ariaLabel: '',
   width: undefined,
   maxWidth: undefined,
   height: undefined,
