@@ -133,6 +133,9 @@ class App {
 
     await messageQueue.init();
     this.messageQueue = messageQueue;
+
+    // TODO: inject, do not set global.
+    global.messageQueue = messageQueue;
   }
 
   // Init router.
