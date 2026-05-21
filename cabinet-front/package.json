@@ -151,6 +151,7 @@
     "react-virtualized": "9.22.2",
     "react-window": "1.8.6",
     "react-window-infinite-loader": "1.0.7",
+    "react-youtube": "^10.1.0",
     "redux": "4.0.5",
     "redux-logger": "3.0.6",
     "redux-thunk": "2.3.0",

@@ -241,6 +241,15 @@ const DiffTable = React.lazy(() =>
 const PdfBlock = React.lazy(() =>
   import('components/JsonSchema/elements/PdfBlock'),
 );
+const Header = React.lazy(() =>
+  import('components/JsonSchema/elements/Header'),
+);
+const Infobox = React.lazy(() =>
+  import('components/JsonSchema/elements/Infobox'),
+);
+const VideoPlayer = React.lazy(() =>
+  import('components/JsonSchema/elements/VideoPlayer'),
+);
 
 export default {
   SelectUser,
@@ -328,4 +337,7 @@ export default {
   ExternalFileSignerWidget,
   DiffTable,
   PdfBlock,
+  Header,
+  Infobox,
+  VideoPlayer,
 };

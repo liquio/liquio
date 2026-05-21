@@ -115,6 +115,9 @@ const StripeKYC = React.lazy(() => import('components/JsonSchema/elements/Stripe
 const ExternalFileSignerWidget = React.lazy(() => import('components/JsonSchema/elements/Dropbox'));
 const DiffTable = React.lazy(() => import('components/JsonSchema/elements/DiffTable'));
 const PdfBlock = React.lazy(() => import('components/JsonSchema/elements/PdfBlock'));
+const Header = React.lazy(() => import('components/JsonSchema/elements/Header'));
+const Infobox = React.lazy(() => import('components/JsonSchema/elements/Infobox'));
+const VideoPlayer = React.lazy(() => import('components/JsonSchema/elements/VideoPlayer'));
 
 export default {
   SelectUser,
@@ -201,5 +204,8 @@ export default {
   StripeKYC,
   ExternalFileSignerWidget,
   DiffTable,
-  PdfBlock
+  PdfBlock,
+  Header,
+  Infobox,
+  VideoPlayer
 };

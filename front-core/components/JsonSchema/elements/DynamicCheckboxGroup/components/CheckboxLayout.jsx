@@ -25,6 +25,9 @@ const styles = () => ({
     letterSpacing: '-0.02em',
     marginBottom: '0.35em',
   },
+  labelCheckbox: {
+    padding: '5px 0'
+  }
 });
 
 const CheckboxLayout = ({
@@ -62,6 +65,7 @@ const CheckboxLayout = ({
                 key={index}
                 className={classNames({
                   [classes['fontSize' + fontSize]]: fontSize,
+                  [classes.labelCheckbox]: true,
                 })}
                 control={
                   <Checkbox
