@@ -78,7 +78,7 @@ metadata:
     "setPhoneOnlyAsNotValid" true
   )
   "notify" (dict
-    "url" (printf "http://%s-notification:3002" (include "liquio.fullname" .))
+    "url" (printf "http://%s-notification:80" (include "liquio.fullname" .))
   )
   "oauth" $oauthBase
   "passwordManager" (dict
@@ -89,7 +89,7 @@ metadata:
     "rememberLastPasswords" 5
   )
   "pingRoutes" (dict
-    "notify" (printf "http://%s-notification:3002/test/ping" (include "liquio.fullname" .))
+    "notify" (printf "http://%s-notification:80/test/ping" (include "liquio.fullname" .))
   )
   "port" (toString (default 8080 .Values.services.idApi.containerPort))
   "redis" (dict
