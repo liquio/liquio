@@ -61,6 +61,9 @@ describe('Workflow Process Controller', () => {
           expect(response.body.pagination).toHaveProperty('lastPage');
           expect(response.body.pagination).toHaveProperty('perPage');
           expect(response.body.pagination).toHaveProperty('total');
+          expect(response.body.pagination.currentPage).toBe(1);
+          expect(response.body.pagination.lastPage).toBe(1);
+          expect(response.body.pagination.total).toBe(response.body.data.length);
 
           // Verify response structure for each workflow process
           response.body.data.forEach((workflowProcess) => {

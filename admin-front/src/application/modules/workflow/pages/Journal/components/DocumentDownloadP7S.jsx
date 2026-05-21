@@ -12,13 +12,14 @@ import {
   Typography,
 } from '@mui/material';
 
-import { addError } from 'actions/error';
+import { addMessage } from 'actions/error';
 import {
   requestWorkflowProcessAttach,
   requestWorkflowProcessAttachP7S,
 } from 'actions/workflowProcess';
 
 import downloadBase64Attach from 'helpers/downloadBase64Attach';
+import Message from 'components/Snackbars/Message';
 
 const DocumentDownloadP7S = ({ details, actions, onClose }) => {
   const [loading, setLoading] = React.useState(false);
@@ -27,6 +28,17 @@ const DocumentDownloadP7S = ({ details, actions, onClose }) => {
   const { fileId, fileName } = details.document;
   const isP7S =
     details?.document?.signatures && details?.document?.signatures?.length > 0;
+
+  const showDownloadError = React.useCallback(
+    (error) => {
+      const details = error?.response?.details || error?.details;
+
+      actions.addMessage(
+        new Message('FailGettingDocument', 'error', details),
+      );
+    },
+    [actions],
+  );
 
   const getFileP7S = React.useCallback(async () => {
     try {
@@ -41,14 +53,9 @@ const DocumentDownloadP7S = ({ details, actions, onClose }) => {
     } catch (e) {
       setLoadingP7S(false);
       onClose();
-      try {
-        const error = new Error(e.response?.details[0].message);
-        actions.addError(error);
-      } catch {
-        actions.addError(e);
-      }
+      showDownloadError(e);
     }
-  }, [actions, details.id, fileId, fileName, onClose]);
+  }, [details.id, fileId, fileName, onClose, showDownloadError]);
 
   const getFile = React.useCallback(async () => {
     try {
@@ -61,9 +68,9 @@ const DocumentDownloadP7S = ({ details, actions, onClose }) => {
       setLoading(false);
       onClose();
     } catch (e) {
-      actions.addError(e);
+      showDownloadError(e);
     }
-  }, [actions, details.id, fileId, fileName, onClose]);
+  }, [details.id, fileId, fileName, onClose, showDownloadError]);
 
   return (
     <>
@@ -95,7 +102,7 @@ const DocumentDownloadP7S = ({ details, actions, onClose }) => {
 
 const mapDispatch = (dispatch) => ({
   actions: {
-    addError: bindActionCreators(addError, dispatch),
+    addMessage: bindActionCreators(addMessage, dispatch),
     requestWorkflowProcessAttach: bindActionCreators(
       requestWorkflowProcessAttach,
       dispatch,

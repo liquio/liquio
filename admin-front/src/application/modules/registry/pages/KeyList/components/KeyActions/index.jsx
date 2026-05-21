@@ -2,7 +2,6 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { IconButton, Menu, Toolbar } from '@mui/material';
 import SearchIcon from 'assets/icons/mdi_database-search.svg';
-import SearchIconSync from 'assets/icons/mdi_database-sync.svg';
 import DeleteIconSync from 'assets/icons/mdi_database-remove.svg';
 import AddIconSync from 'assets/icons/mdi_database-add.svg';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -20,7 +19,6 @@ const KeyActions = ({
   userUnits,
 }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
-  const elasticAdmin = userUnits.find(({ id }) => id === 1000012);
 
   const handleClose = () => setAnchorEl(null);
 
@@ -32,10 +30,6 @@ const KeyActions = ({
     onChange: actions.load,
     readOnly,
   };
-
-  const elasticAdded = (registerKey?.meta?.afterhandlers || []).includes(
-    'elastic',
-  );
 
   return (
     <Toolbar disableGutters={true}>
@@ -73,41 +67,6 @@ const KeyActions = ({
               getUrl={(keyId) => `registers/keys/${keyId}/reindex`}
             />
 
-            {elasticAdmin && (
-              <>
-                {elasticAdded ? (
-                  <>
-                    <ReindexMenuItem
-                      {...menuItemProps}
-                      icon={SearchIconSync}
-                      listenStatus={actions?.handleUpdateStatus}
-                      label="AfterhandlersReindex"
-                      action={'reIndex'}
-                      getUrl={(keyId) =>
-                        `registers/keys/${keyId}/afterhandlers-reindex`
-                      }
-                    />
-                    <ReindexMenuItem
-                      {...menuItemProps}
-                      icon={DeleteIconSync}
-                      listenStatus={actions?.handleUpdateStatus}
-                      label="RemoveFromElastic"
-                      action={'deleteFromElastic'}
-                      getUrl={(keyId) => `registers/keys/${keyId}`}
-                    />
-                  </>
-                ) : (
-                  <ReindexMenuItem
-                    {...menuItemProps}
-                    icon={AddIconSync}
-                    listenStatus={actions?.handleUpdateStatus}
-                    action={'addToElastic'}
-                    label="AddToElastic"
-                    getUrl={(keyId) => `registers/keys/${keyId}`}
-                  />
-                )}
-              </>
-            )}
             <DeleteKeyMenuItem {...menuItemProps} />
           </>
         )}

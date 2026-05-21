@@ -6,7 +6,7 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/
 import { SchemaForm, handleChangeAdapter, validateData } from 'components/JsonSchema';
 import ConfirmDialog from 'components/ConfirmDialog';
 
-const filterOptions = [
+const FILTER_KEYS = [
   'tasks.my.opened',
   'tasks.my.closed',
   'tasks.unit.opened',
@@ -16,10 +16,11 @@ const filterOptions = [
   'workflows.trash',
   'workflows.not-draft.ordered-by-myself',
   'workflows.not-draft.ordered-by-unit',
-  'workflows.not-draft.observed-by-unit'
+  'workflows.not-draft.observed-by-unit',
 ];
 
 const UiFilterDialog = ({ t, open, value, onCommit, onDelete, onClose }) => {
+  const filterOptions = FILTER_KEYS.map((key) => ({ id: key, name: t(key) }));
   const [data, setData] = React.useState(value || { isActive: true });
   const [errors, setErrors] = React.useState([]);
   const [openDeletePrompt, setOpenDeletePrompt] = React.useState(false);

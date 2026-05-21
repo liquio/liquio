@@ -20,13 +20,13 @@ class LiquioProvider extends Provider {
       super();
 
       // Save params.
-      const { server, port, routes, timeout, user, hashedPassword, templateParams = {}, defaultTemplateId, clientId } = config;
+      const { server, port, routes, timeout, user, password, templateParams = {}, defaultTemplateId, clientId } = config;
       const headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        Authorization: `Basic ${user}:${hashedPassword}`,
+        Authorization: `Basic ${Buffer.from(`${user}:${password}`, 'utf8').toString('base64')}`,
       };
-      Object.assign(this, { config, server, port, routes, timeout, user, hashedPassword, templateParams, defaultTemplateId, clientId, headers });
+      Object.assign(this, { config, server, port, routes, timeout, user, password, templateParams, defaultTemplateId, clientId, headers });
 
       // Init singleton.
       LiquioProvider.singleton = this;

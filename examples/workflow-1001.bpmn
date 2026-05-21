@@ -1,0 +1,277 @@
+{
+    "workflowTemplate": {
+        "id": 1001,
+        "workflowTemplateCategoryId": 29,
+        "name": "Notification Test Workflow",
+        "description": "",
+        "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\">\n  <bpmn2:process id=\"Process_1\" isExecutable=\"false\">\n    <bpmn2:startEvent id=\"StartEvent_1\">\n      <bpmn2:outgoing>Flow_0ms495f</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:intermediateThrowEvent id=\"event-1001001\" name=\"Send Notification Event\">\n      <bpmn2:incoming>Flow_0i8zkyy</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0d3kw6a</bpmn2:outgoing>\n    </bpmn2:intermediateThrowEvent>\n    <bpmn2:sequenceFlow id=\"Flow_0ms495f\" sourceRef=\"StartEvent_1\" targetRef=\"task-1001001\" />\n    <bpmn2:task id=\"task-1001001\" name=\"Create Notification Task\">\n      <bpmn2:incoming>Flow_0ms495f</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0i8zkyy</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_0i8zkyy\" sourceRef=\"task-1001001\" targetRef=\"event-1001001\" />\n    <bpmn2:endEvent id=\"end-event-1\" name=\"end-event-1\">\n      <bpmn2:incoming>Flow_0d3kw6a</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_0d3kw6a\" sourceRef=\"event-1001001\" targetRef=\"end-event-1\" />\n  </bpmn2:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Process_1\">\n      <bpmndi:BPMNEdge id=\"Flow_0i8zkyy_di\" bpmnElement=\"Flow_0i8zkyy\">\n        <di:waypoint x=\"550\" y=\"170\" />\n        <di:waypoint x=\"612\" y=\"170\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_0ms495f_di\" bpmnElement=\"Flow_0ms495f\">\n        <di:waypoint x=\"398\" y=\"170\" />\n        <di:waypoint x=\"450\" y=\"170\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"_BPMNShape_StartEvent_2\" bpmnElement=\"StartEvent_1\">\n        <dc:Bounds x=\"362\" y=\"152\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_1xcvydy_di\" bpmnElement=\"event-1001001\">\n        <dc:Bounds x=\"612\" y=\"152\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"587\" y=\"195\" width=\"86\" height=\"27\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_1rkvgfv_di\" bpmnElement=\"task-1001001\">\n        <dc:Bounds x=\"450\" y=\"130\" width=\"100\" height=\"80\" />\n        <bpmndi:BPMNLabel />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_02ktdh2_di\" bpmnElement=\"end-event-1\">\n        <dc:Bounds x=\"712\" y=\"152\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"700\" y=\"195\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0d3kw6a_di\" bpmnElement=\"Flow_0d3kw6a\">\n        <di:waypoint x=\"648\" y=\"170\" />\n        <di:waypoint x=\"712\" y=\"170\" />\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
+        "data": {
+            "statuses": [
+                {
+                    "statusId": 1,
+                    "label": "Started",
+                    "taskOrEventTemplateId": "{\"id\":1001001,\"type\":\"task\",\"name\":\"Create Notification Task\",\"sourceId\":1001001}",
+                    "taskTemplateId": 1001001
+                },
+                {
+                    "statusId": 2,
+                    "label": "Notified",
+                    "taskOrEventTemplateId": "{\"id\":1001001,\"type\":\"event\",\"name\":\"Send Notification Event\",\"sourceId\":1001001}",
+                    "eventTemplateId": 1001001
+                }
+            ],
+            "entryTaskTemplateIds": [
+                {
+                    "name": "Start",
+                    "id": "() => 1001001;",
+                    "hidden": false
+                }
+            ],
+            "timeline": {
+                "steps": [
+                    {
+                        "taskTemplateId": 1001001,
+                        "label": "Started"
+                    },
+                    {
+                        "eventTemplateId": 1001001,
+                        "label": "Notified"
+                    }
+                ]
+            }
+        },
+        "isActive": true,
+        "accessUnits": [],
+        "createdAt": "2024-08-02T09:31:11.344Z",
+        "updatedAt": "2026-05-21T08:53:14.664Z",
+        "meta": {}
+    },
+    "workflowTemplateCategory": {
+        "id": 29,
+        "parentId": null,
+        "name": "testProcess",
+        "createdAt": "2022-12-02T11:32:34.679Z",
+        "updatedAt": "2022-12-02T11:32:34.679Z"
+    },
+    "taskTemplates": [
+        {
+            "id": 1001001,
+            "name": "Create Notification Task",
+            "documentTemplateId": 1001001,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<!DOCTYPE html>\n<html lang=\"uk\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\" />\n    <style>\n      body {\n        font-size: 12px;\n        margin: 0;\n        font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;\n        line-height: 1;\n        padding-right: 80px;\n        padding-left: 80px;\n        padding-top: 56px;\n        padding-bottom: 56px;\n        letter-spacing: -0.02em;\n      }\n      @font-face {\n        font-family: uaFontReg;\n        src: url(https://my.diia.gov.ua/fonts/e-Ukraine-Regular.woff);\n      }\n    </style>\n  </head>\n  <body style=\"font-family: uaFontReg\">\n    \n  </body>\n</html>",
+            "createdAt": "2024-08-02T09:38:50.618Z",
+            "updatedAt": "2024-08-02T09:38:50.618Z"
+        }
+    ],
+    "documentTemplates": [
+        {
+            "id": 1001001,
+            "name": "Create Notification Task",
+            "jsonSchema": {
+                "title": "Test Request Submission",
+                "type": "object",
+                "pdfRequired": false,
+                "signRequired": false,
+                "forceRedirect": true,
+                "calcTriggers": [],
+                "fileName": "({executiveDocumentInfo}) =>  (`Test Document`).substring(0,255)",
+                "finalScreen": {
+                    "title": "() =>  `<p>Success! Your test request has been submitted.</p>`",
+                    "subtitle": "  "
+                },
+                "checkPdfStepTitle": "Review the test document draft",
+                "pdfStepDetails": {
+                    "subtitle": "<p>Use one of the options below to save or print this test request.</p>"
+                },
+                "properties": {
+                    "calculated": {
+                        "type": "object",
+                        "description": "Calculated Data",
+                        "checkStepHidden": "() => true",
+                        "properties": {
+                            "workflowId": {
+                                "type": "string",
+                                "description": "workflowId",
+                                "value": "workflow.id",
+                                "checkRequired": "() => true",
+                                "readOnly": true
+                            },
+                            "userId": {
+                                "type": "string",
+                                "value": "user.id",
+                                "hidden": true,
+                                "readOnly": true,
+                                "checkRequired": "() => true",
+                                "description": "Applicant ID"
+                            },
+                            "userName": {
+                                "type": "string",
+                                "description": "Applicant Full Name",
+                                "value": "user.name",
+                                "checkRequired": "() => true",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "lastName": {
+                                "type": "string",
+                                "value": "user.lastName",
+                                "description": "Last Name",
+                                "checkRequired": "() => true",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "firstName": {
+                                "type": "string",
+                                "value": "user.firstName",
+                                "description": "First Name",
+                                "checkRequired": "() => true",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "middleName": {
+                                "type": "string",
+                                "value": "user.middleName",
+                                "description": "Middle Name",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "position": {
+                                "type": "string",
+                                "value": "user.position",
+                                "description": "Position",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "ipn": {
+                                "type": "string",
+                                "value": "user.ipn",
+                                "description": "ipn",
+                                "checkRequired": "() => true",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "userAddress": {
+                                "type": "string",
+                                "value": "user.address",
+                                "description": "userAddress",
+                                "checkRequired": "() => false",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "edrpou": {
+                                "type": "string",
+                                "value": "user.edrpou",
+                                "description": "edrpou",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "userUnits": {
+                                "description": "Units Array",
+                                "value": "user.units",
+                                "hidden": true,
+                                "readOnly": true
+                            },
+                            "userUnitExecutiveIssuer": {
+                                "description": "Registrar Unit",
+                                "hidden": true,
+                                "readOnly": true,
+                                "calcBack": "({calculated}) => calculated.userUnits.all.find(el => el.basedOn.indexOf(1000000207) > -1)"
+                            },
+                            "userUnitDebtCollector": {
+                                "description": "Registrar Unit",
+                                "hidden": true,
+                                "readOnly": true,
+                                "calcBack": "({calculated}) => calculated.userUnits.all.find(el => el.basedOn.indexOf(1000000209) > -1)"
+                            },
+                            "isEdrAvailable": {
+                                "type": "boolean",
+                                "hidden": true,
+                                "calcBack": "(documentData) => {return false;}",
+                                "readonly": true,
+                                "description": "Is Registry Available?"
+                            },
+                            "isUserActiveFopCalculated": {
+                                "type": "boolean",
+                                "hidden": true,
+                                "readOnly": true,
+                                "calcBack": "documentData => { return false;}"
+                            },
+                            "isUserTovManager": {
+                                "type": "boolean",
+                                "hidden": true,
+                                "readOnly": true,
+                                "calcBack": "documentData => { return false;}"
+                            },
+                            "isFiz": {
+                                "type": "boolean",
+                                "hidden": true,
+                                "calcBack": "documentData => { return false;}",
+                                "readOnly": true,
+                                "description": "Is Registry Available?"
+                            }
+                        }
+                    },
+                    "dataCheckInfo": {
+                        "type": "object",
+                        "description": "Applicant Details",
+                        "checkStepHidden": "() => false",
+                        "properties": {
+                            "personMainInfo": {
+                                "control": "text.block",
+                                "hidden": "(allStepsData) => {return false}",
+                                "dataMapping": "(step, document) =>{return { userLastName: document.calculated.lastName.charAt(0).toUpperCase() + document.calculated.lastName.slice(1).toLowerCase(),firstName: document.calculated.firstName.charAt(0).toUpperCase() + document.calculated.firstName.slice(1).toLowerCase(), middleName: document.calculated.middleName.charAt(0).toUpperCase() + document.calculated.middleName.slice(1).toLowerCase(), ipn:document.calculated?.ipn, position:document?.calculated?.position }}",
+                                "htmlBlock": "<div style='width: 100%; margin-bottom: 30px;' class='user-info-fop'><div style='display: flex; flex-wrap: wrap' class='user-info-fop-content'><div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px; width: 100%'>Last Name</p> <p style='font-size:18px; line-height:28px; width: 100%'>{{userLastName}}</p></div><div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px; width: 100%'>First Name</p> <p style='font-size:18px; line-height:28px; width: 100%'>{{userName}}</p></div>{{#if userMiddleName}}<div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px;'>Middle Name</p> <p style='margin-top:5px;'>{{userMiddleName}}</p></div>{{/if}}{{#if position}}<div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px;'>Position</p> <p style='margin-top:5px;'>{{position}}</p></div>{{/if}}  </div> </div></div>",
+                                "params": {
+                                    "ipn": "ipn",
+                                    "userLastName": "userLastName",
+                                    "userName": "firstName",
+                                    "userMiddleName": "middleName",
+                                    "position": "position"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\r\n  \"title\": \"Test Request Submission\",\r\n  \"type\": \"object\",\r\n  \"pdfRequired\": false,\r\n  \"signRequired\": false,\r\n  \"forceRedirect\": true,\r\n  \"calcTriggers\": [\r\n  ],\r\n  \"fileName\": \"({executiveDocumentInfo}) =>  (`Test Document`).substring(0,255)\",\r\n  \"finalScreen\": {\r\n    \"title\": \"() =>  `<p>Success! Your test request has been submitted.</p>`\",\r\n    \"subtitle\": \"  \"\r\n  },\r\n  \"checkPdfStepTitle\": \"Review the test document draft\",\r\n  \"pdfStepDetails\": {\r\n    \"subtitle\": \"<p>Use one of the options below to save or print this test request.</p>\"\r\n  },\r\n  \"properties\": {\r\n    \"calculated\": {\r\n      \"type\": \"object\",\r\n      \"description\": \"Calculated Data\",\r\n      \"checkStepHidden\": \"() => true\",\r\n      \"properties\": {\r\n        \"workflowId\": {\r\n          \"type\": \"string\",\r\n          \"description\": \"workflowId\",\r\n          \"value\": \"workflow.id\",\r\n          \"checkRequired\": \"() => true\",\r\n          \"readOnly\": true\r\n        },\r\n        \"userId\": {\r\n          \"type\": \"string\",\r\n          \"value\": \"user.id\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true,\r\n          \"checkRequired\": \"() => true\",\r\n          \"description\": \"Applicant ID\"\r\n        },\r\n        \"userName\": {\r\n          \"type\": \"string\",\r\n          \"description\": \"Applicant Full Name\",\r\n          \"value\": \"user.name\",\r\n          \"checkRequired\": \"() => true\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"lastName\": {\r\n          \"type\": \"string\",\r\n          \"value\": \"user.lastName\",\r\n          \"description\": \"Last Name\",\r\n          \"checkRequired\": \"() => true\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"firstName\": {\r\n          \"type\": \"string\",\r\n          \"value\": \"user.firstName\",\r\n          \"description\": \"First Name\",\r\n          \"checkRequired\": \"() => true\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"middleName\": {\r\n          \"type\": \"string\",\r\n          \"value\": \"user.middleName\",\r\n          \"description\": \"Middle Name\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"position\": {\r\n          \"type\": \"string\",\r\n          \"value\": \"user.position\",\r\n          \"description\": \"Position\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"ipn\": {\r\n          \"type\": \"string\",\r\n          \"value\": \"user.ipn\",\r\n          \"description\": \"ipn\",\r\n          \"checkRequired\": \"() => true\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"userAddress\": {\r\n          \"type\": \"string\",\r\n          \"value\": \"user.address\",\r\n          \"description\": \"userAddress\",\r\n          \"checkRequired\": \"() => false\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"edrpou\": {\r\n          \"type\": \"string\",\r\n          \"value\": \"user.edrpou\",\r\n          \"description\": \"edrpou\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"userUnits\": {\r\n          \"description\": \"Units Array\",\r\n          \"value\": \"user.units\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true\r\n        },\r\n        \"userUnitExecutiveIssuer\": {\r\n          \"description\": \"Registrar Unit\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true,\r\n          \"calcBack\": \"({calculated}) => calculated.userUnits.all.find(el => el.basedOn.indexOf(1000000207) > -1)\"\r\n        },\r\n        \"userUnitDebtCollector\": {\r\n          \"description\": \"Registrar Unit\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true,\r\n          \"calcBack\": \"({calculated}) => calculated.userUnits.all.find(el => el.basedOn.indexOf(1000000209) > -1)\"\r\n        },\r\n        \"isEdrAvailable\": {\r\n          \"type\": \"boolean\",\r\n          \"hidden\": true,\r\n          \"calcBack\": \"(documentData) => {return false;}\",\r\n          \"readonly\": true,\r\n          \"description\": \"Is Registry Available?\"\r\n        },\r\n        \"isUserActiveFopCalculated\": {\r\n          \"type\": \"boolean\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true,\r\n          \"calcBack\": \"documentData => { return false;}\"\r\n        },\r\n        \"isUserTovManager\": {\r\n          \"type\": \"boolean\",\r\n          \"hidden\": true,\r\n          \"readOnly\": true,\r\n          \"calcBack\": \"documentData => { return false;}\"\r\n        },\r\n        \"isFiz\": {\r\n          \"type\": \"boolean\",\r\n          \"hidden\": true,\r\n          \"calcBack\": \"documentData => { return false;}\",\r\n          \"readOnly\": true,\r\n          \"description\": \"Is Registry Available?\"\r\n        }\r\n      }\r\n    },\r\n    \"dataCheckInfo\": {\r\n        \"type\": \"object\",\r\n        \"description\": \"Applicant Details\",\r\n        \"checkStepHidden\": \"() => false\",\r\n        \"properties\": {\r\n        \"personMainInfo\": {\r\n            \"control\": \"text.block\",\r\n            \"hidden\": \"(allStepsData) => {return false}\",\r\n            \"dataMapping\":\"(step, document) =>{return { userLastName: document.calculated.lastName.charAt(0).toUpperCase() + document.calculated.lastName.slice(1).toLowerCase(),firstName: document.calculated.firstName.charAt(0).toUpperCase() + document.calculated.firstName.slice(1).toLowerCase(), middleName: document.calculated.middleName.charAt(0).toUpperCase() + document.calculated.middleName.slice(1).toLowerCase(), ipn:document.calculated?.ipn, position:document?.calculated?.position }}\",\r\n            \"htmlBlock\": \"<div style='width: 100%; margin-bottom: 30px;' class='user-info-fop'><div style='display: flex; flex-wrap: wrap' class='user-info-fop-content'><div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px; width: 100%'>Last Name</p> <p style='font-size:18px; line-height:28px; width: 100%'>{{userLastName}}</p></div><div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px; width: 100%'>First Name</p> <p style='font-size:18px; line-height:28px; width: 100%'>{{userName}}</p></div>{{#if userMiddleName}}<div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px;'>Middle Name</p> <p style='margin-top:5px;'>{{userMiddleName}}</p></div>{{/if}}{{#if position}}<div style='width: 100%'><p style='font-size: 12px; line-height:16px; opacity: 0.5; margin-bottom:5px;'>Position</p> <p style='margin-top:5px;'>{{position}}</p></div>{{/if}}  </div> </div></div>\",\r\n            \"params\": {\r\n                \"ipn\": \"ipn\",\r\n                \"userLastName\": \"userLastName\",\r\n                \"userName\": \"firstName\",\r\n                \"userMiddleName\": \"middleName\",\r\n                \"position\": \"position\"\r\n            }\r\n        }\r\n      }\r\n    }\r\n  }\r\n}",
+            "htmlTemplate": "<!DOCTYPE html>\n<html lang=\"uk\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\" />\n    <style>\n      body {\n        font-size: 12px;\n        margin: 0;\n        font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;\n        line-height: 1;\n        padding-right: 80px;\n        padding-left: 80px;\n        padding-top: 56px;\n        padding-bottom: 56px;\n        letter-spacing: -0.02em;\n      }\n      @font-face {\n        font-family: uaFontReg;\n        src: url(https://my.diia.gov.ua/fonts/e-Ukraine-Regular.woff);\n      }\n    </style>\n  </head>\n  <body style=\"font-family: uaFontReg\">\n    \n  </body>\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "createdAt": "2024-08-02T09:38:50.617Z",
+            "updatedAt": "2024-08-02T09:38:50.617Z"
+        }
+    ],
+    "gatewayTemplates": [],
+    "eventTemplates": [
+        {
+            "id": 1001001,
+            "eventTypeId": 1,
+            "name": "Send Notification Event",
+            "description": "",
+            "jsonSchema": {
+                "emailsByUserId": "(documents) => { const userId = documents.find(doc => doc.documentTemplateId === 1001001).data.calculated.userId; return userId ? [userId] : []; }",
+                "subject": "(documents) => 'Test Notification'",
+                "fullText": "(documents, events, workflowId) => {return `You received a test notification in the Attention tab. Confirm that the Show Full Message button is visible.<p style='margin-top:50px'>After clicking Show Full Message, confirm that the complete message is displayed.</p>`};"
+            },
+            "jsonSchemaRaw": "{\n    \"emailsByUserId\": \"(documents) => { const userId = documents.find(doc => doc.documentTemplateId === 1001001).data.calculated.userId; return userId ? [userId] : []; }\",\n    \"subject\": \"(documents) => 'Test Notification'\",\n    \"fullText\": \"(documents, events, workflowId) => {return `You received a test notification in the Attention tab. Confirm that the Show Full Message button is visible.<p style='margin-top:50px'>After clicking Show Full Message, confirm that the complete message is displayed.</p>`};\"\n}",
+            "htmlTemplate": "",
+            "createdAt": "2024-08-02T09:32:30.431Z",
+            "updatedAt": "2024-08-02T09:32:30.431Z"
+        }
+    ]
+}

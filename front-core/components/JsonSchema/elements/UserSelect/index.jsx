@@ -64,7 +64,7 @@ const UserSelect = (props) => {
       setUserData(
         result.map((data) => ({
           ...data,
-          fullName: `${data?.lastName} ${data?.firstName} ${data?.middleName}`,
+          fullName: [data?.lastName, data?.firstName, data?.middleName].filter((v) => v && v !== 'null').join(' '),
           id: data?.userId,
         })),
       );

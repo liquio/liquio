@@ -30,6 +30,7 @@ export class Application {
 
   constructor(private readonly config: Config) {
     this.express = express() as Express;
+    this.express.set('query parser', 'extended');
     this.express.config = this.config;
     this.log = Log.get();
     this.models = new Models(this.config.db);

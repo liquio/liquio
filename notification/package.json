@@ -1,6 +1,6 @@
 {
   "name": "liquio-notification",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "engines": {
     "node": "22"
   },
@@ -30,7 +30,6 @@
     "moment": "^2.18.1",
     "multiconf": "^4.0.0",
     "mysql": "^2.12.0",
-    "nconf": "^0.13.0",
     "node-cache": "^4.1.1",
     "node-cron": "^1.2.0",
     "nodemailer": "^6.9.1",

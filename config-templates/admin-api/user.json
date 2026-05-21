@@ -1,5 +1,5 @@
 {
-  "allowSetAdminTestUser": false,
+  "allowSetAdminTestUser": true,
   "shouldSetupAdmin": true,
   "adminUnitId": [
     1000001,

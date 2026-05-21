@@ -20,7 +20,7 @@ const UserTable = ({
       {
         id: 'name',
         render: (name, { userId, ipn, lastName, firstName, middleName }) =>
-          `${lastName} ${firstName} ${middleName} (${userId}, ${ipn})`,
+          `${[lastName, firstName, middleName].filter((v) => v && v !== 'null').join(' ')} (${userId}, ${ipn})`,
       },
       {
         id: 'action',
@@ -33,7 +33,7 @@ const UserTable = ({
         id: 'name',
         name: t('name'),
         render: (name, { lastName, firstName, middleName }) =>
-          `${lastName} ${firstName} ${middleName}`,
+          [lastName, firstName, middleName].filter((v) => v && v !== 'null').join(' '),
       },
       {
         id: 'userId',

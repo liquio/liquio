@@ -31,7 +31,7 @@ export default class Notifier {
   port: number;
   user: string;
   routes: typeof ROUTES;
-  hashedPassword: string;
+  password: string;
   headers: Record<string, string>;
   timeout: number;
   static singleton: Notifier;
@@ -46,11 +46,11 @@ export default class Notifier {
       this.port = global.config.notifier.port;
       this.user = global.config.notifier.user;
       this.routes = { ...ROUTES, ...(global.config.notifier.routes || {}) };
-      this.hashedPassword = global.config.notifier.hashedPassword;
+      this.password = global.config.notifier.password;
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        Authorization: `Basic ${this.user}:${this.hashedPassword}`,
+        Authorization: `Basic ${Buffer.from(`${this.user}:${this.password}`, 'utf8').toString('base64')}`,
       };
       this.timeout = global.config.notifier.timeout || 30000;
       Notifier.singleton = this;
