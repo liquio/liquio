@@ -48,7 +48,7 @@
     "react-router-dom": "^5.3.4",
     "react-scripts": "^5.0.1",
     "react-translate": "^6.1.0",
-    "redux": "^4.2.1",
+    "redux": "^5.0.1",
     "redux-logger": "^3.0.6",
     "sanitize-html": "^2.13.1",
     "sanitize.css": "^13.0.0",
