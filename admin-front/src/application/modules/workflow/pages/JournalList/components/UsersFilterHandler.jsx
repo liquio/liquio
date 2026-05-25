@@ -99,11 +99,11 @@ class UsersFilterHandler extends FilterHandler {
     if (!saved) return '';
     const { last_name, first_name, middle_name, ipn, value } =
       JSON.parse(saved);
-    return value || `${last_name} ${first_name} ${middle_name} (${ipn})`;
+    return value || `${[last_name, first_name, middle_name].filter((v) => v && v !== 'null').join(' ')} (${ipn})`;
   };
 
   getOptionLabel = ({ ipn, last_name, first_name, middle_name, value }) =>
-    value || `${last_name} ${first_name} ${middle_name} (${ipn})`;
+    value || `${[last_name, first_name, middle_name].filter((v) => v && v !== 'null').join(' ')} (${ipn})`;
 
   renderInput = (params) => {
     const { t } = this.props;
