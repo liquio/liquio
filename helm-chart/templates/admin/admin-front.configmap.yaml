@@ -36,6 +36,7 @@ metadata:
   "enabledDeleteUser" false
   "enabledMocksPage" false
   "defaultLanguage" "en"
+  "hideQr" true
 }}
 data:
   config.json: |
