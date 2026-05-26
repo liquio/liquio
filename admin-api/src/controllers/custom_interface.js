@@ -1,4 +1,5 @@
 const { matchedData } = require('express-validator');
+const { Op } = require('sequelize');
 
 const Controller = require('./controller');
 const CustomInterfaceBusiness = require('../businesses/custom_interface');
@@ -83,13 +84,17 @@ class CustomInterfaceController extends Controller {
     const filters = queryData.filters || {};
     const { page: currentPage, count: perPage } = queryData;
 
+    const normalizedFilters = filters.name
+      ? { ...filters, name: { [Op.iLike]: `%${filters.name}%` } }
+      : filters;
+
     let customInterfaces;
     try {
       customInterfaces = await this.customInterfaceBusiness.getAll({
         currentPage,
         perPage,
         sort: sort,
-        filters: filters,
+        filters: normalizedFilters,
       });
     } catch (error) {
       return this.responseError(res, error);

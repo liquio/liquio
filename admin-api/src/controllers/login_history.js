@@ -31,6 +31,12 @@ class LoginHistoryController extends Controller {
     const paramsData = matchedData(req, { locations: ['query'] });
     const { offset, limit, filter = {} } = paramsData;
 
+    // Normalize search field - map to user_name which is supported by id-api.
+    if (filter && filter.search) {
+      filter.user_name = filter.search;
+      delete filter.search;
+    }
+
     // Normalize date filter if need it.
     if (filter && filter.from_created_at) {
       filter.created_at_from = filter.from_created_at.length === 10 ? `${filter.from_created_at}T00:00:00.000Z` : filter.from_created_at;

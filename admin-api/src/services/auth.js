@@ -505,8 +505,10 @@ class AuthService {
    * @returns {Promise<{data: LoginHistoryEntity[], meta: {count: number, offset: number, limit: number}}>} Login history.
    */
   async getLoginHistory({ offset = 0, limit = 10, filter = {} }) {
-    // Define params.
-    const query = qs.stringify({ offset, limit, filter });
+    // Define params. Filter must be JSON string for id-api validation.
+    // Handle both object and string filter formats.
+    const filterString = typeof filter === 'string' ? filter : JSON.stringify(filter);
+    const query = qs.stringify({ offset, limit, filter: filterString });
 
     // Do request to get login history.
     log.save('get-login-history-request', { offset, limit, filter, query });

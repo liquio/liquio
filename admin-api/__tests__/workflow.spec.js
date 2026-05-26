@@ -798,4 +798,97 @@ describe('Workflow Controller', () => {
       expect(response.body).toHaveProperty(response.status === 200 ? 'data' : 'error');
     });
   });
+
+  describe('GET /bpmn-workflows/:id/copy/preparation', () => {
+    it('should fail without auth', async () => {
+      const workflowId = WORKFLOW_TEMPLATE_FIXTURES[0].id;
+
+      await app.request().get(`/bpmn-workflows/${workflowId}/copy/preparation`).expect(401);
+    });
+
+    it('should complete copy flow using GET preparation and POST copy when authenticated', async () => {
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+
+      // Mock auth check - the admin-api calls id-api service
+      app
+        .nock('http://id-api:8100')
+        .get('/user/info')
+        .query({ access_token: payload.authTokens.accessToken })
+        .once()
+        .reply(200, {
+          userId: '61efddaa351d6219eee09043',
+          role: 'admin',
+          services: { eds: { data: { pem: 'PEM' } } },
+        });
+
+      const workflowData = {
+        name: 'Test E2E Workflow For Copy Preparation',
+        description: 'A test workflow created by e2e tests for copy preparation',
+        workflowTemplateCategoryId: 29,
+        xmlBpmnSchema:
+          '<?xml version="1.0" encoding="UTF-8"?><bpmn2:definitions xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL"><bpmn2:process id="CopyPreparationTestProcess" isExecutable="false"><bpmn2:startEvent id="StartEvent_1"/></bpmn2:process></bpmn2:definitions>',
+        data: {
+          statuses: [],
+          entryTaskTemplateIds: [],
+          timeline: {},
+        },
+        isActive: true,
+        accessUnits: [1000002],
+      };
+
+      const createResponse = await app.request().post('/workflows').send(workflowData).set('token', jwt).expect(200);
+      const workflowId = createResponse.body.data.id;
+
+      app
+        .nock('http://id-api:8100')
+        .get('/user/info')
+        .query({ access_token: payload.authTokens.accessToken })
+        .once()
+        .reply(200, {
+          userId: '61efddaa351d6219eee09043',
+          role: 'admin',
+          services: { eds: { data: { pem: 'PEM' } } },
+        });
+
+      const preparationResponse = await app.request().get(`/bpmn-workflows/${workflowId}/copy/preparation`).set('token', jwt).expect(200);
+
+      expect(preparationResponse.body).toMatchObject({
+        data: {
+          requestId: expect.any(String),
+          diffs: expect.any(Array),
+          length: expect.any(Number),
+        },
+      });
+      expect(preparationResponse.body.data.requestId.length).toBeGreaterThan(0);
+      expect(preparationResponse.body.data.length).toBe(preparationResponse.body.data.diffs.length);
+
+      app
+        .nock('http://id-api:8100')
+        .get('/user/info')
+        .query({ access_token: payload.authTokens.accessToken })
+        .once()
+        .reply(200, {
+          userId: '61efddaa351d6219eee09043',
+          role: 'admin',
+          services: { eds: { data: { pem: 'PEM' } } },
+        });
+
+      const copyResponse = await app
+        .request()
+        .post(`/bpmn-workflows/${workflowId}/copy`)
+        .send({
+          request_id: preparationResponse.body.data.requestId,
+          not_replacing_diff_ids: [],
+        })
+        .set('token', jwt)
+        .expect(200);
+
+      expect(copyResponse.body).toMatchObject({
+        data: {
+          newWorkflowTemplateId: expect.any(Number),
+        },
+      });
+      expect(copyResponse.body.data.newWorkflowTemplateId).not.toBe(workflowId);
+    });
+  });
 });

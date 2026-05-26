@@ -687,7 +687,9 @@ class BpmnWorkflowBusiness {
     };
     const requestId = crypto.randomBytes(16).toString('hex');
     const redisKeyName = `${workflowTemplateId}-${requestId}`;
-    await global.redis.set(redisKeyName, JSON.stringify(workflowTemplateWithDependenciesToSave), 'EX', 15 * 60);
+    if (global.redis) {
+      await global.redis.set(redisKeyName, JSON.stringify(workflowTemplateWithDependenciesToSave), 'EX', 15 * 60);
+    }
     return { requestId, diffs, length: diffs.length };
   }
 
@@ -702,7 +704,7 @@ class BpmnWorkflowBusiness {
   async copy(workflowTemplateId, requestId, notReplacingDiffIds, user) {
     const redisKeyName = `${workflowTemplateId}-${requestId}`;
 
-    const redisRecord = await global.redis.get(redisKeyName);
+    const redisRecord = global.redis ? await global.redis.get(redisKeyName) : null;
     if (!redisRecord) {
       throw new Error('Saved workflowTemplate did\'t find');
     }
@@ -831,7 +833,9 @@ class BpmnWorkflowBusiness {
       );
 
       await bpmnWorkflowTransaction.commit();
-      await global.redis.del(redisKeyName);
+      if (global.redis) {
+        await global.redis.del(redisKeyName);
+      }
 
       log.save('user-copied-bpmn-workflow', { user, fromTemplateId: workflowTemplateId, toTemplateId: newWorkflowTemplateId });
     } catch (error) {

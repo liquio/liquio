@@ -83,6 +83,12 @@ metadata:
   "timeout" 10000
   "token" "Basic dGFzazp0YXNr"
 -}}
+{{ $redisBase := dict
+  "isEnabled" true
+  "host" (include "liquio.redis.host" .)
+  "port" .Values.config.redis.port
+  "defaultTtl" 30
+-}}
 {{ $userBase := dict
   "allowSetAdminTestUser" true
   "shouldSetupAdmin" true
@@ -143,6 +149,10 @@ data:
   # Task configuration
   task.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "task.json" "base" $taskBase) | nindent 4 }}
+
+  # Redis configuration
+  redis.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "redis.json" "base" $redisBase) | nindent 4 }}
 
   # User configuration
   user.json: |
