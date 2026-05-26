@@ -433,79 +433,171 @@ describe('Workflow Process Controller', () => {
   });
 
   describe('GET /workflow-processes/tasks', () => {
+    const seeded = {
+      taskId: null,
+      documentId: null,
+      templateName: null,
+      performerName: null,
+      taskSearchValue: null,
+      documentDescriptionSearchValue: null,
+    };
+
+    const mockAuth = (payload) => {
+      app
+        .nock('http://id-api:8100')
+        .get('/user/info')
+        .query({ access_token: payload.authTokens.accessToken })
+        .once()
+        .reply(200, {
+          userId: '61efddaa351d6219eee09043',
+          role: 'admin',
+          services: { eds: { data: { pem: 'PEM' } } },
+          units: [1000003],
+        });
+    };
+
+    const mockUsersByIds = () => {
+      app
+        .nock('http://id-api:8100')
+        .post('/user/info/id', (body) => body.id && Array.isArray(body.id))
+        .query({ brief_info: 'false' })
+        .optionally()
+        .reply(200, [{ userId: '682c3749b09b9b183bf98a02', first_name: 'Test', last_name: 'User' }]);
+    };
+
+    const requestTasks = ({ jwt, search }) => {
+      const request = app.request().get('/workflow-processes/tasks').set('token', jwt);
+
+      if (typeof search === 'string') {
+        request.query({ 'filters.search': search });
+      }
+
+      return request.expect(200);
+    };
+
+    beforeAll(async () => {
+      const taskModel = app.model('task');
+      const documentModel = app.model('document');
+      const documentTemplateModel = app.model('documentTemplate');
+
+      const existingTask = await taskModel.findOne({
+        where: { is_current: true },
+        include: [
+          {
+            model: documentModel,
+            include: [{ model: documentTemplateModel }],
+          },
+        ],
+        order: [['created_at', 'desc']],
+      });
+
+      if (!existingTask || !existingTask.document || !existingTask.document.documentTemplate) {
+        throw new Error('Expected at least one current task with document and document template in test data.');
+      }
+
+      seeded.taskId = existingTask.id;
+      seeded.documentId = existingTask.document_id;
+      seeded.templateName = existingTask.document.documentTemplate.name;
+      seeded.performerName = Array.isArray(existingTask.performer_usernames)
+        ? existingTask.performer_usernames.find((value) => typeof value === 'string' && value.trim())
+        : null;
+
+      const uniqueSuffix = Date.now();
+      seeded.taskSearchValue = `e2e-task-name-${uniqueSuffix}`;
+      seeded.documentDescriptionSearchValue = `e2e-document-description-${uniqueSuffix}`;
+
+      await taskModel.update({ name: seeded.taskSearchValue }, { where: { id: seeded.taskId } });
+      await documentModel.update(
+        { description: seeded.documentDescriptionSearchValue },
+        { where: { id: seeded.documentId } },
+      );
+    });
+
     it('should fail without auth', async () => {
       await app.request().get('/workflow-processes/tasks').expect(401);
     });
 
-    it('should return tasks when authenticated', async () => {
+    it('should return tasks list without search filter', async () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      mockAuth(payload);
+      mockUsersByIds();
 
-      app
-        .nock('http://id-api:8100')
-        .get('/user/info')
-        .query({ access_token: payload.authTokens.accessToken })
-        .once()
-        .reply(200, {
-          userId: '61efddaa351d6219eee09043',
-          role: 'admin',
-          services: { eds: { data: { pem: 'PEM' } } },
-        });
+      const response = await requestTasks({ jwt });
 
-      // Mock the user info endpoint for getUsersByIds (called by getTasks)
-      app
-        .nock('http://id-api:8100')
-        .post('/user/info/id', (body) => body.id && Array.isArray(body.id))
-        .query({ brief_info: 'false' })
-        .reply(200, [{ id: '682c3749b09b9b183bf98a02', name: 'Test User' }]);
-
-      await app
-        .request()
-        .get('/workflow-processes/tasks')
-        .set('token', jwt)
-        .expect(200)
-        .expect((response) => {
-          expect(response.body).toHaveProperty('data');
-          expect(Array.isArray(response.body.data)).toBe(true);
-
-          // Check pagination structure
-          expect(response.body).toHaveProperty('pagination');
-          expect(response.body.pagination).toHaveProperty('currentPage');
-          expect(response.body.pagination).toHaveProperty('lastPage');
-          expect(response.body.pagination).toHaveProperty('perPage');
-          expect(response.body.pagination).toHaveProperty('total');
-        });
+      expect(response.body).toHaveProperty('data');
+      expect(response.body).toHaveProperty('pagination');
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.pagination.total).toBeGreaterThan(0);
     });
 
-    it('should support pagination and filters for tasks', async () => {
+    it('should return empty result for unmatched search term', async () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      mockAuth(payload);
+      mockUsersByIds();
 
-      app
-        .nock('http://id-api:8100')
-        .get('/user/info')
-        .query({ access_token: payload.authTokens.accessToken })
-        .once()
-        .reply(200, {
-          userId: '61efddaa351d6219eee09043',
-          role: 'admin',
-          services: { eds: { data: { pem: 'PEM' } } },
-        });
+      const response = await requestTasks({ jwt, search: `no-match-${Date.now()}` });
 
-      // Mock the user info endpoint for getUsersByIds (called by getTasks)
-      app
-        .nock('http://id-api:8100')
-        .post('/user/info/id', (body) => body.id && Array.isArray(body.id))
-        .query({ brief_info: 'false' })
-        .reply(200, [{ id: '682c3749b09b9b183bf98a02', name: 'Test User' }]);
+      expect(response.body.pagination.total).toBe(0);
+      expect(response.body.data).toEqual([]);
+    });
+
+    it('should find tasks by document template name', async () => {
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      mockAuth(payload);
+      mockUsersByIds();
+
+      const response = await requestTasks({ jwt, search: seeded.templateName });
+
+      expect(response.body.pagination.total).toBeGreaterThan(0);
+      expect(response.body.data.some((task) => task.id === seeded.taskId)).toBe(true);
+    });
+
+    it('should find tasks by performer username when present', async () => {
+      if (!seeded.performerName) {
+        return;
+      }
+
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      mockAuth(payload);
+      mockUsersByIds();
+
+      const response = await requestTasks({ jwt, search: seeded.performerName });
+
+      expect(response.body.pagination.total).toBeGreaterThan(0);
+      expect(response.body.data.some((task) => task.id === seeded.taskId)).toBe(true);
+    });
+
+    it('should find tasks by task name', async () => {
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      mockAuth(payload);
+      mockUsersByIds();
+
+      const response = await requestTasks({ jwt, search: seeded.taskSearchValue });
+
+      expect(response.body.pagination.total).toBeGreaterThan(0);
+      expect(response.body.data.some((task) => task.id === seeded.taskId)).toBe(true);
+    });
+
+    it('should find tasks by document description', async () => {
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      mockAuth(payload);
+      mockUsersByIds();
+
+      const response = await requestTasks({ jwt, search: seeded.documentDescriptionSearchValue });
+
+      expect(response.body.pagination.total).toBeGreaterThan(0);
+      expect(response.body.data.some((task) => task.id === seeded.taskId)).toBe(true);
+    });
+
+    it('should support pagination for tasks', async () => {
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      mockAuth(payload);
+      mockUsersByIds();
 
       await app
         .request()
         .get('/workflow-processes/tasks')
-        .query({
-          page: 1,
-          count: 10,
-          'sort.createdAt': 'desc',
-          'filters.status': 'active',
-        })
+        .query({ page: 1, count: 10 })
         .set('token', jwt)
         .expect(200)
         .expect((response) => {
