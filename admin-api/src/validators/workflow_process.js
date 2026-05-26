@@ -328,6 +328,11 @@ class WorkflowProcessValidator extends Validator {
         optional: true,
         isString: true,
       },
+      ['filters.search']: {
+        in: ['query'],
+        optional: true,
+        isString: true,
+      },
       ['filters.user_ids.*']: {
         in: ['query'],
         optional: true,

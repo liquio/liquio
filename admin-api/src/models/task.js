@@ -832,6 +832,20 @@ class TaskModel extends Model {
       sequelizeOptions.filters['$document.id$'] = filters['document_id'];
     }
 
+    if (typeof filters.search === 'string' && filters.search.trim()) {
+      const search = filters.search.trim();
+
+      sequelizeOptions.filters[Sequelize.Op.and] = sequelizeOptions.filters[Sequelize.Op.and] || [];
+      sequelizeOptions.filters[Sequelize.Op.and].push({
+        [Sequelize.Op.or]: [
+          { '$document.documentTemplate.name$': { [Sequelize.Op.iLike]: `%${search}%` } },
+          { '$document.description$': { [Sequelize.Op.iLike]: `%${search}%` } },
+          { performer_usernames: { [Sequelize.Op.overlap]: [search] } },
+          { name: { [Sequelize.Op.iLike]: `%${search}%` } },
+        ],
+      });
+    }
+
     sort = this.prepareSort(sort);
     if (sort.length > 0) {
       sequelizeOptions.sort = sort;
