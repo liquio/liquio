@@ -718,6 +718,7 @@ export default {
     ImportingRegistersSuccess: 'Key imported successfully',
     MocksAreUsing: 'Mocks currently in use:',
     NumberTemplateAlreadyExported: 'Number template {{filesInfo}} imported successfully',
+    MessageTemplateAlreadyExported: 'Message template imported successfully',
     OutOfBoundError: 'You have exceeded allowed limits',
     PrivateQuestionnaireInitError: 'Error initializing questionnaire',
     RemoveFromElasticFailed: 'Error removing elastic key "{{name}}"',

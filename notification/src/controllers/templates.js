@@ -87,9 +87,17 @@ class Template {
       return res.send(400, { message: 'Text id empty' });
     }
 
-    let result = await Templates.create({ ...req.body });
-
-    res.send(result);
+    try {
+      let result = await Templates.create({ ...req.body });
+      if (!result) {
+        this.log.save('template-create-null-result', { body: req.body }, 'error');
+        return res.send(500, { message: 'Failed to create template - no result returned' });
+      }
+      res.send(result);
+    } catch (e) {
+      this.log.save('template-create-error', { error: e.message, body: req.body }, 'error');
+      return res.send(500, { message: e.message });
+    }
   }
 
   async changeTemplate(req, res) {
@@ -103,11 +111,20 @@ class Template {
       return res.send(400, { message: 'Template id empty' });
     }
 
-    let result = await Templates.update(
-      { ...req.body },
-      { where: { template_id: req.params.template_id }, individualHooks: true },
-    );
-    res.send(result);
+    try {
+      let result = await Templates.update(
+        { ...req.body },
+        { where: { template_id: req.params.template_id }, individualHooks: true },
+      );
+      if (!result || result.length === 0) {
+        this.log.save('template-update-no-rows', { templateId: req.params.template_id, body: req.body }, 'warn');
+        return res.send(404, { message: 'Template not found' });
+      }
+      res.send(result);
+    } catch (e) {
+      this.log.save('template-update-error', { error: e.message, templateId: req.params.template_id }, 'error');
+      return res.send(500, { message: e.message });
+    }
   }
 
   async prepareMessage(req, res) {

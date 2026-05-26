@@ -696,6 +696,8 @@ export default {
       'У даному документі не передбачено P7S підпис.',
     NumberTemplateAlreadyExported:
       'Шаблон номеру {{filesInfo}} імортовано успішно',
+    MessageTemplateAlreadyExported:
+      'Шаблон повідомлення імпортовано успішно',
     NumberTemplateAlreadyExists: 'Шаблон номеру {{filesInfo}} вже існує.',
     FailStoringRecordAllowTokens:
       'Схема ключа містить поля з опцією allowTokens',

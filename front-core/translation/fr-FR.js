@@ -741,6 +741,8 @@ export default {
       'Ce document ne prévoit pas de signature P7S.',
     NumberTemplateAlreadyExported:
       'Modèle de numéro {{filesInfo}} importé avec succès',
+    MessageTemplateAlreadyExported:
+      'Modèle de message importé avec succès',
     NumberTemplateAlreadyExists:
       'Le modèle de numéro {{filesInfo}} existe déjà.',
     FailStoringRecordAllowTokens:

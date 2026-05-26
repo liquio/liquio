@@ -247,7 +247,7 @@ const MessageTemplatesList = ({
       actions.addMessage(new Message('InvalidFile', 'error'));
     } else {
       actions.addMessage(
-        new Message('NumberTemplateAlreadyExported', 'success'),
+        new Message('MessageTemplateAlreadyExported', 'success'),
       );
       const newList = await actions.requestMessagesTemplate();
       setList(newList);
