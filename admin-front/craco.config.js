@@ -59,6 +59,7 @@ module.exports = {
           warning.module &&
           warning.module.resource &&
           (warning.module.resource.includes('@fast-csv/parse') ||
+            warning.module.resource.includes('@jridgewell') ||
             warning.module.resource.includes('react-datasheet-grid') ||
             warning.module.resource.includes('ace-builds/src-noconflict/worker-coffee.js'))
       ];
