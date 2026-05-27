@@ -26,6 +26,7 @@ const DEFAULT_ROUTES = {
   getUserStat: '/stat',
   setPassword: '/user/password/set',
   createLocalUser: '/user/create_local',
+  changePassword: '/authorise/local/change_password',
 };
 const SEARCH_USERS_LIMIT = 10;
 const ERROR_MESSAGE_TOKENS_NOT_RESPONSED = 'Access or refresh tokens not responsed from auth server.';
@@ -700,16 +701,17 @@ class AuthService {
 
       log.save('change-user-password-request', { ...options, headers: { ...options.headers, Authorization: 'Basic ***' } });
 
-      const { success, error } = await HttpRequest.send(options);
+      const response = await HttpRequest.send(options);
+      const { success, error, message } = response || {};
 
-      if (error) {
-        log.save('change-user-password-error', error);
-        return { success: false, error };
+      if (error || success === false) {
+        log.save('change-user-password-error', error || message || 'Unknown error');
+        return { success: false, error: error || message };
       }
 
-      log.save('change-user-password-response', { success });
+      log.save('change-user-password-response', { success, message });
 
-      return { success };
+      return { success: success !== false, message };
     } catch (error) {
       log.save('change-user-password-error', error.message);
       return { success: false };

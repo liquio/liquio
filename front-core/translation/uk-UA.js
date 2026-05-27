@@ -3649,6 +3649,7 @@ export default {
     PasswordChanged: 'Пароль успішно змінено',
     PasswordNotChanged: 'Пароль не змінено',
     PasswordIncorrect: 'Невірний пароль',
+    'Invalid email or password.': 'Невірна електронна адреса або пароль.',
     RequiredField: "Обов'язкове поле",
     InitialLoading: 'Завантаження LiquioIntel...',
     ChangePasswordFailed: 'Помилка зміни паролю. Перевірте введені дані',
