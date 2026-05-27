@@ -60,7 +60,7 @@ const SuccessMessageLayout = ({
   task,
   showNextTaskButton
 }) => {
-  const nextTask = (nextTasks || []).shift();
+  const nextTask = (nextTasks || [])[0];
   const { callBack } = finalScreen;
 
   React.useEffect(() => {
@@ -135,7 +135,7 @@ const SuccessMessageLayout = ({
   const defaultButton = showDefaultButton();
 
   return (
-    <Dialog open={true} maxWidth="md">
+    <Dialog open={true} maxWidth="md" scroll="body">
       <DialogContent
         classes={{
           root: classes.root
