@@ -3320,6 +3320,7 @@ export default {
     PasswordChanged: 'Password changed',
     PasswordNotChanged: 'Password not changed',
     PasswordIncorrect: 'Incorrect password',
+    'Invalid email or password.': 'Invalid email or password.',
     RequiredField: 'Required field',
     InitialLoading: 'Loading LiquioIntel...',
     ChangePasswordFailed: 'Failed to change password'

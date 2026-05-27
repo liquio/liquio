@@ -359,8 +359,13 @@ class AuthController extends Controller {
 
     // Change password.
     try {
-      await this.authService.changePassword(authUserInfo.email, oldPassword, newPassword);
-      this.responseData(res, { message: 'Password changed successfully.' });
+      const result = await this.authService.changePassword(authUserInfo.email, oldPassword, newPassword);
+
+      if (!result?.success) {
+        return this.responseError(res, result?.error || 'Failed to change password.', 400);
+      }
+
+      this.responseData(res, { success: true, message: result?.message || 'Password changed successfully.' });
     } catch (err) {
       return this.responseError(res, err, 500);
     }
