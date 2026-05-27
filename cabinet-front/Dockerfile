@@ -17,9 +17,10 @@ COPY --from=core . /app/src/core
 RUN VERSION="$(npm pkg get version)" && \
     sed -ri "s|\"SETVERSION\"|$VERSION|" public/version.json && \
     npm run build && \
-    WORKER_SRC=$(find /app/node_modules -path "*/pdfjs-dist/build/pdf.worker.min.js" | head -1) && \
+    WORKER_SRC=$(find /app/node_modules -path "*/react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.js" | head -1) && \
     echo "Using pdfjs worker: $WORKER_SRC" && \
-    cp "$WORKER_SRC" /app/build/js/pdfjsLib/pdf.worker.min.js
+    mkdir -p /app/build/js/pdfjs && \
+    cp "$WORKER_SRC" /app/build/js/pdfjs/pdf.worker.min.js
 
 # Serve the built application with Nginx
 FROM nginxinc/nginx-unprivileged:1-alpine-slim
