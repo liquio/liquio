@@ -25,6 +25,7 @@ const SuccessMessage = ({
   const [nextTasks, setNextTasks] = React.useState(null);
   const [timer, setTimer] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
+  const hasNextTasks = Array.isArray(nextTasks) && nextTasks.length > 0;
 
   React.useEffect(() => {
     const isRedirecting = () => {
@@ -67,10 +68,23 @@ const SuccessMessage = ({
       setIteration(iteration + 1);
     };
 
-    if (!doNotLoadNextTask) {
-      setTimeout(loadNextTask, LOAD_NEXT_TASK_INTERVAL * iteration);
+    if (doNotLoadNextTask || hasNextTasks) {
+      return undefined;
     }
-  }, [actions, doNotLoadNextTask, forceRedirect, iteration, rootPath, taskId, task]);
+
+    const timeoutId = setTimeout(loadNextTask, LOAD_NEXT_TASK_INTERVAL * iteration);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    actions,
+    doNotLoadNextTask,
+    forceRedirect,
+    hasNextTasks,
+    iteration,
+    rootPath,
+    taskId,
+    task
+  ]);
 
   React.useEffect(() => {
     const timerListener = setTimeout(() => {
