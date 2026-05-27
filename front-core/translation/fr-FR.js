@@ -3824,6 +3824,7 @@ export default {
     PasswordChanged: 'Mot de passe modifié avec succès',
     PasswordNotChanged: 'Mot de passe non modifié',
     PasswordIncorrect: 'Mot de passe incorrect',
+    'Invalid email or password.': 'Adresse e-mail ou mot de passe invalide.',
     RequiredField: 'Champ obligatoire',
     InitialLoading: 'Chargement de LiquioIntel...',
     ChangePasswordFailed:

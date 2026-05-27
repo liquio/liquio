@@ -125,7 +125,7 @@ export async function local(app: Express) {
 
     // Validate fields
     if (!email || !oldPassword || !newPassword) {
-      res.status(400).send({ error: 'Invalid request.' });
+      res.status(400).send({ success: false, error: 'Invalid request.' });
       return;
     }
 
@@ -137,14 +137,14 @@ export async function local(app: Express) {
     // Do not try to change password if the number of attempts exceeds the limit until the maxAttemptDelay expires
     if (attemptCounter > passwordManager.maxAttempts) {
       log.save('user-auth-by-local|bruteforce-alert', { email, attemptCounter }, 'info');
-      res.status(429).send({ error: 'Too many attempts. Please try again later.' });
+      res.status(429).send({ success: false, error: 'Too many attempts. Please try again later.' });
       return;
     }
 
     const { strong, reason } = passwordManager.isStrongPassword(newPassword);
     if (!strong) {
       log.save('user-change-password|weak-password', { email, reason }, 'info');
-      res.status(400).send({ error: reason });
+      res.status(400).send({ success: false, error: reason });
       return;
     }
 
@@ -158,28 +158,28 @@ export async function local(app: Express) {
 
       if (!user) {
         log.save('user-change-password|user-not-found', { email }, 'info');
-        res.status(401).send({ error: GENERIC_FAIL_DESCRIPTION });
+        res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
         return;
       }
 
       const localServiceInfo = user.user_services.find((s) => s.provider === 'local');
       if (!localServiceInfo) {
         log.save('user-change-password|user-credentials-not-found', { email }, 'info');
-        res.status(401).send({ error: GENERIC_FAIL_DESCRIPTION });
+        res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
         return;
       }
 
       const currentPasswordHash = (localServiceInfo.data as any)?.password;
       if (!currentPasswordHash) {
         log.save('user-change-password|no-password', { email }, 'info');
-        res.status(401).send({ error: GENERIC_FAIL_DESCRIPTION });
+        res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
         return;
       }
 
       const isPasswordValid = await passwordManager.verifyPassword(oldPassword, currentPasswordHash);
       if (!isPasswordValid) {
         log.save('user-change-password|password-invalid', { email }, 'info');
-        res.status(401).send({ error: GENERIC_FAIL_DESCRIPTION });
+        res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
         return;
       }
 
@@ -187,7 +187,7 @@ export async function local(app: Express) {
       const oldPasswords = [currentPasswordHash].concat((localServiceInfo?.data as any)?.oldPasswords ?? []);
       if (oldPasswords.find((hash) => passwordManager.verifyPasswordSync(newPassword, hash))) {
         log.save('user-change-password|password-reused', { email }, 'info');
-        res.status(400).send({ error: 'Password cannot be the same as the old ones.' });
+        res.status(400).send({ success: false, error: 'Password cannot be the same as the old ones.' });
         return;
       }
 
@@ -215,10 +215,10 @@ export async function local(app: Express) {
 
       log.save('user-change-password|success', { email }, 'info');
 
-      res.send({ success: true });
+      res.send({ success: true, message: 'Password changed successfully.' });
     } catch (error) {
       log.save('user-change-password|error', { error }, 'error');
-      res.status(401).send({ error: GENERIC_FAIL_DESCRIPTION });
+      res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
     }
   }
 
