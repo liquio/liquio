@@ -11,6 +11,8 @@
     "eject": "craco eject",
     "format": "prettier --write 'src/**/*.{js,jsx,css,md,json}'",
     "start": "craco start",
+    "prebuild": "node scripts/sync-pdf-workers.js",
+    "prestart": "node scripts/sync-pdf-workers.js",
     "lint": "eslint 'src/**/*.{js,jsx}'",
     "lint:fix": "eslint 'src/**/*.{js,jsx}' --fix"
   },
