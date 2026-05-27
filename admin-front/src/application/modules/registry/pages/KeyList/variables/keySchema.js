@@ -121,6 +121,12 @@ export default ({ t, type, newKey }) => {
               onText: t('isPersonal'),
               noMargin: true,
             },
+            isEncrypted: {
+              control: 'toggle',
+              disableInitialValue: true,
+              onText: t('Encrypted'),
+              noMargin: true,
+            },
           },
         },
       },
@@ -167,6 +173,12 @@ export default ({ t, type, newKey }) => {
             setDefaultValue: `() => ${newKey ? 'true' : 'false'}`,
           },
         },
+      },
+      isEncrypted: {
+        control: 'toggle',
+        disableInitialValue: true,
+        onText: t('Encrypted'),
+        noMargin: true,
       },
       lock: {
         control: 'toggle',
