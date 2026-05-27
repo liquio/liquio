@@ -1018,6 +1018,7 @@ class EditScreen extends React.Component {
     new Promise((resolve) => {
       const { handleStore, handleSilentTriggers, saveLastStepVisited } = this.props;
       const {
+        steps,
         task,
         template: {
           jsonSchema: { properties }
@@ -1045,7 +1046,7 @@ class EditScreen extends React.Component {
         const userDataValid = await this.validateUserData();
 
         if (valid && userDataValid) {
-          await this.handleSetStep(activeStep + 1);
+          await this.handleSetNextStep(activeStep, steps);
           saveLastStepVisited();
         }
 
@@ -1064,6 +1065,25 @@ class EditScreen extends React.Component {
     await waiter.run(taskId);
 
     history.replace(getRootPath() + `/${steps[step]}`);
+  };
+
+  handleSetNextStep = async (activeStep, previousSteps) => {
+    const { steps } = propsToData(this.props);
+
+    const nextStepId = previousSteps
+      .slice(activeStep + 1)
+      .find((stepId) => steps.includes(stepId));
+
+    if (nextStepId) {
+      return this.handleSetStep(steps.indexOf(nextStepId));
+    }
+
+    const currentStepId = previousSteps[activeStep];
+    const currentStep = steps.indexOf(currentStepId);
+
+    if (currentStep > -1) {
+      return this.handleSetStep(currentStep + 1);
+    }
   };
 
   isLastStep = () => {
