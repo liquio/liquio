@@ -93,6 +93,7 @@ class Template {
         this.log.save('template-create-null-result', { body: req.body }, 'error');
         return res.send(500, { message: 'Failed to create template - no result returned' });
       }
+      this.log.save('template-create-success', { templateId: result.template_id, type: result.type, title: result.title }, 'info');
       res.send(result);
     } catch (e) {
       this.log.save('template-create-error', { error: e.message, body: req.body }, 'error');
@@ -114,12 +115,13 @@ class Template {
     try {
       let result = await Templates.update(
         { ...req.body },
-        { where: { template_id: req.params.template_id }, individualHooks: true },
+        { where: { template_id: req.params.template_id }, individualHooks: true, returning: true },
       );
       if (!result || result.length === 0) {
         this.log.save('template-update-no-rows', { templateId: req.params.template_id, body: req.body }, 'warn');
         return res.send(404, { message: 'Template not found' });
       }
+      this.log.save('template-update-success', { templateId: req.params.template_id, type: result[1][0].type, title: result[1][0].title }, 'info');
       res.send(result);
     } catch (e) {
       this.log.save('template-update-error', { error: e.message, templateId: req.params.template_id }, 'error');

@@ -41,9 +41,11 @@ export const EditorDialog = ({
   const handleChange = useCallback(
     (newValue) => {
       (onChange || setValue)(newValue);
-      setDiffs(diff(defaultValue, newValue) || []);
+      if (handleSave) {
+        setDiffs(diff(defaultValue, newValue) || []);
+      }
     },
-    [defaultValue, onChange]
+    [defaultValue, onChange, handleSave]
   );
 
   const handleValidate = useCallback((newErrors) => {

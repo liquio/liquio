@@ -138,9 +138,9 @@ test.describe('Workflow 900001 (Attention Notice)', () => {
     await page.waitForLoadState('networkidle');
     log('Service details page loaded');
 
-    log('Waiting for "Elements.noData" message to appear');
-    await page.getByText('Elements.noData').waitFor();
-    await expect(page.getByText('Elements.noData')).toBeVisible();
+    log('Waiting for "No data" message to appear');
+    await page.getByText('No data').waitFor();
+    await expect(page.getByText('No data')).toBeVisible();
     log('✓ Service details verified - no data message found');
 
     // Extract workflowId from URL for use in admin tests
