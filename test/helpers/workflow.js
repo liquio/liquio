@@ -7,6 +7,7 @@ async function importWorkflow(page, filePath, isTest = false, isOverwrite = fals
 
   debug('importWorkflow: Navigating to workflows page');
   await page.goto(url);
+  await page.waitForLoadState('networkidle');
   debug('importWorkflow: At workflows page');
 
   const fileChooserPromise = page.waitForEvent('filechooser');

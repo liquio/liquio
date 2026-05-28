@@ -63,7 +63,7 @@ test('Authorize with admin and import register/workflow', async ({ page }) => {
 
   {
     log('Importing workflow 1000');
-    await importWorkflow(page, '../examples/workflow-1000.bpmn');
+    await importWorkflow(page, '../examples/workflow-1000.bpmn', false, true);
 
     log('Verifying the imported workflow');
     await page.goto('http://localhost:8082/workflow/1000');

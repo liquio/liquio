@@ -88,6 +88,7 @@ class MessageQueue {
       await this.init();
       this.totalReconnectCount += 1;
       log.save('amqp-successfully-reconnected', { totalReconnectCount: this.totalReconnectCount });
+      global.messageQueue = this;
     }, this.config.retryConnectionTime || RETRY_CONNECTION_TIME);
   }
 

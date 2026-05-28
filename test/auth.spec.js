@@ -65,7 +65,8 @@ test('Demo cannot login to admin panel (8082)', async ({ page }) => {
 
   // Check if there's an authorization error message
   const hasAuthError = pageContent.includes('not authorized') || pageContent.includes('not allowed') || 
-                      pageContent.includes('access denied') || pageContent.includes('forbidden');
+                      pageContent.includes('access denied') || pageContent.includes('forbidden') ||
+                      pageContent.includes('does not have access rights');
   debug(`Page contains authorization error: ${hasAuthError}`);
   expect(hasAuthError).toBe(true);
 
