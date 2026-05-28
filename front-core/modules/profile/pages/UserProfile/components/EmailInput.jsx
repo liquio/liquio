@@ -29,7 +29,7 @@ import IntervalUpdateComponent from 'components/IntervalUpdateComponent';
 const mailInspection =
   /[A-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-z0-9!#$%&'*+/=?^_`{|}~-]+)*@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 const regexDomain =
-  /^(?!.*@(mail\.ua|ya\.ua|yandex\.ua|rambler\.ua|.*\.ru|.*\.su)$).+$/;
+  /^(?!.*@(mail\.ua|ya\.ua|yandex\.ua|rambler\.ua|.*\.ru|.*\.su)$).+$/i;
 
 class EmailInput extends React.Component {
   state = {
