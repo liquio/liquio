@@ -58,7 +58,7 @@ metadata:
   "auth_providers" $authProvidersBase
   "confirmCodeEmailChangeHeader" "Email Confirmation"
   "confirmCodeEmailHeader" "Registration Confirmation"
-  "confirmCodeEmailTemplate" (include "liquio.id-confirmCodeEmailTemplate" nil)
+  "confirmCodeEmailTemplate" (include "liquio.id-confirmCodeEmailTemplate" (dict "ctx" .))
   "confirmCodeRetries" 10
   "customer" .Release.Name
   "db" $dbBase
