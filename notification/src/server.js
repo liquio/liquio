@@ -14,7 +14,7 @@ let { env } = global;
 
 // CORS configuration from global.conf
 const corsConfig = {
-  allowedOrigins: global.conf?.cors?.allowedOrigins || (env === 'localhost' 
+  allowedOrigins: global.conf?.cors?.allowedOrigins || (env === 'localhost'
     ? ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8080']
     : ['http://localhost:3000', 'http://localhost:3001']),
 };
@@ -75,6 +75,34 @@ if (env === 'localhost') {
 
   server.on('MethodNotAllowed', unknownMethodHandler);
 }
+
+// Global error handler for uncaught errors
+server.on('uncaughtException', (req, res, route, err) => {
+  global.log.save('server-uncaught-exception', {
+    error: err?.message,
+    stack: err?.stack,
+    route: route?.path,
+    method: req?.method,
+    url: req?.url
+  }, 'error');
+  res.send(500, { error: 'Internal server error' });
+});
+
+// Error handler middleware
+server.on('error', (err) => {
+  global.log.save('server-error-event', {
+    error: err?.message,
+    stack: err?.stack
+  }, 'error');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  global.log.save('unhandled-rejection', {
+    reason: reason?.message || String(reason),
+    stack: reason?.stack
+  }, 'error');
+});
 
 server.get(
   /static\/.*/,
