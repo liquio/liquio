@@ -97,7 +97,7 @@ server.on('error', (err) => {
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   global.log.save('unhandled-rejection', {
     reason: reason?.message || String(reason),
     stack: reason?.stack
