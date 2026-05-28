@@ -154,20 +154,29 @@ class Log {
 
     const logResponse = (body) => {
       if (!responseLogged) {
+        let responseSize = 0;
         const data = {
           requestId: req.requestMeta?.requestId,
           method: req.method,
           url: req.url,
           statusCode: res.statusCode,
-          responseSize: body ? body.length : 0,
           responseTime: Date.now() - time,
         };
+        
         if (body instanceof Error) {
           data.error = {
             message: body.message,
             stack: body.stack,
           };
+          responseSize = JSON.stringify(data.error).length;
+        } else if (typeof body === 'string') {
+          responseSize = body.length;
+        } else if (typeof body === 'object' && body !== null) {
+          responseSize = JSON.stringify(body).length;
         }
+        
+        data.responseSize = responseSize;
+        
         this.save('http-response', data, this.Levels.INFO_LEVEL);
         responseLogged = true;
       }
