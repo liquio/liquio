@@ -206,6 +206,9 @@ export async function local(app: Express) {
       // Reset the attempt counter
       await Services.service('redis').delete(counterKey);
 
+      // Invalidate the Redis user cache so the next /user/info call reads fresh DB data
+      await Services.service('redis').delete(['oauthmodel', 'getUser', { userId: user.userId }]);
+
       // Create login history record
       {
         req.user = user as any;
