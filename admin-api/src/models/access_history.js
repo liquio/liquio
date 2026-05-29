@@ -126,6 +126,15 @@ class AccessHistoryModel extends Model {
         [Sequelize.Op.iLike]: `%${filters.user_name}%`,
       };
     }
+    if (typeof filters.search !== 'undefined') {
+      const searchTerm = `%${filters.search}%`;
+      sequelizeOptions.filters[Sequelize.Op.or] = [
+        { user_name: { [Sequelize.Op.iLike]: searchTerm } },
+        { init_user_name: { [Sequelize.Op.iLike]: searchTerm } },
+        { unit_name: { [Sequelize.Op.iLike]: searchTerm } },
+      ];
+      delete sequelizeOptions.filters.search;
+    }
     if (typeof filters.from_created_at !== 'undefined' && typeof filters.to_created_at !== 'undefined') {
       sequelizeOptions.filters['created_at'] = Sequelize.where(Sequelize.fn('date', Sequelize.col('created_at')), {
         [Sequelize.Op.between]: [filters.from_created_at, filters.to_created_at],
