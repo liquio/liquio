@@ -1,5 +1,5 @@
 import { matchedData, query } from 'express-validator';
-import { Op, QueryOptions, WhereOptions } from 'sequelize';
+import { Op, QueryOptions, WhereOptions, cast, col, where } from 'sequelize';
 
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
@@ -39,6 +39,7 @@ export class UserAdminActionController extends BaseController {
       action_type: actionType,
       initiator_id: initiatorId,
       user_id: userId,
+      search,
     } = requestFilter;
 
     const conditions: any[] = [];
@@ -56,6 +57,16 @@ export class UserAdminActionController extends BaseController {
     }
     if (userId) {
       conditions.push({ user_id: userId });
+    }
+    if (search) {
+      const searchTerm = `%${search}%`;
+      conditions.push({
+        [Op.or]: [
+          { user_id: { [Op.iLike]: searchTerm } },
+          where(cast(col('action_type'), 'text'), { [Op.iLike]: searchTerm }),
+          where(cast(col('data'), 'text'), { [Op.iLike]: searchTerm }),
+        ],
+      });
     }
 
     // Prepare DB query filter.

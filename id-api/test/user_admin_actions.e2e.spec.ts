@@ -137,4 +137,58 @@ describe('UserAdminActionController', () => {
         expect(body.data[0].id).toBe('11111111-1111-1111-1111-111111111111');
       });
   });
+
+  it('filter[search] returns 0 results for a non-matching term', async () => {
+    await app
+      .request()
+      .get('/user_admin_actions?offset=0&limit=10&filter%5Bsearch%5D=zzz_no_match_xyz')
+      .set(authHeader())
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.meta.count).toBe(0);
+        expect(body.data).toHaveLength(0);
+      });
+  });
+
+  it('filter[search] matches on user_id', async () => {
+    // Only row 4 has user_id 'user-3'
+    await app
+      .request()
+      .get('/user_admin_actions?offset=0&limit=10&filter%5Bsearch%5D=user-3')
+      .set(authHeader())
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.meta.count).toBe(1);
+        expect(body.data).toHaveLength(1);
+        expect(body.data[0].id).toBe('44444444-4444-4444-4444-444444444444');
+      });
+  });
+
+  it('filter[search] matches on action_type (case-insensitive)', async () => {
+    // 'UNBLOCK' should match action_type 'unblock' (row 2 only)
+    await app
+      .request()
+      .get('/user_admin_actions?offset=0&limit=10&filter%5Bsearch%5D=UNBLOCK')
+      .set(authHeader())
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.meta.count).toBe(1);
+        expect(body.data).toHaveLength(1);
+        expect(body.data[0].id).toBe('22222222-2222-2222-2222-222222222222');
+      });
+  });
+
+  it('filter[search] matches on data JSONB content', async () => {
+    // 'seed-4' appears only in row 4's data JSON
+    await app
+      .request()
+      .get('/user_admin_actions?offset=0&limit=10&filter%5Bsearch%5D=seed-4')
+      .set(authHeader())
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.meta.count).toBe(1);
+        expect(body.data).toHaveLength(1);
+        expect(body.data[0].id).toBe('44444444-4444-4444-4444-444444444444');
+      });
+  });
 });
