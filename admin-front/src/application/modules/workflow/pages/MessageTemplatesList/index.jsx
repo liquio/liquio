@@ -427,8 +427,8 @@ const MessageTemplatesList = ({
               native: true,
             }}
           >
-            <option value="sms">{'SMS'}</option>
-            <option value="email">{'Email'}</option>
+            <option value="sms" style={{ color: 'initial' }}>{'SMS'}</option>
+            <option value="email" style={{ color: 'initial' }}>{'Email'}</option>
           </TextField>
           <Button
             variant="outlined"
