@@ -97,6 +97,11 @@ class AccessHistoryValidator extends Validator {
         optional: true,
         isString: true,
       },
+      ['filters.search']: {
+        in: ['query'],
+        optional: true,
+        isString: true,
+      },
       ['filters.from_created_at']: {
         in: ['query'],
         optional: true,
