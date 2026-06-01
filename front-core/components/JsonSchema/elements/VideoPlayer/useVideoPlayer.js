@@ -11,6 +11,45 @@ const getText = (t, key, fallback) => {
 const isEvaluateError = (value) =>
   value instanceof Error || value?.name === 'EvaluateError';
 
+const WATCH_INTERVAL_TOLERANCE_SECONDS = 1.5;
+
+const normalizeWatchedRanges = (ranges, duration = 0) => {
+  if (!Array.isArray(ranges)) {
+    return [];
+  }
+
+  return ranges
+    .map((range) => {
+      const start = Number(range?.start);
+      const end = Number(range?.end);
+
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        return null;
+      }
+
+      return {
+        start: Math.max(0, Math.min(start, duration || start)),
+        end: Math.max(0, Math.min(end, duration || end)),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.start - b.start)
+    .reduce((merged, range) => {
+      const previous = merged[merged.length - 1];
+
+      if (!previous || range.start > previous.end) {
+        return merged.concat(range);
+      }
+
+      return merged
+        .slice(0, -1)
+        .concat({ ...previous, end: Math.max(previous.end, range.end) });
+    }, []);
+};
+
+const getWatchedDuration = (ranges) =>
+  ranges.reduce((total, range) => total + range.end - range.start, 0);
+
 const evaluateSource = ({ source, rootDocument, stepName, value }) => {
   if (typeof source !== 'string') {
     return source;
@@ -35,13 +74,17 @@ const buildPlaybackValue = ({
   duration,
   currentTime,
   percentWatched,
+  watchedRanges,
   completed,
   thresholdReached,
   eventLog,
 }) => {
-  const base = currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue)
-    ? currentValue
-    : { source };
+  const base =
+    currentValue &&
+    typeof currentValue === 'object' &&
+    !Array.isArray(currentValue)
+      ? currentValue
+      : { source };
 
   return {
     ...base,
@@ -54,6 +97,7 @@ const buildPlaybackValue = ({
       duration,
       currentTime,
       percentWatched,
+      watchedRanges,
       completed,
       thresholdReached,
       events: eventLog,
@@ -83,6 +127,9 @@ const useVideoPlayer = ({
   const iframeRef = React.useRef(null);
   const progressTimerRef = React.useRef(null);
   const eventLogRef = React.useRef([]);
+  const watchedRangesRef = React.useRef([]);
+  const lastPlaybackSampleRef = React.useRef(null);
+  const initializedVideoIdRef = React.useRef('');
   const [status, setStatus] = React.useState('unstarted');
   const [playerError, setPlayerError] = React.useState('');
   const [announcement, setAnnouncement] = React.useState('');
@@ -95,9 +142,10 @@ const useVideoPlayer = ({
   });
 
   const source = React.useMemo(() => {
-    const rawValue = value && typeof value === 'object'
-      ? value.source || value.videoId
-      : value;
+    const rawValue =
+      value && typeof value === 'object'
+        ? value.source || value.videoId
+        : value;
 
     return evaluateSource({
       source: videoId || url || rawValue,
@@ -112,14 +160,34 @@ const useVideoPlayer = ({
     [providerConfig, source],
   );
 
+  React.useEffect(() => {
+    if (initializedVideoIdRef.current === resolvedVideoId) {
+      return;
+    }
+
+    initializedVideoIdRef.current = resolvedVideoId;
+    watchedRangesRef.current = normalizeWatchedRanges(
+      value?.playback?.watchedRanges,
+    );
+    lastPlaybackSampleRef.current = null;
+  }, [resolvedVideoId, value]);
+
   const labels = React.useMemo(
     () => ({
       region: ariaLabel || getText(t, 'VideoPlayerRegion', 'Video player'),
       title: title || getText(t, 'VideoPlayerTitle', 'Embedded video'),
       invalid: providerConfig
         ? getText(t, 'InvalidVideoPlayer', 'Video URL or ID is invalid.')
-        : getText(t, 'UnsupportedVideoProvider', 'Video provider is not supported.'),
-      loadError: getText(t, 'VideoPlayerLoadError', 'The video could not be played.'),
+        : getText(
+            t,
+            'UnsupportedVideoProvider',
+            'Video provider is not supported.',
+          ),
+      loadError: getText(
+        t,
+        'VideoPlayerLoadError',
+        'The video could not be played.',
+      ),
       started: getText(t, 'VideoStarted', 'Video playback started.'),
       paused: getText(t, 'VideoPaused', 'Video playback paused.'),
       completed: getText(t, 'VideoCompleted', 'Video playback completed.'),
@@ -152,6 +220,7 @@ const useVideoPlayer = ({
             duration: nextProgress.duration,
             currentTime: nextProgress.currentTime,
             percentWatched: nextProgress.percentWatched,
+            watchedRanges: watchedRangesRef.current,
             completed: nextProgress.completed,
             thresholdReached: nextProgress.thresholdReached,
             eventLog: eventLogRef.current,
@@ -160,7 +229,15 @@ const useVideoPlayer = ({
         ),
       );
     },
-    [onChange, progress, provider, resolvedVideoId, source, trackProgress, value],
+    [
+      onChange,
+      progress,
+      provider,
+      resolvedVideoId,
+      source,
+      trackProgress,
+      value,
+    ],
   );
 
   const logPlaybackEvent = React.useCallback(
@@ -185,61 +262,105 @@ const useVideoPlayer = ({
     [progress, resolvedVideoId],
   );
 
-  const readPlayerProgress = React.useCallback(async () => {
-    const player = playerRef.current;
+  const readPlayerProgress = React.useCallback(
+    async ({ trackCoverage = false } = {}) => {
+      const player = playerRef.current;
 
-    if (!player?.getCurrentTime || !player?.getDuration) {
-      return progress;
-    }
+      if (!player?.getCurrentTime || !player?.getDuration) {
+        return progress;
+      }
 
-    const currentTime = (await player.getCurrentTime()) || 0;
-    const duration = (await player.getDuration()) || 0;
-    const percentWatched = duration ? Math.min(100, (currentTime / duration) * 100) : 0;
-    const completed = duration > 0 && currentTime >= duration - 1;
-    const thresholdReached = percentWatched >= completePercent;
-    const nextProgress = {
-      currentTime,
-      duration,
-      percentWatched,
-      completed,
-      thresholdReached,
-    };
+      const currentTime = (await player.getCurrentTime()) || 0;
+      const duration = (await player.getDuration()) || 0;
+      const playbackRate = (await player.getPlaybackRate?.()) || 1;
+      const now = Date.now();
+      const previousSample = lastPlaybackSampleRef.current;
 
-    setProgress(nextProgress);
-    return nextProgress;
-  }, [completePercent, progress]);
+      if (trackCoverage && duration > 0) {
+        if (previousSample && currentTime > previousSample.currentTime) {
+          const elapsedSeconds = (now - previousSample.checkedAt) / 1000;
+          const playbackDelta = currentTime - previousSample.currentTime;
+          const isContinuousPlayback =
+            playbackDelta <=
+            elapsedSeconds * playbackRate + WATCH_INTERVAL_TOLERANCE_SECONDS;
 
-  const startProgressTimer = React.useCallback((activeStatus) => {
-    clearProgressTimer();
-    progressTimerRef.current = window.setInterval(async () => {
-      const nextProgress = await readPlayerProgress();
-      persistPlayback(activeStatus, nextProgress);
-    }, 5000);
-  }, [clearProgressTimer, persistPlayback, readPlayerProgress]);
+          if (isContinuousPlayback) {
+            watchedRangesRef.current = normalizeWatchedRanges(
+              watchedRangesRef.current.concat({
+                start: previousSample.currentTime,
+                end: currentTime,
+              }),
+              duration,
+            );
+          }
+        }
+
+        lastPlaybackSampleRef.current = { currentTime, checkedAt: now };
+      }
+
+      const watchedDuration = getWatchedDuration(watchedRangesRef.current);
+      const percentWatched = duration
+        ? Math.min(100, (watchedDuration / duration) * 100)
+        : 0;
+      const completed = duration > 0 && currentTime >= duration - 1;
+      const thresholdReached = percentWatched >= completePercent;
+      const nextProgress = {
+        currentTime,
+        duration,
+        percentWatched,
+        completed,
+        thresholdReached,
+      };
+
+      setProgress(nextProgress);
+      return nextProgress;
+    },
+    [completePercent, progress],
+  );
+
+  const startProgressTimer = React.useCallback(
+    (activeStatus) => {
+      clearProgressTimer();
+      progressTimerRef.current = window.setInterval(async () => {
+        const nextProgress = await readPlayerProgress({ trackCoverage: true });
+        persistPlayback(activeStatus, nextProgress);
+      }, 5000);
+    },
+    [clearProgressTimer, persistPlayback, readPlayerProgress],
+  );
 
   React.useEffect(() => () => clearProgressTimer(), [clearProgressTimer]);
 
-  const handleReady = React.useCallback(async (event) => {
-    playerRef.current = event.target;
-    iframeRef.current = await event.target?.getIframe?.() || null;
+  const handleReady = React.useCallback(
+    async (event) => {
+      playerRef.current = event.target;
+      iframeRef.current = (await event.target?.getIframe?.()) || null;
 
-    if (iframeRef.current) {
-      iframeRef.current.setAttribute('tabindex', '0');
-    }
+      if (iframeRef.current) {
+        iframeRef.current.setAttribute('tabindex', '0');
+      }
 
-    if (captions) {
-      event.target?.loadModule?.('captions');
-    }
-  }, [captions]);
+      if (captions) {
+        event.target?.loadModule?.('captions');
+      }
+    },
+    [captions],
+  );
 
   const handleStateChange = React.useCallback(
     async (event) => {
       const nextStatus = providerConfig?.states?.[event.data] || 'unstarted';
-      const nextProgress = await readPlayerProgress();
+      const nextProgress = await readPlayerProgress({
+        trackCoverage: status === 'play' && nextStatus !== 'play',
+      });
 
       setStatus(nextStatus);
 
       if (nextStatus === 'play') {
+        lastPlaybackSampleRef.current = {
+          currentTime: nextProgress.currentTime,
+          checkedAt: Date.now(),
+        };
         logPlaybackEvent('play', nextProgress);
         persistPlayback(nextStatus, nextProgress);
         setAnnouncement(labels.started);
@@ -252,9 +373,8 @@ const useVideoPlayer = ({
       } else if (nextStatus === 'completed') {
         const completedProgress = {
           ...nextProgress,
-          percentWatched: 100,
           completed: true,
-          thresholdReached: true,
+          thresholdReached: nextProgress.percentWatched >= completePercent,
         };
 
         clearProgressTimer();
@@ -271,11 +391,13 @@ const useVideoPlayer = ({
       labels.completed,
       labels.paused,
       labels.started,
+      completePercent,
       logPlaybackEvent,
       persistPlayback,
       providerConfig,
       readPlayerProgress,
       startProgressTimer,
+      status,
     ],
   );
 
@@ -286,7 +408,13 @@ const useVideoPlayer = ({
     setAnnouncement(labels.error);
     logPlaybackEvent('error');
     persistPlayback('error');
-  }, [clearProgressTimer, labels.error, labels.loadError, logPlaybackEvent, persistPlayback]);
+  }, [
+    clearProgressTimer,
+    labels.error,
+    labels.loadError,
+    logPlaybackEvent,
+    persistPlayback,
+  ]);
 
   return {
     announcement,
