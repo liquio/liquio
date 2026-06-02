@@ -7,6 +7,34 @@ export const DEFAULT_COOKIE_DOMAIN = '.liquio';
 export const DEFAULT_CODE_RETRIES = 5;
 export const DEFAULT_CODE_LENGTH = 6;
 
+/**
+ * OIDC Provider Configuration
+ */
+export interface OIDCProviderConfig {
+  name: string;
+  isEnabled?: boolean;
+  clientID: string;
+  clientSecret: string;
+  callbackURL: string;
+  issuer?: string;
+  authorizationURL?: string;
+  tokenURL?: string;
+  userInfoURL?: string;
+  scope?: string;
+  usePKCE?: boolean;
+  userInfo?: {
+    enabled?: boolean;
+  };
+  mapping?: Record<string, string>;
+}
+
+/**
+ * OIDC Configuration containing array of providers
+ */
+export interface OIDCConfig {
+  providers?: OIDCProviderConfig[];
+}
+
 export interface Config {
   allowIdentificationTypes?: string[];
   allowEdrpou?: string[];
@@ -90,32 +118,6 @@ export interface Config {
       namesNaList?: string[];
       authType?: string | string[];
     };
-    linkedin?: {
-      consumerKey?: string;
-      consumerSecret?: string;
-      callbackURL?: string;
-      passReqToCallback?: string;
-      profileFields?: string[];
-    };
-    twitter?: {
-      consumerKey?: string;
-      consumerSecret?: string;
-      callbackURL?: string;
-      passReqToCallback?: string;
-    };
-    google?: {
-      clientID?: string;
-      clientSecret?: string;
-      callbackURL?: string;
-      passReqToCallback?: string;
-    };
-    facebook?: {
-      clientID?: string;
-      clientSecret?: string;
-      callbackURL?: string;
-      passReqToCallback?: string;
-      profileFields?: string[];
-    };
     bankid?: {
       authorizationURL?: string;
       tokenURL?: string;
@@ -137,17 +139,11 @@ export interface Config {
       caServerList?: string;
       blacklistAcsk?: string[];
     };
-    diia?: {
-      publicKey?: string;
-      privateKey?: string;
-      internalPrivateKey?: string;
-      audience?: string | string[];
-      namesNaList?: string[];
-    };
     local?: {
       isEnabled?: boolean;
       isForgotPasswordEnabled?: boolean;
     };
+    oidc?: OIDCConfig;
     wso2?: any;
     x509?: {
       isEnabled?: boolean;
@@ -237,6 +233,54 @@ export interface Config {
 const CONFIG_PATH = process.env.CONFIG_PATH || process.cwd() + '/config';
 const SECRET_PATH = process.env.SECRET_PATH;
 
+/**
+ * Validates OIDC provider configuration
+ * Throws an error if required fields are missing or invalid
+ */
+function validateOIDCConfig(config: Config): void {
+  if (!config.auth_providers?.oidc?.providers) {
+    return; // No OIDC providers configured
+  }
+
+  const providers = config.auth_providers.oidc.providers;
+
+  for (const provider of providers) {
+    // Skip validation if provider is explicitly disabled
+    if (provider.isEnabled === false) {
+      continue;
+    }
+
+    // Validate required fields for enabled providers
+    const errors: string[] = [];
+
+    if (!provider.name) {
+      errors.push('name is required');
+    }
+    if (!provider.clientID) {
+      errors.push('clientID is required');
+    }
+    if (!provider.clientSecret) {
+      errors.push('clientSecret is required');
+    }
+    if (!provider.callbackURL) {
+      errors.push('callbackURL is required');
+    }
+
+    // Validate issuer or endpoint overrides
+    const hasIssuer = !!provider.issuer;
+    const hasAllEndpoints = !!provider.authorizationURL && !!provider.tokenURL && !!provider.userInfoURL;
+
+    if (!hasIssuer && !hasAllEndpoints) {
+      errors.push('must have either "issuer" or all of "authorizationURL", "tokenURL", "userInfoURL"');
+    }
+
+    if (errors.length > 0) {
+      const providerName = provider.name || 'unknown';
+      throw new Error(`Invalid OIDC provider config [${providerName}]: ${errors.join('; ')}`);
+    }
+  }
+}
+
 let config: Config;
 export function loadConfig(): Config {
   if (config) {
@@ -257,6 +301,7 @@ export function loadConfig(): Config {
       throw new Error(`LIQUIO_ID_CONFIG [${env}] is not defined object config.`);
     }
     config = parsedEnvConfig[env] as Config;
+    validateOIDCConfig(config);
     return config;
   }
 
@@ -275,6 +320,8 @@ export function loadConfig(): Config {
     ...envConf,
     ...(raw.versions?.versions !== undefined ? { versions: raw.versions.versions } : {}),
   } as Config;
+
+  validateOIDCConfig(config);
 
   return config;
 }
