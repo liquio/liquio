@@ -101,7 +101,6 @@ done
 if [ -n "$K8S_SECRET_NAME" ]; then
   echo "==> Extracting CA certificate and key from Kubernetes secret: $K8S_SECRET_NAME"
   echo "==> Using Kubernetes namespace: $K8S_NAMESPACE"
-  
   # Check if we have kubectl access
   if ! command -v kubectl >/dev/null 2>&1; then
     echo "Error: kubectl is not available or not configured"
@@ -145,7 +144,6 @@ if [ -n "$K8S_SECRET_NAME" ]; then
   # Override CA paths to use the extracted files
   CA_CERT_PATH="$TEMP_DIR/ca.crt"
   CA_KEY_PATH="$TEMP_DIR/ca.key"
-  
   echo "==> CA certificate and key extracted successfully"
 fi
 
@@ -242,7 +240,7 @@ if [ -n "$FIRST_NAME" ] || [ -n "$LAST_NAME" ]; then
     [ -n "$FIRST_NAME" ] && COMMON_NAME="$FIRST_NAME"
     [ -n "$MIDDLE_NAME" ] && COMMON_NAME="$COMMON_NAME $MIDDLE_NAME"
     [ -n "$LAST_NAME" ] && COMMON_NAME="$COMMON_NAME $LAST_NAME"
-    COMMON_NAME=$(echo "$COMMON_NAME" | sed 's/^ *//' | sed 's/ *$//')  # trim spaces
+    COMMON_NAME=$(echo "$COMMON_NAME" | sed 's/^ *//; s/ *$//') # trim spaces
   fi
 
   CERT_SUBJECT="${CERT_SUBJECT}/CN=${COMMON_NAME}"
@@ -257,7 +255,7 @@ echo "==> Generating certificate for ${COMMON_NAME} with serial number ${SERIAL_
 mkdir -p config/certificates
 
 # Generate private key and certificate signing request, then sign it with CA
-openssl req -new -newkey rsa:2048 -nodes -keyout "config/certificates/${SERIAL_NUMBER}.key" \
+openssl req -new -newkey rsa:2048 -nodes -utf8 -keyout "config/certificates/${SERIAL_NUMBER}.key" \
   -subj "$CERT_SUBJECT" | \
 openssl x509 -req -days 3650 -CA "$CA_CERT_PATH" -CAkey "$CA_KEY_PATH" -set_serial "${SERIAL_NUMBER}" \
   -out "config/certificates/${SERIAL_NUMBER}.crt"
