@@ -36,8 +36,6 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
         {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
-        {{- include "liquio.initContainer.waitForRabbitmq" . | nindent 8 }}
-        {{- include "liquio.initContainer.waitForRedis" . | nindent 8 }}
       containers:
         - name: register-migrations
           securityContext:

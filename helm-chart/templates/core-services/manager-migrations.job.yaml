@@ -31,8 +31,6 @@ spec:
       restartPolicy: OnFailure
       initContainers:
         {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
-        {{- include "liquio.initContainer.waitForRabbitmq" . | nindent 8 }}
-        {{- include "liquio.initContainer.waitForRedis" . | nindent 8 }}
       containers:
         - name: manager-migrations
           image: {{ include "liquio.image" (dict "component" "manager" "Values" .Values "Chart" .Chart) }}
