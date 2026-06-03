@@ -342,6 +342,60 @@ metadata:
   "allowedToUpdateDocumentAndCommit" (list "Basic <removed>")
   "tasksTemplateIds" (list "31009003")
 -}}
+{{ $documentsBase := dict
+  "allowedFileExtensions" (list
+    ".PDF"
+    ".DOC"
+    ".DOCX"
+    ".XLS"
+    ".XLSX"
+    ".CSV"
+    ".TXT"
+    ".RTF"
+    ".ODT"
+    ".ODS"
+    ".PPT"
+    ".PPTX"
+    ".PNG"
+    ".JPG"
+    ".JPEG"
+    ".GIF"
+    ".BMP"
+    ".SVG"
+    ".WEBP"
+    ".TIFF"
+    ".ZIP"
+    ".RAR"
+    ".7Z"
+    ".TAR"
+    ".GZ"
+    ".XML"
+    ".JSON"
+    ".HTML"
+    ".HTM"
+    ".CSS"
+    ".JS"
+    ".MD"
+    ".P7S"
+    ".P7M"
+    ".ASC"
+    ".SIG"
+    ".EML"
+    ".MSG"
+    ".MP4"
+    ".AVI"
+    ".MOV"
+    ".WMV"
+    ".FLV"
+    ".MP3"
+    ".WAV"
+    ".OGG"
+    ".DAT"
+    ".LOG"
+    ".BAK"
+    ".TMP"
+  )
+-}}
 {{ $taskFinishBase := dict
   "addTaskCommiterAsPerformer" true
 -}}
@@ -473,6 +527,10 @@ data:
   # System task configuration
   system_task.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "system_task.json" "base" $systemTaskBase) | nindent 4 }}
+
+  # Documents configuration
+  documents.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "documents.json" "base" $documentsBase) | nindent 4 }}
 
   # Task finish configuration
   task_finish.json: |
