@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
 {{ $serverBase := dict
-  "port" (default 7007 .Values.services.pdfGenerator.containerPort)
+  "port" (default 8080 .Values.services.pdfGenerator.containerPort)
   "bodyLimit" "50mb"
 }}
 {{ $playwrightBase := dict

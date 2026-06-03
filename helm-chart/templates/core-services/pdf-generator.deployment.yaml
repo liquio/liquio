@@ -38,13 +38,13 @@ spec:
           imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
           ports:
             - name: http
-              containerPort: {{ (default 7007 .Values.services.pdfGenerator.containerPort) }}
+              containerPort: {{ (default 8080 .Values.services.pdfGenerator.containerPort) }}
               protocol: TCP
           env:
             - name: NODE_ENV
               value: "production"
             - name: PORT
-              value: "{{ (default 7007 .Values.services.pdfGenerator.containerPort) }}"
+              value: "{{ (default 8080 .Values.services.pdfGenerator.containerPort) }}"
             - name: CONFIG_PATH
               value: "/var/www/config"
             - name: SECRET_PATH
