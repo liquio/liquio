@@ -1,11 +1,13 @@
 import moment from 'moment';
 import 'moment/locale/uk';
 import 'moment/locale/fr';
+import 'moment/locale/de';
 import store from 'store';
 
 import ukUA from 'translation/uk-UA';
 import enGB from 'translation/en-GB';
 import frFR from 'translation/fr-FR';
+import deDE from 'translation/de-DE';
 import plugins from 'plugins';
 import { getQueryLangParam } from 'actions/auth';
 import handleTranslateText from 'helpers/handleTranslateText';
@@ -16,6 +18,8 @@ const translations = {
   'en-GB': enGB,
   eng: enGB,
   fr: frFR,
+  'de-DE': deDE,
+  de: deDE
 };
 
 let subscribed = false;
@@ -36,6 +40,10 @@ export default function getTranslations() {
       break;
     case 'fr':
       moment.locale('fr');
+      break;
+    case 'de':
+    case 'de-DE':
+      moment.locale('de');
       break;
     default: {
       moment.locale('uk');
@@ -61,15 +69,13 @@ export default function getTranslations() {
 
   const pluginTranslations = []
     .concat(plugins)
-    .filter(
-      (plugin) => plugin.translations && plugin.translations[DEFAULT_TRANSLATION]
-    )
+    .filter((plugin) => plugin.translations && plugin.translations[DEFAULT_TRANSLATION])
     .map((plugin) => plugin.translations[DEFAULT_TRANSLATION])
     .reduce((acc, tr) => ({ ...acc, ...tr }), {});
 
   return {
     ...chosenTranslation,
     ...pluginTranslations,
-    locale: chosenTranslation?.locale,
+    locale: chosenTranslation?.locale
   };
 }
