@@ -5,7 +5,7 @@ export default (task, template, authInfo) => {
     return [];
   }
 
-  const { properties, stepOrders } = template.jsonSchema;
+  const { properties, stepOrders } = template.jsonSchema ?? {};
 
   let steps = evaluate(stepOrders, task.document.data, task?.meta, task?.activityLog);
 
