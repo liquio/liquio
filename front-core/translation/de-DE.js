@@ -146,6 +146,8 @@ export default {
     RequiredField: 'Füllen Sie alle Felder aus'
   },
   Navigator: {
+    StartLearning: 'Lerne los',
+    MyCertificates: 'Meine Zertifikate',
     StatisticsPageTitle: 'Statistiken',
     WorkflowDynamicsPageTitle: 'Workflow-Dynamik',
     DebugLogs: 'Debug-Protokolle',

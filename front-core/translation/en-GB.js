@@ -149,6 +149,8 @@ export default {
     DebugLogs: 'Debug Logs',
     TranslationsPageTitle: 'Translations',
     Elastic: 'Elastic',
+    StartLearning: 'Start learning',
+    MyCertificates: 'My certificates',
     SkipToMainContent: 'Skip to main content',
     OpenProfileMenuButton: 'Open profile menu',
     OpenMenuButton: 'Collapse or expand menu',
