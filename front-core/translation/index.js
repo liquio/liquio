@@ -8,7 +8,7 @@ import ukUA from 'translation/uk-UA';
 import enGB from 'translation/en-GB';
 import frFR from 'translation/fr-FR';
 import deDE from 'translation/de-DE';
-import nlNL from 'translations/nl-NL';
+import nlNL from 'translation/nl-NL';
 import plugins from 'plugins';
 import { getQueryLangParam } from 'actions/auth';
 import handleTranslateText from 'helpers/handleTranslateText';
