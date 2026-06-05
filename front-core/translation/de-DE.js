@@ -1,3 +1,24 @@
+const WorkflowProcesses = {
+  WorkflowProcesses: 'Dokumente',
+  TaskTemplateId: 'Vorlagennummer',
+  DocumentId: 'Dokumentnummer',
+  TaskTemplateName: 'Vorlage',
+  ID: 'Kennung',
+  TaskTemplate: 'Vorlage',
+  UserName: 'Erstellt von',
+  Performer: 'Bearbeiter',
+  CreatedAt: 'Erstellungsdatum',
+  FileName: 'Datei',
+  FromShort: 'Von',
+  ToShort: 'Bis',
+  UserIds: 'Benutzer-IDs',
+  Users: 'Benutzer',
+  ShowAllPerformerUsers: 'Anzeigen',
+  PerformerUsers: 'Haben Zugriff',
+  Close: 'Schließen',
+  Name: 'Status'
+};
+
 export default {
   locale: 'de',
   App: {
@@ -2557,13 +2578,6 @@ export default {
     DismatchRnokpp: 'Die eingegebene RNOKPP stimmt nicht mit der RNOKPP des Benutzers überein',
     EmptyRnokpp: 'RNOKPP muss eingegeben werden',
     ...WorkflowProcesses,
-    WorkflowProcesses: 'Dokumente',
-    TaskTemplate: 'Vorlage',
-    FromShort: 'Von',
-    ToShort: 'Bis',
-    UserIds: 'Benutzer-IDs',
-    ShowAllPerformerUsers: 'Anzeigen',
-    PerformerUsers: 'Haben Zugriff',
     error: 'Keine Benutzer gefunden'
   },
   HealthCheckListPage: {
@@ -2810,26 +2824,7 @@ export default {
     SaveWarningMessage:
       'Die Verwendung von Überschriften h1 und h2 ist verboten. Verwenden Sie stattdessen Überschriften der Ebenen h3 - h6'
   },
-  WorkflowProcesses: {
-    WorkflowProcesses: 'Dokumente',
-    TaskTemplateId: 'Vorlagennummer',
-    DocumentId: 'Dokumentnummer',
-    TaskTemplateName: 'Vorlage',
-    ID: 'Kennung',
-    TaskTemplate: 'Vorlage',
-    UserName: 'Erstellt von',
-    Performer: 'Bearbeiter',
-    CreatedAt: 'Erstellungsdatum',
-    FileName: 'Datei',
-    FromShort: 'Von',
-    ToShort: 'Bis',
-    UserIds: 'Benutzer-IDs',
-    Users: 'Benutzer',
-    ShowAllPerformerUsers: 'Anzeigen',
-    PerformerUsers: 'Haben Zugriff',
-    Close: 'Schließen',
-    Name: 'Status'
-  },
+  WorkflowProcesses,
   StringFilterHandlerSearchable: {
     loadingText: 'Wird geladen...',
     noOptionsText: 'Nicht gefunden',

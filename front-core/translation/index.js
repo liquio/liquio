@@ -8,6 +8,7 @@ import ukUA from 'translation/uk-UA';
 import enGB from 'translation/en-GB';
 import frFR from 'translation/fr-FR';
 import deDE from 'translation/de-DE';
+import nlNL from 'translations/nl-NL';
 import plugins from 'plugins';
 import { getQueryLangParam } from 'actions/auth';
 import handleTranslateText from 'helpers/handleTranslateText';
@@ -19,7 +20,9 @@ const translations = {
   eng: enGB,
   fr: frFR,
   'de-DE': deDE,
-  de: deDE
+  de: deDE,
+  'nl-NL': nlNL,
+  nl: nlNL
 };
 
 let subscribed = false;
@@ -44,6 +47,10 @@ export default function getTranslations() {
     case 'de':
     case 'de-DE':
       moment.locale('de');
+      break;
+    case 'nl':
+    case 'nl-NL':
+      moment.locale('nl');
       break;
     default: {
       moment.locale('uk');
