@@ -62,6 +62,8 @@ export default {
     'NoEnableUnit subtitle': 'Зверніться до системного адміністратора',
   },
   Navigator: {
+    StartLearning: 'Розпочати навчання',
+    MyCertificates: 'Мої сертифікати',
     SkipToMainContent: 'Перейти до основного вмісту',
     OpenProfileMenuButton: 'Відкрити меню профілю',
     OpenMenuButton: 'Згонути або розгонути меню',

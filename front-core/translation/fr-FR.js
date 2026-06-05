@@ -71,6 +71,8 @@ export default {
     TranslationsPageTitle: 'Multilinguisme',
     ProcessIndexElastic: 'Indexation des processus',
     MonitoringElastic: 'Surveillance',
+    StartLearning: 'Commencer la formation',
+    MyCertificates: 'Mes certificats',
     SkipToMainContent: 'Passer au contenu principal',
     OpenProfileMenuButton: 'Ouvrir le menu du profil',
     OpenMenuButton: 'Réduire ou développer le menu',
