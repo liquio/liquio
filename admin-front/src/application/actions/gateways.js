@@ -21,6 +21,7 @@ const entityToBody = ({
 }) => {
   try {
     gateway.jsonSchema = jsonSchema || {};
+    gateway.jsonSchemaRaw = '';
     gateway.name = name || '';
     gateway.description = description || '';
   } catch (e) {
