@@ -2,6 +2,7 @@ import React from 'react';
 import { translate } from 'react-translate';
 import { Tooltip, IconButton } from '@mui/material';
 
+import theme from 'theme';
 import ConfirmDialog from 'components/ConfirmDialog';
 import { ReactComponent as DeleteOutlineOutlinedIcon } from 'assets/img/delete_outline.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/ic_delete.svg';
@@ -30,7 +31,7 @@ const DeleteFile = (props) => {
           />
         ) : (
           <IconButton onClick={() => setOpenConfirmDialog(true)} aria-label={t('DeleteFile')}>
-            {<DeleteOutlineOutlinedIcon />}
+            {theme?.fileDataTableTypePremium ? <DeleteIcon /> : <DeleteOutlineOutlinedIcon />}
           </IconButton>
         )}
       </Tooltip>
