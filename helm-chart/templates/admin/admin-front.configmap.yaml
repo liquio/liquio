@@ -36,6 +36,7 @@ metadata:
   "enabledDeleteUser" false
   "enabledMocksPage" false
   "defaultLanguage" "en"
+  "multiLanguage" true
   "hideQr" true
 }}
 data:
