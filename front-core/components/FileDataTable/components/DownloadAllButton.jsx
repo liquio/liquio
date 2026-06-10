@@ -352,23 +352,17 @@ const DownloadAllButton = ({
       ) : null}
 
       {!p7sDownload && (
-        <>
-          {alternativeIcons ? (
-            <Button
-              onClick={handleClickDownload}
-              startIcon={busy ? <CircularProgress size={24} /> : <DownloadIcon />}
-              aria-label={t('Download')}
-            >
-              {t('Download')}
-            </Button>
-          ) : (
-            <Tooltip title={t('Download')}>
-              <IconButton onClick={handleClickDownload} aria-label={t('Download')}>
-                {busy ? <CircularProgress size={24} /> : <SaveAltIcon />}
-              </IconButton>
-            </Tooltip>
-          )}
-        </>
+        <Tooltip title={t('Download')}>
+          <IconButton onClick={handleClickDownload} aria-label={t('Download')}>
+            {busy ? (
+              <CircularProgress size={24} />
+            ) : alternativeIcons ? (
+              <DownloadIcon />
+            ) : (
+              <SaveAltIcon />
+            )}
+          </IconButton>
+        </Tooltip>
       )}
       {renderMenu()}
     </>

@@ -129,10 +129,8 @@ const FileDataTable = (props) => {
           width: column?.minWidth || column?.width,
           headerAlign: 'left',
           align: 'left',
-          renderCell: column.getActions
-            ? null
-            : ({ row, row: { [column?.id]: value } }) => column.render(value, row),
-          getActions: column.getActions
+          renderCell: ({ row, row: { [column?.id]: value } }) =>
+            column.render ? column.render(value, row) : value
         });
       }),
     [settings.columns]
