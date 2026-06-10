@@ -23,6 +23,7 @@ metadata:
   "idAuthLink" (printf "%s://%s/authorise" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "clientId" "liquio-portal"
   "defaultLanguage" "en-GB"
+  "multiLanguage" true
 }}
 data:
   config.json: |

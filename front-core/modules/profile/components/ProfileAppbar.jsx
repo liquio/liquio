@@ -12,6 +12,7 @@ import { logout, toggleDebugMode } from 'actions/auth';
 import UserName from 'components/Auth/UserName';
 import checkAccess from 'helpers/checkAccess';
 import { getConfig } from 'helpers/configLoader';
+import { LanguageSelector } from './LanguageSelector';
 
 const styles = (theme) => ({
   userName: {
@@ -145,6 +146,12 @@ class ProfileAppBar extends React.Component {
 
     return (
       <>
+        {this.applicationType !== 'adminpanel' && isMobile ? null : (
+          <>
+            <div style={{ flex: '1 1 0%' }} />
+            <LanguageSelector />
+          </>
+        )}
         <div className={classes.root}>
           {this.applicationType !== 'adminpanel' && isMobile ? null : (
             <p className={classes.userName}>

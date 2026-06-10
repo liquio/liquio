@@ -104,6 +104,15 @@ export const getQueryLangParam = () => {
   return null;
 };
 
+export const SET_CURRENT_LANGUAGE = 'SET_CURRENT_LANGUAGE';
+
+export const setCurrentLanguage = (code) => (dispatch) => {
+  if (!code) return { type: SET_CURRENT_LANGUAGE, payload: null };
+  setCookie('lang', code, 365);
+  storage.setItem('lang', code);
+  return dispatch({ type: SET_CURRENT_LANGUAGE, payload: code });
+};
+
 export const requestUserInfo = () => (dispatch) => {
   if (!storage.getItem('token')) {
     throw new Error('401 unauthorized');

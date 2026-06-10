@@ -37,6 +37,7 @@ const styles = (theme) => ({
   toolbar: {
     padding: 0,
     minHeight: 'auto',
+    gap: 16,
   },
   flexDisplay: {
     display: 'flex',
