@@ -157,7 +157,8 @@ const ProfileAppbar = ({ t, actions, classes, userInfo, userUnits, baseUnits }) 
     <div
       className={classNames({
         [classes.root]: true
-      })}>
+      })}
+    >
       <Tooltip title={userUnit ?? ''}>
         <ButtonBase
           className={classes.profileButton}
