@@ -19,12 +19,12 @@ export default {
     }
   ],
   navigation: [
-    {
-      id: 'Users',
-      path: '/users',
-      icon: <AccessibilityNewOutlinedIcon />,
-      priority: 30,
-      access
-    }
+    // {
+    //   id: 'Users',
+    //   path: '/users',
+    //   icon: <AccessibilityNewOutlinedIcon />,
+    //   priority: 30,
+    //   access
+    // }
   ]
 };
