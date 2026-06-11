@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 import { UserAttributes } from '../src/models';
 import { TestApp, config } from './test_app';
@@ -65,6 +66,36 @@ describe('AuthController', () => {
   });
 
   describe('Admin methods', () => {
+    it('should reject blocked user on /user/info', async () => {
+      const randomUuid = crypto.randomUUID();
+      const accessToken = `${randomUuid.slice(0, 14)}1${randomUuid.slice(15)}`;
+      const expires = new Date(Date.now() + 60 * 60 * 1000);
+      const client = await app.model('client').findOne().then((row) => row?.dataValues as any);
+
+      await app.model('user').update({ isActive: false }, { where: { userId: users.local1!.userId } });
+
+      await app.model('accessToken').create({
+        accessToken,
+        clientId: client.clientId,
+        expires,
+        userId: users.local1!.userId,
+        scope: ['userId', 'email', 'isActive'],
+      } as any);
+
+      await app
+        .request()
+        .get('/user/info')
+        .query({ access_token: accessToken })
+        .expect(403)
+        .expect(({ body }) => {
+          expect(body).toEqual({
+            error: { message: 'User has been blocked.' },
+          });
+        });
+
+      await app.model('user').update({ isActive: true }, { where: { userId: users.local1!.userId } });
+    });
+
     it('should fail to check if user email is already registered without an email parameter', async () => {
       await app
         .request()

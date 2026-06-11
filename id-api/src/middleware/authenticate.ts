@@ -128,6 +128,10 @@ export class AuthMiddleware {
         res.locals.oauth = { token };
         const passport = req.session.passport ?? ({} as any);
         const user = await service.getUser({ userId: token.user.id });
+        if (user?.isActive === false) {
+          res.status(403).send({ error: { message: 'User has been blocked.' } });
+          return;
+        }
         req.session.passport = passport;
         appendTraceMeta({ auth: 'authorise', userId: user.userId });
         await saveSession(req, user);
@@ -216,8 +220,23 @@ export class AuthMiddleware {
 
   checkUserAccess() {
     return async (req: Request, res: Response, next: NextFunction) => {
-      const user = req.session?.passport?.user;
-      const { isActive, userId } = user ?? {};
+      let user = req.session?.passport?.user;
+      const userId = user?.userId;
+
+      // Local auth session initially stores a slim profile without isActive.
+      // Refresh user from DB so blocked checks are always based on current state.
+      if (userId && typeof user?.isActive === 'undefined') {
+        const actualUser = await this.service('auth').getUser({ userId });
+        if (actualUser) {
+          user = actualUser as any;
+          const passport = req.session.passport ?? ({} as any);
+          passport.user = actualUser as any;
+          req.session.passport = passport;
+          await saveSession(req);
+        }
+      }
+
+      const { isActive } = user ?? {};
       const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'login' });
 
       if (!this.checkIdentificationType(user)) {
