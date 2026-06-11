@@ -95,7 +95,7 @@
     "jest": "^30.2.0",
     "nock": "^14.0.4",
     "portfinder": "^1.0.37",
-    "prettier": "^3.5.3",
+    "prettier": "^3.8.4",
     "supertest": "^7.1.0",
     "testcontainers": "^11.10.0",
     "ts-jest": "^29.4.6",
