@@ -10,6 +10,7 @@ import { Models, UserAttributes } from '../models';
 import { Services } from '../services';
 import { getStrategy, govid } from '../strategies/govid';
 import { local } from '../strategies/local';
+import { oidc } from '../strategies/oidc';
 import { wso2 } from '../strategies/wso2';
 import { x509 } from '../strategies/x509';
 import { Express, NextFunction, Request, Response } from '../types';
@@ -77,6 +78,7 @@ export class AuthMiddleware {
     const promises = [];
     if (config.govid) promises.push(govid(app));
     if (config.local?.isEnabled) promises.push(local(app));
+    if (config.oidc?.providers?.length) promises.push(oidc(app));
     if (config.wso2?.isEnabled) promises.push(wso2(app));
     if (config.x509?.isEnabled) promises.push(x509(app));
     await Promise.all(promises);

@@ -20,7 +20,7 @@ export interface OIDCProviderConfig {
   authorizationURL?: string;
   tokenURL?: string;
   userInfoURL?: string;
-  scope?: string;
+  scope?: string | string[];
   usePKCE?: boolean;
   userInfo?: {
     enabled?: boolean;

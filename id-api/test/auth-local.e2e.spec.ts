@@ -116,7 +116,7 @@ describe('AuthController - local', () => {
         .send({ email, oldPassword: password, newPassword: 'NewP4ssw0!rd' })
         .expect(200)
         .expect(({ body }) => {
-          expect(body).toEqual({ success: true });
+          expect(body).toEqual({ success: true, message: 'Password changed successfully.' });
         });
 
       const user = await app
@@ -153,6 +153,7 @@ describe('AuthController - local', () => {
         .expect(401)
         .expect(({ body }) => {
           expect(body).toEqual({
+            success: false,
             error: 'Invalid email or password.',
           });
         });
@@ -166,6 +167,7 @@ describe('AuthController - local', () => {
         .expect(400)
         .expect(({ body }) => {
           expect(body).toEqual({
+            success: false,
             error: 'Password must be at least 8 characters long.',
           });
         });

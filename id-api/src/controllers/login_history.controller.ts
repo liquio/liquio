@@ -4,6 +4,36 @@ import { matchedData, query } from 'express-validator';
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
+const ALLOWED_FILTER_KEYS = [
+  'created_at_from',
+  'created_at_to',
+  'user_id',
+  'user_name',
+  'ip',
+  'user_agent',
+  'client_id',
+  'client_name',
+  'is_blocked',
+  'action_type',
+];
+
+/**
+ * Parse and validate the filter query parameter.
+ * Accepts either an object (bracket notation, e.g. filter[user_id]=x) or a JSON string.
+ * Throws on invalid input or unknown filter keys.
+ */
+function parseFilter(value: unknown): Record<string, string> {
+  const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('Invalid filter format');
+  }
+  const unknownKeys = Object.keys(parsed).filter((key) => !ALLOWED_FILTER_KEYS.includes(key));
+  if (unknownKeys.length) {
+    throw new Error(`Invalid filter keys: ${unknownKeys.join(', ')}`);
+  }
+  return parsed;
+}
+
 /**
  * Login history controller.
  */
@@ -20,7 +50,12 @@ export class LoginHistoryController extends BaseController {
         // https://github.com/express-validator/express-validator/issues/1057
         query('offset').optional().isNumeric(),
         query('limit').optional().isNumeric(),
-        query('filter').optional().isJSON(),
+        query('filter')
+          .optional()
+          .custom((value) => {
+            parseFilter(value);
+            return true;
+          }),
         this.handleValidation.bind(this),
       ],
       this.auth.basic(),
@@ -44,7 +79,7 @@ export class LoginHistoryController extends BaseController {
       client_name: clientName,
       is_blocked: isBlocked,
       action_type: actionType,
-    } = queryFilter ? JSON.parse(queryFilter) : {};
+    } = queryFilter ? parseFilter(queryFilter) : {};
 
     const clientIdAsOneRecord = typeof clientId === 'string' && !clientId.includes(',') ? clientId : undefined;
     const clientIdAsRecordsArray = typeof clientId === 'string' && clientId.includes(',') ? clientId.split(',').filter((v) => !!v) : undefined;
