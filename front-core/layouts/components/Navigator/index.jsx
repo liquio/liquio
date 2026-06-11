@@ -267,7 +267,7 @@ const Navigator = (props) => {
 
   return (
     <>
-      {checkAccess({
+      {/* {checkAccess({
         access: {
           isUnitedUser: false,
           unitHasAccessTo: 'navigation.tasks.CreateTaskButton'
@@ -276,7 +276,9 @@ const Navigator = (props) => {
         <CreateTaskButton isSidebar={true} />
       ) : (
         <div className={classes.emptyCreateButton} />
-      )}
+      )}*/}
+
+      <div className={classes.emptyCreateButton} />
 
       {isMobile ? (
         <div className={classes.verticalScroll}>{contentWithoutScroll()}</div>

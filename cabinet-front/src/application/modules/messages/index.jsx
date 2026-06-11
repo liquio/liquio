@@ -29,10 +29,10 @@ export default function getMessagesModule() {
       }
     ],
     navigation: [
-      {
-        priority: 50,
-        Component: MessagesNavigation
-      }
+      // {
+      //   priority: 50,
+      //   Component: MessagesNavigation
+      // }
     ]
   };
 }

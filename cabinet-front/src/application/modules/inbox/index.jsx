@@ -23,13 +23,13 @@ export default {
     }
   ],
   navigation: [
-    {
-      priority: 19,
-      Component: InboxNavigation,
-      access: {
-        isUnitedUser: false,
-        unitHasAccessTo: 'navigation.inbox.InboxFilesListPage'
-      }
-    }
+    // {
+    //   priority: 19,
+    //   Component: InboxNavigation,
+    //   access: {
+    //     isUnitedUser: false,
+    //     unitHasAccessTo: 'navigation.inbox.InboxFilesListPage'
+    //   }
+    // }
   ]
 };

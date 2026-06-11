@@ -12,12 +12,12 @@ export default {
     }
   ],
   navigation: [
-    {
-      id: 'Registry',
-      priority: 15,
-      icon: <StorageOutlinedIcon />,
-      path: '/registry',
-      access: { unitHasAccessTo: 'navigation.registry.RegistryPage' }
-    }
+    // {
+    //   id: 'Registry',
+    //   priority: 15,
+    //   icon: <StorageOutlinedIcon />,
+    //   path: '/registry',
+    //   access: { unitHasAccessTo: 'navigation.registry.RegistryPage' }
+    // }
   ]
 };
