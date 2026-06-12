@@ -8,8 +8,9 @@ jobs:
   mirror:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout (full history)
+      - name: Checkout full history
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -18,17 +19,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Mirror to GitLab (HTTPS Deploy Token)
-        shell: bash
-        env:
-          GITLAB_HTTPS_URL: ${{ secrets.GITLAB_HTTPS_URL }}
-          GITLAB_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
-          GITLAB_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
-        run: |
-          set -euo pipefail
 
           git config --global http.postBuffer 524288000
           git config --global http.lowSpeedLimit 1
@@ -36,20 +29,56 @@ jobs:
           git config --global http.version HTTP/1.1
           git config --global core.compression 0
 
-          git remote remove gitlab 2>/dev/null || true
+      - name: Mirror to GitLabs
+        shell: bash
+        env:
+          GITLAB1_HTTPS_URL: ${{ secrets.GITLAB_HTTPS_URL }}
+          GITLAB1_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
+          GITLAB1_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
-          git remote add gitlab "https://${GITLAB_DEPLOY_USER}:${GITLAB_DEPLOY_TOKEN}@${GITLAB_HTTPS_URL}"
+          GITLAB2_HTTPS_URL: ${{ secrets.GITLAB2_HTTPS_URL }}
+          GITLAB2_DEPLOY_USER: ${{ secrets.GITLAB2_DEPLOY_USER }}
+          GITLAB2_DEPLOY_TOKEN: ${{ secrets.GITLAB2_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
 
-          git fetch gitlab main
-          git merge -X ours --no-edit gitlab/main
+          mirror_one() {
+            local remote_name="$1"
+            local url="$2"
+            local user="$3"
+            local token="$4"
+            local work_branch="$5"
 
-          for i in 1 2 3; do
-            echo "Push attempt $i..."
-            if git push gitlab HEAD:main; then
-              exit 0
+            echo "===== Mirroring to ${remote_name} ====="
+
+            git checkout -B "$work_branch" origin/main
+
+            git remote remove "$remote_name" 2>/dev/null || true
+            git remote add "$remote_name" "https://${user}:${token}@${url}"
+
+            git fetch "$remote_name" main || true
+
+            if git show-ref --verify --quiet "refs/remotes/${remote_name}/main"; then
+              git merge -X ours --no-edit "${remote_name}/main"
+            else
+              echo "Remote ${remote_name}/main not found, skipping merge"
             fi
-            echo "Push failed, retrying in $((i*10))s..."
-            sleep $((i*10))
-          done
 
-          exit 1
+            for i in 1 2 3; do
+              echo "Push to ${remote_name}, attempt ${i}..."
+
+              if git push "$remote_name" HEAD:main; then
+                echo "Push to ${remote_name} completed"
+                return 0
+              fi
+
+              echo "Push to ${remote_name} failed, retrying in $((i * 10))s..."
+              sleep $((i * 10))
+            done
+
+            echo "Push to ${remote_name} failed after 3 attempts"
+            return 1
+          }
+
+          mirror_one gitlab1 "$GITLAB1_HTTPS_URL" "$GITLAB1_DEPLOY_USER" "$GITLAB1_DEPLOY_TOKEN" "mirror-gitlab1"
+          mirror_one gitlab2 "$GITLAB2_HTTPS_URL" "$GITLAB2_DEPLOY_USER" "$GITLAB2_DEPLOY_TOKEN" "mirror-gitlab2"
