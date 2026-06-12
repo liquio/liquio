@@ -2359,6 +2359,11 @@ export default {
     ClientName: 'Dienst',
     ClientId: 'Dienst-ID',
     ActionType: 'Actietype',
+    LoginAction: 'Inloggen',
+    LogoutAction: 'Uitloggen',
+    BlockAction: 'Blok',
+    UnblockAction: 'Débloquer',
+    DeleteAction: 'Verwijderen',
     SessionTime: 'Sessietijd',
     UserOperations: 'Gebruikersacties',
     createdBy: 'Initiator',
@@ -2444,6 +2449,11 @@ export default {
     Save: 'Wijzigingen opslaan'
   },
   UserListPage: {
+    commonName: 'Volledige naam',
+    surname: 'Achternaam',
+    givenName: 'Voornaam',
+    organizationName: 'Organisatie',
+    serialNumber: 'Serienummer',
     TaskTemplateName: 'Sjabloon',
     TaskTemplateId: 'Sjabloon-ID',
     DocumentId: 'Documentnummer',
