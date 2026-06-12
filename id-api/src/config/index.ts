@@ -7,6 +7,20 @@ export const DEFAULT_COOKIE_DOMAIN = '.liquio';
 export const DEFAULT_CODE_RETRIES = 5;
 export const DEFAULT_CODE_LENGTH = 6;
 
+export interface OIDCProviderConfig {
+  name: string;
+  issuer?: string;
+  authorizationURL?: string;
+  tokenURL?: string;
+  userInfoURL?: string;
+  clientID: string;
+  clientSecret: string;
+  callbackURL: string;
+  scope?: string;
+  isEnabled?: boolean;
+  mapping?: Record<string, string>;
+}
+
 export interface Config {
   allowIdentificationTypes?: string[];
   allowEdrpou?: string[];
@@ -153,6 +167,9 @@ export interface Config {
       isEnabled?: boolean;
     };
     oauth2?: StrategyOptions & { userProfileUrl: string };
+    oidc?: {
+      providers?: OIDCProviderConfig[];
+    };
   };
   passwordManager?: {
     minPasswordLength?: number;
