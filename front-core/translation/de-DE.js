@@ -1,3 +1,5 @@
+import { Delete } from '@mui/icons-material';
+
 const WorkflowProcesses = {
   WorkflowProcesses: 'Dokumente',
   TaskTemplateId: 'Vorlagennummer',
@@ -206,7 +208,7 @@ export default {
     UserProcessList: 'Aktionen im System',
     UserAccessJournal: 'Rollenänderungen',
     JournalList: 'Prozessprotokolle',
-    UIFilters: 'Schnittstelleneinstellungen',
+    UIFilters: 'Schnittstellen',
     Kibana: 'Kibana',
     Reports: 'Berichte',
     ReportTemplates: 'Berichtsvorlagen',
@@ -886,7 +888,7 @@ export default {
     Accept: 'Ja',
     Yes: 'Ja',
     No: 'Nein',
-    DropFiles: '{{link}} oder ziehen Sie es hierher',
+    DropFiles: '{{link}} oder ziehen Sie sie hierher',
     SelectFiles: 'Laden Sie eine Datei von Ihrem Datenträger hoch',
     MaxFileSizeLimit: 'Maximale Größe einer Datei: {{size}}',
     MinFileSizeLimit: 'Minimale Größe einer Datei: {{size}}',
@@ -922,7 +924,7 @@ export default {
     MakePayment: 'Bezahlen',
     Paid: 'Bezahlt',
     SYMBOLS_COUNT: 'Eingegebene Zeichen: {{num}} {{max}} ',
-    Currency: 'UAH',
+    Currency: 'EUR',
     amountText: 'Zahlungsbetrag',
     PhoneConfirnmation:
       'Wir haben Ihnen eine SMS mit einem Code an die angegebene Telefonnummer <b>{{contact}}</b> gesendet. Geben Sie ihn ein, um zu bestätigen, dass dies Ihre Nummer ist',
@@ -1021,8 +1023,8 @@ export default {
     FullInfo: 'Vollständige Informationen',
     HideInfo: 'Ausblenden',
     of: 'von',
-    columns: 'Spalten',
-    density: 'Zeilen',
+    columns: 'Rasteransicht',
+    density: 'Listenansicht',
     DensityCompact: 'Kompakt',
     DensityStandard: 'Standard',
     DensityComfortable: 'Komfortabel',
@@ -1201,7 +1203,7 @@ export default {
     toLastPage: 'Zur letzten Seite',
     name: 'Vollständiger Name',
     id: 'Kennung',
-    ipn: 'RNOKPP',
+    ipn: 'Steuernummer (RNOKPP)',
     actions: 'Aktionen'
   },
   DataList: {
@@ -1519,7 +1521,7 @@ export default {
     BirthdayInputLabel: 'Geburtsdatum',
     RegistrationInputLabel: 'Datum der staatlichen Registrierung',
     BirthdayInputError: 'Geben Sie das Datum im Format 01.01.2000 ein',
-    IpnInputLabel: 'RNOKPP oder Serie und Nummer des Reisepasses oder Nummer der ID-Karte',
+    IpnInputLabel: 'Steuernummer (RNOKPP), oder Serie und Nummer des Reisepasses oder Nummer der ID-Karte',
     ProfileSaved: 'Profil gespeichert',
     Saved: 'Änderungen gespeichert',
     TwoFactorAuthEnable: 'Zweistufige Verifizierung beim Anmelden aktivieren',
@@ -1572,7 +1574,7 @@ export default {
     LegalAddress: 'Adresse des tatsächlichen Standorts',
     RequiredFields: '* - Pflichtfelder',
     AddressHelper:
-      'Geben Sie Region, Bezirk, Stadt (Dorf, Siedlung), Straße (Boulevard, Gasse, Abhang usw.), Haus, Wohnung und Postleitzahl ein.',
+      'Geben Sie Region, Bezirk, Stadt (Dorf, Siedlung), Straße (Boulevard, Gasse usw.), Haus, Wohnung und Postleitzahl ein.',
     PassportSeries: 'Serie',
     PassportNumber: 'Nummer',
     PassportIssueDate: 'Ausstellungsdatum',
@@ -1945,7 +1947,7 @@ export default {
     DownloadProcess: 'Ladevorgang',
     PIB: 'Vollständiger Name',
     UserId: 'Benutzer-ID',
-    Rnokpp: 'RNOKPP'
+    Rnokpp: 'Steuernummer (RNOKPP)'
   },
   UnitPage: {
     UploadCSV: 'Aus csv hochladen',
@@ -1957,10 +1959,10 @@ export default {
     'Unit already exists.': 'Eine Abteilung mit diesem Namen existiert bereits',
     Users: 'Benutzer',
     Registered: 'Registriert',
-    IPNUsers: 'Benutzer nach RNOKPP',
+    IPNUsers: 'Benutzer nach Steuernummer (RNOKPP)',
     InvalidUserCodeFormat: '👿  Ungültiges Format des Benutzercodes',
     AvailableFormats:
-      'Verfügbare Formate: RNOKPP - 10 Ziffern, ID-Karte - 9 Ziffern, Passheft - 2 Buchstaben und 6 Ziffern',
+      'Verfügbare Formate: Steuernummer (RNOKPP) - 10 Ziffern, ID-Karte - 9 Ziffern, Passheft - 2 Buchstaben und 6 Ziffern',
     Heads: 'Leiter',
     Interface: 'Schnittstelle',
     Plugins: 'Plugins',
@@ -1971,7 +1973,7 @@ export default {
     AddUsers: 'Benutzer hinzufügen',
     AddHeads: 'Leiter hinzufügen',
     NoUsers: 'Keine Benutzer gefunden',
-    FilterUsers: 'Benutzer nach vollständigem Namen, RNOKPP oder ID suchen',
+    FilterUsers: 'Benutzer nach vollständigem Namen, Steuernummer (RNOKPP) oder ID suchen',
     FilterHeads: 'Unter den Leitern der Abteilung suchen',
     AddHeadsDialogTitle: 'Leiter hinzufügen',
     UnitName: 'Abteilungsname',
@@ -2124,7 +2126,7 @@ export default {
     WhoCanChange: 'Wer darf Aktionen mit Einträgen ausführen',
     allMembers: 'Alle Mitglieder der Abteilung',
     onlyHeads: 'Nur Leiter',
-    strictAccess: 'Auf Eingabeformularen verwenden (strict access)',
+    strictAccess: 'Auf Eingabeformularen verwenden (strenger Zugriff)',
     keyAccess: 'Zugriff über den Registereditor',
     addUnit: 'Abteilung hinzufügen',
     unit: 'Abteilung',
@@ -2394,6 +2396,11 @@ export default {
     ClientName: 'Dienst',
     ClientId: 'Dienst-ID',
     ActionType: 'Aktionstyp',
+    LoginAction: 'Anmelden',
+    LogoutAction: 'Abmelden',
+    BlockAction: 'Blockieren',
+    UnblockAction: 'Entblockieren',
+    DeleteAction: 'Löschen',
     SessionTime: 'Sitzungsdauer',
     UserOperations: 'Benutzeroperationen',
     createdBy: 'Initiator',
@@ -2477,6 +2484,11 @@ export default {
     Save: 'Änderungen speichern'
   },
   UserListPage: {
+    commonName: 'Vollständiger Name',
+    surname: 'Nachname',
+    givenName: 'Vorname',
+    organizationName: 'Organisation',
+    serialNumber: 'Seriennummer',
     TaskTemplateName: 'Vorlage',
     TaskTemplateId: 'Vorlagennummer',
     DocumentId: 'Dokumentnummer',
@@ -2518,7 +2530,7 @@ export default {
       'Das Passwort muss mindestens 8 Zeichen lang sein',
     AddUser: 'Benutzer hinzufügen',
     FirstName: 'Vorname',
-    MiddleName: 'Vatersname',
+    MiddleName: 'Zweitname',
     LastName: 'Nachname',
     RequiredField: 'Pflichtfeld',
     CreatingUser: 'Benutzererstellung',
@@ -2537,7 +2549,7 @@ export default {
     UserList: 'Benutzer',
     Name: 'Status',
     IPN: 'Steuer-ID',
-    RNOKPP: 'RNOKPP',
+    RNOKPP: 'Steuernummer (RNOKPP)',
     Phone: 'Telefon',
     Email: 'E-Mail-Adresse',
     CreatedAt: 'Erstellungsdatum',
@@ -2572,13 +2584,13 @@ export default {
     UserProcesses: 'Dokumente',
     'Requested member already in unit by ID.': 'Benutzer ist bereits vorhanden.',
     'Requested member with wrong name.':
-      'Für den Benutzer mit dieser RNOKPP ist im Zertifikat der elektronischen Signatur ein anderer vollständiger Name angegeben. Überprüfen Sie die eingegebenen Daten',
+      'Für den Benutzer mit dieser Steuernummer (RNOKPP) ist im Zertifikat der elektronischen Signatur ein anderer vollständiger Name angegeben. Überprüfen Sie die eingegebenen Daten',
     'Unit exclusive rules error!': 'Die ausgewählten Organisationseinheiten sind nicht kompatibel',
     DeleteUserPromtDescription:
       'Diese Aktion ist irreversibel. Wenn Sie den Benutzer löschen, kann er nicht wiederhergestellt werden.',
-    rnokpp: 'RNOKPP',
-    DismatchRnokpp: 'Die eingegebene RNOKPP stimmt nicht mit der RNOKPP des Benutzers überein',
-    EmptyRnokpp: 'RNOKPP muss eingegeben werden',
+    rnokpp: 'Steuernummer (RNOKPP)',
+    DismatchRnokpp: 'Die eingegebene Steuernummer (RNOKPP) stimmt nicht mit der Steuernummer (RNOKPP) des Benutzers überein',
+    EmptyRnokpp: 'Steuernummer (RNOKPP) muss eingegeben werden',
     ...WorkflowProcesses,
     error: 'Keine Benutzer gefunden'
   },
@@ -2831,7 +2843,7 @@ export default {
     loadingText: 'Wird geladen...',
     noOptionsText: 'Nicht gefunden',
     openText: 'Öffnen',
-    placeholder: 'Vollständiger Name, RNOCPP oder Benutzer-ID'
+    placeholder: 'Vollständiger Name, Steuernummer (RNOKPP) oder Benutzer-ID'
   },
   UIFilterList: {
     UIFilters: 'Kabinettsbereiche',
@@ -3041,7 +3053,7 @@ export default {
   },
   FavoritesPage: {
     FavoritesListTitle: 'Favoriten',
-    entity_id: 'Identifikator',
+    entity_id: 'ID',
     entity_type: 'Typ',
     entity_name: 'Name',
     createdAt: 'Hinzugefügt',
@@ -3445,7 +3457,7 @@ export default {
     gender: 'Geschlecht',
     email: 'E-Mail',
     phone: 'Telefonnummer',
-    ipn: 'RNOKPP',
+    ipn: 'Steuernummer (RNOKPP)',
     female: 'Weiblich',
     male: 'Männlich',
     byYear: ' Jahr',
@@ -3456,7 +3468,7 @@ export default {
     issuedAt: 'Ausstellungsdatum',
     apartment: 'Whg. {{apartment}}',
     personalData: 'Persönliche Daten',
-    Ipn: 'RNOKPP',
+    Ipn: 'Steuernummer (RNOKPP)',
     PassportData: 'Passdaten',
     IssueDate: 'Ausgestellt',
     Passport: 'Serie und Passnummer',
@@ -3600,8 +3612,8 @@ export default {
   },
   UserSelect: {
     Name: 'Vollständiger Name',
-    Ipn: 'RNOKPP',
-    searchPlaceholder: 'Vollständiger Name oder RNOKPP des Benutzers'
+    Ipn: 'Steuernummer (RNOKPP)',
+    searchPlaceholder: 'Vollständiger Name oder Steuernummer (RNOKPP) des Benutzers'
   },
   TextBlock: {
     helper: 'Hinweis'

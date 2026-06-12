@@ -132,7 +132,7 @@ export default ({ t, actions, darkTheme, readOnly }) => ({
       padding: 'checkbox',
       hiddable: false,
       render: (value, user) => (
-        <UserActions user={user} actions={actions} readOnly={readOnly} />
+        <UserActions user={user} actions={actions} t={t} readOnly={readOnly} />
       ),
     },
   ],

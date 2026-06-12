@@ -11,20 +11,6 @@ import getUserName, { formatUserName } from 'helpers/userName';
 import { Link } from 'react-router-dom';
 
 const darkTheme = true;
-const actionTypes = [
-  {
-    id: 'block',
-    name: 'block',
-  },
-  {
-    id: 'unblock',
-    name: 'unblock',
-  },
-  {
-    id: 'delete',
-    name: 'delete',
-  },
-];
 
 export default ({ t }) => ({
   controls: {
@@ -122,7 +108,20 @@ export default ({ t }) => ({
       <SelectFilterHandler
         name={t('ActionType')}
         label={t('ActionType')}
-        options={actionTypes}
+        options={[
+          {
+            id: 'block',
+            name: t('BlockAction'),
+          },
+          {
+            id: 'unblock',
+            name: t('UnblockAction'),
+          },
+          {
+            id: 'delete',
+            name: t('DeleteAction'),
+          },
+        ]}
         darkTheme={darkTheme}
         listDisplay={true}
         useOwnNames={true}

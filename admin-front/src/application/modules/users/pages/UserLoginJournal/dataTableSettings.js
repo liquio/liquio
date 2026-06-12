@@ -10,16 +10,6 @@ import { formatUserName } from 'helpers/userName';
 import { Link } from 'react-router-dom';
 
 const darkTheme = true;
-const actionTypes = [
-  {
-    id: 'login',
-    name: 'login',
-  },
-  {
-    id: 'logout',
-    name: 'logout',
-  },
-];
 
 export default ({ t }) => ({
   controls: {
@@ -124,7 +114,16 @@ export default ({ t }) => ({
       <SelectFilterHandler
         name={t('ActionType')}
         label={t('ActionType')}
-        options={actionTypes}
+        options={[
+          {
+            id: 'login',
+            name: t('LoginAction'),
+          },
+          {
+            id: 'logout',
+            name: t('LogoutAction'),
+          },
+        ]}
         darkTheme={darkTheme}
         listDisplay={true}
         useOwnNames={true}

@@ -74,7 +74,7 @@ const UserActions = ({ t, user, actions, readOnly }) => {
           </IconButton>
         </Tooltip>
 
-        <UserCertMenuItem user={user} onClose={handleClose} />
+        <UserCertMenuItem user={user} onClose={handleClose} t={t} />
 
         <IconButton onClick={handleClick} size="large">
           <MoreVertIcon />

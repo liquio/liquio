@@ -2362,6 +2362,11 @@ export default {
     ClientName: 'Service',
     ClientId: 'Service ID',
     ActionType: 'Action type',
+    LoginAction: 'Login',
+    LogoutAction: 'Logout',
+    BlockAction: 'Block',
+    UnblockAction: 'Unblock',
+    DeleteAction: 'Delete',
     SessionTime: 'Session time',
     UserOperations: 'Operations with users',
     createdBy: 'Initiator',
@@ -2445,6 +2450,11 @@ export default {
     Save: 'Save changes'
   },
   UserListPage: {
+    commonName: 'Full Name',
+    surname: 'Surname',
+    givenName: 'Given Name',
+    organizationName: 'Organization',
+    serialNumber: 'Serial Number',
     TaskTemplateName: 'Task Template Name',
     TaskTemplateId: 'Task Template Number',
     DocumentId: 'Document ID',
