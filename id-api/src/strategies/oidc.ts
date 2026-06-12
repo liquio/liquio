@@ -82,7 +82,7 @@ export async function oidc(app: Express) {
     return;
   }
 
-  const enabledProviders = providers.filter((p) => p.isEnabled !== false);
+  const enabledProviders = providers.filter((p: OIDCProviderConfig) => p.isEnabled !== false);
 
   if (enabledProviders.length === 0) {
     log.save('oidc|init', { status: 'no_enabled_providers' }, 'info');
@@ -228,7 +228,7 @@ export async function oidc(app: Express) {
     const providerName = req.params.provider;
     const strategyName = `oidc-${providerName}`;
 
-    const provider = enabledProviders.find((p) => p.name === providerName);
+    const provider = enabledProviders.find((p: OIDCProviderConfig) => p.name === providerName);
     if (!provider) {
       log.save('oidc|route-auth|unknown-provider', { provider: providerName }, 'warn');
       return res.status(404).send({ error: 'Provider not found' });
@@ -243,7 +243,7 @@ export async function oidc(app: Express) {
     const providerName = req.params.provider;
     const strategyName = `oidc-${providerName}`;
 
-    const provider = enabledProviders.find((p) => p.name === providerName);
+    const provider = enabledProviders.find((p: OIDCProviderConfig) => p.name === providerName);
     if (!provider) {
       log.save('oidc|route-callback|unknown-provider', { provider: providerName }, 'warn');
       return res.status(404).send({ error: 'Provider not found' });
@@ -276,5 +276,5 @@ export async function oidc(app: Express) {
     })(req, res, next);
   });
 
-  log.save('oidc|init', { status: 'initialized', enabled_providers: enabledProviders.map((p) => p.name) }, 'info');
+  log.save('oidc|init', { status: 'initialized', enabled_providers: enabledProviders.map((p: OIDCProviderConfig) => p.name) }, 'info');
 }
