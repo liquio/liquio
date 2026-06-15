@@ -1,0 +1,54 @@
+{
+  "server": {
+    "hostname": "127.0.0.1",
+    "port": 3346,
+    "maxBodySize": "10mb"
+  },
+  "auth": {
+    "tokens": []
+  },
+  "db": {
+    "database": "persist_link",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "username": "postgres",
+    "password": "postgres",
+    "operatorsAliases": false,
+    "dialectOptions": {
+      "socketPath": "",
+      "supportBigNumbers": true,
+      "bigNumberStrings": true
+    },
+    "pool": {
+      "max": 5,
+      "min": 0,
+      "acquire": 30000,
+      "idle": 10000
+    },
+    "logging": false
+  },
+  "link_generator": {
+    "secretKey": "persist-link-e2e-secret-key",
+    "cryptIv": "persist-link-e2e",
+    "linksPrefix": "http://localhost:3346/",
+    "smallHashRandomBytesLength": 16
+  },
+  "link_providers": {
+    "simple": {},
+    "filestorage": {
+      "serversList": [],
+      "addContentDispositionHeader": true
+    }
+  },
+  "file_converter": {
+    "isEnabled": false,
+    "url": "http://file-converter:8080/api/v1",
+    "token": "",
+    "timeout": 30000,
+    "routes": {
+      "convertByFileId": "/convert/by-file-id",
+      "convertByStream": "/convert/by-stream"
+    }
+  }
+}

@@ -232,6 +232,28 @@ services:
     depends_on:
       - postgres
 
+  persist-link-migrations:
+    build:
+      context: ./persist-link
+    command: ["npm", "run", "migration-up"]
+    restart: on-failure
+    volumes:
+      - ./config/persist-link:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  persist-link:
+    build:
+      context: ./persist-link
+    restart: on-failure
+    ports:
+      - "${SVC_PERSIST_LINK_PORT}:3346"
+    volumes:
+      - ./config/persist-link:/var/www/config:ro
+    depends_on:
+      - persist-link-migrations
+      - postgres
+
   postgres:
     image: postgres:17
     ports:

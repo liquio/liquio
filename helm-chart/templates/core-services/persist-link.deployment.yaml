@@ -1,0 +1,100 @@
+{{- if .Values.services.persistLink.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-persist-link
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: persist-link
+    app.kubernetes.io/tier: backend
+    app.kubernetes.io/exposure: internal
+  annotations:
+    "argocd.argoproj.io/sync-wave": "2"
+spec:
+  replicas: {{ .Values.services.persistLink.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "liquio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: persist-link
+  template:
+    metadata:
+      labels:
+        {{- include "liquio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: persist-link
+        app.kubernetes.io/tier: backend
+        app.kubernetes.io/exposure: internal
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "liquio.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
+      containers:
+        - name: persist-link
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "liquio.image" (dict "component" "persist-link" "Values" .Values "Chart" .Chart) }}
+          imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
+          ports:
+            - name: http
+              containerPort: {{ (default 3346 .Values.services.persistLink.containerPort) }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "{{ (default 3346 .Values.services.persistLink.containerPort) }}"
+            - name: CONFIG_PATH
+              value: "/var/www/config"
+            - name: SECRET_PATH
+              value: {{ .Values.secrets.secretConfigPath | quote }}
+          volumeMounts:
+            - name: config
+              mountPath: /var/www/config
+              readOnly: true
+            - name: secret-config
+              mountPath: {{ .Values.secrets.secretConfigPath }}
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /test/ping
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /test/ping
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "liquio.fullname" . }}-persist-link-config
+        - name: secret-config
+          secret:
+            secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "persist-link") }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

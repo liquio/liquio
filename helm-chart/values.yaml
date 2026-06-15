@@ -171,6 +171,17 @@ services:
     image:
       repository: task
 
+  # Persist Link Service - Document link generation and storage
+  persistLink:
+    # Whether to deploy this service
+    enabled: true
+    # Number of pod replicas
+    replicaCount: 1
+    image:
+      repository: persist-link
+    # Container port
+    containerPort: 3346
+
 # PostgreSQL database configuration
 postgresql:
   # Deploy bundled PostgreSQL for local/non-production environments.

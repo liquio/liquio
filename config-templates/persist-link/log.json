@@ -1,0 +1,19 @@
+{
+  "console": [],
+  "file": [
+    "./logs/"
+  ],
+  "responsesData": false,
+  "stackTrace": false,
+  "excludeParams": [
+    "token",
+    "oauth-token",
+    "authorization",
+    "Authorization",
+    "secret",
+    "password",
+    "oldPassword",
+    "oldPasswords",
+    "_token="
+  ]
+}

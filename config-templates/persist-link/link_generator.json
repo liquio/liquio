@@ -1,0 +1,6 @@
+{
+  "secretKey": "",
+  "cryptIv": "",
+  "linksPrefix": "http://persist-link:3346/",
+  "smallHashRandomBytesLength": 16
+}
