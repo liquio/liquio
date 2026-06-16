@@ -209,7 +209,7 @@ services:
     ports:
       - "${SVC_PDF_GENERATOR_PORT}:7007"
     volumes:
-      - ./config/pdf-generator:/var/www/app/config:ro
+      - ./config/pdf-generator:/var/www/config:ro
 
   filestorage:
     build:

@@ -43,6 +43,15 @@ generate_secret() {
   openssl rand -base64 $length | tr -d '/+='
 }
 
+generate_fixed_alnum_secret() {
+  local length="${1:-32}"
+  local secret=""
+  while [ "${#secret}" -lt "$length" ]; do
+    secret="${secret}$(openssl rand -base64 "$length" | tr -dc 'A-Za-z0-9')"
+  done
+  printf '%s' "$secret" | cut -c1-"$length"
+}
+
 echo "==> Copy configuration templates"
 cp -r ./config-templates ./config
 
@@ -526,8 +535,8 @@ jq --arg key "$(generate_secret)" \
 
   file="config/persist-link/link_generator.json"
   echo "$file"
-  jq --arg secretKey "$(generate_secret 32)" \
-    --arg cryptIv "$(generate_secret 16)" \
+  jq --arg secretKey "$(generate_fixed_alnum_secret 32)" \
+    --arg cryptIv "$(generate_fixed_alnum_secret 16)" \
     '.secretKey = $secretKey | .cryptIv = $cryptIv' \
     $file > $file.tmp && mv $file.tmp $file
 }
@@ -537,12 +546,12 @@ jq --arg key "$(generate_secret)" \
 
   file="config/task/persist_link.json"
   echo "$file"
-  jq '.server = "http://persist-link" | .port = 3346' \
+  jq --arg token "$token" '.server = "http://persist-link" | .port = 3346 | .token = $token' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/event/persist_link.json"
   echo "$file"
-  jq '.server = "http://persist-link" | .port = 3346' \
+  jq --arg token "$token" '.server = "http://persist-link" | .port = 3346 | .token = $token' \
     $file > $file.tmp && mv $file.tmp $file
 }
 
