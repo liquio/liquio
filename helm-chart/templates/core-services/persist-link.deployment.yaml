@@ -42,13 +42,13 @@ spec:
           imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
           ports:
             - name: http
-              containerPort: {{ (default 3346 .Values.services.persistLink.containerPort) }}
+              containerPort: {{ (default 8080 .Values.services.persistLink.containerPort) }}
               protocol: TCP
           env:
             - name: NODE_ENV
               value: "production"
             - name: PORT
-              value: "{{ (default 3346 .Values.services.persistLink.containerPort) }}"
+              value: "{{ (default 8080 .Values.services.persistLink.containerPort) }}"
             - name: CONFIG_PATH
               value: "/var/www/config"
             - name: SECRET_PATH

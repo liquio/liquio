@@ -40,7 +40,7 @@ metadata:
 -}}
 {{ $serverBase := dict
   "hostname" "0.0.0.0"
-  "port" (default 3346 .Values.services.persistLink.containerPort)
+  "port" (default 8080 .Values.services.persistLink.containerPort)
 -}}
 {{ $versionsBase := dict
   "customer" 1
