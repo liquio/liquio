@@ -5,6 +5,7 @@ CREATE DATABASE register;
 CREATE DATABASE bpmn;
 CREATE DATABASE notify;
 CREATE DATABASE filestorage;
+CREATE DATABASE persist_link;
 
 \connect id
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

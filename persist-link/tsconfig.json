@@ -16,8 +16,7 @@
     "moduleDetection": "force",
     "noCheck": true,
     "noEmitOnError": false,
-    "ignoreDeprecations": "5.0",
-    "downlevelIteration": true
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "./**/*"
