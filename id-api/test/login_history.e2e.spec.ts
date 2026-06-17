@@ -57,6 +57,16 @@ describe('LoginHistoryController', () => {
 
   const authHeader = () => ({ Authorization: `Basic ${adminToken}` });
 
+  const seedUsers = async () => {
+    // Create users that login_history records will reference
+    const users = [
+      { userId: 'user-1', email: 'john@example.com', first_name: 'John', last_name: 'Doe' },
+      { userId: 'user-2', email: 'jane@example.com', first_name: 'Jane', last_name: 'Smith' },
+      { userId: 'user-3', email: 'admin@example.com', first_name: 'Admin', last_name: 'User' },
+    ];
+    await app.model('user').bulkCreate(users);
+  };
+
   const seedLoginHistory = async () => {
     await app.model('loginHistory').bulkCreate(seedRows as any[]);
   };
@@ -78,7 +88,10 @@ describe('LoginHistoryController', () => {
     adminToken = config.oauth?.secret_key?.[0] || '';
 
     app = await TestApp.setup();
-    await app.model('loginHistory').destroy({ where: {}, truncate: true, restartIdentity: true } as any);
+    // Delete login_history first (references users via FK), then users
+    await app.model('loginHistory').destroy({ where: {}, truncate: false });
+    await app.model('user').destroy({ where: {}, truncate: false });
+    await seedUsers();
     await seedLoginHistory();
   });
 

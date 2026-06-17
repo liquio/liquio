@@ -1,6 +1,9 @@
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
+import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 import crypto from 'crypto';
 import debug from 'debug';
 import nock from 'nock';
@@ -56,6 +59,9 @@ jest.setTimeout(30000);
 export class TestApp extends Application {
   private static pgContainer: StartedPostgreSqlContainer;
   private static redisContainer: StartedRedisContainer;
+  private static dexContainer: StartedTestContainer;
+  private static dexConfigPath: string;
+  public static dexUrl: string;
 
   constructor() {
     super(config);
@@ -145,6 +151,47 @@ export class TestApp extends Application {
       config.redis.port = this.redisContainer.getMappedPort(6379);
     }
 
+    // Start Dex container for OIDC tests
+    // Create a temporary dex.yaml with dynamic port values
+    const dexTemplatePath = path.join(__dirname, 'dex.yaml');
+    const dexTemplate = fs.readFileSync(dexTemplatePath, 'utf-8');
+    
+    // We'll use localhost and let testcontainers assign actual port later
+    // For now, use port 5556 in config (Dex's internal port)
+    // Then replace redirect URI with the actual app port
+    const dexConfig = dexTemplate
+      .replace(/redirectURIs:\s*\n\s*- 'http:\/\/localhost:\d+/g, `redirectURIs:\n      - 'http://localhost:${config.port}`);
+    
+    // Write config to a temporary file
+    const dexTempDir = path.join(__dirname, '..', '.dex-temp');
+    if (!fs.existsSync(dexTempDir)) {
+      fs.mkdirSync(dexTempDir, { recursive: true });
+    }
+    const dexConfigPath = path.join(dexTempDir, `dex-${Date.now()}.yaml`);
+    fs.writeFileSync(dexConfigPath, dexConfig);
+    
+    this.dexConfigPath = dexConfigPath;
+    
+    this.dexContainer = await new GenericContainer('dexidp/dex:v2.45.0')
+      .withExposedPorts(5556)
+      .withBindMounts([
+        {
+          source: dexConfigPath,
+          target: '/etc/dex/config.yaml',
+          mode: 'ro',
+        },
+      ])
+      .withCommand(['dex', 'serve', '/etc/dex/config.yaml'])
+      .withStartupTimeout(60000)
+      .start();
+
+    const dexHost = this.dexContainer.getHost();
+    const dexMappedPort = this.dexContainer.getMappedPort(5556);
+    this.dexUrl = `http://${dexHost}:${dexMappedPort}`;
+
+    // Allow nock to let through requests to Dex (localhost)
+    nock.enableNetConnect('localhost');
+    
     // Activate nock to intercept HTTP requests
     nock.activate();
   }
@@ -159,7 +206,12 @@ export class TestApp extends Application {
 
   static async afterAll() {
     nock.restore();
-    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop()]);
+    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.dexContainer?.stop()]);
+    
+    // Clean up temporary Dex config file
+    if (this.dexConfigPath && fs.existsSync(this.dexConfigPath)) {
+      fs.unlinkSync(this.dexConfigPath);
+    }
   }
 
   request() {
