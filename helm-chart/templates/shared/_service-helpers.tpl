@@ -31,7 +31,7 @@ Per-service image tag versions managed in chart templates.
   "admin-front" "0.1.20"
   "cabinet-api" "0.1.1"
   "cabinet-front" "0.1.16"
-  "event" "0.1.3"
+  "event" "0.1.4"
   "external-reader" "0.1.0"
   "filestorage" "0.1.0"
   "gateway" "0.1.1"
@@ -41,7 +41,7 @@ Per-service image tag versions managed in chart templates.
   "notification" "0.1.5"
   "pdf-generator" "0.1.2"
   "persist-link" "0.1.0"
-  "register" "0.1.0"
+  "register" "0.1.1"
   "sign-tool" "0.1.0"
   "task" "0.1.3"
 -}}
