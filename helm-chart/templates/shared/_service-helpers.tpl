@@ -40,7 +40,7 @@ Per-service image tag versions managed in chart templates.
   "manager" "0.1.2"
   "notification" "0.1.5"
   "pdf-generator" "0.1.2"
-  "persist-link" "0.1.0"
+  "persist-link" "0.1.1"
   "register" "0.1.1"
   "sign-tool" "0.1.0"
   "task" "0.1.3"
