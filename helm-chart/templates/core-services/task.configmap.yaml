@@ -303,8 +303,8 @@ metadata:
   )
 -}}
 {{ $persistLinkBase := dict
-  "server" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "plink")))
-  "port" 443
+  "server" (printf "http://%s-persist-link:80" (include "liquio.fullname" .))
+  "port" 80
   "routes" (dict
     "generateQr" "/link?qr=svg"
     "ping" "/test/ping"

@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const jsoncParser = require('jsonc-parser');
 const Queue = require('queue-promise');
 
 const Filestorage = require('../lib/filestorage');
+const PersistLink = require('../lib/persist_link');
 const Sign = require('../lib/sign');
 const RecordMap = require('../lib/record_map');
 const SystemNotifier = require('../lib/system_notifier');
@@ -68,6 +70,8 @@ class EventBusiness {
       this.eventService = new EventService();
       this.customLogs = new CustomLogs();
       this.runningEvents = new RunningEvents(this.eventModel);
+      this.sandbox.addGlobal('plinkFromFilestorageAttach', plinkFromFilestorageAttach);
+      this.sandbox.addGlobal('plinkFromFilestoragePdf', plinkFromFilestoragePdf);
       EventBusiness.singleton = this;
     }
 
@@ -2096,6 +2100,95 @@ class EventBusiness {
     }
 
     return recordsToDelete;
+  }
+}
+
+/**
+ * Plink from filestorage attach.
+ * @param {{link, name, type}} attach Attach object.
+ * @param {object} additionalOptions Additional options.
+ * @param {boolean} additionalOptions.isIncludeP7s Is include p7s file.
+ * @returns {Promise<{url, name, type}>} File object.
+ */
+// eslint-disable-next-line no-unused-vars
+async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEnding = '' } = {}) {
+  // Define params.
+  const { link, name, type } = attach || {};
+
+  // Check.
+  if (!link || !name || !type) {
+    // Log and exit.
+    log.save('plink-from-filestorage-attach-params-error', { attach: attach || null });
+    return;
+  }
+
+  // Init Persist Link.
+  const persistLink = new PersistLink(getConfig().persist_link);
+
+  // Define URL and create Persist Link record.
+  const preparedHash = Buffer.from(link.slice(0, 16).toString('hex')) + crypto.randomBytes(64).toString('hex') + linkEnding;
+  let url;
+  try {
+    url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
+  } catch (error) {
+    log.save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
+    throw error;
+  }
+
+  const p7sUrl = isIncludeP7s ? await generateP7sLink(link) : undefined;
+
+  // Define and return file object.
+  return { url, name, type, p7sUrl };
+}
+
+/**
+ * Plink from filestorage PDF.
+ * @param {string} link Link to PDF - Filestorage file ID.
+ * @param {string} name File name.
+ * @param {object} additionalOptions Additional options.
+ * @param {boolean} additionalOptions.isIncludeP7s Is include p7s file.
+ * @returns {Promise<{url, name, type}>} File object.
+ */
+// eslint-disable-next-line no-unused-vars
+async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP7s = false, linkEnding = '' } = {}) {
+  // Check.
+  if (!link) {
+    // Log and exit.
+    log.save('plink-from-filestorage-pdf-params-error', { link: link || null });
+    return;
+  }
+
+  // Init Persist Link.
+  const persistLink = new PersistLink(getConfig().persist_link);
+
+  // Define URL and create Persist Link record.
+  const preparedHash = Buffer.from(link.slice(0, 16).toString('hex')) + crypto.randomBytes(64).toString('hex') + linkEnding;
+  let url;
+  try {
+    url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
+  } catch (error) {
+    log.save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
+    throw error;
+  }
+
+  const p7sUrl = isIncludeP7s ? await generateP7sLink(link) : undefined;
+
+  return { url, name, type: 'application/pdf', p7sUrl };
+}
+
+/**
+ * Generate a link to the p7s file.
+ * @param {string} link Link to PDF - Filestorage file ID.
+ * @returns {Promise<string>} Link to the p7s file.
+ */
+async function generateP7sLink(link) {
+  try {
+    const persistLink = new PersistLink(getConfig().persist_link);
+    const preparedHashForP7s = Buffer.from(link.slice(-16).toString('hex')) + crypto.randomBytes(64).toString('hex');
+    return await persistLink.getLinkToStaticFileInFilestorage(link, preparedHashForP7s, { isP7s: true });
+  } catch (error) {
+    log.save('generate-p7s-link-error', { error: error && error.message });
+    throw error;
   }
 }
 

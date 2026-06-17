@@ -11,9 +11,15 @@ export default class ValidatorError {
    * @param {object} ajvError AJV error.
    */
   constructor(ajvError) {
-    // Define params.
-    this.dataPath = ajvError.dataPath.slice(1);
-    this.validationParam = Object.values(ajvError.params)[0] as string;
-    this.message = ajvError.message;
+    // AJV v8 uses `instancePath`, while older payloads may still use `dataPath`.
+    const rawPath =
+      (typeof ajvError?.instancePath === 'string' && ajvError.instancePath)
+      || (typeof ajvError?.dataPath === 'string' && ajvError.dataPath)
+      || '';
+
+    this.dataPath = rawPath.startsWith('/') ? rawPath.slice(1) : rawPath;
+    const firstValidationParam = Object.values(ajvError?.params || {})[0];
+    this.validationParam = typeof firstValidationParam === 'string' ? firstValidationParam : String(firstValidationParam || '');
+    this.message = typeof ajvError?.message === 'string' ? ajvError.message : 'Validation error.';
   }
 }

@@ -43,6 +43,15 @@ generate_secret() {
   openssl rand -base64 $length | tr -d '/+='
 }
 
+generate_fixed_alnum_secret() {
+  local length="${1:-32}"
+  local secret=""
+  while [ "${#secret}" -lt "$length" ]; do
+    secret="${secret}$(openssl rand -base64 "$length" | tr -dc 'A-Za-z0-9')"
+  done
+  printf '%s' "$secret" | cut -c1-"$length"
+}
+
 echo "==> Copy configuration templates"
 cp -r ./config-templates ./config
 
@@ -66,6 +75,7 @@ SVC_GATEWAY_PORT=3001
 SVC_MANAGER_PORT=3002
 SVC_NOTIFICATION_PORT=3003
 SVC_SIGN_TOOL_PORT=3004
+SVC_PERSIST_LINK_PORT=3346
 EOF
 
 echo "==> Append .env file with default database"
@@ -497,6 +507,51 @@ jq --arg key "$(generate_secret)" \
   echo "$file"
   jq --arg token "$token" \
     '.production.notify.authorization = $token' \
+    $file > $file.tmp && mv $file.tmp $file
+}
+
+{
+  echo "==> Configure Persist-Link service"
+
+  file="config/persist-link/db.json"
+  echo "$file"
+  jq --arg db "persist_link" \
+    --arg user "$POSTGRES_USER" \
+    --arg pass "$POSTGRES_PASSWORD" \
+    --arg host "$POSTGRES_HOST" \
+    --arg port "$POSTGRES_PORT" \
+    '.database = $db | .username = $user | .password = $pass | .host = $host | .port = ($port|tonumber)' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  login="persist-link"
+  password=$(generate_secret)
+  token="Basic $(echo -n "$login:$password" | base64 -w0)"
+
+  file="config/persist-link/auth.json"
+  echo "$file"
+  jq --arg token "$token" \
+    '.tokens = [$token]' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/persist-link/link_generator.json"
+  echo "$file"
+  jq --arg secretKey "$(generate_fixed_alnum_secret 32)" \
+    --arg cryptIv "$(generate_fixed_alnum_secret 16)" \
+    '.secretKey = $secretKey | .cryptIv = $cryptIv' \
+    $file > $file.tmp && mv $file.tmp $file
+}
+
+{
+  echo "==> Update persist-link references in task and event services"
+
+  file="config/task/persist_link.json"
+  echo "$file"
+  jq --arg token "$token" '.server = "http://persist-link" | .port = 3346 | .token = $token' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/event/persist_link.json"
+  echo "$file"
+  jq --arg token "$token" '.server = "http://persist-link" | .port = 3346 | .token = $token' \
     $file > $file.tmp && mv $file.tmp $file
 }
 

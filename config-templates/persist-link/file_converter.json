@@ -1,0 +1,10 @@
+{
+  "isEnabled": false,
+  "url": "http://file-converter:8080/api/v1",
+  "token": "",
+  "timeout": 30000,
+  "routes": {
+    "convertByFileId": "/convert/by-file-id",
+    "convertByStream": "/convert/by-stream"
+  }
+}
