@@ -94,5 +94,66 @@ describe('AuthController - x509', () => {
           expect(res.body.redirect).toBe('/authorise/continue/');
         });
     });
+
+    it('should reject blocked user with valid x509 certificate', async () => {
+      await app.model('user').update(
+        {
+          isActive: false,
+        },
+        { where: { ipn: '1234567890' } },
+      );
+
+      nock('http://sign-tool')
+        .post('/x509/signature-info')
+        .once()
+        .reply(200, {
+          subject: {
+            commonName: 'Blocked User',
+            organizationName: 'Liquio Test',
+            countryName: 'UA',
+            serialNumber: '1234567890',
+          },
+          issuer: {
+            commonName: 'Liquio Test CA',
+            organizationName: 'Liquio Test CA',
+            countryName: 'UA',
+          },
+          serial: '1C07D16DDAE3ECF9A031DC7F5257AD25EE541683',
+          signTime: '',
+          content:
+            'ew0KICAidXNlciI6ICJibG9ja2VkdXNlciIsDQogICJlbWFpbCI6ICJibG9ja2VkQGV4YW1wbGUuY29tIiwNCiAgInRpbWVzdGFtcCI6ICIyMDI0LTA3LTE3VDE5OjAwOjAwWiINCn0g',
+          pem:
+            '-----BEGIN CERTIFICATE-----\n' +
+            'MIIDYDCCAkigAwIBAgIUHAfRbdrj7PmgMdx/UletJe5UFoMwDQYJKoZIhvcNAQEL\n' +
+            'BQAwPzELMAkGA1UEBhMCVUExFzAVBgNVBAoMDkxpcXVpbyBUZXN0IENBMRcwFQYD\n' +
+            'VQQDDA5MaXF1aW8gVGVzdCBDQTAeFw0yNTA3MTgxMDE3MDVaFw0yNjA3MTgxMDE3\n' +
+            'MDVaMDkxCzAJBgNVBAYTAlVBMRQwEgYDVQQKDAtMaXF1aW8gVGVzdDEUMBIGA1UE\n' +
+            'AwwLVGVzdCBQZXJzb24wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCP\n' +
+            'FXgHjEagXlO1dJjWMr5a+qsGrB9Y2O+xOd2oiJj0fHb8n0i9Tb8oJpZybGDsFLQ3\n' +
+            'byVjl+jTh+J1BK5x2VkaXbvrHyMpbqJ8yjAayID+q3nETTqBBlMBhJno2Bk+vrhd\n' +
+            '/Hijr1T67qYeoYFIFA8JMBalQQWE0E0e0gJjG4kn0o7ujIEzBqXDVVUwTX6H5iZW\n' +
+            'sRV83hRiHHC+GWsBXxKlIekMpu7WISD3DFNYM/u4zYrZHLoAIuC6EQ8rEhLPZjA6\n' +
+            'of45ehTNlSrSjUPMLzYBtlXPBpJVskmvraf4K/TziRYCz1+SVcmBQcgThOc1Q++o\n' +
+            'u5rIZ3BkphBozTIdGH/hAgMBAAGjWjBYMAkGA1UdEwQCMAAwCwYDVR0PBAQDAgWg\n' +
+            'MB0GA1UdDgQWBBQkP6jBkVCx9CWtGV0eoQkuD3j47jAfBgNVHSMEGDAWgBSBz8K7\n' +
+            '0XPT2o1D66btkNEUAgFrjjANBgkqhkiG9w0BAQsFAAOCAQEAUmbnNL8iJ3cgjW1/\n' +
+            'pLzjVD/KEUkl3Bue89qaN+7VUVrRvAC3aFJKnWGdN2zLH2Q4U6BEPeIuQ8ngKTCS\n' +
+            'jaT4Cg3mJNcNzd8H46Nwck6kM6w1yOsBnfYK89+ZFVEr7X2ml8kRFCVlQPylcCqI\n' +
+            'Ft0MlGgbnMf1jJCvYIO+9ilGvzM8gYkbDN6ST4QMcnvfw2xiJa5yWU24BtqxMfo1\n' +
+            '+IFaQUy45wfuzaz0YYENjjR0oP4sRdv1k1B/xT/azVoyyS0RWxEQpQoC66/XCef0\n' +
+            '59tRa7XoefAbH6d+29ILCqZCjTbeE48wUFfADtlUeXBZRpvvEC79KCVT/Sa+QCEA\n' +
+            'BMQu2w==\n' +
+            '-----END CERTIFICATE-----',
+        });
+
+      await app
+        .request()
+        .post('/authorise/x509')
+        .send({ pkcs7: 'valid' })
+        .expect(403)
+        .expect((res) => {
+          expect(res.body).toEqual({ error: { message: 'User has been blocked.' } });
+        });
+    });
   });
 });

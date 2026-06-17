@@ -83,47 +83,47 @@ export default {
     }
   ],
   navigation: [
-    {
-      id: 'Workflow',
-      icon: <DoneAllIcon />,
-      priority: 30,
-      access: {
-        isUnitedUser: false,
-        unitHasAccessTo: [
-          'navigation.workflow.MyWorkflow',
-          'navigation.workflow.Drafts',
-          'navigation.workflow.Trash'
-        ]
-      },
-      children: [
-        {
-          id: 'MyWorkflow',
-          path: '/workflow',
-          uiFilter: 'workflows.not-draft',
-          access: {
-            isUnitedUser: false,
-            unitHasAccessTo: 'navigation.workflow.MyWorkflow'
-          }
-        },
-        {
-          id: 'Drafts',
-          path: '/workflow/drafts',
-          uiFilter: 'workflows.draft',
-          access: {
-            isUnitedUser: false,
-            unitHasAccessTo: 'navigation.workflow.Drafts'
-          }
-        },
-        {
-          id: 'Trash',
-          path: '/workflow/trash',
-          uiFilter: 'workflows.trash',
-          access: {
-            isUnitedUser: false,
-            unitHasAccessTo: 'navigation.workflow.Trash'
-          }
-        }
-      ]
-    }
+    // {
+    //   id: 'Workflow',
+    //   icon: <DoneAllIcon />,
+    //   priority: 30,
+    //   access: {
+    //     isUnitedUser: false,
+    //     unitHasAccessTo: [
+    //       'navigation.workflow.MyWorkflow',
+    //       'navigation.workflow.Drafts',
+    //       'navigation.workflow.Trash'
+    //     ]
+    //   },
+    //   children: [
+    //     {
+    //       id: 'MyWorkflow',
+    //       path: '/workflow',
+    //       uiFilter: 'workflows.not-draft',
+    //       access: {
+    //         isUnitedUser: false,
+    //         unitHasAccessTo: 'navigation.workflow.MyWorkflow'
+    //       }
+    //     },
+    //     {
+    //       id: 'Drafts',
+    //       path: '/workflow/drafts',
+    //       uiFilter: 'workflows.draft',
+    //       access: {
+    //         isUnitedUser: false,
+    //         unitHasAccessTo: 'navigation.workflow.Drafts'
+    //       }
+    //     },
+    //     {
+    //       id: 'Trash',
+    //       path: '/workflow/trash',
+    //       uiFilter: 'workflows.trash',
+    //       access: {
+    //         isUnitedUser: false,
+    //         unitHasAccessTo: 'navigation.workflow.Trash'
+    //       }
+    //     }
+    //   ]
+    // }
   ]
 };

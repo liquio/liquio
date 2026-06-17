@@ -25,7 +25,7 @@ const EditTemplate = ({ t, template, actions, readOnly }) => {
       <SchemaFormModal
         title={t('EditTemplateData')}
         open={open}
-        schema={getSchema(readOnly)}
+        schema={getSchema({ t, readOnly })}
         value={template}
         onClose={() => setOpen(false)}
         onChange={(data) =>

@@ -33,6 +33,8 @@ describe('AuthController - local', () => {
   describe('User/password Authorization (local)', () => {
     const email = 'valid@email';
     const password = 'V4l!dPassW0rd';
+    const blockedEmail = 'blocked@email';
+    const blockedPassword = 'Bl0ckedPass!';
     let cookies: any;
     let userId: string;
 
@@ -107,6 +109,51 @@ describe('AuthController - local', () => {
         user_id: userId,
         user_name: email,
       });
+    });
+
+    it('should reject blocked user on /auth', async () => {
+      const blockedUser = await app
+        .model('user')
+        .create(
+          {
+            ipn: '#9999999999',
+            provider: 'local',
+            email: blockedEmail,
+            isActive: false,
+          },
+          { returning: true },
+        )
+        .then((row) => row.dataValues);
+
+      await app.model('userServices').create({
+        provider: 'local',
+        provider_id: blockedEmail,
+        userId: blockedUser.userId,
+        data: {
+          password: bcrypt.hashSync(blockedPassword, 1).toString(),
+          oldPasswords: [],
+        },
+      });
+
+      let blockedCookies: any;
+      await app
+        .request()
+        .post('/authorise/local')
+        .send({ email: blockedEmail, password: blockedPassword })
+        .expect(200)
+        .expect(({ headers }) => {
+          blockedCookies = headers['set-cookie'];
+          expect(blockedCookies).toBeDefined();
+        });
+
+      await app
+        .request()
+        .get('/auth')
+        .set('Cookie', blockedCookies)
+        .expect(403)
+        .expect(({ body }) => {
+          expect(body).toEqual({ error: { message: 'User has been blocked.' } });
+        });
     });
 
     it('should be able to change password', async () => {

@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-persist-link-config
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+{{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "persist_link" "username" .Values.config.database.username) | fromJson -}}
+{{ $authBase := dict
+  "tokens" (list)
+-}}
+{{ $linkGeneratorBase := dict
+  "secretKey" ""
+  "cryptIv" ""
+  "linksPrefix" (printf "http://%s-persist-link:80/" (include "liquio.fullname" .))
+  "smallHashRandomBytesLength" 16
+-}}
+{{ $linkProvidersBase := dict
+  "filestorage" (dict
+    "serversList" (list)
+    "addContentDispositionHeader" true
+  )
+-}}
+{{ $logBase := dict
+  "console" (list)
+  "file" (list "./logs/")
+  "responsesData" false
+  "stackTrace" false
+  "excludeParams" (list
+    "token"
+    "oauth-token"
+    "authorization"
+    "Authorization"
+    "secret"
+    "password"
+    "oldPassword"
+    "oldPasswords"
+    "_token="
+  )
+-}}
+{{ $serverBase := dict
+  "hostname" "0.0.0.0"
+  "port" (default 8080 .Values.services.persistLink.containerPort)
+-}}
+{{ $versionsBase := dict
+  "customer" 1
+  "environment" 0
+-}}
+data:
+  db.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "db.json" "base" $dbBase) | nindent 4 }}
+  auth.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "auth.json" "base" $authBase) | nindent 4 }}
+  link_generator.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "link_generator.json" "base" $linkGeneratorBase) | nindent 4 }}
+  link_providers.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "link_providers.json" "base" $linkProvidersBase) | nindent 4 }}
+  log.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "log.json" "base" $logBase) | nindent 4 }}
+  server.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "server.json" "base" $serverBase) | nindent 4 }}
+  versions.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "versions.json" "base" $versionsBase) | nindent 4 }}

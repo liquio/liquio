@@ -7,32 +7,18 @@ export const DEFAULT_COOKIE_DOMAIN = '.liquio';
 export const DEFAULT_CODE_RETRIES = 5;
 export const DEFAULT_CODE_LENGTH = 6;
 
-/**
- * OIDC Provider Configuration
- */
 export interface OIDCProviderConfig {
   name: string;
-  isEnabled?: boolean;
-  clientID: string;
-  clientSecret: string;
-  callbackURL: string;
   issuer?: string;
   authorizationURL?: string;
   tokenURL?: string;
   userInfoURL?: string;
-  scope?: string | string[];
-  usePKCE?: boolean;
-  userInfo?: {
-    enabled?: boolean;
-  };
+  clientID: string;
+  clientSecret: string;
+  callbackURL: string;
+  scope?: string;
+  isEnabled?: boolean;
   mapping?: Record<string, string>;
-}
-
-/**
- * OIDC Configuration containing array of providers
- */
-export interface OIDCConfig {
-  providers?: OIDCProviderConfig[];
 }
 
 export interface Config {
@@ -143,12 +129,14 @@ export interface Config {
       isEnabled?: boolean;
       isForgotPasswordEnabled?: boolean;
     };
-    oidc?: OIDCConfig;
     wso2?: any;
     x509?: {
       isEnabled?: boolean;
     };
     oauth2?: StrategyOptions & { userProfileUrl: string };
+    oidc?: {
+      providers?: OIDCProviderConfig[];
+    };
   };
   passwordManager?: {
     minPasswordLength?: number;

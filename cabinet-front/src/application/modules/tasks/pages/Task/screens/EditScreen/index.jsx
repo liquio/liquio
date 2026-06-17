@@ -326,6 +326,10 @@ class EditScreen extends React.Component {
     const stepName = step || steps[this.getActiveStep()];
     const stepData = data[step || stepName];
 
+    if (!stepName || !properties[step || stepName]) {
+      return true;
+    }
+
     const stepProperties = removeHiddenFields(properties[step || stepName], data, { stepData });
 
     const totalErrors = await validateDataAsync(data[step || stepName] || {}, stepProperties, data);
@@ -1067,12 +1071,32 @@ class EditScreen extends React.Component {
     history.replace(getRootPath() + `/${steps[step]}`);
   };
 
+  isStepHidden = (properties, task, stepId) => {
+    const { checkStepHidden } = properties[stepId] ?? {};
+
+    if (typeof checkStepHidden === 'string') {
+      return !!evaluate(checkStepHidden, task?.document?.data);
+    }
+
+    return !!checkStepHidden;
+  };
+
+  findNextVisibleStep = (currentStep, steps, properties, task) => {
+    for (let i = currentStep + 1; i < steps.length; i++) {
+      if (!this.isStepHidden(properties, task, steps[i])) {
+        return i;
+      }
+    }
+    return steps.length;
+  };
+
   handleSetNextStep = async (activeStep, previousSteps) => {
-    const { steps } = propsToData(this.props);
+    const { steps, task, template } = propsToData(this.props);
+    const properties = template?.jsonSchema?.properties ?? {};
 
     const nextStepId = previousSteps
       .slice(activeStep + 1)
-      .find((stepId) => steps.includes(stepId));
+      .find((stepId) => steps.includes(stepId) && !this.isStepHidden(properties, task, stepId));
 
     if (nextStepId) {
       return this.handleSetStep(steps.indexOf(nextStepId));
@@ -1082,7 +1106,9 @@ class EditScreen extends React.Component {
     const currentStep = steps.indexOf(currentStepId);
 
     if (currentStep > -1) {
-      return this.handleSetStep(currentStep + 1);
+      const next = this.findNextVisibleStep(currentStep, steps, properties, task);
+
+      return this.handleSetStep(next);
     }
   };
 

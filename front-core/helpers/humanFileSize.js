@@ -1,3 +1,5 @@
+import moment from 'moment';
+
 export default (bytes, si) => {
   const thresh = si ? 1000 : 1024;
   if (Math.abs(bytes) < thresh) {
@@ -9,5 +11,11 @@ export default (bytes, si) => {
     bytes /= thresh;
     u += 1;
   } while (Math.abs(bytes) >= thresh && u < units.length - 1);
-  return bytes.toFixed(1) + ' ' + units[u];
+  // moment.locale() holds the active app language (set in translation/index.js),
+  // so the decimal separator follows the user's locale (e.g. 5,0 MB in German)
+  const formatted = bytes.toLocaleString(moment.locale(), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  });
+  return formatted + ' ' + units[u];
 };

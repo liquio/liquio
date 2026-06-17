@@ -35,6 +35,11 @@ const UserCertMenuItem = ({
         columns={[
           {
             id: 'key',
+            render: (key) => {
+              const translated = t(key);
+
+              return translated === `UserListPage.${key}` ? key : translated;
+            },
           },
           {
             id: 'value',

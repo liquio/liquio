@@ -27,7 +27,7 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.1.17",
     "@nestjs/passport": "^11.0.5",
-    "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-express": "^11.1.25",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/swagger": "^11.2.4",
     "@swc/cli": "^0.7.9",

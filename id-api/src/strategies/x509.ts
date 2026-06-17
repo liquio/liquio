@@ -165,8 +165,23 @@ export async function x509(app: Express) {
   };
 
   app.post('/authorise/x509', passport.authenticate('x509', { keepSessionInfo: true }), async (req: Request, res: Response) => {
+    const userId = (req.user as any)?.userId;
+    const actualUser = userId ? await Services.service('auth').getUser({ userId }) : null;
+
+    if (actualUser?.isActive === false) {
+      req.user = actualUser as any;
+
+      const blockedLoginHistoryData = prepareLoginHistoryData(req, { actionType: 'login' });
+      if (blockedLoginHistoryData) {
+        await Models.model('loginHistory').create(blockedLoginHistoryData);
+      }
+
+      res.status(403).send({ error: { message: 'User has been blocked.' } });
+      return;
+    }
+
     log.save('x509-strategy|authorise|success', { user: Helpers.shorten(JSON.stringify(req.user)) }, 'info');
-    await saveSession(req, req.user);
+    await saveSession(req, actualUser || req.user);
 
     const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'login' });
     if (loginHistoryData) {

@@ -1,28 +1,28 @@
-export default (readOnly = false) => ({
+export default ({ t, readOnly = false }) => ({
   type: 'object',
   properties: {
     name: {
-      description: 'Назва',
+      description: t('Name'),
       type: 'string',
       darkTheme: true,
       variant: 'outlined',
       checkValid: [
         {
           isValid: 'value => !!(value && value.length)',
-          errorText: "Обов'язкове поле",
+          errorText: t('RequiredField'),
         },
       ],
       readOnly,
     },
     template: {
-      description: 'Шаблон',
+      description: t('TemplateName'),
       type: 'string',
       darkTheme: true,
       variant: 'outlined',
       checkValid: [
         {
           isValid: 'value => !!(value && value.length)',
-          errorText: "Обов'язкове поле",
+          errorText: t('RequiredField'),
         },
       ],
       readOnly,

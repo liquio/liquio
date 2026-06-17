@@ -17,11 +17,11 @@ export default function getReportsModule() {
           }
         ],
         navigation: [
-          {
-            id: 'Reports',
-            icon: <AssessmentIcon />,
-            path: '/reports'
-          }
+          // {
+          //   id: 'Reports',
+          //   icon: <AssessmentIcon />,
+          //   path: '/reports'
+          // }
         ]
       }
     : {};

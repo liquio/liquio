@@ -10,6 +10,8 @@ import React, { Suspense } from 'react';
 import { Provider } from 'react-redux';
 import { TranslatorProvider } from 'react-translate';
 import store from 'store';
+import 'dayjs/locale/nl';
+import 'dayjs/locale/de';
 import 'dayjs/locale/fr';
 import 'dayjs/locale/uk';
 import 'focus-visible';

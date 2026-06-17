@@ -1,5 +1,6 @@
 import React from 'react';
 import { GridActionsCellItem } from '@mui/x-data-grid';
+import moment from 'moment';
 
 import TimeLabel from 'components/Label/Time';
 import SignatureDetails from 'components/FileDataTable/components/SignatureDetails';
@@ -89,11 +90,19 @@ export default ({
 
           const bytesString = `(${value} ${t('bytes')})`;
 
+          // moment.locale() holds the active app language, so the decimal
+          // separator follows the user's locale (e.g. 31,19 KB in German)
+          const formatSize = (size) =>
+            size.toLocaleString(moment.locale(), {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+
           if (value && value < 1024 * 1024) {
-            return `${(value / 1024).toFixed(2)} KB ${admin ? bytesString : ''}`;
+            return `${formatSize(value / 1024)} KB ${admin ? bytesString : ''}`;
           }
 
-          return `${(value / 1024 / 1024).toFixed(2)} MB ${admin ? bytesString : ''}`;
+          return `${formatSize(value / 1024 / 1024)} MB ${admin ? bytesString : ''}`;
         }
       });
     }

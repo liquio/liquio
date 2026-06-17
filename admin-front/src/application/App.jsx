@@ -7,6 +7,7 @@ import {
 } from '@mui/material/styles';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import 'dayjs/locale/de';
 import 'dayjs/locale/fr';
 import 'dayjs/locale/uk';
 import 'focus-visible';

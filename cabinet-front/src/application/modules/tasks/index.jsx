@@ -181,47 +181,47 @@ export default {
     }
   ],
   navigation: [
-    {
-      id: 'Tasks',
-      icon: <WorkOutlineIcon />,
-      priority: 40,
-      access: {
-        isUnitedUser: false,
-        unitHasAccessTo: [
-          'navigation.tasks.InboxTasks',
-          'navigation.tasks.UnitInboxTasks',
-          'navigation.tasks.ClosedTasks',
-          'navigation.tasks.UnitClosedTasks'
-        ]
-      },
-      children: [
-        {
-          Component: MyTaskNavigation,
-          access: {
-            isUnitedUser: false,
-            unitHasAccessTo: 'navigation.tasks.InboxTasks'
-          }
-        },
-        {
-          Component: UnitTaskNavigation,
-          access: { unitHasAccessTo: 'navigation.tasks.UnitInboxTasks' }
-        },
-        {
-          id: 'ClosedTasks',
-          path: '/tasks/closed-tasks',
-          uiFilter: 'tasks.my.closed',
-          access: {
-            isUnitedUser: false,
-            unitHasAccessTo: 'navigation.tasks.ClosedTasks'
-          }
-        },
-        {
-          id: 'UnitClosedTasks',
-          path: '/tasks/closed-unit-tasks',
-          uiFilter: 'tasks.unit.closed',
-          access: { unitHasAccessTo: 'navigation.tasks.UnitClosedTasks' }
-        }
-      ]
-    }
+    // {
+    //   id: 'Tasks',
+    //   icon: <WorkOutlineIcon />,
+    //   priority: 40,
+    //   access: {
+    //     isUnitedUser: false,
+    //     unitHasAccessTo: [
+    //       'navigation.tasks.InboxTasks',
+    //       'navigation.tasks.UnitInboxTasks',
+    //       'navigation.tasks.ClosedTasks',
+    //       'navigation.tasks.UnitClosedTasks'
+    //     ]
+    //   },
+    //   children: [
+    //     {
+    //       Component: MyTaskNavigation,
+    //       access: {
+    //         isUnitedUser: false,
+    //         unitHasAccessTo: 'navigation.tasks.InboxTasks'
+    //       }
+    //     },
+    //     {
+    //       Component: UnitTaskNavigation,
+    //       access: { unitHasAccessTo: 'navigation.tasks.UnitInboxTasks' }
+    //     },
+    //     {
+    //       id: 'ClosedTasks',
+    //       path: '/tasks/closed-tasks',
+    //       uiFilter: 'tasks.my.closed',
+    //       access: {
+    //         isUnitedUser: false,
+    //         unitHasAccessTo: 'navigation.tasks.ClosedTasks'
+    //       }
+    //     },
+    //     {
+    //       id: 'UnitClosedTasks',
+    //       path: '/tasks/closed-unit-tasks',
+    //       uiFilter: 'tasks.unit.closed',
+    //       access: { unitHasAccessTo: 'navigation.tasks.UnitClosedTasks' }
+    //     }
+    //   ]
+    // }
   ]
 };

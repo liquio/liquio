@@ -9,6 +9,8 @@ metadata:
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
     app.kubernetes.io/component: id-migrations
+    app.kubernetes.io/tier: migration
+    app.kubernetes.io/exposure: internal
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "1"
@@ -23,12 +25,12 @@ spec:
       labels:
         {{- include "liquio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: id-migrations
+        app.kubernetes.io/tier: migration
+        app.kubernetes.io/exposure: internal
     spec:
       restartPolicy: OnFailure
       initContainers:
         {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
-        {{- include "liquio.initContainer.waitForRabbitmq" . | nindent 8 }}
-        {{- include "liquio.initContainer.waitForRedis" . | nindent 8 }}
       containers:
         - name: id-migrations
           image: {{ include "liquio.image" (dict "component" "id-api" "Values" .Values "Chart" .Chart) }}

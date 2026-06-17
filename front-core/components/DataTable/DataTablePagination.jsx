@@ -306,7 +306,7 @@ const DataTablePagination = ({
                 [classes.pageInput]: true,
                 [classes.pageInputDark]: darkTheme
               })}
-              value={page + 1}
+              value={count ? page + 1 : 0}
               onChange={({ target: { value } }) => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => {
@@ -375,7 +375,7 @@ const DataTablePagination = ({
         </div>
 
         <div className={classes.paginationState}>
-          {page * rowsPerPage + 1}
+          {count ? page * rowsPerPage + 1 : 0}
           {' - '}
           {lastValueOnPage} {t('From')} {count}
         </div>

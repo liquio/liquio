@@ -246,8 +246,9 @@ class PersistLink {
       log.save('get-persist-link-to-static-file-response', generatedLink);
       return generatedLink;
     } catch (error) {
-      log.save('get-persist-link-to-static-file-response-error', prepareAxiosErrorToLog(error), 'error');
-      throw error;
+      const preparedError = prepareAxiosErrorToLog(error);
+      log.save('get-persist-link-to-static-file-response-error', preparedError, 'error');
+      throw new Error(getPersistLinkErrorMessage(preparedError), { cause: error });
     }
   }
 
@@ -278,6 +279,38 @@ class PersistLink {
       throw error;
     }
   }
+}
+
+/**
+ * Prepare readable persist-link error message for upper-level map.* handlers.
+ * @param {{error?: string, code?: string, status?: number|string, statusText?: string, responseData?: object, url?: string, method?: string}} preparedError Axios error prepared for logs.
+ * @returns {string} Readable error message.
+ */
+function getPersistLinkErrorMessage(preparedError = {}) {
+  const {
+    error,
+    code,
+    status,
+    statusText,
+    responseData,
+    url,
+    method,
+  } = preparedError;
+
+  if (status === 401) {
+    const authMessage = responseData?.error?.message || responseData?.message || 'persist-link token is invalid or not allowed';
+    return `Persist-link auth error (${method || 'REQUEST'} ${url || 'unknown-url'}) [401 ${statusText || 'Unauthorized'}]: ${authMessage}`;
+  }
+
+  if (code === 'EAI_AGAIN') {
+    return `Persist-link connectivity error (${method || 'REQUEST'} ${url || 'unknown-url'}): DNS lookup failed (EAI_AGAIN)`;
+  }
+
+  if (typeof status === 'number') {
+    return `Persist-link request failed (${method || 'REQUEST'} ${url || 'unknown-url'}) [${status}${statusText ? ` ${statusText}` : ''}]: ${error || 'unknown error'}`;
+  }
+
+  return `Persist-link request failed (${method || 'REQUEST'} ${url || 'unknown-url'}): ${error || code || 'unknown error'}`;
 }
 
 module.exports = PersistLink;
