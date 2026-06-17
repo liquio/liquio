@@ -1,0 +1,76 @@
+{{- if .Values.migrations.enabled }}
+{{- if .Values.services.persistLink.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ include "liquio.fullname" . }}-persist-link-migrations
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: persist-link-migrations
+    app.kubernetes.io/tier: migration
+    app.kubernetes.io/exposure: internal
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "argocd.argoproj.io/hook": Sync
+    "argocd.argoproj.io/sync-wave": "1"
+    "argocd.argoproj.io/hook-delete-policy": BeforeHookCreation,HookSucceeded
+spec:
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "liquio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: persist-link-migrations
+        app.kubernetes.io/tier: migration
+        app.kubernetes.io/exposure: internal
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
+      containers:
+        - name: persist-link-migrations
+          image: {{ include "liquio.image" (dict "component" "persistLink" "Values" .Values "Chart" .Chart) }}
+          imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
+          command: ["npm", "run", "migration-up"]
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: CONFIG_PATH
+              value: "/var/www/config"
+            - name: SECRET_PATH
+              value: {{ .Values.secrets.secretConfigPath | quote }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: config
+              mountPath: /var/www/config
+              readOnly: true
+            - name: secret-config
+              mountPath: {{ .Values.secrets.secretConfigPath }}
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "liquio.fullname" . }}-persist-link-config
+        - name: secret-config
+          secret:
+            secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "persistLink") }}
+        - name: tmp
+          emptyDir: {}
+{{- end }}
+{{- end }}

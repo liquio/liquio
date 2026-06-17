@@ -16,4 +16,5 @@ data:
     CREATE DATABASE bpmn;
     CREATE DATABASE notify;
     CREATE DATABASE filestorage;
+    CREATE DATABASE persist_link;
 {{- end }}
