@@ -13,9 +13,10 @@ node_modules/
 # Logs.
 *.log
 
-# User defined configs.
-config/*.json
-
 tmp/
 
 coverage/
+
+# Build output.
+dist/
+build/
