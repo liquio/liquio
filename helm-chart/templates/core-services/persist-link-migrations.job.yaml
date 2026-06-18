@@ -33,7 +33,7 @@ spec:
         {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
       containers:
         - name: persist-link-migrations
-          image: {{ include "liquio.image" (dict "component" "persistLink" "Values" .Values "Chart" .Chart) }}
+          image: {{ include "liquio.image" (dict "component" "persist-link" "Values" .Values "Chart" .Chart) }}
           imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
           command: ["npm", "run", "migration-up"]
           env:
