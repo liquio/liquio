@@ -69,7 +69,7 @@ spec:
             name: {{ include "liquio.fullname" . }}-persist-link-config
         - name: secret-config
           secret:
-            secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "persistLink") }}
+            secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "persist-link") }}
         - name: tmp
           emptyDir: {}
 {{- end }}
