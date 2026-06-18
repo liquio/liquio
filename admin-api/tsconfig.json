@@ -12,7 +12,6 @@
     "noImplicitAny": false,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
     "noEmitOnError": false,
     "ignoreDeprecations": "6.0"
   },
