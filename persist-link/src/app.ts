@@ -15,10 +15,10 @@ import typeOf from './lib/type_of';
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/persist-link';
 const SECRET_PATH = process.env.SECRET_PATH;
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_PERSIST_LINK';
-let config = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
-if (SECRET_PATH && fs.existsSync(SECRET_PATH)) {
-  config = { ...config, ...Multiconf.get(SECRET_PATH, `${LIQUIO_CONFIG_PREFIX}_`) };
-}
+const config = Multiconf.get(
+  [CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])],
+  `${LIQUIO_CONFIG_PREFIX}_`,
+) as any;
 const consoleLogProvider = new ConsoleLogProvider(config.log?.console?.name, { excludeParams: config.log?.excludeParams });
 const log = new Log([consoleLogProvider], ['console']);
 setAppContext({ config, log, typeOf });
