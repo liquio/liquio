@@ -78,7 +78,7 @@ export class AuthMiddleware {
     const promises = [];
     if (config.govid) promises.push(govid(app));
     if (config.local?.isEnabled) promises.push(local(app));
-    if (config.oidc?.providers?.length) promises.push(oidc(app));
+    if (config.oidc && Object.keys(config.oidc).length > 0) promises.push(oidc(app));
     if (config.wso2?.isEnabled) promises.push(wso2(app));
     if (config.x509?.isEnabled) promises.push(x509(app));
     await Promise.all(promises);

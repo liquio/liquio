@@ -11,72 +11,64 @@ describe('AuthController - OIDC', () => {
 
     config.auth_providers = config.auth_providers || {};
     config.auth_providers.oidc = {
-      providers: [
-        {
-          name: 'dex',
-          isEnabled: true,
-          issuer: dexUrl,
-          clientID: 'test-oidc-client-id',
-          clientSecret: 'test-oidc-secret',
-          callbackURL: `http://localhost:${config.port}/authorise/oidc/dex/callback`,
-          scope: 'openid profile email',
-          userInfo: { enabled: true },
-          mapping: {
-            providerId: 'sub',
-            email: 'email',
-            first_name: 'name',
-          },
+      dex: {
+        isEnabled: true,
+        issuer: dexUrl,
+        clientID: 'test-oidc-client-id',
+        clientSecret: 'test-oidc-secret',
+        callbackURL: `http://localhost:${config.port}/authorise/oidc/dex/callback`,
+        scope: 'openid profile email',
+        userInfo: { enabled: true },
+        mapping: {
+          providerId: 'sub',
+          email: 'email',
+          first_name: 'name',
         },
-        {
-          name: 'dex1',
-          isEnabled: true,
-          issuer: dexUrl,
-          clientID: 'test-oidc-client-id',
-          clientSecret: 'test-oidc-secret',
-          callbackURL: `http://localhost:${config.port}/authorise/oidc/dex1/callback`,
+      },
+      dex1: {
+        isEnabled: true,
+        issuer: dexUrl,
+        clientID: 'test-oidc-client-id',
+        clientSecret: 'test-oidc-secret',
+        callbackURL: `http://localhost:${config.port}/authorise/oidc/dex1/callback`,
+      },
+      dex2: {
+        isEnabled: true,
+        issuer: dexUrl,
+        clientID: 'test-oidc-client-id',
+        clientSecret: 'test-oidc-secret',
+        callbackURL: `http://localhost:${config.port}/authorise/oidc/dex2/callback`,
+      },
+      'disabled-provider': {
+        isEnabled: false,
+        issuer: dexUrl,
+        clientID: 'test-oidc-client-id',
+        clientSecret: 'test-oidc-secret',
+        callbackURL: `http://localhost:${config.port}/authorise/oidc/disabled-provider/callback`,
+      },
+      'explicit-provider': {
+        isEnabled: true,
+        issuer: dexUrl,
+        clientID: 'test-oidc-client-id',
+        clientSecret: 'test-oidc-secret',
+        callbackURL: `http://localhost:${config.port}/authorise/oidc/explicit-provider/callback`,
+        authorizationURL: `${dexUrl}/auth`,
+        tokenURL: `${dexUrl}/token`,
+        userInfoURL: `${dexUrl}/userinfo`,
+      },
+      'mapped-provider': {
+        isEnabled: true,
+        issuer: dexUrl,
+        clientID: 'test-oidc-client-id',
+        clientSecret: 'test-oidc-secret',
+        callbackURL: `http://localhost:${config.port}/authorise/oidc/mapped-provider/callback`,
+        mapping: {
+          providerId: 'sub',
+          email: 'email_address',
+          first_name: 'given_name',
+          last_name: 'family_name',
         },
-        {
-          name: 'dex2',
-          isEnabled: true,
-          issuer: dexUrl,
-          clientID: 'test-oidc-client-id',
-          clientSecret: 'test-oidc-secret',
-          callbackURL: `http://localhost:${config.port}/authorise/oidc/dex2/callback`,
-        },
-        {
-          name: 'disabled-provider',
-          isEnabled: false,
-          issuer: dexUrl,
-          clientID: 'test-oidc-client-id',
-          clientSecret: 'test-oidc-secret',
-          callbackURL: `http://localhost:${config.port}/authorise/oidc/disabled-provider/callback`,
-        },
-        {
-          name: 'explicit-provider',
-          isEnabled: true,
-          issuer: dexUrl,
-          clientID: 'test-oidc-client-id',
-          clientSecret: 'test-oidc-secret',
-          callbackURL: `http://localhost:${config.port}/authorise/oidc/explicit-provider/callback`,
-          authorizationURL: `${dexUrl}/auth`,
-          tokenURL: `${dexUrl}/token`,
-          userInfoURL: `${dexUrl}/userinfo`,
-        },
-        {
-          name: 'mapped-provider',
-          isEnabled: true,
-          issuer: dexUrl,
-          clientID: 'test-oidc-client-id',
-          clientSecret: 'test-oidc-secret',
-          callbackURL: `http://localhost:${config.port}/authorise/oidc/mapped-provider/callback`,
-          mapping: {
-            providerId: 'sub',
-            email: 'email_address',
-            first_name: 'given_name',
-            last_name: 'family_name',
-          },
-        },
-      ],
+      },
     };
     config.notify = { url: 'http://notify-service', authorization: 'bm90aWZ5Om5vdGlmeQ==' };
 
@@ -97,7 +89,7 @@ describe('AuthController - OIDC', () => {
   it('should setup OIDC provider successfully', async () => {
     const oidcInitLog = TestApp.logs.find((log) => log.type === 'oidc' && log.data?.status === 'initialized');
     expect(oidcInitLog).toBeDefined();
-    expect(oidcInitLog?.data?.providers).toBe(6);
+    expect(oidcInitLog?.data?.providers).toBe(5);
   });
 
   it('should fetch discovery metadata from issuer', async () => {

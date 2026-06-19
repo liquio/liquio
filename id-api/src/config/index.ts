@@ -8,7 +8,6 @@ export const DEFAULT_CODE_RETRIES = 5;
 export const DEFAULT_CODE_LENGTH = 6;
 
 export interface OIDCProviderConfig {
-  name: string;
   issuer?: string;
   authorizationURL?: string;
   tokenURL?: string;
@@ -137,7 +136,7 @@ export interface Config {
     };
     oauth2?: StrategyOptions & { userProfileUrl: string };
     oidc?: {
-      providers?: OIDCProviderConfig[];
+      [providerId: string]: OIDCProviderConfig;
     };
   };
   passwordManager?: {
@@ -228,13 +227,14 @@ const SECRET_PATH = process.env.SECRET_PATH;
  * Throws an error if required fields are missing or invalid
  */
 function validateOIDCConfig(config: Config): void {
-  if (!config.auth_providers?.oidc?.providers) {
+  if (!config.auth_providers?.oidc) {
     return; // No OIDC providers configured
   }
 
-  const providers = config.auth_providers.oidc.providers;
+  const providersMap = config.auth_providers.oidc;
+  const providers = Object.entries(providersMap);
 
-  for (const provider of providers) {
+  for (const [providerId, provider] of providers) {
     // Skip validation if provider is explicitly disabled
     if (provider.isEnabled === false) {
       continue;
@@ -243,8 +243,8 @@ function validateOIDCConfig(config: Config): void {
     // Validate required fields for enabled providers
     const errors: string[] = [];
 
-    if (!provider.name) {
-      errors.push('name is required');
+    if (!providerId) {
+      errors.push('providerId (key) is required');
     }
     if (!provider.clientID) {
       errors.push('clientID is required');
@@ -265,8 +265,7 @@ function validateOIDCConfig(config: Config): void {
     }
 
     if (errors.length > 0) {
-      const providerName = provider.name || 'unknown';
-      throw new Error(`Invalid OIDC provider config [${providerName}]: ${errors.join('; ')}`);
+      throw new Error(`Invalid OIDC provider config [${providerId}]: ${errors.join('; ')}`);
     }
   }
 }
