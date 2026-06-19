@@ -69,7 +69,7 @@ jobs:
           # Plain services (no extra build context)
           for svc in admin-api cabinet-api event external-reader filestorage \
                      gateway id-api id-front manager notification \
-                     pdf-generator register sign-tool task; do
+                     pdf-generator register sign-tool task persist-link; do
             if should_build "$svc"; then
               INCLUDES+=("{\"service\":\"$svc\"}")
             fi

@@ -177,7 +177,7 @@ metadata:
   "port" 5000
 -}}
 {{ $persistLinkBase := dict
-  "server" (printf "http://%s-persist-link:80" (include "liquio.fullname" .))
+  "server" (printf "http://%s-persist-link" (include "liquio.fullname" .))
   "port" 80
   "routes" (dict
     "generateQr" "/link?qr=svg"

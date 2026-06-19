@@ -70,8 +70,8 @@ You should have received a copy of the GNU Affero General Public License along w
 ## **Dual Licensing**
 
 Liquio is available under a dual-licensing model:
-– Liquio Community Edition — GNU Affero General Public License v3.0; and
-– Liquio Enterprise Edition — proprietary commercial license.
+- Liquio Community Edition — GNU Affero General Public License v3.0; and
+- Liquio Enterprise Edition — proprietary commercial license.
 
 Licensing under the GNU Affero General Public License does not grant any rights to use Liquio Enterprise Edition.
 

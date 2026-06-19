@@ -152,10 +152,13 @@ export class TestApp extends Application {
     }
 
     // Start Dex container for OIDC tests
+    // Create a temporary dex.yaml with dynamic port values
     const dexTemplatePath = path.join(__dirname, 'dex.yaml');
     const dexTemplate = fs.readFileSync(dexTemplatePath, 'utf-8');
     
-    // Update redirectURIs with the correct app port
+    // We'll use localhost and let testcontainers assign actual port later
+    // For now, use port 5556 in config (Dex's internal port)
+    // Then replace redirect URI with the actual app port
     const dexConfig = dexTemplate
       .replace(/redirectURIs:\s*\n\s*- 'http:\/\/localhost:\d+/g, `redirectURIs:\n      - 'http://localhost:${config.port}`);
     

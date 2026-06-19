@@ -49,7 +49,7 @@ jobs:
           for svc in admin-api admin-front cabinet-api cabinet-front event \
                      external-reader filestorage gateway id-api id-front \
                      manager notification pdf-generator register sign-tool \
-                     task test; do
+                     task test persist-link; do
             if should_lint "$svc"; then
               INCLUDES+=("{\"service\":\"$svc\"}")
             fi
