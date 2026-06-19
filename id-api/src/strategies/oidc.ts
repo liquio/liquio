@@ -346,7 +346,7 @@ export async function oidc(app: Express) {
       // Store verifier in session for callback
       const sessionData = req.session as any;
       sessionData.oidcPKCE = sessionData.oidcPKCE || {};
-      sessionData.oidcPKCE[providerName] = { codeVerifier, codeChallenge };
+      sessionData.oidcPKCE[providerId] = { codeVerifier, codeChallenge };
 
       // Set PKCE params on the strategy
       const strategy = strategyInstances.get(strategyName);
@@ -392,7 +392,7 @@ export async function oidc(app: Express) {
         return res.redirect('/login?error=authentication_failed');
       }
 
-      req.logIn(user, async (err) => {Feature/generic
+      req.logIn(user, async (err) => {
         if (err) {
           log.save(`oidc|${providerId}|route-callback|login-error`, { error: err.message }, 'error');
           return next(err);
