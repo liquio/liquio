@@ -14,17 +14,14 @@ describe('AuthController - OIDC - PKCE', () => {
 
     config.auth_providers = config.auth_providers || {};
     config.auth_providers.oidc = {
-      providers: [
-        {
-          name: 'dex',
-          isEnabled: true,
-          issuer: dexUrl,
-          clientID: 'test-oidc-client-id',
-          clientSecret: 'test-oidc-secret',
-          callbackURL: `http://localhost:${config.port}/authorise/oidc/dex/callback`,
-          usePKCE: true,
-        },
-      ],
+      dex: {
+        isEnabled: true,
+        issuer: dexUrl,
+        clientID: 'test-oidc-client-id',
+        clientSecret: 'test-oidc-secret',
+        callbackURL: `http://localhost:${config.port}/authorise/oidc/dex/callback`,
+        usePKCE: true,
+      },
     };
     config.notify = { url: 'http://notify-service', authorization: 'bm90aWZ5Om5vdGlmeQ==' };
 

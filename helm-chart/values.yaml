@@ -494,6 +494,34 @@ config:
     server:
       maxBodySize: "500mb"
 
+  # Identity API configuration
+  # Configuration for authentication providers and OIDC integration
+  id:
+    config:
+      # OIDC provider configuration
+      # Add OIDC providers to enable generic OpenID Connect authentication
+      # Each provider is identified by a unique providerId (used in endpoints like /authorise/oidc/{providerId})
+      # All providers are optional and can be disabled per-provider
+      # Example: Keycloak OIDC provider (commented out, uncomment and customize to enable)
+      #
+      # auth_providers:
+      #   oidc:
+      #     keycloak:
+      #       issuer: "https://keycloak.example.com"
+      #       clientID: "liquio-client"
+      #       clientSecret: "client-secret-from-keycloak"
+      #       callbackURL: "https://id.example.com/authorise/oidc/keycloak/callback"
+      #       scope: "openid profile email"
+      #       usePKCE: true
+      #       isEnabled: true
+      #       mapping:
+      #         sub: "userId"
+      #         email: "email"
+      #         given_name: "first_name"
+      #         family_name: "last_name"
+      #       userInfo:
+      #         enabled: true
+
 # Secret configuration
 secrets:
   # Whether Helm should generate all required secrets on install.
