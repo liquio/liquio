@@ -1,5 +1,6 @@
 import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 import axios from 'axios';
+import crypto from 'crypto';
 
 import { CallbackFn, Express } from '../types';
 import { Log } from '../lib/log';
@@ -40,7 +41,14 @@ async function resolveOIDCEndpoints(provider: OIDCProviderConfig, log: Log): Pro
       timeout: 10000,
     });
 
-    log.save(log_tag, { status: 'discovery_success', provider: provider.name }, 'info');
+    log.save(log_tag, {
+      status: 'discovery_success',
+      provider: provider.name,
+      issuer: provider.issuer,
+      authorization_endpoint: data.authorization_endpoint,
+      token_endpoint: data.token_endpoint,
+      userinfo_endpoint: data.userinfo_endpoint,
+    }, 'info');
 
     return {
       authorization_endpoint: data.authorization_endpoint,
@@ -72,6 +80,66 @@ function mapProviderClaims(providerClaims: Record<string, any>, mapping: Record<
   return mapped;
 }
 
+/**
+ * Generate PKCE parameters
+ */
+function generatePKCEParameters(): { codeVerifier: string; codeChallenge: string } {
+  // Generate a random code verifier (43-128 characters of unreserved characters)
+  const codeVerifier = crypto
+    .randomBytes(32)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+  // Create code challenge from verifier using S256 method
+  const codeChallenge = crypto
+    .createHash('sha256')
+    .update(codeVerifier)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+  return { codeVerifier, codeChallenge };
+}
+
+/**
+ * Custom OAuth2Strategy that supports PKCE
+ */
+class PKCEOAuth2Strategy extends OAuth2Strategy {
+  private pkceParams: { codeVerifier: string; codeChallenge: string } | null = null;
+
+  constructor(options: any, verify: any) {
+    super(options, verify);
+    // Override getOAuthAccessToken to include code_verifier for PKCE
+    const self = this;
+    const oauth2 = this._oauth2 as any;
+    const originalGetOAuthAccessToken = oauth2.getOAuthAccessToken.bind(oauth2);
+    oauth2.getOAuthAccessToken = function (code: string, params: any, callback: any) {
+      if (self.pkceParams) {
+        params = { ...params, code_verifier: self.pkceParams.codeVerifier };
+      }
+      return originalGetOAuthAccessToken(code, params, callback);
+    };
+  }
+
+  setPKCEParams(pkceParams: { codeVerifier: string; codeChallenge: string }) {
+    this.pkceParams = pkceParams;
+  }
+
+  authorizationParams(options: any) {
+    if (this.pkceParams) {
+      return {
+        ...options,
+        code_challenge: this.pkceParams.codeChallenge,
+        code_challenge_method: 'S256',
+      };
+    }
+    return options;
+  }
+}
+
 export async function oidc(app: Express) {
   const log = Log.get();
 
@@ -83,6 +151,7 @@ export async function oidc(app: Express) {
   }
 
   const enabledProviders = providers.filter((p: OIDCProviderConfig) => p.isEnabled !== false);
+  const disabledProviders = providers.filter((p: OIDCProviderConfig) => p.isEnabled === false);
 
   if (enabledProviders.length === 0) {
     log.save('oidc|init', { status: 'no_enabled_providers' }, 'info');
@@ -90,6 +159,14 @@ export async function oidc(app: Express) {
   }
 
   log.save('oidc|init', { status: 'initializing', provider_count: enabledProviders.length }, 'info');
+
+  // Log disabled providers
+  for (const provider of disabledProviders) {
+    log.save(`oidc|${provider.name}`, { status: 'disabled' }, 'info');
+  }
+
+  // Map to store strategy instances for later access
+  const strategyInstances = new Map<string, PKCEOAuth2Strategy>();
 
   // Initialize each provider
   for (const provider of enabledProviders) {
@@ -100,18 +177,19 @@ export async function oidc(app: Express) {
       // Register passport strategy with provider-specific name
       const strategyName = `oidc-${provider.name}`;
 
-      app.passport.use(
-        strategyName,
-        new OAuth2Strategy(
-          {
-            authorizationURL: metadata.authorization_endpoint,
-            tokenURL: metadata.token_endpoint,
-            clientID: provider.clientID,
-            clientSecret: provider.clientSecret,
-            callbackURL: provider.callbackURL,
-            scope: provider.scope || 'openid profile email',
-            passReqToCallback: true,
-          },
+      // Use PKCEOAuth2Strategy if PKCE is enabled, otherwise use regular OAuth2Strategy
+      const strategyClass = provider.usePKCE ? PKCEOAuth2Strategy : OAuth2Strategy;
+
+      const strategyInstance = new (strategyClass as any)(
+        {
+          authorizationURL: metadata.authorization_endpoint,
+          tokenURL: metadata.token_endpoint,
+          clientID: provider.clientID,
+          clientSecret: provider.clientSecret,
+          callbackURL: provider.callbackURL,
+          scope: provider.scope || 'openid profile email',
+          passReqToCallback: true,
+        },
           async (req: any, accessToken: string, refreshToken: string, profile: any, done: CallbackFn) => {
             const log_tag = `oidc|${provider.name}|verify`;
 
@@ -212,8 +290,15 @@ export async function oidc(app: Express) {
               done(error);
             }
           },
-        ),
       );
+
+      // Register the strategy with passport
+      app.passport.use(strategyName, strategyInstance);
+
+      // Store strategy instance if it's PKCE-enabled
+      if (provider.usePKCE && strategyInstance instanceof PKCEOAuth2Strategy) {
+        strategyInstances.set(strategyName, strategyInstance);
+      }
 
       log.save(`oidc|${provider.name}|strategy-registered`, { status: 'success', strategy_name: strategyName }, 'info');
     } catch (error: any) {
@@ -236,6 +321,21 @@ export async function oidc(app: Express) {
 
     log.save(`oidc|${providerName}|route-auth`, { status: 'initiated' }, 'info');
 
+    // Handle PKCE if enabled
+    if (provider.usePKCE) {
+      const { codeVerifier, codeChallenge } = generatePKCEParameters();
+      // Store verifier in session for callback
+      const sessionData = req.session as any;
+      sessionData.oidcPKCE = sessionData.oidcPKCE || {};
+      sessionData.oidcPKCE[providerName] = { codeVerifier, codeChallenge };
+
+      // Set PKCE params on the strategy
+      const strategy = strategyInstances.get(strategyName);
+      if (strategy) {
+        strategy.setPKCEParams({ codeVerifier, codeChallenge });
+      }
+    }
+
     app.passport.authenticate(strategyName)(req, res, next);
   });
 
@@ -247,6 +347,19 @@ export async function oidc(app: Express) {
     if (!provider) {
       log.save('oidc|route-callback|unknown-provider', { provider: providerName }, 'warn');
       return res.status(404).send({ error: 'Provider not found' });
+    }
+
+    // Retrieve PKCE code_verifier if it was used
+    const sessionData = req.session as any;
+    const pkceParams = sessionData?.oidcPKCE?.[providerName];
+    
+    // For PKCE, we need to pass code_verifier in the token request
+    // This is handled by OAuth2 module, but we store it for reference
+    if (pkceParams && provider.usePKCE) {
+      const strategy = strategyInstances.get(strategyName);
+      if (strategy) {
+        strategy.setPKCEParams(pkceParams);
+      }
     }
 
     app.passport.authenticate(strategyName, { failureRedirect: '/login', keepSessionInfo: true }, async (err: any, user: any) => {
@@ -269,12 +382,12 @@ export async function oidc(app: Express) {
         req.session.save();
         await new Promise((resolve) => setTimeout(resolve, 250));
 
-        log.save(`oidc|${providerName}|route-callback|success`, { userId: user.userId, isAuthenticated: req.isAuthenticated() }, 'info');
+        log.save(`oidc|${providerName}|callback`, { status: 'success', userId: user.userId, isAuthenticated: req.isAuthenticated() }, 'info');
 
         res.redirect('/authorise/continue');
       });
     })(req, res, next);
   });
 
-  log.save('oidc|init', { status: 'initialized', enabled_providers: enabledProviders.map((p: OIDCProviderConfig) => p.name) }, 'info');
+  log.save('oidc', { status: 'initialized', providers: providers.length }, 'info');
 }

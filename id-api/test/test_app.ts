@@ -152,13 +152,10 @@ export class TestApp extends Application {
     }
 
     // Start Dex container for OIDC tests
-    // Create a temporary dex.yaml with dynamic port values
     const dexTemplatePath = path.join(__dirname, 'dex.yaml');
     const dexTemplate = fs.readFileSync(dexTemplatePath, 'utf-8');
     
-    // We'll use localhost and let testcontainers assign actual port later
-    // For now, use port 5556 in config (Dex's internal port)
-    // Then replace redirect URI with the actual app port
+    // Update redirectURIs with the correct app port
     const dexConfig = dexTemplate
       .replace(/redirectURIs:\s*\n\s*- 'http:\/\/localhost:\d+/g, `redirectURIs:\n      - 'http://localhost:${config.port}`);
     
@@ -172,6 +169,7 @@ export class TestApp extends Application {
     
     this.dexConfigPath = dexConfigPath;
     
+    // Start Dex container
     this.dexContainer = await new GenericContainer('dexidp/dex:v2.45.0')
       .withExposedPorts(5556)
       .withBindMounts([
@@ -189,8 +187,8 @@ export class TestApp extends Application {
     const dexMappedPort = this.dexContainer.getMappedPort(5556);
     this.dexUrl = `http://${dexHost}:${dexMappedPort}`;
 
-    // Allow nock to let through requests to Dex (localhost)
-    nock.enableNetConnect('localhost');
+    // Allow nock to let through requests to Dex for auth/token/userinfo
+    nock.enableNetConnect((host) => host.includes(dexHost));
     
     // Activate nock to intercept HTTP requests
     nock.activate();
@@ -202,6 +200,20 @@ export class TestApp extends Application {
 
     // Setup HTTP request interception
     nock('http://sign-tool').get('/test/ping').reply(200, 'PONG');
+
+    // Mock OIDC discovery endpoint with correct URLs (persistent for multiple calls)
+    const dexHostname = new URL(this.dexUrl).hostname;
+    const dexPort = new URL(this.dexUrl).port;
+    nock(`http://${dexHostname}:${dexPort}`)
+      .persist()
+      .get('/.well-known/openid-configuration')
+      .reply(200, {
+        issuer: this.dexUrl,
+        authorization_endpoint: `${this.dexUrl}/auth`,
+        token_endpoint: `${this.dexUrl}/token`,
+        userinfo_endpoint: `${this.dexUrl}/userinfo`,
+        jwks_uri: `${this.dexUrl}/.well-known/jwks.json`,
+      });
   }
 
   static async afterAll() {
