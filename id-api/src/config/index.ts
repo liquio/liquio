@@ -19,6 +19,8 @@ export interface OIDCProviderConfig {
   scope?: string;
   isEnabled?: boolean;
   mapping?: Record<string, string>;
+  userInfo?: { enabled: boolean };
+  usePKCE?: boolean;
 }
 
 export interface Config {
