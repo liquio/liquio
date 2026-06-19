@@ -340,6 +340,21 @@ export async function oidc(app: Express) {
       }
     }
 
+    // Handle PKCE if enabled
+    if (provider.usePKCE) {
+      const { codeVerifier, codeChallenge } = generatePKCEParameters();
+      // Store verifier in session for callback
+      const sessionData = req.session as any;
+      sessionData.oidcPKCE = sessionData.oidcPKCE || {};
+      sessionData.oidcPKCE[providerName] = { codeVerifier, codeChallenge };
+
+      // Set PKCE params on the strategy
+      const strategy = strategyInstances.get(strategyName);
+      if (strategy) {
+        strategy.setPKCEParams({ codeVerifier, codeChallenge });
+      }
+    }
+
     app.passport.authenticate(strategyName)(req, res, next);
   });
 
@@ -377,7 +392,7 @@ export async function oidc(app: Express) {
         return res.redirect('/login?error=authentication_failed');
       }
 
-      req.logIn(user, async (err) => {
+      req.logIn(user, async (err) => {Feature/generic
         if (err) {
           log.save(`oidc|${providerId}|route-callback|login-error`, { error: err.message }, 'error');
           return next(err);
