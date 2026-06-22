@@ -1,11 +1,11 @@
 import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 import axios from 'axios';
-import crypto from 'crypto';
 
 import { CallbackFn, Express } from '../types';
 import { Log } from '../lib/log';
 import { Models, UserAttributes } from '../models';
 import { OIDCProviderConfig } from '../config';
+import { PKCEOAuth2Strategy, generatePKCEParameters } from './passport_libs/passport-oidc/strategy';
 
 interface OIDCMetadata {
   authorization_endpoint: string;
@@ -13,175 +13,90 @@ interface OIDCMetadata {
   userinfo_endpoint: string;
 }
 
+interface OIDCProviderRuntimeState {
+  status: 'initialized' | 'registration_failed' | 'disabled';
+  error?: string;
+}
+
+
 /**
- * Resolve OIDC endpoints from discovery or use provided overrides
+ * OIDC Provider with runtime state tracking and provider-specific error handling
  */
-async function resolveOIDCEndpoints(providerId: string, provider: OIDCProviderConfig, log: Log): Promise<OIDCMetadata> {
-  const log_tag = `oidc|${providerId}|discovery`;
+class OidcProvider {
+  private log: Log;
+  private app: Express;
+  private providersMap?: Record<string, OIDCProviderConfig>;
+  private providersById: Map<string, OIDCProviderConfig>;
+  private providerStates: Map<string, OIDCProviderRuntimeState>;
+  private strategyInstances: Map<string, PKCEOAuth2Strategy>;
 
-  // If all endpoints are provided, use them directly (overrides)
-  if (provider.authorizationURL && provider.tokenURL && provider.userInfoURL) {
-    log.save(log_tag, { status: 'using_overrides', providerId }, 'info');
-    return {
-      authorization_endpoint: provider.authorizationURL,
-      token_endpoint: provider.tokenURL,
-      userinfo_endpoint: provider.userInfoURL,
-    };
+  constructor(app: Express) {
+    this.app = app;
+    this.log = Log.get();
+    this.providersById = new Map();
+    this.providerStates = new Map();
+    this.strategyInstances = new Map();
   }
 
-  // Otherwise, discover from issuer
-  if (!provider.issuer) {
-    throw new Error(`OIDC provider ${providerId}: must have either issuer or all endpoint overrides`);
-  }
+  /**
+   * Initialize OIDC provider(s) asynchronously
+   */
+  async init(): Promise<void> {
+    this.providersMap = this.app.config?.auth_providers?.oidc;
 
-  try {
-    const { data } = await axios({
-      method: 'GET',
-      url: `${provider.issuer}/.well-known/openid-configuration`,
-      timeout: 10000,
-    });
+    if (!this.providersMap || Object.keys(this.providersMap).length === 0) {
+      this.log.save('oidc|init', { status: 'no_providers_configured' }, 'info');
+      return;
+    }
 
-    log.save(
-      log_tag,
-      {
-        status: 'discovery_success',
-        providerId,
-        issuer: provider.issuer,
-        authorization_endpoint: data.authorization_endpoint,
-        token_endpoint: data.token_endpoint,
-        userinfo_endpoint: data.userinfo_endpoint,
-      },
-      'info',
+    const providerEntries = Object.entries(this.providersMap);
+    const enabledProviderCount = providerEntries.reduce(
+      (count, [, provider]) => (provider.isEnabled === false ? count : count + 1),
+      0,
     );
 
-    return {
-      authorization_endpoint: data.authorization_endpoint,
-      token_endpoint: data.token_endpoint,
-      userinfo_endpoint: data.userinfo_endpoint,
-    };
-  } catch (error: any) {
-    const response = error.response?.data;
-    log.save(log_tag, { status: 'discovery_error', providerId, error: error.message, response }, 'error');
-    throw error;
-  }
-}
-
-/**
- * Map provider claims to internal user fields using provider-specific mapping
- */
-function mapProviderClaims(providerClaims: Record<string, any>, mapping: Record<string, string> | undefined): Record<string, any> {
-  if (!mapping) {
-    return providerClaims;
-  }
-
-  const mapped: Record<string, any> = {};
-  for (const [internalField, providerField] of Object.entries(mapping)) {
-    if (providerField in providerClaims) {
-      mapped[internalField] = providerClaims[providerField];
+    if (enabledProviderCount === 0) {
+      this.log.save('oidc|init', { status: 'no_enabled_providers' }, 'info');
+      return;
     }
-  }
 
-  return mapped;
-}
+    this.log.save('oidc|init', { status: 'initializing', provider_count: enabledProviderCount }, 'info');
 
-/**
- * Generate PKCE parameters
- */
-function generatePKCEParameters(): { codeVerifier: string; codeChallenge: string } {
-  // Generate a random code verifier (43-128 characters of unreserved characters)
-  const codeVerifier = crypto.randomBytes(32).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    this.providersById = new Map(providerEntries);
 
-  // Create code challenge from verifier using S256 method
-  const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-  return { codeVerifier, codeChallenge };
-}
-
-/**
- * Custom OAuth2Strategy that supports PKCE
- */
-class PKCEOAuth2Strategy extends OAuth2Strategy {
-  private pkceParams: { codeVerifier: string; codeChallenge: string } | null = null;
-
-  constructor(options: any, verify: any) {
-    super(options, verify);
-    // Override getOAuthAccessToken to include code_verifier for PKCE
-    const self = this;
-    const oauth2 = this._oauth2 as any;
-    const originalGetOAuthAccessToken = oauth2.getOAuthAccessToken.bind(oauth2);
-    oauth2.getOAuthAccessToken = function (code: string, params: any, callback: any) {
-      if (self.pkceParams) {
-        params = { ...params, code_verifier: self.pkceParams.codeVerifier };
+    // Initialize runtime state for all providers
+    for (const [providerId, provider] of providerEntries) {
+      if (provider.isEnabled === false) {
+        this.log.save(`oidc|${providerId}`, { status: 'disabled' }, 'info');
+        this.providerStates.set(providerId, { status: 'disabled' });
+        continue;
       }
-      return originalGetOAuthAccessToken(code, params, callback);
-    };
-  }
 
-  setPKCEParams(pkceParams: { codeVerifier: string; codeChallenge: string }) {
-    this.pkceParams = pkceParams;
-  }
-
-  authorizationParams(options: any) {
-    if (this.pkceParams) {
-      return {
-        ...options,
-        code_challenge: this.pkceParams.codeChallenge,
-        code_challenge_method: 'S256',
-      };
+      this.providerStates.set(providerId, { status: 'registration_failed', error: 'provider_not_initialized' });
     }
-    return options;
-  }
-}
 
-export async function oidc(app: Express) {
-  const log = Log.get();
+    // Register OIDC strategies
+    for (const [providerId, provider] of providerEntries) {
+      if (provider.isEnabled === false) {
+        continue;
+      }
 
-  const providersMap = app.config?.auth_providers?.oidc;
-
-  if (!providersMap || Object.keys(providersMap).length === 0) {
-    log.save('oidc|init', { status: 'no_providers_configured' }, 'info');
-    return;
-  }
-
-  // Separate enabled and disabled providers
-  const enabledProviders: Array<[string, OIDCProviderConfig]> = [];
-  const disabledProviders: Array<[string, OIDCProviderConfig]> = [];
-
-  for (const [providerId, provider] of Object.entries(providersMap)) {
-    if (provider.isEnabled === false) {
-      disabledProviders.push([providerId, provider]);
-    } else {
-      enabledProviders.push([providerId, provider]);
+      await this.registerProvider(providerId, provider);
     }
+
+    // Register dynamic routes
+    this.registerRoutes();
+
+    this.log.save('oidc', { status: 'initialized', providers: enabledProviderCount }, 'info');
   }
 
-  if (enabledProviders.length === 0) {
-    log.save('oidc|init', { status: 'no_enabled_providers' }, 'info');
-    return;
-  }
-
-  log.save('oidc|init', { status: 'initializing', provider_count: enabledProviders.length }, 'info');
-
-  // Log disabled providers
-  for (const [providerId] of disabledProviders) {
-    log.save(`oidc|${providerId}`, { status: 'disabled' }, 'info');
-  }
-
-  // Map to store strategy instances for later access
-  const strategyInstances = new Map<string, PKCEOAuth2Strategy>();
-  // Map to store provider configs by providerId for later lookup in routes
-  const providersById = new Map<string, OIDCProviderConfig>(enabledProviders);
-
-  // Initialize each provider
-  for (const [providerId, provider] of enabledProviders) {
+  /**
+   * Register a single OIDC provider strategy
+   */
+  private async registerProvider(providerId: string, provider: OIDCProviderConfig): Promise<void> {
     try {
-      // Resolve OIDC endpoints
-      const metadata = await resolveOIDCEndpoints(providerId, provider, log);
-
-      // Register passport strategy with provider-specific name
+      const metadata = await this.resolveOIDCEndpoints(providerId, provider);
       const strategyName = `oidc-${providerId}`;
-
-      // Use PKCEOAuth2Strategy if PKCE is enabled, otherwise use regular OAuth2Strategy
       const strategyClass = provider.usePKCE ? PKCEOAuth2Strategy : OAuth2Strategy;
 
       const strategyInstance = new (strategyClass as any)(
@@ -194,219 +109,323 @@ export async function oidc(app: Express) {
           scope: provider.scope || 'openid profile email',
           passReqToCallback: true,
         },
-        async (req: any, accessToken: string, refreshToken: string, profile: any, done: CallbackFn) => {
-          const log_tag = `oidc|${providerId}|verify`;
-
-          try {
-            // Fetch user info
-            let userInfo: Record<string, any>;
-
-            try {
-              const { data } = await axios({
-                method: 'GET',
-                url: metadata.userinfo_endpoint,
-                headers: { Authorization: `Bearer ${accessToken}` },
-                timeout: 10000,
-              });
-
-              userInfo = data;
-              log.save(`${log_tag}|userinfo-fetch`, { status: 'success' }, 'info');
-            } catch (error: any) {
-              log.save(`${log_tag}|userinfo-fetch-error`, { error: error.message }, 'error');
-              return done(error);
-            }
-
-            // Map claims to internal fields
-            const mapped = mapProviderClaims(userInfo, provider.mapping);
-
-            // Extract required provider ID (typically 'sub' in OIDC)
-            const userProviderId = userInfo.sub;
-            if (!userProviderId) {
-              log.save(`${log_tag}|validation-error`, { error: 'no_sub_claim' }, 'error');
-              return done(new Error('OIDC provider did not return sub claim'));
-            }
-
-            // Prepare user data for database
-            const userData: Partial<UserAttributes> = {
-              email: mapped.email || userInfo.email,
-              phone: mapped.phone || userInfo.phone_number,
-              first_name: mapped.first_name || userInfo.given_name,
-              last_name: mapped.last_name || userInfo.family_name,
-              middle_name: mapped.middle_name || userInfo.middle_name,
-            };
-
-            // Add custom mapped fields
-            for (const [key, value] of Object.entries(mapped)) {
-              if (!['email', 'phone', 'first_name', 'last_name', 'middle_name'].includes(key)) {
-                (userData as Record<string, any>)[key] = value;
-              }
-            }
-
-            // Find existing user by email or provider ID
-            let existingUser: UserAttributes | null = null;
-
-            if (userData.email) {
-              existingUser = await Models.model('user')
-                .findOne({
-                  where: { email: userData.email },
-                })
-                .then((row) => row?.dataValues as UserAttributes);
-            }
-
-            // Upsert user
-            let user: UserAttributes;
-            if (existingUser) {
-              // Update existing user
-              await Models.model('user').update(userData, {
-                where: { userId: existingUser.userId },
-              });
-
-              user = { ...existingUser, ...userData };
-            } else {
-              // Create new user
-              user = await Models.model('user')
-                .create(userData, { returning: true })
-                .then((row) => row.dataValues);
-            }
-
-            log.save(`${log_tag}|user-upsert`, { userId: user.userId, is_new: !existingUser }, 'info');
-
-            // Upsert user service record
-            const userService = await Models.model('userServices').upsert({
-              userId: user.userId,
-              provider: `oidc-${providerId}`,
-              provider_id: userProviderId,
-              data: userInfo,
-            });
-
-            // Build session object
-            const session = {
-              ...user,
-              provider: `oidc-${providerId}`,
-              services: { [`oidc-${providerId}`]: userService },
-            };
-
-            log.save(`${log_tag}|authorize-success`, { userId: user.userId }, 'info');
-
-            done(null, session);
-          } catch (error: any) {
-            log.save(`${log_tag}|error`, { error: error.message || `${error}` }, 'error');
-            done(error);
-          }
-        },
+        (req: any, accessToken: string, refreshToken: string, profile: any, done: CallbackFn) =>
+          this.verifyOIDCUser(providerId, provider, metadata, accessToken, done),
       );
 
-      // Register the strategy with passport
-      app.passport.use(strategyName, strategyInstance);
+      this.app.passport.use(strategyName, strategyInstance);
 
-      // Store strategy instance if it's PKCE-enabled
       if (provider.usePKCE && strategyInstance instanceof PKCEOAuth2Strategy) {
-        strategyInstances.set(strategyName, strategyInstance);
+        this.strategyInstances.set(strategyName, strategyInstance);
       }
 
-      log.save(`oidc|${providerId}|strategy-registered`, { status: 'success', strategy_name: strategyName }, 'info');
+      this.providerStates.set(providerId, { status: 'initialized' });
+      this.log.save(`oidc|${providerId}|strategy-registered`, { status: 'success', strategy_name: strategyName }, 'info');
     } catch (error: any) {
-      log.save(`oidc|${providerId}|registration-error`, { error: error.message }, 'error');
-      // Continue with next provider instead of throwing
-      continue;
+      this.providerStates.set(providerId, {
+        status: 'registration_failed',
+        error: error.message || `${error}`,
+      });
+
+      this.log.save(`oidc|${providerId}|registration-error`, { error: error.message }, 'error');
     }
   }
 
-  // Register dynamic routes
-  app.get('/authorise/oidc/:provider', (req, res, next) => {
-    const providerId = req.params.provider;
-    const strategyName = `oidc-${providerId}`;
+  /**
+   * Register dynamic routes for auth and callback
+   */
+  private registerRoutes(): void {
+    this.app.get('/authorise/oidc/:provider', (req, res, next) => {
+      const providerId = req.params.provider;
+      const strategyName = `oidc-${providerId}`;
 
-    const provider = providersById.get(providerId);
-    if (!provider) {
-      log.save('oidc|route-auth|unknown-provider', { providerId }, 'warn');
-      return res.status(404).send({ error: 'Provider not found' });
-    }
+      const readiness = this.ensureProviderReady(providerId, 'route-auth');
+      if (!readiness.ok) {
+        return res.status(readiness.statusCode).send(readiness.body);
+      }
+      const activeProvider = readiness.provider;
 
-    log.save(`oidc|${providerId}|route-auth`, { status: 'initiated' }, 'info');
+      this.log.save(`oidc|${providerId}|route-auth`, { status: 'initiated' }, 'info');
 
-    // Handle PKCE if enabled
-    if (provider.usePKCE) {
-      const { codeVerifier, codeChallenge } = generatePKCEParameters();
-      // Store verifier in session for callback
+      if (activeProvider.usePKCE) {
+        const { codeVerifier, codeChallenge } = generatePKCEParameters();
+        const sessionData = req.session as any;
+        sessionData.oidcPKCE = sessionData.oidcPKCE || {};
+        sessionData.oidcPKCE[providerId] = { codeVerifier, codeChallenge };
+
+        const strategy = this.strategyInstances.get(strategyName);
+        if (strategy) {
+          strategy.setPKCEParams({ codeVerifier, codeChallenge });
+        }
+      }
+
+      this.app.passport.authenticate(strategyName)(req, res, next);
+    });
+
+    this.app.get('/authorise/oidc/:provider/callback', (req, res, next) => {
+      const providerId = req.params.provider;
+      const strategyName = `oidc-${providerId}`;
+
+      const readiness = this.ensureProviderReady(providerId, 'route-callback');
+      if (!readiness.ok) {
+        return res.status(readiness.statusCode).send(readiness.body);
+      }
+      const activeProvider = readiness.provider;
+
       const sessionData = req.session as any;
-      sessionData.oidcPKCE = sessionData.oidcPKCE || {};
-      sessionData.oidcPKCE[providerId] = { codeVerifier, codeChallenge };
+      const pkceParams = sessionData?.oidcPKCE?.[providerId];
 
-      // Set PKCE params on the strategy
-      const strategy = strategyInstances.get(strategyName);
-      if (strategy) {
-        strategy.setPKCEParams({ codeVerifier, codeChallenge });
-      }
-    }
-
-    // Handle PKCE if enabled
-    if (provider.usePKCE) {
-      const { codeVerifier, codeChallenge } = generatePKCEParameters();
-      // Store verifier in session for callback
-      const sessionData = req.session as any;
-      sessionData.oidcPKCE = sessionData.oidcPKCE || {};
-      sessionData.oidcPKCE[providerId] = { codeVerifier, codeChallenge };
-
-      // Set PKCE params on the strategy
-      const strategy = strategyInstances.get(strategyName);
-      if (strategy) {
-        strategy.setPKCEParams({ codeVerifier, codeChallenge });
-      }
-    }
-
-    app.passport.authenticate(strategyName)(req, res, next);
-  });
-
-  app.get('/authorise/oidc/:provider/callback', (req, res, next) => {
-    const providerId = req.params.provider;
-    const strategyName = `oidc-${providerId}`;
-
-    const provider = providersById.get(providerId);
-    if (!provider) {
-      log.save('oidc|route-callback|unknown-provider', { providerId }, 'warn');
-      return res.status(404).send({ error: 'Provider not found' });
-    }
-
-    // Retrieve PKCE code_verifier if it was used
-    const sessionData = req.session as any;
-    const pkceParams = sessionData?.oidcPKCE?.[providerId];
-
-    // For PKCE, we need to pass code_verifier in the token request
-    // This is handled by OAuth2 module, but we store it for reference
-    if (pkceParams && provider.usePKCE) {
-      const strategy = strategyInstances.get(strategyName);
-      if (strategy) {
-        strategy.setPKCEParams(pkceParams);
-      }
-    }
-
-    app.passport.authenticate(strategyName, { failureRedirect: '/login', keepSessionInfo: true }, async (err: any, user: any) => {
-      if (err) {
-        log.save(`oidc|${providerId}|route-callback|error`, { error: err.message }, 'error');
-        return next(err);
+      if (pkceParams && activeProvider.usePKCE) {
+        const strategy = this.strategyInstances.get(strategyName);
+        if (strategy) {
+          strategy.setPKCEParams(pkceParams);
+        }
       }
 
-      if (!user) {
-        log.save(`oidc|${providerId}|route-callback|no-user`, { status: 'failed' }, 'warn');
-        return res.redirect('/login?error=authentication_failed');
-      }
-
-      req.logIn(user, async (err) => {
+      this.app.passport.authenticate(strategyName, { failureRedirect: '/login', keepSessionInfo: true }, async (err: any, user: any) => {
         if (err) {
-          log.save(`oidc|${providerId}|route-callback|login-error`, { error: err.message }, 'error');
+          this.log.save(`oidc|${providerId}|route-callback|error`, { error: err.message }, 'error');
           return next(err);
         }
 
-        req.session.save();
-        await new Promise((resolve) => setTimeout(resolve, 250));
+        if (!user) {
+          this.log.save(`oidc|${providerId}|route-callback|no-user`, { status: 'failed' }, 'warn');
+          return res.redirect('/login?error=authentication_failed');
+        }
 
-        log.save(`oidc|${providerId}|callback`, { status: 'success', userId: user.userId, isAuthenticated: req.isAuthenticated() }, 'info');
+        req.logIn(user, async (err) => {
+          if (err) {
+            this.log.save(`oidc|${providerId}|route-callback|login-error`, { error: err.message }, 'error');
+            return next(err);
+          }
 
-        res.redirect('/authorise/continue');
+          req.session.save();
+          await new Promise((resolve) => setTimeout(resolve, 250));
+
+          this.log.save(`oidc|${providerId}|callback`, { status: 'success', userId: user.userId, isAuthenticated: req.isAuthenticated() }, 'info');
+
+          res.redirect('/authorise/continue');
+        });
+      })(req, res, next);
+    });
+  }
+
+  /**
+   * Check provider readiness and return appropriate response
+   */
+  private ensureProviderReady(
+    providerId: string,
+    routeTag: 'route-auth' | 'route-callback',
+  ): { ok: true; provider: OIDCProviderConfig } | { ok: false; statusCode: number; body: Record<string, any> } {
+    const provider = this.providersById.get(providerId);
+    if (!provider) {
+      this.log.save(`oidc|${routeTag}|unknown-provider`, { providerId }, 'warn');
+      return { ok: false, statusCode: 404, body: { error: 'Provider not found' } };
+    }
+
+    const providerState = this.providerStates.get(providerId);
+    if (providerState?.status === 'disabled') {
+      this.log.save(`oidc|${providerId}|${routeTag}|provider-disabled`, { status: 'disabled' }, 'warn');
+      return {
+        ok: false,
+        statusCode: 503,
+        body: {
+          error: 'OIDC provider is disabled',
+          providerId,
+        },
+      };
+    }
+
+    if (!providerState || providerState.status !== 'initialized') {
+      const initError = providerState?.error || 'provider_not_initialized';
+      this.log.save(`oidc|${providerId}|${routeTag}|provider-unavailable`, { status: 'unavailable', error: initError }, 'warn');
+      return {
+        ok: false,
+        statusCode: 503,
+        body: {
+          error: 'OIDC provider temporarily unavailable',
+          providerId,
+          details: initError,
+        },
+      };
+    }
+
+    return { ok: true, provider };
+  }
+
+  /**
+   * Resolve OIDC endpoints from discovery or use provided overrides
+   */
+  private async resolveOIDCEndpoints(providerId: string, provider: OIDCProviderConfig): Promise<OIDCMetadata> {
+    const log_tag = `oidc|${providerId}|discovery`;
+
+    if (provider.authorizationURL && provider.tokenURL && provider.userInfoURL) {
+      this.log.save(log_tag, { status: 'using_overrides', providerId }, 'info');
+      return {
+        authorization_endpoint: provider.authorizationURL,
+        token_endpoint: provider.tokenURL,
+        userinfo_endpoint: provider.userInfoURL,
+      };
+    }
+
+    if (!provider.issuer) {
+      throw new Error(`OIDC provider ${providerId}: must have either issuer or all endpoint overrides`);
+    }
+
+    try {
+      const { data } = await axios({
+        method: 'GET',
+        url: `${provider.issuer}/.well-known/openid-configuration`,
+        timeout: 10000,
       });
-    })(req, res, next);
-  });
 
-  log.save('oidc', { status: 'initialized', providers: enabledProviders.length }, 'info');
+      this.log.save(
+        log_tag,
+        {
+          status: 'discovery_success',
+          providerId,
+          issuer: provider.issuer,
+          authorization_endpoint: data.authorization_endpoint,
+          token_endpoint: data.token_endpoint,
+          userinfo_endpoint: data.userinfo_endpoint,
+        },
+        'info',
+      );
+
+      return {
+        authorization_endpoint: data.authorization_endpoint,
+        token_endpoint: data.token_endpoint,
+        userinfo_endpoint: data.userinfo_endpoint,
+      };
+    } catch (error: any) {
+      const response = error.response?.data;
+      this.log.save(log_tag, { status: 'discovery_error', providerId, error: error.message, response }, 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * Verify OIDC user info and upsert into database
+   */
+  private async verifyOIDCUser(
+    providerId: string,
+    provider: OIDCProviderConfig,
+    metadata: OIDCMetadata,
+    accessToken: string,
+    done: CallbackFn,
+  ): Promise<void> {
+    const log_tag = `oidc|${providerId}|verify`;
+
+    try {
+      let userInfo: Record<string, any>;
+
+      try {
+        const { data } = await axios({
+          method: 'GET',
+          url: metadata.userinfo_endpoint,
+          headers: { Authorization: `Bearer ${accessToken}` },
+          timeout: 10000,
+        });
+
+        userInfo = data;
+        this.log.save(`${log_tag}|userinfo-fetch`, { status: 'success' }, 'info');
+      } catch (error: any) {
+        this.log.save(`${log_tag}|userinfo-fetch-error`, { error: error.message }, 'error');
+        return done(error);
+      }
+
+      const mapped = this.mapProviderClaims(userInfo, provider.mapping);
+
+      const userProviderId = userInfo.sub;
+      if (!userProviderId) {
+        this.log.save(`${log_tag}|validation-error`, { error: 'no_sub_claim' }, 'error');
+        return done(new Error('OIDC provider did not return sub claim'));
+      }
+
+      const userData: Partial<UserAttributes> = {
+        email: mapped.email || userInfo.email,
+        phone: mapped.phone || userInfo.phone_number,
+        first_name: mapped.first_name || userInfo.given_name,
+        last_name: mapped.last_name || userInfo.family_name,
+        middle_name: mapped.middle_name || userInfo.middle_name,
+      };
+
+      for (const [key, value] of Object.entries(mapped)) {
+        if (!['email', 'phone', 'first_name', 'last_name', 'middle_name'].includes(key)) {
+          (userData as Record<string, any>)[key] = value;
+        }
+      }
+
+      let existingUser: UserAttributes | null = null;
+
+      if (userData.email) {
+        existingUser = await Models.model('user')
+          .findOne({
+            where: { email: userData.email },
+          })
+          .then((row) => row?.dataValues as UserAttributes);
+      }
+
+      let user: UserAttributes;
+      if (existingUser) {
+        await Models.model('user').update(userData, {
+          where: { userId: existingUser.userId },
+        });
+
+        user = { ...existingUser, ...userData };
+      } else {
+        user = await Models.model('user')
+          .create(userData, { returning: true })
+          .then((row) => row.dataValues);
+      }
+
+      this.log.save(`${log_tag}|user-upsert`, { userId: user.userId, is_new: !existingUser }, 'info');
+
+      const userService = await Models.model('userServices').upsert({
+        userId: user.userId,
+        provider: `oidc-${providerId}`,
+        provider_id: userProviderId,
+        data: userInfo,
+      });
+
+      const session = {
+        ...user,
+        provider: `oidc-${providerId}`,
+        services: { [`oidc-${providerId}`]: userService },
+      };
+
+      this.log.save(`${log_tag}|authorize-success`, { userId: user.userId }, 'info');
+
+      done(null, session);
+    } catch (error: any) {
+      this.log.save(`${log_tag}|error`, { error: error.message || `${error}` }, 'error');
+      done(error);
+    }
+  }
+
+  /**
+   * Map provider claims to internal user fields using provider-specific mapping
+   */
+  private mapProviderClaims(
+    providerClaims: Record<string, any>,
+    mapping: Record<string, string> | undefined,
+  ): Record<string, any> {
+    if (!mapping) {
+      return providerClaims;
+    }
+
+    const mapped: Record<string, any> = {};
+    for (const [internalField, providerField] of Object.entries(mapping)) {
+      if (providerField in providerClaims) {
+        mapped[internalField] = providerClaims[providerField];
+      }
+    }
+
+    return mapped;
+  }
+}
+
+export async function oidc(app: Express): Promise<void> {
+  const provider = new OidcProvider(app);
+  await provider.init();
 }
