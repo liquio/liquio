@@ -129,7 +129,8 @@ describe('AuthController - OIDC', () => {
     expect(disabledLog).toBeDefined();
 
     const response = await app.request().get('/authorise/oidc/disabled-provider');
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(503);
+    expect(response.body.error).toBe('OIDC provider is disabled');
   });
 
   it('should resolve explicit endpoint URLs without discovery', async () => {
