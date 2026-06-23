@@ -9,21 +9,32 @@ import LabelIcon from '@mui/icons-material/Label';
 import { formatUserName } from 'helpers/userName';
 import { Link } from 'react-router-dom';
 
+import ExportToPdfButton from './components/ExportToPdfButton';
+import ExportToXlsxButton from './components/ExportToXlsxButton';
+
 const darkTheme = true;
 
 export default ({ t }) => {
   const actionTypes = [
     {
       id: 'login',
-      name: t('LoginAction'),
+      name: t('LoginAction')
     },
     {
       id: 'logout',
-      name: t('LogoutAction'),
-    },
-  ]
+      name: t('LogoutAction')
+    }
+  ];
+
+  const CustomToolbar = (props) => (
+    <>
+      <ExportToPdfButton {...props} />
+      <ExportToXlsxButton {...props} />
+    </>
+  );
 
   return {
+    CustomToolbar,
     controls: {
       pagination: true,
       toolbar: true,
@@ -31,28 +42,28 @@ export default ({ t }) => {
       header: true,
       refresh: true,
       customizateColumns: true,
-      bottomPagination: true,
+      bottomPagination: true
     },
     checkable: false,
     darkTheme: darkTheme,
     columns: [
       {
         id: 'id',
-        name: t('Id'),
+        name: t('Id')
       },
       {
         id: 'createdAt',
         name: t('CreatedAt'),
-        render: (value) => <TimeLabel date={value} />,
+        render: (value) => <TimeLabel date={value} />
       },
       {
         id: 'actionType',
-        name: t('ActionType'),
+        name: t('ActionType')
       },
       {
         id: 'expiresAt',
         name: t('SessionTime'),
-        render: (value) => <TimeLabel date={value} />,
+        render: (value) => <TimeLabel date={value} />
       },
       {
         id: 'ip',
@@ -62,7 +73,7 @@ export default ({ t }) => {
             return null;
           }
           return ips.filter((ip) => ip.indexOf('127.0.0.1') < 0).join(', ');
-        },
+        }
       },
       {
         id: 'userName',
@@ -72,28 +83,26 @@ export default ({ t }) => {
             return formatUserName(userName);
           }
 
-          return (
-            <Link to={`/users/#id=${userId}`}>{formatUserName(userName)}</Link>
-          );
-        },
+          return <Link to={`/users/#id=${userId}`}>{formatUserName(userName)}</Link>;
+        }
       },
       {
         id: 'userId',
         name: t('UserId'),
-        disableTooltip: true,
+        disableTooltip: true
       },
       {
         id: 'userAgent',
-        name: t('UserAgent'),
+        name: t('UserAgent')
       },
       {
         id: 'clientName',
-        name: t('ClientName'),
+        name: t('ClientName')
       },
       {
         id: 'clientId',
-        name: t('ClientId'),
-      },
+        name: t('ClientId')
+      }
     ],
     hiddenColumns: ['id', 'userAgent', 'clientId'],
     filterHandlers: {
@@ -160,7 +169,7 @@ export default ({ t }) => {
           variant="outlined"
           {...props}
         />
-      ),
-    },
-  }
+      )
+    }
+  };
 };

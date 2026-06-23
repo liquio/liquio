@@ -33,7 +33,7 @@ metadata:
   "enabledMock" false
   "clientId" "liquio-portal"
   "idAuthLink" (printf "%s://%s/authorise" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
-  "enabledDeleteUser" false
+  "enabledDeleteUser" true
   "enabledMocksPage" false
   "defaultLanguage" "en"
   "multiLanguage" true

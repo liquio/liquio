@@ -117,6 +117,7 @@ export default {
   },
   MessageTemplatesList: {
     MessageTemplatesList: 'Nachrichtenvorlagen',
+    Search: 'Suche',
     EditTemplate: 'Bearbeiten',
     Create: 'Erstellen',
     template_id: 'Identifikator',
