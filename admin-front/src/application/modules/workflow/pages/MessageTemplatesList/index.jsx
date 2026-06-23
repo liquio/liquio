@@ -10,7 +10,7 @@ import {
   createMessagesTemplate,
   deleteMessagesTemplate,
   exportMessagesTemplate,
-  importMessagesTemplate,
+  importMessagesTemplate
 } from 'application/actions/messagesTemplates';
 import { addMessage } from 'actions/error';
 import {
@@ -22,7 +22,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Typography,
+  Typography
 } from '@mui/material';
 import { makeStyles } from '@mui/styles';
 import EditIcon from '@mui/icons-material/Edit';
@@ -40,34 +40,38 @@ import SaveAltIcon from '@mui/icons-material/SaveAlt';
 
 const styles = () => ({
   root: {
-    display: 'flex',
+    display: 'flex'
   },
   saveButton: {
     position: 'absolute',
     right: 50,
-    top: 4,
+    top: 4
   },
   disabled: {
-    opacity: 0.3,
+    opacity: 0.3
   },
   createButton: {
     display: 'flex',
     alignSelf: 'flex-start',
+    margin: 12
+  },
+  searchInput: {
     margin: 12,
+    minWidth: 300
   },
   actionButton: {
-    marginLeft: 10,
+    marginLeft: 10
   },
   flex: {
-    display: 'flex',
+    display: 'flex'
   },
   editorWrapper: {
-    height: 'calc(100vh - 50px)',
+    height: 'calc(100vh - 50px)'
   },
   error: {
     fontSize: 14,
-    marginTop: 10,
-  },
+    marginTop: 10
+  }
 });
 
 const useStyles = makeStyles(styles);
@@ -78,7 +82,7 @@ const MessageTemplatesList = ({
   location,
   actions,
   userInfo,
-  userUnits,
+  userUnits
 }) => {
   const t = useTranslate('MessageTemplatesList');
   const classes = useStyles();
@@ -97,13 +101,12 @@ const MessageTemplatesList = ({
   const [deletingItem, setDeletingItem] = React.useState(null);
   const [error, setError] = React.useState('');
   const [openModalDublicate, setOpenModalDublicate] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const inputRef = React.useRef(null);
 
-  const isEditable = checkAccess(
-    { userHasUnit: [1000002] },
-    userInfo,
-    userUnits,
-  );
+  const isEditable = checkAccess({ userHasUnit: [1000002] }, userInfo, userUnits);
 
   const handleClickEdit = (row) => {
     const bodyToEdit = { ...row };
@@ -143,10 +146,8 @@ const MessageTemplatesList = ({
 
     const newTemplate = {
       title: templateTitle || editContent?.title,
-      type: !chosenId
-        ? templateType || 'sms'
-        : templateType || editContent?.type,
-      text: templateHTML || editContent?.text,
+      type: !chosenId ? templateType || 'sms' : templateType || editContent?.type,
+      text: templateHTML || editContent?.text
     };
     let result = null;
 
@@ -197,18 +198,16 @@ const MessageTemplatesList = ({
       {
         fileName: row?.title
           ? `template-${row.title}-${row.template_id}.dat`
-          : 'message-templates.dat',
+          : 'message-templates.dat'
       },
-      blob,
+      blob
     );
   };
 
   const checkDuplicates = (importedTemplates) => {
-    const importedIds = importedTemplates.map(
-      (template) => template.template_id,
-    );
+    const importedIds = importedTemplates.map((template) => template.template_id);
     const duplicateIds = importedIds.filter((id) =>
-      list.some((template) => template.template_id === id),
+      list.some((template) => template.template_id === id)
     );
     return duplicateIds;
   };
@@ -232,9 +231,7 @@ const MessageTemplatesList = ({
   const handleImport = async (file, rewriteTemplateIds = null, withRewrite) => {
     const params =
       rewriteTemplateIds && withRewrite
-        ? rewriteTemplateIds
-          .map((id, index) => `rewriteTemplateIds[${index}]=${id}`)
-          .join('&')
+        ? rewriteTemplateIds.map((id, index) => `rewriteTemplateIds[${index}]=${id}`).join('&')
         : null;
 
     const importResult = await actions.importMessagesTemplate(file, params);
@@ -246,9 +243,7 @@ const MessageTemplatesList = ({
     if (importResult instanceof Error) {
       actions.addMessage(new Message('InvalidFile', 'error'));
     } else {
-      actions.addMessage(
-        new Message('MessageTemplateAlreadyExported', 'success'),
-      );
+      actions.addMessage(new Message('MessageTemplateAlreadyExported', 'success'));
       const newList = await actions.requestMessagesTemplate();
       setList(newList);
     }
@@ -272,9 +267,7 @@ const MessageTemplatesList = ({
       const result = await actions.requestMessagesTemplate();
       setLoading(false);
       if (result instanceof Error) {
-        actions.addMessage(
-          new Message('ErrorGettingMessagesTemplates', 'error'),
-        );
+        actions.addMessage(new Message('ErrorGettingMessagesTemplates', 'error'));
         return;
       }
       setList(result);
@@ -284,31 +277,47 @@ const MessageTemplatesList = ({
 
   sortArray(list, {
     by: 'template_id',
-    order: 'desc',
+    order: 'desc'
   });
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredList = normalizedSearch
+    ? list.filter(({ template_id, type, text, title }) =>
+        [template_id, type, text, title]
+          .filter((value) => value !== null && value !== undefined)
+          .some((value) => String(value).toLowerCase().includes(normalizedSearch))
+      )
+    : list;
+
+  const paginatedList = filteredList.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+  const handleSearchChange = (value) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   const columns = [
     {
       id: 'template_id',
-      name: t('template_id'),
+      name: t('template_id')
     },
     {
       id: 'type',
-      name: t('type'),
+      name: t('type')
     },
     {
       id: 'text',
       name: t('text'),
       cellStyle: {
-        maxWidth: 300,
-      },
+        maxWidth: 300
+      }
     },
     {
       id: 'title',
       name: t('title'),
       cellStyle: {
-        maxWidth: 300,
-      },
+        maxWidth: 300
+      }
     },
     {
       id: 'actions',
@@ -335,25 +344,19 @@ const MessageTemplatesList = ({
             </Tooltip>
           ) : null}
         </div>
-      ),
-    },
+      )
+    }
   ];
 
   return (
-    <LeftSidebarLayout
-      location={location}
-      title={t(title)}
-      loading={loading}
-      flexContent={true}
-    >
+    <LeftSidebarLayout location={location} title={t(title)} loading={loading} flexContent={true}>
       <div style={{ display: 'flex' }}>
         {isEditable && (
           <Button
             color="primary"
             variant="contained"
             onClick={handleCreateTemplate}
-            className={classes.createButton}
-          >
+            className={classes.createButton}>
             {t('Create')}
           </Button>
         )}
@@ -361,16 +364,14 @@ const MessageTemplatesList = ({
           color="primary"
           variant="contained"
           onClick={handleExport}
-          className={classes.createButton}
-        >
+          className={classes.createButton}>
           {t('Export')}
         </Button>
         <Button
           color="primary"
           variant="contained"
           onClick={handleUploadClick}
-          className={classes.createButton}
-        >
+          className={classes.createButton}>
           {t('Import')}
         </Button>
       </div>
@@ -383,29 +384,35 @@ const MessageTemplatesList = ({
         multiple={false}
       />
       <DataTable
-        data={list}
+        data={paginatedList}
         darkTheme={true}
         columns={columns}
+        count={filteredList.length}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        search={search}
+        updateOnChangeSearch={false}
+        actions={{
+          onSearchChange: handleSearchChange,
+          onChangePage: (newPage) => setPage(newPage + 1),
+          onChangeRowsPerPage: (value) => {
+            setRowsPerPage(Number(value));
+            setPage(1);
+          }
+        }}
         controls={{
-          pagination: false,
-          toolbar: false,
-          search: false,
+          pagination: true,
+          toolbar: true,
+          search: true,
           header: true,
           refresh: false,
           switchView: false,
           customizateColumns: false,
-          bottomPagination: false,
+          bottomPagination: true
         }}
       />
-      <Dialog
-        open={openCreateDialog}
-        onClose={handleCloseCreateDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>
-          {editContent.title ? t('EditTemplate') : t('CreateTemplate')}
-        </DialogTitle>
+      <Dialog open={openCreateDialog} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
+        <DialogTitle>{editContent.title ? t('EditTemplate') : t('CreateTemplate')}</DialogTitle>
         <DialogContent>
           <TextField
             label={t('title')}
@@ -424,18 +431,20 @@ const MessageTemplatesList = ({
             value={templateType || editContent.type}
             onChange={(e) => setTemplateType(e.target.value)}
             SelectProps={{
-              native: true,
-            }}
-          >
-            <option value="sms" style={{ color: 'initial' }}>{'SMS'}</option>
-            <option value="email" style={{ color: 'initial' }}>{'Email'}</option>
+              native: true
+            }}>
+            <option value="sms" style={{ color: 'initial' }}>
+              {'SMS'}
+            </option>
+            <option value="email" style={{ color: 'initial' }}>
+              {'Email'}
+            </option>
           </TextField>
           <Button
             variant="outlined"
             color="primary"
             onClick={handleOpenEditor}
-            style={{ marginTop: 20 }}
-          >
+            style={{ marginTop: 20 }}>
             {t('EditHTML')}
           </Button>
           {error ? (
@@ -446,11 +455,7 @@ const MessageTemplatesList = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseCreateDialog}>{t('Cancel')}</Button>
-          <Button
-            onClick={handleSaveTemplate}
-            color="primary"
-            variant="contained"
-          >
+          <Button onClick={handleSaveTemplate} color="primary" variant="contained">
             {t('Save')}
           </Button>
         </DialogActions>
@@ -467,21 +472,16 @@ const MessageTemplatesList = ({
         open={openModalDublicate}
         onClose={() => setOpenModalDublicate(false)}
         fullWidth
-        maxWidth="sm"
-      >
+        maxWidth="sm">
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-around',
-            alignItems: 'center',
-          }}
-        >
+            alignItems: 'center'
+          }}>
           <DialogTitle>{t('DublicateTemplateTitle')}</DialogTitle>
           <Tooltip title={t('DeleteStatus')}>
-            <IconButton
-              onClick={() => setOpenModalDublicate(false)}
-              size="large"
-            >
+            <IconButton onClick={() => setOpenModalDublicate(false)} size="large">
               <CloseIcon />
             </IconButton>
           </Tooltip>
@@ -496,8 +496,7 @@ const MessageTemplatesList = ({
             onClick={() => handleRewrite(false)}
             color="primary"
             variant="contained"
-            style={{ marginRight: 20 }}
-          >
+            style={{ marginRight: 20 }}>
             {t('SaveWithNewId')}
           </Button>
         </DialogActions>
@@ -506,7 +505,7 @@ const MessageTemplatesList = ({
         open={openConfirm}
         title={t('DeletePrompt')}
         description={t('DeletePromtDescription', {
-          title: deletingItem?.title,
+          title: deletingItem?.title
         })}
         darkTheme={true}
         handleClose={() => {
@@ -524,37 +523,19 @@ const MessageTemplatesList = ({
 
 const mapStateToProps = ({ auth: { info, userUnits } }) => ({
   userInfo: info,
-  userUnits,
+  userUnits
 });
 
 const mapDispatchToProps = (dispatch) => ({
   actions: {
-    requestMessagesTemplate: bindActionCreators(
-      requestMessagesTemplate,
-      dispatch,
-    ),
-    updateMessagesTemplate: bindActionCreators(
-      updateMessagesTemplate,
-      dispatch,
-    ),
-    createMessagesTemplate: bindActionCreators(
-      createMessagesTemplate,
-      dispatch,
-    ),
-    deleteMessagesTemplate: bindActionCreators(
-      deleteMessagesTemplate,
-      dispatch,
-    ),
-    exportMessagesTemplate: bindActionCreators(
-      exportMessagesTemplate,
-      dispatch,
-    ),
-    importMessagesTemplate: bindActionCreators(
-      importMessagesTemplate,
-      dispatch,
-    ),
-    addMessage: bindActionCreators(addMessage, dispatch),
-  },
+    requestMessagesTemplate: bindActionCreators(requestMessagesTemplate, dispatch),
+    updateMessagesTemplate: bindActionCreators(updateMessagesTemplate, dispatch),
+    createMessagesTemplate: bindActionCreators(createMessagesTemplate, dispatch),
+    deleteMessagesTemplate: bindActionCreators(deleteMessagesTemplate, dispatch),
+    exportMessagesTemplate: bindActionCreators(exportMessagesTemplate, dispatch),
+    importMessagesTemplate: bindActionCreators(importMessagesTemplate, dispatch),
+    addMessage: bindActionCreators(addMessage, dispatch)
+  }
 });
 
 const moduled = asModulePage(MessageTemplatesList);

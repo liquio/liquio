@@ -3092,6 +3092,7 @@ export default {
   },
   MessageTemplatesList: {
     MessageTemplatesList: 'Шаблони повідомлень',
+    Search: 'Пошук',
     EditTemplate: 'Редагувати',
     Create: 'Створити',
     Export: 'Експортувати',

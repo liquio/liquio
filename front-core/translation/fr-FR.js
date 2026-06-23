@@ -3565,6 +3565,7 @@ export default {
   },
   MessageTemplatesList: {
     MessageTemplatesList: 'Modèles de messages',
+    Search: 'Recherche',
     EditTemplate: 'Modifier',
     Create: 'Créer',
     Export: 'Exporter',
