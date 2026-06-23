@@ -115,7 +115,6 @@ export default {
   },
   MessageTemplatesList: {
     MessageTemplatesList: 'Berichtsjablonen',
-    Search: 'Zoeken',
     EditTemplate: 'Bewerken',
     Create: 'Nieuw toevoegen',
     template_id: 'Identificatie',

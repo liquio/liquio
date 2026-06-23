@@ -114,7 +114,6 @@ export default {
   },
   MessageTemplatesList: {
     MessageTemplatesList: 'Message Templates',
-    Search: 'Search',
     EditTemplate: 'Edit',
     Create: 'Add New',
     template_id: 'Identifier',
