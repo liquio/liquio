@@ -10,23 +10,12 @@ import LabelIcon from '@mui/icons-material/Label';
 import getUserName, { formatUserName } from 'helpers/userName';
 import { Link } from 'react-router-dom';
 
+import { getActionTypeTranslations } from './helpers';
+
 const darkTheme = true;
 
 export default ({ t }) => {
-  const actionTypes = [
-    {
-      id: 'block',
-      name: t('BlockAction'),
-    },
-    {
-      id: 'unblock',
-      name: t('UnblockAction'),
-    },
-    {
-      id: 'delete',
-      name: t('DeleteAction'),
-    },
-  ]
+  const actionTypes = getActionTypeTranslations(t);
 
   return {
     controls: {
@@ -36,23 +25,23 @@ export default ({ t }) => {
       header: true,
       refresh: true,
       customizateColumns: true,
-      bottomPagination: true,
+      bottomPagination: true
     },
     checkable: false,
     darkTheme: darkTheme,
     columns: [
       {
         id: 'id',
-        name: t('Id'),
+        name: t('Id')
       },
       {
         id: 'createdAt',
         name: t('CreatedAt'),
-        render: (value) => <TimeLabel date={value} />,
+        render: (value) => <TimeLabel date={value} />
       },
       {
         id: 'actionType',
-        name: t('ActionType'),
+        name: t('ActionType')
       },
       {
         id: 'createdBy',
@@ -63,17 +52,12 @@ export default ({ t }) => {
           }
 
           return <Link to={`/users/#id=${userId}`}>{formatUserName(name)}</Link>;
-        },
+        }
       },
       {
         id: 'user',
         name: t('UserName'),
-        render: ({
-          id,
-          firstName: first_name,
-          lastName: last_name,
-          middleName: middle_name,
-        }) => {
+        render: ({ id, firstName: first_name, lastName: last_name, middleName: middle_name }) => {
           if (!id) {
             return getUserName({ first_name, last_name, middle_name });
           }
@@ -83,55 +67,55 @@ export default ({ t }) => {
               {getUserName({ first_name, last_name, middle_name })}
             </Link>
           );
-        },
-      },
+        }
+      }
     ],
     hiddenColumns: ['id'],
     filterHandlers: {
       from_created_at: (props) => (
         <DateFilterHandler
-        name={t('FromShort')}
-        label={t('FromShort')}
-        darkTheme={darkTheme}
-        {...props}
+          name={t('FromShort')}
+          label={t('FromShort')}
+          darkTheme={darkTheme}
+          {...props}
         />
       ),
       to_created_at: (props) => (
         <DateFilterHandler
-        name={t('ToShort')}
-        label={t('ToShort')}
-        darkTheme={darkTheme}
-        {...props}
+          name={t('ToShort')}
+          label={t('ToShort')}
+          darkTheme={darkTheme}
+          {...props}
         />
       ),
       initiatorId: (props) => (
         <UsersFilterHandler
-        name={t('createdBy')}
-        label={t('createdBy')}
-        darkTheme={darkTheme}
-        {...props}
+          name={t('createdBy')}
+          label={t('createdBy')}
+          darkTheme={darkTheme}
+          {...props}
         />
       ),
       userId: (props) => (
         <UsersFilterHandler
-        name={t('UserName')}
-        label={t('UserName')}
-        darkTheme={darkTheme}
-        {...props}
+          name={t('UserName')}
+          label={t('UserName')}
+          darkTheme={darkTheme}
+          {...props}
         />
       ),
       actionType: (props) => (
         <SelectFilterHandler
-        name={t('ActionType')}
-        label={t('ActionType')}
-        options={actionTypes}
-        darkTheme={darkTheme}
-        listDisplay={true}
-        useOwnNames={true}
-        IconComponent={(props) => <LabelIcon {...props} />}
-        {...props}
+          name={t('ActionType')}
+          label={t('ActionType')}
+          options={actionTypes}
+          darkTheme={darkTheme}
+          listDisplay={true}
+          useOwnNames={true}
+          IconComponent={(props) => <LabelIcon {...props} />}
+          {...props}
         />
-      ),
-    },
-  }
+      )
+    }
+  };
 };
