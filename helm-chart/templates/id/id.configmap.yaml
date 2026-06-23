@@ -64,7 +64,7 @@ metadata:
   "customer" .Release.Name
   "db" $dbBase
   "domain" ".internal"
-  "enabledDeleteUser" false
+  "enabledDeleteUser" true
   "environment" .Values.config.server.environment
   "jwt" (dict "expiresIn" 60)
   "log" (dict

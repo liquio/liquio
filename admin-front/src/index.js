@@ -36,7 +36,7 @@ const APP_DEFAULTS = {
   enabledMock: false,
   clientId: 'liquio-portal',
   idAuthLink: 'http://id.liquio.local/authorise',
-  enabledDeleteUser: false,
+  enabledDeleteUser: true,
   enabledMocksPage: false,
   testCategory: undefined,
   defaultLanguage: 'en'
