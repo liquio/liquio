@@ -1681,6 +1681,7 @@ export default {
     KeyList: 'Registry Keys',
     RegistryMetricsTitle: 'Registry Metrics',
     TranslationsPageTitle: 'Multilingualism',
+    SelectTemplate: 'Select a service',
   },
   MessagesNotify: {
     AllMessages: 'All Messages'
