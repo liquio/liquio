@@ -1521,7 +1521,7 @@ export default {
     BirthdayInputLabel: 'Geburtsdatum',
     RegistrationInputLabel: 'Datum der staatlichen Registrierung',
     BirthdayInputError: 'Geben Sie das Datum im Format 01.01.2000 ein',
-    IpnInputLabel: 'Steuernummer, oder Serie und Nummer des Reisepasses oder Nummer der ID-Karte',
+    IpnInputLabel: 'Steuernummer oder Pass-/Ausweisnummer',
     ProfileSaved: 'Profil gespeichert',
     Saved: 'Änderungen gespeichert',
     TwoFactorAuthEnable: 'Zweistufige Verifizierung beim Anmelden aktivieren',
