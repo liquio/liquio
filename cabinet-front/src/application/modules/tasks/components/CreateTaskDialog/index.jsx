@@ -14,6 +14,7 @@ import TreeList from 'components/TreeList';
 import LeftSidebarLayout, { Content } from 'layouts/LeftSidebar';
 import SelectEntryTaskDialog from 'modules/tasks/components/CreateTaskDialog/SelectEntryTaskDialog';
 import { history } from 'store';
+import asModulePage from 'core/hooks/asModulePage';
 
 const styles = (theme) => ({
   icon: {
@@ -237,4 +238,5 @@ const mapDispatchToProps = (dispatch) => ({
 });
 
 const translated = translate('CreateTaskDialog')(CreateTaskDialog);
-export default withStyles(styles)(connect(mapStateToProps, mapDispatchToProps)(translated));
+const moduled = asModulePage(translated);
+export default withStyles(styles)(connect(mapStateToProps, mapDispatchToProps)(moduled));
