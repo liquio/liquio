@@ -18,7 +18,6 @@ interface OIDCProviderRuntimeState {
   error?: string;
 }
 
-
 /**
  * OIDC Provider with runtime state tracking and provider-specific error handling
  */
@@ -50,10 +49,7 @@ class OidcProvider {
     }
 
     const providerEntries = Object.entries(this.providersMap);
-    const enabledProviderCount = providerEntries.reduce(
-      (count, [, provider]) => (provider.isEnabled === false ? count : count + 1),
-      0,
-    );
+    const enabledProviderCount = providerEntries.reduce((count, [, provider]) => (provider.isEnabled === false ? count : count + 1), 0);
 
     if (enabledProviderCount === 0) {
       this.log.save('oidc|init', { status: 'no_enabled_providers' }, 'info');
@@ -406,10 +402,7 @@ class OidcProvider {
   /**
    * Map provider claims to internal user fields using provider-specific mapping
    */
-  private mapProviderClaims(
-    providerClaims: Record<string, any>,
-    mapping: Record<string, string> | undefined,
-  ): Record<string, any> {
+  private mapProviderClaims(providerClaims: Record<string, any>, mapping: Record<string, string> | undefined): Record<string, any> {
     if (!mapping) {
       return providerClaims;
     }
