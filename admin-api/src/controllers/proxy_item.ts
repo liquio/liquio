@@ -1,11 +1,13 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
+import { Controller } from './controller';
 
 /**
  * Workflow category controller.
  */
-class ProxyItemController extends Controller {
+export class ProxyItemController extends Controller {
+  private static singleton: ProxyItemController;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -29,7 +31,7 @@ class ProxyItemController extends Controller {
 
     let item;
     try {
-      item = await models.proxyItem.findById(id);
+      item = await global.models.proxyItem.findById(id);
       if (!item) {
         return this.responseError(res, 'Not found.', 404);
       }
@@ -48,7 +50,7 @@ class ProxyItemController extends Controller {
   async getAll(req, res) {
     let list;
     try {
-      list = await models.proxyItem.getAll();
+      list = await global.models.proxyItem.getAll();
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -66,7 +68,7 @@ class ProxyItemController extends Controller {
 
     let savedItem;
     try {
-      savedItem = await models.proxyItem.create(bodyData);
+      savedItem = await global.models.proxyItem.create(bodyData);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -85,7 +87,7 @@ class ProxyItemController extends Controller {
 
     let savedItem;
     try {
-      savedItem = await models.proxyItem.update(id, bodyData);
+      savedItem = await global.models.proxyItem.update(id, bodyData);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -102,7 +104,7 @@ class ProxyItemController extends Controller {
     const { id } = matchedData(req, { locations: ['params'] });
 
     try {
-      await models.proxyItem.deleteById(id);
+      await global.models.proxyItem.deleteById(id);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -110,5 +112,3 @@ class ProxyItemController extends Controller {
     this.responseThatAccepted(res);
   }
 }
-
-module.exports = ProxyItemController;

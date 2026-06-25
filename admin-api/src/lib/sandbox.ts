@@ -77,7 +77,7 @@ export class Sandbox {
     }
 
     // Select all workflow templates that have global functions defined in their data.
-    const workflowTemplates = await models.models.workflowTemplate.model.findAll({
+    const workflowTemplates = await global.models.models.workflowTemplate.model.findAll({
       where: literal('data::jsonb ? \'globalFunctions\''),
       attributes: ['id', 'data'],
     });

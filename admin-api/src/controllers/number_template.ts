@@ -1,14 +1,18 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const Stream = require('../lib/stream');
-const NumberTemplateBusiness = require('../businesses/number_template');
-const NumberTemplateEntity = require('../entities/number_template');
+import { Controller } from './controller';
+import { Stream } from '../lib/stream';
+import { NumberTemplateBusiness } from '../businesses/number_template';
+import { NumberTemplateEntity } from '../entities/number_template';
 
 /**
  * Number template controller.
  */
-class NumberTemplateController extends Controller {
+export class NumberTemplateController extends Controller {
+  private static singleton: NumberTemplateController;
+
+  private numberTemplateBusiness: NumberTemplateBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -31,14 +35,14 @@ class NumberTemplateController extends Controller {
   async create(req, res) {
     let savedNumberTemplateEntity;
     try {
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const numberTemplateEntity = new NumberTemplateEntity(bodyData);
 
       savedNumberTemplateEntity = await this.numberTemplateBusiness.createOrUpdate(numberTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-created-number-template', { user, data: savedNumberTemplateEntity });
+      await global.log.save('user-created-number-template', { user, data: savedNumberTemplateEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -55,7 +59,7 @@ class NumberTemplateController extends Controller {
     let savedNumberTemplateEntity;
     try {
       const { id } = matchedData(req, { locations: ['params'] });
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const numberTemplateEntity = new NumberTemplateEntity({
         id,
@@ -65,7 +69,7 @@ class NumberTemplateController extends Controller {
       savedNumberTemplateEntity = await this.numberTemplateBusiness.createOrUpdate(numberTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-updated-number-template', { user, data: savedNumberTemplateEntity });
+      await global.log.save('user-updated-number-template', { user, data: savedNumberTemplateEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -113,7 +117,7 @@ class NumberTemplateController extends Controller {
       await this.numberTemplateBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-deleted-number-template', { user, data: { id } });
+      await global.log.save('user-deleted-number-template', { user, data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -188,5 +192,3 @@ class NumberTemplateController extends Controller {
     this.responseThatAccepted(res);
   }
 }
-
-module.exports = NumberTemplateController;

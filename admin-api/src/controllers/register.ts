@@ -1,15 +1,20 @@
-const { matchedData } = require('express-validator');
-const axios = require('axios');
+import { matchedData } from 'express-validator';
+import axios from 'axios';
 
-const Controller = require('./controller');
-const Stream = require('../lib/stream');
-const RegisterBusiness = require('../businesses/register');
-const TaskService = require('../services/task');
+import { Controller } from './controller';
+import { Stream } from '../lib/stream';
+import { RegisterBusiness } from '../businesses/register';
+import { TaskService } from '../services/task';
 
 /**
  * Register controller.
  */
-class RegisterController extends Controller {
+export class RegisterController extends Controller {
+  private static singleton: RegisterController;
+
+  private registerBusiness: RegisterBusiness;
+  private taskService: TaskService;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -864,5 +869,3 @@ class RegisterController extends Controller {
     this.responseData(res, response);
   }
 }
-
-module.exports = RegisterController;

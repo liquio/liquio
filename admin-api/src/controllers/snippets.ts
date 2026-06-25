@@ -1,10 +1,12 @@
-const Controller = require('./controller');
-const File = require('../types/file');
+import { Controller } from './controller';
+import { File } from '../types/file';
 
 /**
  * Snippets controller.
  */
-class SnippetsController extends Controller {
+export class SnippetsController extends Controller {
+  private static singleton: SnippetsController;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -13,8 +15,6 @@ class SnippetsController extends Controller {
     // Define singleton.
     if (!SnippetsController.singleton) {
       super(config);
-      // this.workflowBusiness = new WorkflowBusiness();
-      // this.bpmnWorkflowBusiness = new BpmnWorkflowBusiness();
       SnippetsController.singleton = this;
     }
     return SnippetsController.singleton;
@@ -24,7 +24,7 @@ class SnippetsController extends Controller {
    * Get all.
    */
   async getAll() {
-    const snippets = await models.snippets.getAll();
+    const snippets = await global.models.snippets.getAll();
     if (!snippets.length) {
       throw new global.NotFoundError('Snippets not found.');
     }
@@ -36,7 +36,7 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async getOne({ params }) {
-    const snippet = await models.snippets.findById(params.id);
+    const snippet = await global.models.snippets.findById(params.id);
     if (!snippet) {
       throw new global.NotFoundError('Snippet not found.');
     }
@@ -48,7 +48,7 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async createOne({ body }) {
-    return await models.snippets.createOne(body);
+    return await global.models.snippets.createOne(body);
   }
 
   /**
@@ -56,7 +56,7 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async updateOne({ params, body }) {
-    const updateResult = await models.snippets.updateById(params.id, body);
+    const updateResult = await global.models.snippets.updateById(params.id, body);
     if (!updateResult) {
       throw new global.NotFoundError('Snippets not found.');
     }
@@ -68,7 +68,7 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async deleteOne({ params }) {
-    const deletedCount = await models.snippets.deleteById(params.id);
+    const deletedCount = await global.models.snippets.deleteById(params.id);
     if (!deletedCount) {
       throw new global.NotFoundError('Snippets not found.');
     }
@@ -82,8 +82,8 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async export({ body }) {
-    const snippets = await models.snippets.export({ idList: body.idList });
-    return new File({ name: 'snippets.bpmn', content: snippets, dataType: 'application/bpmn' });
+    const snippets = await global.models.snippets.export({ idList: body.idList });
+    return new File({ name: 'snippets.bpmn', content: snippets, dataType: 'application/bpmn' } as any);
   }
 
   /**
@@ -112,24 +112,24 @@ class SnippetsController extends Controller {
 
     // Full rewrite.
     if (query.isRewrite) {
-      const transaction = await db.transaction();
-      const snippetsDeletedCount = await models.snippets.deleteAll({ transaction });
-      const snippetGroupsDeletedCount = await models.snippetGroups.deleteAll({ transaction });
-      const snippetGroupsCreatedCount = await models.snippetGroups.bulkCreate(snippetGroups, { transaction });
-      const snippetsCreatedCount = await models.snippets.bulkCreate(snippets, { transaction });
+      const transaction = await global.db.transaction();
+      const snippetsDeletedCount = await global.models.snippets.deleteAll({ transaction });
+      const snippetGroupsDeletedCount = await global.models.snippetGroups.deleteAll({ transaction });
+      const snippetGroupsCreatedCount = await global.models.snippetGroups.bulkCreate(snippetGroups, { transaction });
+      const snippetsCreatedCount = await global.models.snippets.bulkCreate(snippets, { transaction });
       await transaction.commit();
       return { snippetGroupsDeletedCount, snippetGroupsCreatedCount, snippetsDeletedCount, snippetsCreatedCount };
     }
 
     // Update.
-    const transaction = await db.transaction();
-    const snippetGroupsCreatedCount = await models.snippetGroups.bulkCreate(snippetGroups, {
+    const transaction = await global.db.transaction();
+    const snippetGroupsCreatedCount = await global.models.snippetGroups.bulkCreate(snippetGroups, {
       ignoreDuplicates: true,
       transaction,
     });
     // Remove id for inserting new rows.
     snippets.forEach((snippet) => delete snippet.id);
-    const snippetsCreatedCount = await models.snippets.bulkCreate(snippets, { transaction });
+    const snippetsCreatedCount = await global.models.snippets.bulkCreate(snippets, { transaction });
     await transaction.commit();
     return { snippetGroupsCreatedCount, snippetsCreatedCount };
   }
@@ -138,7 +138,7 @@ class SnippetsController extends Controller {
    * Get all.
    */
   async getAllGroups() {
-    return await models.snippetGroups.getAll();
+    return await global.models.snippetGroups.getAll();
   }
 
   /**
@@ -146,7 +146,7 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async getOneGroup({ params }) {
-    return await models.snippetGroups.findById(params.name);
+    return await global.models.snippetGroups.findById(params.name);
   }
 
   /**
@@ -154,7 +154,7 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async createOneGroup({ body }) {
-    return await models.snippetGroups.createOne({ name: body.name });
+    return await global.models.snippetGroups.createOne({ name: body.name });
   }
 
   /**
@@ -162,7 +162,7 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async updateOneGroup({ params, body }) {
-    const updateResult = await models.snippetGroups.updateByName(params.nameFromParams, body);
+    const updateResult = await global.models.snippetGroups.updateByName(params.nameFromParams, body);
     if (!updateResult) {
       throw new global.NotFoundError('Snippet group not found.');
     }
@@ -174,7 +174,7 @@ class SnippetsController extends Controller {
    * @param {{params: Object, body: Object, query: Object, userId: string, userUnitIds: Array<number>}} options
    */
   async deleteOneGroup({ params }) {
-    const deletedCount = await models.snippetGroups.deleteByName(params.name);
+    const deletedCount = await global.models.snippetGroups.deleteByName(params.name);
     if (!deletedCount) {
       throw new global.NotFoundError('Snippet group not found.');
     }
@@ -183,5 +183,3 @@ class SnippetsController extends Controller {
     };
   }
 }
-
-module.exports = SnippetsController;

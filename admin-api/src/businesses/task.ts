@@ -18,7 +18,7 @@ export class TaskBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config: object) {
+  constructor(config?: object) {
     // Define singleton.
     if (!TaskBusiness.singleton) {
       this.config = config;

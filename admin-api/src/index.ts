@@ -60,9 +60,9 @@ async function main() {
   const elasticBusiness = new ElasticBusiness(config);
   const { isSearchTemplateUpdated, templateName, reason } = await elasticBusiness.updateSearchTemplate();
   if (isSearchTemplateUpdated) {
-    log.save('elastic-search-template-successfully-updated', { templateName });
+    global.log.save('elastic-search-template-successfully-updated', { templateName });
   } else {
-    log.save('elastic-search-template-didn\'t-update', { templateName, reason });
+    global.log.save('elastic-search-template-didn\'t-update', { templateName, reason });
   }
 
   // Init message queue.

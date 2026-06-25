@@ -1,9 +1,10 @@
-const Controller = require('./controller');
+import { Controller } from './controller';
 
 const TYPES = {
   integer: 'integer',
   date: 'date',
   uuid: 'uuid',
+  string: 'string',
 };
 
 // Define SQL-request here to avoid accidental changes in database and config
@@ -231,7 +232,9 @@ order by w_t.name, t_by_time_count.time_step
 /**
  * SQL Reports controller.
  */
-class SqlReportsController extends Controller {
+export class SqlReportsController extends Controller {
+  private static singleton: SqlReportsController;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -265,9 +268,7 @@ class SqlReportsController extends Controller {
       if (missingParams.length) throw new Error(`the following query params are missing: ${missingParams.join(', ')}`);
     }
 
-    const [result] = await db.query(sql, { replacements: query });
+    const [result] = await global.db.query(sql, { replacements: query });
     return result;
   }
 }
-
-module.exports = SqlReportsController;

@@ -10,16 +10,18 @@ import { Stream } from '../lib/stream';
 export class MessageTemplateController extends Controller {
   private static singleton: MessageTemplateController;
 
+  private notifierService: NotifierService;
+
   /**
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config: any) {
     // Define singleton.
     if (!MessageTemplateController.singleton) {
       super(config);
 
-      this.notifierService = new NotifierService(config.notifier);
+      this.notifierService = new NotifierService();
       MessageTemplateController.singleton = this;
     }
     return MessageTemplateController.singleton;

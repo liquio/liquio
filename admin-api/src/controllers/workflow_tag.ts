@@ -1,12 +1,16 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const WorkflowBusiness = require('../businesses/workflow');
+import { Controller } from './controller';
+import { WorkflowBusiness } from '../businesses/workflow';
 
 /**
  * Workflow controller.
  */
-class WorkflowTagController extends Controller {
+export class WorkflowTagController extends Controller {
+  private static singleton: WorkflowTagController;
+
+  private workflowBusiness: WorkflowBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -110,5 +114,3 @@ class WorkflowTagController extends Controller {
     }
   }
 }
-
-module.exports = WorkflowTagController;

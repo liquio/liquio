@@ -10,7 +10,7 @@ export class WorkflowCategoryBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!WorkflowCategoryBusiness.singleton) {
       this.config = config;

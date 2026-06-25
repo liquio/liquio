@@ -1,12 +1,16 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const UnitAccessBusiness = require('../businesses/unit_access');
+import { Controller } from './controller';
+import { UnitAccessBusiness } from '../businesses/unit_access';
 
 /**
  * Unit access controller.
  */
-class UnitAccessController extends Controller {
+export class UnitAccessController extends Controller {
+  private static singleton: UnitAccessController;
+
+  private unitAccessBusiness: UnitAccessBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -109,5 +113,3 @@ class UnitAccessController extends Controller {
     this.responseData(res, unitAccess);
   }
 }
-
-module.exports = UnitAccessController;

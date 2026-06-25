@@ -26,7 +26,7 @@ export class HttpClient {
    * @return {Promise<import('node-fetch').Response>}
    */
   async request(url: string | URL, init = {}, meta: any, options = {}) {
-    log.save('http-client-request-options', { meta, url, init });
+    global.log.save('http-client-request-options', { meta, url, init });
 
     const { protocol, host } = new URL(url);
     const urlWithoutQueryParameters = `${protocol}//${host}`;
@@ -51,7 +51,7 @@ export class HttpClient {
         error.code = 'ETIMEDOUT';
       }
 
-      log.save('http-client-request-error', {
+      global.log.save('http-client-request-error', {
         meta,
         error: error.toString(),
         stack: error.stack,
@@ -70,7 +70,7 @@ export class HttpClient {
     }
 
     if (!response.ok && !options.isDoNotCheckHTTPErrorCode) {
-      log.save('http-client-response-error', {
+      global.log.save('http-client-response-error', {
         meta,
         response: `${response.status} ${response.statusText}`,
         responseBody: await response.text(),
@@ -85,10 +85,10 @@ export class HttpClient {
       });
     }
 
-    log.save('http-client-request-success', { meta });
+    global.log.save('http-client-request-success', { meta });
 
     response.body.on('error', (error: { toString: () => any; }) => {
-      log.save('http-client-read-response-body-stream-error', { meta, error: error.toString() });
+      global.log.save('http-client-read-response-body-stream-error', { meta, error: error.toString() });
     });
 
     return response;

@@ -1,17 +1,23 @@
-const { matchedData } = require('express-validator');
-const axios = require('axios');
+import { matchedData } from 'express-validator';
+import axios from 'axios';
 
-const Controller = require('./controller');
-const WorkflowProcessBusiness = require('../businesses/workflow_process');
-const WorkflowBusiness = require('../businesses/workflow');
-const WorkflowHandlerBusiness = require('../businesses/workflow_handler');
-const Exceptions = require('../exceptions');
-const WorkflowRestartEntity = require('../entities/workflow_restart');
+import { Controller } from './controller';
+import { WorkflowProcessBusiness } from '../businesses/workflow_process';
+import { WorkflowBusiness } from '../businesses/workflow';
+import { WorkflowHandlerBusiness } from '../businesses/workflow_handler';
+import { Exceptions } from '../exceptions';
+import { WorkflowRestartEntity } from '../entities/workflow_restart';
 
 /**
  * Workflow process controller.
  */
-class WorkflowProcessController extends Controller {
+export class WorkflowProcessController extends Controller {
+  private static singleton: WorkflowProcessController;
+  
+  private workflowProcessBusiness: WorkflowProcessBusiness;
+  private workflowHandlerBusiness: WorkflowHandlerBusiness;
+  private workflowBusiness: WorkflowBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -97,7 +103,7 @@ class WorkflowProcessController extends Controller {
     try {
       workflowErrors = await global.models.workflowError.getByWorkflowId(workflowId, ['event', 'gateway', 'manager']);
     } catch (error) {
-      log.save('get-workflow-errors-error', { error: error && error.message });
+      global.log.save('get-workflow-errors-error', { error: error && error.message });
     }
 
     // Check workflow errors.
@@ -113,16 +119,16 @@ class WorkflowProcessController extends Controller {
     try {
       const queueName = this.workflowHandlerBusiness.defineQueueName(queueMessage);
       await this.workflowHandlerBusiness.pushInQueue(queueName, queueMessage);
-      await models.workflow.resolveError(workflowId);
+      await global.models.workflow.resolveError(workflowId);
 
       const user = this.getRequestUserBaseInfo(req);
-      await models.workflowRestart.create(
+      await global.models.workflowRestart.create(
         new WorkflowRestartEntity({
           workflowId,
           workflowErrorId: workflowError.id,
           type: 'error',
           data: { user },
-        }),
+        } as any),
       );
     } catch (error) {
       return this.responseError(res, error);
@@ -145,7 +151,7 @@ class WorkflowProcessController extends Controller {
       try {
         workflowErrors = await global.models.workflowError.getByWorkflowId(workflowId, ['event', 'gateway', 'manager']);
       } catch (error) {
-        log.save('get-workflow-errors-error', { error: error && error.message });
+        global.log.save('get-workflow-errors-error', { error: error && error.message });
       }
 
       // Check workflow errors.
@@ -161,16 +167,16 @@ class WorkflowProcessController extends Controller {
       try {
         const queueName = this.workflowHandlerBusiness.defineQueueName(queueMessage);
         await this.workflowHandlerBusiness.pushInQueue(queueName, queueMessage);
-        await models.workflow.resolveError(workflowId);
+        await global.models.workflow.resolveError(workflowId);
 
         const user = this.getRequestUserBaseInfo(req);
-        await models.workflowRestart.create(
+        await global.models.workflowRestart.create(
           new WorkflowRestartEntity({
             workflowId,
             workflowErrorId: workflowError.id,
             type: 'error',
             data: { user },
-          }),
+          } as any),
         );
       } catch (error) {
         return this.responseError(res, error);
@@ -201,15 +207,15 @@ class WorkflowProcessController extends Controller {
 
       // If disabled debug mode.
       if (typeof message.debug === 'undefined' || message.debug === false) {
-        await models.workflow.setStatusFinal(workflowId, false);
+        await global.models.workflow.setStatusFinal(workflowId, false);
 
         const user = this.getRequestUserBaseInfo(req);
-        await models.workflowRestart.create(
+        await global.models.workflowRestart.create(
           new WorkflowRestartEntity({
             workflowId,
             type: 'manual',
             data: { user },
-          }),
+          } as any),
         );
       }
     } catch (error) {
@@ -260,9 +266,9 @@ class WorkflowProcessController extends Controller {
         };
         const queueName = this.workflowHandlerBusiness.defineQueueName(normalizedMessage);
         await this.workflowHandlerBusiness.pushInQueue(queueName, normalizedMessage);
-        log.save('restart-process-from-step-bulk-message-handled', { message: normalizedMessage });
+        global.log.save('restart-process-from-step-bulk-message-handled', { message: normalizedMessage });
       } catch (error) {
-        log.save('restart-process-from-step-bulk-message-error', { error: error && error.message, message });
+        global.log.save('restart-process-from-step-bulk-message-error', { error: error && error.message, message });
       }
     }
 
@@ -332,6 +338,7 @@ class WorkflowProcessController extends Controller {
 
   /**
    * Get users with access to tasks.
+   * @deprecated
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
@@ -343,12 +350,12 @@ class WorkflowProcessController extends Controller {
 
     let users;
     try {
-      users = await this.workflowProcessBusiness.getUsersWithAccessToTasks({
-        page,
-        count,
-        sort,
-        filters,
-      });
+      // users = await this.workflowProcessBusiness.getUsersWithAccessToTasks({
+      //   page,
+      //   count,
+      //   sort,
+      //   filters,
+      // });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -457,8 +464,8 @@ class WorkflowProcessController extends Controller {
           }
 
           // Handle if task ID defined.
-          const task = await models.task.findById(taskId);
-          const documentTemplate = await models.documentTemplate.findById(task.taskTemplateId);
+          const task = await global.models.task.findById(taskId);
+          const documentTemplate = await global.models.documentTemplate.findById(task.taskTemplateId);
           if (documentTemplate.jsonSchema?.isP7sSign !== true) {
             return this.responseError(
               res,
@@ -519,5 +526,3 @@ class WorkflowProcessController extends Controller {
     this.responseData(res, deletingResult);
   }
 }
-
-module.exports = WorkflowProcessController;

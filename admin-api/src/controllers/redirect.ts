@@ -1,9 +1,11 @@
-const Controller = require('./controller');
+import { Controller } from './controller';
 
 /**
  * Redirect controller.
  */
-class RedirectController extends Controller {
+export class RedirectController extends Controller {
+  private static singleton: RedirectController;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -29,7 +31,7 @@ class RedirectController extends Controller {
 
     // Define params.
     const idAuthUrl = `${this.config.auth.front || this.config.auth.server}:${this.config.auth.frontPort || this.config.auth.port}/authorise`;
-    const idAuthQueryParams = `?redirect_uri=${config.auth.authRedirectUrl}&client_id=${this.config.auth.clientId}${stateQueryParam}`;
+    const idAuthQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}&client_id=${this.config.auth.clientId}${stateQueryParam}`;
     const idAuthFullUrl = `${idAuthUrl}${idAuthQueryParams}`;
     const redirectUrl = idAuthFullUrl;
 
@@ -48,12 +50,10 @@ class RedirectController extends Controller {
       this.config.auth.serverPublicUrl ||
       `${this.config.auth.front || this.config.auth.server}:${this.config.auth.frontPort || this.config.auth.port}`;
     const idLogoutUrl = `${serverPublicUrl}/logout`;
-    const idLogoutQueryParams = `?redirect_uri=${config.auth.authRedirectUrl}`;
+    const idLogoutQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}`;
     const redirectUrl = `${idLogoutUrl}${idLogoutQueryParams}`;
 
     // Redirect.
     this.redirect(res, redirectUrl);
   }
 }
-
-module.exports = RedirectController;

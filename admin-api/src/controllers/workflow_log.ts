@@ -1,11 +1,11 @@
-const crypto = require('crypto');
-const Queue = require('queue');
-const moment = require('moment');
-const { matchedData } = require('express-validator');
+import crypto from 'crypto';
+import Queue from 'queue';
+import moment from 'moment';
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const WorkflowLogBusiness = require('../businesses/workflow_log');
-const WorkflowProcessBusiness = require('../businesses/workflow_process');
+import { Controller } from './controller';
+import { WorkflowLogBusiness } from '../businesses/workflow_log';
+import { WorkflowProcessBusiness } from '../businesses/workflow_process';
 
 // 30 min
 const PROCESS_TIMEOUT = 30 * 60 * 1000;
@@ -19,7 +19,32 @@ const MANUAL_REINDEX_PROCESS_STATUSES = {
 /**
  * Wokrflow log controller.
  */
-class WorkflowLogController extends Controller {
+export class WorkflowLogController extends Controller {
+  private static singleton: WorkflowLogController;
+
+  private workflowLogBusiness: WorkflowLogBusiness;
+  private workflowProcessBusiness: WorkflowProcessBusiness;
+
+  private manualReindexProcess: {
+    jobId: string | null;
+    status: string;
+    startTimestamp: number | null;
+    endTimestamp: number | null;
+    total: number;
+    processed: number;
+    failed: number;
+    completed: number;
+    error: string | null;
+    filters: {
+      fromCreatedAt?: string;
+      toCreatedAt?: string;
+      fromUpdatedAt?: string;
+      toUpdatedAt?: string;
+    };
+  };
+
+  private queue: Queue;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -79,7 +104,7 @@ class WorkflowLogController extends Controller {
     this.queue = Queue({ autostart: true, concurrency: 10 });
     this.queue.timeout = PROCESS_TIMEOUT;
     this.queue.on('timeout', function (next, job) {
-      log.save('reindex-workflow-processes|main-reindex-job-timeout', { job: job.toString().replace(/\n/g, '') }, 'error');
+      global.log.save('reindex-workflow-processes|main-reindex-job-timeout', { job: job.toString().replace(/\n/g, '') }, 'error');
       next();
     });
   }
@@ -116,7 +141,7 @@ class WorkflowLogController extends Controller {
     const filters = queryData.filters || {};
     const { page: currentPage, count: perPage } = queryData;
 
-    this.responseData(res, await models.elasticReindexLog.getAll({ currentPage, perPage, filters, sort }), true);
+    this.responseData(res, await global.models.elasticReindexLog.getAll({ currentPage, perPage, filters, sort }), true);
   }
 
   /**
@@ -129,14 +154,14 @@ class WorkflowLogController extends Controller {
 
     try {
       const [timeStats, periodStats, lastEntries] = await Promise.all([
-        models.elasticReindexLog.getReindexTimeStats({ bucketSize, timeFrom, timeTo }),
-        models.elasticReindexLog.getReindexPeriodStats({ bucketSize, timeFrom, timeTo }),
-        models.elasticReindexLog.getLatestReindexLogs(),
+        global.models.elasticReindexLog.getReindexTimeStats({ bucketSize, timeFrom, timeTo }),
+        global.models.elasticReindexLog.getReindexPeriodStats({ bucketSize, timeFrom, timeTo }),
+        global.models.elasticReindexLog.getLatestReindexLogs(),
       ]);
 
       this.responseData(res, { timeStats, periodStats, lastEntries }, true);
     } catch (error) {
-      log.save('reindex-statistics-error', { error: error.message, stack: error.stack });
+      global.log.save('reindex-statistics-error', { error: error.message, stack: error.stack });
       this.responseError(res, { error: error.message }, 500);
     }
   }
@@ -188,7 +213,7 @@ class WorkflowLogController extends Controller {
     try {
       const preparedFilters = { fromUpdatedAt, toUpdatedAt, fromCreatedAt, toCreatedAt };
       Object.keys(preparedFilters).forEach((key) => (preparedFilters[key] = preparedFilters[key] ? preparedFilters[key] : undefined));
-      const reindexLog = await models.elasticReindexLog.create({ userId, userName, filters: preparedFilters });
+      const reindexLog = await global.models.elasticReindexLog.create({ userId, userName, filters: preparedFilters });
       this.queue.push(async () => await this.handleReindexForPeriod(reindexLog, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt));
       return this.responseData(res, reindexLog, true);
     } catch (e) {
@@ -241,9 +266,9 @@ class WorkflowLogController extends Controller {
         await this.workflowLogBusiness.reindexWorkflowProcesses(data);
       }
 
-      await models.elasticReindexLog.setFinished(reindexLog.id);
+      await global.models.elasticReindexLog.setFinished(reindexLog.id);
     } catch (error) {
-      await models.elasticReindexLog.setError(reindexLog.id, error?.message);
+      await global.models.elasticReindexLog.setError(reindexLog.id, error?.message);
     }
   }
 
@@ -328,12 +353,12 @@ class WorkflowLogController extends Controller {
     };
 
     // Log.
-    log.save('manual-reindex-started', { userId, userName, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt });
+    global.log.save('manual-reindex-started', { userId, userName, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt });
 
     // Run reindex.
     let reindexLog;
     try {
-      reindexLog = await models.elasticReindexLog.create({
+      reindexLog = await global.models.elasticReindexLog.create({
         userId,
         userName,
         filters: {
@@ -345,14 +370,14 @@ class WorkflowLogController extends Controller {
       });
 
       // Get workflow IDs list.
-      log.save('manual-reindex-before-get-workflow-ids-list', { jobId, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt });
-      const workflowIds = await models.workflow.getWorkflowIdsList({
+      global.log.save('manual-reindex-before-get-workflow-ids-list', { jobId, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt });
+      const workflowIds = await global.models.workflow.getWorkflowIdsList({
         fromCreatedAt,
         toCreatedAt,
         fromUpdatedAt,
         toUpdatedAt,
       });
-      log.save('manual-reindex-after-get-workflow-ids-list', {
+      global.log.save('manual-reindex-after-get-workflow-ids-list', {
         jobId,
         fromCreatedAt,
         toCreatedAt,
@@ -369,7 +394,7 @@ class WorkflowLogController extends Controller {
       while (workflowIdsToHandle.length > 0) {
         // Define chunk.
         const workflowIdsChunk = workflowIdsToHandle.splice(0, 100);
-        log.save('manual-reindex-workflow-ids-chunk', { jobId, workflowIdsChunk });
+        global.log.save('manual-reindex-workflow-ids-chunk', { jobId, workflowIdsChunk });
         let workflows;
         try {
           workflows = await this.workflowProcessBusiness.getAllByWorkflowIds(workflowIdsChunk);
@@ -382,8 +407,8 @@ class WorkflowLogController extends Controller {
         for (const workflowIndex in workflows) {
           const workflow = workflows[workflowIndex];
           // Log every 1000th entry.
-          if (parseInt(processIndex) % 1000 === 0) {
-            log.save('manual-reindex-workflow-handling', { jobId, workflowId: workflow.id, processesLength, processIndex });
+          if (parseInt(processIndex as any) % 1000 === 0) {
+            global.log.save('manual-reindex-workflow-handling', { jobId, workflowId: workflow.id, processesLength, processIndex });
           }
           if (skipErrors) {
             // Skip errors and don't wait promise resolving.
@@ -418,16 +443,14 @@ class WorkflowLogController extends Controller {
       // Set status.
       this.manualReindexProcess.status = this.ManualReindexProcessStatuses.Completed;
       this.manualReindexProcess.endTimestamp = +new Date();
-      await models.elasticReindexLog.setFinished(reindexLog.id);
+      await global.models.elasticReindexLog.setFinished(reindexLog.id);
     } catch (error) {
       // Set error status.
       this.manualReindexProcess.status = this.ManualReindexProcessStatuses.Failed;
       this.manualReindexProcess.endTimestamp = +new Date();
       this.manualReindexProcess.error = error?.message;
       this.manualReindexProcess.failed = this.manualReindexProcess.total - this.manualReindexProcess.completed;
-      await models.elasticReindexLog.setError(reindexLog.id, error?.message);
+      await global.models.elasticReindexLog.setError(reindexLog.id, error?.message);
     }
   }
 }
-
-module.exports = WorkflowLogController;

@@ -1,10 +1,14 @@
-const Controller = require('./controller');
-const WorkflowStatusBusiness = require('../businesses/workflow_status');
+import { Controller } from './controller';
+import { WorkflowStatusBusiness } from '../businesses/workflow_status';
 
 /**
  * Workflow status controller.
  */
-class WorkflowStatusController extends Controller {
+export class WorkflowStatusController extends Controller {
+  private static singleton: WorkflowStatusController;
+  
+  private workflowStatusBusiness: WorkflowStatusBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -35,5 +39,3 @@ class WorkflowStatusController extends Controller {
     this.responseData(res, workflowStatuses);
   }
 }
-
-module.exports = WorkflowStatusController;

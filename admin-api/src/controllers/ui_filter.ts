@@ -1,13 +1,17 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const UIFilterBusiness = require('../businesses/ui_filter');
-const UIFilterEntity = require('../entities/ui_filter');
+import { Controller } from './controller';
+import { UIFilterBusiness } from '../businesses/ui_filter';
+import { UIFilterEntity } from '../entities/ui_filter';
 
 /**
  * UI Filter controller.
  */
-class UIFilterController extends Controller {
+export class UIFilterController extends Controller {
+  private static singleton: UIFilterController;
+
+  private uiFilterBusiness: UIFilterBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -30,14 +34,14 @@ class UIFilterController extends Controller {
   async create(req, res) {
     let savedUIFilterEntity;
     try {
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const uiFilterEntity = new UIFilterEntity(bodyData);
 
       savedUIFilterEntity = await this.uiFilterBusiness.createOrUpdate(uiFilterEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-created-ui-filter', { user, data: savedUIFilterEntity });
+      await global.log.save('user-created-ui-filter', { user, data: savedUIFilterEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -54,7 +58,7 @@ class UIFilterController extends Controller {
     let savedUIFilterEntity;
     try {
       const { id } = matchedData(req, { locations: ['params'] });
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const uiFilterEntity = new UIFilterEntity({
         id,
@@ -64,7 +68,7 @@ class UIFilterController extends Controller {
       savedUIFilterEntity = await this.uiFilterBusiness.createOrUpdate(uiFilterEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-updated-ui-filter', { user, data: savedUIFilterEntity });
+      await global.log.save('user-updated-ui-filter', { user, data: savedUIFilterEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -111,7 +115,7 @@ class UIFilterController extends Controller {
       await this.uiFilterBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-deleted-ui-filter', { user, data: { id } });
+      await global.log.save('user-deleted-ui-filter', { user, data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -141,5 +145,3 @@ class UIFilterController extends Controller {
     this.responseData(res, uiFilter);
   }
 }
-
-module.exports = UIFilterController;

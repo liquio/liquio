@@ -1,18 +1,24 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Exceptions = require('../exceptions');
-const Controller = require('./controller');
-const TaskBusiness = require('../businesses/task');
-const WorkflowBusiness = require('../businesses/workflow');
-const BpmnWorkflowBusiness = require('../businesses/bpmn_workflow');
-const TaskGroupEntity = require('../entities/task_group');
-const TaskTemplateEntity = require('../entities/task_template');
-const DocumentTemplateEntity = require('../entities/document_template');
+import { Exceptions } from '../exceptions';
+import { Controller } from './controller';
+import { TaskBusiness } from '../businesses/task';
+import { WorkflowBusiness } from '../businesses/workflow';
+import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
+import { TaskGroupEntity } from '../entities/task_group';
+import { TaskTemplateEntity } from '../entities/task_template';
+import { DocumentTemplateEntity } from '../entities/document_template';
 
 /**
  * Task controller.
  */
-class TaskController extends Controller {
+export class TaskController extends Controller {
+  private static singleton: TaskController;
+
+  private taskBusiness: TaskBusiness;
+  private workflowBusiness: WorkflowBusiness;
+  private bpmnWorkflowBusiness: BpmnWorkflowBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -38,7 +44,7 @@ class TaskController extends Controller {
     let savedTaskGroupEntities = [];
     let newLastWorkflowHistoryId;
     try {
-      if (config.workflow_editor.disabled === true) {
+      if (global.config.workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -56,7 +62,7 @@ class TaskController extends Controller {
 
         if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
           const error = new Error('Header Last-Workflow-History-Id expired.');
-          error.details = [{ lastWorkflowHistory: lastWorkflowHistory }];
+          (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
           throw error;
         }
 
@@ -69,7 +75,7 @@ class TaskController extends Controller {
 
         const savedTaskGroupEntity = await this.taskBusiness.createOrUpdate(taskGroupEntity);
         savedTaskGroupEntities.push(savedTaskGroupEntity);
-        log.save('user-created-updated-task-group', { user, data: { savedTaskGroupEntity } });
+        global.log.save('user-created-updated-task-group', { user, data: { savedTaskGroupEntity } });
 
         // Auto save workflow process.
         const workflowHistory = await this.bpmnWorkflowBusiness.autoSaveVersion(workflowTemplateId, { user });
@@ -97,14 +103,14 @@ class TaskController extends Controller {
     const id = paramsData.id;
 
     try {
-      if (config.workflow_editor.disabled === true) {
+      if (global.config.workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
       await this.taskBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-deleted-task-group', { user, data: { id } });
+      await global.log.save('user-deleted-task-group', { user, data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -134,5 +140,3 @@ class TaskController extends Controller {
     this.responseData(res, task);
   }
 }
-
-module.exports = TaskController;
