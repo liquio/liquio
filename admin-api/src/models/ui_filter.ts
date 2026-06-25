@@ -59,8 +59,8 @@ export class UIFilterModel extends Model {
       );
 
       // Sequelize model params.
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       // Define singleton.
       UIFilterModel.singleton = this;
@@ -98,7 +98,7 @@ export class UIFilterModel extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    const uiFilters = await this.model.paginate(sequelizeOptions);
+    const uiFilters: any = await (this.model as any).paginate(sequelizeOptions);
 
     uiFilters.data = uiFilters.data.map((item) => this.prepareEntity(item));
 

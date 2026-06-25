@@ -26,7 +26,7 @@ export class Controller {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     this.config = config;
   }
 

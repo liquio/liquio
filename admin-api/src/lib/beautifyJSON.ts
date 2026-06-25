@@ -1,4 +1,4 @@
-module.exports = (jsonString) => {
+export function beautifyJSON(jsonString: string): string {
   if (typeof jsonString !== 'string') {
     return jsonString;
   }
@@ -13,4 +13,4 @@ module.exports = (jsonString) => {
   } catch {
     return jsonString;
   }
-};
+}

@@ -59,7 +59,7 @@ export class AuthController extends Controller {
     } catch (err) {
       return this.responseError(res, err, 401);
     }
-    log.save('login-tokens', authTokens);
+    global.log.save('login-tokens', authTokens);
 
     // Get user info.
     let authUserInfo;
@@ -68,28 +68,28 @@ export class AuthController extends Controller {
 
       await this.setupAdminUnits(authUserInfo);
 
-      const units = await models.unit.getAll();
+      const units = await global.models.unit.getAll();
       for (const unit of units) {
         const headIpn = (unit.headsIpn || []).find((v) => v === authUserInfo.ipn);
         if (headIpn) {
-          await models.unit.addHead(unit.id, authUserInfo.userId);
-          await models.unit.removeHeadIpn(unit.id, headIpn);
+          await global.models.unit.addHead(unit.id, authUserInfo.userId);
+          await global.models.unit.removeHeadIpn(unit.id, headIpn);
 
           // Handle base units.
           const { basedOn = [] } = unit || {};
           for (const baseUnitId of basedOn) {
-            await models.unit.addHead(baseUnitId, authUserInfo.userId);
+            await global.models.unit.addHead(baseUnitId, authUserInfo.userId);
           }
         }
         const memberIpn = (unit.membersIpn || []).find((v) => v === authUserInfo.ipn);
         if (memberIpn) {
-          await models.unit.addMember(unit.id, authUserInfo.userId);
-          await models.unit.removeMemberIpn(unit.id, memberIpn);
+          await global.models.unit.addMember(unit.id, authUserInfo.userId);
+          await global.models.unit.removeMemberIpn(unit.id, memberIpn);
 
           // Handle base units.
           const { basedOn = [] } = unit || {};
           for (const baseUnitId of basedOn) {
-            await models.unit.addMember(baseUnitId, authUserInfo.userId);
+            await global.models.unit.addMember(baseUnitId, authUserInfo.userId);
           }
         }
         const requestedMember = (unit.requestedMembers || []).find((v) => v.ipn === authUserInfo.ipn);
@@ -101,17 +101,17 @@ export class AuthController extends Controller {
             `${requestedMemberMiddleName}`.toLowerCase() === `${userMiddleName}`.toLowerCase() &&
             `${requestedMemberLastName}`.toLowerCase() === `${userLastName}`.toLowerCase();
           if (theSameName) {
-            await models.unit.addMember(unit.id, authUserInfo.userId);
-            await models.unit.removeRequestedMember(unit.id, authUserInfo.ipn);
+            await global.models.unit.addMember(unit.id, authUserInfo.userId);
+            await global.models.unit.removeRequestedMember(unit.id, authUserInfo.ipn);
 
             // Handle base units.
             const { basedOn = [] } = unit || {};
             for (const baseUnitId of basedOn) {
-              await models.unit.addMember(baseUnitId, authUserInfo.userId);
+              await global.models.unit.addMember(baseUnitId, authUserInfo.userId);
             }
           } else {
-            await models.unit.removeRequestedMember(unit.id, authUserInfo.ipn);
-            await models.unit.addRequestedMember(unit.id, {
+            await global.models.unit.removeRequestedMember(unit.id, authUserInfo.ipn);
+            await global.models.unit.addRequestedMember(unit.id, {
               ipn: authUserInfo.ipn,
               firstName: requestedMemberFirstName,
               middleName: requestedMemberMiddleName,
@@ -124,7 +124,7 @@ export class AuthController extends Controller {
     } catch (err) {
       return this.responseError(res, err, 401);
     }
-    log.save('login-user-info', authUserInfo);
+    global.log.save('login-user-info', authUserInfo);
 
     // Get token.
     let token;
@@ -240,7 +240,7 @@ export class AuthController extends Controller {
 
       const hasOneOfNeededRoles = this.hasOneOfNeededRoles(userRoles, roles);
       if (roles && !hasOneOfNeededRoles) {
-        log.save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles });
+        global.log.save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles });
         return this.responseError(res, ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, 403);
       }
       req.authUserRoles = userRoles;
@@ -250,7 +250,7 @@ export class AuthController extends Controller {
       const allowableUnits = this.access?.allowableUnits || [];
 
       if (Array.isArray(allowableUnits) && allowableUnits.length && !allowableUnits.some((v) => authUserUnitIds.all.includes(v))) {
-        log.save('user-without-allowable-units', { authUserUnitIds });
+        global.log.save('user-without-allowable-units', { authUserUnitIds });
         return this.responseError(res, ERROR_MESSAGE_USER_WITHOUT_ALLOWABLE_UNITS, 403);
       }
 
@@ -282,8 +282,8 @@ export class AuthController extends Controller {
     const path = req.route.path;
     const method = _.keys(req.route.methods)[0];
 
-    if (config.access && config.access.paths && config.access.paths[path] && config.access.paths[path][method]) {
-      if (config.access.paths[path][method].units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
+    if (global.config.access && global.config.access.paths && global.config.access.paths[path] && global.config.access.paths[path][method]) {
+      if (global.config.access.paths[path][method].units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
         return next();
       } else {
         return this.responseError(res, new Error('Access denied.'), 403);
@@ -309,7 +309,7 @@ export class AuthController extends Controller {
    * @returns {Promise<{head: UnitEntity[], member: UnitEntity[], all: UnitEntity[]}>} Unit info.
    */
   async getUserUnitIds(userId) {
-    const units = await models.unit.getAll();
+    const units = await global.models.unit.getAll();
     const head = units.filter((v) => v.heads.includes(userId));
     const member = units.filter((v) => v.members.includes(userId));
     const all = [...new Set([...head, ...member])];
@@ -388,7 +388,7 @@ export class AuthController extends Controller {
     try {
       // Refer to `admin` configuration block to check for setup requirements.
       if (this.config.user.shouldSetupAdmin && this.config.user.adminUnitId) {
-        log.save('setup-admin-units', { userInfo });
+        global.log.save('setup-admin-units', { userInfo });
 
         const { adminUnitId } = this.config.user;
 
@@ -403,8 +403,8 @@ export class AuthController extends Controller {
         // If all selected admin units are empty, add the current user as a member and head
         if (isAllAdminUnitsEmpty) {
           for (const unitId of adminUnitId) {
-            await this.unitBusiness.addHeads({ id: unitId, heads: [userInfo.userId], currentUser: userInfo, isForce: true });
-            await this.unitBusiness.addMembers({ id: unitId, members: [userInfo.userId], currentUser: userInfo, isForce: true });
+            await this.unitBusiness.addHeads({ id: unitId, heads: [userInfo.userId], currentUser: userInfo, isForce: true } as any);
+            await this.unitBusiness.addMembers({ id: unitId, members: [userInfo.userId], currentUser: userInfo, isForce: true } as any);
           }
 
           // Add admin role to the user
@@ -418,7 +418,7 @@ export class AuthController extends Controller {
       }
     } catch (error) {
       // Report the error and skip the setup
-      log.save('setup-admin-units-error', { error: error.message, stack: error.stack }, 'error');
+      global.log.save('setup-admin-units-error', { error: error.message, stack: error.stack }, 'error');
     }
   }
 }

@@ -23,7 +23,7 @@ export class GatewayTypeModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       GatewayTypeModel.singleton = this;
     }
@@ -59,7 +59,7 @@ export class GatewayTypeModel extends Model {
   /**
    * Prepare entity.
    * @param {object} item Item.
-   * @returns {EventTypeEntity}
+   * @returns {GatewayTypeEntity}
    */
   prepareEntity(item) {
     if (typeof item !== 'object' || item === null) {

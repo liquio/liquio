@@ -9,6 +9,8 @@ import { CustomLogTemplateEntity } from '../entities/custom_log_template';
 export class CustomLogTemplateModel extends Model {
   static singleton: CustomLogTemplateModel;
 
+  private cache: { createdAt: number | null; data: CustomLogTemplateEntity[] };
+
   /**
    * Custom log template model constructor.
    */
@@ -67,7 +69,7 @@ export class CustomLogTemplateModel extends Model {
       );
 
       // Sequelize model params.
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       // Cache params.
       this.cache = { createdAt: null, data: [] };
@@ -87,7 +89,7 @@ export class CustomLogTemplateModel extends Model {
   async getAll() {
     // DB query.
     const raw = await this.model.findAll({
-      sort: [['id', 'asc']],
+      order: [['id', 'asc']],
     });
 
     // Return entities.

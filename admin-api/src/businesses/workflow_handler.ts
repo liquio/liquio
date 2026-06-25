@@ -8,11 +8,18 @@ const ERROR_WRONG_QUEUE_NAME = 'Wrong queue name.';
  * @typedef {import('../entities/workflow_error')} WorkflowErrorEntity
  */
 export class WorkflowHandlerBusiness {
+  private static singleton: WorkflowHandlerBusiness;
+
+  public config: any;
+  private defaultDebugRepeats: number[];
+  private debugModeEnabled: boolean;
+  private debugRepeats: number[];
+
   /**
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?: any) {
     // Define singleton.
     if (!WorkflowHandlerBusiness.singleton) {
       this.config = config;
@@ -38,7 +45,7 @@ export class WorkflowHandlerBusiness {
    * @returns {Promise<WorkflowErrorEntity[]>}
    */
   async getErrorMessages() {
-    return await models.workflowError.getAll();
+    return await global.models.workflowError.getAll();
   }
 
   /**
@@ -47,7 +54,7 @@ export class WorkflowHandlerBusiness {
    * @returns {Promise<WorkflowErrorEntity>}
    */
   async findById(id) {
-    return await models.workflowError.findById(id);
+    return await global.models.workflowError.findById(id);
   }
 
   /**
@@ -56,7 +63,7 @@ export class WorkflowHandlerBusiness {
    * @returns {Promise<boolean>}
    */
   async deleteById(id) {
-    if ((await models.workflowError.deleteById(id)) === 0) {
+    if ((await global.models.workflowError.deleteById(id)) === 0) {
       return false;
     }
 
@@ -92,7 +99,7 @@ export class WorkflowHandlerBusiness {
         // Wait response.
         await new Promise((resolve) => setTimeout(resolve, this.debugRepeats[i] * 1000));
 
-        debug = await models.workflowDebug.findById(message.debugId);
+        debug = await global.models.workflowDebug.findById(message.debugId);
         if (debug && debug.data) {
           break;
         }
@@ -116,7 +123,7 @@ export class WorkflowHandlerBusiness {
       return 'writingQueueEvent';
     }
     if (queueMessage.gatewayTemplateId) {
-      log.save('message-to-writingQueueGateway', { queueMessage }); // TODO: remove it later.
+      global.log.save('message-to-writingQueueGateway', { queueMessage }); // TODO: remove it later.
       return 'writingQueueGateway';
     }
 

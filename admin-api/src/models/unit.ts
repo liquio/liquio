@@ -40,8 +40,8 @@ export class UnitModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       UnitModel.singleton = this;
     }
@@ -75,7 +75,7 @@ export class UnitModel extends Model {
    * Get all.
    * @returns {Promise<UnitEntity[]>} Unit entities list promise.
    */
-  async getAll({ filters = {} } = {}) {
+  async getAll({ filters = {} }: { filters?: any } = {}) {
     let sequelizeOptions = {
       where: {},
       order: [['created_at', 'desc']],
@@ -109,7 +109,7 @@ export class UnitModel extends Model {
       });
     }
 
-    const units = await this.model.findAll(sequelizeOptions);
+    const units = await this.model.findAll(sequelizeOptions as any);
 
     const unitEntities = units.map((item) => {
       return this.prepareEntity(item);
@@ -186,7 +186,7 @@ export class UnitModel extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    const unitEntities = await this.model.paginate(sequelizeOptions);
+    const unitEntities = await (this.model as any).paginate(sequelizeOptions);
 
     unitEntities.data = unitEntities.data.map((item) => this.prepareEntity(item));
 
@@ -246,7 +246,7 @@ export class UnitModel extends Model {
 
     // Define users from units.
     const { heads, members } = unitsRaw.reduce(
-      (t, v) => ({
+      (t, v: any) => ({
         heads: [...new Set([...t.heads, ...v.heads])],
         members: [...new Set([...t.members, ...v.members])],
       }),
@@ -454,13 +454,13 @@ export class UnitModel extends Model {
    */
   async fixLastUnitIdIfNeedIt() {
     // Define current sequence ID and last unit ID.
-    const curvalRaw = await this.db.query('select last_value from units_id_seq;', {
-      type: this.db.QueryTypes.SELECT,
+    const curvalRaw: any = await this.db.query('select last_value from units_id_seq;', {
+      type: Sequelize.QueryTypes.SELECT,
     });
     const [{ last_value }] = curvalRaw;
     const currentUnitId = parseInt(last_value);
-    const maxUnitId = await this.model.max('id');
-    log.save('fix-last-unit-id-if-need-it|check', { currentUnitId, maxUnitId });
+    const maxUnitId: number = await this.model.max('id');
+    global.log.save('fix-last-unit-id-if-need-it|check', { currentUnitId, maxUnitId });
 
     // Check and fix.
     if (maxUnitId > currentUnitId) {
@@ -468,7 +468,7 @@ export class UnitModel extends Model {
         raw: true,
         replacements: { max_unit_id: maxUnitId },
       });
-      log.save('fix-last-unit-id-if-need-it|set', { currentUnitId, maxUnitId, setRawResponse });
+      global.log.save('fix-last-unit-id-if-need-it|set', { currentUnitId, maxUnitId, setRawResponse });
     }
   }
 
@@ -537,7 +537,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      log.save('unit-remove-requested-member|error', { unitId, requestedMember });
+      global.log.save('unit-remove-requested-member|error', { unitId, requestedMember });
       return null;
     }
 
@@ -545,7 +545,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    log.save('unit-remove-requested-member', { unitId, requestedMember });
+    global.log.save('unit-remove-requested-member', { unitId, requestedMember });
 
     return unit;
   }
@@ -568,7 +568,7 @@ export class UnitModel extends Model {
     // Define and return first updated row entity.
     const [updatedUnitRaw] = unitsRaw;
     const updatedUnit = this.prepareEntity(updatedUnitRaw);
-    log.save('unit-remove-requested-member', { unitId, requestedMemberIpn });
+    global.log.save('unit-remove-requested-member', { unitId, requestedMemberIpn });
     return updatedUnit;
   }
 
@@ -598,7 +598,7 @@ export class UnitModel extends Model {
     ORDER BY unit_id ASC;
     `,
       {
-        type: this.db.QueryTypes.SELECT,
+        type: Sequelize.QueryTypes.SELECT,
       },
     );
 

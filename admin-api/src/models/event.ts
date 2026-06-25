@@ -53,7 +53,7 @@ export class EventModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       EventModel.singleton = this;
     }
@@ -199,12 +199,12 @@ export class EventModel extends Model {
    * @returns {Promise<EventEntity>}
    */
   async findById(id) {
-    const event = await this.model.findByPk(id, { include: [{ model: models.workflow.model }] });
+    const event: any = await this.model.findByPk(id, { include: [{ model: global.models.workflow.model }] });
     if (!event) {
       return;
     }
 
-    const eventEntity = this.prepareEntity(event);
+    const eventEntity: any = this.prepareEntity(event);
 
     if (event.workflow) {
       eventEntity.workflow = event.workflow.prepareEntity(event.workflow);
@@ -237,13 +237,13 @@ export class EventModel extends Model {
    * @returns {Promise<DocumentEntity[]>} Document entities promise.
    */
   async getDocumentsByWorkflowId(workflowId) {
-    const events = await this.model.findAll({ where: { workflow_id: workflowId } });
+    const events: any = await this.model.findAll({ where: { workflow_id: workflowId } });
     let documents = [];
     if (events) {
       for (const event of events) {
         const document = await event.getDocument();
         if (document) {
-          documents.push(models.document.prepareEntity(document));
+          documents.push(global.models.document.prepareEntity(document));
         }
       }
     }
@@ -279,7 +279,7 @@ export class EventModel extends Model {
       {
         raw: true,
         replacements: { workflowId, eventTemplateId },
-        type: this.db.QueryTypes.DELETE,
+        type: Sequelize.QueryTypes.DELETE,
       },
     );
   }

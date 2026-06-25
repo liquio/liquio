@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { default: Queue } = require('queue');
+import axios from 'axios';
+import { default as Queue } from 'queue';
 
-const Exceptions = require('../exceptions');
-const WorkflowLoggerEntity = require('../entities/workflow_log/workflow_logger');
-const WorkflowLoggerRecordEntity = require('../entities/workflow_log/workflow_logger_record');
+import { Exceptions } from '../exceptions';
+import { WorkflowLoggerEntity } from '../entities/workflow_log/workflow_logger';
+import { WorkflowLoggerRecordEntity } from '../entities/workflow_log/workflow_logger_record';
 
 const USER_ID_LENGHT_LIMIT = 20;
 
@@ -12,7 +12,11 @@ const PROCESS_TIMEOUT = 60 * 1000;
 /**
  * Workflow log business.
  */
-class WorkflowLogBusiness {
+export class WorkflowLogBusiness {
+  private static singleton: WorkflowLogBusiness;
+
+  public config: any;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -33,9 +37,9 @@ class WorkflowLogBusiness {
    * @param {string} id Workflow ID.
    * @returns {Promise<object[]>}
    */
-  async getByWorkflowId(id, params = {}) {
-     
-    const modelsInstance = params?.useSlaveDBInstance && global.slaveModels ? global.slaveModels : models;
+  async getByWorkflowId(id, params = {} as any) {
+
+    const modelsInstance = params?.useSlaveDBInstance && global.slaveModels ? global.slaveModels : global.models;
 
     const workflow = await modelsInstance.workflow.findById(id, {
       with: ['tasks', 'events', 'gateways', 'workflowErrors', 'workflowRestarts'],
@@ -191,7 +195,7 @@ class WorkflowLogBusiness {
       queue.timeout = PROCESS_TIMEOUT;
 
       queue.on('timeout', function (next, job) {
-        log.save('reindex-workflow-processes|job-timeout', { job }, 'error');
+        global.log.save('reindex-workflow-processes|job-timeout', { job }, 'error');
       });
 
       queue.on('error', reject);
@@ -209,10 +213,10 @@ class WorkflowLogBusiness {
 
       queue.start((error) => {
         if (error) {
-          log.save('reindex-workflow-processes|job-error', { error: error?.message }, 'error');
+          global.log.save('reindex-workflow-processes|job-error', { error: error?.message }, 'error');
           return reject(error);
         }
-        log.save('reindex-workflow-processes|job-done', { error: error?.message }, 'info');
+        global.log.save('reindex-workflow-processes|job-done', { error: error?.message }, 'info');
       });
     });
   }
@@ -223,7 +227,7 @@ class WorkflowLogBusiness {
   ) {
     // Log every 1000th entry.
     if (parseInt(processIndex) % 1000 === 0) {
-      log.save(
+      global.log.save(
         'reindex-workflow-processes|processing-entry',
         {
           processing: parseInt(processIndex) + 1,
@@ -274,8 +278,7 @@ class WorkflowLogBusiness {
         if (workflowLog.details.createdBy !== document['createdBy']) {
           if (workflowLog.details.createdBy !== 'system') {
             if (workflowLog.details.createdBy.length > USER_ID_LENGHT_LIMIT)
-              log.save(this.name, 'createdBy field value for workflowLog entries was changed', 'warn');
-            // document['createdBy'] = workflowLog.details.createdBy;
+              global.log.save('workflow-log', 'createdBy field value for workflowLog entries was changed', 'warn');
           }
         }
 
@@ -341,7 +344,7 @@ class WorkflowLogBusiness {
     try {
       const response = await axios(axiosConfig);
       if (!(response.status >= 200 && response.status < 300)) {
-        log.save(
+        global.log.save(
           'error-during-saving-to-elastic',
           {
             error: response.statusText,
@@ -352,7 +355,7 @@ class WorkflowLogBusiness {
         );
       }
     } catch (error) {
-      log.save(
+      global.log.save(
         'error-during-saving-to-elastic',
         {
           error: error?.message,

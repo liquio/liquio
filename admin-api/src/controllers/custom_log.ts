@@ -1,12 +1,16 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const CustomLogBusiness = require('../businesses/custom_log');
+import { Controller } from './controller';
+import { CustomLogBusiness } from '../businesses/custom_log';
 
 /**
  * Custom log controller.
  */
-class CustomLogController extends Controller {
+export class CustomLogController extends Controller {
+  private static singleton: CustomLogController;
+
+  private customLogBusiness: CustomLogBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -48,5 +52,3 @@ class CustomLogController extends Controller {
     this.responseData(res, customLogs, true);
   }
 }
-
-module.exports = CustomLogController;

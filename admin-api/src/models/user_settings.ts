@@ -47,7 +47,7 @@ export class UserSettingsModel extends Model {
       );
 
       // Sequelize model params.
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prepareEntity = this.prepareEntity;
 
       // Define singleton.
       UserSettingsModel.singleton = this;
@@ -87,7 +87,7 @@ export class UserSettingsModel extends Model {
       return this.prepareEntity(userSettings);
     }
 
-    const rawDbResponse = await this.model.update(toSave, { where: { user_id: userId }, returning: true });
+    const rawDbResponse: any = await this.model.update(toSave, { where: { user_id: userId }, returning: true });
     const [updatedRow] = rawDbResponse[1] || {};
     return this.prepareEntity(updatedRow);
   }

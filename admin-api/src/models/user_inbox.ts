@@ -51,7 +51,7 @@ export class UserInboxModel extends Model {
         },
       );
 
-      this.model.paginate = this.paginate;
+      (this.model as any).paginate = this.paginate;
 
       UserInboxModel.singleton = this;
     }
@@ -71,7 +71,7 @@ export class UserInboxModel extends Model {
       currentPage,
       perPage,
       filters: { ..._.pick(filters, ['name', 'number', 'is_read']), user_id: userId },
-    };
+    } as any;
 
     sort = this.prepareSort(sort);
     if (sort.length > 0) {
@@ -79,7 +79,7 @@ export class UserInboxModel extends Model {
     }
 
     // Get records.
-    let userInboxes = await this.model.paginate(sequelizeOptions);
+    let userInboxes = await (this.model as any).paginate(sequelizeOptions);
 
     // Convert data to entities.
     userInboxes.data = userInboxes.data.map((item) => {

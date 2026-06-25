@@ -21,7 +21,7 @@ export class EventTypeModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       EventTypeModel.singleton = this;
     }

@@ -84,11 +84,13 @@ const MODELS_CLASSES_LIST = {
 export class Models {
   static singleton: Models;
 
+  public models: Record<string, any> = {};
+
   /**
    * Models constructor.
    * @param {object} [customModels] Custom models as { someModelName: SomeModelClass, anotherModelName: AnotherModelClass }.
    */
-  constructor(customModels = {}, dbInstance) {
+  constructor(customModels: Record<string, any> = {}, dbInstance?: any) {
     // Define singleton.
     if (!Models.singleton) {
       this.initModels(customModels, dbInstance);
@@ -172,7 +174,7 @@ export class Models {
           ...t,
           ...(() => {
             let n = {};
-            n[v[0]] = v[1];
+            n[(v as any)[0]] = v[1];
             return n;
           })(),
         }),

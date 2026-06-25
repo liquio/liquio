@@ -43,8 +43,8 @@ export class LocalizationTextModel extends Model {
           updatedAt: 'updated_at',
         },
       );
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
     }
   }
 
@@ -69,7 +69,7 @@ export class LocalizationTextModel extends Model {
       sequelizeOptions.filters['localization_language_code'] = filters.localization_language_code;
     }
     if (typeof filters.key !== 'undefined') {
-      sequelizeOptions.filters.key = {
+      (sequelizeOptions.filters as any).key = {
         [Sequelize.Op.iLike]: `%${filters.key}%`,
       };
     }
@@ -79,7 +79,7 @@ export class LocalizationTextModel extends Model {
       sequelizeOptions.sort = preparedSort;
     }
 
-    const dbResponse = await this.model.paginate(sequelizeOptions);
+    const dbResponse = await (this.model as any).paginate(sequelizeOptions);
 
     dbResponse.data = dbResponse.data.map(this.prepareEntity);
     return dbResponse;
@@ -105,7 +105,7 @@ export class LocalizationTextModel extends Model {
       group: 'key',
     };
     if (typeof filters.key !== 'undefined') {
-      getKeysSequelizeOptions.filters.key = {
+      (getKeysSequelizeOptions.filters as any).key = {
         [Sequelize.Op.iLike]: `%${filters.key}%`,
       };
     }
@@ -118,7 +118,7 @@ export class LocalizationTextModel extends Model {
     if (getKeysSequelizeOptions.sort.length === 0) {
       getKeysSequelizeOptions.sort = [['key', 'asc']];
     }
-    const keysDbResponse = await this.model.paginate(getKeysSequelizeOptions);
+    const keysDbResponse = await (this.model as any).paginate(getKeysSequelizeOptions);
     const keys = keysDbResponse.data.map(({ key }) => key);
 
     // Get texts by keys.
@@ -141,7 +141,7 @@ export class LocalizationTextModel extends Model {
    * @param {object} options Options.
    * @returns {Promise<LocalizationTextEntity>}
    */
-  async createLocalizationText(params, options = {}) {
+  async createLocalizationText(params, options: any = {}) {
     const { localizationLanguageCode, key, value } = params;
     const { transaction } = options;
     const entityForModel = this.prepareForModel({ localizationLanguageCode, key, value });
@@ -169,7 +169,7 @@ export class LocalizationTextModel extends Model {
    * @param {object} options Options.
    * @returns {Promise<LocalizationTextEntity>}
    */
-  async updateLocalizationText(params, options = {}) {
+  async updateLocalizationText(params, options: any = {}) {
     const { localizationLanguageCode, key, value } = params;
     const { transaction } = options;
 

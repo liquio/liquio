@@ -1,13 +1,17 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Stream = require('../lib/stream');
-const Controller = require('./controller');
-const LocalizationTextBussiness = require('../businesses/localization_text');
+import { Stream } from '../lib/stream';
+import { Controller } from './controller';
+import { LocalizationTextBusiness } from '../businesses/localization_text';
 
 /**
  * Localization text controller.
  */
-class LocalizationTextController extends Controller {
+export class LocalizationTextController extends Controller {
+  private static singleton: LocalizationTextController;
+
+  private localizationTextBussiness: LocalizationTextBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -17,7 +21,7 @@ class LocalizationTextController extends Controller {
     if (!LocalizationTextController.singleton) {
       super(config);
 
-      this.localizationTextBussiness = new LocalizationTextBussiness(config);
+      this.localizationTextBussiness = new LocalizationTextBusiness(config);
       LocalizationTextController.singleton = this;
     }
     return LocalizationTextController.singleton;
@@ -88,7 +92,7 @@ class LocalizationTextController extends Controller {
         value,
       });
     } catch (error) {
-      log.save('localization-text-create-error|cannot-create-text', {
+      global.log.save('localization-text-create-error|cannot-create-text', {
         error: error.message,
         cause: error.cause,
         fieds: error.fieds,
@@ -200,7 +204,7 @@ class LocalizationTextController extends Controller {
         userId: user.userId,
         name: user.name,
       };
-      await this.localizationTextBussiness.import(data, { force, person });
+      await this.localizationTextBussiness.import(data, { force, person } as any);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

@@ -1,19 +1,23 @@
-const { matchedData } = require('express-validator');
-const { Op } = require('sequelize');
+import { matchedData } from 'express-validator';
+import { Op } from 'sequelize';
 
-const Controller = require('./controller');
-const CustomInterfaceBusiness = require('../businesses/custom_interface');
-const CustomInterfaceEntity = require('../entities/custom_interface');
+import { Controller } from './controller';
+import { CustomInterfaceBusiness } from '../businesses/custom_interface';
+import { CustomInterfaceEntity } from '../entities/custom_interface';
 
 /**
  * Custom interface controller.
  */
-class CustomInterfaceController extends Controller {
+export class CustomInterfaceController extends Controller {
+  private static singleton: CustomInterfaceController;
+
+  private customInterfaceBusiness: CustomInterfaceBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!CustomInterfaceController.singleton) {
       super(config);
@@ -31,14 +35,14 @@ class CustomInterfaceController extends Controller {
   async create(req, res) {
     let savedCustomInterfaceEntity;
     try {
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const customInterfaceEntity = new CustomInterfaceEntity(bodyData);
 
       savedCustomInterfaceEntity = await this.customInterfaceBusiness.createOrUpdate(customInterfaceEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-created-custom-interface', { user, data: savedCustomInterfaceEntity });
+      await global.log.save('user-created-custom-interface', { user, data: savedCustomInterfaceEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -60,12 +64,12 @@ class CustomInterfaceController extends Controller {
       const customInterfaceEntity = new CustomInterfaceEntity({
         id,
         ...bodyData,
-      });
+      } as any);
 
       savedCustomInterfaceEntity = await this.customInterfaceBusiness.createOrUpdate(customInterfaceEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-updated-custom-interface', { user, data: savedCustomInterfaceEntity });
+      await global.log.save('user-updated-custom-interface', { user, data: savedCustomInterfaceEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -116,7 +120,7 @@ class CustomInterfaceController extends Controller {
       await this.customInterfaceBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-deleted-custom-interface', { user, data: { id } });
+      await global.log.save('user-deleted-custom-interface', { user, data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -146,5 +150,3 @@ class CustomInterfaceController extends Controller {
     this.responseData(res, customInterface);
   }
 }
-
-module.exports = CustomInterfaceController;

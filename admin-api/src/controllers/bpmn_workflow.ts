@@ -1,14 +1,19 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const Stream = require('../lib/stream');
-const BpmnWorkflowBusiness = require('../businesses/bpmn_workflow');
-const WorkflowBusiness = require('../businesses/workflow');
+import { Controller } from './controller';
+import { Stream } from '../lib/stream';
+import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
+import { WorkflowBusiness } from '../businesses/workflow';
 
 /**
  * BPMN workflow controller.
  */
-class BpmnWorkflowController extends Controller {
+export class BpmnWorkflowController extends Controller {
+  private static singleton: BpmnWorkflowController;
+
+  private bpmnWorkflowBusiness: BpmnWorkflowBusiness;
+  private workflowBusiness: WorkflowBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -135,7 +140,7 @@ class BpmnWorkflowController extends Controller {
 
       if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
         const error = new Error('Header Last-Workflow-History-Id expired.');
-        error.details = [{ lastWorkflowHistory: lastWorkflowHistory }];
+        (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
         throw error;
       }
 

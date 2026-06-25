@@ -1,12 +1,12 @@
-const _ = require('lodash');
-const axios = require('axios');
+import _ from 'lodash';
+import axios from 'axios';
 
-const Exceptions = require('../exceptions');
-const TaskService = require('../services/task');
-const AuthService = require('../services/auth');
-const FileStorageService = require('../services/filestorage');
-const Stream = require('../lib/stream');
-const Db = require('../lib/db');
+import { Exceptions } from '../exceptions';
+import { TaskService } from '../services/task';
+import { AuthService } from '../services/auth';
+import { FileStorageService } from '../services/filestorage';
+import { Stream } from '../lib/stream';
+import { Db } from '../lib/db';
 
 const ELASTIC_KEYS = [
   'name',
@@ -48,7 +48,14 @@ const BRIEF_INFO_LIMIT = 10000;
 /**
  * Workflow process business.
  */
-class WorkflowProcessBusiness {
+export class WorkflowProcessBusiness {
+  private static singleton: WorkflowProcessBusiness;
+
+  public config: any;
+  private taskService: TaskService;
+  private authService: AuthService;
+  private fileStorageService: FileStorageService;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -72,7 +79,7 @@ class WorkflowProcessBusiness {
    * @returns {Promise<WorkflowEntity[]>}
    */
   async getAll(params) {
-    let meta = {};
+    let meta: any = {};
 
     params.extended = true;
 
@@ -111,7 +118,7 @@ class WorkflowProcessBusiness {
 
     // Use Elastic.
     if (
-      config.elastic?.enabled &&
+      global.config.elastic?.enabled &&
       !params?.disableElastic &&
       Object.keys(params.filters).some((filterName) => ELASTIC_KEYS.includes(filterName)) &&
       !Object.keys(params.filters).some((filterName) => DB_ONLY_KEYS.includes(filterName))
@@ -144,7 +151,7 @@ class WorkflowProcessBusiness {
 
     const { page: currentPage, count: perPage } = params;
 
-    const modelsInstance = params?.useSlaveDBInstance && global.slaveModels ? global.slaveModels : models;
+    const modelsInstance = params?.useSlaveDBInstance && global.slaveModels ? global.slaveModels : global.models;
 
     let workflowProcesses = await modelsInstance.workflow.getAll({
       ...params,
@@ -166,7 +173,7 @@ class WorkflowProcessBusiness {
    * @returns {Promise<WorkflowEntity[]>}
    */
   async getAllByWorkflowIds(workflowIds) {
-    const modelsInstance = global.slaveModels ? global.slaveModels : models;
+    const modelsInstance = global.slaveModels ? global.slaveModels : global.models;
     return await modelsInstance.workflow.getAllByWorkflowIds(workflowIds);
   }
 
@@ -174,7 +181,7 @@ class WorkflowProcessBusiness {
    * @param params
    * @return {Promise<*>}
    */
-  async getAllElasticFiltered({ page: currentPage, count: perPage, _sort, _filters } = {}) {
+  async getAllElasticFiltered({ page: currentPage, count: perPage, _sort, _filters } = {} as any) {
     // ...existing code...
     const elasticUrl = this.config.elastic.protocol + '://' + this.config.elastic.host + this.config.elastic.uri;
     const axiosConfig = {
@@ -185,21 +192,21 @@ class WorkflowProcessBusiness {
       timeout: this.config.elastic.timeout || 30000,
       validateStatus: () => true, // Always resolve, handle errors below
     };
-    log.save('elastic-search-request', { request: axiosConfig });
+    global.log.save('elastic-search-request', { request: axiosConfig });
     let data;
     try {
       const response = await axios(axiosConfig);
       if (response.status >= 200 && response.status < 300) {
         data = response.data;
       } else {
-        log.save('elactic-search-error', { error: response.statusText, status: response.status, request: axiosConfig });
+        global.log.save('elactic-search-error', { error: response.statusText, status: response.status, request: axiosConfig });
         data = undefined;
       }
     } catch (error) {
-      log.save('elactic-search-error', { error: error?.message, request: axiosConfig });
+      global.log.save('elactic-search-error', { error: error?.message, request: axiosConfig });
       data = undefined;
     }
-    log.save('elastic-search-response', { request: axiosConfig, response: {} });
+    global.log.save('elastic-search-response', { request: axiosConfig, response: {} });
 
     let { hits: { total: { value: total } = {}, hits = [] } = {} } = data || {};
 
@@ -258,7 +265,7 @@ class WorkflowProcessBusiness {
    * @returns {Promise<WorkflowEntity>}
    */
   async findById(id) {
-    let workflow = await models.workflow.findById(id);
+    let workflow = await global.models.workflow.findById(id);
 
     if (!workflow) {
       return;
@@ -278,13 +285,13 @@ class WorkflowProcessBusiness {
    * @param {object} data Data.
    */
   async update(id, data) {
-    const workflow = await models.workflow.findById(id);
+    const workflow = await global.models.workflow.findById(id);
 
     if (!workflow) {
       return;
     }
 
-    await models.workflow.update(workflow.id, {
+    await global.models.workflow.update(workflow.id, {
       hasUnresolvedErrors: data.hasUnresolvedErrors,
     });
   }
@@ -295,7 +302,7 @@ class WorkflowProcessBusiness {
    */
   async getTasks(params) {
     if (params.filters['user_ids']) {
-      const units = await models.unit.getAll({
+      const units = await global.models.unit.getAll({
         filters: { heads: params.filters['user_ids'], members: params.filters['user_ids'] },
       });
       const userUnitIds = units.map((v) => v.id);
@@ -308,7 +315,7 @@ class WorkflowProcessBusiness {
         : [params.filters['user_id_list']];
     }
 
-    let tasks = await models.task.getAll(params);
+    let tasks = await global.models.task.getAll(params);
 
     // Prepare usernames.
     if (tasks && tasks.data) {
@@ -362,14 +369,14 @@ class WorkflowProcessBusiness {
    * @param {object} data Data.
    */
   async updateTask(id, data) {
-    const task = await models.task.findById(id);
+    const task = await global.models.task.findById(id);
 
     if (!task) {
       return;
     }
 
-    await models.task.update(task.id, { finished: data.finished });
-    await models.document.update(task.documentId, {
+    await global.models.task.update(task.id, { finished: data.finished });
+    await global.models.document.update(task.documentId, {
       isFinal: data.document.isFinal,
       data: data.document.data,
     });
@@ -382,7 +389,7 @@ class WorkflowProcessBusiness {
    * @returns {Promise<void>}
    */
   async cancelEvent(workflowId, eventId) {
-    const event = await models.event.findById(eventId);
+    const event = await global.models.event.findById(eventId);
 
     if (!event || event.workflowId !== workflowId) {
       throw new Error('Event not found.');
@@ -396,7 +403,7 @@ class WorkflowProcessBusiness {
       throw new Error('Event already done.');
     }
 
-    await models.event.setCancelled(eventId);
+    await global.models.event.setCancelled(eventId);
   }
 
   /**
@@ -440,7 +447,7 @@ class WorkflowProcessBusiness {
     let labels = [];
 
     for (const message of messages) {
-      const firstSequence = _.head(message.sequences);
+      const firstSequence: any = _.head(message.sequences);
 
       if (typeof firstSequence === 'undefined' || typeof firstSequence.sourceRef === 'undefined') {
         continue;
@@ -526,9 +533,9 @@ class WorkflowProcessBusiness {
    */
   async setStatusAndGetWorkflowId({ taskId, status, statusTaskTemplateId }) {
     // Get workflow info.
-    const task = await models.task.findById(taskId);
+    const task = await global.models.task.findById(taskId);
     const { workflowId } = task;
-    const { data: tasks } = await models.task.getAll({
+    const { data: tasks } = await global.models.task.getAll({
       filters: {
         workflow_id: workflowId,
       },
@@ -557,7 +564,7 @@ class WorkflowProcessBusiness {
    * @param {string} workflowId Workflow ID.
    */
   async clearProcess(workflowId) {
-    const workflow = await models.workflow.findById(workflowId);
+    const workflow = await global.models.workflow.findById(workflowId);
 
     if (!workflow) {
       throw new Exceptions.NOT_FOUND();
@@ -570,20 +577,20 @@ class WorkflowProcessBusiness {
     const { filteredMessages, count } = this.deleteDuplicateMessages(workflow.data.messages);
     workflow.data.messages = filteredMessages;
 
-    for (const [key, value] of Object.entries(count.in)) {
+    for (const [key, value] of Object.entries(count.in) as [string, any][]) {
       if (value.count > 2) {
         if (key.includes('event')) {
-          await models.event.deleteEvents(workflow.id, value.templateId);
+          await global.models.event.deleteEvents(workflow.id, value.templateId);
         } else if (key.includes('gateway')) {
-          await models.gateway.deleteGateway(workflow.id, value.templateId);
+          await global.models.gateway.deleteGateway(workflow.id, value.templateId);
         }
 
-        log.save('clear-process-delete', { key, value });
+        global.log.save('clear-process-delete', { key, value });
       }
     }
 
-    log.save('clear-process', { workflowId, filteredMessages });
-    await models.workflow.updateData(workflow.id, workflow.data);
+    global.log.save('clear-process', { workflowId, filteredMessages });
+    await global.models.workflow.updateData(workflow.id, workflow.data);
   }
 
   /**
@@ -644,7 +651,7 @@ class WorkflowProcessBusiness {
       return true;
     });
 
-    log.save('delete-duplicate-messages', { count });
+    global.log.save('delete-duplicate-messages', { count });
 
     return { filteredMessages, count };
   }
@@ -659,26 +666,26 @@ class WorkflowProcessBusiness {
    * @returns {{Promise<Object>}}
    */
   async deleteAllSignaturesFromDocument({ workflowId, documentId, initiator }) {
-    const task = await models.task.findByDocumentId(documentId);
-    const document = await models.document.findById(documentId);
+    const task = await global.models.task.findByDocumentId(documentId);
+    const document = await global.models.document.findById(documentId);
 
     if (task.workflowId !== workflowId) {
-      log.save('delete-signatures-error-wrong-workflow-id', { passedWorkflowId: workflowId, documentId });
+      global.log.save('delete-signatures-error-wrong-workflow-id', { passedWorkflowId: workflowId, documentId });
       throw new Error('Passed wrong workflowId.');
     }
 
     if (task.finished) {
-      log.save('delete-signatures-error-task-finished', { documentId });
+      global.log.save('delete-signatures-error-task-finished', { documentId });
       throw new Error('Task is already finished.');
     }
 
     if (document.isFinal) {
-      log.save('delete-signatures-error-document-final', { documentId });
+      global.log.save('delete-signatures-error-document-final', { documentId });
       throw new Error('Document is already final.');
     }
 
     if (task.deleted) {
-      log.save('delete-signatures-error-task-deleted', { documentId });
+      global.log.save('delete-signatures-error-task-deleted', { documentId });
       throw new Error('Task is deleted.');
     }
     const user = {
@@ -688,14 +695,14 @@ class WorkflowProcessBusiness {
     const historyModelResponses = [];
 
     // Deleting documentSignature.
-    const existingDocumentSignatures = await models.documentSignature.getByDocumentId(documentId);
+    const existingDocumentSignatures = await global.models.documentSignature.getByDocumentId(documentId);
     if (existingDocumentSignatures.length === 0) {
-      log.save('delete-signatures-error-no-signatures-by-documentId', { documentId });
+      global.log.save('delete-signatures-error-no-signatures-by-documentId', { documentId });
       throw new Error('Signatures by documentId doesn\'t exist.');
     }
-    await models.documentSignature.deleteByDocumentId(documentId);
+    await global.models.documentSignature.deleteByDocumentId(documentId);
     const promisesSavingDeletedDocumentSignature = existingDocumentSignatures.map((signature) =>
-      models.signatureRemovalHistory.create(
+      global.models.signatureRemovalHistory.create(
         {
           id: signature.id,
           createdBy: signature.createdBy,
@@ -711,18 +718,18 @@ class WorkflowProcessBusiness {
     historyModelResponses.push(...(await Promise.all(promisesSavingDeletedDocumentSignature)));
 
     // Deleting p7s of pdf file and attachments.
-    const documentAttachmentLinks = ((await models.documentAttachment.getByDocumentId(documentId)) || []).map(({ link }) => link);
+    const documentAttachmentLinks = ((await global.models.documentAttachment.getByDocumentId(documentId)) || []).map(({ link }) => link);
     const fileIdsForP7sSearch = [document.fileId, ...documentAttachmentLinks];
     const existingP7sSignatures = [];
     for (const fileId of fileIdsForP7sSearch) {
       const downloadP7sResponse = await this.downloadP7s(fileId, false, false);
       const responseContent = await Stream.getFileContent(downloadP7sResponse.readableStream);
-      existingP7sSignatures.push(JSON.parse(responseContent.toString('base64')).data);
+      existingP7sSignatures.push(JSON.parse(responseContent.toString()).data);
     }
     await Promise.all(existingP7sSignatures.map(({ id }) => this.deleteP7s(id)));
 
     const promisesSavingDeletedP7s = existingP7sSignatures.map((signature) =>
-      models.signatureRemovalHistory.create(
+      global.models.signatureRemovalHistory.create(
         {
           id: signature.id,
           p7s: signature.p7s,
@@ -739,10 +746,10 @@ class WorkflowProcessBusiness {
     historyModelResponses.push(...(await Promise.all(promisesSavingDeletedP7s)));
 
     // Deleting additionalDataSignature.
-    const existingAdditionalDataSignature = await models.additionalDataSignature.getByDocumentId(documentId);
-    await models.additionalDataSignature.deleteByDocumentId(documentId);
+    const existingAdditionalDataSignature = await global.models.additionalDataSignature.getByDocumentId(documentId);
+    await global.models.additionalDataSignature.deleteByDocumentId(documentId);
     const promisesSavingDeletedAdditionalDataSignature = existingAdditionalDataSignature.map((signature) =>
-      models.signatureRemovalHistory.create(
+      global.models.signatureRemovalHistory.create(
         {
           id: signature.id,
           createdBy: signature.createdBy,
@@ -780,7 +787,7 @@ class WorkflowProcessBusiness {
    * @returns {{Promise<Array>}}
    */
   async getSignatureRemovalHistoryByWorkflowId(workflowId) {
-    return await models.signatureRemovalHistory.getByWorkflowId(workflowId);
+    return await global.models.signatureRemovalHistory.getByWorkflowId(workflowId);
   }
 
   /**
@@ -792,5 +799,3 @@ class WorkflowProcessBusiness {
     return await this.fileStorageService.deleteP7s(id);
   }
 }
-
-module.exports = WorkflowProcessBusiness;

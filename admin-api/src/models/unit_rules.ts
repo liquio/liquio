@@ -38,7 +38,7 @@ export class UnitRulesModel extends Model {
     const whereClause = { unit_rule_type: ruleType };
     const unitRulesRaw = await this.model.findAll({ where: whereClause });
 
-    const unitRules = unitRulesRaw.map((item) => {
+    const unitRules: any = unitRulesRaw.map((item) => {
       return this.prepareEntity(item);
     });
 
@@ -127,7 +127,7 @@ export class UnitRulesModel extends Model {
     return new UnitRulesEntity({
       type: item.unit_rule_type,
       ruleSchema: item.rule_schema,
-    });
+    } as any);
   }
 
   /**

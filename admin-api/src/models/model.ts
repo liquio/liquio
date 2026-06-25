@@ -1,4 +1,4 @@
-import { camelCase } from 'lodash';
+import { camelCase, upperFirst } from 'lodash';
 import { ModelStatic, Sequelize, Model as SequelizeModel } from 'sequelize';
 
 export type PaginationMeta = {
@@ -170,7 +170,7 @@ export class Model {
   async getEntitiesByRelations({ relations, sequelizeModel, entity }) {
     try {
       for (const relation of relations) {
-        const items = await sequelizeModel[`get${_.upperFirst(relation)}`]();
+        const items = await sequelizeModel[`get${upperFirst(relation)}`]();
         if (items) {
           entity[relation] = items.map((item) => item.prepareEntity(item));
         }

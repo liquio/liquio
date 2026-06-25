@@ -69,8 +69,8 @@ export class CustomInterfaceModel extends Model {
       );
 
       // Sequelize model params.
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       // Define singleton.
       CustomInterfaceModel.singleton = this;
@@ -108,7 +108,7 @@ export class CustomInterfaceModel extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    const customInterfaces = await this.model.paginate(sequelizeOptions);
+    const customInterfaces = await (this.model as any).paginate(sequelizeOptions);
 
     customInterfaces.data = customInterfaces.data.map((item) => this.prepareEntity(item));
 

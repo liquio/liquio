@@ -10,7 +10,7 @@ export class GatewayTypeBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!GatewayTypeBusiness.singleton) {
       this.config = config;

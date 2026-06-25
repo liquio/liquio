@@ -52,8 +52,8 @@ export class ElasticReindexLog extends Model {
       );
 
       // Sequelize model params.
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       // Define singleton.
       ElasticReindexLog.singleton = this;
@@ -68,7 +68,7 @@ export class ElasticReindexLog extends Model {
    * @returns
    */
   async create(data) {
-    const reindexLog = await this.model.create(this.prepareForModel(data));
+    const reindexLog: any = await this.model.create(this.prepareForModel(data));
     return new ElasticReindexLogEntity(reindexLog);
   }
 
@@ -132,7 +132,7 @@ export class ElasticReindexLog extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    const entities = await this.model.paginate(sequelizeOptions);
+    const entities = await (this.model as any).paginate(sequelizeOptions);
     entities.data = entities.data.map((item) => this.prepareEntity(item));
 
     return entities;
@@ -181,7 +181,7 @@ export class ElasticReindexLog extends Model {
    * @param {string} [options.timeFrom] Time from (defaults to week ago).
    * @param {string} [options.timeTo] Time to (defaults to now).
    */
-  async getReindexTimeStats(options = {}) {
+  async getReindexTimeStats(options: any = {}) {
     if (!options.bucketSize) {
       options.bucketSize = null;
     }
@@ -237,7 +237,7 @@ export class ElasticReindexLog extends Model {
    * @param {string} [options.timeFrom] Time from (defaults to week ago).
    * @param {string} [options.timeTo] Time to (defaults to now).
    */
-  async getReindexPeriodStats(options = {}) {
+  async getReindexPeriodStats(options: any = {}) {
     if (!options.timeFrom) {
       options.timeFrom = null;
     }

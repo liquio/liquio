@@ -1,16 +1,22 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Exceptions = require('../exceptions');
-const Controller = require('./controller');
-const GatewayBusiness = require('../businesses/gateway');
-const WorkflowBusiness = require('../businesses/workflow');
-const BpmnWorkflowBusiness = require('../businesses/bpmn_workflow');
-const GatewayTemplateEntity = require('../entities/gateway_template');
+import { Exceptions } from '../exceptions';
+import { Controller } from './controller';
+import { GatewayBusiness } from '../businesses/gateway';
+import { WorkflowBusiness } from '../businesses/workflow';
+import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
+import { GatewayTemplateEntity } from '../entities/gateway_template';
 
 /**
  * Gateway controller.
  */
-class GatewayController extends Controller {
+export class GatewayController extends Controller {
+  private static singleton: GatewayController;
+
+  private gatewayBusiness: GatewayBusiness;
+  private workflowBusiness: WorkflowBusiness;
+  private bpmnWorkflowBusiness: BpmnWorkflowBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -36,7 +42,7 @@ class GatewayController extends Controller {
     let savedGatewayTemplateEntities = [];
     let newLastWorkflowHistoryId;
     try {
-      if (config.workflow_editor.disabled === true) {
+      if (global.config.workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -50,7 +56,7 @@ class GatewayController extends Controller {
 
         if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
           const error = new Error('Header Last-Workflow-History-Id expired.');
-          error.details = [{ lastWorkflowHistory: lastWorkflowHistory }];
+          (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
           throw error;
         }
 
@@ -64,7 +70,7 @@ class GatewayController extends Controller {
         const savedGatewayTemplateEntity = await this.gatewayBusiness.createOrUpdate(gatewayEntity);
         savedGatewayTemplateEntities.push(savedGatewayTemplateEntity);
 
-        await log.save('user-created-updated-gateway-template', {
+        await global.log.save('user-created-updated-gateway-template', {
           user,
           data: { savedGatewayTemplateEntity },
         });
@@ -95,14 +101,14 @@ class GatewayController extends Controller {
     const id = paramsData.id;
 
     try {
-      if (config.workflow_editor.disabled === true) {
+      if (global.config.workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
       await this.gatewayBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-deleted-gateway-template', { user, data: { id } });
+      await global.log.save('user-deleted-gateway-template', { user, data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -132,5 +138,3 @@ class GatewayController extends Controller {
     this.responseData(res, gateway);
   }
 }
-
-module.exports = GatewayController;

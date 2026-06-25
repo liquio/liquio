@@ -10,7 +10,7 @@ export class CustomLogBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!CustomLogBusiness.singleton) {
       this.config = config;

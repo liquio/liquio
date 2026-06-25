@@ -12,7 +12,6 @@ import { Models } from './models';
 import { WorkflowHandlerBusiness } from './businesses/workflow_handler';
 import { ElasticBusiness } from './businesses/elastic';
 import { WorkflowBusiness } from './businesses/workflow';
-import { Errors } from './lib/errors';
 import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
@@ -22,9 +21,9 @@ const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
 const SECRET_PATH = process.env.SECRET_PATH;
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_ADMIN_API';
 
-module.exports = (async () => {
+async function main() {
   // Init config.
-  const config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_HANDLER_`);
+  const config: Record<string, any> = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_HANDLER_`);
   if (config.server.token === '') {
     throw new Error('Token must\'n be empty.');
   }
@@ -33,9 +32,6 @@ module.exports = (async () => {
   // Init http client.
   global.httpClient = new HttpClient(config.http_client);
   global.typeOf = typeOf;
-
-  // Init global custom error.
-  Errors.export();
 
   // Init log.
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
@@ -86,4 +82,9 @@ module.exports = (async () => {
   global.businesses = {
     workflow: new WorkflowBusiness(),
   };
-})();
+}
+
+main().catch((err) => {
+  console.error('Error during initialization:', err);
+  process.exit(1);
+});

@@ -10,7 +10,7 @@ export class CustomInterfaceBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!CustomInterfaceBusiness.singleton) {
       this.config = config;

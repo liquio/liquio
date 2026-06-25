@@ -1,7 +1,11 @@
 /**
  * Workflow category business.
  */
-class WorkflowCategoryBusiness {
+export class WorkflowCategoryBusiness {
+  private static singleton: WorkflowCategoryBusiness;
+
+  public config: any;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -23,7 +27,7 @@ class WorkflowCategoryBusiness {
    * @returns {Promise<WorkflowTemplateCategoryEntity>}
    */
   async createOrUpdate(workflowTemplateCategoryEntity) {
-    return await models.workflowTemplateCategory.create(workflowTemplateCategoryEntity);
+    return await global.models.workflowTemplateCategory.create(workflowTemplateCategoryEntity);
   }
 
   /**
@@ -31,7 +35,7 @@ class WorkflowCategoryBusiness {
    * @returns {Promise<WorkflowTemplateCategoryEntity[]>}
    */
   async getWorkflowCategories(params) {
-    return await models.workflowTemplateCategory.getAllWithPagination({
+    return await global.models.workflowTemplateCategory.getAllWithPagination({
       ...params,
     });
   }
@@ -42,7 +46,7 @@ class WorkflowCategoryBusiness {
    * @returns {Promise<WorkflowTemplateCategoryEntity>}
    */
   async deleteById(id) {
-    return await models.workflowTemplateCategory.deleteById(id);
+    return await global.models.workflowTemplateCategory.deleteById(id);
   }
 
   /**
@@ -51,8 +55,6 @@ class WorkflowCategoryBusiness {
    * @returns {Promise<WorkflowTemplateCategoryEntity>}
    */
   async findById(id) {
-    return await models.workflowTemplateCategory.findById(id);
+    return await global.models.workflowTemplateCategory.findById(id);
   }
 }
-
-module.exports = WorkflowCategoryBusiness;
