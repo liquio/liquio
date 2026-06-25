@@ -331,5 +331,3 @@ export class UserValidator extends Validator {
     });
   }
 }
-
-module.exports = UserValidator;

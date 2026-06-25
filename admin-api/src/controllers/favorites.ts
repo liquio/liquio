@@ -6,7 +6,7 @@ import { Controller } from './controller';
 export class FavoritesController extends Controller {
   private static singleton: FavoritesController;
 
-  constructor() {
+  constructor(config?) {
     if (!FavoritesController.singleton) {
       super();
       FavoritesController.singleton = this;

@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import transliteration from 'transliteration';
+import * as transliteration from 'transliteration';
 
 import { Entity } from '../entities/entity';
 import { matchedData } from 'express-validator';
@@ -282,5 +282,3 @@ export class Controller {
     };
   }
 }
-
-module.exports = Controller;

@@ -51,5 +51,3 @@ export class AccessHistoryController extends Controller {
     this.responseData(res, accessHistory, true);
   }
 }
-
-module.exports = AccessHistoryController;

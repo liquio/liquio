@@ -144,5 +144,3 @@ export class MessageTemplateController extends Controller {
     }
   }
 }
-
-module.exports = MessageTemplateController;

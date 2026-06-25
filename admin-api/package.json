@@ -61,6 +61,7 @@
     "@types/jest": "^30.0.0",
     "@types/jsonpath": "^0.2.4",
     "@types/lodash": "^4.17.24",
+    "@types/nock": "^10.0.3",
     "@types/node": "^25.9.3",
     "@types/ws": "^8.18.1",
     "debug": "^4.3.7",

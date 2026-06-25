@@ -1,8 +1,9 @@
-const { TestApp } = require('./test-app');
-const { prepareFixtures, WORKFLOW_FIXTURES, WORKFLOW_TEMPLATE_FIXTURES } = require('./fixtures');
+import { TestApp } from './test-app';
+import { prepareFixtures, WORKFLOW_FIXTURES, WORKFLOW_TEMPLATE_FIXTURES } from './fixtures';
+import type { Response as SupertestResponse } from 'supertest';
 
 describe('Workflow Controller', () => {
-  let app;
+  let app: TestApp;
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -50,7 +51,7 @@ describe('Workflow Controller', () => {
         .get('/workflows')
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
           expect(Array.isArray(response.body.data)).toBe(true);
 
@@ -58,7 +59,7 @@ describe('Workflow Controller', () => {
           expect(response.body.data.length).toBeGreaterThanOrEqual(WORKFLOW_FIXTURES.length);
 
           // Check that each workflow has the expected properties (using camelCase as returned by API)
-          response.body.data.forEach((workflow) => {
+          response.body.data.forEach((workflow: any) => {
             expect(workflow).toHaveProperty('id');
             expect(workflow).toHaveProperty('name');
             expect(workflow).toHaveProperty('createdAt');
@@ -75,7 +76,7 @@ describe('Workflow Controller', () => {
 
           // Verify our test fixtures are present in the response
           WORKFLOW_FIXTURES.forEach((fixture) => {
-            const foundWorkflow = response.body.data.find((w) => w.id === fixture.id);
+            const foundWorkflow = response.body.data.find((w: any) => w.id === fixture.id);
             if (foundWorkflow) {
               // If our fixture is found, verify it has the expected template category
               expect(foundWorkflow.workflowTemplateCategory.id).toBe(WORKFLOW_TEMPLATE_FIXTURES[0].workflow_template_category_id);
@@ -115,7 +116,7 @@ describe('Workflow Controller', () => {
         })
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
           expect(Array.isArray(response.body.data)).toBe(true);
 
@@ -131,7 +132,7 @@ describe('Workflow Controller', () => {
           expect(response.body.pagination.perPage).toBe(10);
 
           // Verify response structure for each workflow template
-          response.body.data.forEach((workflowTemplate) => {
+          response.body.data.forEach((workflowTemplate: any) => {
             expect(workflowTemplate).toHaveProperty('id');
             expect(workflowTemplate).toHaveProperty('name');
             expect(workflowTemplate).toHaveProperty('description');
@@ -240,7 +241,7 @@ describe('Workflow Controller', () => {
         .get(`/workflows/${nonExistentWorkflowId}`)
         .set('token', jwt)
         .expect(404)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('error');
         });
     });
@@ -268,7 +269,7 @@ describe('Workflow Controller', () => {
         .get(`/workflows/${workflowId}`)
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
           expect(response.body.data).toHaveProperty('id');
           expect(response.body.data.id).toBe(workflowId);
@@ -332,7 +333,7 @@ describe('Workflow Controller', () => {
         })
         .set('token', jwt)
         .expect(422)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('errors');
           expect(Array.isArray(response.body.errors)).toBe(true);
         });
@@ -396,7 +397,7 @@ describe('Workflow Controller', () => {
         .send(updateData)
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
           expect(response.body.data).toHaveProperty('id');
           expect(response.body.data.id).toBe(workflowId);
@@ -440,7 +441,7 @@ describe('Workflow Controller', () => {
         .delete(`/workflows/${nonExistentWorkflowId}`)
         .set('token', jwt)
         .expect(404)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('error');
         });
     });
@@ -496,7 +497,7 @@ describe('Workflow Controller', () => {
         .delete(`/workflows/${createdWorkflowId}`)
         .set('token', jwt)
         .expect(202)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
           expect(response.body.data).toHaveProperty('isAccepted');
           expect(response.body.data.isAccepted).toBe(true);
@@ -556,7 +557,7 @@ describe('Workflow Controller', () => {
         })
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
         });
     });
@@ -588,7 +589,7 @@ describe('Workflow Controller', () => {
         })
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
           // The response should include information about the tag operation
           // Note: The exact structure may vary, but we expect a successful response
@@ -626,7 +627,7 @@ describe('Workflow Controller', () => {
         .post(`/bpmn-workflows/${nonExistentWorkflowId}/errors-subscribers`)
         .set('token', jwt)
         .expect(404)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('error');
         });
     });
@@ -720,7 +721,7 @@ describe('Workflow Controller', () => {
         .delete(`/bpmn-workflows/${nonExistentWorkflowId}/errors-subscribers`)
         .set('token', jwt)
         .expect(404)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('error');
         });
     });

@@ -1,4 +1,4 @@
-const WORKFLOW_TEMPLATE_FIXTURES = [
+export const WORKFLOW_TEMPLATE_FIXTURES = [
   {
     id: 161070,
     workflow_template_category_id: 29,
@@ -37,5 +37,3 @@ const WORKFLOW_TEMPLATE_FIXTURES = [
     errors_subscribers: [],
   },
 ];
-
-module.exports = { WORKFLOW_TEMPLATE_FIXTURES };

@@ -134,5 +134,3 @@ export class MassMessagesMailingController extends Controller {
     this.responseData(res, massMessagesMailing, true);
   }
 }
-
-module.exports = MassMessagesMailingController;

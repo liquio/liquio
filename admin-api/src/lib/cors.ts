@@ -19,5 +19,3 @@ class Cors {
     });
   }
 }
-
-module.exports = Cors;

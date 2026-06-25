@@ -213,5 +213,3 @@ export class BpmnWorkflowController extends Controller {
     this.responseData(res, result);
   }
 }
-
-module.exports = BpmnWorkflowController;

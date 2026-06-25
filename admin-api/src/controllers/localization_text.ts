@@ -212,5 +212,3 @@ export class LocalizationTextController extends Controller {
     this.responseThatAccepted(res);
   }
 }
-
-module.exports = LocalizationTextController;

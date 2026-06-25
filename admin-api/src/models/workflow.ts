@@ -226,7 +226,7 @@ export class WorkflowModel extends Model {
 
       if (item.workflowTemplate && item.workflowTemplate.workflowTemplateCategory) {
         const workflowTemplateCategory = item.workflowTemplate.workflowTemplateCategory;
-        const workflowTemplateCategoryEntity = item.workflowTemplate.workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
+        const workflowTemplateCategoryEntity = global.models.workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
 
         workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(workflowTemplateCategoryEntity, true);
       }
@@ -411,7 +411,7 @@ export class WorkflowModel extends Model {
       workflowEntity.workflowTemplate = workflowTemplateEntity && Entity.filterResponse(workflowTemplateEntity, true);
       if (item.workflowTemplate && item.workflowTemplate.workflowTemplateCategory) {
         const workflowTemplateCategory = item.workflowTemplate.workflowTemplateCategory;
-        const workflowTemplateCategoryEntity = item.workflowTemplate.workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
+        const workflowTemplateCategoryEntity = global.models.workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
         workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(workflowTemplateCategoryEntity, true);
       }
 

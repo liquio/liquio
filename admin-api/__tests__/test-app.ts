@@ -1,48 +1,52 @@
-const supertest = require('supertest');
-const portfinder = require('portfinder');
-const pg = require('pg');
-const nock = require('nock');
-const { execSync } = require('child_process');
-const { readFileSync } = require('fs');
-const debug = require('debug');
-const { PostgreSqlContainer } = require('@testcontainers/postgresql');
-const { RedisContainer } = require('@testcontainers/redis');
-const { randomBytes } = require('crypto');
-const jsonwebtoken = require('jsonwebtoken');
-const Multiconf = require('multiconf');
-const redis = require('redis');
+// @ts-nocheck
+import supertest = require('supertest');
+import * as portfinder from 'portfinder';
+import * as pg from 'pg';
+import nock = require('nock');
+import { execSync } from 'child_process';
+import { readFileSync } from 'fs';
+import createDebug = require('debug');
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer } from '@testcontainers/redis';
+import { randomBytes } from 'crypto';
+import * as jsonwebtoken from 'jsonwebtoken';
+import * as Multiconf from 'multiconf';
+import * as redis from 'redis';
 
-const Db = require('../src/lib/db');
-const Log = require('../src/lib/log');
-const ConsoleLogProvider = require('../src/lib/log/providers/console');
-const MessageQueue = require('../src/lib/message_queue');
-const RouterService = require('../src/services/router');
-const Models = require('../src/models');
-const WorkflowHandlerBusiness = require('../src/businesses/workflow_handler');
-const WorkflowBusiness = require('../src/businesses/workflow');
-const Errors = require('../src/lib/errors');
-const HttpClient = require('../src/lib/http_client');
-const typeOf = require('../src/lib/type_of');
+import { Db } from '../src/lib/db';
+import { Log } from '../src/lib/log';
+import { ConsoleLogProvider } from '../src/lib/log/providers/console';
+import { MessageQueue } from '../src/lib/message_queue';
+import { RouterService } from '../src/services/router';
+import { Models } from '../src/models';
+import { WorkflowHandlerBusiness } from '../src/businesses/workflow_handler';
+import { WorkflowBusiness } from '../src/businesses/workflow';
+import { HttpClient } from '../src/lib/http_client';
+import { typeOf } from '../src/lib/type_of';
+
+const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout
 jest.setTimeout(30000);
 
 // Mock the RabbitMQ connection
 jest.mock('../src/lib/message_queue', () => {
-  return jest.fn().mockImplementation(() => {
+  const MockMessageQueue = jest.fn().mockImplementation(() => {
     return {
       init: jest.fn(),
       produce: jest.fn(),
     };
   });
+
+  return { MessageQueue: MockMessageQueue };
 });
 
 // Mock the log module
 jest.mock('../src/lib/log', () => {
-  const debug = require('debug');
   const originalLog = jest.requireActual('../src/lib/log');
+  const LogClass = originalLog.Log || originalLog.default || originalLog;
   const logs = [];
-  return class extends originalLog {
+  class MockLog extends LogClass {
     save(...args) {
       debug('test:log')(...args);
       logs.push(args);
@@ -51,7 +55,9 @@ jest.mock('../src/lib/log', () => {
     getLogs() {
       return logs;
     }
-  };
+  }
+
+  return { Log: MockLog };
 });
 
 // Mock the configuration module
@@ -62,7 +68,7 @@ const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_ADM
 // Obtain the default configuration object
 const defaultConfig = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_HANDLER_`);
 
-class TestApp {
+export class TestApp {
   static pgContainer;
   static redisContainer;
 
@@ -201,7 +207,7 @@ class TestApp {
 
     // Create a unique database for each test run
     if (isExternalDb) {
-      const uniqueDbName = `test_db_${crypto.randomBytes(8).toString('hex')}`;
+      const uniqueDbName = `test_db_${randomBytes(8).toString('hex')}`;
       await client.query(`CREATE DATABASE ${uniqueDbName};`);
       dbConfig.database = uniqueDbName;
     }
@@ -247,14 +253,12 @@ class TestApp {
   async init() {
     // Merge config with overrides
     const config = { ...defaultConfig, ...configOverride };
+    this.config = config;
     global.config = config;
 
     // Init http client.
     global.httpClient = new HttpClient(config.http_client);
     global.typeOf = typeOf;
-
-    // Init global custom error.
-    Errors.export();
 
     // Init log.
     const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
@@ -293,7 +297,7 @@ class TestApp {
 
   async listen() {
     // Init router.
-    this.routerService = new RouterService(config);
+    this.routerService = new RouterService(this.config);
     await this.routerService.init();
   }
 
@@ -337,8 +341,8 @@ class TestApp {
     };
   }
 
-  nock(...args) {
-    return args.length === 0 ? nock : nock(...args);
+  nock(...args: any[]) {
+    return nock(...args);
   }
 
   /**
@@ -379,4 +383,3 @@ class TestApp {
   }
 }
 
-module.exports = { TestApp };

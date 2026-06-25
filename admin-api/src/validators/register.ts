@@ -307,7 +307,7 @@ export class RegisterValidator extends Validator {
         in: ['body'],
         optional: true,
         isString: true,
-      },
+      } as any,
       ['toSearchString']: {
         in: ['body'],
         optional: true,
@@ -402,7 +402,7 @@ export class RegisterValidator extends Validator {
         in: ['body'],
         optional: true,
         isString: true,
-      },
+      } as any,
       ['toSearchString']: {
         in: ['body'],
         optional: true,
@@ -631,7 +631,6 @@ export class RegisterValidator extends Validator {
         in: ['query'],
         optional: true,
         isString: true,
-        toString: true,
       },
     });
   }

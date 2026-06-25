@@ -217,5 +217,3 @@ export class Model {
     };
   }
 }
-
-module.exports = Model;

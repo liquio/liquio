@@ -1,8 +1,9 @@
-const { TestApp } = require('./test-app');
-const { prepareFixtures } = require('./fixtures');
+import { TestApp } from './test-app';
+import { prepareFixtures } from './fixtures';
+import type { Response as SupertestResponse } from 'supertest';
 
 describe('Workflow Process Controller', () => {
-  let app;
+  let app: TestApp;
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -51,7 +52,7 @@ describe('Workflow Process Controller', () => {
         .get('/workflow-processes')
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
           expect(Array.isArray(response.body.data)).toBe(true);
 
@@ -111,7 +112,7 @@ describe('Workflow Process Controller', () => {
         })
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('pagination');
           expect(response.body.pagination.currentPage).toBe(1);
           expect(response.body.pagination.perPage).toBe(5);
@@ -142,7 +143,7 @@ describe('Workflow Process Controller', () => {
         })
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('data');
           expect(Array.isArray(response.body.data)).toBe(true);
         });
@@ -208,7 +209,7 @@ describe('Workflow Process Controller', () => {
           .get(`/workflow-processes/${workflowProcessId}`)
           .set('token', jwt)
           .expect(200)
-          .expect((response) => {
+          .expect((response: SupertestResponse) => {
             expect(response.body).toHaveProperty('data');
             expect(response.body.data).toHaveProperty('id');
             expect(response.body.data.id).toBe(workflowProcessId);
@@ -465,7 +466,7 @@ describe('Workflow Process Controller', () => {
         .reply(200, [{ userId: '682c3749b09b9b183bf98a02', first_name: 'Test', last_name: 'User' }]);
     };
 
-    const requestTasks = ({ jwt, search }) => {
+    const requestTasks = ({ jwt, search }: { jwt: string; search?: string }) => {
       const request = app.request().get('/workflow-processes/tasks').set('token', jwt);
 
       if (typeof search === 'string') {
@@ -600,7 +601,7 @@ describe('Workflow Process Controller', () => {
         .query({ page: 1, count: 10 })
         .set('token', jwt)
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body.pagination.currentPage).toBe(1);
           expect(response.body.pagination.perPage).toBe(10);
           expect(response.body.data.length).toBeLessThanOrEqual(10);
@@ -761,7 +762,7 @@ describe('Workflow Process Controller', () => {
         .delete('/workflow-processes/a26753f0-1119-11ef-b95e-15b9ffbcc467/documents/00000000-0000-0000-0000-000000000002/signatures')
         .set('token', jwt)
         .expect(500) // Expecting 500 since document/signatures likely don't exist
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toHaveProperty('error');
         });
     });

@@ -81,5 +81,3 @@ export class LoginHistoryController extends Controller {
     this.responseData(res, loginHistory, true);
   }
 }
-
-module.exports = LoginHistoryController;

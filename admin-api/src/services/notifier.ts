@@ -252,5 +252,3 @@ export class NotifierService {
     );
   }
 }
-
-module.exports = NotifierService;

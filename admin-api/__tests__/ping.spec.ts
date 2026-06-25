@@ -1,8 +1,10 @@
-const { TestApp } = require('./test-app');
-const { prepareFixtures } = require('./fixtures');
+import type { Response as SupertestResponse } from 'supertest';
+
+import { TestApp } from './test-app';
+import { prepareFixtures } from './fixtures';
 
 describe('Ping Controller', () => {
-  let app;
+  let app: TestApp;
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -31,7 +33,7 @@ describe('Ping Controller', () => {
         .request()
         .get('/test/ping')
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body.data).toHaveProperty('message', 'pong');
           expect(response.body.data).toHaveProperty('processPid');
           expect(typeof response.body.data.processPid).toBe('number');
@@ -43,7 +45,7 @@ describe('Ping Controller', () => {
         .request()
         .get('/test/ping?health_check=true')
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body.data).toHaveProperty('message', 'pong');
           expect(response.body.data).toHaveProperty('processPid');
           expect(typeof response.body.data.processPid).toBe('number');

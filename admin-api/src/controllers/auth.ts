@@ -422,5 +422,3 @@ export class AuthController extends Controller {
     }
   }
 }
-
-module.exports = AuthController;
