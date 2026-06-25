@@ -1,12 +1,16 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const UserAdminActionBusiness = require('../businesses/user_admin_action');
+import { Controller } from './controller';
+import { UserAdminActionBusiness } from '../businesses/user_admin_action';
 
 /**
  * User admin action controller.
  */
-class UserAdminActionController extends Controller {
+export class UserAdminActionController extends Controller {
+  private static singleton: UserAdminActionController;
+
+  private userAdminActionBusiness: UserAdminActionBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -54,5 +58,3 @@ class UserAdminActionController extends Controller {
     this.responseData(res, userAdminActionList, true);
   }
 }
-
-module.exports = UserAdminActionController;

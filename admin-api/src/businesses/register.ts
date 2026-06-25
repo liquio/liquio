@@ -18,7 +18,7 @@ export class RegisterBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!RegisterBusiness.singleton) {
       this.config = config;

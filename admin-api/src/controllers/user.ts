@@ -1,19 +1,23 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const UserBusiness = require('../businesses/user');
-const {
+import { Controller } from './controller';
+import { UserBusiness } from '../businesses/user';
+import {
   UNIT_ADMIN_UNIT,
   SECURITY_ADMIN_UNIT,
   SYSTEM_ADMIN_UNIT,
   READONLY_SECURITY_ADMIN_UNIT,
   READONLY_SYSTEM_ADMIN_UNIT,
-} = require('../constants/unit');
+} from '../constants/unit';
 
 /**
  * User controller.
  */
-class UserController extends Controller {
+export class UserController extends Controller {
+  private static singleton: UserController;
+  
+  private userBusiness: UserBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -115,7 +119,7 @@ class UserController extends Controller {
         return this.responseThatAccepted(res);
       }
 
-      await log.save('user-updated-user', {
+      await global.log.save('user-updated-user', {
         user: this.getRequestUserBaseInfo(req),
         data: data,
       });
@@ -141,7 +145,7 @@ class UserController extends Controller {
         return this.responseThatAccepted(res);
       }
 
-      await log.save('user-blocked-user', {
+      await global.log.save('user-blocked-user', {
         user: this.getRequestUserBaseInfo(req),
         data: { id },
       });
@@ -167,7 +171,7 @@ class UserController extends Controller {
         return this.responseThatAccepted(res);
       }
 
-      await log.save('user-unblocked-user', {
+      await global.log.save('user-unblocked-user', {
         user: this.getRequestUserBaseInfo(req),
         data: { id },
       });
@@ -199,7 +203,7 @@ class UserController extends Controller {
       }
 
       // Log.
-      await log.save('user-enabled-role-admin', {
+      await global.log.save('user-enabled-role-admin', {
         user: currentUser,
         data: { id, isCurrentAuthClient },
       });
@@ -233,7 +237,7 @@ class UserController extends Controller {
       }
 
       // Log.
-      await log.save('user-disabled-role-admin', {
+      await global.log.save('user-disabled-role-admin', {
         user: currentUser,
         data: { id, isCurrentAuthClient },
       });
@@ -257,12 +261,12 @@ class UserController extends Controller {
     const id = paramsData.id;
 
     try {
-      const deleted = await this.userBusiness.deleteUser(id, ipn, this.getRequestUserBaseInfo(req));
+      const deleted = await this.userBusiness.deleteUser(id, ipn);
       if (deleted === true) {
         return this.responseThatAccepted(res);
       }
 
-      await log.save('user-deleted-user', { user: this.getRequestUserBaseInfo(req), data: { id, ipn } });
+      await global.log.save('user-deleted-user', { user: this.getRequestUserBaseInfo(req), data: { id, ipn } });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -277,7 +281,7 @@ class UserController extends Controller {
    */
   async sendMessageToAllUsers(req, res) {
     const body = matchedData(req, { locations: ['body'] });
-    log.save('send-message-to-all', { body });
+    global.log.save('send-message-to-all', { body });
 
     let result;
     try {
@@ -396,5 +400,3 @@ class UserController extends Controller {
     }
   }
 }
-
-module.exports = UserController;

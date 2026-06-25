@@ -40,7 +40,7 @@ export class WorkflowController extends Controller {
   async create(req, res) {
     let savedWorkflowTemplateEntity;
     try {
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
       if (this.config.workflow_editor?.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
@@ -56,7 +56,7 @@ export class WorkflowController extends Controller {
       savedWorkflowTemplateEntity = await this.workflowBusiness.create(workflowTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-created-workflow', { user, data: savedWorkflowTemplateEntity });
+      await global.log.save('user-created-workflow', { user, data: savedWorkflowTemplateEntity });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -74,14 +74,14 @@ export class WorkflowController extends Controller {
 
     try {
       const { id } = matchedData(req, { locations: ['params'] });
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       if (this.config.workflow_editor?.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
       const unitIds = req.authUserUnitIds;
-      const workflowTemplate = await this.workflowBusiness.findById(id, { unitIds });
+      const workflowTemplate = await this.workflowBusiness.findById(id);
       if (!workflowTemplate) {
         return this.responseError(res, 'Not found.', 404);
       }
@@ -92,7 +92,7 @@ export class WorkflowController extends Controller {
 
       if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
         const error = new Error('Header Last-Workflow-History-Id expired.');
-        error.details = [{ lastWorkflowHistory: lastWorkflowHistory }];
+        (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
         throw error;
       }
 
@@ -110,7 +110,7 @@ export class WorkflowController extends Controller {
 
       savedWorkflowTemplateEntity = await this.workflowBusiness.update(workflowTemplateEntity);
 
-      await log.save('user-updated-workflow', { user, data: savedWorkflowTemplateEntity });
+      await global.log.save('user-updated-workflow', { user, data: savedWorkflowTemplateEntity });
 
       // Auto save workflow process.
       const workflowHistory = await this.bpmnWorkflowBusiness.autoSaveVersion(id, { user });
@@ -217,7 +217,7 @@ export class WorkflowController extends Controller {
       await this.workflowBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-deleted-workflow', { user, data: { id } });
+      await global.log.save('user-deleted-workflow', { user, data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

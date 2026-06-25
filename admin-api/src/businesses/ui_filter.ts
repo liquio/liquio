@@ -10,7 +10,7 @@ export class UIFilterBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!UIFilterBusiness.singleton) {
       this.config = config;

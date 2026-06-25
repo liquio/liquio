@@ -17,7 +17,7 @@ export class UnitAccessBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!UnitAccessBusiness.singleton) {
       this.config = config;

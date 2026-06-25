@@ -116,7 +116,7 @@ export class RouterService {
         try {
           message = JSON.parse(message);
         } catch (error) {
-          log.save('websocket-parse-message-error', error.message);
+          global.log.save('websocket-parse-message-error', error.message);
         }
         try {
           this.wss.clients.forEach((client) => {
@@ -127,9 +127,9 @@ export class RouterService {
 
           ws.message = message;
 
-          log.save('websocket-message', ws.message);
+          global.log.save('websocket-message', ws.message);
         } catch (error) {
-          log.save('websocket-error', error.message);
+          global.log.save('websocket-error', error.message);
         }
       });
     });
@@ -1759,7 +1759,7 @@ export class RouterService {
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
       this.server = app.listen(port, hostname, () => {
-        log.save('server-listening-started', `Server listening started at "http://${hostname}:${port}".`);
+        global.log.save('server-listening-started', `Server listening started at "http://${hostname}:${port}".`);
         resolve();
       });
     });

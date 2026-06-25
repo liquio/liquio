@@ -1,16 +1,21 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const Stream = require('../lib/stream');
-const UnitBusiness = require('../businesses/unit');
-const UnitEntity = require('../entities/unit');
-const CustomLogs = require('../services/custom_logs');
-const { ADMIN_UNITS } = require('../constants/unit');
+import { Controller } from './controller';
+import { Stream } from '../lib/stream';
+import { UnitBusiness } from '../businesses/unit';
+import { UnitEntity } from '../entities/unit';
+import { CustomLogs } from '../services/custom_logs';
+import { ADMIN_UNITS } from '../constants/unit';
 
 /**
  * Unit controller.
  */
-class UnitController extends Controller {
+export class UnitController extends Controller {
+  private static singleton: UnitController;
+
+  private unitBusiness: UnitBusiness;
+  private customLogs: CustomLogs;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -33,7 +38,7 @@ class UnitController extends Controller {
    */
   async create(req, res) {
     try {
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const unitEntity = new UnitEntity(bodyData);
 
@@ -41,7 +46,7 @@ class UnitController extends Controller {
 
       const afterUpdatedUnit = await this.unitBusiness.create(unitEntity, currentUser);
 
-      await log.save('user-created-unit', { user: currentUser, data: afterUpdatedUnit });
+      await global.log.save('user-created-unit', { user: currentUser, data: afterUpdatedUnit });
 
       this.responseData(res, afterUpdatedUnit);
 
@@ -64,7 +69,7 @@ class UnitController extends Controller {
   async update(req, res) {
     try {
       const { id } = matchedData(req, { locations: ['params'] });
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const unitEntity = new UnitEntity({
         id,
@@ -102,7 +107,7 @@ class UnitController extends Controller {
         removedMembersIpn,
       } = await this.unitBusiness.update(req.authUserUnitIds, unitEntity, currentUser);
 
-      await log.save('user-updated-unit', {
+      await global.log.save('user-updated-unit', {
         user: currentUser,
         data: afterUpdatedUnit,
         unitId: id,
@@ -151,10 +156,10 @@ class UnitController extends Controller {
           id,
           heads,
           currentUser,
-        })) || {};
+        } as any)) || {};
 
       const isSuccess = afterUpdatedUnit.heads.length > beforeUpdatedUnit.heads.length;
-      await log.save('user-added-heads-unit', {
+      await global.log.save('user-added-heads-unit', {
         user: currentUser,
         data: { isSuccess, beforeUpdatedUnit, afterUpdatedUnit },
         unitId: id,
@@ -196,7 +201,7 @@ class UnitController extends Controller {
         })) || {};
 
       const isSuccess = afterUpdatedUnit.heads.length < beforeUpdatedUnit.heads.length;
-      await log.save('user-removed-heads-unit', {
+      await global.log.save('user-removed-heads-unit', {
         user: currentUser,
         data: { isSuccess, beforeUpdatedUnit, afterUpdatedUnit },
         unitId: id,
@@ -238,10 +243,10 @@ class UnitController extends Controller {
           id,
           members,
           currentUser,
-        })) || {};
+        } as any)) || {};
 
       const isSuccess = afterUpdatedUnit.members.length > beforeUpdatedUnit.members.length;
-      await log.save('user-added-members-unit', {
+      await global.log.save('user-added-members-unit', {
         user: currentUser,
         data: { isSuccess, beforeUpdatedUnit, afterUpdatedUnit },
         unitId: id,
@@ -283,7 +288,7 @@ class UnitController extends Controller {
         })) || {};
 
       const isSuccess = afterUpdatedUnit.members.length < beforeUpdatedUnit.members.length;
-      await log.save('user-removed-members-unit', {
+      await global.log.save('user-removed-members-unit', {
         user: currentUser,
         data: { isSuccess, beforeUpdatedUnit, afterUpdatedUnit },
         unitId: id,
@@ -381,7 +386,7 @@ class UnitController extends Controller {
 
       await this.unitBusiness.deleteById(id, beforeUpdatedUnit, currentUser);
 
-      await log.save('user-deleted-unit', { user: currentUser, data: { id } });
+      await global.log.save('user-deleted-unit', { user: currentUser, data: { id } });
 
       this.responseThatAccepted(res);
 
@@ -473,7 +478,7 @@ class UnitController extends Controller {
    * @param {object} res HTTP response.
    */
   async createRules(req, res) {
-    const bodyData = matchedData(req, { locations: ['body'] });
+    const bodyData: any = matchedData(req, { locations: ['body'] });
 
     let createdUnitsRules;
     try {
@@ -491,7 +496,7 @@ class UnitController extends Controller {
    * @param {object} res HTTP response.
    */
   async updateRulesByType(req, res) {
-    const bodyData = matchedData(req, { locations: ['body'] });
+    const bodyData: any = matchedData(req, { locations: ['body'] });
 
     let updatedUnitsRules;
     try {
@@ -525,7 +530,7 @@ class UnitController extends Controller {
    * @param {object} res HTTP response.
    */
   async deleteRulesByType(req, res) {
-    const queryData = matchedData(req, { locations: ['query'] });
+    const queryData: any = matchedData(req, { locations: ['query'] });
 
     let result;
     try {
@@ -544,5 +549,3 @@ class UnitController extends Controller {
     };
   }
 }
-
-module.exports = UnitController;

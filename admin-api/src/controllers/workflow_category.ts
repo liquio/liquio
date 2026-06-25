@@ -1,13 +1,17 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const WorkflowCategoryBusiness = require('../businesses/workflow_category');
-const WorkflowTemplateCategoryEntity = require('../entities/workflow_template_category');
+import { Controller } from './controller';
+import { WorkflowCategoryBusiness } from '../businesses/workflow_category';
+import { WorkflowTemplateCategoryEntity } from '../entities/workflow_template_category';
 
 /**
  * Workflow category controller.
  */
-class WorkflowCategoryController extends Controller {
+export class WorkflowCategoryController extends Controller {
+  private static singleton: WorkflowCategoryController;
+
+  private workflowCategoryBusiness: WorkflowCategoryBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -30,14 +34,14 @@ class WorkflowCategoryController extends Controller {
   async create(req, res) {
     let savedWorkflowTemplateCategoryEntity;
     try {
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const workflowTemplateEntity = new WorkflowTemplateCategoryEntity(bodyData);
 
       savedWorkflowTemplateCategoryEntity = await this.workflowCategoryBusiness.createOrUpdate(workflowTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-created-workflow-category', { user, data: savedWorkflowTemplateCategoryEntity });
+      await global.log.save('user-created-workflow-category', { user, data: savedWorkflowTemplateCategoryEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -54,7 +58,7 @@ class WorkflowCategoryController extends Controller {
     let savedWorkflowTemplateCategoryEntity;
     try {
       const { id } = matchedData(req, { locations: ['params'] });
-      const bodyData = matchedData(req, { locations: ['body'] });
+      const bodyData: any = matchedData(req, { locations: ['body'] });
 
       const workflowTemplateEntity = new WorkflowTemplateCategoryEntity({
         id,
@@ -64,7 +68,7 @@ class WorkflowCategoryController extends Controller {
       savedWorkflowTemplateCategoryEntity = await this.workflowCategoryBusiness.createOrUpdate(workflowTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-updated-workflow-category', { user, data: savedWorkflowTemplateCategoryEntity });
+      await global.log.save('user-updated-workflow-category', { user, data: savedWorkflowTemplateCategoryEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -112,7 +116,7 @@ class WorkflowCategoryController extends Controller {
       await this.workflowCategoryBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-deleted-workflow-category', { user, data: { id } });
+      await global.log.save('user-deleted-workflow-category', { user, data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -142,5 +146,3 @@ class WorkflowCategoryController extends Controller {
     this.responseData(res, bpmnWorkflow);
   }
 }
-
-module.exports = WorkflowCategoryController;

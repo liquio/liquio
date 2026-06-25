@@ -98,6 +98,6 @@ export class LogsBroadcasting {
     }, DEFAULT_HEARTBEAT_TIMEOUT);
     webSocketServer.on('close', () => clearInterval(heartbeatInterval));
 
-    log.save('logs-broadcasting-started', { port: port });
+    global.log.save('logs-broadcasting-started', { port: port });
   }
 }

@@ -15,27 +15,27 @@ export class Db {
         const sequelize = new Sequelize(config.database, config.username, config.password, config);
 
         await sequelize.authenticate();
-        log.save('db-connection', 'Connection to DB has been established successfully.');
+        global.log.save('db-connection', 'Connection to DB has been established successfully.');
 
         sequelize.beforeConnect(() => {
-          log.save('db-connection-opening');
+          global.log.save('db-connection-opening');
         });
 
         sequelize.afterConnect(() => {
-          log.save('db-connection-opened');
+          global.log.save('db-connection-opened');
         });
 
         sequelize.beforeDisconnect(() => {
-          log.save('db-connection-closing');
+          global.log.save('db-connection-closing');
         });
 
         sequelize.afterDisconnect(() => {
-          log.save('db-connection-closed');
+          global.log.save('db-connection-closed');
         });
 
         Db.singleton = sequelize;
       } catch (error) {
-        log.save('Unable to connect to the DB', error);
+        global.log.save('Unable to connect to the DB', error);
         throw error;
       }
     }

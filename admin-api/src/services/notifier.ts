@@ -127,7 +127,7 @@ export class NotifierService {
     }
   }
 
-  async getMessageTemplates(params) {
+  async getMessageTemplates(params?) {
     const query = params ? this.queryParamsToString(params) : '';
     return HttpRequest.send({
       url: `${this.server}:${this.port}/template?${query}`,

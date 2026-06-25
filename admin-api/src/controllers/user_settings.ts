@@ -1,13 +1,17 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const UserSettingsBusiness = require('../businesses/user_settings');
-const { UnauthorizedError } = require('../lib/errors');
+import { Controller } from './controller';
+import { UserSettingsBusiness } from '../businesses/user_settings';
+import { UnauthorizedError } from '../lib/errors';
 
 /**
  * User settings controller.
  */
-class UserSettingsController extends Controller {
+export class UserSettingsController extends Controller {
+  private static singleton: UserSettingsController;
+
+  private userSettingsBusiness: UserSettingsBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -60,5 +64,3 @@ class UserSettingsController extends Controller {
     }
   }
 }
-
-module.exports = UserSettingsController;

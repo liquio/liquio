@@ -46,7 +46,7 @@ class SystemNotifier {
 
       // Do request to send emails.
       const url = `${this.emailServer}:${this.emailPort}${this.emailRoutes.sendEmail}`;
-      log.save('system-notifier-email-sending-request', { url, body });
+      global.log.save('system-notifier-email-sending-request', { url, body });
       const response = await HttpRequest.send({
         url,
         method: HttpRequest.Methods.POST,
@@ -56,14 +56,14 @@ class SystemNotifier {
         },
         body,
       });
-      log.save('system-notifier-email-sending-response', response);
+      global.log.save('system-notifier-email-sending-response', response);
 
       return {
         data: bodyObject,
         response,
       };
     } catch (error) {
-      log.save('system-notifier-email-sending-error', error.message);
+      global.log.save('system-notifier-email-sending-error', error.message);
       throw error;
     }
   }
