@@ -1,4 +1,4 @@
-const BASE_UNIT_FIXTURES = [
+export const BASE_UNIT_FIXTURES = [
   {
     'id': 1000000043,
     'parent_id': null,
@@ -324,6 +324,4 @@ const BASE_UNIT_FIXTURES = [
 ];
 
 // Additional test units for specific scenarios
-const UNIT_FIXTURES = [];
-
-module.exports = { BASE_UNIT_FIXTURES, UNIT_FIXTURES };
+export const UNIT_FIXTURES = [];

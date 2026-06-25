@@ -1,10 +1,24 @@
-const HttpRequest = require('./http_request');
-const { getTraceId } = require('./async_local_storage');
+import { HttpRequest } from './http_request';
+import { getTraceId } from './async_local_storage';
 
 /**
  * System Notifier.
  */
-class SystemNotifier {
+export class SystemNotifier {
+  private static singleton: SystemNotifier;
+
+  private adminUrl: string;
+  private emailServer: string;
+  private emailPort: number;
+  private emailRoutes: any;
+  private emailTimeout: number;
+  private emailUser: string;
+  private emailPassword: string;
+  private headers: any;
+  private emails: string[];
+  private emailSubject: string;
+  private emailBody: string;
+
   /**
    * System Notifier constructor.
    */
@@ -68,5 +82,3 @@ class SystemNotifier {
     }
   }
 }
-
-module.exports = SystemNotifier;

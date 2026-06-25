@@ -376,5 +376,3 @@ export class UserBusiness {
     return this.authService.createLocalUser(options);
   }
 }
-
-module.exports = UserBusiness;

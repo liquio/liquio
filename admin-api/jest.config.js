@@ -10,3 +10,5 @@ export const testEnvironment = 'node';
 export const testMatch = ['**/__tests__/**/*.+(spec|e2e.spec).[tj]s?(x)', '**/(*.)+(spec|test).[tj]s?(x)'];
 export const verbose = true;
 export const testPathIgnorePatterns = ['/dist/', '/node_modules/', '/src/controllers/test.ts'];
+export const modulePathIgnorePatterns = ['<rootDir>/dist/'];
+export const watchPathIgnorePatterns = ['<rootDir>/dist/'];

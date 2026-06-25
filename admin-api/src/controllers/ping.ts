@@ -1,8 +1,8 @@
 import { Controller } from './controller';
-import { Auth } from '../services/auth';
+import { AuthService } from '../services/auth';
 import { RegisterService } from '../services/register';
 import { TaskService } from '../services/task';
-import { NotifyService } from '../services/notifier';
+import { NotifierService } from '../services/notifier';
 
 // Constants.
 const MESSAGE_PONG = 'pong';
@@ -18,6 +18,13 @@ const DEFAULT_ENVIRONMENT = '0';
  * Ping controller.
  */
 export class PingController extends Controller {
+  private static singleton: PingController;
+
+  private auth: AuthService;
+  private registerService: RegisterService;
+  private taskService: TaskService;
+  private notifyService: NotifierService;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -26,10 +33,10 @@ export class PingController extends Controller {
     // Define singleton.
     if (!PingController.singleton) {
       super(config);
-      this.auth = new Auth(config.auth);
+      this.auth = new AuthService(config.auth);
       this.registerService = new RegisterService();
       this.taskService = new TaskService();
-      this.notifyService = new NotifyService();
+      this.notifyService = new NotifierService();
       PingController.singleton = this;
     }
     return PingController.singleton;
@@ -46,7 +53,7 @@ export class PingController extends Controller {
 
     // Prepare response data.
     const processPid = process.pid;
-    const responseData = {
+    const responseData: any = {
       processPid,
       message: MESSAGE_PONG,
     };
@@ -153,7 +160,7 @@ export class PingController extends Controller {
    * @param {string} serviceVersion Service version.
    */
   checkServiceVersion(serviceName, serviceVersion) {
-    const serviceVersionInfo = config.versions && config.versions.services.find((v) => v.name === serviceName);
+    const serviceVersionInfo = global.config.versions && global.config.versions.services.find((v) => v.name === serviceName);
     const serviceMinVersion = (serviceVersionInfo && serviceVersionInfo.minVersion) || DEFAULT_VERSION;
     if (!serviceMinVersion || !serviceVersion) {
       global.log.save('can-not-find-service-min-version');

@@ -149,7 +149,7 @@ export class WorkflowTemplateModel extends Model {
       let workflowTemplateEntity: any = this.prepareEntity(item);
 
       if (item.workflowTemplateCategory) {
-        workflowTemplateEntity.workflowTemplateCategory = item.workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
+        workflowTemplateEntity.workflowTemplateCategory = global.models.workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
       }
 
       if (item.get('tags')) {
@@ -274,7 +274,7 @@ export class WorkflowTemplateModel extends Model {
       let workflowTemplateEntity: any = this.prepareEntity(item);
 
       if (item.workflowTemplateCategory) {
-        workflowTemplateEntity.workflowTemplateCategory = item.workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
+        workflowTemplateEntity.workflowTemplateCategory = global.models.workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
       }
 
       return workflowTemplateEntity;

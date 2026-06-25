@@ -2,7 +2,7 @@ import { Response } from 'node-fetch';
 import { HTTPRequestError, HTTPResponseError } from './errors';
 
 // Fix import node-fetch for CommonJS modules. https://github.com/node-fetch/node-fetch/blob/HEAD/docs/v3-UPGRADE-GUIDE.md
-const nodeFetch = (...args: {}[]) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const nodeFetch = (...args: [string | URL, any?]) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const getAbortError = () => import('node-fetch').then(({ AbortError }) => AbortError);
 
 const DEFAULT_REQUEST_TIMEOUT = 60000; // 1 minute.
@@ -25,7 +25,7 @@ export class HttpClient {
    * @param {boolean} [options.isDoNotCheckHTTPErrorCode]
    * @return {Promise<import('node-fetch').Response>}
    */
-  async request(url: string | URL, init = {}, meta: any, options = {}) {
+  async request(url: string | URL, init = {}, meta: any, options: any = {}) {
     global.log.save('http-client-request-options', { meta, url, init });
 
     const { protocol, host } = new URL(url);
@@ -48,7 +48,7 @@ export class HttpClient {
       // Fix import node-fetch for CommonJS modules. https://github.com/node-fetch/node-fetch/blob/HEAD/docs/v3-UPGRADE-GUIDE.md
       const AbortError = await getAbortError();
       if (error instanceof AbortError) {
-        error.code = 'ETIMEDOUT';
+        (error as any).code = 'ETIMEDOUT';
       }
 
       global.log.save('http-client-request-error', {

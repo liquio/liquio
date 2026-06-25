@@ -1,6 +1,10 @@
-import Sequelize from 'sequelize';
+import { Sequelize } from 'sequelize';
 
 export class Db {
+  private static singleton: Db;
+
+  private static timezone: string;
+
   constructor() {
     throw new Error('Constructor is private.');
   }
@@ -17,19 +21,19 @@ export class Db {
         await sequelize.authenticate();
         global.log.save('db-connection', 'Connection to DB has been established successfully.');
 
-        sequelize.beforeConnect(() => {
+        Sequelize.beforeConnect(() => {
           global.log.save('db-connection-opening');
         });
 
-        sequelize.afterConnect(() => {
+        Sequelize.afterConnect(() => {
           global.log.save('db-connection-opened');
         });
 
-        sequelize.beforeDisconnect(() => {
+        Sequelize.beforeDisconnect(() => {
           global.log.save('db-connection-closing');
         });
 
-        sequelize.afterDisconnect(() => {
+        Sequelize.afterDisconnect(() => {
           global.log.save('db-connection-closed');
         });
 

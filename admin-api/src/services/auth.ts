@@ -69,14 +69,6 @@ export class AuthService {
   }
 
   /**
-   * Get provider name.
-   * @returns {string}
-   */
-  static get name() {
-    return 'LiquioId';
-  }
-
-  /**
    * Get tokens.
    * @param {string} code Auth code.
    * @returns {Promise<{accessToken: string, refreshToken: string}>}

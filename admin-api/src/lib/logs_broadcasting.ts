@@ -1,11 +1,15 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import AuthController from '../controllers/auth';
+import { AuthController } from '../controllers/auth';
 
 const DEFAULT_PORT = 5000;
 const DEFAULT_HEARTBEAT_TIMEOUT = 3000;
 const LOGS_BROADCASTING_ADMIN_UNIT = 1000014;
 
 export class LogsBroadcasting {
+
+  public config: any;
+  private authController: AuthController;
+
   constructor(config) {
     this.config = config;
     this.authController = new AuthController(config);
@@ -53,9 +57,9 @@ export class LogsBroadcasting {
         browserSocket.send(JSON.stringify({ info: 'Success connected.' }));
 
         // Check that connection is alive.
-        browserSocket.isAlive = true;
+        (browserSocket as any).isAlive = true;
         browserSocket.on('pong', function () {
-          this.isAlive = true;
+          (this as any).isAlive = true;
         });
 
         // Define handlers.
@@ -89,10 +93,10 @@ export class LogsBroadcasting {
     // Check that connection is alive.
     const heartbeatInterval = setInterval(() => {
       webSocketServer.clients.forEach((browserSocket) => {
-        if (browserSocket.isAlive === false) {
-          return browserSocket.terminate();
+        if ((browserSocket as any).isAlive === false) {
+          return (browserSocket as any).terminate();
         }
-        browserSocket.isAlive = false;
+        (browserSocket as any).isAlive = false;
         browserSocket.ping();
       });
     }, DEFAULT_HEARTBEAT_TIMEOUT);

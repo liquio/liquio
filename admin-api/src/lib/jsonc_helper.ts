@@ -1,4 +1,4 @@
-import jsoncParser from 'jsonc-parser';
+import { parse, printParseErrorCode } from 'jsonc-parser';
 
 import { BadRequestError } from './errors';
 
@@ -10,12 +10,16 @@ import { BadRequestError } from './errors';
 export function validateJSONCSchema(jsonString) {
   try {
     const errors = [];
-    jsoncParser.parse(jsonString, errors, {
+    parse(jsonString, errors, {
       allowTrailingComma: true,
     });
 
     if (errors?.length > 0) {
-      throw new BadRequestError('Invalid JSON schema: ' + errors.map((e) => `${jsoncParser.ParseErrorCode[e.error]} at ${e.offset}`).join(', '));
+      const errorMessages = errors
+        .map((e) => ({ error: printParseErrorCode(e.error), offset: e.offset }))
+        .map(({ error, offset }) => `${error} at ${offset}`)
+        .join(', ');
+      throw new BadRequestError('Invalid JSON schema: ' + errorMessages);
     }
   } catch (error) {
     throw new BadRequestError(error.message || error.toString());
@@ -29,7 +33,7 @@ export function validateJSONCSchema(jsonString) {
  */
 export function parseJSONCSchema(jsonString) {
   try {
-    return jsoncParser.parse(jsonString);
+    return parse(jsonString);
   } catch {
     return {};
   }

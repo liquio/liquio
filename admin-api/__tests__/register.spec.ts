@@ -1,10 +1,11 @@
-const nock = require('nock');
+import nock = require('nock');
 
-const { TestApp } = require('./test-app');
-const { prepareFixtures } = require('./fixtures');
+import { TestApp } from './test-app';
+import { prepareFixtures } from './fixtures';
+import { Stream } from '../src/lib/stream';
 
 describe('Register Controller', () => {
-  let app;
+  let app: TestApp;
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -2274,7 +2275,6 @@ describe('Register Controller', () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
 
       // Mock Stream.waitEndEvent to resolve quickly instead of waiting for actual stream end
-      const Stream = require('../src/lib/stream');
       const originalWaitEndEvent = Stream.waitEndEvent;
       
       // Simple JSON data for import (file=false case)

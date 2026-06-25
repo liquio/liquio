@@ -1,8 +1,9 @@
-const { WORKFLOW_FIXTURES } = require('./workflow');
-const { WORKFLOW_TEMPLATE_FIXTURES } = require('./workflow_template');
-const { BASE_UNIT_FIXTURES, UNIT_FIXTURES } = require('./unit');
+import { WORKFLOW_FIXTURES } from './workflow';
+import { WORKFLOW_TEMPLATE_FIXTURES } from './workflow_template';
+import { BASE_UNIT_FIXTURES, UNIT_FIXTURES } from './unit';
+import type { TestApp } from '../test-app';
 
-async function prepareFixtures(app) {
+export async function prepareFixtures(app: TestApp) {
   try {
     // Update existing units with our test data (units are already created by migrations)
     for (const unit of BASE_UNIT_FIXTURES) {
@@ -21,14 +22,8 @@ async function prepareFixtures(app) {
       await app.model('workflow').create(workflow);
     }
   } catch (error) {
-    throw new Error(`Unable to prepare fixtures: ${error.message}`, { cause: error });
+    throw new Error(`Unable to prepare fixtures: ${error.message}`);
   }
 }
 
-module.exports = {
-  WORKFLOW_FIXTURES,
-  WORKFLOW_TEMPLATE_FIXTURES,
-  BASE_UNIT_FIXTURES,
-  UNIT_FIXTURES,
-  prepareFixtures,
-};
+export { WORKFLOW_FIXTURES, WORKFLOW_TEMPLATE_FIXTURES, BASE_UNIT_FIXTURES, UNIT_FIXTURES };

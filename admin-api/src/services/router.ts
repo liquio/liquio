@@ -1,6 +1,6 @@
 import express from 'express';
 import proxy from 'express-http-proxy';
-import WebSocket from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import cors from 'cors';
 import compression from 'compression';
 
@@ -50,6 +50,13 @@ import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, SUPPORT_ADMIN_
  * Router service.
  */
 export class RouterService {
+  private static singleton: RouterService;
+
+  public config: any;
+  public controllers: any;
+  public server: any;
+  public wss: WebSocketServer;
+
   /**
    * Route service constructor.
    * @param {object} config Config object.
@@ -81,7 +88,7 @@ export class RouterService {
     app.use(compression());
 
     // Save request info to log.
-    app.use(log.logRouter.bind(log));
+    app.use(global.log.logRouter.bind(global.log));
 
     // Allow CORS.
     app.use(
@@ -97,7 +104,7 @@ export class RouterService {
     app.use(express.json({ limit: this.config.server.maxBodySize }));
 
     // App info in headers.
-    AppIdentHeaders.add(app, config);
+    AppIdentHeaders.add(app);
 
     // Init routes.
     this.controllers = this.initRoutes(app);
@@ -105,9 +112,9 @@ export class RouterService {
     // Start listening.
     await this.listen(app);
 
-    this.wss = new WebSocket.Server({ server: this.server });
+    this.wss = new WebSocketServer({ server: this.server });
 
-    this.wss.on('connection', (ws) => {
+    this.wss.on('connection', (ws: any) => {
       ws.data = {};
 
       ws.send('user connected');
@@ -1672,8 +1679,8 @@ export class RouterService {
 
             // Add access info header.
             const accessInfo = {
-              userId: req.authUserInfo?.userId || null,
-              userName: req.authUserInfo?.name || null,
+              userId: (req as any).authUserInfo?.userId || null,
+              userName: (req as any).authUserInfo?.name || null,
             };
             proxyReqOpts.headers['access-info'] = Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64');
 
@@ -1760,7 +1767,7 @@ export class RouterService {
       const port = this.config.server.port;
       this.server = app.listen(port, hostname, () => {
         global.log.save('server-listening-started', `Server listening started at "http://${hostname}:${port}".`);
-        resolve();
+        resolve(true);
       });
     });
   }

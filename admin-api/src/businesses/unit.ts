@@ -868,5 +868,3 @@ export class UnitBusiness {
     }
   }
 }
-
-module.exports = UnitBusiness;

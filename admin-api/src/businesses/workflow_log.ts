@@ -366,5 +366,3 @@ export class WorkflowLogBusiness {
     }
   }
 }
-
-module.exports = WorkflowLogBusiness;

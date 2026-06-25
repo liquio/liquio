@@ -1,9 +1,11 @@
-const debug = require('debug')('test:log');
+import createDebug from 'debug';
 
-const Sandbox = require('./sandbox');
+import { Sandbox } from './sandbox';
 
-global.log = {
-  save: jest.fn().mockImplementation(debug),
+const logDebug = createDebug('test:log');
+
+(global as any).log = {
+  save: jest.fn().mockImplementation(logDebug),
 };
 
 describe('Sandbox', () => {
@@ -50,23 +52,23 @@ describe('Sandbox', () => {
     const sandbox = new Sandbox(config);
     const result = sandbox.evalWithArgs('(a) => test(a)', [42], {
       isAsync: true,
-      global: { test: async (a) => a + 1 },
+      global: { test: async (a: number) => a + 1 },
     });
     expect(result).toBeInstanceOf(Promise);
     await expect(result).resolves.toBe(43);
   });
 
   it('should prevent access to global reference', () => {
-    global.test = 'test';
+    (global as any).__sandboxGlobalTest = 'test';
     const sandbox = new Sandbox(config);
     const result = sandbox.eval('Object.keys(global)');
     expect(result).toEqual([]);
-    sandbox.eval('global.test = "test2"');
-    expect(global.test).toBe('test');
+    sandbox.eval('global.__sandboxGlobalTest = "test2"');
+    expect((global as any).__sandboxGlobalTest).toBe('test');
 
     // Warning: Predefined globals are not protected.
     sandbox.eval('fetch = function() { return "fetch" }');
-    expect(fetch()).toBe('fetch');
+    expect((globalThis as any).fetch()).toBe('fetch');
   });
 
   it('should use default globals', () => {
@@ -163,7 +165,7 @@ describe('Sandbox', () => {
   it('should automatically add "async" to functions if isAsync is true', () => {
     const sandbox = new Sandbox(config);
 
-    const result = sandbox.evalWithArgs('(a) => await test(a)', [42], { isAsync: true, global: { test: async (a) => a + 1 } });
+    const result = sandbox.evalWithArgs('(a) => await test(a)', [42], { isAsync: true, global: { test: async (a: number) => a + 1 } });
     expect(result).toBeInstanceOf(Promise);
 
     return expect(result).resolves.toBe(43);
@@ -217,7 +219,7 @@ describe('Sandbox', () => {
   });
 
   describe('globalFunctions', () => {
-    let sandbox;
+    let sandbox: Sandbox;
 
     it('should query for workflow templates', async () => {
       sandbox = new Sandbox(config);
@@ -236,6 +238,7 @@ describe('Sandbox', () => {
         },
       };
 
+      (global as any).models = models;
       await sandbox.init(models);
 
       expect(sandbox).toBeDefined();

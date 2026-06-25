@@ -1,5 +1,6 @@
-const { TestApp } = require('./test-app');
-const { prepareFixtures } = require('./fixtures');
+import { TestApp } from './test-app';
+import { prepareFixtures } from './fixtures';
+import type { Response as SupertestResponse } from 'supertest';
 
 const TEST_USER_ID = '61efddaa351d6219eee09043';
 
@@ -36,7 +37,7 @@ const ACCESS_HISTORY_FIXTURES = [
 ];
 
 describe('Access History Controller', () => {
-  let app;
+  let app: TestApp;
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -80,7 +81,7 @@ describe('Access History Controller', () => {
   });
 
   // Helper: set up auth nock for every request
-  function mockAuth(app, payload) {
+  function mockAuth(app: TestApp, payload: { authTokens: { accessToken: string } }) {
     app
       .nock('http://id-api:8100')
       .get('/user/info')
@@ -107,7 +108,7 @@ describe('Access History Controller', () => {
         .get('/access-history')
         .set('token', jwt)
         .expect(200)
-        .expect((res) => {
+        .expect((res: SupertestResponse) => {
           expect(res.body.pagination.total).toBeGreaterThanOrEqual(ACCESS_HISTORY_FIXTURES.length);
           expect(Array.isArray(res.body.data)).toBe(true);
         });
@@ -123,7 +124,7 @@ describe('Access History Controller', () => {
         .query({ 'filters[search]': 'zzz_no_match_xyz' })
         .set('token', jwt)
         .expect(200)
-        .expect((res) => {
+        .expect((res: SupertestResponse) => {
           expect(res.body.pagination.total).toBe(0);
           expect(res.body.data).toHaveLength(0);
         });
@@ -140,7 +141,7 @@ describe('Access History Controller', () => {
         .query({ 'filters[search]': 'Alpha' })
         .set('token', jwt)
         .expect(200)
-        .expect((res) => {
+        .expect((res: SupertestResponse) => {
           expect(res.body.pagination.total).toBe(1);
           expect(res.body.data).toHaveLength(1);
           expect(res.body.data[0].userName).toBe('Alpha User');
@@ -158,7 +159,7 @@ describe('Access History Controller', () => {
         .query({ 'filters[search]': 'Liquio Admin' })
         .set('token', jwt)
         .expect(200)
-        .expect((res) => {
+        .expect((res: SupertestResponse) => {
           expect(res.body.pagination.total).toBeGreaterThanOrEqual(ACCESS_HISTORY_FIXTURES.length);
         });
     });
@@ -174,7 +175,7 @@ describe('Access History Controller', () => {
         .query({ 'filters[search]': 'beta' })
         .set('token', jwt)
         .expect(200)
-        .expect((res) => {
+        .expect((res: SupertestResponse) => {
           expect(res.body.pagination.total).toBe(1);
           expect(res.body.data[0].userName).toBe('Beta Tester');
         });

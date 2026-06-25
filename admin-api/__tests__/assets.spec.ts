@@ -1,12 +1,13 @@
-const nock = require('nock');
+import nock from 'nock';
 
-const { TestApp } = require('./test-app');
-const { prepareFixtures } = require('./fixtures');
-const AssetsBusiness = require('../src/businesses/assets');
+import { TestApp } from './test-app';
+import { prepareFixtures } from './fixtures';
+import { AssetsBusiness } from '../src/businesses/assets';
+import type { Response as SupertestResponse } from 'supertest';
 
 describe('Assets Controller', () => {
-  let app;
-  let assetsBusiness;
+  let app: TestApp;
+  let assetsBusiness: AssetsBusiness;
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -46,7 +47,7 @@ describe('Assets Controller', () => {
         .set('token', serverToken)
         .query({ user_ids: '61efddaa351d6219eee09043,61efddaa351d6219eee09044' })
         .expect(200)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toBeDefined();
         });
     });
@@ -63,7 +64,7 @@ describe('Assets Controller', () => {
         .set('token', serverToken)
         .query({ user_ids: '61efddaa351d6219eee09043,61efddaa351d6219eee09044' })
         .expect(500)
-        .expect((response) => {
+        .expect((response: SupertestResponse) => {
           expect(response.body).toEqual({
             error: { message: '500 - {"error":"Encryption failed"}' },
             traceId: expect.any(String),

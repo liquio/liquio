@@ -168,5 +168,3 @@ export class SignatureRemovalHistory extends Model {
     };
   }
 }
-
-module.exports = SignatureRemovalHistory;
