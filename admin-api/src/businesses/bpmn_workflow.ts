@@ -659,7 +659,7 @@ export class BpmnWorkflowBusiness {
             templateId: template.id,
             index,
             beforeReplacing: substring,
-            afterReplacing: substring.replaceAll(regExp, (match) => match.replace(prevWorkflowTemplateId, newWorkflowTemplateId)),
+            afterReplacing: substring.replace(regExp, (match) => match.replace(prevWorkflowTemplateId, newWorkflowTemplateId)),
           });
         });
       });
@@ -677,10 +677,10 @@ export class BpmnWorkflowBusiness {
       ];
       return safeReplasementMap.some(({ longestString, pattern }) => {
         const substringToCheck = input.substring(
-          index - longestString.replaceAll('<templateId>', matchedString).length,
+          index - longestString.replace(/<templateId>/g, matchedString).length,
           index + matchedString.length,
         );
-        const regExpToSearch = new RegExp(pattern.replaceAll('<templateId>', matchedString));
+        const regExpToSearch = new RegExp(pattern.replace(/<templateId>/g, matchedString));
         const match = substringToCheck.match(regExpToSearch);
         return match;
       });
@@ -836,7 +836,7 @@ export class BpmnWorkflowBusiness {
           version: '1.0.0',
           isCurrentVersion: true,
           meta: user,
-        }),
+        } as any),
         bpmnWorkflowTransaction,
       );
 
@@ -845,7 +845,7 @@ export class BpmnWorkflowBusiness {
         await global.redis.del(redisKeyName);
       }
 
-      log.save('user-copied-bpmn-workflow', { user, fromTemplateId: workflowTemplateId, toTemplateId: newWorkflowTemplateId });
+      global.log.save('user-copied-bpmn-workflow', { user, fromTemplateId: workflowTemplateId, toTemplateId: newWorkflowTemplateId });
     } catch (error) {
       await bpmnWorkflowTransaction.rollback();
       throw error;
@@ -858,9 +858,9 @@ export class BpmnWorkflowBusiness {
       const regExp = new RegExp(`${prevWorkflowTemplateId}[0-9]{3}`, 'g');
       let schemaAfterReplacing;
       if (notReplacingDiffsForCurrentTemplate.length === 0) {
-        schemaAfterReplacing = schemaString.replaceAll(regExp, (match) => match.replace(prevWorkflowTemplateId, newWorkflowTemplateId));
+        schemaAfterReplacing = schemaString.replace(regExp, (match) => match.replace(prevWorkflowTemplateId, newWorkflowTemplateId));
       } else {
-        schemaAfterReplacing = schemaString.replaceAll(regExp, (match, offset) => {
+        schemaAfterReplacing = schemaString.replace(regExp, (match, offset) => {
           if (notReplacingDiffsForCurrentTemplate.some((el) => el.index === offset)) return match;
           return match.replace(prevWorkflowTemplateId, newWorkflowTemplateId);
         });

@@ -1,10 +1,13 @@
-const Controller = require('./controller');
-const EventTypeBusiness = require('../businesses/event_type');
+import { Controller } from './controller';
+import { EventTypeBusiness } from '../businesses/event_type';
 
 /**
  * Event type controller.
  */
-class EventTypeController extends Controller {
+export class EventTypeController extends Controller {
+  private static singleton: EventTypeController;
+  private eventTypeBusiness: EventTypeBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -35,5 +38,3 @@ class EventTypeController extends Controller {
     this.responseData(res, eventTypes);
   }
 }
-
-module.exports = EventTypeController;

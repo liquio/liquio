@@ -102,8 +102,8 @@ export class CustomLogModel extends Model {
       );
 
       // Sequelize model params.
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       // Define singleton.
       CustomLogModel.singleton = this;
@@ -172,7 +172,7 @@ export class CustomLogModel extends Model {
     const customSortList = [];
     if (sort.custom) {
       for (const [key, value] of Object.entries(sort.custom)) {
-        customSortList.push([`custom.${key}.value`, value.value]);
+        customSortList.push([`custom.${key}.value`, (value as any).value]);
       }
       delete sort.custom;
     }
@@ -184,7 +184,7 @@ export class CustomLogModel extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    const entities = await this.model.paginate(sequelizeOptions);
+    const entities = await (this.model as any).paginate(sequelizeOptions);
 
     entities.data = entities.data.map((item) => this.prepareEntity(item));
 
@@ -227,7 +227,7 @@ export class CustomLogModel extends Model {
   async create(data) {
     // DB query.
     const preapredForModel = this.prepareForModel(data);
-    const raw = await this.model.create(preapredForModel);
+    const raw: any = await this.model.create(preapredForModel);
 
     // Return entity.
     const entity = new CustomLogEntity(raw);
@@ -255,7 +255,6 @@ export class CustomLogModel extends Model {
       userId: item.user_id,
       userName: item.user_name,
       custom: item.custom,
-      defaultValue: item.defaultValue,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
     });

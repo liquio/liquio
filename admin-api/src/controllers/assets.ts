@@ -1,12 +1,16 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const AssetsBusiness = require('../businesses/assets');
+import { Controller } from './controller';
+import { AssetsBusiness } from '../businesses/assets';
 
 /**
  * Unit controller.
  */
-class AssetsController extends Controller {
+export class AssetsController extends Controller {
+  private static singleton: AssetsController;
+
+  private assetsBusiness: AssetsBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -34,7 +38,7 @@ class AssetsController extends Controller {
     try {
       encryptedDataResult = await this.assetsBusiness.getToUnits(userIds);
     } catch (error) {
-      log.save('assets-get-to-units-error', { error: error.message, stack: error.stack }, 'error');
+      global.log.save('assets-get-to-units-error', { error: error.message, stack: error.stack }, 'error');
       return this.responseError(res, error);
     }
     this.responseData(res, encryptedDataResult);
@@ -52,11 +56,9 @@ class AssetsController extends Controller {
     try {
       encryptedDataResult = await this.assetsBusiness.getToRegisters(userIds);
     } catch (error) {
-      log.save('assets-get-to-registers-error', { error: error.message, stack: error.stack }, 'error');
+      global.log.save('assets-get-to-registers-error', { error: error.message, stack: error.stack }, 'error');
       return this.responseError(res, error);
     }
     this.responseData(res, encryptedDataResult);
   }
 }
-
-module.exports = AssetsController;

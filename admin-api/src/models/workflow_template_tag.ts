@@ -35,10 +35,10 @@ export class WorkflowTemplateTagModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
-      this.model.formAggregationSubquery = this.formAggregationSubquery;
-      this.model.formFilterSubquery = this.formFilterSubquery;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
+      (this.model as any).formAggregationSubquery = this.formAggregationSubquery;
+      (this.model as any).formFilterSubquery = this.formFilterSubquery;
 
       WorkflowTemplateTagModel.singleton = this;
     }
@@ -102,7 +102,7 @@ export class WorkflowTemplateTagModel extends Model {
    * @returns {Promise<WorkflowTemplateTagEntity[]>}
    */
   async getAll(short = false) {
-    const options = {};
+    const options: any = {};
     if (short) {
       options.attributes = ['id', 'name', 'color', 'description'];
       options.order = ['name'];
@@ -140,7 +140,7 @@ export class WorkflowTemplateTagModel extends Model {
       };
     }
 
-    const workflowTemplateTagEntities = await this.model.paginate(sequelizeOptions);
+    const workflowTemplateTagEntities = await (this.model as any).paginate(sequelizeOptions);
 
     workflowTemplateTagEntities.data = workflowTemplateTagEntities.data.map((item) => this.prepareEntity(item));
 

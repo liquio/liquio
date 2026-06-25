@@ -31,7 +31,7 @@ export class GatewayTemplateModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       GatewayTemplateModel.singleton = this;
     }

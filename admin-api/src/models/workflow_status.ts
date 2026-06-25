@@ -21,7 +21,7 @@ export class WorkflowStatusModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prepareEntity = this.prepareEntity;
 
       WorkflowStatusModel.singleton = this;
     }
@@ -34,7 +34,7 @@ export class WorkflowStatusModel extends Model {
    * @returns {Promise<WorkflowStatusEntity[]>}
    */
   async getAll() {
-    let workflowStatuses = await this.model.findAll();
+    let workflowStatuses: any = await this.model.findAll();
 
     workflowStatuses = workflowStatuses.map((item) => {
       return this.prepareEntity(item);

@@ -29,8 +29,8 @@ export class WorkflowTemplateCategoryModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       WorkflowTemplateCategoryModel.singleton = this;
     }
@@ -75,7 +75,7 @@ export class WorkflowTemplateCategoryModel extends Model {
       sort: [],
     };
 
-    const workflowTemplateCategoryEntities = await this.model.paginate(sequelizeOptions);
+    const workflowTemplateCategoryEntities = await (this.model as any).paginate(sequelizeOptions);
 
     workflowTemplateCategoryEntities.data = workflowTemplateCategoryEntities.data.map((item) => this.prepareEntity(item));
 

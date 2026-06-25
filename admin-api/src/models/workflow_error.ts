@@ -34,7 +34,7 @@ export class WorkflowErrorModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prepareEntity = this.prepareEntity;
 
       WorkflowErrorModel.singleton = this;
     }
@@ -47,7 +47,7 @@ export class WorkflowErrorModel extends Model {
    * @returns {Promise<WorkflowErrorEntity[]>}
    */
   async getAll() {
-    let workflowErrors = await this.model.findAll();
+    let workflowErrors: any = await this.model.findAll();
 
     workflowErrors = workflowErrors.map((item) => {
       return this.prepareEntity(item);

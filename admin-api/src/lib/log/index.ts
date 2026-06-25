@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
-import LogProvider from './providers/log_provider';
-import AppInfo from '../app_info';
+import { LogProvider } from './providers/log_provider';
+import { AppInfo } from '../app_info';
 import { getTraceId, getTraceMeta } from '../async_local_storage';
 
 // Constants.
@@ -16,6 +16,10 @@ const ERROR_LEVEL = 'error';
  * Log.
  */
 export class Log {
+  private static singleton: Log;
+  private providers: LogProvider[];
+  private appInfo: AppInfo;
+
   /**
    * Log constructor.
    * @param {LogProvider[]} [logProviders] Log providers.
@@ -63,7 +67,7 @@ export class Log {
    * @param {string} [level] Log level.
    * @returns {Promise<string>} Log ID promise.
    */
-  async save(type, data = true, level = this.Levels.INFO_LEVEL) {
+  async save(type, data: any = true, level = this.Levels.INFO_LEVEL) {
     if (process.env.DISABLE_LOG) return null;
     // Define params.
     const timestamp = Date.now();
@@ -163,7 +167,7 @@ export class Log {
           responseTime: Date.now() - time,
         };
         if (body instanceof Error) {
-          data.error = {
+          (data as any).error = {
             message: body.message,
             stack: body.stack,
           };

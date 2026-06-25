@@ -1,10 +1,14 @@
-const Controller = require('./controller');
-const GatewayTypeBusiness = require('../businesses/gateway_type');
+import { Controller } from './controller';
+import { GatewayTypeBusiness } from '../businesses/gateway_type';
 
 /**
  * Gateway type controller.
  */
-class GatewayTypeController extends Controller {
+export class GatewayTypeController extends Controller {
+  private static singleton: GatewayTypeController;
+
+  private gatewayTypeBusiness: GatewayTypeBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -35,5 +39,3 @@ class GatewayTypeController extends Controller {
     this.responseData(res, gatewayTypes);
   }
 }
-
-module.exports = GatewayTypeController;

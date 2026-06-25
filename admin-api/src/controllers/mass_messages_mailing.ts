@@ -1,14 +1,19 @@
-const { matchedData } = require('express-validator');
-const _ = require('lodash');
+import { matchedData } from 'express-validator';
+import _ from 'lodash';
 
-const Controller = require('./controller');
-const MassMessagesMailingBussiness = require('../businesses/mass_messages_mailing');
-const AuthService = require('../services/auth');
+import { Controller } from './controller';
+import { MassMessagesMailingBusiness } from '../businesses/mass_messages_mailing';
+import { AuthService } from '../services/auth';
 
 /**
  * Mass messages mailing controller.
  */
-class MassMessagesMailingController extends Controller {
+export class MassMessagesMailingController extends Controller {
+  private static singleton: MassMessagesMailingController;
+
+  private massMessagesMailingBusiness: MassMessagesMailingBusiness;
+  private authService: AuthService;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -18,7 +23,7 @@ class MassMessagesMailingController extends Controller {
     if (!MassMessagesMailingController.singleton) {
       super(config);
 
-      this.massMessagesMailingBusiness = new MassMessagesMailingBussiness(config);
+      this.massMessagesMailingBusiness = new MassMessagesMailingBusiness(config);
       this.authService = new AuthService(config.auth);
       MassMessagesMailingController.singleton = this;
     }
@@ -83,7 +88,7 @@ class MassMessagesMailingController extends Controller {
     }
 
     const responseByUserEmail = (
-      await Promise.all(emailsList.map((email) => this.authService.getUsers({ email, limit: emailsList.length, offset: 0 })))
+      await Promise.all(emailsList.map((email) => this.authService.getUsers({ email, limit: emailsList.length, offset: 0 } as any)))
     )
       .map(({ body }) => body[0])
       .filter(Boolean);

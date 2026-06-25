@@ -54,7 +54,7 @@ export class ProxyItemModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       ProxyItemModel.singleton = this;
     }

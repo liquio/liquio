@@ -44,8 +44,8 @@ export class WorkflowModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       WorkflowModel.singleton = this;
     }
@@ -59,7 +59,7 @@ export class WorkflowModel extends Model {
    * @returns {Promise<WorkflowEntity[]>}
    */
   async getAll({ currentPage, perPage, attributes, filters, sort, extended = false, briefInfo = false }) {
-    let sequelizeOptions = {
+    let sequelizeOptions: any = {
       currentPage,
       perPage,
       attributes,
@@ -122,8 +122,7 @@ export class WorkflowModel extends Model {
     if (filters.task_template_id) {
       sequelizeOptions.filters[Sequelize.Op.and] = [
         Sequelize.literal(
-          'exists (select id from tasks t where t.workflow_id = workflow.id and t.task_template_id = :taskTemplateId)',
-          { taskTemplateId: parseInt(filters.task_template_id) },
+          `exists (select id from tasks t where t.workflow_id = workflow.id and t.task_template_id = ${parseInt(filters.task_template_id)})`,
         ),
       ];
     }
@@ -131,8 +130,7 @@ export class WorkflowModel extends Model {
     if (filters.event_template_id) {
       sequelizeOptions.filters[Sequelize.Op.and] = [
         Sequelize.literal(
-          'exists (select id from events e where e.workflow_id = workflow.id and e.event_template_id = :eventTemplateId)',
-          { eventTemplateId: parseInt(filters.event_template_id) },
+          `exists (select id from events e where e.workflow_id = workflow.id and e.event_template_id = ${parseInt(filters.event_template_id)})`,
         ),
       ];
     }
@@ -140,8 +138,7 @@ export class WorkflowModel extends Model {
     if (filters.gateway_template_id) {
       sequelizeOptions.filters[Sequelize.Op.and] = [
         Sequelize.literal(
-          'exists (select id from gateways g where g.workflow_id = workflow.id and g.gateway_template_id = :gatewayTemplateId)',
-          { gatewayTemplateId: parseInt(filters.gateway_template_id) },
+          `exists (select id from gateways g where g.workflow_id = workflow.id and g.gateway_template_id = ${parseInt(filters.gateway_template_id)})`,
         ),
       ];
     }
@@ -172,7 +169,7 @@ export class WorkflowModel extends Model {
     }
 
     sequelizeOptions.include = [
-      { model: models.workflowTemplate.model, required: true, include: [{ model: models.workflowTemplateCategory.model }] },
+      { model: global.models.workflowTemplate.model, required: true, include: [{ model: global.models.workflowTemplateCategory.model }] },
     ];
 
     if (extended) {
@@ -190,7 +187,7 @@ export class WorkflowModel extends Model {
 
       sequelizeOptions.include.push({
         attributes: ['service_name', 'created_at'],
-        model: models.workflowError.model,
+        model: global.models.workflowError.model,
         required: requiredJoinWorkflowError,
         duplicating: filters['has_errors'] === false ? false : true,
         where: whereWorkflowError,
@@ -211,10 +208,10 @@ export class WorkflowModel extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    let workflows = await this.model.paginate(sequelizeOptions, { briefInfo });
+    let workflows = await (this.model as any).paginate(sequelizeOptions, { briefInfo });
 
     const promises = workflows.data.map(async (item) => {
-      let workflowEntity = this.prepareEntity(item);
+      let workflowEntity: any = this.prepareEntity(item);
 
       if (item.workflowErrors) {
         workflowEntity.workflowErrors = [];
@@ -248,16 +245,16 @@ export class WorkflowModel extends Model {
    * @param {object} [options] Options.
    * @returns {Promise<WorkflowEntity>}
    */
-  async findById(id, options = {}) {
-    const workflow = await this.model.findByPk(id, {
-      include: [{ model: models.workflowTemplate.model, required: true }],
+  async findById(id, options: any = {}) {
+    const workflow: any = await this.model.findByPk(id, {
+      include: [{ model: global.models.workflowTemplate.model, required: true }],
     });
 
     if (!workflow) {
       return;
     }
 
-    let workflowEntity = this.prepareEntity(workflow);
+    let workflowEntity: any = this.prepareEntity(workflow);
 
     workflowEntity.workflowTemplate = workflow.workflowTemplate.prepareEntity(workflow.workflowTemplate);
 
@@ -347,7 +344,7 @@ export class WorkflowModel extends Model {
    */
   async getWorkflowIdsList({ fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt }) {
     // Define filters.
-    const where = {};
+    const where: any = {};
     if (fromCreatedAt) {
       where.created_at = {
         [Sequelize.Op.gte]: fromCreatedAt,
@@ -378,22 +375,22 @@ export class WorkflowModel extends Model {
     });
 
     // Return workflow IDs.
-    return workflows.map((workflow) => workflow.id);
+    return workflows.map((workflow: any) => workflow.id);
   }
 
   async getAllByWorkflowIds(workflowIds) {
-    let sequelizeOptions = {
+    let sequelizeOptions: any = {
       where: { id: { [Sequelize.Op.in]: workflowIds } },
     };
 
     sequelizeOptions.include = [
       {
-        model: models.workflowTemplate.model,
-        include: [{ model: models.workflowTemplateCategory.model }],
+        model: global.models.workflowTemplate.model,
+        include: [{ model: global.models.workflowTemplateCategory.model }],
         required: true,
       },
       {
-        model: models.workflowError.model,
+        model: global.models.workflowError.model,
         attributes: ['service_name', 'created_at'],
         required: false,
       },
@@ -401,8 +398,8 @@ export class WorkflowModel extends Model {
 
     const workflows = await this.model.findAll(sequelizeOptions);
 
-    const workflowsWithDataPromises = workflows.map(async (item) => {
-      let workflowEntity = this.prepareEntity(item);
+    const workflowsWithDataPromises = workflows.map(async (item: any) => {
+      let workflowEntity: any = this.prepareEntity(item);
       if (item.workflowErrors) {
         workflowEntity.workflowErrors = [];
         item.workflowErrors.map((workflowError) => {

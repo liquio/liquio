@@ -1,13 +1,15 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const NotifierService = require('../services/notifier');
-const Stream = require('../lib/stream');
+import { Controller } from './controller';
+import { NotifierService } from '../services/notifier';
+import { Stream } from '../lib/stream';
 
 /**
  * Event controller.
  */
-class MessageTemplateController extends Controller {
+export class MessageTemplateController extends Controller {
+  private static singleton: MessageTemplateController;
+
   /**
    * Constructor.
    * @param {object} config Config object.

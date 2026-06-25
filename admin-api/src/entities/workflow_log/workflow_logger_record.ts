@@ -6,7 +6,7 @@ interface WorkflowLoggerRecordEntityOptions {
   /** Warning messages. */
   warnings?: object[];
   /** Details. */
-  details: object;
+  details: any;
   /** Created at. */
   createdAt: Date;
   /** Updated at. */

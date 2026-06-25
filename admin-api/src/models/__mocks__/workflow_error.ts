@@ -1,6 +1,8 @@
-const WorkflowErrorEntity = require('../../entities/workflow_error');
+import { WorkflowErrorEntity } from '../../entities/workflow_error';
 
-class WorkflowErrorModel {
+export class WorkflowErrorModel {
+  private static singleton: WorkflowErrorModel;
+
   constructor() {
     if (!WorkflowErrorModel.singleton) {
       WorkflowErrorModel.singleton = this;
@@ -22,7 +24,7 @@ class WorkflowErrorModel {
         },
         createdAt: '2019-02-27T08:24:15.398Z',
         updatedAt: '2019-02-27T08:24:15.398Z',
-      }),
+      } as any),
       new WorkflowErrorEntity({
         id: 2,
         serviceName: 'manager',
@@ -34,7 +36,7 @@ class WorkflowErrorModel {
         },
         createdAt: '2019-02-27T08:25:37.016Z',
         updatedAt: '2019-02-27T08:25:37.016Z',
-      }),
+      } as any),
     ];
   }
 
@@ -53,7 +55,7 @@ class WorkflowErrorModel {
       },
       createdAt: '2019-02-27T08:24:15.398Z',
       updatedAt: '2019-02-27T08:24:15.398Z',
-    });
+    } as any);
   }
 
   async deleteById(id) {
@@ -64,5 +66,3 @@ class WorkflowErrorModel {
     return 1;
   }
 }
-
-module.exports = WorkflowErrorModel;

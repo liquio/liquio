@@ -27,7 +27,7 @@ export class SnippetGroupsModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       SnippetGroupsModel.singleton = this;
     }
@@ -137,7 +137,7 @@ export class SnippetGroupsModel extends Model {
    * @param {Sequelize.transaction} [options.transaction]
    * @return {Promise<number>}
    */
-  async deleteAll({ transaction } = {}) {
+  async deleteAll({ transaction }: any = {}) {
     let deletedCount;
     try {
       deletedCount = await this.model.destroy({ where: {}, transaction });
@@ -158,7 +158,7 @@ export class SnippetGroupsModel extends Model {
    * @param {Sequelize.transaction} [options.transaction]
    * @return {Promise<number>}
    */
-  async bulkCreate(snippetGroups, { ignoreDuplicates = false, transaction } = {}) {
+  async bulkCreate(snippetGroups, { ignoreDuplicates = false, transaction }: any = {}) {
     let createdSnippets;
     try {
       createdSnippets = await this.model.bulkCreate(snippetGroups.map(this.prepareForModel), {
@@ -185,7 +185,7 @@ export class SnippetGroupsModel extends Model {
       name: item.name,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
-    });
+    } as any);
   }
 
   /**

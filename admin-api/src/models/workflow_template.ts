@@ -48,8 +48,8 @@ export class WorkflowTemplateModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       WorkflowTemplateModel.singleton = this;
     }
@@ -143,10 +143,10 @@ export class WorkflowTemplateModel extends Model {
         Sequelize.literal(`array_to_string(errors_subscribers, '||') ilike '%${SqlString.escape(filters.errors_subscribers).replace(/'/g, '')}%'`),
       );
     }
-    const workflowTemplates = await this.model.paginate(sequelizeOptions);
+    const workflowTemplates = await (this.model as any).paginate(sequelizeOptions);
 
     const promises = workflowTemplates.data.map(async (item) => {
-      let workflowTemplateEntity = this.prepareEntity(item);
+      let workflowTemplateEntity: any = this.prepareEntity(item);
 
       if (item.workflowTemplateCategory) {
         workflowTemplateEntity.workflowTemplateCategory = item.workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
@@ -271,7 +271,7 @@ export class WorkflowTemplateModel extends Model {
     const [[[{ count }]], [rows]] = result;
 
     const promises = rows.map(async (item) => {
-      let workflowTemplateEntity = this.prepareEntity(item);
+      let workflowTemplateEntity: any = this.prepareEntity(item);
 
       if (item.workflowTemplateCategory) {
         workflowTemplateEntity.workflowTemplateCategory = item.workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
@@ -330,7 +330,7 @@ export class WorkflowTemplateModel extends Model {
           where: { id: workflowTemplateId },
           attributes: ['id', 'errors_subscribers'],
           returning: true,
-        },
+        } as any,
       );
     } catch (error) {
       throw new global.SequelizeDbError(error);
@@ -408,7 +408,7 @@ export class WorkflowTemplateModel extends Model {
         matchedTaskJsonSchema: item.matched_task_json_schema,
         matchedGatewayJsonSchema: item.matched_gateway_json_schema,
       },
-    });
+    } as any);
   }
 
   /**

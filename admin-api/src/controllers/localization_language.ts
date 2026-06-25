@@ -1,13 +1,17 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Stream = require('../lib/stream');
-const Controller = require('./controller');
-const LocalizationLanguageBussiness = require('../businesses/localization_language');
+import { Stream } from '../lib/stream';
+import { Controller } from './controller';
+import { LocalizationLanguageBusiness } from '../businesses/localization_language';
 
 /**
  * Localization language controller.
  */
-class LocalizationLanguageController extends Controller {
+export class LocalizationLanguageController extends Controller {
+  private static singleton: LocalizationLanguageController;
+
+  private localizationLanguageBusiness: LocalizationLanguageBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -17,7 +21,7 @@ class LocalizationLanguageController extends Controller {
     if (!LocalizationLanguageController.singleton) {
       super(config);
 
-      this.localizationLanguageBussiness = new LocalizationLanguageBussiness(config);
+      this.localizationLanguageBusiness = new LocalizationLanguageBusiness(config);
       LocalizationLanguageController.singleton = this;
     }
     return LocalizationLanguageController.singleton;
@@ -33,7 +37,7 @@ class LocalizationLanguageController extends Controller {
 
     let localizationLanguages;
     try {
-      localizationLanguages = await this.localizationLanguageBussiness.getListWithPagination({
+      localizationLanguages = await this.localizationLanguageBusiness.getListWithPagination({
         sort,
         filters,
         currentPage: page,
@@ -62,7 +66,7 @@ class LocalizationLanguageController extends Controller {
         name: user.name,
       };
 
-      createdLocalizationLanguage = await this.localizationLanguageBussiness.createLocalizationLanguage(
+      createdLocalizationLanguage = await this.localizationLanguageBusiness.createLocalizationLanguage(
         {
           code,
           name,
@@ -73,7 +77,7 @@ class LocalizationLanguageController extends Controller {
         },
       );
     } catch (error) {
-      log.save('localization-language-create-error|cannot-create-language', {
+      await global.log.save('localization-language-create-error|cannot-create-language', {
         error: error.message,
         cause: error.cause,
         fieds: error.fieds,
@@ -103,7 +107,7 @@ class LocalizationLanguageController extends Controller {
         name: user.name,
       };
 
-      updatedLocalizationLanguage = await this.localizationLanguageBussiness.updateLocalizationLanguage(
+      updatedLocalizationLanguage = await this.localizationLanguageBusiness.updateLocalizationLanguage(
         {
           code,
           name,
@@ -130,7 +134,7 @@ class LocalizationLanguageController extends Controller {
 
     let deleteResult;
     try {
-      deleteResult = await this.localizationLanguageBussiness.deleteLocalizationLanguage({ code });
+      deleteResult = await this.localizationLanguageBusiness.deleteLocalizationLanguage({ code });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -148,7 +152,7 @@ class LocalizationLanguageController extends Controller {
 
     let exportedLocalizationLanguages;
     try {
-      exportedLocalizationLanguages = await this.localizationLanguageBussiness.export(codes);
+      exportedLocalizationLanguages = await this.localizationLanguageBusiness.export(codes);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -180,7 +184,7 @@ class LocalizationLanguageController extends Controller {
         userId: user.userId,
         name: user.name,
       };
-      await this.localizationLanguageBussiness.import(data, { force, person });
+      await this.localizationLanguageBusiness.import(data, { force, person } as any);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -188,5 +192,3 @@ class LocalizationLanguageController extends Controller {
     this.responseThatAccepted(res);
   }
 }
-
-module.exports = LocalizationLanguageController;

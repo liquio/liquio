@@ -55,8 +55,9 @@ export class MassMessagesMailingModel extends Model {
           updatedAt: 'updated_at',
         },
       );
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
     }
   }
 
@@ -126,7 +127,7 @@ export class MassMessagesMailingModel extends Model {
       sequelizeOptions.sort = preparedSort;
     }
 
-    const massMessagesMailingEntities = await this.model.paginate(sequelizeOptions);
+    const massMessagesMailingEntities = await (this.model as any).paginate(sequelizeOptions);
 
     massMessagesMailingEntities.data = massMessagesMailingEntities.data.map((item) => this.prepareEntity(item));
 

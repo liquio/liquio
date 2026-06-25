@@ -1,16 +1,22 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Exceptions = require('../exceptions');
-const Controller = require('./controller');
-const EventBusiness = require('../businesses/event');
-const WorkflowBusiness = require('../businesses/workflow');
-const BpmnWorkflowBusiness = require('../businesses/bpmn_workflow');
-const EventTemplateEntity = require('../entities/event_template');
+import { Exceptions } from '../exceptions';
+import { Controller } from './controller';
+import { EventBusiness } from '../businesses/event';
+import { WorkflowBusiness } from '../businesses/workflow';
+import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
+import { EventTemplateEntity } from '../entities/event_template';
 
 /**
  * Event controller.
  */
-class EventController extends Controller {
+export class EventController extends Controller {
+  private static singleton: EventController;
+
+  private eventBusiness: EventBusiness;
+  private workflowBusiness: WorkflowBusiness;
+  private bpmnWorkflowBusiness: BpmnWorkflowBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -36,7 +42,7 @@ class EventController extends Controller {
     let savedEventTemplateEntities = [];
     let newLastWorkflowHistoryId;
     try {
-      if (config.workflow_editor.disabled === true) {
+      if (global.config.workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -50,7 +56,7 @@ class EventController extends Controller {
 
         if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
           const error = new Error('Header Last-Workflow-History-Id expired.');
-          error.details = [{ lastWorkflowHistory: lastWorkflowHistory }];
+          (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
           throw error;
         }
 
@@ -64,7 +70,7 @@ class EventController extends Controller {
         const savedEventTemplateEntity = await this.eventBusiness.createOrUpdate(eventEntity);
         savedEventTemplateEntities.push(savedEventTemplateEntity);
 
-        await log.save('user-created-updated-event-template', {
+        await global.log.save('user-created-updated-event-template', {
           user,
           data: { savedEventTemplateEntity },
         });
@@ -95,14 +101,14 @@ class EventController extends Controller {
     const id = paramsData.id;
 
     try {
-      if (config.workflow_editor.disabled === true) {
+      if (global.config.workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
       await this.eventBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await log.save('user-deleted-event-template', { user, data: { id } });
+      await global.log.save('user-deleted-event-template', { user, data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -141,7 +147,7 @@ class EventController extends Controller {
     const id = paramsData.id;
     let event;
 
-    const currentEvent = await models.event.findById(id);
+    const currentEvent = await global.models.event.findById(id);
     if (currentEvent.dueDate < new Date()) {
       return this.responseError(res, 'Event already skipped.');
     }
@@ -158,5 +164,3 @@ class EventController extends Controller {
     this.responseData(res, event);
   }
 }
-
-module.exports = EventController;

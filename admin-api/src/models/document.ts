@@ -52,7 +52,7 @@ export class DocumentModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       DocumentModel.singleton = this;
     }
@@ -170,7 +170,7 @@ export class DocumentModel extends Model {
       fileName: item.file_name,
       fileType: item.file_type,
       asic: item.asic,
-    });
+    } as any);
   }
 
   /**

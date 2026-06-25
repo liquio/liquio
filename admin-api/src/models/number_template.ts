@@ -31,8 +31,8 @@ export class NumberTemplateModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
 
       NumberTemplateModel.singleton = this;
     }
@@ -59,7 +59,7 @@ export class NumberTemplateModel extends Model {
    */
   async nextIncrement(numberTemplateId) {
     const sequenceName = `number_template_sequence_${numberTemplateId}`;
-    const [increment] = await this.model.sequelize.query('SELECT nextval(:sequenceName)', {
+    const [increment]: any[] = await this.model.sequelize.query('SELECT nextval(:sequenceName)', {
       replacements: { sequenceName },
       type: Sequelize.QueryTypes.SELECT,
     });
@@ -106,7 +106,7 @@ export class NumberTemplateModel extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    const numberTemplateEntities = await this.model.paginate(sequelizeOptions);
+    const numberTemplateEntities = await (this.model as any).paginate(sequelizeOptions);
 
     numberTemplateEntities.data = numberTemplateEntities.data.map((item) => this.prepareEntity(item));
 

@@ -1,7 +1,11 @@
 /**
  * Workflow status business.
  */
-class WorkflowStatusBusiness {
+export class WorkflowStatusBusiness {
+  private static singleton: WorkflowStatusBusiness;
+
+  public config: any;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -22,8 +26,6 @@ class WorkflowStatusBusiness {
    * @returns {Promise<WorkflowStatusEntity[]>}
    */
   async getAll() {
-    return await models.workflowStatus.getAll();
+    return await global.models.workflowStatus.getAll();
   }
 }
-
-module.exports = WorkflowStatusBusiness;

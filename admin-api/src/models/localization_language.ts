@@ -44,8 +44,8 @@ export class LocalizationLanguageModel extends Model {
           updatedAt: 'updated_at',
         },
       );
-      this.model.prototype.prepareEntity = this.prepareEntity;
-      this.model.paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
     }
   }
 
@@ -75,7 +75,7 @@ export class LocalizationLanguageModel extends Model {
       sequelizeOptions.sort = preparedSort;
     }
 
-    const dbResponse = await this.model.paginate(sequelizeOptions);
+    const dbResponse = await (this.model as any).paginate(sequelizeOptions);
 
     dbResponse.data = dbResponse.data.map(this.prepareEntity);
     return dbResponse;
@@ -87,7 +87,7 @@ export class LocalizationLanguageModel extends Model {
    * @param {object} options Options.
    * @returns {Promise<LocalizationLanguageEntity>}
    */
-  async createLocalizationLanguage(params, options = {}) {
+  async createLocalizationLanguage(params, options: any = {}) {
     const { person, transaction } = options;
 
     const meta = {
@@ -119,13 +119,13 @@ export class LocalizationLanguageModel extends Model {
    * @param {object} options Options.
    * @returns {Promise<LocalizationLanguageEntity>}
    */
-  async updateLocalizationLanguage(params, options = {}) {
+  async updateLocalizationLanguage(params, options: any = {}) {
     const { code, name, isActive } = params;
     const { person, transaction } = options;
     const metaToAdd = {
       updatedBy: person || 'system',
     };
-    const { meta: existingMeta } = await this.model.findOne({
+    const { meta: existingMeta }: any = await this.model.findOne({
       where: { code },
       attributes: ['meta'],
     });

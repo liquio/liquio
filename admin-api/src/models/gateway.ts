@@ -39,7 +39,7 @@ export class GatewayModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       GatewayModel.singleton = this;
     }
@@ -53,7 +53,7 @@ export class GatewayModel extends Model {
    * @returns {Promise<GatewayEntity>}
    */
   async findById(id) {
-    const gateway = await this.model.findByPk(id, { include: [{ model: models.workflow.model }] });
+    const gateway: any = await this.model.findByPk(id, { include: [{ model: global.models.workflow.model }] });
     if (!gateway) {
       return;
     }
@@ -116,7 +116,7 @@ export class GatewayModel extends Model {
       {
         raw: true,
         replacements: { workflowId, gatewayTemplateId },
-        type: this.db.QueryTypes.DELETE,
+        type: Sequelize.QueryTypes.DELETE,
       },
     );
   }

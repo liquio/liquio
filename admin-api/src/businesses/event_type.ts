@@ -10,7 +10,7 @@ export class EventTypeBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!EventTypeBusiness.singleton) {
       this.config = config;

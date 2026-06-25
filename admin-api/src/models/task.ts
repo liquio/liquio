@@ -66,8 +66,8 @@ export class TaskModel extends Model {
         },
       );
 
-      this.model.paginate = this.paginate;
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).paginate = this.paginate;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       TaskModel.singleton = this;
     }
@@ -85,7 +85,7 @@ export class TaskModel extends Model {
   async getAllByUserId(userId, userUnitIds, { currentPage, perPage, filters, sort, onboardingTaskTemplateId }) {
     const sequelizeOptions = this.formOptionsToGetAllByUserId(userId, userUnitIds, currentPage, perPage, filters, sort, onboardingTaskTemplateId);
 
-    let tasks = await this.model.paginate(sequelizeOptions);
+    let tasks = await (this.model as any).paginate(sequelizeOptions);
 
     tasks.data = tasks.data.map((item) => {
       return this.prepareEntity(item);
@@ -100,8 +100,8 @@ export class TaskModel extends Model {
    * @returns {Promise<TaskEntity[]>}
    */
   async getAllByWorkflowId(workflowId) {
-    let tasks = await this.model.findAll({
-      include: [{ model: models.document.model }],
+    let tasks: any = await this.model.findAll({
+      include: [{ model: global.models.document.model }],
       where: { workflow_id: workflowId, is_current: true },
     });
 
@@ -148,8 +148,8 @@ export class TaskModel extends Model {
    * @returns {Promise<TaskEntity>}
    */
   async findById(id) {
-    const task = await this.model.findByPk(id, {
-      include: [{ model: models.workflow.model }],
+    const task: any = await this.model.findByPk(id, {
+      include: [{ model: global.models.workflow.model }],
     });
 
     if (!task) {
@@ -186,8 +186,8 @@ export class TaskModel extends Model {
    */
   async findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId) {
     // Find task.
-    const task = await this.model.findOne({
-      include: [{ model: models.document.model }],
+    const task: any = await this.model.findOne({
+      include: [{ model: global.models.document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
     });
 
@@ -215,8 +215,8 @@ export class TaskModel extends Model {
     }
 
     // Find task.
-    const task = await this.model.findOne({
-      include: [{ model: models.document.model }],
+    const task: any = await this.model.findOne({
+      include: [{ model: global.models.document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateIds, is_current: true },
     });
 
@@ -240,7 +240,7 @@ export class TaskModel extends Model {
   async findDocumentIdByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId) {
     // Find all task.
     const task = await this.model.findOne({
-      include: [{ model: models.document.model }],
+      include: [{ model: global.models.document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
       attributes: ['id', 'document_id'],
     });
@@ -319,7 +319,7 @@ export class TaskModel extends Model {
       attributes: ['id', 'document_id', 'performer_users', 'performer_units'],
     });
 
-    return tasksInfo.map((item) => ({
+    return tasksInfo.map((item: any) => ({
       taskId: item.id,
       documentId: item.document_id,
       taskPerformerUsers: item.performer_users,
@@ -402,7 +402,7 @@ export class TaskModel extends Model {
    */
   async setStatusFinished(id, performerUsers) {
     // Prepare update object.
-    const updateObject = {
+    const updateObject: any = {
       finished: true,
       finished_at: Sequelize.fn('NOW'),
     };
@@ -490,8 +490,8 @@ export class TaskModel extends Model {
    * @returns {Promise<TaskEntity>}
    */
   async findCurrentTaskByWorkflowIdAndTaskTemplateID(workflowId, taskTemplateId) {
-    let task = await this.model.findOne({
-      include: [{ model: models.document.model }],
+    let task: any = await this.model.findOne({
+      include: [{ model: global.models.document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
     });
 
@@ -590,7 +590,7 @@ export class TaskModel extends Model {
    * @returns {Promise<DocumentEntity[]>}
    */
   async getDocumentsByWorkflowId(workflowId) {
-    const tasks = await this.model.findAll({
+    const tasks: any[] = await this.model.findAll({
       where: { workflow_id: workflowId, is_current: true },
     });
     let documents = [];
@@ -598,7 +598,7 @@ export class TaskModel extends Model {
       for (const task of tasks) {
         const document = await task.getDocument();
         if (document) {
-          documents.push(models.document.prepareEntity(document));
+          documents.push(global.models.document.prepareEntity(document));
         }
       }
     }
@@ -665,7 +665,7 @@ export class TaskModel extends Model {
       meta: item.meta,
       observerUnits: item.observer_units,
       activityLog: item.activity_log,
-    });
+    } as any);
   }
 
   /**
@@ -710,7 +710,7 @@ export class TaskModel extends Model {
    * @returns {object} sequelizeOptions
    */
   formOptionsToGetAllByUserId(userId, userUnitIds, currentPage, perPage, filters, sort, onboardingTaskTemplateId) {
-    let sequelizeOptions = {
+    let sequelizeOptions: any = {
       currentPage,
       perPage,
       filters: {
@@ -759,16 +759,16 @@ export class TaskModel extends Model {
     }
 
     sequelizeOptions.include = [
-      { model: models.document.model, required: true, attributes: ['number'] },
-      { model: models.workflow.model, required: true, attributes: ['number', 'user_data'] },
+      { model: global.models.document.model, required: true, attributes: ['number'] },
+      { model: global.models.workflow.model, required: true, attributes: ['number', 'user_data'] },
     ];
 
     if (typeof filters.name !== 'undefined') {
       sequelizeOptions.include.push({
-        model: models.taskTemplate.model,
+        model: global.models.taskTemplate.model,
         attributes: ['name'],
         required: true,
-        include: [{ model: models.documentTemplate.model, attributes: ['name'] }],
+        include: [{ model: global.models.documentTemplate.model, attributes: ['name'] }],
       });
 
       sequelizeOptions.filters[Sequelize.Op.and].push({
@@ -802,7 +802,7 @@ export class TaskModel extends Model {
     let sequelizeOptions = {
       currentPage,
       perPage,
-      include: [{ model: models.document.model, include: [{ model: models.documentTemplate.model }] }],
+      include: [{ model: global.models.document.model, include: [{ model: global.models.documentTemplate.model }] }],
       filters: { is_current: true },
       sort: [['created_at', 'desc']],
     };
@@ -854,10 +854,10 @@ export class TaskModel extends Model {
       sequelizeOptions.sort = sort;
     }
 
-    let tasks = await this.model.paginate(sequelizeOptions);
+    let tasks: any = await (this.model as any).paginate(sequelizeOptions);
 
     tasks.data = tasks.data.map((item) => {
-      let task = this.prepareEntity(item);
+      let task: any = this.prepareEntity(item);
       if (item.document) {
         task.document = item.document.prepareEntity(item.document);
         if (item.document.documentTemplate) {

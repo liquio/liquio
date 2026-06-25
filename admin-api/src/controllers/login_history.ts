@@ -1,12 +1,16 @@
-const { matchedData } = require('express-validator');
+import { matchedData } from 'express-validator';
 
-const Controller = require('./controller');
-const LoginHistoryBusiness = require('../businesses/login_history');
+import { Controller } from './controller';
+import { LoginHistoryBusiness } from '../businesses/login_history';
 
 /**
  * Login history controller.
  */
-class LoginHistoryController extends Controller {
+export class LoginHistoryController extends Controller {
+  private static singleton: LoginHistoryController;
+
+  private loginHistoryBusiness: LoginHistoryBusiness;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -54,7 +58,7 @@ class LoginHistoryController extends Controller {
           return this.responseError(res, 'Client IDs filter includes not allowed records.', 400, {
             allowedClientIds,
             requestedClientIds: filter.client_id.split(','),
-          });
+          } as any);
         }
       } else {
         // Set client IDs filter accordance to allowed list.

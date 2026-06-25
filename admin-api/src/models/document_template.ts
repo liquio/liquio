@@ -33,7 +33,7 @@ export class DocumentTemplateModel extends Model {
         },
       );
 
-      this.model.prototype.prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       DocumentTemplateModel.singleton = this;
     }
@@ -47,13 +47,13 @@ export class DocumentTemplateModel extends Model {
    */
   async getAll() {
     const documentTemplates = await this.model.findAll({
-      include: [{ model: models.taskTemplate.model, attributes: ['id', 'name'] }],
+      include: [{ model: global.models.taskTemplate.model, attributes: ['id', 'name'] }],
       attributes: ['id', 'name'],
     });
 
     const documentTemplatesEntities = documentTemplates.map((item) => {
       let documentTemplate = this.prepareEntity(item);
-      let taskTemplate = models.taskTemplate.prepareEntity(item.taskTemplate);
+      let taskTemplate = global.models.taskTemplate.prepareEntity((item as any).taskTemplate);
       documentTemplate.taskTemplate = taskTemplate;
       return documentTemplate;
     });
@@ -70,7 +70,7 @@ export class DocumentTemplateModel extends Model {
       attributes: ['id', 'access_json_schema'],
     });
 
-    const documentTemplatesInfo = documentTemplatesRaw.map((item) => ({
+    const documentTemplatesInfo = documentTemplatesRaw.map((item: any) => ({
       documentTemplateId: item.id,
       accessJsonSchema: item.access_json_schema,
     }));
