@@ -27,8 +27,13 @@ const DEFAULT_CONFIG = {
 const initializeApp = async () => {
   const config = await loadConfig(DEFAULT_CONFIG);
   const {
-    application: { environment }
+    application: { environment, name }
   } = config;
+
+  // Apply runtime app name as early as possible, before route-level title logic runs.
+  if (typeof name === 'string' && name.trim()) {
+    document.title = name;
+  }
 
   // Defer loading App until after config is initialized
   const { default: App } = await import('App');

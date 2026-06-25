@@ -44,7 +44,11 @@ const APP_DEFAULTS = {
 
 const initializeApp = async () => {
   try {
-    const { application: { environment } } = await loadConfig(APP_DEFAULTS);
+    const { application: { environment, name } } = await loadConfig(APP_DEFAULTS);
+
+    if (typeof name === 'string' && name.trim()) {
+      document.title = name;
+    }
 
     // Defer loading App until after config is initialized
     const { default: App } = await import('App');
