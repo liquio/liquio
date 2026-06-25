@@ -17,7 +17,12 @@ metadata:
 -}}
 {{ $linkProvidersBase := dict
   "filestorage" (dict
-    "serversList" (list)
+    "serversList" (list (dict
+      "name" "filestorage"
+      "apiHost" (printf "http://%s-filestorage:80" (include "liquio.fullname" .))
+      "token" ""
+      "containerId" 1
+    ))
     "addContentDispositionHeader" true
   )
 -}}

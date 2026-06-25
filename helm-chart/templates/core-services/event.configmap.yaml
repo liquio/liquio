@@ -185,7 +185,7 @@ metadata:
     "pingWithAuth" "/test/ping_with_auth"
   )
   "token" "test-token"
-  "serverName" "bpmn_dev"
+  "serverName" "filestorage"
   "getLinkToFilestorageTimeout" 30000
 -}}
 {{ $requesterBase := dict

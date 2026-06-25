@@ -311,7 +311,7 @@ metadata:
     "pingWithAuth" "/test/ping_with_auth"
   )
   "token" "<removed>"
-  "serverName" "bpmn_dev"
+  "serverName" "filestorage"
   "getLinkToFilestorageTimeout" 30000
   "qrFrontUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "qr")))
 -}}
