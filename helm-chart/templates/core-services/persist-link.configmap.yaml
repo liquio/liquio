@@ -12,7 +12,7 @@ metadata:
 {{ $linkGeneratorBase := dict
   "secretKey" ""
   "cryptIv" ""
-  "linksPrefix" (printf "http://%s-persist-link:80/" (include "liquio.fullname" .))
+  "linksPrefix" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "plink")))
   "smallHashRandomBytesLength" 16
 -}}
 {{ $linkProvidersBase := dict
