@@ -8,7 +8,7 @@ metadata:
     {{- include "liquio.labels" . | nindent 4 }}
     app.kubernetes.io/component: persist-link
     app.kubernetes.io/tier: backend
-    app.kubernetes.io/exposure: internal
+    app.kubernetes.io/exposure: public
   annotations:
     "argocd.argoproj.io/sync-wave": "2"
 spec:
@@ -23,7 +23,7 @@ spec:
         {{- include "liquio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: persist-link
         app.kubernetes.io/tier: backend
-        app.kubernetes.io/exposure: internal
+        app.kubernetes.io/exposure: public
     spec:
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
