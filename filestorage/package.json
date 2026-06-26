@@ -22,7 +22,7 @@
   "dependencies": {
     "adm-zip": "^0.5.10",
     "aws-sdk": "^2.1693.0",
-    "axios": "^1.11.0",
+    "axios": "^1.18.1",
     "body-parser": "^2.2.2",
     "express": "^5.2.1",
     "inquirer": "^8.2.6",
