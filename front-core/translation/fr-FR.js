@@ -1645,7 +1645,9 @@ export default {
     BirthdayInputLabel: 'Date de naissance',
     RegistrationInputLabel: "Date d'enregistrement d'état",
     BirthdayInputError: 'Saisissez la date au format JJ.MM.AAAA',
-    IpnInputLabel: 'Numéro d’identification (numéro de la carte d’identité)',
+    IpnInputLabel: 'Numéro fiscal ou d’identité',
+    IpnInputHelper:
+      'RNOKPP, série et numéro du passeport ou numéro de la carte d’identité.',
     ProfileSaved: 'Profil enregistré',
     Saved: 'Modifications enregistrées',
     TwoFactorAuthEnable:
@@ -3396,7 +3398,8 @@ export default {
     loadingText: 'Chargement...',
     noOptionsText: 'Aucun résultat',
     openText: 'Ouvrir',
-    placeholder: 'Nom complet, CNIB ou ID utilisateur',
+    placeholder: 'Recherche utilisateur',
+    helper: 'Nom complet, CNIB ou ID utilisateur',
   },
   StringFilterHandler: {
     SearchRegular: 'Rechercher une expression régulière',

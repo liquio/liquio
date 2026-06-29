@@ -3,13 +3,17 @@ import PropTypes from 'prop-types';
 import { FormControl, TextField, Snackbar, Button } from '@mui/material';
 import CustomDatePicker from 'components/CustomInput/CustomDatePicker';
 import getFields from 'modules/profile/pages/UserProfile/components/fields';
+import { getQueryLangParam } from 'actions/auth';
+import { getConfig } from 'core/helpers/configLoader';
 import PhoneInput from './PhoneInput';
 import EmailInput from './EmailInput';
 
-const fields = getFields({
-  EmailInput,
-  PhoneInput,
-});
+const isUkrainianLanguage = () => {
+  const config = getConfig();
+  const language = getQueryLangParam() || config?.defaultLanguage || 'en-GB';
+
+  return ['uk', 'uk-ua', 'ua'].includes(language.toLowerCase());
+};
 
 const RenderControl =
   ({
@@ -99,6 +103,11 @@ const ProfileLayout = ({
   handleSave,
   checkboxChange,
 }) => {
+  const fields = getFields({
+    EmailInput,
+    PhoneInput,
+    showMiddleName: isUkrainianLanguage(),
+  });
   const inputs = isLegal ? fields.isLegal : fields.notIsLegal;
   return (
     <>

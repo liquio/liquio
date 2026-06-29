@@ -1,4 +1,4 @@
-const fields = ({ EmailInput, PhoneInput }) => ({
+const fields = ({ EmailInput, PhoneInput, showMiddleName = true }) => ({
   isLegal: [
     {
       key: 'companyName',
@@ -19,10 +19,17 @@ const fields = ({ EmailInput, PhoneInput }) => ({
   notIsLegal: [
     { key: 'lastName', label: 'LastNameInputLabel', disabled: true },
     { key: 'firstName', label: 'FirstNameInputLabel', disabled: true },
-    { key: 'middleName', label: 'MiddleNameInputLabel', disabled: true },
+    ...(showMiddleName
+      ? [{ key: 'middleName', label: 'MiddleNameInputLabel', disabled: true }]
+      : []),
     { key: 'email', Component: EmailInput, changed: 'email' },
     { key: 'phone', Component: PhoneInput, changed: 'phone' },
-    { key: 'cyrillicIpnPassport', label: 'IpnInputLabel', disabled: true },
+    {
+      key: 'cyrillicIpnPassport',
+      label: 'IpnInputLabel',
+      disabled: true,
+      helperText: 'IpnInputHelper',
+    },
     {
       key: 'address',
       label: 'Address',

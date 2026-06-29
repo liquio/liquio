@@ -20,12 +20,28 @@ import 'assets/css/fonts.css';
 import 'assets/css/main.css';
 import Auth from 'components/Auth';
 import BlockScreen from 'components/Auth/BlockScreen';
+import { getQueryLangParam } from 'actions/auth';
 import theme from 'core/theme';
 import translation from 'core/translation';
 import { getConfig } from 'helpers/configLoader';
 
 const AppRouter = React.lazy(() => import('components/AppRouter'));
 const WebChat = React.lazy(() => import('components/WebChat'));
+
+const dayjsLocales = {
+  de: 'de',
+  'de-DE': 'de',
+  fr: 'fr',
+  'fr-FR': 'fr',
+  nl: 'nl',
+  'nl-NL': 'nl',
+  uk: 'uk',
+  'uk-UA': 'uk',
+  ua: 'uk',
+  eng: 'en',
+  en: 'en',
+  'en-GB': 'en'
+};
 
 export default function getApp() {
   const config = getConfig();
@@ -51,12 +67,13 @@ export default function getApp() {
     </StyledEngineProvider>
   );
 
-  const locale = config?.defaultLanguage || 'en';
+  const language = getQueryLangParam() || config?.defaultLanguage || 'en';
+  const locale = dayjsLocales[language] || 'en';
 
   return (
     <LocalizationProvider
       dateAdapter={AdapterDayjs}
-      adapterLocale={locale === 'eng' ? 'en' : locale}
+      adapterLocale={locale}
     >
       {themeProvider}
     </LocalizationProvider>
