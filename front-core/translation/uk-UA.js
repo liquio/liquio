@@ -1566,7 +1566,9 @@ export default {
     BirthdayInputLabel: 'Дата народження',
     RegistrationInputLabel: 'Дата державної реєстрації',
     BirthdayInputError: 'Введіть дату у форматі 01.01.2000',
-    IpnInputLabel: 'РНОКПП або серія та номер паспорта або номер ID-картки',
+    IpnInputLabel: 'РНОКПП або документ',
+    IpnInputHelper:
+      'РНОКПП, серія та номер паспорта або номер ID-картки.',
     ProfileSaved: 'Профіль збережено',
     Saved: 'Зміни збережено',
     TwoFactorAuthEnable: 'Увімкнути двоетапну перевірку при вході',
@@ -2927,7 +2929,8 @@ export default {
     loadingText: 'Завантаження...',
     noOptionsText: 'Не знайдено',
     openText: 'Відкрити',
-    placeholder: 'ПІБ, РНОКПП або ID користувача',
+    placeholder: 'Пошук користувача',
+    helper: 'ПІБ, РНОКПП або ID користувача',
   },
   StringFilterHandler: {
     SearchRegular: 'Шукаю регулярний вираз',

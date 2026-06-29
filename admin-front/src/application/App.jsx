@@ -9,6 +9,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import 'dayjs/locale/de';
 import 'dayjs/locale/fr';
+import 'dayjs/locale/nl';
 import 'dayjs/locale/uk';
 import 'focus-visible';
 import React, { Suspense } from 'react';
@@ -20,6 +21,7 @@ import 'assets/css/main.css';
 import Auth from 'components/Auth';
 import BlockScreen from 'components/Auth/BlockScreen';
 import WebChat from 'components/WebChat';
+import { getQueryLangParam } from 'actions/auth';
 import { getConfig } from 'core/helpers/configLoader';
 import store from 'store';
 import theme from 'theme';
@@ -27,10 +29,26 @@ import translation from 'translation';
 
 const AppRouter = React.lazy(() => import('components/AppRouter'));
 
+const dayjsLocales = {
+  de: 'de',
+  'de-DE': 'de',
+  fr: 'fr',
+  'fr-FR': 'fr',
+  nl: 'nl',
+  'nl-NL': 'nl',
+  uk: 'uk',
+  'uk-UA': 'uk',
+  ua: 'uk',
+  eng: 'en',
+  en: 'en',
+  'en-GB': 'en'
+};
+
 const App = () => {
   const config = getConfig();
 
-  const locale = config?.defaultLanguage || 'en';
+  const language = getQueryLangParam() || config?.defaultLanguage || 'en';
+  const locale = dayjsLocales[language] || 'en';
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -46,7 +64,7 @@ const App = () => {
   return (
     <LocalizationProvider
       dateAdapter={AdapterDayjs}
-      adapterLocale={locale === 'eng' ? 'en' : locale}
+      adapterLocale={locale}
     >
       <StyledEngineProvider injectFirst>
         <ThemeProvider theme={createTheme(adaptV4Theme(theme))}>

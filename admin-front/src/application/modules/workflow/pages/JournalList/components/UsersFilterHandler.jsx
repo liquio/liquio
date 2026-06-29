@@ -109,7 +109,12 @@ class UsersFilterHandler extends FilterHandler {
     const { t } = this.props;
 
     return (
-      <TextField {...params} label={t('placeholder')} variant="outlined" />
+      <TextField
+        {...params}
+        label={t('placeholder')}
+        helperText={t('helper')}
+        variant="outlined"
+      />
     );
   };
 

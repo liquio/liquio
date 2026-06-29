@@ -1499,7 +1499,9 @@ export default {
     BirthdayInputLabel: 'Geboortedatum',
     RegistrationInputLabel: 'Datum van staatsregistratie',
     BirthdayInputError: 'Voer een datum in het formaat 01.01.2000 in',
-    IpnInputLabel: 'RNOKPP (voorheen TIN) of paspoortserie en nummer',
+    IpnInputLabel: 'Fiscaal of identiteitsnummer',
+    IpnInputHelper:
+      'RNOKPP (voorheen TIN), paspoortserie en nummer of ID-kaartnummer.',
     ProfileSaved: 'Profiel opgeslagen',
     Saved: 'Wijzigingen opgeslagen',
     TwoFactorAuthEnable: 'Tweefactorauthenticatie inschakelen bij inloggen',
@@ -2807,7 +2809,8 @@ export default {
     loadingText: 'Laden...',
     noOptionsText: 'Niet gevonden',
     openText: 'Openen',
-    placeholder: 'Volledige naam, ITN of gebruikers-ID'
+    placeholder: 'Gebruiker zoeken',
+    helper: 'Volledige naam, ITN of gebruikers-ID'
   },
   UIFilterList: {
     UIFilters: 'Kabinetsecties',

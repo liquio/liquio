@@ -1490,7 +1490,9 @@ export default {
     BirthdayInputLabel: 'Date of Birth',
     RegistrationInputLabel: 'State registration date',
     BirthdayInputError: 'Enter a date in the format 01.01.2000',
-    IpnInputLabel: 'RNOKPP (formerly TIN) or passport series and number',
+    IpnInputLabel: 'Tax or identity number',
+    IpnInputHelper:
+      'RNOKPP (formerly TIN), passport series and number, or ID card number.',
     ProfileSaved: 'Profile saved',
     Saved: 'Changes saved',
     TwoFactorAuthEnable: 'Enable two-factor authentication at login',
@@ -2798,7 +2800,8 @@ export default {
     loadingText: 'Loading...',
     noOptionsText: 'Not found',
     openText: 'Open',
-    placeholder: 'Full name, ITN or user ID'
+    placeholder: 'User search',
+    helper: 'Full name, ITN or user ID'
   },
   UIFilterList: {
     UIFilters: 'Cabinet Sections',
