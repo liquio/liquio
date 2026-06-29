@@ -36,7 +36,7 @@
     "multiconf": "^4.0.0",
     "node-fetch": "^3.3.0",
     "node-xlsx": "^0.24.0",
-    "pg": "^8.9.0",
+    "pg": "^8.22.0",
     "pg-hstore": "^2.3.3",
     "prop-by-path": "^1.0.5",
     "queue": "^6.0.2",
