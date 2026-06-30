@@ -527,6 +527,8 @@ export default {
     TOTPGenerateError: 'Error generating code',
     ImportTranslatesError: 'Error importing translations',
     ExportTranslationError: 'Error exporting translations',
+    'Login history not responsed from auth server.':
+      'Login history was not returned by the auth server',
     'Validation error.': 'Validation error',
     'SequelizeUniqueConstraintError: Validation error': 'Key already exists',
     'value too long for type character varying(5)': 'value too long, maximum 5 characters',
@@ -2366,6 +2368,7 @@ export default {
     ActionType: 'Action type',
     LoginAction: 'Login',
     LogoutAction: 'Logout',
+    ChangePasswordAction: 'Change password',
     BlockAction: 'Block',
     UnblockAction: 'Unblock',
     DeleteAction: 'Delete',

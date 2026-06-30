@@ -21,7 +21,15 @@ export default ({ t }) => {
       id: 'logout',
       name: t('LogoutAction'),
     },
+    {
+      id: 'change_password',
+      name: t('ChangePasswordAction'),
+    },
   ]
+  const actionTypeNames = actionTypes.reduce((result, { id, name }) => {
+    result[id] = name;
+    return result;
+  }, {});
 
   return {
     controls: {
@@ -48,6 +56,7 @@ export default ({ t }) => {
       {
         id: 'actionType',
         name: t('ActionType'),
+        render: (value) => actionTypeNames[value] || value,
       },
       {
         id: 'expiresAt',
