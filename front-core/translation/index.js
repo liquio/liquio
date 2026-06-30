@@ -16,8 +16,12 @@ import { getConfig } from 'core/helpers/configLoader';
 
 const translations = {
   'uk-UA': ukUA,
+  uk: ukUA,
+  ua: ukUA,
   'en-GB': enGB,
+  en: enGB,
   eng: enGB,
+  'fr-FR': frFR,
   fr: frFR,
   'de-DE': deDE,
   de: deDE,

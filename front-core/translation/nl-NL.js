@@ -530,6 +530,8 @@ export default {
     TOTPGenerateError: 'Fout bij het genereren van code',
     ImportTranslatesError: 'Fout bij het importeren van vertalingen',
     ExportTranslationError: 'Fout bij het exporteren van vertalingen',
+    'Login history not responsed from auth server.':
+      'Aanmeldgeschiedenis is niet teruggestuurd door de authenticatieserver',
     'Validation error.': 'Validatiefout',
     'SequelizeUniqueConstraintError: Validation error': 'Sleutel bestaat al',
     'value too long for type character varying(5)': 'waarde te lang, maximaal 5 tekens',
@@ -2363,6 +2365,7 @@ export default {
     ActionType: 'Actietype',
     LoginAction: 'Inloggen',
     LogoutAction: 'Uitloggen',
+    ChangePasswordAction: 'Wachtwoord wijzigen',
     BlockAction: 'Blok',
     UnblockAction: 'Débloquer',
     DeleteAction: 'Verwijderen',

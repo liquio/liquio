@@ -487,6 +487,8 @@ export default {
     handleSavePasswordSuccess: 'Mot de passe modifié avec succès',
     TOTPEnabled: "L'authentification à deux facteurs est activée",
     TOTPGenerateError: 'Erreur lors de la génération du code',
+    'Login history not responsed from auth server.':
+      "L'historique des connexions n'a pas été renvoyé par le serveur d'authentification",
     OutOfBoundError: 'Vous avez dépassé les limites autorisées',
     GetAddressError: "Erreur lors de l'obtention de l'adresse",
     PrivateQuestionnaireInitError:
@@ -2937,6 +2939,7 @@ export default {
     ActionType: "Type d'action",
     LoginAction: 'Сonnexion',
     LogoutAction: 'Déconnexion',
+    ChangePasswordAction: 'Changer le mot de passe',
     BlockAction: 'Bloc',
     UnblockAction: 'Débloquer',
     DeleteAction: 'Supprimer',

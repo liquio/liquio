@@ -494,6 +494,8 @@ export default {
     handleSavePasswordSuccess: 'Пароль успішно змінено',
     TOTPEnabled: 'Двофакторна автентифікація включена',
     TOTPGenerateError: 'Помилка при генерації коду',
+    'Login history not responsed from auth server.':
+      'Історію входів не отримано від сервера авторизації',
     OutOfBoundError: 'Ви вийшли за межі дозволених значень',
     GetAddressError: 'Помилка при отриманні адреси',
     GeolocationNotSupported: 'Геолокація не підтримується. Оновіть браузер.',
@@ -2484,6 +2486,7 @@ export default {
     ActionType: 'Тип дії',
     LoginAction: 'Вхід',
     LogoutAction: 'Вихід',
+    ChangePasswordAction: 'Зміна паролю',
     BlockAction: 'Заблокувати',
     UnblockAction: 'Розблокувати',
     DeleteAction: 'Видалити',
