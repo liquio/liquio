@@ -33,6 +33,7 @@ import {
 } from 'application/actions/task';
 import { requestExternalData } from 'application/actions/externalReader';
 import { updateUserInfo, requestUserInfo } from 'actions/auth';
+import { getLocalizationTexts } from 'actions/localization';
 import { loadDocumentTemplate, loadTaskTemplates } from 'application/actions/documentTemplate';
 import { setOpenSidebar } from 'actions/app';
 import getDeltaProperties from 'helpers/getDeltaProperties';
@@ -54,6 +55,11 @@ import queueFactory from 'helpers/queueFactory';
 import storage from 'helpers/storage';
 import dbStorage from 'helpers/indexedDB';
 import handleTranslateText from 'helpers/handleTranslateText';
+import {
+  getCurrentLanguageCode,
+  getTranslationCandidates,
+  pickLocalizedTexts,
+} from 'helpers/localization';
 
 const md = new MobileDetect(window.navigator.userAgent);
 const isMobile = !!md.mobile();
@@ -97,6 +103,74 @@ class TaskPage extends ModulePage {
 
     this.settingDefaultStep = false;
   }
+
+  isLocalizationKey = (value) => {
+    if (typeof value !== 'string') return false;
+    return /^[A-Z0-9_]+$/.test(value) && value.includes('_');
+  };
+
+  extractLocalizationKey = (value) => {
+    if (typeof value !== 'string') return null;
+
+    if (this.isLocalizationKey(value)) {
+      return value;
+    }
+
+    const namespacedKeyMatch = value.match(/(?:^|\.)([A-Z0-9_]+)$/);
+    const maybeKey = namespacedKeyMatch?.[1];
+
+    if (maybeKey && this.isLocalizationKey(maybeKey)) {
+      return maybeKey;
+    }
+
+    return null;
+  };
+
+  isMissingTranslationValue = (translatedValue, key) => {
+    if (typeof translatedValue !== 'string') return true;
+
+    const normalized = translatedValue.trim();
+
+    if (!normalized) return true;
+    if (normalized === key) return true;
+    if (normalized.endsWith(`.${key}`)) return true;
+
+    return false;
+  };
+
+  resolveTitleLocalization = (value) => {
+    const { t, localizationTexts } = this.props;
+    const { initing } = this.state;
+
+    const localizationKey = this.extractLocalizationKey(value);
+
+    if (!localizationKey) {
+      return value;
+    }
+
+    const translatedByStatic = t(localizationKey);
+
+    if (!this.isMissingTranslationValue(translatedByStatic, localizationKey)) {
+      return translatedByStatic;
+    }
+
+    const selectedLanguageCode = getCurrentLanguageCode({
+      fallbackLanguage: 'uk',
+    });
+    const preferredCandidates = getTranslationCandidates(selectedLanguageCode);
+    const preparedTexts = pickLocalizedTexts(localizationTexts, preferredCandidates);
+    const matchedText = preparedTexts.find((item) => item?.key === localizationKey)?.value;
+
+    if (matchedText) {
+      return matchedText;
+    }
+
+    if (initing) {
+      return '';
+    }
+
+    return localizationKey;
+  };
 
   evalStepDescription = (step) => {
     const { origins, taskId } = this.props;
@@ -428,8 +502,35 @@ class TaskPage extends ModulePage {
 
     const { localizationTexts } = this.props;
 
+    const selectedLanguageCode = getCurrentLanguageCode({
+      fallbackLanguage: 'uk',
+    });
+
+    if (!storage.getItem('lang') && selectedLanguageCode) {
+      storage.setItem('lang', selectedLanguageCode);
+    }
+
+    const preferredCandidates = getTranslationCandidates(selectedLanguageCode);
+    let resolvedLocalizationTexts = localizationTexts;
+
+    if (!Array.isArray(resolvedLocalizationTexts) || !resolvedLocalizationTexts.length) {
+      const requestedTexts = await actions.getLocalizationTexts(selectedLanguageCode);
+
+      if (Array.isArray(requestedTexts) && requestedTexts.length) {
+        resolvedLocalizationTexts = requestedTexts;
+      } else {
+        const requestedTextsWithoutFilter = await actions.getLocalizationTexts();
+
+        if (Array.isArray(requestedTextsWithoutFilter) && requestedTextsWithoutFilter.length) {
+          resolvedLocalizationTexts = requestedTextsWithoutFilter;
+        }
+      }
+    }
+
+    const preparedTexts = pickLocalizedTexts(resolvedLocalizationTexts, preferredCandidates);
+
     const template = handleTranslateText(
-      localizationTexts,
+      preparedTexts,
       templates[task.taskTemplateId] || (await actions.loadDocumentTemplate(task.taskTemplateId))
     );
 
@@ -1109,10 +1210,10 @@ class TaskPage extends ModulePage {
     );
 
     if (!(evaluatedTitle instanceof Error)) {
-      return evaluatedTitle;
+      return this.resolveTitleLocalization(evaluatedTitle);
     }
 
-    return template.jsonSchema.title || template.name;
+    return this.resolveTitleLocalization(template.jsonSchema.title || template.name);
   };
 
   showStepsMenu = () => {
@@ -1308,6 +1409,7 @@ const mapDispatchToProps = (dispatch) => ({
     storeTaskDocument: bindActionCreators(storeTaskDocument, dispatch),
     handleSilentTriggers: bindActionCreators(handleSilentTriggers, dispatch),
     requestExternalData: bindActionCreators(requestExternalData, dispatch),
+    getLocalizationTexts: bindActionCreators(getLocalizationTexts, dispatch),
     setOpenSidebar: bindActionCreators(setOpenSidebar, dispatch),
     deleteDraft: bindActionCreators(deleteDraft, dispatch),
     getExternalReaderCaptchaList: bindActionCreators(getExternalReaderCaptchaList, dispatch)

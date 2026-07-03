@@ -31,6 +31,7 @@ import edsService from 'services/eds';
 import { addMessage } from 'actions/error';
 import Message from 'components/Snackbars/Message';
 import ChangePassword from 'components/ChangePassword';
+import { getCurrentLanguageCode } from 'helpers/localization';
 import { requestUserSettings } from '../../actions/auth';
 
 class Auth extends React.Component {
@@ -77,12 +78,25 @@ class Auth extends React.Component {
     if (!config.multiLanguage) return;
 
     try {
-      const langCode = storage.getItem('lang');
+      const langCodeFromStorage = storage.getItem('lang');
+      const langCode =
+        langCodeFromStorage ||
+        getCurrentLanguageCode({
+          defaultLanguage: config.defaultLanguage,
+          fallbackLanguage: 'uk'
+        });
 
       await actions.getLocalizationLanguages();
 
-      if (langCode) {
-        await actions.getLocalizationTexts(langCode);
+      if (!langCode) {
+        await actions.getLocalizationTexts();
+        return;
+      }
+
+      await actions.getLocalizationTexts(langCode);
+
+      if (!langCodeFromStorage) {
+        storage.setItem('lang', langCode);
       }
     } catch (e) {
       console.error('Failed to get localization codes', e);

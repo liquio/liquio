@@ -51,3 +51,45 @@ export const getTranslationCandidates = (languageCode) => {
 
   return [...new Set(candidates.filter(Boolean))];
 };
+
+const getLanguageCodeRank = (preferredCandidates = []) => {
+  const fallbackCandidates = ['en', 'eng', 'en-GB', 'uk', 'ua', 'uk-UA'];
+  const orderedCodes = [...preferredCandidates, ...fallbackCandidates];
+
+  return orderedCodes.reduce((acc, code, index) => {
+    const normalized = normalizeCode(code) || String(code || '').toLowerCase();
+    if (!acc.has(normalized)) {
+      acc.set(normalized, index);
+    }
+    return acc;
+  }, new Map());
+};
+
+export const pickLocalizedTexts = (localizationTexts = [], preferredCandidates = []) => {
+  if (!Array.isArray(localizationTexts) || !localizationTexts.length) return [];
+
+  const rankByCode = getLanguageCodeRank(preferredCandidates);
+  const byKey = new Map();
+
+  localizationTexts.forEach((item) => {
+    const key = item?.key;
+    const value = item?.value;
+    const languageCode = item?.localizationLanguageCode;
+
+    if (!key || typeof value !== 'string') return;
+
+    const normalizedCode =
+      normalizeCode(languageCode) || String(languageCode || '').toLowerCase();
+    const rank = rankByCode.has(normalizedCode)
+      ? rankByCode.get(normalizedCode)
+      : Number.MAX_SAFE_INTEGER;
+
+    const existing = byKey.get(key);
+
+    if (!existing || rank < existing.rank) {
+      byKey.set(key, { key, value, rank });
+    }
+  });
+
+  return Array.from(byKey.values()).map(({ key, value }) => ({ key, value }));
+};
