@@ -8,8 +8,12 @@ import ToggleButton from '@mui/material/ToggleButton';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 
-import { getQueryLangParam, setCurrentLanguage } from 'actions/auth';
-import { normalizeCode } from 'helpers/localization';
+import { setCurrentLanguage } from 'actions/auth';
+import {
+  getCurrentLanguageCode,
+  getTranslationCandidates,
+  normalizeCode,
+} from 'helpers/localization';
 
 const useStyles = makeStyles((theme) => {
   const getPalette = (darkTheme) => {
@@ -153,7 +157,10 @@ export const LanguageSelector = ({ darkTheme = false }) => {
     : (langSelectorTheme?.menuBackground ?? '#fff');
 
   const chosen = normalizeCode(
-    getQueryLangParam() || appConfig.defaultLanguage || 'uk'
+    getCurrentLanguageCode({
+      defaultLanguage: appConfig.defaultLanguage,
+      fallbackLanguage: 'uk',
+    }),
   );
 
   const languages = useSelector((state) => state?.app?.localization || []);
@@ -161,7 +168,9 @@ export const LanguageSelector = ({ darkTheme = false }) => {
     return null;
   }
 
-  const current = languages.find((x) => x.code === chosen)?.code || languages[0]?.code;
+  const current =
+    languages.find((x) => getTranslationCandidates(chosen).includes(x.code))
+      ?.code || languages[0]?.code;
 
   const handleChange = (_, next) => {
     if (!next || next === current) return;

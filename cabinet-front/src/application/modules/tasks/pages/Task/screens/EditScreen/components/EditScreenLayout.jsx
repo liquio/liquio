@@ -28,7 +28,8 @@ import HandleTask from 'modules/tasks/pages/Task/screens/EditScreen/components/H
 import Timer from 'modules/tasks/pages/Task/components/Timer';
 import styles from 'modules/tasks/pages/Task/screens/EditScreen/components/editScreenStyles';
 import ProgressLine from 'components/Preloader/ProgressLine';
-import storage from 'helpers/storage';
+import config from 'config';
+import { getCurrentLanguageCode } from 'helpers/localization';
 
 const EditScreenLayout = ({
   busy,
@@ -76,9 +77,15 @@ const EditScreenLayout = ({
   t
 }) => {
   React.useEffect(() => {
-    const lang = storage?.getItem('lang')?.toUpperCase() || 'UA';
-    if (jsonSchema?.multiLanguage && task.document?.data?.language !== lang) {
+    const languageCode = getCurrentLanguageCode({
+      fallbackLanguage: config?.multiLanguage ? 'eng' : 'uk',
+    });
+    const lang = languageCode.toUpperCase();
+    if (jsonSchema?.multiLanguage && task.document?.data?.lang !== lang) {
       actions.handleChange.bind(null, 'lang')(lang);
+    }
+    if (jsonSchema?.multiLanguage && task.document?.data?.languageCode !== languageCode) {
+      actions.handleChange.bind(null, 'languageCode')(languageCode);
     }
   }, [actions, task.document]);
 

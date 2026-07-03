@@ -16,7 +16,10 @@ import ListboxComponent, {
 } from 'components/Select/components/ListboxComponent';
 import CustomWidthTooltip from 'components/JsonSchema/elements/CustomWidthTooltip';
 import styles from 'components/Select/components/styles';
-import storage from 'helpers/storage';
+import {
+  getCurrentLanguageCode,
+  getTranslationCandidates,
+} from 'helpers/localization';
 
 const md = new MobileDetect(window.navigator.userAgent);
 const isMobile = !!md.mobile();
@@ -92,12 +95,21 @@ const MultiSelect = ({
     usedInTable && !userInCard ? 500 : controlRel?.current?.offsetWidth;
 
   const multiLanguage = template?.jsonSchema?.multiLanguage;
-  const lang = storage?.getItem('lang')?.toUpperCase() || 'UA';
+  const languageCandidates = getTranslationCandidates(
+    getCurrentLanguageCode({ fallbackLanguage: 'uk' }),
+  ).map((candidate) => candidate.toUpperCase());
 
   const getLabel = (opt) => {
     if (multiLanguage) {
-      const object = JSON.parse(opt?.stringified);
-      return object[lang] || object[defaultLang] || '';
+      if (typeof opt?.stringified === 'string' && opt?.stringified?.startsWith('{')) {
+        const object = JSON.parse(opt?.stringified);
+        return (
+          languageCandidates.map((candidate) => object[candidate]).find(Boolean) ||
+          object[defaultLang] ||
+          ''
+        );
+      }
+      return opt?.stringified || opt?.label || opt?.name;
     } else {
       return opt?.stringified || opt?.label || opt?.name;
     }
