@@ -10,6 +10,10 @@ import processList from 'services/processList';
 import arrayToTree from 'array-to-tree';
 import evaluate from 'helpers/evaluate';
 import objectPath from 'object-path';
+import {
+  getCurrentLanguageCode,
+  getTranslationCandidates,
+} from 'helpers/localization';
 import ElementContainer from '../components/ElementContainer';
 
 class TreeSelect extends React.Component {
@@ -67,9 +71,27 @@ class TreeSelect extends React.Component {
   };
 
   setTitle = (item, type) => {
-    const { fieldToDisplay } = this.props;
+    const { fieldToDisplay, defaultLang, template } = this.props;
+    const multiLanguage = template?.jsonSchema?.multiLanguage;
 
-    if (!fieldToDisplay) return item[type];
+    if (!fieldToDisplay) {
+      if (multiLanguage) {
+        const raw = item?.stringified;
+        if (typeof raw === 'string' && raw?.startsWith('{')) {
+          const languageCandidates = getTranslationCandidates(
+            getCurrentLanguageCode({ fallbackLanguage: 'uk' }),
+          ).map((candidate) => candidate.toUpperCase());
+          const obj = JSON?.parse(raw);
+          return (
+            languageCandidates.map((candidate) => obj[candidate]).find(Boolean) ||
+            obj[defaultLang] ||
+            ''
+          );
+        }
+        return item[type] || item?.stringified;
+      }
+      return item[type];
+    }
 
     const result = evaluate(fieldToDisplay, item);
 

@@ -12,6 +12,10 @@ import ElementContainer from 'components/JsonSchema/components/ElementContainer'
 import RegisterChip from 'components/JsonSchema/elements/Register/components/Chip';
 import TreeSelect from 'components/JsonSchema/elements/TreeSelect';
 import { ChangeEvent } from 'components/JsonSchema';
+import {
+  getCurrentLanguageCode,
+  getTranslationCandidates,
+} from 'helpers/localization';
 
 const styles = (theme) => ({
   containerWrapper: {
@@ -88,8 +92,24 @@ class RegisterSelect extends React.Component {
     return flatArray;
   };
 
+  getLabel = (stringified, defaultLang) => {
+    if (typeof stringified === 'string' && stringified.startsWith('{')) {
+      const languageCandidates = getTranslationCandidates(
+        getCurrentLanguageCode({ fallbackLanguage: 'uk' }),
+      ).map((candidate) => candidate.toUpperCase());
+      const obj = JSON?.parse(stringified);
+      return (
+        languageCandidates.map((candidate) => obj[candidate]).find(Boolean) ||
+        obj[defaultLang] ||
+        ''
+      );
+    }
+    return stringified;
+  };
+
   renderResults = () => {
-    const { value, readOnly, locked, multiple } = this.props;
+    const { value, readOnly, locked, multiple, defaultLang, template } = this.props;
+    const multiLanguage = template?.jsonSchema?.multiLanguage;
 
     if (!multiple) return null;
 
@@ -98,7 +118,7 @@ class RegisterSelect extends React.Component {
       .map(({ name, label, id, stringified }) => (
         <RegisterChip
           key={id}
-          label={stringified || label || name}
+          label={multiLanguage ? this.getLabel(stringified, defaultLang) : (stringified || label || name)}
           disabled={readOnly || locked}
           onDelete={() =>
             this.handleChange(
