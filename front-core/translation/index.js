@@ -12,6 +12,11 @@ import nlNL from 'translation/nl-NL';
 import plugins from 'plugins';
 import { getQueryLangParam } from 'actions/auth';
 import handleTranslateText from 'helpers/handleTranslateText';
+import {
+  getCurrentLanguageCode,
+  getTranslationCandidates,
+  pickLocalizedTexts,
+} from 'helpers/localization';
 import { getConfig } from 'core/helpers/configLoader';
 
 const translations = {
@@ -70,8 +75,14 @@ export default function getTranslations() {
       const state = store.getState();
       const { localizationTexts } = state.app;
 
-      if (localizationTexts && !isTriggered) {
-        handleTranslateText(localizationTexts, chosenTranslation);
+      if (Array.isArray(localizationTexts) && localizationTexts.length && !isTriggered) {
+        const selectedLanguageCode = getCurrentLanguageCode({
+          defaultLanguage: chosenLanguage,
+          fallbackLanguage: 'uk',
+        });
+        const preferredCandidates = getTranslationCandidates(selectedLanguageCode);
+        const preparedTexts = pickLocalizedTexts(localizationTexts, preferredCandidates);
+        handleTranslateText(preparedTexts, chosenTranslation);
         isTriggered = true;
       }
     });
