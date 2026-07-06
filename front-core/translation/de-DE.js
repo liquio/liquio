@@ -119,6 +119,8 @@ export default {
     VariableHint: 'Variable "{{variableName}}"'
   },
   Navigator: {
+    StartLearning: 'Lerne los',
+    MyCertificates: 'Meine Zertifikate',
     StatisticsPageTitle: 'Statistiken',
     WorkflowDynamicsPageTitle: 'Workflow-Dynamik',
     DebugLogs: 'Debug-Protokolle',
