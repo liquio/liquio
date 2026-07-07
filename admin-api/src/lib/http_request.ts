@@ -145,15 +145,15 @@ function createSerializableResponse(axiosResponse) {
       url: axiosResponse.config.url,
       method: axiosResponse.config.method,
       headers: axiosResponse.config.headers,
-      timeout: axiosResponse.config.timeout
+      timeout: axiosResponse.config.timeout,
     },
     request: {
       method: axiosResponse.config.method,
       url: axiosResponse.config.url,
       headers: axiosResponse.config.headers,
       data: axiosResponse.config.data,
-      timeout: axiosResponse.config.timeout
-    }
+      timeout: axiosResponse.config.timeout,
+    },
   };
 }
 
@@ -168,7 +168,7 @@ function parseBody(body) {
   if (typeof body === 'object') {
     return body;
   }
-  
+
   // If body is string, try to parse as JSON
   if (typeof body === 'string') {
     try {
@@ -178,7 +178,7 @@ function parseBody(body) {
       return body;
     }
   }
-  
+
   // Return body as is for other types
   return body;
 }

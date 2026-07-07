@@ -13,10 +13,7 @@ export class Entity<T extends object, A extends object = {}> {
    * Filter Response.
    * @param [brief] getFilterPropertiesBrief method.
    */
-  static filterResponse<T extends object>(
-    data: Array<Entity<T> & T> | (Entity<T> & T),
-    brief = false,
-  ): Partial<T> | Partial<T>[] {
+  static filterResponse<T extends object>(data: Array<Entity<T> & T> | (Entity<T> & T), brief = false): Partial<T> | Partial<T>[] {
     if (Array.isArray(data)) {
       if (!data.every((item) => item instanceof Entity)) {
         throw new Error(ERROR_WRONG_ENTITY);

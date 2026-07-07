@@ -17,7 +17,6 @@ interface WorkflowTemplateCategoryEntityOptions {
  * Workflow template category entity.
  */
 export class WorkflowTemplateCategoryEntity extends Entity<WorkflowTemplateCategoryEntityOptions> {
-
   getFilterProperties(): (keyof WorkflowTemplateCategoryEntityOptions)[] {
     return ['id', 'parentId', 'name', 'createdAt', 'updatedAt'];
   }
@@ -27,4 +26,4 @@ export class WorkflowTemplateCategoryEntity extends Entity<WorkflowTemplateCateg
   }
 }
 
-export interface WorkflowTemplateCategoryEntity extends WorkflowTemplateCategoryEntityOptions { }
+export interface WorkflowTemplateCategoryEntity extends WorkflowTemplateCategoryEntityOptions {}

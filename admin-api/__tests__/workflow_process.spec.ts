@@ -508,10 +508,7 @@ describe('Workflow Process Controller', () => {
       seeded.documentDescriptionSearchValue = `e2e-document-description-${uniqueSuffix}`;
 
       await taskModel.update({ name: seeded.taskSearchValue }, { where: { id: seeded.taskId } });
-      await documentModel.update(
-        { description: seeded.documentDescriptionSearchValue },
-        { where: { id: seeded.documentId } },
-      );
+      await documentModel.update({ description: seeded.documentDescriptionSearchValue }, { where: { id: seeded.documentId } });
     });
 
     it('should fail without auth', async () => {

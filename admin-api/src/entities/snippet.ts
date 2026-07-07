@@ -21,6 +21,6 @@ interface SnippetsEntityOptions {
 /**
  * Snippets entity.
  */
-export class SnippetsEntity extends Entity<SnippetsEntityOptions> { }
+export class SnippetsEntity extends Entity<SnippetsEntityOptions> {}
 
-export interface SnippetsEntity extends SnippetsEntityOptions { }
+export interface SnippetsEntity extends SnippetsEntityOptions {}

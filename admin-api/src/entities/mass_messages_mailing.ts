@@ -28,7 +28,6 @@ interface MassMessagesMailingEntityOptions {
 /**
  * Mass messages mailing entity.
  */
-export class MassMessagesMailingEntity extends Entity<MassMessagesMailingEntityOptions> { }
+export class MassMessagesMailingEntity extends Entity<MassMessagesMailingEntityOptions> {}
 
-export interface MassMessagesMailingEntity extends MassMessagesMailingEntityOptions { }
-
+export interface MassMessagesMailingEntity extends MassMessagesMailingEntityOptions {}

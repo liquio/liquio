@@ -18,4 +18,4 @@ interface UIFilterEntityOptions {
 /**
  * UI Filter entity.
  */
-export class UIFilterEntity extends Entity<UIFilterEntityOptions> { }
+export class UIFilterEntity extends Entity<UIFilterEntityOptions> {}

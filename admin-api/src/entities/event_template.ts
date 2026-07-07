@@ -24,6 +24,6 @@ interface EventTemplateEntityOptions {
 /**
  * Event template entity.
  */
-export class EventTemplateEntity extends Entity<EventTemplateEntityOptions> { }
+export class EventTemplateEntity extends Entity<EventTemplateEntityOptions> {}
 
-export interface EventTemplateEntity extends EventTemplateEntityOptions { }
+export interface EventTemplateEntity extends EventTemplateEntityOptions {}

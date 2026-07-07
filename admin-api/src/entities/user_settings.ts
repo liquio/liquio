@@ -16,7 +16,6 @@ interface UserSettingsEntityOptions {
 /**
  * User settings entity.
  */
-export class UserSettingsEntity extends Entity<UserSettingsEntityOptions> {
-}
+export class UserSettingsEntity extends Entity<UserSettingsEntityOptions> {}
 
 export interface UserSettingsEntity extends UserSettingsEntityOptions {}

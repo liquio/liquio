@@ -26,6 +26,6 @@ interface GatewayEntityOptions {
 /**
  * Gateway entity.
  */
-export class GatewayEntity extends Entity<GatewayEntityOptions> { }
+export class GatewayEntity extends Entity<GatewayEntityOptions> {}
 
-export interface GatewayEntity extends GatewayEntityOptions { }
+export interface GatewayEntity extends GatewayEntityOptions {}

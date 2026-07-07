@@ -21,7 +21,6 @@ interface WorkflowErrorEntityOptions {
  * Workflow error entity.
  */
 export class WorkflowErrorEntity extends Entity<WorkflowErrorEntityOptions> {
-
   getFilterProperties(): (keyof WorkflowErrorEntityOptions)[] {
     return ['id', 'serviceName', 'data', 'createdAt', 'updatedAt'];
   }
@@ -31,4 +30,4 @@ export class WorkflowErrorEntity extends Entity<WorkflowErrorEntityOptions> {
   }
 }
 
-export interface WorkflowErrorEntity extends WorkflowErrorEntityOptions { }
+export interface WorkflowErrorEntity extends WorkflowErrorEntityOptions {}

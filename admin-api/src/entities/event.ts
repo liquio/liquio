@@ -34,6 +34,6 @@ interface EventEntityOptions {
 /**
  * Event entity.
  */
-export class EventEntity extends Entity<EventEntityOptions> { }
+export class EventEntity extends Entity<EventEntityOptions> {}
 
-export interface EventEntity extends EventEntityOptions { }
+export interface EventEntity extends EventEntityOptions {}

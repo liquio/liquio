@@ -14,6 +14,6 @@ interface ElasticReindexLogEntityOptions {
 /**
  * Elastic reindex log entity.
  */
-export class ElasticReindexLogEntity extends Entity<ElasticReindexLogEntityOptions> { }
+export class ElasticReindexLogEntity extends Entity<ElasticReindexLogEntityOptions> {}
 
-export interface ElasticReindexLogEntity extends ElasticReindexLogEntityOptions { }
+export interface ElasticReindexLogEntity extends ElasticReindexLogEntityOptions {}

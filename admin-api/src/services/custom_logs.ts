@@ -30,7 +30,7 @@ export class CustomLogs {
       this.sandbox = new Sandbox();
       if (this.client) {
         global.log.save('custom-logs-cache-initialized', { cacheEnabled, host, port });
-        this.client.connect().catch(err => {
+        this.client.connect().catch((err) => {
           global.log.save('custom-logs-cache-connection-error', {
             error: err && err.message,
           });

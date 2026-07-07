@@ -7,7 +7,16 @@ interface CustomLogTemplateEntityOptions {
   name: string;
   documentTemplateId: string;
   /** Operation type. */
-  operationType: 'read-document' | 'create-document' | 'update-document' | 'delete-document' | 'add-attach' | 'remove-attach' | 'generate-pdf' | 'sign' | 'commit';
+  operationType:
+    | 'read-document'
+    | 'create-document'
+    | 'update-document'
+    | 'delete-document'
+    | 'add-attach'
+    | 'remove-attach'
+    | 'generate-pdf'
+    | 'sign'
+    | 'commit';
   /** Schema. */
   schema: string;
   /** Created at. */
@@ -19,6 +28,6 @@ interface CustomLogTemplateEntityOptions {
 /**
  * Custom log template entity.
  */
-export class CustomLogTemplateEntity extends Entity<CustomLogTemplateEntityOptions> { }
+export class CustomLogTemplateEntity extends Entity<CustomLogTemplateEntityOptions> {}
 
-export interface CustomLogTemplateEntity extends CustomLogTemplateEntityOptions { }
+export interface CustomLogTemplateEntity extends CustomLogTemplateEntityOptions {}

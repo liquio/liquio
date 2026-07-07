@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import xlsx from 'node-xlsx';
 
-import { Exceptions} from '../exceptions';
-import { RegisterService} from '../services/register';
+import { Exceptions } from '../exceptions';
+import { RegisterService } from '../services/register';
 
 /**
  * Register business.

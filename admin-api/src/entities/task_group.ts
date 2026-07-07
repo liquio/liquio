@@ -30,4 +30,4 @@ export class TaskGroupEntity extends Entity<TaskGroupEntityOptions> {
   }
 }
 
-export interface TaskGroupEntity extends TaskGroupEntityOptions { }
+export interface TaskGroupEntity extends TaskGroupEntityOptions {}

@@ -6,7 +6,7 @@ import { WorkflowStatusBusiness } from '../businesses/workflow_status';
  */
 export class WorkflowStatusController extends Controller {
   private static singleton: WorkflowStatusController;
-  
+
   private workflowStatusBusiness: WorkflowStatusBusiness;
 
   /**

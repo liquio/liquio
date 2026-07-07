@@ -38,7 +38,6 @@ interface WorkflowTemplateEntityAdditionalOptions {
  * Workflow template entity.
  */
 export class WorkflowTemplateEntity extends Entity<WorkflowTemplateEntityOptions, WorkflowTemplateEntityAdditionalOptions> {
-
   getFilterProperties(): (keyof WorkflowTemplateEntityOptions | keyof WorkflowTemplateEntityAdditionalOptions)[] {
     return [
       'id',
@@ -80,4 +79,4 @@ export class WorkflowTemplateEntity extends Entity<WorkflowTemplateEntityOptions
   }
 }
 
-export interface WorkflowTemplateEntity extends WorkflowTemplateEntityOptions {};
+export interface WorkflowTemplateEntity extends WorkflowTemplateEntityOptions {}

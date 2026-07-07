@@ -67,4 +67,3 @@ export class ConsoleLogProvider extends LogProvider {
     }
   }
 }
-

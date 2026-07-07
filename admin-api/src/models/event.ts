@@ -107,7 +107,7 @@ export class EventModel extends Model {
    */
   async getRunningEvents() {
     const events = await this.model.findAll({
-      where: { event_type_id: DELAY_TYPE, done: false, [Sequelize.Op.and]: Sequelize.literal('(data->>\'dueDate\')::timestamp <= now()') },
+      where: { event_type_id: DELAY_TYPE, done: false, [Sequelize.Op.and]: Sequelize.literal("(data->>'dueDate')::timestamp <= now()") },
     });
 
     return events.map((item) => this.prepareEntity(item));
@@ -122,7 +122,7 @@ export class EventModel extends Model {
       where: {
         event_type_id: NOTIFICATION_TYPE,
         done: false,
-        [Sequelize.Op.and]: [Sequelize.literal('data->\'dueDate\' is not null'), Sequelize.literal('(data->>\'dueDate\')::timestamp <= now()')],
+        [Sequelize.Op.and]: [Sequelize.literal("data->'dueDate' is not null"), Sequelize.literal("(data->>'dueDate')::timestamp <= now()")],
       },
     });
 

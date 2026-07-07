@@ -16,7 +16,6 @@ interface NumberTemplateEntityOptions {
 /**
  * Number template entity.
  */
-export class NumberTemplateEntity extends Entity<NumberTemplateEntityOptions> { }
+export class NumberTemplateEntity extends Entity<NumberTemplateEntityOptions> {}
 
-export interface NumberTemplateEntity extends NumberTemplateEntityOptions { }
-
+export interface NumberTemplateEntity extends NumberTemplateEntityOptions {}

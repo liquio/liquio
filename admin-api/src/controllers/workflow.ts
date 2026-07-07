@@ -45,7 +45,7 @@ export class WorkflowController extends Controller {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
       if (!bodyData.id) {
-        const { id } = await this.workflowBusiness.getLastWorkflow() || { id: 0 };
+        const { id } = (await this.workflowBusiness.getLastWorkflow()) || { id: 0 };
         bodyData.id = id + 1;
       } else if (bodyData.id > 999999) {
         return this.responseError(res, 'Workflow template ID must be less than 999999.');
@@ -80,7 +80,6 @@ export class WorkflowController extends Controller {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
-      const unitIds = req.authUserUnitIds;
       const workflowTemplate = await this.workflowBusiness.findById(id);
       if (!workflowTemplate) {
         return this.responseError(res, 'Not found.', 404);

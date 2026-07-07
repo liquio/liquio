@@ -23,7 +23,6 @@ interface UserInboxEntityOptions {
  * User inbox entity.
  */
 export class UserInboxEntity extends Entity<UserInboxEntityOptions> {
-
   /**
    * Get filter properties.
    * @returns {string[]} Filter properties.

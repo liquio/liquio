@@ -23,7 +23,6 @@ interface WorkflowTemplateTagEntityOptions {
  * Workflow template tag entity.
  */
 export class WorkflowTemplateTagEntity extends Entity<WorkflowTemplateTagEntityOptions> {
-
   getFilterProperties(): (keyof WorkflowTemplateTagEntityOptions)[] {
     return ['id', 'name', 'color', 'description', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'];
   }
@@ -33,4 +32,4 @@ export class WorkflowTemplateTagEntity extends Entity<WorkflowTemplateTagEntityO
   }
 }
 
-export interface WorkflowTemplateTagEntity extends WorkflowTemplateTagEntityOptions { };
+export interface WorkflowTemplateTagEntity extends WorkflowTemplateTagEntityOptions {}

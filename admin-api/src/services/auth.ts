@@ -606,7 +606,7 @@ export class AuthService {
   async getUserStatByPeriod({ from, to }) {
     global.log.save('get-user-stat-by-period-request', { from, to });
     if (new Date(from) > new Date(to)) {
-      throw new Error('Option \'from\' must be less than option \'to\'');
+      throw new Error("Option 'from' must be less than option 'to'");
     }
     const datesInPeriod = this.getDatesBetweenTwoDates(from, to);
     const _self = this;
@@ -812,7 +812,7 @@ export class UserAdminActionEntity {
    */
   constructor({ id, data, created_by, created_at, action_type }) {
     this.id = id;
-    (this.user = {
+    ((this.user = {
       id: data.userId,
       lastName: data.last_name,
       firstName: data.first_name,
@@ -820,7 +820,7 @@ export class UserAdminActionEntity {
       ipn: data.ipn,
       email: data.email,
     }),
-      (this.createdBy = created_by);
+      (this.createdBy = created_by));
     this.createdAt = created_at;
     this.actionType = action_type;
   }

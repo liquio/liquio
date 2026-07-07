@@ -9,12 +9,12 @@ export async function prepareFixtures(app: TestApp) {
     for (const unit of BASE_UNIT_FIXTURES) {
       await app.model('unit').update(unit, { where: { id: unit.id } });
     }
-    
+
     // Create any additional units if needed
     for (const unit of UNIT_FIXTURES) {
       await app.model('unit').create(unit);
     }
-    
+
     for (const workflowTemplate of WORKFLOW_TEMPLATE_FIXTURES) {
       await app.model('workflowTemplate').create(workflowTemplate);
     }

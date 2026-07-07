@@ -29,9 +29,8 @@ export class WorkflowHandlerBusiness {
       const debugModeConfig = workflowEditorConfig?.debugMode;
 
       this.debugModeEnabled = debugModeConfig?.enabled === true;
-      this.debugRepeats = Array.isArray(debugModeConfig?.repeats) && debugModeConfig.repeats.length > 0
-        ? debugModeConfig.repeats
-        : this.defaultDebugRepeats;
+      this.debugRepeats =
+        Array.isArray(debugModeConfig?.repeats) && debugModeConfig.repeats.length > 0 ? debugModeConfig.repeats : this.defaultDebugRepeats;
 
       WorkflowHandlerBusiness.singleton = this;
     }

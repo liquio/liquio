@@ -1,4 +1,4 @@
-import { AccessHistoryEntity } from "../entities/access_history";
+import { AccessHistoryEntity } from '../entities/access_history';
 
 /**
  * Access history business.

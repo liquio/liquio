@@ -20,7 +20,6 @@ interface WorkflowDebugEntityOptions {
 /**
  * Workflow debug entity.
  */
-export class WorkflowDebugEntity extends Entity<WorkflowDebugEntityOptions> {
-}
+export class WorkflowDebugEntity extends Entity<WorkflowDebugEntityOptions> {}
 
 export interface WorkflowDebugEntity extends WorkflowDebugEntityOptions {}

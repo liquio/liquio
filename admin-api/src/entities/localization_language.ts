@@ -18,6 +18,6 @@ interface LocalizationLanguageEntityOptions {
 /**
  * Localization language entity.
  */
-export class LocalizationLanguageEntity extends Entity<LocalizationLanguageEntityOptions> { }
+export class LocalizationLanguageEntity extends Entity<LocalizationLanguageEntityOptions> {}
 
-export interface LocalizationLanguageEntity extends LocalizationLanguageEntityOptions { }
+export interface LocalizationLanguageEntity extends LocalizationLanguageEntityOptions {}

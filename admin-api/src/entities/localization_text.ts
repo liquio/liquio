@@ -16,7 +16,6 @@ interface LocalizationTextEntityOptions {
 /**
  * Localization text entity.
  */
-export class LocalizationTextEntity extends Entity<LocalizationTextEntityOptions> { }
+export class LocalizationTextEntity extends Entity<LocalizationTextEntityOptions> {}
 
-export interface LocalizationTextEntityCreateOptions extends LocalizationTextEntityOptions { }
-
+export interface LocalizationTextEntityCreateOptions extends LocalizationTextEntityOptions {}

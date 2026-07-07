@@ -1,5 +1,5 @@
-import { Entity } from "../entity";
-import { WorkflowLoggerRecordEntity } from "./workflow_logger_record";
+import { Entity } from '../entity';
+import { WorkflowLoggerRecordEntity } from './workflow_logger_record';
 
 interface WorkflowLoggerEntityOptions {
   /** Worflow ID. */
@@ -33,4 +33,4 @@ export class WorkflowLoggerEntity extends Entity<WorkflowLoggerEntityOptions> {
   }
 }
 
-export interface WorkflowLoggerEntity extends WorkflowLoggerEntityOptions { }
+export interface WorkflowLoggerEntity extends WorkflowLoggerEntityOptions {}

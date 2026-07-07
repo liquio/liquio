@@ -28,7 +28,6 @@ interface WorkflowHistoryEntityOptions {
 /**
  * Workflow history entity.
  */
-export class WorkflowHistoryEntity extends Entity<WorkflowHistoryEntityOptions> {
-}
+export class WorkflowHistoryEntity extends Entity<WorkflowHistoryEntityOptions> {}
 
-export interface WorkflowHistoryEntity extends WorkflowHistoryEntityOptions { }
+export interface WorkflowHistoryEntity extends WorkflowHistoryEntityOptions {}

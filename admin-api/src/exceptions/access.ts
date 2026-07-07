@@ -1,4 +1,4 @@
-const DEFAULT_MESSAGE = 'User doesn\'t have any access.';
+const DEFAULT_MESSAGE = "User doesn't have any access.";
 
 export class AccessError extends Error {
   httpStatusCode: number;

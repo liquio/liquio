@@ -13,7 +13,7 @@ import { WorkflowRestartEntity } from '../entities/workflow_restart';
  */
 export class WorkflowProcessController extends Controller {
   private static singleton: WorkflowProcessController;
-  
+
   private workflowProcessBusiness: WorkflowProcessBusiness;
   private workflowHandlerBusiness: WorkflowHandlerBusiness;
   private workflowBusiness: WorkflowBusiness;
@@ -343,11 +343,6 @@ export class WorkflowProcessController extends Controller {
    * @param {object} res HTTP response.
    */
   async getUsersWithAccessToTasks(req, res) {
-    const queryData = matchedData(req, { locations: ['query'] });
-    const sort = queryData.sort || {};
-    const filters = queryData.filters || {};
-    const { page, count } = queryData;
-
     let users;
     try {
       // users = await this.workflowProcessBusiness.getUsersWithAccessToTasks({
@@ -415,7 +410,7 @@ export class WorkflowProcessController extends Controller {
       const response = await axios({
         ...downloadFileRequestOptions,
         responseType: 'stream',
-        validateStatus: () => true // Always resolve, handle status manually
+        validateStatus: () => true, // Always resolve, handle status manually
       });
       if (response.status >= 400) {
         res.status(response.status).send(response.data);
@@ -445,9 +440,7 @@ export class WorkflowProcessController extends Controller {
       p7s = await this.workflowProcessBusiness.downloadP7s(fileId, asFile, asBase64);
     } catch (error) {
       const causeResponse = error?.cause?.response;
-      const isNotFound =
-        error?.httpStatusCode === 404 ||
-        (typeof causeResponse === 'string' && causeResponse.includes('404'));
+      const isNotFound = error?.httpStatusCode === 404 || (typeof causeResponse === 'string' && causeResponse.includes('404'));
 
       // Response if not found.
       if (isNotFound) {
@@ -497,10 +490,7 @@ export class WorkflowProcessController extends Controller {
       }
 
       // Respone error.
-      return this.responseError(
-        res,
-        { message: causeResponse || error.message || 'P7S download failed.' },
-      );
+      return this.responseError(res, { message: causeResponse || error.message || 'P7S download failed.' });
     }
 
     // Response P7S.

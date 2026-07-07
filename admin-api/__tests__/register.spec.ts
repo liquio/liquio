@@ -2276,14 +2276,14 @@ describe('Register Controller', () => {
 
       // Mock Stream.waitEndEvent to resolve quickly instead of waiting for actual stream end
       const originalWaitEndEvent = Stream.waitEndEvent;
-      
+
       // Simple JSON data for import (file=false case)
       const importData = JSON.stringify({
         id: 2,
         name: 'Test Import Register',
         description: 'Test import description',
         type: 'private',
-        status: 'active'
+        status: 'active',
       });
 
       Stream.waitEndEvent = jest.fn((req) => {
@@ -2292,41 +2292,44 @@ describe('Register Controller', () => {
           req.emit('data', Buffer.from(importData));
           req.emit('end');
         }, 10);
-        return new Promise(resolve => setTimeout(resolve, 50));
+        return new Promise((resolve) => setTimeout(resolve, 50));
       });
 
       try {
         // Mock auth check - the admin-api calls id-api service
-        app.nock('http://id-api:8100')
+        app
+          .nock('http://id-api:8100')
           .get('/user/info')
           .query({ access_token: payload.authTokens.accessToken })
           .once()
-          .reply(200, { 
-            userId: '61efddaa351d6219eee09043', 
+          .reply(200, {
+            userId: '61efddaa351d6219eee09043',
             role: 'admin',
-            services: { eds: { data: { pem: 'PEM' } } }
+            services: { eds: { data: { pem: 'PEM' } } },
           });
 
         // Mock register service call for POST /registers/import (called by business layer)
-        app.nock('http://register:8103')
+        app
+          .nock('http://register:8103')
           .post('/registers/import')
           .query({
             force: 'false',
             rewrite_schema: 'false',
             clear_records: 'false',
             add_data: 'true',
-            file: 'false'
+            file: 'false',
           })
           .once()
           .reply(202, {
             data: {
               importId: '550e8400-e29b-41d4-a716-446655440002',
               status: 'accepted',
-              message: 'Register import has been accepted and is being processed'
-            }
+              message: 'Register import has been accepted and is being processed',
+            },
           });
 
-        const response = await app.request()
+        const response = await app
+          .request()
           .post('/registers/import?force=false&rewrite_schema=false&clear_records=false&add_data=true&file=false')
           .set('token', jwt)
           .set('Content-Type', 'application/json')
@@ -2359,22 +2362,24 @@ describe('Register Controller', () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
 
       // Mock auth check - the admin-api calls id-api service
-      app.nock('http://id-api:8100')
+      app
+        .nock('http://id-api:8100')
         .get('/user/info')
         .query({ access_token: payload.authTokens.accessToken })
         .once()
-        .reply(200, { 
-          userId: '61efddaa351d6219eee09043', 
+        .reply(200, {
+          userId: '61efddaa351d6219eee09043',
           role: 'admin',
-          services: { eds: { data: { pem: 'PEM' } } }
+          services: { eds: { data: { pem: 'PEM' } } },
         });
 
       // Mock register service call for GET /registers/:id/export (which is called by streamExport)
-      app.nock('http://register:8103')
+      app
+        .nock('http://register:8103')
         .get('/registers/1/export')
         .query({
           with_data: 'false',
-          file: 'false'
+          file: 'false',
         })
         .once()
         .reply(200, {
@@ -2390,8 +2395,8 @@ describe('Register Controller', () => {
                 name: 'Test Key 1',
                 description: 'Test Key Description',
                 type: 'string',
-                required: true
-              }
+                required: true,
+              },
             ],
             records: [],
             meta: {
@@ -2400,16 +2405,13 @@ describe('Register Controller', () => {
               exportedAt: '2023-01-05T10:00:00.000Z',
               exportedBy: {
                 userId: '61efddaa351d6219eee09043',
-                name: 'Test User'
-              }
-            }
-          }
+                name: 'Test User',
+              },
+            },
+          },
         });
 
-      const response = await app.request()
-        .get('/registers/1/stream-export')
-        .set('token', jwt)
-        .expect(200);
+      const response = await app.request().get('/registers/1/stream-export').set('token', jwt).expect(200);
 
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('data');
@@ -2430,25 +2432,26 @@ describe('Register Controller', () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
 
       // Mock auth check - the admin-api calls id-api service
-      app.nock('http://id-api:8100')
+      app
+        .nock('http://id-api:8100')
         .get('/user/info')
         .query({ access_token: payload.authTokens.accessToken })
         .once()
-        .reply(200, { 
-          userId: '61efddaa351d6219eee09043', 
+        .reply(200, {
+          userId: '61efddaa351d6219eee09043',
           role: 'admin',
-          services: { eds: { data: { pem: 'PEM' } } }
+          services: { eds: { data: { pem: 'PEM' } } },
         });
 
       // Mock the register business layer - stream import actually calls the regular import endpoint
       nock('http://register:8103')
         .post('/registers/import')
-        .query({ 
+        .query({
           force: 'false',
-          rewrite_schema: 'false', 
+          rewrite_schema: 'false',
           clear_records: 'false',
           add_data: 'false',
-          file: 'false'
+          file: 'false',
         })
         .reply(202, { data: { isAccepted: true } });
 
@@ -2456,15 +2459,11 @@ describe('Register Controller', () => {
       const testData = JSON.stringify({
         data: [
           { id: '1', name: 'Stream Record 1', value: 'stream-value-1' },
-          { id: '2', name: 'Stream Record 2', value: 'stream-value-2' }
-        ]
+          { id: '2', name: 'Stream Record 2', value: 'stream-value-2' },
+        ],
       });
 
-      const response = await app.request()
-        .post('/registers/stream-import')
-        .set('token', jwt)
-        .send(testData)
-        .expect(202);
+      const response = await app.request().post('/registers/stream-import').set('token', jwt).send(testData).expect(202);
 
       expect(response.body).toEqual({ data: { isAccepted: true } });
     });

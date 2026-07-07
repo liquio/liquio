@@ -8,7 +8,7 @@ import { TEST_WORDS } from './constants';
  */
 export class TestUserChecker {
   private static singleton: TestUserChecker;
-  
+
   public providers: any[];
 
   constructor() {

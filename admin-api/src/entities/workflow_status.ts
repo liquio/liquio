@@ -15,7 +15,6 @@ interface WorkflowStatusEntityOptions {
  * Workflow status entity.
  */
 export class WorkflowStatusEntity extends Entity<WorkflowStatusEntityOptions> {
-
   getFilterProperties(): (keyof WorkflowStatusEntityOptions)[] {
     return ['id', 'name', 'createdAt', 'updatedAt'];
   }
@@ -25,4 +24,4 @@ export class WorkflowStatusEntity extends Entity<WorkflowStatusEntityOptions> {
   }
 }
 
-export interface WorkflowStatusEntity extends WorkflowStatusEntityOptions { }
+export interface WorkflowStatusEntity extends WorkflowStatusEntityOptions {}

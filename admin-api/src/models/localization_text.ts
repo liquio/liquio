@@ -10,7 +10,6 @@ import { SequelizeDbError, SequelizeUniqueConstraintError } from '../lib/errors'
 export class LocalizationTextModel extends Model {
   static singleton: LocalizationTextModel;
 
-  // eslint-disable-next-line constructor-super
   constructor(dbInstance?: Sequelize.Sequelize) {
     if (!LocalizationTextModel.singleton) {
       super(dbInstance);

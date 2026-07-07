@@ -324,14 +324,11 @@ export class WorkflowTemplateModel extends Model {
     // Try to update record. Set errorsSubscribers.
     let updatingResult;
     try {
-      updatingResult = await this.model.update(
-        { errors_subscribers: newErrorsSubscribers },
-        {
-          where: { id: workflowTemplateId },
-          attributes: ['id', 'errors_subscribers'],
-          returning: true,
-        } as any,
-      );
+      updatingResult = await this.model.update({ errors_subscribers: newErrorsSubscribers }, {
+        where: { id: workflowTemplateId },
+        attributes: ['id', 'errors_subscribers'],
+        returning: true,
+      } as any);
     } catch (error) {
       throw new global.SequelizeDbError(error);
     }
@@ -341,7 +338,7 @@ export class WorkflowTemplateModel extends Model {
 
     // Check updated row.
     if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
-      throw new Error('Can\'t update workflow template');
+      throw new Error("Can't update workflow template");
     }
 
     // Get needed data to response.

@@ -51,7 +51,6 @@ interface WorkflowEntityAdditionalOptions {
  * Workflow entity.
  */
 export class WorkflowEntity extends Entity<WorkflowEntityOptions, WorkflowEntityAdditionalOptions> {
-
   getFilterProperties(): (keyof WorkflowEntityOptions | keyof WorkflowEntityAdditionalOptions)[] {
     return [
       'id',
@@ -114,4 +113,4 @@ export class WorkflowEntity extends Entity<WorkflowEntityOptions, WorkflowEntity
   }
 }
 
-export interface WorkflowEntity extends WorkflowEntityOptions {};
+export interface WorkflowEntity extends WorkflowEntityOptions {}

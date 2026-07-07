@@ -5,7 +5,7 @@ import { ElasticService } from '../services/elastic';
  */
 export class ElasticBusiness {
   private static singleton: ElasticBusiness;
-  
+
   public config: any;
   public isSearchTemplateUpdated: boolean;
   public elasticService: ElasticService;

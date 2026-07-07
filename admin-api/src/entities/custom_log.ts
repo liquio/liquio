@@ -38,8 +38,8 @@ interface CustomLogEntityOptions {
 }
 
 /**
-   * Custom log entity.
-   */
+ * Custom log entity.
+ */
 export class CustomLogEntity extends Entity<CustomLogEntityOptions> {
   /**
    * Get cache key.
@@ -70,4 +70,4 @@ export class CustomLogEntity extends Entity<CustomLogEntityOptions> {
   }
 }
 
-export interface CustomLogEntity extends CustomLogEntityOptions { }
+export interface CustomLogEntity extends CustomLogEntityOptions {}

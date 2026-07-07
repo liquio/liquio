@@ -43,11 +43,7 @@ export type PaginateContext = {
   findAndCountAll: (options: PaginateOptions) => Promise<{ count: number | any[]; rows: any[] }>;
 };
 
-export type PaginateMethod = (
-  this: PaginateContext,
-  params?: PaginateParams,
-  extra?: { briefInfo?: boolean },
-) => Promise<PaginatedResult<any>>;
+export type PaginateMethod = (this: PaginateContext, params?: PaginateParams, extra?: { briefInfo?: boolean }) => Promise<PaginatedResult<any>>;
 
 export type SequelizeModelWithPaginate<TModel extends SequelizeModel = SequelizeModel> = ModelStatic<TModel> & {
   paginate: PaginateMethod;
@@ -208,7 +204,7 @@ export class Model {
    * @param {number} perPage
    * @return {{total: number, perPage: number, lastPage: number, currentPage: number}}
    */
-  formPagination(count: string, currentPage: number, perPage: number): { total: number, perPage: number, lastPage: number, currentPage: number } {
+  formPagination(count: string, currentPage: number, perPage: number): { total: number; perPage: number; lastPage: number; currentPage: number } {
     return {
       total: +count,
       currentPage: currentPage,

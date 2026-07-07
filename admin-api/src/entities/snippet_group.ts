@@ -10,6 +10,6 @@ export interface SnippetGroupEntityOptions {
 /**
  * Snippet group entity.
  */
-export class SnippetGroupEntity extends Entity<SnippetGroupEntityOptions> { }
+export class SnippetGroupEntity extends Entity<SnippetGroupEntityOptions> {}
 
-export interface SnippetGroupEntity extends SnippetGroupEntityOptions { }
+export interface SnippetGroupEntity extends SnippetGroupEntityOptions {}

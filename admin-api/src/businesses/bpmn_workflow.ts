@@ -121,7 +121,10 @@ export class BpmnWorkflowBusiness {
       // Import workflow template category.
       if (data.workflowTemplateCategory) {
         global.log.save('import|workflow-template-category', { user, data: data.workflowTemplateCategory });
-        await global.models.workflowTemplateCategory.create(new WorkflowTemplateCategoryEntity(data.workflowTemplateCategory), bpmnWorkflowTransaction);
+        await global.models.workflowTemplateCategory.create(
+          new WorkflowTemplateCategoryEntity(data.workflowTemplateCategory),
+          bpmnWorkflowTransaction,
+        );
       }
 
       if (data.numberTemplates && data.numberTemplates.length > 0) {
@@ -509,9 +512,7 @@ export class BpmnWorkflowBusiness {
       return this.saveVersion(workflowTemplateId, { user } as any);
     }
 
-    const configuredAutoSaveVersionAfter = Number(
-      global.config.workflow_history?.autoSaveVersionAfter ?? DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS,
-    );
+    const configuredAutoSaveVersionAfter = Number(global.config.workflow_history?.autoSaveVersionAfter ?? DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS);
     const autoSaveVersionAfter = Number.isFinite(configuredAutoSaveVersionAfter)
       ? configuredAutoSaveVersionAfter
       : DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS;
@@ -676,10 +677,7 @@ export class BpmnWorkflowBusiness {
         },
       ];
       return safeReplasementMap.some(({ longestString, pattern }) => {
-        const substringToCheck = input.substring(
-          index - longestString.replace(/<templateId>/g, matchedString).length,
-          index + matchedString.length,
-        );
+        const substringToCheck = input.substring(index - longestString.replace(/<templateId>/g, matchedString).length, index + matchedString.length);
         const regExpToSearch = new RegExp(pattern.replace(/<templateId>/g, matchedString));
         const match = substringToCheck.match(regExpToSearch);
         return match;
@@ -714,7 +712,7 @@ export class BpmnWorkflowBusiness {
 
     const redisRecord = global.redis ? await global.redis.get(redisKeyName) : null;
     if (!redisRecord) {
-      throw new Error('Saved workflowTemplate did\'t find');
+      throw new Error("Saved workflowTemplate did't find");
     }
     const { workflowTemplate, taskTemplates, documentTemplates, gatewayTemplates, eventTemplates, diffs } = JSON.parse(redisRecord);
 

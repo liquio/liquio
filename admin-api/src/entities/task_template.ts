@@ -32,4 +32,4 @@ export class TaskTemplateEntity extends Entity<TaskTemplateEntityOptions> {
   }
 }
 
-export interface TaskTemplateEntity extends TaskTemplateEntityOptions { }
+export interface TaskTemplateEntity extends TaskTemplateEntityOptions {}

@@ -1,7 +1,7 @@
 /**
  * CORS.
  */
-class Cors {
+export class Cors {
   /**
    * Allow.
    * @param {object} app Express app instance.

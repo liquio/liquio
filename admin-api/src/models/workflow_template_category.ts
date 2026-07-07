@@ -95,10 +95,10 @@ export class WorkflowTemplateCategoryModel extends Model {
 
     global.log.save('workflow_template_category|create', { workflowTemplateCategoryEntity });
 
-    const [data] = await this.model.upsert(this.prepareForModel(workflowTemplateCategoryEntity), { 
+    const [data] = await this.model.upsert(this.prepareForModel(workflowTemplateCategoryEntity), {
       returning: true,
       transaction,
-      conflictFields: ['id']
+      conflictFields: ['id'],
     });
 
     return this.prepareEntity(data);

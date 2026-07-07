@@ -609,7 +609,7 @@ export class RegisterController extends Controller {
           method: register.method,
           url: register.url,
           headers: register.headers,
-          responseType: 'stream'
+          responseType: 'stream',
         });
         return response.data.pipe(res);
       }
@@ -654,7 +654,7 @@ export class RegisterController extends Controller {
           method: register.method,
           url: register.url,
           headers: register.headers,
-          responseType: 'stream'
+          responseType: 'stream',
         });
         return req.pipe(response.data).pipe(res);
       } else {
@@ -704,7 +704,7 @@ export class RegisterController extends Controller {
           method: register.method,
           url: register.url,
           headers: register.headers,
-          responseType: 'stream'
+          responseType: 'stream',
         });
         return response.data.pipe(res);
       }
@@ -734,7 +734,7 @@ export class RegisterController extends Controller {
         method: register.method,
         url: register.url,
         headers: register.headers,
-        responseType: 'stream'
+        responseType: 'stream',
       });
       return req.pipe(response.data).pipe(res);
     } catch (error) {

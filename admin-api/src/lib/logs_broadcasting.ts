@@ -6,7 +6,6 @@ const DEFAULT_HEARTBEAT_TIMEOUT = 3000;
 const LOGS_BROADCASTING_ADMIN_UNIT = 1000014;
 
 export class LogsBroadcasting {
-
   public config: any;
   private authController: AuthController;
 

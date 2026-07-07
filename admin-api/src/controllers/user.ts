@@ -2,20 +2,14 @@ import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
 import { UserBusiness } from '../businesses/user';
-import {
-  UNIT_ADMIN_UNIT,
-  SECURITY_ADMIN_UNIT,
-  SYSTEM_ADMIN_UNIT,
-  READONLY_SECURITY_ADMIN_UNIT,
-  READONLY_SYSTEM_ADMIN_UNIT,
-} from '../constants/unit';
+import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, READONLY_SECURITY_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT } from '../constants/unit';
 
 /**
  * User controller.
  */
 export class UserController extends Controller {
   private static singleton: UserController;
-  
+
   private userBusiness: UserBusiness;
 
   /**

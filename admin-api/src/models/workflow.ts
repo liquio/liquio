@@ -155,12 +155,12 @@ export class WorkflowModel extends Model {
     }
 
     if (typeof filters.is_draft !== 'undefined') {
-      sequelizeOptions.filters[Sequelize.Op.and] = [Sequelize.literal('workflow.data -> \'messages\' is null')];
+      sequelizeOptions.filters[Sequelize.Op.and] = [Sequelize.literal("workflow.data -> 'messages' is null")];
       delete sequelizeOptions.filters['is_draft'];
     }
 
     if (typeof filters.is_not_draft !== 'undefined') {
-      sequelizeOptions.filters[Sequelize.Op.and] = [Sequelize.literal('workflow.data -> \'messages\' is not null')];
+      sequelizeOptions.filters[Sequelize.Op.and] = [Sequelize.literal("workflow.data -> 'messages' is not null")];
       delete sequelizeOptions.filters['is_not_draft'];
     }
 

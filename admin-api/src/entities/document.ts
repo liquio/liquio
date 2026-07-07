@@ -108,4 +108,4 @@ export class DocumentEntity extends Entity<DocumentEntityOptions> {
   }
 }
 
-export interface DocumentEntity extends DocumentEntityOptions { }
+export interface DocumentEntity extends DocumentEntityOptions {}

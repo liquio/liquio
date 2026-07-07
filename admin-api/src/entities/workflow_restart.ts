@@ -20,7 +20,6 @@ interface WorkflowRestartEntityOptions {
 /**
  * Workflow restart entity.
  */
-export class WorkflowRestartEntity extends Entity<WorkflowRestartEntityOptions> {
-}
+export class WorkflowRestartEntity extends Entity<WorkflowRestartEntityOptions> {}
 
-export interface WorkflowRestartEntity extends WorkflowRestartEntityOptions { }
+export interface WorkflowRestartEntity extends WorkflowRestartEntityOptions {}

@@ -100,7 +100,7 @@ const sqlReports = {
   },
   committedWorkflowsTotal: {
     name: 'Закоммічені процеси за весь період',
-    description: 'id шаблону, ім\'я та кількість закоммічених процесів за весь період',
+    description: "id шаблону, ім'я та кількість закоммічених процесів за весь період",
     sql: `
       select wt.id "workflow_template_id",
         wt."name" "name",
@@ -115,7 +115,7 @@ const sqlReports = {
   },
   committedWorkflows: {
     name: 'Закоммічені процеси за певний період',
-    description: 'id шаблону, ім\'я та кількість закоммічених процесів за весь період',
+    description: "id шаблону, ім'я та кількість закоммічених процесів за весь період",
     params: {
       date_from: {
         type: TYPES.date,
@@ -176,7 +176,7 @@ const sqlReports = {
   },
   processDynamic: {
     name: 'Динаміка процесів',
-    description: 'id шаблону, ім\'я та кількість закоммічених процесів за весь період',
+    description: "id шаблону, ім'я та кількість закоммічених процесів за весь період",
     params: {
       time_step: {
         type: TYPES.string,

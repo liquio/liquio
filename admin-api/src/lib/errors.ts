@@ -1,7 +1,7 @@
 class ErrorWithHttpStatusCode extends Error {
   public httpStatusCode: number;
   public cause?: any;
-  
+
   constructor(...params: any) {
     super(...params);
     this.name = 'ErrorWithHttpStatusCode';
@@ -15,7 +15,7 @@ export class UnauthorizedError extends ErrorWithHttpStatusCode {
     this.name = 'UnauthorizedError';
     this.httpStatusCode = 401;
   }
-};
+}
 
 export class NotFoundError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -23,7 +23,7 @@ export class NotFoundError extends ErrorWithHttpStatusCode {
     this.name = 'NotFoundError';
     this.httpStatusCode = 404;
   }
-};
+}
 
 export class InternalServerError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -31,7 +31,7 @@ export class InternalServerError extends ErrorWithHttpStatusCode {
     this.name = 'InternalServerError';
     this.httpStatusCode = 500;
   }
-};
+}
 
 export class InvalidParamsError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -39,7 +39,7 @@ export class InvalidParamsError extends ErrorWithHttpStatusCode {
     this.name = 'InvalidParamsError';
     this.httpStatusCode = 400;
   }
-};
+}
 
 export class InvalidSchemaError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -47,7 +47,7 @@ export class InvalidSchemaError extends ErrorWithHttpStatusCode {
     this.name = 'InvalidSchemaError';
     this.httpStatusCode = 400;
   }
-};
+}
 
 export class EvaluateSchemaFunctionError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -55,7 +55,7 @@ export class EvaluateSchemaFunctionError extends ErrorWithHttpStatusCode {
     this.name = 'EvaluateSchemaFunctionError';
     this.httpStatusCode = 500;
   }
-};
+}
 
 export class SequelizeDbError extends ErrorWithHttpStatusCode {
   constructor(error: string) {
@@ -64,7 +64,7 @@ export class SequelizeDbError extends ErrorWithHttpStatusCode {
     this.cause = error;
     this.httpStatusCode = 500;
   }
-};
+}
 
 export class SequelizeUniqueConstraintError extends ErrorWithHttpStatusCode {
   constructor(error: string) {
@@ -73,7 +73,7 @@ export class SequelizeUniqueConstraintError extends ErrorWithHttpStatusCode {
     this.cause = error;
     this.httpStatusCode = 500;
   }
-};
+}
 
 export class HTTPRequestError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -81,7 +81,7 @@ export class HTTPRequestError extends ErrorWithHttpStatusCode {
     this.name = 'HTTPRequestError';
     this.httpStatusCode = 502;
   }
-};
+}
 
 export class HTTPResponseError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -89,7 +89,7 @@ export class HTTPResponseError extends ErrorWithHttpStatusCode {
     this.name = 'HTTPResponseError';
     this.httpStatusCode = 502;
   }
-};
+}
 
 export class BadRequestError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -97,7 +97,7 @@ export class BadRequestError extends ErrorWithHttpStatusCode {
     this.name = 'BadRequestError';
     this.httpStatusCode = 400;
   }
-};
+}
 
 export class ForbiddenError extends ErrorWithHttpStatusCode {
   constructor(...params: any) {
@@ -105,7 +105,7 @@ export class ForbiddenError extends ErrorWithHttpStatusCode {
     this.name = 'ForbiddenError';
     this.httpStatusCode = 403;
   }
-};
+}
 
 export const Errors: Readonly<{ [key: string]: typeof ErrorWithHttpStatusCode }> = {
   UnauthorizedError,

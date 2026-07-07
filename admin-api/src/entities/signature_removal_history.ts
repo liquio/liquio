@@ -19,6 +19,6 @@ interface SignatureRemovalHistoryEntityOptions {
 /**
  * Document signature removal history entity.
  */
-export class SignatureRemovalHistoryEntity extends Entity<SignatureRemovalHistoryEntityOptions> { }
+export class SignatureRemovalHistoryEntity extends Entity<SignatureRemovalHistoryEntityOptions> {}
 
-export interface SignatureRemovalHistoryEntity extends SignatureRemovalHistoryEntityOptions { }
+export interface SignatureRemovalHistoryEntity extends SignatureRemovalHistoryEntityOptions {}

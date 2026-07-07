@@ -680,7 +680,7 @@ export class UnitBusiness {
   async deleteById(id, unit, currentUser) {
     // Decline delete units(Security, System, Support).
     if (id === SECURITY_ADMIN_UNIT || id === SYSTEM_ADMIN_UNIT || id === SUPPORT_ADMIN_UNIT) {
-      throw new Error('Can\'t delete this unit.');
+      throw new Error("Can't delete this unit.");
     }
 
     const deletedUnit = await global.models.unit.deleteById(id);

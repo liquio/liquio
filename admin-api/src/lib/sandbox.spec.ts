@@ -157,7 +157,7 @@ describe('Sandbox', () => {
   it('should handle syntax errors', () => {
     const sandbox = new Sandbox(config);
 
-    expect(() => sandbox.evalWithArgs('(documents, events) => { return \'Тестовий юніт; }', [])).toThrow(
+    expect(() => sandbox.evalWithArgs("(documents, events) => { return 'Тестовий юніт; }", [])).toThrow(
       'Sandbox error: "Unterminated string constant (1:32)"\n  (documents, events) => { return \'Тестовий юніт; }',
     );
   });
@@ -173,11 +173,7 @@ describe('Sandbox', () => {
 
   it('should correctly strip comments and trim code', () => {
     const sandbox = new Sandbox(config);
-    const result = sandbox.evalWithArgs(
-      '\n/* comment */\n() => 1 + 1 // comment',
-      [],
-      { checkArrow: true }
-    );
+    const result = sandbox.evalWithArgs('\n/* comment */\n() => 1 + 1 // comment', [], { checkArrow: true });
     expect(result).toBe(2);
   });
 
@@ -245,28 +241,20 @@ describe('Sandbox', () => {
     });
 
     it('should use global functions from workflow templates', () => {
-      const result = sandbox.evalWithArgs(
-        '() => $.workflow.testFunc("value")',
-        [],
-        { workflowTemplateId: 3 }
-      );
+      const result = sandbox.evalWithArgs('() => $.workflow.testFunc("value")', [], { workflowTemplateId: 3 });
       expect(result).toBe('test-value');
     });
 
     it('should throw an error if global functions are not defined for the workflow template', () => {
-      expect(() => sandbox.evalWithArgs(
-        '() => $.workflow.testFunc("value")',
-        [],
-        { workflowTemplateId: 1 }
-      )).toThrow('Sandbox error: "$.workflow.testFunc is not a function"');
+      expect(() => sandbox.evalWithArgs('() => $.workflow.testFunc("value")', [], { workflowTemplateId: 1 })).toThrow(
+        'Sandbox error: "$.workflow.testFunc is not a function"',
+      );
     });
 
     it('should throw an error if a particular function is not defined in global functions', () => {
-      expect(() => sandbox.evalWithArgs(
-        '() => $.workflow.nonExistentFunc("value")',
-        [],
-        { workflowTemplateId: 3 }
-      )).toThrow('Sandbox error: "$.workflow.nonExistentFunc is not a function"');
+      expect(() => sandbox.evalWithArgs('() => $.workflow.nonExistentFunc("value")', [], { workflowTemplateId: 3 })).toThrow(
+        'Sandbox error: "$.workflow.nonExistentFunc is not a function"',
+      );
     });
   });
 });

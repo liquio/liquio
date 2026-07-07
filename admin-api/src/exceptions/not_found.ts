@@ -15,11 +15,11 @@ export class NotFoundError extends Error {
    */
   static get Messages() {
     return {
-      WORKFLOW: 'Workflow doesn\'t exist.',
-      WORKFLOW_TEMPLATE: 'WorkflowTemplate doesn\'t exist.',
-      WORKFLOW_ERROR: 'WorkflowError doesn\'t exist.',
-      TASK_TEMPLATE: 'TaskTemplate doesn\'t exist.',
-      DOCUMENT_TEMPLATE: 'DocumentTemplate doesn\'t exist.',
+      WORKFLOW: "Workflow doesn't exist.",
+      WORKFLOW_TEMPLATE: "WorkflowTemplate doesn't exist.",
+      WORKFLOW_ERROR: "WorkflowError doesn't exist.",
+      TASK_TEMPLATE: "TaskTemplate doesn't exist.",
+      DOCUMENT_TEMPLATE: "DocumentTemplate doesn't exist.",
     };
   }
 }

@@ -16,6 +16,6 @@ interface WorkflowLoggerRecordEntityOptions {
 /**
  * Workflow logger record entity.
  */
-export class WorkflowLoggerRecordEntity extends Entity<WorkflowLoggerRecordEntityOptions> { }
+export class WorkflowLoggerRecordEntity extends Entity<WorkflowLoggerRecordEntityOptions> {}
 
-export interface WorkflowLoggerRecordEntity extends WorkflowLoggerRecordEntityOptions { }
+export interface WorkflowLoggerRecordEntity extends WorkflowLoggerRecordEntityOptions {}

@@ -38,7 +38,6 @@ export class WorkflowLogBusiness {
    * @returns {Promise<object[]>}
    */
   async getByWorkflowId(id, params = {} as any) {
-
     const modelsInstance = params?.useSlaveDBInstance && global.slaveModels ? global.slaveModels : global.models;
 
     const workflow = await modelsInstance.workflow.findById(id, {

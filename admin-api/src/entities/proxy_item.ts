@@ -28,4 +28,4 @@ export class ProxyItemEntity extends Entity<ProxyItemEntityOptions> {
   }
 }
 
-export interface ProxyItemEntity extends ProxyItemEntityOptions { }
+export interface ProxyItemEntity extends ProxyItemEntityOptions {}

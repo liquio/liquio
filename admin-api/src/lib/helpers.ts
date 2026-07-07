@@ -8,10 +8,10 @@ export class Helpers {
    * @param {string[]} allowedAsyncFunctions Allowed async functions.
    * @returns {string} Transformed function string.
    */
-  static transformFunctionToAsync (functionString, allowedAsyncFunctions = []) {
+  static transformFunctionToAsync(functionString, allowedAsyncFunctions = []) {
     // Define params.
     const isFunctionStringContainsAsyncFunction = allowedAsyncFunctions.some(
-      (v) => functionString.includes(v) && !functionString.includes(`await ${v}`)
+      (v) => functionString.includes(v) && !functionString.includes(`await ${v}`),
     );
 
     // Return as is if async function not used.
@@ -25,10 +25,7 @@ export class Helpers {
       asyncFunctionString = `async ${asyncFunctionString}`;
     }
     for (const asyncFunctionInside of allowedAsyncFunctions) {
-      asyncFunctionString = asyncFunctionString.replace(
-        new RegExp(asyncFunctionInside, 'g'),
-        `await ${asyncFunctionInside}`
-      );
+      asyncFunctionString = asyncFunctionString.replace(new RegExp(asyncFunctionInside, 'g'), `await ${asyncFunctionInside}`);
     }
 
     // Return transformed function.

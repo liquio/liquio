@@ -29,11 +29,7 @@ type AccessHistoryCreationAttributes = Optional<
   'id' | 'created_at' | 'updated_at' | 'init_workflow_id' | 'init_workflow_name'
 >;
 
-type AccessHistorySequelizeInstance = SequelizeModel<
-  AccessHistoryAttributes,
-  AccessHistoryCreationAttributes
-> &
-  AccessHistoryAttributes;
+type AccessHistorySequelizeInstance = SequelizeModel<AccessHistoryAttributes, AccessHistoryCreationAttributes> & AccessHistoryAttributes;
 
 type AccessHistoryFilters = {
   [key: string]: any;
@@ -136,9 +132,11 @@ export class AccessHistoryModel extends Model {
       ) as SequelizeAccessHistoryModel;
 
       // Sequelize model params.
-      (this.model.prototype as AccessHistorySequelizeInstance & {
-        prepareEntity: (item: AccessHistorySequelizeInstance) => AccessHistoryEntity;
-      }).prepareEntity = this.prepareEntity;
+      (
+        this.model.prototype as AccessHistorySequelizeInstance & {
+          prepareEntity: (item: AccessHistorySequelizeInstance) => AccessHistoryEntity;
+        }
+      ).prepareEntity = this.prepareEntity;
       this.model.paginate = this.paginate;
 
       // Define singleton.

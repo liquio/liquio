@@ -698,7 +698,7 @@ export class WorkflowProcessBusiness {
     const existingDocumentSignatures = await global.models.documentSignature.getByDocumentId(documentId);
     if (existingDocumentSignatures.length === 0) {
       global.log.save('delete-signatures-error-no-signatures-by-documentId', { documentId });
-      throw new Error('Signatures by documentId doesn\'t exist.');
+      throw new Error("Signatures by documentId doesn't exist.");
     }
     await global.models.documentSignature.deleteByDocumentId(documentId);
     const promisesSavingDeletedDocumentSignature = existingDocumentSignatures.map((signature) =>

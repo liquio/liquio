@@ -75,7 +75,6 @@ interface TaskEntityAdditionalProperties {
  * @typedef {import('./document')} DocumentEntity
  */
 export class TaskEntity extends Entity<TaskEntityOptions, TaskEntityAdditionalProperties> {
-
   getFilterProperties(): (keyof TaskEntityOptions | keyof TaskEntityAdditionalProperties)[] {
     return [
       'id',
@@ -223,5 +222,4 @@ export class TaskEntity extends Entity<TaskEntityOptions, TaskEntityAdditionalPr
   }
 }
 
-export interface TaskEntity extends TaskEntityOptions, TaskEntityAdditionalProperties { }
-
+export interface TaskEntity extends TaskEntityOptions, TaskEntityAdditionalProperties {}

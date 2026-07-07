@@ -23,9 +23,12 @@ const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_ADM
 
 async function main() {
   // Init config.
-  const config: Record<string, any> = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_HANDLER_`);
+  const config: Record<string, any> = Multiconf.get(
+    [CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])],
+    `${LIQUIO_CONFIG_PREFIX}_HANDLER_`,
+  );
   if (config.server.token === '') {
-    throw new Error('Token must\'n be empty.');
+    throw new Error("Token must'n be empty.");
   }
   global.config = config;
 
@@ -62,7 +65,7 @@ async function main() {
   if (isSearchTemplateUpdated) {
     global.log.save('elastic-search-template-successfully-updated', { templateName });
   } else {
-    global.log.save('elastic-search-template-didn\'t-update', { templateName, reason });
+    global.log.save("elastic-search-template-didn't-update", { templateName, reason });
   }
 
   // Init message queue.

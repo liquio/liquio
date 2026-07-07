@@ -60,4 +60,3 @@ export class PaymentLogsModel extends Model {
     };
   }
 }
-

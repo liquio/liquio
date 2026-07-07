@@ -464,7 +464,7 @@ export class UnitModel extends Model {
 
     // Check and fix.
     if (maxUnitId > currentUnitId) {
-      const setRawResponse = await this.db.query('select setval(\'units_id_seq\', :max_unit_id);', {
+      const setRawResponse = await this.db.query("select setval('units_id_seq', :max_unit_id);", {
         raw: true,
         replacements: { max_unit_id: maxUnitId },
       });

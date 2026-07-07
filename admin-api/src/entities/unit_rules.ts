@@ -14,6 +14,6 @@ interface UnitRulesEntityOptions {
 /**
  * Unit rules entity.
  */
-export class UnitRulesEntity extends Entity<UnitRulesEntityOptions> { }
+export class UnitRulesEntity extends Entity<UnitRulesEntityOptions> {}
 
-export interface UnitRulesEntity extends UnitRulesEntityOptions { }
+export interface UnitRulesEntity extends UnitRulesEntityOptions {}

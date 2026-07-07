@@ -60,4 +60,4 @@ export class AdditionalDataSignatureEntity extends Entity<AdditionalDataSignatur
   }
 }
 
-export interface AdditionalDataSignatureEntity extends AdditionalDataSignatureEntityOptions { }
+export interface AdditionalDataSignatureEntity extends AdditionalDataSignatureEntityOptions {}

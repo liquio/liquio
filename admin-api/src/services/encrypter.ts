@@ -36,7 +36,11 @@ export class EncrypterService {
    * @returns {string}
    */
   decrypt(text) {
-    const decipher = crypto.createDecipheriv(global.config.server.crypto.algorithm, global.config.server.crypto.password, global.config.server.crypto.iv);
+    const decipher = crypto.createDecipheriv(
+      global.config.server.crypto.algorithm,
+      global.config.server.crypto.password,
+      global.config.server.crypto.iv,
+    );
     let dec = decipher.update(text, 'hex', 'utf8');
     dec += decipher.final('utf8');
     return dec;

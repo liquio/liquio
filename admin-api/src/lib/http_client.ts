@@ -87,7 +87,7 @@ export class HttpClient {
 
     global.log.save('http-client-request-success', { meta });
 
-    response.body.on('error', (error: { toString: () => any; }) => {
+    response.body.on('error', (error: { toString: () => any }) => {
       global.log.save('http-client-read-response-body-stream-error', { meta, error: error.toString() });
     });
 

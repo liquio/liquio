@@ -72,7 +72,7 @@ export class Controller {
     global.log.save('stack', error.stack);
 
     // Define response object.
-    const responseObject: { error: { message: string }, traceId: string, details?: any[] } = { error: { message }, traceId: getTraceId() };
+    const responseObject: { error: { message: string }; traceId: string; details?: any[] } = { error: { message }, traceId: getTraceId() };
 
     if (details.length && Array.isArray(details)) {
       responseObject.details = details.filter(Boolean).map((detail) => {

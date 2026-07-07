@@ -285,7 +285,7 @@ export class WorkflowBusiness {
 
     // Check passed user subscribed on workflow errors.
     if (!existingErrorsSubscribers.some(({ id }) => id === userId)) {
-      let error = new Error('User didn\'t subscribe on workflow errors. Can\'t unsubscribe.');
+      let error = new Error("User didn't subscribe on workflow errors. Can't unsubscribe.");
       (error as any).details = { workflowTemplateId, userId };
       throw error;
     }

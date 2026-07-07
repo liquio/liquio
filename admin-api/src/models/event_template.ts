@@ -1,8 +1,8 @@
 import Sequelize from 'sequelize';
 
-import { Model } from './model'; 
-import { EventTemplateEntity } from '../entities/event_template'; 
-import { beautifyJSON } from '../lib/beautifyJSON'; 
+import { Model } from './model';
+import { EventTemplateEntity } from '../entities/event_template';
+import { beautifyJSON } from '../lib/beautifyJSON';
 import { parseJSONCSchema, validateJSONCSchema } from '../lib/jsonc_helper';
 
 export class EventTemplateModel extends Model {

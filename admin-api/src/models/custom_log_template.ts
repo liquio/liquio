@@ -57,7 +57,7 @@ export class CustomLogTemplateModel extends Model {
           schema: {
             allowNull: false,
             type: Sequelize.TEXT,
-            defaultValue: '(entity) => { return { type: \'Unknown type\', custom: [] }; }',
+            defaultValue: "(entity) => { return { type: 'Unknown type', custom: [] }; }",
           },
         },
         {

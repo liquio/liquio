@@ -22,6 +22,6 @@ interface CustomInterfaceEntityOptions {
 /**
  * Custom interface entity.
  */
-export class CustomInterfaceEntity extends Entity<CustomInterfaceEntityOptions> { }
+export class CustomInterfaceEntity extends Entity<CustomInterfaceEntityOptions> {}
 
-export interface CustomInterfaceEntity extends CustomInterfaceEntityOptions { }
+export interface CustomInterfaceEntity extends CustomInterfaceEntityOptions {}

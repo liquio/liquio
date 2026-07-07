@@ -17,7 +17,7 @@ export class UnitError extends Error {
    */
   static get Messages() {
     return {
-      CONFLICTS: 'Can\'t save - conflicts in fields: {{conflicts}}.',
+      CONFLICTS: "Can't save - conflicts in fields: {{conflicts}}.",
     };
   }
 }

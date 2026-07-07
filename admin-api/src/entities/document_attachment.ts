@@ -32,4 +32,4 @@ export class DocumentAttachmentEntity extends Entity<DocumentAttachmentEntityOpt
   }
 }
 
-export interface DocumentAttachmentEntity extends DocumentAttachmentEntityOptions { }
+export interface DocumentAttachmentEntity extends DocumentAttachmentEntityOptions {}

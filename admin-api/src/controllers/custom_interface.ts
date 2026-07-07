@@ -88,9 +88,7 @@ export class CustomInterfaceController extends Controller {
     const filters = queryData.filters || {};
     const { page: currentPage, count: perPage } = queryData;
 
-    const normalizedFilters = filters.name
-      ? { ...filters, name: { [Op.iLike]: `%${filters.name}%` } }
-      : filters;
+    const normalizedFilters = filters.name ? { ...filters, name: { [Op.iLike]: `%${filters.name}%` } } : filters;
 
     let customInterfaces;
     try {
