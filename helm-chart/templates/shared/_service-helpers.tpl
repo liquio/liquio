@@ -30,7 +30,7 @@ Per-service image tag versions managed in chart templates.
   "admin-api" "0.1.10"
   "admin-front" "0.1.23"
   "cabinet-api" "0.1.1"
-  "cabinet-front" "0.1.23"
+  "cabinet-front" "0.1.24"
   "event" "0.1.4"
   "external-reader" "0.1.0"
   "filestorage" "0.1.0"
