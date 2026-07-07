@@ -1,6 +1,6 @@
 {
   "name": "liquio-admin-api",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "engines": {
     "node": "22"
   },
