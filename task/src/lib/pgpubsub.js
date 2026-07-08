@@ -26,6 +26,7 @@ class PgPubSub {
       this.config = config;
       this.reconnectTimer = null;
       this.client = null;
+      this.queryQueue = Promise.resolve();
       this.reconnectAttempts = 0;
       this.isReconnecting = false;
       PgPubSub.singleton = this;
@@ -40,6 +41,25 @@ class PgPubSub {
    */
   static getInstance() {
     return PgPubSub.singleton;
+  }
+
+  /**
+   * Enqueue SQL query against the shared pg client to avoid concurrent client.query calls.
+   * @param {string} sql
+   * @returns {Promise<import('pg').QueryResult>}
+   */
+  enqueueClientQuery(sql) {
+    const run = this.queryQueue
+      .catch(() => undefined)
+      .then(async () => {
+        if (!this.client) {
+          throw new Error('PgPubSub client is not connected');
+        }
+        return this.client.query(sql);
+      });
+
+    this.queryQueue = run;
+    return run;
   }
 
   /**
@@ -130,7 +150,7 @@ class PgPubSub {
 
         // Re-subscribe to channels.
         for (const [channel,] of this.subscriptions.entries()) {
-          await this.client.query('LISTEN ' + channel);
+          await this.enqueueClientQuery('LISTEN ' + channel);
           global.log.save('pgpubsub-resubscribed', { channel });
         }
 
@@ -150,19 +170,47 @@ class PgPubSub {
   }
 
   /**
+   * Cleanup timers and database connection.
+   */
+  async cleanup() {
+    if (this.reconnectTimer) {
+      clearInterval(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    this.isReconnecting = false;
+    this.reconnectAttempts = 0;
+
+    try {
+      if (this.client) {
+        await this.client.end();
+      }
+    } catch (error) {
+      global.log.save('pgpubsub-cleanup-error', {
+        error: error.message,
+        stack: error.stack,
+      });
+    } finally {
+      this.client = null;
+      this.queryQueue = Promise.resolve();
+    }
+  }
+
+  /**
    * Subscribes to a new channel and associates a callback function.
    * @param {string} channel The name of the channel to subscribe to.
    * @param {Function} callback Callback to execute that accepts the channel name and the message data.
    */
   async subscribe(channel, callback) {
-    await this.client.query('LISTEN ' + String(channel));
-    const subscription = this.subscriptions.get(channel);
+    const channelName = String(channel);
+    const subscription = this.subscriptions.get(channelName);
     if (subscription) {
-      this.subscriptions.set(channel, subscription.concat(callback));
+      this.subscriptions.set(channelName, subscription.concat(callback));
     } else {
-      this.subscriptions.set(channel, [callback]);
+      this.subscriptions.set(channelName, [callback]);
+      await this.enqueueClientQuery('LISTEN ' + channelName);
     }
-    global.log.save('pgpubsub-subscribed', { channel });
+    global.log.save('pgpubsub-subscribed', { channel: channelName });
   }
 
   /**
@@ -170,9 +218,12 @@ class PgPubSub {
    * @param {string} channel The name of the channel to unsubscribe from.
    */
   async unsubscribe(channel) {
-    await this.client.query('UNLISTEN ' + String(channel));
-    this.subscriptions.delete(channel);
-    global.log.save('pgpubsub-unsubscribed', { channel });
+    const channelName = String(channel);
+    if (this.subscriptions.has(channelName)) {
+      await this.enqueueClientQuery('UNLISTEN ' + channelName);
+      this.subscriptions.delete(channelName);
+    }
+    global.log.save('pgpubsub-unsubscribed', { channel: channelName });
   }
 }
 

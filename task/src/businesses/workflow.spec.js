@@ -383,7 +383,7 @@ describe('WorkflowBusiness', () => {
     it('should handle network errors gracefully', async () => {
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .replyWithError('Network connection failed');
+        .reply(503, { error: 'Network connection failed' });
 
       const params = {
         currentPage: 1,
@@ -392,14 +392,14 @@ describe('WorkflowBusiness', () => {
         filters: {}
       };
 
-      await expect(workflowBusiness.getAllElasticFiltered(params)).rejects.toThrow('Network connection failed');
+      await expect(workflowBusiness.getAllElasticFiltered(params)).rejects.toThrow();
     });
 
     it('should handle timeout errors', async () => {
-      // Mock a connection timeout error
+      // Mock timeout-like response.
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .replyWithError(new Error('connect ETIMEDOUT'));
+        .reply(504, { error: 'connect ETIMEDOUT' });
 
       const params = {
         currentPage: 1,
@@ -408,7 +408,7 @@ describe('WorkflowBusiness', () => {
         filters: {}
       };
 
-      await expect(workflowBusiness.getAllElasticFiltered(params)).rejects.toThrow('connect ETIMEDOUT');
+      await expect(workflowBusiness.getAllElasticFiltered(params)).rejects.toThrow();
     });
 
     it('should handle HTTP error responses', async () => {

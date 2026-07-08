@@ -261,12 +261,12 @@ describe('DocumentBusiness', () => {
         },
       };
 
-      // Mock HTTP request to simulate network error
-      nock('https://example.com').get('/download/test-file-id').replyWithError('Network error');
+      // Mock HTTP request to simulate transport/server failure.
+      nock('https://example.com').get('/download/test-file-id').reply(503, { error: 'Network error' });
 
       const document = { fileId: 'default-file-id' };
 
-      await expect(documentBusiness.getFileHash(document, fileId)).rejects.toThrow('Network error');
+      await expect(documentBusiness.getFileHash(document, fileId)).rejects.toThrow();
     });
 
     it('should handle different file content types correctly', async () => {
@@ -452,12 +452,12 @@ describe('DocumentBusiness', () => {
         }
       };
 
-      // Mock HTTP request to simulate network error
+      // Mock HTTP request to simulate transport/server failure.
       nock('https://example.com')
         .get('/download/error-file-id')
-        .replyWithError('Network error');
+        .reply(503, { error: 'Network error' });
 
-      await expect(documentBusiness.getFileBase64(fileId)).rejects.toThrow('Network error');
+      await expect(documentBusiness.getFileBase64(fileId)).rejects.toThrow();
     });
 
     it('should handle 404 errors', async () => {

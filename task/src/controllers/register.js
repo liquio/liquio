@@ -376,6 +376,7 @@ class RegisterController extends Controller {
     let searchLike3;
     let isAutosave = false;
     let isMultiple = false;
+    let withLinkedObjects = false;
     let stepName;
     let elementName;
     let documentId;
@@ -415,6 +416,8 @@ class RegisterController extends Controller {
 
       // Try to get iterator value.
       const iteratorValue = controlParts.find(v => parseInt(v) == v);
+      // All numeric path segments, in order (one per nested array).
+      const controlIndexes = controlParts.filter(v => `${parseInt(v)}` === `${v}`).map(Number);
 
       // Get step element from path.
       elementName = businesses.register.getTemplatePathFromDataPath(controlParts.join('.'));
@@ -435,7 +438,7 @@ class RegisterController extends Controller {
         if (!elementTemplate.whiteList || !Array.isArray(elementTemplate.whiteList) || elementTemplate.whiteList.length === 0) {
           return this.responseError(res, 'Must be defined "whiteList" option - an array of possible key ids.', 400, { control, elementTemplate, keyId });
         }
-        const keyIdCalculated = keyIdFunction(document.data);
+        const keyIdCalculated = keyIdFunction(document.data, controlIndex, controlIndexes);
         if (!elementTemplate.whiteList.some(wlKeyId => `${wlKeyId}`.trim() === `${keyIdCalculated}`.trim() && `${keyIdCalculated}`.trim() === `${keyId}`)) {
           return this.responseError(res, 'Calculated keyId must be pressent in "whiteList" option.', 400, { control, elementTemplate, keyId, calculatedKeyId: keyIdCalculated, whiteList: elementTemplate.whiteList });
         }
@@ -447,12 +450,22 @@ class RegisterController extends Controller {
         isAutosave = typeof setDefined === 'string' && setDefined.startsWith('(')
           ? this.sandbox.evalWithArgs(
             setDefined,
-            [document.data],
+            [document.data, controlIndex, controlIndexes],
             { meta: { fn: 'getFilteredRecordsByKeyId.setDefined', documentId, controlIndex } },
           )
           : !!setDefined;
         isMultiple = !!multiple;
       }
+
+      // Define withLinkedObjects param.
+      const withLinkedObjectsOption = elementTemplate?.withLinkedObjects;
+      withLinkedObjects = typeof withLinkedObjectsOption === 'string' && withLinkedObjectsOption.startsWith('(')
+        ? this.sandbox.evalWithArgs(
+          withLinkedObjectsOption,
+          [document.data, controlIndex, controlIndexes],
+          { meta: { fn: 'getFilteredRecordsByKeyId.withLinkedObjects', documentId, controlIndex } },
+        )
+        : !!withLinkedObjectsOption;
 
       // Add additional data to body if has additional filters.
       const additionalFilter = elementTemplate && elementTemplate.additionalFilter;
@@ -471,7 +484,20 @@ class RegisterController extends Controller {
       //   throw new Error('Filters must be defined if additionalFilter used');
       // }
 
-      if (iteratorValue) {
+      if (controlIndexes?.length) {
+        // Replace each `.X.` placeholder positionally to support nested arrays.
+        filters.forEach(v => {
+          if (!v.value || typeof v.value !== 'string') return;
+          let placeholderPos = 0;
+          v.value = v.value.replace(/\.X\./g, () => {
+            const idx = placeholderPos < controlIndexes.length
+              ? controlIndexes[placeholderPos]
+              : controlIndexes[controlIndexes.length - 1];
+            placeholderPos++;
+            return `.${idx}.`;
+          });
+        });
+      } else if (iteratorValue) {
         filters.forEach(v => {
           if (v.value) v.value = v.value.replace('.X.', `.${iteratorValue}.`);
         });
@@ -506,7 +532,7 @@ class RegisterController extends Controller {
         try {
           searchEqual = this.sandbox.evalWithArgs(
             searchFunction,
-            [document.data, controlIndex],
+            [document.data, controlIndex, controlIndexes],
             { meta: { fn: 'getFilteredRecordsByKeyId.searchEqual', keyId } },
           );
         } catch {
@@ -519,7 +545,7 @@ class RegisterController extends Controller {
         try {
           searchEqual2 = this.sandbox.evalWithArgs(
             searchFunction2,
-            [document.data, controlIndex],
+            [document.data, controlIndex, controlIndexes],
             { meta: { fn: 'getFilteredRecordsByKeyId.searchEqual2', keyId } },
           );
         } catch {
@@ -532,7 +558,7 @@ class RegisterController extends Controller {
         try {
           searchEqual3 = this.sandbox.evalWithArgs(
             searchFunction3,
-            [document.data, controlIndex],
+            [document.data, controlIndex, controlIndexes],
             { meta: { fn: 'getFilteredRecordsByKeyId.searchEqual3', keyId } },
           );
         } catch {
@@ -546,7 +572,7 @@ class RegisterController extends Controller {
         try {
           searchLike = this.sandbox.evalWithArgs(
             searchLikeFunction,
-            [document.data, controlIndex],
+            [document.data, controlIndex, controlIndexes],
             { meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction', keyId } },
           );
         } catch {
@@ -559,7 +585,7 @@ class RegisterController extends Controller {
         try {
           searchLike2 = this.sandbox.evalWithArgs(
             searchLikeFunction2,
-            [document.data, controlIndex],
+            [document.data, controlIndex, controlIndexes],
             { meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction2', keyId } },
           );
         } catch {
@@ -572,7 +598,7 @@ class RegisterController extends Controller {
         try {
           searchLike3 = this.sandbox.evalWithArgs(
             searchLikeFunction3,
-            [document.data, controlIndex],
+            [document.data, controlIndex, controlIndexes],
             { meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction3', keyId } },
           );
         } catch {
@@ -629,7 +655,7 @@ class RegisterController extends Controller {
         search_equal: searchEqual,
         search_equal_2: searchEqual2,
         search_equal_3: searchEqual3,
-      }, strict, allowTokens, body, accessInfo, control);
+      }, strict, allowTokens, body, accessInfo, control, withLinkedObjects);
     } catch (error) {
       return this.responseError(res, error);
     }

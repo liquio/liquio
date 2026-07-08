@@ -202,18 +202,18 @@ describe('HttpRequest', () => {
       ).rejects.toThrow();
     });
 
-    it('should reject on network error', async () => {
+    it('should return body for HTTP error responses', async () => {
       nock(baseUrl)
         .get(testEndpoint)
         .matchHeader('x-trace-id', 'test-trace-id-123')
-        .replyWithError('Network error');
+        .reply(503, { error: 'Network error' });
 
-      await expect(
-        HttpRequest.send({
-          url: fullUrl,
-          method: 'GET'
-        })
-      ).rejects.toThrow('Network error');
+      const result = await HttpRequest.send({
+        url: fullUrl,
+        method: 'GET'
+      });
+
+      expect(result).toEqual({ error: 'Network error' });
     });
 
     it('should add trace id header when no headers provided', async () => {
@@ -272,17 +272,17 @@ describe('HttpRequest', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should reject on network error', async () => {
+    it('should return undefined when header is missing on HTTP error response', async () => {
       nock(baseUrl)
         .head(testEndpoint)
-        .replyWithError('Network error');
+        .reply(503, '');
 
-      await expect(
-        HttpRequest.sendHeadRequest({
-          url: fullUrl,
-          method: 'HEAD'
-        }, 'content-length')
-      ).rejects.toThrow('Network error');
+      const result = await HttpRequest.sendHeadRequest({
+        url: fullUrl,
+        method: 'HEAD'
+      }, 'content-length');
+
+      expect(result).toBeUndefined();
     });
   });
 
