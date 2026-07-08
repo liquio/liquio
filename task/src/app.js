@@ -142,6 +142,7 @@ class BpmnTaskCore {
     // Init pgpubsub.
     const pgpubsub = new PgPubSub(config.db);
     await pgpubsub.connect();
+    this.pgpubsub = pgpubsub;
 
     // Init document filler.
     new DocumentFillerService(customDocumentFillers);
@@ -241,7 +242,7 @@ class BpmnTaskCore {
   async stop() {
     await this.routerService?.stop();
     await this.db?.close();
-    await this.pgpubsub?.client?.end();
+    await this.pgpubsub?.cleanup?.();
     await this.prometheus?.stop();
     JSONPath.cleanTimeouts();
   }

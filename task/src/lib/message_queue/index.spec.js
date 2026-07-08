@@ -1,4 +1,4 @@
-const { setTimeout } = require('timers/promises');
+const { setTimeout: delay } = require('timers/promises');
 const amqp = require('amqplib/callback_api');
 const MessageQueue = require('./index');
 
@@ -262,7 +262,7 @@ describe('MessageQueue', () => {
 
       decoratedHandler({ content: Buffer.from(JSON.stringify(message)) });
 
-      await setTimeout(500);
+      await delay(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
       expect(global.log.save).toHaveBeenCalledWith(
@@ -284,7 +284,7 @@ describe('MessageQueue', () => {
 
       decoratedHandler({ content: Buffer.from(JSON.stringify(message)) });
 
-      await setTimeout(500);
+      await delay(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.nack).toHaveBeenCalled();
       expect(global.log.save).toHaveBeenCalledWith(
@@ -361,7 +361,7 @@ describe('MessageQueue', () => {
     });
 
     it('should not reconnect if already reconnecting', async () => {
-      messageQueue.reconnectTimeout = setTimeout(() => {}, 10000);
+      messageQueue.reconnectTimeout = global.setTimeout(() => {}, 10000);
 
       const closeSpy = jest.spyOn(messageQueue, 'close');
       messageQueue.reconnect();

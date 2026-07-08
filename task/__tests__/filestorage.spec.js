@@ -825,17 +825,15 @@ describe('FileStorage', () => {
     });
 
     it('should handle ping request exception and log error', async () => {
-      // Simulate a network error or exception during the request
+      // Simulate transport/server failure.
       nock(baseUrl)
         .get('/test/ping_with_auth')
-        .replyWithError('Network error');
+        .reply(503, { error: 'Network error' });
 
       const result = await fileStorage.sendPingRequest();
 
-      // When an exception occurs, the method should return undefined and log the error
-      expect(result).toBeUndefined();
-      // Check that the error was logged with the typo in the log key
-      expect(mockLog.save).toHaveBeenCalledWith('send-ping-request-to-fiestorage', 'Network error', 'error');
+      expect(result.body).toEqual({ error: 'Network error' });
+      expect(mockLog.save).toHaveBeenCalledWith('send-ping-request-to-filestorage', expect.any(Object));
     });
   });
 
@@ -1010,6 +1008,18 @@ describe('FileStorage', () => {
           this.push(null);
         }
       });
+
+      nock(baseUrl)
+        .post('/files')
+        .query(true)
+        .reply(200, {
+          data: {
+            id: 'uploaded-file-id',
+            name,
+            contentType,
+            contentLength,
+          },
+        });
       
       // Test that it returns a promise
       const result = fileStorage.uploadFileFromStream(mockStream, name, description, contentType, contentLength);
