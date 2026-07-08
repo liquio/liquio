@@ -1,4 +1,4 @@
-import redis from 'redis';
+import { createClient, type RedisClientType } from 'redis';
 
 import { CustomLogEntity } from '../entities/custom_log';
 import { Sandbox } from '../lib/sandbox';
@@ -11,7 +11,7 @@ export class CustomLogs {
   private static singleton: CustomLogs;
 
   public cacheEnabled: boolean;
-  public client: redis.RedisClientType | null;
+  public client: RedisClientType | null;
   public ttl: number;
   public sandbox: Sandbox;
 
@@ -25,7 +25,7 @@ export class CustomLogs {
       // Save params.
       const { cacheEnabled, redis: { host, port, ttl } = {} } = config;
       this.cacheEnabled = !!cacheEnabled;
-      this.client = (this.cacheEnabled && redis.createClient({ socket: { host, port } })) || null;
+      this.client = (this.cacheEnabled && createClient({ socket: { host, port } })) || null;
       this.ttl = ttl;
       this.sandbox = new Sandbox();
       if (this.client) {

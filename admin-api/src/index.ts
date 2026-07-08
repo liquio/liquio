@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 import Multiconf from 'multiconf';
-import redis from 'redis';
+import { createClient } from 'redis';
 
 import { Db } from './lib/db';
 import { Log } from './lib/log';
@@ -50,7 +50,7 @@ async function main() {
   }
 
   if (config?.redis?.isEnabled) {
-    const client = redis.createClient({
+    const client = createClient({
       socket: { host: config.redis.host, port: config.redis.port },
     });
     await client.connect();
