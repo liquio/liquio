@@ -48,7 +48,7 @@ export class WorkflowLogBusiness {
       throw new Exceptions.NOT_FOUND(Exceptions.NOT_FOUND.Messages.WORKFLOW);
     }
 
-    const workflowLoggerEntity = new WorkflowLoggerEntity(id);
+    const workflowLoggerEntity = new WorkflowLoggerEntity({ workflowId: id, logs: [] });
 
     const workflowMessages = workflow.data.messages || [];
     for (const workflowMessage of workflowMessages) {

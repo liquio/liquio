@@ -154,6 +154,55 @@ describe('Workflow Controller', () => {
     });
   });
 
+  describe('GET /workflow-logs/:id', () => {
+    it('should return workflow logs when authenticated and workflow exists', async () => {
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+
+      app
+        .nock('http://id-api:8100')
+        .get('/user/info')
+        .query({ access_token: payload.authTokens.accessToken })
+        .once()
+        .reply(200, {
+          userId: '61efddaa351d6219eee09043',
+          role: 'admin',
+          services: { eds: { data: { pem: 'PEM' } } },
+        });
+
+      const workflowId = WORKFLOW_FIXTURES[0].id;
+      await app.model('workflow').update(
+        {
+          data: {
+            messages: [
+              {
+                type: 'in',
+                data: { source: 'e2e' },
+                sequences: [],
+                createdAt: '2023-02-14T13:02:59.974Z',
+              },
+            ],
+          },
+        },
+        {
+          where: { id: workflowId },
+        },
+      );
+
+      await app
+        .request()
+        .get(`/workflow-logs/${workflowId}`)
+        .set('token', jwt)
+        .expect(200)
+        .expect((response: SupertestResponse) => {
+          expect(response.body).toHaveProperty('workflowId');
+          expect(response.body.workflowId).toBe(workflowId);
+          expect(response.body).toHaveProperty('logs');
+          expect(Array.isArray(response.body.logs)).toBe(true);
+          expect(response.body.logs.length).toBeGreaterThan(0);
+        });
+    });
+  });
+
   describe('POST /workflows', () => {
     it('should fail without auth', async () => {
       await app
