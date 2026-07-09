@@ -1,7 +1,9 @@
 name: Build and Push Images
 
 on:
-  push:
+  workflow_run:
+    workflows: [Lint]
+    types: [completed]
     branches: [main]
 
 env:
@@ -10,7 +12,7 @@ env:
 jobs:
   # ── Detect which services have changed ────────────────────────────────────
   detect:
-    if: github.actor != 'dependabot[bot]'
+    if: github.event.workflow_run.conclusion == 'success' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
@@ -20,30 +22,17 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Build service matrix from changed paths
         id: build-matrix
         run: |
-          # Determine diff range
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
-            HEAD="${{ github.event.pull_request.head.sha }}"
-          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
-            # New branch — no previous commit, build everything
-            BASE=""
-            HEAD=""
-          else
-            BASE="${{ github.event.before }}"
-            HEAD="HEAD"
-          fi
+          # Build only after the exact commit that passed lint.
+          BASE="${{ github.event.workflow_run.head_sha }}^"
+          HEAD="${{ github.event.workflow_run.head_sha }}"
 
-          if [ -z "$BASE" ]; then
-            CHANGED=""
-            BUILD_ALL=true
-          else
-            CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
-            BUILD_ALL=false
-          fi
+          CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
+          BUILD_ALL=false
 
           echo "Changed files:"
           echo "${CHANGED:-<all>}"
