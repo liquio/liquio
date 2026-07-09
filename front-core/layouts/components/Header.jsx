@@ -43,6 +43,7 @@ const styles = (theme) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12
   },
   iconButtonRoot: {
     width: 40,
@@ -55,14 +56,15 @@ const styles = (theme) => ({
     },
   },
   logo: {
-    marginLeft: 12,
-    width: 48,
+    width: 160,
     height: 48,
-    backgroundSize: 'cover',
+    maxWidth: 240,
+    backgroundSize: 'contain',
     backgroundRepeat: 'no-repeat',
     backgroundPosition: 'center',
+    flexShrink: 0,
     [theme.breakpoints.down('sm')]: {
-      width: 200,
+      width: 160,
       backgroundSize: 'contain',
     },
     ...(theme.logoStyles || {}),
@@ -91,6 +93,8 @@ const styles = (theme) => ({
     display: 'none',
   },
 });
+
+const getLogoSrc = () => theme?.logoStyles?.src || theme?.logo?.src || logo;
 
 const Header = ({
   t,
@@ -201,7 +205,7 @@ const Header = ({
           <Link to="/" aria-label={t('HomeLink')} className={classes.logoLink}>
             <div
               className={classes.logo}
-              style={{ ...theme.logo, backgroundImage: `url(${logo})` }}
+              style={{ ...theme.logo, backgroundImage: `url(${getLogoSrc()})` }}
             />
           </Link>
         </div>
