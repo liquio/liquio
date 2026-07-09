@@ -27,7 +27,7 @@ Per-service image tag versions managed in chart templates.
 {{- $fallback := include "liquio.imageDefaultTag" . -}}
 {{- $overrides := .Values.serviceVersions | default dict -}}
 {{- $versions := dict
-  "admin-api" "0.1.13"
+  "admin-api" "0.1.14"
   "admin-front" "0.1.23"
   "cabinet-api" "0.1.1"
   "cabinet-front" "0.1.24"
@@ -41,7 +41,7 @@ Per-service image tag versions managed in chart templates.
   "notification" "0.1.5"
   "pdf-generator" "0.1.2"
   "persist-link" "0.1.4"
-  "register" "0.1.1"
+  "register" "0.1.2"
   "sign-tool" "0.1.0"
   "task" "0.1.4"
 -}}
