@@ -13,9 +13,7 @@ export default class ValidatorError {
   constructor(ajvError) {
     // AJV v8 uses `instancePath`, while older payloads may still use `dataPath`.
     const rawPath =
-      (typeof ajvError?.instancePath === 'string' && ajvError.instancePath)
-      || (typeof ajvError?.dataPath === 'string' && ajvError.dataPath)
-      || '';
+      (typeof ajvError?.instancePath === 'string' && ajvError.instancePath) || (typeof ajvError?.dataPath === 'string' && ajvError.dataPath) || '';
 
     this.dataPath = rawPath.startsWith('/') ? rawPath.slice(1) : rawPath;
     const firstValidationParam = Object.values(ajvError?.params || {})[0];
