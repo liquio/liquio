@@ -35,7 +35,7 @@ export class WorkflowRestartModel extends Model {
         },
       );
 
-      (this.model as any).prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       WorkflowRestartModel.singleton = this;
     }

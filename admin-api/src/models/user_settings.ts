@@ -47,7 +47,7 @@ export class UserSettingsModel extends Model {
       );
 
       // Sequelize model params.
-      (this.model as any).prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       // Define singleton.
       UserSettingsModel.singleton = this;

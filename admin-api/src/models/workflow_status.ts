@@ -21,7 +21,7 @@ export class WorkflowStatusModel extends Model {
         },
       );
 
-      (this.model as any).prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       WorkflowStatusModel.singleton = this;
     }
