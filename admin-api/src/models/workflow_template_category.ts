@@ -29,7 +29,7 @@ export class WorkflowTemplateCategoryModel extends Model {
         },
       );
 
-      (this.model as any).prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
       (this.model as any).paginate = this.paginate;
 
       WorkflowTemplateCategoryModel.singleton = this;

@@ -71,6 +71,9 @@ export default class Router {
     // Init Express app.
     const app = express();
 
+    // Parse nested query params (e.g. filters[name]) into objects.
+    app.set('query parser', 'extended');
+
     // Run request in async local storage.
     app.use(asyncLocalStorageMiddleware);
 

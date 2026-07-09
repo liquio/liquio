@@ -341,6 +341,65 @@ describe('RecordsController', () => {
     });
   });
 
+  describe('POST /records/filter', () => {
+    it('should support body-based filter params', async () => {
+      const createdIds: string[] = [];
+
+      const createRecord = async (name: string, dataValue: string) => {
+        const response = await testHarness
+          .request()
+          .post('/records')
+          .set('Authorization', validAuth)
+          .send({
+            registerId: 200,
+            keyId: 2001,
+            data: { name, data: dataValue }
+          })
+          .expect(200);
+
+        createdIds.push(response.body.data.id);
+      };
+
+      await createRecord('Filter Body Match', 'BODY_FILTER_MATCH_001');
+      await createRecord('Filter Body Miss', 'BODY_FILTER_MISS_001');
+
+      const response = await testHarness
+        .request()
+        .post('/records/filter')
+        .set('Authorization', validAuth)
+        .send({
+          key_id: 2001,
+          register_id: 200,
+          data: {
+            data: 'BODY_FILTER_MATCH_001'
+          },
+          limit: 50,
+          offset: 0
+        })
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(response.body.data.some((record) => record.data?.data === 'BODY_FILTER_MATCH_001')).toBe(true);
+      expect(response.body.data.some((record) => record.data?.data === 'BODY_FILTER_MISS_001')).toBe(false);
+
+      await Promise.all(createdIds.map((id) => testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth).expect(200)));
+    });
+
+    it('should not fail on malformed URI-encoded search_equal values', async () => {
+      const response = await testHarness
+        .request()
+        .post('/records/filter?key_id=2001&search_equal=%E0%A4%A')
+        .set('Authorization', validAuth)
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('data');
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+  });
+
   describe('DELETE /records/:id', () => {
     it('should return 401 without authentication', async () => {
       await testHarness.request().delete('/records/some-id').expect(401).expect('Content-Type', /json/);

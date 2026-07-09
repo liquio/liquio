@@ -372,6 +372,9 @@ export default class RecordsController extends Controller {
 
   // Get all filtered records.
   async getAllFiltered(req: Request, res: Response) {
+    const matchedQueryData = matchedData(req, { locations: ['query'] });
+    const matchedBodyData = matchedData(req, { locations: ['body'] });
+
     // Define params.
     const {
       register_id: registerId,
@@ -401,12 +404,12 @@ export default class RecordsController extends Controller {
       limit: responseLimit = 20,
       offset: responseOffset = 0,
       additional_filter: queryAdditionalFilter
-    } = matchedData(req, { locations: ['query'] });
-    const { additionalFilter: bodyAdditionalFilter, additionalFilterData } = matchedData(req, { locations: ['body'] });
+    } = { ...matchedQueryData, ...matchedBodyData } as any;
+    const { additionalFilter: bodyAdditionalFilter, additional_filter: bodyAdditionalFilterLegacy, additionalFilterData } = matchedBodyData as any;
 
     const additionalFilter = queryAdditionalFilter
       ? Buffer.from(decodeURIComponent(queryAdditionalFilter), 'base64').toString('utf8')
-      : bodyAdditionalFilter;
+      : bodyAdditionalFilter || bodyAdditionalFilterLegacy;
 
     let sqlLimit;
     if (csvMap && noLimit) {
@@ -468,7 +471,13 @@ export default class RecordsController extends Controller {
         .flat()
         .filter((v) => v || v === 0)
         .map(String)
-        .map(decodeURI)
+        .map((v) => {
+          try {
+            return decodeURI(v);
+          } catch {
+            return v;
+          }
+        })
         .map((v) => v.split('||').map((v) => v.trim()))
         .flat()
         .filter(Boolean)

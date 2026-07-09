@@ -34,7 +34,7 @@ export class WorkflowHistoryModel extends Model {
         },
       );
 
-      (this.model as any).prepareEntity = this.prepareEntity;
+      (this.model as any).prototype.prepareEntity = this.prepareEntity;
 
       WorkflowHistoryModel.singleton = this;
     }
