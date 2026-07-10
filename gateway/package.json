@@ -30,7 +30,7 @@
     "isolated-vm": "^6.1.2",
     "jsonc-parser": "^3.2.0",
     "lodash": "^4.17.20",
-    "lru-cache": "^10.4.3",
+    "lru-cache": "^11.5.2",
     "moment": "^2.29.4",
     "moment-business-days": "^1.2.0",
     "multiconf": "^4.0.0",
