@@ -1,15 +1,15 @@
-const { randomUUID } = require('crypto');
+import { randomUUID } from 'crypto';
 
-const XmlJsConverter = require('../lib/xml_js_converter');
-const SystemNotifier = require('../lib/system_notifier');
-const WorkflowErrorModel = require('../models/workflow_error');
-const WorkflowModel = require('../models/workflow');
-const WorkflowTemplateModel = require('../models/workflow_template');
-const TaskModel = require('../models/task');
-const GatewayModel = require('../models/gateway');
-const EventModel = require('../models/event');
-const TaskEntity = require('../entities/task');
-const EventEntity = require('../entities/event');
+import XmlJsConverter from '../lib/xml_js_converter';
+import SystemNotifier from '../lib/system_notifier';
+import WorkflowErrorModel from '../models/workflow_error';
+import WorkflowModel from '../models/workflow';
+import WorkflowTemplateModel from '../models/workflow_template';
+import TaskModel from '../models/task';
+import GatewayModel from '../models/gateway';
+import EventModel from '../models/event';
+import TaskEntity from '../entities/task';
+import EventEntity from '../entities/event';
 
 // Constants.
 const SYSTEM_USER = 'system';
@@ -24,12 +24,25 @@ const ERROR_INVALID_ENTITY = 'Invalid entity';
  * Workflow business.
  * @typedef {import('../entities/workflow')} WorkflowEntity
  */
-class WorkflowBusiness {
+export class WorkflowBusiness {
+  private static singleton: WorkflowBusiness;
+
+  private config: any;
+  private xmlJsConverter: any;
+  private systemNotifier: any;
+  private workflowErrorModel: any;
+  private workflowModel: any;
+  private workflowTemplateModel: any;
+  private taskModel: any;
+  private gatewayModel: any;
+  private eventModel: any;
+  private bpmnSchemes: any;
+
   /**
    * Workflow business constructor.
    * @param {object} [config] Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!WorkflowBusiness.singleton) {
       this.config = config;
@@ -49,7 +62,7 @@ class WorkflowBusiness {
   }
 
   async init() {
-    log.save('bpmn-schemas-initialization-started');
+    global.log.save('bpmn-schemas-initialization-started');
     const workflowTemplates = await this.workflowTemplateModel.getAll();
 
     this.bpmnSchemes = (
@@ -69,12 +82,12 @@ class WorkflowBusiness {
 
             return { id: workflowTemplate.id, name: workflowTemplate.name, schema: bpmnSchema['bpmn:definitions']['bpmn:process'][0] };
           } catch {
-            log.save('invalid-bpmn-schema', { workflowTemplate });
+            global.log.save('invalid-bpmn-schema', { workflowTemplate });
           }
         }),
       )
     ).filter((v) => !!v);
-    log.save('bpmn-schemas-initialization-ends');
+    global.log.save('bpmn-schemas-initialization-ends');
   }
 
   /**
@@ -108,7 +121,7 @@ class WorkflowBusiness {
     let workflowTemplateId;
     try {
       let workflowId;
-      let currentSequences = [];
+      const currentSequences = [];
       let bpmnSchema;
 
       // Find current position.
@@ -234,7 +247,7 @@ class WorkflowBusiness {
               return;
             }
 
-            const preparedMessageForQueue = {
+            const preparedMessageForQueue: any = {
               workflowId: workflowId,
               workflowTemplateId: workflowTemplateId,
               taskTemplateId: nextTaskId,
@@ -287,7 +300,7 @@ class WorkflowBusiness {
               ...((inclusiveGateway || {})['bpmn:outgoing'] || []),
             ];
 
-            const preparedMessageForQueue = {
+            const preparedMessageForQueue: any = {
               workflowId: workflowId,
               workflowTemplateId: workflowTemplateId,
               gatewayTemplateId: nextGatewayId,
@@ -314,7 +327,7 @@ class WorkflowBusiness {
               return;
             }
 
-            const preparedMessageForQueue = {
+            const preparedMessageForQueue: any = {
               workflowId: workflowId,
               workflowTemplateId: workflowTemplateId,
               eventTemplateId: nextEventId,
@@ -338,20 +351,23 @@ class WorkflowBusiness {
         }
       }
     } catch (error) {
-      log.save('workflow-processing-by-message-from-queue-error', { messageObject, error: { message: error && error.message, stack: error.stack } });
+      global.log.save('workflow-processing-by-message-from-queue-error', {
+        messageObject,
+        error: { message: error && error.message, stack: error.stack },
+      });
 
       try {
         await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject });
         await this.workflowModel.setError(messageObject.workflowId);
       } catch (error) {
-        log.save('workflow-id-not-found-error', { messageObject, error: error.message });
+        global.log.save('workflow-id-not-found-error', { messageObject, error: error.message });
       }
 
       try {
         const workflowTemplate = await this.workflowTemplateModel.findById(workflowTemplateId);
         await this.systemNotifier.sendEmails(messageObject.workflowId, workflowTemplate && workflowTemplate.name, error?.message);
       } catch (error) {
-        log.save('system-notifier-error', error.message);
+        global.log.save('system-notifier-error', error.message);
       }
     }
 
@@ -412,5 +428,3 @@ class WorkflowBusiness {
     await this.workflowModel.setStatus(workflowId, status.statusId);
   }
 }
-
-module.exports = WorkflowBusiness;

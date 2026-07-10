@@ -1,16 +1,18 @@
-const os = require('os');
+import os from 'os';
 
-const Controller = require('./controller');
+import { Controller } from './controller';
 
 /**
  * Monitor controller.
  */
-class MonitorController extends Controller {
+export class MonitorController extends Controller {
+  private static singleton: MonitorController;
+
   /**
    * Monitor controller constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!MonitorController.singleton) {
       super(config);
@@ -43,5 +45,3 @@ class MonitorController extends Controller {
     this.responseData(res, systemInfo);
   }
 }
-
-module.exports = MonitorController;

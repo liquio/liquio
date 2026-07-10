@@ -7,7 +7,7 @@ import Log from './lib/log';
 import ConsoleLogProvider from './lib/log/providers/console';
 import MessageQueue from './lib/message_queue';
 import RouterService from './services/router';
-import WorkflowBusiness from './businesses/workflow';
+import { WorkflowBusiness } from './businesses/workflow';
 import RedisClient from './lib/redis_client';
 
 // Constants.

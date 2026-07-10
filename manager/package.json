@@ -9,7 +9,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "start:ts": "node -r ts-node/register src/index.js",
+    "start:ts": "node -r ts-node/register src/index.ts",
     "build": "tsc",
     "migration-generate": "sequelize migration:generate --name new-migration",
     "migration-up": "sequelize db:migrate",

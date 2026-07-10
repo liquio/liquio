@@ -1,4 +1,4 @@
-const Controller = require('./controller');
+import { Controller } from './controller';
 
 // Constants.
 const MESSAGE_PONG = 'pong';
@@ -6,12 +6,14 @@ const MESSAGE_PONG = 'pong';
 /**
  * Ping controller.
  */
-class PingController extends Controller {
+export class PingController extends Controller {
+  private static singleton: PingController;
+
   /**
    * Ping controller constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?) {
     // Define singleton.
     if (!PingController.singleton) {
       super(config);
@@ -59,9 +61,7 @@ class PingController extends Controller {
    * Check database connect
    */
   async checkDataBase() {
-    const result = await db.query('select true');
+    const result = await global.db.query('select true');
     return result;
   }
 }
-
-module.exports = PingController;
