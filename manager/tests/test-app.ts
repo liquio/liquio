@@ -6,6 +6,7 @@ import amqp from 'amqplib';
 import nock from 'nock';
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
+import { EventEmitter } from 'events';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
@@ -23,19 +24,41 @@ const debug = createDebug;
 // E2E tests are slow, so we increase the timeout.
 jest.setTimeout(30000);
 
-// Mock the log module, so tests don't spam the console and can inspect saved entries.
+// Mock the log module, so tests don't spam the console and can hook into specific saved entries.
 jest.mock('../src/lib/log', () => {
   const OriginalLog = jest.requireActual('../src/lib/log');
   const logs = [];
+  const emitter = new EventEmitter();
+
   class MockLog extends OriginalLog {
     save(...args) {
       debug('test:log')(...args);
       logs.push(args);
+      emitter.emit(args[0], args);
       return Promise.resolve();
     }
 
     getLogs() {
       return logs;
+    }
+
+    // Resolve as soon as a log entry of the given type is saved (or immediately, if one already was).
+    waitForLog(type, timeoutMs = 5000) {
+      const existing = logs.find(([entryType]) => entryType === type);
+      if (existing) return Promise.resolve(existing);
+
+      return new Promise((resolve, reject) => {
+        const onLog = (args) => {
+          clearTimeout(timeout);
+          resolve(args);
+        };
+        const timeout = setTimeout(() => {
+          emitter.off(type, onLog);
+          reject(new Error(`Timed out waiting for a "${type}" log entry.`));
+        }, timeoutMs);
+
+        emitter.once(type, onLog);
+      });
     }
   }
 
@@ -55,6 +78,7 @@ export class TestApp {
   static rabbitmqContainer;
 
   config: any;
+  log: any;
   routerService: any;
   messageQueue: any;
   workflowBusiness: any;
@@ -63,6 +87,7 @@ export class TestApp {
 
   constructor() {
     this.config = null;
+    this.log = null;
     this.routerService = null;
     this.messageQueue = null;
     this.workflowBusiness = null;
@@ -174,6 +199,7 @@ export class TestApp {
     // Init log.
     const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
     const log = new Log([consoleLogProvider], ['console']);
+    this.log = log;
     global.log = log;
 
     global.db = await Db.getInstance(config.db);
@@ -227,39 +253,41 @@ export class TestApp {
     return nock(...args);
   }
 
-  // Get (or open) a single AMQP channel reused by the test helpers below.
-  async getTestChannel() {
-    if (!this.testAmqpChannel) {
+  // Get (or open) the single AMQP connection reused by the test helpers below.
+  async getTestConnection() {
+    if (!this.testAmqpConnection) {
       this.testAmqpConnection = await amqp.connect(this.config.message_queue.amqpConnection);
-      this.testAmqpChannel = await this.testAmqpConnection.createChannel();
     }
-    return this.testAmqpChannel;
+    return this.testAmqpConnection;
   }
 
   // Publish a message directly to the reading queue, as an upstream service (task/gateway/event) would.
   async publishToReadingQueue(message) {
-    const channel = await this.getTestChannel();
-    await channel.assertQueue(this.config.message_queue.readingQueueName, { durable: true });
-    channel.sendToQueue(this.config.message_queue.readingQueueName, Buffer.from(JSON.stringify(message)), { persistent: true });
+    if (!this.testAmqpChannel) {
+      const connection = await this.getTestConnection();
+      this.testAmqpChannel = await connection.createChannel();
+    }
+    await this.testAmqpChannel.assertQueue(this.config.message_queue.readingQueueName, { durable: true });
+    this.testAmqpChannel.sendToQueue(this.config.message_queue.readingQueueName, Buffer.from(JSON.stringify(message)), { persistent: true });
   }
 
-  // Wait for and return the next message produced onto the given writing queue.
+  // Wait for and return the next message produced onto the given writing queue. Uses its own
+  // channel so the consumer it registers can't linger and steal a later test's message.
   async consumeFromQueue(queueName, timeoutMs = 10000): Promise<any> {
-    const channel = await this.getTestChannel();
+    const connection = await this.getTestConnection();
+    const channel = await connection.createChannel();
     await channel.assertQueue(queueName, { durable: true });
 
-    // The consumer is torn down implicitly when the channel is closed in destroy(), so we
-    // don't cancel it here explicitly, which would race against fast/already-queued deliveries.
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error(`Timed out waiting for a message on "${queueName}".`));
+        channel.close().finally(() => reject(new Error(`Timed out waiting for a message on "${queueName}".`)));
       }, timeoutMs);
 
       channel.consume(queueName, (msg) => {
         if (!msg) return;
         clearTimeout(timeout);
         channel.ack(msg);
-        resolve(JSON.parse(msg.content.toString()));
+        channel.close().finally(() => resolve(JSON.parse(msg.content.toString())));
       });
     });
   }
