@@ -27,7 +27,7 @@ const ERROR_INVALID_ENTITY = 'Invalid entity';
 class WorkflowBusiness {
   /**
    * Workflow business constructor.
-   * @param {object} config Config object.
+   * @param {object} [config] Config object.
    */
   constructor(config) {
     // Define singleton.

@@ -17,7 +17,7 @@ class LogProvider {
   /**
    * Save.
    */
-  async save(timestamp, type, data, _logId, _appInfo, _level) {
+  async save(timestamp, type, data, _logId, _appInfo, _level, _traceId, _traceMeta) {
     // Throw error that method not re-defined in child class.
     console.log(`${ERROR_MESSAGE_CAN_NOT_SAVE_DATA}\n${data}`);
     throw new Error(ERROR_MESSAGE_SAVE_METHOD_NOT_DEFINED);

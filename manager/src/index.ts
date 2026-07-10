@@ -1,13 +1,14 @@
-const Multiconf = require('multiconf');
-const fs = require('fs');
+import fs from 'fs';
 
-const Db = require('./lib/db');
-const Log = require('./lib/log');
-const ConsoleLogProvider = require('./lib/log/providers/console');
-const MessageQueue = require('./lib/message_queue');
-const RouterService = require('./services/router');
-const WorkflowBusiness = require('./businesses/workflow');
-const RedisClient = require('./lib/redis_client');
+import Multiconf from 'multiconf';
+
+import Db from './lib/db';
+import Log from './lib/log';
+import ConsoleLogProvider from './lib/log/providers/console';
+import MessageQueue from './lib/message_queue';
+import RouterService from './services/router';
+import WorkflowBusiness from './businesses/workflow';
+import RedisClient from './lib/redis_client';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/manager';
@@ -19,7 +20,10 @@ process.title = 'bpmn-manager';
 
 module.exports = (async () => {
   // Init config.
-  const config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`);
+  const config: Record<string, any> = Multiconf.get(
+    [CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])],
+    `${LIQUIO_CONFIG_PREFIX}_`,
+  );
   global.config = config;
 
   // Init redis.
@@ -31,7 +35,7 @@ module.exports = (async () => {
   global.log = log;
 
   // Log unhandled rejections.
-  process.on('unhandledRejection', (error) => {
+  process.on('unhandledRejection', (error: any) => {
     const { stack, message } = error || {};
     log.save('unhandled-rejection', { stack, message });
     process.exit(1);
