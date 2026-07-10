@@ -6,3 +6,4 @@ readme.md
 helm-chart/
 coverage/
 node_modules/
+dist/
