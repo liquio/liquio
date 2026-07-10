@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { SystemNotifier } from '../lib/system_notifier';

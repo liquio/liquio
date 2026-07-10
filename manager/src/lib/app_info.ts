@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Constants.
 const PACKAGE_JSON_FILE_NAME = path.join(process.cwd(), 'package.json');

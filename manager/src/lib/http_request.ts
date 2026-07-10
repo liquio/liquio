@@ -1,7 +1,7 @@
 import axios from 'axios';
 import bodyParser from 'body-parser';
-import http from 'http';
-import https from 'https';
+import http from 'node:http';
+import https from 'node:https';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';

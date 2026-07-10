@@ -1,5 +1,5 @@
-import { AsyncLocalStorage } from 'async_hooks';
-import { randomUUID } from 'crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 
 // Init storage.
 const storage = new AsyncLocalStorage<Map<string, any>>();
