@@ -15,6 +15,9 @@ coverage/
 # Tests
 /coverage
 
+# Build output.
+dist/
+
 # Logs.
 *.log
 

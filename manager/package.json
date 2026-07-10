@@ -9,11 +9,13 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "start:ts": "node -r ts-node/register src/index.js",
+    "build": "tsc",
     "migration-generate": "sequelize migration:generate --name new-migration",
     "migration-up": "sequelize db:migrate",
     "migration-clear": "sequelize db:migrate:undo:all",
-    "lint": "eslint \"**/*.js\"",
-    "lint:fix": "eslint \"**/*.js\" --fix",
+    "lint": "eslint \"**/*.{js,ts}\"",
+    "lint:fix": "eslint \"**/*.{js,ts}\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
@@ -34,11 +36,16 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
+    "@types/node": "^25.9.3",
     "eslint": "^10.6.0",
     "eslint-plugin-jsdoc": "^62.9.0",
     "globals": "^17.6.0",
     "jest": "^30.3.0",
-    "nock": "^14.0.15"
+    "nock": "^14.0.15",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "semver": "7.5.4",
