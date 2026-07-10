@@ -1,15 +1,21 @@
-const express = require('express');
+import express from 'express';
 
-const { PingController } = require('../controllers/ping');
-const { MonitorController } = require('../controllers/monitor');
-const AppIdentHeaders = require('../lib/app_ident_headers');
-const Cors = require('../lib/cors');
-const { asyncLocalStorageMiddleware } = require('../lib/async_local_storage');
+import { PingController } from '../controllers/ping';
+import { MonitorController } from '../controllers/monitor';
+import { AppIdentHeaders } from '../lib/app_ident_headers';
+import { Cors } from '../lib/cors';
+import { asyncLocalStorageMiddleware } from '../lib/async_local_storage';
 
 /**
  * Router service.
  */
-class RouterService {
+export class RouterService {
+  static singleton: RouterService;
+
+  config: any;
+  controllers: any;
+  httpServer: any;
+
   /**
    * Route service constructor.
    * @param {object} config Config object.
@@ -35,10 +41,10 @@ class RouterService {
     app.use(asyncLocalStorageMiddleware);
 
     // Save request info to log.
-    app.use(log.logRouter.bind(log));
+    app.use(global.log.logRouter.bind(global.log));
 
     // App info in headers.
-    AppIdentHeaders.add(app, config);
+    AppIdentHeaders.add(app, global.config);
 
     // Allow CORS.
     Cors.allow(app);
@@ -78,16 +84,14 @@ class RouterService {
    * @param {object} app Express app.
    */
   async listen(app) {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
       this.httpServer = app.listen(port, hostname, () => {
-        log.save('server-listening-started', { url: `http://${hostname}:${port}` });
+        global.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });
     });
   }
 }
-
-module.exports = RouterService;

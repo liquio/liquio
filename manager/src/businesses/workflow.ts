@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 
-import XmlJsConverter from '../lib/xml_js_converter';
-import SystemNotifier from '../lib/system_notifier';
+import { XmlJsConverter } from '../lib/xml_js_converter';
+import { SystemNotifier } from '../lib/system_notifier';
 import { WorkflowErrorModel } from '../models/workflow_error';
 import { WorkflowModel } from '../models/workflow';
 import { WorkflowTemplateModel } from '../models/workflow_template';

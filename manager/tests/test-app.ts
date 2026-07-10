@@ -12,11 +12,11 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as Multiconf from 'multiconf';
 
-import Db from '../src/lib/db';
-import Log from '../src/lib/log';
-import ConsoleLogProvider from '../src/lib/log/providers/console';
-import MessageQueue from '../src/lib/message_queue';
-import RouterService from '../src/services/router';
+import { Db } from '../src/lib/db';
+import { Log } from '../src/lib/log';
+import { ConsoleLogProvider } from '../src/lib/log/providers/console';
+import { MessageQueue } from '../src/lib/message_queue';
+import { RouterService } from '../src/services/router';
 import { WorkflowBusiness } from '../src/businesses/workflow';
 
 const debug = createDebug;
@@ -26,7 +26,7 @@ jest.setTimeout(30000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
 jest.mock('../src/lib/log', () => {
-  const OriginalLog = jest.requireActual('../src/lib/log');
+  const { Log: OriginalLog } = jest.requireActual('../src/lib/log');
   const logs = [];
   const emitter = new EventEmitter();
 
@@ -62,7 +62,7 @@ jest.mock('../src/lib/log', () => {
     }
   }
 
-  return MockLog;
+  return { Log: MockLog };
 });
 
 // Mock the configuration module.

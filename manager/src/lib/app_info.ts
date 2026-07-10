@@ -1,12 +1,17 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 // Constants.
 const PACKAGE_JSON_FILE_NAME = path.join(process.cwd(), 'package.json');
 const PACKAGE_JSON_FILE_ENCODING = 'utf8';
 
 // App info.
-class AppInfo {
+export class AppInfo {
+  static singleton: AppInfo;
+
+  private _name: string;
+  private _version: string;
+
   constructor() {
     if (!AppInfo.singleton) {
       this.init();
@@ -45,13 +50,13 @@ class AppInfo {
    */
   init() {
     // Read data from "package.json".
-    let packageJsonFilePath = PACKAGE_JSON_FILE_NAME;
+    const packageJsonFilePath = PACKAGE_JSON_FILE_NAME;
     if (!fs.existsSync(packageJsonFilePath)) {
       console.error('package.json file not found.');
       process.exit(1);
     }
 
-    let packageJsonFileData = {};
+    let packageJsonFileData: any = {};
     try {
       const packageJsonFileContent = fs.readFileSync(packageJsonFilePath, { encoding: PACKAGE_JSON_FILE_ENCODING });
       packageJsonFileData = JSON.parse(packageJsonFileContent);
@@ -64,5 +69,3 @@ class AppInfo {
     this._version = packageJsonFileData.version;
   }
 }
-
-module.exports = AppInfo;

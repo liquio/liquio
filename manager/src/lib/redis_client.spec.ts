@@ -1,11 +1,13 @@
+import * as redis from 'redis';
+
+import { RedisClient } from './redis_client';
+
 describe('RedisClient', () => {
-  let RedisClient;
   let mockClient;
 
   beforeEach(() => {
     // Clear the singleton before each test
-    RedisClient = require('./redis_client');
-    RedisClient.singleton = null;
+    (RedisClient as any).singleton = null;
 
     // Mock the redis client with v5 Promise API
     /** @type {!Partial<import('redis').RedisClientType>} */
@@ -17,7 +19,7 @@ describe('RedisClient', () => {
     };
 
     // Mock the redis.createClient
-    jest.spyOn(require('redis'), 'createClient').mockReturnValue(mockClient);
+    jest.spyOn(redis, 'createClient').mockReturnValue(mockClient as any);
   });
 
   afterEach(() => {
@@ -44,7 +46,7 @@ describe('RedisClient', () => {
       new RedisClient(config);
 
       // v5: createClient expects socket object
-      expect(require('redis').createClient).toHaveBeenCalledWith({
+      expect(redis.createClient).toHaveBeenCalledWith({
         socket: { host: 'localhost', port: 6379 },
       });
     });

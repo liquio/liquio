@@ -1,7 +1,7 @@
-const axios = require('axios');
-const bodyParser = require('body-parser');
-const http = require('http');
-const https = require('https');
+import axios from 'axios';
+import bodyParser from 'body-parser';
+import http from 'http';
+import https from 'https';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -33,7 +33,7 @@ const axiosInstance = axios.create({
 /**
  * Request.
  */
-class HttpRequest {
+export class HttpRequest {
   /**
    * Methods.
    */
@@ -77,7 +77,7 @@ class HttpRequest {
    */
   static async send(requestOptions) {
     try {
-      const axiosConfig = {
+      const axiosConfig: any = {
         url: requestOptions.url,
         method: requestOptions.method,
         headers: requestOptions.headers,
@@ -105,7 +105,7 @@ class HttpRequest {
       }
 
       const response = await axiosInstance(axiosConfig);
-      
+
       // Return parsed body object - only the data part to avoid circular refs
       return parseBody(response.data);
     } catch (error) {
@@ -115,7 +115,9 @@ class HttpRequest {
         return parseBody(error.response.data);
       }
       // Network or other errors - throw a clean error message
-      throw new Error(error.message || 'Network error', { cause: error });
+      const wrappedError = new Error(error.message || 'Network error');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
   }
 
@@ -149,9 +151,9 @@ class HttpRequest {
     if (httpsAgent) {
       httpsAgent.destroy();
     }
-    
+
     // Clear any axios instance defaults and interceptors
-    axiosInstance.defaults = {};
+    axiosInstance.defaults = {} as any;
     axiosInstance.interceptors.request.clear();
     axiosInstance.interceptors.response.clear();
   }
@@ -168,7 +170,7 @@ function parseBody(body) {
   if (typeof body === 'object') {
     return body;
   }
-  
+
   // If body is string, try to parse as JSON
   if (typeof body === 'string') {
     try {
@@ -178,9 +180,7 @@ function parseBody(body) {
       return body;
     }
   }
-  
+
   // Return body as is for other types
   return body;
 }
-
-module.exports = HttpRequest;

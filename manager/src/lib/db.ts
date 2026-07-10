@@ -1,6 +1,8 @@
-const Sequelize = require('sequelize');
+import { Sequelize } from 'sequelize';
 
-class Db {
+export class Db {
+  static singleton: Sequelize;
+
   constructor() {
     throw new Error('Constructor is private.');
   }
@@ -15,11 +17,11 @@ class Db {
         const sequelize = new Sequelize(config.database, config.username, config.password, config);
 
         await sequelize.authenticate();
-        log.save('db-connection', 'Connection to DB has been established successfully.');
+        global.log.save('db-connection', 'Connection to DB has been established successfully.');
 
         Db.singleton = sequelize;
       } catch (error) {
-        log.save('Unable to connect to the DB', error);
+        global.log.save('Unable to connect to the DB', error);
         throw error;
       }
     }
@@ -27,5 +29,3 @@ class Db {
     return Db.singleton;
   }
 }
-
-module.exports = Db;

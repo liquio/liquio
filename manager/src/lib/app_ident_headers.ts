@@ -1,4 +1,4 @@
-const AppInfo = require('./app_info');
+import { AppInfo } from './app_info';
 
 // Constants.
 const DEFAULT_CUSTOMER = '1';
@@ -7,7 +7,7 @@ const DEFAULT_ENVIRONMENT = '0';
 /**
  * App ident version.
  */
-class AppIdentHeaders {
+export class AppIdentHeaders {
   /**
    * Add.
    * @param {object} app Express app instance.
@@ -29,5 +29,3 @@ class AppIdentHeaders {
     });
   }
 }
-
-module.exports = AppIdentHeaders;

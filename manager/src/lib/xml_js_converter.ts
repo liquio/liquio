@@ -1,9 +1,14 @@
-const xml2js = require('xml2js');
+import xml2js from 'xml2js';
 
 /**
  * XML-JS converter.
  */
-class XmlJsConverter {
+export class XmlJsConverter {
+  static singleton: XmlJsConverter;
+
+  space: number;
+  parseString: any;
+
   /**
    * XML-JS converter constructor.
    * @param {number} [space] Default space charecters count.
@@ -52,5 +57,3 @@ class XmlJsConverter {
     return jsonString;
   }
 }
-
-module.exports = XmlJsConverter;

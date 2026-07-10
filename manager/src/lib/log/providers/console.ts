@@ -1,5 +1,5 @@
-const LogProvider = require('./log_provider');
-const sensitiveReplace = require('../helpers/sensitiveReplace');
+import { LogProvider } from './log_provider';
+import { sensitiveReplace } from '../helpers/sensitiveReplace';
 
 // Constants.
 const DEFAULT_PROVIDER_NAME = 'console';
@@ -9,7 +9,9 @@ const ERROR_LEVEL = 'error';
 /**
  * Console log provider.
  */
-class ConsoleLogProvider extends LogProvider {
+export class ConsoleLogProvider extends LogProvider {
+  options: any;
+
   /**
    * Console log provider constructor.
    * @param {string} [name] Log provider name.
@@ -56,5 +58,3 @@ class ConsoleLogProvider extends LogProvider {
     }
   }
 }
-
-module.exports = ConsoleLogProvider;

@@ -1,9 +1,14 @@
-const redis = require('redis');
+import { createClient } from 'redis';
 
 /**
  * Redis client.
  */
-class RedisClient {
+export class RedisClient {
+  static singleton: RedisClient;
+
+  client: any;
+  defaultTtl: number;
+
   /**
    * Redis client constructor.
    */
@@ -12,13 +17,13 @@ class RedisClient {
     if (!RedisClient.singleton) {
       const { host, port, defaultTtl } = config;
       // v5: use socket object
-      this.client = redis.createClient({ 
-        socket: { host, port } 
+      this.client = createClient({
+        socket: { host, port },
       });
       this.defaultTtl = defaultTtl;
 
       // Connect to redis in background (don't wait for it)
-      this.client.connect().catch(err => {
+      this.client.connect().catch((err) => {
         console.error('Redis connection error:', err);
       });
 
@@ -65,5 +70,3 @@ class RedisClient {
     return this.client.del(key);
   }
 }
-
-module.exports = RedisClient;

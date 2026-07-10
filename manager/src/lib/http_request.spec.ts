@@ -1,6 +1,7 @@
-const nock = require('nock');
-const bodyParser = require('body-parser');
-const HttpRequest = require('./http_request');
+import nock from 'nock';
+import bodyParser from 'body-parser';
+
+import { HttpRequest } from './http_request';
 
 // Mock body-parser
 jest.mock('body-parser', () => ({

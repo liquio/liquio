@@ -46,6 +46,7 @@ module.exports = [
   {
     // Type-aware parsing, scoped to files actually covered by tsconfig.json's "include".
     files: ['src/**/*.ts'],
+    ignores: ['src/**/*.spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -60,7 +61,7 @@ module.exports = [
   },
   {
     // Tests aren't part of the tsconfig project, so parse them without type-aware info.
-    files: ['tests/**/*.ts'],
+    files: ['tests/**/*.ts', 'src/**/*.spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {

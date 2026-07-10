@@ -1,8 +1,8 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
-const LogProvider = require('./providers/log_provider');
-const AppInfo = require('../app_info');
-const { getTraceId, getTraceMeta } = require('../async_local_storage');
+import { LogProvider } from './providers/log_provider';
+import { AppInfo } from '../app_info';
+import { getTraceId, getTraceMeta } from '../async_local_storage';
 
 // Constants.
 const ERROR_MESSAGE_WRONG_PROVIDER = 'Wrong provider.';
@@ -15,13 +15,18 @@ const ERROR_LEVEL = 'error';
 /**
  * Log.
  */
-class Log {
+export class Log {
+  static singleton: Log;
+
+  providers: LogProvider[];
+  appInfo: AppInfo;
+
   /**
    * Log constructor.
    * @param {LogProvider[]} [logProviders] Log providers.
    * @param {string[]} [activeProviders] Active providers.
    */
-  constructor(logProviders = [], activeProviders = []) {
+  constructor(logProviders: LogProvider[] = [], activeProviders: string[] = []) {
     // Define singleton.
     if (!Log.singleton) {
       if (!logProviders.every((v) => v instanceof LogProvider)) {
@@ -63,7 +68,7 @@ class Log {
    * @param {string} [level] Log level.
    * @returns {Promise<string>} Log ID promise.
    */
-  async save(type, data = true, level = this.Levels.INFO_LEVEL) {
+  async save(type, data: any = true, level = this.Levels.INFO_LEVEL) {
     // Define params.
     const timestamp = Date.now();
     const logId = crypto.randomBytes(6).toString('hex');
@@ -138,7 +143,7 @@ class Log {
 
     const logResponse = (body) => {
       if (!responseLogged) {
-        const data = {
+        const data: any = {
           requestId: req.requestMeta?.requestId,
           method: req.method,
           url: req.url,
@@ -173,5 +178,3 @@ class Log {
     };
   }
 }
-
-module.exports = Log;

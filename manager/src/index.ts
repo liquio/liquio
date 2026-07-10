@@ -2,13 +2,13 @@ import fs from 'fs';
 
 import Multiconf from 'multiconf';
 
-import Db from './lib/db';
-import Log from './lib/log';
-import ConsoleLogProvider from './lib/log/providers/console';
-import MessageQueue from './lib/message_queue';
-import RouterService from './services/router';
+import { Db } from './lib/db';
+import { Log } from './lib/log';
+import { ConsoleLogProvider } from './lib/log/providers/console';
+import { MessageQueue } from './lib/message_queue';
+import { RouterService } from './services/router';
 import { WorkflowBusiness } from './businesses/workflow';
-import RedisClient from './lib/redis_client';
+import { RedisClient } from './lib/redis_client';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/manager';

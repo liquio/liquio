@@ -1,9 +1,23 @@
-const HttpRequest = require('./http_request');
+import { HttpRequest } from './http_request';
 
 /**
  * System Notifier.
  */
-class SystemNotifier {
+export class SystemNotifier {
+  static singleton: SystemNotifier;
+
+  adminUrl: string;
+  emailServer: string;
+  emailPort: number;
+  emailRoutes: any;
+  emailTimeout: number;
+  emailUser: string;
+  emailPassword: string;
+  headers: any;
+  emails: string[];
+  emailSubject: string;
+  emailBody: string;
+
   /**
    * System Notifier constructor.
    */
@@ -45,7 +59,7 @@ class SystemNotifier {
 
       // Do request to send emails.
       const url = `${this.emailServer}:${this.emailPort}${this.emailRoutes.sendEmail}`;
-      log.save('system-notifier-email-sending-request', { url, body });
+      global.log.save('system-notifier-email-sending-request', { url, body });
       const response = await HttpRequest.send({
         url,
         method: HttpRequest.Methods.POST,
@@ -53,17 +67,15 @@ class SystemNotifier {
         body,
         timeout: this.emailTimeout,
       });
-      log.save('system-notifier-email-sending-response', response);
+      global.log.save('system-notifier-email-sending-response', response);
 
       return {
         data: bodyObject,
         response,
       };
     } catch (error) {
-      log.save('system-notifier-email-sending-error', error.message);
+      global.log.save('system-notifier-email-sending-error', error.message);
       throw error;
     }
   }
 }
-
-module.exports = SystemNotifier;
