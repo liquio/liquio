@@ -1686,7 +1686,7 @@
       "required": true,
       "schema": {
         "type": "string",
-        "example": "Basic dGVzdDE6YmFpcmVpOG1vaGdpZXF1N1JlZWdhaFRlQ2lUaG9vcXU0dXNpZVRhZ2llNWllc2hpYWw0c2hvaEYwZWlLN2FnaA=="
+        "example": "Basic dGVzdDE6dGVzdA=="
       }
     },
     "contentTypeHeader": {

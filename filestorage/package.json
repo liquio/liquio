@@ -9,15 +9,18 @@
   "license": "SEE LICENSE IN ../LICENSE.md",
   "scripts": {
     "start": "node src/app.js",
-    "lint": "eslint ./",
-    "lint:fix": "eslint ./ --fix",
+    "start:ts": "node -r ts-node/register src/app.ts",
+    "build": "tsc",
+    "lint": "eslint \"**/*.{js,ts}\"",
+    "lint:fix": "eslint \"**/*.{js,ts}\" --fix",
     "migration-up": "sequelize db:migrate",
     "migration-clear": "sequelize db:migrate:undo:all",
     "seed-up": "sequelize db:seed:all",
     "seed-clear": "sequelize db:seed:undo:all",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test": "jest src",
+    "test:watch": "jest src --watch",
+    "test:cov": "jest src --coverage",
+    "test:e2e": "jest tests"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
@@ -42,13 +45,23 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@testcontainers/postgresql": "^11.13.0",
     "@types/jest": "^30.0.0",
+    "@types/node": "^25.9.3",
+    "@types/supertest": "^7.2.0",
+    "debug": "^4.3.7",
     "eslint": "^10.4.1",
     "eslint-plugin-jsdoc": "^62.9.0",
     "globals": "^16.4.0",
     "jest": "^30.3.0",
     "nock": "^14.0.15",
-    "proxyquire": "^2.1.3"
+    "portfinder": "^1.0.37",
+    "proxyquire": "^2.1.3",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "semver": "7.5.4",
