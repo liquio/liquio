@@ -61,7 +61,7 @@ module.exports = [
   },
   {
     // Tests aren't part of the tsconfig project, so parse them without type-aware info.
-    files: ['src/**/*.spec.ts'],
+    files: ['tests/**/*.ts', 'src/**/*.spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
