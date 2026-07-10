@@ -1,9 +1,37 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
+import { WorkflowEntity } from './workflow';
+
+interface EventEntityOptions {
+  id?: string;
+  eventTemplateId?: number;
+  eventTypeId?: number;
+  workflowId?: string;
+  cancellationTypeId?: string;
+  name?: string;
+  done?: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+  data?: any;
+  documentId?: any;
+}
 
 /**
  * Event entity.
  */
-class EventEntity extends Entity {
+export class EventEntity extends Entity {
+  id: string;
+  eventTemplateId: number;
+  eventTypeId: number;
+  workflowId: string;
+  cancellationTypeId: string;
+  name: string;
+  done: boolean;
+  createdBy: string;
+  updatedBy: string;
+  data: any;
+  documentId: any;
+  workflowEntity: WorkflowEntity;
+
   /**
    * Constructor.
    * @param {object} options Event object.
@@ -19,7 +47,19 @@ class EventEntity extends Entity {
    * @param {object} options.data Data.
    * @param {object} options.documentId Document ID.
    */
-  constructor({ id, eventTemplateId, eventTypeId, workflowId, cancellationTypeId, name, done, createdBy, updatedBy, data, documentId }) {
+  constructor({
+    id,
+    eventTemplateId,
+    eventTypeId,
+    workflowId,
+    cancellationTypeId,
+    name,
+    done,
+    createdBy,
+    updatedBy,
+    data,
+    documentId,
+  }: EventEntityOptions) {
     super();
 
     this.id = id;
@@ -35,5 +75,3 @@ class EventEntity extends Entity {
     this.documentId = documentId;
   }
 }
-
-module.exports = EventEntity;

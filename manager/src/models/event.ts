@@ -1,9 +1,14 @@
-const Sequelize = require('sequelize');
-const Model = require('./model');
-const WorkflowModel = require('./workflow');
-const EventEntity = require('../entities/event');
+import Sequelize from 'sequelize';
 
-class EventModel extends Model {
+import { Model } from './model';
+import { WorkflowModel } from './workflow';
+import { EventEntity } from '../entities/event';
+
+export class EventModel extends Model {
+  static singleton: EventModel;
+
+  workflowModel: WorkflowModel;
+
   constructor() {
     if (!EventModel.singleton) {
       super();
@@ -65,7 +70,7 @@ class EventModel extends Model {
       return;
     }
 
-    const workflow = await event.getWorkflow();
+    const workflow = await (event as any).getWorkflow();
     if (!workflow) {
       return;
     }
@@ -89,7 +94,7 @@ class EventModel extends Model {
    * @param {object} item Item.
    * @returns {EventEntity}
    */
-  prepareEntity(item) {
+  prepareEntity(item): EventEntity {
     return new EventEntity({
       id: item.id,
       eventTemplateId: item.event_template_id,
@@ -125,5 +130,3 @@ class EventModel extends Model {
     };
   }
 }
-
-module.exports = EventModel;

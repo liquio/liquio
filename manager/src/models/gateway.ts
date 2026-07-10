@@ -1,9 +1,14 @@
-const Sequelize = require('sequelize');
-const Model = require('./model');
-const WorkflowModel = require('./workflow');
-const GatewayEntity = require('../entities/gateway');
+import Sequelize from 'sequelize';
 
-class GatewayModel extends Model {
+import { Model } from './model';
+import { WorkflowModel } from './workflow';
+import { GatewayEntity } from '../entities/gateway';
+
+export class GatewayModel extends Model {
+  static singleton: GatewayModel;
+
+  workflowModel: WorkflowModel;
+
   constructor() {
     if (!GatewayModel.singleton) {
       super();
@@ -58,7 +63,7 @@ class GatewayModel extends Model {
       return;
     }
 
-    const workflow = await gateway.getWorkflow();
+    const workflow = await (gateway as any).getWorkflow();
     if (!workflow) {
       return;
     }
@@ -74,7 +79,7 @@ class GatewayModel extends Model {
    * @param {object} item Item.
    * @returns {GatewayEntity}
    */
-  prepareEntity(item) {
+  prepareEntity(item): GatewayEntity {
     return new GatewayEntity({
       id: item.id,
       gatewayTemplateId: item.gateway_template_id,
@@ -104,5 +109,3 @@ class GatewayModel extends Model {
     };
   }
 }
-
-module.exports = GatewayModel;

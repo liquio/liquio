@@ -1,9 +1,14 @@
-const Sequelize = require('sequelize');
-const Model = require('./model');
-const WorkflowModel = require('./workflow');
-const TaskEntity = require('../entities/task');
+import Sequelize from 'sequelize';
 
-class TaskModel extends Model {
+import { Model } from './model';
+import { WorkflowModel } from './workflow';
+import { TaskEntity } from '../entities/task';
+
+export class TaskModel extends Model {
+  static singleton: TaskModel;
+
+  workflowModel: WorkflowModel;
+
   constructor() {
     if (!TaskModel.singleton) {
       super();
@@ -74,7 +79,7 @@ class TaskModel extends Model {
       return;
     }
 
-    const workflow = await task.getWorkflow();
+    const workflow = await (task as any).getWorkflow();
     if (!workflow) {
       return;
     }
@@ -101,7 +106,7 @@ class TaskModel extends Model {
    * @param {object} item Item.
    * @returns {TaskEntity}
    */
-  prepareEntity(item) {
+  prepareEntity(item): TaskEntity {
     return new TaskEntity({
       id: item.id,
       workflowId: item.workflow_id,
@@ -153,5 +158,3 @@ class TaskModel extends Model {
     };
   }
 }
-
-module.exports = TaskModel;

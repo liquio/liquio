@@ -1,8 +1,11 @@
-const Sequelize = require('sequelize');
-const Model = require('./model');
-const WorkflowTemplateEntity = require('../entities/workflow_template');
+import Sequelize from 'sequelize';
 
-class WorkflowTemplateModel extends Model {
+import { Model } from './model';
+import { WorkflowTemplateEntity } from '../entities/workflow_template';
+
+export class WorkflowTemplateModel extends Model {
+  static singleton: WorkflowTemplateModel;
+
   constructor() {
     if (!WorkflowTemplateModel.singleton) {
       super();
@@ -56,7 +59,7 @@ class WorkflowTemplateModel extends Model {
    * @param {object} item Item.
    * @returns {WorkflowTemplateEntity}
    */
-  prepareEntity(item) {
+  prepareEntity(item): WorkflowTemplateEntity {
     return new WorkflowTemplateEntity({
       id: item.id,
       name: item.name,
@@ -82,5 +85,3 @@ class WorkflowTemplateModel extends Model {
     };
   }
 }
-
-module.exports = WorkflowTemplateModel;

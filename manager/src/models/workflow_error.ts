@@ -1,7 +1,10 @@
-const Sequelize = require('sequelize');
-const Model = require('./model');
+import Sequelize from 'sequelize';
 
-class WorkflowErrorModel extends Model {
+import { Model } from './model';
+
+export class WorkflowErrorModel extends Model {
+  static singleton: WorkflowErrorModel;
+
   constructor() {
     if (!WorkflowErrorModel.singleton) {
       super();
@@ -44,5 +47,3 @@ class WorkflowErrorModel extends Model {
     await this.model.create({ workflow_id: data.queueMessage && data.queueMessage.workflowId, service_name: 'manager', data });
   }
 }
-
-module.exports = WorkflowErrorModel;

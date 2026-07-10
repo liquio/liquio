@@ -1,9 +1,31 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
+import { WorkflowEntity } from './workflow';
+
+interface GatewayEntityOptions {
+  id?: string;
+  gatewayTemplateId?: number;
+  gatewayTypeId?: number;
+  workflowId?: string;
+  name?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  data?: any;
+}
 
 /**
  * Gateway entity.
  */
-class GatewayEntity extends Entity {
+export class GatewayEntity extends Entity {
+  id: string;
+  gatewayTemplateId: number;
+  gatewayTypeId: number;
+  workflowId: string;
+  name: string;
+  createdBy: string;
+  updatedBy: string;
+  data: any;
+  workflowEntity: WorkflowEntity;
+
   /**
    * Constructor.
    * @param {object} options Gateway object.
@@ -16,7 +38,7 @@ class GatewayEntity extends Entity {
    * @param {string} options.updatedBy Updated by.
    * @param {object} options.data Data.
    */
-  constructor({ id, gatewayTemplateId, gatewayTypeId, workflowId, name, createdBy, updatedBy, data }) {
+  constructor({ id, gatewayTemplateId, gatewayTypeId, workflowId, name, createdBy, updatedBy, data }: GatewayEntityOptions) {
     super();
 
     this.id = id;
@@ -29,5 +51,3 @@ class GatewayEntity extends Entity {
     this.data = data;
   }
 }
-
-module.exports = GatewayEntity;

@@ -1,9 +1,41 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
+
+interface WorkflowEntityOptions {
+  id?: string;
+  workflowTemplateId?: number;
+  name?: string;
+  isFinal?: boolean;
+  cancellationTypeId?: number;
+  createdBy?: string;
+  updatedBy?: string;
+  data?: any;
+  dueDate?: Date;
+  workflowStatusId?: number;
+  number?: string;
+  createdAt?: Date;
+  userData?: any;
+  hasUnresolvedErrors?: boolean;
+}
 
 /**
  * Workflow entity.
  */
-class WorkflowEntity extends Entity {
+export class WorkflowEntity extends Entity {
+  id: string;
+  workflowTemplateId: number;
+  name: string;
+  isFinal: boolean;
+  cancellationTypeId: number;
+  createdBy: string;
+  updatedBy: string;
+  data: any;
+  dueDate: Date;
+  workflowStatusId: number;
+  number: string;
+  createdAt: Date;
+  userData: any;
+  hasUnresolvedErrors: boolean;
+
   /**
    * Constructor.
    * @param {object} options Workflow object.
@@ -37,7 +69,7 @@ class WorkflowEntity extends Entity {
     createdAt,
     userData,
     hasUnresolvedErrors,
-  }) {
+  }: WorkflowEntityOptions) {
     super();
 
     this.id = id;
@@ -56,5 +88,3 @@ class WorkflowEntity extends Entity {
     this.hasUnresolvedErrors = hasUnresolvedErrors;
   }
 }
-
-module.exports = WorkflowEntity;

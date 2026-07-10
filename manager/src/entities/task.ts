@@ -1,9 +1,53 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
+import { WorkflowEntity } from './workflow';
+
+interface TaskEntityOptions {
+  id?: string;
+  workflowId?: string;
+  name?: string;
+  description?: string;
+  taskTemplateId?: number;
+  documentId?: string;
+  signerUsers?: string[];
+  performerUsers?: string[];
+  performerUsersIpn?: string[];
+  performerUnits?: string[];
+  tags?: number[];
+  data?: any;
+  cancellationTypeId?: number;
+  finished?: boolean;
+  deleted?: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+  dueDate?: Date;
+  onlyForHeads?: boolean;
+}
 
 /**
  * Task entity.
  */
-class TaskEntity extends Entity {
+export class TaskEntity extends Entity {
+  id: string;
+  workflowId: string;
+  name: string;
+  description: string;
+  taskTemplateId: number;
+  documentId: string;
+  signerUsers: string[];
+  performerUsers: string[];
+  performerUsersIpn: string[];
+  performerUnits: string[];
+  tags: number[];
+  data: any;
+  cancellationTypeId: number;
+  finished: boolean;
+  deleted: boolean;
+  createdBy: string;
+  updatedBy: string;
+  dueDate: Date;
+  onlyForHeads: boolean;
+  workflowEntity: WorkflowEntity;
+
   /**
    * Constructor.
    * @param {object} options Task object.
@@ -47,7 +91,7 @@ class TaskEntity extends Entity {
     updatedBy,
     dueDate,
     onlyForHeads = false,
-  }) {
+  }: TaskEntityOptions) {
     super();
 
     this.id = id;
@@ -71,5 +115,3 @@ class TaskEntity extends Entity {
     this.onlyForHeads = onlyForHeads || false;
   }
 }
-
-module.exports = TaskEntity;
