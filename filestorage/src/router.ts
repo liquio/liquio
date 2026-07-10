@@ -17,6 +17,7 @@ export class Router {
 
   config: any;
   controllers: any;
+  httpServer: any;
 
   /**
    * Route service constructor.
@@ -142,7 +143,7 @@ export class Router {
     return new Promise<void>((resolve) => {
       // Start server listening.
       const { hostname, port } = this.config.server;
-      app.listen(port, hostname, () => {
+      this.httpServer = app.listen(port, hostname, () => {
         global.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });

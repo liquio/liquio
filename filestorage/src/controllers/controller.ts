@@ -1,5 +1,5 @@
 import stream from 'node:stream';
-import transliteration from 'transliteration';
+import { transliterate } from 'transliteration';
 import _ from 'lodash';
 
 import { getTraceId } from '../lib/async_local_storage';
@@ -63,7 +63,7 @@ export class Controller {
       res.set(CONTENT_LENGTH_HEADER, contentLength);
     }
     if (fileName) {
-      const convertedFileName = _.toLower(transliteration.transliterate(fileName))
+      const convertedFileName = _.toLower(transliterate(fileName))
         .replace(/\s+/g, '_')
         .replace(/(?![a-zA-Z0-9._-]+)\S/g, '_');
       res.set(CONTENT_DISPOSITION_HEADER, `attachment; filename="${convertedFileName}"`);

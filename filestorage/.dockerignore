@@ -7,3 +7,4 @@ helm-chart/
 coverage/
 node_modules/
 dist/
+tests/

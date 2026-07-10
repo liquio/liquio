@@ -29,9 +29,6 @@ export class P7sSignaturesController extends Controller {
    * @param {object} res HTTP response.
    */
   async findInfoByFileId(req, res) {
-    // Metrics timer.
-    const timer = new Date();
-
     // Define params.
     const { fileId } = req.params;
 
@@ -48,9 +45,6 @@ export class P7sSignaturesController extends Controller {
     if (!p7sSignature) {
       return this.responseError(res, 'Not found.', 404);
     }
-
-    // Save metrics.
-    (this as any).controllerMetric('findInfoById', timer);
 
     // Response.
     this.responseData(res, p7sSignature);
