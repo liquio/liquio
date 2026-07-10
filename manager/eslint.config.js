@@ -44,7 +44,8 @@ module.exports = [
   },
   ...tseslint.configs.recommended.map((c) => ({ ...c, files: c.files ?? ['**/*.ts'] })),
   {
-    files: ['**/*.ts'],
+    // Type-aware parsing, scoped to files actually covered by tsconfig.json's "include".
+    files: ['src/**/*.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -55,6 +56,21 @@ module.exports = [
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    // Tests aren't part of the tsconfig project, so parse them without type-aware info.
+    files: ['tests/**/*.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
     },
   },
   {

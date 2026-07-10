@@ -82,7 +82,7 @@ class RouterService {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
-      app.listen(port, hostname, () => {
+      this.httpServer = app.listen(port, hostname, () => {
         log.save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });
