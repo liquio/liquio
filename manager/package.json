@@ -37,8 +37,10 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@testcontainers/postgresql": "^11.13.0",
+    "@testcontainers/rabbitmq": "^11.13.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.9.3",
+    "@types/supertest": "^7.2.0",
     "debug": "^4.3.7",
     "eslint": "^10.6.0",
     "eslint-plugin-jsdoc": "^62.9.0",

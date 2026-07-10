@@ -1,16 +1,22 @@
 // @ts-nocheck
 import supertest from 'supertest';
 import * as portfinder from 'portfinder';
+import * as pg from 'pg';
+import amqp from 'amqplib';
 import nock from 'nock';
 import { execSync } from 'child_process';
+import { readFileSync } from 'fs';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as Multiconf from 'multiconf';
 
 import Db from '../src/lib/db';
 import Log from '../src/lib/log';
 import ConsoleLogProvider from '../src/lib/log/providers/console';
+import MessageQueue from '../src/lib/message_queue';
 import RouterService from '../src/services/router';
+import { WorkflowBusiness } from '../src/businesses/workflow';
 
 const debug = createDebug;
 
@@ -46,10 +52,22 @@ const defaultConfig = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
 
 export class TestApp {
   static pgContainer;
+  static rabbitmqContainer;
+
+  config: any;
+  routerService: any;
+  messageQueue: any;
+  workflowBusiness: any;
+  testAmqpConnection: any;
+  testAmqpChannel: any;
 
   constructor() {
     this.config = null;
     this.routerService = null;
+    this.messageQueue = null;
+    this.workflowBusiness = null;
+    this.testAmqpConnection = null;
+    this.testAmqpChannel = null;
   }
 
   static async setup() {
@@ -109,10 +127,18 @@ export class TestApp {
 
     await TestApp.applyMigrations(configOverride.db);
 
+    // Start RabbitMQ container.
+    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management').start();
+
+    configOverride.message_queue = {
+      ...defaultConfig.message_queue,
+      amqpConnection: this.rabbitmqContainer.getAmqpUrl(),
+    };
+
     nock.activate();
   }
 
-  // Run migrations to set up the database schema.
+  // Run migrations and load fixtures to set up the database schema and data.
   static async applyMigrations(dbConfig) {
     const url = `postgres://${dbConfig.username}:${dbConfig.password}@${dbConfig.host}:${dbConfig.port}`;
 
@@ -120,6 +146,21 @@ export class TestApp {
       env: process.env,
     });
     debug('test:migration')(output.toString());
+
+    // Load fixture data shared with admin-api's e2e tests.
+    const client = new pg.Client({ connectionString: `${url}/${dbConfig.database}` });
+    await client.connect();
+    try {
+      const testData = readFileSync('./data/test.e2e.sql', 'utf8');
+      debug('test:db')(
+        await client
+          .query(testData)
+          .then((res) => `Executed ${res.length} queries`)
+          .catch((err) => `Failed to seed data: ${err}`),
+      );
+    } finally {
+      await client.end();
+    }
   }
 
   async init() {
@@ -136,6 +177,19 @@ export class TestApp {
     global.log = log;
 
     global.db = await Db.getInstance(config.db);
+
+    // Init workflow business.
+    this.workflowBusiness = new WorkflowBusiness();
+    await this.workflowBusiness.init();
+
+    // Init message queue, mirroring src/index.ts's boot sequence.
+    this.messageQueue = new MessageQueue(config.message_queue, {
+      onInit: () => {
+        this.messageQueue.subscribeToConsuming(this.workflowBusiness.createFromMessage.bind(this.workflowBusiness));
+      },
+    });
+    await this.messageQueue.init();
+    global.messageQueue = this.messageQueue;
   }
 
   async listen() {
@@ -160,7 +214,7 @@ export class TestApp {
   // Run this after all tests.
   static async afterAll() {
     nock.restore();
-    await this.pgContainer?.stop();
+    await Promise.all([this.pgContainer?.stop(), this.rabbitmqContainer?.stop()]);
   }
 
   // Obtain a client instance to interact with the application.
@@ -173,8 +227,54 @@ export class TestApp {
     return nock(...args);
   }
 
+  // Get (or open) a single AMQP channel reused by the test helpers below.
+  async getTestChannel() {
+    if (!this.testAmqpChannel) {
+      this.testAmqpConnection = await amqp.connect(this.config.message_queue.amqpConnection);
+      this.testAmqpChannel = await this.testAmqpConnection.createChannel();
+    }
+    return this.testAmqpChannel;
+  }
+
+  // Publish a message directly to the reading queue, as an upstream service (task/gateway/event) would.
+  async publishToReadingQueue(message) {
+    const channel = await this.getTestChannel();
+    await channel.assertQueue(this.config.message_queue.readingQueueName, { durable: true });
+    channel.sendToQueue(this.config.message_queue.readingQueueName, Buffer.from(JSON.stringify(message)), { persistent: true });
+  }
+
+  // Wait for and return the next message produced onto the given writing queue.
+  async consumeFromQueue(queueName, timeoutMs = 10000): Promise<any> {
+    const channel = await this.getTestChannel();
+    await channel.assertQueue(queueName, { durable: true });
+
+    // The consumer is torn down implicitly when the channel is closed in destroy(), so we
+    // don't cancel it here explicitly, which would race against fast/already-queued deliveries.
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Timed out waiting for a message on "${queueName}".`));
+      }, timeoutMs);
+
+      channel.consume(queueName, (msg) => {
+        if (!msg) return;
+        clearTimeout(timeout);
+        channel.ack(msg);
+        resolve(JSON.parse(msg.content.toString()));
+      });
+    });
+  }
+
   // Destroy the application.
   async destroy() {
+    if (this.testAmqpChannel) {
+      await this.testAmqpChannel.close();
+    }
+    if (this.testAmqpConnection) {
+      await this.testAmqpConnection.close();
+    }
+    if (this.messageQueue) {
+      await this.messageQueue.close();
+    }
     if (global.db) {
       await global.db.close();
     }
