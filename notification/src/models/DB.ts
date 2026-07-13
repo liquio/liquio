@@ -1,6 +1,5 @@
-const Sequelize = require('sequelize');
-const Op = Sequelize.Op;
-let { conf } = global;
+import { Sequelize, Op, DataTypes } from 'sequelize';
+const { conf } = global as any;
 process.setMaxListeners(0);
 const connection = new Sequelize(conf.db.database, conf.db.username, conf.db.password, {
   host: conf.db.host,
@@ -50,12 +49,14 @@ const connection = new Sequelize(conf.db.database, conf.db.username, conf.db.pas
     $values: Op.values,
     $col: Op.col,
   },
-});
-const AbstractDB = class {
+} as any);
+
+export class AbstractDB {
+  sequelize: Sequelize;
+  DataTypes: typeof DataTypes;
+
   constructor() {
     this.sequelize = connection;
-    this.DataTypes = Sequelize.DataTypes;
+    this.DataTypes = DataTypes;
   }
-};
-
-module.exports = AbstractDB;
+}

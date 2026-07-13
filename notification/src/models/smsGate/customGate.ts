@@ -1,9 +1,9 @@
-const AbstractGate = require('./abstractSmsGate');
+import { AbstractGate } from './abstractSmsGate';
 
 /**
  * Custom gate.
  */
-const CustomGate = class extends AbstractGate {
+export class CustomGate extends AbstractGate {
   constructor() {
     // Init parent.
     super();
@@ -18,13 +18,13 @@ const CustomGate = class extends AbstractGate {
    * @param {string} text Text.
    * @param {string} [msgid] Message ID.
    */
-  async sendSms(phones, text, msgid) {
+  async sendSms(phones: string[], text: string, msgid?: string): Promise<any> {
     // Log.
     console.log('CustomGate - sendSms');
 
     if (!this.isEnabled) {
       const result = (phones || []).map((phone) => this.getDisabledResult(phone));
-      log.save('send-sms-skipped', { phones, text, reason: 'SMS is disabled in config.' }, 'info');
+      global.log.save('send-sms-skipped', { phones, text, reason: 'SMS is disabled in config.' }, 'info');
       return result;
     }
 
@@ -60,13 +60,13 @@ const CustomGate = class extends AbstractGate {
    * @param {string} text Text.
    * @param {string} msgid Message ID.
    */
-  async sendOneSms(phone, text, msgid) {
+  async sendOneSms(phone: string, text: string, msgid?: string): Promise<any> {
     // Log.
     console.log('CustomGate - sendOneSms');
 
     if (!this.isEnabled) {
       const result = this.getDisabledResult(phone);
-      log.save('send-one-sms-skipped', { phone, text, reason: result.reason }, 'info');
+      global.log.save('send-one-sms-skipped', { phone, text, reason: result.reason }, 'info');
       return result;
     }
 
@@ -100,7 +100,7 @@ const CustomGate = class extends AbstractGate {
    * Get SMS queue.
    * @param {any} clear Clear.
    */
-  async getSMSQueue(clear) {
+  async getSMSQueue(clear?: unknown): Promise<any> {
     // Log.
     console.log('CustomGate - getSMSQueue');
 
@@ -133,7 +133,7 @@ const CustomGate = class extends AbstractGate {
   /**
    * Get SMS queuye counter.
    */
-  async getSMSQueueCounter() {
+  async getSMSQueueCounter(): Promise<any> {
     // Log.
     console.log('CustomGate - getSMSQueueCounter');
 
@@ -166,7 +166,7 @@ const CustomGate = class extends AbstractGate {
    * Get SMS log.
    * @param {string} phone Phone.
    */
-  async getSMSLog(phone) {
+  async getSMSLog(phone: string): Promise<any> {
     // Log.
     console.log('CustomGate - getSMSLog');
 
@@ -194,6 +194,4 @@ const CustomGate = class extends AbstractGate {
     // Return adapters result.
     return adapterResult;
   }
-};
-
-module.exports = CustomGate;
+}

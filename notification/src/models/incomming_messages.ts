@@ -1,11 +1,13 @@
-const AbstractDB = require('./DB');
-const EventsModel = require('./events');
-const MessageCryptTypesModel = require('./message_crypt_types');
+import { AbstractDB } from './DB';
+import { EventsModel } from './events';
+import { MessageCryptTypesModel } from './message_crypt_types';
 
 const Events = new EventsModel().Events;
 const MessageCryptTypes = new MessageCryptTypesModel().MessageCryptTypes;
 
-const IncommingMessagesModel = class extends AbstractDB {
+export class IncommingMessagesModel extends AbstractDB {
+  incommingMessages: any;
+
   constructor() {
     super();
     this.incommingMessages = this.sequelize.define(
@@ -121,9 +123,7 @@ const IncommingMessagesModel = class extends AbstractDB {
     this.incommingMessages.belongsTo(MessageCryptTypes, { foreignKey: 'message_crypt_type_id', targetKey: 'id' });
   }
 
-  get IncommingMessages() {
+  get IncommingMessages(): any {
     return this.incommingMessages;
   }
-};
-
-module.exports = IncommingMessagesModel;
+}

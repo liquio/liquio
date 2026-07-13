@@ -1,8 +1,12 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
-const { conf } = global;
+const { conf } = global as any;
 
-const phpListModel = class {
+export class SmtpModel {
+  log: any;
+  config: any;
+  senderEmail: string;
+
   constructor() {
     this.log = global.log;
     this.config = conf.smtpServer || {};
@@ -10,15 +14,15 @@ const phpListModel = class {
     this.senderEmail = this.config.sender_email || '\'noreply\' <noreply@localhost>';
   }
 
-  get isEnabled() {
+  get isEnabled(): boolean {
     return this.config.isEnabled !== false;
   }
 
-  getDisabledResult() {
+  getDisabledResult(): { skipped: boolean; reason: string } {
     return { skipped: true, reason: 'SMTP is disabled in config.' };
   }
 
-  async sendMail(body) {
+  async sendMail(body: any): Promise<any> {
     const { users, text, subject, sendBy, doNotEscapeEmail, attachments } = body;
 
     if (!this.isEnabled) {
@@ -27,9 +31,9 @@ const phpListModel = class {
       return { result: Array.isArray(users) ? users.map(() => result) : [] };
     }
 
-    const responsesList = [];
+    const responsesList: any[] = [];
     if (Array.isArray(users)) {
-      let errors = [];
+      const errors: any[] = [];
       for (const user of users) {
         const msgOptions = { text, subject, email: user, sendBy, doNotEscapeEmail, attachments };
         let response;
@@ -47,7 +51,7 @@ const phpListModel = class {
     return { result: responsesList };
   }
 
-  async sendOneMail(body) {
+  async sendOneMail(body: any): Promise<any> {
     const { sendBy } = body;
 
     if (!this.isEnabled) {
@@ -59,12 +63,12 @@ const phpListModel = class {
     let transport;
     try {
       transport = nodemailer.createTransport(this.config);
-    } catch (error) {
+    } catch (error: any) {
       this.log.save('send-one-email-transport-error', { error: error?.message, body }, 'error');
     }
 
     const attachments = body.attachments
-      ? body.attachments.map((v) => {
+      ? body.attachments.map((v: any) => {
         return { filename: v.filename, content: v.content, encoding: 'base64' };
       })
       : [];
@@ -84,14 +88,12 @@ const phpListModel = class {
     // send mail with defined transport object
     let result;
     try {
-      result = await transport.sendMail(mailOptions);
+      result = await transport!.sendMail(mailOptions);
       this.log.save('send-one-email-result', { result, mailOptions }, 'info');
       return { result };
-    } catch (error) {
+    } catch (error: any) {
       this.log.save('send-one-email-error', { error: error?.message, mailOptions }, 'error');
       throw error;
     }
   }
-};
-
-module.exports = phpListModel;
+}

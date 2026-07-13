@@ -1,12 +1,14 @@
-const AbstractDB = require('./DB');
+import { AbstractDB } from './DB';
 
-const TemplatesModel = class extends AbstractDB {
+export class TemplatesModel extends AbstractDB {
+  templates: any;
+
   constructor() {
     super();
     this.defineModel();
   }
 
-  async defineModel() {
+  async defineModel(): Promise<void> {
     this.templates = this.sequelize.define(
       'templates',
       {
@@ -36,9 +38,7 @@ const TemplatesModel = class extends AbstractDB {
     );
   }
 
-  get Templates() {
+  get Templates(): any {
     return this.templates;
   }
-};
-
-module.exports = TemplatesModel;
+}

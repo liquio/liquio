@@ -1,6 +1,8 @@
-const AbstractDB = require('./DB');
+import { AbstractDB } from './DB';
 
-const UserSubscribesModel = class extends AbstractDB {
+export class UserSubscribesModel extends AbstractDB {
+  userSubscribes: any;
+
   constructor() {
     super();
     this.userSubscribes = this.sequelize.define(
@@ -32,9 +34,7 @@ const UserSubscribesModel = class extends AbstractDB {
     );
   }
 
-  get UserSubscribes() {
+  get UserSubscribes(): any {
     return this.userSubscribes;
   }
-};
-
-module.exports = UserSubscribesModel;
+}

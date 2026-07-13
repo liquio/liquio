@@ -1,9 +1,11 @@
-const AbstractDB = require('./DB');
+import { AbstractDB } from './DB';
 
 /**
  * Message crypt types model.
  */
-const MessageCryptTypesModel = class extends AbstractDB {
+export class MessageCryptTypesModel extends AbstractDB {
+  messageCryptTypes: any;
+
   constructor() {
     super();
     this.messageCryptTypes = this.sequelize.define(
@@ -42,9 +44,7 @@ const MessageCryptTypesModel = class extends AbstractDB {
     );
   }
 
-  get MessageCryptTypes() {
+  get MessageCryptTypes(): any {
     return this.messageCryptTypes;
   }
-};
-
-module.exports = MessageCryptTypesModel;
+}

@@ -1,6 +1,8 @@
-const AbstractDB = require('./DB');
+import { AbstractDB } from './DB';
 
-const SmsQueueModel = class extends AbstractDB {
+export class SmsQueueModel extends AbstractDB {
+  smsQueue: any;
+
   constructor() {
     super();
     this.smsQueue = this.sequelize.define(
@@ -49,9 +51,7 @@ const SmsQueueModel = class extends AbstractDB {
       },
     );
   }
-  get SmsQueue() {
+  get SmsQueue(): any {
     return this.smsQueue;
   }
-};
-
-module.exports = SmsQueueModel;
+}

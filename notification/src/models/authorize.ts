@@ -1,6 +1,8 @@
-const AbstractDB = require('./DB');
+import { AbstractDB } from './DB';
 
-const AuthorizeModel = class extends AbstractDB {
+export class AuthorizeModel extends AbstractDB {
+  authorize: any;
+
   constructor() {
     super();
     this.authorize = this.sequelize.define(
@@ -28,9 +30,7 @@ const AuthorizeModel = class extends AbstractDB {
     );
   }
 
-  get Authorize() {
+  get Authorize(): any {
     return this.authorize;
   }
-};
-
-module.exports = AuthorizeModel;
+}

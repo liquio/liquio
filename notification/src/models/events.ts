@@ -1,8 +1,11 @@
-const AbstractDB = require('./DB');
-const SettingsModel = require('./settings');
+import { AbstractDB } from './DB';
+import { SettingsModel } from './settings';
+
 const Settings = new SettingsModel().Settings;
 
-const EventsModel = class extends AbstractDB {
+export class EventsModel extends AbstractDB {
+  events: any;
+
   constructor() {
     super();
     this.events = this.sequelize.define(
@@ -46,9 +49,7 @@ const EventsModel = class extends AbstractDB {
     this.events.hasMany(Settings, { foreignKey: 'event_id' });
   }
 
-  get Events() {
+  get Events(): any {
     return this.events;
   }
-};
-
-module.exports = EventsModel;
+}

@@ -1,10 +1,13 @@
-const AbstractDB = require('./DB');
-const CommunicationModel = require('./communications');
-const UserSubscribesModel = require('./user_subscribes');
-const Communication = new CommunicationModel().Communications,
-  { UserSubscribes } = new UserSubscribesModel();
+import { AbstractDB } from './DB';
+import { CommunicationModel } from './communications';
+import { UserSubscribesModel } from './user_subscribes';
 
-const SettingsModel = class extends AbstractDB {
+const Communication = new CommunicationModel().Communications;
+const { UserSubscribes } = new UserSubscribesModel();
+
+export class SettingsModel extends AbstractDB {
+  settings: any;
+
   constructor() {
     super();
     this.settings = this.sequelize.define(
@@ -48,9 +51,7 @@ const SettingsModel = class extends AbstractDB {
     this.settings.hasMany(UserSubscribes, { foreignKey: 'setting_id' });
   }
 
-  get Settings() {
+  get Settings(): any {
     return this.settings;
   }
-};
-
-module.exports = SettingsModel;
+}

@@ -1,9 +1,9 @@
-const CommunicationModel = require('../models/communications');
-const SettingsModel = require('../models/user_subscribes');
-const UserSubscribesModel = require('../models/user_subscribes');
-const EventsModel = require('../models/events');
+const { CommunicationModel } = require('../models/communications');
+const { UserSubscribesModel: SettingsModel } = require('../models/user_subscribes');
+const { UserSubscribesModel } = require('../models/user_subscribes');
+const { EventsModel } = require('../models/events');
 const { checkAuth } = require('./auth');
-const Auth = require('../models/authServer');
+const { Auth } = require('../models/authServer');
 let Router = require('restify-router').Router;
 let routerInstance = new Router();
 const Communication = new CommunicationModel().Communications;

@@ -1,9 +1,11 @@
-export default function (s, _b) {
-  let opt = null;
+declare const XRegExp: any;
+
+export default function (s: unknown, _b?: unknown): string {
+  let opt: any = null;
   s = String(s);
   opt = Object(opt);
 
-  let defaults = {
+  const defaults: any = {
     delimiter: ' ',
     limit: undefined,
     lowercase: false,
@@ -12,13 +14,13 @@ export default function (s, _b) {
   };
 
   // Merge options
-  for (let k in defaults) {
+  for (const k in defaults) {
     if (!Object.prototype.hasOwnProperty.call(opt, k)) {
       opt[k] = defaults[k];
     }
   }
 
-  let char_map = {
+  const char_map: Record<string, string> = {
     // Latin
     À: 'A',
     Á: 'A',
@@ -305,30 +307,29 @@ export default function (s, _b) {
   };
 
   // Make custom replacements
-  for (let k in opt.replacements) {
-    s = s.replace(RegExp(k, 'g'), opt.replacements[k]);
+  for (const k in opt.replacements) {
+    s = (s as string).replace(RegExp(k, 'g'), opt.replacements[k]);
   }
 
   // Transliterate characters to ASCII
   if (opt.transliterate) {
-    for (let k in char_map) {
-      s = s.replace(RegExp(k, 'g'), char_map[k]);
+    for (const k in char_map) {
+      s = (s as string).replace(RegExp(k, 'g'), char_map[k]);
     }
   }
 
   // Replace non-alphanumeric characters with our delimiter
-  // eslint-disable-next-line no-undef
-  let alnum = typeof XRegExp === 'undefined' ? RegExp('[^a-z0-9\'.,()@!¿_Δ§?/>=<\\*+:;#%&¡£¥$"¤-]+', 'ig') : XRegExp('[^\\p{L}\\p{N}]+', 'ig');
-  s = s.replace(alnum, opt.delimiter);
+  const alnum = typeof XRegExp === 'undefined' ? RegExp('[^a-z0-9\'.,()@!¿_Δ§?/>=<\\*+:;#%&¡£¥$"¤-]+', 'ig') : XRegExp('[^\\p{L}\\p{N}]+', 'ig');
+  s = (s as string).replace(alnum, opt.delimiter);
 
   // Remove duplicate delimiters
-  s = s.replace(RegExp('[' + opt.delimiter + ']{2,}', 'g'), opt.delimiter);
+  s = (s as string).replace(RegExp('[' + opt.delimiter + ']{2,}', 'g'), opt.delimiter);
 
   // Truncate slug to max. characters
-  s = s.substring(0, opt.limit);
+  s = (s as string).substring(0, opt.limit);
 
   // Remove delimiter from ends
-  s = s.replace(RegExp('(^' + opt.delimiter + '|' + opt.delimiter + '$)', 'g'), '');
+  s = (s as string).replace(RegExp('(^' + opt.delimiter + '|' + opt.delimiter + '$)', 'g'), '');
 
-  return opt.lowercase ? s.toLowerCase() : s;
+  return opt.lowercase ? (s as string).toLowerCase() : (s as string);
 }

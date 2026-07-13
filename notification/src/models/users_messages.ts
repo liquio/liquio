@@ -1,8 +1,11 @@
-const AbstractDB = require('./DB');
-const IncommingMessagesModel = require('./incomming_messages');
+import { AbstractDB } from './DB';
+import { IncommingMessagesModel } from './incomming_messages';
+
 const IncommingMessages = new IncommingMessagesModel().IncommingMessages;
 
-const UsersMessagesModel = class extends AbstractDB {
+export class UsersMessagesModel extends AbstractDB {
+  usersMessages: any;
+
   constructor() {
     super();
     this.usersMessages = this.sequelize.define(
@@ -50,9 +53,7 @@ const UsersMessagesModel = class extends AbstractDB {
     this.usersMessages.belongsTo(IncommingMessages, { foreignKey: 'message_id' });
   }
 
-  get UsersMessages() {
+  get UsersMessages(): any {
     return this.usersMessages;
   }
-};
-
-module.exports = UsersMessagesModel;
+}

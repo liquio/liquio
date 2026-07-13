@@ -1,4 +1,4 @@
-const ConfigsModel = require('../models/configs');
+const { ConfigsModel } = require('../models/configs');
 const { checkConfigAuth } = require('./auth');
 const { Configs } = new ConfigsModel();
 let Router = require('restify-router').Router;

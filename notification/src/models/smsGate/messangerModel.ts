@@ -1,13 +1,13 @@
 'use strict';
 
-// Read config.
-let { conf } = global;
+import { CustomGate } from './customGate';
+import { CorezoidGate } from './corezoidModel';
 
-const CustomGate = require('./customGate');
-const CorezoidGate = require('./corezoidModel');
+// Read config.
+const { conf } = global as any;
 
 // Constants.
-const GATES_MAP = {
+const GATES_MAP: Record<string, any> = {
   custom: CustomGate,
   testConsoleSmsAdapter: CustomGate,
   default: CustomGate,
@@ -19,6 +19,5 @@ const gateName = conf.defaultMessenger || DEFAULT_GATE;
 console.log(`Gate initialized: "${gateName}".`);
 const model = GATES_MAP[gateName];
 
-const MessangerModel = model;
-
-module.exports = { MessangerModel, CorezoidGate };
+export const MessangerModel = model;
+export { CorezoidGate };

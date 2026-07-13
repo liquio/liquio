@@ -1,8 +1,10 @@
 const crypto = require('crypto');
 
-jest.mock('../models/authorize', () => jest.fn().mockImplementation(() => ({ Authorize: { findOne: jest.fn() } })));
+jest.mock('../models/authorize', () => ({
+  AuthorizeModel: jest.fn().mockImplementation(() => ({ Authorize: { findOne: jest.fn() } })),
+}));
 
-const AuthorizeModel = require('../models/authorize');
+const { AuthorizeModel } = require('../models/authorize');
 const { checkAuth } = require('./auth');
 
 const makeRes = () => ({ send: jest.fn() });

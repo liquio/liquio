@@ -1,4 +1,4 @@
-const AuthorizeModel = require('../models/authorize');
+const { AuthorizeModel } = require('../models/authorize');
 const Authorize = new AuthorizeModel().Authorize;
 const crypto = require('crypto');
 const { appendTraceMeta } = require('../lib/async_local_storage');

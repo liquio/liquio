@@ -1,6 +1,6 @@
 const { Router } = require('restify-router');
 
-const TemplatesModel = require('../models/templates');
+const { TemplatesModel } = require('../models/templates');
 const { checkAuth } = require('./auth');
 
 const routerInstance = new Router();

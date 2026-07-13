@@ -1,6 +1,8 @@
-const AbstractDB = require('./DB');
+import { AbstractDB } from './DB';
 
-const CommunicationModel = class extends AbstractDB {
+export class CommunicationModel extends AbstractDB {
+  communications: any;
+
   constructor() {
     super();
     this.communications = this.sequelize.define(
@@ -29,9 +31,7 @@ const CommunicationModel = class extends AbstractDB {
     );
   }
 
-  get Communications() {
+  get Communications(): any {
     return this.communications;
   }
-};
-
-module.exports = CommunicationModel;
+}
