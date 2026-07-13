@@ -5,7 +5,7 @@ import config from './config/config';
 global.conf = config.conf;
 
 import start from './app';
-import testConsoleSmsAdapter from './adapters/test_console_sms_adapter';
+import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
 import { AppIdentHeaders } from './lib/app_ident_headers';
 import { Log } from './lib/log';
 import { ConsoleLogProvider } from './lib/log/providers/console';

@@ -8,9 +8,9 @@ class TestConsoleSmsAdapter {
    * @param {string} text Text.
    * @param {string} [msgid] Message ID.
    */
-  async sendSms(phones = [], text, msgid) {
+  async sendSms(phones: string[] = [], text: string, msgid?: string): Promise<string[]> {
     // Send SMS for all phones from list.
-    const responses = [];
+    const responses: string[] = [];
     for (const phone of phones) {
       const response = await this.sendOneSms(phone, text, msgid);
       responses.push(response);
@@ -26,19 +26,19 @@ class TestConsoleSmsAdapter {
    * @param {string} text Text.
    * @param {string} msgid Message ID.
    */
-  async sendOneSms(phone, text, msgid) {
+  async sendOneSms(phone: string, text: string, msgid?: string): Promise<string> {
     // Log.
-    log.save('send-sms-request', { phone, text, msgid, isTest: true });
+    global.log.save('send-sms-request', { phone, text, msgid, isTest: true });
 
     // Define test response.
     const response = '"aaaaaaaa-1111-aaaa-1111-aaaaaaaaaaaa"';
 
     // Log.
-    log.save('send-sms-response', { response, phone, text, msgid, isTest: true });
+    global.log.save('send-sms-response', { response, phone, text, msgid, isTest: true });
 
     // Return response.
     return response;
   }
 }
 
-module.exports = new TestConsoleSmsAdapter();
+export const testConsoleSmsAdapter = new TestConsoleSmsAdapter();

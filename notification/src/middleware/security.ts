@@ -1,6 +1,6 @@
 /**
  * Security Middleware for XSS Prevention
- * 
+ *
  * Implements:
  * - Content Security Policy (CSP) headers
  * - X-Frame-Options for clickjacking protection
@@ -9,13 +9,13 @@
  * - X-XSS-Protection legacy header
  */
 
-const cors = require('cors');
+import cors from 'cors';
 
 /**
  * CSP Middleware Factory
  * Configurable Content Security Policy headers
  */
-function cspMiddleware(options = {}) {
+export function cspMiddleware(options: { directives?: Record<string, string[]> } = {}): (req: any, res: any, next: any) => void {
   const defaults = {
     directives: {
       defaultSrc: ['\'self\''],
@@ -32,7 +32,7 @@ function cspMiddleware(options = {}) {
     ...options,
   };
 
-  return (req, res, next) => {
+  return (req: any, res: any, next: any) => {
     const cspHeader = Object.entries(defaults.directives)
       .map(([key, values]) => {
         const directiveName = key.replace(/([A-Z])/g, '-$1').toLowerCase();
@@ -42,7 +42,7 @@ function cspMiddleware(options = {}) {
 
     res.setHeader('Content-Security-Policy', cspHeader);
     res.setHeader('Content-Security-Policy-Report-Only', cspHeader);
-    
+
     next();
   };
 }
@@ -51,8 +51,8 @@ function cspMiddleware(options = {}) {
  * Security Headers Middleware
  * Sets standard security headers to prevent common attacks
  */
-function securityHeadersMiddleware(options = {}) {
-  return (req, res, next) => {
+export function securityHeadersMiddleware(options: { frameOptions?: string } = {}): (req: any, res: any, next: any) => void {
+  return (req: any, res: any, next: any) => {
     // Prevent MIME type sniffing
     res.setHeader('X-Content-Type-Options', 'nosniff');
 
@@ -68,14 +68,14 @@ function securityHeadersMiddleware(options = {}) {
     // Permissions policy
     res.setHeader(
       'Permissions-Policy',
-      'geolocation=(), microphone=(), camera=(), payment=()'
+      'geolocation=(), microphone=(), camera=(), payment=()',
     );
 
     // HSTS (only enable in production)
     if (process.env.NODE_ENV === 'production') {
       res.setHeader(
         'Strict-Transport-Security',
-        'max-age=31536000; includeSubDomains; preload'
+        'max-age=31536000; includeSubDomains; preload',
       );
     }
 
@@ -87,7 +87,7 @@ function securityHeadersMiddleware(options = {}) {
  * Input Sanitization Middleware
  * Prevents common XSS vectors in request bodies and query parameters
  */
-function inputSanitizationMiddleware(_options = {}) {
+export function inputSanitizationMiddleware(_options: Record<string, unknown> = {}): (req: any, res: any, next: any) => void {
   const dangerousPatterns = [
     /<script[^>]*>.*?<\/script>/gi, // <script> tags
     /javascript:/gi, // javascript: protocol
@@ -97,13 +97,13 @@ function inputSanitizationMiddleware(_options = {}) {
     /<embed[^>]*>/gi, // <embed> tags
   ];
 
-  const sanitizeValue = (value) => {
+  const sanitizeValue = (value: unknown): unknown => {
     if (typeof value !== 'string') {
       return value;
     }
 
     let sanitized = value;
-    dangerousPatterns.forEach(pattern => {
+    dangerousPatterns.forEach((pattern) => {
       sanitized = sanitized.replace(pattern, '');
     });
 
@@ -113,13 +113,13 @@ function inputSanitizationMiddleware(_options = {}) {
     return sanitized;
   };
 
-  const sanitizeObject = (obj) => {
+  const sanitizeObject = (obj: unknown): unknown => {
     if (Array.isArray(obj)) {
       return obj.map(sanitizeObject);
     }
 
     if (obj !== null && typeof obj === 'object') {
-      const sanitized = {};
+      const sanitized: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(obj)) {
         sanitized[key] = sanitizeObject(value);
       }
@@ -129,7 +129,7 @@ function inputSanitizationMiddleware(_options = {}) {
     return sanitizeValue(obj);
   };
 
-  return (req, res, next) => {
+  return (req: any, res: any, next: any) => {
     // Sanitize query parameters
     if (req.query) {
       req.query = sanitizeObject(req.query);
@@ -153,7 +153,7 @@ function inputSanitizationMiddleware(_options = {}) {
  * CORS Origin Validation Middleware
  * Strict whitelist-based CORS configuration using cors package
  */
-function corsValidationMiddleware(options = {}) {
+export function corsValidationMiddleware(options: { allowedOrigins?: string[] } = {}): any {
   const allowedOrigins = options.allowedOrigins || ['*'];
 
   return cors({
@@ -168,12 +168,12 @@ function corsValidationMiddleware(options = {}) {
  * Response Encoding Middleware
  * Ensures all text responses are properly HTML-encoded
  */
-function responseEncodingMiddleware(_options = {}) {
-  return (req, res, next) => {
+export function responseEncodingMiddleware(_options: Record<string, unknown> = {}): (req: any, res: any, next: any) => void {
+  return (req: any, res: any, next: any) => {
     // Override res.send to ensure proper content-type and encoding
     const originalSend = res.send.bind(res);
 
-    res.send = function(code, body, headers) {
+    res.send = function (code: any, body: any, headers: any) {
       // Set proper content type if not already set
       if (!res.getHeader('Content-Type')) {
         if (typeof body === 'object') {
@@ -189,11 +189,3 @@ function responseEncodingMiddleware(_options = {}) {
     next();
   };
 }
-
-module.exports = {
-  cspMiddleware,
-  securityHeadersMiddleware,
-  inputSanitizationMiddleware,
-  corsValidationMiddleware,
-  responseEncodingMiddleware,
-};
