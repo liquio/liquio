@@ -1,18 +1,18 @@
-const { cloneDeep } = require('lodash');
-const typeOf = require('./type_of');
+import { cloneDeep } from 'lodash';
+import { typeOf } from './type_of';
 
-class Helpers {
+export class Helpers {
   /**
    * Substring long strings in object. {str1: '12345', str2: '123456789'} => {str1: '12345', str2: '12345...'}
    * @param {Object|String} strOrObj
    * @param {number} [limit=80]
    * @return {Object|String}
    */
-  static cutLongStrings(strOrObj, limit = 80) {
-    let strOrObjPrepared;
+  static cutLongStrings(strOrObj: unknown, limit = 80): unknown {
+    let strOrObjPrepared: unknown;
     if (typeOf(strOrObj) === 'string') {
       try {
-        strOrObjPrepared = JSON.parse(strOrObj);
+        strOrObjPrepared = JSON.parse(strOrObj as string);
       } catch {
         strOrObjPrepared = strOrObj;
       }
@@ -23,7 +23,8 @@ class Helpers {
     const ending = '...';
 
     if (typeOf(strOrObjPrepared) === 'string') {
-      return strOrObjPrepared.length > limit ? `${strOrObjPrepared.substring(0, limit - ending.length)}${ending}` : strOrObjPrepared;
+      const str = strOrObjPrepared as string;
+      return str.length > limit ? `${str.substring(0, limit - ending.length)}${ending}` : str;
     }
 
     if (typeOf(strOrObjPrepared) !== 'object' && typeOf(strOrObjPrepared) !== 'array') {
@@ -37,7 +38,8 @@ class Helpers {
     const limitForObjValues = limit > 1000 ? limit / 100 : 10;
     let replacedObj = this.replaceObjValues(cloneDeep(strOrObjPrepared), (value) => {
       if (typeOf(value) === 'string') {
-        return value.length > limitForObjValues ? `${value.substring(0, limitForObjValues - ending.length)}${ending}` : value;
+        const str = value as string;
+        return str.length > limitForObjValues ? `${str.substring(0, limitForObjValues - ending.length)}${ending}` : str;
       } else {
         return value;
       }
@@ -48,7 +50,8 @@ class Helpers {
     while (newLimitForObjValues > 9) {
       replacedObj = this.replaceObjValues(cloneDeep(strOrObjPrepared), (value) => {
         if (typeOf(value) === 'string') {
-          return value.length > newLimitForObjValues ? `${value.substring(0, newLimitForObjValues - ending.length)}${ending}` : value;
+          const str = value as string;
+          return str.length > newLimitForObjValues ? `${str.substring(0, newLimitForObjValues - ending.length)}${ending}` : str;
         } else {
           return value;
         }
@@ -65,11 +68,11 @@ class Helpers {
    * @param {function} handler
    * @return {Object}
    */
-  static replaceObjValues(obj, handler = (value) => value) {
+  static replaceObjValues(obj: any, handler: (value: unknown) => unknown = (value) => value): any {
     if (typeOf(obj) === 'array') {
-      obj = obj.map((v) => this.replaceObjValues(v, handler));
+      obj = obj.map((v: unknown) => this.replaceObjValues(v, handler));
     } else if (typeOf(obj) === 'object') {
-      for (let key in obj) {
+      for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
           obj[key] = this.replaceObjValues(obj[key], handler);
         }
@@ -80,5 +83,3 @@ class Helpers {
     return obj;
   }
 }
-
-module.exports = Helpers;

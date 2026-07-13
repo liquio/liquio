@@ -1,8 +1,8 @@
-const { AsyncLocalStorage } = require('async_hooks');
-const { randomUUID } = require('crypto');
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 
 // Init storage.
-const storage = new AsyncLocalStorage();
+const storage = new AsyncLocalStorage<Map<string, any>>();
 
 /**
  * Async local storage for express middleware.
@@ -10,7 +10,7 @@ const storage = new AsyncLocalStorage();
  * @param {object} res HTTP response.
  * @param {object} next Next request handler.
  */
-module.exports.asyncLocalStorageMiddleware = (req, res, next) => {
+export const asyncLocalStorageMiddleware = (req: any, res: any, next: any): void => {
   const traceId = req.headers['x-trace-id'] || req.headers['global-trace-id'] || req.traceId;
   initStorageIfNeedIt(next, traceId, req.traceMeta);
 };
@@ -20,7 +20,7 @@ module.exports.asyncLocalStorageMiddleware = (req, res, next) => {
  * @param {function} handler
  * @return {undefined}
  */
-module.exports.runInAsyncLocalStorage = (handler) => {
+export const runInAsyncLocalStorage = (handler: () => void): void => {
   initStorageIfNeedIt(handler);
 };
 
@@ -28,7 +28,7 @@ module.exports.runInAsyncLocalStorage = (handler) => {
  * Get trace ID.
  * @return {string} Trace ID.
  */
-module.exports.getTraceId = () => {
+export const getTraceId = (): string | null | undefined => {
   const store = storage.getStore();
   if (store) return store.get('traceId') || null;
 };
@@ -37,7 +37,7 @@ module.exports.getTraceId = () => {
  * Get trace meta.
  * @return {{workflowId, taskId, documentId}} Trace meta object.
  */
-module.exports.getTraceMeta = () => {
+export const getTraceMeta = (): any => {
   const store = storage.getStore();
   if (store) return store.get('traceMeta') || {};
 };
@@ -46,7 +46,7 @@ module.exports.getTraceMeta = () => {
  * Append trace meta.
  * @param {object} meta Meta object to append.
  */
-module.exports.appendTraceMeta = (meta = {}) => {
+export const appendTraceMeta = (meta: Record<string, unknown> = {}): void => {
   // Check.
   const store = storage.getStore();
   if (!store) return;
@@ -62,14 +62,14 @@ module.exports.appendTraceMeta = (meta = {}) => {
  * @param {string} [traceId] Trace ID.
  * @param {object} [traceMeta] Trace meta.
  */
-function initStorageIfNeedIt(cb = () => undefined, traceId, traceMeta) {
+function initStorageIfNeedIt(cb: () => void = () => undefined, traceId?: string, traceMeta?: any): any {
   // Check if no need to init storage.
   const store = storage.getStore();
   if (store) return cb();
 
   // Init storage.
   storage.run(new Map(), () => {
-    const store = storage.getStore();
+    const store = storage.getStore()!;
     store.set('traceId', traceId || randomUUID());
     store.set('traceMeta', traceMeta || {});
     return cb();

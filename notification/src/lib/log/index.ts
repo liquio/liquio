@@ -1,8 +1,8 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
-const LogProvider = require('./providers/log_provider');
-const AppInfo = require('../app_info');
-const { getTraceId, getTraceMeta } = require('../async_local_storage');
+import { LogProvider } from './providers/log_provider';
+import { AppInfo } from '../app_info';
+import { getTraceId, getTraceMeta } from '../async_local_storage';
 
 // Constants.
 const ERROR_MESSAGE_WRONG_PROVIDER = 'Wrong provider.';
@@ -15,13 +15,18 @@ const ERROR_LEVEL = 'error';
 /**
  * Log.
  */
-class Log {
+export class Log {
+  static singleton: Log;
+
+  providers!: LogProvider[];
+  appInfo!: AppInfo;
+
   /**
    * Log constructor.
    * @param {LogProvider[]} [logProviders] Log providers.
    * @param {string[]} [activeProviders] Active providers.
    */
-  constructor(logProviders = [], activeProviders = []) {
+  constructor(logProviders: LogProvider[] = [], activeProviders: string[] = []) {
     // Define singleton.
     if (!Log.singleton) {
       if (!logProviders.every((v) => v instanceof LogProvider)) {
@@ -37,7 +42,7 @@ class Log {
   /**
    * Log levels.
    */
-  get Levels() {
+  get Levels(): { INFO_LEVEL: string; WARNING_LEVEL: string; ERROR_LEVEL: string } {
     return {
       INFO_LEVEL,
       WARNING_LEVEL,
@@ -49,7 +54,7 @@ class Log {
    * Add provider.
    * @param {LogProvider} logProvider Log provider.
    */
-  addProvider(logProvider) {
+  addProvider(logProvider: LogProvider): void {
     if (!(logProvider instanceof LogProvider)) {
       throw new Error(ERROR_MESSAGE_WRONG_PROVIDER);
     }
@@ -63,7 +68,7 @@ class Log {
    * @param {string} [level] Log level.
    * @returns {Promise<string>} Log ID promise.
    */
-  async save(type, data = true, level = this.Levels.INFO_LEVEL) {
+  async save(type: string, data: unknown = true, level: string = this.Levels.INFO_LEVEL): Promise<string | null> {
     if (process.env.DISABLE_LOG) return null;
     // Define params.
     const timestamp = Date.now();
@@ -94,7 +99,7 @@ class Log {
    * @param {object} res HTTP response.
    * @param {object} next Next handler.
    */
-  async logRouter(req, res, next) {
+  async logRouter(req: any, res: any, next: any): Promise<void> {
     // Define params.
     const method = req && req.method;
     const url = req && req.url;
@@ -144,7 +149,7 @@ class Log {
    * @param {object} req Express request object.
    * @param {object} res Express response object.
    */
-  attachResponseLogger(req, res) {
+  attachResponseLogger(req: any, res: any): void {
     const time = Date.now();
 
     const originalSend = res.send;
@@ -152,17 +157,17 @@ class Log {
     const originalJson = res.json;
     let responseLogged = false;
 
-    const logResponse = (body) => {
+    const logResponse = (body: any) => {
       if (!responseLogged) {
         let responseSize = 0;
-        const data = {
+        const data: any = {
           requestId: req.requestMeta?.requestId,
           method: req.method,
           url: req.url,
           statusCode: res.statusCode,
           responseTime: Date.now() - time,
         };
-        
+
         if (body instanceof Error) {
           data.error = {
             message: body.message,
@@ -174,29 +179,27 @@ class Log {
         } else if (typeof body === 'object' && body !== null) {
           responseSize = JSON.stringify(body).length;
         }
-        
+
         data.responseSize = responseSize;
-        
+
         this.save('http-response', data, this.Levels.INFO_LEVEL);
         responseLogged = true;
       }
     };
 
-    res.send = (body) => {
+    res.send = (body: any) => {
       logResponse(body);
       originalSend.call(res, body);
     };
 
-    res.end = (body) => {
+    res.end = (body: any) => {
       logResponse(body);
       originalEnd.call(res, body);
     };
 
-    res.json = (body) => {
+    res.json = (body: any) => {
       logResponse(body);
       originalJson.call(res, body);
     };
   }
 }
-
-module.exports = Log;

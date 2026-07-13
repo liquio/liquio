@@ -6,7 +6,8 @@
  * @returns
  */
 const DEFAULT_EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oauth-token'];
-const sensitiveReplace = (targetObject, excludeParams = DEFAULT_EXCLUDE_PARAMS, replaceMask = '****') => {
+
+export function sensitiveReplace(targetObject: unknown, excludeParams: string[] = DEFAULT_EXCLUDE_PARAMS, replaceMask = '****'): unknown {
   if (typeof targetObject !== 'string') {
     return targetObject;
   }
@@ -25,6 +26,4 @@ const sensitiveReplace = (targetObject, excludeParams = DEFAULT_EXCLUDE_PARAMS, 
   });
 
   return resultString;
-};
-
-module.exports = sensitiveReplace;
+}

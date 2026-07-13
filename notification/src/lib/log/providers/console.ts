@@ -1,6 +1,6 @@
-const LogProvider = require('./log_provider');
-const Helpers = require('../../helpers');
-const sensitiveReplace = require('../helpers/sensitiveReplace');
+import { LogProvider } from './log_provider';
+import { Helpers } from '../../helpers';
+import { sensitiveReplace } from '../helpers/sensitiveReplace';
 
 // Constants.
 const DEFAULT_PROVIDER_NAME = 'console';
@@ -12,13 +12,15 @@ const LENGTH_ERROR_SUBSTRING_LENGTH = 10e3;
 /**
  * Console log provider.
  */
-class ConsoleLogProvider extends LogProvider {
+export class ConsoleLogProvider extends LogProvider {
+  options: { excludeParams?: string[] };
+
   /**
    * Console log provider constructor.
    * @param {string} [name] Log provider name.
    * @param {object} [options] Log additional options
    */
-  constructor(name = DEFAULT_PROVIDER_NAME, options = {}) {
+  constructor(name: string = DEFAULT_PROVIDER_NAME, options: { excludeParams?: string[] } = {}) {
     super(name);
     this.options = options;
   }
@@ -34,15 +36,24 @@ class ConsoleLogProvider extends LogProvider {
    * @param {string} [traceId] Trace ID.
    * @param {object} [traceMeta] Trace meta.
    */
-  async save(timestamp, type, data, logId, appInfo, level, traceId, traceMeta) {
+  async save(
+    timestamp: number,
+    type: string,
+    data: unknown,
+    logId: string,
+    appInfo: unknown,
+    level: string,
+    traceId?: string,
+    traceMeta?: unknown,
+  ): Promise<void> {
     // Define params.
     const now = new Date(timestamp);
     const createdAt = now.toISOString();
     const cuttedLogData = Helpers.cutLongStrings(data, MAX_LOG_LENGTH - 5000);
     const dataObjectToSave = { type: `${type}`, data: cuttedLogData, createdAt, logId, appInfo, level, traceId, traceMeta };
-    let dataStringToSave;
+    let dataStringToSave: string;
     try {
-      dataStringToSave = sensitiveReplace(JSON.stringify(dataObjectToSave), this.options.excludeParams);
+      dataStringToSave = sensitiveReplace(JSON.stringify(dataObjectToSave), this.options.excludeParams) as string;
     } catch {
       dataStringToSave = `${dataObjectToSave}`;
     }
@@ -72,7 +83,7 @@ class ConsoleLogProvider extends LogProvider {
    * @param {string} str String.
    * @return {{isCorrect, message}} Check result.
    */
-  checkLog(str) {
+  checkLog(str: string): { isCorrect: boolean; message: string } {
     // Check length.
     if (str?.length > MAX_LOG_LENGTH) {
       const now = new Date();
@@ -96,5 +107,3 @@ class ConsoleLogProvider extends LogProvider {
     return { isCorrect: true, message: '' };
   }
 }
-
-module.exports = ConsoleLogProvider;

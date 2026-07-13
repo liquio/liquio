@@ -6,10 +6,10 @@ global.conf = config.conf;
 
 import start from './app';
 import testConsoleSmsAdapter from './adapters/test_console_sms_adapter';
-import AppIdentHeaders from './lib/app_ident_headers';
-import Log from './lib/log';
-import ConsoleLogProvider from './lib/log/providers/console';
-import typeOf from './lib/type_of';
+import { AppIdentHeaders } from './lib/app_ident_headers';
+import { Log } from './lib/log';
+import { ConsoleLogProvider } from './lib/log/providers/console';
+import { typeOf } from './lib/type_of';
 
 global.typeOf = typeOf;
 // Constants.
