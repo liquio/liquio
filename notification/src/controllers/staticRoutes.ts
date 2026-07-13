@@ -1,21 +1,22 @@
-let { conf, adminStaticDir } = global;
-const { MessangerModel } = require('../models/smsGate/messangerModel');
+import path from 'node:path';
+import crypto from 'node:crypto';
+import restify from 'restify';
+import { Router } from 'restify-router';
+import { MessangerModel } from '../models/smsGate/messangerModel';
 
-const path = require('path');
-let restify = require('restify');
-let Router = require('restify-router').Router;
-let routerInstance = new Router();
-const crypto = require('crypto');
+const { conf, adminStaticDir } = global as any;
+
+const routerInstance = new Router();
 const hmac = crypto.createHmac('sha256', conf.adminConfig.password).update(conf.adminConfig.login).digest('hex');
 
-const StaticRoutes = class extends MessangerModel {
-  constructor(server) {
+export class StaticRoutes extends MessangerModel {
+  constructor(server: any) {
     super();
     this.registerRoutes();
-    return routerInstance.applyRoutes(server);
+    return routerInstance.applyRoutes(server) as any;
   }
 
-  buildAdminView(urlName, fileName) {
+  buildAdminView(urlName: any, fileName: any) {
     routerInstance.get(
       urlName,
       this.getAdminView.bind(this),
@@ -49,13 +50,13 @@ const StaticRoutes = class extends MessangerModel {
     routerInstance.get('/admin/api/log', this.getAdminView.bind(this), this.SMSLog.bind(this));
   }
 
-  getAdminView(req, res, next) {
-    let { cookies } = req;
+  getAdminView(req: any, res: any, next: any) {
+    const { cookies } = req;
     if ('myCookie' in cookies && cookies.myCookie == hmac) return next();
     else res.redirect('/admin/login', next);
   }
 
-  adminLogin(req, res, next) {
+  adminLogin(req: any, res: any, next: any) {
     const bodyHmac = crypto.createHmac('sha256', req.body.pass).update(req.body.login).digest('hex');
 
     if (bodyHmac == hmac) {
@@ -70,22 +71,22 @@ const StaticRoutes = class extends MessangerModel {
     }
   }
 
-  adminLogout(req, res, next) {
+  adminLogout(req: any, res: any, next: any) {
     res.clearCookie('myCookie');
     res.redirect('/admin', next);
   }
 
-  async SMSQueue(req, res, _next) {
+  async SMSQueue(req: any, res: any, _next: any) {
     const t = await this.getSMSQueue();
     res.send(t);
   }
 
-  async SMSQueueClear(req, res, _next) {
+  async SMSQueueClear(req: any, res: any, _next: any) {
     const t = await this.removeFromQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
     res.send(t);
   }
 
-  async resendSMS(req, res, _next) {
+  async resendSMS(req: any, res: any, _next: any) {
     try {
       const t = await this.retrySendInQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
       res.send(t);
@@ -94,15 +95,13 @@ const StaticRoutes = class extends MessangerModel {
     }
   }
 
-  async SMSQueueCounter(req, res, _next) {
+  async SMSQueueCounter(req: any, res: any, _next: any) {
     const t = await this.getSMSQueueCounter();
     res.send(t);
   }
 
-  async SMSLog(req, res, _next) {
+  async SMSLog(req: any, res: any, _next: any) {
     const t = await this.getSMSLog(req.query.phone);
     res.send(t);
   }
-};
-
-module.exports = StaticRoutes;
+}

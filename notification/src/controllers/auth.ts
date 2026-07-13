@@ -1,14 +1,15 @@
-const { AuthorizeModel } = require('../models/authorize');
-const Authorize = new AuthorizeModel().Authorize;
-const crypto = require('crypto');
-const { appendTraceMeta } = require('../lib/async_local_storage');
+import crypto from 'node:crypto';
+import { AuthorizeModel } from '../models/authorize';
+import { appendTraceMeta } from '../lib/async_local_storage';
 
-function sendAuthError(res, code = 'Authorization error', message = 'Authorization empty') {
+const Authorize = new AuthorizeModel().Authorize;
+
+function sendAuthError(res: any, code = 'Authorization error', message = 'Authorization empty'): void {
   res.send(401, { code, message });
 }
 
-const checkAuth = async function (req, res, next) {
-  const { authorization: authConfig = {} } = global.conf;
+const checkAuth = async function (req: any, res: any, next: any) {
+  const { authorization: authConfig = {} } = (global as any).conf;
   const { authorization = '' } = req.headers;
 
   if (!authorization.trim()) {
@@ -40,7 +41,7 @@ const checkAuth = async function (req, res, next) {
 
   let existedClient;
   if (authConfig.list && Array.isArray(authConfig.list)) {
-    existedClient = authConfig.list.find(({ user, password }) => user === login && pass === password);
+    existedClient = authConfig.list.find(({ user, password }: any) => user === login && pass === password);
   } else {
     const hmacLogin = crypto.createHmac('sha512', login).update(pass).digest('hex').toUpperCase();
     existedClient = await Authorize.findOne({ where: { login: hmacLogin, password: pass } });
@@ -59,10 +60,11 @@ const checkAuth = async function (req, res, next) {
  * @param {object} res HTTP response.
  * @param {object} next Next handler.
  */
-const checkTestAuth = async function (req, res, next) {
+const checkTestAuth = async function (req: any, res: any, next: any) {
   // Define params.
   const testAuthToken = req.headers.authorization;
-  const neededTestAuthToken = global.conf && global.conf.testService && global.conf.testService.token;
+  const conf = (global as any).conf;
+  const neededTestAuthToken = conf && conf.testService && conf.testService.token;
 
   // Check.
   if (!neededTestAuthToken) {
@@ -77,26 +79,23 @@ const checkTestAuth = async function (req, res, next) {
 };
 
 //3.
-let credentials = {
+const credentials: any = {
   realm: 'Digest Authenticatoin',
 };
 
-//3a.
-let hash;
-
 //4.
 
-function cryptoUsingMD5(data) {
+function cryptoUsingMD5(data: any) {
   return crypto.createHash('md5').update(data).digest('hex');
 }
 
 //5.
-hash = cryptoUsingMD5(credentials.realm);
+const hash: any = cryptoUsingMD5(credentials.realm);
 
 //7.
-function parseAuthenticationInfo(authData) {
-  let authenticationObj = {};
-  authData.split(', ').forEach(function (d) {
+function parseAuthenticationInfo(authData: any): any {
+  const authenticationObj: any = {};
+  authData.split(', ').forEach(function (d: any) {
     d = d.split('=');
 
     authenticationObj[d[0]] = d[1].replace(/"/g, '');
@@ -105,9 +104,9 @@ function parseAuthenticationInfo(authData) {
 }
 
 //8.
-async function login(request, res) {
-  let authInfo,
-    digestAuthObject = {};
+async function login(request: any, res: any) {
+  let authInfo;
+  const digestAuthObject: any = {};
 
   //9.
   if (!request.headers.authorization) {
@@ -120,7 +119,7 @@ async function login(request, res) {
   authInfo = parseAuthenticationInfo(authInfo);
 
   //11.
-  let client = await Authorize.findOne({ where: { login: authInfo.username } });
+  const client = await Authorize.findOne({ where: { login: authInfo.username } });
   if (!client) {
     res.header('WWW-Authenticate', 'Digest realm="' + credentials.realm + '",qop="auth",nonce="' + Math.random() + '",opaque="' + hash + '"');
     return sendAuthError(res, undefined, 'Not valid login');
@@ -137,7 +136,7 @@ async function login(request, res) {
   digestAuthObject.ha2 = cryptoUsingMD5(request.method + ':' + authInfo.uri);
 
   //14.
-  let resp = cryptoUsingMD5([digestAuthObject.ha1, authInfo.nonce, authInfo.nc, authInfo.cnonce, authInfo.qop, digestAuthObject.ha2].join(':'));
+  const resp = cryptoUsingMD5([digestAuthObject.ha1, authInfo.nonce, authInfo.nc, authInfo.cnonce, authInfo.qop, digestAuthObject.ha2].join(':'));
 
   digestAuthObject.response = resp;
 
@@ -150,8 +149,8 @@ async function login(request, res) {
   appendTraceMeta({ login });
   return true;
 }
-const checkConfigAuth = async function (req, res, next) {
+const checkConfigAuth = async function (req: any, res: any, next: any) {
   if (await login(req, res)) next();
 };
 
-module.exports = { checkAuth, checkTestAuth, checkConfigAuth };
+export { checkAuth, checkTestAuth, checkConfigAuth };

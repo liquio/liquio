@@ -1,25 +1,25 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
 jest.mock('../models/authorize', () => ({
   AuthorizeModel: jest.fn().mockImplementation(() => ({ Authorize: { findOne: jest.fn() } })),
 }));
 
-const { AuthorizeModel } = require('../models/authorize');
-const { checkAuth } = require('./auth');
+import { AuthorizeModel } from '../models/authorize';
+import { checkAuth } from './auth';
 
 const makeRes = () => ({ send: jest.fn() });
 const makeNext = () => jest.fn();
 
-const getFindOneMock = () => AuthorizeModel.mock.results[0].value.Authorize.findOne;
+const getFindOneMock = () => (AuthorizeModel as any).mock.results[0].value.Authorize.findOne;
 
 describe('checkAuth', () => {
   beforeEach(() => {
-    global.conf = { authorization: {} };
+    (global as any).conf = { authorization: {} };
     getFindOneMock().mockReset();
   });
 
   it('allows request when base64 token matches plain credentials from config list', async () => {
-    global.conf.authorization.list = [{ user: 'notification', password: 'secret-pass' }];
+    (global as any).conf.authorization.list = [{ user: 'notification', password: 'secret-pass' }];
     const token = Buffer.from('notification:secret-pass', 'utf8').toString('base64');
     const req = { headers: { authorization: `Basic ${token}` } };
     const res = makeRes();

@@ -1,13 +1,14 @@
-const { ConfigsModel } = require('../models/configs');
-const { checkConfigAuth } = require('./auth');
-const { Configs } = new ConfigsModel();
-let Router = require('restify-router').Router;
-let routerInstance = new Router();
+import { Router } from 'restify-router';
+import { ConfigsModel } from '../models/configs';
+import { checkConfigAuth } from './auth';
 
-const ConfigsController = class {
-  constructor(server) {
+const { Configs } = new ConfigsModel();
+const routerInstance = new Router();
+
+export class ConfigsController {
+  constructor(server: any) {
     this.registerRoutes();
-    return routerInstance.applyRoutes(server, 'configs');
+    return routerInstance.applyRoutes(server, 'configs') as any;
   }
 
   registerRoutes() {
@@ -17,9 +18,9 @@ const ConfigsController = class {
     routerInstance.del('/:id', checkConfigAuth, this.deleteConfig.bind(this));
   }
 
-  async getConfig(req, res, next) {
-    let { environment } = req.query,
-      query = {};
+  async getConfig(req: any, res: any, next: any) {
+    const { environment } = req.query;
+    let query: any = {};
     if (environment) {
       query = {
         where: {
@@ -27,16 +28,16 @@ const ConfigsController = class {
         },
       };
     }
-    let result = await Configs.findAll(query);
+    const result = await Configs.findAll(query);
     res.send(result);
     next();
   }
 
-  async upsertConfig(req, res, next) {
-    let { id } = req.params,
-      { body } = req,
-      { method } = req.route,
-      result;
+  async upsertConfig(req: any, res: any, next: any) {
+    const { id } = req.params;
+    const { body } = req;
+    const { method } = req.route;
+    let result;
     if (!body) {
       return res.send(400, { message: 'Empty body' });
     }
@@ -63,8 +64,8 @@ const ConfigsController = class {
     next();
   }
 
-  async deleteConfig(req, res, next) {
-    let { id } = req.params;
+  async deleteConfig(req: any, res: any, next: any) {
+    const { id } = req.params;
     if (!id) {
       return res.send(400, { message: 'Config ID empty' });
     }
@@ -73,11 +74,9 @@ const ConfigsController = class {
         where: { id },
       });
       res.send();
-    } catch (e) {
+    } catch (e: any) {
       res.send(500, e.message);
     }
     next();
   }
-};
-
-module.exports = ConfigsController;
+}

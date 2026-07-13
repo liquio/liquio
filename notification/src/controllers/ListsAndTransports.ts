@@ -1,21 +1,21 @@
-const { CommunicationModel } = require('../models/communications');
-const { UserSubscribesModel: SettingsModel } = require('../models/user_subscribes');
-const { UserSubscribesModel } = require('../models/user_subscribes');
-const { EventsModel } = require('../models/events');
-const { checkAuth } = require('./auth');
-const { Auth } = require('../models/authServer');
-let Router = require('restify-router').Router;
-let routerInstance = new Router();
+import { Router } from 'restify-router';
+import { CommunicationModel } from '../models/communications';
+import { UserSubscribesModel, UserSubscribesModel as SettingsModel } from '../models/user_subscribes';
+import { EventsModel } from '../models/events';
+import { checkAuth } from './auth';
+import { Auth } from '../models/authServer';
+
+const routerInstance = new Router();
 const Communication = new CommunicationModel().Communications;
-const Settings = new SettingsModel().Settings;
+const Settings = (new SettingsModel() as any).Settings;
 const { UserSubscribes } = new UserSubscribesModel();
 const Events = new EventsModel().Events;
 
-const Lists = class extends Auth {
-  constructor(server) {
+export class Lists extends Auth {
+  constructor(server: any) {
     super();
     this.registerRoutes();
-    return routerInstance.applyRoutes(server);
+    return routerInstance.applyRoutes(server) as any;
   }
 
   registerRoutes() {
@@ -32,8 +32,8 @@ const Lists = class extends Auth {
     routerInstance.del('/event', checkAuth, this.removeEvents.bind(this));
   }
 
-  async getLists(req, res, next) {
-    let query = {
+  async getLists(req: any, res: any, next: any) {
+    const query: any = {
       where: {
         enable: true,
       },
@@ -42,7 +42,7 @@ const Lists = class extends Auth {
       delete query.where;
     }
 
-    let result = await Events.findAll({
+    const result = await Events.findAll({
       // attributes: [['setting_id','id']],
       ...query,
       order: [['event_id', 'asc']],
@@ -69,12 +69,12 @@ const Lists = class extends Auth {
     next();
   }
 
-  async addTransport(req, res, next) {
+  async addTransport(req: any, res: any, next: any) {
     if (!req.body.name || req.body.name == '') {
       return res.send(400, { message: 'Name empty' });
     }
 
-    let result = await Communication.findOrCreate({
+    const result = await Communication.findOrCreate({
       where: {
         name: req.body.name,
         enable: req.body.enable,
@@ -84,13 +84,13 @@ const Lists = class extends Auth {
     next();
   }
 
-  async getTransport(req, res, next) {
-    let result = await Communication.findAll();
+  async getTransport(req: any, res: any, next: any) {
+    const result = await Communication.findAll();
     res.send(result);
     next();
   }
 
-  async removeTransport(req, res, _next) {
+  async removeTransport(req: any, res: any, _next: any) {
     if (!!req.query.communication_id == false) {
       return res.send(400, { message: 'communication_id empty' });
     }
@@ -103,7 +103,7 @@ const Lists = class extends Auth {
     res.send();
   }
 
-  async addEvents(req, res, _next) {
+  async addEvents(req: any, res: any, _next: any) {
     if (!req.body.name || req.body.name == '') {
       return res.send(400, { message: 'Name empty' });
     }
@@ -119,12 +119,12 @@ const Lists = class extends Auth {
         },
       });
       res.send(result);
-    } catch (e) {
+    } catch (e: any) {
       return res.send(500, e.message);
     }
   }
 
-  async updateEvents(req, res, _next) {
+  async updateEvents(req: any, res: any, _next: any) {
     if (!req.body.name || req.body.name == '') {
       return res.send(400, { message: 'Name empty' });
     }
@@ -136,13 +136,13 @@ const Lists = class extends Auth {
     }
   }
 
-  async getEvents(req, res, next) {
+  async getEvents(req: any, res: any, next: any) {
     const result = await Events.findAll();
     res.send(result);
     next();
   }
 
-  async getUsersByEvent(req, res, next) {
+  async getUsersByEvent(req: any, res: any, next: any) {
     const { event_id } = req.params;
 
     if (!event_id) {
@@ -151,7 +151,7 @@ const Lists = class extends Auth {
       });
     }
 
-    let result = await Settings.findAll({
+    const result = await Settings.findAll({
       attributes: [['setting_id', 'id']],
       where: {
         event_id,
@@ -164,24 +164,24 @@ const Lists = class extends Auth {
       ],
     });
 
-    let users_id = new Set();
+    const users_id = new Set();
     if (result.length > 0) {
-      for (let setting of result) {
+      for (const setting of result) {
         if (setting.user_subscribes.length > 0) {
-          for (let user of setting.user_subscribes) {
+          for (const user of setting.user_subscribes) {
             users_id.add(user.user_id);
           }
         }
       }
     }
 
-    let users = await this.getUsers(users_id);
+    const users = await this.getUsers(users_id);
 
     res.send(users);
     next();
   }
 
-  async removeEvents(req, res, _next) {
+  async removeEvents(req: any, res: any, _next: any) {
     if (!!req.query.event_id == false) {
       return res.send(400, { message: 'event_id empty' });
     }
@@ -194,7 +194,7 @@ const Lists = class extends Auth {
     res.send();
   }
 
-  async addRelation(req, res, _next) {
+  async addRelation(req: any, res: any, _next: any) {
     if (!!req.body.event_id == false) {
       return res.send(400, { message: 'event_id empty' });
     }
@@ -203,7 +203,7 @@ const Lists = class extends Auth {
     }
 
     // console.log(req.body.transports);
-    let array = req.body.transports.map(async (el) => {
+    const array = req.body.transports.map(async (el: any) => {
       return await Settings.findCreateFind({
         where: {
           event_id: req.body.event_id,
@@ -211,8 +211,8 @@ const Lists = class extends Auth {
         },
       });
     });
-    let incommingArray = await Promise.all(array);
-    let arr = incommingArray.map(async (el, i) => {
+    const incommingArray = await Promise.all(array);
+    const arr = incommingArray.map(async (el: any, i: number) => {
       await Settings.update(
         {
           ...el[0].dataValues,
@@ -229,11 +229,11 @@ const Lists = class extends Auth {
         ...req.body.transports[i],
       };
     });
-    let resp = await Promise.all(arr);
+    const resp = await Promise.all(arr);
     res.send(resp);
   }
 
-  async removeRelation(req, res, _next) {
+  async removeRelation(req: any, res: any, _next: any) {
     if (!!req.query.setting_id == false) {
       return res.send(400, { message: 'setting_id empty' });
     }
@@ -246,10 +246,8 @@ const Lists = class extends Auth {
     res.send();
   }
 
-  async getUsers(list_user_id) {
+  async getUsers(list_user_id: any) {
     const usersFull = await this.getUsersInfo(list_user_id);
     return usersFull;
   }
-};
-
-module.exports = Lists;
+}

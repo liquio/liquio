@@ -1,14 +1,14 @@
-const { MessangerModel } = require('../models/smsGate/messangerModel');
-const { checkAuth } = require('./auth');
+import { Router } from 'restify-router';
+import { MessangerModel } from '../models/smsGate/messangerModel';
+import { checkAuth } from './auth';
 
-let Router = require('restify-router').Router;
-let routerInstance = new Router();
+const routerInstance = new Router();
 
-const Queue = class extends MessangerModel {
-  constructor(server) {
+export class Queue extends MessangerModel {
+  constructor(server: any) {
     super();
     this.registerRoutes();
-    return routerInstance.applyRoutes(server, 'queue');
+    return routerInstance.applyRoutes(server, 'queue') as any;
   }
 
   registerRoutes() {
@@ -21,17 +21,17 @@ const Queue = class extends MessangerModel {
     routerInstance.get('/log', checkAuth, this.SMSLog.bind(this));
   }
 
-  async SMSQueue(req, res, _next) {
+  async SMSQueue(req: any, res: any, _next: any) {
     const t = await this.getSMSQueue();
     res.send(t);
   }
 
-  async SMSQueueClear(req, res, _next) {
+  async SMSQueueClear(req: any, res: any, _next: any) {
     const t = await this.removeFromQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
     res.send(t);
   }
 
-  async resendSMS(req, res, _next) {
+  async resendSMS(req: any, res: any, _next: any) {
     try {
       const t = await this.retrySendInQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
       res.send(t);
@@ -40,15 +40,13 @@ const Queue = class extends MessangerModel {
     }
   }
 
-  async SMSQueueCounter(req, res, _next) {
+  async SMSQueueCounter(req: any, res: any, _next: any) {
     const t = await this.getSMSQueueCounter();
     res.send(t);
   }
 
-  async SMSLog(req, res, _next) {
+  async SMSLog(req: any, res: any, _next: any) {
     const t = await this.getSMSLog(req.query.phone);
     res.send(t);
   }
-};
-
-module.exports = Queue;
+}

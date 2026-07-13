@@ -1,8 +1,8 @@
 // Imports.
-const { checkAuth } = require('./auth');
-const Router = require('restify-router').Router;
-const axios = require('axios');
-const { conf } = require('../config/config');
+import axios from 'axios';
+import { Router } from 'restify-router';
+import { checkAuth } from './auth';
+import { conf } from '../config/config';
 
 const routerInstance = new Router();
 
@@ -21,10 +21,10 @@ const DEFAULT_ENVIRONMENT = '0';
  * Test controller constructor.
  * @param {object} server Server instance.
  */
-const TestController = class {
-  constructor(server) {
+export class TestController {
+  constructor(server: any) {
     this.registerRoutes();
-    return routerInstance.applyRoutes(server);
+    return routerInstance.applyRoutes(server) as any;
   }
 
   /**
@@ -41,23 +41,23 @@ const TestController = class {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async ping(req, res) {
+  async ping(req: any, res: any) {
     // Define params.
     const healthCheck = req.query.health_check;
 
     // Prepare response data.
     const processPid = process.pid;
-    const responseData = {
+    const responseData: any = {
       processPid,
       message: MESSAGE_PONG,
     };
 
     if (healthCheck) {
-      let authServicePingResponse;
+      let authServicePingResponse: any;
       let authServicePingResponseError;
       try {
         authServicePingResponse = await this.sendPingRequest(AUTH_SERVICE_NAME);
-      } catch (error) {
+      } catch (error: any) {
         console.log(error && error.message);
         authServicePingResponseError = error && error.message;
       }
@@ -82,11 +82,11 @@ const TestController = class {
         responseData.authServiceMeta = { ...responseData.authServiceMeta, error: authServicePingResponseError };
       }
 
-      let persistLinkPingResponse;
+      let persistLinkPingResponse: any;
       let persistLinkPingResponseError;
       try {
         persistLinkPingResponse = await this.sendPingRequest(PERSIST_LINK_SERVICE_NAME);
-      } catch (error) {
+      } catch (error: any) {
         console.log(error && error.message);
         persistLinkPingResponseError = error && error.message;
       }
@@ -119,18 +119,19 @@ const TestController = class {
   /**
    * Send ping request to eds server.
    */
-  async sendPingRequest(serviceName) {
+  async sendPingRequest(serviceName: any) {
     let pingUrl;
     let headers;
     switch (serviceName) {
       case PERSIST_LINK_SERVICE_NAME: {
-        pingUrl = conf.pingRoutes.persistLink || PERSIST_LINK_PING_URL;
+        pingUrl = (conf as any).pingRoutes.persistLink || PERSIST_LINK_PING_URL;
         headers = {};
         break;
       }
       case AUTH_SERVICE_NAME: {
-        pingUrl = (conf.pingRoutes.authService || AUTH_SERVICE_PING_URL) + '_with_auth';
-        const basicAuthToken = conf.auth_server.basicAuthToken || Buffer.from(conf.auth_server.user + ':' + conf.auth_server.password, 'utf8').toString('base64');
+        pingUrl = ((conf as any).pingRoutes.authService || AUTH_SERVICE_PING_URL) + '_with_auth';
+        const basicAuthToken =
+          (conf as any).auth_server.basicAuthToken || Buffer.from((conf as any).auth_server.user + ':' + (conf as any).auth_server.password, 'utf8').toString('base64');
         headers = { Authorization: basicAuthToken.startsWith('Basic ') ? basicAuthToken : 'Basic ' + basicAuthToken };
         break;
       }
@@ -141,12 +142,12 @@ const TestController = class {
     const response = await axios({ url: pingUrl, method: 'GET', headers });
 
     const responseData = response && response.data;
-    const version = response && response.headers && response.headers.version;
-    const customer = response && response.headers && response.headers.customer;
-    const environment = response && response.headers && response.headers.environment;
+    const version = response && response.headers && (response.headers as any).version;
+    const customer = response && response.headers && (response.headers as any).customer;
+    const environment = response && response.headers && (response.headers as any).environment;
     const versionEquality = this.checkServiceVersion(serviceName, version);
-    const serviceCustomer = (conf && conf.customer) || DEFAULT_CUSTOMER;
-    const serviceEnvironment = (conf && conf.environment) || DEFAULT_ENVIRONMENT;
+    const serviceCustomer = ((conf as any) && (conf as any).customer) || DEFAULT_CUSTOMER;
+    const serviceEnvironment = ((conf as any) && (conf as any).environment) || DEFAULT_ENVIRONMENT;
     const customerEquality = serviceCustomer === customer;
     const environmentEquality = serviceEnvironment === environment;
     const isCorrectConnection =
@@ -163,16 +164,16 @@ const TestController = class {
    * @param {string} serviceName Service name.
    * @param {string} serviceVersion Service version.
    */
-  checkServiceVersion(serviceName, serviceVersion) {
-    const serviceVersionInfo = conf && conf.versions && conf.versions.services.find((v) => v.name === serviceName);
+  checkServiceVersion(serviceName: any, serviceVersion: any) {
+    const serviceVersionInfo = (conf as any) && (conf as any).versions && (conf as any).versions.services.find((v: any) => v.name === serviceName);
     const serviceMinVersion = (serviceVersionInfo && serviceVersionInfo.minVersion) || DEFAULT_VERSION;
     if (!serviceMinVersion || !serviceVersion) {
-      log.save('can-not-find-service-min-version');
+      global.log.save('can-not-find-service-min-version');
       return false;
     }
 
-    const [versionMajor, versionMinor, versionPatch] = serviceVersion.split('.').map((v) => parseInt(v));
-    const [minVersionMajor, minVersionMinor, minVersionPatch] = serviceMinVersion.split('.').map((v) => parseInt(v));
+    const [versionMajor, versionMinor, versionPatch] = serviceVersion.split('.').map((v: string) => parseInt(v));
+    const [minVersionMajor, minVersionMinor, minVersionPatch] = serviceMinVersion.split('.').map((v: string) => parseInt(v));
 
     if (versionMajor > minVersionMajor) {
       return true;
@@ -197,6 +198,4 @@ const TestController = class {
 
     return true;
   }
-};
-
-module.exports = TestController;
+}

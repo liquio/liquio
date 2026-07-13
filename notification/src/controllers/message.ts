@@ -1,21 +1,23 @@
-const Sequelize = require('sequelize');
-const { Auth } = require('../models/authServer');
-const { UserSubscribesModel } = require('../models/user_subscribes');
-const { CommunicationModel } = require('../models/communications');
-const { SettingsModel } = require('../models/settings');
-const { EventsModel } = require('../models/events');
-const { TemplatesModel } = require('../models/templates');
-const { MessangerModel } = require('../models/smsGate/messangerModel');
-const { CorezoidGate } = require('../models/smsGate/corezoidModel');
-const { MailerModel } = require('../models/emailGate/mailerModel');
-const { IncommingMessagesModel } = require('../models/incomming_messages');
-const { ImportantMessagesModel } = require('../models/important_messages');
-const { UsersMessagesModel } = require('../models/users_messages');
-const { MessageCryptTypesModel } = require('../models/message_crypt_types');
-const { checkAuth, checkTestAuth } = require('./auth');
-const axios = require('axios');
-let Router = require('restify-router').Router;
-let routerInstance = new Router();
+import Sequelize from 'sequelize';
+import axios from 'axios';
+import NodeCache from 'node-cache';
+import { Router } from 'restify-router';
+import { Auth } from '../models/authServer';
+import { UserSubscribesModel } from '../models/user_subscribes';
+import { CommunicationModel } from '../models/communications';
+import { SettingsModel } from '../models/settings';
+import { EventsModel } from '../models/events';
+import { TemplatesModel } from '../models/templates';
+import { MessangerModel } from '../models/smsGate/messangerModel';
+import { CorezoidGate } from '../models/smsGate/corezoidModel';
+import { MailerModel } from '../models/emailGate/mailerModel';
+import { IncommingMessagesModel } from '../models/incomming_messages';
+import { ImportantMessagesModel } from '../models/important_messages';
+import { UsersMessagesModel } from '../models/users_messages';
+import { MessageCryptTypesModel } from '../models/message_crypt_types';
+import { checkAuth, checkTestAuth } from './auth';
+
+const routerInstance = new Router();
 const Subscribes = new UserSubscribesModel().UserSubscribes;
 const Communication = new CommunicationModel().Communications;
 const Settings = new SettingsModel().Settings;
@@ -27,7 +29,6 @@ const ImportantMessages = new ImportantMessagesModel().ImportantMessages;
 const UsersMessages = new UsersMessagesModel().UsersMessages;
 const MessageCryptTypes = new MessageCryptTypesModel().MessageCryptTypes;
 const Corezoid = new CorezoidGate();
-const NodeCache = require('node-cache');
 const idxCache = new NodeCache({ stdTTL: 100, checkperiod: 120 });
 
 // Constants.
@@ -83,11 +84,11 @@ const UNREAD_MESSAGE_VALUE = 0;
 const READ_MESSAGE_VALUE = 1;
 const SMS_CHANNEL = '2';
 
-const Message = class extends Auth {
-  constructor(server) {
+export class Message extends Auth {
+  constructor(server: any) {
     super();
     this.registerRoutes();
-    return routerInstance.applyRoutes(server, '/message');
+    return routerInstance.applyRoutes(server, '/message') as any;
   }
 
   /**
@@ -128,7 +129,7 @@ const Message = class extends Auth {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async decryptMessage(req, res) {
+  async decryptMessage(req: any, res: any) {
     // Define params.
     const messageId = parseInt(req.params.id);
     if (isNaN(messageId)) {
@@ -162,7 +163,7 @@ const Message = class extends Auth {
     try {
       updatedMessage = await this.setDecrypted(messageId, decryptedBase64, req.query.access_token);
     } catch (error) {
-      log.save('decrypt-message-error', { messageId, error: (error && error.message) || error }, 'error');
+      global.log.save('decrypt-message-error', { messageId, error: (error && error.message) || error }, 'error');
       return res.send({ message: 'Can not decrypt message.' });
     }
 
@@ -191,7 +192,7 @@ const Message = class extends Auth {
       const updatedMessage = await this.getById(messageId, { access_token: accessToken });
       return updatedMessage;
     } catch (error) {
-      log.save('set-decrypted-message-error', { error: (error && error.message) || error }, 'error');
+      global.log.save('set-decrypted-message-error', { error: (error && error.message) || error }, 'error');
       throw error;
     }
   }
@@ -201,7 +202,7 @@ const Message = class extends Auth {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async sendTestEmail(req, res) {
+  async sendTestEmail(req: any, res: any) {
     // Define params.
     const email = req.query.email;
     const subject = TEST_EMAIL.SUBJECT;
@@ -231,7 +232,7 @@ const Message = class extends Auth {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async sendTestSMS(req, res) {
+  async sendTestSMS(req: any, res: any) {
     // Define params.
     const phone = req.query.phone;
     const translit = TEST_SMS.MESSAGE_TRANSLIT;
@@ -260,7 +261,7 @@ const Message = class extends Auth {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async sendTestUser(req, res) {
+  async sendTestUser(req: any, res: any) {
     // Define params.
     const userId = req.query.user_id;
     const subject = TEST_EMAIL.SUBJECT;
@@ -311,7 +312,7 @@ const Message = class extends Auth {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async sendTestMessageByComplexOptions(req, res) {
+  async sendTestMessageByComplexOptions(req: any, res: any) {
     // Define params.
     const userId = req.query.user_id;
     const text = (req.body && req.body.text) || TEST_EMAIL.TEXT;
@@ -344,9 +345,9 @@ const Message = class extends Auth {
     const email = user.email;
     const phoneForLogging = phone ? phone.slice(0, -2) + '**' : '';
     const emailForLogging = email ? '**' + email.slice(2, email.length) : '';
-    log.save('send-test-message-by-complex-option-request', { userId, phone: phoneForLogging, email: emailForLogging });
+    global.log.save('send-test-message-by-complex-option-request', { userId, phone: phoneForLogging, email: emailForLogging });
 
-    let processingIdsList = [];
+    const processingIdsList = [];
     for (const transfer of transfers) {
       // Send.
       const channel = this.getComplexMessageChannel(transfer);
@@ -357,7 +358,7 @@ const Message = class extends Auth {
       }
 
       const optionsKey = this.getComplexMessageOptionKey(transfer);
-      let sendingOptionsObject = {
+      const sendingOptionsObject = {
         ...(options.general || {}),
         ...(options[optionsKey] || {}),
         Channel: channel,
@@ -370,23 +371,22 @@ const Message = class extends Auth {
       processingIdsList.push(processingId);
     }
     const isConnectionToEConsultApi = processingIdsList.some((v) => typeof v === 'string');
-    log.save('send-test-message-by-complex-option-response', { response: processingIdsList });
+    global.log.save('send-test-message-by-complex-option-response', { response: processingIdsList });
 
     // Response sending result.
     res.send({ data: { isConnectionToEConsultApi, processingIdsList } });
   }
 
-  async sendMessageByUsersList(req, res, _next) {
+  async sendMessageByUsersList(req: any, res: any, _next: any) {
     // Define params.
-    let { body } = req;
+    const { body } = req;
 
     // Check if no need to handle.
     if (!this.issetUserList(body) && !this.issetUserIpnList(body)) {
       return res.send(400, { message: 'Users List empty' });
     }
 
-    let result;
-    let msg = await IncommingMessages.create({
+    const msg = await IncommingMessages.create({
       ...body,
       meta: body?.attachments?.length
         ? { attachments: body.attachments.map((v) => ({ fileId: v.fileId, p7sFileId: v.p7sFileId, fileName: v.filename })) }
@@ -399,7 +399,7 @@ const Message = class extends Auth {
       return res.send(400, { message: 'not_send parameter must have boolean type' });
     }
 
-    let ipnNotFound = [];
+    const ipnNotFound = [];
 
     let usersInfo;
     try {
@@ -421,7 +421,7 @@ const Message = class extends Auth {
     let sendByEmail = usersInfo.map((v) => v.email).filter((v) => !!v);
     let sendByEmailPromise;
     let sendBySmsPromise;
-    log.save('send-message-by-user-request', { phones: sendBySms, emails: sendByEmail });
+    global.log.save('send-message-by-user-request', { phones: sendBySms, emails: sendByEmail });
 
     usersMessages = await UsersMessages.bulkCreate(
       usersInfo.map((v) => {
@@ -445,8 +445,8 @@ const Message = class extends Auth {
       // Check phones prefix in SMS blacklist.
       const smsBlacklist = (global.conf && global.conf.smsBlacklist) || [];
       const phonesToSend = sendBySms;
-      let allowedPhones = [];
-      let blockedPhones = [];
+      const allowedPhones = [];
+      const blockedPhones = [];
       for (const phoneToSend of phonesToSend) {
         const isSmsBlacklistIncludesPhone = phoneToSend && smsBlacklist.some((v) => phoneToSend.startsWith(v));
         if (isSmsBlacklistIncludesPhone) {
@@ -457,7 +457,7 @@ const Message = class extends Auth {
       }
       if (blockedPhones.length > 0) {
         // Inform SMS can not be sent.
-        log.save('send-message-by-user-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
+        global.log.save('send-message-by-user-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
         sendBySms = { error: 'Some phones denied by blacklist.', blockedPhones };
         sendBySmsPromise = Promise.resolve(sendBySms);
       } else {
@@ -482,7 +482,7 @@ const Message = class extends Auth {
         }
 
         for (const message of usersMessages) {
-          let importantData = {
+          const importantData: any = {
             user_message_id: message.userMessageId,
             message_id: message.messageId,
             is_active: true,
@@ -520,7 +520,7 @@ const Message = class extends Auth {
       isError = true;
     }
 
-    result = { messageId: msg.message_id, usersMessages, sendBySms, sendByEmail, ...(ipnNotFound.length && { ipnNotFound: ipnNotFound }) };
+    const result = { messageId: msg.message_id, usersMessages, sendBySms, sendByEmail, ...(ipnNotFound.length && { ipnNotFound: ipnNotFound }) };
     res.status(isError ? 500 : 200);
     return res.send(result);
   }
@@ -536,11 +536,11 @@ const Message = class extends Auth {
    * @param {{short, medium, large, largeTitle}} req.body.text Text.
    * @param {object} res HTTP response.
    */
-  async sendMessageByComplexOptions(req, res) {
+  async sendMessageByComplexOptions(req: any, res: any) {
     // Define params.
     const { body } = req;
     const { workflowId, transfers, destination, options, text } = body || {};
-    log.save('send-message-by-complex-option-request');
+    global.log.save('send-message-by-complex-option-request');
 
     // Check main params.
     const errors = this.getComplexParamsErrors(workflowId, transfers, destination, options, text);
@@ -578,7 +578,7 @@ const Message = class extends Auth {
     const phoneToSend = ['sms', 'push'].some((v) => transfers.includes(v)) ? validPhone : undefined;
     const emailForLogging = emailToSend ? '**' + emailToSend.slice(2, email.length) : '';
     const phoneForLogging = phoneToSend ? phoneToSend.slice(0, -2) + '**' : '';
-    log.save('send-message-by-complex-option-request-body', { email: emailForLogging, phone: phoneForLogging });
+    global.log.save('send-message-by-complex-option-request-body', { email: emailForLogging, phone: phoneForLogging });
 
     // Define user name.
     const lastName = (userInfo && userInfo.last_name) || undefined;
@@ -600,15 +600,15 @@ const Message = class extends Auth {
     const attachLinksString = attachLinks.join(';');
 
     // Prepare and send via E-Consulting.
-    let processingIdsList = [];
-    let rawResponsesList = [];
+    const processingIdsList = [];
+    const rawResponsesList = [];
     for (const transfer of transfers) {
       // Log destination params.
-      log.save('send-message-by-complex-option-transfer', { transfer, emailToSend, phoneToSend });
+      global.log.save('send-message-by-complex-option-transfer', { transfer, emailToSend, phoneToSend });
 
       // Check id it's SMS transfer and do not send if phone denied by blacklist.
       if (transfer === 'sms' && isSmsBlacklistIncludesPhone) {
-        log.save('denied-by-sms-blacklist', { routeType: 'send-via-complex-options', transfer, phoneToSend, smsBlacklist });
+        global.log.save('denied-by-sms-blacklist', { routeType: 'send-via-complex-options', transfer, phoneToSend, smsBlacklist });
         processingIdsList.push('User phone denied by blacklist.');
         rawResponsesList.push(null);
         continue;
@@ -623,7 +623,7 @@ const Message = class extends Auth {
       const optionsKey = this.getComplexMessageOptionKey(transfer);
       //const textKey = this.getComplexMessageTextKey(transfer);
       const textKey = this.getComplexMessageNormalizedTextKey(transfer);
-      let sendingOptionsObject = {
+      const sendingOptionsObject = {
         ...(options.general || {}),
         ...(options[optionsKey] || {}),
         Channel: channel,
@@ -682,7 +682,7 @@ const Message = class extends Auth {
 
     // Response.
     const response = { processingIds: processingIdsList, rawResponses: rawResponsesList };
-    log.save('send-message-by-complex-option-response', { response });
+    global.log.save('send-message-by-complex-option-response', { response });
     res.send(response);
   }
 
@@ -728,18 +728,18 @@ const Message = class extends Auth {
    * @param {{short, medium, large, largeTitle}} text Text object.
    * @returns {Promise<{processingId, rawResponse}>} Sending result promise.
    */
-  async sendToEConsultingComplexService(sendingOptionsObject) {
+  async sendToEConsultingComplexService(sendingOptionsObject: any): Promise<any> {
     // Prepare E-Consulting service options.
     const eConsultingConf = (global.conf && global.conf.eConsultingService) || {};
     const { sendComplexMessageUrl, Authorization, logAll } = eConsultingConf;
 
     if (!sendComplexMessageUrl) {
       const error = { message: 'E-Consulting service URL not defined.' };
-      log.save('econsulting-complex-service-error', error, 'error');
+      global.log.save('econsulting-complex-service-error', error, 'error');
       return { error };
     }
 
-    log.save('econsulting-complex-service-request', { sendToEConsultingComplexService: logAll ? sendingOptionsObject : '***' });
+    global.log.save('econsulting-complex-service-request', { sendToEConsultingComplexService: logAll ? sendingOptionsObject : '***' });
     const requestSendingOptions = {
       url: sendComplexMessageUrl,
       method: 'POST',
@@ -753,11 +753,11 @@ const Message = class extends Auth {
     };
 
     // Send.
-    let rawResponse = await axios(requestSendingOptions).then((v) => v.data);
+    const rawResponse = await axios(requestSendingOptions).then((v) => v.data);
 
     // Log and return response.
     const response = { processingId: rawResponse && rawResponse.MessageID, rawResponse };
-    log.save('econsulting-complex-service-response', { response });
+    global.log.save('econsulting-complex-service-response', { response });
     return response;
   }
 
@@ -797,7 +797,7 @@ const Message = class extends Auth {
     };
 
     // Define persist link.
-    let attachLink = (await axios(requestPersistLinkOptions)).data;
+    const attachLink = (await axios(requestPersistLinkOptions)).data;
     return attachLink;
   }
 
@@ -826,7 +826,7 @@ const Message = class extends Auth {
     };
 
     // Define persist link.
-    let attachLink = (await axios(requestPersistLinkOptions)).data;
+    const attachLink = (await axios(requestPersistLinkOptions)).data;
     return attachLink;
   }
 
@@ -887,7 +887,7 @@ const Message = class extends Auth {
    */
   getComplexParamsErrors(workflowId, transfers, destination, options, text) {
     // Define errors container.
-    let errors = [];
+    const errors = [];
 
     // Check main params.
     if (!Array.isArray(transfers) || transfers.some((v) => typeof v !== 'string')) {
@@ -913,9 +913,8 @@ const Message = class extends Auth {
     return errors;
   }
 
-  async sendMessageByEmailsList(req, res, _next) {
-    let { body } = req,
-      result;
+  async sendMessageByEmailsList(req: any, res: any, _next: any) {
+    const { body } = req;
     const { sendBy } = body;
 
     if (!this.issetEmailsList(body)) {
@@ -944,15 +943,15 @@ const Message = class extends Auth {
       console.error(e);
       return res.send(e.errorCode, e.message);
     }
-    result = { sendByEmail };
+    const result = { sendByEmail };
     return res.send(result);
   }
 
-  async sendMessageByPhonesList(req, res, _next) {
-    let { body } = req,
-      result;
+  async sendMessageByPhonesList(req: any, res: any, _next: any) {
+    const { body } = req;
+    let result;
 
-    log.save('send-message-by-phone-request', { list_phone: body.list_phone });
+    global.log.save('send-message-by-phone-request', { list_phone: body.list_phone });
 
     if (!this.issetPhonesList(body)) {
       return res.send(400, { message: 'Phones list empty' });
@@ -962,8 +961,8 @@ const Message = class extends Auth {
     const smsBlacklist = (global.conf && global.conf.smsBlacklist) || [];
     const phonesToSend = Array.isArray(body.list_phone) ? body.list_phone : [body.list_phone];
 
-    let allowedPhones = [];
-    let blockedPhones = [];
+    const allowedPhones = [];
+    const blockedPhones = [];
     for (const phoneToSend of phonesToSend) {
       const isSmsBlacklistIncludesPhone = phoneToSend && smsBlacklist.some((v) => phoneToSend.startsWith(v));
       if (isSmsBlacklistIncludesPhone) {
@@ -973,7 +972,7 @@ const Message = class extends Auth {
       }
     }
     if (blockedPhones.length > 0) {
-      log.save('send-message-by-phone-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
+      global.log.save('send-message-by-phone-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
       return res.send(500, { error: 'Some phones denied by blacklist.', blockedPhones });
     }
 
@@ -1005,9 +1004,9 @@ const Message = class extends Auth {
       return res.send(500, e);
     }
 
-    let sendBySMS = async () => {
+    const sendBySMS = async () => {
       try {
-        let sendBySms = await this.sendByPhones(allowedPhones, body.short_message_translit, msg.message_id);
+        const sendBySms = await this.sendByPhones(allowedPhones, body.short_message_translit, msg.message_id);
         result = { sendBySms };
       } catch (e) {
         if (e.statusCode) return res.send(e.statusCode, e);
@@ -1017,7 +1016,7 @@ const Message = class extends Auth {
     };
     if (body.private && !!body.private == true) {
       try {
-        let sendBySender = await Corezoid.sendMessageToSender(allowedPhones, body.short_message_translit);
+        const sendBySender = await Corezoid.sendMessageToSender(allowedPhones, body.short_message_translit);
         idxCache.set(sendBySender.ref, { list_phone: allowedPhones, short_message_translit: body.short_message_translit });
         result = sendBySender.response;
         return res.send(result);
@@ -1029,9 +1028,9 @@ const Message = class extends Auth {
     }
   }
 
-  async sendMessageByEventId(req, res, _next) {
-    let { body } = req,
-      result;
+  async sendMessageByEventId(req: any, res: any, _next: any) {
+    const { body } = req;
+    let result;
     if (!this.issetEventId(body)) {
       return res.send(400, { message: 'Event ID empty' });
     }
@@ -1050,7 +1049,7 @@ const Message = class extends Auth {
       return res.send(e.statusCode, e.error);
     }
 
-    let settingsArray = await Subscribes.findAll({
+    const settingsArray = await Subscribes.findAll({
       attributes: ['user_id', 'setting_id'],
       where: {
         setting_id: events.settings.map((v) => v.dataValues.id),
@@ -1065,10 +1064,10 @@ const Message = class extends Auth {
     }
 
     if (msg) {
-      let users_idx = new Set(settingsArray.map((v) => v.user_id));
+      const users_idx = new Set(settingsArray.map((v) => v.user_id));
       await UsersMessages.bulkCreate(
         [...users_idx].map((v) => {
-          let obj = {
+          const obj = {
             user_id: v,
             message_id: msg.message_id,
             event_id: events.event_id,
@@ -1081,7 +1080,7 @@ const Message = class extends Auth {
     return res.send(result);
   }
 
-  async getMessages(req, res, _next) {
+  async getMessages(req: any, res: any, _next: any) {
     // Define params.
     const showAll = req.query.showAll === 'true';
 
@@ -1089,8 +1088,8 @@ const Message = class extends Auth {
     let result, resultCount, unreadQuantity, readQuantity;
     if (req.query.access_token || req.query.user_id) {
       try {
-        let userId = req.query.user_id || (await this.checkToken(req.query.access_token))._id;
-        let queryParams = { ...req.query, user_id: req.query.user_id || userId };
+        const userId = req.query.user_id || (await this.checkToken(req.query.access_token))._id;
+        const queryParams = { ...req.query, user_id: req.query.user_id || userId };
         delete queryParams.access_token;
         const resultPromise = showAll && req.query.access_token ? this.getAllUserMessages(queryParams) : this.getUserMessages(queryParams);
         const resultCountPromise =
@@ -1108,7 +1107,7 @@ const Message = class extends Auth {
         const error = {
           message: e?.message || 'Can not get messages.',
         };
-        log.save('get-messages-error', { statusCode, error }, 'error');
+        global.log.save('get-messages-error', { statusCode, error }, 'error');
         return res.send(statusCode, { error });
       }
     } else {
@@ -1130,7 +1129,6 @@ const Message = class extends Auth {
     const startFrom = parseInt(queryParams.start) || PAGINATION_START_FROM;
     const count = parseInt(queryParams.count) || PAGINATION_TO;
 
-    let messages;
     const queryOptions = {
       offset: startFrom,
       limit: count,
@@ -1156,8 +1154,8 @@ const Message = class extends Auth {
       ],
       order: [['date_create', 'desc']],
     };
-    log.save('get-all-messages-query-options', { queryOptions });
-    messages = await IncommingMessages.findAll(queryOptions);
+    global.log.save('get-all-messages-query-options', { queryOptions });
+    const messages = await IncommingMessages.findAll(queryOptions);
 
     return messages.map((v) => {
       return {
@@ -1197,7 +1195,7 @@ const Message = class extends Auth {
       user_id = obj.user_id;
     }
 
-    const filterObj =
+    const filterObj: any =
       isRead === 0 ? { user_id, $or: [{ is_read: isRead }, { is_read: null }] } : isRead === 1 ? { user_id, is_read: isRead } : { user_id };
     if (fromCreatedAt && toCreatedAt) {
       filterObj.$and = [
@@ -1209,7 +1207,7 @@ const Message = class extends Auth {
       filterObj.$and = [Sequelize.where(Sequelize.fn('date', Sequelize.col('incomming_message.date_create')), { $lte: toCreatedAt })];
     }
 
-    let incomingMessagesFilterObject = {};
+    const incomingMessagesFilterObject: any = {};
     if (clientId) {
       incomingMessagesFilterObject.client_id = clientId;
     }
@@ -1236,7 +1234,7 @@ const Message = class extends Auth {
       ],
       order: [[IncommingMessages, 'date_create', 'desc']],
     };
-    let messages = await UsersMessages.findAll(queryOptions);
+    const messages = await UsersMessages.findAll(queryOptions);
     return messages.map((v) => {
       return {
         id: v.incomming_message.message_id,
@@ -1272,7 +1270,7 @@ const Message = class extends Auth {
     const fromCreatedAt = obj.from_created_at;
     const toCreatedAt = obj.to_created_at;
     const clientId = obj.client_id;
-    const filterObj = isRead === 0 || isRead === 1 ? { user_id, is_read: isRead } : { user_id };
+    const filterObj: any = isRead === 0 || isRead === 1 ? { user_id, is_read: isRead } : { user_id };
     if (fromCreatedAt && toCreatedAt) {
       filterObj.$and = [
         Sequelize.where(Sequelize.fn('date', Sequelize.col('incomming_message.date_create')), { $between: [fromCreatedAt, toCreatedAt] }),
@@ -1283,12 +1281,12 @@ const Message = class extends Auth {
       filterObj.$and = [Sequelize.where(Sequelize.fn('date', Sequelize.col('incomming_message.date_create')), { $lte: toCreatedAt })];
     }
 
-    let incomingMessagesFilterObject = {};
+    const incomingMessagesFilterObject: any = {};
     if (clientId) {
       incomingMessagesFilterObject.client_id = clientId;
     }
 
-    let messagesCount = await UsersMessages.count({
+    const messagesCount = await UsersMessages.count({
       where: filterObj,
       include: [
         {
@@ -1344,7 +1342,7 @@ const Message = class extends Auth {
     const { event_id, search } = queryParams;
 
     // Define messages info.
-    const userMessagesFilterObject =
+    const userMessagesFilterObject: any =
       isRead === 0 ? { user_id, $or: [{ is_read: isRead }, { is_read: null }] } : isRead === 1 ? { user_id, is_read: isRead } : { user_id };
     if (fromCreatedAt && toCreatedAt) {
       userMessagesFilterObject.$and = [
@@ -1358,7 +1356,7 @@ const Message = class extends Auth {
       userMessagesFilterObject.$and = [Sequelize.where(Sequelize.fn('date', Sequelize.col('incomming_message.date_create')), { $lte: toCreatedAt })];
     }
 
-    let incomingMessagesFilterObject = {};
+    const incomingMessagesFilterObject: any = {};
     if (event_id) {
       incomingMessagesFilterObject.event_id = parseInt(event_id);
     }
@@ -1459,7 +1457,7 @@ const Message = class extends Auth {
     const clientId = queryParams.client_id;
 
     // Define messages info.
-    const userMessagesFilterObject =
+    const userMessagesFilterObject: any =
       isRead === 0 ? { user_id, $or: [{ is_read: isRead }, { is_read: null }] } : isRead === 1 ? { user_id, is_read: isRead } : { user_id };
     if (fromCreatedAt && toCreatedAt) {
       userMessagesFilterObject.$and = [
@@ -1473,7 +1471,7 @@ const Message = class extends Auth {
       userMessagesFilterObject.$and = [Sequelize.where(Sequelize.fn('date', Sequelize.col('incomming_message.date_create')), { $lte: toCreatedAt })];
     }
 
-    let incomingMessagesFilterObject = {};
+    const incomingMessagesFilterObject: any = {};
     if (event_id) {
       incomingMessagesFilterObject.event_id = parseInt(event_id);
     }
@@ -1504,7 +1502,7 @@ const Message = class extends Auth {
     return messagesCount;
   }
 
-  async setIsReadProperty(req, res) {
+  async setIsReadProperty(req: any, res: any) {
     // Define params.
     let messageIds, messageIdsArray;
     try {
@@ -1575,7 +1573,7 @@ const Message = class extends Auth {
     return updatedMessageCount;
   }
 
-  async getUnreadUserMessagesCount(req, res) {
+  async getUnreadUserMessagesCount(req: any, res: any) {
     let total;
     if (req.query.access_token || req.query.user_id) {
       // Update message data.
@@ -1584,7 +1582,7 @@ const Message = class extends Auth {
         if (req.query.access_token) {
           userId = (await this.checkToken(req.query.access_token))._id;
         }
-        let queryParams = { ...req.query, user_id: req.query.user_id || userId };
+        const queryParams = { ...req.query, user_id: req.query.user_id || userId };
         delete queryParams.access_token;
         total = await this.countUnreadMessages(queryParams);
       } catch (e) {
@@ -1626,7 +1624,7 @@ const Message = class extends Auth {
       user_id,
       $or: [{ is_read: UNREAD_MESSAGE_VALUE }, { is_read: null }],
     };
-    let incomingMessagesFilterObject = {};
+    const incomingMessagesFilterObject: any = {};
     if (event_id) {
       incomingMessagesFilterObject.event_id = parseInt(event_id);
     }
@@ -1674,7 +1672,7 @@ const Message = class extends Auth {
 
     // Define messages info.
     const userMessagesFilterObject = { user_id, is_read: READ_MESSAGE_VALUE };
-    let incomingMessagesFilterObject = {};
+    const incomingMessagesFilterObject: any = {};
     if (event_id) {
       incomingMessagesFilterObject.event_id = parseInt(event_id);
     }
@@ -1697,7 +1695,7 @@ const Message = class extends Auth {
     return messagesCount;
   }
 
-  async getMessageById(req, res) {
+  async getMessageById(req: any, res: any) {
     // Define params.
     const messageId = parseInt(req.params.id);
     if (isNaN(messageId)) {
@@ -1713,7 +1711,7 @@ const Message = class extends Auth {
           return res.send(404, { error: 'Message not found.' });
         }
       } catch (error) {
-        log.save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
+        global.log.save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
         return res.send(500, { error: (error && error.message) || error });
       }
     } else {
@@ -1747,7 +1745,7 @@ const Message = class extends Auth {
 
     // Define messages info.
     const userMessagesFilterObject = { user_id, message_id: messageId };
-    let incomingMessagesFilterObject = {};
+    const incomingMessagesFilterObject: any = {};
     const message = await UsersMessages.findOne({
       where: userMessagesFilterObject,
       include: [
@@ -1770,7 +1768,7 @@ const Message = class extends Auth {
     }
 
     // Form response data.
-    const currentMessage = {
+    const currentMessage: any = {
       messageId: message.incomming_message.message_id,
       createdAt: message.incomming_message.date_create,
       eventId: message.incomming_message.event_id,
@@ -1804,7 +1802,7 @@ const Message = class extends Auth {
   }
 
   async sendOn(body, settingsArray, events, msgid) {
-    let users_idx = new Set(settingsArray.map((v) => v.user_id));
+    const users_idx = new Set(settingsArray.map((v) => v.user_id));
     let communications = events.settings.map((v) => {
       return {
         name: v.dataValues.communication.dataValues.name,
@@ -1820,14 +1818,14 @@ const Message = class extends Auth {
       throw e;
     }
     communications = communications.map((val) => {
-      let r = settingsArray.filter((v) => {
+      const r = settingsArray.filter((v) => {
         return v.setting_id === val.setting_id;
       });
-      let user_id = r.map((v) => v.user_id);
+      const user_id = r.map((v) => v.user_id);
       val.users = [
         ...new Set(
           user_id.map((v) => {
-            let user = usersInfos.find((u) => u._id === v && 'valid' in u && u.valid.phone == true);
+            const user = usersInfos.find((u) => u._id === v && 'valid' in u && u.valid.phone == true);
             if (user) return { phone: user.phone, email: user.email };
           }),
         ),
@@ -1859,8 +1857,8 @@ const Message = class extends Auth {
   }
 
   async prepareUserToEvent(body, result) {
-    let arr = body.list_user_id.map(async (user_id) => {
-      let arr = result.settings.map(async (val) => {
+    const arr = body.list_user_id.map(async (user_id) => {
+      const arr = result.settings.map(async (val) => {
         val = val.dataValues;
         return await Subscribes.findOne({
           where: {
@@ -1869,15 +1867,15 @@ const Message = class extends Auth {
           },
         });
       });
-      let t = await Promise.all(arr);
+      const t = await Promise.all(arr);
       return t.filter((v) => v !== null);
     });
-    let t = await Promise.all(arr);
+    const t = await Promise.all(arr);
     return (result = t.filter((v) => v.length != 0));
   }
 
   async findEvents(body) {
-    let r = await Events.findOne({
+    const r = await Events.findOne({
       // attributes: [['setting_id','id']],
       where: {
         enable: true,
@@ -1993,7 +1991,7 @@ const Message = class extends Auth {
     });
   }
 
-  async sendByPhones(users, short_message_translit, msgid) {
+  async sendByPhones(users: any, short_message_translit: any, msgid?: any) {
     let sendBySms;
     if (users.length == 1) {
       sendBySms = await messangerGate.sendOneSms(users[0], short_message_translit, msgid);
@@ -2013,7 +2011,7 @@ const Message = class extends Auth {
    * @param {object[]} [attachments] Attachments.
    * @param {boolean} [doNotEscapeEmail] Do not escape email indicator.
    */
-  async sendByEmails(users, subject, fullMessage, sendBy, templateId, attachments, doNotEscapeEmail = false) {
+  async sendByEmails(users: any, subject: any, fullMessage: any, sendBy?: any, templateId?: any, attachments?: any, doNotEscapeEmail = false) {
     // Normalize full message.
     let normalizedFullMessage = await this.normalizeFullMessage(fullMessage);
 
@@ -2028,8 +2026,7 @@ const Message = class extends Auth {
     let sendByEmail;
     try {
       if (users.length == 1) {
-        let t;
-        t = await MailerModel.sendOneMail({
+        const t = await MailerModel.sendOneMail({
           text: normalizedFullMessage,
           subject,
           email: users[0],
@@ -2039,7 +2036,7 @@ const Message = class extends Auth {
         });
         sendByEmail = (t && t.result) || t;
       } else if (users.length > 1) {
-        let t = await MailerModel.sendMail({
+        const t = await MailerModel.sendMail({
           text: normalizedFullMessage,
           subject,
           users,
@@ -2070,9 +2067,9 @@ const Message = class extends Auth {
     return message;
   }
 
-  async addMessage(req, res, _next) {
-    let { body } = req,
-      result;
+  async addMessage(req: any, res: any, _next: any) {
+    const { body } = req;
+    let result;
 
     if (this.issetEventId(body) && this.issetUserList(body)) {
       let msg;
@@ -2089,18 +2086,18 @@ const Message = class extends Auth {
         return res.send(e.statusCode, e.error);
       }
 
-      let settingsIdx = await this.prepareUserToEvent(body, events);
-      let filter = function () {
+      const settingsIdx = await this.prepareUserToEvent(body, events);
+      const filter = function () {
         return new Promise((resolve) => {
           let arr = [];
-          for (let i in settingsIdx) {
-            let v = settingsIdx[i];
+          for (const i in settingsIdx) {
+            const v = settingsIdx[i];
             arr = [...arr, ...v];
             if (parseInt(i) + 1 == settingsIdx.length) resolve(arr);
           }
         });
       };
-      let settingsArray = await filter();
+      const settingsArray = await filter();
 
       try {
         result = await this.sendOn(body, settingsArray, events, msg.message_id);
@@ -2112,7 +2109,7 @@ const Message = class extends Auth {
       if (msg) {
         await UsersMessages.bulkCreate(
           body.list_user_id.map((v) => {
-            let obj = {
+            const obj = {
               user_id: v,
               message_id: msg.message_id,
               event_id: events.event_id,
@@ -2137,8 +2134,8 @@ const Message = class extends Auth {
     }
   }
 
-  async sendToAllUsers(req, res) {
-    let { body } = req;
+  async sendToAllUsers(req: any, res: any) {
+    const { body } = req;
 
     if (!this.isValidFullMessage(body) || !this.isValidTitleMessage(body)) {
       const inputParamsError = new Error('Not valid message.');
@@ -2149,7 +2146,7 @@ const Message = class extends Auth {
     try {
       msg = await IncommingMessages.create({ ...body });
     } catch (err) {
-      log.save('send-msg-to-all-create-incomming-message-error', { error: err }, 'error');
+      global.log.save('send-msg-to-all-create-incomming-message-error', { error: err }, 'error');
       return res.send(500, err);
     }
 
@@ -2161,7 +2158,7 @@ const Message = class extends Auth {
         show_to_all: true,
       });
     } catch (err) {
-      log.save('send-msg-to-all-create-user-message-error', { error: err }, 'error');
+      global.log.save('send-msg-to-all-create-user-message-error', { error: err }, 'error');
       return res.send(500, err);
     }
 
@@ -2169,8 +2166,8 @@ const Message = class extends Auth {
     return res.send({ createdMessageId: userMsgId });
   }
 
-  async getMessagesToAllUsers(req, res) {
-    let queryParams = { ...req.query };
+  async getMessagesToAllUsers(req: any, res: any) {
+    const queryParams = { ...req.query };
     const startFrom = parseInt(queryParams.start) || PAGINATION_START_FROM;
     const count = parseInt(queryParams.count) || PAGINATION_TO;
     const orderByDateType = queryParams.order_date === 'asc' ? 'asc' : 'desc'; // Order by DESC by default.
@@ -2189,7 +2186,7 @@ const Message = class extends Auth {
         order: [[IncommingMessages, 'date_create', orderByDateType]],
       });
     } catch (error) {
-      log.save('get-messages-to-all-users-error', { error: (error && error.message) || error }, 'error');
+      global.log.save('get-messages-to-all-users-error', { error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
 
@@ -2211,7 +2208,7 @@ const Message = class extends Auth {
     return res.send({ messages });
   }
 
-  async deleteMessagetoAll(req, res) {
+  async deleteMessagetoAll(req: any, res: any) {
     const { params } = req;
     const { id } = params;
 
@@ -2219,7 +2216,7 @@ const Message = class extends Auth {
     try {
       deletedFromIncomming = await IncommingMessages.destroy({ where: { message_id: id } });
     } catch (error) {
-      log.save('delete-msg-to-all-delete-incomming-message-error', { error }, 'error');
+      global.log.save('delete-msg-to-all-delete-incomming-message-error', { error }, 'error');
       return res.send(500, error);
     }
 
@@ -2230,7 +2227,7 @@ const Message = class extends Auth {
           where: { message_id: id },
         });
       } catch (error) {
-        log.save('delete-msg-to-all-delete-user-message-error', { error }, 'error');
+        global.log.save('delete-msg-to-all-delete-user-message-error', { error }, 'error');
         return res.send(500, error);
       }
     }
@@ -2239,12 +2236,12 @@ const Message = class extends Auth {
     return res.send({ isDeleted });
   }
 
-  async senderErrorCallack(req, res, _next) {
-    let { id } = req.query;
+  async senderErrorCallack(req: any, res: any, _next: any) {
+    const { id } = req.query;
     try {
-      let value = idxCache.get(id, true);
-      let sendBySms = await this.sendByPhones(value.list_phone, value.short_message_translit);
-      let result = { sendBySms };
+      const value: any = (idxCache as any).get(id, true);
+      const sendBySms = await this.sendByPhones(value.list_phone, value.short_message_translit);
+      const result = { sendBySms };
       return res.send(result);
     } catch (err) {
       // ENOTFOUND: Key `not-existing-key` not found
@@ -2252,12 +2249,12 @@ const Message = class extends Auth {
     }
   }
 
-  async gmsuCallback(req, res, _next) {
-    let { message_id, status } = req.body;
+  async gmsuCallback(req: any, res: any, _next: any) {
+    const { message_id, status } = req.body;
     if (~~status == 2) {
       try {
-        let removed = await messangerGate.removeFromQueue(message_id);
-        let result = { removed };
+        const removed = await messangerGate.removeFromQueue(message_id);
+        const result = { removed };
         return res.send(result);
       } catch (err) {
         // ENOTFOUND: Key `not-existing-key` not found
@@ -2273,7 +2270,7 @@ const Message = class extends Auth {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async getImportantMessages(req, res) {
+  async getImportantMessages(req: any, res: any) {
     try {
       // Check access token defined.
       if (!req.query.access_token && !req.query.user_id) {
@@ -2281,7 +2278,7 @@ const Message = class extends Auth {
         return res.send(400, error);
       }
 
-      let queryParams = { ...req.query };
+      const queryParams = { ...req.query };
       const orderByCreatedAt = queryParams.order_created_at === 'asc' ? 'asc' : 'desc'; // Order by DESC by default.
 
       let messages = [];
@@ -2293,7 +2290,7 @@ const Message = class extends Auth {
         userId = req.query.user_id;
       }
 
-      let incomingMessagesFilterObject = {};
+      const incomingMessagesFilterObject: any = {};
       if (queryParams.client_id) {
         incomingMessagesFilterObject.client_id = queryParams.client_id;
       }
@@ -2338,7 +2335,7 @@ const Message = class extends Auth {
 
       return res.send({ data: messages });
     } catch (error) {
-      log.save('get-important-messages-error', { error: (error && error.message) || error }, 'error');
+      global.log.save('get-important-messages-error', { error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
   }
@@ -2348,7 +2345,7 @@ const Message = class extends Auth {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  async setUnimportantMessage(req, res) {
+  async setUnimportantMessage(req: any, res: any) {
     try {
       // Define params.
       const messageId = parseInt(req.params.id);
@@ -2404,10 +2401,8 @@ const Message = class extends Auth {
       // Response result.
       return res.send({ data: updatedImportantMessage });
     } catch (error) {
-      log.save('set-unimportant-message-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
+      global.log.save('set-unimportant-message-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
   }
-};
-
-module.exports = Message;
+}

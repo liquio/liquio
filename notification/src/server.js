@@ -40,13 +40,13 @@ server.use(inputSanitizationMiddleware());
 // Log all requests.
 server.pre(global.log.logRouter.bind(global.log));
 
-let Lists = require('./controllers/ListsAndTransports');
-let Message = require('./controllers/message');
-let Template = require('./controllers/templates');
-let StaticRoutes = require('./controllers/staticRoutes');
-let Queue = require('./controllers/queue');
-let ConfigsController = require('./controllers/configAPIContoller');
-let TestController = require('./controllers/test');
+const { Lists } = require('./controllers/ListsAndTransports');
+const { Message } = require('./controllers/message');
+const { Template } = require('./controllers/templates');
+const { StaticRoutes } = require('./controllers/staticRoutes');
+const { Queue } = require('./controllers/queue');
+const { ConfigsController } = require('./controllers/configAPIContoller');
+const { TestController } = require('./controllers/test');
 new Lists(server);
 new Message(server);
 new Template(server);

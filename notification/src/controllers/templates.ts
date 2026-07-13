@@ -1,17 +1,18 @@
-const { Router } = require('restify-router');
-
-const { TemplatesModel } = require('../models/templates');
-const { checkAuth } = require('./auth');
+import { Router } from 'restify-router';
+import { TemplatesModel } from '../models/templates';
+import { checkAuth } from './auth';
 
 const routerInstance = new Router();
 const templatesModel = new TemplatesModel();
 const Templates = templatesModel.Templates;
 
-class Template {
-  constructor(server) {
+export class Template {
+  log: any;
+
+  constructor(server: any) {
     this.log = global.log;
     this.registerRoutes();
-    return routerInstance.applyRoutes(server);
+    return routerInstance.applyRoutes(server) as any;
   }
 
   registerRoutes() {
@@ -23,30 +24,30 @@ class Template {
     routerInstance.post('/import/template', checkAuth, this.importTemplates.bind(this));
   }
 
-  async getTemplates(req, res) {
+  async getTemplates(req: any, res: any) {
     let result;
     try {
       const { template_id, template_ids } = req?.query || {};
       if (template_id && template_ids) {
         return res.send(400, { message: 'Only one of params template_id or template_ids can be passed.' });
       }
-      const filters = {};
+      const filters: any = {};
       if (template_id) filters['template_id'] = Number(template_id);
       if (template_ids) filters['template_id'] = { $in: template_ids.map(Number) };
 
       result = await Templates.findAll({
         where: filters,
       });
-    } catch (e) {
+    } catch (e: any) {
       return res.send(500, { message: e.message });
     }
 
     if (result.length == 0) return res.send([]);
 
-    let arr = result.map(async (v) => {
-      let paramsFromTpl = v.text.match(new RegExp('\\${' + '\\w{1,}}', 'igm'));
+    const arr = result.map(async (v: any) => {
+      const paramsFromTpl = v.text.match(new RegExp('\\${' + '\\w{1,}}', 'igm'));
       let params;
-      if (paramsFromTpl) params = paramsFromTpl.map((v) => v.replace(/[${}]/g, ''));
+      if (paramsFromTpl) params = paramsFromTpl.map((v: any) => v.replace(/[${}]/g, ''));
       return {
         template_id: v.template_id,
         type: v.type,
@@ -55,12 +56,12 @@ class Template {
         params,
       };
     });
-    let response = await Promise.all(arr);
+    let response: any = await Promise.all(arr);
     if (req.query.template_id) response = response[0];
     res.send(response);
   }
 
-  async deleteTemplate(req, res) {
+  async deleteTemplate(req: any, res: any) {
     if (!req.params.template_id || req.params.template_id.trim() == '') {
       return res.send(400, { message: 'Template id empty' });
     }
@@ -72,14 +73,14 @@ class Template {
         },
         individualHooks: true,
       });
-    } catch (e) {
+    } catch (e: any) {
       return res.send(500, { message: e.message });
     }
 
     res.send();
   }
 
-  async addTemplate(req, res) {
+  async addTemplate(req: any, res: any) {
     if (!req.body.type || req.body.type.trim() == '' || (req.body.type && req.body.type != 'sms' && req.body.type != 'email')) {
       return res.send(400, { message: 'Type must be \'sms\' or \'email\'' });
     }
@@ -88,20 +89,20 @@ class Template {
     }
 
     try {
-      let result = await Templates.create({ ...req.body });
+      const result = await Templates.create({ ...req.body });
       if (!result) {
         this.log.save('template-create-null-result', { body: req.body }, 'error');
         return res.send(500, { message: 'Failed to create template - no result returned' });
       }
       this.log.save('template-create-success', { templateId: result.template_id, type: result.type, title: result.title }, 'info');
       res.send(result);
-    } catch (e) {
+    } catch (e: any) {
       this.log.save('template-create-error', { error: e.message, body: req.body }, 'error');
       return res.send(500, { message: e.message });
     }
   }
 
-  async changeTemplate(req, res) {
+  async changeTemplate(req: any, res: any) {
     if (!req.body.type || req.body.type.trim() == '' || (req.body.type && req.body.type != 'sms' && req.body.type != 'email')) {
       return res.send(400, { message: 'Type must be \'sms\' or \'email\'' });
     }
@@ -113,7 +114,7 @@ class Template {
     }
 
     try {
-      let result = await Templates.update(
+      const result = await Templates.update(
         { ...req.body },
         { where: { template_id: req.params.template_id }, individualHooks: true, returning: true },
       );
@@ -123,13 +124,13 @@ class Template {
       }
       this.log.save('template-update-success', { templateId: req.params.template_id, type: result[1][0].type, title: result[1][0].title }, 'info');
       res.send(result);
-    } catch (e) {
+    } catch (e: any) {
       this.log.save('template-update-error', { error: e.message, templateId: req.params.template_id }, 'error');
       return res.send(500, { message: e.message });
     }
   }
 
-  async prepareMessage(req, res) {
+  async prepareMessage(req: any, res: any) {
     if (!req.body.template_id || req.body.template_id == 0) {
       return res.send(400, { message: 'Template id empty' });
     }
@@ -139,24 +140,24 @@ class Template {
     if (!req.body.params || Object.keys(req.body.params).length == 0) {
       return res.send(400, { message: 'Params empty' });
     }
-    
-    let template;
+
+    let template: any;
     try {
       template = await Templates.findOne({
         where: { template_id: req.body.template_id },
       });
-    } catch (e) {
+    } catch (e: any) {
       return res.send(500, { message: e.message });
     }
     if (template == null) return res.send(404, { message: 'Template not found' });
 
-    let params = req.body.params;
+    const params = req.body.params;
 
-    let paramsFromTpl = template.text.match(new RegExp('\\${' + '\\w{1,}}', 'igm'));
-    let paramsKeys = Object.keys(params);
+    const paramsFromTpl = template.text.match(new RegExp('\\${' + '\\w{1,}}', 'igm'));
+    const paramsKeys = Object.keys(params);
     if (paramsFromTpl != null) {
-      for (let tplParam of paramsFromTpl) {
-        let el = tplParam.replace(/\W/gim, '');
+      for (const tplParam of paramsFromTpl) {
+        const el = tplParam.replace(/\W/gim, '');
         if (paramsKeys.includes(el) == false) {
           return res.send(400, { message: `Param ${el} required for this template` });
         }
@@ -166,12 +167,12 @@ class Template {
     res.send({ message: template.text });
   }
 
-  async importTemplates(req, res) {
+  async importTemplates(req: any, res: any) {
     const { dataToImport, rewriteTemplateIds } = req.body;
     const transaction = await templatesModel.sequelize.transaction();
 
     try {
-      const importingTemplateIds = dataToImport.map(({ template_id }) => template_id);
+      const importingTemplateIds = dataToImport.map(({ template_id }: any) => template_id);
 
       this.log.save('import-message-templates|start', {
         importingTemplateIds,
@@ -179,10 +180,10 @@ class Template {
       });
 
       const existingTemplates = await Templates.findAll();
-      const existingTemplateIds = existingTemplates.map(({ template_id }) => template_id);
+      const existingTemplateIds = existingTemplates.map(({ template_id }: any) => template_id);
 
       // If all importing templates don't exist.
-      if (importingTemplateIds.every((templateId) => !existingTemplateIds.includes(templateId))) {
+      if (importingTemplateIds.every((templateId: any) => !existingTemplateIds.includes(templateId))) {
         const createdTemplates = await Templates.bulkCreate(dataToImport);
 
         this.log.save('import-message-templates|imported|importing-templates-don\'t-exist', {
@@ -193,11 +194,11 @@ class Template {
       }
 
       // If template with id isn't exist - create new template with defined id.
-      const templateIdsToCreateWithDefinedId = importingTemplateIds.filter((templateId) => !existingTemplateIds.includes(templateId));
+      const templateIdsToCreateWithDefinedId = importingTemplateIds.filter((templateId: any) => !existingTemplateIds.includes(templateId));
 
       // If template with id exists and we MUST REWRITE this template - update existing template by new text, type and title.
       const templateIdsToUpdate = importingTemplateIds.filter(
-        (templateId) => existingTemplateIds.includes(templateId) && rewriteTemplateIds.includes(templateId),
+        (templateId: any) => existingTemplateIds.includes(templateId) && rewriteTemplateIds.includes(templateId),
       );
       if (templateIdsToUpdate.length !== rewriteTemplateIds.length) {
         return res.send(400, { message: 'Passed incorrect rewriteTemplateIds.' });
@@ -205,7 +206,7 @@ class Template {
 
       // If template with id exists and we MUSTN'T REWRITE this template - create new template with new id but with passed text, type and title.
       const templateIdsToCreateWithNewId = importingTemplateIds.filter(
-        (templateId) => existingTemplateIds.includes(templateId) && !rewriteTemplateIds.includes(templateId),
+        (templateId: any) => existingTemplateIds.includes(templateId) && !rewriteTemplateIds.includes(templateId),
       );
 
       this.log.save('import-message-templates|params-to-create-and-update-defined', {
@@ -219,8 +220,8 @@ class Template {
 
       const createdTemplatesWithDefinedId = await Templates.bulkCreate(
         dataToImport
-          .filter((template) => templateIdsToCreateWithDefinedId.includes(template.template_id))
-          .map(({ template_id, type, text, title }) => ({ template_id, type, text, title })),
+          .filter((template: any) => templateIdsToCreateWithDefinedId.includes(template.template_id))
+          .map(({ template_id, type, text, title }: any) => ({ template_id, type, text, title })),
         {
           individualHooks: true,
           transaction,
@@ -228,11 +229,11 @@ class Template {
       );
 
       const recordsToUpdate = dataToImport
-        .filter((template) => templateIdsToUpdate.includes(template.template_id))
-        .map(({ template_id, type, text, title }) => ({ template_id, type, text, title }));
+        .filter((template: any) => templateIdsToUpdate.includes(template.template_id))
+        .map(({ template_id, type, text, title }: any) => ({ template_id, type, text, title }));
 
       const updatedTemplates = await Promise.all(
-        recordsToUpdate.map((template) => {
+        recordsToUpdate.map((template: any) => {
           return Templates.update(
             { ...template },
             {
@@ -245,8 +246,8 @@ class Template {
       );
       const createdTemplatesWithNewId = await Templates.bulkCreate(
         dataToImport
-          .filter((template) => templateIdsToCreateWithNewId.includes(template.template_id))
-          .map(({ type, text, title }) => ({ type, text, title })), // Don't define template_id field.
+          .filter((template: any) => templateIdsToCreateWithNewId.includes(template.template_id))
+          .map(({ type, text, title }: any) => ({ type, text, title })), // Don't define template_id field.
         {
           individualHooks: true,
           transaction,
@@ -264,7 +265,7 @@ class Template {
         createdTemplatesCount: (createdTemplatesWithDefinedId?.length || 0) + (createdTemplatesWithNewId?.length || 0),
         updatedTemplatesCount: updatedTemplates?.length || 0,
       });
-    } catch (error) {
+    } catch (error: any) {
       await transaction.rollback();
       this.log.save('import-message-templates|error', {
         message: error.message,
@@ -275,5 +276,3 @@ class Template {
     }
   }
 }
-
-module.exports = Template;
