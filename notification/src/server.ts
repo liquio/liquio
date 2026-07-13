@@ -1,6 +1,5 @@
-import restify from 'restify';
-import plugins from 'restify-plugins';
-import CookieParser from 'restify-cookies';
+import express from 'express';
+import cookieParser from 'cookie-parser';
 
 import { asyncLocalStorageMiddleware } from './lib/async_local_storage';
 import {
@@ -9,6 +8,7 @@ import {
   corsValidationMiddleware,
   responseEncodingMiddleware,
 } from './middleware/security';
+import { AppIdentHeaders } from './lib/app_ident_headers';
 
 import { Lists } from './controllers/ListsAndTransports';
 import { Message } from './controllers/message';
@@ -27,77 +27,70 @@ const corsConfig = {
     : ['http://localhost:3000', 'http://localhost:3001']),
 };
 
-const server: any = restify.createServer({
-  name: 'notification',
-  version: '1.0.0',
-});
+const app = express();
 
-server.pre(restify.pre.sanitizePath());
-server.use(plugins.acceptParser(server.acceptable));
-server.use(plugins.queryParser());
-server.use(plugins.bodyParser());
-server.use(CookieParser.parse);
+app.use(asyncLocalStorageMiddleware);
 
-server.pre(asyncLocalStorageMiddleware);
+// Log all requests. Wraps res.send/res.end/res.json - must run before responseEncodingMiddleware
+// wraps res.send again below, so that the restify-compat shim ends up as the outer wrapper that
+// every controller's res.send([code], body) call actually hits.
+app.use(global.log.logRouter.bind(global.log));
 
 // Security middleware - applied before routes
-server.use(securityHeadersMiddleware());
-server.use(responseEncodingMiddleware());
-server.use(inputSanitizationMiddleware());
+app.use(securityHeadersMiddleware());
+app.use(responseEncodingMiddleware());
+app.use(inputSanitizationMiddleware());
 
-// Log all requests.
-server.pre(global.log.logRouter.bind(global.log));
+AppIdentHeaders.add(app);
 
-new Lists(server);
-new Message(server);
-new Template(server);
-new StaticRoutes(server);
-new Queue(server);
-new ConfigsController(server);
-const testController = new TestController(server);
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-server.controllers = {
+// CORS middleware with configuration. The `cors` package answers OPTIONS preflight requests
+// with 204 itself, which is what restify's server.on('MethodNotAllowed', ...) localhost-only
+// handler (removed here) was manually working around.
+app.use(corsValidationMiddleware(corsConfig));
+
+// Static admin UI assets (src/admin/static/**). express.static falls through to the next
+// handler (the controllers below) when a path doesn't match a file on disk.
+app.use(express.static((global as any).adminStaticDir));
+
+const lists = new Lists(app);
+const message = new Message(app);
+const template = new Template(app);
+const staticRoutes = new StaticRoutes(app);
+const queue = new Queue(app);
+const configsController = new ConfigsController(app);
+const testController = new TestController(app);
+
+app.locals.controllers = {
+  lists,
+  message,
+  template,
+  staticRoutes,
+  queue,
+  configsController,
   test: testController,
 };
 
-// CORS middleware with configuration
-server.use(corsValidationMiddleware(corsConfig));
-server.pre(restify.fullResponse());
+// Not found.
+app.use((req: any, res: any) => {
+  res.status(404).send({ code: 'ResourceNotFound', message: `${req.url} does not exist` });
+});
 
-// Handle OPTIONS requests for localhost development
-if (env === 'localhost') {
-  const unknownMethodHandler = (req: any, res: any) => {
-    if (req.method.toLowerCase() === 'options') {
-      return res.send(204);
-    } else {
-      return res.send(new restify.MethodNotAllowedError());
-    }
-  };
-
-  server.on('MethodNotAllowed', unknownMethodHandler);
-}
-
-// Global error handler for uncaught errors
-server.on('uncaughtException', (req: any, res: any, route: any, err: any) => {
+// Global error handler for uncaught errors.
+app.use((err: any, req: any, res: any, _next: any) => {
   global.log.save('server-uncaught-exception', {
     error: err?.message,
     stack: err?.stack,
-    route: route?.path,
     method: req?.method,
     url: req?.url,
   }, 'error');
-  res.send(500, { error: 'Internal server error' });
+  res.status(err?.statusCode || 500).send({ error: 'Internal server error' });
 });
 
-// Error handler middleware
-server.on('error', (err: any) => {
-  global.log.save('server-error-event', {
-    error: err?.message,
-    stack: err?.stack,
-  }, 'error');
-});
-
-// Handle unhandled promise rejections
+// Handle unhandled promise rejections.
 process.on('unhandledRejection', (reason: any, _promise) => {
   global.log.save('unhandled-rejection', {
     reason: reason?.message || String(reason),
@@ -105,11 +98,4 @@ process.on('unhandledRejection', (reason: any, _promise) => {
   }, 'error');
 });
 
-server.get(
-  /static\/.*/,
-  restify.serveStatic({
-    directory: (global as any).adminStaticDir,
-  }),
-);
-
-export { server };
+export { app as server };

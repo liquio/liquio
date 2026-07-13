@@ -106,10 +106,12 @@ export class TestApp {
   static pgContainer;
 
   server: any;
+  httpServer: any;
   log: any;
 
   constructor() {
     this.server = null;
+    this.httpServer = null;
     this.log = null;
   }
 
@@ -205,7 +207,9 @@ export class TestApp {
   async listen() {
     const { port } = confOverride;
     await new Promise((resolve) => {
-      this.server.listen(port, () => resolve(undefined));
+      // express's app.listen() returns the underlying http.Server (not the app) - keep it
+      // separately, since that's what actually needs closing in destroy().
+      this.httpServer = this.server.listen(port, () => resolve(undefined));
     });
   }
 
@@ -230,7 +234,7 @@ export class TestApp {
 
   // Obtain a client instance to interact with the application.
   request() {
-    return supertest(this.server.url);
+    return supertest(`http://localhost:${confOverride.port}`);
   }
 
   nock(...args: any[]) {
@@ -239,8 +243,8 @@ export class TestApp {
 
   // Destroy the application.
   async destroy() {
-    if (this.server) {
-      await new Promise((resolve) => this.server.close(resolve));
+    if (this.httpServer) {
+      await new Promise((resolve) => this.httpServer.close(resolve));
     }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { connection } = require('../src/models/DB');

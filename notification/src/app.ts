@@ -25,8 +25,9 @@ if (process.argv[2] === '--start-dev') {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const config = require('../config/config');
   const server = start(config);
-  server.listen(config.conf.port || process.env.port || 8080, function () {
-    console.log(`Server listening started at "${server.url}".`);
+  const port = config.conf.port || process.env.port || 8080;
+  server.listen(port, function () {
+    console.log(`Server listening started at "http://localhost:${port}".`);
   });
 }
 

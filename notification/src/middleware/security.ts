@@ -130,9 +130,16 @@ export function inputSanitizationMiddleware(_options: Record<string, unknown> = 
   };
 
   return (req: any, res: any, next: any) => {
-    // Sanitize query parameters
+    // Sanitize query parameters. Express 5's req.query is a getter with no setter (recomputed
+    // from the URL on every access, uncached), so a plain `req.query = ...` assignment either
+    // throws (strict mode) or is silently dropped - redefine the property instead.
     if (req.query) {
-      req.query = sanitizeObject(req.query);
+      Object.defineProperty(req, 'query', {
+        value: sanitizeObject(req.query),
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
     }
 
     // Sanitize request body
@@ -166,14 +173,36 @@ export function corsValidationMiddleware(options: { allowedOrigins?: string[] } 
 
 /**
  * Response Encoding Middleware
- * Ensures all text responses are properly HTML-encoded
+ *
+ * Also carries this service's restify -> express response-compatibility shim: every controller
+ * still calls `res.send([statusCode], body)` the way restify's res.send worked (and restify's
+ * JSON formatter special-cased Error bodies, overriding the status code with
+ * `body.statusCode || 500` and the body with `body.body || {message: body.message}`). Express's
+ * res.send only takes a single body argument, so this override restores the old calling
+ * convention at every one of those call sites rather than rewriting them all.
  */
 export function responseEncodingMiddleware(_options: Record<string, unknown> = {}): (req: any, res: any, next: any) => void {
   return (req: any, res: any, next: any) => {
-    // Override res.send to ensure proper content-type and encoding
+    // Override res.send to ensure proper content-type, encoding, and the restify calling convention.
     const originalSend = res.send.bind(res);
 
-    res.send = function (code: any, body: any, headers: any) {
+    res.send = function (arg1?: any, arg2?: any) {
+      let statusCode: number | undefined;
+      let body: any = arg1;
+      if (typeof arg1 === 'number') {
+        statusCode = arg1;
+        body = arg2;
+      }
+
+      if (body instanceof Error) {
+        statusCode = (body as any).statusCode || statusCode || 500;
+        body = (body as any).body || { message: body.message };
+      }
+
+      if (statusCode !== undefined) {
+        res.status(statusCode);
+      }
+
       // Set proper content type if not already set
       if (!res.getHeader('Content-Type')) {
         if (typeof body === 'object') {
@@ -183,7 +212,7 @@ export function responseEncodingMiddleware(_options: Record<string, unknown> = {
         }
       }
 
-      return originalSend(code, body, headers);
+      return body === undefined ? originalSend() : originalSend(body);
     };
 
     next();

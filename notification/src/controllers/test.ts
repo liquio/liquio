@@ -1,10 +1,10 @@
 // Imports.
 import axios from 'axios';
-import { Router } from 'restify-router';
+import { Router } from 'express';
 import { checkAuth } from './auth';
 import { conf } from '../config/config';
 
-const routerInstance = new Router();
+const router = Router();
 
 // Constants.
 const MESSAGE_PONG = 'pong';
@@ -22,9 +22,9 @@ const DEFAULT_ENVIRONMENT = '0';
  * @param {object} server Server instance.
  */
 export class TestController {
-  constructor(server: any) {
+  constructor(app: any) {
     this.registerRoutes();
-    return routerInstance.applyRoutes(server) as any;
+    app.use(router);
   }
 
   /**
@@ -32,8 +32,8 @@ export class TestController {
    */
   registerRoutes() {
     // Add routes.
-    routerInstance.get('/test/ping', this.ping.bind(this));
-    routerInstance.get('/test/ping_with_auth', checkAuth, this.ping.bind(this));
+    router.get('/test/ping', this.ping.bind(this));
+    router.get('/test/ping_with_auth', checkAuth, this.ping.bind(this));
   }
 
   /**

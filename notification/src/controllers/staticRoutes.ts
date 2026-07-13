@@ -1,29 +1,25 @@
 import path from 'node:path';
 import crypto from 'node:crypto';
-import restify from 'restify';
-import { Router } from 'restify-router';
+import { Router } from 'express';
 import { MessangerModel } from '../models/smsGate/messangerModel';
 
 const { conf, adminStaticDir } = global as any;
 
-const routerInstance = new Router();
+const router = Router();
 const hmac = crypto.createHmac('sha256', conf.adminConfig.password).update(conf.adminConfig.login).digest('hex');
 
 export class StaticRoutes extends MessangerModel {
-  constructor(server: any) {
+  constructor(app: any) {
     super();
     this.registerRoutes();
-    return routerInstance.applyRoutes(server) as any;
+    app.use(router);
   }
 
   buildAdminView(urlName: any, fileName: any) {
-    routerInstance.get(
+    router.get(
       urlName,
       this.getAdminView.bind(this),
-      restify.serveStatic({
-        directory: adminStaticDir,
-        file: fileName,
-      }),
+      (req: any, res: any) => res.sendFile(path.join(adminStaticDir, fileName)),
     );
   }
 
@@ -33,47 +29,42 @@ export class StaticRoutes extends MessangerModel {
     this.buildAdminView('/admin/logs', 'logs.html');
     this.buildAdminView('/admin/subscribe', 'subscribe.html');
     this.buildAdminView('/admin/navbar', 'navbar.html');
-    routerInstance.get(
-      '/admin/login',
-      restify.serveStatic({
-        directory: path.join(__dirname, '..', '/admin'),
-        file: 'login.html',
-      }),
-    );
-    routerInstance.post('/admin/login', this.adminLogin.bind(this));
-    routerInstance.get('/admin/logout', this.adminLogout.bind(this));
-    routerInstance.get('/admin/api/queue', this.getAdminView.bind(this), this.SMSQueue.bind(this));
-    routerInstance.get('/admin/api/queue/clear/:sms_id', this.getAdminView.bind(this), this.SMSQueueClear.bind(this));
-    routerInstance.get('/admin/api/queue/resend', this.getAdminView.bind(this), this.resendSMS.bind(this));
-    routerInstance.get('/admin/api/queue/resend/:sms_id', this.getAdminView.bind(this), this.resendSMS.bind(this));
-    routerInstance.get('/admin/api/queue/count', this.getAdminView.bind(this), this.SMSQueueCounter.bind(this));
-    routerInstance.get('/admin/api/log', this.getAdminView.bind(this), this.SMSLog.bind(this));
+    router.get('/admin/login', (req: any, res: any) => res.sendFile(path.join(__dirname, '..', 'admin', 'login.html')));
+    router.post('/admin/login', this.adminLogin.bind(this));
+    router.get('/admin/logout', this.adminLogout.bind(this));
+    router.get('/admin/api/queue', this.getAdminView.bind(this), this.SMSQueue.bind(this));
+    router.get('/admin/api/queue/clear/:sms_id', this.getAdminView.bind(this), this.SMSQueueClear.bind(this));
+    router.get('/admin/api/queue/resend', this.getAdminView.bind(this), this.resendSMS.bind(this));
+    router.get('/admin/api/queue/resend/:sms_id', this.getAdminView.bind(this), this.resendSMS.bind(this));
+    router.get('/admin/api/queue/count', this.getAdminView.bind(this), this.SMSQueueCounter.bind(this));
+    router.get('/admin/api/log', this.getAdminView.bind(this), this.SMSLog.bind(this));
   }
 
   getAdminView(req: any, res: any, next: any) {
     const { cookies } = req;
     if ('myCookie' in cookies && cookies.myCookie == hmac) return next();
-    else res.redirect('/admin/login', next);
+    else res.redirect('/admin/login');
   }
 
-  adminLogin(req: any, res: any, next: any) {
+  adminLogin(req: any, res: any) {
     const bodyHmac = crypto.createHmac('sha256', req.body.pass).update(req.body.login).digest('hex');
 
     if (bodyHmac == hmac) {
-      res.setCookie('myCookie', hmac, {
+      // restify's res.setCookie maxAge is in seconds; express's res.cookie maxAge is in milliseconds.
+      res.cookie('myCookie', hmac, {
         path: '/admin',
-        maxAge: 24 * 60 * 60,
+        maxAge: 24 * 60 * 60 * 1000,
         httpOnly: true,
       });
-      res.redirect('/admin', next);
+      res.redirect('/admin');
     } else {
       res.send(400, { error: 'login or pass not valid' });
     }
   }
 
-  adminLogout(req: any, res: any, next: any) {
+  adminLogout(req: any, res: any) {
     res.clearCookie('myCookie');
-    res.redirect('/admin', next);
+    res.redirect('/admin');
   }
 
   async SMSQueue(req: any, res: any, _next: any) {

@@ -1,24 +1,24 @@
-import { Router } from 'restify-router';
+import { Router } from 'express';
 import { MessangerModel } from '../models/smsGate/messangerModel';
 import { checkAuth } from './auth';
 
-const routerInstance = new Router();
+const router = Router();
 
 export class Queue extends MessangerModel {
-  constructor(server: any) {
+  constructor(app: any) {
     super();
     this.registerRoutes();
-    return routerInstance.applyRoutes(server, 'queue') as any;
+    app.use('/queue', router);
   }
 
   registerRoutes() {
-    routerInstance.get('/', checkAuth, this.SMSQueue.bind(this));
-    routerInstance.get('/clear', checkAuth, this.SMSQueueClear.bind(this));
-    routerInstance.get('/clear/:sms_id', checkAuth, this.SMSQueueClear.bind(this));
-    routerInstance.get('/resend', checkAuth, this.resendSMS.bind(this));
-    routerInstance.get('/resend/:sms_id', checkAuth, this.resendSMS.bind(this));
-    routerInstance.get('/count', checkAuth, this.SMSQueueCounter.bind(this));
-    routerInstance.get('/log', checkAuth, this.SMSLog.bind(this));
+    router.get('/', checkAuth, this.SMSQueue.bind(this));
+    router.get('/clear', checkAuth, this.SMSQueueClear.bind(this));
+    router.get('/clear/:sms_id', checkAuth, this.SMSQueueClear.bind(this));
+    router.get('/resend', checkAuth, this.resendSMS.bind(this));
+    router.get('/resend/:sms_id', checkAuth, this.resendSMS.bind(this));
+    router.get('/count', checkAuth, this.SMSQueueCounter.bind(this));
+    router.get('/log', checkAuth, this.SMSLog.bind(this));
   }
 
   async SMSQueue(req: any, res: any, _next: any) {

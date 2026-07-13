@@ -1,4 +1,4 @@
-import { Router } from 'restify-router';
+import { Router } from 'express';
 import { CommunicationModel } from '../models/communications';
 import { UserSubscribesModel } from '../models/user_subscribes';
 import { SettingsModel } from '../models/settings';
@@ -6,31 +6,31 @@ import { EventsModel } from '../models/events';
 import { checkAuth } from './auth';
 import { Auth } from '../models/authServer';
 
-const routerInstance = new Router();
+const router = Router();
 const Communication = new CommunicationModel().Communications;
 const Settings = new SettingsModel().Settings;
 const { UserSubscribes } = new UserSubscribesModel();
 const Events = new EventsModel().Events;
 
 export class Lists extends Auth {
-  constructor(server: any) {
+  constructor(app: any) {
     super();
     this.registerRoutes();
-    return routerInstance.applyRoutes(server) as any;
+    app.use(router);
   }
 
   registerRoutes() {
-    routerInstance.get('/eventsAndTransports', this.getLists.bind(this));
-    routerInstance.put('/eventsAndTransports', checkAuth, this.addRelation.bind(this));
-    routerInstance.del('/eventsAndTransports', checkAuth, this.removeRelation.bind(this));
-    routerInstance.get('/transport', checkAuth, this.getTransport.bind(this));
-    routerInstance.post('/transport', checkAuth, this.addTransport.bind(this));
-    routerInstance.del('/transport', checkAuth, this.removeTransport.bind(this));
-    routerInstance.get('/event', checkAuth, this.getEvents.bind(this));
-    routerInstance.get('/event/:event_id/users', checkAuth, this.getUsersByEvent.bind(this));
-    routerInstance.post('/event', checkAuth, this.addEvents.bind(this));
-    routerInstance.put('/event/:event_id', checkAuth, this.updateEvents.bind(this));
-    routerInstance.del('/event', checkAuth, this.removeEvents.bind(this));
+    router.get('/eventsAndTransports', this.getLists.bind(this));
+    router.put('/eventsAndTransports', checkAuth, this.addRelation.bind(this));
+    router.delete('/eventsAndTransports', checkAuth, this.removeRelation.bind(this));
+    router.get('/transport', checkAuth, this.getTransport.bind(this));
+    router.post('/transport', checkAuth, this.addTransport.bind(this));
+    router.delete('/transport', checkAuth, this.removeTransport.bind(this));
+    router.get('/event', checkAuth, this.getEvents.bind(this));
+    router.get('/event/:event_id/users', checkAuth, this.getUsersByEvent.bind(this));
+    router.post('/event', checkAuth, this.addEvents.bind(this));
+    router.put('/event/:event_id', checkAuth, this.updateEvents.bind(this));
+    router.delete('/event', checkAuth, this.removeEvents.bind(this));
   }
 
   async getLists(req: any, res: any, next: any) {

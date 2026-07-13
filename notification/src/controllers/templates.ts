@@ -1,27 +1,27 @@
-import { Router } from 'restify-router';
+import { Router } from 'express';
 import { TemplatesModel } from '../models/templates';
 import { checkAuth } from './auth';
 
-const routerInstance = new Router();
+const router = Router();
 const templatesModel = new TemplatesModel();
 const Templates = templatesModel.Templates;
 
 export class Template {
   log: any;
 
-  constructor(server: any) {
+  constructor(app: any) {
     this.log = global.log;
     this.registerRoutes();
-    return routerInstance.applyRoutes(server) as any;
+    app.use(router);
   }
 
   registerRoutes() {
-    routerInstance.get('/template', this.getTemplates.bind(this));
-    routerInstance.post('/template', checkAuth, this.addTemplate.bind(this));
-    routerInstance.put('/template/:template_id', checkAuth, this.changeTemplate.bind(this));
-    routerInstance.del('/template/:template_id', checkAuth, this.deleteTemplate.bind(this));
-    routerInstance.post('/prepareMessageByTemplateId', this.prepareMessage.bind(this));
-    routerInstance.post('/import/template', checkAuth, this.importTemplates.bind(this));
+    router.get('/template', this.getTemplates.bind(this));
+    router.post('/template', checkAuth, this.addTemplate.bind(this));
+    router.put('/template/:template_id', checkAuth, this.changeTemplate.bind(this));
+    router.delete('/template/:template_id', checkAuth, this.deleteTemplate.bind(this));
+    router.post('/prepareMessageByTemplateId', this.prepareMessage.bind(this));
+    router.post('/import/template', checkAuth, this.importTemplates.bind(this));
   }
 
   async getTemplates(req: any, res: any) {

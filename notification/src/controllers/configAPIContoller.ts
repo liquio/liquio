@@ -1,21 +1,21 @@
-import { Router } from 'restify-router';
+import { Router } from 'express';
 import { ConfigsModel } from '../models/configs';
 import { checkConfigAuth } from './auth';
 
 const { Configs } = new ConfigsModel();
-const routerInstance = new Router();
+const router = Router();
 
 export class ConfigsController {
-  constructor(server: any) {
+  constructor(app: any) {
     this.registerRoutes();
-    return routerInstance.applyRoutes(server, 'configs') as any;
+    app.use('/configs', router);
   }
 
   registerRoutes() {
-    routerInstance.get('/', checkConfigAuth, this.getConfig.bind(this));
-    routerInstance.post('/', checkConfigAuth, this.upsertConfig.bind(this));
-    routerInstance.put('/:id', checkConfigAuth, this.upsertConfig.bind(this));
-    routerInstance.del('/:id', checkConfigAuth, this.deleteConfig.bind(this));
+    router.get('/', checkConfigAuth, this.getConfig.bind(this));
+    router.post('/', checkConfigAuth, this.upsertConfig.bind(this));
+    router.put('/:id', checkConfigAuth, this.upsertConfig.bind(this));
+    router.delete('/:id', checkConfigAuth, this.deleteConfig.bind(this));
   }
 
   async getConfig(req: any, res: any, next: any) {
@@ -36,7 +36,7 @@ export class ConfigsController {
   async upsertConfig(req: any, res: any, next: any) {
     const { id } = req.params;
     const { body } = req;
-    const { method } = req.route;
+    const method = req.method;
     let result;
     if (!body) {
       return res.send(400, { message: 'Empty body' });

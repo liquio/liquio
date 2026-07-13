@@ -1,7 +1,7 @@
 import Sequelize from 'sequelize';
 import axios from 'axios';
 import NodeCache from 'node-cache';
-import { Router } from 'restify-router';
+import { Router } from 'express';
 import { Auth } from '../models/authServer';
 import { UserSubscribesModel } from '../models/user_subscribes';
 import { CommunicationModel } from '../models/communications';
@@ -17,7 +17,7 @@ import { UsersMessagesModel } from '../models/users_messages';
 import { MessageCryptTypesModel } from '../models/message_crypt_types';
 import { checkAuth, checkTestAuth } from './auth';
 
-const routerInstance = new Router();
+const router = Router();
 const Subscribes = new UserSubscribesModel().UserSubscribes;
 const Communication = new CommunicationModel().Communications;
 const Settings = new SettingsModel().Settings;
@@ -85,10 +85,10 @@ const READ_MESSAGE_VALUE = 1;
 const SMS_CHANNEL = '2';
 
 export class Message extends Auth {
-  constructor(server: any) {
+  constructor(app: any) {
     super();
     this.registerRoutes();
-    return routerInstance.applyRoutes(server, '/message') as any;
+    app.use('/message', router);
   }
 
   /**
@@ -96,32 +96,32 @@ export class Message extends Auth {
    */
   registerRoutes() {
     // Test routes.
-    routerInstance.post('/test/email', checkTestAuth, this.sendTestEmail.bind(this));
-    routerInstance.post('/test/sms', checkTestAuth, this.sendTestSMS.bind(this));
-    routerInstance.post('/test/user', checkTestAuth, this.sendTestUser.bind(this));
-    routerInstance.post('/test/comlex_options', checkAuth, this.sendTestMessageByComplexOptions.bind(this));
+    router.post('/test/email', checkTestAuth, this.sendTestEmail.bind(this));
+    router.post('/test/sms', checkTestAuth, this.sendTestSMS.bind(this));
+    router.post('/test/user', checkTestAuth, this.sendTestUser.bind(this));
+    router.post('/test/comlex_options', checkAuth, this.sendTestMessageByComplexOptions.bind(this));
 
     // Send messages routes.
-    routerInstance.post('/usersList', checkAuth, this.sendMessageByUsersList.bind(this));
-    routerInstance.post('/emailsList', checkAuth, this.sendMessageByEmailsList.bind(this));
-    routerInstance.post('/phonesList', checkAuth, this.sendMessageByPhonesList.bind(this));
-    routerInstance.post('/eventId', checkAuth, this.sendMessageByEventId.bind(this));
-    routerInstance.post('/complex_options', checkAuth, this.sendMessageByComplexOptions.bind(this));
-    routerInstance.post('/toAll', checkAuth, this.sendToAllUsers.bind(this));
-    routerInstance.del('/toAll/:id', checkAuth, this.deleteMessagetoAll.bind(this));
-    routerInstance.get('/toAll', checkAuth, this.getMessagesToAllUsers.bind(this));
+    router.post('/usersList', checkAuth, this.sendMessageByUsersList.bind(this));
+    router.post('/emailsList', checkAuth, this.sendMessageByEmailsList.bind(this));
+    router.post('/phonesList', checkAuth, this.sendMessageByPhonesList.bind(this));
+    router.post('/eventId', checkAuth, this.sendMessageByEventId.bind(this));
+    router.post('/complex_options', checkAuth, this.sendMessageByComplexOptions.bind(this));
+    router.post('/toAll', checkAuth, this.sendToAllUsers.bind(this));
+    router.delete('/toAll/:id', checkAuth, this.deleteMessagetoAll.bind(this));
+    router.get('/toAll', checkAuth, this.getMessagesToAllUsers.bind(this));
 
     // Other routes.
-    routerInstance.post('/', checkAuth, this.addMessage.bind(this));
-    routerInstance.get('/', checkAuth, this.getMessages.bind(this));
-    routerInstance.get('/senderErrorCallback', this.senderErrorCallack.bind(this));
-    routerInstance.post('/sms/callback/', this.gmsuCallback.bind(this));
-    routerInstance.put('/is_read', this.setIsReadProperty.bind(this));
-    routerInstance.get('/unread', this.getUnreadUserMessagesCount.bind(this));
-    routerInstance.get('/important', checkAuth, this.getImportantMessages.bind(this));
-    routerInstance.put('/important/:id/set-unimportant', checkAuth, this.setUnimportantMessage.bind(this));
-    routerInstance.get('/:id', this.getMessageById.bind(this));
-    routerInstance.put('/:id/decrypt', checkAuth, this.decryptMessage.bind(this));
+    router.post('/', checkAuth, this.addMessage.bind(this));
+    router.get('/', checkAuth, this.getMessages.bind(this));
+    router.get('/senderErrorCallback', this.senderErrorCallack.bind(this));
+    router.post('/sms/callback/', this.gmsuCallback.bind(this));
+    router.put('/is_read', this.setIsReadProperty.bind(this));
+    router.get('/unread', this.getUnreadUserMessagesCount.bind(this));
+    router.get('/important', checkAuth, this.getImportantMessages.bind(this));
+    router.put('/important/:id/set-unimportant', checkAuth, this.setUnimportantMessage.bind(this));
+    router.get('/:id', this.getMessageById.bind(this));
+    router.put('/:id/decrypt', checkAuth, this.decryptMessage.bind(this));
   }
 
   /**

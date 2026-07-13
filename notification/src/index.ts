@@ -6,7 +6,6 @@ global.conf = config.conf;
 
 import start from './app';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
-import { AppIdentHeaders } from './lib/app_ident_headers';
 import { Log } from './lib/log';
 import { ConsoleLogProvider } from './lib/log/providers/console';
 import { typeOf } from './lib/type_of';
@@ -56,20 +55,13 @@ if (!adapters.sms) {
 // Start Notify Core.
 const server = start(config, path.join(__dirname, ADMIN_DIRECTORY), adapters as any);
 
-// App info in headers.
-AppIdentHeaders.add(server);
-
-// Expose Name and Version headers.
-server.use(function (req: any, res: any, next: any) {
-  next();
-});
-
 // Start server listening.
 (async () => {
   await (async () => {
     return new Promise((resolve) => {
-      server.listen(config.conf.port || process.env.port || 8080, function () {
-        log.save('server-started', { url: server.url, port: config.conf.port || process.env.port || 8080 }, 'info');
+      const port = config.conf.port || process.env.port || 8080;
+      server.listen(port, function () {
+        log.save('server-started', { url: `http://localhost:${port}`, port }, 'info');
         resolve(undefined);
       });
     });

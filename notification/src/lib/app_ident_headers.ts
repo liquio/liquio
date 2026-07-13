@@ -20,7 +20,7 @@ export class AppIdentHeaders {
     const environment = conf.environment || DEFAULT_ENVIRONMENT;
 
     // Set headers.
-    app.pre(function (req: any, res: any, next: any) {
+    app.use(function (req: any, res: any, next: any) {
       // CORS.
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, token, Authorization');
