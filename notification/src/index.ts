@@ -1,35 +1,38 @@
 // Init config.
-const config = require('./config/config');
+import path from 'node:path';
+import config from './config/config';
+
 global.conf = config.conf;
 
-const path = require('path');
-const start = require('./app');
-const testConsoleSmsAdapter = require('./adapters/test_console_sms_adapter');
-const AppIdentHeaders = require('./lib/app_ident_headers');
-const Log = require('./lib/log');
-const ConsoleLogProvider = require('./lib/log/providers/console');
-global.typeOf = require('./lib/type_of');
+import start from './app';
+import testConsoleSmsAdapter from './adapters/test_console_sms_adapter';
+import AppIdentHeaders from './lib/app_ident_headers';
+import Log from './lib/log';
+import ConsoleLogProvider from './lib/log/providers/console';
+import typeOf from './lib/type_of';
+
+global.typeOf = typeOf;
 // Constants.
 const DEFAULT_PROCESS_TITLE = 'notify';
 const ADMIN_DIRECTORY = '/admin';
-const ADAPTERS_LIST = { testConsoleSmsAdapter };
+const ADAPTERS_LIST: Record<string, unknown> = { testConsoleSmsAdapter };
 const DEFAULT_SMS_ADAPTER_NAME = 'testConsoleSmsAdapter';
 
 // Set process title.
 process.title = config.conf.processTitle || DEFAULT_PROCESS_TITLE;
 
 // Logs.
-const consoleLogProvider = new ConsoleLogProvider(config.log?.console?.name, { excludeParams: config.log?.excludeParams });
+const consoleLogProvider = new ConsoleLogProvider((config as any).log?.console?.name, { excludeParams: (config as any).log?.excludeParams });
 const log = new Log([consoleLogProvider], ['console']);
 global.log = log;
 
 // Log unhandled errors.
-process.on('unhandledRejection', (error) => {
+process.on('unhandledRejection', (error: any) => {
   const { stack, message } = error || {};
   log.save('unhandled-rejection', { stack, message }, 'error');
   process.exit(1);
 });
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', (error: any) => {
   const { stack, message } = error || {};
   log.save('unhandled-rejection', { stack, message }, 'error');
   process.exit(1);
@@ -51,13 +54,13 @@ if (!adapters.sms) {
 }
 
 // Start Notify Core.
-const server = start(config, path.join(__dirname, ADMIN_DIRECTORY), adapters);
+const server = start(config, path.join(__dirname, ADMIN_DIRECTORY), adapters as any);
 
 // App info in headers.
 AppIdentHeaders.add(server);
 
 // Expose Name and Version headers.
-server.use(function (req, res, next) {
+server.use(function (req: any, res: any, next: any) {
   next();
 });
 
@@ -67,7 +70,7 @@ server.use(function (req, res, next) {
     return new Promise((resolve) => {
       server.listen(config.conf.port || process.env.port || 8080, function () {
         log.save('server-started', { url: server.url, port: config.conf.port || process.env.port || 8080 }, 'info');
-        resolve();
+        resolve(undefined);
       });
     });
   })();
