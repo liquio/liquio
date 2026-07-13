@@ -1,5 +1,5 @@
 import axios from 'axios';
-import conf from '../../config/config';
+import * as conf from '../../config/config';
 import { SmsQueueModel } from '../sms_queue';
 
 const SmsQueue = new SmsQueueModel().SmsQueue;

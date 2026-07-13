@@ -1,6 +1,6 @@
 // Init config.
 import path from 'node:path';
-import config from './config/config';
+import * as config from './config/config';
 
 global.conf = config.conf;
 
