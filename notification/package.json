@@ -10,18 +10,13 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node ./src/index.js",
+    "start:ts": "node -r ts-node/register src/index.ts",
     "start-dev": "NODE_ENV=dev npm start",
-    "lint": "eslint \"**/*.js\"",
-    "lint:fix": "eslint \"**/*.js\" --fix",
+    "build": "tsc",
+    "lint": "eslint \"**/*.{js,ts}\"",
+    "lint:fix": "eslint \"**/*.{js,ts}\" --fix",
     "migration-up": "sequelize db:migrate",
     "test": "jest"
-  },
-  "jest": {
-    "testMatch": [
-      "**/__tests__/**/*.js",
-      "**/*.spec.js"
-    ],
-    "testEnvironment": "node"
   },
   "dependencies": {
     "axios": "^1.13.6",
@@ -52,6 +47,8 @@
     "@babel/preset-env": "^7.29.2",
     "@eslint/js": "^10.0.1",
     "@types/cors": "^2.8.19",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.9.3",
     "babel-plugin-transform-decorators-legacy": "^1.3.5",
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-stage-0": "^6.24.1",
@@ -59,7 +56,11 @@
     "eslint-plugin-jsdoc": "^62.8.0",
     "globals": "^17.4.0",
     "jest": "^30.3.0",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "form-data": "2.5.5",
