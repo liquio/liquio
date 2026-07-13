@@ -13,6 +13,7 @@ import * as Multiconf from 'multiconf';
 
 import { ConsoleLogProvider } from '../src/lib/log/providers/console';
 import { Log } from '../src/lib/log';
+import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
 
 const debug = createDebug;
 
@@ -89,6 +90,18 @@ const defaultConf = { ...rawConfig[defaultEnv], ...versionsConf };
 
 const confOverride: any = {};
 
+// Credentials for the two auth middlewares (auth.ts's checkAuth/checkTestAuth), injected via
+// config rather than seeded DB rows - checkAuth accepts a plain config.authorization.list match
+// before ever falling back to the hashed Authorize table lookup.
+export const TEST_AUTH = { user: 'e2e', password: 'e2e-pass' };
+export const TEST_AUTH_HEADER = `Basic ${Buffer.from(`${TEST_AUTH.user}:${TEST_AUTH.password}`).toString('base64')}`;
+export const TEST_SERVICE = {
+  token: 'e2e-test-service-token',
+  phones: ['+380501112233'],
+  emails: ['e2e@example.com'],
+  userIds: ['e2e-user-id'],
+};
+
 export class TestApp {
   static pgContainer;
 
@@ -110,6 +123,9 @@ export class TestApp {
   // Run this before all tests.
   static async beforeAll() {
     nock.restore();
+
+    confOverride.authorization = { list: [TEST_AUTH] };
+    confOverride.testService = TEST_SERVICE;
 
     const isExternalDb = !!process.env.DB_HOST;
 
@@ -181,7 +197,9 @@ export class TestApp {
     // it statically here would run that boot sequence before global.log/global.conf are ready.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const start = require('../src/app').default;
-    this.server = start(config, undefined, {});
+    // Mirror src/index.ts's real adapter wiring: config's defaultMessenger ("testConsoleSmsAdapter")
+    // routes through CustomGate to this adapter, which just logs and returns a canned response.
+    this.server = start(config, undefined, { sms: testConsoleSmsAdapter });
   }
 
   async listen() {
