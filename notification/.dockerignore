@@ -5,3 +5,4 @@
 *.md
 node_modules
 dist/
+tests/

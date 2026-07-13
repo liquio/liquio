@@ -51,6 +51,11 @@ const connection = new Sequelize(conf.db.database, conf.db.username, conf.db.pas
   },
 } as any);
 
+// Exposed so long-lived callers (e.g. the e2e test harness) can close the pool on teardown -
+// every model shares this one connection instance via AbstractDB, nothing about the request
+// path changes by exporting a reference to it.
+export { connection };
+
 export class AbstractDB {
   sequelize: Sequelize;
   DataTypes: typeof DataTypes;

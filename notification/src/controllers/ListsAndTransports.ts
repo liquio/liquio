@@ -1,13 +1,14 @@
 import { Router } from 'restify-router';
 import { CommunicationModel } from '../models/communications';
-import { UserSubscribesModel, UserSubscribesModel as SettingsModel } from '../models/user_subscribes';
+import { UserSubscribesModel } from '../models/user_subscribes';
+import { SettingsModel } from '../models/settings';
 import { EventsModel } from '../models/events';
 import { checkAuth } from './auth';
 import { Auth } from '../models/authServer';
 
 const routerInstance = new Router();
 const Communication = new CommunicationModel().Communications;
-const Settings = (new SettingsModel() as any).Settings;
+const Settings = new SettingsModel().Settings;
 const { UserSubscribes } = new UserSubscribesModel();
 const Events = new EventsModel().Events;
 
