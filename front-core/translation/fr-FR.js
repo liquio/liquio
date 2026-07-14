@@ -1853,6 +1853,7 @@ export default {
     KeyList: 'Clés de registre',
     RegistryMetricsTitle: 'Métriques de registre',
     TranslationsPageTitle: 'Multilinguisme',
+    SelectTemplate: 'Sélectionnez un service',
   },
   StatisticsPage: {
     StatisticsPageTitle: 'Statistiques des processus',

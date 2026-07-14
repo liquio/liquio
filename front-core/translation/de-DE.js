@@ -2272,7 +2272,8 @@ export default {
     DebugLogs: 'Debugging und Protokollierung',
     KeyList: 'Registry-Schlüssel',
     RegistryMetricsTitle: 'Registry-Metriken',
-    TranslationsPageTitle: 'Mehrsprachigkeit'
+    TranslationsPageTitle: 'Mehrsprachigkeit',
+    SelectTemplate: 'Wählen Sie einen Dienst aus',
   },
   TranslationsPage: {
     TranslatesLabel: 'Übersetzungen',

@@ -1771,6 +1771,7 @@ export default {
     UnitInboxTasksTitle: 'Поточні задачі мого відділу',
     ClosedTasksTitle: 'Закриті задачі',
     UnitClosedTasksTitle: 'Закриті задачі мого відділу',
+    SelectTemplate: 'Виберіть послугу',
   },
   MessagesNotify: {
     AllMessages: 'Всі повідомлення',

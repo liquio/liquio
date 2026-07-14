@@ -56,8 +56,8 @@ const taskModules = [
     hiddenColumns: {
       notUnitedUser: ['performerUserNames'],
       isUnitedUser: 'properties.hiddenColumns.tasks.UnitInboxTasks'
-    },
-    access: { unitHasAccessTo: 'navigation.tasks.UnitInboxTasks' }
+    }
+    // access: { unitHasAccessTo: 'navigation.tasks.UnitInboxTasks' }
   },
   {
     title: 'InboxTasksTitle',
@@ -144,6 +144,7 @@ const taskRoutes = [].concat(
     },
     {
       rootPath,
+      title: 'SelectTemplate',
       path: '/services',
       component: ProcessesPage
     }

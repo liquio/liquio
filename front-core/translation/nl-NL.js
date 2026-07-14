@@ -1694,7 +1694,8 @@ export default {
     DebugLogs: 'Debug en logging',
     KeyList: 'Registersleutels',
     RegistryMetricsTitle: 'Registerstatistieken',
-    TranslationsPageTitle: 'Meertaligheid'
+    TranslationsPageTitle: 'Meertaligheid',
+    SelectTemplate: 'Wählen Sie einen Dienst ausKies een dienst'
   },
   MessagesNotify: {
     AllMessages: 'Alle berichten'
