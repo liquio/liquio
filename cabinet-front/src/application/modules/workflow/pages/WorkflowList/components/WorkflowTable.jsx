@@ -1,6 +1,7 @@
 import React from 'react';
 import { translate } from 'react-translate';
 import _ from 'lodash/fp';
+import { useTheme } from '@mui/material/styles';
 
 import EmptyPage from 'components/EmptyPage';
 import dataTableConnect from 'services/dataTable/connectWithOwnProps';
@@ -13,6 +14,7 @@ import BlockScreen from 'components/BlockScreenReforged';
 const filtersToExclude = ['name', 'search', 'workflowStatusId'];
 
 const WorkflowTable = (props) => {
+  const theme = useTheme();
   const {
     t,
     count,
@@ -37,8 +39,8 @@ const WorkflowTable = (props) => {
   const emptyResults = React.useMemo(() => !count && !isFiltered, [count, isFiltered]);
 
   const settings = React.useMemo(
-    () => dataTableSettings({ t, filters, actions: { load }, checkable }),
-    [t, filters, load, checkable]
+    () => dataTableSettings({ t, filters, actions: { load }, checkable, theme }),
+    [t, filters, load, checkable, theme]
   );
 
   const dataGridOptions = React.useMemo(() => {

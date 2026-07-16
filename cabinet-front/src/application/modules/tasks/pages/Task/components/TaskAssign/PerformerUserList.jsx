@@ -9,7 +9,7 @@ import { ReactComponent as UserIcon } from 'assets/img/account-circle.svg';
 const styles = (theme) => ({
   emptyList: {
     textAlign: 'center',
-    color: '#444'
+    color: theme?.palette?.text?.secondary
   },
   avatarRoot: {
     minWidth: 'unset',

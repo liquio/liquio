@@ -1,4 +1,4 @@
-const styles = () => ({
+const styles = (theme) => ({
   formControl: {
     position: 'relative',
     margin: 0,
@@ -29,6 +29,15 @@ const styles = () => ({
   },
   codeInputDescription: {
     marginTop: 16,
+  },
+  linkButton: {
+    cursor: 'pointer',
+    color: theme?.linksColor || theme?.palette?.primary?.main,
+  },
+  centeredText: {
+    textAlign: 'center',
+    fontSize: 24,
+    color: theme?.textColorDark || theme?.palette?.text?.primary,
   },
 });
 

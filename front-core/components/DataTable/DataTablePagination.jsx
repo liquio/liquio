@@ -32,14 +32,14 @@ const styles = (theme) => ({
     paddingLeft: 7
   },
   perPageitem: {
-    color: '#000',
+    color: theme?.palette?.text?.primary,
     fontSize: 14,
     lineHeight: '16px',
     height: 32,
     marginRight: 10
   },
   perPageitemActive: {
-    border: '2px solid #000'
+    border: `2px solid ${theme?.palette?.text?.primary}`
   },
   paginationState: {
     fontSize: 14,
@@ -153,7 +153,7 @@ const styles = (theme) => ({
       borderColor: 'transparent'
     },
     '& label': {
-      color: '#fff'
+      color: theme?.palette?.primary?.contrastText
     }
   },
   darkThemeSelect: {
@@ -163,7 +163,7 @@ const styles = (theme) => ({
     padding: 5
   },
   loading: {
-    color: '#444444',
+    color: theme?.palette?.text?.secondary,
     pointerEvents: 'none'
   }
 });

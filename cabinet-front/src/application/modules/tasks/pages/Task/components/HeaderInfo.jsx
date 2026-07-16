@@ -7,7 +7,7 @@ import withStyles from '@mui/styles/withStyles';
 
 import evaluate from 'helpers/evaluate';
 
-const styles = {
+const styles = (theme) => ({
   statusItem: {
     display: 'flex',
     padding: 0,
@@ -21,8 +21,8 @@ const styles = {
   },
   listItem: {
     padding: '8px 16px',
-    borderTop: '1px solid rgba(51, 51, 51, 0.10)',
-    borderBottom: '1px solid rgba(51, 51, 51, 0.10)',
+    borderTop: `1px solid ${theme?.palette?.divider}`,
+    borderBottom: `1px solid ${theme?.palette?.divider}`,
     '&:hover': {
       backgroundColor: 'transparent'
     }
@@ -35,10 +35,10 @@ const styles = {
     display: 'block'
   },
   activeStatus: {
-    backgroundColor: '#AEE9D1',
-    color: '#000'
+    backgroundColor: theme?.palette?.success?.light,
+    color: theme?.palette?.text?.primary
   }
-};
+});
 
 const isItemShown = (row) => {
   let hidden;

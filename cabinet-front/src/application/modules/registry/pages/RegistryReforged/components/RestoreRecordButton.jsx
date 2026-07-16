@@ -28,25 +28,25 @@ import ProgressLine from 'components/Preloader/ProgressLine';
 import Message from 'components/Snackbars/Message';
 import { ReactComponent as CloseIcon } from './assets/close.svg';
 
-const styles = () => ({
+const styles = (theme) => ({
   status: {
-    color: '#000000',
+    color: theme?.palette?.text?.primary,
     padding: 3
   },
   Rollbacked: {
-    backgroundColor: '#19BE6F'
+    backgroundColor: theme?.palette?.success?.main
   },
   Failed: {
-    backgroundColor: '#FA594F'
+    backgroundColor: theme?.palette?.error?.main
   },
   Rollbacking: {
-    backgroundColor: '#FFD600'
+    backgroundColor: theme?.palette?.warning?.main
   },
   dialogActions: {
     padding: '16px 20px'
   },
   icon: {
-    color: '#FFFFFF'
+    color: theme?.palette?.primary?.contrastText
   }
 });
 

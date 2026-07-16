@@ -29,12 +29,12 @@ const useStyles = makeStyles((theme) => ({
     borderBottom: '1px solid transparent'
   },
   border: {
-    borderBottom: '1px solid #000'
+    borderBottom: `1px solid ${theme?.textColorDark || theme?.palette?.text?.primary}`
   },
   separator: {
     width: 20,
     height: 20,
-    color: '#444444'
+    color: theme?.palette?.text?.secondary
   },
   flex: {
     display: 'flex',

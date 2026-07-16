@@ -4,15 +4,22 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import ArrowDownward from '@mui/icons-material/ArrowDownward';
 import ArrowUpward from '@mui/icons-material/ArrowUpward';
+import { useTheme } from '@mui/material/styles';
 
-const iconStyle = {
-  fontSize: '18px',
-  color: 'rgba(0, 0, 0, 0.54)',
-  marginLeft: 5
+const SortingIcon = ({ direction }) => {
+  const theme = useTheme();
+  const iconStyle = {
+    fontSize: '18px',
+    color: theme?.palette?.text?.secondary,
+    marginLeft: 5
+  };
+
+  return direction === 'asc' ? (
+    <ArrowUpward style={iconStyle} />
+  ) : (
+    <ArrowDownward style={iconStyle} />
+  );
 };
-
-const SortingIcon = ({ direction }) =>
-  direction === 'asc' ? <ArrowUpward style={iconStyle} /> : <ArrowDownward style={iconStyle} />;
 
 SortingIcon.propTypes = {
   direction: PropTypes.string.isRequired

@@ -84,7 +84,7 @@ const styles = (theme) => ({
       right: 10
     },
     '&:focus-visible': {
-      outline: '3px solid #0073E6'
+      outline: `3px solid ${theme?.outlineColor || theme?.palette?.primary?.main}`
     }
   },
   closeIconImg: {
@@ -130,7 +130,7 @@ const styles = (theme) => ({
     padding: '18px 44px',
     ...(theme.confirmDialogAcceptButton || {}),
     '&:focus-visible': {
-      outline: '3px solid #0073E6'
+      outline: `3px solid ${theme?.outlineColor || theme?.palette?.primary?.main}`
     }
   },
   removePadding: {
@@ -145,7 +145,7 @@ const styles = (theme) => ({
   },
   cancelIcon: {
     '&:focus-visible': {
-      outline: '3px solid #0073E6'
+      outline: `3px solid ${theme?.outlineColor || theme?.palette?.primary?.main}`
     }
   }
 });

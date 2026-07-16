@@ -149,10 +149,9 @@ class EmailInput extends React.Component {
       return (
         <Typography
           style={{
-            cursor: 'pointer',
-            color: '#0059aa',
             marginTop: '8px',
           }}
+          className={classes.linkButton}
           onClick={this.moreSendEmail}
         >
           {t('ResendCode')}

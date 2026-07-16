@@ -32,7 +32,7 @@ const styles = (theme) => ({
     paddingRight: 0
   },
   itemCategory: {
-    boxShadow: '0 -1px 0 #404854 inset',
+    boxShadow: `0 -1px 0 ${theme?.borderColor || theme?.palette?.divider} inset`,
     paddingTop: 16,
     paddingBottom: 16
   },
@@ -43,15 +43,15 @@ const styles = (theme) => ({
   },
   itemActionable: {
     '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, .1)'
+      backgroundColor: theme?.navLinkActive || theme?.palette?.action?.hover
     },
     '& svg': {
-      fill: '#eee',
-      backgroundColor: 'rgba(255, 255, 255, .1)'
+      fill: theme?.palette?.action?.active,
+      backgroundColor: theme?.navLinkActive || theme?.palette?.action?.hover
     }
   },
   itemActiveItem: {
-    color: '#4fc3f7'
+    color: theme?.palette?.primary?.main
   },
   itemPrimary: {
     color: 'inherit',
@@ -84,7 +84,7 @@ const styles = (theme) => ({
     padding: '16px 16px 40px 16px',
     '& p': {
       margin: 0,
-      backgroundColor: '#fff',
+      backgroundColor: theme?.palette?.background?.paper,
       borderRadius: '8px',
       height: '56px',
       fontWeight: 500,
@@ -110,7 +110,7 @@ const styles = (theme) => ({
     }
   },
   logout: {
-    color: '#B01038',
+    color: theme?.palette?.error?.main,
     justifyContent: 'center'
   },
   verticalScroll: {

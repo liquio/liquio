@@ -36,7 +36,7 @@ const styles = (theme) => ({
     flexGrow: 1
   },
   restoreIcon: {
-    color: '#FFFFFF'
+    color: theme?.palette?.primary?.contrastText
   },
   dialogActions: {
     justifyContent: 'space-between',
@@ -47,17 +47,17 @@ const styles = (theme) => ({
   },
   deleteButton: {
     backgroundColor: 'transparent',
-    color: theme?.deleteButton?.color || '#B01038',
+    color: theme?.deleteButton?.color || theme?.palette?.primary?.main,
     '& path': {
-      fill: theme?.deleteButton?.fill
+      fill: theme?.deleteButton?.fill || theme?.palette?.primary?.main
     }
   },
   closeButton: {
     backgroundColor: 'transparent',
-    color: theme?.closeButton?.color || '#0068FF',
+    color: theme?.closeButton?.color || theme?.palette?.primary?.main,
     marginLeft: 8,
     '& path': {
-      fill: theme?.closeButton?.fill
+      fill: theme?.closeButton?.fill || theme?.palette?.primary?.main
     }
   },
   dialogPaper: {

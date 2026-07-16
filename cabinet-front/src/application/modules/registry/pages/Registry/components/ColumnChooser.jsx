@@ -4,19 +4,22 @@ import Tooltip from '@mui/material/Tooltip';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import withStyles from '@mui/styles/withStyles';
 
-const styles = {
+const styles = (theme) => ({
   btn: {
     '&:focus-visible': {
-      outline: '3px solid #0073E6',
+      outline: `3px solid ${theme?.outlineColor || theme?.palette?.primary?.main}`,
       outlineOffset: '2px'
     }
+  },
+  icon: {
+    color: theme?.textColorDark || theme?.palette?.text?.primary
   }
-};
+});
 
 const ColumnChooserWrapper = ({ onToggle, buttonRef, tooltipMessage, classes }) => (
   <Tooltip title={tooltipMessage} placement="bottom" enterDelay={300}>
     <IconButton onClick={onToggle} ref={buttonRef} size="large" className={classes.btn}>
-      <ViewColumnIcon style={{ color: '#000' }} />
+      <ViewColumnIcon className={classes.icon} />
     </IconButton>
   </Tooltip>
 );

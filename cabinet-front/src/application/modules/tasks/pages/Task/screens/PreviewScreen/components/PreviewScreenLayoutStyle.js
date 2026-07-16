@@ -1,4 +1,4 @@
-export default () => ({
+export default (theme) => ({
   taskPreviewContainer: {
     display: 'flex',
     flex: 1,
@@ -17,6 +17,6 @@ export default () => ({
     overflow: 'hidden'
   },
   download: {
-    backgroundColor: '#fff'
+    backgroundColor: theme?.palette?.background?.paper
   }
 });

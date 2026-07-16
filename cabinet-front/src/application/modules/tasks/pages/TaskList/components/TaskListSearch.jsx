@@ -102,7 +102,7 @@ const styles = (theme) => ({
       width: '100%'
     },
     '& .MuiBackdrop-root': {
-      backgroundColor: 'rgba(0,0,0,.5)'
+      backgroundColor: theme?.palette?.action?.disabledBackground
     }
   },
   popover: {
@@ -126,7 +126,7 @@ const styles = (theme) => ({
     padding: 16,
     textAlign: 'center',
     position: 'relative',
-    borderBottom: '1px solid #D9D9D9'
+    borderBottom: `1px solid ${theme?.borderColor || theme?.palette?.divider}`
   },
   backButton: {
     position: 'absolute',
@@ -134,14 +134,14 @@ const styles = (theme) => ({
     left: '16px',
     transform: 'translateY(-50%)',
     '& svg': {
-      fill: '#000'
+      fill: theme?.palette?.text?.primary
     }
   },
   popoverBody: {
     [theme.breakpoints.down('sm')]: {
       flex: 1,
       padding: 16,
-      backgroundColor: '#F2F7FF'
+      backgroundColor: theme?.leftSidebarBg || theme?.palette?.background?.default
     }
   },
   popoverFooter: {
@@ -161,8 +161,8 @@ const styles = (theme) => ({
     padding: 0
   },
   rootSelect: {
-    background: '#fff',
-    borderBottom: '1px solid #949494',
+    background: theme?.palette?.background?.paper,
+    borderBottom: `1px solid ${theme?.palette?.text?.secondary}`,
     borderRadius: 0,
     paddingLeft: 0,
     fontSize: 16,
@@ -170,7 +170,7 @@ const styles = (theme) => ({
     paddingBottom: 4,
     paddingRight: 1,
     '& .MuiSvgIcon-root': {
-      color: '#757575'
+      color: theme?.palette?.text?.secondary
     }
   },
   filterBtn: {
@@ -180,9 +180,9 @@ const styles = (theme) => ({
     }
   },
   filtersNumber: {
-    backgroundColor: '#0068FF',
+    backgroundColor: theme?.palette?.primary?.main,
     fontWeight: 700,
-    color: '#fff',
+    color: theme?.palette?.primary?.contrastText,
     fontSize: '14px',
     lineHeight: '20px',
     padding: '2px 8px',
@@ -202,7 +202,7 @@ const styles = (theme) => ({
     marginBottom: '8px'
   },
   filterLabel: {
-    color: '#444444',
+    color: theme?.palette?.text?.secondary,
     lineHeight: '20px'
   },
   closeBtn: {
@@ -210,7 +210,7 @@ const styles = (theme) => ({
     '& svg': {
       width: '10px',
       height: '10px',
-      fill: '#B01038'
+      fill: theme?.palette?.error?.main
     },
     '&:hover': {
       backgroundColor: 'transparent'
@@ -218,11 +218,11 @@ const styles = (theme) => ({
   },
   selectedFiltersItem: {
     maxWidth: '288px',
-    border: '1px solid #D2D2D2',
+    border: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
     borderRadius: '28px',
     padding: '6px 12px',
     display: 'flex',
-    backgroundColor: '#fff',
+    backgroundColor: theme?.palette?.background?.paper,
     '& div': {
       whiteSpace: 'nowrap',
       overflow: 'hidden',
@@ -240,7 +240,7 @@ const styles = (theme) => ({
   },
   selectPopoverFooter: {
     padding: '16px',
-    borderTop: '1px solid #E2E8F0',
+    borderTop: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
     display: 'flex',
     gap: '8px'
   },

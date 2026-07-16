@@ -41,8 +41,8 @@ const styles = (theme) => ({
     bottom: 0,
     zIndex: 10,
     position: 'fixed',
-    borderTop: '1px solid #E2E8F0',
-    backgroundColor: '#FFFFFF',
+    borderTop: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
+    backgroundColor: theme?.palette?.background?.paper,
     padding: '24px 40px',
     width: '100%',
     ...(theme?.inboxFilesToolbar || {})
@@ -59,10 +59,10 @@ const styles = (theme) => ({
     outlineOffset: 2
   },
   buttonWhite: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme?.palette?.background?.paper,
     height: 40,
     '&:hover': {
-      backgroundColor: '#0068ff1f'
+      backgroundColor: theme?.navLinkActive || theme?.palette?.action?.hover
     }
   }
 });
@@ -133,7 +133,7 @@ const InboxFileDetails = (props) => {
   if (pdfDocument instanceof Error) {
     return (
       <Content>
-        <WarningIcon style={{ color: '#d32f2f' }} />
+        <WarningIcon color="error" />
         <Typography variant={'body2'}>{t('FileLoadingError')}</Typography>
       </Content>
     );

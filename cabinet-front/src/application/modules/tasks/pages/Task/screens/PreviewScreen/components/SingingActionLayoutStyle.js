@@ -7,9 +7,9 @@ export default (theme) => ({
     width: '100%',
     maxWidth: 'calc(100% - 300px)',
     bottom: 0,
-    background: '#fff',
+    background: theme?.palette?.background?.paper,
     padding: '24px 40px',
-    borderTop: '1px solid #E2E8F0',
+    borderTop: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
     zIndex: 10,
     transition: 'max-width 0.1s ease-in-out',
     [theme.breakpoints.down('sm')]: {

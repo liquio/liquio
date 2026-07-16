@@ -12,7 +12,7 @@ import Scrollbar from 'components/Scrollbar';
 
 const styles = (theme) => ({
   drawerPaper: {
-    backgroundColor: '#E7EEF3',
+    backgroundColor: theme?.leftSidebarBg || theme?.palette?.background?.default,
     position: 'inherit',
     padding: '168px 10px 0',
     [theme.breakpoints.down('lg')]: {
@@ -23,7 +23,7 @@ const styles = (theme) => ({
     }
   },
   stepper: {
-    backgroundColor: '#E7EEF3',
+    backgroundColor: theme?.leftSidebarBg || theme?.palette?.background?.default,
     padding: 10,
     height: '100%'
   },
@@ -37,27 +37,27 @@ const styles = (theme) => ({
       cursor: 'pointer'
     },
     '& > span > span': {
-      color: '#000'
+      color: theme?.textColorDark || theme?.palette?.text?.primary
     }
   },
   disabled: {
     '& > span > span': {
-      color: '#00000080'
+      color: theme?.palette?.text?.disabled
     },
     '&:hover': {
-      backgroundColor: '#000',
+      backgroundColor: theme?.palette?.action?.hover,
       '& > span > span': {
-        color: '#fff',
+        color: theme?.textColorDark || theme?.palette?.text?.primary,
         opacity: 1
       }
     }
   },
   active: {
-    backgroundColor: '#000',
-    color: '#000'
+    backgroundColor: theme?.navLinkActive || theme?.palette?.action?.selected,
+    color: theme?.textColorDark || theme?.palette?.text?.primary
   },
   activeColor: {
-    color: '#fff'
+    color: theme?.textColorDark || theme?.palette?.text?.primary
   },
   defaultCursor: {
     pointerEvents: 'none'

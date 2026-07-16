@@ -1,6 +1,6 @@
 export default (theme) => ({
   navLink: {
-    color: '#000',
+    color: theme?.textColorDark || theme?.palette?.text?.primary,
     textDecoration: 'none',
     borderRadius: 40,
     display: 'block',
@@ -17,11 +17,11 @@ export default (theme) => ({
   },
   itemActionable: {
     '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, .1)',
+      backgroundColor: theme?.navLinkActive || theme?.palette?.action?.hover,
     },
     '& svg': {
-      fill: '#eee',
-      backgroundColor: 'rgba(255, 255, 255, .1)',
+      fill: theme?.palette?.action?.active,
+      backgroundColor: theme?.navLinkActive || theme?.palette?.action?.hover,
     },
   },
   subNavLink: {
@@ -60,6 +60,6 @@ export default (theme) => ({
     letterSpacing: '0.5px',
   },
   paper: {
-    background: '#122945',
+    background: theme?.leftSidebarBg || theme?.palette?.background?.default,
   },
 });

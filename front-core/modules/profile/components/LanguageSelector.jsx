@@ -19,28 +19,28 @@ const useStyles = makeStyles((theme) => {
   const getPalette = (darkTheme) => {
     const defaults = darkTheme
       ? {
-          background: theme?.buttonHoverBg || '#2e2e2e',
-          menuBackground: theme?.buttonHoverBg || '#2e2e2e',
-          color: theme?.header?.textColor || '#fff',
-          hoverBg: '#363636',
+          background: theme?.buttonHoverBg || theme?.palette?.grey?.[800],
+          menuBackground: theme?.buttonHoverBg || theme?.palette?.grey?.[800],
+          color: theme?.header?.textColor || theme?.palette?.primary?.contrastText,
+          hoverBg: theme?.palette?.action?.hover,
           selectedBg:
             theme?.buttonBg ||
             theme?.palette?.primary?.main ||
-            '#BB86FC',
-          selectedColor: theme?.textColorDark || '#232f3d',
+            theme?.palette?.primary?.main,
+          selectedColor: theme?.textColorDark || theme?.palette?.text?.primary,
           selectedBgHover:
             theme?.palette?.primary?.dark ||
             theme?.palette?.primary?.main ||
-            '#BB86FC'
+            theme?.palette?.primary?.main
         }
       : {
-          background: '#F5F7FA',
-          menuBackground: '#fff',
-          color: '#0F172A',
-          hoverBg: '#EAF2FF',
-          selectedBg: theme?.palette?.primary?.main || '#0068FF',
-          selectedColor: '#fff',
-          selectedBgHover: theme?.palette?.primary?.dark || '#0052CC'
+          background: theme?.palette?.background?.default,
+          menuBackground: theme?.palette?.background?.paper,
+          color: theme?.textColorDark || theme?.palette?.text?.primary,
+          hoverBg: theme?.palette?.action?.hover,
+          selectedBg: theme?.palette?.primary?.main,
+          selectedColor: theme?.palette?.primary?.contrastText,
+          selectedBgHover: theme?.palette?.primary?.dark
         };
 
     const baseOverrides = theme?.languageSelector || {};
@@ -103,7 +103,7 @@ const useStyles = makeStyles((theme) => {
             background: palette.hoverBg
           },
           '&:focus-visible': {
-            outline: `${theme.outlineColor || '#0068FF'} solid 3px`,
+            outline: `${theme.outlineColor || theme?.palette?.primary?.main} solid 3px`,
             outlineOffset: 1
           }
         }
@@ -153,8 +153,8 @@ export const LanguageSelector = ({ darkTheme = false }) => {
 
   const langSelectorTheme = muiTheme?.languageSelector || {};
   const menuBackground = darkTheme
-    ? (langSelectorTheme?.dark?.menuBackground ?? langSelectorTheme?.menuBackground ?? muiTheme?.buttonHoverBg ?? '#2e2e2e')
-    : (langSelectorTheme?.menuBackground ?? '#fff');
+    ? (langSelectorTheme?.dark?.menuBackground ?? langSelectorTheme?.menuBackground ?? muiTheme?.buttonHoverBg ?? muiTheme?.palette?.grey?.[800])
+    : (langSelectorTheme?.menuBackground ?? muiTheme?.palette?.background?.paper);
 
   const chosen = normalizeCode(
     getCurrentLanguageCode({

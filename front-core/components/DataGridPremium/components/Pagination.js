@@ -46,7 +46,7 @@ const useStyles = makeStyles((theme) => ({
   },
   select: {
     background: 'transparent',
-    border: '1px solid #E1E7F3',
+    border: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
     padding: '5px 7px',
     marginLeft: 12,
     borderRadius: 4,
@@ -59,8 +59,8 @@ const useStyles = makeStyles((theme) => ({
   },
   buttonRoot: {
     '&.pagination-action.Mui-disabled': {
-      backgroundColor: '#fff',
-      color: '#767676',
+      backgroundColor: theme?.palette?.background?.paper,
+      color: theme?.palette?.text?.disabled,
     },
   },
   buttonTitle: {

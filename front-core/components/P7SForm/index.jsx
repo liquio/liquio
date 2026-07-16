@@ -12,7 +12,7 @@ import FileKeySignForm from './FileKeySignForm';
 const styles = (theme) => ({
   tab: {
     fontSize: 16,
-    color: '#444444',
+    color: theme?.palette?.text?.secondary,
     [theme.breakpoints.down('md')]: {
       fontSize: 13,
       overflow: 'hidden',

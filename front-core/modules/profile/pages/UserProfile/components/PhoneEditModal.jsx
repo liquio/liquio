@@ -107,7 +107,7 @@ class PhoneEditModal extends React.Component {
           </Button>
           <div>
             <Button
-              style={{ cursor: 'pointer', color: '#0059aa' }}
+              className={classes.linkButton}
               onClick={this.sendSMSCode}
               href=""
             >

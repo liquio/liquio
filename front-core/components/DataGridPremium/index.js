@@ -47,7 +47,7 @@ const useStyles = makeStyles((theme) => ({
   },
   selectedFiltersItem: {
     maxWidth: '452px',
-    border: '1px solid #D2D2D2',
+    border: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
     borderRadius: '28px',
     padding: '6px 12px',
     display: 'flex',
@@ -121,12 +121,17 @@ const useStyles = makeStyles((theme) => ({
       },
       '&:hover': {
         '& fieldset': {
-          border: theme?.toolbarQuickFilter?.borderHover || '2px solid #0068FF',
+          border:
+            theme?.toolbarQuickFilter?.borderHover ||
+            `2px solid ${theme?.palette?.primary?.main}`,
         },
       },
     },
     '& .Mui-focused fieldset': {
-      border: theme?.toolbarQuickFilter?.borderFocus || '2px solid #0068FF',
+      border:
+        theme?.toolbarQuickFilter?.borderFocus ||
+        theme?.toolbarQuickFilter?.borderActive ||
+        `2px solid ${theme?.palette?.primary?.main}`,
     },
     [theme.breakpoints.down('sm')]: {
       minWidth: 'unset',
@@ -153,26 +158,26 @@ const useStyles = makeStyles((theme) => ({
     fontWeight: 400,
     fontSize: '16px',
     lineHeight: '24px',
-    borderTop: '1px solid #e0e0e0',
+    borderTop: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
     [theme.breakpoints.down('md')]: {
       display: 'none',
     },
   },
   clearAll: {
-    color: '#B01038',
-    borderColor: '#B01038',
+    color: theme?.palette?.error?.main,
+    borderColor: theme?.palette?.error?.main,
     borderRadius: '28px',
     fontWeight: 400,
     fontSize: '14px',
     lineHeight: '20px',
     padding: '6px 12px',
     '&:hover': {
-      borderColor: '#B01038',
+      borderColor: theme?.palette?.error?.main,
       backgroundColor: 'transparent',
     },
   },
   filterLabel: {
-    color: '#444444',
+    color: theme?.palette?.text?.secondary,
     lineHeight: '20px',
   },
   closeBtn: {
@@ -180,7 +185,7 @@ const useStyles = makeStyles((theme) => ({
     '& svg': {
       width: '10px',
       height: '10px',
-      fill: '#B01038',
+      fill: theme?.palette?.error?.main,
     },
     '&:hover': {
       backgroundColor: 'transparent',
@@ -212,7 +217,7 @@ const useStyles = makeStyles((theme) => ({
     position: 'sticky',
     top: 0,
     zIndex: 1,
-    borderBottom: '1px solid #E0E0E0',
+    borderBottom: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
   },
   sortableHeadCell: {
     cursor: 'pointer',

@@ -13,7 +13,7 @@ const styles = (theme) => ({
     marginTop: 20,
     padding: 16,
     maxWidth: 640,
-    background: 'rgb(255, 244, 215)'
+    background: theme?.palette?.warning?.light || theme?.palette?.warning?.main
   },
   errorPopper: {
     fontSize: 18,

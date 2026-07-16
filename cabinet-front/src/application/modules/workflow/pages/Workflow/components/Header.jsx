@@ -11,14 +11,21 @@ import capitalizeFirstLetter from 'helpers/capitalizeFirstLetter';
 import { Content } from 'layouts/LeftSidebar';
 import { ReactComponent as CalendarIcon } from 'modules/messages/pages/Message/assets/ic_calendar.svg';
 
-const colors = {
-  1: '#FFD79D',
-  2: '#AEE9D1',
-  3: '#FED3D1',
-  null: '#E4E5E7'
-};
+const getStatusColor = (theme, workflowStatusId) => ({
+  1: theme?.palette?.warning?.light,
+  2: theme?.palette?.success?.light,
+  3: theme?.palette?.error?.light,
+  null: theme?.palette?.action?.selected
+}[workflowStatusId]);
 
-const styles = () => ({
+const getStatusTextColor = (theme, workflowStatusId) => ({
+  1: theme?.palette?.warning?.contrastText || theme?.palette?.text?.primary,
+  2: theme?.palette?.success?.contrastText || theme?.palette?.text?.primary,
+  3: theme?.palette?.error?.contrastText || theme?.palette?.text?.primary,
+  null: theme?.palette?.text?.primary
+}[workflowStatusId]);
+
+const styles = (theme) => ({
   chip: {
     marginRight: 20,
     marginBottom: 10,
@@ -31,19 +38,20 @@ const styles = () => ({
   },
   time: {
     textAlign: 'center'
+  },
+  statusChip: {
+    backgroundColor: ({ workflow }) => getStatusColor(theme, workflow?.workflowStatusId),
+    color: ({ workflow }) => getStatusTextColor(theme, workflow?.workflowStatusId)
   }
 });
 
-const Header = ({ t, classes, workflow, workflow: { workflowStatusId }, timeline }) => (
+const Header = ({ t, classes, workflow, timeline }) => (
   <Content>
     {timeline.length ? (
       <Chip
         color="primary"
         label={capitalizeFirstLetter(timeline[timeline.length - 1].label)}
-        className={classes.chip}
-        style={{
-          backgroundColor: colors[workflowStatusId]
-        }}
+        className={classNames(classes.chip, classes.statusChip)}
       />
     ) : null}
     <Chip
