@@ -21,3 +21,4 @@ config/*.json
 
 # Built artifacts.
 bundle/
+dist/

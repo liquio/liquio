@@ -112,7 +112,12 @@ class DynamicCheckboxGroup extends React.Component {
 
     if (!dataMapping) return data;
 
-    const mappedData = evaluate(dataMapping, data) || [];
+    const mappedData =
+      evaluate(
+        dataMapping,
+        data,
+        isPopup ? documents?.rootDocument?.data : rootDocument.data,
+      ) || [];
 
     if (mappedData instanceof Error) return [];
 

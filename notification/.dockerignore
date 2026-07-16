@@ -4,3 +4,5 @@
 .DS_Store
 *.md
 node_modules
+dist/
+tests/

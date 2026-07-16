@@ -88,3 +88,6 @@ fabric.properties
 
 # Built artifacts
 bundle/
+
+# TypeScript build output.
+dist/

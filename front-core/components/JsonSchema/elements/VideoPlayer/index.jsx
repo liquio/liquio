@@ -9,6 +9,22 @@ import VIDEO_PROVIDERS from './providers';
 import useStyles from './styles';
 import useVideoPlayer from './useVideoPlayer';
 
+const fitWithinContainer = (size) => {
+  if (size === undefined || size === null || size === '') {
+    return size;
+  }
+
+  if (typeof size === 'number') {
+    return `min(${size}px, 100%)`;
+  }
+
+  if (typeof size === 'string') {
+    return `min(${size}, 100%)`;
+  }
+
+  return size;
+};
+
 const VideoPlayer = ({
   hidden,
   description,
@@ -65,6 +81,8 @@ const VideoPlayer = ({
   const playerFrameStyle = height
     ? { height, paddingTop: 0 }
     : undefined;
+  const containerWidth = fitWithinContainer(width);
+  const containerMaxWidth = fitWithinContainer(maxWidth);
 
   return (
     <ElementGroupContainer
@@ -78,8 +96,8 @@ const VideoPlayer = ({
       notRequiredLabel={notRequiredLabel}
       fullWidth
       noMargin={noMargin}
-      width={width}
-      maxWidth={maxWidth}
+      width={containerWidth}
+      maxWidth={containerMaxWidth}
     >
       <Box
         ref={player.wrapperRef}
