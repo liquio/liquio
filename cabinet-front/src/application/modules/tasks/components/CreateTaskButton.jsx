@@ -27,7 +27,7 @@ const styles = (theme) => ({
     marginLeft: 24
   },
   addIcon: {
-    color: '#fff'
+    color: theme?.palette?.primary?.contrastText
   }
 });
 

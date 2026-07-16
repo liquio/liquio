@@ -14,13 +14,13 @@ import dataTableAdapter from 'services/dataTable/adapter';
 import evaluate from 'helpers/evaluate';
 import endPoint from 'application/endPoints/registryKeyHistory';
 
-const styles = {
+const styles = (theme) => ({
   versionsBtn: {
     '&:focus-visible': {
-      outline: '3px solid #0073E6'
+      outline: `3px solid ${theme?.outlineColor || theme?.palette?.primary?.main}`
     }
   }
-};
+});
 
 function KeyVersionSelect(props) {
   const [open, setOpen] = React.useState(false);

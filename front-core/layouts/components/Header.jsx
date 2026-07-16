@@ -23,15 +23,15 @@ import getModules from 'modules/index';
 const styles = (theme) => ({
   menuButton: {},
   header: {
-    color: '#000',
+    color: theme?.textColorDark || theme?.palette?.text?.primary,
     padding: '16px 24px',
     backgroundColor: theme.headerBg,
-    borderBottom: '1px solid #E2E8F0',
+    borderBottom: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
     position: 'relative',
     [theme.breakpoints.down('md')]: {
       padding: 8,
       backgroundColor: theme.headerBgSm || theme.leftSidebarBg,
-      color: '#fff',
+      color: theme?.palette?.primary?.contrastText,
     },
   },
   toolbar: {
@@ -50,9 +50,9 @@ const styles = (theme) => ({
     height: 40,
   },
   backLink: {
-    color: 'rgba(0, 0, 0, 0.54)',
+    color: theme?.palette?.text?.secondary,
     [theme.breakpoints.down('md')]: {
-      color: '#fff',
+      color: theme?.palette?.primary?.contrastText,
     },
   },
   logo: {
@@ -80,11 +80,11 @@ const styles = (theme) => ({
     top: 30,
     left: 45,
     zIndex: 10,
-    backgroundColor: '#fff',
+    backgroundColor: theme?.palette?.background?.paper,
     padding: 3,
     '& button': {
       backgroundColor: theme.palette.primary.main,
-      color: '#fff',
+      color: theme.palette.primary.contrastText,
       padding: '5px 16px',
       outlineOffset: 3,
     },

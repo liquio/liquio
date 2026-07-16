@@ -36,7 +36,7 @@ const styles = (theme) => ({
     ...(theme?.categoryHeaderActive || {}),
   },
   icon: {
-    color: '#000',
+    color: theme?.textColorDark || theme?.palette?.text?.primary,
     position: 'relative',
     width: 24,
     height: 24,
@@ -59,7 +59,7 @@ const styles = (theme) => ({
     color: theme.palette.common.white,
   },
   navLink: {
-    color: '#fff',
+    color: theme?.palette?.primary?.contrastText,
     textDecoration: 'none',
     borderRadius: 56,
     display: 'block',

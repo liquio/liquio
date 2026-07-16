@@ -76,7 +76,7 @@ const styles = (theme) => ({
     }
   },
   perPageitem: {
-    color: '#000',
+    color: theme?.textColorDark || theme?.palette?.text?.primary,
     fontSize: 13,
     lineHeight: '16px',
     height: 40,
@@ -84,7 +84,7 @@ const styles = (theme) => ({
     marginRight: 10
   },
   perPageitemActive: {
-    border: '2px solid #000'
+    border: `2px solid ${theme?.textColorDark || theme?.palette?.text?.primary}`
   },
   paginationState: {
     fontSize: 13,
@@ -118,7 +118,7 @@ const styles = (theme) => ({
     }
   },
   disabled: {
-    color: '#444444',
+    color: theme?.palette?.text?.secondary,
     cursor: 'initial',
     pointerEvents: 'none'
   },
@@ -133,14 +133,14 @@ const styles = (theme) => ({
     minWidth: 25,
     textAlign: 'center',
     marginRight: 5,
-    borderBottom: '2px solid #000'
+    borderBottom: `2px solid ${theme?.textColorDark || theme?.palette?.text?.primary}`
   },
   lastPageValueWrapper: {
     paddingLeft: 5
   },
   exportToExelIcon: {
     transform: 'rotate(90deg)',
-    color: '#000'
+    color: theme?.textColorDark || theme?.palette?.text?.primary
   },
   createButton: {
     marginLeft: 50
@@ -150,7 +150,7 @@ const styles = (theme) => ({
     marginRight: 0
   },
   exportToExelWrapper: {
-    color: '#000',
+    color: theme?.textColorDark || theme?.palette?.text?.primary,
     marginLeft: 20
   },
   progressBar: {
@@ -195,12 +195,12 @@ const styles = (theme) => ({
       borderRadius: 40,
       '&:hover': {
         '& fieldset': {
-          border: '2px solid #0068FF'
+          border: theme?.searchInput?.borderHover || `2px solid ${theme?.palette?.primary?.main}`
         }
       }
     },
     '& .Mui-focused fieldset': {
-      border: '2px solid #0068FF'
+      border: theme?.searchInput?.borderActive || `2px solid ${theme?.palette?.primary?.main}`
     }
   }
 });

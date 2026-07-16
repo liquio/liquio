@@ -9,13 +9,13 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import TextField from '@mui/material/TextField';
 import ClearIcon from '@mui/icons-material/ClearOutlined';
 
-const styles = () => ({
+const styles = (theme) => ({
   label: {
     fontWeight: 400,
     fontSize: '12px',
     lineHeight: '16px',
     marginBottom: 4,
-    color: '#444444',
+    color: theme?.palette?.text?.secondary,
   },
   inputWrap: {
     marginBottom: 24,

@@ -5,7 +5,7 @@ import { Dialog, List, ListItem, ListItemIcon, ListItemText } from '@mui/materia
 import withStyles from '@mui/styles/withStyles';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFileOutlined';
 
-const styles = {
+const styles = (theme) => ({
   modal: {
     '& > div > div': {
       '@media screen and (max-width: 425px)': {
@@ -15,9 +15,9 @@ const styles = {
   },
   navlink: {
     textDecoration: 'none',
-    color: '#000'
+    color: theme?.palette?.text?.primary
   }
-};
+});
 
 const SelectEntryTaskDialog = ({ classes, template, open, onClose }) =>
   template ? (

@@ -6,14 +6,14 @@ import capitalizeFirstLetter from 'helpers/capitalizeFirstLetter';
 import TableRow from '../components/TableRow';
 import controls from 'components/DataGridPremium/components/defaultProps';
 
-const colors = {
-  1: '#FFD79D',
-  2: '#AEE9D1',
-  3: '#FED3D1',
-  null: '#E4E5E7'
-};
+const getStatusColor = (theme, workflowStatusId) => ({
+  1: theme?.palette?.warning?.light,
+  2: theme?.palette?.success?.light,
+  3: theme?.palette?.error?.light,
+  null: theme?.palette?.action?.selected
+}[workflowStatusId]);
 
-const columns = (t, { is_draft }) => [
+const columns = (t, { is_draft }, theme) => [
   {
     field: 'workflow.number',
     headerName: t('WorkflowNumber'),
@@ -37,7 +37,7 @@ const columns = (t, { is_draft }) => [
       <Chip
         style={{
           cursor: 'inherit',
-          backgroundColor: colors[workflowStatusId]
+          backgroundColor: getStatusColor(theme, workflowStatusId)
         }}
         label={
           entryTaskFinishedAt && lastStepLabel
@@ -78,8 +78,8 @@ const columns = (t, { is_draft }) => [
       }
 ];
 
-export default ({ t, filters, checkable }) => ({
+export default ({ t, filters, checkable, theme }) => ({
   checkable,
   controls,
-  columns: columns(t, filters)
+  columns: columns(t, filters, theme)
 });

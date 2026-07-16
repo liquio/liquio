@@ -11,7 +11,7 @@ import FilePreview from 'components/FilePreview';
 const styles = (theme) => ({
   dialog: {
     '& .ps__thumb-y': {
-      background: '#000'
+      background: theme?.palette?.text?.primary
     }
   },
   pageWrapper: {
@@ -37,7 +37,7 @@ const styles = (theme) => ({
       right: 10
     },
     '&:focus-visible': {
-      outline: '3px solid #0073E6'
+      outline: `3px solid ${theme?.outlineColor || theme?.palette?.primary?.main}`
     }
   },
   closeIconImg: {

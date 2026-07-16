@@ -28,7 +28,7 @@ const styles = (theme) => ({
   summaryRoot: {
     padding: 0,
     '&:focus-visible': {
-      outline: '3px solid #0073E6',
+      outline: `3px solid ${theme?.outlineColor || theme?.palette?.primary?.main}`,
       outlineOffset: '2px'
     }
   },
@@ -37,7 +37,7 @@ const styles = (theme) => ({
     padding: 0
   },
   colorPrimary: {
-    color: '#000'
+    color: theme?.palette?.text?.primary
   },
   subTitle: {
     paddingTop: 10,

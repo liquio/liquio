@@ -85,7 +85,7 @@ class TwoFactorModal extends React.Component {
           </Button>
           <div>
             <Button
-              style={{ cursor: 'pointer', color: '#0059aa' }}
+              className={classes.linkButton}
               onClick={this.sendSMSCode}
             >
               {t('ResendSMS')}
@@ -100,7 +100,7 @@ class TwoFactorModal extends React.Component {
         <DialogContentText>{t('TwoFactorAuthText')}</DialogContentText>
         <DialogContentText>{t('ConfirmText')}</DialogContentText>
         <DialogContentText
-          style={{ textAlign: 'center', fontSize: 24, color: '#000' }}
+          className={classes.centeredText}
         >
           +{phone}
         </DialogContentText>

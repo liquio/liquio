@@ -40,12 +40,12 @@ const styles = (theme) => ({
       },
       '&:hover': {
         '& fieldset': {
-          border: theme?.taskSearchInput?.borderHover || '2px solid #0068FF'
+          border: theme?.taskSearchInput?.borderHover || `2px solid ${theme?.palette?.primary?.main}`
         }
       }
     },
     '& .Mui-focused fieldset': {
-      border: '2px solid #0068FF'
+      border: theme?.taskSearchInput?.borderActive || `2px solid ${theme?.palette?.primary?.main}`
     }
   }
 });

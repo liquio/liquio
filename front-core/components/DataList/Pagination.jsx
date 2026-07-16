@@ -22,9 +22,9 @@ const styles = (theme) => ({
     }
   },
   disabledArrowButton: {
-    color: '#444444',
+    color: theme?.palette?.text?.disabled,
     '& > .MuiTypography-root': {
-      color: '#444444'
+      color: theme?.palette?.text?.disabled
     }
   },
   pagesWrapper: {
@@ -55,12 +55,12 @@ const styles = (theme) => ({
       width: 35
     },
     '&:focus-visible': {
-      outline: '#0073E6 solid 2px',
+      outline: `${theme?.outlineColor || theme?.palette?.primary?.main} solid 2px`,
       outlineOffset: '2px'
     }
   },
   activeChip: {
-    border: '#000 2px solid',
+    border: `2px solid ${theme?.palette?.text?.primary}`,
     cursor: 'default',
     '&:hover': {
       textDecoration: 'none',

@@ -30,7 +30,7 @@ const styles = (theme) => ({
   },
   time: {
     fontSize: 14,
-    color: '#444444',
+    color: theme?.palette?.text?.secondary,
     [theme.breakpoints.down('md')]: {
       fontSize: 10,
       lineHeight: '14px'

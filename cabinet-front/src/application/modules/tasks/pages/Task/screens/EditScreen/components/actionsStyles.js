@@ -1,9 +1,9 @@
 const style = (theme) => ({
   appBar: {
     top: 'auto',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme?.palette?.background?.paper,
     bottom: 0,
-    borderTop: '1px solid #E2E8F0',
+    borderTop: `1px solid ${theme?.borderColor || theme?.palette?.divider}`,
     position: 'fixed',
     zIndex: 1000,
     maxWidth: 'calc(100% - 300px)',
@@ -25,15 +25,17 @@ const style = (theme) => ({
   },
   button: {
     marginRight: 16,
-    outlineOffset: 2
+    outlineOffset: 2,
+    textTransform: 'none'
   },
   createPDF: {
+    textTransform: 'none',
     [theme.breakpoints.up('sm')]: {
       fontSize: '0.8rem'
     }
   },
   removeBtn: {
-    color: 'rgba(0, 0, 0, 0.54)',
+    color: theme?.palette?.text?.secondary,
     borderColor: 'transparent',
     marginLeft: 'auto'
   },

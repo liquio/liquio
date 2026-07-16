@@ -178,7 +178,7 @@ const KeyVersionSelect = (props) => {
           }}
         >
           <div />
-          <Button onClick={handleClose} startIcon={<CloseIcon />}>
+          <Button onClick={handleClose} startIcon={<CloseIcon />} className={classes.closeButton}>
             {t('Close')}
           </Button>
         </DialogActions>

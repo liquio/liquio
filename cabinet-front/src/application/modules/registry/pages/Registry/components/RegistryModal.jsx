@@ -22,7 +22,7 @@ import { handleChangeAdapter, SchemaForm, validateDataAsync } from 'components/J
 import Message from 'components/Snackbars/Message';
 import KeyVersionSelect from './KeyVersionSelect';
 
-const styles = () => ({
+const styles = (theme) => ({
   dialogContent: {
     overflowX: 'hidden'
   },
@@ -39,7 +39,7 @@ const styles = () => ({
   },
   btn: {
     '&:focus-visible': {
-      outline: '3px solid #0073E6'
+      outline: `3px solid ${theme?.outlineColor || theme?.palette?.primary?.main}`
     }
   }
 });

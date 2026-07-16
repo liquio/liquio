@@ -30,7 +30,7 @@ const styles = (theme) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    border: '2px solid #000',
+    border: `2px solid ${theme?.palette?.text?.primary}`,
     padding: 30,
     maxWidth: 720,
     marginBottom: 50,
@@ -192,7 +192,7 @@ const TaskPreview = ({
   if (pdfDocument instanceof Error) {
     return (
       <div className={classes.errorWrapper}>
-        <WarningIcon style={{ color: '#d32f2f' }} />
+        <WarningIcon color="error" />
         <Typography variant={'body2'}>{t('FileLoadingError')}</Typography>
       </div>
     );

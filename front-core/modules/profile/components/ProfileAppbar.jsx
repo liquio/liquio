@@ -21,7 +21,7 @@ const styles = (theme) => ({
     lineHeight: '20px',
     letterSpacing: '.1px',
     margin: '0 0 4px 0',
-    color: '#000',
+    color: theme?.textColorDark || theme?.palette?.text?.primary,
     ...(theme?.userName || {})
   },
   subTitle: {
@@ -46,7 +46,7 @@ const styles = (theme) => ({
     padding: 0
   },
   outerLink: {
-    color: 'rgba(0, 0, 0, 0.87)',
+    color: theme?.palette?.text?.primary,
     textDecoration: 'none',
     width: '100%',
     height: '100%',
@@ -57,7 +57,7 @@ const styles = (theme) => ({
     display: 'flex',
     '& > li': {
       textDecoration: 'underline',
-      color: theme?.linksColor || theme?.menuListRootLinksColor?.color || '#0068FF',
+      color: theme?.linksColor || theme?.menuListRootLinksColor?.color || theme?.palette?.primary?.main,
       fontSize: 12,
       fontWeight: 400,
       lineHeight: '16px',
@@ -71,7 +71,7 @@ const styles = (theme) => ({
           display: 'block',
           width: 2,
           height: 16,
-          backgroundColor: '#C8C8C8',
+          backgroundColor: theme?.borderColor || theme?.palette?.divider,
           content: '""',
           position: 'absolute',
           right: '-9px'

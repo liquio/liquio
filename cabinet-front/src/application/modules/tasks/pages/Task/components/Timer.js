@@ -9,17 +9,17 @@ import { makeStyles } from '@mui/styles';
 import evaluate from 'helpers/evaluate';
 import waiter from 'helpers/waitForAction';
 
-const styles = () => ({
+const styles = (theme) => ({
   finished: {
     '& .pendingText': {
-      color: '#B01038'
+      color: theme?.palette?.error?.main
     },
     '& .timeValue': {
-      backgroundColor: '#FED3D1'
+      backgroundColor: theme?.palette?.error?.light
     }
   },
   pendingText: {
-    color: '#000',
+    color: theme?.palette?.text?.primary,
     fontSize: '14px',
     lineHeight: '21px',
     display: 'inline-block',
@@ -33,7 +33,7 @@ const styles = () => ({
     fontSize: '24px',
     lineHeight: '48px',
     padding: '0 22px',
-    backgroundColor: '#FFD79D',
+    backgroundColor: theme?.palette?.warning?.light,
     borderRadius: '8px',
     marginBottom: '4px'
   },
