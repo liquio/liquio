@@ -420,6 +420,9 @@ export default {
       'Signature des données supplémentaires. Veuillez ne pas fermer la fenêtre.',
     SignProcessSignTaskDocumentSignData:
       'Signature des données du document. Veuillez ne pas fermer la fenêtre.',
+    LiquioServerSignDialogTitle: 'Signer le document',
+    LiquioServerSignDialogText: 'Confirmez la signature de ce document.',
+    LiquioServerSignButton: 'Signer',
     noOptionsText: 'Non trouvé',
     openText: 'Ouvrir la liste',
     clearText: 'Effacer',

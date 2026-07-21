@@ -426,6 +426,9 @@ export default {
       'Підписання додаткових даних. Не закривайте, будь ласка, вікно.',
     SignProcessSignTaskDocumentSignData:
       'Підписання даних документа. Не закривайте, будь ласка, вікно.',
+    LiquioServerSignDialogTitle: 'Підписати документ',
+    LiquioServerSignDialogText: 'Підтвердіть підписання цього документа.',
+    LiquioServerSignButton: 'Підписати',
     noOptionsText: 'Не знайдено',
     openText: 'Відкрити список',
     clearText: 'Очистити',
