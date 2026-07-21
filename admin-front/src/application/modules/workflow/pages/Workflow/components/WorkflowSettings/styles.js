@@ -3,7 +3,6 @@ const styles = (theme) => ({
     color: theme?.navigator?.navItem?.linkActiveColor,
     marginTop: 11,
     marginBottom: 26,
-    textTransform: 'upper-case',
     '& img': {
       marginRight: 11,
     },

@@ -270,9 +270,7 @@ export const signTaskDocument =
     api
       .post(
         `documents/${documentId}/sign?commit=${commit}&type=${signInfo?.type}`,
-        {
-          signature
-        },
+        signature === undefined ? {} : { signature },
         SIGN_DOCUMENT,
         dispatch
       )
@@ -286,7 +284,12 @@ export const getTaskDocumentAdditional = (documentId) => (dispatch) =>
 
 export const signTaskDocumentAdditional = (documentId, params) => (dispatch) =>
   api
-    .post(`documents/${documentId}/sign_additional_p7s`, params, SIGN_DOCUMENT_ADDITIONAL, dispatch)
+    .post(
+      `documents/${documentId}/sign_additional_p7s`,
+      params || {},
+      SIGN_DOCUMENT_ADDITIONAL,
+      dispatch
+    )
     .catch((error) => {
       if (error?.message !== 'Error: User already signed document additional data.') {
         throw error;
@@ -314,10 +317,12 @@ export const signTaskDocumentP7S = (documentId, p7sSignature, attachmentId) => (
     url += `?attachment_id=${attachmentId}`;
   }
 
-  return api.post(url, { p7sSignature }, SIGN_DOCUMENT, dispatch).catch((error) => {
-    Sentry.captureException(error);
-    return error;
-  });
+  return api
+    .post(url, p7sSignature === undefined ? {} : { p7sSignature }, SIGN_DOCUMENT, dispatch)
+    .catch((error) => {
+      Sentry.captureException(error);
+      return error;
+    });
 };
 
 export const rejectDocumentSigning = (documentId, rejectData) => (dispatch) =>

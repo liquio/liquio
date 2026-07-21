@@ -3,7 +3,18 @@ import { translate } from 'react-translate';
 import { useSelector } from 'react-redux';
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
-import { Toolbar, Button, Dialog, DialogTitle, DialogActions, DialogContent } from '@mui/material';
+import {
+  Toolbar,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogActions,
+  DialogContent,
+  Typography,
+  Box,
+  LinearProgress,
+  CircularProgress
+} from '@mui/material';
 import withStyles from '@mui/styles/withStyles';
 
 import SigningDialog from 'components/P7SForm/SigningDialog';
@@ -41,7 +52,9 @@ const SigningActionLayout = ({
   signProgressText,
   getDataToSign,
   onSignHash,
-  finishBtnText
+  finishBtnText,
+  isLiquioServerSign,
+  handleLiquioServerSign
 }) => {
   const debugMode = useSelector((state) => state.auth.debugMode);
   const openSidebar = useSelector((state) => state.app.openSidebar);
@@ -165,17 +178,68 @@ const SigningActionLayout = ({
           {finishBtnText ? finishBtnText : t('FinishBtn')}
         </Button>
       )}
-      <SigningDialog
-        open={showSigningDialog}
-        onSelectKey={onSelectKey}
-        onClose={() => toggleSigningDialog(false)}
-        signProgress={signProgress}
-        signProgressText={signProgressText}
-        getDataToSign={getDataToSign}
-        onSignHash={onSignHash}
-        task={task}
-        template={template}
-      />
+      {isLiquioServerSign ? (
+        <Dialog
+          open={showSigningDialog}
+          fullWidth={true}
+          maxWidth="sm"
+          onClose={(event, reason) => {
+            if (reason === 'backdropClick') {
+              return false;
+            }
+
+            return toggleSigningDialog(false);
+          }}
+        >
+          <DialogTitle>{t('SigningDialogTitle')}</DialogTitle>
+          <DialogContent>
+            <Typography>{t('LiquioServerSignDialogText')}</Typography>
+            <Box mt={3} minHeight={36} visibility={busy ? 'visible' : 'hidden'} aria-hidden={!busy}>
+              {signProgressText ? (
+                <Typography>
+                  {signProgress ? <CircularProgress size={12} /> : null}
+                  {signProgressText}
+                </Typography>
+              ) : null}
+              <LinearProgress
+                value={signProgress}
+                variant={signProgress ? 'determinate' : 'indeterminate'}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              disabled={busy}
+              variant="outlined"
+              aria-label={t('Cancel')}
+              onClick={() => toggleSigningDialog(false)}
+            >
+              {t('Cancel')}
+            </Button>
+            <Button
+              disabled={busy}
+              variant="contained"
+              color="primary"
+              aria-label={t('LiquioServerSignButton')}
+              onClick={handleLiquioServerSign}
+            >
+              {t('LiquioServerSignButton')}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      ) : (
+        <SigningDialog
+          open={showSigningDialog}
+          onSelectKey={onSelectKey}
+          onClose={() => toggleSigningDialog(false)}
+          signProgress={signProgress}
+          signProgressText={signProgressText}
+          getDataToSign={getDataToSign}
+          onSignHash={onSignHash}
+          task={task}
+          template={template}
+        />
+      )}
       <Dialog open={showSuccessDialog} onClose={handleCloseSuccessDialog}>
         <DialogTitle className={classes.title}>{t('SuccesDialogTitle')}</DialogTitle>
         <DialogContent classes={{ root: classes.root }}>{t('SuccesDialogText')}</DialogContent>
@@ -206,11 +270,13 @@ SigningActionLayout.propTypes = {
   showRejectSigningDialog: PropTypes.bool.isRequired,
   toggleSigningDialog: PropTypes.func.isRequired,
   toggleRejectSigningDialog: PropTypes.func.isRequired,
+  handleLiquioServerSign: PropTypes.func.isRequired,
   onSelectKey: PropTypes.func.isRequired,
   onRejectSigning: PropTypes.func.isRequired,
   task: PropTypes.object.isRequired,
   template: PropTypes.object.isRequired,
   handleDownloadPdf: PropTypes.func.isRequired,
+  isLiquioServerSign: PropTypes.bool,
   steps: PropTypes.array,
   finished: PropTypes.bool,
   signProgress: PropTypes.number,
@@ -221,7 +287,8 @@ SigningActionLayout.defaultProps = {
   steps: [],
   finished: false,
   signProgress: 0,
-  signProgressText: null
+  signProgressText: null,
+  isLiquioServerSign: false
 };
 
 const styled = withStyles(styles)(SigningActionLayout);

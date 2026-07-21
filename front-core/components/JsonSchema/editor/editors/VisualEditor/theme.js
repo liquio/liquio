@@ -12,6 +12,21 @@ export default {
     },
   },
   direction: 'ltr',
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+        },
+        containedPrimary: {
+          textTransform: 'none',
+        },
+        outlinedPrimary: {
+          textTransform: 'none',
+        },
+      },
+    },
+  },
   overrides: {
     MuiStepButton: {
       root: {
@@ -83,7 +98,7 @@ export default {
         lineHeight: '20px',
         letterSpacing: '0.1px',
         color: '#000',
-        textTransform: 'inherit',
+        textTransform: 'none',
         maxHeight: 40,
         '&.Mui-focusVisible': {
           outline: `${OUTLINE_COLOR} solid 3px`,
@@ -102,7 +117,7 @@ export default {
         fontStyle: 'normal',
         lineHeight: '20px',
         letterSpacing: '0.1px',
-        textTransform: 'inherit',
+        textTransform: 'none',
         padding: '10px 25px',
         background: '#0068FF',
         color: '#fff',
@@ -503,7 +518,7 @@ export default {
       fontSize: '0.875rem',
       lineHeight: 1.75,
       letterSpacing: '0.02857em',
-      textTransform: 'uppercase',
+      textTransform: 'none',
     },
     h1: {
       color: '#000',

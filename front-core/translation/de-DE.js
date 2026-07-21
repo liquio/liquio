@@ -460,6 +460,9 @@ export default {
       'Zusätzliche Daten werden signiert. Bitte schließen Sie das Fenster nicht.',
     SignProcessSignTaskDocumentSignData:
       'Dokumentdaten werden signiert. Bitte schließen Sie das Fenster nicht.',
+    LiquioServerSignDialogTitle: 'Dokument signieren',
+    LiquioServerSignDialogText: 'Bestätigen Sie die Signatur dieses Dokuments.',
+    LiquioServerSignButton: 'Signieren',
     noOptionsText: 'Nicht gefunden',
     openText: 'Liste öffnen',
     clearText: 'Leeren',
