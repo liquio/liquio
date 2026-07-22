@@ -1,8 +1,8 @@
 
-const { checkSchema } = require('express-validator');
-const validatorHelper = require('validator');
-const Validator = require('./validator');
-const validationCheckSchemaOrderInQuery = {
+import { checkSchema, ParamSchema } from 'express-validator';
+import validatorHelper from 'validator';
+import { Validator } from './validator';
+const validationCheckSchemaOrderInQuery: ParamSchema = {
   in: ['query'],
   optional: true,
   isIn: { options: [['asc', 'desc']] }
@@ -11,7 +11,9 @@ const validationCheckSchemaOrderInQuery = {
 /**
  * Task validator.
  */
-class TaskValidator extends Validator {
+export class TaskValidator extends Validator {
+  private static singleton: TaskValidator;
+
   /**
    * Task validator constructor.
    * @param {object} validationConfig Validation config object.
@@ -142,7 +144,7 @@ class TaskValidator extends Validator {
         custom: {
           options: (value) => {
             const data = new Date(value);
-            return data instanceof Date && !isNaN(data);
+            return data instanceof Date && !isNaN(data.getTime());
           }
         }
       },
@@ -152,7 +154,7 @@ class TaskValidator extends Validator {
         custom: {
           options: (value) => {
             const data = new Date(value);
-            return data instanceof Date && !isNaN(data);
+            return data instanceof Date && !isNaN(data.getTime());
           }
         }
       },
@@ -215,7 +217,7 @@ class TaskValidator extends Validator {
             return false;
           }
         }
-      }
+      } as any
     });
   }
 
@@ -315,12 +317,10 @@ class TaskValidator extends Validator {
     return checkSchema({
       ['workflowId']: {
         in: ['params'],
-        optional: false,
         isString: true
       },
       ['taskTemplateId']: {
         in: ['params'],
-        optional: false,
         isInt: true
       }
     });
@@ -333,12 +333,10 @@ class TaskValidator extends Validator {
     return checkSchema({
       ['unit_id']: {
         in: ['body'],
-        optional: false,
         isInt: true
       },
       ['group_by']: {
         in: ['body'],
-        optional: false,
         isString: true,
         isIn: { options: [['by_template', 'by_status']] }
       },
@@ -393,7 +391,6 @@ class TaskValidator extends Validator {
     return checkSchema({
       ['unit_id']: {
         in: ['body'],
-        optional: false,
         isInt: true
       },
       ['page']: {
@@ -459,12 +456,10 @@ class TaskValidator extends Validator {
     return checkSchema({
       ['workflowTemplateId']: {
         in: ['body'],
-        optional: false,
         isString: true
       },
       ['taskTemplateId']: {
         in: ['body'],
-        optional: false,
         isString: true
       }
     });
@@ -483,4 +478,3 @@ class TaskValidator extends Validator {
   }
 }
 
-module.exports = TaskValidator;

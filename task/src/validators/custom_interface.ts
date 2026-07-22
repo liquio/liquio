@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Custom interface.
  */
-class CustomInterfaceValidator extends Validator {
+export class CustomInterfaceValidator extends Validator {
+  private static singleton: CustomInterfaceValidator;
+
   /**
    * Custom interface constructor.
    * @param {object} validationConfig Validation config object.
@@ -33,4 +35,3 @@ class CustomInterfaceValidator extends Validator {
   }
 }
 
-module.exports = CustomInterfaceValidator;

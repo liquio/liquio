@@ -1,14 +1,14 @@
 /**
  * Validator.
  */
-class Validator {
+export class Validator {
+  validationConfig: any;
+
   /**
    * Validator constructor.
    * @param {object} validationConfig Validation config object.
    */
-  constructor(validationConfig) {
+  constructor(validationConfig: any) {
     this.validationConfig = validationConfig;
   }
 }
-
-module.exports = Validator;

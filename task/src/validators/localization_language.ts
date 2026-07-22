@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Localization language validator.
  */
-class LocalizationLanguageValidator extends Validator {
+export class LocalizationLanguageValidator extends Validator {
+  private static singleton: LocalizationLanguageValidator;
+
   /**
    * Constructor.
    * @param {object} validationConfig Validation config object.
@@ -34,4 +36,3 @@ class LocalizationLanguageValidator extends Validator {
   }
 }
 
-module.exports = LocalizationLanguageValidator;

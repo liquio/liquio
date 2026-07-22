@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Document validator.
  */
-class DocumentValidator extends Validator {
+export class DocumentValidator extends Validator {
+  private static singleton: DocumentValidator;
+
   /**
    * Task validator constructor.
    * @param {object} validationConfig Validation config object.
@@ -31,11 +33,9 @@ class DocumentValidator extends Validator {
       },
       ['file_name']: {
         in: ['query'],
-        optional: false,
         isString: true
       },
     });
   }
 }
 
-module.exports = DocumentValidator;

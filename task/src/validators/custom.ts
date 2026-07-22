@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Custom validator.
  */
-class CustomValidator extends Validator {
+export class CustomValidator extends Validator {
+  private static singleton: CustomValidator;
+
   /**
    * Register validator constructor.
    * @param {object} validationConfig Validation config object.
@@ -27,27 +29,22 @@ class CustomValidator extends Validator {
     return checkSchema({
       ['regionName']: {
         in: ['query', 'body'],
-        optional: false,
         isString: true
       },
       ['districtName']: {
         in: ['query', 'body'],
-        optional: false,
         isString: true
       },
       ['cityName']: {
         in: ['query', 'body'],
-        optional: false,
         isString: true
       },
       ['streetName']: {
         in: ['query', 'body'],
-        optional: false,
         isString: true
       },
       ['buildingNumber']: {
         in: ['query', 'body'],
-        optional: false,
         isString: true
       }
     });
@@ -885,4 +882,3 @@ class CustomValidator extends Validator {
   }
 }
 
-module.exports = CustomValidator;

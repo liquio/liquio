@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Favorites validator.
  */
-class FavoritesValidator extends Validator {
+export class FavoritesValidator extends Validator {
+  private static singleton: FavoritesValidator;
+
   /**
    * Favorites validator constructor.
    * @param {object} validationConfig Validadtion config object.
@@ -35,4 +37,3 @@ class FavoritesValidator extends Validator {
   }
 }
 
-module.exports = FavoritesValidator;

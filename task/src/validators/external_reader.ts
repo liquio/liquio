@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * External reader validator.
  */
-class ExternalReaderValidator extends Validator {
+export class ExternalReaderValidator extends Validator {
+  private static singleton: ExternalReaderValidator;
+
   /**
    * External reader validator constructor.
    * @param {object} validationConfig Validadtion config object.
@@ -106,4 +108,3 @@ class ExternalReaderValidator extends Validator {
   }
 }
 
-module.exports = ExternalReaderValidator;

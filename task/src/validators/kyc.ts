@@ -1,11 +1,13 @@
-const { checkSchema } = require('express-validator');
+import { checkSchema } from 'express-validator';
 
-const Validator = require('./validator');
+import { Validator } from './validator';
 
 /**
  * KYC validator.
  */
-class KycValidator extends Validator {
+export class KycValidator extends Validator {
+  private static singleton: KycValidator;
+
   /**
    * KYC validator constructor.
    * @param {object} validationConfig Validadtion config object.
@@ -57,4 +59,3 @@ class KycValidator extends Validator {
   }
 }
 
-module.exports = KycValidator;

@@ -1,10 +1,12 @@
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Protected file validator.
  */
-class ProtectedFileValidator extends Validator {
+export class ProtectedFileValidator extends Validator {
+  private static singleton: ProtectedFileValidator;
+
   /**
    * Constructor.
    * @param {object} validationConfig Validation config object.
@@ -35,7 +37,6 @@ class ProtectedFileValidator extends Validator {
       },
       ['path']: {
         in: ['query'],
-        optional: false,
         isString: true,
       },
       ['preview']: {
@@ -60,7 +61,6 @@ class ProtectedFileValidator extends Validator {
     return checkSchema({
       ['file_name']: {
         in: ['query'],
-        optional: false,
         isString: true
       },
     });
@@ -68,4 +68,3 @@ class ProtectedFileValidator extends Validator {
 
 }
 
-module.exports = ProtectedFileValidator;

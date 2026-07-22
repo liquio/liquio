@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Payment validator.
  */
-class PaymentValidator extends Validator {
+export class PaymentValidator extends Validator {
+  private static singleton: PaymentValidator;
+
   /**
    * Payment validator constructor.
    * @param {object} validationConfig Validadtion config object.
@@ -101,4 +103,3 @@ class PaymentValidator extends Validator {
   }
 }
 
-module.exports = PaymentValidator;

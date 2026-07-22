@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Register validator.
  */
-class RegisterValidator extends Validator {
+export class RegisterValidator extends Validator {
+  private static singleton: RegisterValidator;
+
   /**
    * Register validator constructor.
    * @param {object} validationConfig Validation config object.
@@ -118,7 +120,7 @@ class RegisterValidator extends Validator {
         custom: {
           options: (value) => {
             const data = new Date(value);
-            return data instanceof Date && !isNaN(data);
+            return data instanceof Date && !isNaN(data.getTime());
           }
         }
       },
@@ -128,7 +130,7 @@ class RegisterValidator extends Validator {
         custom: {
           options: (value) => {
             const data = new Date(value);
-            return data instanceof Date && !isNaN(data);
+            return data instanceof Date && !isNaN(data.getTime());
           }
         }
       },
@@ -138,7 +140,7 @@ class RegisterValidator extends Validator {
         custom: {
           options: (value) => {
             const data = new Date(value);
-            return data instanceof Date && !isNaN(data);
+            return data instanceof Date && !isNaN(data.getTime());
           }
         }
       },
@@ -148,7 +150,7 @@ class RegisterValidator extends Validator {
         custom: {
           options: (value) => {
             const data = new Date(value);
-            return data instanceof Date && !isNaN(data);
+            return data instanceof Date && !isNaN(data.getTime());
           }
         }
       },
@@ -245,7 +247,7 @@ class RegisterValidator extends Validator {
         custom: {
           options: (value) => {
             const date = new Date(value);
-            return date instanceof Date && !isNaN(date);
+            return date instanceof Date && !isNaN(date.getTime());
           }
         }
       },
@@ -255,7 +257,7 @@ class RegisterValidator extends Validator {
         custom: {
           options: (value) => {
             const date = new Date(value);
-            return date instanceof Date && !isNaN(date);
+            return date instanceof Date && !isNaN(date.getTime());
           }
         }
       }
@@ -338,7 +340,7 @@ class RegisterValidator extends Validator {
         custom: {
           options: (value) => {
             const date = new Date(value);
-            return date instanceof Date && !isNaN(date);
+            return date instanceof Date && !isNaN(date.getTime());
           }
         }
       },
@@ -348,7 +350,7 @@ class RegisterValidator extends Validator {
         custom: {
           options: (value) => {
             const date = new Date(value);
-            return date instanceof Date && !isNaN(date);
+            return date instanceof Date && !isNaN(date.getTime());
           }
         }
       }
@@ -593,4 +595,3 @@ class RegisterValidator extends Validator {
 
 }
 
-module.exports = RegisterValidator;

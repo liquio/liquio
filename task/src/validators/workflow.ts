@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Workflow validator.
  */
-class WorkflowValidator extends Validator {
+export class WorkflowValidator extends Validator {
+  private static singleton: WorkflowValidator;
+
   /**
    * Workflow validator constructor.
    * @param {object} validationConfig Validation config object.
@@ -159,4 +161,3 @@ class WorkflowValidator extends Validator {
 
 }
 
-module.exports = WorkflowValidator;

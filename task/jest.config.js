@@ -162,7 +162,7 @@ const config = {
     '**/?(*.)+(spec|test).[tj]s?(x)'
   ],
   testPathIgnorePatterns: [
-    '/validators/test.js',
+    '/validators/test\\.[jt]s$',
     '/node_modules/',
     '/dist/'
   ],

@@ -1,11 +1,13 @@
 
-const { checkSchema } = require('express-validator');
-const Validator = require('./validator');
+import { checkSchema } from 'express-validator';
+import { Validator } from './validator';
 
 /**
  * Workflow log validator.
  */
-class WorkflowLogValidator extends Validator {
+export class WorkflowLogValidator extends Validator {
+  private static singleton: WorkflowLogValidator;
+
   /**
    * Workflow log validator constructor.
    * @param {object} validationConfig Validation config object.
@@ -75,7 +77,6 @@ class WorkflowLogValidator extends Validator {
     return checkSchema({
       ['date']: {
         in: ['query'],
-        optional: false,
         isString: true
       },
       ['workflow_template_id']: {
@@ -105,4 +106,3 @@ class WorkflowLogValidator extends Validator {
   }
 }
 
-module.exports = WorkflowLogValidator;
