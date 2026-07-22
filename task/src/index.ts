@@ -1,4 +1,4 @@
-const BpmnTaskCore = require('./app');
+import { BpmnTaskCore } from './app';
 
 async function main() {
   // Init.

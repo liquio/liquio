@@ -1,28 +1,28 @@
-const moment = require('moment');
+import moment from 'moment';
 
-const Db = require('./lib/db');
-const PgPubSub = require('./lib/pgpubsub');
-const Log = require('./lib/log');
-const ConsoleLogProvider = require('./lib/log/providers/console');
-const MessageQueue = require('./lib/message_queue');
-const RedisClient = require('./lib/redis_client');
-const Models = require('./models');
-const DictionariesModel = require('./models/dictionaries');
-const DocumentFillerService = require('./services/document_filler');
-const AuthService = require('./services/auth');
-const Businesses = require('./businesses');
-const RouterService = require('./services/router');
-const FileGeneratorService = require('./services/file_generator');
-const StorageService = require('./services/storage');
-const LdapClient = require('./services/ldap');
-const Commands = require('./commands');
-const Errors = require('./lib/errors');
-const LogsBroadcasting = require('./lib/logs_broadcasting');
-const typeOf = require('./lib/type_of');
-const HttpClient = require('./lib/http_client');
-const ExternalServicesStatusesDaemon = require('./lib/external_services_statuses_daemon');
-const { loadConfig } = require('./lib/config');
-const JSONPath = require('./lib/jsonpath');
+import Db from './lib/db';
+import PgPubSub from './lib/pgpubsub';
+import Log from './lib/log';
+import ConsoleLogProvider from './lib/log/providers/console';
+import MessageQueue from './lib/message_queue';
+import RedisClient from './lib/redis_client';
+import Models from './models';
+import DictionariesModel from './models/dictionaries';
+import DocumentFillerService from './services/document_filler';
+import AuthService from './services/auth';
+import Businesses from './businesses';
+import RouterService from './services/router';
+import FileGeneratorService from './services/file_generator';
+import StorageService from './services/storage';
+import LdapClient from './services/ldap';
+import Commands from './commands';
+import Errors from './lib/errors';
+import LogsBroadcasting from './lib/logs_broadcasting';
+import typeOf from './lib/type_of';
+import HttpClient from './lib/http_client';
+import ExternalServicesStatusesDaemon from './lib/external_services_statuses_daemon';
+import { loadConfig } from './lib/config';
+import JSONPath from './lib/jsonpath';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/task';
 
@@ -45,13 +45,20 @@ global.JEST_ENV = JEST_ENV;
 /**
  * BPMN Task core.
  */
-class BpmnTaskCore {
+export class BpmnTaskCore {
+  options: typeof DEFAULT_OPTIONS & Record<string, any>;
+  commands: any;
+  pgpubsub: any;
+  models: any;
+  routerService: any;
+  db: any;
+  prometheus: any;
+
   /**
    * BPMN Task core constructor.
    * @param {object} [options] Options.
    * @param {string} [options.processTitle] Process title.
    * @param {string} [options.configPath] Config directory path as "./config".
-   * @param {object} [options.customBusinesses] Custom businesses as { someBusinessName: SomeBusinessClass, anotherBusinessName: AnotherBusinessClass }.
    * @param {object} [options.customValidators] Custom validators as { someValidatorName: SomeValidatorClass, anotherValidatorName: AnotherValidatorClass }.
    * @param {object} [options.customRoutes] Custom routes as { 'GET /some_url': { middlewares: [{ name: 'someMiddleware', method: 'someMiddlewareMethod' }], controller: { name: 'someController', method: 'someControllerMethod' } } }.
    * @param {object[]} [options.customDocumentFillers] Custom document fillers.
@@ -61,7 +68,7 @@ class BpmnTaskCore {
    * @param {object[]} [options.customFileGeneratorOptions] Custom file generator options.
    * @param {object} [options.customStorageProvider] Custom storage provider.
    */
-  constructor(options = {}) {
+  constructor(options: Record<string, any> = {}) {
     // Save options.
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this.commands = new Commands();
@@ -89,7 +96,6 @@ class BpmnTaskCore {
     const {
       processTitle,
       configPath,
-      customBusinesses,
       customValidators,
       customRoutes,
       customDocumentFillers,
@@ -104,14 +110,14 @@ class BpmnTaskCore {
     process.title = processTitle;
 
     // Init config.
-    const config = loadConfig(configPath);
+    const config: any = loadConfig(configPath);
 
     // Init global http client.
     global.httpClient = new HttpClient(global.config.http_client);
 
     // Init global custom error.
     Object.entries(Errors).forEach(([ErrorName, ErrorClass]) => {
-      global[ErrorName] = ErrorClass;
+      (global as any)[ErrorName] = ErrorClass;
     });
 
     // Init log.
@@ -126,7 +132,7 @@ class BpmnTaskCore {
     global.typeOf = typeOf;
 
     // Log unhandled rejections.
-    process.on('unhandledRejection', (error) => {
+    process.on('unhandledRejection', (error: any) => {
       const { stack, message } = error || {};
       log.save('unhandled-rejection', { stack, message }, 'error');
       process.exit(1);
@@ -152,7 +158,7 @@ class BpmnTaskCore {
     new DictionariesModel(customDictionaryModels);
 
     // Init businesses.
-    const businesses = new Businesses(config, customBusinesses);
+    const businesses: any = new Businesses(config);
 
     // Init BPMN Task redis.
     global.redisClient = config?.redis?.isEnabled
@@ -176,7 +182,7 @@ class BpmnTaskCore {
     const documentBusiness = businesses.businesses.document;
 
     // Init message queue.
-    const messageQueue = new MessageQueue(config.message_queue, {
+    const messageQueue: any = new MessageQueue(config.message_queue, {
       onInit: () => {
         messageQueue.subscribeToConsuming(taskBusiness.createFromMessage.bind(taskBusiness));
         if (
@@ -247,5 +253,3 @@ class BpmnTaskCore {
     JSONPath.cleanTimeouts();
   }
 }
-
-module.exports = BpmnTaskCore;

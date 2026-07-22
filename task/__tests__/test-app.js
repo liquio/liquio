@@ -10,7 +10,7 @@ const { RedisContainer } = require('@testcontainers/redis');
 const { randomBytes } = require('crypto');
 const jsonwebtoken = require('jsonwebtoken');
 
-const BpmnTaskCore = require('../src/app');
+const { BpmnTaskCore } = require('../src/app');
 
 // E2E tests are slow, so we increase the timeout
 jest.setTimeout(30000);

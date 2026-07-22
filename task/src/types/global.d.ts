@@ -4,7 +4,6 @@ import TaskBusiness from '../businesses/task';
 import DocumentBusiness from '../businesses/document';
 import RegisterBusiness from '../businesses/register';
 import UserInboxBusiness from '../businesses/user_inbox';
-import CustomBusiness from '../businesses/custom';
 import ExternalServicesBusiness from '../businesses/external_services';
 
 import WorkflowModel from '../models/workflow';
@@ -51,7 +50,6 @@ declare global {
     document: DocumentBusiness;
     register: RegisterBusiness;
     userInbox: UserInboxBusiness;
-    custom: CustomBusiness;
     externalServices: ExternalServicesBusiness;
   };
 
@@ -92,6 +90,22 @@ declare global {
   var log: Log;
 
   var httpClient: httpClient;
+
+  var config: any;
+
+  var db: any;
+
+  var redisClient: any;
+
+  var redisClientCommonBpmn: any;
+
+  var messageQueue: any;
+
+  var typeOf: any;
+
+  var moment: any;
+
+  var JEST_ENV: string;
 }
 
 export {};

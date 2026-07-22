@@ -47,7 +47,6 @@ class Businesses {
 
   /**
    * Init businesses.
-   * @param {object} [customBusinesses] Custom businesses as { someBusinessName: SomeBusinessClass, anotherBusinessName: AnotherBusinessClass }.
    * @private
    */
   initBusinesses() {
