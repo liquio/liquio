@@ -82,22 +82,21 @@ export const getQueryLangParam = () => {
   const chosenLanguage = getCookie('lang');
   const langCode = storage.getItem('lang');
 
-  if (chosenLanguage) return chosenLanguage;
-
-  if (langCode) return langCode;
-
-  if (!searchString) return null;
-
-  const params = qs.parse(window.location.search, { ignoreQueryPrefix: true });
+  const params = searchString
+    ? qs.parse(window.location.search, { ignoreQueryPrefix: true })
+    : {};
 
   const langExists = (Object.keys(params || {}) || []).includes('lang');
 
-  if (!langExists) return null;
-
   if (langExists) {
     setCookie('lang', params.lang, 1);
+    storage.setItem('lang', params.lang);
     return params.lang;
   }
+
+  if (langCode) return langCode;
+
+  if (chosenLanguage) return chosenLanguage;
 
   deleteCookie('lang');
 
