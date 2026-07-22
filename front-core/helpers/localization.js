@@ -45,6 +45,9 @@ export const getTranslationCandidates = (languageCode) => {
     case 'fr':
       candidates.push('fr-FR');
       break;
+    case 'de':
+      candidates.push('de-DE');
+      break;
     default:
       break;
   }

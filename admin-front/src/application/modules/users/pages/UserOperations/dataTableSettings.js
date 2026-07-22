@@ -27,6 +27,10 @@ export default ({ t }) => {
       name: t('DeleteAction'),
     },
   ]
+  const actionTypeNames = actionTypes.reduce((result, { id, name }) => {
+    result[id] = name;
+    return result;
+  }, {});
 
   return {
     controls: {
@@ -53,6 +57,7 @@ export default ({ t }) => {
       {
         id: 'actionType',
         name: t('ActionType'),
+        render: (value) => actionTypeNames[value] || value,
       },
       {
         id: 'createdBy',
