@@ -34,6 +34,9 @@ const config = {
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: 'v8',
 
+  // Transforms both .js and .ts test files through ts-jest.
+  preset: 'ts-jest/presets/js-with-ts',
+
   // A list of reporter names that Jest uses when writing coverage reports
   // coverageReporters: [
   //   "json",
@@ -92,7 +95,7 @@ const config = {
   // moduleNameMapper: {},
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
-  // modulePathIgnorePatterns: [],
+  modulePathIgnorePatterns: ['<rootDir>/dist/'],
 
   // Activates notifications for test results
   // notify: false,
@@ -159,7 +162,9 @@ const config = {
     '**/?(*.)+(spec|test).[tj]s?(x)'
   ],
   testPathIgnorePatterns: [
-    '/validators/test.js'
+    '/validators/test.js',
+    '/node_modules/',
+    '/dist/'
   ],
 
   // An array of regexp pattern strings that are matched against all test paths, matched tests are skipped
@@ -196,7 +201,7 @@ const config = {
   // verbose: undefined,
 
   // An array of regexp patterns that are matched against all source file paths before re-running tests in watch mode
-  // watchPathIgnorePatterns: [],
+  watchPathIgnorePatterns: ['<rootDir>/dist/'],
 
   // Whether to use watchman for file crawling
   // watchman: true,

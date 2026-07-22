@@ -1,4 +1,4 @@
-interface RegisterRecord {
+export interface RegisterRecord {
     id: string,
     registerId: number,
     keyId: number,

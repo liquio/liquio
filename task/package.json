@@ -9,11 +9,13 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "start:ts": "node -r ts-node/register src/index.ts",
     "start:dev": "DISABLE_LOG=true node index.js",
+    "build": "tsc",
     "migration-up": "sequelize db:migrate",
     "migration-clear": "sequelize db:migrate:undo:all",
-    "lint": "eslint \"**/*.js\"",
-    "lint:fix": "eslint \"**/*.js\" --fix",
+    "lint": "eslint \"**/*.{js,ts}\"",
+    "lint:fix": "eslint \"**/*.{js,ts}\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -80,6 +82,8 @@
     "@eslint/js": "^10.0.1",
     "@testcontainers/postgresql": "^11.13.0",
     "@testcontainers/redis": "^11.13.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.9.3",
     "escape-regex-string": "^1.0.6",
     "eslint": "^10.2.1",
     "eslint-plugin-jsdoc": "^62.8.0",
@@ -87,7 +91,11 @@
     "jest": "^30.3.0",
     "nock": "^14.0.11",
     "portfinder": "^1.0.37",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "semver": "7.5.4",

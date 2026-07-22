@@ -1,4 +1,16 @@
-FROM node:22-slim
+# Stage 1: transpile TypeScript to JavaScript
+FROM node:22 AS build
+ARG NODE_MAX_OLD_SPACE_SIZE=4096
+ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
+
+WORKDIR /build
+COPY package*.json /build
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 2: runtime image
+FROM node:22-slim AS runtime
 
 # Install base system dependencies
 RUN apt-get update && apt-get install -y \
@@ -23,6 +35,7 @@ RUN npm ci --omit=dev
 
 # Copy the application source code
 COPY . /var/www/app
+COPY --from=build /build/dist /var/www/app/
 
 USER node
 

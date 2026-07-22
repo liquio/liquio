@@ -93,7 +93,7 @@ class AuthController extends Controller {
       const userName = `${authUserInfo.last_name || ''} ${authUserInfo.first_name || ''} ${authUserInfo.middle_name || ''}`.trim();
 
       if (this.config.auth.ldap?.isEnabled) {
-        await this.#processLDAPUnits(authUserInfo);
+        await this._processLDAPUnits(authUserInfo);
       }
 
       // Handle units.
@@ -733,7 +733,7 @@ class AuthController extends Controller {
    * Associate the user with LDAP-enabled units
    * @param {*} userInfo
    */
-  async #processLDAPUnits(userInfo) {
+  async _processLDAPUnits(userInfo) {
     log.save('login-process-ldap-units');
 
     // Extract LDAP data from user info.

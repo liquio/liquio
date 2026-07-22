@@ -713,7 +713,7 @@ class TaskBusiness extends Business {
     };
   }
 
-  async #assertOnboarding(userInfo) {
+  async _assertOnboarding(userInfo) {
     if (
       config.onboarding?.onboardingTemplate?.workflowTemplateId &&
       config.onboarding?.onboardingTemplate?.taskTemplateId &&
@@ -776,7 +776,7 @@ class TaskBusiness extends Business {
     }
 
     // Make sure that the user is not in the onboarding process.
-    await this.#assertOnboarding(userInfo);
+    await this._assertOnboarding(userInfo);
 
     // Create workflow.
     const workflowTemplate = await models.workflowTemplate.findById(workflowTemplateId);
