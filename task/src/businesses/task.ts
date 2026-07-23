@@ -1,32 +1,32 @@
-const _ = require('lodash');
-const moment = require('moment-business-days');
-// eslint-disable-next-line no-unused-vars
-const iconv = require('iconv-lite');
-const SignatureInfoEntity = require('../entities/signature_info');
-const SystemNotifier = require('../lib/system_notifier');
-const Business = require('./business');
-const DocumentFiller = require('../services/document_filler');
-const StorageService = require('../services/storage');
-const DocumentValidator = require('../services/document_validator');
-const DocumentChecks = require('../services/document_checks');
-const Assigner = require('../lib/assigner');
-const NumberGenerator = require('../lib/number_generator');
-const Auth = require('../services/auth');
-const PropByPath = require('prop-by-path');
-const Notifier = require('../services/notifier');
-const { JSONPath } = require('../lib/jsonpath');
-const PaymentService = require('../services/payment');
-const NotifierService = require('../services/notifier');
-const validator = require('validator');
-const UnitModel = require('../models/unit');
-const TaskActivity = require('../types/task_activity');
-const CustomLogs = require('../services/custom_logs');
-const Eds = require('../lib/eds');
-const Helpers = require('../lib/helpers');
-const Sandbox = require('../lib/sandbox');
-const typeOf = require('../lib/type_of');
-const { OnboardingController } = require('../controllers/onboarding');
-const {
+import _ from 'lodash';
+import moment from 'moment-business-days';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import iconv from 'iconv-lite';
+import SignatureInfoEntity from '../entities/signature_info';
+import SystemNotifier from '../lib/system_notifier';
+import { Business } from './business';
+import DocumentFiller from '../services/document_filler';
+import StorageService from '../services/storage';
+import DocumentValidator from '../services/document_validator';
+import DocumentChecks from '../services/document_checks';
+import Assigner from '../lib/assigner';
+import NumberGenerator from '../lib/number_generator';
+import Auth from '../services/auth';
+import PropByPath from 'prop-by-path';
+import Notifier from '../services/notifier';
+import { JSONPath } from '../lib/jsonpath';
+import PaymentService from '../services/payment';
+import NotifierService from '../services/notifier';
+import validator from 'validator';
+import UnitModel from '../models/unit';
+import TaskActivity from '../types/task_activity';
+import CustomLogs from '../services/custom_logs';
+import Eds from '../lib/eds';
+import Helpers from '../lib/helpers';
+import Sandbox from '../lib/sandbox';
+import typeOf from '../lib/type_of';
+import { OnboardingController } from '../controllers/onboarding';
+import {
   InvalidSchemaError,
   BadRequestError,
   NotFoundError,
@@ -36,8 +36,8 @@ const {
   EvaluateSchemaFunctionError,
   InternalServerError,
   InvalidParamsError,
-} = require('../lib/errors');
-const {
+} from '../lib/errors';
+import {
   ERROR_DRAFT_EXPIRED,
   ERROR_WORKFLOW_TEMPLATE_NOT_FOUND,
   ERROR_WORKFLOW_NOT_FOUND,
@@ -46,7 +46,7 @@ const {
   ERROR_DOCUMENT_TEMPLATE_NOT_FOUND,
   ERROR_CAN_NOT_DELETE,
   ERROR_CREATE_TASK_ACCESS,
-} = require('../constants/error');
+} from '../constants/error';
 
 // Constants.
 const ONCE_DEFINED_META_FIELDS = ['commitRequestMeta'];
@@ -74,7 +74,26 @@ const ERROR_USER_TASK_ACCESS_AS_UNIT_HEAD = 'User doesn\'t have access to task a
  * @typedef {import('../entities/event')} EventEntity
  * @typedef {import('../entities/unit')} UnitEntity
  */
-class TaskBusiness extends Business {
+export class TaskBusiness extends Business {
+  private static singleton: TaskBusiness;
+
+  eds: any;
+  systemNotifier: any;
+  documentFiller: any;
+  documentChecks: any;
+  storageService: any;
+  assigner: any;
+  numberGenerator: any;
+  auth: any;
+  notifier: any;
+  paymentService: any;
+  notifierService: any;
+  unitModel: any;
+  mapping: any;
+  customLogs: any;
+  sandbox: any;
+  onboarding: any;
+
   /**
    * Task business constructor.
    * @param {object} config Config object.
@@ -88,7 +107,7 @@ class TaskBusiness extends Business {
       this.documentFiller = new DocumentFiller();
       this.documentChecks = new DocumentChecks();
       this.storageService = new StorageService();
-      this.assigner = new Assigner(models.task, models.unit);
+      this.assigner = new Assigner(global.models.task, global.models.unit);
       this.numberGenerator = new NumberGenerator();
       this.auth = new Auth().provider;
       this.notifier = new Notifier();
@@ -97,7 +116,7 @@ class TaskBusiness extends Business {
       this.unitModel = new UnitModel();
       this.mapping = config.mapping.taskBusiness;
       this.customLogs = new CustomLogs();
-      this.sandbox = new Sandbox();
+      this.sandbox = new Sandbox({});
       this.onboarding = new OnboardingController(config);
       TaskBusiness.singleton = this;
     }
@@ -143,11 +162,11 @@ class TaskBusiness extends Business {
    * @param {TaskEntity.activityLog} taskActivityLog Task activity log.
    * @returns {Promise<{performerUnits: number[], requiredPerformerUnits: number[], performerUsers: string[], performerUsersIpn: string[], performerUsersEmail: string[], signerUsers: string[], onlyForHeads: boolean}>} Task permissions promise.
    */
-  async getTaskPermissions(workflow, taskTemplate, creatorId, user, units, currentTaskPerformerUnitIds, meta, taskActivityLog) {
+  async getTaskPermissions(workflow, taskTemplate, creatorId, user, units, currentTaskPerformerUnitIds?, meta?, taskActivityLog?) {
     // Define params.
     const { id: workflowId } = workflow;
     const permissionsDescription = taskTemplate.jsonSchema.setPermissions || [];
-    let taskPermissions = {
+    const taskPermissions: any = {
       performerUnits: [],
       requiredPerformerUnits: [],
       performerUsers: [],
@@ -178,8 +197,8 @@ class TaskBusiness extends Business {
       )
     ) {
       const useAllDocuments = permissionsDescription.some((v) => v && v.useAllDocuments);
-      documents = await models.task.getDocumentsByWorkflowId(workflowId, !useAllDocuments, true);
-      events = await models.event.getEventsByWorkflowId(workflowId);
+      documents = await global.models.task.getDocumentsByWorkflowId(workflowId, !useAllDocuments, true);
+      events = await global.models.event.getEventsByWorkflowId(workflowId);
     }
 
     // Handle all permissions description.
@@ -212,7 +231,7 @@ class TaskBusiness extends Business {
           continue;
         }
       } catch (error) {
-        log.save(
+        global.log.save(
           'task-permission-condition-error',
           {
             error: error && error.message,
@@ -295,7 +314,7 @@ class TaskBusiness extends Business {
         );
       } catch (error) {
         const { message, stack } = error;
-        log.save('calculated-performer-units-error', { error: { message, stack } }, 'warn');
+        global.log.save('calculated-performer-units-error', { error: { message, stack } }, 'warn');
       }
 
       // Define calculated required performer units.
@@ -314,7 +333,7 @@ class TaskBusiness extends Business {
         );
       } catch (error) {
         const { message, stack } = error;
-        log.save('calculated-required-performer-units-error', { error: { message, stack } }, 'warn');
+        global.log.save('calculated-required-performer-units-error', { error: { message, stack } }, 'warn');
       }
 
       // Define calculated performer users.
@@ -338,7 +357,7 @@ class TaskBusiness extends Business {
         calculatedPerformerUsersName = names;
       } catch (error) {
         const { message, stack, cause } = error;
-        log.save('calculated-performer-users-error', { error: { message, stack } }, 'warn');
+        global.log.save('calculated-performer-users-error', { error: { message, stack } }, 'warn');
         if (cause === REASSIGN_TRIGGER_ERROR) {
           throw error;
         }
@@ -364,7 +383,7 @@ class TaskBusiness extends Business {
     }
 
     // Log.
-    log.save('task-permissions-defined', { creatorId, taskPermissions });
+    global.log.save('task-permissions-defined', { creatorId, taskPermissions });
 
     // Return task permissions.
     return taskPermissions;
@@ -438,8 +457,10 @@ class TaskBusiness extends Business {
           })) ||
         workflowNameSchema;
     } catch (error) {
-      log.save('can-not-define-workflow-name', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define workflow name.', { cause: error });
+      global.log.save('can-not-define-workflow-name', { workflowNameSchema, error: (error && error.message) || error });
+      const wrappedError = new Error('Can not define workflow name.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     let taskName;
     try {
@@ -450,8 +471,10 @@ class TaskBusiness extends Business {
           })) ||
         taskNameSchema;
     } catch (error) {
-      log.save('can-not-define-task-name', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define task name.', { cause: error });
+      global.log.save('can-not-define-task-name', { workflowNameSchema, error: (error && error.message) || error });
+      const wrappedError = new Error('Can not define task name.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     let documentName;
     try {
@@ -462,8 +485,10 @@ class TaskBusiness extends Business {
           })) ||
         documentNameSchema;
     } catch (error) {
-      log.save('can-not-define-document-name', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define document name.', { cause: error });
+      global.log.save('can-not-define-document-name', { workflowNameSchema, error: (error && error.message) || error });
+      const wrappedError = new Error('Can not define document name.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     let createdByIpn;
     try {
@@ -474,8 +499,10 @@ class TaskBusiness extends Business {
           })) ||
         createdByIpnSchema;
     } catch (error) {
-      log.save('can-not-define-created-by-ipn', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define created by ipn.', { cause: error });
+      global.log.save('can-not-define-created-by-ipn', { workflowNameSchema, error: (error && error.message) || error });
+      const wrappedError = new Error('Can not define created by ipn.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     let createdByUnits;
     try {
@@ -486,8 +513,10 @@ class TaskBusiness extends Business {
           })) ||
         createdByUnitsSchema;
     } catch (error) {
-      log.save('can-not-define-created-by-units', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define created by units.', { cause: error });
+      global.log.save('can-not-define-created-by-units', { workflowNameSchema, error: (error && error.message) || error });
+      const wrappedError = new Error('Can not define created by units.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     let createdByUnitHeads;
     try {
@@ -498,11 +527,13 @@ class TaskBusiness extends Business {
           })) ||
         createdByUnitHeadsSchema;
     } catch (error) {
-      log.save('can-not-define-created-by-unit-heads', {
+      global.log.save('can-not-define-created-by-unit-heads', {
         workflowNameSchema,
         error: (error && error.message) || error,
       });
-      throw new Error('Can not define created by unit heads.', { cause: error });
+      const wrappedError = new Error('Can not define created by unit heads.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     let labels;
     try {
@@ -511,8 +542,10 @@ class TaskBusiness extends Business {
           this.sandbox.evalWithArgs(labelsSchema, [documents, user, units], { meta: { fn: 'calculateNewTaskParams.labels', taskTemplateSchema } })) ||
         labelsSchema;
     } catch (error) {
-      log.save('can-not-define-labels', { workflowNameSchema, error: (error && error.message) || error });
-      throw new Error('Can not define labels.', { cause: error });
+      global.log.save('can-not-define-labels', { workflowNameSchema, error: (error && error.message) || error });
+      const wrappedError = new Error('Can not define labels.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     // Calculate meta.
@@ -522,8 +555,10 @@ class TaskBusiness extends Business {
         (metaFunction && this.sandbox.evalWithArgs(metaFunction, [documents], { meta: { fn: 'calculateNewTaskParams.meta', taskTemplateSchema } })) ||
         {};
     } catch (error) {
-      log.save('can-not-calc-meta', { metaFunction, error: (error && error.message) || error });
-      throw new Error('Can not calculate task meta.', { cause: error });
+      global.log.save('can-not-calc-meta', { metaFunction, error: (error && error.message) || error });
+      const wrappedError = new Error('Can not calculate task meta.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     // Calculate copyPdfByDocumentId.
@@ -540,8 +575,10 @@ class TaskBusiness extends Business {
           copyPdfByDocumentId = undefined;
         }
       } catch (error) {
-        log.save('can-not-calc-copy-pdf', { copyPdfByDocumentIdFunction, error: (error && error.message) || error });
-        throw new Error('Can not calculate task copy pdf.', { cause: error });
+        global.log.save('can-not-calc-copy-pdf', { copyPdfByDocumentIdFunction, error: (error && error.message) || error });
+        const wrappedError = new Error('Can not calculate task copy pdf.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -559,11 +596,13 @@ class TaskBusiness extends Business {
           copyPdfWithoutSignaturesByDocumentId = undefined;
         }
       } catch (error) {
-        log.save('can-not-calc-copy-pdf-without-signatures', {
+        global.log.save('can-not-calc-copy-pdf-without-signatures', {
           copyPdfWithoutSignaturesByDocumentIdFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task copy pdf without signatures.', { cause: error });
+        const wrappedError = new Error('Can not calculate task copy pdf without signatures.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -581,8 +620,10 @@ class TaskBusiness extends Business {
           copyAttachmentsByDocumentId = undefined;
         }
       } catch (error) {
-        log.save('can-not-calc-copy-attachments-by-document-id', { copyAttachmentsByDocumentIdFunction, error: (error && error.message) || error });
-        throw new Error('Can not calculate task copy attachments by document id.', { cause: error });
+        global.log.save('can-not-calc-copy-attachments-by-document-id', { copyAttachmentsByDocumentIdFunction, error: (error && error.message) || error });
+        const wrappedError = new Error('Can not calculate task copy attachments by document id.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -600,11 +641,13 @@ class TaskBusiness extends Business {
           copyAttachmentsByEventSavedDocumentId = undefined;
         }
       } catch (error) {
-        log.save('can-not-calc-copy-attachments-by-event-saved-document-id', {
+        global.log.save('can-not-calc-copy-attachments-by-event-saved-document-id', {
           copyAttachmentsByEventSavedDocumentIdFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task copy attachments by event saved document id.', { cause: error });
+        const wrappedError = new Error('Can not calculate task copy attachments by event saved document id.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -623,11 +666,13 @@ class TaskBusiness extends Business {
           copyAttachmentsWithoutSignaturesByDocumentId = undefined;
         }
       } catch (error) {
-        log.save('can-not-calc-copy-attachments-without-signatures', {
+        global.log.save('can-not-calc-copy-attachments-without-signatures', {
           copyAttachmentsWithoutSignaturesByDocumentIdFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task copy attachments without signatures.', { cause: error });
+        const wrappedError = new Error('Can not calculate task copy attachments without signatures.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -645,8 +690,10 @@ class TaskBusiness extends Business {
           copyPdfAsAttachmentByDocumentId = undefined;
         }
       } catch (error) {
-        log.save('can-not-calc-copy-pdf-as-attachment', { copyPdfAsAttachmentByDocumentIdFunction, error: (error && error.message) || error });
-        throw new Error('Can not calculate task copy pdf as attachment.', { cause: error });
+        global.log.save('can-not-calc-copy-pdf-as-attachment', { copyPdfAsAttachmentByDocumentIdFunction, error: (error && error.message) || error });
+        const wrappedError = new Error('Can not calculate task copy pdf as attachment.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -662,11 +709,13 @@ class TaskBusiness extends Business {
           throw new Error('Filter copy attachments by file ids must be an array.');
         }
       } catch (error) {
-        log.save('can-not-calc-filter-copy-attachments', {
+        global.log.save('can-not-calc-filter-copy-attachments', {
           filterCopyAttachmentsByFileIdsFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task filter copy attachments.', { cause: error });
+        const wrappedError = new Error('Can not calculate task filter copy attachments.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -684,11 +733,13 @@ class TaskBusiness extends Business {
           copyAdditionalDataSignaturesByDocumentId = undefined;
         }
       } catch (error) {
-        log.save('can-not-calc-copy-additional-data-signatures', {
+        global.log.save('can-not-calc-copy-additional-data-signatures', {
           copyAdditionalDataSignaturesByDocumentIdFunction,
           error: (error && error.message) || error,
         });
-        throw new Error('Can not calculate task copy additional data signatures.', { cause: error });
+        const wrappedError = new Error('Can not calculate task copy additional data signatures.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -715,12 +766,12 @@ class TaskBusiness extends Business {
 
   async _assertOnboarding(userInfo) {
     if (
-      config.onboarding?.onboardingTemplate?.workflowTemplateId &&
-      config.onboarding?.onboardingTemplate?.taskTemplateId &&
+      global.config.onboarding?.onboardingTemplate?.workflowTemplateId &&
+      global.config.onboarding?.onboardingTemplate?.taskTemplateId &&
       userInfo &&
       userInfo.onboardingTaskId
     ) {
-      const isFinal = await models.workflow.getFinalityByTaskId(userInfo.onboardingTaskId);
+      const isFinal = await global.models.workflow.getFinalityByTaskId(userInfo.onboardingTaskId);
       if (isFinal === undefined) {
         global.log.save('incorrect-current-onboarding-task-id', { onboardingTaskId: userInfo.onboardingTaskId });
       } else if (isFinal === false) {
@@ -737,6 +788,7 @@ class TaskBusiness extends Business {
   async create(options) {
     // Define params.
     let workflow;
+    // eslint-disable-next-line prefer-const -- taskTemplateId is reassigned below; workflowId/createWorkflowId aren't.
     let { workflowId, taskTemplateId, createWorkflowId } = options;
     const {
       workflowTemplateId,
@@ -779,13 +831,13 @@ class TaskBusiness extends Business {
     await this._assertOnboarding(userInfo);
 
     // Create workflow.
-    const workflowTemplate = await models.workflowTemplate.findById(workflowTemplateId);
+    const workflowTemplate: any = await global.models.workflowTemplate.findById(workflowTemplateId);
     if (!workflowTemplate || workflowTemplate.isActive === false) {
       throw new NotFoundError(ERROR_WORKFLOW_TEMPLATE_NOT_FOUND);
     }
 
     // Get task template.
-    const taskTemplate = await models.taskTemplate.findById(taskTemplateId);
+    const taskTemplate = await global.models.taskTemplate.findById(taskTemplateId);
     if (!taskTemplate) {
       throw new NotFoundError(ERROR_TASK_TEMPLATE_NOT_FOUND);
     }
@@ -815,19 +867,19 @@ class TaskBusiness extends Business {
         ) {
           if (
             !Number.isInteger(workflowTemplate.data.entryTaskTemplateIds[0]) ||
-            !(await businesses.workflow.hasTaskTemplateIdInBpmnSchema(
+            !(await global.businesses.workflow.hasTaskTemplateIdInBpmnSchema(
               workflowTemplate.xmlBpmnSchema,
               parseInt(workflowTemplate.data.entryTaskTemplateIds[0]),
             ))
           ) {
-            log.save('workflow-entry-task-template-id-error', { workflowTemplate }, 'error');
+            global.log.save('workflow-entry-task-template-id-error', { workflowTemplate }, 'error');
             throw new Error('Invalid entryTaskTemplateId.');
           }
           taskTemplateId = workflowTemplate.data.entryTaskTemplateIds[0];
         }
       } else {
         // Check taskTemplateId.
-        const entryTaskTemplateIds = businesses.workflowTemplate.prepareEntryTaskTemplateIds(
+        const entryTaskTemplateIds = global.businesses.workflowTemplate.prepareEntryTaskTemplateIds(
           workflowTemplate.data.entryTaskTemplateIds || [],
           userInfo,
           unitIds.all,
@@ -835,10 +887,10 @@ class TaskBusiness extends Business {
         );
         if (
           !entryTaskTemplateIds.some((v) => v.id === parseInt(taskTemplateId)) ||
-          !(await businesses.workflow.hasTaskTemplateIdInBpmnSchema(workflowTemplate.xmlBpmnSchema, parseInt(taskTemplateId)))
+          !(await global.businesses.workflow.hasTaskTemplateIdInBpmnSchema(workflowTemplate.xmlBpmnSchema, parseInt(taskTemplateId)))
         ) {
-          log.save('workflow-entry-task-template-id-error', { workflowTemplate, entryTaskTemplateIds, userInfo, unitIds, userUnits }, 'error');
-          const error = new Error('Invalid entryTaskTemplateId.');
+          global.log.save('workflow-entry-task-template-id-error', { workflowTemplate, entryTaskTemplateIds, userInfo, unitIds, userUnits }, 'error');
+          const error: any = new Error('Invalid entryTaskTemplateId.');
 
           if (workflowTemplate.data.disabledText) {
             error.details = {
@@ -872,7 +924,7 @@ class TaskBusiness extends Business {
       };
 
       try {
-        workflow = await models.workflow.create({
+        workflow = await (global.models.workflow.create as any)({
           id: createWorkflowId,
           workflowTemplateId,
           parentId: workflowParentId,
@@ -908,7 +960,7 @@ class TaskBusiness extends Business {
       isEntry = true;
     }
     if (!workflow) {
-      workflow = await models.workflow.findById(workflowId);
+      workflow = await global.models.workflow.findById(workflowId);
       if (!workflow) {
         throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
       }
@@ -923,11 +975,11 @@ class TaskBusiness extends Business {
 
     // Copy document.
     const shouldCopy = taskTemplate.jsonSchema.allowCopy === undefined || taskTemplate.jsonSchema.allowCopy === true;
-    let existingTask = await models.task.findCurrentTaskByWorkflowIdAndTaskTemplateID(workflowId, taskTemplateId);
+    let existingTask: any = await global.models.task.findCurrentTaskByWorkflowIdAndTaskTemplateID(workflowId, taskTemplateId);
 
     // If no task with isCurrent = true, find the latest created.
     if (!existingTask) {
-      existingTask = await models.task.findLastTaskId(workflowId, taskTemplateId);
+      existingTask = await global.models.task.findLastTaskId(workflowId, taskTemplateId);
     }
 
     if (existingTask && shouldCopy) {
@@ -936,19 +988,19 @@ class TaskBusiness extends Business {
     }
 
     // Change is_current state to old if task created again.
-    await models.task.changeIsCurrentStateToOld(taskTemplateId, workflowId);
+    await global.models.task.changeIsCurrentStateToOld(taskTemplateId, workflowId);
 
     // Get documents and events from the current workflow.
-    const documents = await models.task.getDocumentsByWorkflowId(workflowId).then(async (documents) =>
+    const documents = await global.models.task.getDocumentsByWorkflowId(workflowId).then(async (documents) =>
       Promise.all(
         documents.map(async (document) => {
-          document.attachments = await models.documentAttachment.getByDocumentId(document.id);
+          document.attachments = await global.models.documentAttachment.getByDocumentId(document.id);
           return document;
         }),
       ),
     );
 
-    const events = await models.event.getEventsByWorkflowId(workflowId);
+    const events = await global.models.event.getEventsByWorkflowId(workflowId);
 
     // Get attachments by document id if copyAttachmentsByDocumentId passes.
     // if (copyAttachmentsByDocumentId && filterCopyAttachmentsByFileIds) {
@@ -960,12 +1012,13 @@ class TaskBusiness extends Business {
       // Set workflow due date.
       if (!workflow.dueDate && typeof workflowTemplate.data.deadline !== 'undefined') {
         const workflowDueDate = this.prepareDueDate(workflowTemplate.data.deadline, { documents, events });
-        models.workflow.setDueDate(workflowId, workflowDueDate);
+        global.models.workflow.setDueDate(workflowId, workflowDueDate);
       }
       taskDueDate = this.prepareDueDate(taskTemplateSchema.deadline, { documents, events });
     }
 
     // Define task permissions.
+    /* eslint-disable prefer-const -- performerUnits/requiredPerformerUnits/performerUsers/performerUsersIpn/performerUsersEmail are reassigned below; signerUsers/onlyForHeads/calculatedPerformerUserNames aren't. */
     let {
       performerUnits,
       requiredPerformerUnits,
@@ -976,6 +1029,7 @@ class TaskBusiness extends Business {
       onlyForHeads,
       performerUserNames: calculatedPerformerUserNames = [],
     } = await this.getTaskPermissions(workflow, taskTemplate, userId, userInfo, userUnitsEntities);
+    /* eslint-enable prefer-const */
 
     if (performerUnitsFromSystemTask.length > 0) {
       performerUnits = performerUnitsFromSystemTask;
@@ -1014,25 +1068,25 @@ class TaskBusiness extends Business {
 
     // Set workflow name if need it.
     if (workflowName) {
-      await models.workflow.setName(workflowId, workflowName);
+      await global.models.workflow.setName(workflowId, workflowName);
     }
 
     // Set createdByIpn if need it.
     if (createdByIpn) {
       const userDataByIpn = await this.auth.getUserByCode(createdByIpn, true);
       if (userDataByIpn) {
-        await models.workflow.setCreatedBy(workflowId, userDataByIpn.userId);
+        await global.models.workflow.setCreatedBy(workflowId, userDataByIpn.userId);
       }
     }
 
     // Set createdByUnits if need it.
     if (createdByUnits) {
-      await models.workflow.setCreatedByUnits(workflowId, createdByUnits);
+      await global.models.workflow.setCreatedByUnits(workflowId, createdByUnits);
     }
 
     // Set createdByUnitHeads if need it.
     if (createdByUnitHeads) {
-      await models.workflow.setCreatedByUnitHeads(workflowId, createdByUnitHeads);
+      await global.models.workflow.setCreatedByUnitHeads(workflowId, createdByUnitHeads);
     }
 
     // Get performers usernames.
@@ -1045,7 +1099,9 @@ class TaskBusiness extends Business {
       performerUsersDataByIpn = (performerUsersIpn || []).length > 0 ? await this.auth.getUserByCode(performerUsersIpn, withPrivateProps) : [];
       performerUsersDataByEmail = (performerUsersEmail || []).length > 0 ? await this.auth.getUserByEmail(performerUsersEmail, withPrivateProps) : [];
     } catch (error) {
-      throw new Error(error.message || error, { cause: error });
+      const wrappedError = new Error(error.message || error);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     // Define performers user names.
@@ -1071,10 +1127,10 @@ class TaskBusiness extends Business {
     // Get task JSON schema params.
     const { isSystem, isAIAssistant, hasInitData } = (taskTemplate && taskTemplate.jsonSchema) || {};
 
-    const lastVersionWorkflowHistory = await models.workflowHistory.findLastVersionByWorkflowTemplateId(workflowTemplate.id);
+    const lastVersionWorkflowHistory = await global.models.workflowHistory.findLastVersionByWorkflowTemplateId(workflowTemplate.id);
 
     // Create task.
-    let createdTask = await models.task.create({
+    let createdTask = await (global.models.task.create as any)({
       workflowId,
       taskTemplateId,
       userId: userId,
@@ -1104,7 +1160,7 @@ class TaskBusiness extends Business {
     if (taskTemplate.documentTemplateId) {
       // Get document template.
       const documentTemplateId = taskTemplate.documentTemplateId;
-      const documentTemplate = await models.documentTemplate.findById(documentTemplateId);
+      const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
       if (!documentTemplate) {
         throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
       }
@@ -1117,7 +1173,7 @@ class TaskBusiness extends Business {
       }
 
       // Create document and set link to document into task.
-      const createdDocument = await models.document.create({
+      const createdDocument = await (global.models.document.create as any)({
         documentTemplateId,
         parentDocumentId,
         userId,
@@ -1218,7 +1274,7 @@ class TaskBusiness extends Business {
         documentData = await this.replaceAttachmentsInfoInDocumentData(documentData, attachmentsInfo);
       }
 
-      createdTask = await models.task.updateDocumentId(taskId, documentId);
+      createdTask = await global.models.task.updateDocumentId(taskId, documentId);
 
       if ((isSystem || hasInitData) && initData && Object.keys(initData).length) {
         if (hasInitData) {
@@ -1239,7 +1295,7 @@ class TaskBusiness extends Business {
             }
 
             if (initParamsSchema[param] === 'boolean') {
-              let booleanParam = initData[param] === 'true' ? true : initData[param] === 'false' ? false : undefined;
+              const booleanParam = initData[param] === 'true' ? true : initData[param] === 'false' ? false : undefined;
 
               if (!booleanParam) {
                 throw new Error(`Init param: ${param} - convertation to type boolean error.`);
@@ -1254,7 +1310,7 @@ class TaskBusiness extends Business {
         // Save external generated application PDF.
         if (documentFile) {
           if (documentFile.contentType.toLowerCase() === 'application/pdf') {
-            await businesses.document.saveExternalPdf(documentFile, documentId, userId);
+            await global.businesses.document.saveExternalPdf(documentFile, documentId, userId);
           }
         }
 
@@ -1267,26 +1323,28 @@ class TaskBusiness extends Business {
 
         // Save files.
         if (Array.isArray(files) && files.length > 0) {
-          await businesses.document.createAttachmentsForSystemTask(files, documentId, userId, userUnits, true);
-          const updatedDocument = await models.document.findById(documentId);
+          await global.businesses.document.createAttachmentsForSystemTask(files, documentId, userId, userUnits, true);
+          const updatedDocument = await global.models.document.findById(documentId);
           initData.files = updatedDocument?.data?.initData?.files;
         }
 
         // Save additional data signatures.
         if (typeOf(additionalDataSignatures) === 'array' && additionalDataSignatures.length > 0) {
-          await businesses.document.saveAdditionalDataSignatures(additionalDataSignatures, createdDocument, userId);
+          await global.businesses.document.saveAdditionalDataSignatures(additionalDataSignatures, createdDocument, userId);
           delete initData.additionalDataSignatures;
         }
 
         // Save files as document attachments (with signatures).
         if (typeOf(attachmentsSignatures) === 'array' && attachmentsSignatures.length > 0) {
           try {
-            const savedAttachments = await businesses.document.saveAttachmentsP7SSignatures(attachmentsSignatures, createdDocument, { userId });
+            const savedAttachments = await global.businesses.document.saveAttachmentsP7SSignatures(
+              attachmentsSignatures, createdDocument, { userId },
+            );
             // Save attachment info to document.
             for (const [index, attachment] of savedAttachments.entries()) {
               // We need to get the updated document for correct saving attachment array.
-              const documentToUpdate = await models.document.findById(documentId);
-              await businesses.document.saveAttachmentToDocumentData(
+              const documentToUpdate = await global.models.document.findById(documentId);
+              await global.businesses.document.saveAttachmentToDocumentData(
                 attachment,
                 `initData.attachmentsSignatures.${index}`,
                 documentToUpdate,
@@ -1295,10 +1353,10 @@ class TaskBusiness extends Business {
                 true,
               );
             }
-            const updatedDocument = await models.document.findById(documentId);
+            const updatedDocument = await global.models.document.findById(documentId);
             initData.attachmentsSignatures = updatedDocument?.data?.initData?.attachmentsSignatures;
           } catch (error) {
-            log.save('save-attachments-p7s-signatures-error', { error: (error && error.message) || error, taskId, documentId }, 'error');
+            global.log.save('save-attachments-p7s-signatures-error', { error: (error && error.message) || error, taskId, documentId }, 'error');
             throw error;
           }
         }
@@ -1317,7 +1375,7 @@ class TaskBusiness extends Business {
         enabledMocksHeader,
       });
 
-      const updatedDocument = await models.document.updateData(documentId, userId, documentData);
+      const updatedDocument = await global.models.document.updateData(documentId, userId, documentData);
 
       // Check we mush delete task (draft) next time.
       if (documentTemplateJsonSchema?.draftDeleteCondition) {
@@ -1326,7 +1384,7 @@ class TaskBusiness extends Business {
         // TODO: Make sure that this condition can be reached after exception.
         if (typeof draftDeleteConditionFunction !== 'function') {
           const error = new Error('Param draftDeleteCondition must be a string of correct function.');
-          log.save('draftDeleteCondition-error', error, 'error');
+          global.log.save('draftDeleteCondition-error', error, 'error');
           throw error;
         }
         const willDeleteCurrentDraft = draftDeleteConditionFunction(documentData);
@@ -1337,7 +1395,7 @@ class TaskBusiness extends Business {
       const documentChecksResult = this.documentChecks.checkAll(documentTemplateJsonSchema, documentData);
       if (documentChecksResult.isFailed) {
         delete documentChecksResult.isFailed;
-        const updatedTask = await models.task.update(taskId, userId, { deleted: true });
+        const updatedTask = await global.models.task.update(taskId, userId, { deleted: true });
         if (updatedTask.deleted) await this.deletePermanent(taskId, userId);
         throw new BadRequestError(documentChecksResult.message);
       }
@@ -1353,15 +1411,15 @@ class TaskBusiness extends Business {
         typeof taskTemplate.jsonSchema.autoCommit !== 'undefined' &&
         taskTemplate.jsonSchema.autoCommit === true
       ) {
-        createdTask.document.task = {
+        (createdTask.document as any).task = {
           workflowId: createdTask.workflowId,
         };
-        await businesses.document.createPdf({ document: createdTask.document, userId });
+        await global.businesses.document.createPdf({ document: createdTask.document, userId });
       }
     }
 
     // Handle activity.
-    await businesses.task.handleActivityTypeEvents(createdTask, 'TASK_CREATED');
+    await global.businesses.task.handleActivityTypeEvents(createdTask, 'TASK_CREATED');
     if (global.config.activity_log?.isEnabled) {
       const activity = new TaskActivity({
         type: 'TASK_CREATED',
@@ -1372,9 +1430,9 @@ class TaskBusiness extends Business {
           userUnits: !(isCreateByOtherSystem || isCreateFromRmqMessage) ? Helpers.getUserUnits(userId) : undefined,
           assignedUsers: await Helpers.appendUnitIdsToUsers(createdTask.performerUsers),
           assignedUnits: createdTask.performerUnits,
-        },
+        } as any,
       });
-      const taskWithCurrentActivityLog = await models.task.appendActivityLog(createdTask.id, activity);
+      const taskWithCurrentActivityLog = await global.models.task.appendActivityLog(createdTask.id, activity);
       createdTask.activityLog = taskWithCurrentActivityLog.activityLog;
     }
 
@@ -1385,7 +1443,7 @@ class TaskBusiness extends Business {
         isCreateFromRmqMessage,
       });
 
-      await businesses.userInbox.sendToInboxesIfNeedIt(finishedTask);
+      await global.businesses.userInbox.sendToInboxesIfNeedIt(finishedTask);
 
       // Send message to RabbitMQ.
       const message = { workflowId: finishedTask.workflowId, taskId: taskId };
@@ -1406,7 +1464,7 @@ class TaskBusiness extends Business {
    * @param {boolean} [withoutSignatures] Without signatures.
    */
   async copyPdfByDocumentId(originalDocumentId, documentCopyId, withoutSignatures = false) {
-    const document = await models.document.findById(originalDocumentId);
+    const document: any = await global.models.document.findById(originalDocumentId);
     if (!document) {
       return;
     }
@@ -1418,9 +1476,9 @@ class TaskBusiness extends Business {
       const newFile = await this.storageService.provider.copyFile(fileId);
 
       if (newFile && newFile.id) {
-        await models.document.addDocumentFile({ id: documentCopyId, fileId: newFile.id, fileName, fileType });
+        await (global.models.document.addDocumentFile as any)({ id: documentCopyId, fileId: newFile.id, fileName, fileType });
       } else {
-        log.save('can-not-copy-file', {
+        global.log.save('can-not-copy-file', {
           fileId,
           originalDocumentId,
           documentCopyId,
@@ -1428,7 +1486,7 @@ class TaskBusiness extends Business {
         });
       }
     } else {
-      await models.document.addDocumentFile({ id: documentCopyId, fileId, fileName, fileType });
+      await (global.models.document.addDocumentFile as any)({ id: documentCopyId, fileId, fileName, fileType });
     }
   }
 
@@ -1442,10 +1500,10 @@ class TaskBusiness extends Business {
    */
   async copyAttachmentsByDocumentId(originalDocumentId, documentCopyId, filterByFileIds = [], withoutSignatures = false, withoutGenerated = false) {
     // Define original document attachments.
-    let originalDocumentAttachments = await models.documentAttachment.getByDocumentId(originalDocumentId);
+    let originalDocumentAttachments = await global.models.documentAttachment.getByDocumentId(originalDocumentId);
 
     // Copy attachments.
-    let documentCopyAttachments = [];
+    const documentCopyAttachments = [];
 
     // Filter by file IDs.
     if (filterByFileIds.length) {
@@ -1467,7 +1525,7 @@ class TaskBusiness extends Business {
 
         if (newFile && newFile.id) {
           // Save attachments copy.
-          const documentCopyAttachment = await models.documentAttachment.create({
+          const documentCopyAttachment = await (global.models.documentAttachment.create as any)({
             documentId: documentCopyId,
             link: newFile.id,
             name,
@@ -1481,7 +1539,7 @@ class TaskBusiness extends Business {
 
           documentCopyAttachments.push(documentCopyAttachment);
         } else {
-          log.save('can-not-copy-file', {
+          global.log.save('can-not-copy-file', {
             originalLink,
             originalDocumentId,
             documentCopyId,
@@ -1490,7 +1548,7 @@ class TaskBusiness extends Business {
         }
       } else {
         // Save attachments copy.
-        const documentCopyAttachment = await models.documentAttachment.create({
+        const documentCopyAttachment = await (global.models.documentAttachment.create as any)({
           documentId: documentCopyId,
           link: originalLink,
           name,
@@ -1520,14 +1578,14 @@ class TaskBusiness extends Business {
    * @param {string} documentCopyId Document copy ID.
    */
   async copyPdfAsAttachmentByDocumentId(originalDocumentId, documentCopyId) {
-    const document = await models.document.findById(originalDocumentId);
+    const document: any = await global.models.document.findById(originalDocumentId);
     if (!document) {
       return;
     }
 
     const { fileId, fileName, fileType, fileSize = 0, labels = [], meta = {} } = document;
 
-    await models.documentAttachment.create({
+    await (global.models.documentAttachment.create as any)({
       documentId: documentCopyId,
       link: fileId,
       name: fileName,
@@ -1547,10 +1605,10 @@ class TaskBusiness extends Business {
    * @returns {Promise<{original, copy}>} Attachments info.
    */
   async copyAttachmentsByEventSavedDocumentId(originalDocumentId, documentCopyId) {
-    const document = await models.document.findById(originalDocumentId);
+    const document: any = await global.models.document.findById(originalDocumentId);
 
     // Save attachments copy.
-    const documentCopyAttachment = await models.documentAttachment.create({
+    const documentCopyAttachment = await (global.models.documentAttachment.create as any)({
       documentId: documentCopyId,
       link: document.fileId,
       name: document.fileName,
@@ -1576,14 +1634,14 @@ class TaskBusiness extends Business {
    * @param {string} documentCopyId Document copy ID.
    */
   async copyAdditionalDataSignaturesByDocumentId(originalDocumentId, documentCopyId) {
-    const additionalDataSignatures = await models.additionalDataSignature.getByDocumentId(originalDocumentId, 'asc');
+    const additionalDataSignatures = await global.models.additionalDataSignature.getByDocumentId(originalDocumentId, 'asc');
     if (!additionalDataSignatures) {
       return;
     }
 
     for (const additionalDataSignature of additionalDataSignatures) {
       const data = { ...additionalDataSignature, documentId: documentCopyId };
-      await models.additionalDataSignature.create(data);
+      await global.models.additionalDataSignature.create(data);
     }
   }
 
@@ -1625,7 +1683,7 @@ class TaskBusiness extends Business {
    * @returns {Promise<TaskEntity>} Task entity.
    */
   async update(id, userId, userUnitIds, properties) {
-    const task = await this.findByIdAndCheckAccess(id, userId, userUnitIds, true);
+    const task: any = await this.findByIdAndCheckAccess(id, userId, userUnitIds, true);
     if (!task) {
       throw new NotFoundError(ERROR_TASK_NOT_FOUND);
     }
@@ -1634,7 +1692,7 @@ class TaskBusiness extends Business {
       throw new BadRequestError(ERROR_TASK_ALREADY_COMMITTED);
     }
 
-    const taskUpdated = await models.task.update(id, userId, properties);
+    const taskUpdated = await global.models.task.update(id, userId, properties);
 
     return taskUpdated;
   }
@@ -1650,12 +1708,12 @@ class TaskBusiness extends Business {
    */
   async getAllByUserId(userId, userUnitIds, userHeadUnitIds, params, allUserUnitIds) {
     // Get tasks.
-    const tasks = await models.task.getAllByUserId(userId, userUnitIds, userHeadUnitIds, {
+    const tasks: any = await global.models.task.getAllByUserId(userId, userUnitIds, userHeadUnitIds, {
       ...params,
     });
 
-    for (let task of tasks.data) {
-      const { name = null, description = null } = await businesses.workflow.getLastStepLabel(task.workflow);
+    for (const task of tasks.data) {
+      const { name = null, description = null } = await global.businesses.workflow.getLastStepLabel(task.workflow);
       task.lastStepLabel = name;
       task.lastStepDescription = description;
 
@@ -1720,7 +1778,7 @@ class TaskBusiness extends Business {
    */
   async findByIdAndCheckAccess(id, userId, userUnitIds, strict = false) {
     // Get task.
-    const task = await models.task.findById(id, {
+    const task: any = await (global.models.task.findById as any)(id, {
       withWorkflow: ['id', 'workflow_template_id'], // we only need workflow template link
       withWorkflowTemplate: ['is_active'], // we only need to check if workflow template is active
     });
@@ -1742,7 +1800,7 @@ class TaskBusiness extends Business {
 
     task.deprecated = false;
     if (task.version !== null) {
-      const lastVersionWorkflowHistory = await models.workflowHistory.findLastVersionByWorkflowTemplateId(task.workflow.workflowTemplateId);
+      const lastVersionWorkflowHistory = await global.models.workflowHistory.findLastVersionByWorkflowTemplateId(task.workflow.workflowTemplateId);
       if (lastVersionWorkflowHistory && lastVersionWorkflowHistory.version) {
         const [majorVersionOfTask] = task.version.split('.').map((v) => parseInt(v));
         const [majorVersionOfWorkflow] = lastVersionWorkflowHistory.version.split('.').map((v) => parseInt(v));
@@ -1755,9 +1813,9 @@ class TaskBusiness extends Business {
     // Append signatures and signatures rejections.
     const documentId = task && task.document && task.document.id;
     if (documentId) {
-      const documentSignatures = await models.documentSignature.getByDocumentId(documentId);
+      const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
       task.document.signatures = documentSignatures;
-      const documentSignatureRejections = await models.documentSignatureRejection.getByDocumentId(documentId);
+      const documentSignatureRejections = await global.models.documentSignatureRejection.getByDocumentId(documentId);
       task.document.signatureRejections = documentSignatureRejections;
     }
 
@@ -1775,14 +1833,14 @@ class TaskBusiness extends Business {
       (signersFromPerformers.length > 0 || !task.data.signWithoutPerformerAvailable)
     ) {
       const error = new Error('Signer doesn\'t have access to task before performer sign it.');
-      log.save('check-access-to-task-if-multisign-error', error, 'error');
+      global.log.save('check-access-to-task-if-multisign-error', error, 'error');
       throw error;
     }
 
     const { declinedSignerIds } = task.meta || {};
     if (signers.length && declinedSignerIds && declinedSignerIds.includes(userId)) {
       const error = new Error('Signer don\'t have access to task - names not equal.');
-      log.save('check-access-to-task-if-multisign-equal-names-error', error, 'error');
+      global.log.save('check-access-to-task-if-multisign-equal-names-error', error, 'error');
       throw error;
     }
 
@@ -1796,7 +1854,7 @@ class TaskBusiness extends Business {
 
       let userRoleUnits = {};
       if (global.config?.custom?.optionalProjectParams?.userRoleUnits) {
-        const allUnits = await models.unit.getAll();
+        const allUnits = await global.models.unit.getAll();
         userRoleUnits = allUnits.filter((unit) => Object.values(global.config.custom.optionalProjectParams.userRoleUnits).includes(unit.id));
       }
       let isHasViewAccessResult;
@@ -1841,7 +1899,7 @@ class TaskBusiness extends Business {
    */
   async findByDocumentIdAsSigner(documentId, userId) {
     // Get task.
-    const task = await models.task.findByDocumentId(documentId);
+    const task: any = await global.models.task.findByDocumentId(documentId);
     if (!task) {
       throw new NotFoundError(ERROR_TASK_NOT_FOUND);
     }
@@ -1884,9 +1942,9 @@ class TaskBusiness extends Business {
         throw new Error('Task wasn\'t created.');
       }
     } catch (error) {
-      log.save('document-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error, details: error.details });
+      global.log.save('document-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error, details: error.details });
 
-      const { jsonSchema } = await models.taskTemplate.findById(messageObject.taskTemplateId);
+      const { jsonSchema } = await global.models.taskTemplate.findById(messageObject.taskTemplateId);
       const retryInfo = this.getRetryInfo(messageObject, jsonSchema);
       if (retryInfo) {
         const { retryMessage, postponedTime } = retryInfo;
@@ -1904,24 +1962,24 @@ class TaskBusiness extends Business {
             const queueName = queueNames[postponedTime] || queueNames['1d'];
             global.messageQueue.produce(retryMessage, channel, queueName);
 
-            log.save('produce-retry-message-succes', { retryMessage, channel, queueName }); // TODO: remove this log after testing.
+            global.log.save('produce-retry-message-succes', { retryMessage, channel, queueName }); // TODO: remove this log after testing.
           } catch (error) {
-            log.save('produce-retry-message-error', { retryMessage, error: error?.message }); // TODO: remove this log after testing.
+            global.log.save('produce-retry-message-error', { retryMessage, error: error?.message }); // TODO: remove this log after testing.
           }
         }
       }
 
       try {
         const type = retryInfo ? 'warning' : 'error';
-        await models.workflowError.create({ error: error.message, details: error.details, queueMessage: messageObject }, type);
-        await models.workflow.setError(messageObject.workflowId);
+        await global.models.workflowError.create({ error: error.message, details: error.details, queueMessage: messageObject }, type);
+        await global.models.workflow.setError(messageObject.workflowId);
       } catch (error) {
-        log.save('workflow-id-not-found-error', { messageObject, error: error.message });
+        global.log.save('workflow-id-not-found-error', { messageObject, error: error.message });
       }
 
       try {
-        const workflowTemplate = await models.workflowTemplate.findById(messageObject.workflowTemplateId);
-        const taskTemplate = await models.taskTemplate.findById(messageObject.taskTemplateId);
+        const workflowTemplate: any = await global.models.workflowTemplate.findById(messageObject.workflowTemplateId);
+        const taskTemplate = await global.models.taskTemplate.findById(messageObject.taskTemplateId);
 
         await this.systemNotifier.sendEmails({
           workflowId: messageObject.workflowId,
@@ -1932,7 +1990,7 @@ class TaskBusiness extends Business {
           error: error?.message,
         });
       } catch (error) {
-        log.save('system-notifier-error', error.message, 'error');
+        global.log.save('system-notifier-error', error.message, 'error');
       }
     }
 
@@ -1951,7 +2009,7 @@ class TaskBusiness extends Business {
     const { id: documentId, documentTemplateId } = document;
 
     // Get document JSON schema.
-    const documentTemplate = await models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -1971,10 +2029,12 @@ class TaskBusiness extends Business {
       isCommitAvailable = this.sandbox.evalWithArgs(isCommitAvailableFunction, [document, user, units], {
         meta: { fn: 'documentJsonSchema.isCommitAvailable', documentId },
       });
-      log.save('commit-available-function-result', { documentId, isCommitAvailableFunction, isCommitAvailable });
+      global.log.save('commit-available-function-result', { documentId, isCommitAvailableFunction, isCommitAvailable });
     } catch (error) {
-      log.save('commit-available-function-error', { documentId, isCommitAvailableFunction, error: error && error.message, document }, 'error');
-      throw new Error('Commit available function error.', { cause: error });
+      global.log.save('commit-available-function-error', { documentId, isCommitAvailableFunction, error: error && error.message, document }, 'error');
+      const wrappedError = new Error('Commit available function error.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     // Return is commit available indicator.
@@ -1993,10 +2053,10 @@ class TaskBusiness extends Business {
    * @param {object} [requestMeta] Request meta.
    * @return {Promise<TaskEntity>}
    */
-  async setStatusFinished(id, userId, userUnitIds, doNotCheckAccess = false, { user, units } = {}, requestMeta = {}, options = {}) {
+  async setStatusFinished(id, userId, userUnitIds, doNotCheckAccess = false, { user, units }: any = {}, requestMeta: any = {}, options: any = {}) {
     const { isCreateByOtherSystem = false, isCreateFromRmqMessage = false } = options;
     // Get task.
-    const task = await models.task.findById(id);
+    const task: any = await global.models.task.findById(id);
     if (!task || task.finished === true) {
       throw new NotFoundError(ERROR_TASK_NOT_FOUND);
     }
@@ -2008,14 +2068,14 @@ class TaskBusiness extends Business {
       throw new ForbiddenError(ERROR_TASK_ACCESS);
     }
 
-    const [{ workflowTemplate }, taskTemplate] = await Promise.all([
+    const [{ workflowTemplate }, taskTemplate]: any = await Promise.all([
       global.models.workflow.findById(task.workflowId),
       global.models.taskTemplate.findById(task.taskTemplateId),
     ]);
 
     // Check is entry task enabled
     if (task.isEntry) {
-      const entryTaskTemplateIds = await businesses.workflowTemplate.prepareEntryTaskTemplateIds(
+      const entryTaskTemplateIds = await global.businesses.workflowTemplate.prepareEntryTaskTemplateIds(
         workflowTemplate.data.entryTaskTemplateIds || [],
         user,
         userUnitIds.all,
@@ -2023,7 +2083,7 @@ class TaskBusiness extends Business {
       );
 
       if (!entryTaskTemplateIds.some(({ id }) => id === task.taskTemplateId)) {
-        const error = new ForbiddenError('Entry task not active.');
+        const error: any = new ForbiddenError('Entry task not active.');
         error.details = workflowTemplate.data.disabledText;
 
         throw error;
@@ -2035,7 +2095,7 @@ class TaskBusiness extends Business {
     }
 
     // Check document by JSON schema.
-    let jsonSchema = {};
+    let jsonSchema: any = {};
     const { document } = task;
     if (document) {
       // Check commit available.
@@ -2046,7 +2106,7 @@ class TaskBusiness extends Business {
 
       // Get document JSON schema.
       const templateId = document.documentTemplateId;
-      const template = await models.documentTemplate.findById(templateId);
+      const template = await global.models.documentTemplate.findById(templateId);
       if (!template) {
         throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
       }
@@ -2067,24 +2127,23 @@ class TaskBusiness extends Business {
       // Check additional data to sign.
       const { additionalDataToSign: additionalDataToSignFunction } = template;
       if (additionalDataToSignFunction) {
-        const attachments = await models.documentAttachment.getByDocumentId(document.id);
+        const attachments = await global.models.documentAttachment.getByDocumentId(document.id);
         document.attachments = attachments;
 
-        const getFileHash = businesses.document.getFileHash.bind(businesses.document, document);
-        const getHash = businesses.document.getHash.bind(businesses.document);
-        const getFileBase64 = businesses.document.getFileBase64.bind(businesses.document);
-        const getP7sSignature = businesses.document.getP7sSignature.bind(this);
+        const getFileHash = global.businesses.document.getFileHash.bind(global.businesses.document, document);
+        const getFileBase64 = global.businesses.document.getFileBase64.bind(global.businesses.document);
+        const getP7sSignature = global.businesses.document.getP7sSignature.bind(this);
 
-        const additionalDataSignatures = await models.additionalDataSignature.getByDocumentId(document.id);
+        const additionalDataSignatures = await global.models.additionalDataSignature.getByDocumentId(document.id);
         const additionalDataToSign = await this.sandbox.evalWithArgs(additionalDataToSignFunction, [document], {
           isAsync: true,
-          global: { getFileHash, getHash, getFileBase64, getP7sSignature },
+          global: { getFileHash, getFileBase64, getP7sSignature },
           meta: { fn: 'documentJsonSchema.additionalDataToSign', taskId: id, documentId: document.id },
         });
 
         const { signerUsers } = task;
         if (additionalDataSignatures.length !== additionalDataToSign.length * (signerUsers.length === 0 ? 1 : signerUsers.length)) {
-          const error = new Error('Additional data signatures haven\'t found.');
+          const error: any = new Error('Additional data signatures haven\'t found.');
           error.details = {
             additionalDataSignatures: additionalDataSignatures && additionalDataSignatures.map((v) => v.signature),
             additionalDataToSign,
@@ -2111,7 +2170,7 @@ class TaskBusiness extends Business {
 
       if (signRequiredIndicator) {
         // Define document signatures.
-        const documentSignatures = await models.documentSignature.getByDocumentId(documentId);
+        const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
         if (!Array.isArray(documentSignatures) || documentSignatures.length === 0) {
           throw new NotFoundError('Document signature not found.');
         }
@@ -2119,7 +2178,7 @@ class TaskBusiness extends Business {
         // Check p7s if need it.
         if (isP7sSign) {
           const { fileId } = document;
-          const attachments = await models.documentAttachment.getByDocumentId(documentId);
+          const attachments = await global.models.documentAttachment.getByDocumentId(documentId);
           const attachesLinks = attachments.map((v) => v.link);
 
           const fileIds = attachesLinks ? [fileId, ...attachesLinks] : [fileId];
@@ -2127,8 +2186,10 @@ class TaskBusiness extends Business {
           try {
             p7sMetaArray = await this.storageService.provider.getP7sMetadata([...fileIds]);
           } catch (error) {
-            log.save('commit|get-p7s-meta|error', { message: (error && error.message) || error });
-            throw new Error('Can not get P7S meta.', { cause: error });
+            global.log.save('commit|get-p7s-meta|error', { message: (error && error.message) || error });
+            const wrappedError = new Error('Can not get P7S meta.');
+            (wrappedError as any).cause = error;
+            throw wrappedError;
           }
 
           // Check if p7s exist.
@@ -2139,7 +2200,7 @@ class TaskBusiness extends Business {
 
         // Check all signs.
         const signedDocument = { ...document, task, signatures: documentSignatures };
-        const minSignaturesLimitInfo = await businesses.document.handleMinSignaturesLimit(signedDocument);
+        const minSignaturesLimitInfo = await (global.businesses.document.handleMinSignaturesLimit as any)(signedDocument);
         const { isMinSignaturesLimitRaised = false } = minSignaturesLimitInfo || {};
         const { signerUsers } = task;
         if (Array.isArray(signerUsers) && signerUsers.length) {
@@ -2152,8 +2213,8 @@ class TaskBusiness extends Business {
       }
 
       // Validate document.
-      const documentValidator = new DocumentValidator(jsonSchema, {
-        getFilteredRecordsByKeyId: businesses.register.getFilteredRecordsByKeyId.bind(businesses.register),
+      const documentValidator = new (DocumentValidator as any)(jsonSchema, {
+        getFilteredRecordsByKeyId: (global.businesses.register.getFilteredRecordsByKeyId as any).bind(global.businesses.register),
         getFilteredRecordsByKeyIdArguments: {
           userUnitIds: userUnitIds,
         },
@@ -2164,7 +2225,7 @@ class TaskBusiness extends Business {
         if (!traceMeta?.workflowId) {
           traceMeta.workflowId = task.workflowId;
         }
-        await models.workflowError.create(
+        await global.models.workflowError.create(
           {
             error: 'Validation error when try commit.',
             details: validationErrors,
@@ -2177,11 +2238,11 @@ class TaskBusiness extends Business {
       }
 
       // Check if task has finished payment.
-      const strictPaymentControlsPath = businesses.document.getStrictPaymentControlPath(jsonSchema);
+      const strictPaymentControlsPath = global.businesses.document.getStrictPaymentControlPath(jsonSchema);
 
       if (strictPaymentControlsPath.length) {
         for (const controlPath of strictPaymentControlsPath) {
-          let hasPaidPayment = await this.hasFinishedPayment(task, controlPath);
+          const hasPaidPayment = await this.hasFinishedPayment(task, controlPath);
           if (!hasPaidPayment) {
             throw new Error('Can not commit task! It has not been paid.');
           }
@@ -2192,10 +2253,12 @@ class TaskBusiness extends Business {
       const { isHoldPayment } = taskMeta || {};
       if (isHoldPayment) {
         try {
-          await businesses.document.unholdPayment(document, taskMeta, jsonSchema, userId);
+          await global.businesses.document.unholdPayment(document, taskMeta, jsonSchema, userId);
         } catch (error) {
-          log.save('commit-task-unhold-payment-error');
-          throw new Error(`Can not commit task - unhold payment error: ${error && error.message}`, { cause: error });
+          global.log.save('commit-task-unhold-payment-error');
+          const wrappedError = new Error(`Can not commit task - unhold payment error: ${error && error.message}`);
+          (wrappedError as any).cause = error;
+          throw wrappedError;
         }
       }
     }
@@ -2215,15 +2278,17 @@ class TaskBusiness extends Business {
       performerUsersData =
         performerUsersToSet && performerUsersToSet.length > 0 ? await this.auth.getUsersByIds(performerUsersToSet, withPrivateProps) : [];
     } catch (error) {
-      throw new Error(error.message || error, { cause: error });
+      const wrappedError = new Error(error.message || error);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     const performerUserNamesToSet = performerUsersData.map((v) => v.name);
 
-    const documents = await models.task.getDocumentsByWorkflowId(task.workflowId);
-    const events = await models.event.getEventsByWorkflowId(task.workflowId);
+    const documents = await global.models.task.getDocumentsByWorkflowId(task.workflowId);
+    const events = await global.models.event.getEventsByWorkflowId(task.workflowId);
 
     for (const document of documents) {
-      document.attachments = await models.documentAttachment.getByDocumentId(document.id);
+      document.attachments = await global.models.documentAttachment.getByDocumentId(document.id);
     }
 
     const { taskName, meta } = await this.calculateNewTaskParams(
@@ -2268,7 +2333,7 @@ class TaskBusiness extends Business {
         if (!traceMeta?.workflowId) {
           traceMeta.workflowId = task.workflowId;
         }
-        await models.workflowError.create({ error: 'Try to commit task with unfilled meta.handling.', queueMessage: {}, traceMeta }, 'warning');
+        await global.models.workflowError.create({ error: 'Try to commit task with unfilled meta.handling.', queueMessage: {}, traceMeta }, 'warning');
         throw new Error('Try to commit task with unfilled meta.handling.');
       }
 
@@ -2289,7 +2354,7 @@ class TaskBusiness extends Business {
         if (!traceMeta?.workflowId) {
           traceMeta.workflowId = task.workflowId;
         }
-        await models.workflowError.create(
+        await global.models.workflowError.create(
           {
             error: 'Try to commit task NOT handling user.',
             queueMessage: {},
@@ -2319,18 +2384,18 @@ class TaskBusiness extends Business {
           throw new Error('Workflow number function must return a string or undefined.');
         }
       } catch (error) {
-        log.save('commit-task|workflow-number-function-error', { error: error.message });
+        global.log.save('commit-task|workflow-number-function-error', { error: error.message });
         throw error;
       }
     }
     if (typeof newWorkflowNumber === 'string') {
-      await models.workflow.setNumber(task.workflowId, newWorkflowNumber);
+      await global.models.workflow.setNumber(task.workflowId, newWorkflowNumber);
     }
 
     // Set status finished and return.
-    const finishedTask = await models.task.setStatusFinished(id, performerUsersToSet, performerUserNamesToSet, taskName);
+    const finishedTask = await global.models.task.setStatusFinished(id, performerUsersToSet, performerUserNamesToSet, taskName);
     if (document) {
-      await models.document.setStatusFinal(document.id);
+      await global.models.document.setStatusFinal(document.id);
     }
 
     // Handle activity.
@@ -2343,9 +2408,9 @@ class TaskBusiness extends Business {
           systemName: isCreateByOtherSystem || isCreateFromRmqMessage ? userId : undefined,
           userId: !(isCreateByOtherSystem || isCreateFromRmqMessage) ? userId : undefined,
           userUnits: !(isCreateByOtherSystem || isCreateFromRmqMessage) ? Helpers.getUserUnits(userId) : undefined,
-        },
+        } as any,
       });
-      const taskWithCurrentActivityLog = await models.task.appendActivityLog(task.id, activity);
+      const taskWithCurrentActivityLog = await global.models.task.appendActivityLog(task.id, activity);
       task.activityLog = taskWithCurrentActivityLog.activityLog;
     }
 
@@ -2354,10 +2419,10 @@ class TaskBusiness extends Business {
     const taskTemplateId = task.taskTemplateId;
     const taskId = task.id;
     try {
-      await businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId), { documents, events });
+      await global.businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId), { documents, events });
     } catch (error) {
-      log.save('set-workflow-status-error', { workflowId, error: error.message });
-      await models.workflowError.create(
+      global.log.save('set-workflow-status-error', { workflowId, error: error.message });
+      await global.models.workflowError.create(
         {
           error: 'Can not set the workflow status.',
           details: {
@@ -2391,13 +2456,13 @@ class TaskBusiness extends Business {
   async delayedAutoCommitFromMessage(message) {
     const { taskId } = message;
 
-    const task = await models.task.findById(taskId);
+    const task: any = await global.models.task.findById(taskId);
     if (task.finished) {
       return true; // Tell RMQ server that we already processed that message.
     }
 
     // Save attribute in document data, for accessibility from schema.
-    const document = await global.models.document.findById(task.documentId);
+    const document: any = await global.models.document.findById(task.documentId);
     PropByPath.set(document.data, 'isSystemDelayedAutoCommit', true);
     await global.models.document.updateData(task.documentId, 'system', document.data);
 
@@ -2408,30 +2473,30 @@ class TaskBusiness extends Business {
     const finishedTask = await global.models.task.setStatusFinished(taskId);
 
     // Handle activity.
-    await businesses.task.handleActivityTypeEvents(finishedTask, 'TASK_COMMITTED');
+    await global.businesses.task.handleActivityTypeEvents(finishedTask, 'TASK_COMMITTED');
     if (global.config.activity_log?.isEnabled) {
       const activity = new TaskActivity({
         type: 'TASK_COMMITTED',
         details: {
           commitType: 'DELAYED_AUTO_COMMIT_BY_SYSTEM',
           systemName: 'system',
-        },
+        } as any,
       });
       await global.models.task.appendActivityLog(taskId, activity);
     }
 
     // Set the workflow status.
     const { workflowId, taskTemplateId } = finishedTask;
-    const { workflowTemplate } = await global.models.workflow.findById(workflowId);
+    const { workflowTemplate }: any = await global.models.workflow.findById(workflowId as any);
     const documents = await global.models.task.getDocumentsByWorkflowId(workflowId);
     const events = await global.models.event.getEventsByWorkflowId(workflowId);
     try {
-      await global.businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId), {
+      await global.businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId as any), {
         documents,
         events,
       });
     } catch (error) {
-      log.save('task-business|delayed-auto-commit-from-message|set-workflow-status-error', {
+      global.log.save('task-business|delayed-auto-commit-from-message|set-workflow-status-error', {
         workflowId,
         error: error?.toString(),
       });
@@ -2466,7 +2531,7 @@ class TaskBusiness extends Business {
    * @returns {{deleted: boolean, task}} Deleting result.
    */
   async delete(id, userId, { force }) {
-    const task = await models.task.findById(id);
+    const task: any = await global.models.task.findById(id);
 
     // Check access.
     const hasAccess = task && (await task.hasAccess(userId));
@@ -2474,7 +2539,7 @@ class TaskBusiness extends Business {
       throw new ForbiddenError(ERROR_TASK_ACCESS);
     }
 
-    const workflow = await models.workflow.findById(task.workflowId);
+    const workflow: any = await global.models.workflow.findById(task.workflowId);
     if (!workflow) {
       throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
     }
@@ -2484,7 +2549,7 @@ class TaskBusiness extends Business {
     }
 
     // Get document JSON schema.
-    const documentTemplate = await models.documentTemplate.findById(task.document.documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(task.document.documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -2516,7 +2581,7 @@ class TaskBusiness extends Business {
       }
     }
 
-    await models.task.setStateDeleted(id, true);
+    await global.models.task.setStateDeleted(id, true);
     return { state: true, task };
   }
 
@@ -2526,13 +2591,13 @@ class TaskBusiness extends Business {
    * @param {string} userId User ID.
    */
   async deletePermanent(id, userId) {
-    const task = await models.task.findById(id);
+    const task: any = await global.models.task.findById(id);
 
     // Check that document doesn't have signature.
-    const documentSignature = await models.documentSignature.getByDocumentId(task.document.id);
+    const documentSignature = await (global.models.documentSignature.getByDocumentId as any)(task.document.id);
 
     if (documentSignature.length > 0) {
-      log.save('delete-permanent-by-task-id-error|document-has-signature', { id }, 'error');
+      global.log.save('delete-permanent-by-task-id-error|document-has-signature', { id }, 'error');
       throw new Error('Error permanent deleting. Document has signature');
     }
 
@@ -2542,7 +2607,7 @@ class TaskBusiness extends Business {
       throw new ForbiddenError(ERROR_TASK_ACCESS);
     }
 
-    const workflow = await models.workflow.findById(task.workflowId);
+    const workflow: any = await global.models.workflow.findById(task.workflowId);
     if (!workflow) {
       throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
     }
@@ -2553,14 +2618,14 @@ class TaskBusiness extends Business {
 
     try {
       await Promise.all([
-        models.task.deleteById(id),
-        models.documentAttachment.deleteByDocumentId(task.document.id),
-        models.documentSignature.deleteByDocumentId(task.document.id),
-        models.document.deleteById(task.document.id),
-        models.workflow.deleteById(task.workflowId),
+        global.models.task.deleteById(id),
+        global.models.documentAttachment.deleteByDocumentId(task.document.id),
+        global.models.documentSignature.deleteByDocumentId(task.document.id),
+        global.models.document.deleteById(task.document.id),
+        global.models.workflow.deleteById(task.workflowId),
       ]);
     } catch {
-      log.save('delete-permanent-by-task-id-error', { id }, 'error');
+      global.log.save('delete-permanent-by-task-id-error', { id }, 'error');
     }
   }
 
@@ -2571,7 +2636,7 @@ class TaskBusiness extends Business {
    * @returns {boolean}
    */
   async recover(id, userId) {
-    const task = await models.task.findById(id);
+    const task: any = await global.models.task.findById(id);
 
     // Check access.
     const hasAccess = task && (await task.hasAccess(userId));
@@ -2579,7 +2644,7 @@ class TaskBusiness extends Business {
       throw new ForbiddenError(ERROR_TASK_ACCESS);
     }
 
-    const workflow = await models.workflow.findById(task.workflowId);
+    const workflow: any = await global.models.workflow.findById(task.workflowId);
     if (!workflow) {
       throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
     }
@@ -2588,7 +2653,7 @@ class TaskBusiness extends Business {
       return false;
     }
 
-    await models.task.setStateDeleted(id, false);
+    await global.models.task.setStateDeleted(id, false);
     return true;
   }
 
@@ -2602,7 +2667,7 @@ class TaskBusiness extends Business {
    */
   async setSignerUsers(id, signerUsers, userId, userUnitIds) {
     // Get task.
-    const task = await models.task.findById(id);
+    const task: any = await global.models.task.findById(id);
 
     // Check access.
     const signersDoNotHaveAccess = true;
@@ -2611,13 +2676,13 @@ class TaskBusiness extends Business {
       throw new ForbiddenError(ERROR_TASK_ACCESS);
     }
 
-    await models.taskTemplate.findById(task.taskTemplateId);
+    await global.models.taskTemplate.findById(task.taskTemplateId);
     if (this.checkDraftExpired(task)) {
       throw new BadRequestError(ERROR_DRAFT_EXPIRED);
     }
 
     // Set signer users.
-    const updatedTask = models.task.setSignerUsers(id, signerUsers);
+    const updatedTask = global.models.task.setSignerUsers(id, signerUsers);
     return updatedTask;
   }
 
@@ -2631,7 +2696,7 @@ class TaskBusiness extends Business {
    */
   async setPerformerUsers(id, performerUsers, userHeadUnitIds, _userId) {
     // Get task.
-    const task = await models.task.findById(id);
+    const task: any = await global.models.task.findById(id);
 
     // Check access.
     const hasAccess = task && task.isPerformerViaUnit(userHeadUnitIds);
@@ -2645,12 +2710,14 @@ class TaskBusiness extends Business {
     try {
       performerUsersData = await this.auth.getUsersByIds(performerUsers, withPrivateProps);
     } catch (error) {
-      throw new Error(error.message || error, { cause: error });
+      const wrappedError = new Error(error.message || error);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     const performerUserNames = performerUsersData.map((v) => v.name);
 
     // Set performer users.
-    const updatedTask = models.task.setPerformerUsers(id, performerUsers, performerUserNames);
+    const updatedTask = await global.models.task.setPerformerUsers(id, performerUsers, performerUserNames);
 
     // Save custom log.
     this.customLogs.saveCustomLog({
@@ -2685,7 +2752,7 @@ class TaskBusiness extends Business {
    */
   async setDueDate(id, dueDate, userHeadUnitIds) {
     // Get task.
-    const task = await models.task.findById(id);
+    const task: any = await global.models.task.findById(id);
     if (!task || task.finished === true) {
       throw new NotFoundError(ERROR_TASK_NOT_FOUND);
     }
@@ -2697,7 +2764,7 @@ class TaskBusiness extends Business {
     }
 
     // Set due date.
-    const updatedTask = models.task.setDueDate(id, dueDate);
+    const updatedTask = global.models.task.setDueDate(id, dueDate);
     return updatedTask;
   }
 
@@ -2726,13 +2793,13 @@ class TaskBusiness extends Business {
       newTaskMeta = safeMetaObj;
     } else {
       newTaskMeta = { ...oldTaskMeta };
-      for (let prop in safeMetaObj) {
+      for (const prop in safeMetaObj) {
         newTaskMeta[prop] = safeMetaObj[prop];
       }
     }
 
     // Update task meta.
-    return await models.task.update(taskId, userId, { meta: newTaskMeta });
+    return await global.models.task.update(taskId, userId, { meta: newTaskMeta });
   }
 
   /**
@@ -2745,7 +2812,7 @@ class TaskBusiness extends Business {
    */
   async calcSigners(taskId, multisignerSchemaPath, userId, userUnitIds, userInfo) {
     // Get task and check access.
-    const task = await this.findByIdAndCheckAccess(taskId, userId, userUnitIds);
+    const task: any = await this.findByIdAndCheckAccess(taskId, userId, userUnitIds);
     if (!task) {
       throw new NotFoundError(ERROR_TASK_NOT_FOUND);
     }
@@ -2756,7 +2823,7 @@ class TaskBusiness extends Business {
     let jsonSchema;
     if (document) {
       const templateId = document.documentTemplateId;
-      const template = await models.documentTemplate.findById(templateId);
+      const template = await global.models.documentTemplate.findById(templateId);
       if (!template) {
         throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
       }
@@ -2773,16 +2840,16 @@ class TaskBusiness extends Business {
     }
     const calcSignersFormula = multisignerControl.calcSigners;
     if (!calcSignersFormula || typeof calcSignersFormula !== 'string' || !calcSignersFormula.startsWith('(')) {
-      log.save('multisigners-get-calculate-formula-error', { taskId, userId, calcSignersFormula }, 'error');
+      global.log.save('multisigners-get-calculate-formula-error', { taskId, userId, calcSignersFormula }, 'error');
       throw new Error('Can not find formula to calculate signers in JSON schema.');
     }
 
     const signersArray = this.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'multisigners.calcSigners', taskId } });
     if (!signersArray) {
-      log.save('multisigners-calculate-signers-by-formula-error', { taskId, userId, calcSignersFormula }, 'error');
+      global.log.save('multisigners-calculate-signers-by-formula-error', { taskId, userId, calcSignersFormula }, 'error');
       throw new Error('Can\'t calculate signers by formula.');
     } else {
-      log.save('multisigners-calculate-signers-by-formula', { taskId, userId, signersArray });
+      global.log.save('multisigners-calculate-signers-by-formula', { taskId, userId, signersArray });
     }
 
     // Check for IPN duplicates.
@@ -2849,7 +2916,7 @@ class TaskBusiness extends Business {
         (!isIpnCode && !isEdrpouCode && !isPassport && !isIdCardNumber && !isIpnCodeAndEdrpou && !isPassportAndEdrpou && !isIdCardNumberAndEdrpou) ||
         !isEmailValid
       ) {
-        log.save('multisigners-check-ipn-email-error', { taskId, userId, signersArray, signer }, 'error');
+        global.log.save('multisigners-check-ipn-email-error', { taskId, userId, signersArray, signer }, 'error');
         throw new Error('Incorrect ipn or email');
       }
     }
@@ -2860,14 +2927,14 @@ class TaskBusiness extends Business {
     const signers = signersInfo.filter((v) => v !== undefined);
 
     if (signers.length !== signersArray.length) {
-      log.save('multisigners-find-create-signers-error', { taskId, userId, signersArray, signers }, 'error');
+      global.log.save('multisigners-find-create-signers-error', { taskId, userId, signersArray, signers }, 'error');
       throw new Error('Can not find or create all signers.');
     }
 
     // Update task with signer users.
     const signerIds = signers.map((v) => v.userId);
     const signerNames = signersArray.map((v) => (v.middleName ? `${v.lastName} ${v.firstName} ${v.middleName}` : `${v.lastName} ${v.firstName}`));
-    const updatedTask = await models.task.setSignerUsers(taskId, signerIds, signerNames);
+    const updatedTask = await global.models.task.setSignerUsers(taskId, signerIds, signerNames);
     updatedTask.setIsMeSignerAndPerformer(userId, userUnitIds.all);
 
     const taskMeta = { multisignerSchemaPath };
@@ -2885,7 +2952,7 @@ class TaskBusiness extends Business {
    */
   async checkUserAccessAsSigner(taskId, multisignerSchemaPath, userId, userInfo) {
     // Get task.
-    const task = await models.task.findById(taskId);
+    const task: any = await global.models.task.findById(taskId);
     if (!task) {
       throw new NotFoundError(ERROR_TASK_NOT_FOUND);
     }
@@ -2896,7 +2963,7 @@ class TaskBusiness extends Business {
     if (document) {
       // Get document JSON schema.
       const templateId = document.documentTemplateId;
-      const template = await models.documentTemplate.findById(templateId);
+      const template = await global.models.documentTemplate.findById(templateId);
       if (!template) {
         throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
       }
@@ -2913,7 +2980,7 @@ class TaskBusiness extends Business {
       throw new Error('Can not find formula to calculate signers in JSON schema.');
     }
 
-    let calculatedSigners = this.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'multisigners.calcSigners', taskId } });
+    const calculatedSigners = this.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'multisigners.calcSigners', taskId } });
     if (!calculatedSigners) {
       throw new Error('Can\'t calculate signers data by formula.');
     }
@@ -2934,7 +3001,7 @@ class TaskBusiness extends Business {
     }
 
     // userEqualByIpn userInfo
-    let isEqualByName =
+    const isEqualByName =
       typeof userEqualByIpn.firstName === 'string' &&
       userEqualByIpn.firstName.toUpperCase().trim() === userInfo.firstName.toUpperCase().trim() &&
       typeof userEqualByIpn.lastName === 'string' &&
@@ -2955,7 +3022,7 @@ class TaskBusiness extends Business {
     }
 
     if (!isEqualByName) {
-      log.save('check-user-access-as-signers-names-equal-error', { userInfo, calculatedSigners }, 'error');
+      global.log.save('check-user-access-as-signers-names-equal-error', { userInfo, calculatedSigners }, 'error');
       if (!declinedSignerIds.includes(userId)) {
         declinedSignerIds.push(userId);
       }
@@ -3030,7 +3097,7 @@ class TaskBusiness extends Business {
    */
   async getUnreadTasksCount(userId, userUnitIds, userHeadUnitIds, options) {
     // Get tasks.
-    return await models.task.getUnreadTasksCount(userId, userUnitIds, userHeadUnitIds, {
+    return await global.models.task.getUnreadTasksCount(userId, userUnitIds, userHeadUnitIds, {
       ...options,
     });
   }
@@ -3055,7 +3122,7 @@ class TaskBusiness extends Business {
    */
   async hasFinishedPayment(task, paymentControlPath) {
     const { document } = task;
-    let documentDataObject = document && document.data;
+    const documentDataObject = document && document.data;
     const calculatedDataArray = JSONPath(`$..[?(@.${CALCULATED_PAYMENT_INDICATOR})]`, documentDataObject);
 
     if (paymentControlPath) {
@@ -3097,7 +3164,7 @@ class TaskBusiness extends Business {
     const { taskTemplateId, workflowId, document } = task;
 
     // Get notification.
-    const taskTemplate = await models.taskTemplate.findById(taskTemplateId);
+    const taskTemplate = await global.models.taskTemplate.findById(taskTemplateId);
     const {
       jsonSchema: { performerUserNotification },
     } = taskTemplate;
@@ -3106,7 +3173,7 @@ class TaskBusiness extends Business {
     }
 
     // Get all workflow documents.
-    const tasks = await models.task.getAllByWorkflowId(workflowId);
+    const tasks = await global.models.task.getAllByWorkflowId(workflowId);
     const documents = tasks.map((v) => v.document);
 
     // Prepare message.
@@ -3123,7 +3190,7 @@ class TaskBusiness extends Business {
     text = text.replace(regExp, this.mapping.frontUrl.replace);
 
     // Send message.
-    log.save('inform-performer-users', { addedPerformerUsers, title, text });
+    global.log.save('inform-performer-users', { addedPerformerUsers, title, text });
     this.notifierService.sendToUser(addedPerformerUsers, title, text);
   }
 
@@ -3135,7 +3202,7 @@ class TaskBusiness extends Business {
    * @returns {Promise<{task: (Promise<TaskEntity>|Promise<undefined|*>|*), newPerformerUserIds: string[]}>}
    */
   async checkReassignTrigger(taskTemplateId, documentId, properties, userId) {
-    const taskTemplate = await models.taskTemplate.findById(taskTemplateId);
+    const taskTemplate = await global.models.taskTemplate.findById(taskTemplateId);
     const setPermissions = taskTemplate.jsonSchema.setPermissions || [];
 
     // Task do not have reassign triggers.
@@ -3177,7 +3244,7 @@ class TaskBusiness extends Business {
       },
     ];
 
-    const task = await models.task.findByDocumentIdWithWorkflow(documentId);
+    const task: any = await global.models.task.findByDocumentIdWithWorkflow(documentId);
 
     // Define task permissions.
     const { performerUsers: newPerformerUserIds } = await this.getTaskPermissions(
@@ -3206,8 +3273,8 @@ class TaskBusiness extends Business {
     const newPerformerUserNames = newPerformerUsersData.map((v) => v.name);
 
     // Set performer users.
-    await models.task.setPerformerUsers(task.id, newPerformerUserIds, newPerformerUserNames);
-    // await models.task.setPerformerUnits();
+    await global.models.task.setPerformerUsers(task.id, newPerformerUserIds, newPerformerUserNames);
+    // await global.models.task.setPerformerUnits();
 
     // Save custom log.
     this.customLogs.saveCustomLog({
@@ -3241,9 +3308,9 @@ class TaskBusiness extends Business {
           unassignedUnits: [],
           assignedUsers: await Helpers.appendUnitIdsToUsers(newPerformerUserIds),
           assignedUnits: [],
-        },
+        } as any,
       });
-      const taskWithCurrentActivityLog = await models.task.appendActivityLog(task.id, activity);
+      const taskWithCurrentActivityLog = await global.models.task.appendActivityLog(task.id, activity);
       task.activityLog = taskWithCurrentActivityLog.activityLog;
     }
 
@@ -3257,7 +3324,7 @@ class TaskBusiness extends Business {
    */
   async handleActivityTypeEvents(task, type) {
     try {
-      const taskTemplate = await models.taskTemplate.findById(task.taskTemplateId);
+      const taskTemplate = await global.models.taskTemplate.findById(task.taskTemplateId);
       const { onCreate, onPerformersChange, onCommit } = taskTemplate.jsonSchema;
 
       if (type === 'TASK_CREATED' && onCreate) {
@@ -3279,7 +3346,7 @@ class TaskBusiness extends Business {
         }
       }
     } catch (error) {
-      await models.workflowError.create({
+      await global.models.workflowError.create({
         error: `TaskBusiness.handleActivityEvents ${error.message}`,
         details: {
           type: type,
@@ -3301,10 +3368,10 @@ class TaskBusiness extends Business {
    */
   async notifyNewPerformers(notifyNewPerformersFunction, task) {
     // Get all process documents.
-    const documents = await models.document.getAllByWorkflowId({ workflowId: task.workflowId });
+    const documents = await (global.models.document.getAllByWorkflowId as any)({ workflowId: task.workflowId });
 
     // Get all uniq users by task units.
-    const allUnits = await models.unit.getAll();
+    const allUnits = await global.models.unit.getAll();
     const units = allUnits.filter((unit) => task.performerUnits.includes(unit.id));
     const userIdsFromTaskUnits = new Set(
       units.reduce((previousUnit, currentUnit) => previousUnit.concat([...currentUnit.heads, ...currentUnit.members]), []),
@@ -3358,7 +3425,7 @@ class TaskBusiness extends Business {
 
     // Send message.
     this.notifierService.sendToUser(evalResult.userIds, evalResult.title, evalResult.text);
-    log.save('notify-new-performers-send-to-user', { evalResult });
+    global.log.save('notify-new-performers-send-to-user', { evalResult });
   }
 
   /**
@@ -3368,7 +3435,7 @@ class TaskBusiness extends Business {
    */
   async getSignaturesInfo(signatures) {
     // Handle signatures.
-    let signaturesInfo = [];
+    const signaturesInfo = [];
     for (const signature of signatures) {
       // Check signature.
       if (!signature) throw new InvalidParamsError('Signature is empty.');
@@ -3396,13 +3463,13 @@ class TaskBusiness extends Business {
   async validateWorkflowByDraftsCountLimiter(userId, taskTemplateId, workflowTemplate) {
     const { isOnlyOneDraftAllowed, oneDraftAllowedMessage } = workflowTemplate;
     if (isOnlyOneDraftAllowed) {
-      const lastUserDraft = await models.task.getLastUserDraft(userId, taskTemplateId);
+      const lastUserDraft = await global.models.task.getLastUserDraft(userId, taskTemplateId);
       if (lastUserDraft?.meta?.willDeleteCurrentDraft === true) {
         await this.delete(lastUserDraft.id, userId, { force: false });
         return;
       }
       if (lastUserDraft) {
-        const error = new Error('Only one draft allowed.');
+        const error: any = new Error('Only one draft allowed.');
         error.details = {
           message: oneDraftAllowedMessage,
           task: lastUserDraft,
@@ -3491,7 +3558,9 @@ class TaskBusiness extends Business {
           } catch (error) {
             throw new EvaluateSchemaFunctionError(`extendedAccessCheck.context[${index}].options function throw error. $${error.toString()}`);
           }
-          providerData = (await this.externalReader.getDataByUser(service, method, undefined, undefined, undefined, nonUserFilter)).data;
+          providerData = (
+            await global.businesses.document.externalReader.getDataByUser(service, method, undefined, undefined, undefined, nonUserFilter)
+          ).data;
           break;
         }
         case 'user': {
@@ -3538,7 +3607,7 @@ class TaskBusiness extends Business {
     const { isAllowedCreateByOtherSystems, tasksTemplateIds } = config?.system_task || {};
     const { taskTemplateId } = message;
     if (!isAllowedCreateByOtherSystems || !tasksTemplateIds.map((v) => `${v}`).includes(`${taskTemplateId}`)) {
-      log.save('create-by-other-system-from-message-check-failed', {
+      global.log.save('create-by-other-system-from-message-check-failed', {
         tasksTemplateIds,
         taskTemplateId,
         isAllowedCreateByOtherSystems,
@@ -3567,31 +3636,37 @@ class TaskBusiness extends Business {
     let draftExpiredAt;
     if (deleteDraftAt) {
       const deleteDraftAtFunction = this.sandbox.eval(deleteDraftAt);
-      if (typeOf(deleteDraftAtFunction) !== 'function') {
+      if ((typeOf(deleteDraftAtFunction) as string) !== 'function') {
         throw new Error(`${ERROR_PREFIX} param deleteDraftAt must be a string of valid function.`);
       }
       try {
         draftExpiredAt = deleteDraftAtFunction(task);
       } catch (error) {
-        throw new Error(`${ERROR_PREFIX} evaluation error. Details: ${error.message}.`, { cause: error });
+        const wrappedError = new Error(`${ERROR_PREFIX} evaluation error. Details: ${error.message}.`);
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
     if (deleteDraftAfterCreateAt) {
       try {
         draftExpiredAt = this.prepareDraftExpiredAt(deleteDraftAfterCreateAt, task.createdAt);
       } catch (error) {
-        throw new Error(`${ERROR_PREFIX} defined not valid deleteDraftAfterCreateAt param. Details: ${error.message}.`, { cause: error });
+        const wrappedError = new Error(`${ERROR_PREFIX} defined not valid deleteDraftAfterCreateAt param. Details: ${error.message}.`);
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
     if (deleteDraftAfterUpdateAt) {
       try {
         draftExpiredAt = this.prepareDraftExpiredAt(deleteDraftAfterUpdateAt, task.document.updatedAt);
       } catch (error) {
-        throw new Error(`${ERROR_PREFIX} defined not valid deleteDraftAfterUpdateAt param. Details: ${error.message}.`, { cause: error });
+        const wrappedError = new Error(`${ERROR_PREFIX} defined not valid deleteDraftAfterUpdateAt param. Details: ${error.message}.`);
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
-    let draftExpiredAtDate = typeOf(draftExpiredAt) === 'date' ? draftExpiredAt : new Date(draftExpiredAt);
-    const updatedTask = await models.task.setDrafExpiredAt(task.id, draftExpiredAtDate);
+    const draftExpiredAtDate = (typeOf(draftExpiredAt) as string) === 'date' ? draftExpiredAt : new Date(draftExpiredAt);
+    const updatedTask = await global.models.task.setDrafExpiredAt(task.id, draftExpiredAtDate);
     task.draftExpiredAt = updatedTask.draftExpiredAt;
     return task;
   }
@@ -3603,7 +3678,7 @@ class TaskBusiness extends Business {
    */
   async deleteExpiredDraftsByUserId(userId) {
     const expiredDrafts = (
-      await models.task.getAllByUserId(userId, [], [], {
+      await global.models.task.getAllByUserId(userId, [], [], {
         filters: {
           is_entry: true,
           finished: false,
@@ -3628,38 +3703,40 @@ class TaskBusiness extends Business {
       7. workflow_errors
       8. workflows
     */
-    for (let draft of expiredDrafts) {
+    for (const draft of expiredDrafts) {
       const { id: taskId, workflowId, documentId } = draft;
       try {
-        await models.documentAttachment.deleteByDocumentId(documentId);
-        await models.documentSignatureRejection.deleteByDocumentId(documentId);
-        await models.documentSignature.deleteByDocumentId(documentId);
-        await models.additionalDataSignature.deleteByDocumentId(documentId);
-        await models.task.deleteById(taskId);
-        await models.document.deleteById(documentId);
-        await models.workflowError.deleteByWorkflowId(workflowId);
-        await models.workflow.deleteById(workflowId);
+        await global.models.documentAttachment.deleteByDocumentId(documentId);
+        await global.models.documentSignatureRejection.deleteByDocumentId(documentId);
+        await global.models.documentSignature.deleteByDocumentId(documentId);
+        await global.models.additionalDataSignature.deleteByDocumentId(documentId);
+        await global.models.task.deleteById(taskId);
+        await global.models.document.deleteById(documentId);
+        await global.models.workflowError.deleteByWorkflowId(workflowId);
+        await global.models.workflow.deleteById(workflowId);
 
-        log.save('drafts-auto-delete|one-task', { userId, taskId, workflowId, documentId });
+        global.log.save('drafts-auto-delete|one-task', { userId, taskId, workflowId, documentId });
       } catch (error) {
-        log.save(
+        global.log.save(
           'delete-expired-drafts-by-user-id|error|cannot-delete-related-entities',
           { taskId, workflowId, documentId, error: error?.message || error },
           'error',
         );
 
-        throw new Error(`Delete expired user drafts: cannot delete related entities. TaskId: ${taskId}. Error: ${error?.message || error}.`, { cause: error });
+        const wrappedError = new Error(`Delete expired user drafts: cannot delete related entities. TaskId: ${taskId}. Error: ${error?.message || error}.`);
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
     const draftIds = expiredDrafts.map(({ id }) => id);
-    log.save('drafts-auto-delete|all-tasks', { userId, draftIds });
+    global.log.save('drafts-auto-delete|all-tasks', { userId, draftIds });
 
     return { success: true, count: draftIds.length };
   }
 
   /**
    * Check draft expired.
-   * @note Use models.task.checkDraftExpirationByDocumentId if task is not already fetched.
+   * @note Use global.models.task.checkDraftExpirationByDocumentId if task is not already fetched.
    * @param {TaskEntity} task.
    * @return {<Boolean>} is draft already expired.
    */
@@ -3699,4 +3776,3 @@ class TaskBusiness extends Business {
   }
 }
 
-module.exports = TaskBusiness;

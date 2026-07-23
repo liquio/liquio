@@ -424,7 +424,7 @@ export class TaskController extends Controller {
     try {
       const { document } = task;
       const { signatures } = document;
-      task.minSignaturesLimitInfo = await global.businesses.document.handleMinSignaturesLimit({ ...document, task, signatures });
+      task.minSignaturesLimitInfo = await (global.businesses.document.handleMinSignaturesLimit as any)({ ...document, task, signatures });
     } catch (error) {
       global.log.save('signatures-limit-info-not-defined', { taskId: id, message: error && error.message });
     }

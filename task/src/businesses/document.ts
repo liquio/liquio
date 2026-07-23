@@ -1,36 +1,36 @@
-const axios = require('axios');
-const PropByPath = require('prop-by-path');
-const crypto = require('crypto');
-const https = require('https');
-const flattening = require('flattening');
-const _ = require('lodash');
-const { Readable, PassThrough } = require('stream');
-const nodeHtmlParser = require('node-html-parser');
+import axios from 'axios';
+import PropByPath from 'prop-by-path';
+import crypto from 'node:crypto';
+import https from 'node:https';
+import flattening from 'flattening';
+import _ from 'lodash';
+import { Readable, PassThrough } from 'node:stream';
+import nodeHtmlParser from 'node-html-parser';
 
-const { JSONPath } = require('../lib/jsonpath');
-const Business = require('./business');
-const Eds = require('../lib/eds');
-const Stream = require('../lib/stream');
-const DownloadToken = require('../lib/download_token');
-const ExternalReader = require('../lib/external_reader');
-const StorageService = require('../services/storage');
-const DocumentValidator = require('../services/document_validator');
-const DocumentFiller = require('../services/document_filler');
-const VerifiedUserInfoFiller = require('../services/document_filler/fillers/verified_user_info');
-const PaymentService = require('../services/payment');
-const Paths = require('../services/document_validator/paths');
-const Auth = require('../services/auth');
-const Notifier = require('../services/notifier');
-const RegisterService = require('../services/register');
-const FileGeneratorService = require('../services/file_generator');
-const DocumentAttachmentModel = require('../models/document_attachment');
-const TaskActivity = require('../types/task_activity');
-const UnitModel = require('../models/unit');
-const Helpers = require('../lib/helpers');
-const NumberGenerator = require('../lib/number_generator');
-const typeOf = require('../lib/type_of');
-const Sandbox = require('../lib/sandbox');
-const {
+import { JSONPath } from '../lib/jsonpath';
+import { Business } from './business';
+import Eds from '../lib/eds';
+import Stream from '../lib/stream';
+import DownloadToken from '../lib/download_token';
+import ExternalReader from '../lib/external_reader';
+import StorageService from '../services/storage';
+import DocumentValidator from '../services/document_validator';
+import DocumentFiller from '../services/document_filler';
+import VerifiedUserInfoFiller from '../services/document_filler/fillers/verified_user_info';
+import PaymentService from '../services/payment';
+import Paths from '../services/document_validator/paths';
+import Auth from '../services/auth';
+import Notifier from '../services/notifier';
+import RegisterService from '../services/register';
+import FileGeneratorService from '../services/file_generator';
+import DocumentAttachmentModel from '../models/document_attachment';
+import TaskActivity from '../types/task_activity';
+import UnitModel from '../models/unit';
+import Helpers from '../lib/helpers';
+import NumberGenerator from '../lib/number_generator';
+import typeOf from '../lib/type_of';
+import Sandbox from '../lib/sandbox';
+import {
   EvaluateSchemaFunctionError,
   InvalidSchemaError,
   NotFoundError,
@@ -38,14 +38,14 @@ const {
   InvalidConfigError,
   BadRequestError,
   ForbiddenError,
-} = require('../lib/errors');
-const {
+} from '../lib/errors';
+import {
   ERROR_DOCUMENT_ALREADY_COMMITTED,
   ERROR_UPDATE_DOCUMENT,
   ERROR_WORKFLOW_NOT_FOUND,
   ERROR_DOCUMENT_TEMPLATE_NOT_FOUND,
   ERROR_DOCUMENT_NOT_FOUND,
-} = require('../constants/error');
+} from '../constants/error';
 
 // Constants.
 const SIGNATURE_ENCODING = 'utf8';
@@ -85,7 +85,25 @@ const ERROR_DOCUMENT_ACCESS = 'User doesn\'t have any access to document.';
  * @typedef {import('../entities/task_template')} TaskTemplateEntity
  * @typedef {import('../entities/unit')} UnitEntity
  */
-class DocumentBusiness extends Business {
+export class DocumentBusiness extends Business {
+  private static singleton: DocumentBusiness;
+
+  storageService: any;
+  eds: any;
+  downloadToken: any;
+  documentFiller: any;
+  verifiedUserInfoFiller: any;
+  paymentService: any;
+  auth: any;
+  notifier: any;
+  registerService: any;
+  fileGeneratorService: any;
+  externalReader: any;
+  documentAttachmentModel: any;
+  unitModel: any;
+  numberGenerator: any;
+  sandbox: any;
+
   /**
    * Document business constructor.
    * @param {object} config Config object.
@@ -108,7 +126,7 @@ class DocumentBusiness extends Business {
       this.documentAttachmentModel = new DocumentAttachmentModel();
       this.unitModel = new UnitModel();
       this.numberGenerator = new NumberGenerator();
-      this.sandbox = new Sandbox();
+      this.sandbox = new Sandbox({});
       DocumentBusiness.singleton = this;
     }
     return DocumentBusiness.singleton;
@@ -120,7 +138,7 @@ class DocumentBusiness extends Business {
    * @returns {Promise<DocumentEntity[]>} Document entities promise.
    */
   async getForSignByUser(userId) {
-    return await models.document.getForSignByUser(userId);
+    return await (global.models.document as any).getForSignByUser(userId);
   }
 
   /**
@@ -129,7 +147,7 @@ class DocumentBusiness extends Business {
    * @param {'utf8'|'hex'} [rawStringEncoding] RAW string encoding. Default value: `utf8`.
    * @returns {string} Base64 string.
    */
-  toBase64(rawString = '', rawStringEncoding = 'utf8') {
+  toBase64(rawString = '', rawStringEncoding: any = 'utf8') {
     return Buffer.from(rawString, rawStringEncoding).toString('base64');
   }
 
@@ -166,7 +184,7 @@ class DocumentBusiness extends Business {
   async getDataForSign(documentId) {
     try {
       // Get document.
-      const document = await models.document.findById(documentId);
+      const document: any = await global.models.document.findById(documentId);
       if (!document) {
         throw new Error(ERROR_GET_DATA_FOR_SIGN);
       }
@@ -185,11 +203,11 @@ class DocumentBusiness extends Business {
       // Get document attachments files hashes.
       const {
         jsonSchema: { filterAttachmentToSign: filterAttachmentToSignFunction },
-      } = await models.documentTemplate.findById(document.documentTemplateId);
+      } = await global.models.documentTemplate.findById(document.documentTemplateId);
 
       const filterAttachmentToSign = this.sandbox.eval(filterAttachmentToSignFunction) || (() => true);
 
-      const attachments = await models.documentAttachment.getByDocumentId(documentId);
+      const attachments = await global.models.documentAttachment.getByDocumentId(documentId);
       const attachmentInfos = [];
       for (const attachment of attachments) {
         const attachmentFileInfo = await this.storageService.provider.getFileInfo(attachment.link);
@@ -226,7 +244,7 @@ class DocumentBusiness extends Business {
         asicmanifestFileId = generatedAsicManifest.id;
 
         // Save ASIC info.
-        await models.document.setAsicInfo(documentId, { asicmanifestFileId, filesIds });
+        await global.models.document.setAsicInfo(documentId, { asicmanifestFileId, filesIds });
       }
 
       // Get ASIC manifest content.
@@ -236,7 +254,7 @@ class DocumentBusiness extends Business {
       try {
         asicmanifestContent = (await axios(asicManifestP7sRequestOptions)).data;
       } catch (error) {
-        log.save(
+        global.log.save(
           'try-to-get-asic-manifest-p7s-error',
           { asicManifestP7sRequestOptions, error: { message: error.message, stack: error.stack } },
           'warn',
@@ -252,8 +270,10 @@ class DocumentBusiness extends Business {
 
       return [asicManifestHash, ...filesHashes];
     } catch (error) {
-      log.save('try-to-get-asic-manifest-error', { message: error.message, stack: error.stack }, 'error');
-      throw new Error(ERROR_GET_DATA_FOR_SIGN, { cause: error });
+      global.log.save('try-to-get-asic-manifest-error', { message: error.message, stack: error.stack }, 'error');
+      const wrappedError = new Error(ERROR_GET_DATA_FOR_SIGN);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
   }
 
@@ -282,9 +302,9 @@ class DocumentBusiness extends Business {
       signatureBuffer = false;
     }
 
-    const isUserAlreadySigned = !!(await models.documentSignature.getByDocumentId(documentId, userId))?.length;
+    const isUserAlreadySigned = !!(await (global.models.documentSignature.getByDocumentId as any)(documentId, userId))?.length;
     if (isUserAlreadySigned) {
-      models.workflowError.create({
+      global.models.workflowError.create({
         error: 'User already signed.',
         details: `User ${userId} tried to re-signed data. Check 'Information about sign' (Key icon).`,
         traceMeta: this.getTraceMeta(),
@@ -303,7 +323,7 @@ class DocumentBusiness extends Business {
 
     // Check all signatures (if could not be mock).
     let pemBuffer;
-    let signatures = []; // Initialize signatures array for tracking processed signatures
+    const signatures = []; // Initialize signatures array for tracking processed signatures
     if (!(isUserPemCouldBeMock || isUserSignatureCouldBeMock) && signatureList) {
       let content;
       let pem;
@@ -377,7 +397,7 @@ class DocumentBusiness extends Business {
 
         // Check signature.
         if (contentString !== dataForSignRecord && i === 0) {
-          const error = new Error(ERROR_SIGNED_CONTENT_NOT_MATCH);
+          const error: any = new Error(ERROR_SIGNED_CONTENT_NOT_MATCH);
           error.details = {
             contentString,
             dataForSignRecord,
@@ -408,7 +428,7 @@ class DocumentBusiness extends Business {
             // Save ASIC manifest.
             if (i === 0) {
               const savedToFilestorageP7sSignature = await this.storageService.provider.addP7sSignature(fileId, signatureRecord);
-              log.save('save-p7s-signature-to-filestorage-result', {
+              global.log.save('save-p7s-signature-to-filestorage-result', {
                 savedToFilestorageP7sSignature: {
                   ...(savedToFilestorageP7sSignature || {}),
                   p7s: HIDE_REPLACEMENT_TEXT,
@@ -420,14 +440,14 @@ class DocumentBusiness extends Business {
             const savedToFilestorageSignature = await this.storageService.provider.addSignature(fileId, dataForSignRecord, signatureRecord, pem, {
               type,
             });
-            log.save('save-signature-to-filestorage-result', {
+            global.log.save('save-signature-to-filestorage-result', {
               savedToFilestorageSignature: {
                 ...(savedToFilestorageSignature || {}),
                 signature: HIDE_REPLACEMENT_TEXT,
               },
             });
           } catch (error) {
-            log.save(
+            global.log.save(
               'save-signature-to-filestorage-error',
               {
                 error: error && error.message,
@@ -446,7 +466,7 @@ class DocumentBusiness extends Business {
     // Sign.
     const mockSignatureBufferIfNeedIt = isUserSignatureCouldBeMock ? Buffer.from('SIGN_MOCK') : undefined;
     const mockPemBufferIfNeedIt = isUserPemCouldBeMock ? Buffer.from('PEM_MOCK') : undefined;
-    const isSigned = await models.documentSignature.create({
+    const isSigned = await global.models.documentSignature.create({
       documentId,
       createdBy: userId,
       signature: signatureBuffer || mockSignatureBufferIfNeedIt,
@@ -458,7 +478,7 @@ class DocumentBusiness extends Business {
     }
 
     // Get signed document.
-    const signedDocument = await models.document.findById(documentId);
+    const signedDocument: any = await global.models.document.findById(documentId);
     if (!signedDocument) {
       throw new Error('Can\'t get signed document.');
     }
@@ -467,8 +487,8 @@ class DocumentBusiness extends Business {
     await this.addMultiSignInfo(signedDocument.task, { userInfo, type: 'sign' });
 
     // Append signatures info.
-    const documentSignatures = await models.documentSignature.getByDocumentId(documentId);
-    const documentSignatureRejections = await models.documentSignatureRejection.getByDocumentId(documentId);
+    const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
+    const documentSignatureRejections = await (global.models.documentSignatureRejection.getByDocumentId as any)(documentId);
     signedDocument.signatures = documentSignatures;
     signedDocument.signatureRejections = documentSignatureRejections;
 
@@ -505,7 +525,7 @@ class DocumentBusiness extends Business {
     try {
       multisignerControl = await this.getMultisignerControl(documentTemplateId);
     } catch (error) {
-      log.save('sign-document-get-multisigner-control-error', error, 'error');
+      global.log.save('sign-document-get-multisigner-control-error', error, 'error');
       throw error;
     }
     if (!multisignerControl) {
@@ -523,7 +543,7 @@ class DocumentBusiness extends Business {
     const isMinSignaturesLimitRaised = signaturesCurrentPercent >= minSignaturesLimit;
 
     // Signatures min limit info container.
-    let minSignaturesLimitInfo = {
+    const minSignaturesLimitInfo = {
       minSignaturesLimit,
       signaturesCurrentPercent,
       signaturesCount,
@@ -565,7 +585,7 @@ class DocumentBusiness extends Business {
    */
   async getDataForSignP7s(documentId, attachmentId, userId) {
     // Get document file link.
-    const document = await models.document.findById(documentId);
+    const document: any = await global.models.document.findById(documentId);
     if (!document) {
       throw new Error(ERROR_GET_DATA_FOR_SIGN);
     }
@@ -576,7 +596,7 @@ class DocumentBusiness extends Business {
     let attachmentFileLink;
     let attachmentFileName;
     if (attachmentId) {
-      const attachmentFileLinkAndName = await this.getAttachmentFileLink(documentId, attachmentId, true);
+      const attachmentFileLinkAndName: any = await this.getAttachmentFileLink(documentId, attachmentId, true);
       attachmentFileLink = attachmentFileLinkAndName.fileLink;
       attachmentFileName = attachmentFileLinkAndName.fileName;
     }
@@ -618,7 +638,7 @@ class DocumentBusiness extends Business {
 
     // Read stream to buffer if not a buffer.
     if (!Buffer.isBuffer(p7s)) {
-      let p7sContent = [];
+      const p7sContent = [];
       p7s.on('data', (chunk) => p7sContent.push(chunk));
       await Stream.waitEndEvent(p7s);
       dataForSignBuffer = Buffer.concat(p7sContent);
@@ -643,14 +663,14 @@ class DocumentBusiness extends Business {
       // Save signature to file storage. Not required.
       try {
         const savedToFilestorageSignature = await this.storageService.provider.addP7sSignature(fileLink, p7sSignature, userInfo);
-        log.save('save-p7s-signature-to-filestorage-result', {
+        global.log.save('save-p7s-signature-to-filestorage-result', {
           savedToFilestorageSignature: {
             ...(savedToFilestorageSignature || {}),
             p7s: HIDE_REPLACEMENT_TEXT,
           },
         });
       } catch (error) {
-        log.save(
+        global.log.save(
           'save-p7s-signature-to-filestorage-error',
           {
             error: error && error.message,
@@ -661,7 +681,9 @@ class DocumentBusiness extends Business {
           'error',
         );
 
-        throw new Error('Can\'t save p7s signature.', { cause: error });
+        const wrappedError = new Error('Can\'t save p7s signature.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -680,7 +702,7 @@ class DocumentBusiness extends Business {
    * @returns {Promise<{isP7sSigned: true}>} P7S signature result.
    */
   async signAdditionalP7s(documentId, p7sSignatureList, isUserSignatureCouldBeMock, userInfo, cryptCertificate) {
-    const document = await models.document.findById(documentId);
+    const document: any = await global.models.document.findById(documentId);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
@@ -697,7 +719,7 @@ class DocumentBusiness extends Business {
       throw new Error(ERROR_WRONG_SIGNED_RECORDS_COUNT);
     }
 
-    const existsSigns = await models.additionalDataSignature.model.count({
+    const existsSigns = await global.models.additionalDataSignature.model.count({
       where: {
         document_id: documentId,
         created_by: userId,
@@ -746,7 +768,7 @@ class DocumentBusiness extends Business {
 
         // Check signature.
         if (signatureType === SIGNATURE_TYPE_DATA && !content.equals(dataForSignBuffer)) {
-          const error = new Error(ERROR_SIGNED_CONTENT_NOT_MATCH);
+          const error: any = new Error(ERROR_SIGNED_CONTENT_NOT_MATCH);
           error.details = {
             contentString: content && content.toString('base64'),
             dataForSignRecord: dataForSignBuffer && dataForSignBuffer.toString('base64'),
@@ -759,7 +781,7 @@ class DocumentBusiness extends Business {
 
       // Save signature to file storage. Not required.
       try {
-        const saveAdditionalSignatureResult = await models.additionalDataSignature.create({
+        const saveAdditionalSignatureResult = await (global.models.additionalDataSignature.create as any)({
           documentId,
           data: dataForSign,
           signature: p7sSignature,
@@ -768,9 +790,9 @@ class DocumentBusiness extends Business {
           createdBy: userId,
           meta: meta,
         });
-        log.save('save-additional-p7s-signature-result', { saveAdditionalSignatureResult });
+        global.log.save('save-additional-p7s-signature-result', { saveAdditionalSignatureResult });
       } catch (error) {
-        log.save(
+        global.log.save(
           'save-additional-p7s-signature-error',
           {
             error: error && error.message,
@@ -782,7 +804,9 @@ class DocumentBusiness extends Business {
           'error',
         );
 
-        throw new Error('Can\'t save additional p7s signature.', { cause: error });
+        const wrappedError = new Error('Can\'t save additional p7s signature.');
+        (wrappedError as any).cause = error;
+        throw wrappedError;
       }
     }
 
@@ -798,20 +822,20 @@ class DocumentBusiness extends Business {
    * @param {Object} userInfo User info.
    * @returns {Promise<string[]>} Additional data for sign list promise.
    */
-  async getAdditionalDataForSignP7s(documentId, withMeta = false, userInfo) {
+  async getAdditionalDataForSignP7s(documentId, withMeta = false, userInfo?) {
     // Get document.
-    const document = await models.document.findById(documentId);
+    const document: any = await global.models.document.findById(documentId);
     if (!document) {
       throw new Error(ERROR_GET_DATA_FOR_SIGN);
     }
 
-    const attachments = await models.documentAttachment.getByDocumentId(document.id);
+    const attachments = await global.models.documentAttachment.getByDocumentId(document.id);
     document.attachments = attachments;
 
     const { documentTemplateId } = document;
 
     // Get document template.
-    const documentTemplate = await models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
     const { additionalDataToSign: additionalDataToSignFunction } = documentTemplate;
 
     // Return if no need to sign additional data.
@@ -823,14 +847,12 @@ class DocumentBusiness extends Business {
     let additionalDataToSign;
     try {
       const getFileHash = this.getFileHash.bind(this, document);
-      const getHash = this.getHash.bind(this);
       const getFileBase64 = this.getFileBase64.bind(this);
       const getP7sSignature = this.getP7sSignature.bind(this);
 
       additionalDataToSign = await this.sandbox.evalWithArgs(additionalDataToSignFunction, [document, userInfo], {
         isAsync: true,
         global: {
-          getHash,
           getFileHash,
           getFileBase64,
           getP7sSignature,
@@ -858,14 +880,16 @@ class DocumentBusiness extends Business {
         documentString = undefined;
       }
 
-      log.save('calc-additional-data-to-sign-error', {
+      global.log.save('calc-additional-data-to-sign-error', {
         error: error && error.message,
         documentTemplateId,
         additionalDataToSignFunction,
         additionalDataToSign,
         document: documentString ?? document,
       });
-      throw new Error(ERROR_GET_DATA_FOR_SIGN, { cause: error });
+      const wrappedError = new Error(ERROR_GET_DATA_FOR_SIGN);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     // Return additional data to sign.
@@ -895,7 +919,7 @@ class DocumentBusiness extends Business {
       ? await this.storageService.provider.downloadFileRequestOptions(fileId)
       : document.fileId && (await this.storageService.provider.downloadFileRequestOptions(document.fileId));
     if (!downloadFileRequestOptions) {
-      log.save('get-file-hash-options-error', { fileId, time: Date.now() - startTime });
+      global.log.save('get-file-hash-options-error', { fileId, time: Date.now() - startTime });
       return;
     }
     const response = await axios({
@@ -904,13 +928,13 @@ class DocumentBusiness extends Business {
     });
     const file = Buffer.from(response.data);
     if (!file) {
-      log.save('get-file-hash-download-error', { fileId, time: Date.now() - startTime });
+      global.log.save('get-file-hash-download-error', { fileId, time: Date.now() - startTime });
       return;
     }
 
     const hash = this.getSha512Hash(file);
 
-    log.save('get-file-hash-success', { fileId, hash, time: Date.now() - startTime });
+    global.log.save('get-file-hash-success', { fileId, hash, time: Date.now() - startTime });
 
     return hash;
   }
@@ -933,7 +957,7 @@ class DocumentBusiness extends Business {
    * @typedef {object} GetSha512HashOptions
    * @property {string} [hmac] HMAC secret.
    */
-  getSha512Hash(data, options) {
+  getSha512Hash(data, options?) {
     if (options?.hmac) {
       return crypto.createHmac('sha512', options.hmac).update(data).digest('hex');
     }
@@ -992,7 +1016,7 @@ class DocumentBusiness extends Business {
 
     // Handle case where certificate IPN could not be extracted
     if (signatureIPN === undefined || signatureIPN === null) {
-      log.save(
+      global.log.save(
         'signature-ipn-missing',
         {
           message: 'Certificate IPN could not be extracted from signature',
@@ -1040,7 +1064,7 @@ class DocumentBusiness extends Business {
       normalizePibToCompare(signatureInfo.signer.surname, signatureInfo.signer.givenName);
 
     if (normalizedUserName && normalizedSignerUserName && normalizedUserName !== normalizedSignerUserName) {
-      const error = new Error('Signed name not match needed.');
+      const error: any = new Error('Signed name not match needed.');
       error.details = {
         userInfo: {
           userInfo: {
@@ -1072,7 +1096,7 @@ class DocumentBusiness extends Business {
     const { id: documentId, documentTemplateId } = document;
 
     // Get document JSON schema.
-    const documentTemplate = await models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -1090,10 +1114,12 @@ class DocumentBusiness extends Business {
     let isSignAvailable;
     try {
       isSignAvailable = this.sandbox.evalWithArgs(isSignAvailableFunction, [document, user, units], { meta: { fn: 'isSignAvailable', documentId } });
-      log.save('sign-available-function-result', { documentId, isSignAvailableFunction, isSignAvailable });
+      global.log.save('sign-available-function-result', { documentId, isSignAvailableFunction, isSignAvailable });
     } catch (error) {
-      log.save('sign-available-function-error', { documentId, isSignAvailableFunction, error: error && error.message, document }, 'error');
-      throw new Error('Sign available function error.', { cause: error });
+      global.log.save('sign-available-function-error', { documentId, isSignAvailableFunction, error: error && error.message, document }, 'error');
+      const wrappedError = new Error('Sign available function error.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     // Return is sign available indicator.
@@ -1112,7 +1138,7 @@ class DocumentBusiness extends Business {
     const { id: documentId, documentTemplateId } = document;
 
     // Get document JSON schema.
-    const documentTemplate = await models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -1137,9 +1163,9 @@ class DocumentBusiness extends Business {
       isContinueSignAvailable = this.sandbox.evalWithArgs(isContinueSignAvailableFunction, [document, user, units], {
         meta: { fn: 'isContinueSignAvailable', documentId },
       });
-      log.save('continue-sign-available-function-result', { documentId, isContinueSignAvailableFunction, isContinueSignAvailable });
+      global.log.save('continue-sign-available-function-result', { documentId, isContinueSignAvailableFunction, isContinueSignAvailable });
     } catch (error) {
-      log.save(
+      global.log.save(
         'continue-sign-available-function-error',
         {
           documentId,
@@ -1149,7 +1175,9 @@ class DocumentBusiness extends Business {
         },
         'error',
       );
-      throw new Error('Continue sign available function error.', { cause: error });
+      const wrappedError = new Error('Continue sign available function error.');
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     // Return is sign available indicator.
@@ -1166,7 +1194,7 @@ class DocumentBusiness extends Business {
    * @returns {Promise<DocumentEntity>} Document entity.
    */
   async findByIdAndCheckAccess(documentId, userId, userUnitIds, strict = false, doNotCheckAccess = false) {
-    const document = await models.document.findById(documentId, false, true);
+    const document: any = await global.models.document.findById(documentId, false, true);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
@@ -1189,15 +1217,15 @@ class DocumentBusiness extends Business {
       }
 
       // Check access by inbox.
-      const hasAccessByInbox = await models.userInbox.getByUserIdAndDocumentId(userId, documentId);
+      const hasAccessByInbox = await global.models.userInbox.getByUserIdAndDocumentId(userId, documentId);
       if (!hasAccessByInbox) {
         throw new ForbiddenError(ERROR_DOCUMENT_ACCESS);
       }
     }
 
     // Get and return document.
-    const documentSignatures = await models.documentSignature.getByDocumentId(documentId);
-    const documentSignatureRejections = await models.documentSignatureRejection.getByDocumentId(documentId);
+    const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
+    const documentSignatureRejections = await (global.models.documentSignatureRejection.getByDocumentId as any)(documentId);
     document.signatures = documentSignatures;
     document.signatureRejections = documentSignatureRejections;
     return document;
@@ -1213,14 +1241,16 @@ class DocumentBusiness extends Business {
    */
   async findByWorkflowIdAndCheckAccess(workflowId, taskTemplateId, userId, userUnitIds, strict = false) {
     // Get document by workflowId and taskTemplateId.
-    const documentId = await models.task.findDocumentIdByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId);
+    const documentId = await global.models.task.findDocumentIdByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId);
 
     // Check access and get document.
     let document;
     try {
       document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, strict);
     } catch (error) {
-      throw new Error(error.message, { cause: error });
+      const wrappedError = new Error(error.message);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     return document;
   }
@@ -1237,7 +1267,7 @@ class DocumentBusiness extends Business {
    */
   async update(documentId, properties, userId, userUnitIds, isFromSystemTask, isKeepDocumentFile = false) {
     // Get document.
-    const document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+    const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
@@ -1247,23 +1277,23 @@ class DocumentBusiness extends Business {
     }
 
     // Check if document has signers.
-    const documentSignatures = await models.documentSignature.getByDocumentId(documentId);
+    const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
     if (documentSignatures && documentSignatures.length > 0) {
       throw new Error('Can\'t update - document contains signatures.');
     }
 
     // Get JSON schema.
     const templateId = document.documentTemplateId;
-    const template = await models.documentTemplate.findById(templateId);
+    const template = await global.models.documentTemplate.findById(templateId);
     if (!template) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
     const jsonSchema = template.jsonSchema;
 
     // Remove readonly params.
-    const documentValidator = new DocumentValidator(jsonSchema);
+    const documentValidator = new (DocumentValidator as any)(jsonSchema);
     const existingDocumentData = document.data;
-    let documentDataObject = existingDocumentData || EMPTY_DOCUMENT_DATA;
+    const documentDataObject = existingDocumentData || EMPTY_DOCUMENT_DATA;
     const propertiesWithoutReadonlyParams = await documentValidator.removeReadonlyParams(properties, documentDataObject, isFromSystemTask);
 
     // Check array elements added or removed.
@@ -1306,7 +1336,7 @@ class DocumentBusiness extends Business {
     }
 
     // Update document.
-    const documentUpdated = await models.document.updateData(documentId, userId, documentDataObject, true, isKeepDocumentFile);
+    const documentUpdated = await global.models.document.updateData(documentId, userId, documentDataObject, true, isKeepDocumentFile);
     if (!documentUpdated) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
@@ -1384,8 +1414,8 @@ class DocumentBusiness extends Business {
     let currentPosition = object;
 
     for (let i = 0; i < pathArray.length - 1; i++) {
-      let key = pathArray[i];
-      let nextKey = pathArray[i + 1];
+      const key = pathArray[i];
+      const nextKey = pathArray[i + 1];
 
       // If currentPosition[key] is an object, then nextKey is object key, represented as number.
       // Ex. multisign.signature.0.161011 (161011 is object key).
@@ -1418,19 +1448,19 @@ class DocumentBusiness extends Business {
    */
   async updateByExternalService(documentId, documentDataObject, externalServiceUser, doNotCheckAccess = false) {
     // Get document.
-    const document = await this.findByIdAndCheckAccess(documentId, externalServiceUser, undefined, undefined, doNotCheckAccess);
+    const document: any = await this.findByIdAndCheckAccess(documentId, externalServiceUser, undefined, undefined, doNotCheckAccess);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
 
     // Check document is final.
     if (document.isFinal === true) {
-      log.save('update-by-external-service|document-already-committed-error', { documentId, externalServiceUser });
+      global.log.save('update-by-external-service|document-already-committed-error', { documentId, externalServiceUser });
       throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
     }
 
     // Update document.
-    const documentUpdated = await models.document.updateData(documentId, externalServiceUser, documentDataObject);
+    const documentUpdated = await global.models.document.updateData(documentId, externalServiceUser, documentDataObject);
     if (!documentUpdated) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
@@ -1448,7 +1478,7 @@ class DocumentBusiness extends Business {
    */
   async prepare(documentId, userId, userUnitIds) {
     // Get document.
-    const document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+    const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
@@ -1473,8 +1503,8 @@ class DocumentBusiness extends Business {
 
     // Remove missing attachment
     for (const missingId of missingIds) {
-      log.save('prepare-document-remove-attachment', { attachmentId: missingId });
-      await businesses.document.deleteAttachment(documentId, missingId, userId);
+      global.log.save('prepare-document-remove-attachment', { attachmentId: missingId });
+      await global.businesses.document.deleteAttachment(documentId, missingId, userId);
     }
   }
 
@@ -1488,14 +1518,14 @@ class DocumentBusiness extends Business {
    */
   async validate(documentId, userInfo, userUnitIds, includesUnexpectedErrors) {
     // Get document.
-    const document = await this.findByIdAndCheckAccess(documentId, userInfo.userId, userUnitIds, true);
+    const document: any = await this.findByIdAndCheckAccess(documentId, userInfo.userId, userUnitIds, true);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
 
     // Get JSON schema.
     const templateId = document.documentTemplateId;
-    const template = await models.documentTemplate.findById(templateId);
+    const template = await global.models.documentTemplate.findById(templateId);
     if (!template) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -1505,7 +1535,7 @@ class DocumentBusiness extends Business {
     const documentValidator = new DocumentValidator(
       jsonSchema,
       {
-        getFilteredRecordsByKeyId: businesses.register.getFilteredRecordsByKeyId.bind(businesses.register),
+        getFilteredRecordsByKeyId: global.businesses.register.getFilteredRecordsByKeyId.bind(global.businesses.register),
         getFilteredRecordsByKeyIdArguments: {
           userUnitIds: userUnitIds,
         },
@@ -1514,7 +1544,7 @@ class DocumentBusiness extends Business {
     );
     const validationErrors = await documentValidator.check(document.data, includesUnexpectedErrors);
     if (validationErrors.length > 0) {
-      const error = new Error('Validation error.', { details: validationErrors });
+      const error: any = new Error('Validation error.');
       error.details = validationErrors;
       throw error;
     }
@@ -1530,7 +1560,7 @@ class DocumentBusiness extends Business {
    */
   async getAttachmentInfo(attachmentId) {
     // Return attachment info.
-    const attachmentInfo = await models.documentAttachment.findById(attachmentId);
+    const attachmentInfo = await global.models.documentAttachment.findById(attachmentId);
     if (!attachmentInfo) {
       throw new NotFoundError('Attachment not found.');
     }
@@ -1566,7 +1596,7 @@ class DocumentBusiness extends Business {
    */
   async getAttachmentFilesLinks(documentId) {
     // Get document attachments.
-    const attachments = await models.documentAttachment.getByDocumentId(documentId);
+    const attachments = await global.models.documentAttachment.getByDocumentId(documentId);
     if (!attachments) {
       throw new ForbiddenError(ERROR_DOCUMENT_ACCESS);
     }
@@ -1607,7 +1637,7 @@ class DocumentBusiness extends Business {
     const fileLink = await this.getAttachmentFileLink(documentId, attachmentId, userId);
 
     // Delete attachment from DB.
-    const deleted = await models.documentAttachment.delete(attachmentId);
+    const deleted = await global.models.documentAttachment.delete(attachmentId);
     if (!deleted) {
       throw new Error('Can\'t delete attachment.');
     }
@@ -1628,7 +1658,7 @@ class DocumentBusiness extends Business {
    */
   async getFilesToPreview(workflowId, documentTemplateId, path, task, isDirect = false, isNotOnlyCurrent = false) {
     // Define step schema.
-    const documentTemplate = await models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
     const { jsonSchema } = documentTemplate || {};
     const controlSchema = _.get((jsonSchema && jsonSchema.properties) || {}, path);
 
@@ -1642,12 +1672,14 @@ class DocumentBusiness extends Business {
     }
 
     // Define needed document templates to show files preview. All files from current workflow should be shown if filter not defined.
+    /* eslint-disable prefer-const -- filesEventTemplateIds is reassigned below; the rest of this destructuring isn't. */
     let {
       documentTemplateIds: filesDocumentTemplateIds = [],
       documentTemplateId: filesDocumentTemplateId,
       eventTemplateIds: filesEventTemplateIds = [],
     } = controlSchema || {};
-    let documentTemplateIds = isDirect ? [filesDocumentTemplateId] : filesDocumentTemplateIds;
+    /* eslint-enable prefer-const */
+    const documentTemplateIds = isDirect ? [filesDocumentTemplateId] : filesDocumentTemplateIds;
 
     // Define documents IDs from current workflow.
     let useFilterByTask = {};
@@ -1660,7 +1692,7 @@ class DocumentBusiness extends Business {
       useFilterByTask = { onlyCurrent: false, isDistinct: true };
     }
 
-    const taskIdsAndDocumentIds = await models.task.getTaskAndDocumentMainInfo(workflowId, useFilterByTask); // Format: `{ taskId, documentId, taskPerformerUsers, taskPerformerUnits, taskRequiredPerformerUnits, taskObserverUnits }[]`.
+    const taskIdsAndDocumentIds = await global.models.task.getTaskAndDocumentMainInfo(workflowId, useFilterByTask); // Format: `{ taskId, documentId, taskPerformerUsers, taskPerformerUnits, taskRequiredPerformerUnits, taskObserverUnits }[]`.
     let documentIds = taskIdsAndDocumentIds.map((v) => v.documentId).filter((v) => !!v);
 
     // Define all files info.
@@ -1668,24 +1700,25 @@ class DocumentBusiness extends Business {
 
     let directDocument;
     if (isDirect && documentAttachesFunctionString) {
-      const { document } = (await models.task.findDocumentByWorkflowIdAndTaskTemplateIds(workflowId, [filesDocumentTemplateId])) || {};
+      const { document } =
+        (await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateIds as any)(workflowId, [filesDocumentTemplateId])) || {};
       if (!document) {
         return [];
       }
       directDocument = document;
-      directDocument.attachments = await models.documentAttachment.getByDocumentId(document.id);
+      directDocument.attachments = await global.models.documentAttachment.getByDocumentId(document.id);
     }
 
-    let events = await models.event.getEventsByWorkflowId(workflowId);
+    const events = await global.models.event.getEventsByWorkflowId(workflowId);
     filesEventTemplateIds = [...new Set([...filesEventTemplateIds, ...events.map((v) => v.eventTemplateId)])];
-    let eventsWithTemplates = [];
+    const eventsWithTemplates = [];
     if (Array.isArray(filesEventTemplateIds) && filesEventTemplateIds.length > 0) {
       const eventDocumentIds = events.filter((v) => v.documentId && filesEventTemplateIds.includes(v.eventTemplateId)).map((v) => v.documentId);
 
       documentIds = documentIds.concat(eventDocumentIds);
       documentTemplateIds.push(EVENT_FILE_DOCUMENT_TEMPLATE_ID);
 
-      const eventsTemplates = await models.eventTemplate.findByIds(events.map((v) => v.eventTemplateId));
+      const eventsTemplates = await global.models.eventTemplate.findByIds(events.map((v) => v.eventTemplateId));
       for (const eventEntity of events) {
         const { eventTemplateId } = eventEntity;
         const eventTemplate = eventsTemplates.find((v) => v.id === eventTemplateId);
@@ -1703,10 +1736,10 @@ class DocumentBusiness extends Business {
         meta: { fn: 'documentAttaches', workflowId },
       });
     } else {
-      documentAttachments = await models.documentAttachment.getByDocumentIds(documentIds);
+      documentAttachments = await (global.models.documentAttachment.getByDocumentIds as any)(documentIds);
     }
 
-    const documentInfoWithFileNames = await models.document.getFilesNamesByIds(documentIds);
+    const documentInfoWithFileNames: any = await global.models.document.getFilesNamesByIds(documentIds);
 
     let mainFilesInfo = [];
     if (!isDirect || (isDirect && includeMainFile)) {
@@ -1740,7 +1773,7 @@ class DocumentBusiness extends Business {
 
     let allFilesInfo = [...mainFilesInfo, ...attachesInfo].filter((v) => !!v.fileLink);
 
-    const documentTemplates = await models.documentTemplate.getAccessJsonSchemasByIds(allFilesInfo.map((v) => v.documentTemplateId));
+    const documentTemplates = await global.models.documentTemplate.getAccessJsonSchemasByIds(allFilesInfo.map((v) => v.documentTemplateId));
 
     allFilesInfo = allFilesInfo
       .map((v) => ({
@@ -1764,19 +1797,19 @@ class DocumentBusiness extends Business {
 
     // Handle all files info list.
     let documents;
-    for (let fileInfo of allFilesInfo) {
+    for (const fileInfo of allFilesInfo) {
       // Generate and append download token.
       const { fileLink, eventTemplateAccess = {} } = fileInfo;
       const { workflowFiles = {} } = eventTemplateAccess;
       const { fileName: fileNameFunc } = workflowFiles;
       if (fileNameFunc) {
         if (!documents) {
-          documents = await models.document.getByIds(documentIds);
+          documents = await global.models.document.getByIds(documentIds);
         }
         try {
           fileInfo.fileName = this.sandbox.evalWithArgs(fileNameFunc, [documents], { checkArrow: true, meta: { fn: 'fileName', workflowId } });
         } catch (error) {
-          log.save('file-name-generating-error', { error: error.message, fileNameFunc, documentIds, workflowId });
+          global.log.save('file-name-generating-error', { error: error.message, fileNameFunc, documentIds, workflowId });
         }
       }
       fileInfo.downloadToken = this.downloadToken.generate(fileLink);
@@ -1787,7 +1820,7 @@ class DocumentBusiness extends Business {
         const f = this.sandbox.eval(filterFunction);
         allFilesInfo = allFilesInfo.filter(f);
       } catch (error) {
-        log.save('filter-error', { error });
+        global.log.save('filter-error', { error });
       }
     }
 
@@ -1805,25 +1838,25 @@ class DocumentBusiness extends Business {
    */
   async getFilesToPreviewAndCheckAccess(documentId, stepOrPath, userId, userUnitIds, isDirect = false) {
     // Get document and check access.
-    const document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+    const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds);
 
     // Define document template ID.
     const { documentTemplateId } = document;
 
     // Define workflow ID.
-    const task = await models.task.findByDocumentId(documentId);
+    const task = await global.models.task.findByDocumentId(documentId);
     const { workflowId } = task;
 
     // Get and return files to preview.
     const filesToPreview = await this.getFilesToPreview(workflowId, documentTemplateId, stepOrPath, task, isDirect);
     const documentIds = [...new Set(filesToPreview.map((v) => v.documentId).filter(Boolean))];
 
-    const documentSignaturesPromises = documentIds.map((documentId) => models.documentSignature.getByDocumentId(documentId));
+    const documentSignaturesPromises = documentIds.map((documentId) => (global.models.documentSignature.getByDocumentId as any)(documentId));
     const documentSignatures = await Promise.all(documentSignaturesPromises);
     const fileIds = filesToPreview.map((v) => v.fileLink);
     const p7sMetadata = await this.storageService.provider.getP7sMetadata(fileIds);
 
-    let allSignaturesInfo = {};
+    const allSignaturesInfo = {};
     for (const documentId of documentIds) {
       try {
         const docSignatures = documentSignatures.filter((doc) => doc && doc[0] && doc[0].documentId === documentId);
@@ -1837,7 +1870,7 @@ class DocumentBusiness extends Business {
               const signatureInfo = await this.eds.getSignatureInfo(signature);
               signaturesInfo.push(signatureInfo);
             } catch (error) {
-              log.save('get-files-to-preview-and-check-access|get-signature-info-error', error.message);
+              global.log.save('get-files-to-preview-and-check-access|get-signature-info-error', error.message);
             }
           }
         } else {
@@ -1846,7 +1879,7 @@ class DocumentBusiness extends Business {
               const signatureInfo = await this.eds.getSignatureInfo(signatures[0]);
               signaturesInfo.push(signatureInfo);
             } catch (error) {
-              log.save('get-files-to-preview-and-check-access|get-signature-info-error', error.message);
+              global.log.save('get-files-to-preview-and-check-access|get-signature-info-error', error.message);
             }
           }
         }
@@ -1855,7 +1888,7 @@ class DocumentBusiness extends Business {
           [],
         );
       } catch (error) {
-        log.save('error', error.message);
+        global.log.save('error', error.message);
       }
     }
 
@@ -1867,7 +1900,7 @@ class DocumentBusiness extends Business {
         filesToPreview[i].signatures = (signaturesInfo || []).map((v) => ({ ...v, content: undefined }));
         filesToPreview[i].hasP7sSignature = p7sMetadata.some((v) => v.file_id === filesToPreview[i].fileLink);
       } catch (error) {
-        log.save('Can not get signature info', error);
+        global.log.save('Can not get signature info', error);
       }
     }
 
@@ -1896,7 +1929,7 @@ class DocumentBusiness extends Business {
 
     // Get document template.
     const templateId = document.documentTemplateId;
-    const documentTemplate = await models.documentTemplate.findById(templateId);
+    const documentTemplate = await global.models.documentTemplate.findById(templateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -1907,7 +1940,7 @@ class DocumentBusiness extends Business {
     if (!paymentProperties) {
       throw new Error('Can not find payment properties in JSON schema.');
     }
-    log.save('payment-properties', { documentTemplateId: documentTemplate.id, documentTemplateName: documentTemplate.name, paymentProperties });
+    global.log.save('payment-properties', { documentTemplateId: documentTemplate.id, documentTemplateName: documentTemplate.name, paymentProperties });
     const paymentCustomer = paymentProperties && paymentProperties.customer;
     const paymentSystemParams = this.config.payment && this.config.payment[paymentCustomer];
 
@@ -1935,9 +1968,9 @@ class DocumentBusiness extends Business {
           rewriteCalculatedData = true;
         }
         if (!rewriteCalculatedData && statusInfo && statusInfo.transactionId === calculatedData.transactionId) {
-          const documentWithPrevState = await models.document.findById(documentId);
+          const documentWithPrevState = await global.models.document.findById(documentId);
           if (!documentWithPrevState) {
-            log.save('get-document-with-payment-status-error', { documentWithPrevState }, 'error');
+            global.log.save('get-document-with-payment-status-error', { documentWithPrevState }, 'error');
             throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
           }
           if (statusInfo.status && statusInfo.status.isSuccess) return documentWithPrevState;
@@ -1963,7 +1996,7 @@ class DocumentBusiness extends Business {
     if (!paymentData) {
       throw new Error(ERROR_GET_PAYMENT_DATA);
     }
-    log.save('get-payment-data', { paymentData });
+    global.log.save('get-payment-data', { paymentData });
 
     // Update document with payment data.
     if (!controlPaymentData) PropByPath.set(documentDataObject, paymentDocumentPath, {});
@@ -1974,11 +2007,11 @@ class DocumentBusiness extends Business {
     calculatedPaymentHistory.push(paymentData);
     PropByPath.set(documentDataObject, `${paymentDocumentPath}.${CALCULATED_PAYMENT_HISTORY_PATH}`, calculatedPaymentHistory);
 
-    const updatedDocument = await models.document.updateData(documentId || document.id, userId, documentDataObject);
+    const updatedDocument = await global.models.document.updateData(documentId || document.id, userId, documentDataObject);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    log.save('update-document-with-payment-data', { updatedDocument });
+    global.log.save('update-document-with-payment-data', { updatedDocument });
 
     // Return document.
     return updatedDocument;
@@ -1996,9 +2029,9 @@ class DocumentBusiness extends Business {
    */
   async handlePaymentStatus(payload, paymentCustomer, status, queryParamsObject, headersObject, checkPrevTransaction = false) {
     // Get provider options.
-    log.save('external-services-payment-status-business-payload', payload);
+    global.log.save('external-services-payment-status-business-payload', payload);
     const providerOptions = this.config && this.config.payment && this.config.payment[paymentCustomer];
-    log.save('get-provider-options-to-handle-payment-status', { ...providerOptions, rsaPrivateKeyInBase64: '****', rsaPublicKeyInBase64: '****' });
+    global.log.save('get-provider-options-to-handle-payment-status', { ...providerOptions, rsaPrivateKeyInBase64: '****', rsaPublicKeyInBase64: '****' });
 
     // Get status info.
     const statusInfo = await this.paymentService.handleStatus(
@@ -2012,29 +2045,29 @@ class DocumentBusiness extends Business {
     if (!statusInfo) {
       throw new NotFoundError('Can\'t get payment status.');
     }
-    log.save('get-payment-status-info-from-payment-provider', { statusInfo });
+    global.log.save('get-payment-status-info-from-payment-provider', { statusInfo });
 
     // Get document by user or by external service.
     const { documentId, paymentControlPath, extraData, transactionId } = statusInfo;
     const paymentDocumentPath = paymentControlPath.replace(/.properties./g, '.');
 
-    let document = await models.document.findById(documentId);
+    const document: any = await global.models.document.findById(documentId);
     if (!document || !document.task) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
-    log.save('get-document-to-handle-payment-status', {
+    global.log.save('get-document-to-handle-payment-status', {
       document: { ...document, data: HIDE_REPLACEMENT_TEXT, documentTemplate: HIDE_REPLACEMENT_TEXT },
     }); // Do not log large document.data and document.documentTemplate.
 
     // Append trace meta.
     this.appendTraceMeta({ workflowId: document.task?.workflowId });
 
-    let documentDataObject = document.data;
-    let controlPaymentData = documentDataObject && PropByPath.get(documentDataObject, paymentDocumentPath);
+    const documentDataObject = document.data;
+    const controlPaymentData = documentDataObject && PropByPath.get(documentDataObject, paymentDocumentPath);
     const { task } = document;
     const { createdBy } = task;
 
-    log.save('control-payment-data', { documentId: document.id, taskId: task.id, controlPaymentData });
+    global.log.save('control-payment-data', { documentId: document.id, taskId: task.id, controlPaymentData });
 
     // Store payment document path if hold success payment.
     if (statusInfo.status && statusInfo.status.isSuccess) {
@@ -2043,7 +2076,7 @@ class DocumentBusiness extends Business {
       const isHold = calcPaymentInfo && calcPaymentInfo.extraData && calcPaymentInfo.extraData.isHold;
       if (isHold) {
         const metaDocPayment = { paymentControlPath, isHoldPayment: isHold };
-        businesses.task.addTaskMetadata(task, createdBy, false, metaDocPayment);
+        global.businesses.task.addTaskMetadata(task, createdBy, false, metaDocPayment);
       }
     }
 
@@ -2058,16 +2091,16 @@ class DocumentBusiness extends Business {
     }
     controlPaymentData[PROCESSED_PAYMENT_PATH].push(statusInfo);
 
-    const updatedDocument = await models.document.updateData(documentId, undefined, documentDataObject);
+    const updatedDocument = await global.models.document.updateData(documentId, undefined, documentDataObject);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    log.save('updated-document-with-payment-status', { documentId, controlPaymentData });
+    global.log.save('updated-document-with-payment-status', { documentId, controlPaymentData });
 
     // Get payment schema control template.
-    const template = await models.documentTemplate.findById(document.documentTemplateId);
+    const template = await global.models.documentTemplate.findById(document.documentTemplateId);
     if (!template) {
-      log.save('handle-payment-status-not-found-document-template-error', { templateId: document.documentTemplateId, documentId, taskId: task.id });
+      global.log.save('handle-payment-status-not-found-document-template-error', { templateId: document.documentTemplateId, documentId, taskId: task.id });
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
     const paymentSchemaControl = PropByPath.get(template.jsonSchema.properties, paymentControlPath) || {};
@@ -2086,7 +2119,9 @@ class DocumentBusiness extends Business {
           try {
             await this.updateOneRegisterRecord(handler, document, statusInfo);
           } catch (error) {
-            throw new Error(`${paymentControlPath}.onReceiveStatusHandlers.register.update-one-record. Cannot update record. ${error.toString()}`, { cause: error });
+            const wrappedError = new Error(`${paymentControlPath}.onReceiveStatusHandlers.register.update-one-record. Cannot update record. ${error.toString()}`);
+            (wrappedError as any).cause = error;
+            throw wrappedError;
           }
         }
       }
@@ -2111,7 +2146,7 @@ class DocumentBusiness extends Business {
       const jsonSchema = template.jsonSchema;
 
       // Check valid.
-      const documentValidator = new DocumentValidator(jsonSchema);
+      const documentValidator = new (DocumentValidator as any)(jsonSchema);
       const validationErrors = await documentValidator.check(document.data);
       if (validationErrors.length > 0) {
         // If has validation error - do not commit.
@@ -2120,38 +2155,38 @@ class DocumentBusiness extends Business {
           details: validationErrors,
           queueMessage: { workflowId: task.workflowId },
         };
-        await models.workflowError.create(workflowError);
+        await (global.models.workflowError.create as any)(workflowError);
       } else {
         // If no validation error - commit.
         // Check commitAfterPayment flag in schema.
         const { commitAfterPayment } = paymentSchemaControl || {};
         if (commitAfterPayment && !document.isFinal) {
-          const finishedTask = await models.task.setStatusFinished(taskId);
-          await models.document.setStatusFinal(documentId);
+          const finishedTask = await global.models.task.setStatusFinished(taskId);
+          await global.models.document.setStatusFinal(documentId);
 
           // Handle activity.
-          await businesses.task.handleActivityTypeEvents(task, 'TASK_COMMITTED');
+          await global.businesses.task.handleActivityTypeEvents(task, 'TASK_COMMITTED');
           if (global.config.activity_log?.isEnabled) {
             const activity = new TaskActivity({
               type: 'TASK_COMMITTED',
               details: {
                 commitType: 'BY_EXTERNAL_SYSTEM',
                 systemName: providerOptions.providerName,
-              },
+              } as any,
             });
-            await models.task.appendActivityLog(task.id, activity);
+            await global.models.task.appendActivityLog(task.id, activity);
           }
 
           // Set the workflow status.
           const { workflowId, taskTemplateId } = finishedTask;
-          const { workflowTemplate } = await models.workflow.findById(workflowId);
-          const documents = await models.task.getDocumentsByWorkflowId(workflowId);
-          const events = await models.event.getEventsByWorkflowId(workflowId);
+          const { workflowTemplate }: any = await global.models.workflow.findById(workflowId as any);
+          const documents = await global.models.task.getDocumentsByWorkflowId(workflowId);
+          const events = await global.models.event.getEventsByWorkflowId(workflowId);
           try {
-            await businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId), { documents, events });
+            await global.businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId as any), { documents, events });
           } catch (error) {
-            log.save('set-workflow-status-error', { workflowId, error: error.message });
-            await models.workflowError.create(
+            global.log.save('set-workflow-status-error', { workflowId, error: error.message });
+            await global.models.workflowError.create(
               {
                 error: 'Can not set the workflow status.',
                 details: {
@@ -2191,7 +2226,7 @@ class DocumentBusiness extends Business {
    */
   async confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds) {
     // Get document.
-    const document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+    const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
@@ -2210,12 +2245,12 @@ class DocumentBusiness extends Business {
     const { transactionId } = calculatedData;
 
     // Send confirmation code.
-    let confirmCodeRes = 0;
-    let paymentId = undefined;
+    const confirmCodeRes = 0;
+    const paymentId = undefined;
     try {
       await this.paymentService.confirmBySmsCode(providerOptions, calculatedData, smsCode);
     } catch (error) {
-      log.save('confirm-code-response-error', { error }, 'error');
+      global.log.save('confirm-code-response-error', { error }, 'error');
     }
 
     // Add payment status.
@@ -2230,11 +2265,11 @@ class DocumentBusiness extends Business {
     PropByPath.set(documentDataObjectUpdated, `${paymentDocumentPath}.${CONFIRM_CODE_INFO_PATH}`, confirmCodeResObj);
 
     // Update document.
-    const updatedDocument = await models.document.updateData(documentId, undefined, documentDataObjectUpdated);
+    const updatedDocument = await global.models.document.updateData(documentId, undefined, documentDataObjectUpdated);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    log.save('updated-document-with-payment-status', { updatedDocument });
+    global.log.save('updated-document-with-payment-status', { updatedDocument });
 
     return { isConfirmed: confirmCodeRes, transactionId };
   }
@@ -2252,7 +2287,7 @@ class DocumentBusiness extends Business {
 
       return await this.paymentService.cancelOrder(providerOptions, orderId, transactionId, sessionId);
     } catch (error) {
-      log.save('cancel-order-payment-document-error', { error: error && error.message }, 'error');
+      global.log.save('cancel-order-payment-document-error', { error: error && error.message }, 'error');
       throw error;
     }
   }
@@ -2292,7 +2327,7 @@ class DocumentBusiness extends Business {
 
     // OR transaction Id when failed payment.
     const providerTransactionId = paidOrder && paidOrder.extraData && (paidOrder.extraData.paymentId || paidOrder.extraData.externalTransactionId);
-    log.save('prepare-params-to-unhold-payment', { paymentOptions: paymentSystemParams, transactionId: providerTransactionId, sessionId }, 'info');
+    global.log.save('prepare-params-to-unhold-payment', { paymentOptions: paymentSystemParams, transactionId: providerTransactionId, sessionId }, 'info');
 
     let unholdPaymentRes;
     try {
@@ -2302,11 +2337,13 @@ class DocumentBusiness extends Business {
         sessionId,
       });
     } catch (error) {
-      log.save('unhold-payment-while-commit-error', error, 'error');
-      throw new Error(error.message, { cause: error });
+      global.log.save('unhold-payment-while-commit-error', error, 'error');
+      const wrappedError = new Error(error.message);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     if (!unholdPaymentRes) {
-      log.save('unhold-payment-empty-res-while-commit-error', { unholdPaymentRes, documentId }, 'error');
+      global.log.save('unhold-payment-empty-res-while-commit-error', { unholdPaymentRes, documentId }, 'error');
       throw new Error('Unhold payment result is empty.');
     }
 
@@ -2318,11 +2355,11 @@ class DocumentBusiness extends Business {
     });
 
     // Update document.
-    const updatedDocument = await models.document.updateData(documentId, userId, documentData);
+    const updatedDocument = await global.models.document.updateData(documentId, userId, documentData);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    log.save('update-document-with-payment-data', { updatedDocument });
+    global.log.save('update-document-with-payment-data', { updatedDocument });
 
     return;
   }
@@ -2337,9 +2374,11 @@ class DocumentBusiness extends Business {
     // Define task and document entities.
     let taskAndDocumentEntities;
     try {
-      taskAndDocumentEntities = await models.task.findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId);
+      taskAndDocumentEntities = await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
     } catch (error) {
-      throw new Error(error.message || String(error), { cause: error });
+      const wrappedError = new Error(error.message || String(error));
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     if (!taskAndDocumentEntities) {
       throw new Error('Can\'t find task or document entities.');
@@ -2358,12 +2397,12 @@ class DocumentBusiness extends Business {
    */
   async declineMultisigns(signers, taskId, documentId, userId) {
     // Get document.
-    const document = await models.document.findById(documentId);
+    const document: any = await global.models.document.findById(documentId);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
-    const documentSignatures = await models.documentSignature.getByDocumentId(documentId);
-    const documentSignatureRejections = await models.documentSignatureRejection.getByDocumentId(documentId);
+    const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
+    const documentSignatureRejections = await (global.models.documentSignatureRejection.getByDocumentId as any)(documentId);
     document.signatures = documentSignatures;
     document.signatureRejections = documentSignatureRejections;
     const { documentTemplateId } = document;
@@ -2373,7 +2412,7 @@ class DocumentBusiness extends Business {
     try {
       multisignerControl = await this.getMultisignerControl(documentTemplateId);
     } catch (error) {
-      log.save('decline-multisigns-get-multisigner-control-error', error, 'error');
+      global.log.save('decline-multisigns-get-multisigner-control-error', error, 'error');
       throw error;
     }
     if (!multisignerControl) {
@@ -2386,8 +2425,10 @@ class DocumentBusiness extends Business {
     try {
       signersData = await this.auth.getUsersByIds(signers, privateProps);
     } catch (error) {
-      log.save('decline-multisigns-get-users-info-error', error, 'error');
-      throw new Error(error.message, { cause: error });
+      global.log.save('decline-multisigns-get-users-info-error', error, 'error');
+      const wrappedError = new Error(error.message);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     const rejectSignLetterTemplateFormula = multisignerControl.rejectSignLetterTemplate;
@@ -2419,7 +2460,7 @@ class DocumentBusiness extends Business {
     // Send letter by user Ids.
     const sendLetterByUserIdsPromises = dataForMail.map((v) => this.notifier.sendToUser(v.userId, v.title, v.template));
     Promise.all(sendLetterByUserIdsPromises).catch((error) => {
-      log.save('send-emails-to-signers-error', { error }, 'error');
+      global.log.save('send-emails-to-signers-error', { error }, 'error');
       throw error;
     });
   }
@@ -2430,7 +2471,7 @@ class DocumentBusiness extends Business {
    */
   async getMultisignerControl(templateId) {
     // Get document JSON schema.
-    const template = await models.documentTemplate.findById(templateId);
+    const template = await global.models.documentTemplate.findById(templateId);
     if (!template) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -2493,7 +2534,7 @@ class DocumentBusiness extends Business {
     for (const property of properties) {
       const jsonSchemaValue = PropByPath.get(jsonSchema, property);
       const documentProperty = property.replace(/.properties./g, '.');
-      let documentValue = PropByPath.get(documentDataObject, documentProperty);
+      const documentValue = PropByPath.get(documentDataObject, documentProperty);
 
       // Continue if we need to skip the register check.
       if (jsonSchemaValue && jsonSchemaValue.doNotRegisterCheck) {
@@ -2505,8 +2546,8 @@ class DocumentBusiness extends Business {
       }
 
       if (jsonSchemaValue.properties) {
-        let documentRegisterData = [];
-        for (let prop in jsonSchemaValue.properties) {
+        const documentRegisterData = [];
+        for (const prop in jsonSchemaValue.properties) {
           if (documentValue[prop]) documentRegisterData.push(documentValue[prop]);
         }
 
@@ -2556,12 +2597,12 @@ class DocumentBusiness extends Business {
       record = await this.registerService.findRecordById(recordId);
       key = await this.registerService.findKeyById(record?.keyId);
     } catch (error) {
-      log.save('check-update-register-properties-get-register-record-by-id-error', error, 'error');
-      let errorToResponse = new Error('Try to update register properties with unknown data. Record by ID not found.');
+      global.log.save('check-update-register-properties-get-register-record-by-id-error', error, 'error');
+      const errorToResponse: any = new Error('Try to update register properties with unknown data. Record by ID not found.');
       errorToResponse.details = { recordId, documentValue };
       throw errorToResponse;
     }
-    let recordData = record && record.data;
+    const recordData = record && record.data;
     const { toString } = key;
 
     // Add to record data fields that adds frontend.
@@ -2605,13 +2646,13 @@ class DocumentBusiness extends Business {
           }
         }
 
-        log.save('document-update|incorrect-register-record', {
+        global.log.save('document-update|incorrect-register-record', {
           recordId,
           prop,
           recordDataProp: recordData[prop],
           documentValueProp: documentValue[prop],
         });
-        let errorToResponse = new Error('Try to update register properties with unknown data.');
+        const errorToResponse: any = new Error('Try to update register properties with unknown data.');
         errorToResponse.details = { recordId, prop, recordDataProp: recordData[prop], documentValueProp: documentValue[prop] };
         throw errorToResponse;
       }
@@ -2638,14 +2679,16 @@ class DocumentBusiness extends Business {
           ? multiSignControl.isKeepSignersOrder
           : this.sandbox.evalWithArgs(multiSignControl.isKeepSignersOrder, [{ document }], { checkArrow: true });
     } catch (error) {
-      throw new Error(`checkSignersOrderAndGetNextSigner. Evaluate multiSignControl.isKeepSignersOrder error. ${error?.toString()}`, { cause: error });
+      const wrappedError = new Error(`checkSignersOrderAndGetNextSigner. Evaluate multiSignControl.isKeepSignersOrder error. ${error?.toString()}`);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     if (!isKeepSignersOrder) {
       return; // Skip, strict sequential sign rule disabled.
     }
 
-    const signatures = await models.documentSignature.getByDocumentId(document.id, undefined, ['created_by'], [['created_at', 'asc']]);
+    const signatures = await (global.models.documentSignature.getByDocumentId as any)(document.id, undefined, ['created_by'], [['created_at', 'asc']]);
     const alreadySignedByUsers = signatures.map((v) => v.createdBy);
     const needToBySignedByUsers = task.signerUsers;
 
@@ -2678,7 +2721,9 @@ class DocumentBusiness extends Business {
     try {
       [userData] = await this.auth.getUsersByIds([nextSignerUserId], true);
     } catch (error) {
-      throw new Error(`sendLetterToNextSigner. Cannot get user data from ID. ${error?.toString()}`, { cause: error });
+      const wrappedError = new Error(`sendLetterToNextSigner. Cannot get user data from ID. ${error?.toString()}`);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
     const { userId, firstName, lastName, middleName = '', ipn, email } = userData;
 
@@ -2695,7 +2740,9 @@ class DocumentBusiness extends Business {
       const letterTemplateArgs = [document, firstName, lastName, middleName, ipn, email, signerUrl];
       letterTemplate = this.sandbox.evalWithArgs(multiSignControl.letterTemplate, letterTemplateArgs, { checkArrow: true });
     } catch (error) {
-      throw new Error(`sendLetterToNextSigner. Evaluate multiSignerControl.letterTitle/letterTemplate error. ${error?.toString()}`, { cause: error });
+      const wrappedError = new Error(`sendLetterToNextSigner. Evaluate multiSignerControl.letterTitle/letterTemplate error. ${error?.toString()}`);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     const templateId = multiSignControl.templateId || LETTER_FOR_SIGNERS_TEMPLATE_ID;
@@ -2735,7 +2782,7 @@ class DocumentBusiness extends Business {
     try {
       multisignerControl = await this.getMultisignerControl(documentTemplateId);
     } catch (error) {
-      log.save('sign-document-get-multisigner-control-error', error, 'error');
+      global.log.save('sign-document-get-multisigner-control-error', error, 'error');
       throw error;
     }
     if (!multisignerControl || !multisignerSchemaPath) {
@@ -2744,14 +2791,14 @@ class DocumentBusiness extends Business {
 
     const calcSignersFormula = multisignerControl.calcSigners;
     if (!calcSignersFormula || typeof calcSignersFormula !== 'string' || !calcSignersFormula.startsWith('(')) {
-      log.save('multisigners-get-calculate-formula-error', { calcSignersFormula, taskId }, 'error');
+      global.log.save('multisigners-get-calculate-formula-error', { calcSignersFormula, taskId }, 'error');
       throw new Error('Can not find formula to calculate signers in JSON schema.');
     }
 
     // Calculate signers array.
-    let signersArray = this.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'calcSigners', documentId: document.id } });
+    const signersArray = this.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'calcSigners', documentId: document.id } });
     if (!signersArray) {
-      log.save('multisigners-calculate-signers-by-formula-error', { taskId }, 'error');
+      global.log.save('multisigners-calculate-signers-by-formula-error', { taskId }, 'error');
       throw new Error('Can\'t calculate signers by formula.');
     }
 
@@ -2768,8 +2815,10 @@ class DocumentBusiness extends Business {
     try {
       signersData = await this.auth.getUsersByIds(signerNotPerformerIds, withPrivateProps);
     } catch (error) {
-      log.save('send-letter-to-signers-error', error, 'error');
-      throw new Error(error.message, { cause: error });
+      global.log.save('send-letter-to-signers-error', error, 'error');
+      const wrappedError = new Error(error.message);
+      (wrappedError as any).cause = error;
+      throw wrappedError;
     }
 
     // Form task url for signers.
@@ -2798,7 +2847,7 @@ class DocumentBusiness extends Business {
       throw new Error('Can not find letter template data.');
     }
 
-    let dataForMail = signersData
+    const dataForMail = signersData
       .filter(Boolean)
       .filter(({ ipn }) => ipn && ipn !== 'null')
       .map((v) => {
@@ -2846,7 +2895,7 @@ class DocumentBusiness extends Business {
     // Send letter by user Ids.
     const sendLetterByUserIdsPromises = dataForMail.map((v) => this.notifier.sendToUser(v.userId, v.title, v.template, templateId));
     Promise.all(sendLetterByUserIdsPromises).catch((error) => {
-      log.save('send-emails-to-signers-error', { error }, 'error');
+      global.log.save('send-emails-to-signers-error', { error }, 'error');
       throw error;
     });
 
@@ -2854,7 +2903,7 @@ class DocumentBusiness extends Business {
     const usersWithOtherEmails = dataForMail.filter((v) => v.otherEmail);
     const sendLetterByUserEmailsPromises = usersWithOtherEmails.map((v) => this.notifier.sendByEmails(v.email, v.title, v.template, templateId));
     Promise.all(sendLetterByUserEmailsPromises).catch((error) => {
-      log.save('send-emails-to-signers-error', { error }, 'error');
+      global.log.save('send-emails-to-signers-error', { error }, 'error');
       throw error;
     });
 
@@ -2890,7 +2939,7 @@ class DocumentBusiness extends Business {
     enabledMocksHeader,
   }) {
     // Get document.
-    const document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+    const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
@@ -2911,7 +2960,7 @@ class DocumentBusiness extends Business {
     }
 
     // Get document template.
-    const documentTemplate = await models.documentTemplate.findById(document.documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(document.documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -2930,13 +2979,10 @@ class DocumentBusiness extends Business {
 
     const documentDataObject = document.data;
 
-    // Define function for using in eval.
-    // eslint-disable-next-line no-unused-vars
-    const numberGenerator = (template) => this.numberGenerator.generateFromRawTemplate(template);
-
-    let nonUserFilter = {};
+    const nonUserFilter: any = {};
     if (typeof externalReaderCheckProperty.filters !== 'undefined') {
-      for (let [name, value] of Object.entries(externalReaderCheckProperty.filters)) {
+      // eslint-disable-next-line prefer-const -- value is reassigned below; name isn't.
+      for (let [name, value] of Object.entries(externalReaderCheckProperty.filters) as any) {
         if (Array.isArray(index)) {
           for (let i = 0; i < index.length; i++) {
             value = value.replace(/\.\$\{index\}/, `[${index[i]}]`); // Replace example from ".${index}" to "[i]".
@@ -3001,7 +3047,7 @@ class DocumentBusiness extends Business {
       prepareAttachments,
       responseDecorator,
     } = externalReaderCheckProperty;
-    const extraParams = { documentId: document.id, deleteOldAttachmentsBeforeSave };
+    const extraParams: any = { documentId: document.id, deleteOldAttachmentsBeforeSave };
 
     if (typeOf(requestTimeout) === 'number') {
       extraParams.requestTimeout = requestTimeout;
@@ -3035,7 +3081,7 @@ class DocumentBusiness extends Business {
 
     extraParams.prepareAttachments = prepareAttachments;
 
-    log.save('check-and-save-data-from-external-reader-prepared-filter', { service, method, documentId, userId, path, nonUserFilter, extraParams });
+    global.log.save('check-and-save-data-from-external-reader-prepared-filter', { service, method, documentId, userId, path, nonUserFilter, extraParams });
 
     // Check onRequest handlers.
     if (typeOf(externalReaderCheckProperty.onRequest) === 'object') {
@@ -3054,7 +3100,7 @@ class DocumentBusiness extends Business {
         }
         if (isRemovePreviousResponse) {
           PropByPath.delete(documentDataObject, pathForSavingInDocument);
-          const updatedDocument = await models.document.updateData(documentId, userId, documentDataObject);
+          const updatedDocument = await global.models.document.updateData(documentId, userId, documentDataObject);
           if (!updatedDocument) {
             throw new Error(ERROR_UPDATE_DOCUMENT);
           }
@@ -3067,14 +3113,16 @@ class DocumentBusiness extends Business {
         try {
           attachments = await this.documentAttachmentModel.getByDocumentIdAndMeta(documentId, { fromExternalReader: `${service}.${method}` });
         } catch (error) {
-          throw new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot get old attachments info for rewriting. ${error.toString()}`, { cause: error });
+          const wrappedError = new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot get old attachments info for rewriting. ${error.toString()}`);
+          (wrappedError as any).cause = error;
+          throw wrappedError;
         }
 
         try {
           await Promise.all(attachments.map((v) => this.storageService.provider.deleteFile(v.link)));
         } catch (error) {
           // Do not throw error. This error should not block saving new attachments.
-          log.save(
+          global.log.save(
             'document-business|check-and-save-data-from-external-reader|delete-file-from-file-storage-error',
             { error: error.toString() },
             'warn',
@@ -3084,7 +3132,9 @@ class DocumentBusiness extends Business {
         try {
           await Promise.all(attachments.map((v) => this.documentAttachmentModel.delete(v.id)));
         } catch (error) {
-          throw new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot delete old attachments. ${error.toString()}`, { cause: error });
+          const wrappedError = new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot delete old attachments. ${error.toString()}`);
+          (wrappedError as any).cause = error;
+          throw wrappedError;
         }
       }
     }
@@ -3107,10 +3157,10 @@ class DocumentBusiness extends Business {
     if (!externalReaderResult || typeof externalReaderResult.data === 'undefined') {
       throw new Error('Can\'t get external reader check data.');
     }
-    log.save('external-reader-check-data', { externalReaderResult });
+    global.log.save('external-reader-check-data', { externalReaderResult });
 
     // Get current document data (maybe updated during External Reader handling).
-    const documentToUpdate = await models.document.findById(documentId);
+    const documentToUpdate: any = await global.models.document.findById(documentId);
     const documentDataToUpdate = documentToUpdate.data;
 
     let responseData = externalReaderResult.data;
@@ -3145,11 +3195,11 @@ class DocumentBusiness extends Business {
       PropByPath.set(documentDataToUpdate, pathForSavingFiltersInDocument, nonUserFilter);
     }
 
-    const updatedDocument = await models.document.updateData(documentId, userId, documentDataToUpdate);
+    const updatedDocument = await global.models.document.updateData(documentId, userId, documentDataToUpdate);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    log.save('updated-document-with-external-reader-check-data', { updatedDocument: { ...updatedDocument, data: HIDE_REPLACEMENT_TEXT } }); // Do not log large document.data.
+    global.log.save('updated-document-with-external-reader-check-data', { updatedDocument: { ...updatedDocument, data: HIDE_REPLACEMENT_TEXT } }); // Do not log large document.data.
 
     // Check onResponse handlers.
     if (typeOf(externalReaderCheckProperty.onResponse) === 'object') {
@@ -3242,7 +3292,7 @@ class DocumentBusiness extends Business {
    */
   async updateVerifiedUserInfo(documentId, { userId, oauthToken, userUnitIds, userInfo, enabledMocksHeader }) {
     // Get document.
-    const document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+    const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
@@ -3267,7 +3317,7 @@ class DocumentBusiness extends Business {
     });
 
     // Save document.
-    const updatedDocument = await models.document.updateData(documentId, userId, documentData);
+    const updatedDocument = await global.models.document.updateData(documentId, userId, documentData);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
@@ -3297,24 +3347,24 @@ class DocumentBusiness extends Business {
       readableStream.push(null);
 
       // Upload file.
-      let uploadFilePromise = this.storageService.provider.uploadFileFromStream(readableStream, name, undefined, contentType, contentLength);
+      const uploadFilePromise = this.storageService.provider.uploadFileFromStream(readableStream, name, undefined, contentType, contentLength);
       filesDataPromises.push(uploadFilePromise);
     }
 
     const uploadFilesInfo = await Promise.allSettled(filesDataPromises);
 
-    const rejectedFiles = uploadFilesInfo.map(({ status, reason }, index) => status === 'rejected' && { reason, index }).filter(Boolean);
+    const rejectedFiles = uploadFilesInfo.map(({ status, reason }: any, index) => status === 'rejected' && { reason, index }).filter(Boolean);
     if (rejectedFiles.length) {
-      log.save('create-attachments-for-system-task|upload-file-rejected', { rejectedFiles });
+      global.log.save('create-attachments-for-system-task|upload-file-rejected', { rejectedFiles });
       throw new Error(rejectedFiles.map((item) => `File ${files[item.index].name} upload error: ${item.reason}`).join(', '));
     }
 
     // Create attachment.
     for (const fileInfoIndex in uploadFilesInfo) {
       // Add to DB.
-      const { value: fileInfo } = uploadFilesInfo[fileInfoIndex];
+      const { value: fileInfo }: any = uploadFilesInfo[fileInfoIndex];
 
-      let attachment = this.documentAttachmentModel.create({
+      const attachment = this.documentAttachmentModel.create({
         documentId,
         name: fileInfo.name,
         type: fileInfo.contentType,
@@ -3330,8 +3380,8 @@ class DocumentBusiness extends Business {
     // Save attachment info to document.
     for (const [index, attachment] of attachmentList.entries()) {
       // We need to get the updated document for correct saving attachment array.
-      const updatedDocument = await models.document.findById(documentId);
-      await businesses.document.saveAttachmentToDocumentData(
+      const updatedDocument = await global.models.document.findById(documentId);
+      await global.businesses.document.saveAttachmentToDocumentData(
         attachment,
         `initData.files.${index}`,
         updatedDocument,
@@ -3357,7 +3407,7 @@ class DocumentBusiness extends Business {
     try {
       paymentSystemParams = await this.getPaymentProviderOptionsByDocId(paymentControlPath, documentId, userId, userUnitIds);
     } catch (error) {
-      log.save('get-payment-receipt-get-system-params-error', { error, documentId, orderId, userId });
+      global.log.save('get-payment-receipt-get-system-params-error', { error, documentId, orderId, userId });
       throw error;
     }
 
@@ -3365,7 +3415,7 @@ class DocumentBusiness extends Business {
     if (!receipt) {
       throw new Error('Can\'t get payment receipt.');
     }
-    log.save('get-payment-receipt', { receipt });
+    global.log.save('get-payment-receipt', { receipt });
 
     return receipt;
   }
@@ -3384,7 +3434,7 @@ class DocumentBusiness extends Business {
     try {
       paymentSystemParams = await this.getPaymentProviderOptionsByDocId(paymentControlPath, documentId, userId, userUnitIds);
     } catch (error) {
-      log.save('get-withdrawal-status-get-system-params-error', { error, documentId, orderId, userId });
+      global.log.save('get-withdrawal-status-get-system-params-error', { error, documentId, orderId, userId });
       throw error;
     }
 
@@ -3392,7 +3442,7 @@ class DocumentBusiness extends Business {
     if (!withdrawalStatus) {
       throw new Error(ERROR_GET_PAYMENT_DATA);
     }
-    log.save('get-withdrawal-status-result', { withdrawalStatus });
+    global.log.save('get-withdrawal-status-result', { withdrawalStatus });
 
     return withdrawalStatus;
   }
@@ -3406,14 +3456,14 @@ class DocumentBusiness extends Business {
    */
   async getPaymentProviderOptionsByDocId(paymentControlPath, documentId, userId, userUnitIds) {
     // Get document.
-    const document = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+    const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document || !document.task) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
 
     // Get document template.
     const templateId = document.documentTemplateId;
-    const documentTemplate = await models.documentTemplate.findById(templateId);
+    const documentTemplate = await global.models.documentTemplate.findById(templateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -3424,7 +3474,7 @@ class DocumentBusiness extends Business {
     if (!paymentProperties) {
       throw new Error('Can not find payment properties in JSON schema.');
     }
-    log.save('payment-properties', { documentTemplateId: documentTemplate.id, documentTemplateName: documentTemplate.name, paymentProperties });
+    global.log.save('payment-properties', { documentTemplateId: documentTemplate.id, documentTemplateName: documentTemplate.name, paymentProperties });
     const paymentCustomer = paymentProperties && paymentProperties.customer;
     const paymentSystemParams = this.config.payment && this.config.payment[paymentCustomer];
 
@@ -3469,7 +3519,7 @@ class DocumentBusiness extends Business {
   createBlock(name, contentBuffer) {
     const zeroSymbolBuffer = Buffer.alloc(1);
     const nameBuffer = Buffer.from(name);
-    let contentSizeBuffer = Buffer.allocUnsafe(4);
+    const contentSizeBuffer = Buffer.allocUnsafe(4);
     contentSizeBuffer.writeUInt32LE(Buffer.byteLength(contentBuffer));
     const blockBuffer = Buffer.concat([nameBuffer, zeroSymbolBuffer, contentSizeBuffer, contentBuffer]);
     return blockBuffer;
@@ -3495,7 +3545,7 @@ class DocumentBusiness extends Business {
     const additionalDataSignatureList = await global.models.additionalDataSignature.getByDocumentId(documentId);
 
     // Handle all additional data signature list to get data to encrypt.
-    let toEncrypt = [];
+    const toEncrypt = [];
     const filteredAdditionalDataSignatureList = additionalDataSignatureList.filter((v) => v.cryptCertificate);
     for (const additionalDataSignature of filteredAdditionalDataSignatureList) {
       if (!additionalDataSignature || !additionalDataSignature.signature) {
@@ -3566,7 +3616,7 @@ class DocumentBusiness extends Business {
 
     // Check domain name.
     const { host } = new URL(validationUrl);
-    if (host !== config.allowedApplePayGateway) {
+    if (host !== global.config.allowedApplePayGateway) {
       throw new ForbiddenError(`validationUrl domain ${host} is not allowed Apple Pay gateway.`);
     }
 
@@ -3575,15 +3625,15 @@ class DocumentBusiness extends Business {
       validationUrl,
       {
         agent: new https.Agent({
-          cert: Buffer.from(config.merchantIdentityCertificateInBase64, 'base64').toString('utf-8'),
-          key: Buffer.from(config.merchantIdentityPrivateKeyInBase64, 'base64').toString('utf-8'),
+          cert: Buffer.from(global.config.merchantIdentityCertificateInBase64, 'base64').toString('utf-8'),
+          key: Buffer.from(global.config.merchantIdentityPrivateKeyInBase64, 'base64').toString('utf-8'),
         }),
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          merchantIdentifier: config.merchantIdentifier,
+          merchantIdentifier: global.config.merchantIdentifier,
           displayName,
           initiative,
           initiativeContext,
@@ -3639,7 +3689,7 @@ class DocumentBusiness extends Business {
       return;
     }
 
-    await models.document.addDocumentFile({
+    await (global.models.document.addDocumentFile as any)({
       id: document.id,
       updatedBy: userId,
       fileId: 'generating',
@@ -3663,22 +3713,22 @@ class DocumentBusiness extends Business {
    */
   async createPdf({ document, userId }) {
     const documentId = document.id;
-    const workflow = await models.workflow.findById(document.task.workflowId);
+    const workflow = await global.models.workflow.findById(document.task.workflowId);
     if (!workflow) {
       throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
     }
 
     // Get template data.
-    const documentTemplate = await models.documentTemplate.findById(document.documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(document.documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
 
-    log.save('create-pdf', { cfg: global.config });
+    global.log.save('create-pdf', { cfg: global.config });
     const { variables, ...staticFileOptions } = global.config.file_generator;
 
     // Define file HTMLs.
-    let htmls = [];
+    const htmls = [];
     // Create PDF.
     const htmlsString = await this.fileGeneratorService.createHtml({
       workflow,
@@ -3710,7 +3760,7 @@ class DocumentBusiness extends Business {
 
       // Check if wrong schema.
       if (allHtmlParts.length > 2) {
-        log.save('html-schema-delimiter-error', { allHtmls, currentHtmlWithError: allHtmlParts }, 'error');
+        global.log.save('html-schema-delimiter-error', { allHtmls, currentHtmlWithError: allHtmlParts }, 'error');
         throw new Error('Wrong HTML schema delimiters.');
       }
     }
@@ -3718,11 +3768,11 @@ class DocumentBusiness extends Business {
     // Handle all HTML templates.
     let mainPdfBuffer;
     let mainFileId;
-    let attachmentIds = [];
+    const attachmentIds = [];
     let mainPdfFileName;
     let mainPdfFileSize;
-    let attachesPdfFileNames = [];
-    let attachesPdfFileSizes = [];
+    const attachesPdfFileNames = [];
+    const attachesPdfFileSizes = [];
     let attachesMetaData = {};
 
     for (const htmlIndex in htmls) {
@@ -3730,8 +3780,6 @@ class DocumentBusiness extends Business {
       let html = htmls[htmlIndex];
 
       // Create and upload file.
-      let pdfBuffer;
-      let fileInfo;
       const pdfFileNameSchema =
         typeof documentTemplate.jsonSchema.fileName === 'string'
           ? this.sandbox.evalWithArgs(documentTemplate.jsonSchema.fileName, [document.data], {
@@ -3775,8 +3823,8 @@ class DocumentBusiness extends Business {
       const pdfHeight = getTagContentByPattern(/<pdf-height>.+<\/pdf-height>/gi);
       const pdfWidth = getTagContentByPattern(/<pdf-width>.+<\/pdf-width>/gi);
 
-      const bufferStream = PassThrough();
-      let pdfOptions = {
+      const bufferStream = (PassThrough as any)();
+      const pdfOptions: any = {
         orientation: landscapeFormat ? 'landscape' : 'portrait',
         border: {},
       };
@@ -3808,10 +3856,12 @@ class DocumentBusiness extends Business {
         pdfOptions.width = pdfWidth;
       }
 
-      pdfBuffer = await this.fileGeneratorService.createPdf(html, pdfOptions);
+      const pdfBuffer = await this.fileGeneratorService.createPdf(html, pdfOptions);
       bufferStream.end(pdfBuffer);
 
-      fileInfo = await this.storageService.provider.uploadFileFromStream(bufferStream, pdfFileName, undefined, APLICATION_PDF, pdfBuffer.length);
+      const fileInfo = await this.storageService.provider.uploadFileFromStream(
+        bufferStream, pdfFileName, undefined, APLICATION_PDF, pdfBuffer.length,
+      );
 
       const { id: fileId } = fileInfo;
 
@@ -3840,8 +3890,8 @@ class DocumentBusiness extends Business {
 
     // Delete exist signatures and rejections.
     if (document.task && document.task.signerUsers && document.task.signerUsers.length > 0) {
-      await models.documentSignature.deleteByDocumentId(documentId);
-      await models.documentSignatureRejection.deleteByDocumentId(documentId);
+      await global.models.documentSignature.deleteByDocumentId(documentId);
+      await global.models.documentSignatureRejection.deleteByDocumentId(documentId);
     }
 
     // Add file id, name, type if not exist
@@ -3850,7 +3900,7 @@ class DocumentBusiness extends Business {
     if (!document.fileType) document.fileType = APLICATION_PDF;
 
     // Add document file.
-    let created = await models.document.addDocumentFile({
+    const created = await (global.models.document.addDocumentFile as any)({
       id: documentId,
       updatedBy: userId,
       fileId: mainFileId,
@@ -3863,13 +3913,12 @@ class DocumentBusiness extends Business {
     }
 
     // Delete last attachments.
-    await models.documentAttachment.deleteGeneratedByDocumentId(documentId);
+    await global.models.documentAttachment.deleteGeneratedByDocumentId(documentId);
 
     // Save attachments.
-    let attachments = [];
-    for (let attachmentIndex in attachmentIds) {
-      let attachment;
-      attachment = await models.documentAttachment.create({
+    const attachments = [];
+    for (const attachmentIndex in attachmentIds) {
+      const attachment = await (global.models.documentAttachment.create as any)({
         documentId,
         name: attachesPdfFileNames[attachmentIndex],
         type: APLICATION_PDF,
@@ -3890,12 +3939,12 @@ class DocumentBusiness extends Business {
    */
   async createPdfFromMessage(messageObject) {
     try {
-      const document = await models.document.findById(messageObject.documentId);
+      const document: any = await global.models.document.findById(messageObject.documentId);
       if (!document) {
         throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
       }
-      const documentSignatures = await models.documentSignature.getByDocumentId(messageObject.documentId);
-      const documentSignatureRejections = await models.documentSignatureRejection.getByDocumentId(messageObject.documentId);
+      const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(messageObject.documentId);
+      const documentSignatureRejections = await (global.models.documentSignatureRejection.getByDocumentId as any)(messageObject.documentId);
       document.signatures = documentSignatures;
       document.signatureRejections = documentSignatureRejections;
 
@@ -3904,10 +3953,10 @@ class DocumentBusiness extends Business {
         throw new Error('PDF wasn\'t created.');
       }
     } catch (error) {
-      log.save('pdf-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error });
+      global.log.save('pdf-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error });
 
       // If it errors, will delete state generating pdf.
-      await models.document.addDocumentFile({
+      await (global.models.document.addDocumentFile as any)({
         id: messageObject.documentId,
         updatedBy: messageObject.userId,
         fileId: null,
@@ -3931,7 +3980,7 @@ class DocumentBusiness extends Business {
    * @return {Promise<void>}
    */
   async saveExternalPdf(pdf, documentId, userId) {
-    const bufferStream = PassThrough();
+    const bufferStream = (PassThrough as any)();
     bufferStream.end(Buffer.from(pdf.fileContent, 'base64'));
     const fileInfo = await this.storageService.provider.uploadFileFromStream(
       bufferStream,
@@ -3942,7 +3991,7 @@ class DocumentBusiness extends Business {
     );
 
     // Add document file.
-    const result = await models.document.addDocumentFile({
+    const result = await (global.models.document.addDocumentFile as any)({
       id: documentId,
       updatedBy: userId,
       fileId: fileInfo.id,
@@ -4009,7 +4058,7 @@ class DocumentBusiness extends Business {
       }
     } catch (error) {
       // Do not throw error.
-      log.save('download-payment-receipt-error', { error: error.toString() }, 'error');
+      global.log.save('download-payment-receipt-error', { error: error.toString() }, 'error');
     }
   }
 
@@ -4061,7 +4110,7 @@ class DocumentBusiness extends Business {
     const metaObj = {
       multiSignInfo: { rejected, signedBy, rejectedBy },
     };
-    businesses.task.addTaskMetadata(task, userInfo.userId, false, metaObj);
+    global.businesses.task.addTaskMetadata(task, userInfo.userId, false, metaObj);
   }
 
   /**
@@ -4085,6 +4134,7 @@ class DocumentBusiness extends Business {
       throw new InvalidSchemaError('Invalid strictMultiSignCheck control. isEnabled/errors required.');
     }
 
+    // eslint-disable-next-line prefer-const -- isEnabled is reassigned below; the rest of this destructuring isn't.
     let { isEnabled, excludeOwner, context: checkContext = [], errors: checkErrors = [] } = strictMultiSignCheck;
 
     try {
@@ -4142,7 +4192,9 @@ class DocumentBusiness extends Business {
 
     if (errors.length) {
       const [firstError] = errors;
-      throw new Error('strictMultiSignCheck error.', { cause: [firstError.title, firstError.text].filter(Boolean).join(': ') });
+      const wrappedError = new Error('strictMultiSignCheck error.');
+      (wrappedError as any).cause = [firstError.title, firstError.text].filter(Boolean).join(': ');
+      throw wrappedError;
     }
   }
 
@@ -4255,7 +4307,7 @@ class DocumentBusiness extends Business {
           try {
             item.signature = await this.eds.hashToInternalSignature(item.signature, Buffer.from(item.data, 'base64'));
           } catch (error) {
-            log.save(
+            global.log.save(
               'create-task-hash-to-internal-signature-error',
               {
                 error: error.toString(),
@@ -4268,7 +4320,7 @@ class DocumentBusiness extends Business {
           }
         }
 
-        return await models.additionalDataSignature.create({
+        return await (global.models.additionalDataSignature.create as any)({
           documentId: document.id,
           data: item.data,
           signature: item.signature,
@@ -4284,11 +4336,11 @@ class DocumentBusiness extends Business {
 
     promisesResults.forEach((value, index) => {
       if (value.status === 'rejected') {
-        throw new Error(value.reason.toString(), {
-          cause: {
-            additionalDataSignature: Helpers.cutLongStrings(additionalDataSignatures[index], 50),
-          },
-        });
+        const wrappedError = new Error(value.reason.toString());
+        (wrappedError as any).cause = {
+          additionalDataSignature: Helpers.cutLongStrings(additionalDataSignatures[index], 50),
+        };
+        throw wrappedError;
       }
     });
   }
@@ -4302,6 +4354,7 @@ class DocumentBusiness extends Business {
   async saveAttachmentsP7SSignatures(attachmentsSignatures, document, userInfo) {
     const promisesResults = await Promise.allSettled(
       attachmentsSignatures.map(async (item) => {
+        // eslint-disable-next-line prefer-const -- p7sSignature is reassigned below; the rest of this destructuring isn't.
         let { name, contentType, fileContent, p7sSignature, isHashToInternalSignature } = item;
 
         if (!name || !contentType || !fileContent || !p7sSignature) {
@@ -4315,7 +4368,9 @@ class DocumentBusiness extends Business {
           try {
             p7sSignature = await this.eds.hashToInternalSignature(p7sSignature, fileContentBuffer);
           } catch (error) {
-            throw new Error(`TaskBusiness.saveAttachmentsSignatures. Cannot convert hash to internal signature. ${error.toString()}`, { cause: error });;
+            const wrappedError = new Error(`TaskBusiness.saveAttachmentsSignatures. Cannot convert hash to internal signature. ${error.toString()}`);
+            (wrappedError as any).cause = error;
+            throw wrappedError;
           }
         }
 
@@ -4364,14 +4419,14 @@ class DocumentBusiness extends Business {
 
     promisesResults.forEach((value, index) => {
       if (value.status === 'rejected') {
-        throw new Error(value.reason.toString(), {
-          cause: {
-            attachmentsSignatures: Helpers.cutLongStrings(attachmentsSignatures[index], 50),
-          },
-        });
+        const wrappedError = new Error(value.reason.toString());
+        (wrappedError as any).cause = {
+          attachmentsSignatures: Helpers.cutLongStrings(attachmentsSignatures[index], 50),
+        };
+        throw wrappedError;
       }
     });
-    return promisesResults.map(({ value }) => value.documentAttachment);
+    return promisesResults.map(({ value }: any) => value.documentAttachment);
   }
 
   /**
@@ -4387,7 +4442,7 @@ class DocumentBusiness extends Business {
 
     // Define if last key is a number (path to array).
     const [lastKey] = path.split('.').reverse();
-    const isLastKeyNumber = lastKey == parseInt(lastKey);
+    const isLastKeyNumber = (lastKey as any) == parseInt(lastKey);
     return isLastKeyNumber;
   }
 
@@ -4424,9 +4479,8 @@ class DocumentBusiness extends Business {
         return path.split('.').reduce((acc, key) => acc?.[key], obj);
       }
     } catch (error) {
-      log.save('addCalculatedDataToUpdateLogs', error, 'error');
+      global.log.save('addCalculatedDataToUpdateLogs', error, 'error');
     }
   }
 }
 
-module.exports = DocumentBusiness;

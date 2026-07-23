@@ -3,7 +3,7 @@ import PropByPath from 'prop-by-path';
 import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
-import RegisterBusiness from '../businesses/register';
+import { RegisterBusiness } from '../businesses/register';
 import DocumentAttachmentModel from '../models/document_attachment';
 import StorageService from '../services/storage';
 import { InvalidParamsError, ForbiddenError } from '../lib/errors';

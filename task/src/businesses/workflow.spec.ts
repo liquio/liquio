@@ -1,6 +1,6 @@
-const nock = require('nock');
+import nock from 'nock';
 
-const WorkflowBusiness = require('./workflow');
+import { WorkflowBusiness } from './workflow';
 
 describe('WorkflowBusiness', () => {
   global.config = {
@@ -43,14 +43,14 @@ describe('WorkflowBusiness', () => {
     
     beforeEach(() => {
       // Create fresh instance for each test
-      WorkflowBusiness.singleton = null;
+      (WorkflowBusiness as any).singleton = null;
       workflowBusiness = new WorkflowBusiness(global.config);
     });
 
     afterEach(() => {
       // Clean up nock after each test
       nock.cleanAll();
-      WorkflowBusiness.singleton = null;
+      (WorkflowBusiness as any).singleton = null;
     });
 
     it('should fetch workflows with default parameters', async () => {

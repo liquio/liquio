@@ -1,10 +1,10 @@
-import WorkflowBusiness from '../businesses/workflow';
-import WorkflowTemplateBusiness from '../businesses/workflow_template';
-import TaskBusiness from '../businesses/task';
-import DocumentBusiness from '../businesses/document';
-import RegisterBusiness from '../businesses/register';
-import UserInboxBusiness from '../businesses/user_inbox';
-import ExternalServicesBusiness from '../businesses/external_services';
+import { WorkflowBusiness } from '../businesses/workflow';
+import { WorkflowTemplateBusiness } from '../businesses/workflow_template';
+import { TaskBusiness } from '../businesses/task';
+import { DocumentBusiness } from '../businesses/document';
+import { RegisterBusiness } from '../businesses/register';
+import { UserInboxBusiness } from '../businesses/user_inbox';
+import { ExternalServicesBusiness } from '../businesses/external_services';
 
 import WorkflowModel from '../models/workflow';
 import WorkflowTemplateCategoryModel from '../models/workflow_template_category';

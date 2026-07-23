@@ -1,12 +1,12 @@
 
-const Business = require('./business');
-const WorkflowBusiness = require('./workflow');
-const WorkflowTemplateBusiness = require('./workflow_template');
-const TaskBusiness = require('./task');
-const DocumentBusiness = require('./document');
-const RegisterBusiness = require('./register');
-const UserInboxBusiness = require('./user_inbox');
-const ExternalServicesBusiness = require('./external_services');
+import { Business } from './business';
+import { WorkflowBusiness } from './workflow';
+import { WorkflowTemplateBusiness } from './workflow_template';
+import { TaskBusiness } from './task';
+import { DocumentBusiness } from './document';
+import { RegisterBusiness } from './register';
+import { UserInboxBusiness } from './user_inbox';
+import { ExternalServicesBusiness } from './external_services';
 
 // Constants.
 const BUSINESSES_CLASSES_LIST = [
@@ -23,12 +23,17 @@ const BUSINESSES_CLASSES_LIST = [
 /**
  * Businesses.
  */
-class Businesses {
+export class Businesses {
+  private static singleton: Businesses;
+
+  config: any;
+  businesses: any;
+
   /**
    * Businesses constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config: any) {
     // Define singleton.
     if (!Businesses.singleton) {
       this.config = config;
@@ -51,7 +56,7 @@ class Businesses {
    */
   initBusinesses() {
     // Define businesses classses.
-    const businessesByNames = {
+    const businessesByNames: Record<string, any> = {
       workflow: WorkflowBusiness,
       workflowTemplate: WorkflowTemplateBusiness,
       task: TaskBusiness,
@@ -68,8 +73,8 @@ class Businesses {
         (t, v) => ({
           ...t,
           ...(() => {
-            let n = {};
-            n[v[0]] = v[1];
+            const n: Record<string, any> = {};
+            n[v[0] as string] = v[1];
             return n;
           })()
         }),
@@ -80,4 +85,3 @@ class Businesses {
   }
 }
 
-module.exports = Businesses;

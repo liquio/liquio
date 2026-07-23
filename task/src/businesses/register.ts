@@ -1,14 +1,14 @@
 
-const _ = require('lodash');
+import _ from 'lodash';
 
-const Business = require('./business');
-const UnitAccessModel = require('../models/unit_access');
-const UnitAccessEntity = require('../entities/unit_access');
-const RegisterService = require('../services/register');
-const { JSONPath } = require('../lib/jsonpath');
-const RedisClient = require('../lib/redis_client');
-const Sandbox = require('../lib/sandbox');
-const { InvalidParamsError, ForbiddenError, NotFoundError } = require('../lib/errors');
+import { Business } from './business';
+import UnitAccessModel from '../models/unit_access';
+import UnitAccessEntity from '../entities/unit_access';
+import RegisterService from '../services/register';
+import { JSONPath } from '../lib/jsonpath';
+import RedisClient from '../lib/redis_client';
+import Sandbox from '../lib/sandbox';
+import { InvalidParamsError, ForbiddenError, NotFoundError } from '../lib/errors';
 
 // Constants.
 const ALLOW_CREATE = 'create';
@@ -27,7 +27,17 @@ const ERROR_KEY_RECORDS_READONLY = 'Key records are readonly.';
 /**
  * Register business.
  */
-class RegisterBusiness extends Business {
+export class RegisterBusiness extends Business {
+  private static singleton: RegisterBusiness;
+
+  unitAccessModel: any;
+  registerService: any;
+  sandbox: any;
+  registers: any;
+  keys: any;
+  unitAccess: any;
+  keysByRegister: any;
+
   /**
    * Register business constructor.
    * @param {object} config Config object.
@@ -38,7 +48,7 @@ class RegisterBusiness extends Business {
       super(config);
       this.unitAccessModel = new UnitAccessModel();
       this.registerService = new RegisterService();
-      this.sandbox = new Sandbox();
+      this.sandbox = new Sandbox({});
       this.registers = [];
       this.keys = [];
       this.unitAccess = [];
@@ -181,7 +191,7 @@ class RegisterBusiness extends Business {
     }
 
     // Get records.
-    let records = await this.registerService.getRecords(params, accessInfo);
+    const records = await this.registerService.getRecords(params, accessInfo);
 
     // Define and return record ID and stringified text for strict access.
     if (strict) {
@@ -310,10 +320,10 @@ class RegisterBusiness extends Business {
    * @param {object} params Params.
    * @returns {Promise<object[]>} Records list promise.
    */
-  async getRecordsByKeyIdFullAccess(keyId, params = {}) {
+  async getRecordsByKeyIdFullAccess(keyId, params: any = {}) {
     // Get records.
     if (!params.key_id) params.key_id = keyId;
-    let records = await this.registerService.getRecords({
+    const records = await this.registerService.getRecords({
       ...params,
       allow_see_all_records: true,
     });
@@ -365,7 +375,7 @@ class RegisterBusiness extends Business {
     }
 
     // Get records.
-    let records = await this.registerService.getFilteredRecords(params, body, accessInfo);
+    const records = await this.registerService.getFilteredRecords(params, body, accessInfo);
 
     // Define and return record ID and stringified text for strict access.
     if (strict) {
@@ -393,7 +403,7 @@ class RegisterBusiness extends Business {
     }
 
     // Get records.
-    let records = await this.registerService.getRecords({ ...params, key_id: keyId }, accessInfo);
+    const records = await this.registerService.getRecords({ ...params, key_id: keyId }, accessInfo);
 
     // Define and return record ID and stringified text.
     await this.prepareData();
@@ -417,15 +427,15 @@ class RegisterBusiness extends Business {
    */
   async getRecordsTreeByKeyIds(
     keyIds,
-    params = { offset: 0, limit: 100000 },
-    accessInfo,
-    excludeList,
+    params: any = { offset: 0, limit: 100000 },
+    accessInfo?,
+    excludeList?,
   ) {
     // Define .
     const linkedKeyIds = await this.getLinkedKeyIds(keyIds);
 
     // Records container.
-    let records = [];
+    const records = [];
 
     let parsedExcludeList;
     if (excludeList) {
@@ -474,7 +484,7 @@ class RegisterBusiness extends Business {
       }
 
       // Try to build links chain from init key to linked keys.
-      let linksChain = [];
+      const linksChain = [];
       let chainFound = false;
       while (!chainFound) {
         if (linksChain.length === 0) {
@@ -696,8 +706,8 @@ class RegisterBusiness extends Business {
    */
   async prepareData() {
     const [registers, keys, unitAccess] = await Promise.all([
-      this.registerService.getRegisters({ limit: config.register.limit }),
-      this.registerService.getKeys({ limit: config.register.limit }),
+      this.registerService.getRegisters({ limit: global.config.register.limit }),
+      this.registerService.getKeys({ limit: global.config.register.limit }),
       this.unitAccessModel.getAllWithCache(),
     ]);
 
@@ -865,7 +875,7 @@ class RegisterBusiness extends Business {
    * @param {number} [parentKeyId] Key parent ID.
    * @returns {{id, registerId, keyId, stringified}} Strict record.
    */
-  convertToStrictRecord(record, toString = '() => undefined;', keySchema, parentKeyId) {
+  convertToStrictRecord(record: any, toString = '() => undefined;', keySchema?: any, parentKeyId?: any): any {
     // Parse record.
     const { id, registerId, keyId, createdAt, updatedAt } = record;
 
@@ -878,11 +888,11 @@ class RegisterBusiness extends Business {
         { meta: { fn: 'convertToStrictRecord', recordId: record.id } },
       );
     } catch (error) {
-      log.save('convert-to-strict-record-error', { error: error && error.message, record, keySchema }, 'warn');
+      global.log.save('convert-to-strict-record-error', { error: error && error.message, record, keySchema }, 'warn');
     }
 
     // Define strict record.
-    let strictRecord = { id, registerId, keyId, recordCreatedAt: createdAt, recordUpdatedAt: updatedAt, stringified };
+    const strictRecord: any = { id, registerId, keyId, recordCreatedAt: createdAt, recordUpdatedAt: updatedAt, stringified };
 
     // Append relations accordance to key schema info.
     if (keySchema) {
@@ -923,12 +933,12 @@ class RegisterBusiness extends Business {
   async getInterRegistryFullAccessRecords(keyId, searchByName, searchByArray = [], options = {}, data = {}, sort = {}) {
     // Define params.
     const { offset, limit } = { offset: 0, limit: 20, ...options };
-    let params = { offset, limit, key_id: keyId, data, sort };
+    const params: any = { offset, limit, key_id: keyId, data, sort };
     params.data[searchByName] = JSON.stringify(searchByArray);
     params.allow_see_all_records = true;
 
     // Get data.
-    let recordsResponse = await this.getRecordsByKeyIdFullAccess(keyId, params);
+    const recordsResponse = await this.getRecordsByKeyIdFullAccess(keyId, params);
 
     return recordsResponse;
   }
@@ -945,12 +955,12 @@ class RegisterBusiness extends Business {
    */
   getTemplatePathFromDataPath(path) {
     let part = '';
-    let templateParts = [];
-    let pathParts = path.split('.');
+    const templateParts = [];
+    const pathParts = path.split('.');
     if (pathParts.length) part = pathParts.shift();
     if (pathParts.length && part === 'data') part = pathParts.shift();
     while (part) {
-      if (part == parseInt(part)) {
+      if ((part as any) == parseInt(part)) {
         templateParts.push('items');
       } else {
         templateParts.push('properties');
@@ -984,7 +994,7 @@ class RegisterBusiness extends Business {
     }));
 
     // Get from config.
-    const accessFromConfig = config.register.access.filter((v) =>
+    const accessFromConfig = global.config.register.access.filter((v) =>
       unitIds.includes(v.unit),
     );
 
@@ -1002,7 +1012,7 @@ class RegisterBusiness extends Business {
         const accessFromConfigRecord = JSON.parse(
           JSON.stringify(accessFromConfig.find((c) => c.unit === v) || {}),
         );
-        let accessRecord = { ...accessFromConfigRecord, ...accessFromDbRecord };
+        const accessRecord = { ...accessFromConfigRecord, ...accessFromDbRecord };
         const allowRead = [...new Set([..._.get(accessFromDbRecord, 'keys.allowRead', []), ..._.get(accessFromConfigRecord, 'keys.allowRead', [])])];
         const allowCreate = [...new Set([..._.get(accessFromDbRecord, 'keys.allowCreate', []), ..._.get(accessFromConfigRecord, 'keys.allowCreate', [])])];
         const allowUpdate = [...new Set([..._.get(accessFromDbRecord, 'keys.allowUpdate', []), ..._.get(accessFromConfigRecord, 'keys.allowUpdate', [])])];
@@ -1038,7 +1048,7 @@ class RegisterBusiness extends Business {
     const { data: { strictAccess: { keys: strictAccessKeysFromDb = [] } = {} } = {} } = accessToRegisterForAllUnits || {};
 
     // Get from config.
-    const { strictAccess: { keys: strictAccessKeysFromConfig = [] } = {} } = config.register;
+    const { strictAccess: { keys: strictAccessKeysFromConfig = [] } = {} } = global.config.register;
 
     // Merge and return.
     const strictAccessKeys = [...new Set([...strictAccessKeysFromDb, ...strictAccessKeysFromConfig])];
@@ -1176,7 +1186,7 @@ class RegisterBusiness extends Business {
 
     // Retrieve the previous record state if there are readOnly properties
     let oldRecord;
-    if (Object.values(keyProperties).some(v => v.readOnly)) {
+    if (Object.values(keyProperties as any).some((v: any) => v.readOnly)) {
       oldRecord = await this.registerService.findRecordById(id);
     }
 
@@ -1234,7 +1244,7 @@ class RegisterBusiness extends Business {
         const linkedRecord = await this.registerService.getRecords(params);
 
         if (!linkedRecord.data || !linkedRecord.data.length) {
-          log.save('register-businesses|handle-control-update|record-to-link-not-found', { record, control: keyProperties[keyProperty], params }, 'error');
+          global.log.save('register-businesses|handle-control-update|record-to-link-not-found', { record, control: keyProperties[keyProperty], params }, 'error');
           throw new Error(`Trying update linked record, but record to link not found. Record to link: ${JSON.stringify(params)}`);
         }
       }
@@ -1306,7 +1316,7 @@ class RegisterBusiness extends Business {
         const linkedRecord = await this.registerService.getRecords(params);
 
         if (!linkedRecord.data || !linkedRecord.data.length) {
-          log.save('register-businesses|handle-control-create|record-to-link-not-found', { record, control: keyProperties[keyProperty], params }, 'error');
+          global.log.save('register-businesses|handle-control-create|record-to-link-not-found', { record, control: keyProperties[keyProperty], params }, 'error');
           throw new Error(`Trying create linked record, but record to link not found. Record to link: ${JSON.stringify(params)}`);
         }
       }
@@ -1429,4 +1439,3 @@ class RegisterBusiness extends Business {
   }
 }
 
-module.exports = RegisterBusiness;

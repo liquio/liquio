@@ -1659,7 +1659,7 @@ export class DocumentController extends Controller {
     const { task } = updatedDocument;
     const signerIds = task && task.signerUsers;
     try {
-      await global.businesses.document.sendLetterToSigners(updatedDocument, task, signerIds, userId, isCancelSignsLetter);
+      await (global.businesses.document.sendLetterToSigners as any)(updatedDocument, task, signerIds, userId, isCancelSignsLetter);
     } catch {
       global.log.save('send-letter-to-signers-error');
     }

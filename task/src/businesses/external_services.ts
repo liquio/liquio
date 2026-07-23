@@ -1,11 +1,11 @@
-const _ = require('lodash');
+import _ from 'lodash';
 
-const Business = require('./business');
-const Eds = require('../lib/eds');
-const Sign = require('../lib/sign');
-const StorageService = require('../services/storage');
-const DocumentAttachmentModel = require('../models/document_attachment');
-const certResultSetStatus = require('./external_services/cert_result_set_status');
+import { Business } from './business';
+import Eds from '../lib/eds';
+import Sign from '../lib/sign';
+import StorageService from '../services/storage';
+import DocumentAttachmentModel from '../models/document_attachment';
+import { certResultSetStatus } from './external_services/cert_result_set_status';
 
 // Constants.
 const BODY_WORKFLOW_ID_AND_TIMESTAMP_SEPARATOR = '|';
@@ -28,7 +28,16 @@ const NAMESPACE_MAPPING = {
  * External services business.
  * @typedef {import('../entities/workflow')} WorkflowEntity.
  */
-class ExternalServicesBusiness extends Business {
+export class ExternalServicesBusiness extends Business {
+  private static singleton: ExternalServicesBusiness;
+
+  eds: any;
+  signService: any;
+  storageService: any;
+  certResultSetStatus: any;
+  documentAttachmentModel: any;
+  servicesHandlers: any;
+
   /**
    * ExternalServices business constructor.
    * @param {object} config Config object.
@@ -38,7 +47,7 @@ class ExternalServicesBusiness extends Business {
     if (!ExternalServicesBusiness.singleton) {
       super(config);
       this.eds = new Eds(config.eds);
-      this.signService = new Sign();
+      this.signService = new (Sign as any)();
 
       this.storageService = new StorageService();
       this.certResultSetStatus = certResultSetStatus.bind(this);
@@ -51,7 +60,7 @@ class ExternalServicesBusiness extends Business {
   }
 
   mapBodyNamespaces(body) {
-    let newBody = this.mapChildNamespaces({ ...body });
+    const newBody = this.mapChildNamespaces({ ...body });
     _.set(newBody, DEFAULT_NAMESPACE_PATH, 'ext');
 
     return newBody;
@@ -70,7 +79,7 @@ class ExternalServicesBusiness extends Business {
     for (let childKey in node) {
       // Skip namespace description
       if (childKey === '$') {
-        for (let namespaceKey in node[childKey]) {
+        for (const namespaceKey in node[childKey]) {
           const namespaceKeyParts = namespaceKey.split(':');
           if (NAMESPACE_MAPPING[namespaceKeyParts[1]]) {
             node[childKey][namespaceKeyParts[0] + ':' + NAMESPACE_MAPPING[namespaceKeyParts[1]]] = node[childKey][namespaceKey];
@@ -84,7 +93,7 @@ class ExternalServicesBusiness extends Business {
         continue;
       }
 
-      const childHaveName = childKey != parseInt(childKey); // isInt
+      const childHaveName = (childKey as any) != parseInt(childKey); // isInt
       const needRenameNamespace = (Array.isArray(node[childKey]) || typeof node[childKey] === 'object') && childHaveName;
 
       // Set default namespace for all without it
@@ -112,7 +121,7 @@ class ExternalServicesBusiness extends Business {
   }
 
   prepareObjectForXmlResponse(requestBody, workflow, faultCode = 0, faultDetails = '') {
-    let responseBody = { ...requestBody };
+    const responseBody = { ...requestBody };
 
     // Append `id` namespace to resolve Trembita error.
     const idenNamespace = _.get(responseBody, 'soapenv:Envelope.$.xmlns:iden');
@@ -146,7 +155,7 @@ class ExternalServicesBusiness extends Business {
   }
 
   clearXmlRequestObjectForResponse(requestBody) {
-    let responseBody = { ...requestBody };
+    const responseBody = { ...requestBody };
 
     const xroadInstanceClient = _.get(responseBody, HEADER_CLIENT_PATH + '.id:xroadInstance.0');
     const xroadInstanceService = _.get(responseBody, HEADER_SERVICE_PATH + '.id:xroadInstance.0');
@@ -161,7 +170,7 @@ class ExternalServicesBusiness extends Business {
   }
 
   setXmlResponseBody(sourceBody, xmlBodyObject) {
-    let responseBody = { ...sourceBody };
+    const responseBody = { ...sourceBody };
 
     xmlBodyObject = this.mapChildNamespaces({ ...xmlBodyObject });
 
@@ -229,7 +238,7 @@ class ExternalServicesBusiness extends Business {
    * @return {string|undefined}
    */
   getTaskTemplateIdByWorkflowTemplateId(workflowTemplateId) {
-    const { trembitaStatusTaskTemplateIds } = config.external_services;
+    const { trembitaStatusTaskTemplateIds } = global.config.external_services;
     return trembitaStatusTaskTemplateIds[workflowTemplateId];
   }
 
@@ -239,7 +248,7 @@ class ExternalServicesBusiness extends Business {
    * @return {Promise<WorkflowEntity|Promise<undefined>>}.
    */
   async fetchWorkflowByWorkflowId(workflowId) {
-    return await models.workflow.findById(workflowId);
+    return await global.models.workflow.findById(workflowId);
   }
 
   /**
@@ -263,4 +272,3 @@ class ExternalServicesBusiness extends Business {
   }
 }
 
-module.exports = ExternalServicesBusiness;

@@ -1,7 +1,7 @@
 
 import { matchedData } from 'express-validator';
 import { Controller } from './controller';
-import LocalizationTextBussiness from '../businesses/localization_text';
+import { LocalizationTextBusiness as LocalizationTextBussiness } from '../businesses/localization_text';
 
 /**
  * Localization text controller.

@@ -10,7 +10,7 @@ import Models from './models';
 import DictionariesModel from './models/dictionaries';
 import DocumentFillerService from './services/document_filler';
 import AuthService from './services/auth';
-import Businesses from './businesses';
+import { Businesses } from './businesses';
 import RouterService from './services/router';
 import FileGeneratorService from './services/file_generator';
 import StorageService from './services/storage';

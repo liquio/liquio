@@ -1,7 +1,7 @@
-const crypto = require('crypto');
-const nock = require('nock');
+import crypto from 'node:crypto';
+import nock from 'nock';
 
-const DocumentBusiness = require('./document');
+import { DocumentBusiness } from './document';
 
 describe('DocumentBusiness', () => {
   global.config = {
@@ -59,7 +59,7 @@ describe('DocumentBusiness', () => {
     });
 
     it('should throw an error if data is not provided', () => {
-      expect(() => documentBusiness.getSha512Hash()).toThrow();
+      expect(() => (documentBusiness.getSha512Hash as any)()).toThrow();
     });
   });
 
@@ -68,19 +68,19 @@ describe('DocumentBusiness', () => {
 
     beforeEach(() => {
       // Create fresh instance for each test
-      DocumentBusiness.singleton = null;
+      (DocumentBusiness as any).singleton = null;
       documentBusiness = new DocumentBusiness(global.config);
 
       // Mock global.log to avoid logging during tests
       global.log = {
         save: jest.fn(),
-      };
+      } as any;
     });
 
     afterEach(() => {
       // Clean up nock after each test
       nock.cleanAll();
-      DocumentBusiness.singleton = null;
+      (DocumentBusiness as any).singleton = null;
     });
 
     it('should calculate file hash successfully when fileId is provided', async () => {
@@ -300,19 +300,19 @@ describe('DocumentBusiness', () => {
     
     beforeEach(() => {
       // Create fresh instance for each test
-      DocumentBusiness.singleton = null;
+      (DocumentBusiness as any).singleton = null;
       documentBusiness = new DocumentBusiness(global.config);
       
       // Mock global.log to avoid logging during tests
       global.log = {
         save: jest.fn()
-      };
+      } as any;
     });
 
     afterEach(() => {
       // Clean up nock after each test
       nock.cleanAll();
-      DocumentBusiness.singleton = null;
+      (DocumentBusiness as any).singleton = null;
     });
 
     it('should convert file content to base64 successfully', async () => {

@@ -1,10 +1,12 @@
 
-const { appendTraceMeta, getTraceMeta, getTraceId } = require('../lib/async_local_storage');
+import { appendTraceMeta, getTraceMeta, getTraceId } from '../lib/async_local_storage';
 
 /**
  * Business.
  */
-class Business {
+export class Business {
+  config: any;
+
   /**
    * Business constructor.
    * @param {object} config Config object.
@@ -25,7 +27,7 @@ class Business {
    * Get trace meta.
    * @returns {{workflowId, taskId, documentId}} Trace meta object.
    */
-  getTraceMeta() {
+  getTraceMeta(): any {
     return getTraceMeta() || {};
   }
 
@@ -38,4 +40,3 @@ class Business {
   }
 }
 
-module.exports = Business;

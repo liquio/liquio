@@ -1,11 +1,15 @@
 
-const Business = require('./business');
-const Sandbox = require('../lib/sandbox');
+import { Business } from './business';
+import Sandbox from '../lib/sandbox';
 
 /**
  * User inbox business.
  */
-class UserInboxBusiness extends Business {
+export class UserInboxBusiness extends Business {
+  private static singleton: UserInboxBusiness;
+
+  sandbox: any;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -14,7 +18,7 @@ class UserInboxBusiness extends Business {
     // Define singleton.
     if (!UserInboxBusiness.singleton) {
       super(config);
-      this.sandbox = new Sandbox();
+      this.sandbox = new Sandbox({});
       UserInboxBusiness.singleton = this;
     }
     return UserInboxBusiness.singleton;
@@ -31,31 +35,31 @@ class UserInboxBusiness extends Business {
 
     // Check task is finished.
     if (!taskIsFinished) {
-      log.save('save-to-inboxes|task-not-finished', { taskId, taskIsFinished, documentId });
+      global.log.save('save-to-inboxes|task-not-finished', { taskId, taskIsFinished, documentId });
       return;
     }
 
     // Check document ID.
     if (!documentId) {
-      log.save('save-to-inboxes|document-id-not-defined', { taskId, documentId });
+      global.log.save('save-to-inboxes|document-id-not-defined', { taskId, documentId });
       return;
     }
 
     // Check document.
-    const document = await models.document.findById(documentId);
+    const document = await global.models.document.findById(documentId);
     if (!document) {
-      log.save('save-to-inboxes|document-not-found', { taskId, documentId });
+      global.log.save('save-to-inboxes|document-not-found', { taskId, documentId });
       return;
     }
 
     if (!document.fileId) {
-      log.save('save-to-inboxes|document-has-no-file', { taskId, documentId });
+      global.log.save('save-to-inboxes|document-has-no-file', { taskId, documentId });
       return;
     }
 
     // Get document template.
     const { documentTemplateId, number: documentNumber } = document;
-    const documentTemplate = await models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
 
     // Define users list.
     const { accessJsonSchema: { inboxes: inboxesJsonSchema }, name: documentTemplateName, jsonSchema: { fileName } } = documentTemplate;
@@ -73,7 +77,7 @@ class UserInboxBusiness extends Business {
 
     // Save for all users.
     for (const user of usersList) {
-      models.userInbox.create({
+      (global.models.userInbox.create as any)({
         userId: user,
         documentId,
         name: preparedFileName || documentTemplateName,
@@ -96,16 +100,16 @@ class UserInboxBusiness extends Business {
 
     // Handle if workflow creator.
     if (workflowCreator) {
-      const workflow = await models.workflow.findById(workflowId);
+      const workflow = await global.models.workflow.findById(workflowId);
       const { createdBy: workflowCreatedBy } = workflow;
-      log.save('save-to-inboxes|users-definition-by-workflow-created-by|defined', { workflowCreatedBy, inboxesJsonSchema, workflowId });
+      global.log.save('save-to-inboxes|users-definition-by-workflow-created-by|defined', { workflowCreatedBy, inboxesJsonSchema, workflowId });
       users.push(workflowCreatedBy);
     }
 
     // Handle function.
     if (usersStringifiedFunction) {
       // Get workflow documents.
-      const workflowDocuments = models.task.getDocumentsByWorkflowId(workflowId);
+      const workflowDocuments = global.models.task.getDocumentsByWorkflowId(workflowId);
 
       // Define and return users list.
       try {
@@ -116,11 +120,11 @@ class UserInboxBusiness extends Business {
         );
         const usersAfterEvalFunction = Array.isArray(usersFunctionResponse) && usersFunctionResponse.every(v => typeof v === 'string') ?
           usersFunctionResponse : (typeof usersFunctionResponse === 'string' ? [usersFunctionResponse] : []);
-        log.save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
+        global.log.save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
 
         users = users.concat(usersAfterEvalFunction);
       } catch (error) {
-        log.save('save-to-inboxes|users-definition-by-function|error', { inboxesJsonSchema, workflowId, error: error && error.message }, 'error');
+        global.log.save('save-to-inboxes|users-definition-by-function|error', { inboxesJsonSchema, workflowId, error: error && error.message }, 'error');
       }
     }
 
@@ -128,4 +132,3 @@ class UserInboxBusiness extends Business {
   }
 }
 
-module.exports = UserInboxBusiness;

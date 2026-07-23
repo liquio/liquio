@@ -1,15 +1,15 @@
-const _ = require('lodash');
-const axios = require('axios');
+import _ from 'lodash';
+import axios from 'axios';
 
-const { JSONPath } = require('../lib/jsonpath');
-const Business = require('./business');
-const XmlJsConverter = require('../lib/xml_js_converter');
-const Eds = require('../lib/eds');
-const StorageService = require('../services/storage');
-const Sandbox = require('../lib/sandbox');
-const typeOf = require('../lib/type_of');
-const { EvaluateSchemaFunctionError, NotFoundError, ForbiddenError } = require('../lib/errors');
-const { ERROR_WORKFLOW_NOT_FOUND, ERROR_WORKFLOW_ACCESS } = require('../constants/error');
+import { JSONPath } from '../lib/jsonpath';
+import { Business } from './business';
+import XmlJsConverter from '../lib/xml_js_converter';
+import Eds from '../lib/eds';
+import StorageService from '../services/storage';
+import Sandbox from '../lib/sandbox';
+import typeOf from '../lib/type_of';
+import { EvaluateSchemaFunctionError, NotFoundError, ForbiddenError } from '../lib/errors';
+import { ERROR_WORKFLOW_NOT_FOUND, ERROR_WORKFLOW_ACCESS } from '../constants/error';
 
 const ELASTIC_FIELDS_SEARCH_MAP = {
   number: 'selected_number',
@@ -48,7 +48,14 @@ const WORKFLOWLIST_RESPONSE_FIELDS = [
  * Workflow business.
  * @typedef {import('../entities/workflow')} WorkflowEntity
  */
-class WorkflowBusiness extends Business {
+export class WorkflowBusiness extends Business {
+  private static singleton: WorkflowBusiness;
+
+  xmlJsConverter: any;
+  eds: any;
+  storageService: any;
+  sandbox: any;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -60,7 +67,7 @@ class WorkflowBusiness extends Business {
       this.xmlJsConverter = new XmlJsConverter();
       this.eds = new Eds(config.eds);
       this.storageService = new StorageService();
-      this.sandbox = new Sandbox();
+      this.sandbox = new Sandbox({});
       WorkflowBusiness.singleton = this;
     }
     return WorkflowBusiness.singleton;
@@ -73,17 +80,17 @@ class WorkflowBusiness extends Business {
    * @returns {Promise<WorkflowEntity>} Workflow entity.
    */
   async getAllByUserId(userId, params) {
-    let workflows = await models.workflow.getAllByUserId(userId, {
+    const workflows: any = await global.models.workflow.getAllByUserId(userId, {
       ...params,
     });
 
-    for (let workflow of workflows.data) {
+    for (const workflow of workflows.data) {
       const { name = null, description = null } = await this.getLastStepLabel(workflow);
       workflow.lastStepLabel = name;
       workflow.lastStepDescription = description;
       if (!workflow.lastStepLabel && !workflow.lastStepDescription && !(workflow.statuses?.length > 0) && workflow.workflowStatusId !== null) {
         workflow.events = await global.models.event.getEventsByWorkflowId(workflow.id);
-        workflow.documents = await global.models.document.getAllByWorkflowId({ workflowId: workflow.id });
+        workflow.documents = await (global.models.document.getAllByWorkflowId as any)({ workflowId: workflow.id });
         workflow.statuses = this.calculateReserveStatuses(workflow);
       }
     }
@@ -100,7 +107,7 @@ class WorkflowBusiness extends Business {
    */
   async findById(id, userId, userUnitIds) {
     // Get workflow.
-    let workflow = await models.workflow.findById(id, { with: ['tasks', 'events'] });
+    let workflow: any = await global.models.workflow.findById(id, { with: ['tasks', 'events'] });
     if (!workflow) {
       throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
     }
@@ -116,10 +123,10 @@ class WorkflowBusiness extends Business {
     workflow.timeline = await this.prepareTimeline(workflow);
     if (workflow.timeline.length === 0 && !(workflow.statuses?.length > 0) && workflow.workflowStatusId !== null) {
       workflow.events = await global.models.event.getEventsByWorkflowId(workflow.id);
-      workflow.documents = await global.models.document.getAllByWorkflowId({ workflowId: workflow.id });
+      workflow.documents = await (global.models.document.getAllByWorkflowId as any)({ workflowId: workflow.id });
       workflow.statuses = this.calculateReserveStatuses(workflow);
     }
-    const allFiles = await businesses.document.getFilesToPreview(id, undefined, undefined, undefined, undefined, true);
+    const allFiles = await global.businesses.document.getFilesToPreview(id, undefined, undefined, undefined, undefined, true);
     const { workflowFilesFilter = '(item) => true' } = global.config.files_filter || {};
     const workflowFilesFilterFunction = this.sandbox.eval(workflowFilesFilter);
     workflow.files = allFiles
@@ -140,7 +147,7 @@ class WorkflowBusiness extends Business {
     workflow.info = await this.getWorkflowInfo(workflow);
     const files = workflow.files || [];
     const p7sMetadata = await this.storageService.provider.getP7sMetadata(files.map((v) => v.fileLink));
-    const documentSignaturesPromises = files.map((v) => models.documentSignature.getByDocumentId(v.documentId));
+    const documentSignaturesPromises = files.map((v) => (global.models.documentSignature.getByDocumentId as any)(v.documentId));
     const documentSignatures = await Promise.all(documentSignaturesPromises);
 
     // Add signer info.
@@ -153,7 +160,7 @@ class WorkflowBusiness extends Business {
         const { signer, issuer, signTime } = await this.eds.getSignatureInfo(signature);
         files[i].signature = { signer, issuer, signTime };
       } catch (error) {
-        log.save('Can not get signature info', error, 'warn');
+        global.log.save('Can not get signature info', error, 'warn');
       }
     }
 
@@ -177,7 +184,7 @@ class WorkflowBusiness extends Business {
    * @param {WorkflowTemplateEntity} workflowTemplate Workflow template entity.
    * @returns {Promise<string[]>}
    */
-  async getEntityNamesOfBpmnSchema(xmlBpmnSchema) {
+  async getEntityNamesOfBpmnSchema(xmlBpmnSchema): Promise<any> {
     const bpmnSchema = await this.xmlJsConverter.convertXmlToJsObject(xmlBpmnSchema.replace(/bpmn2:/g, 'bpmn:'));
 
     const sourceRef = JSONPath('$..sourceRef', bpmnSchema);
@@ -199,7 +206,7 @@ class WorkflowBusiness extends Business {
       return { name: null, description: null };
     }
 
-    let labels = [];
+    const labels = [];
 
     for (const message of messages) {
       const firstSequence = _.head(message.sequences);
@@ -238,7 +245,7 @@ class WorkflowBusiness extends Business {
    * @returns {Promise<{label: string, description: string, createdAt: string, finishedAt: string}[]>}
    */
   async prepareTimeline(workflow) {
-    let timeline = [];
+    const timeline = [];
 
     const { steps = [], messages = [] } = this.getTimelineStepsAndMessages(workflow) || {};
     if (!steps.length || !steps.length) {
@@ -353,7 +360,7 @@ class WorkflowBusiness extends Business {
 
         const lastEntryTask = tasks
           .filter(({ finished }) => finished)
-          .sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt))
+          .sort((a, b) => new Date(b.finishedAt).getTime() - new Date(a.finishedAt).getTime())
           .find(({ taskTemplateId }) => taskTemplateId === entryTask.taskTemplateId);
 
         workflow.lastEntryTaskId = lastEntryTask?.id;
@@ -368,9 +375,9 @@ class WorkflowBusiness extends Business {
    * @param params
    * @return {Promise<*>}
    */
-  async getAllElasticFiltered(params = {}) {
+  async getAllElasticFiltered(params: any = {}) {
     const { currentPage, perPage, sort, filters } = { ...params };
-    let querySearchParams = {};
+    const querySearchParams = {};
     let querySortParams = {};
 
     // Map request filter fields names to elastic fields names.
@@ -410,8 +417,8 @@ class WorkflowBusiness extends Business {
       timeout: this.config.workflow.elastic.timeout || 30000,
     });
     const data = response.data;
-    let total = data.hits.total.value;
-    let parsedResponse = data.hits.hits.map((element) => {
+    const total = data.hits.total.value;
+    const parsedResponse = data.hits.hits.map((element) => {
       const resultElement = _.pick(element._source, WORKFLOWLIST_RESPONSE_FIELDS);
       const messages = element._source.logs
         .filter((logElement) => {
@@ -499,7 +506,7 @@ class WorkflowBusiness extends Business {
           return false;
         })
       ) {
-        log.save('set-workflow-status|status-calculate-error', { workflowId, status });
+        global.log.save('set-workflow-status|status-calculate-error', { workflowId, status });
         throw new Error('Invalid status.');
       }
 
@@ -507,7 +514,7 @@ class WorkflowBusiness extends Business {
       const nonTabedStatusesLength = nonTabedStatuses.length;
 
       if (nonTabedStatusesLength === 0) {
-        log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
+        global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
         throw new Error('Invalid status. Non tabed statuses don\'t exist.');
       }
 
@@ -519,11 +526,11 @@ class WorkflowBusiness extends Business {
       } else if (nonTabedStatuses[nonTabedStatusesLength - 1].type.toLowerCase() === 'rejected') {
         statusId = 3;
       }
-      await models.workflow.setStatus(workflowId, statusId, calculatedStatus);
-      log.save('set-workflow-status|status-defined', { workflowId, statusId, calculatedStatus, workflowTemplateId: workflowTemplate.id });
+      await global.models.workflow.setStatus(workflowId, statusId, calculatedStatus);
+      global.log.save('set-workflow-status|status-defined', { workflowId, statusId, calculatedStatus, workflowTemplateId: workflowTemplate.id });
     } else if (status.statusId) {
-      await models.workflow.setStatus(workflowId, status.statusId);
-      log.save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
+      await (global.models.workflow.setStatus as any)(workflowId, status.statusId);
+      global.log.save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
     }
   }
 
@@ -608,4 +615,3 @@ class WorkflowBusiness extends Business {
   }
 }
 
-module.exports = WorkflowBusiness;

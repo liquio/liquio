@@ -1,9 +1,14 @@
-const LocalizationLanguageModel = require('../models/localization_language');
+import LocalizationLanguageModel from '../models/localization_language';
 
 /**
  * Localization language business.
  */
-class LocalizationLanguageBusiness {
+export class LocalizationLanguageBusiness {
+  private static singleton: LocalizationLanguageBusiness;
+
+  config: any;
+  localizationLanguageModel: any;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -29,4 +34,3 @@ class LocalizationLanguageBusiness {
   }
 }
 
-module.exports = LocalizationLanguageBusiness;

@@ -1,7 +1,7 @@
 
-const Business = require('./business');
-const WorkflowTemplateModel = require('../models/workflow_template');
-const Sandbox = require('../lib/sandbox');
+import { Business } from './business';
+import WorkflowTemplateModel from '../models/workflow_template';
+import Sandbox from '../lib/sandbox';
 
 const unitIdToTemplateCategoryIds = {
   1000770: [1000],  // еРезидент => Послуги для еРезидентів
@@ -11,7 +11,12 @@ const unitIdToTemplateCategoryIds = {
  * Workflow template business.
  * @typedef {import('../entities/workflow_template')} WorkflowTemplateEntity
  */
-class WorkflowTemplateBusiness extends Business {
+export class WorkflowTemplateBusiness extends Business {
+  private static singleton: WorkflowTemplateBusiness;
+
+  workflowTemplateModel: any;
+  sandbox: any;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -22,7 +27,7 @@ class WorkflowTemplateBusiness extends Business {
       super(config);
       WorkflowTemplateBusiness.singleton = this;
       this.workflowTemplateModel = new WorkflowTemplateModel();
-      this.sandbox = new Sandbox();
+      this.sandbox = new Sandbox({});
     }
     return WorkflowTemplateBusiness.singleton;
   }
@@ -125,4 +130,3 @@ class WorkflowTemplateBusiness extends Business {
   }
 }
 
-module.exports = WorkflowTemplateBusiness;

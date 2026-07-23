@@ -1,8 +1,8 @@
-const { Readable } = require('stream');
+import { Readable } from 'node:stream';
 
 const contentType = 'application/pdf';
 
-async function certResultSetStatus({
+export async function certResultSetStatus(this: any, {
   externalServiceUser,
   requestId,
   // resultData,
@@ -21,14 +21,14 @@ async function certResultSetStatus({
   //   throw new Error('Signed data not equals to origin');
   // }
 
-  const document = await models.document.getByExternalId(requestId);
+  const document = await global.models.document.getByExternalId(requestId);
 
   if (!document) {
     throw new Error(`Can't find document by requestId: ${requestId}`);
   }
 
   const sourceDocumentId = document.id;
-  const sourceTask = await models.task.findByDocumentId(sourceDocumentId);
+  const sourceTask = await global.models.task.findByDocumentId(sourceDocumentId);
 
   if (!sourceTask) {
     throw new Error(`Can't find task by documentId: ${sourceDocumentId}`);
@@ -49,13 +49,17 @@ async function certResultSetStatus({
   let documentId;
 
   try {
-    const taskAndDocumentEntities = await models.task.findDocumentByWorkflowIdAndTaskTemplateIds(workflowId, [taskTemplateIdToReceiveStatus]);
+    const taskAndDocumentEntities = await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateIds as any)(
+      workflowId, [taskTemplateIdToReceiveStatus],
+    );
     const { task, document } = taskAndDocumentEntities;
     documentId = document.id;
     taskId = task.id;
   } catch (error) {
-    log.save('external-services-controller|set-cert-result|cannot-find-task-and-document', { error: error && error.message }, 'error');
-    throw new Error('Task to update getting error.', { cause: error });
+    global.log.save('external-services-controller|set-cert-result|cannot-find-task-and-document', { error: error && error.message }, 'error');
+    const wrappedError = new Error('Task to update getting error.');
+    (wrappedError as any).cause = error;
+    throw wrappedError;
   }
 
   if (!taskId) {
@@ -88,7 +92,7 @@ async function certResultSetStatus({
   try {
     fileInfo = await this.storageService.provider.uploadFileFromStream(readableStream, originalFileName, undefined, contentType, contentLength);
   } catch (error) {
-    log.save('external-services-controller|set-cert-result|upload-to-file-storage-error', { originalFileName, contentLength, documentId });
+    global.log.save('external-services-controller|set-cert-result|upload-to-file-storage-error', { originalFileName, contentLength, documentId });
     throw error;
   }
   const { id: fileId } = fileInfo;
@@ -107,7 +111,7 @@ async function certResultSetStatus({
     // });
     // log.save('external-services-controller|set-cert-result|create-document-attachment', documentAttachment);
 
-    const documentFile = await models.document.addDocumentFile({
+    const documentFile = await (global.models.document.addDocumentFile as any)({
       id: documentId,
       updatedBy: externalServiceUser,
       fileId,
@@ -115,9 +119,9 @@ async function certResultSetStatus({
       fileType: contentType
     });
 
-    log.save('external-services-controller|set-cert-result|set-document-file', documentFile);
+    global.log.save('external-services-controller|set-cert-result|set-document-file', documentFile);
   } catch (error) {
-    log.save('external-services-controller|set-cert-result|create-document-attachment-error', {
+    global.log.save('external-services-controller|set-cert-result|create-document-attachment-error', {
       originalFileName,
       contentLength,
       documentId
@@ -125,39 +129,43 @@ async function certResultSetStatus({
     throw error;
   }
 
-  log.save('external-services-controller|set-cert-result|document-data-object', parsedResultData);
+  global.log.save('external-services-controller|set-cert-result|document-data-object', parsedResultData);
 
   // Update document.
   try {
-    await businesses.document.updateByExternalService(documentId, parsedResultData, externalServiceUser, true);
+    await global.businesses.document.updateByExternalService(documentId, parsedResultData, externalServiceUser, true);
   } catch (error) {
-    log.save('external-services-controller|set-cert-result|cannot-update-document', { error: error && error.message }, 'error');
-    throw new Error(`Cannot update document: ${error.message}`, { cause: error });
+    global.log.save('external-services-controller|set-cert-result|cannot-update-document', { error: error && error.message }, 'error');
+    const wrappedError = new Error(`Cannot update document: ${error.message}`);
+    (wrappedError as any).cause = error;
+    throw wrappedError;
   }
 
   // Update workflow number.
   try {
-    await models.workflow.setNumber(workflowId, certNum);
+    await global.models.workflow.setNumber(workflowId, certNum);
   } catch (error) {
-    log.save('external-services-controller|set-cert-result|cannot-set-workflow-number', { error: error && error.message }, 'error');
-    throw new Error(`Cannot update workflow number: ${error.message}`, { cause: error });
+    global.log.save('external-services-controller|set-cert-result|cannot-set-workflow-number', { error: error && error.message }, 'error');
+    const wrappedError = new Error(`Cannot update workflow number: ${error.message}`);
+    (wrappedError as any).cause = error;
+    throw wrappedError;
   }
 
   // Commit task.
   try {
-    const finishedTask = await businesses.task.setStatusFinished(taskId, externalServiceUser, undefined, true);
-    await businesses.userInbox.sendToInboxesIfNeedIt(finishedTask);
-    await models.document.setStatusFinal(documentId);
+    const finishedTask = await global.businesses.task.setStatusFinished(taskId, externalServiceUser, undefined, true);
+    await global.businesses.userInbox.sendToInboxesIfNeedIt(finishedTask);
+    await global.models.document.setStatusFinal(documentId);
     // Send message to RabbitMQ.
     const message = { workflowId, taskId };
     global.messageQueue.produce(message);
-  } catch (error) {
+  } catch (error: any) {
     if (error.details) {
       error.message += ' (' + error.details.map(errorDetailed => errorDetailed.dataPath + ' ' + errorDetailed.message).join(', ') + ')';
     }
-    log.save('external-services-controller|set-cert-result|cannot-commit-task', { error: error && error.message }, 'error');
-    throw new Error('Cannot commit task.', { cause: error });
+    global.log.save('external-services-controller|set-cert-result|cannot-commit-task', { error: error && error.message }, 'error');
+    const wrappedError = new Error('Cannot commit task.');
+    (wrappedError as any).cause = error;
+    throw wrappedError;
   }
 }
-
-module.exports = certResultSetStatus;

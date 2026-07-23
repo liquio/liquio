@@ -1,9 +1,14 @@
-const LocalizationTextModel = require('../models/localization_text');
+import LocalizationTextModel from '../models/localization_text';
 
 /**
  * Localization text business.
  */
-class LocalizationTextBusiness {
+export class LocalizationTextBusiness {
+  private static singleton: LocalizationTextBusiness;
+
+  config: any;
+  localizationTextModel: any;
+
   /**
    * Constructor.
    * @param {object} config Config object.
@@ -29,4 +34,3 @@ class LocalizationTextBusiness {
   }
 }
 
-module.exports = LocalizationTextBusiness;
