@@ -52,6 +52,9 @@ class RouterService {
     // Init Express app.
     const app = express();
 
+    // Use extended query parser.
+    app.set('query parser', 'extended');
+
     // Tracing.
     app.use(asyncLocalStorageMiddleware);
 
