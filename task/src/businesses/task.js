@@ -25,7 +25,7 @@ const Eds = require('../lib/eds');
 const Helpers = require('../lib/helpers');
 const Sandbox = require('../lib/sandbox');
 const typeOf = require('../lib/type_of');
-const OnboardingController = require('../controllers/onboarding');
+const { OnboardingController } = require('../controllers/onboarding');
 const {
   InvalidSchemaError,
   BadRequestError,

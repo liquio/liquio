@@ -3,7 +3,7 @@ const cors = require('cors');
 
 const AppIdentHeaders = require('../../lib/app_ident_headers');
 const HttpRequest = require('../../lib/http_request');
-const Controllers = require('../../controllers');
+const { Controllers } = require('../../controllers');
 const { Validators } = require('../../validators');
 const { routes } = require('./routes');
 const { asyncLocalStorageMiddleware } = require('../../lib/async_local_storage');
