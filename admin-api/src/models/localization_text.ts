@@ -184,6 +184,10 @@ export class LocalizationTextModel extends Model {
     });
     const [updatedRow] = rawDbResponse[1];
 
+    if (!updatedRow) {
+      return null;
+    }
+
     return this.prepareEntity(updatedRow);
   }
 

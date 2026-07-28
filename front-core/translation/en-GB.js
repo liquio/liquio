@@ -105,7 +105,7 @@ export default {
   },
   TranslationsPage: {
     TranslatesLabel: 'Translations',
-    TranslationsPageTitle: 'Multilingualism',
+    TranslationsPageTitle: 'Translations',
     Key: 'Key',
     Value: 'Value',
     NoData: 'No translations created',
@@ -114,7 +114,7 @@ export default {
     DialogTitle: 'Add Language Key',
     Save: 'Add',
     Cancel: 'Cancel',
-    langCode: 'Language code (eg ENG)',
+    langCode: 'Language code (eg EN)',
     DeletePrompt: 'Delete translation',
     DeletePromptDescription: 'Are you sure you want to delete the {{deleting}} translation?',
     LocalizationLanguageCode: 'Language Code',
@@ -1735,7 +1735,7 @@ export default {
     DebugLogs: 'Debug and Logging',
     KeyList: 'Registry Keys',
     RegistryMetricsTitle: 'Registry Metrics',
-    TranslationsPageTitle: 'Multilingualism',
+    TranslationsPageTitle: 'Translations',
   },
   MessagesNotify: {
     AllMessages: 'All Messages'

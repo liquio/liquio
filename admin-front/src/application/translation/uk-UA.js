@@ -9,7 +9,7 @@ export default {
     DebugLogs: 'Дебаг та логування',
     MetricsProcessesTitle: 'Помилки в процесах',
     WorkflowDynamicsPageTitle: 'Динаміка процесів',
-    TranslationsPageTitle: 'Багатомовність',
+    TranslationsPageTitle: 'Переклади',
     ProcessIndexElastic: 'Індексація процесів',
     MonitoringElastic: 'Моніторинг',
     FileLibrary: 'Бібліотека файлів'
@@ -29,7 +29,7 @@ export default {
     DebugLogs: 'Дебаг та логування',
     KeyList: 'Ключі реєстру',
     RegistryMetricsTitle: 'Метрики реєстрів',
-    TranslationsPageTitle: 'Багатомовність',
+    TranslationsPageTitle: 'Переклади',
   },
   DataTable: {
     ...ua.DataTable,
@@ -482,7 +482,7 @@ export default {
   },
   TranslationsPage: {
     TranslatesLabel: 'Переклади',
-    TranslationsPageTitle: 'Багатомовність',
+    TranslationsPageTitle: 'Переклади',
     Key: 'Ключ',
     Value: 'Значення',
     NoData: 'Перекладів не створено',
@@ -491,7 +491,7 @@ export default {
     DialogTitle: 'Додати ключ мови',
     Save: 'Зберегти',
     Cancel: 'Скасувати',
-    langCode: 'Код мови (наприклад ENG)',
+    langCode: 'Код мови (наприклад EN)',
     DeletePrompt: 'Видалити переклад',
     DeletePromptDescription: 'Ви дійсно хочете видалити переклад {{deleting}}?',
     LocalizationLanguageCode: 'Код мови',

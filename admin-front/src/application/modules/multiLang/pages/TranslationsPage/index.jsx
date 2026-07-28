@@ -324,12 +324,26 @@ const TranslationsPage = ({ loading: loadingProp, location, title }) => {
 
     setUpdating(true);
 
+    const keyChanged = editing && recordValue.length > 0 && record?.key !== recordValue[0]?.key;
+
     try {
       const saveFunctions = async (item) => {
         if (
           !editing ||
           !recordValue.some((el) => el?.localizationLanguageCode === item?.localizationLanguageCode)
         ) {
+          await dispatch(
+            createTranslation({
+              localizationLanguageCode: item?.localizationLanguageCode,
+              key: item?.key,
+              value: item?.value
+            })
+          );
+        } else if (keyChanged) {
+          const oldKey = recordValue.find(
+            (el) => el?.localizationLanguageCode === item?.localizationLanguageCode
+          )?.key;
+          await dispatch(deleteTranslation(item?.localizationLanguageCode, oldKey));
           await dispatch(
             createTranslation({
               localizationLanguageCode: item?.localizationLanguageCode,
