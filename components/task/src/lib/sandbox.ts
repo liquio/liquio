@@ -7,7 +7,7 @@ import acorn from 'acorn';
 import { literal } from 'sequelize';
 import { LRUCache } from 'lru-cache';
 
-import { getTraceMeta } from '../lib/async_local_storage';
+import { getTraceMeta } from 'back-core';
 import { Helpers } from './helpers';
 
 const { randomUUID } = crypto;

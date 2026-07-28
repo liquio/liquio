@@ -1,7 +1,7 @@
 // Import.
 import express from 'express';
 
-import { asyncLocalStorageMiddleware } from './lib/async_local_storage';
+import { asyncLocalStorageMiddleware } from 'back-core';
 import { getLog } from './lib/context';
 import AppIdentHeaders from './lib/app_ident_headers';
 import Controllers from './controllers';

@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 import _ from 'lodash';
 import * as transliteration from 'transliteration';
-import { appendTraceMeta, getTraceMeta, getTraceId } from '../lib/async_local_storage';
+import { appendTraceMeta, getTraceMeta, getTraceId } from 'back-core';
 import { Entity } from '../entities/entity';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { matchedData } from 'express-validator';

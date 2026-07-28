@@ -13,6 +13,10 @@ describe('Log', () => {
   it('throws when constructed with a non LogProvider instance', () => {
     expect(() => new Log([{} as any], [])).toThrow('Wrong provider.');
   });
+
+  it('throws from getInstance() when no singleton has been constructed yet', () => {
+    expect(() => Log.getInstance()).toThrow('Log singleton is not initialized.');
+  });
 });
 
 describe('Log (singleton instance)', () => {
@@ -28,6 +32,10 @@ describe('Log (singleton instance)', () => {
     const other = new Log([], []);
 
     expect(other).toBe(log);
+  });
+
+  it('returns the singleton via getInstance()', () => {
+    expect(Log.getInstance()).toBe(log);
   });
 
   it('exposes the known log levels', () => {

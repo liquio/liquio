@@ -6,8 +6,7 @@ global.conf = config.conf;
 
 import start from './app';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
-import { Log } from './lib/log';
-import { ConsoleLogProvider } from './lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import { typeOf } from './lib/type_of';
 
 global.typeOf = typeOf;
@@ -16,12 +15,17 @@ const DEFAULT_PROCESS_TITLE = 'notify';
 const ADMIN_DIRECTORY = '/admin';
 const ADAPTERS_LIST: Record<string, unknown> = { testConsoleSmsAdapter };
 const DEFAULT_SMS_ADAPTER_NAME = 'testConsoleSmsAdapter';
+// No log.excludeParams is configured anywhere for this component, so this mirrors
+// the default exclude list the local sensitiveReplace implementation used to fall back to.
+const DEFAULT_EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oauth-token'];
 
 // Set process title.
 process.title = config.conf.processTitle || DEFAULT_PROCESS_TITLE;
 
 // Logs.
-const consoleLogProvider = new ConsoleLogProvider((config as any).log?.console?.name, { excludeParams: (config as any).log?.excludeParams });
+const consoleLogProvider = new ConsoleLogProvider((config as any).log?.console?.name, {
+  excludeParams: (config as any).log?.excludeParams ?? DEFAULT_EXCLUDE_PARAMS,
+});
 const log = new Log([consoleLogProvider], ['console']);
 global.log = log;
 

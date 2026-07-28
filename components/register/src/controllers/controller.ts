@@ -1,5 +1,4 @@
-import { getTraceId } from '../lib/async_local_storage';
-import Log from '../lib/log';
+import { getTraceId, Log } from 'back-core';
 import Sign from '../lib/sign';
 import { Response } from '../router';
 

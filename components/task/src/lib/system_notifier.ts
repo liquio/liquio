@@ -1,6 +1,6 @@
 
 import { HttpRequest } from './http_request';
-import { getTraceId } from './async_local_storage';
+import { getTraceId } from 'back-core';
 
 /**
  * System Notifier.

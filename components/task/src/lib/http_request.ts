@@ -8,7 +8,7 @@ import formData from 'express-form-data';
 import multer from 'multer';
 import xmlparser from 'express-xml-bodyparser';
 
-import { getTraceId } from './async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';

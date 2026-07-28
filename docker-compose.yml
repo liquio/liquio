@@ -105,6 +105,8 @@ services:
   manager-migrations:
     build:
       context: ./components/manager
+      additional_contexts:
+        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -115,6 +117,8 @@ services:
   manager:
     build:
       context: ./components/manager
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     volumes:
       - ./config/manager:/var/www/config:ro
@@ -126,6 +130,8 @@ services:
   register:
     build:
       context: ./components/register
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_REGISTER_PORT}:8103"
@@ -137,6 +143,8 @@ services:
   register-migrations:
     build:
       context: ./components/register
+      additional_contexts:
+        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -182,6 +190,8 @@ services:
   task:
     build:
       context: ./components/task
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     volumes:
       - ./config/task:/var/www/config:ro
@@ -193,6 +203,8 @@ services:
   notification:
     build:
       context: ./components/notification
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     volumes:
       - ./config/notification:/var/www/config:ro
@@ -202,6 +214,8 @@ services:
   notification-migrations:
     build:
       context: ./components/notification
+      additional_contexts:
+        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -255,6 +269,8 @@ services:
   persist-link-migrations:
     build:
       context: ./components/persist-link
+      additional_contexts:
+        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -265,6 +281,8 @@ services:
   persist-link:
     build:
       context: ./components/persist-link
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_PERSIST_LINK_PORT}:3346"

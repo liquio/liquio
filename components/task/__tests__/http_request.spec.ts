@@ -1,9 +1,9 @@
 import nock from 'nock';
 import { HttpRequest } from '../src/lib/http_request';
-import { getTraceId } from '../src/lib/async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Mock the async_local_storage module
-jest.mock('../src/lib/async_local_storage', () => ({
+jest.mock('back-core', () => ({
   getTraceId: jest.fn()
 }));
 

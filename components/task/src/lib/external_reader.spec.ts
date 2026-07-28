@@ -9,7 +9,7 @@ import { Sandbox } from './sandbox';
 jest.mock('../services/storage');
 jest.mock('../models/document_attachment');
 jest.mock('./sandbox');
-jest.mock('../lib/async_local_storage', () => ({
+jest.mock('back-core', () => ({
   appendTraceMeta: jest.fn(),
   getTraceMeta: jest.fn(() => ({
     returnedMocksHeader: '',
@@ -311,7 +311,7 @@ describe('ExternalReader', () => {
     it('should append returned mock header', async () => {
       const mockResponse = { data: { items: [] } };
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { appendTraceMeta } = require('./async_local_storage');
+      const { appendTraceMeta } = require('back-core');
       
       nock('https://external-reader.example.com')
         .post('/test-service/test-method')
@@ -666,7 +666,7 @@ describe('ExternalReader', () => {
 
   describe('helper methods', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { appendTraceMeta, getTraceMeta } = require('./async_local_storage');
+    const { appendTraceMeta, getTraceMeta } = require('back-core');
 
     beforeEach(() => {
       getTraceMeta.mockReturnValue({

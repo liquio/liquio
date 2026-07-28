@@ -10,7 +10,7 @@ const mockLog = {
 global.log = mockLog as any;
 
 // Mock async_local_storage
-jest.mock('../src/lib/async_local_storage', () => ({
+jest.mock('back-core', () => ({
   getTraceId: jest.fn().mockReturnValue('test-trace-id-123')
 }));
 

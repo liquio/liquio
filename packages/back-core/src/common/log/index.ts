@@ -5,6 +5,7 @@ import { AppInfo } from '../app_info';
 import { getTraceId, getTraceMeta } from '../async_local_storage';
 
 // Constants.
+const ERROR_MESSAGE_NOT_INITIALIZED = 'Log singleton is not initialized.';
 const ERROR_MESSAGE_WRONG_PROVIDER = 'Wrong provider.';
 const LOG_SAVING_ERROR_PROPERTY_PROVIDER_NAME = 'provider-name';
 const ERROR_MESSAGE_LOG_SAVING_ERROR = `Log saving error at provider "${LOG_SAVING_ERROR_PROPERTY_PROVIDER_NAME}".`;
@@ -34,6 +35,17 @@ export class Log {
       this.providers = logProviders.filter((provider) => activeProviders.includes(provider.name));
       this.appInfo = new AppInfo();
       Log.singleton = this;
+    }
+    return Log.singleton;
+  }
+
+  /**
+   * Get the initialized Log singleton.
+   * @returns {Log} Log instance.
+   */
+  static getInstance(): Log {
+    if (!Log.singleton) {
+      throw new Error(ERROR_MESSAGE_NOT_INITIALIZED);
     }
     return Log.singleton;
   }

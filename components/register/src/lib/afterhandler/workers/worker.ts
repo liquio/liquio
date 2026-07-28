@@ -1,5 +1,5 @@
 import AfterhandlerModel from '../../../models/afterhandler';
-import Log from '../../log';
+import { Log } from 'back-core';
 
 export type AfterhandlerType = 'blockchain' | 'elastic' | 'plink';
 

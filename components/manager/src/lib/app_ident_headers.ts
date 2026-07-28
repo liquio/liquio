@@ -1,4 +1,4 @@
-import { AppInfo } from './app_info';
+import { AppInfo } from 'back-core';
 
 // Constants.
 const DEFAULT_CUSTOMER = '1';

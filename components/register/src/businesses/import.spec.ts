@@ -2,8 +2,7 @@ import ImportBusiness from './import';
 import RecordModel from '../models/record';
 import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
-import Log from '../lib/log';
-import LogProvider from '../lib/log/providers/log_provider';
+import { Log, LogProvider } from 'back-core';
 
 // Mock models
 jest.mock('../models/record');
@@ -30,7 +29,7 @@ describe('ImportBusiness', () => {
   beforeEach(() => {
     // Initialize Log singleton if not already done
     if (!(Log as any).singleton) {
-      new Log([new MockLogProvider()]);
+      new Log([new MockLogProvider()], ['mock']);
     }
 
     // Clear singleton

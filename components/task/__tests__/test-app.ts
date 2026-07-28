@@ -28,12 +28,14 @@ jest.mock('../src/lib/message_queue', () => {
 });
 
 // Mock the log module
-jest.mock('../src/lib/log', () => {
+jest.mock('back-core', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const debug = require('debug');
-  const { Log: OriginalLog } = jest.requireActual('../src/lib/log');
+  const original = jest.requireActual('back-core');
+  const { Log: OriginalLog } = original;
   const logs = [];
   return {
+    ...original,
     Log: class extends OriginalLog {
       save(...args) {
         debug('test:log')(...args);

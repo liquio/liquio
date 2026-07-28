@@ -1,5 +1,5 @@
 import { performance, PerformanceObserver } from 'node:perf_hooks';
-import { getTraceId } from './async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Init new observer instance.
 const performanceObserver = new PerformanceObserver((items) => {

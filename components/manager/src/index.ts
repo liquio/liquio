@@ -3,8 +3,7 @@ import fs from 'node:fs';
 import Multiconf from 'multiconf';
 
 import { Db } from './lib/db';
-import { Log } from './lib/log';
-import { ConsoleLogProvider } from './lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
 import { WorkflowBusiness } from './businesses/workflow';

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { PassThrough } from 'node:stream';
 
-import { appendTraceMeta, getTraceMeta, getTraceId } from './async_local_storage';
+import { appendTraceMeta, getTraceMeta, getTraceId } from 'back-core';
 import { StorageService } from '../services/storage';
 import { DocumentAttachmentModel } from '../models/document_attachment';
 import { Sandbox } from './sandbox';

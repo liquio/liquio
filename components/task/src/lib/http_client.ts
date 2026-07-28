@@ -1,6 +1,6 @@
 import fetchToCurl from 'fetch-to-curl';
 
-import { getTraceId } from './async_local_storage';
+import { getTraceId } from 'back-core';
 import { HTTPRequestError, HTTPResponseError } from './errors';
 
 // Fix import node-fetch for CommonJS modules. https://github.com/node-fetch/node-fetch/blob/HEAD/docs/v3-UPGRADE-GUIDE.md

@@ -1,4 +1,4 @@
-import Log from '../log';
+import { Log } from 'back-core';
 import { RedisClient } from '../redis_client';
 import BlockchainAfterhandlerWorker from './workers/blockchain';
 import ElasticAfterhandlerWorker from './workers/elastic';

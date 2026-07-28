@@ -2,8 +2,7 @@ import { NextFunction } from 'express';
 
 import { Request, Response } from '../router';
 import Controller from './controller';
-import { appendTraceMeta } from '../lib/async_local_storage';
-import Log from '../lib/log';
+import { appendTraceMeta, Log } from 'back-core';
 
 /**
  * Auth controller.

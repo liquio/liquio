@@ -26,6 +26,7 @@
   "dependencies": {
     "acorn": "^8.17.0",
     "axios": "^1.11.0",
+    "back-core": "file:../../packages/back-core",
     "body-parser": "^2.3.0",
     "ccolor": "^1.3.1",
     "express": "^5.2.1",

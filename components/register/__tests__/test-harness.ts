@@ -18,9 +18,9 @@ import { Config } from '../src/lib/config';
 import Db from '../src/lib/db';
 import Encryption from '../src/lib/encryption';
 import ErrorWithDetails from '../src/lib/errors';
-import Log from '../src/lib/log';
-import ConsoleLogProvider from '../src/lib/log/providers/console';
-import LogProvider, { LogLevels } from '../src/lib/log/providers/log_provider';
+import { Log, ConsoleLogProvider, LogProvider } from 'back-core';
+
+type LogLevels = 'info' | 'warning' | 'error';
 import { RedisClient } from '../src/lib/redis_client';
 import typeOf from '../src/lib/typeOf';
 import Models from '../src/models';
@@ -294,7 +294,7 @@ export class TestHarness {
 
   private async setupLogger() {
     const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: [] });
-    const log = new Log([consoleLogProvider as LogProvider]);
+    const log = new Log([consoleLogProvider as LogProvider], ['console']);
 
     (log as { save: (type: string, data: unknown, level: LogLevels) => void }).save = (type: string, data: unknown = true, level: LogLevels) => {
       testDebug(level, type, data);

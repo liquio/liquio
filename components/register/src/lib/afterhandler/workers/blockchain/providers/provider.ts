@@ -1,4 +1,4 @@
-import Log from '../../../../log';
+import { Log } from 'back-core';
 
 // Constants.
 const DATA_NAME_PREFIX = '';

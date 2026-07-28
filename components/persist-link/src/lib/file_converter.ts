@@ -3,7 +3,7 @@ import axios from 'axios';
 import FormData from 'form-data';
 
 import { getLog } from './context';
-import { getTraceId } from '../lib/async_local_storage';
+import { getTraceId } from 'back-core';
 import { prepareAxiosErrorToLog } from '../lib/helpers';
 
 // Constants.

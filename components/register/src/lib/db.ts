@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize';
 
 // Import local
-import Log from './log';
+import { Log } from 'back-core';
 
 /**
  * DB.

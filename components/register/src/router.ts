@@ -2,13 +2,12 @@ import path from 'path';
 import express, { Express } from 'express';
 import { Server } from 'http';
 
-import Log from './lib/log';
 import Cors from './lib/cors';
 import AppIdentHeaders from './lib/app_ident_headers';
 import HttpRequest from './lib/http_request';
 import Controllers from './controllers';
 import Validators from './validators';
-import { asyncLocalStorageMiddleware } from './lib/async_local_storage';
+import { Log, asyncLocalStorageMiddleware } from 'back-core';
 
 /**
  * Express Request with application metadata.

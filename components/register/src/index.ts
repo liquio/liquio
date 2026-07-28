@@ -1,5 +1,4 @@
-import Log from './lib/log';
-import ConsoleLogProvider from './lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import Db from './lib/db';
 import Afterhandler from './lib/afterhandler';
 import ErrorWithDetails from './lib/errors';
@@ -15,7 +14,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // Init.
 const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });
-const log = new Log([consoleLogProvider as any]);
+const log = new Log([consoleLogProvider as any], ['console']);
 
 // Globals for legacy JS code: do not use in new code.
 global.config = config;

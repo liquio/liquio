@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import amqp from 'amqplib/callback_api';
 
-import { runInAsyncLocalStorage } from '../async_local_storage';
+import { runInAsyncLocalStorage } from 'back-core';
 
 // Constants.
 const RETRY_CONNECTION_TIME = 10 * 1000;

@@ -2,8 +2,7 @@ import moment from 'moment';
 
 import { Db } from './lib/db';
 import { PgPubSub } from './lib/pgpubsub';
-import { Log } from './lib/log';
-import { ConsoleLogProvider } from './lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import { MessageQueue } from './lib/message_queue';
 import { RedisClient } from './lib/redis_client';
 import { Models } from './models';

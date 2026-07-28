@@ -28,6 +28,7 @@
     "amqplib": "^0.10.9",
     "asn1.js": "^5.4.1",
     "axios": "^1.13.6",
+    "back-core": "file:../../packages/back-core",
     "bn.js": "^5.2.3",
     "body-parser": "^1.19.0",
     "buffer": "^5.6.0",

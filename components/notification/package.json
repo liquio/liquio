@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "axios": "^1.13.6",
+    "back-core": "file:../../packages/back-core",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",

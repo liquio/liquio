@@ -4,9 +4,8 @@ import fs from 'node:fs';
 import Multiconf from 'multiconf';
 
 import { setAppContext } from './lib/context';
-import ConsoleLogProvider from './lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import Db from './lib/db';
-import Log from './lib/log';
 import Models from './models';
 import Router from './router';
 import typeOf from './lib/type_of';

@@ -2,8 +2,7 @@ import moment from 'moment';
 import { execSync } from 'child_process';
 import debug from 'debug';
 
-import Log from '../../src/lib/log';
-import ConsoleLogProvider from '../../src/lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import Db from '../../src/lib/db';
 import Afterhandler from '../../src/lib/afterhandler';
 import ErrorWithDetails from '../../src/lib/errors';
@@ -142,7 +141,7 @@ const consoleLogProvider = new ConsoleLogProvider('console', {
   excludeParams: config.log?.excludeParams
 });
 
-const log = new Log(process.env.ENABLE_CONSOLE_LOG ? [consoleLogProvider] : []);
+const log = new Log(process.env.ENABLE_CONSOLE_LOG ? [consoleLogProvider] : [], process.env.ENABLE_CONSOLE_LOG ? ['console'] : []);
 (log as any).save = function (...args: unknown[]) {
   debug('test:log')(...(args as [any]));
 };

@@ -6,7 +6,7 @@ import { HttpRequest } from '../../lib/http_request';
 import { Controllers } from '../../controllers';
 import { Validators } from '../../validators';
 import { routes } from './routes';
-import { asyncLocalStorageMiddleware } from '../../lib/async_local_storage';
+import { asyncLocalStorageMiddleware } from 'back-core';
 import typeOf from '../../lib/type_of';
 
 /**

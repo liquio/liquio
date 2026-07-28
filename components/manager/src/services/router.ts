@@ -4,7 +4,7 @@ import { PingController } from '../controllers/ping';
 import { MonitorController } from '../controllers/monitor';
 import { AppIdentHeaders } from '../lib/app_ident_headers';
 import { Cors } from '../lib/cors';
-import { asyncLocalStorageMiddleware } from '../lib/async_local_storage';
+import { asyncLocalStorageMiddleware } from 'back-core';
 
 /**
  * Router service.

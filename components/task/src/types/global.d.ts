@@ -38,7 +38,7 @@ import { FavoritesModel } from '../models/favorites';
 import { ExternalServicesStatusesModels } from '../models/external_services_statuses';
 import { KycSessionModel } from '../models/kyc_session';
 
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 
 import { HttpClient as httpClient } from '../lib/http_client';
 

@@ -3,7 +3,7 @@ import { PassThrough } from 'node:stream';
 import axios from 'axios'; // Only used for streaming upload in uploadFile method
 
 import { HttpRequest } from './http_request';
-import { getTraceId } from './async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Constants.
 const HIDE_REPLACEMENT_TEXT = '*****';

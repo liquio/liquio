@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { AuthorizeModel } from '../models/authorize';
-import { appendTraceMeta } from '../lib/async_local_storage';
+import { appendTraceMeta } from 'back-core';
 
 const Authorize = new AuthorizeModel().Authorize;
 

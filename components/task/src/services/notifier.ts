@@ -1,7 +1,7 @@
 
 import { HttpRequest } from '../lib/http_request';
 import { DownloadToken } from '../lib/download_token';
-import { getTraceId } from '../lib/async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Constants.
 const ROUTES = {

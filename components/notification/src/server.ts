@@ -1,7 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 
-import { asyncLocalStorageMiddleware } from './lib/async_local_storage';
+import { asyncLocalStorageMiddleware } from 'back-core';
 import {
   securityHeadersMiddleware,
   inputSanitizationMiddleware,

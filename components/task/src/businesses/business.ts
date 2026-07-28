@@ -1,5 +1,5 @@
 
-import { appendTraceMeta, getTraceMeta, getTraceId } from '../lib/async_local_storage';
+import { appendTraceMeta, getTraceMeta, getTraceId } from 'back-core';
 
 /**
  * Business.

@@ -3,7 +3,7 @@ import { matchedData } from 'express-validator';
 import { Request, Response } from '../router';
 import Controller from './controller';
 import ExportBusiness from '../businesses/export';
-import Log from '../lib/log';
+import { Log } from 'back-core';
 
 /**
  * Export controller.

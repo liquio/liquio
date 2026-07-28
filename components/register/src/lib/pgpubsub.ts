@@ -1,6 +1,6 @@
 import { Client, ClientConfig } from 'pg';
 
-import Log from './log';
+import { Log } from 'back-core';
 
 interface PgPubSubConfig extends ClientConfig {
   username: string;
