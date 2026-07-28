@@ -127,7 +127,14 @@ module.exports = {
     }
   },
   babel: {
-    presets: ['@babel/preset-env', ['@babel/preset-react', { runtime: 'automatic' }]],
+    presets: [
+      ['@babel/preset-env', {
+        modules: false,
+        useBuiltIns: 'entry',
+        corejs: 3
+      }],
+      ['@babel/preset-react', { runtime: 'automatic' }]
+    ],
     plugins: [
       ['@babel/plugin-proposal-nullish-coalescing-operator', { loose: true }],
       ['@babel/plugin-proposal-optional-chaining', { loose: true }],

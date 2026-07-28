@@ -1,8 +1,11 @@
 # Build the frontend application
 FROM node:22 AS frontend
 ARG NODE_MAX_OLD_SPACE_SIZE=2048
+ARG GENERATE_SOURCEMAP=false
+ARG DISABLE_ESLINT_PLUGIN=true
+ARG INLINE_RUNTIME_CHUNK=false
 ENV NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}"
-ENV CI=true GENERATE_SOURCEMAP=false
+ENV CI=true GENERATE_SOURCEMAP=${GENERATE_SOURCEMAP} DISABLE_ESLINT_PLUGIN=${DISABLE_ESLINT_PLUGIN} INLINE_RUNTIME_CHUNK=${INLINE_RUNTIME_CHUNK}
 
 # Mirror the monorepo layout so the "core": "file:../../packages/front-core"
 # dependency in package.json resolves to the same relative path it does on disk.

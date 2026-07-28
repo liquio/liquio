@@ -1,4 +1,4 @@
-import theme from 'core/theme';
+import theme from '../../../node_modules/core/theme';
 import { getConfig } from 'helpers/configLoader';
 import _ from 'lodash/fp';
 

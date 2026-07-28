@@ -51,6 +51,9 @@ services:
       context: ./components/admin-front
       args:
         NODE_MAX_OLD_SPACE_SIZE: 1536
+        GENERATE_SOURCEMAP: ${GENERATE_SOURCEMAP:-false}
+        DISABLE_ESLINT_PLUGIN: ${DISABLE_ESLINT_PLUGIN:-true}
+        INLINE_RUNTIME_CHUNK: ${INLINE_RUNTIME_CHUNK:-false}
       additional_contexts:
         core: ./packages/front-core
     restart: on-failure
@@ -78,6 +81,9 @@ services:
       context: ./components/cabinet-front
       args:
         NODE_MAX_OLD_SPACE_SIZE: 1536
+        GENERATE_SOURCEMAP: ${GENERATE_SOURCEMAP:-false}
+        DISABLE_ESLINT_PLUGIN: ${DISABLE_ESLINT_PLUGIN:-true}
+        INLINE_RUNTIME_CHUNK: ${INLINE_RUNTIME_CHUNK:-false}
       additional_contexts:
         core: ./packages/front-core
     restart: on-failure
