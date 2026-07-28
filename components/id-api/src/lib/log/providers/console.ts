@@ -1,4 +1,4 @@
-import { Helpers } from '../../helpers';
+import { sensitiveReplace, cutLongStrings } from 'back-core';
 import LogProvider from './log_provider';
 
 // Constants.
@@ -27,8 +27,7 @@ const DEFAULT_EXCLUDE_PARAMS = [
  * Console log provider.
  */
 export class ConsoleLogProvider extends LogProvider {
-  private readonly excludeParamsJson: string[];
-  private readonly excludeParamsQuery: string[];
+  private readonly excludeParams: string[];
   private readonly replaceMask: string;
 
   /**
@@ -38,8 +37,7 @@ export class ConsoleLogProvider extends LogProvider {
     // Call parent constructor.
     super(name);
     const { excludeParams = DEFAULT_EXCLUDE_PARAMS, replaceMask = '****' } = options;
-    this.excludeParamsJson = excludeParams?.filter((p: string) => !p.endsWith('='));
-    this.excludeParamsQuery = excludeParams?.filter((p: string) => p.endsWith('='));
+    this.excludeParams = excludeParams;
     this.replaceMask = replaceMask;
     process.stdout.write(JSON.stringify({ type: 'console-log-provider', data: { excludeParams } }) + '\n');
   }
@@ -51,7 +49,7 @@ export class ConsoleLogProvider extends LogProvider {
     // Define params.
     const now = new Date(timestamp);
     const createdAt = now.toISOString();
-    const cuttedLogData = Helpers.cutLongStrings(data, MAX_LOG_LENGTH);
+    const cuttedLogData = cutLongStrings(data as any, MAX_LOG_LENGTH);
     const dataObjectToSave = {
       type: `${type}`,
       data: cuttedLogData,
@@ -65,7 +63,7 @@ export class ConsoleLogProvider extends LogProvider {
 
     let dataStringToSave: any;
     try {
-      dataStringToSave = this.sensitiveReplace(JSON.stringify(dataObjectToSave));
+      dataStringToSave = sensitiveReplace(JSON.stringify(dataObjectToSave), this.excludeParams, this.replaceMask);
     } catch {
       dataStringToSave = JSON.stringify(dataObjectToSave);
     }
@@ -116,40 +114,5 @@ export class ConsoleLogProvider extends LogProvider {
 
     // Return that everything is ok.
     return { isCorrect: true, message: '' };
-  }
-
-  /**
-   * @param {Object} sensitiveString String with sensitive data.
-   * @return {string} "Clear" string - without sensitive data.
-   */
-  sensitiveReplace(sensitiveString: object | string): object | string {
-    if (typeof sensitiveString !== 'string' || (this.excludeParamsJson.length === 0 && this.excludeParamsQuery.length === 0)) {
-      return sensitiveString;
-    }
-
-    let resultString = sensitiveString;
-
-    if (this.excludeParamsJson.length) {
-      // Regex example: /"(token|oauth-token|authorization|Authorization|secret|password|oldPassword|oldPasswords)": ?"(.+?)"/gm
-      const regexForJson = new RegExp(`"(${this.excludeParamsJson.join('|')})": ?"(.+?)"`, 'gm');
-      const matchesInJson = [...resultString.matchAll(regexForJson)];
-      if (matchesInJson.length) {
-        matchesInJson.forEach(([stringToReplace, , value]) => {
-          resultString = resultString.replace(stringToReplace, stringToReplace.replace(value, this.replaceMask));
-        });
-      }
-    }
-    if (this.excludeParamsQuery.length) {
-      // Regex example: /(_token=)[^&"]*/gm
-      const regexForQuery = new RegExp(`(${this.excludeParamsQuery.join('|')})[^&"]*`, 'gm');
-      const matchesInQuery = [...resultString.matchAll(regexForQuery)];
-      if (matchesInQuery.length) {
-        matchesInQuery.forEach(([stringToReplace, value]) => {
-          resultString = resultString.replace(stringToReplace, `${value}${this.replaceMask}`);
-        });
-      }
-    }
-
-    return resultString;
   }
 }

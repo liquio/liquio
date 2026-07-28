@@ -13,6 +13,8 @@ services:
   id-api:
     build:
       context: ./components/id-api
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_ID_API_PORT}:8100"
@@ -26,6 +28,8 @@ services:
   id-migrations:
     build:
       context: ./components/id-api
+      additional_contexts:
+        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:

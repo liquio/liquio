@@ -1,5 +1,4 @@
-import path from 'path';
-import fs from 'fs';
+import { AppInfo } from 'back-core';
 
 import { BaseService } from './base_service';
 
@@ -11,12 +10,12 @@ export class AppInfoService extends BaseService {
     super(...args);
 
     try {
-      const raw = fs.readFileSync(path.join(process.cwd(), 'package.json'), {
-        encoding: 'utf8',
-      });
-      const { name, version } = JSON.parse(raw);
-      this.name = name;
-      this.version = version;
+      const appInfo = new AppInfo();
+      if (!appInfo.name || !appInfo.version) {
+        throw new Error('package.json is missing a name or version field.');
+      }
+      this.name = appInfo.name;
+      this.version = appInfo.version;
     } catch (error: any) {
       this.log.save('app-info-read-package-json-error', { error: error.toString() }, 'error');
       throw new Error(`Can not read package.json file: ${error}`);

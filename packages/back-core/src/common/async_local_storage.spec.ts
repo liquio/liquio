@@ -53,4 +53,17 @@ describe('async_local_storage', () => {
 
     expect(res.set).toHaveBeenCalledWith('x-trace-id', 'incoming-trace-id');
   });
+
+  it('uses the first value when the incoming x-trace-id header is duplicated', () => {
+    expect.assertions(2);
+
+    const req: any = { headers: { 'x-trace-id': ['first-trace-id', 'second-trace-id'] } };
+    const res: any = { set: jest.fn() };
+
+    asyncLocalStorageMiddleware(req, res, () => {
+      expect(getTraceId()).toBe('first-trace-id');
+    });
+
+    expect(res.set).toHaveBeenCalledWith('x-trace-id', 'first-trace-id');
+  });
 });

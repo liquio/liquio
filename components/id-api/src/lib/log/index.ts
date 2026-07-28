@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-import { getTraceId, getTraceMeta } from '../../middleware/async_local_storage';
+import { getTraceId, getTraceMeta } from 'back-core';
 import { NextFunction, Request, Response } from '../../types';
 import { ConsoleLogProvider } from './providers/console';
 import { Services } from '../../services';

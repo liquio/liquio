@@ -28,6 +28,7 @@
     "asn1.js": "^5.4.1",
     "asn1js": "^3.0.7",
     "axios": "^1.8.4",
+    "back-core": "file:../../packages/back-core",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.2",
     "compression": "^1.8.0",

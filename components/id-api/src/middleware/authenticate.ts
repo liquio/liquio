@@ -14,7 +14,7 @@ import { oidc } from '../strategies/oidc';
 import { wso2 } from '../strategies/wso2';
 import { x509 } from '../strategies/x509';
 import { Express, NextFunction, Request, Response } from '../types';
-import { appendTraceMeta } from './async_local_storage';
+import { appendTraceMeta } from 'back-core';
 import { destroySession, saveSession } from './session';
 
 export class AuthMiddleware {

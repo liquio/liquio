@@ -11,7 +11,8 @@ const storage = new AsyncLocalStorage();
  * @param {object} next Next request handler.
  */
 export const asyncLocalStorageMiddleware = (req, res, next) => {
-  const traceId = req.headers['x-trace-id'] || req.headers['global-trace-id'] || req.traceId || randomUUID();
+  let traceId = req.headers['x-trace-id'] || req.headers['global-trace-id'] || req.traceId || randomUUID();
+  if (Array.isArray(traceId)) traceId = traceId[0];
 
   res.set('x-trace-id', traceId);
 
