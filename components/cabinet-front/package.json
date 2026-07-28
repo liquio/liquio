@@ -93,7 +93,7 @@
     "mgr-pdf-viewer-react": "1.0.3",
     "mobile-detect": "1.4.5",
     "moment": "2.29.4",
-    "moment-timezone": "0.5.45",
+    "moment-timezone": "0.6.3",
     "mustache": "4.2.0",
     "node-html-parser": "2.0.2",
     "object-path": "0.11.8",
