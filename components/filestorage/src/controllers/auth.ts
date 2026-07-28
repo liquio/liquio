@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { appendTraceMeta } from '../lib/async_local_storage';
+import { appendTraceMeta } from 'back-core';
 
 /**
  * Auth controller.

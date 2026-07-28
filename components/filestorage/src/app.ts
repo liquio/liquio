@@ -1,6 +1,5 @@
 import { initialize as initializeConfig } from './lib/config';
-import { Log } from './lib/log';
-import { ConsoleLogProvider } from './lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import { Db } from './lib/db';
 import { Providers } from './providers';
 import { Models } from './models';
