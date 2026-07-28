@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import type { Response } from 'express';
 
-import { getTraceId } from '../lib/async_local_storage';
+import { getTraceId } from 'back-core';
 import type UnitEntity from '../entities/unit';
 
 // Constants.

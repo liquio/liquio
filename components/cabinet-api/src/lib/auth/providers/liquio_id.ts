@@ -3,7 +3,7 @@ import PropByPath from 'prop-by-path';
 
 import BaseProvider from './provider';
 import HttpRequest from '../../http_request';
-import { getTraceId } from '../../async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Constants.
 const DEFAULT_ROUTES = {

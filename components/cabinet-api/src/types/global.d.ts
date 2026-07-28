@@ -1,4 +1,4 @@
-import Log from '../lib/log';
+import { Log } from 'back-core';
 import { Sequelize } from 'sequelize';
 
 declare global {

@@ -1,10 +1,13 @@
 import { LogProvider } from './log_provider';
 import { sensitiveReplace } from '../helpers/sensitiveReplace';
+import { cutLongStrings } from '../helpers/cutLongStrings';
 
 // Constants.
 const DEFAULT_PROVIDER_NAME = 'console';
 const WARNING_LEVEL = 'warning';
 const ERROR_LEVEL = 'error';
+const MAX_LOG_LENGTH = 100e3;
+const LENGTH_ERROR_SUBSTRING_LENGTH = 10e3;
 
 /**
  * Console log provider.
@@ -46,12 +49,30 @@ export class ConsoleLogProvider extends LogProvider {
     // Define params.
     const now = new Date(timestamp);
     const createdAt = now.toISOString();
-    const dataObjectToSave = { type: `${type}`, data, createdAt, logId, appInfo, level, traceId, traceMeta };
+    const cutData = cutLongStrings(data as string | Record<string, unknown>, MAX_LOG_LENGTH - 5000);
+    const dataObjectToSave = { type: `${type}`, data: cutData, createdAt, logId, appInfo, level, traceId, traceMeta };
     let dataStringToSave;
     try {
       dataStringToSave = sensitiveReplace(JSON.stringify(dataObjectToSave), this.options.excludeParams);
     } catch {
       dataStringToSave = `${dataObjectToSave}`;
+    }
+
+    // Guard against oversized log lines.
+    if (dataStringToSave.length > MAX_LOG_LENGTH) {
+      console.error(
+        JSON.stringify(
+          {
+            type: 'log-too-long-error',
+            length: dataStringToSave.length,
+            data: dataStringToSave.substring(0, LENGTH_ERROR_SUBSTRING_LENGTH),
+            createdAt: new Date().toISOString(),
+          },
+          null,
+          4,
+        ),
+      );
+      return;
     }
 
     // Show in console.

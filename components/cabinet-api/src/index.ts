@@ -1,12 +1,11 @@
 import { existsSync } from 'fs';
 import multiconf from 'multiconf';
 
-import Log from './lib/log';
+import { Log, ConsoleLogProvider } from 'back-core';
 import Db from './lib/db';
 import Models from './models';
 import Router from './router';
 import RedisClient from './lib/redis_client';
-import ConsoleLogProvider from './lib/log/providers/console';
 import typeOf from './lib/type_of';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/cabinet-api';

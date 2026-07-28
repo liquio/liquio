@@ -5,8 +5,7 @@ import cors from 'cors';
 import proxy from 'express-http-proxy';
 
 import AppIdentHeaders from './lib/app_ident_headers';
-import AppInfo from './lib/app_info';
-import { asyncLocalStorageMiddleware, getTraceId } from './lib/async_local_storage';
+import { AppInfo, asyncLocalStorageMiddleware, getTraceId } from 'back-core';
 import AuthController from './controllers/auth';
 import TestController from './controllers/test';
 

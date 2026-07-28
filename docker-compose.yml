@@ -69,6 +69,8 @@ services:
   cabinet-api:
     build:
       context: ./components/cabinet-api
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_CABINET_API_PORT}:8101"
