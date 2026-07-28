@@ -65,7 +65,7 @@
     "@types/node": "^25.9.3",
     "@types/ws": "^8.18.1",
     "debug": "^4.3.7",
-    "eslint": "^10.2.1",
+    "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-prettier": "^5.5.6",
