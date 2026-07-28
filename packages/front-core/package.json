@@ -138,7 +138,7 @@
     "@babel/core": "^7.25.0",
     "deep-diff": "^1.0.2",
     "filesize": "^6.4.0",
-    "history": "^4.10.1",
+    "history": "^5.3.0",
     "json5": "^2.2.3",
     "mime-types": "^2.1.35",
     "node-forge": "1.4.0",
