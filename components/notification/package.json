@@ -41,7 +41,7 @@
     "soap": "^1.8.0",
     "soap-cookie": "^0.10.1",
     "xml-stream": "^0.4.5",
-    "xmlbuilder": "^9.0.1"
+    "xmlbuilder": "^15.1.1"
   },
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.18.6",
