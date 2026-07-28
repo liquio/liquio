@@ -2,7 +2,7 @@ import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 import axios from 'axios';
 
 import { CallbackFn, Express } from '../types';
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { Models, UserAttributes } from '../models';
 import { OIDCProviderConfig } from '../config';
 import { PKCEOAuth2Strategy, generatePKCEParameters } from './passport_libs/passport-oidc/strategy';
@@ -31,7 +31,7 @@ class OidcProvider {
 
   constructor(app: Express) {
     this.app = app;
-    this.log = Log.get();
+    this.log = Log.getInstance();
     this.providersById = new Map();
     this.providerStates = new Map();
     this.strategyInstances = new Map();
@@ -185,7 +185,7 @@ class OidcProvider {
         }
 
         if (!user) {
-          this.log.save(`oidc|${providerId}|route-callback|no-user`, { status: 'failed' }, 'warn');
+          this.log.save(`oidc|${providerId}|route-callback|no-user`, { status: 'failed' }, 'warning');
           return res.redirect('/login?error=authentication_failed');
         }
 
@@ -215,13 +215,13 @@ class OidcProvider {
   ): { ok: true; provider: OIDCProviderConfig } | { ok: false; statusCode: number; body: Record<string, any> } {
     const provider = this.providersById.get(providerId);
     if (!provider) {
-      this.log.save(`oidc|${routeTag}|unknown-provider`, { providerId }, 'warn');
+      this.log.save(`oidc|${routeTag}|unknown-provider`, { providerId }, 'warning');
       return { ok: false, statusCode: 404, body: { error: 'Provider not found' } };
     }
 
     const providerState = this.providerStates.get(providerId);
     if (providerState?.status === 'disabled') {
-      this.log.save(`oidc|${providerId}|${routeTag}|provider-disabled`, { status: 'disabled' }, 'warn');
+      this.log.save(`oidc|${providerId}|${routeTag}|provider-disabled`, { status: 'disabled' }, 'warning');
       return {
         ok: false,
         statusCode: 503,
@@ -234,7 +234,7 @@ class OidcProvider {
 
     if (!providerState || providerState.status !== 'initialized') {
       const initError = providerState?.error || 'provider_not_initialized';
-      this.log.save(`oidc|${providerId}|${routeTag}|provider-unavailable`, { status: 'unavailable', error: initError }, 'warn');
+      this.log.save(`oidc|${providerId}|${routeTag}|provider-unavailable`, { status: 'unavailable', error: initError }, 'warning');
       return {
         ok: false,
         statusCode: 503,

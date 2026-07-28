@@ -1,7 +1,7 @@
 import { matchedData, query } from 'express-validator';
 import { FindOptions } from 'sequelize';
 
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';
@@ -23,7 +23,7 @@ export function getStrategy(): GovIdStrategy {
 }
 
 export async function govid(app: Express) {
-  const log = Log.get();
+  const log = Log.getInstance();
   const passport = app.passport;
   const config = app.config;
 

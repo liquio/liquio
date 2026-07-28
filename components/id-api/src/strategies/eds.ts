@@ -1,7 +1,7 @@
 import { FindOptions } from 'sequelize';
 
 import { calculateUserCode } from '../lib/calculate_user_code';
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserCreationAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';
@@ -9,7 +9,7 @@ import { CallbackFn, Express, Request, Response } from '../types';
 import { EDSStrategy } from './passport_libs/passport-eds/strategy';
 
 export async function eds(app: Express) {
-  const log = Log.get();
+  const log = Log.getInstance();
   const passport = app.passport;
 
   passport.mapping['eds'] = {

@@ -1,11 +1,11 @@
 import { Services, ServicesCollection } from '.';
 import { Config } from '../config';
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { Models, ModelsCollection } from '../models';
 import { Express } from '../types';
 
 export abstract class BaseService {
-  protected log = Log.get();
+  protected log = Log.getInstance();
 
   constructor(
     protected config: Config,

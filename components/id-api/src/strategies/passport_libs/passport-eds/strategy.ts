@@ -1,9 +1,9 @@
-import { Log } from '../../../lib/log';
+import { Log } from 'back-core';
 import { Services } from '../../../services';
 import { Request, Strategy, StrategyVerify } from '../../../types';
 
 export class EDSStrategy extends Strategy {
-  private readonly log = Log.get();
+  private readonly log = Log.getInstance();
   private readonly verify: StrategyVerify;
 
   public readonly name = 'eds';

@@ -2,11 +2,11 @@ import proxy from 'express-http-proxy';
 import { Response, Request } from 'express';
 import { IncomingMessage } from 'http';
 
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { Express, NextFunction } from '../types';
 
 export function useProxy(express: Express) {
-  const log = Log.get();
+  const log = Log.getInstance();
   const signProxyUrl = express.config.eds?.sign_proxy_url;
 
   if (signProxyUrl) {

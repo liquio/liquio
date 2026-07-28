@@ -2,12 +2,11 @@ import debug from 'debug';
 import { validationResult } from 'express-validator';
 
 import { Errors } from '../lib/errors';
-import { Log } from '../lib/log';
 import { AuthMiddleware } from '../middleware/authenticate';
 import { LoginActionType, Models } from '../models';
 import { Services } from '../services';
 import { Express, NextFunction, Request, Response, Router } from '../types';
-import { getTraceId } from 'back-core';
+import { Log, getTraceId } from 'back-core';
 
 const HTTP_STATUS_CODE_OK = 200;
 const HTTP_STATUS_CODE_SERVER_ERROR = 500;
@@ -18,7 +17,7 @@ const DEFAULT_ERROR_MESSAGE = 'Server error.';
  * Base controller class.
  */
 export class BaseController {
-  protected log = Log.get();
+  protected log = Log.getInstance();
   protected config: any;
   protected startTime?: Date;
   protected debug: debug.Debugger;

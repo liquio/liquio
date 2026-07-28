@@ -60,19 +60,13 @@ export class ConsoleLogProvider extends LogProvider {
 
     // Guard against oversized log lines.
     if (dataStringToSave.length > MAX_LOG_LENGTH) {
-      console.error(
-        JSON.stringify(
-          {
-            type: 'log-too-long-error',
-            length: dataStringToSave.length,
-            data: dataStringToSave.substring(0, LENGTH_ERROR_SUBSTRING_LENGTH),
-            createdAt: new Date().toISOString(),
-          },
-          null,
-          4,
-        ),
-      );
-      return;
+      level = ERROR_LEVEL;
+      dataStringToSave = JSON.stringify({
+        type: 'log-too-long-error',
+        length: dataStringToSave.length,
+        data: dataStringToSave.substring(0, LENGTH_ERROR_SUBSTRING_LENGTH),
+        createdAt: new Date().toISOString(),
+      });
     }
 
     // Show in console.

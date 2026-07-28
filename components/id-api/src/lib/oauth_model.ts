@@ -12,12 +12,12 @@ import {
 } from '@node-oauth/oauth2-server';
 import crypto from 'crypto';
 
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { Models } from '../models';
 import { AuthCodeAttributes } from '../models/auth_code.model';
 
 export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
-  private readonly log = Log.get();
+  private readonly log = Log.getInstance();
 
   async getAccessToken(token: string): Promise<OAuthToken | Falsey> {
     const accessToken: any = await Models.model('accessToken').findOne({

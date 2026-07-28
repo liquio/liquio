@@ -362,7 +362,7 @@ export class AuthService extends BaseService {
               nextCounter,
               maxCounter: this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES,
             },
-            'warn',
+            'warning',
           );
         } else {
           this.model('confirmCode').update({ counter: nextCounter }, { where: params });
@@ -905,14 +905,14 @@ export class AuthService extends BaseService {
     let ldapUser = await this.service('ldap')
       .findUserByPrincipal(email)
       .catch((error) => {
-        this.log.save('ldap-find-user-by-principal-error', { email, fullName, error: error.toString() }, 'warn');
+        this.log.save('ldap-find-user-by-principal-error', { email, fullName, error: error.toString() }, 'warning');
       });
 
     // Make sure that found user has the same full name.
     const userDescription = ldapUser?.description.toString();
     if (!userDescription || userDescription.toUpperCase() !== fullName.toUpperCase()) {
       ldapUser = undefined;
-      this.log.save('ldap-find-by-full-name-not-match', { email, fullName }, 'warn');
+      this.log.save('ldap-find-by-full-name-not-match', { email, fullName }, 'warning');
     }
 
     // Make sure that the account is not disabled
@@ -920,7 +920,7 @@ export class AuthService extends BaseService {
       const code = Number(ldapUser.userAccountControl);
       const flags = this.service('ldap').unpackUserAccountControl(code);
       if (flags.ACCOUNTDISABLE) {
-        this.log.save('ldap-find-user-disabled', { email, fullName }, 'warn');
+        this.log.save('ldap-find-user-disabled', { email, fullName }, 'warning');
         ldapUser = undefined;
       }
     }
@@ -959,7 +959,7 @@ export class AuthService extends BaseService {
       if (!code) {
         try {
           const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ email });
-          this.log.save('confirm-email-code-counter-incremented', { email, counter }, 'warn');
+          this.log.save('confirm-email-code-counter-incremented', { email, counter }, 'warning');
         } catch (error: any) {
           this.log.save('check-email-confirmation-code-error', { email, code: req.body.code_email, error: error.message }, 'error');
         }
@@ -995,7 +995,7 @@ export class AuthService extends BaseService {
           const counter = await this.service('auth').incrementConfirmCodeCounterAsync({
             phone: req.prepared!.user.phone,
           });
-          this.log.save('confirm-phone-code-counter-incremented', { phone: req.prepared!.user.phone, counter }, 'warn');
+          this.log.save('confirm-phone-code-counter-incremented', { phone: req.prepared!.user.phone, counter }, 'warning');
         } catch (error: any) {
           this.log.save(
             'check-phone-confirmation-code-error',

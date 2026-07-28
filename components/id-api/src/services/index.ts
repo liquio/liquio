@@ -1,4 +1,4 @@
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { Models } from '../models';
 import { Express } from '../types';
 import { AppInfoService } from './app_info.service';
@@ -30,7 +30,7 @@ export interface ServicesCollection {
 }
 
 export class Services {
-  private readonly log = Log.get();
+  private readonly log = Log.getInstance();
   private static singleton: Services;
   private readonly services!: ServicesCollection;
 

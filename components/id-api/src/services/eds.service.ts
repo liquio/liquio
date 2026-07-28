@@ -221,7 +221,7 @@ export class EdsService extends BaseService {
    * Returns an empty array.
    */
   async getEdsServersListFromEdsService(): Promise<any[]> {
-    this.log.save('get-eds-servers-list-deprecated', {}, 'warn');
+    this.log.save('get-eds-servers-list-deprecated', {}, 'warning');
     // Placeholder implementation - returns empty list
     return [];
   }

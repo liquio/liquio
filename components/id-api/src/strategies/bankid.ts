@@ -1,6 +1,6 @@
 import nodeRSA from 'node-rsa';
 
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { convertAllEscapes } from '../lib/string_converter';
 import { Models } from '../models';
 import { UserServicesCreationAttributes } from '../models/user_services.model';
@@ -12,7 +12,7 @@ import { BankIDStrategy } from './passport_libs/passport-bankid/strategy';
  * @deprecated
  */
 export async function bankid(app: Express) {
-  const log = Log.get();
+  const log = Log.getInstance();
   let passport = app.passport;
   let fs = require('fs');
   let path = require('path');

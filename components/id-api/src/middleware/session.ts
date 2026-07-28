@@ -5,7 +5,7 @@ import { Op } from 'sequelize';
 
 import { DEFAULT_COOKIE_DOMAIN } from '../config';
 import { avatarByGender } from '../lib/helpers';
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { Models, UserAttributes } from '../models';
 import { Express, NextFunction, Request, Response } from '../types';
 
@@ -19,7 +19,7 @@ export type FlashFunction = {
 };
 
 export function useSession(express: Express) {
-  const log = Log.get();
+  const log = Log.getInstance();
 
   const SessionStore = ConnectSessionSequelize(session.Store);
 
@@ -148,7 +148,7 @@ export function useSession(express: Express) {
 }
 
 export async function destroySession(req: Request) {
-  const log = Log.get();
+  const log = Log.getInstance();
 
   const id = req.sessionID;
 

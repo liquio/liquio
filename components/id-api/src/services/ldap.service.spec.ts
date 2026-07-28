@@ -1,12 +1,8 @@
-import debug from 'debug';
 import * as ldapts from 'ldapts';
 import { LdapService, ACCOUNT_CONTROL_FLAGS } from './ldap.service';
 import { Config } from '../config';
 import { Models } from '../models';
 import { Express } from '../types';
-
-// Create debug logger
-const testDebug = debug('test:log');
 
 // Mock ldapts module
 const mockClientBind = jest.fn<ReturnType<ldapts.Client['bind']>, Parameters<ldapts.Client['bind']>>();
@@ -20,27 +16,6 @@ const mockLdapClient: Partial<ldapts.Client> = {
 jest.mock('ldapts', () => {
   return {
     Client: jest.fn(() => mockLdapClient),
-  };
-});
-
-// Mock Log class to use debug module
-jest.mock('../lib/log/index.ts', () => {
-  return {
-    Log: class MockLog {
-      private static singleton: MockLog;
-
-      static get() {
-        if (!MockLog.singleton) {
-          MockLog.singleton = new MockLog();
-        }
-        return MockLog.singleton;
-      }
-
-      save(event: string, data?: any, level?: string) {
-        const logData = data ? JSON.stringify(data) : '';
-        testDebug(`[${level || 'info'}] ${event} ${logData}`);
-      }
-    },
   };
 });
 

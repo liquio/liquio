@@ -17,7 +17,7 @@ export { UserServicesAttributes, UserServicesCreationAttributes } from './user_s
 export { UserTotpSecretAttributes, UserTotpSecretCreationAttributes } from './user_totp_secret.model';
 
 import { Config } from '../config';
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { AccessTokenModel } from './access_token.model';
 import { AuthCodeModel } from './auth_code.model';
 import { BaseModel } from './base_model';
@@ -75,7 +75,7 @@ export class Models {
       throw new Error('Models already initialized.');
     }
 
-    this.log = Log.get();
+    this.log = Log.getInstance();
 
     const options: SequelizeOptions = {
       host: config.host,

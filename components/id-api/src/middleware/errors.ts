@@ -1,11 +1,11 @@
 import { Express, NextFunction } from 'express';
 
 import { HttpError } from '../lib/http_error';
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { Request, Response } from '../types';
 
 export function useErrorHandler(express: Express) {
-  const log = Log.get();
+  const log = Log.getInstance();
 
   // Handle unknown errors.
   function unknownError(error: Error & { status?: number }, req: Request, res: Response, _next: NextFunction): void {

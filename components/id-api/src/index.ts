@@ -1,10 +1,11 @@
 import { Application } from './application';
 import { loadConfig } from './config';
-import { Log } from './lib/log';
+import { Log, ConsoleLogProvider } from 'back-core';
 
 async function main() {
   const conf = loadConfig();
-  const log = new Log(conf.log);
+  const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: conf.log?.excludeParams });
+  const log = new Log([consoleLogProvider], ['console']);
 
   log.save('start-application', { pid: process.pid }, 'info');
 

@@ -3,7 +3,7 @@ import http from 'http';
 
 import { Config } from './config';
 import { Controllers, ControllersCollection } from './controllers';
-import { Log, useRequestLogger } from './lib/log';
+import { Log } from 'back-core';
 import {
   AuthMiddleware,
   useAppIdentHeaders,
@@ -32,7 +32,7 @@ export class Application {
     this.express = express() as Express;
     this.express.set('query parser', 'extended');
     this.express.config = this.config;
-    this.log = Log.get();
+    this.log = Log.getInstance();
     this.models = new Models(this.config.db);
     this.services = new Services(this.config, this.models, this.express);
   }
@@ -76,7 +76,7 @@ export class Application {
     }
 
     useAsyncLocalStorage(express);
-    useRequestLogger(express);
+    express.use(this.log.logRouter.bind(this.log));
     useAppIdentHeaders(express);
     useSession(express);
     useSwagger(express);

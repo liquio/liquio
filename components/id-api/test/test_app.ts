@@ -19,7 +19,8 @@ import { Services } from '../src/services';
 import baseConfig from './base.config.json';
 
 let logs: any[] = [];
-jest.mock('../src/lib/log', () => {
+jest.mock('back-core', () => {
+  const original = jest.requireActual('back-core');
   const debugLog = debug('test:log');
   const debugReq = debug('test:request');
   const mockLog = jest.fn();
@@ -38,12 +39,12 @@ jest.mock('../src/lib/log', () => {
   };
 
   return {
+    ...original,
     Log: {
-      get: jest.fn(() => mockLogInstance),
+      getInstance: jest.fn(() => mockLogInstance),
       save: jest.fn(),
       logRouter: jest.fn(),
     },
-    useRequestLogger: jest.fn(() => (req: any, res: any, next: any) => next()),
   };
 });
 

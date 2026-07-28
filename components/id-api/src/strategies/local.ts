@@ -2,7 +2,7 @@ import { Strategy } from 'passport-local';
 
 import { delay } from '../lib/helpers';
 import { HttpError } from '../lib/http_error';
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesAttributes } from '../models';
@@ -12,7 +12,7 @@ import { CallbackFn, Express, Request, Response } from '../types';
 const GENERIC_FAIL_DESCRIPTION = 'Invalid email or password.';
 
 export async function local(app: Express) {
-  const log = Log.get();
+  const log = Log.getInstance();
 
   if (!app.config.auth_providers.local?.isEnabled) {
     log.save('local-strategy', { status: 'disabled' }, 'info');

@@ -4,7 +4,6 @@ import { matchedData, query } from 'express-validator';
 
 import { Config, DEFAULT_COOKIE_DOMAIN } from '../config';
 import { generatePinCode } from '../lib/helpers';
-import { Log } from '../lib/log';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { Models, UserAttributes } from '../models';
 import { Services } from '../services';
@@ -14,13 +13,13 @@ import { oidc } from '../strategies/oidc';
 import { wso2 } from '../strategies/wso2';
 import { x509 } from '../strategies/x509';
 import { Express, NextFunction, Request, Response } from '../types';
-import { appendTraceMeta } from 'back-core';
+import { Log, appendTraceMeta } from 'back-core';
 import { destroySession, saveSession } from './session';
 
 export class AuthMiddleware {
   private static singleton: AuthMiddleware;
 
-  private readonly log = Log.get();
+  private readonly log = Log.getInstance();
   private readonly secretKey!: string;
   private readonly credentials!: {
     username: string;
@@ -242,7 +241,7 @@ export class AuthMiddleware {
       const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'login' });
 
       if (!this.checkIdentificationType(user)) {
-        this.log.save('get-auth|user-identification-type-not-allowed', { userId, userIdentificationType: user.userIdentificationType }, 'warn');
+        this.log.save('get-auth|user-identification-type-not-allowed', { userId, userIdentificationType: user.userIdentificationType }, 'warning');
 
         if (loginHistoryData) {
           await this.service('auth').destroySession(userId, loginHistoryData);
@@ -254,7 +253,7 @@ export class AuthMiddleware {
 
       // If EDRPOU and/or RNOKPP whitelists are enabled, make sure that the user matches at least one of the criteria
       if (!this.checkEdrpouWhitelist(user) && !this.checkRnokppWhitelist(user)) {
-        this.log.save('get-auth|user-edrpou-or-rnokpp-not-allowed', { userId, edrpou: user.edrpou, rnokpp: user.ipn }, 'warn');
+        this.log.save('get-auth|user-edrpou-or-rnokpp-not-allowed', { userId, edrpou: user.edrpou, rnokpp: user.ipn }, 'warning');
 
         if (loginHistoryData) {
           await this.service('auth').destroySession(userId, loginHistoryData);
@@ -281,7 +280,7 @@ export class AuthMiddleware {
         // If LDAP authentication is required and the user already passed onboarding,
         // deny access if LDAP check is failed
         if (this.service('ldap').isRequired && !user.needOnboarding && !isPassed) {
-          this.log.save('ldap-authentication-failed', { userId }, 'warn');
+          this.log.save('ldap-authentication-failed', { userId }, 'warning');
           res.status(403).send({ error: { message: 'LDAP authentication failed.' } });
           return;
         }

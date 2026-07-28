@@ -93,7 +93,7 @@ export class TotpController extends BaseController {
         .findOne({ where: { userId } })
         .then((row) => row?.dataValues);
       if (existingSecret) {
-        this.log.save('totp-generate-warning', { userId }, 'warn');
+        this.log.save('totp-generate-warning', { userId }, 'warning');
         res.status(400).send({ error: 'TOTP is already generated.' });
         return;
       }
@@ -146,7 +146,7 @@ export class TotpController extends BaseController {
 
       // Do not allow to override existing 2FA settings
       if (user.useTwoFactorAuth) {
-        this.log.save('totp-enable-warning', { userId }, 'warn');
+        this.log.save('totp-enable-warning', { userId }, 'warning');
         res.status(400).send({ error: 'TOTP is already enabled.' });
         return;
       }

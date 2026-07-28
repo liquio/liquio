@@ -4,7 +4,7 @@ import { ContentInfo } from 'pkijs';
 import { Strategy } from 'passport-strategy';
 
 import { Config } from '../../../config';
-import { Log } from '../../../lib/log';
+import { Log } from 'back-core';
 import { Request, StrategyVerify } from '../../../types';
 
 const NAMES_NA_LIST = ['n/a', 'n\\a'];
@@ -13,7 +13,7 @@ const NAMES_NA_LIST = ['n/a', 'n\\a'];
  * Gov ID strategy.
  */
 export class GovIdStrategy extends Strategy {
-  private readonly log = Log.get();
+  private readonly log = Log.getInstance();
   private readonly timeout: number;
   private readonly options: NonNullable<Config['auth_providers']['govid']>;
   private readonly verify?: StrategyVerify;

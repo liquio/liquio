@@ -1,6 +1,6 @@
 import { Strategy as PassportStrategy } from 'passport-strategy';
 
-import { Log } from '../lib/log';
+import { Log } from 'back-core';
 import { Express, Request, Response } from '../types';
 import { saveSession } from '../middleware/session';
 import { SignatureInfoSigner, X509Service } from '../services/x509.service';
@@ -30,7 +30,7 @@ export class X509Strategy extends PassportStrategy {
     super();
     this.verify = verify;
     this.x509Service = Services.service('x509');
-    this.log = Log.get();
+    this.log = Log.getInstance();
   }
 
   async authenticate(req: Request) {
@@ -72,7 +72,7 @@ export class X509Strategy extends PassportStrategy {
 }
 
 export async function x509(app: Express) {
-  const log = Log.get();
+  const log = Log.getInstance();
 
   if (!app.config.auth_providers.x509?.isEnabled) {
     log.save('x509-strategy', { status: 'disabled' }, 'info');

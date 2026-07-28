@@ -71,7 +71,7 @@ export class SignUpController extends BaseController {
 
     // Email and password are required
     if (!email || !password) {
-      this.log.save('registration|user-error', { email, error: 'Email and password are required.' }, 'warn');
+      this.log.save('registration|user-error', { email, error: 'Email and password are required.' }, 'warning');
       res.status(400).json({
         error: 'missing-params',
         description: 'Email and password are required.',
@@ -80,7 +80,7 @@ export class SignUpController extends BaseController {
     }
 
     if (!validateEmail(email)) {
-      this.log.save('registration|user-error', { email, error: 'Invalid email format.' }, 'warn');
+      this.log.save('registration|user-error', { email, error: 'Invalid email format.' }, 'warning');
       res.status(400).json({ error: 'invalid-email', description: 'Invalid email format.' });
       return;
     }
@@ -88,7 +88,7 @@ export class SignUpController extends BaseController {
     // Make sure that there's no user with the same email
     const existingUser = await this.model('user').findOne({ where: { email } });
     if (existingUser) {
-      this.log.save('registration|user-error', { email, error: 'User already exists.' }, 'warn');
+      this.log.save('registration|user-error', { email, error: 'User already exists.' }, 'warning');
       res.status(400).json({ error: 'email-exists', description: 'User already exists.' });
       return;
     }
@@ -96,7 +96,7 @@ export class SignUpController extends BaseController {
     // Make sure that the password is strong enough
     const { strong, reason } = this.service('passwordManager').isStrongPassword(password);
     if (!strong) {
-      this.log.save('registration|user-error', { email, error: reason }, 'warn');
+      this.log.save('registration|user-error', { email, error: reason }, 'warning');
       res.status(400).send({ error: 'weak-password', description: reason });
       return;
     }
@@ -176,7 +176,7 @@ export class SignUpController extends BaseController {
 
     // Only proceed if email has a valid format.
     if (!validateEmail(email)) {
-      this.log.save('check-email-exist-error', { email, error: 'Invalid email format.' }, 'warn');
+      this.log.save('check-email-exist-error', { email, error: 'Invalid email format.' }, 'warning');
       res.send('null');
       return;
     }
@@ -267,7 +267,7 @@ export class SignUpController extends BaseController {
 
       try {
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ email });
-        this.log.save('confirm-email-code-counter-incremented', { email, counter }, 'warn');
+        this.log.save('confirm-email-code-counter-incremented', { email, counter }, 'warning');
       } catch (error: any) {
         this.log.save('check-email-confirmation-code-error', { email, code, error: error?.message }, 'error');
       }
@@ -357,12 +357,12 @@ export class SignUpController extends BaseController {
     }
 
     if (!confirm) {
-      this.log.save('phone-confirmation-wrong-code', { phone, code }, 'warn');
+      this.log.save('phone-confirmation-wrong-code', { phone, code }, 'warning');
       try {
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({
           phone,
         });
-        this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warn');
+        this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
       } catch (error: any) {
         this.log.save('check-phone-confirmation-code-error', { phone, code, error: error?.message }, 'error');
       }
@@ -424,9 +424,9 @@ export class SignUpController extends BaseController {
 
       // Handle not confirmed.
       if (!confirm) {
-        this.log.save('phone-confirmation-wrong-code', { userId, phone, code }, 'warn');
+        this.log.save('phone-confirmation-wrong-code', { userId, phone, code }, 'warning');
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone: phone });
-        this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warn');
+        this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
         res.send({ data: { isConfirmed: false } });
         return;
       }
@@ -553,7 +553,7 @@ export class SignUpController extends BaseController {
 
       if (!confirm) {
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone: user.phone });
-        this.log.save('confirm-phone-code-counter-incremented', { phone: user.phone, counter }, 'warn');
+        this.log.save('confirm-phone-code-counter-incremented', { phone: user.phone, counter }, 'warning');
         res.send({ success: false, error: 'code not valid' });
         return;
       }
