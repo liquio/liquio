@@ -24,7 +24,7 @@ export default [
       ...prettierConfig.rules,
       'prettier/prettier': 'error',
       '@typescript-eslint/interface-name-prefix': 'off',
-      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'error',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
@@ -53,6 +53,6 @@ export default [
     },
   },
   {
-    ignores: ['coverage/**', 'dist/**', 'eslint.config.js', 'jest.config.js', 'node_modules/**'],
+    ignores: ['coverage/**', 'dist/**', 'eslint.config.mjs', 'jest.config.js', 'node_modules/**'],
   },
 ];

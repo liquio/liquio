@@ -24,7 +24,7 @@ export class AppInfo {
    * Name.
    * @returns {string} App name.
    */
-  get name() {
+  get name(): string {
     return this._name;
   }
 
@@ -32,7 +32,7 @@ export class AppInfo {
    * Version.
    * @returns {string} App version.
    */
-  get version() {
+  get version(): string {
     return this._version;
   }
 
@@ -40,7 +40,7 @@ export class AppInfo {
    * All app info.
    * @returns {{name: string, version: string}} All app info.
    */
-  get all() {
+  get all(): { name: string; version: string } {
     return { name: this.name, version: this.version };
   }
 
@@ -48,7 +48,7 @@ export class AppInfo {
    * Init.
    * @private
    */
-  init() {
+  init(): void {
     // Read data from "package.json".
     const packageJsonFilePath = PACKAGE_JSON_FILE_NAME;
     let packageJsonFileData: { name?: string; version?: string } = {};

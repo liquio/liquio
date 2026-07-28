@@ -12,14 +12,23 @@ export class LogProvider {
    * Log provider constructor.
    * @param {string} name Provider name.
    */
-  constructor(name) {
+  constructor(name: string) {
     this.name = name;
   }
 
   /**
    * Save.
    */
-  async save(_timestamp, _type, data, _logId, _appInfo, _level, _traceId, _traceMeta) {
+  async save(
+    _timestamp: Date | string | number,
+    _type: string,
+    data: unknown,
+    _logId: string,
+    _appInfo: unknown,
+    _level: string,
+    _traceId?: string,
+    _traceMeta?: unknown,
+  ): Promise<void> {
     // Throw error that method not re-defined in child class.
     console.log(`${ERROR_MESSAGE_CAN_NOT_SAVE_DATA}\n${data}`);
     throw new Error(ERROR_MESSAGE_SAVE_METHOD_NOT_DEFINED);

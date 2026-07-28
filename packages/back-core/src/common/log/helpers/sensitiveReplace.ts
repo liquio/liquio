@@ -7,7 +7,7 @@
  * @param {string} replaceMask
  * @returns
  */
-export const sensitiveReplace = (targetObject, excludeParams = [], replaceMask = '****') => {
+export const sensitiveReplace = (targetObject, excludeParams = [], replaceMask = '****'): any => {
   if (typeof targetObject !== 'string' || !excludeParams.length) {
     return targetObject;
   }

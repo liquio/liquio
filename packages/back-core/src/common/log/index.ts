@@ -14,6 +14,41 @@ const WARNING_LEVEL = 'warning';
 const ERROR_LEVEL = 'error';
 
 /**
+ * Minimal structural shapes for the pieces of Express' Request/Response/NextFunction
+ * actually used here. Consumers pin different major versions of @types/express, so
+ * this avoids coupling back-core's public API to any one of them.
+ */
+interface RequestMeta {
+  method?: string;
+  url?: string;
+  userAgent?: string | string[] | null;
+  userIp?: { remoteAddress?: string; xForwardedFor?: string | string[] | null };
+  requestId?: string;
+  uriPattern?: string;
+}
+
+interface RequestLike {
+  method?: string;
+  url?: string;
+  connection?: { remoteAddress?: string };
+  headers: Record<string, string | string[] | undefined>;
+  requestMeta?: RequestMeta;
+  traceId?: string;
+  traceMeta?: Record<string, any>;
+}
+
+interface ResponseLike {
+  handlingInfo?: { requestMeta?: RequestMeta } | null;
+  responseMeta?: RequestMeta;
+  statusCode?: number;
+  send: (body?: any) => unknown;
+  end: (body?: any) => unknown;
+  json: (body?: any) => unknown;
+}
+
+type NextFunction = (...args: any[]) => void;
+
+/**
  * Log.
  */
 export class Log {
@@ -26,7 +61,7 @@ export class Log {
    * @param {LogProvider[]} [logProviders] Log providers.
    * @param {string[]} [activeProviders] Active providers.
    */
-  constructor(logProviders = [], activeProviders = []) {
+  constructor(logProviders: LogProvider[] = [], activeProviders: string[] = []) {
     // Define singleton.
     if (!Log.singleton) {
       if (!logProviders.every((v) => v instanceof LogProvider)) {
@@ -53,7 +88,7 @@ export class Log {
   /**
    * Log levels.
    */
-  get Levels() {
+  get Levels(): { INFO_LEVEL: string; WARNING_LEVEL: string; ERROR_LEVEL: string } {
     return {
       INFO_LEVEL,
       WARNING_LEVEL,
@@ -65,7 +100,7 @@ export class Log {
    * Add provider.
    * @param {LogProvider} logProvider Log provider.
    */
-  addProvider(logProvider) {
+  addProvider(logProvider: LogProvider): void {
     if (!(logProvider instanceof LogProvider)) {
       throw new Error(ERROR_MESSAGE_WRONG_PROVIDER);
     }
@@ -79,7 +114,7 @@ export class Log {
    * @param {string} [level] Log level.
    * @returns {Promise<string>} Log ID promise.
    */
-  async save(type, data: any = true, level = this.Levels.INFO_LEVEL) {
+  async save(type: string, data: any = true, level: string = this.Levels.INFO_LEVEL): Promise<string | null> {
     if (process.env.DISABLE_LOG) return null;
     // Define params.
     const timestamp = Date.now();
@@ -89,7 +124,7 @@ export class Log {
     const traceMeta = getTraceMeta();
 
     // Start async thread without waiting result.
-    (async () => {
+    (async (): Promise<void> => {
       // Save log using all providers.
       this.providers.forEach((logProvider) => {
         try {
@@ -110,12 +145,12 @@ export class Log {
    * @param {object} res HTTP response.
    * @param {object} next Next handler.
    */
-  async logRouter(req, res, next) {
+  async logRouter(req: RequestLike, res: ResponseLike, next: NextFunction): Promise<void> {
     // Define params.
     const method = req && req.method;
     const url = req && req.url;
     const handlingInfo = res.handlingInfo;
-    const remoteAddress = req.connection.remoteAddress;
+    const remoteAddress = req.connection?.remoteAddress;
     const xForwardedFor = req.headers['x-forwarded-for'] || null;
     const userAgent = req.headers['user-agent'] || null;
     const requestId = crypto.randomBytes(16).toString('hex');
@@ -123,7 +158,7 @@ export class Log {
     const traceMeta = getTraceMeta();
 
     // Define user params.
-    const requestMeta = {
+    const requestMeta: RequestMeta = {
       method,
       url,
       userAgent,
@@ -160,7 +195,7 @@ export class Log {
    * @param {object} req Express request object.
    * @param {object} res Express response object.
    */
-  attachResponseLogger(req, res) {
+  attachResponseLogger(req: RequestLike, res: ResponseLike): void {
     const time = Date.now();
 
     const originalSend = res.send;
@@ -168,7 +203,7 @@ export class Log {
     const originalJson = res.json;
     let responseLogged = false;
 
-    const logResponse = (body) => {
+    const logResponse = (body: any): void => {
       if (!responseLogged) {
         const data = {
           requestId: req.requestMeta?.requestId,
@@ -189,17 +224,17 @@ export class Log {
       }
     };
 
-    res.send = (body) => {
+    res.send = (body: any): void => {
       logResponse(body);
       originalSend.call(res, body);
     };
 
-    res.end = (body) => {
+    res.end = (body: any): void => {
       logResponse(body);
       originalEnd.call(res, body);
     };
 
-    res.json = (body) => {
+    res.json = (body: any): void => {
       logResponse(body);
       originalJson.call(res, body);
     };
