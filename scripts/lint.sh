@@ -8,6 +8,7 @@ set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+COMPONENTS_DIR="$PROJECT_ROOT/components"
 
 # Colors for output
 RED='\033[0;31m'
@@ -19,7 +20,7 @@ NC='\033[0m' # No Color
 # Dynamically discover services with lint script in package.json
 discover_services() {
   local services=()
-  cd "$PROJECT_ROOT"
+  cd "$COMPONENTS_DIR"
   for dir in */; do
     dir=${dir%/}
     if [[ -f "$dir/package.json" ]]; then
@@ -80,7 +81,7 @@ service_exists() {
 # Check if service has eslint configuration
 has_eslint() {
   local service=$1
-  if [[ -f "$PROJECT_ROOT/$service/eslint.config.js" ]] || [[ -f "$PROJECT_ROOT/$service/.eslintrc"* ]]; then
+  if [[ -f "$COMPONENTS_DIR/$service/eslint.config.js" ]] || [[ -f "$COMPONENTS_DIR/$service/.eslintrc"* ]]; then
     return 0
   fi
   return 1
@@ -92,18 +93,18 @@ run_service_lint() {
   local fix_flag=$2
   local quiet_flag=$3
 
-  if [[ ! -d "$PROJECT_ROOT/$service" ]]; then
+  if [[ ! -d "$COMPONENTS_DIR/$service" ]]; then
     [[ -z "$quiet_flag" ]] && echo -e "${YELLOW}⊘ Service directory not found: $service (skipping)${NC}"
     return 0
   fi
 
-  if [[ ! -f "$PROJECT_ROOT/$service/package.json" ]]; then
+  if [[ ! -f "$COMPONENTS_DIR/$service/package.json" ]]; then
     [[ -z "$quiet_flag" ]] && echo -e "${YELLOW}⊘ No package.json found in $service (skipping)${NC}"
     return 0
   fi
 
   # Check if service has lint command in package.json
-  if ! grep -q '"lint' "$PROJECT_ROOT/$service/package.json"; then
+  if ! grep -q '"lint' "$COMPONENTS_DIR/$service/package.json"; then
     [[ -z "$quiet_flag" ]] && echo -e "${YELLOW}⊘ No lint command in $service (skipping)${NC}"
     LINT_RESULTS["$service"]="skipped|0|0"
     return 0
@@ -111,7 +112,7 @@ run_service_lint() {
 
   [[ -z "$quiet_flag" ]] && echo -e "${BLUE}▶ Linting $service...${NC}"
 
-  cd "$PROJECT_ROOT/$service"
+  cd "$COMPONENTS_DIR/$service"
 
   local lint_cmd="npm run lint"
   if [[ "$fix_flag" == "true" ]]; then

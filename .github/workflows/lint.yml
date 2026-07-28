@@ -31,14 +31,14 @@ jobs:
           echo "Changed files:"
           echo "${CHANGED:-<all>}"
 
-          FRONT_CORE=$(echo "$CHANGED" | grep -c '^front-core/' || true)
+          FRONT_CORE=$(echo "$CHANGED" | grep -c '^packages/front-core/' || true)
           WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/lint\.yml' || true)
 
           should_lint() {
             local svc=$1
             [ "$LINT_ALL" = "true" ] && return 0
             [ "$WORKFLOW" -gt 0 ] && return 0
-            echo "$CHANGED" | grep -q "^${svc}/" && return 0
+            echo "$CHANGED" | grep -q "^components/${svc}/" && return 0
             if [ "$FRONT_CORE" -gt 0 ]; then
               { [ "$svc" = "admin-front" ] || [ "$svc" = "cabinet-front" ]; } && return 0
             fi
@@ -49,7 +49,7 @@ jobs:
           for svc in admin-api admin-front cabinet-api cabinet-front event \
                      external-reader filestorage gateway id-api id-front \
                      manager notification pdf-generator register sign-tool \
-                     task test persist-link; do
+                     task persist-link; do
             if should_lint "$svc"; then
               INCLUDES+=("{\"service\":\"$svc\"}")
             fi
@@ -81,12 +81,12 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: '${{ matrix.service }}/package-lock.json'
+          cache-dependency-path: 'components/${{ matrix.service }}/package-lock.json'
 
       - name: Install dependencies for ${{ matrix.service }}
         run: npm ci
-        working-directory: ${{ matrix.service }}
+        working-directory: components/${{ matrix.service }}
 
       - name: Lint ${{ matrix.service }}
         run: npm run lint
-        working-directory: ${{ matrix.service }}
+        working-directory: components/${{ matrix.service }}
