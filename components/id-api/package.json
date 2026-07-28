@@ -57,7 +57,7 @@
     "passport-local": "^1.0.0",
     "passport-oauth2": "^1.8.0",
     "pg": "^8.14.1",
-    "pkijs": "^3.2.5",
+    "pkijs": "^3.4.0",
     "redis": "^5.10.0",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.3",
