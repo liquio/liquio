@@ -5,7 +5,7 @@ import { Entity } from '../entities/entity';
 import { matchedData } from 'express-validator';
 import { File } from '../types/file';
 import { Stream } from '../lib/stream';
-import { getTraceId } from '../lib/async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;

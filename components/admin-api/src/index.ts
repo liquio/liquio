@@ -4,8 +4,7 @@ import Multiconf from 'multiconf';
 import { createClient } from 'redis';
 
 import { Db } from './lib/db';
-import { Log } from './lib/log';
-import { ConsoleLogProvider } from './lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
 import { Models } from './models';

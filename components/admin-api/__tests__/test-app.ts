@@ -14,8 +14,7 @@ import * as Multiconf from 'multiconf';
 import * as redis from 'redis';
 
 import { Db } from '../src/lib/db';
-import { Log } from '../src/lib/log';
-import { ConsoleLogProvider } from '../src/lib/log/providers/console';
+import { Log, ConsoleLogProvider } from 'back-core';
 import { MessageQueue } from '../src/lib/message_queue';
 import { RouterService } from '../src/services/router';
 import { Models } from '../src/models';
@@ -42,8 +41,8 @@ jest.mock('../src/lib/message_queue', () => {
 });
 
 // Mock the log module
-jest.mock('../src/lib/log', () => {
-  const originalLog = jest.requireActual('../src/lib/log');
+jest.mock('back-core', () => {
+  const originalLog = jest.requireActual('back-core');
   const LogClass = originalLog.Log || originalLog.default || originalLog;
   const logs = [];
   class MockLog extends LogClass {
@@ -57,7 +56,7 @@ jest.mock('../src/lib/log', () => {
     }
   }
 
-  return { Log: MockLog };
+  return { ...originalLog, Log: MockLog };
 });
 
 // Mock the configuration module

@@ -36,6 +36,8 @@ services:
   admin-api:
     build:
       context: ./components/admin-api
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_ADMIN_API_PORT}:8102"

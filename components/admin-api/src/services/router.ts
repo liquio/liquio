@@ -44,7 +44,7 @@ import { LocalizationTextController } from '../controllers/localization_text';
 import { UserSettingsController } from '../controllers/user_settings';
 import { FileLibraryController } from '../controllers/file_library';
 import { Validators } from '../validators';
-import { asyncLocalStorageMiddleware } from '../lib/async_local_storage';
+import { asyncLocalStorageMiddleware } from 'back-core';
 import {
   UNIT_ADMIN_UNIT,
   SECURITY_ADMIN_UNIT,

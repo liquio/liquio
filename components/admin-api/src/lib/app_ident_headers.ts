@@ -1,4 +1,4 @@
-import { AppInfo } from './app_info';
+import { AppInfo } from 'back-core';
 
 /**
  * App ident version.

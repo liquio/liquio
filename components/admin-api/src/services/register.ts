@@ -1,7 +1,7 @@
 import querystring from 'querystring';
 
 import { HttpRequest } from '../lib/http_request';
-import { getTraceId } from '../lib/async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Constants.
 const ROUTES = {

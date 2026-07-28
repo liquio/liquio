@@ -9,7 +9,7 @@ const { randomUUID } = crypto;
 import { literal } from 'sequelize';
 import { LRUCache } from 'lru-cache';
 
-import { getTraceMeta } from '../lib/async_local_storage';
+import { getTraceMeta } from 'back-core';
 import { Helpers } from './helpers';
 
 const DEFAULT_GLOBAL_FUNCTIONS_OBJECT = '$';

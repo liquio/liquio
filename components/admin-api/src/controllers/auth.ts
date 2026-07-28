@@ -3,7 +3,7 @@ import _ from 'lodash';
 import { Controller } from './controller';
 import { AuthService } from '../services/auth';
 import { Token } from '../lib/token';
-import { appendTraceMeta } from '../lib/async_local_storage';
+import { appendTraceMeta } from 'back-core';
 import { UnitBusiness } from '../businesses/unit';
 
 // Constants.

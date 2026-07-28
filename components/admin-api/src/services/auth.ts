@@ -5,7 +5,7 @@ import _ from 'lodash';
 import moment from 'moment';
 
 import { HttpRequest } from '../lib/http_request';
-import { getTraceId } from '../lib/async_local_storage';
+import { getTraceId } from 'back-core';
 
 // Constants.
 const DEFAULT_ROUTES = {
