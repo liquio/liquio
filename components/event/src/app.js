@@ -1,8 +1,7 @@
 const moment = require('moment');
 
 const Db = require('./lib/db');
-const Log = require('./lib/log');
-const ConsoleLogProvider = require('./lib/log/providers/console');
+const { Log, ConsoleLogProvider, getTraceId } = require('back-core');
 const MessageQueue = require('./lib/message_queue');
 const Errors = require('./lib/errors');
 const Models = require('./models');
@@ -14,7 +13,6 @@ const HttpClient = require('./lib/http_client');
 const LogsBroadcasting = require('./lib/logs_broadcasting');
 const Sandbox = require('./lib/sandbox');
 const typeOf = require('./lib/type_of');
-const { getTraceId } = require('./lib/async_local_storage');
 
 // Allow not secure connections.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';

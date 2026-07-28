@@ -1,5 +1,5 @@
 const HttpRequest = require('./http_request');
-const { getTraceId } = require('./async_local_storage');
+const { getTraceId } = require('back-core');
 
 /**
  * System Notifier.

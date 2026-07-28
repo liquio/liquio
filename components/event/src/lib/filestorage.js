@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 
 const HttpRequest = require('./http_request');
-const { getTraceId } = require('./async_local_storage');
+const { getTraceId } = require('back-core');
 const { prepareAxiosErrorToLog } = require('./helpers');
 const { getConfig } = require('./config');
 

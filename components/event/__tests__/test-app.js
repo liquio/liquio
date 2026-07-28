@@ -24,11 +24,12 @@ jest.mock('../src/lib/message_queue', () => {
 });
 
 // Mock the log module
-jest.mock('../src/lib/log', () => {
+jest.mock('back-core', () => {
   const debug = require('debug');
-  const originalLog = jest.requireActual('../src/lib/log');
+  const original = jest.requireActual('back-core');
   const logs = [];
-  return class extends originalLog {
+
+  class MockLog extends original.Log {
     save(...args) {
       debug('test:log')(...args);
       logs.push({ type: args[0], data: args[1] });
@@ -41,17 +42,15 @@ jest.mock('../src/lib/log', () => {
     clear() {
       logs.length = 0;
     }
-  };
-});
+  }
 
-jest.mock('../src/lib/log/providers/console', () => {
-  const debug = require('debug');
-  const originalConsole = jest.requireActual('../src/lib/log/providers/console');
-  return class extends originalConsole {
+  class MockConsoleLogProvider extends original.ConsoleLogProvider {
     save(timestamp, ...args) {
       debug('test:log')(...args);
     }
-  };
+  }
+
+  return { ...original, Log: MockLog, ConsoleLogProvider: MockConsoleLogProvider };
 });
 
 // Mock the configuration module

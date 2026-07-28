@@ -40,4 +40,26 @@ describe('sensitiveReplace', () => {
     expect(result).toContain('[hidden]');
     expect(result).not.toContain('secret');
   });
+
+  it('masks query-string parameters when the excluded name ends with "="', () => {
+    const input = JSON.stringify({ url: 'https://example.com/auth?client_id=abc&client_secret=super-secret&other=1' });
+
+    const result = sensitiveReplace(input, ['client_secret=']);
+
+    expect(result).not.toContain('super-secret');
+    expect(result).toContain('client_secret=****');
+    expect(result).toContain('client_id=abc');
+    expect(result).toContain('other=1');
+  });
+
+  it('masks both JSON fields and query-string parameters together', () => {
+    const input = JSON.stringify({ password: 'secret', url: 'https://example.com?_token=xyz&keep=1' });
+
+    const result = sensitiveReplace(input, ['password', '_token=']);
+
+    expect(result).not.toContain('"secret"');
+    expect(result).not.toContain('xyz');
+    expect(result).toContain('_token=****');
+    expect(result).toContain('keep=1');
+  });
 });

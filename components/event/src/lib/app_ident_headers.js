@@ -1,4 +1,4 @@
-const AppInfo = require('./app_info');
+const { AppInfo } = require('back-core');
 
 // Constants.
 const DEFAULT_CUSTOMER = '1';

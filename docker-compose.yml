@@ -145,6 +145,8 @@ services:
   event:
     build:
       context: ./components/event
+      additional_contexts:
+        back-core: ./packages/back-core
     restart: on-failure
     volumes:
       - ./config/event:/var/www/config:ro

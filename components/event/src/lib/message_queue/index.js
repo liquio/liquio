@@ -2,7 +2,7 @@ const _ = require('lodash');
 const amqp = require('amqplib/callback_api');
 const { randomUUID } = require('crypto');
 
-const { runInAsyncLocalStorage } = require('../async_local_storage');
+const { runInAsyncLocalStorage } = require('back-core');
 
 // Constants.
 const RETRY_CONNECTION_TIME = 10000;

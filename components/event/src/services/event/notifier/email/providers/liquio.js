@@ -1,6 +1,6 @@
 const Provider = require('./provider');
 const HttpRequest = require('../../../../../lib/http_request');
-const { getTraceId } = require('../../../../../lib/async_local_storage');
+const { getTraceId } = require('back-core');
 
 const MESSAGE_ID_KEY = '<message-id>';
 const MAX_LOG_LENGTH = 100e3 - 1000;

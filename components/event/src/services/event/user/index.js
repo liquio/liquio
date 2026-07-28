@@ -1,7 +1,7 @@
 const _ = require('lodash');
 
 const HttpRequest = require('../../../lib/http_request');
-const { getTraceId } = require('../../../lib/async_local_storage');
+const { getTraceId } = require('back-core');
 const UserResult = require('./user_result');
 const UnitRulesModel = require('../../../models/unit_rules');
 const typeOf = require('../../../lib/type_of');

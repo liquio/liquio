@@ -1,4 +1,4 @@
-const { getTraceId } = require('../lib/async_local_storage');
+const { getTraceId } = require('back-core');
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
