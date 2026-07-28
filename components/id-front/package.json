@@ -15,7 +15,7 @@
     "@mui/lab": "^5.0.0-alpha.177",
     "@mui/material": "^5.16.7",
     "@mui/styles": "^5.16.7",
-    "@mui/x-date-pickers": "^5.0.20",
+    "@mui/x-date-pickers": "^9.10.1",
     "ajv": "^6.12.6",
     "babel-preset-react-app": "^10.0.1",
     "buffer": "^6.0.3",
