@@ -19,6 +19,7 @@ async function main() {
   app.useRedis();
   await app.useDb();
   app.useModels();
+  await app.usePlugins();
   app.useEventService();
   app.useEventBusiness();
   await app.useMessageQueue();

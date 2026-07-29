@@ -2,11 +2,13 @@ const moment = require('moment');
 
 const Db = require('./lib/db');
 const { Log, ConsoleLogProvider, getTraceId } = require('@liquio/back-core');
+const { PluginLoader } = require('@liquio/plugin-sdk');
 const MessageQueue = require('./lib/message_queue');
 const Errors = require('./lib/errors');
 const Models = require('./models');
 const RouterService = require('./services/router');
 const EventService = require('./services/event');
+const ExternalServiceRequester = require('./services/event/requester/external_service');
 const EventBusiness = require('./businesses/event');
 const RedisClient = require('./lib/redis_client');
 const HttpClient = require('./lib/http_client');
@@ -79,6 +81,16 @@ class App {
   // Init models.
   useModels() {
     this.models = new Models();
+  }
+
+  // Init plugins.
+  async usePlugins() {
+    const pluginsConfig = this.config.plugins;
+    this.pluginRegistry = pluginsConfig ? await new PluginLoader(this.log).load(pluginsConfig) : undefined;
+
+    // Pre-init the external service requester singleton with the plugin registry, so that
+    // when EventRequester constructs it (without knowledge of plugins) it reuses this instance.
+    new ExternalServiceRequester(this.config.requester?.externalService, this.config.requester?.registers, this.pluginRegistry);
   }
 
   // Init event service.

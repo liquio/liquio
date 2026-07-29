@@ -16,7 +16,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --coverage --verbose"
+    "test:e2e": "jest --coverage --verbose",
+    "plugin-installer": "liquio-plugin-installer"
   },
   "keywords": [
     "bpmn",
@@ -24,6 +25,9 @@
   ],
   "dependencies": {
     "@liquio/back-core": "^0.1.0",
+    "@liquio/event-xroad-plugin": "^0.1.0",
+    "@liquio/plugin-installer": "^0.1.0",
+    "@liquio/plugin-sdk": "^0.1.0",
     "acorn": "^8.16.0",
     "adm-zip": "^0.5.10",
     "amqplib": "^0.10.9",
