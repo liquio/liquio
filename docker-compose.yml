@@ -138,16 +138,33 @@ services:
       - rabbitmq
       - redis
 
+  event-plugin-installer:
+    build:
+      context: ./components/event
+    command: ["npm", "run", "plugin-installer"]
+    restart: on-failure
+    volumes:
+      - ./config/event:/var/www/config:ro
+      - event-plugins:/var/www/plugins
+    environment:
+      PLUGINS_INSTALL_DIR: /var/www/plugins
+
   event:
     build:
       context: ./components/event
     restart: on-failure
     volumes:
       - ./config/event:/var/www/config:ro
+      - event-plugins:/var/www/plugins:ro
     depends_on:
-      - postgres
-      - rabbitmq
-      - redis
+      event-plugin-installer:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
 
   gateway:
     build:
@@ -199,6 +216,17 @@ services:
     depends_on:
       - postgres
 
+  external-reader-plugin-installer:
+    build:
+      context: ./components/external-reader
+    command: ["npm", "run", "plugin-installer"]
+    restart: on-failure
+    volumes:
+      - ./config/external-reader:/var/www/config:ro
+      - external-reader-plugins:/var/www/plugins
+    environment:
+      PLUGINS_INSTALL_DIR: /var/www/plugins
+
   external-reader:
     build:
       context: ./components/external-reader
@@ -207,6 +235,10 @@ services:
       - "${SVC_EXTERNAL_READER_PORT}:8104"
     volumes:
       - ./config/external-reader:/var/www/config:ro
+      - external-reader-plugins:/var/www/plugins:ro
+    depends_on:
+      external-reader-plugin-installer:
+        condition: service_completed_successfully
 
   pdf-generator:
     build:
@@ -310,3 +342,5 @@ volumes:
   postgres_data:
   rabbitmq_data:
   redis_data:
+  event-plugins:
+  external-reader-plugins:
