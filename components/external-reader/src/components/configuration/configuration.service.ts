@@ -7,6 +7,9 @@ import { LoggerService } from '@components/observability/logger.service';
 
 @Injectable()
 export class ConfigurationService<TConfig extends Configuration = Configuration> {
+  // Multiconf keys each loaded config file's parsed contents by its filename
+  // (e.g. `plugins.json`/`plugins.json.default` -> `config.get('plugins')`),
+  // so any `<name>.json(.default)` file in the config dir is available as `config.get('<name>')`.
   private readonly config: TConfig;
 
   constructor(private readonly logger: LoggerService) {
