@@ -10,11 +10,11 @@ class ExternalServiceRequester {
    * Constructor.
    * @typedef {import('./decorators/decorator')} Decorator
    */
-  constructor(config, registerConfig) {
+  constructor(config, registerConfig, pluginRegistry) {
     // Define singleton.
     if (!ExternalServiceRequester.singleton) {
       this.decorators = new Decorators(config);
-      this.providers = new Providers(config, registerConfig);
+      this.providers = new Providers(config, registerConfig, pluginRegistry);
       this.sandbox = Sandbox.getInstance();
       ExternalServiceRequester.singleton = this;
     }

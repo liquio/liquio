@@ -10,7 +10,7 @@ class Providers {
   /**
    * Providers constructor.
    */
-  constructor(config, _registerConfig) {
+  constructor(config, _registerConfig, pluginRegistry) {
     // Initialize all configured providers
     Object.keys(config).forEach((key) => {
       const providerConfig = config[key];
@@ -28,6 +28,14 @@ class Providers {
           break;
         case 'standard':
           this[key] = new StandardProvider(providerConfig);
+          break;
+        case 'plugin':
+          this[key] = pluginRegistry ? pluginRegistry.get(providerConfig.pluginName) : undefined;
+          if (!this[key]) {
+            throw new Error(
+              `Unknown or unloaded plugin "${providerConfig.pluginName}" for external service "${key}"`,
+            );
+          }
           break;
         default:
           throw new Error(`Unknown provider type: "${providerType}" for external service "${key}"`);
