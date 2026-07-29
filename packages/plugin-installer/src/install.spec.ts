@@ -1,11 +1,9 @@
-import { installPlugins, InstallDependencies, InstallOptions } from "./install";
+import { installPlugins, InstallDependencies, InstallOptions } from './install';
 
-function createDeps(
-  overrides: Partial<InstallDependencies> = {},
-): jest.Mocked<InstallDependencies> {
+function createDeps(overrides: Partial<InstallDependencies> = {}): jest.Mocked<InstallDependencies> {
   return {
     existsSync: jest.fn().mockReturnValue(true),
-    readFileSync: jest.fn().mockReturnValue("{}"),
+    loadConfig: jest.fn().mockReturnValue({}),
     mkdirSync: jest.fn(),
     writeFileSync: jest.fn(),
     execFileSync: jest.fn(),
@@ -15,119 +13,113 @@ function createDeps(
 }
 
 const options: InstallOptions = {
-  configPath: "/config/plugins.json",
-  installDir: "/plugins",
-  registry: "https://registry.npmjs.org",
+  configDir: '/config',
+  envConfigPrefix: 'LIQUIO_CFG_PLUGIN_INSTALLER_',
+  installDir: '/plugins',
+  registry: 'https://registry.npmjs.org',
 };
 
-describe("installPlugins", () => {
-  it("logs and does nothing when plugins.json does not exist", async () => {
+describe('installPlugins', () => {
+  it('logs and does nothing when the config directory does not exist', async () => {
     const deps = createDeps({ existsSync: jest.fn().mockReturnValue(false) });
 
     await installPlugins(options, deps);
 
-    expect(deps.log).toHaveBeenCalledWith(
-      `[plugin-installer] No plugins.json at ${options.configPath}, nothing to install.`,
-    );
+    expect(deps.log).toHaveBeenCalledWith(`[plugin-installer] No config directory at ${options.configDir}, nothing to install.`);
+    expect(deps.loadConfig).not.toHaveBeenCalled();
     expect(deps.execFileSync).not.toHaveBeenCalled();
   });
 
-  it("logs and does nothing when there are no enabled plugins (all disabled)", async () => {
+  it('logs and does nothing when the config directory exists but has no plugins.json', async () => {
+    const deps = createDeps({ loadConfig: jest.fn().mockReturnValue({}) });
+
+    await installPlugins(options, deps);
+
+    expect(deps.log).toHaveBeenCalledWith(`[plugin-installer] No plugins.json in ${options.configDir}, nothing to install.`);
+    expect(deps.execFileSync).not.toHaveBeenCalled();
+  });
+
+  it('logs and does nothing when there are no enabled plugins (all disabled)', async () => {
     const deps = createDeps({
-      readFileSync: jest.fn().mockReturnValue(
-        JSON.stringify({
-          plugins: [{ package: "foo", version: "1.0.0", isEnabled: false }],
-        }),
-      ),
+      loadConfig: jest.fn().mockReturnValue({
+        plugins: { plugins: [{ package: 'foo', version: '1.0.0', isEnabled: false }] },
+      }),
     });
 
     await installPlugins(options, deps);
 
-    expect(deps.log).toHaveBeenCalledWith(
-      "[plugin-installer] No enabled plugins in plugins.json, nothing to install.",
-    );
+    expect(deps.log).toHaveBeenCalledWith('[plugin-installer] No enabled plugins in plugins.json, nothing to install.');
     expect(deps.execFileSync).not.toHaveBeenCalled();
   });
 
-  it("logs and does nothing when the plugins array is empty", async () => {
+  it('logs and does nothing when the plugins array is empty', async () => {
     const deps = createDeps({
-      readFileSync: jest.fn().mockReturnValue(JSON.stringify({ plugins: [] })),
+      loadConfig: jest.fn().mockReturnValue({ plugins: { plugins: [] } }),
     });
 
     await installPlugins(options, deps);
 
-    expect(deps.log).toHaveBeenCalledWith(
-      "[plugin-installer] No enabled plugins in plugins.json, nothing to install.",
-    );
+    expect(deps.log).toHaveBeenCalledWith('[plugin-installer] No enabled plugins in plugins.json, nothing to install.');
     expect(deps.execFileSync).not.toHaveBeenCalled();
   });
 
-  it("installs only the enabled plugin when one is enabled and one is disabled", async () => {
+  it('installs only the enabled plugin when one is enabled and one is disabled', async () => {
     const deps = createDeps({
-      readFileSync: jest.fn().mockReturnValue(
-        JSON.stringify({
+      loadConfig: jest.fn().mockReturnValue({
+        plugins: {
           plugins: [
-            { package: "enabled-pkg", version: "1.2.3", isEnabled: true },
-            { package: "disabled-pkg", version: "4.5.6", isEnabled: false },
+            { package: 'enabled-pkg', version: '1.2.3', isEnabled: true },
+            { package: 'disabled-pkg', version: '4.5.6', isEnabled: false },
           ],
-        }),
-      ),
+        },
+      }),
     });
 
     await installPlugins(options, deps);
 
     expect(deps.execFileSync).toHaveBeenCalledTimes(1);
     const [cmd, args] = deps.execFileSync.mock.calls[0];
-    expect(cmd).toBe("npm");
-    expect(args).toContain("enabled-pkg@1.2.3");
-    expect(args).not.toContain("disabled-pkg@4.5.6");
-    expect(args.join(" ")).not.toContain("disabled-pkg");
+    expect(cmd).toBe('npm');
+    expect(args).toContain('enabled-pkg@1.2.3');
+    expect(args).not.toContain('disabled-pkg@4.5.6');
+    expect(args.join(' ')).not.toContain('disabled-pkg');
   });
 
-  it("calls mkdirSync and writeFileSync with installDir before execFileSync", async () => {
+  it('calls mkdirSync and writeFileSync with installDir before execFileSync', async () => {
     const callOrder: string[] = [];
     const deps = createDeps({
-      readFileSync: jest.fn().mockReturnValue(
-        JSON.stringify({
-          plugins: [{ package: "foo", version: "1.0.0", isEnabled: true }],
-        }),
-      ),
+      loadConfig: jest.fn().mockReturnValue({
+        plugins: { plugins: [{ package: 'foo', version: '1.0.0', isEnabled: true }] },
+      }),
       mkdirSync: jest.fn().mockImplementation(() => {
-        callOrder.push("mkdirSync");
+        callOrder.push('mkdirSync');
       }),
       writeFileSync: jest.fn().mockImplementation(() => {
-        callOrder.push("writeFileSync");
+        callOrder.push('writeFileSync');
       }),
       execFileSync: jest.fn().mockImplementation(() => {
-        callOrder.push("execFileSync");
+        callOrder.push('execFileSync');
       }),
     });
 
     await installPlugins(options, deps);
 
     expect(deps.mkdirSync).toHaveBeenCalledWith(options.installDir);
-    expect(deps.writeFileSync).toHaveBeenCalledWith(
-      expect.stringContaining(options.installDir),
-      expect.any(String),
-    );
-    expect(callOrder).toEqual(["mkdirSync", "writeFileSync", "execFileSync"]);
+    expect(deps.writeFileSync).toHaveBeenCalledWith(expect.stringContaining(options.installDir), expect.any(String));
+    expect(callOrder).toEqual(['mkdirSync', 'writeFileSync', 'execFileSync']);
   });
 
-  it("propagates the error when execFileSync throws", async () => {
-    const error = new Error("npm install failed");
+  it('propagates the error when execFileSync throws', async () => {
+    const error = new Error('npm install failed');
     const deps = createDeps({
-      readFileSync: jest.fn().mockReturnValue(
-        JSON.stringify({
-          plugins: [{ package: "foo", version: "1.0.0", isEnabled: true }],
-        }),
-      ),
+      loadConfig: jest.fn().mockReturnValue({
+        plugins: { plugins: [{ package: 'foo', version: '1.0.0', isEnabled: true }] },
+      }),
       execFileSync: jest.fn().mockImplementation(() => {
         throw error;
       }),
     });
 
-    await expect(installPlugins(options, deps)).rejects.toThrow(
-      "npm install failed",
-    );
+    await expect(installPlugins(options, deps)).rejects.toThrow('npm install failed');
   });
 });

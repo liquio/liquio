@@ -26,6 +26,9 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "test": "jest"
   },
+  "dependencies": {
+    "multiconf": "^4.0.0"
+  },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^26.1.2",

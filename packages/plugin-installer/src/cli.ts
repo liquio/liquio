@@ -1,20 +1,23 @@
 #!/usr/bin/env node
-import * as fs from "fs";
-import * as path from "path";
-import { execFileSync } from "child_process";
-import { installPlugins } from "./install";
+import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import Multiconf from 'multiconf';
+import { installPlugins } from './install';
 
-const configDir = process.env.CONFIG_PATH || "/var/www/config";
+const configDir = process.env.CONFIG_PATH || '/var/www/config';
+const secretPath = process.env.SECRET_PATH;
+const envConfigPrefix = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_PLUGIN_INSTALLER_';
 
 installPlugins(
   {
-    configPath: path.join(configDir, "plugins.json"),
-    installDir: process.env.PLUGINS_INSTALL_DIR || "/var/www/plugins",
-    registry: process.env.NPM_REGISTRY || "https://registry.npmjs.org",
+    configDir,
+    envConfigPrefix,
+    installDir: process.env.PLUGINS_INSTALL_DIR || '/var/www/plugins',
+    registry: process.env.NPM_REGISTRY || 'https://registry.npmjs.org',
   },
   {
     existsSync: fs.existsSync,
-    readFileSync: (p) => fs.readFileSync(p, "utf8"),
+    loadConfig: (dir, prefix) => Multiconf.get([dir, ...(secretPath && fs.existsSync(secretPath) ? [secretPath] : [])], prefix),
     mkdirSync: (p) => fs.mkdirSync(p, { recursive: true }),
     writeFileSync: fs.writeFileSync,
     execFileSync,
