@@ -1,3 +1,5 @@
+import { PluginsConfig } from '@liquio/plugin-sdk';
+
 export interface Configuration {
   auth: {
     basicAuthTokens: string[];
@@ -17,4 +19,5 @@ export interface Configuration {
       options?: unknown;
     };
   };
+  plugins?: PluginsConfig;
 }

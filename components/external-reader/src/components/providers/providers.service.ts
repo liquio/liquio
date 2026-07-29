@@ -1,5 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
+import { Log } from '@liquio/back-core';
+import { PluginLoader, PluginRegistry } from '@liquio/plugin-sdk';
+
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { Configuration } from '@components/configuration/configuration.types';
 import { LoggerService } from '@components/observability/logger.service';
@@ -12,6 +15,7 @@ export class ProvidersService implements OnModuleInit {
   private readonly cfg: Configuration['services'];
   private services = new Map<string, BaseProvider<unknown>>();
   private providers: { [key: string]: typeof BaseProvider<unknown> };
+  private pluginRegistry?: PluginRegistry;
 
   constructor(
     private readonly config: ConfigurationService,
@@ -24,7 +28,14 @@ export class ProvidersService implements OnModuleInit {
     };
   }
 
-  onModuleInit() {
+  async onModuleInit() {
+    const pluginsConfig = this.config.get('plugins');
+    if (pluginsConfig) {
+      // `LoggerService` is a NestJS `ConsoleLogger`, not a `@liquio/back-core` `Log` instance
+      // (their APIs are unrelated), so `PluginLoader` gets its own standalone `Log` instance
+      // rather than the injected logger.
+      this.pluginRegistry = await new PluginLoader(new Log()).load(pluginsConfig);
+    }
     this.loadServices();
   }
 
@@ -35,8 +46,14 @@ export class ProvidersService implements OnModuleInit {
     for (const [name, serviceConfig] of Object.entries(this.cfg)) {
       if (serviceConfig.isEnabled) {
         try {
-          const classRef = this.providers[serviceConfig.class];
-          if (!classRef) {
+          const BuiltIn = this.providers[serviceConfig.class];
+          const provider = BuiltIn
+            ? new BuiltIn(this.logger, serviceConfig.options)
+            : (this.pluginRegistry?.get(serviceConfig.class) as unknown as
+                | BaseProvider<unknown>
+                | undefined);
+
+          if (!provider) {
             this.logger.error('provider-service|class-not-found', {
               name,
               class: serviceConfig.class,
@@ -44,7 +61,6 @@ export class ProvidersService implements OnModuleInit {
             continue;
           }
 
-          const provider = new classRef(this.logger, serviceConfig.options);
           this.services.set(name, provider);
           this.logger.log('provider-service|loaded', { name });
         } catch (error) {
