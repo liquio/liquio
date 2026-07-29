@@ -21,7 +21,7 @@
     "test:e2e": "jest --verbose --coverage"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.11",
+    "@nestjs/common": "^11.1.28",
     "@nestjs/core": "^11.1.16",
     "@nestjs/platform-express": "^11.1.27",
     "@nestjs/schedule": "^6.1.1",
