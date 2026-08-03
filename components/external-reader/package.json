@@ -27,7 +27,7 @@
     "@liquio/plugin-installer": "^0.1.3",
     "@liquio/plugin-sdk": "^0.1.2",
     "@nestjs/cli": "^11.0.24",
-    "@nestjs/common": "^11.0.1",
+    "@nestjs/common": "^11.1.28",
     "@nestjs/core": "^11.1.17",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.25",
