@@ -39,7 +39,7 @@
     "express": "^5.2.1",
     "express-http-proxy": "^2.1.1",
     "express-session": "^1.18.1",
-    "express-validator": "^7.2.1",
+    "express-validator": "^7.3.2",
     "gost89": "^0.1.11",
     "jksreader": "^1.0.0",
     "js-lzma": "^0.1.0",
