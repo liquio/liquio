@@ -1,0 +1,71 @@
+{
+  "name": "liquio-register",
+  "version": "0.1.4",
+  "engines": {
+    "node": "22"
+  },
+  "private": true,
+  "license": "SEE LICENSE IN ../../LICENSE.md",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "node --max-http-header-size=65535 --max_old_space_size=8192 src/index.js",
+    "start:ts": "node --max-http-header-size=65535 --max_old_space_size=8192 --expose-gc -r ts-node/register src/index.ts",
+    "start:dev": "DISABLE_LOG=true node --max_old_space_size=8192 --expose-gc -r ts-node/register src/index.ts",
+    "build": "tsc",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:e2e": "jest --verbose --coverage",
+    "migration-generate": "sequelize-cli migration:generate --config migrations-config.js --name new-migration",
+    "migration-up": "sequelize db:migrate --config migrations-config.js",
+    "migration-clear": "sequelize db:migrate:undo:all --config migrations-config.js"
+  },
+  "dependencies": {
+    "@liquio/back-core": "^0.1.0",
+    "ajv": "^8.20.0",
+    "axios": "^1.13.4",
+    "deepmerge": "^4.3.1",
+    "dompurify": "^3.3.1",
+    "express": "^5.2.1",
+    "express-validator": "^6.14.3",
+    "flattenjs": "^2.1.3",
+    "isolated-vm": "^6.0.1",
+    "jsdom": "^27.3.0",
+    "json2csv": "^5.0.7",
+    "lodash": "^4.18.1",
+    "moment": "^2.30.1",
+    "multiconf": "^4.2.1",
+    "object-path": "^0.11.8",
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
+    "redis": "^5.10.0",
+    "sequelize": "^6.37.8",
+    "sequelize-cli": "^6.6.2"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.13.0",
+    "@testcontainers/redis": "^11.12.0",
+    "@types/express": "5.0.6",
+    "@types/glob": "9.0.0",
+    "@types/jest": "30.0.0",
+    "@types/node": "25.3.3",
+    "@types/object-path": "0.11.4",
+    "@types/pg": "8.18.0",
+    "@types/supertest": "7.2.0",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "jest": "^30.2.0",
+    "nock": "^14.0.10",
+    "supertest": "^7.1.4",
+    "testcontainers": "^11.11.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.65.0"
+  },
+  "overrides": {
+    "form-data": "2.5.5",
+    "tough-cookie": "^5.0.0"
+  }
+}

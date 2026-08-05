@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/component: event
     app.kubernetes.io/tier: backend
     app.kubernetes.io/exposure: internal
+    liquio.tech/uses-plugins: "true"
   annotations:
     "argocd.argoproj.io/sync-wave": "2"
 spec:
@@ -24,6 +25,7 @@ spec:
         app.kubernetes.io/component: event
         app.kubernetes.io/tier: backend
         app.kubernetes.io/exposure: internal
+        liquio.tech/uses-plugins: "true"
     spec:
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -36,6 +38,7 @@ spec:
         {{- include "liquio.initContainer.waitForPostgres" . | nindent 8 }}
         {{- include "liquio.initContainer.waitForRabbitmq" . | nindent 8 }}
         {{- include "liquio.initContainer.waitForRedis" . | nindent 8 }}
+        {{- include "liquio.initContainer.pluginInstaller" (dict "component" "event" "Values" .Values "Chart" .Chart) | nindent 8 }}
       containers:
         - name: event
           securityContext:
@@ -64,6 +67,9 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            - name: plugins
+              mountPath: /var/www/plugins
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /test/ping
@@ -86,6 +92,8 @@ spec:
           secret:
             secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "event") }}
         - name: tmp
+          emptyDir: {}
+        - name: plugins
           emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
