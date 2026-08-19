@@ -48,7 +48,7 @@
     "@types/node": "^25.9.3",
     "@types/supertest": "^7.2.1",
     "debug": "^4.3.7",
-    "eslint": "^10.6.0",
+    "eslint": "^10.8.1",
     "eslint-plugin-jsdoc": "^63.3.2",
     "globals": "^17.6.0",
     "jest": "^30.3.0",
