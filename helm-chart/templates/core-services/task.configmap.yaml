@@ -399,6 +399,10 @@ metadata:
 {{ $taskFinishBase := dict
   "addTaskCommiterAsPerformer" true
 -}}
+{{ $pluginsBase := dict
+  "pluginsDir" "/var/www/plugins"
+  "plugins" (list)
+-}}
 {{ $versionsBase := dict
   "services" (list
     (dict "name" "id" "minVersion" "0.7.7")
@@ -539,3 +543,8 @@ data:
   # Versions configuration
   versions.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "versions.json" "base" $versionsBase) | nindent 4 }}
+
+  # Plugins configuration (consumed by both the plugin-installer initContainer
+  # and the task app's runtime PluginLoader)
+  plugins.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "plugins.json" "base" $pluginsBase) | nindent 4 }}

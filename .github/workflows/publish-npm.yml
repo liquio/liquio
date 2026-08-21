@@ -1,0 +1,102 @@
+name: Publish to NPM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - '.github/workflows/publish-npm.yml'
+
+jobs:
+  detect:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      any: ${{ steps.build-matrix.outputs.any }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build package matrix
+        id: build-matrix
+        run: |
+          INCLUDES=()
+          for pkg_json in packages/*/package.json; do
+            dir=$(dirname "$pkg_json")
+            name=$(node -p "require('./$pkg_json').name")
+            private=$(node -p "require('./$pkg_json').private || false")
+            if [ "$private" = "false" ]; then
+              INCLUDES+=("{\"package\":\"$(basename "$dir")\",\"name\":\"$name\"}")
+            fi
+          done
+
+          if [ "${#INCLUDES[@]}" -eq 0 ]; then
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'any=false' >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(printf '%s\n' "${INCLUDES[@]}" | jq -sc '{"include": .}')
+            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+            echo 'any=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    needs: detect
+    if: needs.detect.outputs.any == 'true'
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: 'packages/${{ matrix.package }}/package-lock.json'
+
+      - name: Check if version is already published
+        id: check
+        working-directory: packages/${{ matrix.package }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view "${{ matrix.name }}" version 2>/dev/null || true)
+
+          if [ "$VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip == 'false'
+        working-directory: packages/${{ matrix.package }}
+        run: npm ci
+
+      - name: Lint
+        if: steps.check.outputs.skip == 'false'
+        working-directory: packages/${{ matrix.package }}
+        run: npm run lint
+
+      - name: Test
+        if: steps.check.outputs.skip == 'false'
+        working-directory: packages/${{ matrix.package }}
+        run: npm test
+
+      - name: Build
+        if: steps.check.outputs.skip == 'false'
+        working-directory: packages/${{ matrix.package }}
+        run: npm run build
+
+      - name: Publish to npm
+        if: steps.check.outputs.skip == 'false'
+        working-directory: packages/${{ matrix.package }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

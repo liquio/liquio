@@ -1,0 +1,27 @@
+const unitHasAccessToOptions = [
+  { value: "navigation.healthcheck.HealthCheckPage", labelKey: "AccessPath_navigation_healthcheck_HealthCheckPage" },
+  { value: "navigation.inbox.InboxFilesListPage", labelKey: "AccessPath_navigation_inbox_InboxFilesListPage" },
+  { value: "navigation.process.Process", labelKey: "AccessPath_navigation_process_Process" },
+  { value: "navigation.process.UserProcesses", labelKey: "AccessPath_navigation_process_UserProcesses" },
+  { value: "navigation.process.editable", labelKey: "AccessPath_navigation_process_editable" },
+  { value: "navigation.registry.Registry", labelKey: "AccessPath_navigation_registry_Registry" },
+  { value: "navigation.registry.RegistryPage", labelKey: "AccessPath_navigation_registry_RegistryPage" },
+  { value: "navigation.tasks.ClosedTasks", labelKey: "AccessPath_navigation_tasks_ClosedTasks" },
+  { value: "navigation.tasks.CreateTaskButton", labelKey: "AccessPath_navigation_tasks_CreateTaskButton" },
+  { value: "navigation.tasks.InboxTasks", labelKey: "AccessPath_navigation_tasks_InboxTasks" },
+  { value: "navigation.tasks.UnitClosedTasks", labelKey: "AccessPath_navigation_tasks_UnitClosedTasks" },
+  { value: "navigation.tasks.UnitInboxTasks", labelKey: "AccessPath_navigation_tasks_UnitInboxTasks" },
+  { value: "navigation.ui", labelKey: "AccessPath_navigation_ui" },
+  { value: "navigation.users.Units", labelKey: "AccessPath_navigation_users_Units" },
+  { value: "navigation.users.UserAccessJournal", labelKey: "AccessPath_navigation_users_UserAccessJournal" },
+  { value: "navigation.users.UserLoginJournal", labelKey: "AccessPath_navigation_users_UserLoginJournal" },
+  { value: "navigation.users.UserOperations", labelKey: "AccessPath_navigation_users_UserOperations" },
+  { value: "navigation.users.Users", labelKey: "AccessPath_navigation_users_Users" },
+  { value: "navigation.users.editable", labelKey: "AccessPath_navigation_users_editable" },
+  { value: "navigation.users.list", labelKey: "AccessPath_navigation_users_list" },
+  { value: "navigation.workflow.Drafts", labelKey: "AccessPath_navigation_workflow_Drafts" },
+  { value: "navigation.workflow.MyWorkflow", labelKey: "AccessPath_navigation_workflow_MyWorkflow" },
+  { value: "navigation.workflow.Trash", labelKey: "AccessPath_navigation_workflow_Trash" },
+];
+
+export default unitHasAccessToOptions;
