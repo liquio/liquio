@@ -1,13 +1,13 @@
-import React from "react";
-import { Button, Stack } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
-import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
-import LeftSidebarLayout from "layouts/LeftSidebar";
-import DataTable from "components/DataTable";
-import CabinetMenuDialog from "./components/CabinetMenuDialog";
-import useCabinetMenuPage from "./hooks/useCabinetMenuPage";
-import useCabinetMenuColumns from "./hooks/useCabinetMenuColumns";
+import React from 'react';
+import { Button, Stack } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
+import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
+import LeftSidebarLayout from 'layouts/LeftSidebar';
+import DataTable from 'components/DataTable';
+import CabinetMenuDialog from './components/CabinetMenuDialog';
+import useCabinetMenuPage from './hooks/useCabinetMenuPage';
+import useCabinetMenuColumns from './hooks/useCabinetMenuColumns';
 
 const CabinetMenuToolbar = React.memo(({
   canEdit,
@@ -39,7 +39,7 @@ const CabinetMenuToolbar = React.memo(({
             startIcon={<AddIcon />}
             onClick={onCreate}
           >
-            {t("CreateRoot")}
+            {t('CreateRoot')}
           </Button>
         </>
       ) : null}
@@ -50,7 +50,7 @@ const CabinetMenuToolbar = React.memo(({
         disabled={!selectedCount}
         onClick={onExportSelected}
       >
-        {t("ExportSelected")}
+        {t('ExportSelected')}
       </Button>
       {canEdit ? (
         <Button
@@ -59,7 +59,7 @@ const CabinetMenuToolbar = React.memo(({
           startIcon={<FileUploadOutlinedIcon />}
           onClick={() => importInputRef.current?.click()}
         >
-          {t("ImportFromFile")}
+          {t('ImportFromFile')}
         </Button>
       ) : null}
     </Stack>
@@ -110,11 +110,11 @@ const CabinetMenuPage = () => {
   });
 
   return (
-    <LeftSidebarLayout title={t("Title")} location={location} loading={tableProps.loading}>
+    <LeftSidebarLayout title={t('Title')} location={location} loading={tableProps.loading}>
       <DataTable
         {...tableProps}
         data={flattenedData}
-        title={t("Title")}
+        title={t('Title')}
         darkTheme={true}
         columns={columns}
         checkable={true}
@@ -128,7 +128,7 @@ const CabinetMenuPage = () => {
           customizateColumns: false,
           bottomPagination: false,
           sortableRows: canEdit,
-          rowDragHandleColumnId: "tree",
+          rowDragHandleColumnId: 'tree',
         }}
         getRowSortId={(row) => row.id}
         onRowSortEnd={handleRowSortEnd}

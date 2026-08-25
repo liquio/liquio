@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   Alert,
   Button,
@@ -10,10 +10,10 @@ import {
   Stack,
   TextField,
   Typography,
-} from "@mui/material";
-import { useDispatch } from "react-redux";
-import { useTranslate } from "react-translate";
-import * as api from "services/api";
+} from '@mui/material';
+import { useDispatch } from 'react-redux';
+import { useTranslate } from 'react-translate';
+import * as api from 'services/api';
 
 const normalizeLanguages = (result) => {
   if (Array.isArray(result)) {
@@ -31,13 +31,13 @@ const getLanguageCode = (language) => (
   language?.code ||
   language?.id ||
   language?.localizationLanguageCode ||
-  ""
+  ''
 );
 
 const getPrimitiveText = (value) => (
-  typeof value === "string" || typeof value === "number"
+  typeof value === 'string' || typeof value === 'number'
     ? String(value)
-    : ""
+    : ''
 );
 
 const getLanguageLabel = (language) => (
@@ -53,12 +53,12 @@ const CabinetMenuTranslationsDialog = ({
   onSave,
   value,
 }) => {
-  const t = useTranslate("CabinetMenuPage");
+  const t = useTranslate('CabinetMenuPage');
   const dispatch = useDispatch();
   const [languages, setLanguages] = React.useState([]);
   const [translations, setTranslations] = React.useState({});
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState("");
+  const [error, setError] = React.useState('');
 
   React.useEffect(() => {
     if (!open) {
@@ -66,7 +66,7 @@ const CabinetMenuTranslationsDialog = ({
     }
 
     setTranslations(value || {});
-    setError("");
+    setError('');
   }, [open, value]);
 
   React.useEffect(() => {
@@ -80,14 +80,14 @@ const CabinetMenuTranslationsDialog = ({
       setLoading(true);
 
       try {
-        const result = await api.get("localization-languages", "GET_CABINET_MENU_LANGUAGES", dispatch);
+        const result = await api.get('localization-languages', 'GET_CABINET_MENU_LANGUAGES', dispatch);
         if (isActive) {
           setLanguages(normalizeLanguages(result));
         }
       } catch (loadError) {
         if (isActive) {
           setLanguages([]);
-          setError(loadError?.message || t("TranslationsLoadError"));
+          setError(loadError?.message || t('TranslationsLoadError'));
         }
       } finally {
         if (isActive) {
@@ -120,7 +120,7 @@ const CabinetMenuTranslationsDialog = ({
 
   const handleSave = () => {
     const nextTranslations = Object.entries(translations || {}).reduce((acc, [code, text]) => {
-      if (typeof text === "string" && text.trim()) {
+      if (typeof text === 'string' && text.trim()) {
         acc[code] = text.trim();
       }
 
@@ -133,18 +133,18 @@ const CabinetMenuTranslationsDialog = ({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{t("NameTranslationsTitle")}</DialogTitle>
+      <DialogTitle>{t('NameTranslationsTitle')}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           {error ? <Alert severity="error">{error}</Alert> : null}
           {loading ? (
             <Stack direction="row" spacing={1} alignItems="center">
               <CircularProgress size={20} />
-              <Typography variant="body2">{t("TranslationsLoading")}</Typography>
+              <Typography variant="body2">{t('TranslationsLoading')}</Typography>
             </Stack>
           ) : null}
           {!loading && !sortedLanguages.length ? (
-            <Typography variant="body2">{t("TranslationsEmpty")}</Typography>
+            <Typography variant="body2">{t('TranslationsEmpty')}</Typography>
           ) : null}
           {!loading ? sortedLanguages.map((language) => {
             const code = getLanguageCode(language);
@@ -159,7 +159,7 @@ const CabinetMenuTranslationsDialog = ({
                 fullWidth
                 label={getLanguageLabel(language)}
                 placeholder={code.toUpperCase()}
-                value={translations?.[code] || ""}
+                value={translations?.[code] || ''}
                 onChange={handleChange(code)}
               />
             );
@@ -168,10 +168,10 @@ const CabinetMenuTranslationsDialog = ({
       </DialogContent>
       <DialogActions>
         <Button variant="outlined" onClick={onClose}>
-          {t("Cancel")}
+          {t('Cancel')}
         </Button>
         <Button variant="contained" onClick={handleSave}>
-          {t("Save")}
+          {t('Save')}
         </Button>
       </DialogActions>
     </Dialog>
