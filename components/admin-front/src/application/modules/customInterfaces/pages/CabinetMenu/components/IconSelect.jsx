@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   Box,
   ButtonBase,
@@ -7,14 +7,14 @@ import {
   Popover,
   TextField,
   Typography,
-} from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import AutoSizer from "react-virtualized/dist/commonjs/AutoSizer";
-import VirtualGrid from "react-virtualized/dist/commonjs/Grid";
-import MaterialSymbolIcon from "components/MaterialSymbolIcon";
-import materialSymbolNames from "helpers/materialSymbolNames";
-import muiIcons from "components/muiIcons";
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import AutoSizer from 'react-virtualized/dist/commonjs/AutoSizer';
+import VirtualGrid from 'react-virtualized/dist/commonjs/Grid';
+import MaterialSymbolIcon from 'components/MaterialSymbolIcon';
+import materialSymbolNames from 'helpers/materialSymbolNames';
+import muiIcons from 'components/muiIcons';
 
 const muiIconNames = Object.keys(muiIcons);
 
@@ -23,11 +23,11 @@ export const baseIconOptions = [...muiIconNames, ...materialSymbolNames];
 const isMaterialSymbolName = (value) => materialSymbolNames.includes(value);
 
 const isImageSource = (value) => (
-  typeof value === "string" && (
-    value.startsWith("data:image/") ||
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
-    value.startsWith("/")
+  typeof value === 'string' && (
+    value.startsWith('data:image/') ||
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('/')
   )
 );
 
@@ -38,7 +38,7 @@ const getMuiIconComponent = (iconName) => {
 
   const iconCandidates = [
     iconName,
-    iconName.endsWith("Icon") ? iconName.slice(0, -4) : `${iconName}Icon`,
+    iconName.endsWith('Icon') ? iconName.slice(0, -4) : `${iconName}Icon`,
   ];
 
   return iconCandidates.reduce(
@@ -73,8 +73,8 @@ export const renderIconPreview = (iconName, sx = {}) => {
         sx={{
           width: 20,
           height: 20,
-          objectFit: "contain",
-          display: "block",
+          objectFit: 'contain',
+          display: 'block',
           ...sx,
         }}
       />
@@ -105,13 +105,13 @@ const IconSelect = ({
   onChange,
   disabled = false,
   helperText,
-  searchLabel = "Search",
+  searchLabel = 'Search',
   sx,
 }) => {
   const anchorRef = React.useRef(null);
-  const [hoveredIcon, setHoveredIcon] = React.useState("");
+  const [hoveredIcon, setHoveredIcon] = React.useState('');
   const [open, setOpen] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState("");
+  const [searchValue, setSearchValue] = React.useState('');
   const options = React.useMemo(() => getUniqueOptions(value), [value]);
   const filteredOptions = React.useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
@@ -122,7 +122,7 @@ const IconSelect = ({
 
     return options.filter((option) => option.toLowerCase().includes(normalizedSearch));
   }, [options, searchValue]);
-  const statusIcon = hoveredIcon || value || "";
+  const statusIcon = hoveredIcon || value || '';
   const popoverWidth = anchorRef.current?.clientWidth || 320;
 
   const handleOpen = () => {
@@ -133,8 +133,8 @@ const IconSelect = ({
 
   const handleClose = () => {
     setOpen(false);
-    setHoveredIcon("");
-    setSearchValue("");
+    setHoveredIcon('');
+    setSearchValue('');
   };
 
   const handleChange = (nextValue) => {
@@ -148,12 +148,12 @@ const IconSelect = ({
         fullWidth={true}
         ref={anchorRef}
         label={label}
-        value={value || ""}
+        value={value || ''}
         disabled={disabled}
         helperText={helperText}
         onClick={handleOpen}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
+          if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             handleOpen();
           }
@@ -166,10 +166,10 @@ const IconSelect = ({
                 sx={{
                   width: 22,
                   height: 22,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "text.primary",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'text.primary',
                 }}
               >
                 {renderIconPreview(value)}
@@ -184,7 +184,7 @@ const IconSelect = ({
                   disabled={disabled}
                   onClick={(event) => {
                     event.stopPropagation();
-                    onChange?.("");
+                    onChange?.('');
                   }}
                   edge="end"
                   sx={{ mr: 0.25 }}
@@ -194,26 +194,26 @@ const IconSelect = ({
               ) : null}
               <ArrowDropDownIcon
                 sx={{
-                  color: disabled ? "action.disabled" : "action.active",
-                  transform: open ? "rotate(180deg)" : "none",
-                  transition: "transform 120ms ease",
+                  color: disabled ? 'action.disabled' : 'action.active',
+                  transform: open ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 120ms ease',
                 }}
               />
             </InputAdornment>
           ),
         }}
         inputProps={{
-          role: "button",
-          "aria-haspopup": "listbox",
-          "aria-expanded": open,
+          role: 'button',
+          'aria-haspopup': 'listbox',
+          'aria-expanded': open,
         }}
         sx={{
           ...sx,
-          "& .MuiInputBase-input": {
-            cursor: disabled ? "default" : "pointer",
+          '& .MuiInputBase-input': {
+            cursor: disabled ? 'default' : 'pointer',
           },
-          "& .MuiInputBase-root": {
-            cursor: disabled ? "default" : "pointer",
+          '& .MuiInputBase-root': {
+            cursor: disabled ? 'default' : 'pointer',
           },
         }}
       />
@@ -222,18 +222,18 @@ const IconSelect = ({
         anchorEl={anchorRef.current}
         onClose={handleClose}
         anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "left",
+          vertical: 'bottom',
+          horizontal: 'left',
         }}
         transformOrigin={{
-          vertical: "top",
-          horizontal: "left",
+          vertical: 'top',
+          horizontal: 'left',
         }}
         PaperProps={{
           sx: (theme) => ({
             mt: 0.5,
             width: popoverWidth,
-            overflow: "hidden",
+            overflow: 'hidden',
             bgcolor: theme.palette.grey.A400,
             color: theme.palette.text.primary,
           }),
@@ -244,7 +244,7 @@ const IconSelect = ({
             border: 1,
             borderColor: theme.palette.grey[700],
             borderRadius: 1,
-            overflow: "hidden",
+            overflow: 'hidden',
             bgcolor: theme.palette.grey.A400,
           })}
         >
@@ -264,17 +264,17 @@ const IconSelect = ({
               onChange={(event) => setSearchValue(event.target.value)}
               onClick={(event) => event.stopPropagation()}
               sx={(theme) => ({
-                "& .MuiInputBase-root": {
+                '& .MuiInputBase-root': {
                   color: theme.palette.text.primary,
                   bgcolor: theme.searchInputBg,
                 },
-                "& .MuiOutlinedInput-notchedOutline": {
+                '& .MuiOutlinedInput-notchedOutline': {
                   borderColor: theme.palette.grey[700],
                 },
-                "&:hover .MuiOutlinedInput-notchedOutline": {
+                '&:hover .MuiOutlinedInput-notchedOutline': {
                   borderColor: theme.palette.grey[500],
                 },
-                "& .MuiInputLabel-root": {
+                '& .MuiInputLabel-root': {
                   color: theme.palette.grey[400],
                 },
               })}
@@ -283,10 +283,10 @@ const IconSelect = ({
           <Box
             sx={{
               height: GRID_HEIGHT,
-              overflow: "hidden",
-              "& .ReactVirtualized__Grid": {
-                overflowX: "hidden !important",
-                backgroundColor: "transparent !important",
+              overflow: 'hidden',
+              '& .ReactVirtualized__Grid': {
+                overflowX: 'hidden !important',
+                backgroundColor: 'transparent !important',
               },
             }}
           >
@@ -309,7 +309,7 @@ const IconSelect = ({
                     rowCount={rowCount}
                     rowHeight={CELL_SIZE}
                     overscanRowCount={4}
-                    style={{ overflowX: "hidden" }}
+                    style={{ overflowX: 'hidden' }}
                     cellRenderer={({ columnIndex, key, rowIndex, style }) => {
                       if (columnIndex === iconColumnCount) {
                         return <Box key={key} style={style} />;
@@ -331,26 +331,26 @@ const IconSelect = ({
                             aria-label={option}
                             aria-pressed={selected}
                             onMouseEnter={() => setHoveredIcon(option)}
-                            onMouseLeave={() => setHoveredIcon("")}
+                            onMouseLeave={() => setHoveredIcon('')}
                             onFocus={() => setHoveredIcon(option)}
-                            onBlur={() => setHoveredIcon("")}
+                            onBlur={() => setHoveredIcon('')}
                             onClick={() => handleChange(option)}
                             sx={(theme) => ({
-                              width: "100%",
-                              height: "100%",
+                              width: '100%',
+                              height: '100%',
                               borderRadius: 1,
                               color: selected
                                 ? theme.palette.primary.contrastText
                                 : theme.palette.text.primary,
-                              bgcolor: selected ? theme.palette.primary.main : "transparent",
+                              bgcolor: selected ? theme.palette.primary.main : 'transparent',
                               border: 1,
-                              borderColor: selected ? theme.palette.primary.main : "transparent",
-                              "&:hover": {
+                              borderColor: selected ? theme.palette.primary.main : 'transparent',
+                              '&:hover': {
                                 bgcolor: selected ? theme.palette.primary.main : theme.listHover,
                                 borderColor: selected ? theme.palette.primary.main : theme.borderColor,
                               },
-                              "&.Mui-focusVisible": {
-                                outline: "2px solid",
+                              '&.Mui-focusVisible': {
+                                outline: '2px solid',
                                 outlineColor: theme.palette.primary.main,
                                 outlineOffset: -2,
                               },
@@ -370,8 +370,8 @@ const IconSelect = ({
             sx={(theme) => ({
               height: STATUS_BAR_HEIGHT,
               px: 1.25,
-              display: "flex",
-              alignItems: "center",
+              display: 'flex',
+              alignItems: 'center',
               borderTop: 1,
               borderColor: theme.borderColor,
               bgcolor: theme.palette.grey[800],
@@ -385,10 +385,10 @@ const IconSelect = ({
                 height: 22,
                 mr: 1,
                 flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "text.primary",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'text.primary',
               }}
             >
               {renderIconPreview(statusIcon)}
@@ -399,13 +399,13 @@ const IconSelect = ({
               sx={(theme) => ({
                 flex: 1,
                 color: statusIcon ? theme.palette.text.primary : theme.palette.grey.A200,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
                 minWidth: 0,
               })}
             >
-              {statusIcon || "-"}
+              {statusIcon || '-'}
             </Typography>
           </Box>
         </Box>

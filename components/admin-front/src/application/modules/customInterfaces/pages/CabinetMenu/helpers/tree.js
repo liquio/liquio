@@ -2,7 +2,7 @@ export const getItemRoute = (item) => (
   item?.options?.route ||
   item?.options?.endpoint ||
   item?.options?.path ||
-  ""
+  ''
 );
 
 export const buildTreeMeta = (items = []) => {
@@ -22,7 +22,7 @@ export const buildTreeMeta = (items = []) => {
         return (a?.order ?? 0) - (b?.order ?? 0);
       }
 
-      return String(a?.name || "").localeCompare(String(b?.name || ""));
+      return String(a?.name || '').localeCompare(String(b?.name || ''));
     });
   });
 

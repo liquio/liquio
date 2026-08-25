@@ -1,22 +1,22 @@
-import React from "react";
-import { useDispatch } from "react-redux";
-import { useTranslate } from "react-translate";
-import { useAuth } from "hooks/useAuth";
-import checkAccess from "helpers/checkAccess";
-import useTable from "services/dataTable/useTable";
-import { addMessage } from "actions/error";
-import Message from "components/Snackbars/Message";
-import { sortCabinetMenuItems } from "../helpers/actions";
+import React from 'react';
+import { useDispatch } from 'react-redux';
+import { useTranslate } from 'react-translate';
+import { useAuth } from 'hooks/useAuth';
+import checkAccess from 'helpers/checkAccess';
+import useTable from 'services/dataTable/useTable';
+import { addMessage } from 'actions/error';
+import Message from 'components/Snackbars/Message';
+import { sortCabinetMenuItems } from '../helpers/actions';
 import {
   exportCabinetMenuItems,
   importCabinetMenuItems,
-} from "../helpers/importExport";
-import { buildTreeMeta } from "../helpers/tree";
+} from '../helpers/importExport';
+import { buildTreeMeta } from '../helpers/tree';
 
 const writeAccess = { userHasUnit: [1000002] };
 
 const useCabinetMenuPage = () => {
-  const t = useTranslate("CabinetMenuPage");
+  const t = useTranslate('CabinetMenuPage');
   const dispatch = useDispatch();
   const { info: userInfo, userUnits } = useAuth();
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -25,8 +25,8 @@ const useCabinetMenuPage = () => {
   const [selectedIds, setSelectedIds] = React.useState([]);
 
   const tableProps = useTable({
-    dataURL: "cabinet-menu",
-    sourceName: "cabinet-menu",
+    dataURL: 'cabinet-menu',
+    sourceName: 'cabinet-menu',
     autoLoad: true,
   });
 
@@ -91,12 +91,12 @@ const useCabinetMenuPage = () => {
     const selectedItems = flattenedData.filter((item) => selectedIdSet.has(item.id));
 
     if (!selectedItems.length) {
-      dispatch(addMessage(new Message(t("SelectItemsToExport"), "warning")));
+      dispatch(addMessage(new Message(t('SelectItemsToExport'), 'warning')));
       return;
     }
 
     exportCabinetMenuItems(selectedItems);
-    dispatch(addMessage(new Message(t("ExportSelectedSuccess"), "success")));
+    dispatch(addMessage(new Message(t('ExportSelectedSuccess'), 'success')));
   }, [dispatch, flattenedData, selectedIds, t]);
 
   const handleReload = React.useCallback(() => {
@@ -111,11 +111,11 @@ const useCabinetMenuPage = () => {
     try {
       const importedItems = await importCabinetMenuItems(file, localItems, dispatch);
 
-      dispatch(addMessage(new Message(t("ImportSelectedSuccess", { count: importedItems.length }), "success")));
+      dispatch(addMessage(new Message(t('ImportSelectedSuccess', { count: importedItems.length }), 'success')));
       setSelectedIds([]);
       handleReload();
     } catch (error) {
-      dispatch(addMessage(new Message(t(error?.message === "InvalidFile" ? "ImportInvalidFile" : "ImportSelectedError"), "error")));
+      dispatch(addMessage(new Message(t(error?.message === 'InvalidFile' ? 'ImportInvalidFile' : 'ImportSelectedError'), 'error')));
     }
   }, [dispatch, handleReload, localItems, t]);
 
@@ -124,7 +124,7 @@ const useCabinetMenuPage = () => {
       return;
     }
 
-    if (action.type === "create") {
+    if (action.type === 'create') {
       setLocalItems((prev) => {
         const updatesById = new Map(
           (action.reorderedItems || []).map((item) => [item.id, item]),
@@ -148,7 +148,7 @@ const useCabinetMenuPage = () => {
       return;
     }
 
-    if (action.type === "update") {
+    if (action.type === 'update') {
       if (!action.item?.id) {
         return;
       }
@@ -159,7 +159,7 @@ const useCabinetMenuPage = () => {
       return;
     }
 
-    if (action.type === "delete") {
+    if (action.type === 'delete') {
       if (!action.id) {
         return;
       }
@@ -208,7 +208,7 @@ const useCabinetMenuPage = () => {
           return (a.order ?? 0) - (b.order ?? 0);
         }
 
-        return String(a.name || "").localeCompare(String(b.name || ""));
+        return String(a.name || '').localeCompare(String(b.name || ''));
       });
 
     const sourceSiblings = sortSiblings(
@@ -271,7 +271,7 @@ const useCabinetMenuPage = () => {
       })), dispatch);
     } catch (error) {
       setLocalItems(items);
-      dispatch(addMessage(new Message(error?.message || t("ReorderError"), "error")));
+      dispatch(addMessage(new Message(error?.message || t('ReorderError'), 'error')));
       handleReload();
     }
   }, [dispatch, handleReload, items, localItems, t]);

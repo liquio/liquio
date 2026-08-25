@@ -1,6 +1,6 @@
-import downloadFile from "helpers/downloadFile";
-import { readFileAsync } from "helpers/parseFile";
-import { createCabinetMenuItem } from "./actions";
+import downloadFile from 'helpers/downloadFile';
+import { readFileAsync } from 'helpers/parseFile';
+import { createCabinetMenuItem } from './actions';
 
 const EXPORT_VERSION = 1;
 
@@ -28,7 +28,7 @@ export const exportCabinetMenuItems = (items) => {
     getExportFilename(),
     JSON.stringify({
       version: EXPORT_VERSION,
-      type: "cabinet-menu-items",
+      type: 'cabinet-menu-items',
       exportedAt: new Date().toISOString(),
       items: (items || []).map(stripRuntimeFields),
     }, null, 2),
@@ -79,10 +79,10 @@ const getNextImportItem = (remainingItems, importedIdMap, exportedIds) => {
 export const importCabinetMenuItems = async (file, existingItems, dispatch) => {
   const parsed = await readFileAsync(file);
   const importedItems = normalizeImportedItems(parsed)
-    .filter((item) => item && typeof item === "object");
+    .filter((item) => item && typeof item === 'object');
 
   if (parsed instanceof Error || importedItems.length === 0) {
-    throw new Error("InvalidFile");
+    throw new Error('InvalidFile');
   }
 
   const existingIds = new Set((existingItems || []).map((item) => item.id));

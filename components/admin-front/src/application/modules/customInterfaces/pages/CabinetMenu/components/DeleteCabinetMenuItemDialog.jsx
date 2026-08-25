@@ -1,8 +1,8 @@
-import React from "react";
-import { useDispatch } from "react-redux";
-import { useTranslate } from "react-translate";
-import ConfirmDialog from "components/ConfirmDialog";
-import { deleteCabinetMenuItem } from "../helpers/actions";
+import React from 'react';
+import { useDispatch } from 'react-redux';
+import { useTranslate } from 'react-translate';
+import ConfirmDialog from 'components/ConfirmDialog';
+import { deleteCabinetMenuItem } from '../helpers/actions';
 
 const DeleteCabinetMenuItemDialog = ({
   open,
@@ -10,7 +10,7 @@ const DeleteCabinetMenuItemDialog = ({
   onAction,
   value,
 }) => {
-  const t = useTranslate("CabinetMenuPage");
+  const t = useTranslate('CabinetMenuPage');
   const dispatch = useDispatch();
 
   const handleDelete = async () => {
@@ -21,7 +21,7 @@ const DeleteCabinetMenuItemDialog = ({
 
     await deleteCabinetMenuItem(value, dispatch);
     onAction?.({
-      type: "delete",
+      type: 'delete',
       id: value?.id,
     });
     onClose?.();
@@ -30,8 +30,8 @@ const DeleteCabinetMenuItemDialog = ({
   return (
     <ConfirmDialog
       open={open}
-      title={t("DeletePrompt")}
-      description={t("DeletePromptDescription", { name: value?.name || "-" })}
+      title={t('DeletePrompt')}
+      description={t('DeletePromptDescription', { name: value?.name || '-' })}
       handleClose={onClose}
       handleConfirm={handleDelete}
       darkTheme={true}

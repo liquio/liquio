@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   Box,
   Divider,
@@ -6,20 +6,20 @@ import {
   Menu,
   MenuItem,
   Tooltip,
-} from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/DeleteOutline";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
-import ToggleOffOutlinedIcon from "@mui/icons-material/ToggleOffOutlined";
-import ToggleOnOutlinedIcon from "@mui/icons-material/ToggleOnOutlined";
-import { useDispatch } from "react-redux";
-import { useTranslate } from "react-translate";
-import CabinetMenuDialog from "./CabinetMenuDialog";
-import DeleteCabinetMenuItemDialog from "./DeleteCabinetMenuItemDialog";
-import CabinetMenuAccessDialog from "./CabinetMenuAccessDialog";
-import { updateCabinetMenuItem } from "../helpers/actions";
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/DeleteOutline';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined';
+import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined';
+import { useDispatch } from 'react-redux';
+import { useTranslate } from 'react-translate';
+import CabinetMenuDialog from './CabinetMenuDialog';
+import DeleteCabinetMenuItemDialog from './DeleteCabinetMenuItemDialog';
+import CabinetMenuAccessDialog from './CabinetMenuAccessDialog';
+import { updateCabinetMenuItem } from '../helpers/actions';
 
 const CabinetMenuActions = ({
   item,
@@ -27,7 +27,7 @@ const CabinetMenuActions = ({
   readOnly,
   onAction,
 }) => {
-  const t = useTranslate("CabinetMenuPage");
+  const t = useTranslate('CabinetMenuPage');
   const dispatch = useDispatch();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [modal, setModal] = React.useState(null);
@@ -54,7 +54,7 @@ const CabinetMenuActions = ({
       }, dispatch);
 
       onAction?.({
-        type: "update",
+        type: 'update',
         item: savedItem,
       });
     } finally {
@@ -66,19 +66,19 @@ const CabinetMenuActions = ({
     <>
       <Box
         sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          flexWrap: "nowrap",
-          width: "100%",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          flexWrap: 'nowrap',
+          width: '100%',
         }}
       >
         {canCreateChild ? (
-          <Tooltip title={t("AddChild")}>
+          <Tooltip title={t('AddChild')}>
             <IconButton
               onClick={(event) => {
                 event.stopPropagation();
-                setModal("create-child");
+                setModal('create-child');
               }}
               size="large"
             >
@@ -86,11 +86,11 @@ const CabinetMenuActions = ({
             </IconButton>
           </Tooltip>
         ) : null}
-        {isSystem ? null : <Tooltip title={t("EditAccess")}>
+        {isSystem ? null : <Tooltip title={t('EditAccess')}>
           <IconButton
             onClick={(event) => {
               event.stopPropagation();
-              setModal("access");
+              setModal('access');
             }}
             size="large"
           >
@@ -114,12 +114,12 @@ const CabinetMenuActions = ({
       >
         <MenuItem
           onClick={() => {
-            setModal("edit");
+            setModal('edit');
             setAnchorEl(null);
           }}
         >
           <EditIcon sx={{ mr: 1.5 }} />
-          {t("Edit")}
+          {t('Edit')}
         </MenuItem>
         <Divider />
         <MenuItem
@@ -135,7 +135,7 @@ const CabinetMenuActions = ({
           ) : (
             <ToggleOffOutlinedIcon sx={{ mr: 1.5 }} />
           )}
-          {t(item?.enabled ? "Disable" : "Enable")}
+          {t(item?.enabled ? 'Disable' : 'Enable')}
         </MenuItem>
         <Divider />
         <MenuItem
@@ -144,25 +144,25 @@ const CabinetMenuActions = ({
               return;
             }
 
-            setModal("delete");
+            setModal('delete');
             setAnchorEl(null);
           }}
-          sx={{ color: "error.main" }}
+          sx={{ color: 'error.main' }}
           disabled={isSystem}
         >
           <DeleteIcon sx={{ mr: 1.5 }} color="error" />
-          {t("Delete")}
+          {t('Delete')}
         </MenuItem>
       </Menu>
       <CabinetMenuDialog
-        open={modal === "edit"}
+        open={modal === 'edit'}
         onClose={() => setModal(null)}
         onAction={onAction}
         value={item}
         items={items}
       />
       <CabinetMenuDialog
-        open={modal === "create-child"}
+        open={modal === 'create-child'}
         onClose={() => setModal(null)}
         onAction={onAction}
         value={null}
@@ -170,13 +170,13 @@ const CabinetMenuActions = ({
         parentId={item?.id}
       />
       <DeleteCabinetMenuItemDialog
-        open={modal === "delete"}
+        open={modal === 'delete'}
         onClose={() => setModal(null)}
         onAction={onAction}
         value={item}
       />
       <CabinetMenuAccessDialog
-        open={modal === "access"}
+        open={modal === 'access'}
         onClose={() => setModal(null)}
         onAction={onAction}
         value={item}

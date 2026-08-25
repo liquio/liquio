@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   Autocomplete,
   Box,
@@ -17,27 +17,27 @@ import {
   TextField,
   Tooltip,
   Typography,
-} from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/DeleteOutline";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { useDispatch } from "react-redux";
-import { useTranslate } from "react-translate";
-import Editor from "components/Editor";
-import * as api from "services/api";
-import { updateCabinetMenuItem } from "../helpers/actions";
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/DeleteOutline';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { useDispatch } from 'react-redux';
+import { useTranslate } from 'react-translate';
+import Editor from 'components/Editor';
+import * as api from 'services/api';
+import { updateCabinetMenuItem } from '../helpers/actions';
 
-const UNIT_ACCESS_KEYS = ["userHasUnit", "userHasUnitNotHead", "isUserUnitHead"];
+const UNIT_ACCESS_KEYS = ['userHasUnit', 'userHasUnitNotHead', 'isUserUnitHead'];
 const UNIT_ACCESS_OPTIONS = [
-  { key: "userHasUnit", labelKey: "AccessUnitRuleAllUsers" },
-  { key: "userHasUnitNotHead", labelKey: "AccessUnitRuleMembersOnly" },
-  { key: "isUserUnitHead", labelKey: "AccessUnitRuleHeadsOnly" },
+  { key: 'userHasUnit', labelKey: 'AccessUnitRuleAllUsers' },
+  { key: 'userHasUnitNotHead', labelKey: 'AccessUnitRuleMembersOnly' },
+  { key: 'isUserUnitHead', labelKey: 'AccessUnitRuleHeadsOnly' },
 ];
 
 const RULES = [
-  { key: "unitAccess", type: "unitAccess" },
-  { key: "userDoesNotHaveUnit", type: "unitList" },
-  { key: "custom", type: "custom" },
+  { key: 'unitAccess', type: 'unitAccess' },
+  { key: 'userDoesNotHaveUnit', type: 'unitList' },
+  { key: 'custom', type: 'custom' },
 ];
 
 const CUSTOM_RULE_DEFAULT_VALUE = `(userInfo, userUnits) => {
@@ -45,18 +45,18 @@ const CUSTOM_RULE_DEFAULT_VALUE = `(userInfo, userUnits) => {
 }`;
 
 const getRuleDefaultValue = (rule) => {
-  if (rule?.type === "custom") {
+  if (rule?.type === 'custom') {
     return CUSTOM_RULE_DEFAULT_VALUE;
   }
 
-  if (rule?.type === "unitAccess") {
+  if (rule?.type === 'unitAccess') {
     return {
       key: UNIT_ACCESS_KEYS[0],
       units: [],
     };
   }
 
-  return "";
+  return '';
 };
 
 const normalizeUnitList = (value) => {
@@ -66,7 +66,7 @@ const normalizeUnitList = (value) => {
       .filter((item) => !Number.isNaN(item));
   }
 
-  if (value === null || value === undefined || value === "") {
+  if (value === null || value === undefined || value === '') {
     return [];
   }
 
@@ -101,14 +101,14 @@ const getInitialState = (value) => {
       const stringValue = rawValue || getRuleDefaultValue(rule);
 
       acc[rule.key] = {
-        enabled: rule.type === "unitAccess"
+        enabled: rule.type === 'unitAccess'
           ? Boolean(unitAccessKey)
           : Object.prototype.hasOwnProperty.call(access, rule.key),
-        value: rule.type === "unitAccess" ? {
+        value: rule.type === 'unitAccess' ? {
           key: unitAccessKey || UNIT_ACCESS_KEYS[0],
           units: normalizeUnitList(access[unitAccessKey]),
         } : (
-          rule.type === "unitList" ? normalizeUnitList(rawValue) : stringValue
+          rule.type === 'unitList' ? normalizeUnitList(rawValue) : stringValue
         ),
       };
 
@@ -127,7 +127,7 @@ const buildAccessPayload = (form) => {
       return;
     }
 
-    if (rule.type === "unitAccess") {
+    if (rule.type === 'unitAccess') {
       const unitAccessKey = UNIT_ACCESS_KEYS.includes(ruleState.value?.key)
         ? ruleState.value.key
         : UNIT_ACCESS_KEYS[0];
@@ -136,12 +136,12 @@ const buildAccessPayload = (form) => {
       return;
     }
 
-    if (rule.type === "unitList") {
+    if (rule.type === 'unitList') {
       nextAccess[rule.key] = ruleState.value || [];
       return;
     }
 
-    nextAccess[rule.key] = String(ruleState.value || "").trim();
+    nextAccess[rule.key] = String(ruleState.value || '').trim();
   });
 
   return nextAccess;
@@ -153,7 +153,7 @@ const CabinetMenuAccessDialog = ({
   onAction,
   value,
 }) => {
-  const t = useTranslate("CabinetMenuPage");
+  const t = useTranslate('CabinetMenuPage');
   const dispatch = useDispatch();
   const [form, setForm] = React.useState(getInitialState(value));
   const [unitOptions, setUnitOptions] = React.useState([]);
@@ -178,7 +178,7 @@ const CabinetMenuAccessDialog = ({
 
     const loadUnits = async () => {
       try {
-        const result = await api.get("units/all", "REQUEST_ALL_UNITS_FOR_MENU_ACCESS", dispatch);
+        const result = await api.get('units/all', 'REQUEST_ALL_UNITS_FOR_MENU_ACCESS', dispatch);
         const nextOptions = Array.isArray(result)
           ? result
           : Array.isArray(result?.data)
@@ -236,7 +236,7 @@ const CabinetMenuAccessDialog = ({
   };
 
   const handleRuleValueChange = (key) => (event) => {
-    const nextValue = event?.target?.type === "checkbox"
+    const nextValue = event?.target?.type === 'checkbox'
       ? event.target.checked
       : event.target.value;
 
@@ -254,7 +254,7 @@ const CabinetMenuAccessDialog = ({
 
   const getSelectedRuleUnits = React.useCallback((ruleKey) => {
     const rule = RULES.find((item) => item.key === ruleKey);
-    const selectedIds = rule?.type === "unitAccess"
+    const selectedIds = rule?.type === 'unitAccess'
       ? (form.rules[ruleKey]?.value?.units || [])
       : (form.rules[ruleKey]?.value || []);
     const mergedOptions = mergeUnitOptions(unitOptions, selectedIds);
@@ -277,7 +277,7 @@ const CabinetMenuAccessDialog = ({
     }, dispatch);
 
     onAction?.({
-      type: "update",
+      type: 'update',
       item: savedItem,
     });
     onClose?.();
@@ -288,14 +288,14 @@ const CabinetMenuAccessDialog = ({
       <DialogTitle
         component="div"
         sx={{
-          alignItems: "center",
-          display: "flex",
+          alignItems: 'center',
+          display: 'flex',
           gap: 2,
-          justifyContent: "space-between",
+          justifyContent: 'space-between',
         }}
       >
         <Box component="span">
-          {t("AccessBuilderTitle", { name: value?.name || "-" })}
+          {t('AccessBuilderTitle', { name: value?.name || '-' })}
         </Box>
         <Button
           variant="outlined"
@@ -305,7 +305,7 @@ const CabinetMenuAccessDialog = ({
           disabled={isSystem || availableRules.length === 0}
           onClick={(event) => setAddRuleAnchorEl(event.currentTarget)}
         >
-          {t("AddRule")}
+          {t('AddRule')}
         </Button>
       </DialogTitle>
       <Menu
@@ -325,16 +325,16 @@ const CabinetMenuAccessDialog = ({
             <Box
               sx={{
                 border: 1,
-                borderColor: "divider",
+                borderColor: 'divider',
                 borderRadius: 1,
-                color: "text.secondary",
+                color: 'text.secondary',
                 px: 2,
                 py: 3,
-                textAlign: "center",
+                textAlign: 'center',
               }}
             >
               <Typography variant="body2">
-                {t("AccessRulesEmpty")}
+                {t('AccessRulesEmpty')}
               </Typography>
             </Box>
           ) : null}
@@ -346,10 +346,10 @@ const CabinetMenuAccessDialog = ({
                 <Box
                   sx={{
                     border: 1,
-                    borderColor: "divider",
+                    borderColor: 'divider',
                     borderRadius: 1,
                     p: 2,
-                    position: "relative",
+                    position: 'relative',
                   }}
                 >
                   {ruleIndex > 0 ? (
@@ -360,12 +360,12 @@ const CabinetMenuAccessDialog = ({
                         left: 24,
                         lineHeight: 1,
                         px: 0.5,
-                        position: "absolute",
+                        position: 'absolute',
                         top: 0,
-                        transform: "translateY(-50%)",
+                        transform: 'translateY(-50%)',
                       }}
                     >
-                      {t("AccessRulesOr")}
+                      {t('AccessRulesOr')}
                     </Typography>
                   ) : null}
                   <Stack spacing={1}>
@@ -378,7 +378,7 @@ const CabinetMenuAccessDialog = ({
                       <Typography variant="subtitle2">
                         {getRuleLabel(rule.key)}
                       </Typography>
-                      <Tooltip title={t("Delete")}>
+                      <Tooltip title={t('Delete')}>
                         <span>
                           <IconButton
                             size="small"
@@ -391,7 +391,7 @@ const CabinetMenuAccessDialog = ({
                       </Tooltip>
                     </Stack>
                     {ruleState.enabled ? (
-                      rule.type === "unitAccess" ? (
+                      rule.type === 'unitAccess' ? (
                         <Stack spacing={1.5}>
                           <RadioGroup
                             row
@@ -443,7 +443,7 @@ const CabinetMenuAccessDialog = ({
                                 },
                               }));
                             }}
-                            getOptionLabel={(option) => option?.name || String(option?.id || "")}
+                            getOptionLabel={(option) => option?.name || String(option?.id || '')}
                             isOptionEqualToValue={(option, selectedValue) =>
                               option?.id === selectedValue?.id
                             }
@@ -451,13 +451,13 @@ const CabinetMenuAccessDialog = ({
                               <TextField
                                 {...params}
                                 fullWidth
-                                label={t("AccessUnits")}
-                                helperText={t("AccessUnitsHelper")}
+                                label={t('AccessUnits')}
+                                helperText={t('AccessUnitsHelper')}
                               />
                             )}
                           />
                         </Stack>
-                      ) : rule.type === "unitList" ? (
+                      ) : rule.type === 'unitList' ? (
                         <Autocomplete
                           multiple
                           disabled={isSystem}
@@ -476,7 +476,7 @@ const CabinetMenuAccessDialog = ({
                               },
                             }));
                           }}
-                          getOptionLabel={(option) => option?.name || String(option?.id || "")}
+                          getOptionLabel={(option) => option?.name || String(option?.id || '')}
                           isOptionEqualToValue={(option, selectedValue) =>
                             option?.id === selectedValue?.id
                           }
@@ -484,19 +484,19 @@ const CabinetMenuAccessDialog = ({
                             <TextField
                               {...params}
                               fullWidth
-                              label={t("AccessUnits")}
-                              helperText={t("AccessUnitsHelper")}
+                              label={t('AccessUnits')}
+                              helperText={t('AccessUnitsHelper')}
                             />
                           )}
                         />
-                      ) : rule.type === "custom" ? (
+                      ) : rule.type === 'custom' ? (
                         <Box
                           sx={{
                             border: 1,
-                            borderColor: "divider",
+                            borderColor: 'divider',
                             borderRadius: 1,
                             height: 240,
-                            overflow: "hidden",
+                            overflow: 'hidden',
                           }}
                         >
                           <Editor
@@ -528,10 +528,10 @@ const CabinetMenuAccessDialog = ({
       </DialogContent>
       <DialogActions>
         <Button variant="outlined" onClick={onClose}>
-          {t("Cancel")}
+          {t('Cancel')}
         </Button>
         <Button variant="contained" onClick={handleSubmit} disabled={isSystem}>
-          {t("Save")}
+          {t('Save')}
         </Button>
       </DialogActions>
     </Dialog>

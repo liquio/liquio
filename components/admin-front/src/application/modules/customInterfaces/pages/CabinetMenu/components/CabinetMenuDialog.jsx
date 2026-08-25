@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   Alert,
   Autocomplete,
@@ -13,27 +13,27 @@ import {
   Stack,
   TextField,
   Tooltip,
-} from "@mui/material";
-import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
-import TranslateIcon from "@mui/icons-material/Translate";
-import { useDispatch } from "react-redux";
-import { useTranslate } from "react-translate";
+} from '@mui/material';
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import TranslateIcon from '@mui/icons-material/Translate';
+import { useDispatch } from 'react-redux';
+import { useTranslate } from 'react-translate';
 import {
   getCurrentLanguageCode,
   getTranslationCandidates,
-} from "helpers/localization";
-import * as api from "services/api";
+} from 'helpers/localization';
+import * as api from 'services/api';
 import {
   createCabinetMenuItem,
   sortCabinetMenuItems,
   updateCabinetMenuItem,
-} from "../helpers/actions";
-import CabinetMenuTranslationsDialog from "./CabinetMenuTranslationsDialog";
-import IconSelect, { isSupportedIconName } from "./IconSelect";
+} from '../helpers/actions';
+import CabinetMenuTranslationsDialog from './CabinetMenuTranslationsDialog';
+import IconSelect, { isSupportedIconName } from './IconSelect';
 
 const stringifyObject = (value) => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return "{}";
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return '{}';
   }
 
   return JSON.stringify(value, null, 2);
@@ -45,7 +45,7 @@ const parseJsonObject = (value, label) => {
   }
 
   const parsed = JSON.parse(value);
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error(label);
   }
 
@@ -55,15 +55,15 @@ const parseJsonObject = (value, label) => {
 const getLocalizedName = (value, languageCode) => {
   const translations = value?.translations;
 
-  if (translations && typeof translations === "object" && !Array.isArray(translations)) {
+  if (translations && typeof translations === 'object' && !Array.isArray(translations)) {
     for (const candidate of getTranslationCandidates(languageCode)) {
-      if (typeof translations[candidate] === "string" && translations[candidate].trim()) {
+      if (typeof translations[candidate] === 'string' && translations[candidate].trim()) {
         return translations[candidate];
       }
     }
   }
 
-  return value?.name || "";
+  return value?.name || '';
 };
 
 const updateCurrentLocaleTranslation = (translationsValue, languageCode, name, errorLabel) => {
@@ -88,24 +88,24 @@ const SystemItemIcon = ({ title }) => (
   <Tooltip title={title}>
     <AdminPanelSettingsOutlinedIcon
       fontSize="small"
-      sx={{ color: "text.secondary", flexShrink: 0 }}
+      sx={{ color: 'text.secondary', flexShrink: 0 }}
     />
   </Tooltip>
 );
 
-const isRouteType = (type) => type === "link" || type === "button";
+const isRouteType = (type) => type === 'link' || type === 'button';
 const CUSTOM_INTERFACES_PAGE_SIZE = 100;
 
 const getInitialState = (value, parentId, languageCode) => ({
   id: value?.id || null,
-  parentId: parentId !== undefined ? parentId : (value?.parentId || ""),
+  parentId: parentId !== undefined ? parentId : (value?.parentId || ''),
   order: value?.order ?? 0,
   name: getLocalizedName(value, languageCode),
-  description: value?.description || "",
-  icon: value?.icon || "",
-  route: value?.options?.route || value?.options?.endpoint || value?.options?.path || "",
-  customInterfaceId: value?.options?.customInterfaceId || "",
-  type: value?.type || "customInterface",
+  description: value?.description || '',
+  icon: value?.icon || '',
+  route: value?.options?.route || value?.options?.endpoint || value?.options?.path || '',
+  customInterfaceId: value?.options?.customInterfaceId || '',
+  type: value?.type || 'customInterface',
   enabled: value?.enabled ?? true,
   translations: stringifyObject(value?.translations),
   options: stringifyObject(value?.options),
@@ -128,7 +128,7 @@ const normalizeCustomInterfacesResponse = (result) => ({
 const loadAllCustomInterfaces = async (dispatch) => {
   const firstResult = await api.get(
     getCustomInterfacesPageUrl(1),
-    "GET_CUSTOM_INTERFACES_FOR_MENU",
+    'GET_CUSTOM_INTERFACES_FOR_MENU',
     dispatch,
   );
   const firstPage = normalizeCustomInterfacesResponse(firstResult);
@@ -142,7 +142,7 @@ const loadAllCustomInterfaces = async (dispatch) => {
     Array.from({ length: lastPage - 1 }, (item, index) => (
       api.get(
         getCustomInterfacesPageUrl(index + 2),
-        "GET_CUSTOM_INTERFACES_FOR_MENU",
+        'GET_CUSTOM_INTERFACES_FOR_MENU',
         dispatch,
       )
     )),
@@ -162,11 +162,11 @@ const CabinetMenuDialog = ({
   items,
   parentId,
 }) => {
-  const t = useTranslate("CabinetMenuPage");
+  const t = useTranslate('CabinetMenuPage');
   const dispatch = useDispatch();
   const currentLanguageCode = React.useMemo(() => getCurrentLanguageCode(), []);
   const [form, setForm] = React.useState(getInitialState(value, parentId, currentLanguageCode));
-  const [error, setError] = React.useState("");
+  const [error, setError] = React.useState('');
   const [customInterfaceOptions, setCustomInterfaceOptions] = React.useState([]);
   const [customInterfacesLoading, setCustomInterfacesLoading] = React.useState(false);
   const [translationsOpen, setTranslationsOpen] = React.useState(false);
@@ -176,7 +176,7 @@ const CabinetMenuDialog = ({
   React.useEffect(() => {
     if (open) {
       setForm(getInitialState(value, parentId, currentLanguageCode));
-      setError("");
+      setError('');
     }
   }, [open, value, parentId, currentLanguageCode]);
 
@@ -229,16 +229,16 @@ const CabinetMenuDialog = ({
   const isValid = isRouteType(form.type) || Boolean(form.customInterfaceId);
 
   const handleChange = (field) => (event) => {
-    const nextValue = event?.target?.type === "checkbox"
+    const nextValue = event?.target?.type === 'checkbox'
       ? event.target.checked
       : event?.target?.value;
 
-    if (field === "type") {
+    if (field === 'type') {
       setForm((prev) => ({
         ...prev,
         type: nextValue,
-        route: isRouteType(nextValue) ? prev.route : "",
-        customInterfaceId: nextValue === "customInterface" ? prev.customInterfaceId : "",
+        route: isRouteType(nextValue) ? prev.route : '',
+        customInterfaceId: nextValue === 'customInterface' ? prev.customInterfaceId : '',
       }));
       return;
     }
@@ -247,14 +247,14 @@ const CabinetMenuDialog = ({
   };
 
   const handleNameChange = (event) => {
-    const nextValue = event?.target?.value || "";
+    const nextValue = event?.target?.value || '';
 
     setForm((prev) => {
       const translations = updateCurrentLocaleTranslation(
         prev.translations,
         currentLanguageCode,
         nextValue,
-        t("TranslationsJsonError"),
+        t('TranslationsJsonError'),
       );
 
       return {
@@ -266,18 +266,18 @@ const CabinetMenuDialog = ({
   };
 
   const handleSubmit = async () => {
-    setError("");
+    setError('');
 
     try {
-      const options = parseJsonObject(form.options, t("OptionsJsonError"));
-      parseJsonObject(form.translations, t("TranslationsJsonError"));
-      const parsedAccess = parseJsonObject(form.access, t("AccessJsonError"));
+      const options = parseJsonObject(form.options, t('OptionsJsonError'));
+      parseJsonObject(form.translations, t('TranslationsJsonError'));
+      const parsedAccess = parseJsonObject(form.access, t('AccessJsonError'));
       const type = isSystem ? (value?.type || form.type) : form.type.trim();
       const route = isSystem
-        ? (value?.options?.route || value?.options?.endpoint || value?.options?.path || "")
+        ? (value?.options?.route || value?.options?.endpoint || value?.options?.path || '')
         : form.route.trim();
       const customInterfaceId = isSystem
-        ? (value?.options?.customInterfaceId || "")
+        ? (value?.options?.customInterfaceId || '')
         : form.customInterfaceId;
       const customInterface = customInterfaceOptions.find((item) => item.id === customInterfaceId) || null;
 
@@ -285,7 +285,7 @@ const CabinetMenuDialog = ({
         form.translations,
         currentLanguageCode,
         form.name,
-        t("TranslationsJsonError"),
+        t('TranslationsJsonError'),
       );
 
       const payload = {
@@ -305,7 +305,7 @@ const CabinetMenuDialog = ({
             }
             : {
               customInterfaceId: customInterfaceId || null,
-              route: customInterface?.route || "",
+              route: customInterface?.route || '',
             }),
         },
         access: isSystem ? (value?.access || {}) : parsedAccess,
@@ -322,7 +322,7 @@ const CabinetMenuDialog = ({
       if (isEdit) {
         const savedItem = await updateCabinetMenuItem(payload, dispatch);
         onAction?.({
-          type: "update",
+          type: 'update',
           item: savedItem,
         });
       } else {
@@ -336,7 +336,7 @@ const CabinetMenuDialog = ({
               return (a?.order ?? 0) - (b?.order ?? 0);
             }
 
-            return String(a?.name || "").localeCompare(String(b?.name || ""));
+            return String(a?.name || '').localeCompare(String(b?.name || ''));
           });
 
         const reorderedItems = [createdItem, ...siblingItems]
@@ -359,56 +359,56 @@ const CabinetMenuDialog = ({
         );
 
         onAction?.({
-          type: "create",
+          type: 'create',
           item: reorderedItems[0],
           reorderedItems,
         });
       }
       onClose?.();
     } catch (submitError) {
-      setError(submitError?.message || t("SaveError"));
+      setError(submitError?.message || t('SaveError'));
     }
   };
 
   const parsedTranslations = React.useMemo(() => {
     try {
-      return parseJsonObject(form.translations, t("TranslationsJsonError"));
+      return parseJsonObject(form.translations, t('TranslationsJsonError'));
     } catch {
       return {};
     }
   }, [form.translations, t]);
 
-  const dialogTitleName = form.name || value?.name || "-";
+  const dialogTitleName = form.name || value?.name || '-';
 
   return (
     <>
       <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
         <DialogTitle>
-          {isEdit ? t("EditItemTitle", { name: dialogTitleName }) : t("CreateItemTitle")}
+          {isEdit ? t('EditItemTitle', { name: dialogTitleName }) : t('CreateItemTitle')}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             {error ? <Alert severity="error">{error}</Alert> : null}
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 select={true}
-                sx={{ width: { xs: "100%", md: 240 }, flexShrink: 0 }}
-                label={t("Type")}
+                sx={{ width: { xs: '100%', md: 240 }, flexShrink: 0 }}
+                label={t('Type')}
                 value={form.type}
-                onChange={handleChange("type")}
+                onChange={handleChange('type')}
                 disabled={isSystem}
               >
-                <MenuItem value="customInterface">{t("CustomInterfaceType")}</MenuItem>
-                <MenuItem value="link">{t("LinkType")}</MenuItem>
-                <MenuItem value="button">{t("ButtonType")}</MenuItem>
+                <MenuItem value="customInterface">{t('CustomInterfaceType')}</MenuItem>
+                <MenuItem value="link">{t('LinkType')}</MenuItem>
+                <MenuItem value="button">{t('ButtonType')}</MenuItem>
               </TextField>
               {isRouteType(form.type) ? (
                 <TextField
                   fullWidth={true}
                   sx={{ flex: 1 }}
-                  label={t("Route")}
+                  label={t('Route')}
                   value={form.route}
-                  onChange={handleChange("route")}
+                  onChange={handleChange('route')}
                   disabled={isSystem}
                 />
               ) : (
@@ -421,20 +421,20 @@ const CabinetMenuDialog = ({
                   onChange={(event, nextValue) => {
                     setForm((prev) => ({
                       ...prev,
-                      customInterfaceId: nextValue?.id || "",
+                      customInterfaceId: nextValue?.id || '',
                       name: nextValue?.name || prev.name,
                       translations: nextValue?.name
                         ? stringifyObject(updateCurrentLocaleTranslation(
                           prev.translations,
                           currentLanguageCode,
                           nextValue.name,
-                          t("TranslationsJsonError"),
+                          t('TranslationsJsonError'),
                         ))
                         : prev.translations,
                     }));
                   }}
                   loading={customInterfacesLoading}
-                  getOptionLabel={(option) => option?.name || option?.route || ""}
+                  getOptionLabel={(option) => option?.name || option?.route || ''}
                   isOptionEqualToValue={(option, selectedValue) =>
                     option?.id === selectedValue?.id
                   }
@@ -442,18 +442,18 @@ const CabinetMenuDialog = ({
                     <TextField
                       {...params}
                       fullWidth
-                      label={t("CustomInterface")}
+                      label={t('CustomInterface')}
                     />
                   )}
                 />
               )}
             </Stack>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <IconSelect
-                sx={{ width: { xs: "100%", md: 240 }, flexShrink: 0 }}
-                label={t("Icon")}
-                searchLabel={t("IconSearch")}
-                value={isSupportedIconName(form.icon) ? form.icon : ""}
+                sx={{ width: { xs: '100%', md: 240 }, flexShrink: 0 }}
+                label={t('Icon')}
+                searchLabel={t('IconSearch')}
+                value={isSupportedIconName(form.icon) ? form.icon : ''}
                 onChange={(nextValue) => {
                   setForm((prev) => ({
                     ...prev,
@@ -464,7 +464,7 @@ const CabinetMenuDialog = ({
               <TextField
                 fullWidth={true}
                 sx={{ flex: 1 }}
-                label={t("MenuName")}
+                label={t('MenuName')}
                 value={form.name}
                 onChange={handleNameChange}
                 InputProps={{
@@ -480,24 +480,24 @@ const CabinetMenuDialog = ({
                 }}
               />
             </Stack>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 select={true}
                 fullWidth={true}
-                label={t("Parent")}
+                label={t('Parent')}
                 value={form.parentId}
-                onChange={handleChange("parentId")}
+                onChange={handleChange('parentId')}
               >
                 <MenuItem value="">
-                  {t("RootItem")}
+                  {t('RootItem')}
                 </MenuItem>
                 {parentOptions.map((item) => (
                   <MenuItem key={item.id} value={item.id}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-                      <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                      <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {item.name || item.id}
                       </Box>
-                      {item.options?.system ? <SystemItemIcon title={t("SystemItem")} /> : null}
+                      {item.options?.system ? <SystemItemIcon title={t('SystemItem')} /> : null}
                     </Box>
                   </MenuItem>
                 ))}
@@ -507,14 +507,14 @@ const CabinetMenuDialog = ({
         </DialogContent>
         <DialogActions>
           <Button variant="outlined" onClick={onClose}>
-            {t("Cancel")}
+            {t('Cancel')}
           </Button>
           <Button
             variant="contained"
             onClick={handleSubmit}
             disabled={!isValid}
           >
-            {t("Save")}
+            {t('Save')}
           </Button>
         </DialogActions>
       </Dialog>
