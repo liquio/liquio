@@ -52,7 +52,7 @@
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1"
+    "typescript-eslint": "^8.67.0"
   },
   "overrides": {
     "form-data": "2.5.5",
