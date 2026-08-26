@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 
-import ReadableData from '../../../../../types/readable_data';
+import { ReadableData } from '../../../../../types/readable_data';
 import { InvalidSchemaError, EvaluateSchemaFunctionError, ExternalServiceError } from '../../../../../lib/errors';
 import { Sandbox } from '../../../../../lib/sandbox';
 

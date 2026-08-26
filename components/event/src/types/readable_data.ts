@@ -1,4 +1,8 @@
-class ReadableData {
+export class ReadableData {
+  readableStream: any;
+  dataType: any;
+  dataLength: any;
+
   /**
    * @constructor
    * @param {Object} params
@@ -6,11 +10,9 @@ class ReadableData {
    * @param {string} [params.dataType]
    * @param {string} [params.dataLength]
    */
-  constructor({ readableStream, dataType, dataLength }) {
+  constructor({ readableStream, dataType, dataLength }: any) {
     this.readableStream = readableStream;
     this.dataType = dataType;
     this.dataLength = dataLength;
   }
 }
-
-module.exports = ReadableData;
