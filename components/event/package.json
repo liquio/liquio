@@ -9,14 +9,17 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "start:ts": "node -r ts-node/register src/index.ts",
+    "build": "tsc",
     "migration-up": "sequelize db:migrate",
     "migration-clear": "sequelize db:migrate:undo:all",
-    "lint": "eslint \"**/*.js\"",
-    "lint:fix": "eslint \"**/*.js\" --fix",
+    "lint": "eslint \"**/*.{js,ts}\" && npm run test:build",
+    "lint:fix": "eslint \"**/*.{js,ts}\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:e2e": "jest --coverage --verbose",
+    "test:build": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "plugin-installer": "liquio-plugin-installer"
   },
   "keywords": [
@@ -74,7 +77,11 @@
     "globals": "^17.4.0",
     "jest": "^29.7.0",
     "nock": "^14.0.11",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "semver": "7.5.4",

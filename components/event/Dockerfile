@@ -1,5 +1,16 @@
-# Runtime image
-FROM node:22-slim
+# Stage 1: transpile TypeScript to JavaScript
+FROM node:22 AS build
+ARG NODE_MAX_OLD_SPACE_SIZE=4096
+ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
+
+WORKDIR /build/components/event
+COPY package*.json .
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 2: runtime image
+FROM node:22-slim AS runtime
 
 # Set the configuration path
 ENV CONFIG_PATH=/var/www/config
@@ -16,6 +27,7 @@ RUN npm ci --omit=dev
 
 # Copy the application source code
 COPY . .
+COPY --from=build /build/components/event/dist ./
 
 USER node
 
