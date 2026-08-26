@@ -1,14 +1,20 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const DocumentModel = require('./document');
-const { TaskEntity } = require('../entities/task');
+import { Model } from './model';
+import { DocumentModel } from './document';
+import { TaskEntity } from '../entities/task';
 
 /**
  * Task model.
- * @typedef {import('../entities/document')} DocumentEntity
+ * @typedef {import('../entities/document').DocumentEntity} DocumentEntity
  */
-class TaskModel extends Model {
+export class TaskModel extends Model {
+  static singleton: TaskModel;
+
+  model: any;
+
+  documentModel: any;
+
   constructor() {
     if (!TaskModel.singleton) {
       super();
@@ -79,7 +85,7 @@ class TaskModel extends Model {
       return;
     }
 
-    let taskEntity = this.prepareEntity(task);
+    const taskEntity = this.prepareEntity(task);
 
     return taskEntity;
   }
@@ -90,8 +96,8 @@ class TaskModel extends Model {
    * @param {boolean} [isCurrentOnly] Is current only indicator.
    * @returns {Promise<DocumentEntity[]>}
    */
-  async getDocumentsByWorkflowId(workflowId, isCurrentOnly = true) {
-    let filter = { workflow_id: workflowId };
+  async getDocumentsByWorkflowId(workflowId: any, isCurrentOnly = true) {
+    const filter: any = { workflow_id: workflowId };
 
     if (isCurrentOnly) {
       filter.is_current = true;
@@ -105,7 +111,7 @@ class TaskModel extends Model {
     const documents = tasks
       .map((task) => {
         if (task.document) {
-          let documentEntity = this.documentModel.prepareEntity(task.document);
+          const documentEntity = this.documentModel.prepareEntity(task.document);
           const taskEntity = this.prepareEntity(task);
           documentEntity.task = taskEntity;
           return documentEntity;
@@ -353,5 +359,3 @@ class TaskModel extends Model {
     };
   }
 }
-
-module.exports = TaskModel;

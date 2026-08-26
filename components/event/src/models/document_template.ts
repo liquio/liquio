@@ -1,10 +1,16 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { DocumentTemplateEntity } = require('../entities/document_template');
-const { RedisClient } = require('../lib/redis_client');
+import { Model } from './model';
+import { DocumentTemplateEntity } from '../entities/document_template';
+import { RedisClient } from '../lib/redis_client';
 
-class DocumentTemplateModel extends Model {
+export class DocumentTemplateModel extends Model {
+  static singleton: DocumentTemplateModel;
+
+  model: any;
+
+  cacheTtl: any;
+
   constructor() {
     if (!DocumentTemplateModel.singleton) {
       super();
@@ -85,5 +91,3 @@ class DocumentTemplateModel extends Model {
     });
   }
 }
-
-module.exports = DocumentTemplateModel;

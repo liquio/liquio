@@ -1,12 +1,16 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { AdditionalDataSignatureEntity } = require('../entities/additional_data_signature');
+import { Model } from './model';
+import { AdditionalDataSignatureEntity } from '../entities/additional_data_signature';
 
 /**
  * Additional data signature model.
  */
-class AdditionalDataSignatureModel extends Model {
+export class AdditionalDataSignatureModel extends Model {
+  static singleton: AdditionalDataSignatureModel;
+
+  model: any;
+
   /**
    * Additional data signature model constructor.
    */
@@ -103,5 +107,3 @@ class AdditionalDataSignatureModel extends Model {
     });
   }
 }
-
-module.exports = AdditionalDataSignatureModel;

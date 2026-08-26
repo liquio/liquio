@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import EventModel from '../models/event';
+import { EventModel } from '../models/event';
 
 // Constants.
 const LOCK_ID_BYTES_LENGTH = 20;

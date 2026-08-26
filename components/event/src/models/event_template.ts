@@ -1,12 +1,18 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { EventTemplateEntity } = require('../entities/event_template');
-const { RedisClient } = require('../lib/redis_client');
+import { Model } from './model';
+import { EventTemplateEntity } from '../entities/event_template';
+import { RedisClient } from '../lib/redis_client';
 
 const FIND_BY_ID_CACHE_TTL = 60; // 1 minute.
 
-class EventTemplateModel extends Model {
+export class EventTemplateModel extends Model {
+  static singleton: EventTemplateModel;
+
+  model: any;
+
+  cacheTtl: any;
+
   constructor() {
     if (!EventTemplateModel.singleton) {
       super();
@@ -122,5 +128,3 @@ class EventTemplateModel extends Model {
     };
   }
 }
-
-module.exports = EventTemplateModel;

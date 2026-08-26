@@ -1,12 +1,18 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { CustomLogTemplateEntity } = require('../entities/custom_log_template');
+import { Model } from './model';
+import { CustomLogTemplateEntity } from '../entities/custom_log_template';
 
 /**
  * Custom log template model.
  */
-class CustomLogTemplateModel extends Model {
+export class CustomLogTemplateModel extends Model {
+  static singleton: CustomLogTemplateModel;
+
+  model: any;
+
+  cache: any;
+
   /**
    * Custom log template model constructor.
    */
@@ -181,5 +187,3 @@ class CustomLogTemplateModel extends Model {
     });
   }
 }
-
-module.exports = CustomLogTemplateModel;

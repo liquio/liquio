@@ -1,9 +1,11 @@
-const Model = require('./model');
+import { Model } from './model';
 
 /**
  * Raw queries model.
  */
-class RawQueryModel extends Model {
+export class RawQueryModel extends Model {
+  static singleton: RawQueryModel;
+
   constructor() {
     if (!RawQueryModel.singleton) {
       super();
@@ -21,11 +23,11 @@ class RawQueryModel extends Model {
     let result;
     try {
       result = await this.db.query(`CREATE SEQUENCE IF NOT exists ${sequenceName} START WITH 1 INCREMENT BY 1 MINVALUE 1 NO MAXVALUE CACHE 1`);
-    } catch (error) {
+    } catch (error: any) {
       error.details = `Can't create sequence ${sequenceName}`;
       throw error;
     }
-    log.save('create-sequence-result', { result, sequenceName }); // TODO: remove it after test.
+    global.log.save('create-sequence-result', { result, sequenceName }); // TODO: remove it after test.
     return result;
   }
 
@@ -38,7 +40,7 @@ class RawQueryModel extends Model {
     let queryResult;
     try {
       queryResult = await this.db.query('SELECT nextval(:sequenceName)', { replacements: { sequenceName } });
-    } catch (error) {
+    } catch (error: any) {
       error.details = `Can't get nextval of sequence ${sequenceName}`;
       throw error;
     }
@@ -46,5 +48,3 @@ class RawQueryModel extends Model {
     return increment?.nextval;
   }
 }
-
-module.exports = RawQueryModel;

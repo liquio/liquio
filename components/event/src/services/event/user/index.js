@@ -3,7 +3,7 @@ const _ = require('lodash');
 const { HttpRequest } = require('../../../lib/http_request');
 const { getTraceId } = require('@liquio/back-core');
 const UserResult = require('./user_result');
-const UnitRulesModel = require('../../../models/unit_rules');
+const { UnitRulesModel } = require('../../../models/unit_rules');
 const { typeOf } = require('../../../lib/type_of');
 
 // Constants.
@@ -17,9 +17,9 @@ const DEFAULT_ROUTES = {
 
 /**
  * Event user.
- * @typedef {import('../../../models/unit')} UnitModel Unit model.
- * @typedef {import('../../../models/access_history')} AccessHistoryModel Access history model.
- * @typedef {import('../../../models/task')} TaskModel Task model.
+ * @typedef {import('../../../models/unit').UnitModel} UnitModel Unit model.
+ * @typedef {import('../../../models/access_history').AccessHistoryModel} AccessHistoryModel Access history model.
+ * @typedef {import('../../../models/task').TaskModel} TaskModel Task model.
  */
 class EventUser {
   /**

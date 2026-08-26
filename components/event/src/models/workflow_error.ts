@@ -1,8 +1,12 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
+import { Model } from './model';
 
-class WorkflowErrorModel extends Model {
+export class WorkflowErrorModel extends Model {
+  static singleton: WorkflowErrorModel;
+
+  model: any;
+
   constructor() {
     if (!WorkflowErrorModel.singleton) {
       super();
@@ -42,7 +46,7 @@ class WorkflowErrorModel extends Model {
    * @param {object} data Data object.
    * @param {string} type Type.
    */
-  async create(data, type = 'error') {
+  async create(data: any, type = 'error') {
     const workflowId = (data.queueMessage && data.queueMessage.workflowId) || (data.traceMeta && data.traceMeta.workflowId);
 
     await this.model.create({
@@ -53,5 +57,3 @@ class WorkflowErrorModel extends Model {
     });
   }
 }
-
-module.exports = WorkflowErrorModel;

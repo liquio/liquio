@@ -6,7 +6,7 @@ const { typeOf } = require('../../../../../lib/type_of');
  * Decorator standard.
  * @typedef {import('../../../../../entities/document')} DocumentEntity
  * @typedef {import('../../../../../entities/document_attachment')} DocumentAttachmentEntity
- * @typedef {import('../../../../../models/document_attachment')} DocumentAttachmentModel
+ * @typedef {import('../../../../../models/document_attachment').DocumentAttachmentModel} DocumentAttachmentModel
  * @typedef {import('../../../../../lib/filestorage')} Filestorage
  */
 class DecoratorStandard extends Decorator {

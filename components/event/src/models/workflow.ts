@@ -1,9 +1,13 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { WorkflowEntity } = require('../entities/workflow');
+import { Model } from './model';
+import { WorkflowEntity } from '../entities/workflow';
 
-class WorkflowModel extends Model {
+export class WorkflowModel extends Model {
+  static singleton: WorkflowModel;
+
+  model: any;
+
   constructor() {
     if (!WorkflowModel.singleton) {
       super();
@@ -53,7 +57,7 @@ class WorkflowModel extends Model {
       return;
     }
 
-    let workflowEntity = this.prepareEntity(workflow);
+    const workflowEntity = this.prepareEntity(workflow);
 
     return workflowEntity;
   }
@@ -127,5 +131,3 @@ class WorkflowModel extends Model {
     };
   }
 }
-
-module.exports = WorkflowModel;

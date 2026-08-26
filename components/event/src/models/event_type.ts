@@ -1,9 +1,15 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { EventTypeEntity } = require('../entities/event_type');
+import { Model } from './model';
+import { EventTypeEntity } from '../entities/event_type';
 
-class EventTypeModel extends Model {
+export class EventTypeModel extends Model {
+  static singleton: EventTypeModel;
+
+  model: any;
+
+  cache: any;
+
   constructor() {
     if (!EventTypeModel.singleton) {
       super();
@@ -75,5 +81,3 @@ class EventTypeModel extends Model {
     };
   }
 }
-
-module.exports = EventTypeModel;

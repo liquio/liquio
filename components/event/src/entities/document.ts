@@ -23,6 +23,7 @@ export class DocumentEntity extends Entity {
   fileName: any;
   fileType: any;
   asic: any;
+  task: any;
 
   /**
    * Constructor.

@@ -1,14 +1,18 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { UnitEntity } = require('../entities/unit');
-const { SequelizeDbError } = require('../lib/errors');
+import { Model } from './model';
+import { UnitEntity } from '../entities/unit';
+import { SequelizeDbError } from '../lib/errors';
 
 /**
  * Unit model.
- * @typedef {import('../entities/unit')} UnitEntity Unit entity.
+ * @typedef {import('../entities/unit').UnitEntity} UnitEntity Unit entity.
  */
-class UnitModel extends Model {
+export class UnitModel extends Model {
+  static singleton: UnitModel;
+
+  model: any;
+
   constructor() {
     if (!UnitModel.singleton) {
       super();
@@ -117,9 +121,9 @@ class UnitModel extends Model {
    * @param {object} unitData Unit data.
    * @returns {Promise<UnitEntity>}
    */
-  async update(unitData) {
+  async update(unitData: any) {
     // Prepare unitDataObject
-    const unitDataObject = {
+    const unitDataObject: any = {
       id: unitData.id,
       parent_id: unitData.parentId,
       based_on: unitData.basedOn,
@@ -147,7 +151,7 @@ class UnitModel extends Model {
     // Filter unitDataEntity from undefined fields.
     const filteredUnitDataObject = Object.keys(unitDataObject)
       .filter((k) => unitDataObject[k] !== undefined)
-      .reduce((ac, key) => {
+      .reduce((ac: any, key) => {
         ac[key] = unitDataObject[key];
         return ac;
       }, {});
@@ -156,7 +160,7 @@ class UnitModel extends Model {
     let updateResult;
     try {
       updateResult = await this.model.update(filteredUnitDataObject, { where: { id: unitDataObject.id }, returning: true });
-    } catch (error) {
+    } catch (error: any) {
       throw new SequelizeDbError(error);
     }
 
@@ -290,7 +294,7 @@ class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      log.save('unit-remove-requested-member|error', { unitId, requestedMember });
+      global.log.save('unit-remove-requested-member|error', { unitId, requestedMember });
       return null;
     }
 
@@ -298,7 +302,7 @@ class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    log.save('unit-remove-requested-member', { unitId, requestedMember });
+    global.log.save('unit-remove-requested-member', { unitId, requestedMember });
 
     return unit;
   }
@@ -633,7 +637,7 @@ class UnitModel extends Model {
     const [{ last_value }] = curvalRaw;
     const currentUnitId = parseInt(last_value);
     const maxUnitId = await this.model.max('id');
-    log.save('fix-last-unit-id-if-need-it|check', { currentUnitId, maxUnitId });
+    global.log.save('fix-last-unit-id-if-need-it|check', { currentUnitId, maxUnitId });
 
     // Check and fix.
     if (maxUnitId > currentUnitId) {
@@ -641,7 +645,7 @@ class UnitModel extends Model {
         raw: true,
         replacements: { max_unit_id: maxUnitId },
       });
-      log.save('fix-last-unit-id-if-need-it|set', { currentUnitId, maxUnitId, setRawResponse });
+      global.log.save('fix-last-unit-id-if-need-it|set', { currentUnitId, maxUnitId, setRawResponse });
     }
   }
 
@@ -667,5 +671,3 @@ class UnitModel extends Model {
     });
   }
 }
-
-module.exports = UnitModel;

@@ -1,25 +1,29 @@
-const ShareAccessModel = require('./share_access');
-const AccessHistoryModel = require('./access_history');
-const AdditionalDataSignatureModel = require('./additional_data_signature');
-const DocumentSignatureModel = require('./document_signature');
-const DocumentAttachmentModel = require('./document_attachment');
-const DocumentTemplateModel = require('./document_template');
-const DocumentModel = require('./document');
-const EventTemplateModel = require('./event_template');
-const EventTypeModel = require('./event_type');
-const EventModel = require('./event');
-const TaskModel = require('./task');
-const TaskTemplateModel = require('./task_template');
-const UnitModel = require('./unit');
-const UserInboxModel = require('./user_inbox');
-const WorkflowErrorModel = require('./workflow_error');
-const WorkflowTemplateModel = require('./workflow_template');
-const WorkflowModel = require('./workflow');
-const CustomLogTemplateModel = require('./custom_log_template');
-const CustomLogModel = require('./custom_log');
-const RawQueryModel = require('./raw_query');
+import { ShareAccessModel } from './share_access';
+import { AccessHistoryModel } from './access_history';
+import { AdditionalDataSignatureModel } from './additional_data_signature';
+import { DocumentSignatureModel } from './document_signature';
+import { DocumentAttachmentModel } from './document_attachment';
+import { DocumentTemplateModel } from './document_template';
+import { DocumentModel } from './document';
+import { EventTemplateModel } from './event_template';
+import { EventTypeModel } from './event_type';
+import { EventModel } from './event';
+import { TaskModel } from './task';
+import { TaskTemplateModel } from './task_template';
+import { UnitModel } from './unit';
+import { UserInboxModel } from './user_inbox';
+import { WorkflowErrorModel } from './workflow_error';
+import { WorkflowTemplateModel } from './workflow_template';
+import { WorkflowModel } from './workflow';
+import { CustomLogTemplateModel } from './custom_log_template';
+import { CustomLogModel } from './custom_log';
+import { RawQueryModel } from './raw_query';
 
-class Models {
+export class Models {
+  static singleton: Models;
+
+  models: any;
+
   /**
    * Models constructor.
    */
@@ -39,7 +43,7 @@ class Models {
    */
   initModels() {
     // Define names of model classes.
-    const namesOfModels = {
+    const namesOfModels: any = {
       shareAccess: ShareAccessModel,
       accessHistory: AccessHistoryModel,
       additionalDataSignature: AdditionalDataSignatureModel,
@@ -64,12 +68,12 @@ class Models {
 
     // Init models.
     this.models = Object.entries(namesOfModels)
-      .map((v) => [v[0], new v[1]()])
+      .map((v: any) => [v[0], new v[1]()])
       .reduce(
         (t, v) => ({
           ...t,
           ...(() => {
-            let n = {};
+            const n: any = {};
             n[v[0]] = v[1];
             return n;
           })(),
@@ -81,5 +85,3 @@ class Models {
     global.models = this.models;
   }
 }
-
-module.exports = Models;

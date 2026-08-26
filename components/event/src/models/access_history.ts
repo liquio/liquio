@@ -1,12 +1,16 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { AccessHistoryEntity } = require('../entities/access_history');
+import { Model } from './model';
+import { AccessHistoryEntity } from '../entities/access_history';
 
 /**
  * Access history model.
  */
-class AccessHistoryModel extends Model {
+export class AccessHistoryModel extends Model {
+  static singleton: AccessHistoryModel;
+
+  model: any;
+
   /**
    * Access history model constructor.
    */
@@ -195,5 +199,3 @@ class AccessHistoryModel extends Model {
     };
   }
 }
-
-module.exports = AccessHistoryModel;

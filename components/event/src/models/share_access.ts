@@ -1,12 +1,16 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { ShareAccessEntity } = require('../entities/share_access');
+import { Model } from './model';
+import { ShareAccessEntity } from '../entities/share_access';
 
 /**
  * Share access model.
  */
-class ShareAccessModel extends Model {
+export class ShareAccessModel extends Model {
+  static singleton: ShareAccessModel;
+
+  model: any;
+
   /**
    * Share access model constructor.
    */
@@ -114,5 +118,3 @@ class ShareAccessModel extends Model {
     };
   }
 }
-
-module.exports = ShareAccessModel;

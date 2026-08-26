@@ -1,9 +1,13 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { UserInboxEntity } = require('../entities/user_inbox');
+import { Model } from './model';
+import { UserInboxEntity } from '../entities/user_inbox';
 
-class UserInboxModel extends Model {
+export class UserInboxModel extends Model {
+  static singleton: UserInboxModel;
+
+  model: any;
+
   constructor() {
     if (!UserInboxModel.singleton) {
       super();
@@ -120,5 +124,3 @@ class UserInboxModel extends Model {
     };
   }
 }
-
-module.exports = UserInboxModel;

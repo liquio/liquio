@@ -1,11 +1,15 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
+import { Model } from './model';
 
 /**
  * Task Template model.
  */
-class TaskTemplateModel extends Model {
+export class TaskTemplateModel extends Model {
+  static singleton: TaskTemplateModel;
+
+  model: any;
+
   constructor() {
     if (!TaskTemplateModel.singleton) {
       super();
@@ -42,5 +46,3 @@ class TaskTemplateModel extends Model {
     return this.model.findByPk(id);
   }
 }
-
-module.exports = TaskTemplateModel;

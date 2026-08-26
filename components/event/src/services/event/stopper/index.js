@@ -2,9 +2,9 @@ const StopResult = require('./stop_result');
 
 /**
  * Event stopper.
- * @typedef {import('../../../models/task')} TaskModel Task model.
- * @typedef {import('../../../models/document')} DocumentModel Document model.
- * @typedef {import('../../../models/event')} EventModel Event model.
+ * @typedef {import('../../../models/task').TaskModel} TaskModel Task model.
+ * @typedef {import('../../../models/document').DocumentModel} DocumentModel Document model.
+ * @typedef {import('../../../models/event').EventModel} EventModel Event model.
  */
 class EventStopper {
   constructor(config) {

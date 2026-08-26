@@ -1,8 +1,12 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
+import { Model } from './model';
 
-class UnitRulesModel extends Model {
+export class UnitRulesModel extends Model {
+  static singleton: UnitRulesModel;
+
+  model: any;
+
   constructor() {
     if (!UnitRulesModel.singleton) {
       super();
@@ -38,5 +42,3 @@ class UnitRulesModel extends Model {
     return (unitRules && unitRules.rule_schema && unitRules.rule_schema.list) || [];
   }
 }
-
-module.exports = UnitRulesModel;

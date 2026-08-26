@@ -38,7 +38,7 @@ const TREMBITA_TEMPLATE = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlso
  * @typedef {import('../../../../../entities/document')} DocumentEntity
  * @typedef {import('../../../../../entities/document_attachment')} DocumentAttachmentModel
  * @typedef {import('../../../../../lib/filestorage')} Filestorage
- * @typedef {import('../../../../../models/event')} EventModel
+ * @typedef {import('../../../../../models/event').EventModel} EventModel
  */
 class DecoratorTrembita extends Decorator {
   /**

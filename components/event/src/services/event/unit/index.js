@@ -2,12 +2,12 @@ const _ = require('lodash');
 
 const UnitResult = require('./unit_result');
 const UserService = require('../user/index');
-const UnitRulesModel = require('../../../models/unit_rules');
+const { UnitRulesModel } = require('../../../models/unit_rules');
 
 /**
  * Event unit.
- * @typedef {import('../../../models/unit')} UnitModel Unit model.
- * @typedef {import('../../../models/access_history')} AccessHistoryModel Access history model.
+ * @typedef {import('../../../models/unit').UnitModel} UnitModel Unit model.
+ * @typedef {import('../../../models/access_history').AccessHistoryModel} AccessHistoryModel Access history model.
  */
 class EventUnit {
   /**

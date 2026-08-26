@@ -1,12 +1,16 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { DocumentAttachmentEntity } = require('../entities/document_attachment');
+import { Model } from './model';
+import { DocumentAttachmentEntity } from '../entities/document_attachment';
 
 /**
  * Document attachment model.
  */
-class DocumentAttachmentModel extends Model {
+export class DocumentAttachmentModel extends Model {
+  static singleton: DocumentAttachmentModel;
+
+  model: any;
+
   /**
    * Document attachment model constructor.
    */
@@ -149,5 +153,3 @@ class DocumentAttachmentModel extends Model {
     };
   }
 }
-
-module.exports = DocumentAttachmentModel;

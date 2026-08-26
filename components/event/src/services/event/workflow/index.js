@@ -3,7 +3,7 @@ const { randomUUID } = require('crypto');
 const axios = require('axios');
 
 const { FileStorage: Filestorage } = require('../../../lib/filestorage');
-const TaskModel = require('../../../models/task');
+const { TaskModel } = require('../../../models/task');
 const { Helpers } = require('../../../lib/helpers');
 const { prepareAxiosErrorToLog } = Helpers;
 const { SYSTEM_USER } = require('../../../constants/common');

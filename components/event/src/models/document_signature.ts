@@ -1,12 +1,16 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { DocumentSignatureEntity } = require('../entities/document_signature');
+import { Model } from './model';
+import { DocumentSignatureEntity } from '../entities/document_signature';
 
 /**
  * Document signature model.
  */
-class DocumentSignatureModel extends Model {
+export class DocumentSignatureModel extends Model {
+  static singleton: DocumentSignatureModel;
+
+  model: any;
+
   constructor() {
     if (!DocumentSignatureModel.singleton) {
       super();
@@ -92,5 +96,3 @@ class DocumentSignatureModel extends Model {
     });
   }
 }
-
-module.exports = DocumentSignatureModel;

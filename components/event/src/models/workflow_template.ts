@@ -1,12 +1,18 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { WorkflowTemplateEntity } = require('../entities/workflow_template');
-const { RedisClient } = require('../lib/redis_client');
+import { Model } from './model';
+import { WorkflowTemplateEntity } from '../entities/workflow_template';
+import { RedisClient } from '../lib/redis_client';
 
 const FIND_BY_ID_CACHE_TTL = 60; // 1 minute.
 
-class WorkflowTemplateModel extends Model {
+export class WorkflowTemplateModel extends Model {
+  static singleton: WorkflowTemplateModel;
+
+  model: any;
+
+  cacheTtl: any;
+
   constructor() {
     if (!WorkflowTemplateModel.singleton) {
       super();
@@ -99,13 +105,13 @@ class WorkflowTemplateModel extends Model {
    * @returns {Promise<WorkflowTemplateEntity[]>}
    */
   async getAll() {
-    const workflowTemplates = await RedisClient.getOrSet(
+    const { data: workflowTemplates } = await RedisClient.getOrSet(
       RedisClient.createKey('workflow_template', 'getAll'),
       () => this.model.findAll({ where: { is_active: true } }),
       this.cacheTtl.findAll,
     );
 
-    return workflowTemplates.map((item) => this.prepareEntity(item));
+    return workflowTemplates.map((item: any) => this.prepareEntity(item));
   }
 
   /**
@@ -141,5 +147,3 @@ class WorkflowTemplateModel extends Model {
     };
   }
 }
-
-module.exports = WorkflowTemplateModel;

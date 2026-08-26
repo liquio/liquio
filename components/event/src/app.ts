@@ -5,7 +5,7 @@ import { Log, ConsoleLogProvider, getTraceId } from '@liquio/back-core';
 import { PluginLoader } from '@liquio/plugin-sdk';
 import { MessageQueue } from './lib/message_queue';
 import * as Errors from './lib/errors';
-import Models from './models';
+import { Models } from './models';
 import RouterService from './services/router';
 import EventService from './services/event';
 import ExternalServiceRequester from './services/event/requester/external_service';

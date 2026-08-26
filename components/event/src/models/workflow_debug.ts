@@ -1,9 +1,13 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { WorkflowDebugEntity } = require('../entities/workflow_debug');
+import { Model } from './model';
+import { WorkflowDebugEntity } from '../entities/workflow_debug';
 
-class WorkflowDebugModel extends Model {
+export class WorkflowDebugModel extends Model {
+  static singleton: WorkflowDebugModel;
+
+  model: any;
+
   constructor() {
     if (!WorkflowDebugModel.singleton) {
       super();
@@ -112,5 +116,3 @@ class WorkflowDebugModel extends Model {
     });
   }
 }
-
-module.exports = WorkflowDebugModel;

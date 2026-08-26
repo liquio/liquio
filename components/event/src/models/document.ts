@@ -1,13 +1,17 @@
-const Sequelize = require('sequelize');
+import Sequelize from 'sequelize';
 
-const Model = require('./model');
-const { DocumentEntity } = require('../entities/document');
-const { SYSTEM_USER } = require('../constants/common');
+import { Model } from './model';
+import { DocumentEntity } from '../entities/document';
+import { SYSTEM_USER } from '../constants/common';
 
 /**
  * Document model.
  */
-class DocumentModel extends Model {
+export class DocumentModel extends Model {
+  static singleton: DocumentModel;
+
+  model: any;
+
   constructor() {
     if (!DocumentModel.singleton) {
       super();
@@ -215,5 +219,3 @@ class DocumentModel extends Model {
     };
   }
 }
-
-module.exports = DocumentModel;

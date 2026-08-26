@@ -1,11 +1,15 @@
-const Sequelize = require('sequelize');
-const Model = require('./model');
-const { EventEntity } = require('../entities/event');
+import Sequelize from 'sequelize';
+import { Model } from './model';
+import { EventEntity } from '../entities/event';
 
 const DELAY_TYPE = 2;
 const NOTIFICATION_TYPE = 1;
 
-class EventModel extends Model {
+export class EventModel extends Model {
+  static singleton: EventModel;
+
+  model: any;
+
   constructor() {
     if (!EventModel.singleton) {
       super();
@@ -137,8 +141,8 @@ class EventModel extends Model {
    * @param {string} [lockId] Lock ID.
    * @returns {Promise<EventEntity[]>}
    */
-  async getRunningEvents(lockId) {
-    const where = {
+  async getRunningEvents(lockId?: any) {
+    const where: any = {
       event_type_id: DELAY_TYPE,
       done: false,
       [Sequelize.Op.and]: Sequelize.literal('due_date <= now()'),
@@ -317,5 +321,3 @@ class EventModel extends Model {
     };
   }
 }
-
-module.exports = EventModel;
