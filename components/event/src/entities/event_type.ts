@@ -1,21 +1,22 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Event type entity.
  */
-class EventTypeEntity extends Entity {
+export class EventTypeEntity extends Entity {
+  id: any;
+  name: any;
+
   /**
    * Constructor.
    * @param {object} options Event type object.
    * @param {string} options.id ID.
    * @param {string} options.name Name.
    */
-  constructor({ id, name }) {
+  constructor({ id, name }: any) {
     super();
 
     this.id = id;
     this.name = name;
   }
 }
-
-module.exports = EventTypeEntity;

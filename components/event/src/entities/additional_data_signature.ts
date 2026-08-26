@@ -1,9 +1,22 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Additional data signature entity.
  */
-class AdditionalDataSignatureEntity extends Entity {
+export class AdditionalDataSignatureEntity extends Entity {
+  id: any;
+  documentId: any;
+  data: any;
+  signature: any;
+  certificate: any;
+  cryptCertificate: any;
+  encryptedData: any;
+  encryptedDataCertificate: any;
+  createdBy: any;
+  meta: any;
+  createdAt: any;
+  updatedAt: any;
+
   /**
    * Additional data signature entity constructor.
    * @param {object} options Additional data tignatire object.
@@ -33,7 +46,7 @@ class AdditionalDataSignatureEntity extends Entity {
     meta,
     createdAt,
     updatedAt,
-  }) {
+  }: any) {
     super();
 
     this.id = id;
@@ -50,5 +63,3 @@ class AdditionalDataSignatureEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-
-module.exports = AdditionalDataSignatureEntity;

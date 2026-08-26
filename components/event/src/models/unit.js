@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 const Model = require('./model');
-const UnitEntity = require('../entities/unit');
+const { UnitEntity } = require('../entities/unit');
 const { SequelizeDbError } = require('../lib/errors');
 
 /**

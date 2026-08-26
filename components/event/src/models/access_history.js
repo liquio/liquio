@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 const Model = require('./model');
-const AccessHistoryEntity = require('../entities/access_history');
+const { AccessHistoryEntity } = require('../entities/access_history');
 
 /**
  * Access history model.

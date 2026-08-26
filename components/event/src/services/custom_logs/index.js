@@ -1,6 +1,6 @@
 const redis = require('redis');
 
-const CustomLogEntity = require('../../entities/custom_log');
+const { CustomLogEntity } = require('../../entities/custom_log');
 const Sandbox = require('../../lib/sandbox');
 
 /**

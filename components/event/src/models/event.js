@@ -1,6 +1,6 @@
 const Sequelize = require('sequelize');
 const Model = require('./model');
-const EventEntity = require('../entities/event');
+const { EventEntity } = require('../entities/event');
 
 const DELAY_TYPE = 2;
 const NOTIFICATION_TYPE = 1;

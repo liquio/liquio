@@ -1,9 +1,24 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Access history entity.
  */
-class AccessHistoryEntity extends Entity {
+export class AccessHistoryEntity extends Entity {
+  id: any;
+  userId: any;
+  userName: any;
+  ipn: any;
+  operationType: any;
+  unitId: any;
+  unitName: any;
+  initUserId: any;
+  initUserName: any;
+  initIpn: any;
+  initWorkflowId: any;
+  initWorkflowName: any;
+  createdAt: any;
+  updatedAt: any;
+
   /**
    * Access history entity constructor.
    * @param {object} options Access history object.
@@ -37,7 +52,7 @@ class AccessHistoryEntity extends Entity {
     initWorkflowName,
     createdAt,
     updatedAt,
-  }) {
+  }: any) {
     super();
 
     this.id = id;
@@ -56,5 +71,3 @@ class AccessHistoryEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-
-module.exports = AccessHistoryEntity;

@@ -1,11 +1,28 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Custom log entity.
  */
-class CustomLogEntity extends Entity {
+export class CustomLogEntity extends Entity {
+  id: any;
+  customLogTemplateId: any;
+  name: any;
+  type: any;
+  documentId: any;
+  requestId: any;
+  method: any;
+  url: any;
+  uriPattern: any;
+  ip: any;
+  userAgent: any;
+  userId: any;
+  userName: any;
+  custom: any;
+  createdAt: any;
+  updatedAt: any;
+
   /**
    * Custom log entity constructor.
    * @param {object} options Custom log object.
@@ -43,7 +60,7 @@ class CustomLogEntity extends Entity {
     custom,
     createdAt,
     updatedAt,
-  }) {
+  }: any) {
     super();
 
     this.id = id;
@@ -82,7 +99,7 @@ class CustomLogEntity extends Entity {
    * @param {{customLogTemplateId, userId, type, method, url, ip, userAgent, documentId}} option Cache key options.
    * @returns {string} Cache key.
    */
-  static getCacheKey({ customLogTemplateId, userId, type, method, url, ip, userAgent, documentId }) {
+  static getCacheKey({ customLogTemplateId, userId, type, method, url, ip, userAgent, documentId }: any) {
     // Define hash.
     const hashData = `${type}|${method}|${url}|${(ip || []).join(';')}|${userAgent}|${documentId}`;
     const hash = crypto.createHash('sha1').update(hashData).digest('hex');
@@ -92,5 +109,3 @@ class CustomLogEntity extends Entity {
     return cacheKey;
   }
 }
-
-module.exports = CustomLogEntity;

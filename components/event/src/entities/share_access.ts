@@ -1,9 +1,17 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Share access entity.
  */
-class ShareAccessEntity extends Entity {
+export class ShareAccessEntity extends Entity {
+  id: any;
+  shareFrom: any;
+  shareTo: any;
+  accessType: any;
+  accessDetails: any;
+  createdAt: any;
+  updatedAt: any;
+
   /**
    * Share access entity constructor.
    * @param {object} options Share access object.
@@ -15,7 +23,7 @@ class ShareAccessEntity extends Entity {
    * @param {Date} options.createdAt Created at.
    * @param {Date} options.updatedAt Updated at.
    */
-  constructor({ id, shareFrom, shareTo, accessType, accessDetails, createdAt, updatedAt }) {
+  constructor({ id, shareFrom, shareTo, accessType, accessDetails, createdAt, updatedAt }: any) {
     super();
 
     this.id = id;
@@ -27,5 +35,3 @@ class ShareAccessEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-
-module.exports = ShareAccessEntity;

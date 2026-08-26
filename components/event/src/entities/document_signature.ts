@@ -1,9 +1,16 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Document signature entity.
  */
-class DocumentSignatureEntity extends Entity {
+export class DocumentSignatureEntity extends Entity {
+  id: any;
+  documentId: any;
+  signature: any;
+  type: any;
+  certificate: any;
+  createdBy: any;
+
   /**
    * Constructor.
    * @param {object} options Document object.
@@ -14,7 +21,7 @@ class DocumentSignatureEntity extends Entity {
    * @param {string} options.certificate Certificate.
    * @param {string} options.createdBy Created by.
    */
-  constructor({ id, documentId, signature, type, certificate, createdBy }) {
+  constructor({ id, documentId, signature, type, certificate, createdBy }: any) {
     super();
 
     this.id = id;
@@ -25,5 +32,3 @@ class DocumentSignatureEntity extends Entity {
     this.createdBy = createdBy;
   }
 }
-
-module.exports = DocumentSignatureEntity;

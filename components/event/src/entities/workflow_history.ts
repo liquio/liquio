@@ -1,9 +1,21 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Workflow history entity.
  */
-class WorkflowHistoryEntity extends Entity {
+export class WorkflowHistoryEntity extends Entity {
+  id: any;
+  workflowTemplateId: any;
+  userId: any;
+  data: any;
+  version: any;
+  isCurrentVersion: any;
+  meta: any;
+  name: any;
+  description: any;
+  createdAt: any;
+  updatedAt: any;
+
   /**
    * Constructor.
    * @param {object} options Workflow history object.
@@ -19,7 +31,7 @@ class WorkflowHistoryEntity extends Entity {
    * @param {Date} options.createdAt Created at.
    * @param {Date} options.updatedAt Updated at.
    */
-  constructor({ id, workflowTemplateId, userId, data, version, isCurrentVersion, meta, name, description, createdAt, updatedAt }) {
+  constructor({ id, workflowTemplateId, userId, data, version, isCurrentVersion, meta, name, description, createdAt, updatedAt }: any) {
     super();
 
     this.id = id;
@@ -35,5 +47,3 @@ class WorkflowHistoryEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-
-module.exports = WorkflowHistoryEntity;

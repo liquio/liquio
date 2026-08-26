@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 const Model = require('./model');
-const DocumentAttachmentEntity = require('../entities/document_attachment');
+const { DocumentAttachmentEntity } = require('../entities/document_attachment');
 
 /**
  * Document attachment model.

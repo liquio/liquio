@@ -1,9 +1,16 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Workflow debug entity.
  */
-class WorkflowDebugEntity extends Entity {
+export class WorkflowDebugEntity extends Entity {
+  id: any;
+  workflowId: any;
+  serviceName: any;
+  data: any;
+  createdAt: any;
+  updatedAt: any;
+
   /**
    * Constructor.
    * @param {object} options Workflow debug object.
@@ -15,7 +22,7 @@ class WorkflowDebugEntity extends Entity {
    * @param {Date} options.createdAt Created at.
    * @param {Date} options.updatedAt Updated at.
    */
-  constructor({ id, workflowId, serviceName, data, createdAt, updatedAt }) {
+  constructor({ id, workflowId, serviceName, data, createdAt, updatedAt }: any) {
     super();
 
     this.id = id;
@@ -26,5 +33,3 @@ class WorkflowDebugEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-
-module.exports = WorkflowDebugEntity;

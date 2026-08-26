@@ -1,10 +1,37 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Task entity.
- * @typedef {import('./document')} DocumentEntity
+ * @typedef {import('./document').DocumentEntity} DocumentEntity
  */
-class TaskEntity extends Entity {
+export class TaskEntity extends Entity {
+  id: any;
+  workflowId: any;
+  name: any;
+  description: any;
+  taskTemplateId: any;
+  documentId: any;
+  document: any;
+  signerUsers: any;
+  performerUsers: any;
+  performerUsersIpn: any;
+  performerUsersEmail: any;
+  performerUserNames: any;
+  performerUnits: any;
+  tags: any;
+  data: any;
+  cancellationTypeId: any;
+  finished: any;
+  finishedAt: any;
+  deleted: any;
+  createdBy: any;
+  updatedBy: any;
+  dueDate: any;
+  createdAt: any;
+  updatedAt: any;
+  meta: any;
+  isSystem: any;
+
   /**
    * Constructor.
    * @param {object} options Task object.
@@ -62,7 +89,7 @@ class TaskEntity extends Entity {
     updatedAt,
     meta,
     isSystem,
-  }) {
+  }: any) {
     super();
 
     this.id = id;
@@ -93,5 +120,3 @@ class TaskEntity extends Entity {
     this.isSystem = isSystem;
   }
 }
-
-module.exports = TaskEntity;

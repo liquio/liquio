@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 const Model = require('./model');
-const WorkflowEntity = require('../entities/workflow');
+const { WorkflowEntity } = require('../entities/workflow');
 
 class WorkflowModel extends Model {
   constructor() {

@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 const Model = require('./model');
-const WorkflowTemplateEntity = require('../entities/workflow_template');
+const { WorkflowTemplateEntity } = require('../entities/workflow_template');
 const RedisClient = require('../lib/redis_client');
 
 const FIND_BY_ID_CACHE_TTL = 60; // 1 minute.

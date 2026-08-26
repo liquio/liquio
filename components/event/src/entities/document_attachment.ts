@@ -1,9 +1,20 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Document attachment entity.
  */
-class DocumentAttachmentEntity extends Entity {
+export class DocumentAttachmentEntity extends Entity {
+  id: any;
+  documentId: any;
+  link: any;
+  name: any;
+  type: any;
+  size: any;
+  labels: any;
+  isGenerated: any;
+  createdAt: any;
+  meta: any;
+
   /**
    * Constructor.
    * @param {object} options Document attachment object.
@@ -18,7 +29,7 @@ class DocumentAttachmentEntity extends Entity {
    * @param {Date} options.createdAt Created at.
    * @param {Object} options.meta Meta.
    */
-  constructor({ id, documentId, link, name, type, size, labels, isGenerated, createdAt, meta }) {
+  constructor({ id, documentId, link, name, type, size, labels, isGenerated, createdAt, meta }: any) {
     super();
 
     this.id = id;
@@ -33,5 +44,3 @@ class DocumentAttachmentEntity extends Entity {
     this.meta = meta;
   }
 }
-
-module.exports = DocumentAttachmentEntity;

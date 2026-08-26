@@ -1,9 +1,17 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Workflow template entity.
  */
-class WorkflowTemplateEntity extends Entity {
+export class WorkflowTemplateEntity extends Entity {
+  id: any;
+  name: any;
+  description: any;
+  xmlBpmnSchema: any;
+  data: any;
+  isActive: any;
+  errorsSubscribers: any;
+
   /**
    * Constructor.
    * @param {object} options Workflow template object.
@@ -15,7 +23,7 @@ class WorkflowTemplateEntity extends Entity {
    * @param {boolean} options.isActive Is active.
    * @param {{id:string, email:string}[]} options.errorsSubscribers Errors subscribers.
    */
-  constructor({ id, name, description, xmlBpmnSchema, data, isActive, errorsSubscribers }) {
+  constructor({ id, name, description, xmlBpmnSchema, data, isActive, errorsSubscribers }: any) {
     super();
 
     this.id = id;
@@ -27,5 +35,3 @@ class WorkflowTemplateEntity extends Entity {
     this.errorsSubscribers = errorsSubscribers;
   }
 }
-
-module.exports = WorkflowTemplateEntity;

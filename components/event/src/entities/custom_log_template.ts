@@ -1,9 +1,19 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Custom log template entity.
  */
-class CustomLogTemplateEntity extends Entity {
+export class CustomLogTemplateEntity extends Entity {
+  id: any;
+  name: any;
+  documentTemplateId: any;
+  eventTemplateId: any;
+  operationType: any;
+  schema: any;
+  createdAt: any;
+  updatedAt: any;
+  isGetWorkflowData: any;
+
   /**
    * Custom log template entity constructor.
    * @param {object} options Custom log template object.
@@ -17,7 +27,7 @@ class CustomLogTemplateEntity extends Entity {
    * @param {Date} options.updatedAt Updated at.
    * @param {boolean} options.isGetWorkflowData Is get workflow data.
    */
-  constructor({ id, name, documentTemplateId, eventTemplateId, operationType, schema, createdAt, updatedAt, isGetWorkflowData }) {
+  constructor({ id, name, documentTemplateId, eventTemplateId, operationType, schema, createdAt, updatedAt, isGetWorkflowData }: any) {
     super();
 
     this.id = id;
@@ -31,5 +41,3 @@ class CustomLogTemplateEntity extends Entity {
     this.isGetWorkflowData = isGetWorkflowData;
   }
 }
-
-module.exports = CustomLogTemplateEntity;

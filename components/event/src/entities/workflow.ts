@@ -1,9 +1,26 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Workflow entity.
  */
-class WorkflowEntity extends Entity {
+export class WorkflowEntity extends Entity {
+  id: any;
+  workflowTemplateId: any;
+  name: any;
+  isFinal: any;
+  cancellationTypeId: any;
+  createdBy: any;
+  updatedBy: any;
+  data: any;
+  dueDate: any;
+  workflowStatusId: any;
+  number: any;
+  createdAt: any;
+  updatedAt: any;
+  userData: any;
+  hasUnresolvedErrors: any;
+  statuses: any;
+
   /**
    * Constructor.
    * @param {object} options Workflow object.
@@ -41,7 +58,7 @@ class WorkflowEntity extends Entity {
     userData,
     hasUnresolvedErrors,
     statuses,
-  }) {
+  }: any) {
     super();
 
     this.id = id;
@@ -62,5 +79,3 @@ class WorkflowEntity extends Entity {
     this.statuses = statuses;
   }
 }
-
-module.exports = WorkflowEntity;

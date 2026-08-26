@@ -1,9 +1,29 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Document entity.
  */
-class DocumentEntity extends Entity {
+export class DocumentEntity extends Entity {
+  id: any;
+  externalId: any;
+  parentId: any;
+  documentTemplateId: any;
+  documentStateId: any;
+  cancellationTypeId: any;
+  number: any;
+  isFinal: any;
+  ownerId: any;
+  createdBy: any;
+  updatedBy: any;
+  createdAt: any;
+  updatedAt: any;
+  data: any;
+  description: any;
+  fileId: any;
+  fileName: any;
+  fileType: any;
+  asic: any;
+
   /**
    * Constructor.
    * @param {object} options Document object.
@@ -47,7 +67,7 @@ class DocumentEntity extends Entity {
     fileName,
     fileType,
     asic,
-  }) {
+  }: any) {
     super();
 
     this.id = id;
@@ -71,5 +91,3 @@ class DocumentEntity extends Entity {
     this.asic = asic;
   }
 }
-
-module.exports = DocumentEntity;

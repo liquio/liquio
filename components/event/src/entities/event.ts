@@ -1,9 +1,26 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Event entity.
  */
-class EventEntity extends Entity {
+export class EventEntity extends Entity {
+  id: any;
+  eventTemplateId: any;
+  eventTypeId: any;
+  workflowId: any;
+  cancellationTypeId: any;
+  name: any;
+  done: any;
+  createdBy: any;
+  updatedBy: any;
+  createdAt: any;
+  updatedAt: any;
+  data: any;
+  documentId: any;
+  dueDate: any;
+  version: any;
+  lockId: any;
+
   /**
    * Constructor.
    * @param {object} options Event object.
@@ -41,7 +58,7 @@ class EventEntity extends Entity {
     dueDate,
     version,
     lockId,
-  }) {
+  }: any) {
     super();
 
     this.id = id;
@@ -62,5 +79,3 @@ class EventEntity extends Entity {
     this.lockId = lockId;
   }
 }
-
-module.exports = EventEntity;

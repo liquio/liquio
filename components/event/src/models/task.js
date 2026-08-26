@@ -2,7 +2,7 @@ const Sequelize = require('sequelize');
 
 const Model = require('./model');
 const DocumentModel = require('./document');
-const TaskEntity = require('../entities/task');
+const { TaskEntity } = require('../entities/task');
 
 /**
  * Task model.

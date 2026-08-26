@@ -1,9 +1,16 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Event template entity.
  */
-class EventTemplateEntity extends Entity {
+export class EventTemplateEntity extends Entity {
+  id: any;
+  eventTypeId: any;
+  name: any;
+  description: any;
+  jsonSchema: any;
+  htmlTemplate: any;
+
   /**
    * Constructor.
    * @param {object} options Event template object.
@@ -14,7 +21,7 @@ class EventTemplateEntity extends Entity {
    * @param {string} options.jsonSchema JSON Schema.
    * @param {string} options.htmlTemplate HTML template.
    */
-  constructor({ id, eventTypeId, name, description, jsonSchema, htmlTemplate }) {
+  constructor({ id, eventTypeId, name, description, jsonSchema, htmlTemplate }: any) {
     super();
 
     this.id = id;
@@ -25,5 +32,3 @@ class EventTemplateEntity extends Entity {
     this.htmlTemplate = htmlTemplate;
   }
 }
-
-module.exports = EventTemplateEntity;

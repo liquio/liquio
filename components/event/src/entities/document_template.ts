@@ -1,11 +1,18 @@
-const jsoncParser = require('jsonc-parser');
+import jsoncParser from 'jsonc-parser';
 
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Document template entity.
  */
-class DocumentTemplateEntity extends Entity {
+export class DocumentTemplateEntity extends Entity {
+  id: any;
+  name: any;
+  jsonSchema: any;
+  htmlTemplate: any;
+  accessJsonSchema: any;
+  additionalDataToSign: any;
+
   /**
    * Constructor.
    * @param {object} options Document template object.
@@ -16,7 +23,7 @@ class DocumentTemplateEntity extends Entity {
    * @param {object} options.accessJsonSchema Inboxes JSON schema.
    * @param {string} options.additionalDataToSign Additional data to sign.
    */
-  constructor({ id, name, jsonSchema, htmlTemplate, accessJsonSchema, additionalDataToSign }) {
+  constructor({ id, name, jsonSchema, htmlTemplate, accessJsonSchema, additionalDataToSign }: any) {
     super();
 
     this.id = id;
@@ -27,5 +34,3 @@ class DocumentTemplateEntity extends Entity {
     this.additionalDataToSign = additionalDataToSign;
   }
 }
-
-module.exports = DocumentTemplateEntity;

@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 const Model = require('./model');
-const DocumentEntity = require('../entities/document');
+const { DocumentEntity } = require('../entities/document');
 const { SYSTEM_USER } = require('../constants/common');
 
 /**

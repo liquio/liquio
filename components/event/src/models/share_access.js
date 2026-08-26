@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 const Model = require('./model');
-const ShareAccessEntity = require('../entities/share_access');
+const { ShareAccessEntity } = require('../entities/share_access');
 
 /**
  * Share access model.

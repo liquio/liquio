@@ -1,9 +1,22 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * Unit entity.
  */
-class UnitEntity extends Entity {
+export class UnitEntity extends Entity {
+  id: any;
+  parentId: any;
+  basedOn: any;
+  name: any;
+  description: any;
+  members: any;
+  heads: any;
+  data: any;
+  menuConfig: any;
+  allowTokens: any;
+  headsIpn: any;
+  membersIpn: any;
+
   /**
    * Constructor.
    * @param {object} options Unit object.
@@ -20,7 +33,7 @@ class UnitEntity extends Entity {
    * @param {string[]} options.headsIpn Heads Ipn.
    * @param {string[]} options.membersIpn Members Ipn.
    */
-  constructor({ id, parentId, basedOn, name, description, members, heads, data, menuConfig, allowTokens, headsIpn, membersIpn }) {
+  constructor({ id, parentId, basedOn, name, description, members, heads, data, menuConfig, allowTokens, headsIpn, membersIpn }: any) {
     super();
 
     this.id = id;
@@ -53,5 +66,3 @@ class UnitEntity extends Entity {
     return [...new Set([...this.heads, ...this.members])];
   }
 }
-
-module.exports = UnitEntity;

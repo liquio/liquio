@@ -1,9 +1,18 @@
-const Entity = require('./entity');
+import { Entity } from './entity';
 
 /**
  * User inbox entity.
  */
-class UserInboxEntity extends Entity {
+export class UserInboxEntity extends Entity {
+  id: any;
+  userId: any;
+  documentId: any;
+  name: any;
+  number: any;
+  isRead: any;
+  createdAt: any;
+  updatedAt: any;
+
   /**
    * Constructor.
    * @param {object} options Document object.
@@ -16,7 +25,7 @@ class UserInboxEntity extends Entity {
    * @param {Date} options.createdAt Created at.
    * @param {Date} options.updatedAt Updated at.
    */
-  constructor({ id, userId, documentId, name, number, isRead, createdAt, updatedAt }) {
+  constructor({ id, userId, documentId, name, number, isRead, createdAt, updatedAt }: any) {
     super();
 
     this.id = id;
@@ -29,5 +38,3 @@ class UserInboxEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-
-module.exports = UserInboxEntity;

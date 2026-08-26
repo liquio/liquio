@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 const Model = require('./model');
-const CustomLogEntity = require('../entities/custom_log');
+const { CustomLogEntity } = require('../entities/custom_log');
 
 /**
  * Custom log template model.
