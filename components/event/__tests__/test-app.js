@@ -131,7 +131,7 @@ jest.mock('../src/lib/filestorage', () => {
 const { getConfig } = require('../src/lib/config');
 const defaultConfig = getConfig();
 
-class TestApp extends require('../src/app') {
+class TestApp extends require('../src/app').App {
   static pgContainer;
   static redisContainer;
 

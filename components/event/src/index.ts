@@ -1,6 +1,6 @@
-const Multiconf = require('multiconf');
-const fs = require('fs');
-const App = require('./app');
+import Multiconf from 'multiconf';
+import fs from 'node:fs';
+import { App } from './app';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/event';
 const SECRET_PATH = process.env.SECRET_PATH;

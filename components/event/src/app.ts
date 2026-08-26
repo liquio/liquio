@@ -1,26 +1,40 @@
-const moment = require('moment');
+import moment from 'moment';
 
-const Db = require('./lib/db');
-const { Log, ConsoleLogProvider, getTraceId } = require('@liquio/back-core');
-const { PluginLoader } = require('@liquio/plugin-sdk');
-const MessageQueue = require('./lib/message_queue');
-const Errors = require('./lib/errors');
-const Models = require('./models');
-const RouterService = require('./services/router');
-const EventService = require('./services/event');
-const ExternalServiceRequester = require('./services/event/requester/external_service');
-const EventBusiness = require('./businesses/event');
-const RedisClient = require('./lib/redis_client');
-const HttpClient = require('./lib/http_client');
-const LogsBroadcasting = require('./lib/logs_broadcasting');
-const Sandbox = require('./lib/sandbox');
-const typeOf = require('./lib/type_of');
+import Db from './lib/db';
+import { Log, ConsoleLogProvider, getTraceId } from '@liquio/back-core';
+import { PluginLoader } from '@liquio/plugin-sdk';
+import MessageQueue from './lib/message_queue';
+import * as Errors from './lib/errors';
+import Models from './models';
+import RouterService from './services/router';
+import EventService from './services/event';
+import ExternalServiceRequester from './services/event/requester/external_service';
+import EventBusiness from './businesses/event';
+import RedisClient from './lib/redis_client';
+import HttpClient from './lib/http_client';
+import LogsBroadcasting from './lib/logs_broadcasting';
+import Sandbox from './lib/sandbox';
+import typeOf from './lib/type_of';
 
 // Allow not secure connections.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-class App {
-  constructor(config) {
+export class App {
+  config: any;
+  sandbox: any;
+  typeOf: any;
+  log: any;
+  httpClient: any;
+  redisClient: any;
+  db: any;
+  models: any;
+  pluginRegistry: any;
+  eventService: any;
+  eventBusiness: any;
+  messageQueue: any;
+  routerService: any;
+
+  constructor(config: any) {
     this.config = config;
     this.sandbox = new Sandbox(config.sandbox);
     // Set global config for models and other legacy code that still uses it
@@ -30,7 +44,7 @@ class App {
   // Init global custom error.
   useGlobalErrors() {
     Object.entries(Errors).forEach(([ErrorName, ErrorClass]) => {
-      global[ErrorName] = ErrorClass;
+      (global as any)[ErrorName] = ErrorClass;
     });
   }
 
@@ -55,7 +69,7 @@ class App {
 
   // Log unhandled rejections.
   useUnhandedRejectionLogging() {
-    process.on('unhandledRejection', (error) => {
+    process.on('unhandledRejection', (error: any) => {
       const { stack, message } = error || {};
       this.log.save('unhandled-rejection', { stack, message });
       process.exit(1);
@@ -103,15 +117,15 @@ class App {
       unit: this.config.unit,
       user: this.config.user,
       filestorage: this.config.filestorage,
-    });
+    } as any);
   }
 
   // Init event business.
   useEventBusiness() {
-    this.eventBusiness = new EventBusiness();
+    this.eventBusiness = new (EventBusiness as any)();
 
     // If enabled run daemon mode in config/app.json file.
-    if (config.app.enabledRunDaemonMode) {
+    if (global.config.app.enabledRunDaemonMode) {
       // Run event daemon.
       // Note: this is an async method with an infinite loop inside.
       this.eventBusiness.runDaemon();
@@ -120,7 +134,7 @@ class App {
 
   // Init message queue.
   async useMessageQueue() {
-    let messageQueue;
+    let messageQueue: any;
 
     if (!this.eventBusiness) {
       throw new Error('Event business is not initialized');
@@ -150,7 +164,7 @@ class App {
 
   // Init router.
   async useRouter() {
-    const routerService = new RouterService(config);
+    const routerService = new RouterService(global.config);
 
     // Note: there is an open async handle created inside.
     await routerService.init();
@@ -165,5 +179,3 @@ class App {
     }
   }
 }
-
-module.exports = App;
