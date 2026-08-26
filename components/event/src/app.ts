@@ -9,7 +9,7 @@ import { Models } from './models';
 import { RouterService } from './services/router';
 import { EventService } from './services/event';
 import { ExternalServiceRequester } from './services/event/requester/external_service';
-import EventBusiness from './businesses/event';
+import { EventBusiness } from './businesses/event';
 import { RedisClient } from './lib/redis_client';
 import { HttpClient } from './lib/http_client';
 import { LogsBroadcasting } from './lib/logs_broadcasting';
@@ -122,7 +122,7 @@ export class App {
 
   // Init event business.
   useEventBusiness() {
-    this.eventBusiness = new (EventBusiness as any)();
+    this.eventBusiness = new EventBusiness();
 
     // If enabled run daemon mode in config/app.json file.
     if (global.config.app.enabledRunDaemonMode) {

@@ -1,6 +1,6 @@
 import express from 'express';
-import PingController from '../controllers/ping';
-import MonitorController from '../controllers/monitor';
+import { PingController } from '../controllers/ping';
+import { MonitorController } from '../controllers/monitor';
 import { AppIdentHeaders } from '../lib/app_ident_headers';
 import { Cors } from '../lib/cors';
 import { asyncLocalStorageMiddleware } from '@liquio/back-core';

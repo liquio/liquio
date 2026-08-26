@@ -1,4 +1,4 @@
-const { getTraceId } = require('@liquio/back-core');
+import { getTraceId } from '@liquio/back-core';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -10,12 +10,14 @@ const DEFAULT_ERROR_MESSAGE = 'Server error.';
 /**
  * Controller.
  */
-class Controller {
+export class Controller {
+  config: any;
+
   /**
    * Controller constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config: any) {
     this.config = config;
   }
 
@@ -25,12 +27,12 @@ class Controller {
    * @param {object} [data] Data to response.
    * @param {number} [httpStatusCode] HTTP status code.
    */
-  responseData(res, data = EMPTY_DATA, httpStatusCode = HTTP_STATUS_CODE_OK) {
+  responseData(res: any, data: any = EMPTY_DATA, httpStatusCode: number = HTTP_STATUS_CODE_OK) {
     // Define response object.
     const responseObject = { data };
 
     // Log.
-    log.save('http-response', responseObject);
+    global.log.save('http-response', responseObject);
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
@@ -42,9 +44,9 @@ class Controller {
    * @param {object} [text] Data to response.
    * @param {number} [httpStatusCode] HTTP status code.
    */
-  responseText(res, text = EMPTY_TEXT, httpStatusCode = HTTP_STATUS_CODE_OK) {
+  responseText(res: any, text: any = EMPTY_TEXT, httpStatusCode: number = HTTP_STATUS_CODE_OK) {
     // Log.
-    log.save('http-response', text);
+    global.log.save('http-response', text);
 
     // Response.
     res.status(httpStatusCode).send(text);
@@ -56,7 +58,7 @@ class Controller {
    * @param {string|Error} [error] Error instance or message.
    * @param {number} [httpStatusCode] HTTP status code.
    */
-  responseError(res, error = DEFAULT_ERROR_MESSAGE, httpStatusCode = HTTP_STATUS_CODE_SERVER_ERROR) {
+  responseError(res: any, error: any = DEFAULT_ERROR_MESSAGE, httpStatusCode: number = HTTP_STATUS_CODE_SERVER_ERROR) {
     // Define params.
     const message = error instanceof Error ? error.message : error;
 
@@ -64,11 +66,9 @@ class Controller {
     const responseObject = { error: { message }, traceId: getTraceId() };
 
     // Log.
-    log.save('http-response', responseObject);
+    global.log.save('http-response', responseObject);
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
   }
 }
-
-module.exports = Controller;

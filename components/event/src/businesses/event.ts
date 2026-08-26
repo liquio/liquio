@@ -1,36 +1,36 @@
-const crypto = require('crypto');
-const jsoncParser = require('jsonc-parser');
-const Queue = require('queue-promise');
+import crypto from 'node:crypto';
+import jsoncParser from 'jsonc-parser';
+import Queue from 'queue-promise';
 
-const { FileStorage: Filestorage } = require('../lib/filestorage');
-const { PersistLink } = require('../lib/persist_link');
-const { Sign } = require('../lib/sign');
-const { RecordMap } = require('../lib/record_map');
-const { SystemNotifier } = require('../lib/system_notifier');
-const { getTraceId } = require('@liquio/back-core');
-const { Sandbox } = require('../lib/sandbox');
-const { EventTypeModel } = require('../models/event_type');
-const { WorkflowErrorModel } = require('../models/workflow_error');
-const { EventModel } = require('../models/event');
-const { EventTemplateModel } = require('../models/event_template');
-const { TaskModel } = require('../models/task');
-const { DocumentModel } = require('../models/document');
-const { DocumentTemplateModel } = require('../models/document_template');
-const { DocumentAttachmentModel } = require('../models/document_attachment');
-const { WorkflowModel } = require('../models/workflow');
-const { WorkflowDebugModel } = require('../models/workflow_debug');
-const { WorkflowTemplateModel } = require('../models/workflow_template');
-const { UnitModel } = require('../models/unit');
-const { AccessHistoryModel } = require('../models/access_history');
-const { UserInboxModel } = require('../models/user_inbox');
-const { WorkflowHistoryModel } = require('../models/workflow_history');
-const { EventService } = require('../services/event');
-const { CustomLogs } = require('../services/custom_logs');
-const { RunningEvents } = require('../lib/running_events');
-const { EvaluateSchemaFunctionError } = require('../lib/errors');
-const { SYSTEM_USER } = require('../constants/common');
-const { CRUD_TYPE } = require('../constants/http');
-const { getConfig } = require('../lib/config');
+import { FileStorage as Filestorage } from '../lib/filestorage';
+import { PersistLink } from '../lib/persist_link';
+import { Sign } from '../lib/sign';
+import { RecordMap } from '../lib/record_map';
+import { SystemNotifier } from '../lib/system_notifier';
+import { getTraceId } from '@liquio/back-core';
+import { Sandbox } from '../lib/sandbox';
+import { EventTypeModel } from '../models/event_type';
+import { WorkflowErrorModel } from '../models/workflow_error';
+import { EventModel } from '../models/event';
+import { EventTemplateModel } from '../models/event_template';
+import { TaskModel } from '../models/task';
+import { DocumentModel } from '../models/document';
+import { DocumentTemplateModel } from '../models/document_template';
+import { DocumentAttachmentModel } from '../models/document_attachment';
+import { WorkflowModel } from '../models/workflow';
+import { WorkflowDebugModel } from '../models/workflow_debug';
+import { WorkflowTemplateModel } from '../models/workflow_template';
+import { UnitModel } from '../models/unit';
+import { AccessHistoryModel } from '../models/access_history';
+import { UserInboxModel } from '../models/user_inbox';
+import { WorkflowHistoryModel } from '../models/workflow_history';
+import { EventService } from '../services/event';
+import { CustomLogs } from '../services/custom_logs';
+import { RunningEvents } from '../lib/running_events';
+import { EvaluateSchemaFunctionError } from '../lib/errors';
+import { SYSTEM_USER } from '../constants/common';
+import { CRUD_TYPE } from '../constants/http';
+import { getConfig } from '../lib/config';
 
 // Constants.
 const ERROR_WRONG_EVENT_TYPE = 'Wrong event type.';
@@ -39,12 +39,39 @@ const NOTIFICATION_FAILED_RESPONSE_MESSAGE_PARTS = ['Не удалось'];
 /**
  * Event business.
  */
-class EventBusiness {
+export class EventBusiness {
+  static singleton: EventBusiness;
+
+  config: any;
+  filestorage: Filestorage;
+  sign: Sign;
+  systemNotifier: SystemNotifier;
+  sandbox: Sandbox;
+  workflowErrorModel: WorkflowErrorModel;
+  eventTypeModel: EventTypeModel;
+  eventModel: EventModel;
+  eventTemplateModel: EventTemplateModel;
+  taskModel: TaskModel;
+  documentModel: DocumentModel;
+  documentTemplateModel: DocumentTemplateModel;
+  documentAttachmentModel: DocumentAttachmentModel;
+  workflowModel: WorkflowModel;
+  workflowTemplateModel: WorkflowTemplateModel;
+  workflowDebugModel: WorkflowDebugModel;
+  unitModel: UnitModel;
+  accessHistoryModel: AccessHistoryModel;
+  userInboxModel: UserInboxModel;
+  workflowHistoryModel: WorkflowHistoryModel;
+  eventService: EventService;
+  customLogs: CustomLogs;
+  runningEvents: RunningEvents;
+  interval: NodeJS.Timeout;
+
   /**
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor(_config) {
+  constructor(_config?: any) {
     // Define singleton.
     if (!EventBusiness.singleton) {
       this.config = getConfig();
@@ -67,7 +94,7 @@ class EventBusiness {
       this.accessHistoryModel = new AccessHistoryModel();
       this.userInboxModel = new UserInboxModel();
       this.workflowHistoryModel = new WorkflowHistoryModel();
-      this.eventService = new EventService();
+      this.eventService = new (EventService as any)();
       this.customLogs = new CustomLogs();
       this.runningEvents = new RunningEvents(this.eventModel);
       this.sandbox.addGlobal('plinkFromFilestorageAttach', plinkFromFilestorageAttach);
@@ -89,7 +116,7 @@ class EventBusiness {
    * @returns {Promise<object>} Calculated event data object.
    */
   async calculateEventData(workflowId, jsonSchemaObject, documents, events, eventTemplateId) {
-    const calculated = {};
+    const calculated: any = {};
 
     try {
       calculated.emails = this.sandbox.evalWithArgs(jsonSchemaObject.emails || '() => { return []; }', [documents, events], { eventTemplateId });
@@ -287,7 +314,7 @@ class EventBusiness {
 
       return calculated;
     } catch (error) {
-      log.save('eval-error', { error: error && error.toString() });
+      global.log.save('eval-error', { error: error && error.toString() });
       throw new EvaluateSchemaFunctionError(error.toString());
     }
   }
@@ -587,7 +614,7 @@ class EventBusiness {
         if (!isKeyAllowedToDeleteMore100ThanRecords) {
           throw new Error('deleteRegistersList: deleted recods count mustn\'t be more than 100.');
         }
-        log.save('delete-registers-list|delete-more-than-100-records', { keyId, recordIdsLength, workflowId, eventTemplateId }, 'warn');
+        global.log.save('delete-registers-list|delete-more-than-100-records', { keyId, recordIdsLength, workflowId, eventTemplateId }, 'warn');
       }
 
       const { concurrent, interval } = config.requester?.registers?.deleteRecordsQueue || {};
@@ -609,7 +636,7 @@ class EventBusiness {
       );
 
       if (recordsToDelete.length !== recordIdsLength) {
-        log.save(
+        global.log.save(
           'delete-registers-list|deleted-count-mismatch',
           {
             workflowId,
@@ -807,14 +834,14 @@ class EventBusiness {
         createWorkflows: calculated.createWorkflows,
         createWorkflowsExternal: calculated.createWorkflowsExternal,
         jsonSchemaObject,
-      });
+      } as any);
     } else if (calculated.sendStatusExternal || calculated.sendStatus) {
       const { status, workflowIds } = await this.eventService.workflow({
         workflowParentId: workflowId,
         sendStatusExternal: calculated.sendStatusExternal,
         sendStatus: calculated.sendStatus,
         jsonSchemaObject,
-      });
+      } as any);
       resultContext.result.sendStatus = status;
       resultContext.result.workflowIds = workflowIds;
     } else if (calculated.setNewTasksPerformers) {
@@ -825,7 +852,7 @@ class EventBusiness {
         newPerformerUserNames,
         fromPerformerUsers,
         jsonSchemaObject,
-      });
+      } as any);
     }
   }
 
@@ -1229,7 +1256,7 @@ class EventBusiness {
       }
 
       // Initialize result context
-      const resultContext = {
+      const resultContext: any = {
         data: {},
         done: true,
         result: {},
@@ -1257,7 +1284,7 @@ class EventBusiness {
 
       // Check if events with the same template are more than 50.
       const eventsWithTheSameTemplate = events.filter((event) => event.eventTemplateId === eventTemplateId);
-      if (eventsWithTheSameTemplate.length >= (config.system_notifier?.maxLoops ?? 50)) {
+      if (eventsWithTheSameTemplate.length >= (global.config.system_notifier?.maxLoops ?? 50)) {
         jsonSchemaObject = { ...jsonSchemaObject, notFailOnError: false };
         throw new Error('Too many loops.');
       }
@@ -1347,7 +1374,7 @@ class EventBusiness {
             events,
           });
         } catch (error) {
-          log.save('set-workflow-status-error', { workflowId, error: error.toString() });
+          global.log.save('set-workflow-status-error', { workflowId, error: error.toString() });
           await this.workflowErrorModel.create(
             {
               error: 'Can not set the workflow status.',
@@ -1374,7 +1401,7 @@ class EventBusiness {
     } catch (error) {
       try {
         // Create error.
-        log.save('event-handling-by-message-from-queue-error', { messageObject, error: error.toString(), stack: error.stack, details: error.cause });
+        global.log.save('event-handling-by-message-from-queue-error', { messageObject, error: error.toString(), stack: error.stack, details: error.cause });
 
         // If enabled debug model.
         if (typeof messageObject.debugId !== 'undefined' && messageObject && messageObject.workflowId) {
@@ -1417,9 +1444,9 @@ class EventBusiness {
                 createdBy: SYSTEM_USER,
                 updatedBy: SYSTEM_USER,
                 version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
-              });
+              } as any);
             } catch (error) {
-              log.save('event-error-catch-creating-error', { messageObject, error: error.toString() });
+              global.log.save('event-error-catch-creating-error', { messageObject, error: error.toString() });
             }
 
             // Workflow error entity.
@@ -1436,7 +1463,7 @@ class EventBusiness {
                 type,
               );
             } catch (error) {
-              log.save('workflow-id-not-found-error', { messageObject, error: error.toString() });
+              global.log.save('workflow-id-not-found-error', { messageObject, error: error.toString() });
             }
           })();
 
@@ -1457,7 +1484,7 @@ class EventBusiness {
             type,
           );
         } catch (error) {
-          log.save('workflow-id-not-found-error', { messageObject, error: error.toString() });
+          global.log.save('workflow-id-not-found-error', { messageObject, error: error.toString() });
         }
 
         // Check if no need to fail on error.
@@ -1477,9 +1504,9 @@ class EventBusiness {
               createdBy: SYSTEM_USER,
               updatedBy: SYSTEM_USER,
               version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
-            });
+            } as any);
           } catch (error) {
-            log.save('event-error-catch-creating-error', { messageObject, error: error.toString() });
+            global.log.save('event-error-catch-creating-error', { messageObject, error: error.toString() });
           }
 
           // Send message to RabbitMQ.
@@ -1510,10 +1537,10 @@ class EventBusiness {
             });
           }
         } catch (error) {
-          log.save('system-notifier-error', { error: error.toString(), stack: error.stack }, 'error');
+          global.log.save('system-notifier-error', { error: error.toString(), stack: error.stack }, 'error');
         }
       } catch (error) {
-        log.save('unknown-error', { error: (error && error.toString()) || error, messageObject });
+        global.log.save('unknown-error', { error: (error && error.toString()) || error, messageObject });
       }
     }
 
@@ -1583,7 +1610,7 @@ class EventBusiness {
         // Unlock old locked events.
         await this.eventModel.unlockOldLockedEvents();
       } catch (error) {
-        log.save('daemon-delay-error', error.toString());
+        global.log.save('daemon-delay-error', error.toString());
       }
 
       // Event type - notification
@@ -1654,11 +1681,11 @@ class EventBusiness {
           }
         }
       } catch (error) {
-        log.save('daemon-notification-error', error.toString());
+        global.log.save('daemon-notification-error', error.toString());
       }
 
       isRunning = false;
-    }, config.delayer.interval * 1000);
+    }, global.config.delayer.interval * 1000);
   }
 
   /**
@@ -1677,7 +1704,7 @@ class EventBusiness {
    */
   async sendNotification(options) {
     // Define params.
-    let result = {};
+    const result: any = {};
     const {
       emails,
       emailsByUserId,
@@ -1777,7 +1804,7 @@ class EventBusiness {
           }
         }
       } else {
-        log.save('notification-sms-send-result-error', { error: result.notificationSms.response.sendBySms }, 'warn');
+        global.log.save('notification-sms-send-result-error', { error: result.notificationSms.response.sendBySms }, 'warn');
       }
     }
 
@@ -1797,7 +1824,7 @@ class EventBusiness {
    * @param {{workflowId, eventTemplate, eventTemplateJsonSchemaObject, documents, events, documentModel, eventModel, filestorage}} params.eventContext Event context.
    * @returns {Promise<object>} Handling result promise.
    */
-  async handleRequestEvent({ id, data, type, crudType = CRUD_TYPE.CREATE, eventContext }) {
+  async handleRequestEvent({ id, data, type, crudType = CRUD_TYPE.CREATE, eventContext }: any) {
     return await this.eventService.request({ id, data, type, crudType, eventContext });
   }
 
@@ -1811,7 +1838,7 @@ class EventBusiness {
    * @param {object[]} params.documents Documents.
    * @returns {Promise<undefined>} Promise.
    */
-  async sendToInboxesIfNeedIt({ workflowId, workflowTemplateId, inboxesJsonSchema, document, documents, events }) {
+  async sendToInboxesIfNeedIt({ workflowId, workflowTemplateId, inboxesJsonSchema, document, documents, events }: any) {
     // Get document template.
     const { id: documentId, documentTemplateId, number: documentNumber, } = document;
     const documentTemplate = await this.documentTemplateModel.findByIdCached(documentTemplateId);
@@ -1840,7 +1867,7 @@ class EventBusiness {
    * @param {number} params.workflowTemplateId Workflow template ID.
    * @returns {Promise<string[]>}
    */
-  async getUsersListForInboxes({ inboxesJsonSchema, workflowId, workflowTemplateId, documents }) {
+  async getUsersListForInboxes({ inboxesJsonSchema, workflowId, workflowTemplateId, documents }: any) {
     // Define params.
     const { workflowCreator, users: usersStringifiedFunction } = inboxesJsonSchema;
 
@@ -1850,7 +1877,7 @@ class EventBusiness {
     if (workflowCreator) {
       const workflow = await this.workflowModel.findById(workflowId);
       const { createdBy: workflowCreatedBy } = workflow;
-      log.save('save-to-inboxes|users-definition-by-workflow-created-by|defined', { workflowCreatedBy, inboxesJsonSchema, workflowId });
+      global.log.save('save-to-inboxes|users-definition-by-workflow-created-by|defined', { workflowCreatedBy, inboxesJsonSchema, workflowId });
       users.push(workflowCreatedBy);
     }
 
@@ -1865,11 +1892,11 @@ class EventBusiness {
             : typeof usersFunctionResponse === 'string'
               ? [usersFunctionResponse]
               : [];
-        log.save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
+        global.log.save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
 
         users = users.concat(usersAfterEvalFunction);
       } catch (error) {
-        log.save('save-to-inboxes|users-definition-by-function|error', { inboxesJsonSchema, workflowId, error: error && error.toString() });
+        global.log.save('save-to-inboxes|users-definition-by-function|error', { inboxesJsonSchema, workflowId, error: error && error.toString() });
       }
     }
 
@@ -1948,7 +1975,7 @@ class EventBusiness {
           return false;
         })
       ) {
-        log.save('set-workflow-status|status-calculate-error', { workflowId, status });
+        global.log.save('set-workflow-status|status-calculate-error', { workflowId, status });
         throw new Error('Invalid status.');
       }
 
@@ -1956,7 +1983,7 @@ class EventBusiness {
       const nonTabedStatusesLength = nonTabedStatuses.length;
 
       if (nonTabedStatusesLength === 0) {
-        log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
+        global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
         throw new Error('Invalid status. Non tabed statuses don\'t exist.');
       }
 
@@ -1968,11 +1995,11 @@ class EventBusiness {
       } else if (nonTabedStatuses[nonTabedStatusesLength - 1].type.toLowerCase() === 'rejected') {
         statusId = 3;
       }
-      await models.workflow.setStatus(workflowId, statusId, calculatedStatus);
-      log.save('set-workflow-status|status-defined', { workflowId, statusId, calculatedStatus, workflowTemplateId: workflowTemplate.id });
+      await global.models.workflow.setStatus(workflowId, statusId, calculatedStatus);
+      global.log.save('set-workflow-status|status-defined', { workflowId, statusId, calculatedStatus, workflowTemplateId: workflowTemplate.id });
     } else if (status.statusId) {
-      await models.workflow.setStatus(workflowId, status.statusId);
-      log.save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
+      await global.models.workflow.setStatus(workflowId, status.statusId);
+      global.log.save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
     }
   }
 
@@ -1987,10 +2014,10 @@ class EventBusiness {
       const sortedData = this.recursiveSort(data);
 
       const recordDataInBase64 = Buffer.from(JSON.stringify(sortedData)).toString('base64');
-      const signResponse = await this.sign.sign(recordDataInBase64, true, undefined, true);
+      const signResponse: any = await this.sign.sign(recordDataInBase64, true, undefined, true);
       return signResponse.data;
     } catch (error) {
-      log.save('sign-register-record-error', { error: error.toString() || error, stack: error.stack });
+      global.log.save('sign-register-record-error', { error: error.toString() || error, stack: error.stack });
       throw error;
     }
   }
@@ -2008,7 +2035,7 @@ class EventBusiness {
     if (keys.length === 0) {
       return obj;
     }
-    const sortedObject = {};
+    const sortedObject: any = {};
     keys.sort().forEach((key) => (sortedObject[key] = this.recursiveSort(obj[key])));
 
     return sortedObject;
@@ -2053,7 +2080,7 @@ class EventBusiness {
    * @param {string} meta.keyId Key ID.
    * @param {object} eventContext Event context.
    */
-  async getRecordsToDelete(recordIds, options = {}, meta = {}, eventContext = {}) {
+  async getRecordsToDelete(recordIds, options: any = {}, meta: any = {}, eventContext: any = {}) {
     const returnRecords = options.returnRecords || false;
     const concurrent = options.concurrent || 500;
     const interval = options.interval || 1000;
@@ -2118,7 +2145,7 @@ async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEn
   // Check.
   if (!link || !name || !type) {
     // Log and exit.
-    log.save('plink-from-filestorage-attach-params-error', { attach: attach || null });
+    global.log.save('plink-from-filestorage-attach-params-error', { attach: attach || null });
     return;
   }
 
@@ -2131,7 +2158,7 @@ async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEn
   try {
     url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
   } catch (error) {
-    log.save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
+    global.log.save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
     throw error;
   }
 
@@ -2154,7 +2181,7 @@ async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP
   // Check.
   if (!link) {
     // Log and exit.
-    log.save('plink-from-filestorage-pdf-params-error', { link: link || null });
+    global.log.save('plink-from-filestorage-pdf-params-error', { link: link || null });
     return;
   }
 
@@ -2167,7 +2194,7 @@ async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP
   try {
     url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
   } catch (error) {
-    log.save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
+    global.log.save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
     throw error;
   }
 
@@ -2185,11 +2212,9 @@ async function generateP7sLink(link) {
   try {
     const persistLink = new PersistLink(getConfig().persist_link);
     const preparedHashForP7s = Buffer.from(link.slice(-16).toString('hex')) + crypto.randomBytes(64).toString('hex');
-    return await persistLink.getLinkToStaticFileInFilestorage(link, preparedHashForP7s, { isP7s: true });
+    return await persistLink.getLinkToStaticFileInFilestorage(link, preparedHashForP7s);
   } catch (error) {
-    log.save('generate-p7s-link-error', { error: error && error.message });
+    global.log.save('generate-p7s-link-error', { error: error && error.message });
     throw error;
   }
 }
-
-module.exports = EventBusiness;

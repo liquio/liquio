@@ -1,16 +1,18 @@
-const os = require('os');
+import os from 'node:os';
 
-const Controller = require('./controller');
+import { Controller } from './controller';
 
 /**
  * Monitor controller.
  */
-class MonitorController extends Controller {
+export class MonitorController extends Controller {
+  static singleton: MonitorController;
+
   /**
    * Monitor controller constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config: any) {
     // Define singleton.
     if (!MonitorController.singleton) {
       super(config);
@@ -24,7 +26,7 @@ class MonitorController extends Controller {
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
-  system(req, res) {
+  system(req: any, res: any) {
     // Prepare info.
     const systemInfo = {
       hostname: os.hostname(),
@@ -43,5 +45,3 @@ class MonitorController extends Controller {
     this.responseData(res, systemInfo);
   }
 }
-
-module.exports = MonitorController;
