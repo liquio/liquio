@@ -1,14 +1,16 @@
-const pg = require('pg');
-const nock = require('nock');
-const debug = require('debug');
-const crypto = require('crypto');
-const { readFileSync } = require('fs');
-const { execSync } = require('child_process');
-const { merge } = require('lodash');
-const { PostgreSqlContainer } = require('@testcontainers/postgresql');
-const { RedisContainer } = require('@testcontainers/redis');
+// @ts-nocheck
+import pg from 'pg';
+import nock from 'nock';
+import debug from 'debug';
+import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { merge } from 'lodash';
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer } from '@testcontainers/redis';
 
-const { prepareFixtures } = require('./fixtures');
+import { App } from '../src/app';
+import { prepareFixtures } from './fixtures';
 
 // E2E tests are slow, so we increase the timeout
 jest.setTimeout(30000);
@@ -56,7 +58,7 @@ jest.mock('back-core', () => {
 });
 
 // Mock the configuration module
-let configOverride = {};
+const configOverride: any = {};
 jest.mock('../src/lib/config', () => {
   const Multiconf = require('multiconf');
   const baseConfig = Multiconf.get('../config-templates/event');
@@ -135,7 +137,7 @@ jest.mock('../src/lib/filestorage', () => {
 const { getConfig } = require('../src/lib/config');
 const defaultConfig = getConfig();
 
-class TestApp extends require('../src/app').App {
+class TestApp extends App {
   static pgContainer;
   static redisContainer;
 
@@ -318,7 +320,7 @@ class TestApp extends require('../src/app').App {
   }
 
   // Run this after each test
-  static async afterEach() {
+  static async afterEach(_app?: any) {
     // Fail if not all nocks were used
     if (nock.pendingMocks().length > 0) {
       throw new Error(`Nock not used: ${nock.pendingMocks().join(', ')}`);
@@ -345,7 +347,7 @@ class TestApp extends require('../src/app').App {
     return model;
   }
 
-  nock(...args) {
+  nock(...args: any[]): any {
     return args.length === 0 ? nock : nock(...args);
   }
 
@@ -380,4 +382,4 @@ class TestApp extends require('../src/app').App {
   }
 }
 
-module.exports = { TestApp, mockFilestorageUploadSpy };
+export { TestApp, mockFilestorageUploadSpy };

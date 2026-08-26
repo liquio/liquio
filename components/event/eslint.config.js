@@ -75,6 +75,14 @@ module.exports = [
     },
   },
   {
+    // The e2e test harness lazily `require()`s modules inside jest.mock() factories
+    // (necessary because jest.mock factories run before hoisted imports are bound).
+    files: ['__tests__/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
     ignores: ['coverage/**', 'dist/**', 'node_modules/**'],
   },
 ];

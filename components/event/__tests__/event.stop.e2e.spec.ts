@@ -1,10 +1,7 @@
-const { TestApp } = require('./test-app');
+import { TestApp } from './test-app';
 
 describe('EventBusiness - Stop type events', () => {
-  /**
-   * @type {TestApp}
-   */
-  let app;
+  let app: TestApp;
 
   beforeAll(async () => {
     await TestApp.beforeAll();
