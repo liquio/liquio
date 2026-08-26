@@ -1,4 +1,4 @@
-const { AppInfo } = require('@liquio/back-core');
+import { AppInfo } from '@liquio/back-core';
 
 // Constants.
 const DEFAULT_CUSTOMER = '1';
@@ -7,19 +7,19 @@ const DEFAULT_ENVIRONMENT = '0';
 /**
  * App ident version.
  */
-class AppIdentHeaders {
+export class AppIdentHeaders {
   /**
    * Add.
    * @param {object} app Express app instance.
    */
-  static add(app) {
+  static add(app: any) {
     // Defoine app info.
     const appInfo = new AppInfo();
-    const customer = (config && config.server && config.server.customer) || DEFAULT_CUSTOMER;
-    const environment = (config && config.server && config.server.environment) || DEFAULT_ENVIRONMENT;
+    const customer = (global.config && global.config.server && global.config.server.customer) || DEFAULT_CUSTOMER;
+    const environment = (global.config && global.config.server && global.config.server.environment) || DEFAULT_ENVIRONMENT;
 
     // Set headers.
-    app.use(function (req, res, next) {
+    app.use(function (req: any, res: any, next: any) {
       res.setHeader('Name', appInfo.name);
       res.setHeader('Version', appInfo.version);
       res.setHeader('Customer', customer);
@@ -28,5 +28,3 @@ class AppIdentHeaders {
     });
   }
 }
-
-module.exports = AppIdentHeaders;

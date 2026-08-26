@@ -1,13 +1,23 @@
-const amqp = require('amqplib/callback_api');
-const axios = require('axios');
-const { randomUUID } = require('crypto');
+import amqp from 'amqplib/callback_api';
+import axios from 'axios';
+import { randomUUID } from 'node:crypto';
 
-const { prepareAxiosErrorToLog } = require('./helpers');
+import { Helpers } from './helpers';
+
+const { prepareAxiosErrorToLog } = Helpers;
 
 /**
  * RMQ.
  */
-class Rmq {
+export class Rmq {
+  static singleton: Record<string, Rmq>;
+
+  options: any;
+  incomingMessages: Map<string, any>;
+  initialized: boolean;
+  connection: any;
+  channels: any;
+
   /**
    * RMQ constructor.
    * @param {string} [connectorName] Connector name.
@@ -36,9 +46,9 @@ class Rmq {
    * @param {boolean} [isLoggingMessage = true] Is logging RMQ message.
    * @return {Promise<array>}
    */
-  async sendRequestAndWaitResponse(id, request, event, isLoggingMessage = true) {
+  async sendRequestAndWaitResponse(id: string, request: any, event: string, isLoggingMessage = true): Promise<any> {
     // Send message.
-    let message = {
+    const message: any = {
       event,
       meta: {
         date: new Date().toISOString(),
@@ -54,8 +64,8 @@ class Rmq {
     }
     try {
       await this.produce(message, isLoggingMessage);
-    } catch (error) {
-      log.save('rmq-send-and-wait-error-request-error', { message, error: error && error.message });
+    } catch (error: any) {
+      global.log.save('rmq-send-and-wait-error-request-error', { message, error: error && error.message });
       throw error;
     }
 
@@ -63,8 +73,8 @@ class Rmq {
     let result;
     try {
       result = await this.getIncomingMessageById(id);
-    } catch (error) {
-      log.save('rmq-send-and-wait-error-response-error', { message, error: error && error.message });
+    } catch (error: any) {
+      global.log.save('rmq-send-and-wait-error-response-error', { message, error: error && error.message });
     }
 
     // Return response.
@@ -86,13 +96,13 @@ class Rmq {
     persistent,
     readingQueueName,
     getIncomingMessageTimeout,
-  }) {
+  }: any): Promise<any> {
     // Generate UUID.
     const generatedUuid = randomUUID();
     const mergedId = `${id}-${generatedUuid}`;
 
     // Prepare message.
-    let message = {
+    const message: any = {
       event,
       meta: {
         date: new Date().toISOString(),
@@ -127,13 +137,13 @@ class Rmq {
     };
 
     // Send message.
-    let response;
+    let response: any;
     try {
-      log.save('rmq-decorator-request', { requestOptions });
+      global.log.save('rmq-decorator-request', { requestOptions });
       response = (await axios(requestOptions)).data;
-      log.save('rmq-decorator-response', { requestOptions, response });
-    } catch (error) {
-      log.save(
+      global.log.save('rmq-decorator-response', { requestOptions, response });
+    } catch (error: any) {
+      global.log.save(
         'rmq-decorator-error',
         {
           requestOptions,
@@ -165,7 +175,7 @@ class Rmq {
    * @param {number} options.maxHandlingMessages Max handling messages.
    * @param {boolean} options.useRmqDecorator Use RMQ decorator indicator.
    */
-  async init(options) {
+  async init(options: any): Promise<void> {
     // Check if already initialized.
     if (this.initialized) return;
 
@@ -229,31 +239,31 @@ class Rmq {
    * Init connection.
    * @private
    */
-  async initConnection() {
+  async initConnection(): Promise<void> {
     return new Promise((resolve, reject) => {
-      amqp.connect(this.options.amqpConnection, (error, connection) => {
+      amqp.connect(this.options.amqpConnection, (error: any, connection: any) => {
         // Check error.
         if (error) {
-          log.save('rmq-connection-error', (error && error.message) || error, 'error');
+          global.log.save('rmq-connection-error', (error && error.message) || error, 'error');
           this.initialized = false;
           return reject(error);
         }
 
         // Subscribe on error events.
-        connection.on('error', async (error) => {
-          log.save('rmq-connection-error', (error && error.message) || error, 'error');
+        connection.on('error', async (error: any) => {
+          global.log.save('rmq-connection-error', (error && error.message) || error, 'error');
           this.initialized = false;
           return reject(error);
         });
         connection.on('close', async () => {
-          log.save('rmq-connection-closed');
+          global.log.save('rmq-connection-closed');
           this.initialized = false;
           return reject(error);
         });
 
         // Save connection.
         this.connection = connection;
-        log.save('rmq-connected', true);
+        global.log.save('rmq-connected', true);
         resolve();
       });
     });
@@ -263,10 +273,10 @@ class Rmq {
    * Init channels.
    * @private
    */
-  async initChannels() {
+  async initChannels(): Promise<void> {
     // Create channels.
     const [reading, writing] = await Promise.all([this.createNewChannel(), this.createNewChannel()]);
-    log.save('rmq-channel-opened', true);
+    global.log.save('rmq-channel-opened', true);
 
     // Save channels.
     this.channels = { reading, writing };
@@ -279,11 +289,11 @@ class Rmq {
    * Init queues.
    * @private
    */
-  async initQueues() {
+  async initQueues(): Promise<void> {
     // Assert queues.
     this.channels.reading.assertExchange(this.options.readingExchangeName, 'direct', { durable: this.options.readingExchangeDurable });
 
-    const readingArguments = {};
+    const readingArguments: any = {};
     if (this.options.readingXMessageTtl) {
       readingArguments['x-message-ttl'] = this.options.readingXMessageTtl;
     }
@@ -295,7 +305,7 @@ class Rmq {
       arguments: readingArguments,
     });
 
-    const writingArguments = {};
+    const writingArguments: any = {};
     if (this.options.writingXMessageTtl) {
       writingArguments['x-message-ttl'] = this.options.writingXMessageTtl;
     }
@@ -315,25 +325,25 @@ class Rmq {
    * @private
    * @returns {Promise<object>}
    */
-  async createNewChannel() {
+  async createNewChannel(): Promise<any> {
     return new Promise((resolve, reject) => {
       // Create channel.
-      this.connection.createChannel((error, ch) => {
+      this.connection.createChannel((error: any, ch: any) => {
         // Check error.
         if (error) {
-          log.save('rmq-connection-error', (error && error.message) || error, 'error');
+          global.log.save('rmq-connection-error', (error && error.message) || error, 'error');
           this.initialized = false;
           return reject(error);
         }
 
         // Subscribe on error events.
-        ch.on('error', async (error) => {
-          log.save('rmq-channel-error', error && error.message, 'error');
+        ch.on('error', async (error: any) => {
+          global.log.save('rmq-channel-error', error && error.message, 'error');
           this.initialized = false;
           return reject(error);
         });
-        ch.on('close', async (data) => {
-          log.save('rmq-channel-closed', data);
+        ch.on('close', async (data: any) => {
+          global.log.save('rmq-channel-closed', data);
           this.initialized = false;
           return reject(error);
         });
@@ -350,7 +360,7 @@ class Rmq {
    * @param {boolean} [isLoggingMessage = true] Is logging RMQ message.
    * @returns {boolean} Is sent indicator.
    */
-  async produce(message, isLoggingMessage = true) {
+  async produce(message: any, isLoggingMessage = true): Promise<boolean> {
     try {
       // Prepare message.
       const messageString = JSON.stringify(message);
@@ -362,10 +372,10 @@ class Rmq {
         correlationId: message?.payload?.uuid,
         replyTo: this.options?.replyTo,
       });
-      log.save('rmq-message-produce', { messageString: isLoggingMessage ? messageString : '****' });
+      global.log.save('rmq-message-produce', { messageString: isLoggingMessage ? messageString : '****' });
       return true;
-    } catch (error) {
-      log.save('rmq-message-produce-error', (error && error.message) || error, 'error');
+    } catch (error: any) {
+      global.log.save('rmq-message-produce-error', (error && error.message) || error, 'error');
       throw error;
     }
   }
@@ -374,12 +384,12 @@ class Rmq {
    * Subscribe to consuming.
    * @param {function(object)} handler Handler to work with message object.
    */
-  subscribeToConsuming(handler) {
+  subscribeToConsuming(handler: (message: any) => Promise<boolean> | boolean): void {
     // Decorate handler.
-    const decoratedHandler = async (message) => {
+    const decoratedHandler = async (message: any) => {
       // Convert message.
       const messageString = message.content.toString();
-      log.save('message-from-queue-to-handle', { messageString });
+      global.log.save('message-from-queue-to-handle', { messageString });
       const messageObject = JSON.parse(messageString);
 
       // Handle.
@@ -388,13 +398,13 @@ class Rmq {
       // Check handling status.
       if (!isHandled) {
         // Inform that not handled and exit.
-        log.save('message-from-queue-not-handled', { messageString });
+        global.log.save('message-from-queue-not-handled', { messageString });
         this.channels.reading.nack(message);
         return;
       }
 
       // Inform that handled.
-      log.save('message-from-queue-handled', { messageString });
+      global.log.save('message-from-queue-handled', { messageString });
       this.channels.reading.ack(message);
     };
 
@@ -408,7 +418,7 @@ class Rmq {
    * @param {object} message Message object.
    * @returns {Promise<boolean>} Is handled indicator.
    */
-  async consumingHandler(message = {}) {
+  async consumingHandler(message: any = {}): Promise<boolean> {
     // Check message.
     const { payload: { uuid } = {} } = message;
     if (!uuid) {
@@ -422,7 +432,7 @@ class Rmq {
     } else {
       this.incomingMessages.set(uuid, message);
     }
-    log.save('rmq-incoming-message', { count: this.incomingMessages.size, message });
+    global.log.save('rmq-incoming-message', { count: this.incomingMessages.size, message });
     return true;
   }
 
@@ -431,7 +441,7 @@ class Rmq {
    * @param {string} id Message ID.
    * @returns {Promise<object>} Incoming message.
    */
-  async getIncomingMessageById(id) {
+  async getIncomingMessageById(id: string): Promise<any> {
     return new Promise((resolve, reject) => {
       // Try to get with interval.
       const getInterval = setInterval(async () => {
@@ -449,7 +459,7 @@ class Rmq {
 
       // Drop after timeout.
       setTimeout(() => {
-        if (!getInterval || getInterval._destroyed) {
+        if (!getInterval || (getInterval as any)._destroyed) {
           return;
         }
         clearInterval(getInterval);
@@ -461,19 +471,17 @@ class Rmq {
   /**
    * Close connection.
    */
-  async close() {
+  async close(): Promise<void> {
     return new Promise((resolve) => {
-      this.connection.close((error) => {
+      this.connection.close((error: any) => {
         if (error) {
-          log.save('can-not-close-connection', error && error.message);
+          global.log.save('can-not-close-connection', error && error.message);
           return resolve();
         }
 
-        log.save('connection-closed-by-app');
+        global.log.save('connection-closed-by-app');
         resolve();
       });
     });
   }
 }
-
-module.exports = Rmq;

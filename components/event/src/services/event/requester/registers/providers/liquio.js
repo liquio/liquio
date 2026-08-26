@@ -3,9 +3,10 @@ const qs = require('qs');
 const axios = require('axios');
 
 const Provider = require('./provider');
-const HttpRequest = require('../../../../../lib/http_request');
+const { HttpRequest } = require('../../../../../lib/http_request');
 const { getTraceId } = require('@liquio/back-core');
-const { prepareAxiosErrorToLog } = require('../../../../../lib/helpers');
+const { Helpers } = require('../../../../../lib/helpers');
+const { prepareAxiosErrorToLog } = Helpers;
 const { FILE_DOCUMENT_TEMPLATE_ID } = require('../../../../../constants/common');
 
 // Constants.

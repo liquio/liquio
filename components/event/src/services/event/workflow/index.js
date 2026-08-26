@@ -2,12 +2,13 @@ const qs = require('qs');
 const { randomUUID } = require('crypto');
 const axios = require('axios');
 
-const Filestorage = require('../../../lib/filestorage');
+const { FileStorage: Filestorage } = require('../../../lib/filestorage');
 const TaskModel = require('../../../models/task');
-const { prepareAxiosErrorToLog } = require('../../../lib/helpers');
+const { Helpers } = require('../../../lib/helpers');
+const { prepareAxiosErrorToLog } = Helpers;
 const { SYSTEM_USER } = require('../../../constants/common');
-const Sandbox = require('../../../lib/sandbox');
-const typeOf = require('../../../lib/type_of');
+const { Sandbox } = require('../../../lib/sandbox');
+const { typeOf } = require('../../../lib/type_of');
 
 /**
  * Event workflow.

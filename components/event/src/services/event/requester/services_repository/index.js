@@ -1,7 +1,8 @@
 const axios = require('axios');
 
-const { prepareAxiosErrorToLog } = require('../../../../lib/helpers');
-const HttpRequest = require('../../../../lib/http_request');
+const { Helpers } = require('../../../../lib/helpers');
+const { prepareAxiosErrorToLog } = Helpers;
+const { HttpRequest } = require('../../../../lib/http_request');
 
 // Constants.
 const ID_CARD_LENGTH = 9;

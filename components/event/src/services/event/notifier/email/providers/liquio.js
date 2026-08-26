@@ -1,5 +1,5 @@
 const Provider = require('./provider');
-const HttpRequest = require('../../../../../lib/http_request');
+const { HttpRequest } = require('../../../../../lib/http_request');
 const { getTraceId } = require('@liquio/back-core');
 
 const MESSAGE_ID_KEY = '<message-id>';

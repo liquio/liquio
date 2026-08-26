@@ -1,6 +1,6 @@
 const { ERROR_OVERRIDE } = require('../../../../../constants/error');
 const { InvalidConfigError } = require('../../../../../lib/errors');
-const Sandbox = require('../../../../../lib/sandbox');
+const { Sandbox } = require('../../../../../lib/sandbox');
 
 /**
  * Provider.

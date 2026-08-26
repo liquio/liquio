@@ -1,7 +1,7 @@
-const { setTimeout } = require('timers/promises');
-const amqp = require('amqplib/callback_api');
+import { setTimeout } from 'node:timers/promises';
+import amqp from 'amqplib/callback_api';
 
-const MessageQueue = require('./index');
+import { MessageQueue } from './index';
 
 jest.mock('amqplib/callback_api', () => ({
   connect: jest.fn((url, callback) => {
@@ -38,7 +38,7 @@ describe('MessageQueue', () => {
   beforeEach(() => {
     global.log = {
       save: jest.fn(),
-    };
+    } as any;
     global.redisClient = null;
     global.config = {
       redis: {
@@ -136,7 +136,7 @@ describe('MessageQueue', () => {
     it('should reconnect after timeout if connection closes', async () => {
       jest.useFakeTimers();
       await messageQueue.init();
-      const closeSpy = jest.spyOn(messageQueue, 'close').mockResolvedValue();
+      const closeSpy = jest.spyOn(messageQueue, 'close').mockResolvedValue(undefined);
 
       messageQueue.reconnect();
       expect(messageQueue.reconnectTimeout).not.toBeNull();
@@ -155,7 +155,7 @@ describe('MessageQueue', () => {
       await messageQueue.init();
       messageQueue.isClosing = true;
 
-      const closeSpy = jest.spyOn(messageQueue, 'close').mockResolvedValue();
+      const closeSpy = jest.spyOn(messageQueue, 'close').mockResolvedValue(undefined);
       messageQueue.reconnect();
 
       expect(messageQueue.reconnectTimeout).toBeNull();
@@ -227,7 +227,7 @@ describe('MessageQueue', () => {
   describe('produce', () => {
     it('should append amqpMessageId to message', async () => {
       await messageQueue.init();
-      const message = { type: 'test', data: { foo: 'bar' } };
+      const message: any = { type: 'test', data: { foo: 'bar' } };
 
       messageQueue.produce(message);
 

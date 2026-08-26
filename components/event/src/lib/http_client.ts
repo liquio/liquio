@@ -1,17 +1,22 @@
-const stream = require('node:stream');
-const axios = require('axios');
-const Helpers = require('./helpers');
+import stream from 'node:stream';
+import axios from 'axios';
+import { Helpers } from './helpers';
+
 const MAX_LOG_LENGTH = 100e3 - 1000;
 
 const DEFAULT_REQUEST_TIMEOUT = 60000; // 1 minute.
 
-class HttpClient {
+export class HttpClient {
+  config: any;
+  logger: (...args: any[]) => any;
+  getTraceId: (() => string) | undefined;
+
   /**
    * @param {{requestTimeout: number}} [config] Config object
    * @param {function} [logger] Log function
    * @param {function} [getTraceId] Async local storage getTraceId function. For setting global-trace-id header
    */
-  constructor(config, logger, getTraceId) {
+  constructor(config: any, logger?: (...args: any[]) => any, getTraceId?: () => string) {
     /**
      * @private
      */
@@ -32,7 +37,7 @@ class HttpClient {
    * @param {string} meta Meta data about request for logging.
    * @return {Promise<import('axios').AxiosResponse['data']>} Response data.
    */
-  async request(url, init = {}, meta) {
+  async request(url: string, init: any = {}, meta?: any): Promise<any> {
     if (this.getTraceId) {
       init = { ...init, headers: { ...init.headers, 'global-trace-id': this.getTraceId() } };
     }
@@ -66,7 +71,7 @@ class HttpClient {
     let response;
     try {
       response = await axios(requestOptions);
-    } catch (error) {
+    } catch (error: any) {
       const preparedError = Helpers.prepareAxiosErrorToLog(error);
       if (preparedError?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
         error.originalCode = preparedError?.code || null;
@@ -86,7 +91,9 @@ class HttpClient {
         'error',
       );
 
-      throw new Error('Server sent an HTTP request and got an network error.', { cause: error });
+      const wrapped = new Error('Server sent an HTTP request and got an network error.');
+      (wrapped as any).cause = error;
+      throw wrapped;
     }
 
     this.logger('http-client-response', { meta, response: `${response.status} ${response.statusText}` });
@@ -102,5 +109,3 @@ class HttpClient {
     };
   }
 }
-
-module.exports = HttpClient;

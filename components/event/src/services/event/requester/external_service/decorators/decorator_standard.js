@@ -1,6 +1,6 @@
-const Sign = require('../../../../../lib/sign');
+const { Sign } = require('../../../../../lib/sign');
 const Decorator = require('./decorator');
-const typeOf = require('../../../../../lib/type_of');
+const { typeOf } = require('../../../../../lib/type_of');
 
 /**
  * Decorator standard.

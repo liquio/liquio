@@ -1,8 +1,8 @@
-const _ = require('lodash');
-const amqp = require('amqplib/callback_api');
-const { randomUUID } = require('crypto');
+import _ from 'lodash';
+import amqp from 'amqplib/callback_api';
+import { randomUUID } from 'node:crypto';
 
-const { runInAsyncLocalStorage } = require('@liquio/back-core');
+import { runInAsyncLocalStorage } from '@liquio/back-core';
 
 // Constants.
 const RETRY_CONNECTION_TIME = 10000;
@@ -15,7 +15,18 @@ const DEFAULT_WIP_WAIT_TIME = 5 * 60 * 1000;
 /**
  * Message queue.
  */
-class MessageQueue {
+export class MessageQueue {
+  static singleton: MessageQueue;
+
+  config: any;
+  connection: any;
+  channels: any;
+  props: any;
+  isClosing: boolean;
+  reconnectTimeout: any;
+  totalReconnectCount: number;
+  consumingCount: number;
+
   /**
    * Message queue constructor.
    * @param {object} config Config.
@@ -24,7 +35,7 @@ class MessageQueue {
    * @param {string} config.readingQueueName Reading queue name.
    * @param {string} config.writingQueueName Writing queue name.
    */
-  constructor(config, props = {}) {
+  constructor(config: any, props: any = {}) {
     // Define singleton.
     if (!MessageQueue.singleton) {
       this.config = {
@@ -50,7 +61,7 @@ class MessageQueue {
   /**
    * Init.
    */
-  async init() {
+  async init(): Promise<void> {
     const { onInit } = this.props;
 
     await this.initConnection();
@@ -73,7 +84,7 @@ class MessageQueue {
   /**
    * Reconnect.
    */
-  reconnect() {
+  reconnect(): void {
     // Check if no need to reconnect.
     if (this.isClosing) return;
 
@@ -82,12 +93,12 @@ class MessageQueue {
 
     // Try to reconnect.
     this.reconnectTimeout = setTimeout(async () => {
-      log.save('amqp-starting-reconnect', { totalReconnectCount: this.totalReconnectCount });
+      global.log.save('amqp-starting-reconnect', { totalReconnectCount: this.totalReconnectCount });
       await this.close();
       this.reconnectTimeout = null;
       await this.init();
       this.totalReconnectCount += 1;
-      log.save('amqp-successfully-reconnected', { totalReconnectCount: this.totalReconnectCount });
+      global.log.save('amqp-successfully-reconnected', { totalReconnectCount: this.totalReconnectCount });
       global.messageQueue = this;
     }, this.config.retryConnectionTime || RETRY_CONNECTION_TIME);
   }
@@ -96,30 +107,30 @@ class MessageQueue {
    * Init connection.
    * @private
    */
-  async initConnection() {
+  async initConnection(): Promise<void> {
     // Reconnect on close.
     this.isClosing = false;
 
     return new Promise((resolve) => {
-      amqp.connect(this.config.amqpConnection, (error, connection) => {
+      amqp.connect(this.config.amqpConnection, (error: any, connection: any) => {
         // Check error.
         if (error) {
-          log.save('amqp-connection-error|cannot-create-connection', error, 'error');
+          global.log.save('amqp-connection-error|cannot-create-connection', error, 'error');
           return this.reconnect();
         }
 
         // Subscribe on error events.
-        connection.on('error', async (error) => {
-          log.save('amqp-connection-error', error?.message);
+        connection.on('error', async (error: any) => {
+          global.log.save('amqp-connection-error', error?.message);
         });
         connection.on('close', async () => {
-          log.save('amqp-connection-closed');
+          global.log.save('amqp-connection-closed');
           return this.reconnect();
         });
 
         // Save connection.
         this.connection = connection;
-        log.save('amqp-connected', true);
+        global.log.save('amqp-connected', true);
         resolve();
       });
     });
@@ -129,10 +140,10 @@ class MessageQueue {
    * Init channels.
    * @private
    */
-  async initChannels() {
+  async initChannels(): Promise<void> {
     // Create channels.
     const [reading, writing, errors] = await Promise.all([this.createNewChannel(), this.createNewChannel(), this.createNewChannel()]);
-    log.save('amqp-channel-opened', true);
+    global.log.save('amqp-channel-opened', true);
 
     // Save channels.
     this.channels = { reading, writing, errors };
@@ -145,7 +156,7 @@ class MessageQueue {
    * Init queues.
    * @private
    */
-  initQueues() {
+  initQueues(): void {
     // Assert main queues.
     this.channels.reading.assertQueue(this.config.readingQueueName, { durable: true });
     this.channels.writing.assertQueue(this.config.writingQueueName, { durable: true });
@@ -217,10 +228,12 @@ class MessageQueue {
    * Get queue params
    * @private
    */
-  getQueueParams(queueName, defaults = { durable: true }) {
+  getQueueParams(queueName: string, defaults: any = { durable: true }): any {
     const { queueParams = [] } = this.config;
 
-    return queueParams.filter((param) => queueName === param.queueName).reduce((acc, { params = {} }) => _.merge(acc, params), defaults);
+    return queueParams
+      .filter((param: any) => queueName === param.queueName)
+      .reduce((acc: any, { params = {} }: any) => _.merge(acc, params), defaults);
   }
 
   /**
@@ -228,22 +241,22 @@ class MessageQueue {
    * @private
    * @returns {Promise<object>}
    */
-  async createNewChannel() {
+  async createNewChannel(): Promise<any> {
     return new Promise((resolve, reject) => {
       // Create channel.
-      this.connection.createChannel((error, ch) => {
+      this.connection.createChannel((error: any, ch: any) => {
         // Check error.
         if (error) {
-          log.save('amqp-channel-error|cannot-create-channel', error);
+          global.log.save('amqp-channel-error|cannot-create-channel', error);
           return reject(error);
         }
 
         // Subscribe on error events.
-        ch.on('error', async (error) => {
-          log.save('amqp-channel-error', error?.message);
+        ch.on('error', async (error: any) => {
+          global.log.save('amqp-channel-error', error?.message);
         });
-        ch.on('close', async (data) => {
-          log.save('amqp-channel-closed', data);
+        ch.on('close', async (data: any) => {
+          global.log.save('amqp-channel-closed', data);
           return this.reconnect();
         });
 
@@ -259,7 +272,7 @@ class MessageQueue {
    * @param {'10m'|'1h'|'2h'|'8h'|'1d'} [postponedTime] Postponed time.
    * @returns {true} Is handled indicator.
    */
-  produce(message, postponedTime) {
+  produce(message: any, postponedTime?: '10m' | '1h' | '2h' | '8h' | '1d'): boolean {
     try {
       // Append message.
       message.amqpMessageId = randomUUID();
@@ -269,7 +282,7 @@ class MessageQueue {
       const preparedMessage = Buffer.from(messageString);
 
       // Define queue name.
-      const queueNames = {
+      const queueNames: Record<string, string> = {
         '10m': this.config.errorQueueName10M,
         '1h': this.config.errorQueueName1H,
         '2h': this.config.errorQueueName2H,
@@ -279,14 +292,14 @@ class MessageQueue {
       const queueName = (postponedTime && (queueNames[postponedTime] || queueNames['1d'])) || this.config.writingQueueName;
 
       // Send message to queue.
-      log.save('amqp-message-send', { messageString, queueName });
+      global.log.save('amqp-message-send', { messageString, queueName });
       this.channels.writing.sendToQueue(queueName, preparedMessage, {
         persistent: true,
       });
-      log.save('amqp-message-sent', { messageString, queueName });
+      global.log.save('amqp-message-sent', { messageString, queueName });
       return true;
-    } catch (error) {
-      log.save('amqp-produce-error', { error: error?.message, message, postponedTime });
+    } catch (error: any) {
+      global.log.save('amqp-produce-error', { error: error?.message, message, postponedTime });
       this.checkErrorAndExitIfNeedIt(error);
       throw error;
     }
@@ -296,9 +309,9 @@ class MessageQueue {
    * Subscribe to consuming.
    * @param {function(object)} handler Handler to work with message object.
    */
-  subscribeToConsuming(handler) {
+  subscribeToConsuming(handler: (message: any) => Promise<boolean> | boolean): void {
     // Decorate handler.
-    const decoratedHandler = async (message) => {
+    const decoratedHandler = async (message: any) => {
       runInAsyncLocalStorage(async () => {
         this.consumingCount++;
 
@@ -307,14 +320,14 @@ class MessageQueue {
         // Convert message.
         const messageString = message.content.toString();
 
-        log.save('message-from-queue-to-handle', { messageString });
+        global.log.save('message-from-queue-to-handle', { messageString });
 
         let messageObject;
         try {
           messageObject = JSON.parse(messageString);
-        } catch (error) {
+        } catch (error: any) {
           // Log parse error.
-          log.save('message-parse-error', { error: error?.message, messageString });
+          global.log.save('message-parse-error', { error: error?.message, messageString });
 
           // Inform message handled and return.
           this.channels.reading.ack(message);
@@ -337,13 +350,13 @@ class MessageQueue {
                 setTimeout(resolve, DEFAULT_WIP_WAIT_TIME);
               });
               this.channels.reading.nack(message);
-              log.save('message-from-queue-not-handled-waited-wip', { amqpMessageId });
+              global.log.save('message-from-queue-not-handled-waited-wip', { amqpMessageId });
               // Decrement consuming count.
               this.consumingCount = Math.max(0, this.consumingCount - 1);
               return;
             }
-          } catch (error) {
-            log.save('message-from-queue-id-get-wip-redis-error', error.message, 'error');
+          } catch (error: any) {
+            global.log.save('message-from-queue-id-get-wip-redis-error', error.message, 'error');
           }
         }
 
@@ -353,8 +366,8 @@ class MessageQueue {
           try {
             const ttl = global.config?.redis?.amqpMessageCache?.wipTtl || DEFAULT_REDIS_WIP_TTL;
             await global.redisClient.set(`${REDIS_AMQP_KEY_PREFIX}.${amqpMessageId}.wip`, amqpMessageId, ttl);
-          } catch (error) {
-            log.save('message-from-queue-id-set-wip-redis-error', { error: error.message, amqpMessageId });
+          } catch (error: any) {
+            global.log.save('message-from-queue-id-set-wip-redis-error', { error: error.message, amqpMessageId });
           }
         }
 
@@ -365,11 +378,11 @@ class MessageQueue {
             if (amqpMessageIdFromRedis) {
               try {
                 // Inform that handled.
-                log.save('message-from-queue-handled-from-redis', { messageString, amqpMessageId });
+                global.log.save('message-from-queue-handled-from-redis', { messageString, amqpMessageId });
                 this.channels.reading.ack(message);
-                log.save('message-from-queue-ack-from-redis', { messageString, amqpMessageId });
-              } catch (error) {
-                log.save('message-from-queue-ack-error-from-redis', error.message, 'error');
+                global.log.save('message-from-queue-ack-from-redis', { messageString, amqpMessageId });
+              } catch (error: any) {
+                global.log.save('message-from-queue-ack-error-from-redis', error.message, 'error');
 
                 // Decrement consuming count.
                 this.consumingCount = Math.max(0, this.consumingCount - 1);
@@ -380,8 +393,8 @@ class MessageQueue {
               this.consumingCount = Math.max(0, this.consumingCount - 1);
               return;
             }
-          } catch (error) {
-            log.save('message-from-queue-id-get-redis-error', error.message, 'error');
+          } catch (error: any) {
+            global.log.save('message-from-queue-id-get-redis-error', error.message, 'error');
           }
         }
 
@@ -391,7 +404,7 @@ class MessageQueue {
         // Check handling status.
         if (!isHandled) {
           // Inform that not handled and exit.
-          log.save('message-from-queue-not-handled', { messageString, duration: Date.now() - time });
+          global.log.save('message-from-queue-not-handled', { messageString, duration: Date.now() - time });
           this.channels.reading.nack(message);
 
           // Decrement consuming count.
@@ -404,8 +417,8 @@ class MessageQueue {
           try {
             const ttl = global.config?.redis?.amqpMessageCache?.ttl || DEFAULT_REDIS_TTL;
             await global.redisClient.set(`${REDIS_AMQP_KEY_PREFIX}.${amqpMessageId}`, amqpMessageId, ttl);
-          } catch (error) {
-            log.save('message-from-queue-id-set-redis-error', {
+          } catch (error: any) {
+            global.log.save('message-from-queue-id-set-redis-error', {
               error: error.message,
               messageString,
               amqpMessageId,
@@ -414,17 +427,17 @@ class MessageQueue {
         }
 
         // Inform that handled.
-        log.save('message-from-queue-handled', { messageString, duration: Date.now() - time });
+        global.log.save('message-from-queue-handled', { messageString, duration: Date.now() - time });
         try {
           this.channels.reading.ack(message);
-          log.save('message-from-queue-ack', { messageString });
-        } catch (error) {
-          const message = error?.message || 'unknown';
-          if (message.includes('Channel closed')) {
-            log.save('message-from-queue-channel-closed-error', { error: message }, 'error');
+          global.log.save('message-from-queue-ack', { messageString });
+        } catch (error: any) {
+          const errMessage = error?.message || 'unknown';
+          if (errMessage.includes('Channel closed')) {
+            global.log.save('message-from-queue-channel-closed-error', { error: errMessage }, 'error');
             this.reconnect();
           } else {
-            log.save('message-from-queue-ack-error', { error: message }, 'error');
+            global.log.save('message-from-queue-ack-error', { error: errMessage }, 'error');
           }
         }
 
@@ -443,7 +456,7 @@ class MessageQueue {
   /**
    * Close connection.
    */
-  async close() {
+  async close(): Promise<void> {
     // Set status.
     this.isClosing = true;
 
@@ -453,14 +466,14 @@ class MessageQueue {
         resolve();
       }
 
-      this.connection.close((error) => {
+      this.connection.close((error: any) => {
         if (error) {
-          log.save('can-not-close-connection', error?.message);
+          global.log.save('can-not-close-connection', error?.message);
           this.isClosing = false;
           return resolve();
         }
 
-        log.save('connection-closed-by-app');
+        global.log.save('connection-closed-by-app');
         this.isClosing = false;
         return resolve();
       });
@@ -471,13 +484,13 @@ class MessageQueue {
    * @private
    * @param {Error} error Error to check.
    */
-  checkErrorAndExitIfNeedIt(error) {
+  checkErrorAndExitIfNeedIt(error: any): void {
     // Define error message.
     const errorMessage = error?.message;
 
     // Exit if need it.
-    if (ERRORS_TO_RESTART.some(errorMessage)) {
-      log.save('app-restart', { error: error?.message });
+    if ((ERRORS_TO_RESTART.some as any)(errorMessage)) {
+      global.log.save('app-restart', { error: error?.message });
       this.exitGracefully();
     }
   }
@@ -487,10 +500,10 @@ class MessageQueue {
    * @private
    * @param {boolean} forceKill Force kill.
    */
-  async exitGracefully(forceKill = true) {
+  async exitGracefully(forceKill = true): Promise<void> {
     // Stop consuming.
     this.channels.reading.cancel('consumer');
-    log.save('amqp-consumers-stopping', { count: this.consumingCount });
+    global.log.save('amqp-consumers-stopping', { count: this.consumingCount });
 
     // Exit anyway after 1 minute.
     if (forceKill) {
@@ -508,5 +521,3 @@ class MessageQueue {
     (async () => process.exit(1))();
   }
 }
-
-module.exports = MessageQueue;

@@ -1,46 +1,46 @@
-const { WebSocketServer } = require('ws');
-const { PassThrough } = require('stream');
+import { WebSocketServer } from 'ws';
+import { PassThrough } from 'node:stream';
 
 const DEFAULT_PORT = 5000;
 const DEFAULT_HEARTBEAT_TIMEOUT = 30000;
 
-class LogsBroadcasting {
+export class LogsBroadcasting {
   /**
    * @public
    * @static
    * @param {Object} config
    */
-  static start(config) {
+  static start(config: any): void {
     const port = config?.port || DEFAULT_PORT;
     const webSocketServer = new WebSocketServer({ port: port });
 
     // Pipe stdout to socket.
     const stdOutStream = new PassThrough();
-    process.stdout.__write = process.stdout.write;
-    process.stdout.write = (data) => {
+    (process.stdout as any).__write = process.stdout.write;
+    (process.stdout as any).write = (data: any) => {
       stdOutStream.write(data);
-      process.stdout.__write(data);
+      (process.stdout as any).__write(data);
     };
 
     // Pipe stderr to socket.
     const stdErrorStream = new PassThrough();
-    process.stderr.__write = process.stderr.write;
-    process.stderr.write = (data) => {
+    (process.stderr as any).__write = process.stderr.write;
+    (process.stderr as any).write = (data: any) => {
       stdErrorStream.write(data);
-      process.stderr.__write(data);
+      (process.stderr as any).__write(data);
     };
 
     // Handle connection.
-    webSocketServer.on('connection', (socket) => {
+    webSocketServer.on('connection', (socket: any) => {
       // Check that connection alive.
       socket.isAlive = true;
-      socket.on('pong', function () {
+      socket.on('pong', function (this: any) {
         this.isAlive = true;
       });
 
       // Define handlers.
-      const sendInfoLog = (data) => socket.send(JSON.stringify({ info: data.toString('utf-8') }));
-      const sendErrorLog = (data) => socket.send(JSON.stringify({ error: data.toString('utf-8') }));
+      const sendInfoLog = (data: any) => socket.send(JSON.stringify({ info: data.toString('utf-8') }));
+      const sendErrorLog = (data: any) => socket.send(JSON.stringify({ error: data.toString('utf-8') }));
 
       // Subscribe to stdout and stderr.
       stdOutStream.on('data', sendInfoLog);
@@ -55,7 +55,7 @@ class LogsBroadcasting {
 
     // Check that connection alive.
     const heartbeatInterval = setInterval(() => {
-      webSocketServer.clients.forEach((socket) => {
+      webSocketServer.clients.forEach((socket: any) => {
         if (socket.isAlive === false) {
           return socket.terminate();
         }
@@ -65,8 +65,6 @@ class LogsBroadcasting {
     }, DEFAULT_HEARTBEAT_TIMEOUT);
     webSocketServer.on('close', () => clearInterval(heartbeatInterval));
 
-    log.save('logs-broadcasting-started', { port: port });
+    global.log.save('logs-broadcasting-started', { port: port });
   }
 }
-
-module.exports = LogsBroadcasting;

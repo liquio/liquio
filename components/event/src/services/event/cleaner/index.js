@@ -1,4 +1,4 @@
-const Filestorage = require('../../../lib/filestorage');
+const { FileStorage: Filestorage } = require('../../../lib/filestorage');
 
 /**
  * Event cleaner.

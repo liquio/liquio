@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const Decorator = require('./decorator');
-const typeOf = require('../../../../../lib/type_of');
+const { typeOf } = require('../../../../../lib/type_of');
 
 // Constants.
 const BODY_WORKFLOW_ID_AND_TIMESTAMP_SEPARATOR = '|';

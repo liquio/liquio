@@ -3,7 +3,7 @@ const axios = require('axios');
 
 const ReadableData = require('../../../../../types/readable_data');
 const { InvalidSchemaError, EvaluateSchemaFunctionError, ExternalServiceError } = require('../../../../../lib/errors');
-const Sandbox = require('../../../../../lib/sandbox');
+const { Sandbox } = require('../../../../../lib/sandbox');
 
 const CONTENT_TYPES = {
   pdf: 'application/pdf',

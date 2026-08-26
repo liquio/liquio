@@ -2,8 +2,8 @@ const express = require('express');
 
 const PingController = require('../controllers/ping');
 const MonitorController = require('../controllers/monitor');
-const AppIdentHeaders = require('../lib/app_ident_headers');
-const Cors = require('../lib/cors');
+const { AppIdentHeaders } = require('../lib/app_ident_headers');
+const { Cors } = require('../lib/cors');
 const { asyncLocalStorageMiddleware } = require('@liquio/back-core');
 
 /**

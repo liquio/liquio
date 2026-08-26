@@ -1,10 +1,11 @@
-const debug = require('debug')('test:log');
+import debugModule from 'debug';
+const debug = debugModule('test:log');
 
-const Sandbox = require('./sandbox');
+import { Sandbox } from './sandbox';
 
 global.log = {
   save: jest.fn().mockImplementation(debug),
-};
+} as any;
 
 describe('Sandbox', () => {
   const config = {};
@@ -57,16 +58,16 @@ describe('Sandbox', () => {
   });
 
   it('should prevent access to global reference', () => {
-    global.test = 'test';
+    (global as any).test = 'test';
     const sandbox = new Sandbox(config);
     const result = sandbox.eval('Object.keys(global)');
     expect(result).toEqual([]);
     sandbox.eval('global.test = "test2"');
-    expect(global.test).toBe('test');
+    expect((global as any).test).toBe('test');
 
     // Warning: Predefined globals are not protected.
     sandbox.eval('fetch = function() { return "fetch" }');
-    expect(fetch()).toBe('fetch');
+    expect((fetch as any)()).toBe('fetch');
   });
 
   it('should use default globals', () => {

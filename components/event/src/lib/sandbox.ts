@@ -1,22 +1,31 @@
-const vm = require('isolated-vm');
-const iconv = require('iconv-lite');
-const moment = require('moment');
-const _ = require('lodash');
-const crypto = require('crypto');
-const acorn = require('acorn');
+import vm from 'isolated-vm';
+import iconv from 'iconv-lite';
+import moment from 'moment';
+import _ from 'lodash';
+import crypto from 'node:crypto';
+import acorn from 'acorn';
 const { randomUUID } = crypto;
-const { literal } = require('sequelize');
-const { LRUCache } = require('lru-cache');
+import { literal } from 'sequelize';
+import { LRUCache } from 'lru-cache';
 
-const { transformFunctionToAsync } = require('./helpers');
+import { Helpers } from './helpers';
+
+const { transformFunctionToAsync } = Helpers;
 
 const DEFAULT_GLOBAL_FUNCTIONS_OBJECT = '$';
 const DEFAULT_LRU_MAX = 1000; // 1000 items
 
-class Sandbox {
-  static singleton;
+export class Sandbox {
+  static singleton: Sandbox;
 
-  static getInstance() {
+  config: any;
+  isolate: any;
+  globalFunctionsObject: string;
+  defaultGlobals: Record<string, any>;
+  cache: any;
+  workflowTemplateFunctions: Record<string, any>;
+
+  static getInstance(): Sandbox {
     if (!Sandbox.singleton) {
       throw new Error('Sandbox is not initialized.');
     }
@@ -26,7 +35,7 @@ class Sandbox {
   /**
    * @param {object} config Sandbox configuration.
    */
-  constructor(config) {
+  constructor(config?: any) {
     this.config = config || {};
 
     // Create an isolation container
@@ -61,7 +70,7 @@ class Sandbox {
     Sandbox.singleton = this;
   }
 
-  async init(models) {
+  async init(models?: any): Promise<void> {
     if (models?.models?.workflowTemplate) {
       // Select all workflow templates that have global functions defined in their data.
       const workflowTemplates = await models.models.workflowTemplate.model.findAll({
@@ -90,7 +99,7 @@ class Sandbox {
     }
   }
 
-  updateWorkflowTemplateFunctions(workflowTemplateId, globalFunctions) {
+  updateWorkflowTemplateFunctions(workflowTemplateId: number, globalFunctions: Record<string, any>): void {
     // Filter out empty strings.
     const pairs = Object.entries(
       globalFunctions || {},
@@ -104,15 +113,15 @@ class Sandbox {
 
       try {
         this.workflowTemplateFunctions[workflowTemplateId][functionName] = this.eval(
-          functionCode,
-          { isAsync: functionCode.trim().startsWith('async') },
+          functionCode as string,
+          { isAsync: (functionCode as string).trim().startsWith('async') },
         );
 
         global.log.save('sandbox-global-function', {
           workflowTemplateId,
           functionName,
         }, 'info');
-      } catch (error) {
+      } catch (error: any) {
         global.log.save('sandbox-global-function-error', {
           workflowTemplateId,
           functionName,
@@ -123,11 +132,11 @@ class Sandbox {
     }
   }
 
-  createContext() {
+  createContext(): SandboxContext {
     return new SandboxContext(this);
   }
 
-  addGlobal(name, value) {
+  addGlobal(name: string, value: any): this {
     if (typeof name !== 'string' || name.length === 0) {
       throw new Error('Global name must be a non-empty string');
     }
@@ -146,7 +155,7 @@ class Sandbox {
    * @param {string} code - The code to minify.
    * @returns {string} - Minified code without comments.
    */
-  static minifyCode(code) {
+  static minifyCode(code: string): string {
     return code
       .replace(/^\s*\/\/.*$/gm, '') // Remove single-line comments starting from the line beginning
       .replace(/^\s*\/\*[\s\S]*?\*\//gm, '') // Remove multi-line comments starting from the line beginning
@@ -171,7 +180,7 @@ class Sandbox {
    * @param {EvalOptions} options
    * @returns {any} Result.
    */
-  eval(code, options = {}) {
+  eval(code: string, options: any = {}): any {
     if (typeof code !== 'string' || code.length === 0) {
       return options.defaultValue;
     }
@@ -191,7 +200,7 @@ class Sandbox {
     // Add workflow template global functions to the execution context.
     if (options.workflowTemplateId) {
       options.global[this.globalFunctionsObject].workflow = {
-        ...this.workflowTemplateFunctions[options.workflowTemplateId]
+        ...this.workflowTemplateFunctions[options.workflowTemplateId],
       };
     }
 
@@ -203,7 +212,7 @@ class Sandbox {
         .filter(([, value]) => {
           return (
             typeof value === 'function' &&
-            value.constructor.name === 'AsyncFunction'
+            (value as any).constructor.name === 'AsyncFunction'
           );
         })
         .map(([key]) => key);
@@ -213,7 +222,7 @@ class Sandbox {
         asyncFunctions,
       );
     }
-    
+
     // Setup function with global context pulled from options.
     const keys = Object.keys(globalContext);
     const values = Object.values(globalContext);
@@ -229,7 +238,7 @@ class Sandbox {
    * @param {EvalOptions} options Additional evaluation options.
    * @returns {any} Result.
    */
-  evalWithArgs(code, args, options = {}) {
+  evalWithArgs(code: any, args: any[], options: any = {}): any {
     const meta = options.meta ?? {};
 
     if (code === undefined && 'defaultValue' in options) {
@@ -260,10 +269,10 @@ class Sandbox {
 
       let isArrowFunction, arrowParams, acornError;
       try {
-        const { body } = acorn.parse(code, { ecmaVersion: 2020 });
+        const { body } = acorn.parse(code, { ecmaVersion: 2020 }) as any;
         if (body[0].type === 'ExpressionStatement' && body[0].expression.type === 'ArrowFunctionExpression') {
           isArrowFunction = true;
-          arrowParams = body[0].expression.params.map((param) => param.name);
+          arrowParams = body[0].expression.params.map((param: any) => param.name);
           if (isArrowFunction && Array.isArray(arrowParams)) {
             args = args.slice(0, arrowParams.length);
           }
@@ -294,12 +303,12 @@ class Sandbox {
       } else {
         return fn(...args);
       }
-    } catch (error) {
+    } catch (error: any) {
       throw this.throwError(error, code, meta);
     }
   }
 
-  throwError(error, code, meta) {
+  throwError(error: any, code: any, meta: any): Error {
     global.log.save('sandbox-error', { ...meta, error: error.message, code, stack: error.stack }, 'error');
 
     let errorMessage = `Sandbox error: "${error.message}"`;
@@ -320,18 +329,22 @@ class Sandbox {
 }
 
 class SandboxContext {
-  constructor(sandbox) {
+  sandbox: Sandbox;
+  context: any;
+  jail: any;
+
+  constructor(sandbox: Sandbox) {
     this.sandbox = sandbox;
-    this.context = sandbox.isolate.createContextSync();
+    this.context = (sandbox.isolate as any).createContextSync();
     this.jail = this.context.global;
   }
 
-  set(name, value) {
-    this.jail.setSync(name, new vm.Reference(value));
+  set(name: string, value: any): this {
+    this.jail.setSync(name, new (vm as any).Reference(value));
     return this;
   }
 
-  eval(code) {
+  eval(code: string): any {
     return this.context.evalSync(code);
   }
 }
@@ -341,8 +354,8 @@ class SandboxContext {
  * @param {object} data Data to log.
  * @returns {void}
  */
-function getLog(meta) {
-  return function (data) {
+function getLog(meta: any): (data: any) => void {
+  return function (data: any) {
     global.log.save('sandbox-log', { data, meta }, 'info');
   };
 }
@@ -352,7 +365,7 @@ function getLog(meta) {
  * @param {string} data Data.
  * @returns {string}
  */
-function getMd5Hash(data) {
+function getMd5Hash(data: string): string {
   return crypto.createHash('md5').update(data).digest('hex');
 }
 
@@ -361,7 +374,7 @@ function getMd5Hash(data) {
  * @param {string} data Data.
  * @returns {string} SHA256 hex digest.
  */
-function getSha256Hash(data) {
+function getSha256Hash(data: string): string {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
@@ -374,7 +387,7 @@ function getSha256Hash(data) {
  * @typedef {object} GetSha512HashOptions
  * @property {string} [hmac] HMAC secret.
  */
-function getSha512Hash(data, options) {
+function getSha512Hash(data: string, options?: { hmac?: string }): string {
   if (options?.hmac) {
     return crypto.createHmac('sha512', options.hmac).update(data).digest('hex');
   }
@@ -386,7 +399,7 @@ function getSha512Hash(data, options) {
  * @param {string} data Base64 string.
  * @returns {string} RAW string.
  */
-function base64Decode(data) {
+function base64Decode(data: string): string {
   return Buffer.from(data, 'base64').toString('utf8');
 }
 
@@ -396,7 +409,7 @@ function base64Decode(data) {
  * @param {'utf8'|'hex'} [rawStringEncoding] RAW string encoding. Default value: `utf8`.
  * @returns {string} Base64 string.
  */
-function base64Encode(rawString = '', rawStringEncoding = 'utf8') {
+function base64Encode(rawString = '', rawStringEncoding: BufferEncoding = 'utf8'): string {
   return Buffer.from(rawString, rawStringEncoding).toString('base64');
 }
 
@@ -405,8 +418,6 @@ function base64Encode(rawString = '', rawStringEncoding = 'utf8') {
  * @param {string} data Data.
  * @returns {string} Base64 string.
  */
-function toBase64(data) {
+function toBase64(data: string): string {
   return Buffer.from(data).toString('base64');
 }
-
-module.exports = Sandbox;

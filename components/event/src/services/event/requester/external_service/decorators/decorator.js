@@ -1,7 +1,7 @@
 /**
  * Decorator.
  */
-const Sandbox = require('../../../../../lib/sandbox');
+const { Sandbox } = require('../../../../../lib/sandbox');
 
 class Decorator {
   constructor() {

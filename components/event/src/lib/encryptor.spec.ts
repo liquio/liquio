@@ -1,5 +1,5 @@
-const Encryptor = require('./encryptor');
-const crypto = require('crypto');
+import { Encryptor } from './encryptor';
+import crypto from 'node:crypto';
 
 describe('Encryptor - GCM Authentication Tag Validation', () => {
   // 32-byte key (256 bits for AES-256) encoded in base64

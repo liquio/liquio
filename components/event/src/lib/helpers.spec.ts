@@ -1,4 +1,4 @@
-const Helpers = require('./helpers');
+import { Helpers } from './helpers';
 
 describe('replaceObjValues', () => {
   it('should replace values in a flat object', () => {

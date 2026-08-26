@@ -1,5 +1,5 @@
 const { TestApp } = require('./test-app');
-const HttpRequest = require('../src/lib/http_request');
+const { HttpRequest } = require('../src/lib/http_request');
 
 // Helper to generate unique unit IDs
 let unitIdCounter = 0;

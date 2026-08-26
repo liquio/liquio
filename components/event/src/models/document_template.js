@@ -2,7 +2,7 @@ const Sequelize = require('sequelize');
 
 const Model = require('./model');
 const { DocumentTemplateEntity } = require('../entities/document_template');
-const RedisClient = require('../lib/redis_client');
+const { RedisClient } = require('../lib/redis_client');
 
 class DocumentTemplateModel extends Model {
   constructor() {

@@ -1,6 +1,6 @@
 const Decorators = require('./decorators');
 const Providers = require('./providers');
-const Sandbox = require('../../../../lib/sandbox');
+const { Sandbox } = require('../../../../lib/sandbox');
 
 /**
  * External service requester.

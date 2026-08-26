@@ -1,18 +1,19 @@
 /**
  * Make zip file
  */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const archiver = require('archiver');
-const { PassThrough } = require('node:stream');
+import { PassThrough } from 'node:stream';
 
 /**
  * Make stream as Buffer
  * @param {Stream} stream
  * @returns Buffer
  */
-function streamToBuffer(stream) {
-  const chunks = [];
+function streamToBuffer(stream: any): Promise<Buffer> {
+  const chunks: Buffer[] = [];
   return new Promise((resolve, reject) => {
-    stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    stream.on('data', (chunk: any) => chunks.push(Buffer.from(chunk)));
     stream.on('end', () => resolve(Buffer.concat(chunks)));
     stream.on('error', reject);
   });
@@ -23,7 +24,7 @@ function streamToBuffer(stream) {
  * @param {Array(Object(name: string, data: string|Buffer))} dataToZip
  * @returns zip-arcive as Buffer
  */
-async function zip(dataToZip) {
+export async function zip(dataToZip: any): Promise<Buffer> {
   const passThrough = new PassThrough();
   const archive = archiver('zip');
 
@@ -32,13 +33,9 @@ async function zip(dataToZip) {
 
   archive.pipe(passThrough);
 
-  [].concat(dataToZip).map(({ name, data }) => archive.append(data, { name }));
+  [].concat(dataToZip).map(({ name, data }: any) => archive.append(data, { name }));
 
   archive.finalize();
 
   return streamToBuffer(passThrough);
 }
-
-module.exports = {
-  zip,
-};

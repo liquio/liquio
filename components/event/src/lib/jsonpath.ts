@@ -1,17 +1,17 @@
-const { JSONPath: JSONPathOrigin } = require('jsonpath-plus');
-const crypto = require('crypto');
+import { JSONPath as JSONPathOrigin } from 'jsonpath-plus';
+import crypto from 'node:crypto';
 
-function searchByKeyValue(obj, searchKey, sign, searchValue, { onlyInArrays = false } = {}) {
-  let result = [];
+function searchByKeyValue(obj: any, searchKey: string, sign: string, searchValue: any, { onlyInArrays = false }: { onlyInArrays?: boolean } = {}) {
+  const result: any[] = [];
   let level = 0;
-  function searchInObj(obj2, { isArray = false, inRoot = false } = {}) {
+  function searchInObj(obj2: any, { isArray = false, inRoot = false }: { isArray?: boolean; inRoot?: boolean } = {}) {
     level++;
     if (Array.isArray(obj2)) {
       for (let i = 0; i < obj2.length; i++) {
         searchInObj(obj2[i], { isArray: true });
       }
     } else if (typeof obj2 === 'object' && obj2 !== null) {
-      for (let key in obj2) {
+      for (const key in obj2) {
         const arrayIncludeOrNot = (onlyInArrays && isArray) || !onlyInArrays;
         const searchInRoot = (level === 1 && inRoot) || level !== 1;
 
@@ -32,9 +32,9 @@ function searchByKeyValue(obj, searchKey, sign, searchValue, { onlyInArrays = fa
   return result;
 }
 
-function searchByKeys(obj, searchKeys, { onlyInArrays = false } = {}) {
-  let result = [];
-  function searchInObj(obj2, { isArray = false } = {}) {
+function searchByKeys(obj: any, searchKeys: string[], { onlyInArrays = false }: { onlyInArrays?: boolean } = {}) {
+  const result: any[] = [];
+  function searchInObj(obj2: any, { isArray = false }: { isArray?: boolean } = {}) {
     if (Array.isArray(obj2)) {
       for (let i = 0; i < obj2.length; i++) {
         searchInObj(obj2[i], { isArray: true });
@@ -42,7 +42,7 @@ function searchByKeys(obj, searchKeys, { onlyInArrays = false } = {}) {
     } else if (typeof obj2 === 'object' && obj2 !== null) {
       const arrayIncludeOrNot = (onlyInArrays && isArray) || !onlyInArrays;
       if (arrayIncludeOrNot && searchKeys.every((key) => typeof obj2[key] != 'undefined')) result.push(obj2);
-      for (let key in obj2) {
+      for (const key in obj2) {
         searchInObj(obj2[key]);
       }
     }
@@ -51,9 +51,9 @@ function searchByKeys(obj, searchKeys, { onlyInArrays = false } = {}) {
   return result;
 }
 
-const cache = {};
+const cache: Record<string, number> = {};
 
-const JSONPath = (objOrPath, jsonDocument) => {
+export const JSONPath = (objOrPath: any, jsonDocument?: any): any => {
   const startTime = Date.now();
   const { path = objOrPath, json = jsonDocument } = typeof objOrPath !== 'string' && objOrPath;
 
@@ -62,7 +62,7 @@ const JSONPath = (objOrPath, jsonDocument) => {
   const cacheData = path + JSON.stringify(json);
   const cacheKey = crypto.createHash('md5').update(cacheData).digest('hex');
   // if(cache[cacheKey]) return cache[cacheKey];
-  if (cache[cacheKey]) log.save('jsonpath-handler-repeating-warning', { path, jsonSize: cacheData.length });
+  if (cache[cacheKey]) global.log.save('jsonpath-handler-repeating-warning', { path, jsonSize: cacheData.length });
 
   let result;
 
@@ -77,7 +77,7 @@ const JSONPath = (objOrPath, jsonDocument) => {
     const keys = path
       .replace(/.*?(@\..*)\).*/, '$1')
       .split(/@\.|&&/)
-      .map((item) => item.trim())
+      .map((item: string) => item.trim())
       .filter(Boolean);
     result = searchByKeys(json, keys, { onlyInArrays: true });
   }
@@ -89,12 +89,8 @@ const JSONPath = (objOrPath, jsonDocument) => {
   }
 
   const executionTime = (Date.now() - startTime) / 1000;
-  log.save('jsonpath-handler', { path, executionTime, jsonSize: cacheData.length, origin: !result });
+  global.log.save('jsonpath-handler', { path, executionTime, jsonSize: cacheData.length, origin: !result });
 
   // return cache[cacheKey];
   return result || JSONPathOrigin({ path, json });
-};
-
-module.exports = {
-  JSONPath,
 };

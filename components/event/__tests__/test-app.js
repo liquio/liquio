@@ -15,12 +15,14 @@ jest.setTimeout(30000);
 
 // Mock the RabbitMQ connection
 jest.mock('../src/lib/message_queue', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      init: jest.fn(),
-      produce: jest.fn(),
-    };
-  });
+  return {
+    MessageQueue: jest.fn().mockImplementation(() => {
+      return {
+        init: jest.fn(),
+        produce: jest.fn(),
+      };
+    }),
+  };
 });
 
 // Mock the log module
@@ -78,52 +80,54 @@ jest.mock('../src/lib/config', () => {
 const mockFilestorageUploadSpy = jest.fn();
 jest.mock('../src/lib/filestorage', () => {
   const crypto = require('crypto');
-  const originalFilestorage = jest.requireActual('../src/lib/filestorage');
-  return class extends originalFilestorage {
-    constructor(...args) {
-      super(...args);
-      // Create a spy for uploadFileFromStream that captures stream content
-      this.uploadFileFromStream = mockFilestorageUploadSpy.mockImplementation(
-        async (readableStream, name, description, contentType, contentLength) => {
-          // Read and capture the stream content for testing
-          const chunks = [];
-          for await (const chunk of readableStream) {
-            chunks.push(chunk);
-          }
-          const buffer = Buffer.concat(chunks);
-          const content = buffer.toString();
+  const { FileStorage: OriginalFileStorage } = jest.requireActual('../src/lib/filestorage');
+  return {
+    FileStorage: class extends OriginalFileStorage {
+      constructor(...args) {
+        super(...args);
+        // Create a spy for uploadFileFromStream that captures stream content
+        this.uploadFileFromStream = mockFilestorageUploadSpy.mockImplementation(
+          async (readableStream, name, description, contentType, contentLength) => {
+            // Read and capture the stream content for testing
+            const chunks = [];
+            for await (const chunk of readableStream) {
+              chunks.push(chunk);
+            }
+            const buffer = Buffer.concat(chunks);
+            const content = buffer.toString();
 
-          // Store captured data on the spy for test inspection
-          mockFilestorageUploadSpy.capturedContent = content;
-          mockFilestorageUploadSpy.capturedName = name;
-          mockFilestorageUploadSpy.capturedDescription = description;
-          mockFilestorageUploadSpy.capturedContentType = contentType;
-          mockFilestorageUploadSpy.capturedContentLength = contentLength;
+            // Store captured data on the spy for test inspection
+            mockFilestorageUploadSpy.capturedContent = content;
+            mockFilestorageUploadSpy.capturedName = name;
+            mockFilestorageUploadSpy.capturedDescription = description;
+            mockFilestorageUploadSpy.capturedContentType = contentType;
+            mockFilestorageUploadSpy.capturedContentLength = contentLength;
 
-          // Mock successful upload
-          const fileId = crypto.randomUUID();
-          const md5Hash = crypto.createHash('md5').update(buffer).digest('hex');
-          const sha1Hash = crypto.createHash('sha1').update(buffer).digest('hex');
+            // Mock successful upload
+            const fileId = crypto.randomUUID();
+            const md5Hash = crypto.createHash('md5').update(buffer).digest('hex');
+            const sha1Hash = crypto.createHash('sha1').update(buffer).digest('hex');
 
-          // Store generated values on spy for test inspection
-          mockFilestorageUploadSpy.generatedFileId = fileId;
-          mockFilestorageUploadSpy.generatedMd5 = md5Hash;
-          mockFilestorageUploadSpy.generatedSha1 = sha1Hash;
+            // Store generated values on spy for test inspection
+            mockFilestorageUploadSpy.generatedFileId = fileId;
+            mockFilestorageUploadSpy.generatedMd5 = md5Hash;
+            mockFilestorageUploadSpy.generatedSha1 = sha1Hash;
 
-          return {
-            id: fileId,
-            name,
-            contentType,
-            contentLength,
-            hash: { md5: md5Hash, sha1: sha1Hash },
-            createdBy: 'test-user',
-            updatedBy: 'test-user',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-        }
-      );
-    }
+            return {
+              id: fileId,
+              name,
+              contentType,
+              contentLength,
+              hash: { md5: md5Hash, sha1: sha1Hash },
+              createdBy: 'test-user',
+              updatedBy: 'test-user',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+          },
+        );
+      }
+    },
   };
 });
 

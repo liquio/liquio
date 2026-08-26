@@ -1,6 +1,6 @@
 const Provider = require('./provider');
-const Sign = require('../../../../../lib/sign');
-const Filestorage = require('../../../../../lib/filestorage');
+const { Sign } = require('../../../../../lib/sign');
+const { FileStorage: Filestorage } = require('../../../../../lib/filestorage');
 
 class SignerProvider extends Provider {
   constructor(config) {

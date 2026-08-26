@@ -1,6 +1,8 @@
-const axios = require('axios');
+import axios from 'axios';
 
-const { prepareAxiosErrorToLog } = require('./helpers');
+import { Helpers } from './helpers';
+
+const { prepareAxiosErrorToLog } = Helpers;
 
 // Constants.
 const DEFAULT_CONFIG = {
@@ -17,12 +19,19 @@ const DEFAULT_CONFIG = {
 /**
  * Persist link.
  */
-class PersistLink {
+export class PersistLink {
+  static singleton: PersistLink;
+
+  config: any;
+  generateQr: string;
+  sendTestPingUrl: string;
+  getLinkToFilestorageTimeout: number;
+
   /**
    * Persist link constructor.
    * @param {object} persistLinkConfig Persist Link config.
    */
-  constructor(persistLinkConfig = config.persist_link) {
+  constructor(persistLinkConfig: any = global.config.persist_link) {
     // Define singleton.
     if (!PersistLink.singleton) {
       this.config = { ...DEFAULT_CONFIG, ...persistLinkConfig };
@@ -40,7 +49,7 @@ class PersistLink {
    * @param {string} documentId Document ID.
    * @returns {Promise<{link: string, qrCode: string}>} Link and QR-code promise.
    */
-  async getQrAndLinkToDocument(documentId) {
+  async getQrAndLinkToDocument(documentId: string): Promise<{ link: string; qrCode: string }> {
     const options = {
       method: 'POST',
       url: this.generateQr,
@@ -57,15 +66,15 @@ class PersistLink {
         small: true,
       },
     };
-    log.save('get-persist-link-to-document-request-params', options);
+    global.log.save('get-persist-link-to-document-request-params', options);
 
     try {
       const responseData = (await axios(options)).data;
       const qrAndLink = responseData.data;
-      log.save('get-persist-link-to-document-response', qrAndLink);
+      global.log.save('get-persist-link-to-document-response', qrAndLink);
       return qrAndLink;
-    } catch (error) {
-      log.save('get-persist-link-to-document-response-error', prepareAxiosErrorToLog(error), 'error');
+    } catch (error: any) {
+      global.log.save('get-persist-link-to-document-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -75,7 +84,7 @@ class PersistLink {
    * @param {string} caseId Case ID.
    * @returns {Promise<{link: string, qrCode: string}>} Link and QR-code promise.
    */
-  async getQrAndLinkToCase(caseId) {
+  async getQrAndLinkToCase(caseId: string): Promise<{ link: string; qrCode: string }> {
     const options = {
       method: 'POST',
       url: this.generateQr,
@@ -92,15 +101,15 @@ class PersistLink {
         small: true,
       },
     };
-    log.save('get-persist-link-to-case-request-params', options);
+    global.log.save('get-persist-link-to-case-request-params', options);
 
     try {
       const responseData = (await axios(options)).data;
       const qrAndLink = responseData.data;
-      log.save('get-persist-link-to-case-response', qrAndLink);
+      global.log.save('get-persist-link-to-case-response', qrAndLink);
       return qrAndLink;
-    } catch (error) {
-      log.save('get-persist-link-to-case-response-error', prepareAxiosErrorToLog(error), 'error');
+    } catch (error: any) {
+      global.log.save('get-persist-link-to-case-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -110,7 +119,7 @@ class PersistLink {
    * @param {string} proceedingId Proceeding ID.
    * @returns {Promise<{link: string, qrCode: string}>} Link and QR-code promise.
    */
-  async getQrAndLinkToProceeding(proceedingId, caseId) {
+  async getQrAndLinkToProceeding(proceedingId: string, caseId: string): Promise<{ link: string; qrCode: string }> {
     const options = {
       method: 'POST',
       url: this.generateQr,
@@ -127,15 +136,15 @@ class PersistLink {
         small: true,
       },
     };
-    log.save('get-persist-link-to-permission-request-params', options);
+    global.log.save('get-persist-link-to-permission-request-params', options);
 
     try {
       const responseData = (await axios(options)).data;
       const qrAndLink = responseData.data;
-      log.save('get-persist-link-to-permission-response', qrAndLink);
+      global.log.save('get-persist-link-to-permission-response', qrAndLink);
       return qrAndLink;
-    } catch (error) {
-      log.save('get-persist-link-to-permission-response-error', prepareAxiosErrorToLog(error), 'error');
+    } catch (error: any) {
+      global.log.save('get-persist-link-to-permission-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -145,7 +154,7 @@ class PersistLink {
    * @param {string} documentId Document ID.
    * @returns {Promise<string>} Link promise.
    */
-  async getLinkToDocument(documentId) {
+  async getLinkToDocument(documentId: string): Promise<string> {
     return (await this.getQrAndLinkToDocument(documentId)).link;
   }
 
@@ -154,7 +163,7 @@ class PersistLink {
    * @param {string} caseId Case ID.
    * @returns {Promise<string>} Link promise.
    */
-  async getLinkToCase(caseId) {
+  async getLinkToCase(caseId: string): Promise<string> {
     return (await this.getQrAndLinkToCase(caseId)).link;
   }
 
@@ -163,7 +172,7 @@ class PersistLink {
    * @param {string} proceedingId Proceeding ID.
    * @returns {Promise<string>} Link promise.
    */
-  async getLinkToProceeding(proceedingId, caseId) {
+  async getLinkToProceeding(proceedingId: string, caseId: string): Promise<string> {
     return (await this.getQrAndLinkToProceeding(proceedingId, caseId)).link;
   }
 
@@ -172,7 +181,7 @@ class PersistLink {
    * @param {string} documentId Document ID.
    * @returns {Promise<string>} QR code in svg format promise.
    */
-  async getQrLinkToDocument(documentId) {
+  async getQrLinkToDocument(documentId: string): Promise<string> {
     return (await this.getQrAndLinkToDocument(documentId)).qrCode;
   }
 
@@ -181,7 +190,7 @@ class PersistLink {
    * @param {string} generatedFileName Url to file in OpenStack.
    * @return {string} QR code in svg format promise.
    */
-  async getQrLinkToStaticFileInOpenStack(generatedFileName) {
+  async getQrLinkToStaticFileInOpenStack(generatedFileName: string): Promise<string> {
     const options = {
       method: 'POST',
       url: this.generateQr,
@@ -198,15 +207,15 @@ class PersistLink {
         small: true,
       },
     };
-    log.save('get-persist-link-to-static-file-request-params', options);
+    global.log.save('get-persist-link-to-static-file-request-params', options);
 
     try {
       const { data: responseData } = (await axios(options)).data;
       const generatedQr = responseData.qrCode;
-      log.save('get-persist-link-to-static-file-response', generatedQr);
+      global.log.save('get-persist-link-to-static-file-response', generatedQr);
       return generatedQr;
-    } catch (error) {
-      log.save('get-persist-link-to-static-file-response-error', prepareAxiosErrorToLog(error), 'error');
+    } catch (error: any) {
+      global.log.save('get-persist-link-to-static-file-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -219,7 +228,7 @@ class PersistLink {
    * @param {boolean} additionalOptions.isP7s Must we return link to p7s of file.
    * @return {Promise<string>} QR code in svg format promise.
    */
-  async getLinkToStaticFileInFilestorage(fileId, definedHash) {
+  async getLinkToStaticFileInFilestorage(fileId: string, definedHash: string): Promise<string> {
     const options = {
       method: 'POST',
       url: this.generateQr,
@@ -238,17 +247,19 @@ class PersistLink {
       },
       timeout: this.getLinkToFilestorageTimeout,
     };
-    log.save('get-persist-link-to-static-file-request-params', options);
+    global.log.save('get-persist-link-to-static-file-request-params', options);
 
     try {
       const { data: responseData } = (await axios(options)).data;
       const generatedLink = responseData.link;
-      log.save('get-persist-link-to-static-file-response', generatedLink);
+      global.log.save('get-persist-link-to-static-file-response', generatedLink);
       return generatedLink;
-    } catch (error) {
+    } catch (error: any) {
       const preparedError = prepareAxiosErrorToLog(error);
-      log.save('get-persist-link-to-static-file-response-error', preparedError, 'error');
-      throw new Error(getPersistLinkErrorMessage(preparedError), { cause: error });
+      global.log.save('get-persist-link-to-static-file-response-error', preparedError, 'error');
+      const wrapped = new Error(getPersistLinkErrorMessage(preparedError));
+      (wrapped as any).cause = error;
+      throw wrapped;
     }
   }
 
@@ -256,7 +267,7 @@ class PersistLink {
    * Send ping request.
    * @returns {Promise<{}[]>}
    */
-  async sendPingRequest() {
+  async sendPingRequest(): Promise<any> {
     const options = {
       method: 'GET',
       url: this.sendTestPingUrl,
@@ -274,8 +285,8 @@ class PersistLink {
         environment,
         body: responseData?.data,
       };
-    } catch (error) {
-      log.save('send-ping-request-response-error', prepareAxiosErrorToLog(error), 'error');
+    } catch (error: any) {
+      global.log.save('send-ping-request-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -286,7 +297,7 @@ class PersistLink {
  * @param {{error?: string, code?: string, status?: number|string, statusText?: string, responseData?: object, url?: string, method?: string}} preparedError Axios error prepared for logs.
  * @returns {string} Readable error message.
  */
-function getPersistLinkErrorMessage(preparedError = {}) {
+function getPersistLinkErrorMessage(preparedError: any = {}): string {
   const {
     error,
     code,
@@ -312,5 +323,3 @@ function getPersistLinkErrorMessage(preparedError = {}) {
 
   return `Persist-link request failed (${method || 'REQUEST'} ${url || 'unknown-url'}): ${error || code || 'unknown error'}`;
 }
-
-module.exports = PersistLink;

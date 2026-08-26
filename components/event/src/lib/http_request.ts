@@ -1,7 +1,9 @@
-const axios = require('axios');
-const bodyParser = require('body-parser');
+import axios from 'axios';
+import bodyParser from 'body-parser';
 
-const { prepareAxiosErrorToLog } = require('./helpers');
+import { Helpers } from './helpers';
+
+const { prepareAxiosErrorToLog } = Helpers;
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -16,7 +18,7 @@ const ACCEPT_JSON = 'application/json';
 /**
  * Request.
  */
-class HttpRequest {
+export class HttpRequest {
   /**
    * Methods.
    */
@@ -59,7 +61,7 @@ class HttpRequest {
    * @param {boolean} fullResponse Full response indicator.
    * @returns {Promise<object>}
    */
-  static async send(requestOptions, fullResponse = false) {
+  static async send(requestOptions: any, fullResponse = false): Promise<any> {
     // Expect requestOptions as for request lib and transform it for axios for backward compatibility.
     try {
       const { body, ...rest } = requestOptions;
@@ -73,11 +75,13 @@ class HttpRequest {
       return fullResponse
         ? { fullResponse: { statusCode: response.status, headers: response.headers, body: responseData }, body: responseData }
         : responseData;
-    } catch (error) {
-      log.save('http-request-error', prepareAxiosErrorToLog(error), 'error');
+    } catch (error: any) {
+      global.log.save('http-request-error', prepareAxiosErrorToLog(error), 'error');
       if (error.response?.data) {
         const strError = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
-        throw new Error(strError, { cause: error });
+        const wrapped = new Error(strError);
+        (wrapped as any).cause = error;
+        throw wrapped;
       } else {
         throw error;
       }
@@ -89,7 +93,7 @@ class HttpRequest {
    * @param {object} app Express app instance.
    * @param {string} [maxBodySize] Max body size.
    */
-  static parseBodyJson(app, maxBodySize = DEFAULT_MAX_BODY_SIZE) {
+  static parseBodyJson(app: any, maxBodySize = DEFAULT_MAX_BODY_SIZE) {
     // Parse body for content-type "application/json".
     app.use(bodyParser.json({ limit: maxBodySize }));
   }
@@ -98,7 +102,7 @@ class HttpRequest {
    * Parse body urlencoded.
    * @param {object} app Express app instance.
    */
-  static parseBodyUrlencoded(app) {
+  static parseBodyUrlencoded(app: any) {
     // Parse body for content-type "application/x-www-form-urlencoded".
     app.use(bodyParser.urlencoded({ extended: false }));
   }
@@ -110,7 +114,7 @@ class HttpRequest {
  * @param {string} body Body.
  * @returns {object}
  */
-function parseBody(body) {
+function parseBody(body: string): any {
   try {
     const bodyObject = JSON.parse(body);
     return bodyObject;
@@ -118,5 +122,3 @@ function parseBody(body) {
     return body;
   }
 }
-
-module.exports = HttpRequest;

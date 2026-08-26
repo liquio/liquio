@@ -1,10 +1,11 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const PropByPath = require('prop-by-path');
 const { randomUUID } = crypto;
 
-const PersistLink = require('./persist_link');
-const Filestorage = require('./filestorage');
-const Sandbox = require('./sandbox');
+import { PersistLink } from './persist_link';
+import { FileStorage } from './filestorage';
+import { Sandbox } from './sandbox';
 
 // Constants.
 const RANDOM_PART_MIN = 100000000000;
@@ -15,7 +16,15 @@ const MAP_ENTRIES_EVAL_ERROR = 'You have error on "map.%s". Details: "%d"!';
  * Record map.
  * @typedef {import('../entities/document')} DocumentEntity
  */
-class RecordMap {
+export class RecordMap {
+  rawRecord: any;
+  documents: any[];
+  events: any[];
+  arrayIndex: number | undefined;
+  eventTemplateId: number | undefined;
+  sandbox: any;
+  documentsByTemplateIds: Record<string, any>;
+
   /**
    * Record map constructor.
    * @param {string|{recordId: string, registerId: number, keyId: number, map: object}} rawRecord RAW record function string (sample: `(documents) => { return ...; }`) or object (sample: `{ registerId: 1, keyId: 2, map: { prop1: 'documents.123.data.someStep.someProp' } }`).
@@ -24,7 +33,7 @@ class RecordMap {
    * @param {number} [arrayIndex] Array index.
    * @param {number} [eventTemplateId] Event template ID.
    */
-  constructor(rawRecord, documents, events = [], arrayIndex, eventTemplateId) {
+  constructor(rawRecord: any, documents: any[], events: any[] = [], arrayIndex?: number, eventTemplateId?: number) {
     this.rawRecord = rawRecord;
     this.documents = documents;
     this.events = events;
@@ -45,7 +54,7 @@ class RecordMap {
    * Get record.
    * @returns {Promise<object>} Prepared record to save to register promise.
    */
-  async getRecord() {
+  async getRecord(): Promise<any> {
     // Check if function string.
     if (this.rawRecordIsFunctionString) {
       return this.getRecordIfFunctionString();
@@ -62,7 +71,7 @@ class RecordMap {
    * @private
    * @returns {object} Prepared record to save to register.
    */
-  getRecordIfFunctionString() {
+  getRecordIfFunctionString(): any {
     // Create function from string and call with workflow documents list as param.
     const transformedFunctionString = this.transformFunctionToAsync(this.rawRecord);
     return this.sandbox.evalWithArgs(transformedFunctionString, [this.documents, this.events], { eventTemplateId: this.eventTemplateId });
@@ -73,7 +82,7 @@ class RecordMap {
    * @private
    * @returns {Promise<object>} Prepared record to save to register promise.
    */
-  async getRecordIfObject() {
+  async getRecordIfObject(): Promise<any> {
     // Get RAW record params.
     const { recordId: rawRecordId, recordIds: rawRecordIds, registerId, keyId, allowTokens: rawAllowTokens, person: rawPerson, map } = this.rawRecord;
     const recordId = this.getRecordId(rawRecordId || rawRecordIds);
@@ -81,7 +90,7 @@ class RecordMap {
     const person = this.getPerson(rawPerson);
 
     // Record data container.
-    let recordData = {};
+    const recordData: Record<string, any> = {};
 
     // Handle record data properties.
     const mapEntries = Object.entries(map);
@@ -118,9 +127,11 @@ class RecordMap {
 
         // Define record data param as function in other cases.
         recordData[mapEntryKey] = await this.getRecordDataValueAsFunctionString(mapEntryValue);
-      } catch (error) {
-        log.save('eval-error', { error: error && error.message });
-        throw new Error(MAP_ENTRIES_EVAL_ERROR.replace('%s', mapEntryKey).replace('%d', (error && error.message) || error), { cause: error });
+      } catch (error: any) {
+        global.log.save('eval-error', { error: error && error.message });
+        const wrapped = new Error(MAP_ENTRIES_EVAL_ERROR.replace('%s', mapEntryKey).replace('%d', (error && error.message) || error));
+        (wrapped as any).cause = error;
+        throw wrapped;
       }
     }
 
@@ -134,7 +145,7 @@ class RecordMap {
    * @param {string} rawRecordId RAW record ID.
    * @returns {string} Record ID.
    */
-  getRecordId(rawRecordId) {
+  getRecordId(rawRecordId: any): any {
     // Check if no need to handle (return as is).
     if (typeof rawRecordId !== 'string' || !rawRecordId.startsWith('(')) {
       return rawRecordId;
@@ -158,7 +169,7 @@ class RecordMap {
    * @param {string|string[]} rawAllowTokens RAW allow tokens.
    * @returns {string[]} Allow tokens.
    */
-  getAllowTokens(rawAllowTokens) {
+  getAllowTokens(rawAllowTokens: any): any {
     // Check if no need to handle (return as is).
     if (typeof rawAllowTokens !== 'string') {
       return rawAllowTokens;
@@ -174,7 +185,7 @@ class RecordMap {
    * @param {string|string[]} rawPerson RAW person.
    * @returns {{id: string, name: string}} Person.
    */
-  getPerson(rawPerson) {
+  getPerson(rawPerson: any): any {
     // Check if no need to handle (return as is).
     if (typeof rawPerson !== 'string') {
       return rawPerson;
@@ -191,7 +202,7 @@ class RecordMap {
    * @param {string} mapEntryValue Map entry value. Sample: `(documents) => { return documents.find(v => v.documentTemplateId === 123).data.someStep.someProp; }`.
    * @returns {Promise<any>} Defined value promise.
    */
-  async getRecordDataValueAsFunctionString(mapEntryValue) {
+  async getRecordDataValueAsFunctionString(mapEntryValue: string): Promise<any> {
     // Define and return record data value.
     const normalizedMapEntryValue =
       typeof this.arrayIndex === 'undefined'
@@ -208,7 +219,7 @@ class RecordMap {
    * @param {string} mapEntryValue Map entry value. Sample: `documents.123.data.someStep.someProp`.
    * @returns {any} Defined value.
    */
-  getRecordDataValueAsDocumentsPath(mapEntryValue) {
+  getRecordDataValueAsDocumentsPath(mapEntryValue: string): any {
     // Define documents property path.
     // Map entry value sample: `documents.11.data.cancellation.text`.
     // Documents property path sample: `11.data.cancellation.text`.
@@ -229,7 +240,7 @@ class RecordMap {
    * Get record data value as ID number.
    * @private
    */
-  getRecordDataValueAsIdNumber() {
+  getRecordDataValueAsIdNumber(): number {
     return getIdAsNumber();
   }
 
@@ -237,7 +248,7 @@ class RecordMap {
    * Get record data value as ID string.
    * @private
    */
-  getRecordDataValueAsIdString() {
+  getRecordDataValueAsIdString(): string {
     return getIdAsString();
   }
 
@@ -245,11 +256,11 @@ class RecordMap {
    * Get record data value as custom path result.
    * @private
    */
-  async getRecordDataValueAsCustomPathResult(mapEntryValue) {
+  async getRecordDataValueAsCustomPathResult(mapEntryValue: string): Promise<any> {
     const [, customServiceAndMethod] = mapEntryValue.split('custom.');
     const allowedCustomServicesAndMethods = ['courts.generate-executive-document-number'];
     if (!allowedCustomServicesAndMethods.includes(customServiceAndMethod)) {
-      const error = new Error('Passed customServiceAndMethod is not allowed');
+      const error: any = new Error('Passed customServiceAndMethod is not allowed');
       error.details = { allowedCustomMethods: allowedCustomServicesAndMethods, passedCustomServiceAndMethod: customServiceAndMethod };
       throw error;
     }
@@ -266,7 +277,7 @@ class RecordMap {
    * If mapEntryValue = 'custom.courts.generate-executive-document-number'
    * @private
    */
-  async customCourtsGenerateExecutiveDocumentNumber() {
+  async customCourtsGenerateExecutiveDocumentNumber(): Promise<string> {
     const startTimestamp = Date.now(); // TODO: remove it after test.
     const {
       options: { executorIssuerCode: executorIssuerCodeFunction },
@@ -275,7 +286,7 @@ class RecordMap {
     let newSequenceNumber;
     try {
       newSequenceNumber = await this.getSequenceNumberByYear(currentYear);
-    } catch (error) {
+    } catch (error: any) {
       error.details = 'Can\'t get sequence number by year.';
       throw error;
     }
@@ -284,11 +295,11 @@ class RecordMap {
     try {
       const options = { eventTemplateId: this.eventTemplateId };
       executorIssuerCode = this.sandbox.evalWithArgs(executorIssuerCodeFunction, [this.documents, this.events], options);
-    } catch (error) {
+    } catch (error: any) {
       error.details = 'Error while evaluation executorIssuerCode function.';
       throw error;
     }
-    log.save('custom-courts-generate-executive-document-number', {
+    global.log.save('custom-courts-generate-executive-document-number', {
       executingTime: `${Date.now() - startTimestamp} ms`,
       number: `${executorIssuerCode}.${currentYear}.${newSequenceNumberString}`,
     }); // TODO: remove it after test.
@@ -300,12 +311,12 @@ class RecordMap {
    * @param {string} year Year`.
    * @returns {integer} sequence number.
    */
-  async getSequenceNumberByYear(year) {
+  async getSequenceNumberByYear(year: number): Promise<number> {
     const startTimestamp = Date.now(); // TODO: remove it after test.
     const sequenceName = `courts_exetutive_doc_number_sequence_in_year_${year}`;
-    await models.rawQueryModel.createSequence(sequenceName);
-    const nextval = await models.rawQueryModel.getNextvalOfSequence(sequenceName);
-    log.save('custom-courts-get-sequence-number-by-year', { executingTime: `${Date.now() - startTimestamp} ms`, nextval, year }); // TODO: remove it after test.
+    await global.models.rawQueryModel.createSequence(sequenceName);
+    const nextval = await global.models.rawQueryModel.getNextvalOfSequence(sequenceName);
+    global.log.save('custom-courts-get-sequence-number-by-year', { executingTime: `${Date.now() - startTimestamp} ms`, nextval, year }); // TODO: remove it after test.
     return nextval;
   }
 
@@ -314,7 +325,7 @@ class RecordMap {
    * @private
    * @returns {boolean} RAW record is function string indicator.
    */
-  get rawRecordIsFunctionString() {
+  get rawRecordIsFunctionString(): boolean {
     // Return indicator result.
     return typeof this.rawRecord === 'string' && this.rawRecord.startsWith('(');
   }
@@ -324,7 +335,7 @@ class RecordMap {
    * @private
    * @returns {boolean} RAW record is object indicator.
    */
-  get rawRecordIsObject() {
+  get rawRecordIsObject(): boolean {
     // Return indicator result.
     return typeof this.rawRecord === 'object';
   }
@@ -334,7 +345,7 @@ class RecordMap {
    * @param {string} functionString Function string.
    * @returns {string} Async function string.
    */
-  transformFunctionToAsync(functionString) {
+  transformFunctionToAsync(functionString: string): string {
     // Define params.
     const ASYNC_FUNCTIONS_INSIDE = ['plinkFromFilestoragePdf', 'plinkFromFilestorageAttach'];
     const isFunctionStringContainsAsyncFunction = ASYNC_FUNCTIONS_INSIDE.some(
@@ -365,11 +376,11 @@ class RecordMap {
  * @param {string} method Method.
  * @returns {Promise<{method, host, hash}>} Deep link object.
  */
-// eslint-disable-next-line no-unused-vars
-async function deepLink(method) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function deepLink(method: string) {
   return {
     method,
-    host: config.persist_link.qrFrontUrl || config.persist_link.server,
+    host: global.config.persist_link.qrFrontUrl || global.config.persist_link.server,
     hash: crypto.randomBytes(16).toString('hex'),
   };
 }
@@ -381,20 +392,20 @@ async function deepLink(method) {
  * @param {boolean} additionalOptions.isIncludeP7s Is include p7s file.
  * @returns {Promise<{url, name, type}>} File object.
  */
-// eslint-disable-next-line no-unused-vars
-async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEnding = '' } = {}) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function plinkFromFilestorageAttach(attach: any, { isIncludeP7s = false, linkEnding = '' }: { isIncludeP7s?: boolean; linkEnding?: string } = {}) {
   // Define params.
   const { link, name, type } = attach || {};
 
   // Check.
   if (!link || !name || !type) {
     // Log and exit.
-    log.save('plink-from-filestorage-attach-params-error', { attach: attach || null });
+    global.log.save('plink-from-filestorage-attach-params-error', { attach: attach || null });
     return;
   }
 
   // Init Persist Link.
-  const persistLink = new PersistLink(config.persist_link);
+  const persistLink = new PersistLink(global.config.persist_link);
 
   // Define URL and create Persist Link record.
   const preparedHash = Buffer.from(link.slice(0, 16).toString('hex')) + crypto.randomBytes(64).toString('hex') + linkEnding;
@@ -402,8 +413,8 @@ async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEn
   let url;
   try {
     url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
-  } catch (error) {
-    log.save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
+  } catch (error: any) {
+    global.log.save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
     throw error;
   }
   const p7sUrl = isIncludeP7s ? await generateP7sLink(link) : undefined;
@@ -421,26 +432,26 @@ async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEn
  * @param {boolean} additionalOptions.isIncludeP7s Is include p7s file.
  * @returns {Promise<{url, name, type}>} File object.
  */
-// eslint-disable-next-line no-unused-vars
-async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP7s = false, linkEnding = '' } = {}) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function plinkFromFilestoragePdf(link: string, name = 'document.pdf', { isIncludeP7s = false, linkEnding = '' }: { isIncludeP7s?: boolean; linkEnding?: string } = {}) {
   // Check.
   if (!link) {
     // Log and exit.
-    log.save('plink-from-filestorage-pdf-params-error', { link: link || null });
+    global.log.save('plink-from-filestorage-pdf-params-error', { link: link || null });
     return;
   }
 
   // Init Persist Link.
-  const persistLink = new PersistLink(config.persist_link);
+  const persistLink = new PersistLink(global.config.persist_link);
 
   // Define URL and create Persist Link record.
-  const preparedHash = Buffer.from(link.slice(0, 16).toString('hex')) + crypto.randomBytes(64).toString('hex') + linkEnding;
+  const preparedHash = Buffer.from((link as any).slice(0, 16).toString('hex')) + crypto.randomBytes(64).toString('hex') + linkEnding;
   // const url = `${config.persist_link.server}/${preparedHash}`;
   let url;
   try {
     url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
-  } catch (error) {
-    log.save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
+  } catch (error: any) {
+    global.log.save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
     throw error;
   }
 
@@ -454,13 +465,13 @@ async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP
  * @param {{id, documentId, link, name, type}} link Link object.
  * @returns {Promise<string>} Link to the p7s file.
  */
-async function generateP7sLink(link) {
+async function generateP7sLink(link: any): Promise<string> {
   try {
-    const persistLink = new PersistLink(config.persist_link);
+    const persistLink = new PersistLink(global.config.persist_link);
     const preparedHashForP7s = Buffer.from(link.slice(-16).toString('hex')) + crypto.randomBytes(64).toString('hex');
-    return await persistLink.getLinkToStaticFileInFilestorage(link, preparedHashForP7s, { isP7s: true });
-  } catch (error) {
-    log.save('generate-p7s-link-error', { error: error && error.message });
+    return await (persistLink.getLinkToStaticFileInFilestorage as any)(link, preparedHashForP7s, { isP7s: true });
+  } catch (error: any) {
+    global.log.save('generate-p7s-link-error', { error: error && error.message });
     throw error;
   }
 }
@@ -471,15 +482,15 @@ async function generateP7sLink(link) {
  * @param {{includeP7s}} options Additional options.
  * @returns {{link, name, type}} Protected file object.
  */
-// eslint-disable-next-line no-unused-vars
-function protectedFileFromAttach(attach, options) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function protectedFileFromAttach(attach: any, options: any) {
   // Define params.
   const { link, name, type } = attach || {};
   const { includeP7s = false } = options || {};
 
   // Check.
   if (!link || !name || !type) {
-    log.save('protected-file-from-attach|params-error', { link, name, type });
+    global.log.save('protected-file-from-attach|params-error', { link, name, type });
     return;
   }
 
@@ -493,14 +504,14 @@ function protectedFileFromAttach(attach, options) {
  * @param {{includeP7s}} options Additional options.
  * @returns {{link, name, type}} Protected file object.
  */
-// eslint-disable-next-line no-unused-vars
-function protectedFileFromPdf(link, name = 'document.pdf', options) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function protectedFileFromPdf(link: string, name = 'document.pdf', options: any) {
   // Define params.
   const { includeP7s = false } = options || {};
 
   // Check.
   if (!link || !name) {
-    log.save('protected-file-from-pdf|params-error', { link, name });
+    global.log.save('protected-file-from-pdf|params-error', { link, name });
     return;
   }
 
@@ -513,8 +524,8 @@ function protectedFileFromPdf(link, name = 'document.pdf', options) {
  * @param {object} additionalOptions Additional options.
  * @returns {Promise<{documentId, attachId, link, name, type, hash, hasP7sSignature}[]>} Cabinet files list promise.
  */
-// eslint-disable-next-line no-unused-vars
-async function cabinetAttaches(attaches, additionalOptions) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function cabinetAttaches(attaches: any[], additionalOptions: any) {
   const cabinetFilesPromises = attaches.map((attach) => cabinetAttach(attach, additionalOptions));
   return Promise.all(cabinetFilesPromises);
 }
@@ -525,24 +536,24 @@ async function cabinetAttaches(attaches, additionalOptions) {
  * @param {object} additionalOptions Additional options.
  * @returns {Promise<{documentId, attachId, link, name, type, hash, hasP7sSignature}>} Cabinet file object promise.
  */
-async function cabinetAttach(attach, { isIncludeP7s = false } = {}) {
+async function cabinetAttach(attach: any, { isIncludeP7s = false }: { isIncludeP7s?: boolean } = {}) {
   // Define params.
   const { documentId, id: attachId, link, name, type } = attach || {};
 
   // Check.
   if (!documentId || !attachId || !link || !name || !type) {
     // Log and exit.
-    log.save('cabinet-attach-params-error', { documentId, link, name, type });
+    global.log.save('cabinet-attach-params-error', { documentId, link, name, type });
     return;
   }
 
   // Get file hash.
-  const filestorage = new Filestorage();
+  const filestorage = new FileStorage();
   let fileInfo;
   try {
     fileInfo = await filestorage.getFileInfo(link);
-  } catch (error) {
-    log.save('cabinet-attach-get-hash-error', { error: error && error.message });
+  } catch (error: any) {
+    global.log.save('cabinet-attach-get-hash-error', { error: error && error.message });
     return;
   }
   const { hash } = fileInfo;
@@ -557,22 +568,22 @@ async function cabinetAttach(attach, { isIncludeP7s = false } = {}) {
  * @param {object} additionalOptions Additional options.
  * @returns {Promise<{documentId, link, name, type, hash, hasP7sSignature}>} Cabinet file object promise.
  */
-// eslint-disable-next-line no-unused-vars
-async function cabinetFile(documentId, link, name = 'document.pdf', { isIncludeP7s = false } = {}) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function cabinetFile(documentId: string, link: string, name = 'document.pdf', { isIncludeP7s = false }: { isIncludeP7s?: boolean } = {}) {
   // Check.
   if (!link || !name || !documentId) {
     // Log and exit.
-    log.save('cabinet-file-params-error', { link, name, documentId });
+    global.log.save('cabinet-file-params-error', { link, name, documentId });
     return;
   }
 
   // Get file hash.
-  const filestorage = new Filestorage();
+  const filestorage = new FileStorage();
   let fileInfo;
   try {
     fileInfo = await filestorage.getFileInfo(link);
-  } catch (error) {
-    log.save('cabinet-file-get-hash-error', { error: error && error.message });
+  } catch (error: any) {
+    global.log.save('cabinet-file-get-hash-error', { error: error && error.message });
     return;
   }
   const { hash } = fileInfo;
@@ -585,7 +596,7 @@ async function cabinetFile(documentId, link, name = 'document.pdf', { isIncludeP
  * @param {number} [randomPartMax] Random part max value.
  * @returns {number} ID number based on current timestamp and random part.
  */
-function getIdAsNumber(randomPartMin = RANDOM_PART_MIN, randomPartMax = RANDOM_PART_MAX) {
+function getIdAsNumber(randomPartMin = RANDOM_PART_MIN, randomPartMax = RANDOM_PART_MAX): number {
   // Define ID number parts.
   // const timestamp = +new Date();
   const randomPart = (Math.random() * (randomPartMax - randomPartMin) + randomPartMin).toFixed(0);
@@ -599,12 +610,12 @@ function getIdAsNumber(randomPartMin = RANDOM_PART_MIN, randomPartMax = RANDOM_P
  * Get ID as string.
  * @returns {string} ID string based on ID number.
  */
-function getIdAsString() {
+function getIdAsString(): string {
   // Define ID number.
   const idNumber = getIdAsNumber();
 
   // Define and return ID string.
-  const idString = idNumber.toString('base64').replace(/=/g, '');
+  const idString = (idNumber as any).toString('base64').replace(/=/g, '');
   return idString;
 }
 
@@ -612,8 +623,8 @@ function getIdAsString() {
  * UUID v4.
  * @returns {string} UUID v4.
  */
-// eslint-disable-next-line no-unused-vars
-function uuidv4() {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function uuidv4(): string {
   const generatedUuidv4 = randomUUID();
   return generatedUuidv4;
 }
@@ -623,8 +634,8 @@ function uuidv4() {
  * @param {string} data Data.
  * @returns {string} MD5 hash.
  */
-// eslint-disable-next-line no-unused-vars
-function getMd5Hash(data) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getMd5Hash(data: string): string {
   const md5Hash = crypto.createHash('md5').update(data).digest('hex');
   return md5Hash;
 }
@@ -634,8 +645,8 @@ function getMd5Hash(data) {
  * @param {string} data Data.
  * @returns {string} SHA1 hash.
  */
-// eslint-disable-next-line no-unused-vars
-function getSha1Hash(data) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getSha1Hash(data: string): string {
   const sha1Hash = crypto.createHash('sha1').update(data).digest('hex');
   return sha1Hash;
 }
@@ -645,8 +656,8 @@ function getSha1Hash(data) {
  * @param {string} data Data.
  * @returns {string} SHA256 hash.
  */
-// eslint-disable-next-line no-unused-vars
-function getSha256Hash(data) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getSha256Hash(data: string): string {
   const sha256Hash = crypto.createHash('sha256').update(data).digest('hex');
   return sha256Hash;
 }
@@ -656,10 +667,8 @@ function getSha256Hash(data) {
  * @param {string} data Data.
  * @returns {string} SHA512 hash.
  */
-// eslint-disable-next-line no-unused-vars
-function getSha512Hash(data) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getSha512Hash(data: string): string {
   const sha512Hash = crypto.createHash('sha512').update(data).digest('hex');
   return sha512Hash;
 }
-
-module.exports = RecordMap;

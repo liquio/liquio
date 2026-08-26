@@ -4,7 +4,7 @@ const axios = require('axios');
 const { randomUUID } = require('crypto');
 const _ = require('lodash');
 
-const Rmq = require('../../../../../lib/rmq');
+const { Rmq } = require('../../../../../lib/rmq');
 const Provider = require('./provider');
 const { FILE_DOCUMENT_TEMPLATE_ID } = require('../../../../../constants/common');
 

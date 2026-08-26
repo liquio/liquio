@@ -1,28 +1,28 @@
-const _ = require('lodash');
-const crypto = require('crypto');
-const Sequelize = require('sequelize');
-const { AxiosError } = require('axios');
-const { Stream } = require('stream');
+import _ from 'lodash';
+import crypto from 'node:crypto';
+import { Sequelize } from 'sequelize';
+import { AxiosError } from 'axios';
+import { Stream } from 'node:stream';
 
-const typeOf = require('./type_of');
+import { typeOf } from './type_of';
 
-const MIME_TYPES = {
+const MIME_TYPES: Record<string, number[]> = {
   'PDF': [0x25, 0x50, 0x44, 0x46],
   'APPLICATION/PDF': [0x25, 0x50, 0x44, 0x46],
   'JPEG': [0xFF, 0xD8, 0xFF],
   'IMAGE/JPEG': [0xFF, 0xD8, 0xFF],
   'JPG': [0xFF, 0xD8, 0xFF],
-  'IMAGE/JPG': [0xFF, 0xD8, 0xFF]
+  'IMAGE/JPG': [0xFF, 0xD8, 0xFF],
 };
 
-class Helpers {
+export class Helpers {
   /**
    * Substring long strings in object. {str1: '12345', str2: '123456789'} => {str1: '12345', str2: '12345...'}
    * @param {Object|String} strOrObj
    * @param {number} [limit=80]
    * @return {Object|String}
    */
-  static cutLongStrings(strOrObj, limit = 80) {
+  static cutLongStrings(strOrObj: any, limit = 80): any {
     let strOrObjPrepared;
     if (typeOf(strOrObj) === 'string') {
       try {
@@ -53,7 +53,7 @@ class Helpers {
     }
 
     const limitForObjValues = limit > 1000 ? (limit / 100) : 10;
-    let replacedObj = this.replaceObjValues(_.cloneDeep(strOrObjPrepared), (value) => {
+    let replacedObj = this.replaceObjValues(_.cloneDeep(strOrObjPrepared), (value: any) => {
       if (typeOf(value) === 'string') {
         return value.length > limitForObjValues ? `${value.substring(0, limitForObjValues - ending.length)}${ending}` : value;
       } else {
@@ -64,7 +64,7 @@ class Helpers {
 
     let newLimitForObjValues = limitForObjValues / 10;
     while (newLimitForObjValues > 9) {
-      replacedObj = this.replaceObjValues(_.cloneDeep(strOrObjPrepared), (value) => {
+      replacedObj = this.replaceObjValues(_.cloneDeep(strOrObjPrepared), (value: any) => {
         if (typeOf(value) === 'string') {
           return value.length > newLimitForObjValues ? `${value.substring(0, newLimitForObjValues - ending.length)}${ending}` : value;
         } else {
@@ -83,9 +83,9 @@ class Helpers {
    * @param {function} handler
    * @return {Object}
    */
-  static replaceObjValues(obj, handler = (value) => value) {
+  static replaceObjValues(obj: any, handler: (value: any) => any = (value) => value): any {
     if (typeOf(obj) === 'array') {
-      return obj.map(v => this.replaceObjValues(v, handler));
+      return obj.map((v: any) => this.replaceObjValues(v, handler));
     } else if (typeOf(obj) === 'object') {
       for (const [key, value] of Object.entries(obj)) {
         obj[key] = this.replaceObjValues(value, handler);
@@ -101,13 +101,13 @@ class Helpers {
    * @param {object} obj
    * @returns {object}
    */
-  static stripSequelize(obj) {
+  static stripSequelize(obj: any): any {
     if (obj instanceof Sequelize) {
       return '$Sequelize';
     }
 
     if (typeOf(obj) === 'array') {
-      return obj.map(v => this.stripSequelize(v));
+      return obj.map((v: any) => this.stripSequelize(v));
     }
 
     if (typeOf(obj) === 'object') {
@@ -126,7 +126,7 @@ class Helpers {
   * @param {Array} [path=[]]
   * @return {void}
   * */
-  static deepFind(obj, check, handler, path = []) {
+  static deepFind(obj: any, check: (obj: any, path: any[]) => boolean, handler: (obj: any, path: any[]) => void, path: any[] = []): void {
     if (check(obj, path)) {
       handler(obj, path);
     }
@@ -148,25 +148,25 @@ class Helpers {
    * @param {string} mimeType
    * @return {boolean}
    */
-  static isCorrectBufferMimeType(buffer, mimeType) {
+  static isCorrectBufferMimeType(buffer: Buffer, mimeType: string): boolean {
     if (typeOf(buffer) !== 'buffer') {
       throw new Error('isCorrectBufferMimeType. Invalid buffer argument.');
     }
 
-    mimeType = mimeType?.toUpperCase();
+    const upperMimeType = mimeType?.toUpperCase();
 
-    if (!MIME_TYPES[mimeType]) {
+    if (!MIME_TYPES[upperMimeType]) {
       throw new Error('isCorrectBufferMimeType. Unknown mimeType argument.');
     }
 
-    return MIME_TYPES[mimeType].every((byte, index) => byte === buffer[index]);
+    return MIME_TYPES[upperMimeType].every((byte, index) => byte === buffer[index]);
   }
 
   /**
    * @param {string|Buffer|TypedArray} data
    * @return {string}
    */
-  static getSha256HashHex(data) {
+  static getSha256HashHex(data: any): string {
     return crypto.createHash('sha256').update(data).digest('hex');
   }
 
@@ -177,14 +177,14 @@ class Helpers {
    * @param {boolean} options.withHeaders With headers.
    * @return {object} Object to log.
    */
-  static prepareAxiosErrorToLog(error, { withHeaders = false } = {}) {
+  static prepareAxiosErrorToLog(error: any, { withHeaders = false }: { withHeaders?: boolean } = {}): any {
     // Prepare axios error only.
     if (!(error instanceof AxiosError)) return { error: error.toString() };
     const responseData = error.response?.data;
-    const result = {
+    const result: any = {
       error: error.message || 'UNKNOWN_ERROR_MESSAGE', // "Request failed with status code 404" || "timeout of 30000ms exceeded"
       code: error.code || 'UNKNOWN_ERROR_CODE', // "ERR_BAD_REQUEST" || "ESOCKETTIMEDOUT"
-      status: error.response?.status || error.status || 'UNKNOWN_ERROR_STATUS', // 404 || 500 || "UNKNOWN_ERROR_STATUS"
+      status: error.response?.status || (error as any).status || 'UNKNOWN_ERROR_STATUS', // 404 || 500 || "UNKNOWN_ERROR_STATUS"
       statusText: error.response?.statusText, // "Not Found" || null
       responseData: responseData instanceof Stream
         ? (responseData?.constructor?.name && `${responseData.constructor.name} stream` || 'stream.Stream')
@@ -196,7 +196,7 @@ class Helpers {
     return result;
   }
 
-  static splitArrayIntoChunks(array, chunkSize) {
+  static splitArrayIntoChunks(array: any[], chunkSize: number): any[][] {
     const result = [];
     for (let i = 0; i < array.length; i += chunkSize) {
       result.push(array.slice(i, i + chunkSize));
@@ -210,7 +210,7 @@ class Helpers {
    * @param {Error} error. Error.
    * @return {string} Stringified error.
    */
-  static stringifyError(error, ...params) {
+  static stringifyError(error: any, ...params: any[]): string {
     try {
       // Case - AxiosError.
       if (error instanceof AxiosError) return Helpers.stringifyAxiosError(error, ...params);
@@ -219,7 +219,7 @@ class Helpers {
       // Default.
       return error.toString();
 
-    } catch (error) {
+    } catch (error: any) {
       return typeof error?.toString === 'function' ? error.toString() : error;
     }
   }
@@ -230,7 +230,7 @@ class Helpers {
    * @param {AxiosError} error. AxiosError.
    * @return {string} Stringified error. Example: "Axios error - ERR_BAD_REQUEST - Request failed with status code 400 - {\"message\":\"Sign is required\",\"error\":\"Bad Request\",\"statusCode\":400}"
    */
-  static stringifyAxiosError(error) {
+  static stringifyAxiosError(error: any, ..._params: any[]): string {
     // Stringify axios error only.
     if (!(error instanceof AxiosError)) return error.toString();
 
@@ -246,15 +246,18 @@ class Helpers {
     return `${name} - ${code} - ${message}${responseData ? ` - ${responseData}` : ''}`;
   }
 
-  static async getSignaturesInfoByDocumentId(documentId, options = {}) {
+  static async getSignaturesInfoByDocumentId(documentId: string, options: { withContent?: boolean } = {}): Promise<any[]> {
     const { withContent = false } = options;
 
     // Initialize EDS.
     let edsService;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       edsService = await (require('./eds')).getInstance();
-    } catch (error) {
-      throw new Error(`Cannot initialize EDS service.${error.message}`, { cause: error });
+    } catch (error: any) {
+      const wrapped = new Error(`Cannot initialize EDS service.${error.message}`);
+      (wrapped as any).cause = error;
+      throw wrapped;
     }
 
     // Get document signatures.
@@ -262,7 +265,7 @@ class Helpers {
     if (!Array.isArray(documentSignatures) || documentSignatures.length === 0) {
       throw new Error('Document signatures not found.');
     }
-    const parsedSignatures = documentSignatures.map(({ signature }) => JSON.parse(signature)[0]);
+    const parsedSignatures = documentSignatures.map(({ signature }: any) => JSON.parse(signature)[0]);
 
     // Get signature info for each signature.
     const result = [];
@@ -282,10 +285,10 @@ class Helpers {
    * @param {array} [allowedAsyncFunctions] Allowed async functions.
    * @returns {string} Async function string.
    */
-  static transformFunctionToAsync (functionString, allowedAsyncFunctions = []) {
+  static transformFunctionToAsync(functionString: string, allowedAsyncFunctions: string[] = []): string {
     // Define params.
     const isFunctionStringContainsAsyncFunction = allowedAsyncFunctions.some(
-      (v) => functionString.includes(v) && !functionString.includes(`await ${v}`)
+      (v) => functionString.includes(v) && !functionString.includes(`await ${v}`),
     );
 
     // Return as is if async function not used.
@@ -301,51 +304,11 @@ class Helpers {
     for (const asyncFunctionInside of allowedAsyncFunctions) {
       asyncFunctionString = asyncFunctionString.replace(
         new RegExp(`(?<!\\.)\\b${asyncFunctionInside}\\b`, 'g'),
-        `await ${asyncFunctionInside}`
+        `await ${asyncFunctionInside}`,
       );
     }
 
     // Return transformed function.
     return asyncFunctionString;
   }
-
-  // /**
-  //  * @static
-  //  * @param {ReadableStream} readableStream
-  //  * @param {string} mimeType
-  //  * @return {Promise<boolean>}
-  //  */
-  // static async isCorrectStreamMimeType(readableStream, mimeType) {
-  //   if (!readableStream instanceof Readable) {
-  //     throw new Error('isCorrectStreamMimeType. Invalid readableStream argument.');
-  //   }
-  //
-  //   mimeType = mimeType?.toUpperCase();
-  //
-  //   if (!MIME_TYPES[mimeType]) {
-  //     throw new Error('isCorrectStreamMimeType. Unknown mimeType argument.');
-  //   }
-  //
-  //   return await new Promise((resolve, reject) => {
-  //     function check(data) {
-  //       const chunk = data;
-  //
-  //       // Unsubscribe, we will read only once.
-  //       readableStream.removeListener('data', check);
-  //
-  //       // Read first 20 bites.
-  //
-  //       if (!chunk) {
-  //         return reject(new Error('isCorrectStreamMimeType. Cannot read chunk from readable stream.'));
-  //       }
-  //
-  //       resolve(MIME_TYPES[mimeType].every((byte, index) => byte === chunk[index]));
-  //     }
-  //
-  //     // Subscribe.
-  //     readableStream.on('data', check);
-  //   });
-  // }
 }
-
-module.exports = Helpers;

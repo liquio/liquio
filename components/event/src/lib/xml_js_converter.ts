@@ -1,9 +1,14 @@
-const xml2js = require('xml2js');
+import xml2js from 'xml2js';
 
 /**
  * XML-JS converter.
  */
-class XmlJsConverter {
+export class XmlJsConverter {
+  static singleton: XmlJsConverter;
+
+  space: number;
+  parseString: typeof xml2js.parseString;
+
   /**
    * XML-JS converter constructor.
    * @param {number} [space] Default space charecters count.
@@ -24,9 +29,9 @@ class XmlJsConverter {
    * @param {object} options Options.
    * @returns {Promise<object>} JS object promise.
    */
-  async convertXmlToJsObject(xml, options) {
+  async convertXmlToJsObject(xml: string, options?: any): Promise<any> {
     return new Promise((resolve, reject) => {
-      this.parseString(xml, options, (error, jsObject) => {
+      this.parseString(xml, options, (error: any, jsObject: any) => {
         // Check.
         if (error) { reject(error); }
 
@@ -42,11 +47,11 @@ class XmlJsConverter {
    * @param {number} [space] Space charecters count.
    * @returns {Promise<string>} JSON string promise.
    */
-  async convertXmlToJsonString(xml, space = this.space) {
+  async convertXmlToJsonString(xml: string, space: number = this.space): Promise<string> {
     // Convert to JS object.
     const jsObject = await this.convertXmlToJsObject(xml);
 
-    // Define and return 
+    // Define and return
     const jsonString = JSON.stringify(jsObject, null, space);
     return jsonString;
   }
@@ -56,7 +61,7 @@ class XmlJsConverter {
    * @param {string} json JSON object.
    * @returns {Promise<string>} XML string promise.
    */
-  async convertJsonToXmlString(json) {
+  async convertJsonToXmlString(json: any): Promise<string> {
     const builder = new xml2js.Builder();
     return builder.buildObject(json);
   }
@@ -69,13 +74,13 @@ class XmlJsConverter {
    * @param {object} obj JSON object.
    * @returns {object} Normalized object.
    */
-  normalizeObj({ data, prefix, prefixList }) {
+  normalizeObj({ data, prefix, prefixList }: { data: any; prefix?: string; prefixList?: string[] }): any {
     if (!data) return;
     if (typeof data !== 'object') return data;
 
-    let result = {};
+    const result: any = {};
 
-    let prefixReplace;
+    let prefixReplace: RegExp;
     if (Array.isArray(prefixList) && prefixList.length) {
       prefixReplace = new RegExp(`^(${prefixList.join('|')})`);
     } else {
@@ -84,19 +89,17 @@ class XmlJsConverter {
 
     for (const [k, v] of Object.entries(data)) {
       const key = k.replace(prefixReplace, '');
-      let value = v;
+      let value: any = v;
       if (Array.isArray(v)) {
-        value = v.length <= 1 ? v.shift() : v.map(item => this.normalizeObj({ data: item, prefix, prefixList }));
+        value = v.length <= 1 ? v.shift() : v.map((item: any) => this.normalizeObj({ data: item, prefix, prefixList }));
       }
 
       result[key] = value && Object.getPrototypeOf(value) === Object.prototype ? this.normalizeObj({
         data: value,
         prefix,
-        prefixList
+        prefixList,
       }) : value;
     }
     return result;
   }
 }
-
-module.exports = XmlJsConverter;

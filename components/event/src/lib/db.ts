@@ -1,6 +1,8 @@
-const Sequelize = require('sequelize');
+import { Sequelize } from 'sequelize';
 
-class Db {
+export class Db {
+  static singleton: any;
+
   /**
    * Constructor.
    */
@@ -12,22 +14,22 @@ class Db {
    * Get instance sequelize.
    * @returns {object} Sequelize instance.
    */
-  static async getInstance(config) {
+  static async getInstance(config: any): Promise<any> {
     if (!Db.singleton) {
       try {
         const sequelize = new Sequelize(
           config.database,
           config.username,
           config.password,
-          config
+          config,
         );
 
         await sequelize.authenticate();
-        log.save('db-connection', 'Connection to DB has been established successfully.');
+        global.log.save('db-connection', 'Connection to DB has been established successfully.');
 
         Db.singleton = sequelize;
-      } catch (error) {
-        log.save('Unable to connect to the DB', error);
+      } catch (error: any) {
+        global.log.save('Unable to connect to the DB', error);
         throw error;
       }
     }
@@ -35,5 +37,3 @@ class Db {
     return Db.singleton;
   }
 }
-
-module.exports = Db;

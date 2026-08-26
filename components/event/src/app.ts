@@ -1,20 +1,20 @@
 import moment from 'moment';
 
-import Db from './lib/db';
+import { Db } from './lib/db';
 import { Log, ConsoleLogProvider, getTraceId } from '@liquio/back-core';
 import { PluginLoader } from '@liquio/plugin-sdk';
-import MessageQueue from './lib/message_queue';
+import { MessageQueue } from './lib/message_queue';
 import * as Errors from './lib/errors';
 import Models from './models';
 import RouterService from './services/router';
 import EventService from './services/event';
 import ExternalServiceRequester from './services/event/requester/external_service';
 import EventBusiness from './businesses/event';
-import RedisClient from './lib/redis_client';
-import HttpClient from './lib/http_client';
-import LogsBroadcasting from './lib/logs_broadcasting';
-import Sandbox from './lib/sandbox';
-import typeOf from './lib/type_of';
+import { RedisClient } from './lib/redis_client';
+import { HttpClient } from './lib/http_client';
+import { LogsBroadcasting } from './lib/logs_broadcasting';
+import { Sandbox } from './lib/sandbox';
+import { typeOf } from './lib/type_of';
 
 // Allow not secure connections.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';

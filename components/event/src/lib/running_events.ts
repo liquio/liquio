@@ -1,6 +1,5 @@
-const crypto = require('crypto');
-
-const EventModel = require('../models/event');
+import crypto from 'node:crypto';
+import EventModel from '../models/event';
 
 // Constants.
 const LOCK_ID_BYTES_LENGTH = 20;
@@ -8,13 +7,15 @@ const LOCK_ID_BYTES_LENGTH = 20;
 /**
  * Running Events.
  */
-class RunningEvents {
+export class RunningEvents {
+  eventModel: any;
+
   /**
    * Constructor.
    *
    * @param {EventModel} eventModel The Event model.
    */
-  constructor(eventModel) {
+  constructor(eventModel: any) {
     // Check.
     if (!(eventModel instanceof EventModel)) {
       throw new Error('Invalid Event model');
@@ -28,7 +29,7 @@ class RunningEvents {
    * Lock and get running events.
    * @returns {Promise<EventEntity[]>} Running events promise.
    */
-  async lockAndGetRunningEvents() {
+  async lockAndGetRunningEvents(): Promise<any[]> {
     // Lock running events.
     const lockId = this.generateLockId();
     await this.eventModel.lockRunningEvents(lockId);
@@ -41,9 +42,7 @@ class RunningEvents {
    * Generate lock ID.
    * @returns {string} Lock ID.
    */
-  generateLockId() {
+  generateLockId(): string {
     return crypto.randomBytes(LOCK_ID_BYTES_LENGTH).toString('hex');
   }
 }
-
-module.exports = RunningEvents;

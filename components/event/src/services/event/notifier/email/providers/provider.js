@@ -1,5 +1,5 @@
 const { ERROR_OVERRIDE } = require('../../../../../constants/error');
-const Sandbox = require('../../../../../lib/sandbox');
+const { Sandbox } = require('../../../../../lib/sandbox');
 
 /**
  * Email provider.

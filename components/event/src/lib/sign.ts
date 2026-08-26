@@ -1,6 +1,8 @@
-const axios = require('axios');
+import axios from 'axios';
 
-const { prepareAxiosErrorToLog } = require('./helpers');
+import { Helpers } from './helpers';
+
+const { prepareAxiosErrorToLog } = Helpers;
 
 // Constants.
 const ROUTES = {
@@ -15,12 +17,18 @@ const ROUTES = {
 /**
  * Sign.
  */
-class Sign {
+export class Sign {
+  static singleton: Sign;
+
+  url: string;
+  token: string;
+  timeout: number;
+
   /**
    * Sign constructor.
    * @param {object} config Sign config.
    */
-  constructor(config) {
+  constructor(config?: { url?: string; token?: string; timeout?: number }) {
     // Define singleton.
     if (!Sign.singleton) {
       const { url, token, timeout = 10000 } = config || global.config.sign;
@@ -42,7 +50,7 @@ class Sign {
    * @param {boolean} base64 Base64.
    * @returns {Promise<string>} Sign service response promise.
    */
-  async sign(data, externalSign = true, signType = '', base64 = false) {
+  async sign(data: string, externalSign = true, signType = '', base64 = false): Promise<string> {
     const requestOptions = {
       url: `${this.url}${ROUTES.sign}`,
       method: 'POST',
@@ -57,8 +65,8 @@ class Sign {
     };
     try {
       return (await axios(requestOptions)).data;
-    } catch (error) {
-      log.save(
+    } catch (error: any) {
+      global.log.save(
         'sign-service-sign-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -75,7 +83,7 @@ class Sign {
    * @param {string} data Hash to sign.
    * @returns {Promise<string>} Sign service response promise.
    */
-  async signHash(data) {
+  async signHash(data: string): Promise<string> {
     const requestOptions = {
       url: `${this.url}${ROUTES.signHash}`,
       method: 'POST',
@@ -87,12 +95,11 @@ class Sign {
     };
     try {
       return (await axios(requestOptions)).data;
-    } catch (error) {
-      log.save('sign-service-sign-hash-error', {
+    } catch (error: any) {
+      global.log.save('sign-service-sign-hash-error', {
         ...prepareAxiosErrorToLog(error),
         requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
-      }),
-      'error';
+      }, 'error');
       throw error;
     }
   }
@@ -102,7 +109,7 @@ class Sign {
    * @param {string} data Data to generate hash.
    * @returns {Promise<string>} Generated hash.
    */
-  async hash(data) {
+  async hash(data: string): Promise<string> {
     const requestOptions = {
       url: `${this.url}${ROUTES.hash}`,
       method: 'POST',
@@ -114,8 +121,8 @@ class Sign {
     };
     try {
       return (await axios(requestOptions)).data;
-    } catch (error) {
-      log.save(
+    } catch (error: any) {
+      global.log.save(
         'sign-service-hash-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -133,7 +140,7 @@ class Sign {
    * @param {string} data Data to sign.
    * @returns {Promise<string>} Sign service response promise.
    */
-  async encrypt(cert, data) {
+  async encrypt(cert: string, data: string): Promise<string> {
     const requestOptions = {
       url: `${this.url}${ROUTES.encrypt}`,
       method: 'POST',
@@ -146,8 +153,8 @@ class Sign {
     };
     try {
       return (await axios(requestOptions)).data;
-    } catch (error) {
-      log.save(
+    } catch (error: any) {
+      global.log.save(
         'sign-service-encrypt-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -165,7 +172,7 @@ class Sign {
    * @param {string} data Data to sign.
    * @returns {Promise<string>} Sign service response promise.
    */
-  async decrypt(cert, data) {
+  async decrypt(cert: string, data: string): Promise<string> {
     const requestOptions = {
       url: `${this.url}${ROUTES.decrypt}`,
       method: 'POST',
@@ -177,9 +184,9 @@ class Sign {
       timeout: this.timeout,
     };
     try {
-      return await axios(requestOptions).data;
-    } catch (error) {
-      log.save(
+      return await (axios(requestOptions) as any).data;
+    } catch (error: any) {
+      global.log.save(
         'sign-service-decrypt-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -196,7 +203,7 @@ class Sign {
    * @param {string} internalSignature
    * @returns {Promise<string>} externalSignature.
    */
-  async convertInternalSignatureToExternal(internalSignature) {
+  async convertInternalSignatureToExternal(internalSignature: string): Promise<string> {
     const requestOptions = {
       url: `${this.url}${ROUTES.internalSignatureToExternal}`,
       method: 'POST',
@@ -208,8 +215,8 @@ class Sign {
     };
     try {
       return (await axios(requestOptions)).data?.data;
-    } catch (error) {
-      log.save(
+    } catch (error: any) {
+      global.log.save(
         'sign-service-convert-internal-signature-to-external-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -221,5 +228,3 @@ class Sign {
     }
   }
 }
-
-module.exports = Sign;

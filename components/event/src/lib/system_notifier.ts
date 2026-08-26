@@ -1,10 +1,24 @@
-const HttpRequest = require('./http_request');
-const { getTraceId } = require('@liquio/back-core');
+import { HttpRequest } from './http_request';
+import { getTraceId } from '@liquio/back-core';
 
 /**
  * System Notifier.
  */
-class SystemNotifier {
+export class SystemNotifier {
+  static singleton: SystemNotifier;
+
+  adminUrl: string;
+  emailServer: string;
+  emailPort: number;
+  emailRoutes: any;
+  emailTimeout: number;
+  emailUser: string;
+  emailPassword: string;
+  headers: Record<string, string>;
+  emails: string[];
+  emailSubject: string;
+  emailBody: string;
+
   /**
    * System Notifier constructor.
    */
@@ -43,8 +57,8 @@ class SystemNotifier {
     eventTemplateId,
     eventTemplateName,
     error,
-  }) {
-    const workflowErrorsSubscribersEmails = workflowErrorsSubscribers.map(({ email }) => email);
+  }: any): Promise<any> {
+    const workflowErrorsSubscribersEmails = workflowErrorsSubscribers.map(({ email }: any) => email);
     const emailsToProceed = [...workflowErrorsSubscribersEmails, ...(emails || this.emails)];
 
     // Check if no need to send.
@@ -70,7 +84,7 @@ class SystemNotifier {
 
       // Do request to send emails.
       const url = `${this.emailServer}:${this.emailPort}${this.emailRoutes.sendEmail}`;
-      log.save('system-notifier-email-sending-request', { url, body });
+      global.log.save('system-notifier-email-sending-request', { url, body });
       const response = await HttpRequest.send({
         url,
         method: HttpRequest.Methods.POST,
@@ -80,17 +94,15 @@ class SystemNotifier {
         },
         body,
       });
-      log.save('system-notifier-email-sending-response', response);
+      global.log.save('system-notifier-email-sending-response', response);
 
       return {
         data: body,
         response,
       };
-    } catch (error) {
-      log.save('system-notifier-email-sending-error', error.message);
+    } catch (error: any) {
+      global.log.save('system-notifier-email-sending-error', error.message);
       throw error;
     }
   }
 }
-
-module.exports = SystemNotifier;

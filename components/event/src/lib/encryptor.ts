@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
 // Constants.
 const DEFAULT_IV_SIZE_IN_BYTES = 12;
@@ -7,7 +7,11 @@ const DEFAULT_ENC_ALGORITHM = 'aes-256-gcm';
 /**
  * Encryptor.
  */
-class Encryptor {
+export class Encryptor {
+  key: string;
+  ivSize: number;
+  algorithm: string;
+
   /**
    * Constructor.
    * @param {object} config Encryption config.
@@ -15,7 +19,7 @@ class Encryptor {
    * @param {number} [config.ivSize] Initialization vector size in bytes.
    * @param {string} [config.algorithm] Encryption algorithm.
    */
-  constructor(config) {
+  constructor(config: { key?: string; ivSize?: number; algorithm?: string }) {
     const { key, ivSize, algorithm } = config || {};
 
     if (!key) {
@@ -32,12 +36,12 @@ class Encryptor {
    * @param {string} data Data to encrypt.
    * @returns {Promise<{string}>}
    */
-  encrypt(data) {
+  encrypt(data: string): string {
     try {
       // Generate a random initialization vector.
       const iv = crypto.randomBytes(this.ivSize);
 
-      const cipher = crypto.createCipheriv(this.algorithm, Buffer.from(this.key, 'base64'), iv);
+      const cipher = crypto.createCipheriv(this.algorithm as any, Buffer.from(this.key, 'base64'), iv) as any;
 
       // Encrypt the data.
       let encrypted = cipher.update(data, 'utf8', 'base64');
@@ -47,8 +51,10 @@ class Encryptor {
       const authTag = cipher.getAuthTag();
 
       return this.pack(encrypted, iv, authTag);
-    } catch (error) {
-      throw new Error(`Error while encrypting data: ${error.message}`, { cause: error });
+    } catch (error: any) {
+      const wrapped = new Error(`Error while encrypting data: ${error.message}`);
+      (wrapped as any).cause = error;
+      throw wrapped;
     }
   }
 
@@ -57,7 +63,7 @@ class Encryptor {
    * @param {string} packedData Packed data.
    * @returns {Promise<{string}>}
    */
-  decrypt(packedData) {
+  decrypt(packedData: string): string {
     try {
       // Split the IV, authentication tag, and encrypted data.
       const { iv, authTag, encryptedData } = this.unpack(packedData);
@@ -68,7 +74,7 @@ class Encryptor {
       }
 
       // Using AES-256-GCM decryption algorithm.
-      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.key, 'base64'), iv);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.key, 'base64'), iv) as any;
 
       // Set the authentication tag.
       decipher.setAuthTag(authTag);
@@ -78,8 +84,10 @@ class Encryptor {
       decrypted += decipher.final('utf8');
 
       return decrypted;
-    } catch (error) {
-      throw new Error(`Error while decrypting data: ${error.message}`, { cause: error });
+    } catch (error: any) {
+      const wrapped = new Error(`Error while decrypting data: ${error.message}`);
+      (wrapped as any).cause = error;
+      throw wrapped;
     }
   }
 
@@ -90,7 +98,7 @@ class Encryptor {
    * @param {Buffer} authTag Authentication tag.
    * @returns {string}
    */
-  pack(encryptedData, iv, authTag) {
+  pack(encryptedData: string, iv: Buffer, authTag: Buffer): string {
     return iv.toString('base64') + ':' + authTag.toString('base64') + ':' + encryptedData;
   }
 
@@ -99,17 +107,17 @@ class Encryptor {
    * @param {string} packedData Packed data. (IV:AuthTag:EncryptedData)
    * @returns {{ iv: Buffer, authTag: Buffer, encryptedData: Buffer }>}
    */
-  unpack(packedData) {
+  unpack(packedData: string): { iv: Buffer; authTag: Buffer; encryptedData: Buffer } {
     try {
       const textParts = packedData.split(':');
-      const iv = Buffer.from(textParts.shift(), 'base64');
-      const authTag = Buffer.from(textParts.shift(), 'base64');
+      const iv = Buffer.from(textParts.shift() as string, 'base64');
+      const authTag = Buffer.from(textParts.shift() as string, 'base64');
       const encryptedData = Buffer.from(textParts.join(':'), 'base64');
       return { iv, authTag, encryptedData };
-    } catch (error) {
-      throw new Error(`Error while unpacking: ${error.message}`, { cause: error });
+    } catch (error: any) {
+      const wrapped = new Error(`Error while unpacking: ${error.message}`);
+      (wrapped as any).cause = error;
+      throw wrapped;
     }
   }
 }
-
-module.exports = Encryptor;

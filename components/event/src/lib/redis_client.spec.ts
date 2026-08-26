@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
 describe('RedisClient', () => {
   let RedisClient;
@@ -7,7 +7,8 @@ describe('RedisClient', () => {
 
   beforeEach(() => {
     // Clear the singleton before each test
-    RedisClient = require('./redis_client');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    ({ RedisClient } = require('./redis_client'));
     RedisClient.singleton = null;
 
     // Mock the redis client with v5 Promise API
@@ -22,6 +23,7 @@ describe('RedisClient', () => {
     };
 
     // Mock the redis.createClient
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     jest.spyOn(require('redis'), 'createClient').mockReturnValue(mockClient);
 
     // Mock global config
@@ -37,7 +39,7 @@ describe('RedisClient', () => {
     // Mock global log
     global.log = {
       save: jest.fn(),
-    };
+    } as any;
   });
 
   afterEach(() => {
@@ -64,6 +66,7 @@ describe('RedisClient', () => {
     it('should read config from global.config.redis', () => {
       new RedisClient();
 
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       expect(require('redis').createClient).toHaveBeenCalledWith({
         socket: { host: 'localhost', port: 6379 },
       });

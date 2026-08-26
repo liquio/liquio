@@ -1,11 +1,11 @@
-const debug = require('debug');
-const nock = require('nock');
+import debug from 'debug';
+import nock from 'nock';
 
-const FileStorage = require('./filestorage');
+import { FileStorage } from './filestorage';
 
 global.log = {
   save: jest.fn((type, data, level) => debug('test:log')({ type, data, level })),
-};
+} as any;
 
 jest.mock('back-core', () => ({
   getTraceId: jest.fn(() => '123e4567-e89b-12d3-a456-426614174000'),

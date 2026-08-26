@@ -3,7 +3,7 @@ const ExcelJS = require('exceljs');
 
 const { FILE_DOCUMENT_TEMPLATE_ID } = require('../../../constants/common');
 const { ERROR_WRONG_METHOD } = require('../../../constants/error');
-const Sandbox = require('../../../lib/sandbox');
+const { Sandbox } = require('../../../lib/sandbox');
 
 /**
  * Event file.

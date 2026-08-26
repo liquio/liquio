@@ -1,13 +1,17 @@
-const crypto = require('crypto');
-const redis = require('redis');
+import crypto from 'node:crypto';
+import { createClient } from 'redis';
 
 const DEFAULT_TTL_IN_SECONDS = 300; // 5 minutes.
 
 /**
  * Redis client.
  */
-class RedisClient {
-  static prefix = process.env.npm_package_name;
+export class RedisClient {
+  static singleton: RedisClient;
+  static prefix: string | undefined = process.env.npm_package_name;
+
+  client: ReturnType<typeof createClient>;
+  defaultTtl: number;
 
   /**
    * Redis client constructor.
@@ -17,10 +21,10 @@ class RedisClient {
     // Singleton.
     if (!RedisClient.singleton) {
       const { host, port, ttl } = global.config.redis;
-      this.client = redis.createClient({ socket: { host, port } });
+      this.client = createClient({ socket: { host, port } });
       this.defaultTtl = ttl || DEFAULT_TTL_IN_SECONDS;
-      
-      this.client.connect().catch(err => {
+
+      this.client.connect().catch((err: any) => {
         console.error('Redis connection error:', err);
       });
 
@@ -37,7 +41,7 @@ class RedisClient {
    * @param {any[]} args Arguments.
    * @return {string} Hash key.
    **/
-  static createKey(...args) {
+  static createKey(...args: any[]): string {
     const parts = [RedisClient.prefix, ...args];
 
     return parts.map((item) => (typeof item === 'object' ? crypto.createHash('md5').update(JSON.stringify(item)).digest('hex') : item)).join('.');
@@ -50,8 +54,8 @@ class RedisClient {
    * @param {number} ttl Time to live in seconds (optional).
    * @return {Promise<{ data: object, isFromCache: boolean }>} Data.
    **/
-  static async getOrSet(key, fn, ttl = undefined) {
-    let redis = RedisClient.singleton;
+  static async getOrSet(key: string, fn: () => Promise<any>, ttl: number | undefined = undefined): Promise<{ data: any; isFromCache: boolean }> {
+    const redis = RedisClient.singleton;
 
     if (redis) {
       const data = await redis.get(key);
@@ -63,7 +67,7 @@ class RedisClient {
     const data = await fn();
 
     if (redis) {
-      await redis.set(key, data !== undefined ? JSON.stringify(data) : null, ttl);
+      await redis.set(key, data !== undefined ? JSON.stringify(data) : null, ttl as any);
     }
 
     return { data, isFromCache: false };
@@ -77,19 +81,24 @@ class RedisClient {
    * @param {number} ttl Time to live in seconds (optional).
    * @return {Promise<{ data: object, isFromCache: boolean }>} Data.
    **/
-  static async getOrSetWithTimestamp(key, timeFn, setFn, ttl = undefined) {
-    let redis = RedisClient.singleton;
+  static async getOrSetWithTimestamp(
+    key: string,
+    timeFn: () => Promise<any>,
+    setFn: () => Promise<any>,
+    ttl: number | undefined = undefined,
+  ): Promise<{ data: any; isFromCache: boolean }> {
+    const redis = RedisClient.singleton;
 
     if (!redis) {
       return { data: await setFn(), isFromCache: false };
     }
 
     // Get payload timestamp and new timestamp.
-    const [oldTimestamp, newTimestamp] = await Promise.all([redis.get(key + '.timestamp').then(JSON.parse), timeFn()]);
+    const [oldTimestamp, newTimestamp] = await Promise.all([redis.get(key + '.timestamp').then((v: any) => JSON.parse(v)), timeFn()]);
 
     // Invalidate cache if needed.
     if (!oldTimestamp || new Date(newTimestamp) > new Date(oldTimestamp)) {
-      redis.delete(key);
+      (redis as any).delete(key);
     }
 
     await redis.set(key + '.timestamp', newTimestamp || null);
@@ -104,7 +113,7 @@ class RedisClient {
    * @param {number} ttl Time to live.
    * @return {Promise<string>} OK.
    */
-  async set(key, data, ttl = this.defaultTtl) {
+  async set(key: string, data: any, ttl: number = this.defaultTtl): Promise<any> {
     if (typeof data === 'object') data = JSON.stringify(data);
     return this.client.set(key, data, { EX: ttl });
   }
@@ -114,7 +123,7 @@ class RedisClient {
    * @param {string} key Key for data.
    * @return {Promise<string>}.
    */
-  async get(key) {
+  async get(key: string): Promise<any> {
     return this.client.get(key);
   }
 
@@ -123,7 +132,7 @@ class RedisClient {
    * @param {string} key Key for data.
    * @return {Promise<number>} Deleted keys.
    */
-  async delete(key) {
+  async delete(key: string): Promise<any> {
     return this.client.del(key);
   }
 
@@ -132,7 +141,7 @@ class RedisClient {
    * @param {string} pattern
    * @return {Promise<string[]>}
    */
-  async getKeys(pattern) {
+  async getKeys(pattern: string): Promise<any> {
     return this.client.keys(pattern);
   }
 
@@ -143,15 +152,15 @@ class RedisClient {
    * @param {number} count
    * @return {Promise<string|Array[]>}
    */
-  async scan(cursor = 0, pattern, count = 10) {
-    return this.client.scan(cursor, { MATCH: pattern, COUNT: count });
+  async scan(cursor: number = 0, pattern?: string, count: number = 10): Promise<any> {
+    return this.client.scan(cursor as any, { MATCH: pattern, COUNT: count });
   }
 
   /**
    * @param {string} pattern
    * @return {Promise<number>}
    */
-  async deleteMany(pattern) {
+  async deleteMany(pattern: string): Promise<any> {
     const keys = await this.getKeys(pattern);
 
     if (!keys.length) {
@@ -166,16 +175,16 @@ class RedisClient {
    * @param {string} key Key for data.
    * @returns {Promise<object>} Parsed data.
    */
-  async getObject(key) {
+  async getObject(key: string): Promise<any> {
     // Get data string.
     const data = await this.get(key);
 
     // Parse data to object.
     let parsedObject;
     try {
-      parsedObject = JSON.parse(data);
-    } catch (error) {
-      log.save('redis-parse-object-error', { key, data, error: error.message });
+      parsedObject = JSON.parse(data as string);
+    } catch (error: any) {
+      global.log.save('redis-parse-object-error', { key, data, error: error.message });
       throw error;
     }
 
@@ -183,5 +192,3 @@ class RedisClient {
     return parsedObject;
   }
 }
-
-module.exports = RedisClient;
