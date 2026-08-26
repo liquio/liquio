@@ -1,11 +1,11 @@
 const Controller = require('./controller');
 const Notifier = require('../services/event/notifier');
-const Register = require('../services/event/requester/registers');
-const BlockchainRequester = require('../services/event/requester/blockchain');
+const { RegistersRequester: Register } = require('../services/event/requester/registers');
+const { BlockchainRequester } = require('../services/event/requester/blockchain');
 const { PersistLink } = require('../lib/persist_link');
 const { FileStorage: Filestorage } = require('../lib/filestorage');
-const ServicesRepository = require('../services/event/requester/services_repository');
-const ExternalService = require('../services/event/requester/external_service');
+const { ServicesRepositoryRequester: ServicesRepository } = require('../services/event/requester/services_repository');
+const { ExternalServiceRequester: ExternalService } = require('../services/event/requester/external_service');
 const { HttpRequest } = require('../lib/http_request');
 
 // Constants.

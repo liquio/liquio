@@ -24,8 +24,8 @@ const { UnitModel } = require('../models/unit');
 const { AccessHistoryModel } = require('../models/access_history');
 const { UserInboxModel } = require('../models/user_inbox');
 const { WorkflowHistoryModel } = require('../models/workflow_history');
-const EventService = require('../services/event');
-const CustomLogs = require('../services/custom_logs');
+const { EventService } = require('../services/event');
+const { CustomLogs } = require('../services/custom_logs');
 const { RunningEvents } = require('../lib/running_events');
 const { EvaluateSchemaFunctionError } = require('../lib/errors');
 const { SYSTEM_USER } = require('../constants/common');
@@ -2110,7 +2110,7 @@ class EventBusiness {
  * @param {boolean} additionalOptions.isIncludeP7s Is include p7s file.
  * @returns {Promise<{url, name, type}>} File object.
  */
-// eslint-disable-next-line no-unused-vars
+ 
 async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEnding = '' } = {}) {
   // Define params.
   const { link, name, type } = attach || {};
@@ -2149,7 +2149,7 @@ async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEn
  * @param {boolean} additionalOptions.isIncludeP7s Is include p7s file.
  * @returns {Promise<{url, name, type}>} File object.
  */
-// eslint-disable-next-line no-unused-vars
+ 
 async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP7s = false, linkEnding = '' } = {}) {
   // Check.
   if (!link) {
