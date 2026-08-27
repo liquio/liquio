@@ -54,9 +54,7 @@ export class ProvidersService implements OnModuleInit {
           const BuiltIn = this.providers[serviceConfig.class];
           const provider = BuiltIn
             ? new BuiltIn(this.logger, serviceConfig.options)
-            : (this.pluginRegistry?.get(serviceConfig.class) as unknown as
-                | BaseProvider<unknown>
-                | undefined);
+            : (this.pluginRegistry?.get(serviceConfig.class) as unknown as BaseProvider<unknown> | undefined);
 
           if (!provider) {
             this.logger.error('provider-service|class-not-found', {

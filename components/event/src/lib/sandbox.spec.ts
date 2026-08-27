@@ -114,9 +114,7 @@ describe('Sandbox', () => {
   it('should throw an error if code is not a string', () => {
     const sandbox = new Sandbox(config);
 
-    expect(() =>
-      sandbox.evalWithArgs(undefined, undefined, { throwOnUndefined: true }),
-    ).toThrow('Sandbox error: "Code is undefined"');
+    expect(() => sandbox.evalWithArgs(undefined, undefined, { throwOnUndefined: true })).toThrow('Sandbox error: "Code is undefined"');
 
     expect(() =>
       sandbox.evalWithArgs(undefined, undefined, {
@@ -130,30 +128,19 @@ describe('Sandbox', () => {
         throwOnUndefined: true,
         meta: { fn: 'testFn', caller: 'testCaller' },
       }),
-    ).toThrow(
-      'Sandbox error: "Code is undefined" in testFn called by testCaller',
-    );
+    ).toThrow('Sandbox error: "Code is undefined" in testFn called by testCaller');
   });
 
   it('should not work with a plain string without checkArrow', () => {
     const sandbox = new Sandbox(config);
 
-    expect(() =>
-      sandbox.evalWithArgs(
-        'Витяг з Єдиного державного реєстру ветеранів війни',
-        [],
-      ),
-    ).toThrow('Sandbox error: "Unexpected token (1:6)"');
+    expect(() => sandbox.evalWithArgs('Витяг з Єдиного державного реєстру ветеранів війни', [])).toThrow('Sandbox error: "Unexpected token (1:6)"');
   });
 
   it('should work with a plain string with checkArrow', () => {
     const sandbox = new Sandbox(config);
 
-    const result = sandbox.evalWithArgs(
-      'Витяг з Єдиного державного реєстру ветеранів війни',
-      [],
-      { checkArrow: true },
-    );
+    const result = sandbox.evalWithArgs('Витяг з Єдиного державного реєстру ветеранів війни', [], { checkArrow: true });
 
     expect(result).toBe('Витяг з Єдиного державного реєстру ветеранів війни');
   });
@@ -161,10 +148,7 @@ describe('Sandbox', () => {
   it('should work with a quoted string', () => {
     const sandbox = new Sandbox(config);
 
-    const result = sandbox.evalWithArgs(
-      '"Витяг з Єдиного державного реєстру ветеранів війни"',
-      [],
-    );
+    const result = sandbox.evalWithArgs('"Витяг з Єдиного державного реєстру ветеранів війни"', []);
 
     expect(result).toBe('Витяг з Єдиного державного реєстру ветеранів війни');
   });
@@ -172,12 +156,7 @@ describe('Sandbox', () => {
   it('should handle syntax errors', () => {
     const sandbox = new Sandbox(config);
 
-    expect(() =>
-      sandbox.evalWithArgs(
-        '(documents, events) => { return \'Тестовий юніт; }',
-        [],
-      ),
-    ).toThrow(
+    expect(() => sandbox.evalWithArgs("(documents, events) => { return 'Тестовий юніт; }", [])).toThrow(
       'Sandbox error: "Unterminated string constant (1:32)"\n  (documents, events) => { return \'Тестовий юніт; }',
     );
   });
@@ -196,11 +175,7 @@ describe('Sandbox', () => {
 
   it('should correctly strip comments and trim code', () => {
     const sandbox = new Sandbox(config);
-    const result = sandbox.evalWithArgs(
-      '\n/* comment */\n() => 1 + 1 // comment',
-      [],
-      { checkArrow: true },
-    );
+    const result = sandbox.evalWithArgs('\n/* comment */\n() => 1 + 1 // comment', [], { checkArrow: true });
     expect(result).toBe(2);
   });
 
@@ -235,11 +210,7 @@ describe('Sandbox', () => {
     });
 
     it('should use global functions from workflow templates', () => {
-      const result = sandbox.evalWithArgs(
-        '() => $.workflow.testFunc("value")',
-        [],
-        { workflowTemplateId: 3 },
-      );
+      const result = sandbox.evalWithArgs('() => $.workflow.testFunc("value")', [], { workflowTemplateId: 3 });
       expect(result).toBe('test-value');
     });
 
@@ -256,9 +227,7 @@ describe('Sandbox', () => {
         sandbox.evalWithArgs('() => $.workflow.nonExistentFunc("value")', [], {
           workflowTemplateId: 3,
         }),
-      ).toThrow(
-        'Sandbox error: "$.workflow.nonExistentFunc is not a function"',
-      );
+      ).toThrow('Sandbox error: "$.workflow.nonExistentFunc is not a function"');
     });
   });
 
@@ -286,7 +255,7 @@ describe('Sandbox', () => {
     };
 
     const result = await sandbox.evalWithArgs(
-      'async (documents) => { const installationInfo = documents?.find( (item) => item.documentTemplateId === 161323001 )?.data?.installationInfo; const { environmentalImpactAssessment, crossborderImpactAssessment, potentialCrossborderImpact, confirmingAuthorityDocs, schemeProduction, decisionCrossborderDocs, installationDecommissioningApplication, ...rest } = installationInfo || {}; return { ...rest, activitiesType: rest?.activitiesType?.map((item) => item?.name), dateOfDecision: `${rest?.dateOfDecision?.day || \'\'}.${ rest?.dateOfDecision?.month || \'\' }.${rest?.dateOfDecision?.year || \'\'}`, crossborderCountry: rest?.crossborderCountry?.map( (country) => country?.label ), potentialCrossborderCountry: rest?.crossborderCountry?.map( (potentialCountry) => potentialCountry?.label ), confirmingAuthorityDocs: await Promise.all((confirmingAuthorityDocs || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), schemeProduction: await Promise.all((schemeProduction || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), decisionCrossborderDocs: await Promise.all((decisionCrossborderDocs || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), installationDecommissioningApplication: await Promise.all(( installationDecommissioningApplication || [] ).map(async (attach) => plinkFromFilestorageAttach(attach))), }; };',
+      "async (documents) => { const installationInfo = documents?.find( (item) => item.documentTemplateId === 161323001 )?.data?.installationInfo; const { environmentalImpactAssessment, crossborderImpactAssessment, potentialCrossborderImpact, confirmingAuthorityDocs, schemeProduction, decisionCrossborderDocs, installationDecommissioningApplication, ...rest } = installationInfo || {}; return { ...rest, activitiesType: rest?.activitiesType?.map((item) => item?.name), dateOfDecision: `${rest?.dateOfDecision?.day || ''}.${ rest?.dateOfDecision?.month || '' }.${rest?.dateOfDecision?.year || ''}`, crossborderCountry: rest?.crossborderCountry?.map( (country) => country?.label ), potentialCrossborderCountry: rest?.crossborderCountry?.map( (potentialCountry) => potentialCountry?.label ), confirmingAuthorityDocs: await Promise.all((confirmingAuthorityDocs || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), schemeProduction: await Promise.all((schemeProduction || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), decisionCrossborderDocs: await Promise.all((decisionCrossborderDocs || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), installationDecommissioningApplication: await Promise.all(( installationDecommissioningApplication || [] ).map(async (attach) => plinkFromFilestorageAttach(attach))), }; };",
       [
         [
           {
@@ -336,7 +305,7 @@ describe('Sandbox', () => {
     };
 
     const result = await sandbox.evalWithArgs(
-      'async (documents) => { const installationInfo = documents?.find( (item) => item.documentTemplateId === 161323001 )?.data?.installationInfo; const { environmentalImpactAssessment, crossborderImpactAssessment, potentialCrossborderImpact, confirmingAuthorityDocs, schemeProduction, decisionCrossborderDocs, installationDecommissioningApplication, ...rest } = installationInfo || {}; return { ...rest, activitiesType: rest?.activitiesType?.map((item) => item?.name), dateOfDecision: `${rest?.dateOfDecision?.day || \'\'}.${ rest?.dateOfDecision?.month || \'\' }.${rest?.dateOfDecision?.year || \'\'}`, crossborderCountry: rest?.crossborderCountry?.map( (country) => country?.label ), potentialCrossborderCountry: rest?.crossborderCountry?.map( (potentialCountry) => potentialCountry?.label ), confirmingAuthorityDocs: await Promise.all((confirmingAuthorityDocs || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), schemeProduction: await Promise.all((schemeProduction || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), decisionCrossborderDocs: await Promise.all((decisionCrossborderDocs || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), installationDecommissioningApplication: await Promise.all(( installationDecommissioningApplication || [] ).map(async (attach) => plinkFromFilestorageAttach(attach))), }; };',
+      "async (documents) => { const installationInfo = documents?.find( (item) => item.documentTemplateId === 161323001 )?.data?.installationInfo; const { environmentalImpactAssessment, crossborderImpactAssessment, potentialCrossborderImpact, confirmingAuthorityDocs, schemeProduction, decisionCrossborderDocs, installationDecommissioningApplication, ...rest } = installationInfo || {}; return { ...rest, activitiesType: rest?.activitiesType?.map((item) => item?.name), dateOfDecision: `${rest?.dateOfDecision?.day || ''}.${ rest?.dateOfDecision?.month || '' }.${rest?.dateOfDecision?.year || ''}`, crossborderCountry: rest?.crossborderCountry?.map( (country) => country?.label ), potentialCrossborderCountry: rest?.crossborderCountry?.map( (potentialCountry) => potentialCountry?.label ), confirmingAuthorityDocs: await Promise.all((confirmingAuthorityDocs || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), schemeProduction: await Promise.all((schemeProduction || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), decisionCrossborderDocs: await Promise.all((decisionCrossborderDocs || []).map(async (attach) => plinkFromFilestorageAttach(attach) )), installationDecommissioningApplication: await Promise.all(( installationDecommissioningApplication || [] ).map(async (attach) => plinkFromFilestorageAttach(attach))), }; };",
       [
         [
           {

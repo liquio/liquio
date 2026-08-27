@@ -447,11 +447,9 @@ export class EventWorkflow {
         status.calculate = status.calculate.replaceAll('{{frontUrl}}', frontUrl);
       }
 
-      const calculatedStatus = this.sandbox.evalWithArgs(
-        status.calculate,
-        [documents, events],
-        { meta: { fn: 'calculate', caller: 'EventWorkflow.setWorkflowStatus' } },
-      );
+      const calculatedStatus = this.sandbox.evalWithArgs(status.calculate, [documents, events], {
+        meta: { fn: 'calculate', caller: 'EventWorkflow.setWorkflowStatus' },
+      });
       if (!Array.isArray(calculatedStatus) || calculatedStatus.length === 0) {
         return;
       }
@@ -478,7 +476,7 @@ export class EventWorkflow {
 
       if (nonTabedStatusesLength === 0) {
         global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
-        throw new Error('Invalid status. Non tabed statuses don\'t exist.');
+        throw new Error("Invalid status. Non tabed statuses don't exist.");
       }
 
       let statusId;

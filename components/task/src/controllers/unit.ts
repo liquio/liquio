@@ -503,4 +503,3 @@ export class UnitController extends Controller {
     this.responseData(res, allNeededUsers);
   }
 }
-

@@ -233,9 +233,7 @@ class TestApp extends App {
         connectionString: `${url}/${configOverride.db.database}`,
       });
       await client.connect();
-      await client.query(
-        'CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA pg_catalog;',
-      );
+      await client.query('CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA pg_catalog;');
 
       // Create a unique database for each test run
       if (isExternalDb) {
@@ -256,10 +254,9 @@ class TestApp extends App {
       }
 
       // Run migrations to setup the database schema
-      const output = execSync(
-        `npx sequelize db:migrate --url ${url}/${configOverride.db.database} --migrations-path ../manager/migrations`,
-        { env: process.env },
-      );
+      const output = execSync(`npx sequelize db:migrate --url ${url}/${configOverride.db.database} --migrations-path ../manager/migrations`, {
+        env: process.env,
+      });
       debug('test:migration')(output.toString());
 
       // Run seeders to setup the database data
@@ -271,9 +268,10 @@ class TestApp extends App {
         try {
           const testData = readFileSync('../manager/data/test.e2e.sql', 'utf8');
           debug('test:db')(
-            await client.query(testData)
+            await client
+              .query(testData)
               .then((res) => `Executed ${res.length} queries`)
-              .catch((err) => `Failed to seed data: ${err}`)
+              .catch((err) => `Failed to seed data: ${err}`),
           );
         } catch (error) {
           throw new Error(`Unable to load test data: ${error.message}`, { cause: error });

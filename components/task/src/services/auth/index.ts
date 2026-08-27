@@ -1,4 +1,3 @@
-
 import { Provider as BaseProvider } from './providers/provider';
 import { LiquioIdProvider } from './providers/liquio_id';
 
@@ -34,4 +33,3 @@ export class AuthService {
     return { Provider: BaseProvider, LiquioIdProvider };
   }
 }
-

@@ -152,32 +152,35 @@ export class DocumentController extends Controller {
         return this.responseData(res, { check: true, message: 'disabled by excludeOwner parameter' });
       }
 
-      const context = await checkContext.reduce(async (accPromise, { name, provider, options }) => {
-        const acc = await accPromise;
-        const [providerType, service, method] = provider.split('.');
+      const context = await checkContext.reduce(
+        async (accPromise, { name, provider, options }) => {
+          const acc = await accPromise;
+          const [providerType, service, method] = provider.split('.');
 
-        let providerData;
-        switch (providerType) {
-          case 'external-reader': {
-            const nonUserFilter = this.sandbox.evalWithArgs(options, [document.data], {
-              meta: { fn: 'multisignCheck.nonUserFilter', documentId, name },
-            });
-            const dataByUser = await this.externalReader.getDataByUser(
-              service,
-              method,
-              undefined,
-              oauthToken,
-              userInfo,
-              nonUserFilter,
-              undefined,
-              userUnitIds,
-            );
-            providerData = dataByUser.data;
+          let providerData;
+          switch (providerType) {
+            case 'external-reader': {
+              const nonUserFilter = this.sandbox.evalWithArgs(options, [document.data], {
+                meta: { fn: 'multisignCheck.nonUserFilter', documentId, name },
+              });
+              const dataByUser = await this.externalReader.getDataByUser(
+                service,
+                method,
+                undefined,
+                oauthToken,
+                userInfo,
+                nonUserFilter,
+                undefined,
+                userUnitIds,
+              );
+              providerData = dataByUser.data;
+            }
           }
-        }
 
-        return { ...acc, [name]: providerData };
-      }, Promise.resolve({ user: userInfo }));
+          return { ...acc, [name]: providerData };
+        },
+        Promise.resolve({ user: userInfo }),
+      );
 
       const errors = checkErrors.filter(({ check }) =>
         this.sandbox.evalWithArgs(check, [document.data, context], { meta: { fn: 'multisignCheck.check', documentId } }),
@@ -1911,32 +1914,35 @@ export class DocumentController extends Controller {
         });
       }
 
-      const context = await checkContext.reduce(async (accPromise, { name, provider, options }) => {
-        const acc = await accPromise;
-        const [providerType, service, method] = provider.split('.');
+      const context = await checkContext.reduce(
+        async (accPromise, { name, provider, options }) => {
+          const acc = await accPromise;
+          const [providerType, service, method] = provider.split('.');
 
-        let providerData;
-        switch (providerType) {
-          case 'external-reader': {
-            const nonUserFilter = this.sandbox.evalWithArgs(options, [document.data], {
-              meta: { fn: 'singlesignCheck.nonUserFilter', documentId, name },
-            });
-            const dataByUser = await this.externalReader.getDataByUser(
-              service,
-              method,
-              undefined,
-              oauthToken,
-              userInfo,
-              nonUserFilter,
-              undefined,
-              userUnitIds,
-            );
-            providerData = dataByUser.data;
+          let providerData;
+          switch (providerType) {
+            case 'external-reader': {
+              const nonUserFilter = this.sandbox.evalWithArgs(options, [document.data], {
+                meta: { fn: 'singlesignCheck.nonUserFilter', documentId, name },
+              });
+              const dataByUser = await this.externalReader.getDataByUser(
+                service,
+                method,
+                undefined,
+                oauthToken,
+                userInfo,
+                nonUserFilter,
+                undefined,
+                userUnitIds,
+              );
+              providerData = dataByUser.data;
+            }
           }
-        }
 
-        return { ...acc, [name]: providerData };
-      }, Promise.resolve({ user: userInfo }));
+          return { ...acc, [name]: providerData };
+        },
+        Promise.resolve({ user: userInfo }),
+      );
 
       const errors = checkErrors.filter(({ check }) =>
         this.sandbox.evalWithArgs(check, [document.data, context], { meta: { fn: 'singlesignCheck.check', documentId, check } }),
@@ -1952,4 +1958,3 @@ export class DocumentController extends Controller {
     }
   }
 }
-

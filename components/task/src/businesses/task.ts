@@ -62,8 +62,8 @@ const SYSTEM_USER = 'system';
 const REASSIGN_TRIGGER_ERROR = 'reassignTrigger error.';
 
 const ERROR_TASK_ALREADY_COMMITTED = 'Task has already been committed.';
-const ERROR_TASK_ACCESS = 'User doesn\'t have any access to task.';
-const ERROR_USER_TASK_ACCESS_AS_UNIT_HEAD = 'User doesn\'t have access to task as unit head.';
+const ERROR_TASK_ACCESS = "User doesn't have any access to task.";
+const ERROR_USER_TASK_ACCESS_AS_UNIT_HEAD = "User doesn't have access to task as unit head.";
 
 /**
  * Task business.
@@ -642,7 +642,10 @@ export class TaskBusiness extends Business {
           copyAttachmentsByDocumentId = undefined;
         }
       } catch (error) {
-        global.log.save('can-not-calc-copy-attachments-by-document-id', { copyAttachmentsByDocumentIdFunction, error: (error && error.message) || error });
+        global.log.save('can-not-calc-copy-attachments-by-document-id', {
+          copyAttachmentsByDocumentIdFunction,
+          error: (error && error.message) || error,
+        });
         const wrappedError = new Error('Can not calculate task copy attachments by document id.');
         (wrappedError as any).cause = error;
         throw wrappedError;
@@ -810,7 +813,7 @@ export class TaskBusiness extends Business {
   async create(options) {
     // Define params.
     let workflow;
-    // eslint-disable-next-line prefer-const -- taskTemplateId is reassigned below; workflowId/createWorkflowId aren't.
+
     let { workflowId, taskTemplateId, createWorkflowId } = options;
     const {
       workflowTemplateId,
@@ -1040,7 +1043,7 @@ export class TaskBusiness extends Business {
     }
 
     // Define task permissions.
-    /* eslint-disable prefer-const -- performerUnits/requiredPerformerUnits/performerUsers/performerUsersIpn/performerUsersEmail are reassigned below; signerUsers/onlyForHeads/calculatedPerformerUserNames aren't. */
+
     let {
       performerUnits,
       requiredPerformerUnits,
@@ -1051,7 +1054,6 @@ export class TaskBusiness extends Business {
       onlyForHeads,
       performerUserNames: calculatedPerformerUserNames = [],
     } = await this.getTaskPermissions(workflow, taskTemplate, userId, userInfo, userUnitsEntities);
-    /* eslint-enable prefer-const */
 
     if (performerUnitsFromSystemTask.length > 0) {
       performerUnits = performerUnitsFromSystemTask;
@@ -1359,9 +1361,9 @@ export class TaskBusiness extends Business {
         // Save files as document attachments (with signatures).
         if (typeOf(attachmentsSignatures) === 'array' && attachmentsSignatures.length > 0) {
           try {
-            const savedAttachments = await global.businesses.document.saveAttachmentsP7SSignatures(
-              attachmentsSignatures, createdDocument, { userId },
-            );
+            const savedAttachments = await global.businesses.document.saveAttachmentsP7SSignatures(attachmentsSignatures, createdDocument, {
+              userId,
+            });
             // Save attachment info to document.
             for (const [index, attachment] of savedAttachments.entries()) {
               // We need to get the updated document for correct saving attachment array.
@@ -1854,14 +1856,14 @@ export class TaskBusiness extends Business {
       signFromPerformers.length !== performerUsers.length &&
       (signersFromPerformers.length > 0 || !task.data.signWithoutPerformerAvailable)
     ) {
-      const error = new Error('Signer doesn\'t have access to task before performer sign it.');
+      const error = new Error("Signer doesn't have access to task before performer sign it.");
       global.log.save('check-access-to-task-if-multisign-error', error, 'error');
       throw error;
     }
 
     const { declinedSignerIds } = task.meta || {};
     if (signers.length && declinedSignerIds && declinedSignerIds.includes(userId)) {
-      const error = new Error('Signer don\'t have access to task - names not equal.');
+      const error = new Error("Signer don't have access to task - names not equal.");
       global.log.save('check-access-to-task-if-multisign-equal-names-error', error, 'error');
       throw error;
     }
@@ -1928,7 +1930,7 @@ export class TaskBusiness extends Business {
 
     // Check user is signer.
     if (!task.isSigner(userId)) {
-      throw new ForbiddenError('User doesn\'t have access to task as signer.');
+      throw new ForbiddenError("User doesn't have access to task as signer.");
     }
 
     // Return task in other cases.
@@ -1961,10 +1963,14 @@ export class TaskBusiness extends Business {
         isCreateByOtherSystem: messageObject.isCreateByOtherSystem || false,
       });
       if (!createdTask) {
-        throw new Error('Task wasn\'t created.');
+        throw new Error("Task wasn't created.");
       }
     } catch (error) {
-      global.log.save('document-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error, details: error.details });
+      global.log.save('document-creating-by-message-from-queue-error', {
+        messageObject,
+        error: (error && error.message) || error,
+        details: error.details,
+      });
 
       const { jsonSchema } = await global.models.taskTemplate.findById(messageObject.taskTemplateId);
       const retryInfo = this.getRetryInfo(messageObject, jsonSchema);
@@ -2165,7 +2171,7 @@ export class TaskBusiness extends Business {
 
         const { signerUsers } = task;
         if (additionalDataSignatures.length !== additionalDataToSign.length * (signerUsers.length === 0 ? 1 : signerUsers.length)) {
-          const error: any = new Error('Additional data signatures haven\'t found.');
+          const error: any = new Error("Additional data signatures haven't found.");
           error.details = {
             additionalDataSignatures: additionalDataSignatures && additionalDataSignatures.map((v) => v.signature),
             additionalDataToSign,
@@ -2229,7 +2235,7 @@ export class TaskBusiness extends Business {
           const signsCreatedBy = documentSignatures.map((v) => v.createdBy);
           const signersDifference = signerUsers.filter((v) => !signsCreatedBy.includes(v));
           if (signersDifference.length && !isMinSignaturesLimitRaised) {
-            throw new Error('Can\'t commit - not all signers sign document.');
+            throw new Error("Can't commit - not all signers sign document.");
           }
         }
       }
@@ -2355,7 +2361,10 @@ export class TaskBusiness extends Business {
         if (!traceMeta?.workflowId) {
           traceMeta.workflowId = task.workflowId;
         }
-        await global.models.workflowError.create({ error: 'Try to commit task with unfilled meta.handling.', queueMessage: {}, traceMeta }, 'warning');
+        await global.models.workflowError.create(
+          { error: 'Try to commit task with unfilled meta.handling.', queueMessage: {}, traceMeta },
+          'warning',
+        );
         throw new Error('Try to commit task with unfilled meta.handling.');
       }
 
@@ -2578,9 +2587,9 @@ export class TaskBusiness extends Business {
 
     // Check if the task has payment.
     const paymentControlPaths = [
-      ...JSONPath('$..[?(@.control === \'payment\')]', documentTemplate.jsonSchema),
-      ...JSONPath('$..[?(@.control === \'payment.widget\')]', documentTemplate.jsonSchema),
-      ...JSONPath('$..[?(@.control === \'payment.widget.new\')]', documentTemplate.jsonSchema),
+      ...JSONPath("$..[?(@.control === 'payment')]", documentTemplate.jsonSchema),
+      ...JSONPath("$..[?(@.control === 'payment.widget')]", documentTemplate.jsonSchema),
+      ...JSONPath("$..[?(@.control === 'payment.widget.new')]", documentTemplate.jsonSchema),
     ].map((v) => v.paymentControlPath);
 
     if (paymentControlPaths.length) {
@@ -2869,7 +2878,7 @@ export class TaskBusiness extends Business {
     const signersArray = this.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'multisigners.calcSigners', taskId } });
     if (!signersArray) {
       global.log.save('multisigners-calculate-signers-by-formula-error', { taskId, userId, calcSignersFormula }, 'error');
-      throw new Error('Can\'t calculate signers by formula.');
+      throw new Error("Can't calculate signers by formula.");
     } else {
       global.log.save('multisigners-calculate-signers-by-formula', { taskId, userId, signersArray });
     }
@@ -3004,12 +3013,12 @@ export class TaskBusiness extends Business {
 
     const calculatedSigners = this.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'multisigners.calcSigners', taskId } });
     if (!calculatedSigners) {
-      throw new Error('Can\'t calculate signers data by formula.');
+      throw new Error("Can't calculate signers data by formula.");
     }
 
     const { signerUserNames, signerUsers, performerUserNames } = task;
     if (!signerUserNames || !signerUsers) {
-      throw new Error('Can\'t get signers user names to check.');
+      throw new Error("Can't get signers user names to check.");
     }
     const userNameIndex = signerUsers.findIndex((v) => v === userId);
     if (userNameIndex === -1) {
@@ -3745,7 +3754,9 @@ export class TaskBusiness extends Business {
           'error',
         );
 
-        const wrappedError = new Error(`Delete expired user drafts: cannot delete related entities. TaskId: ${taskId}. Error: ${error?.message || error}.`);
+        const wrappedError = new Error(
+          `Delete expired user drafts: cannot delete related entities. TaskId: ${taskId}. Error: ${error?.message || error}.`,
+        );
         (wrappedError as any).cause = error;
         throw wrappedError;
       }

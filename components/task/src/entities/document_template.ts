@@ -1,4 +1,3 @@
-
 import * as jsoncParser from 'jsonc-parser';
 import { Entity } from './entity';
 
@@ -49,7 +48,9 @@ export class DocumentTemplateEntity extends Entity {
    */
   get htmlTemplates() {
     // Check if not exist.
-    if (typeof this.htmlTemplate !== 'string') { return []; }
+    if (typeof this.htmlTemplate !== 'string') {
+      return [];
+    }
 
     // Separate by delimiter and return.
     const { htmlTemplateDelimiter } = global.config.file_generator;
@@ -67,4 +68,3 @@ export class DocumentTemplateEntity extends Entity {
     return hasManyHtmlTemplates;
   }
 }
-

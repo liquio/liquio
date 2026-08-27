@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -24,4 +23,3 @@ export class NumberTemplateEntity extends Entity {
     this.template = template;
   }
 }
-

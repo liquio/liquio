@@ -55,4 +55,3 @@ export class PaymentTransactionEntity {
     this.extraData = extraData;
   }
 }
-

@@ -71,7 +71,7 @@ export class ServicesRepositoryRequester {
     const { serviceIdsMap } = this.config;
     const serviceId = serviceIdsMap && serviceIdsMap[serviceName];
     if (!serviceIdsMap || !serviceId) {
-      throw new Error('Can\'t get repository services IDs to define service.');
+      throw new Error("Can't get repository services IDs to define service.");
     }
 
     // Check if passport in ipn field.
@@ -80,15 +80,15 @@ export class ServicesRepositoryRequester {
       body =
         this.isPassport(userIpn) || userIpn.length === ID_CARD_LENGTH
           ? {
-            public_service_identifier: serviceId,
-            service_foreign_id: requestId,
-            client_passport: userIpn,
-          }
+              public_service_identifier: serviceId,
+              service_foreign_id: requestId,
+              client_passport: userIpn,
+            }
           : {
-            public_service_identifier: serviceId,
-            service_foreign_id: requestId,
-            client_inn: userIpn,
-          };
+              public_service_identifier: serviceId,
+              service_foreign_id: requestId,
+              client_inn: userIpn,
+            };
     }
 
     // Request options.

@@ -1,4 +1,3 @@
-
 import _ from 'lodash';
 import Ajv from 'ajv';
 import PropByPath from 'prop-by-path';
@@ -64,11 +63,11 @@ export class DocumentValidatorService {
     const unexpectedErrors = includesUnexpectedErrors ? this.checkUnexpectedErrors(objectToCheck) : [];
 
     // Return all errors array.
-    const errors = [...ajvErrors.map(v => new ValidatorError(v)), ...keywordsErrors, ...unexpectedErrors];
+    const errors = [...ajvErrors.map((v) => new ValidatorError(v)), ...keywordsErrors, ...unexpectedErrors];
 
     // Remove validation of hidden fields.
     const errorsWithoutHiddenFields = errors
-      .filter(v => !this.isHiddenField(v, objectToCheck))
+      .filter((v) => !this.isHiddenField(v, objectToCheck))
       .map(({ isFinalPath: _isFinalPath, ...error }) => error);
 
     // Return errors without hidden fields.
@@ -105,14 +104,22 @@ export class DocumentValidatorService {
     for (let p = 0; p < pathItems.length; p++) {
       const propertyValuePath = p ? valuePath.split('.').slice(0, -p).join('.') : valuePath;
 
-      const propertySchemaPathTemplate = `$..${propertyValuePath.replace(/\[\w+\]/g, '.').replace(/\.\./g, '.').replace(/\.$/g, '').replace(/\./g, '..')}`;
+      const propertySchemaPathTemplate = `$..${propertyValuePath
+        .replace(/\[\w+\]/g, '.')
+        .replace(/\.\./g, '.')
+        .replace(/\.$/g, '')
+        .replace(/\./g, '..')}`;
       const [propertyValueSchema] = JSONPath({ path: propertySchemaPathTemplate, json: this.jsonSchema });
 
-      if (typeof propertyValueSchema === 'object' && propertyValueSchema !== null && this.checkHidden({
-        objectToCheck,
-        valuePath: propertyValuePath,
-        hidden: propertyValueSchema.hidden
-      })) {
+      if (
+        typeof propertyValueSchema === 'object' &&
+        propertyValueSchema !== null &&
+        this.checkHidden({
+          objectToCheck,
+          valuePath: propertyValuePath,
+          hidden: propertyValueSchema.hidden,
+        })
+      ) {
         return true;
       }
     }
@@ -135,11 +142,9 @@ export class DocumentValidatorService {
       const parentPath = pathItems.slice(0, pathItems.length - 1).join('.');
       const value = PropByPath.get(objectToCheck, valuePath);
       const parentValue = PropByPath.get(objectToCheck, parentPath);
-      return this.sandbox.evalWithArgs(
-        hidden,
-        [objectToCheck, value, parentValue, this.userInfo],
-        { meta: { fn: 'DocumentValidatorService.checkHidden', valuePath } },
-      );
+      return this.sandbox.evalWithArgs(hidden, [objectToCheck, value, parentValue, this.userInfo], {
+        meta: { fn: 'DocumentValidatorService.checkHidden', valuePath },
+      });
     }
 
     return false;
@@ -166,17 +171,15 @@ export class DocumentValidatorService {
           currentElementDescription,
           currentPageValue,
           objectToCheck,
-          this.externalFunctions
+          this.externalFunctions,
         );
-        const currentElementKeywordFormattedErrors = currentElementKeywordErrors.map(
-          message => ({
-            dataPath: path,
-            control: currentElementDescription?.control,
-            validationParam: currentElementValue,
-            isFinalPath: true,
-            message
-          })
-        );
+        const currentElementKeywordFormattedErrors = currentElementKeywordErrors.map((message) => ({
+          dataPath: path,
+          control: currentElementDescription?.control,
+          validationParam: currentElementValue,
+          isFinalPath: true,
+          message,
+        }));
         errors.push(...currentElementKeywordFormattedErrors);
       } catch (error) {
         global.log.save('json-schema-validation-exception', error.message, 'warn');
@@ -204,18 +207,18 @@ export class DocumentValidatorService {
    */
   async removeReadonlyParams(properties, documentDataObject, isFromSystemTask) {
     // Append JSON schema paths.
-    const propertiesWithJsonSchemaPaths = properties.map(property => ({
+    const propertiesWithJsonSchemaPaths = properties.map((property) => ({
       path: property.path,
       value: property.value,
-      jsonSchemaPath: Paths.getJsonSchemaPath(property.path)
+      jsonSchemaPath: Paths.getJsonSchemaPath(property.path),
     }));
 
     // Return with removed readonly params.
     const propertiesWithoutReadonlyParams = propertiesWithJsonSchemaPaths
       // Filter changed to save every property that can be automatically defined.
-      .filter(property => !this.isCurrentOrParentControlsReadonly(this.jsonSchema, property.jsonSchemaPath))
-      .filter(property => !this.isCurrentOrParentControlsCheckReadonlyTrue(this.jsonSchema, property, documentDataObject))
-      .filter(property => {
+      .filter((property) => !this.isCurrentOrParentControlsReadonly(this.jsonSchema, property.jsonSchemaPath))
+      .filter((property) => !this.isCurrentOrParentControlsCheckReadonlyTrue(this.jsonSchema, property, documentDataObject))
+      .filter((property) => {
         const jsonSchemaParts = property.jsonSchemaPath.split('.'); // ['properties', 'payment', 'verifiedUserInfo', 'externalReaderCheck', 'properties', 'calculated', 'properties', 'price']
         let currentJsonSchemaPath = '';
         for (const jsonSchemaPartsItem of jsonSchemaParts) {
@@ -225,19 +228,13 @@ export class DocumentValidatorService {
           const currentControl = PropByPath.get(this.jsonSchema, `${currentJsonSchemaPath}.control`);
 
           // Check if it is payment control.
-          if (
-            currentControl === 'payment' ||
-            typeof currentControl === 'string' && currentControl.startsWith('payment.')
-          ) {
+          if (currentControl === 'payment' || (typeof currentControl === 'string' && currentControl.startsWith('payment.'))) {
             return false;
           }
 
           // Check if it is verifiedUserInfo control.
           if (currentControl === 'verifiedUserInfo') {
-            const parentPropertyPath = property.path.slice(
-              0,
-              property.path.indexOf(jsonSchemaPartsItem) + jsonSchemaPartsItem.length
-            );
+            const parentPropertyPath = property.path.slice(0, property.path.indexOf(jsonSchemaPartsItem) + jsonSchemaPartsItem.length);
 
             // Check if it is parent property path.
             if (parentPropertyPath === property.path) {
@@ -247,8 +244,7 @@ export class DocumentValidatorService {
             const fields = PropByPath.get(this.jsonSchema, `${currentJsonSchemaPath}.fields`);
             const data = PropByPath.get(documentDataObject, parentPropertyPath);
 
-            const [currentField] =
-              property.path.slice(parentPropertyPath.length + 1).split('.') || [];
+            const [currentField] = property.path.slice(parentPropertyPath.length + 1).split('.') || [];
             if (Array.isArray(fields)) {
               if (currentField === 'verified') {
                 return false;
@@ -266,10 +262,7 @@ export class DocumentValidatorService {
           }
 
           // Check if External Reader value.
-          if (
-            typeof currentJsonSchemaItem?.value === 'string' &&
-            currentJsonSchemaItem.value.startsWith('external-reader.')
-          ) {
+          if (typeof currentJsonSchemaItem?.value === 'string' && currentJsonSchemaItem.value.startsWith('external-reader.')) {
             return false;
           }
         }
@@ -297,7 +290,7 @@ export class DocumentValidatorService {
       });
 
     // Match properties with inner already defined readonly params.
-    const matchedPropertiesWithoutReadonlyParams = propertiesWithoutReadonlyParams.map(v => {
+    const matchedPropertiesWithoutReadonlyParams = propertiesWithoutReadonlyParams.map((v) => {
       // If without inner fields, except Arrays.
       if (typeof v.value !== 'object' || v.value === null || Array.isArray(v.value)) return v;
 
@@ -309,10 +302,11 @@ export class DocumentValidatorService {
         const propertiesWithJsonSchemaPaths = {
           path: `${v.path}.${innerKey}`,
           value: PropByPath.get(documentDataObject, `${v.path}.${innerKey}`),
-          jsonSchemaPath: innerJsonSchemaPath
+          jsonSchemaPath: innerJsonSchemaPath,
         };
-        const isInnerReadonly = this.isCurrentOrParentControlsReadonly(this.jsonSchema, innerJsonSchemaPath) || 
-        this.isCurrentOrParentControlsCheckReadonlyTrue(this.jsonSchema, propertiesWithJsonSchemaPaths, documentDataObject);
+        const isInnerReadonly =
+          this.isCurrentOrParentControlsReadonly(this.jsonSchema, innerJsonSchemaPath) ||
+          this.isCurrentOrParentControlsCheckReadonlyTrue(this.jsonSchema, propertiesWithJsonSchemaPaths, documentDataObject);
         if (isInnerReadonly) {
           const innerPath = `${v.path}.${innerKey}`;
           const innerPreviousValue = PropByPath.get(documentDataObject, innerPath);
@@ -327,8 +321,7 @@ export class DocumentValidatorService {
     });
 
     // Normalize properties and return.
-    const normalizedProperties = matchedPropertiesWithoutReadonlyParams
-      .map(property => ({ path: property.path, value: property.value }));
+    const normalizedProperties = matchedPropertiesWithoutReadonlyParams.map((property) => ({ path: property.path, value: property.value }));
     return normalizedProperties;
   }
 
@@ -339,14 +332,14 @@ export class DocumentValidatorService {
    * @returns {{incorrectValues: {path, value, previousValue, realPreviousValue}[]}} Previous values differentiation.
    */
   checkPreviousValues(properties, documentData) {
-    const propertiesWithRealPreviousValues = properties.map(property => ({
+    const propertiesWithRealPreviousValues = properties.map((property) => ({
       ...property,
-      realPreviousValue: PropByPath.get(documentData, property.path)
+      realPreviousValue: PropByPath.get(documentData, property.path),
     }));
     const incorrectValues = propertiesWithRealPreviousValues
-      .filter(property => typeof property.previousValue !== 'undefined')
-      .filter(property => typeof property.realPreviousValue !== 'undefined')
-      .filter(property => `${property.previousValue}` !== `${property.realPreviousValue}`);
+      .filter((property) => typeof property.previousValue !== 'undefined')
+      .filter((property) => typeof property.realPreviousValue !== 'undefined')
+      .filter((property) => `${property.previousValue}` !== `${property.realPreviousValue}`);
     return { incorrectValues };
   }
 
@@ -363,11 +356,11 @@ export class DocumentValidatorService {
     if (attachmentsPlaceholdersArray.length > 0) {
       const message = 'Document contains unexpectedly stopped attachment loading process.';
       const validationParam = null;
-      const attachmentsPlaceholdersErrors = attachmentsPlaceholdersArray.map(v => ({
+      const attachmentsPlaceholdersErrors = attachmentsPlaceholdersArray.map((v) => ({
         dataPath: v.data && v.data.dataPath,
         validationParam,
         message,
-        isUnexpected: true
+        isUnexpected: true,
       }));
       errors = [...errors, ...attachmentsPlaceholdersErrors];
     }
@@ -387,7 +380,7 @@ export class DocumentValidatorService {
     const controls = this.getCurrentAndParentControls(jsonSchema, path);
 
     // Check some control is readonly.
-    return controls.some(v => v && (v.readonly === true || v.readOnly === true));
+    return controls.some((v) => v && (v.readonly === true || v.readOnly === true));
   }
 
   /**
@@ -432,13 +425,11 @@ export class DocumentValidatorService {
       const propertyData = property.value;
       const [stepName] = property.path.split('.');
       const currentPageValue = PropByPath.get(documentDataObject, stepName);
-      return this.sandbox.evalWithArgs(
-        controlSchema.checkReadonly,
-        [propertyData, currentPageValue, documentDataObject],
-        { meta: { fn: 'DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', property } },
-      );
-    }; 
-    
+      return this.sandbox.evalWithArgs(controlSchema.checkReadonly, [propertyData, currentPageValue, documentDataObject], {
+        meta: { fn: 'DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', property },
+      });
+    }
+
     const jsonSchemaParts = property.jsonSchemaPath.split('.');
     let currentJsonSchemaPath = '';
 
@@ -446,16 +437,16 @@ export class DocumentValidatorService {
       currentJsonSchemaPath += `.${jsonSchemaPartsItem}`;
       const currentJsonSchemaItem = PropByPath.get(jsonSchema, currentJsonSchemaPath);
       if (!currentJsonSchemaItem?.checkReadonly) continue;
-      const currentDoumentPath = currentJsonSchemaPath.split('.').filter(e => e !== 'properties').join('.');
+      const currentDoumentPath = currentJsonSchemaPath
+        .split('.')
+        .filter((e) => e !== 'properties')
+        .join('.');
       const propertyData = PropByPath.get(documentDataObject, currentDoumentPath);
       const [, stepName] = currentDoumentPath.split('.');
       const currentPageValue = PropByPath.get(documentDataObject, stepName);
-      return this.sandbox.evalWithArgs(
-        currentJsonSchemaItem.checkReadonly,
-        [propertyData, currentPageValue, documentDataObject],
-        { meta: { fn: 'DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', property } },
-      );
+      return this.sandbox.evalWithArgs(currentJsonSchemaItem.checkReadonly, [propertyData, currentPageValue, documentDataObject], {
+        meta: { fn: 'DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', property },
+      });
     }
   }
 }
-

@@ -1,4 +1,3 @@
-
 import { Option } from './option';
 
 // Constants.
@@ -25,8 +24,8 @@ export class AttachmentOption extends Option {
     if (attachment.length === 0) {
       return {};
     }
-    const attachmentNames = attachment.map(attachment => attachment.name);
-    const attachmentNamesWithNumbers = Object.entries(attachmentNames).map(entry => `${parseInt(entry[0]) + 1}. ${entry[1]}.`);
+    const attachmentNames = attachment.map((attachment) => attachment.name);
+    const attachmentNamesWithNumbers = Object.entries(attachmentNames).map((entry) => `${parseInt(entry[0]) + 1}. ${entry[1]}.`);
     const attachmentListHtml = attachmentNamesWithNumbers.join(ATTACHMENT_LIST_TEXT_SEPARATOR);
     const attachmentHtml = attachmentNamesWithNumbers.length > 0 ? `${ATTACHMENT_LIST_TEXT_PREFIX}${attachmentListHtml}` : '';
 
@@ -35,4 +34,3 @@ export class AttachmentOption extends Option {
     return attachmentOptions;
   }
 }
-

@@ -9,16 +9,16 @@ jest.mock('./config', () => {
     preview: {
       server: 'http://localhost:3345',
       timeout: 5000,
-      contentTypes: ['image/jpeg', 'image/png', 'application/pdf']
-    }
+      contentTypes: ['image/jpeg', 'image/png', 'application/pdf'],
+    },
   };
-  
+
   return {
     getConfig: jest.fn(() => mockConfig),
     initialize: jest.fn(() => mockConfig),
     get config() {
       return mockConfig;
-    }
+    },
   };
 });
 
@@ -27,20 +27,22 @@ beforeAll(() => {
     save: jest.fn(),
   };
   global.silentUpload = true;
-  
+
   // Suppress Bluebird warnings in tests
   const originalConsoleWarn = console.warn;
   console.warn = (...args) => {
     const message = args.join(' ');
-    if (message.includes('a promise was created in a handler') ||
-        message.includes('Bluebird') ||
-        message.includes('deprecated') ||
-        message.includes('Unhandled rejection')) {
+    if (
+      message.includes('a promise was created in a handler') ||
+      message.includes('Bluebird') ||
+      message.includes('deprecated') ||
+      message.includes('Unhandled rejection')
+    ) {
       return; // Suppress these warnings
     }
     originalConsoleWarn.apply(console, args);
   };
-  
+
   // Set environment variable to suppress Bluebird warnings
   process.env.BLUEBIRD_WARNINGS = '0';
 });
@@ -62,12 +64,12 @@ describe('Preview', () => {
       const config = {
         server: 'http://localhost:3345',
         timeout: 5000,
-        contentTypes: ['image/jpeg', 'image/png']
+        contentTypes: ['image/jpeg', 'image/png'],
       };
 
       // Reset singleton for this test
       Preview.singleton = null;
-      
+
       const preview = new Preview(config);
       expect(preview).toBeInstanceOf(Preview);
       expect(preview.config.server).toBe(config.server);
@@ -77,21 +79,21 @@ describe('Preview', () => {
     it('should implement singleton pattern', () => {
       const config = {
         server: 'http://localhost:3345',
-        timeout: 10000
+        timeout: 10000,
       };
 
       const preview1 = new Preview(config);
       const preview2 = new Preview(config);
-      
+
       expect(preview1).toBe(preview2);
     });
 
     it('should set default values correctly', () => {
       // Reset singleton for this test
       Preview.singleton = null;
-      
+
       const preview = new Preview({});
-      
+
       expect(preview.config.server).toBe('http://0.0.0.0:3345');
       expect(preview.config.routes.generatePreview).toBe('/preview');
       expect(preview.config.routes.ping).toBe('/test/ping');
@@ -103,17 +105,17 @@ describe('Preview', () => {
     it('should merge default config with provided config', () => {
       // Reset singleton for this test
       Preview.singleton = null;
-      
+
       const customConfig = {
         server: 'http://custom-server:9999',
         timeout: 15000,
         routes: {
-          generatePreview: '/custom-preview'
-        }
+          generatePreview: '/custom-preview',
+        },
       };
-      
+
       const preview = new Preview(customConfig);
-      
+
       expect(preview.config.server).toBe('http://custom-server:9999');
       expect(preview.timeout).toBe(15000);
       expect(preview.config.routes.generatePreview).toBe('/custom-preview');
@@ -129,7 +131,7 @@ describe('Preview', () => {
     it('should have all required methods', () => {
       // Reset singleton for this test
       Preview.singleton = null;
-      
+
       const preview = new Preview({});
 
       // Check that all expected methods exist
@@ -141,14 +143,14 @@ describe('Preview', () => {
 
   describe('getPreview', () => {
     let preview;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       Preview.singleton = null;
-      
+
       preview = new Preview({
         server: 'http://localhost:3345',
-        timeout: 5000
+        timeout: 5000,
       });
     });
 
@@ -163,12 +165,10 @@ describe('Preview', () => {
       const previewData = Buffer.from('generated preview gif data');
 
       // Mock the HTTP request
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=pdf')
-        .reply(200, previewData);
+      nock('http://localhost:3345').post('/preview?file_extension=pdf').reply(200, previewData);
 
       const result = await preview.getPreview(fileData, fileName);
-      
+
       expect(Buffer.isBuffer(result)).toBe(true);
       expect(result).toEqual(previewData);
     });
@@ -179,13 +179,11 @@ describe('Preview', () => {
         { fileName: 'document.pdf', expectedExtension: 'pdf' },
         { fileName: 'image.jpg', expectedExtension: 'jpg' },
         { fileName: 'file.with.dots.png', expectedExtension: 'png' },
-        { fileName: 'simple.txt', expectedExtension: 'txt' }
+        { fileName: 'simple.txt', expectedExtension: 'txt' },
       ];
 
       for (const testCase of testCases) {
-        const scope = nock('http://localhost:3345')
-          .post(`/preview?file_extension=${testCase.expectedExtension}`)
-          .reply(200, 'preview data');
+        const scope = nock('http://localhost:3345').post(`/preview?file_extension=${testCase.expectedExtension}`).reply(200, 'preview data');
 
         await preview.getPreview(fileData, testCase.fileName);
         expect(scope.isDone()).toBe(true);
@@ -193,12 +191,10 @@ describe('Preview', () => {
     });
 
     it('should handle file data as Buffer', async () => {
-      const fileData = Buffer.from([0x89, 0x50, 0x4E, 0x47]); // PNG header
+      const fileData = Buffer.from([0x89, 0x50, 0x4e, 0x47]); // PNG header
       const fileName = 'image.png';
 
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=png')
-        .reply(200, 'preview gif');
+      nock('http://localhost:3345').post('/preview?file_extension=png').reply(200, 'preview gif');
 
       const result = await preview.getPreview(fileData, fileName);
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -208,9 +204,7 @@ describe('Preview', () => {
       const fileData = 'text file content';
       const fileName = 'document.txt';
 
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=txt')
-        .reply(200, 'preview gif');
+      nock('http://localhost:3345').post('/preview?file_extension=txt').reply(200, 'preview gif');
 
       const result = await preview.getPreview(fileData, fileName);
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -220,9 +214,7 @@ describe('Preview', () => {
       const fileData = 'content';
       const fileName = '';
 
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=')
-        .reply(200, 'preview');
+      nock('http://localhost:3345').post('/preview?file_extension=').reply(200, 'preview');
 
       const result = await preview.getPreview(fileData, fileName);
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -230,10 +222,8 @@ describe('Preview', () => {
 
     it('should handle undefined file name', async () => {
       const fileData = 'content';
-      
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=')
-        .reply(200, 'preview');
+
+      nock('http://localhost:3345').post('/preview?file_extension=').reply(200, 'preview');
 
       const result = await preview.getPreview(fileData, undefined);
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -243,9 +233,7 @@ describe('Preview', () => {
       const fileData = 'content';
       const fileName = 'filename_without_extension';
 
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=filename_without_extension')
-        .reply(200, 'preview');
+      nock('http://localhost:3345').post('/preview?file_extension=filename_without_extension').reply(200, 'preview');
 
       const result = await preview.getPreview(fileData, fileName);
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -255,9 +243,7 @@ describe('Preview', () => {
       const largeData = Buffer.alloc(1024 * 1024, 'a'); // 1MB of 'a'
       const fileName = 'large.pdf';
 
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=pdf')
-        .reply(200, 'large preview');
+      nock('http://localhost:3345').post('/preview?file_extension=pdf').reply(200, 'large preview');
 
       const result = await preview.getPreview(largeData, fileName);
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -267,9 +253,7 @@ describe('Preview', () => {
       const fileData = 'test content';
       const fileName = 'test.pdf';
 
-      const scope = nock('http://localhost:3345')
-        .post('/preview?file_extension=pdf')
-        .reply(200, 'preview');
+      const scope = nock('http://localhost:3345').post('/preview?file_extension=pdf').reply(200, 'preview');
 
       await preview.getPreview(fileData, fileName);
       expect(scope.isDone()).toBe(true);
@@ -279,9 +263,7 @@ describe('Preview', () => {
       const fileData = 'test content';
       const fileName = 'test.pdf';
 
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=pdf')
-        .reply(500, 'Internal Server Error');
+      nock('http://localhost:3345').post('/preview?file_extension=pdf').reply(500, 'Internal Server Error');
 
       // The preview class doesn't actually reject on HTTP errors in current implementation
       // It will return the error response as a buffer
@@ -293,12 +275,9 @@ describe('Preview', () => {
       const fileData = 'test content';
       const fileName = 'test.pdf';
 
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=pdf')
-        .replyWithError('Network error');
+      nock('http://localhost:3345').post('/preview?file_extension=pdf').replyWithError('Network error');
 
-      await expect(preview.getPreview(fileData, fileName))
-        .rejects.toThrow();
+      await expect(preview.getPreview(fileData, fileName)).rejects.toThrow();
     });
 
     it('should handle timeout', async () => {
@@ -310,17 +289,14 @@ describe('Preview', () => {
         .delay(6000) // Delay longer than timeout
         .reply(200, 'preview');
 
-      await expect(preview.getPreview(fileData, fileName))
-        .rejects.toThrow();
+      await expect(preview.getPreview(fileData, fileName)).rejects.toThrow();
     }, 10000);
 
     it('should handle empty response', async () => {
       const fileData = 'test content';
       const fileName = 'test.pdf';
 
-      nock('http://localhost:3345')
-        .post('/preview?file_extension=pdf')
-        .reply(200, '');
+      nock('http://localhost:3345').post('/preview?file_extension=pdf').reply(200, '');
 
       const result = await preview.getPreview(fileData, fileName);
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -345,13 +321,13 @@ describe('Preview', () => {
 
   describe('sendPingRequest', () => {
     let preview;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       Preview.singleton = null;
-      
+
       preview = new Preview({
-        server: 'http://localhost:3345'
+        server: 'http://localhost:3345',
       });
     });
 
@@ -365,20 +341,18 @@ describe('Preview', () => {
       const headers = {
         version: '1.0.0',
         customer: 'test-customer',
-        environment: 'development'
+        environment: 'development',
       };
 
-      nock('http://localhost:3345')
-        .get('/test/ping')
-        .reply(200, JSON.stringify(responseBody), headers);
+      nock('http://localhost:3345').get('/test/ping').reply(200, JSON.stringify(responseBody), headers);
 
       const result = await preview.sendPingRequest();
-      
+
       expect(result).toEqual({
         body: responseBody.data,
         version: '1.0.0',
         customer: 'test-customer',
-        environment: 'development'
+        environment: 'development',
       });
     });
 
@@ -386,21 +360,19 @@ describe('Preview', () => {
       const headers = {
         version: '2.0.0',
         customer: 'another-customer',
-        environment: 'production'
+        environment: 'production',
       };
 
-      nock('http://localhost:3345')
-        .get('/test/ping')
-        .reply(200, '', headers);
+      nock('http://localhost:3345').get('/test/ping').reply(200, '', headers);
 
       const result = await preview.sendPingRequest();
-      
+
       // Empty body gets parsed as {}, but result.data would be undefined
       expect(result).toEqual({
         body: undefined,
         version: '2.0.0',
         customer: 'another-customer',
-        environment: 'production'
+        environment: 'production',
       });
     });
 
@@ -408,38 +380,34 @@ describe('Preview', () => {
       const headers = {
         version: '1.5.0',
         customer: 'test-customer',
-        environment: 'staging'
+        environment: 'staging',
       };
 
-      nock('http://localhost:3345')
-        .get('/test/ping')
-        .reply(200, null, headers);
+      nock('http://localhost:3345').get('/test/ping').reply(200, null, headers);
 
       const result = await preview.sendPingRequest();
-      
+
       // Null body gets parsed as {}, but result.data would be null
       expect(result).toEqual({
         body: null,
         version: '1.5.0',
         customer: 'test-customer',
-        environment: 'staging'
+        environment: 'staging',
       });
     });
 
     it('should handle response without headers', async () => {
       const responseBody = { data: { status: 'ok' } };
 
-      nock('http://localhost:3345')
-        .get('/test/ping')
-        .reply(200, JSON.stringify(responseBody), {});
+      nock('http://localhost:3345').get('/test/ping').reply(200, JSON.stringify(responseBody), {});
 
       const result = await preview.sendPingRequest();
-      
+
       expect(result).toEqual({
         body: responseBody.data,
         version: undefined,
         customer: undefined,
-        environment: undefined
+        environment: undefined,
       });
     });
 
@@ -450,12 +418,10 @@ describe('Preview', () => {
       const headers = {
         version: '1.0.0',
         customer: 'test-customer',
-        environment: 'development'
+        environment: 'development',
       };
 
-      nock('http://localhost:3345')
-        .get('/test/ping')
-        .reply(200, 'invalid json{', headers);
+      nock('http://localhost:3345').get('/test/ping').reply(200, 'invalid json{', headers);
 
       // The current implementation will throw a JSON parse error
       // but the Promise wrapper doesn't catch it properly, so it hangs
@@ -468,38 +434,27 @@ describe('Preview', () => {
     }, 10000);
 
     it('should handle 404 error', async () => {
-      nock('http://localhost:3345')
-        .get('/test/ping')
-        .reply(404, 'Not Found');
+      nock('http://localhost:3345').get('/test/ping').reply(404, 'Not Found');
 
-      await expect(preview.sendPingRequest())
-        .rejects.toBeDefined();
+      await expect(preview.sendPingRequest()).rejects.toBeDefined();
     });
 
     it('should handle 500 error', async () => {
-      nock('http://localhost:3345')
-        .get('/test/ping')
-        .reply(500, 'Internal Server Error');
+      nock('http://localhost:3345').get('/test/ping').reply(500, 'Internal Server Error');
 
-      await expect(preview.sendPingRequest())
-        .rejects.toBeDefined();
+      await expect(preview.sendPingRequest()).rejects.toBeDefined();
     });
 
     it('should handle network errors', async () => {
-      nock('http://localhost:3345')
-        .get('/test/ping')
-        .replyWithError('Network error');
+      nock('http://localhost:3345').get('/test/ping').replyWithError('Network error');
 
-      await expect(preview.sendPingRequest())
-        .rejects.toThrow();
+      await expect(preview.sendPingRequest()).rejects.toThrow();
     });
 
     it('should use correct request options', async () => {
       const responseBody = { data: { status: 'ok' } };
 
-      const scope = nock('http://localhost:3345')
-        .get('/test/ping')
-        .reply(200, JSON.stringify(responseBody));
+      const scope = nock('http://localhost:3345').get('/test/ping').reply(200, JSON.stringify(responseBody));
 
       await preview.sendPingRequest();
       expect(scope.isDone()).toBe(true);
@@ -509,26 +464,24 @@ describe('Preview', () => {
       const testCases = [
         {
           response: { data: { message: 'service healthy' } },
-          expectedBody: { message: 'service healthy' }
+          expectedBody: { message: 'service healthy' },
         },
         {
           response: { data: null },
-          expectedBody: null
+          expectedBody: null,
         },
         {
           response: { data: [] },
-          expectedBody: []
+          expectedBody: [],
         },
         {
           response: {},
-          expectedBody: undefined
-        }
+          expectedBody: undefined,
+        },
       ];
 
       for (const testCase of testCases) {
-        nock('http://localhost:3345')
-          .get('/test/ping')
-          .reply(200, JSON.stringify(testCase.response));
+        nock('http://localhost:3345').get('/test/ping').reply(200, JSON.stringify(testCase.response));
 
         const result = await preview.sendPingRequest();
         expect(result.body).toEqual(testCase.expectedBody);
@@ -538,7 +491,7 @@ describe('Preview', () => {
 
   describe('isPreviewAllowed', () => {
     let preview;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       Preview.singleton = null;
@@ -546,11 +499,11 @@ describe('Preview', () => {
 
     it('should return true for allowed content types', () => {
       const config = {
-        contentTypes: ['image/jpeg', 'image/png', 'application/pdf']
+        contentTypes: ['image/jpeg', 'image/png', 'application/pdf'],
       };
-      
+
       preview = new Preview(config);
-      
+
       expect(preview.isPreviewAllowed('image/jpeg')).toBe(true);
       expect(preview.isPreviewAllowed('image/png')).toBe(true);
       expect(preview.isPreviewAllowed('application/pdf')).toBe(true);
@@ -558,11 +511,11 @@ describe('Preview', () => {
 
     it('should return false for disallowed content types', () => {
       const config = {
-        contentTypes: ['image/jpeg', 'image/png']
+        contentTypes: ['image/jpeg', 'image/png'],
       };
-      
+
       preview = new Preview(config);
-      
+
       expect(preview.isPreviewAllowed('application/pdf')).toBe(false);
       expect(preview.isPreviewAllowed('text/plain')).toBe(false);
       expect(preview.isPreviewAllowed('video/mp4')).toBe(false);
@@ -570,31 +523,31 @@ describe('Preview', () => {
 
     it('should return false when no content types are configured', () => {
       const config = {};
-      
+
       preview = new Preview(config);
-      
+
       expect(preview.isPreviewAllowed('image/jpeg')).toBe(false);
       expect(preview.isPreviewAllowed('application/pdf')).toBe(false);
     });
 
     it('should return false when content types array is empty', () => {
       const config = {
-        contentTypes: []
+        contentTypes: [],
       };
-      
+
       preview = new Preview(config);
-      
+
       expect(preview.isPreviewAllowed('image/jpeg')).toBe(false);
       expect(preview.isPreviewAllowed('application/pdf')).toBe(false);
     });
 
     it('should handle case sensitivity correctly', () => {
       const config = {
-        contentTypes: ['image/jpeg', 'image/PNG']
+        contentTypes: ['image/jpeg', 'image/PNG'],
       };
-      
+
       preview = new Preview(config);
-      
+
       expect(preview.isPreviewAllowed('image/jpeg')).toBe(true);
       expect(preview.isPreviewAllowed('image/JPEG')).toBe(false); // Case sensitive
       expect(preview.isPreviewAllowed('image/PNG')).toBe(true);
@@ -603,11 +556,11 @@ describe('Preview', () => {
 
     it('should handle special characters in content types', () => {
       const config = {
-        contentTypes: ['application/vnd.ms-excel', 'text/plain; charset=utf-8']
+        contentTypes: ['application/vnd.ms-excel', 'text/plain; charset=utf-8'],
       };
-      
+
       preview = new Preview(config);
-      
+
       expect(preview.isPreviewAllowed('application/vnd.ms-excel')).toBe(true);
       expect(preview.isPreviewAllowed('text/plain; charset=utf-8')).toBe(true);
       expect(preview.isPreviewAllowed('text/plain')).toBe(false);
@@ -615,11 +568,11 @@ describe('Preview', () => {
 
     it('should handle undefined content type', () => {
       const config = {
-        contentTypes: ['image/jpeg']
+        contentTypes: ['image/jpeg'],
       };
-      
+
       preview = new Preview(config);
-      
+
       expect(preview.isPreviewAllowed(undefined)).toBe(false);
       expect(preview.isPreviewAllowed(null)).toBe(false);
       expect(preview.isPreviewAllowed('')).toBe(false);
@@ -627,33 +580,20 @@ describe('Preview', () => {
 
     it('should handle content types with multiple values', () => {
       const config = {
-        contentTypes: [
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-          'image/webp',
-          'application/pdf',
-          'text/plain',
-          'application/msword'
-        ]
+        contentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword'],
       };
-      
+
       preview = new Preview(config);
-      
-      const allowedTypes = [
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'application/pdf', 'text/plain', 'application/msword'
-      ];
-      
-      const disallowedTypes = [
-        'video/mp4', 'audio/mp3', 'application/zip', 'text/html'
-      ];
-      
-      allowedTypes.forEach(type => {
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword'];
+
+      const disallowedTypes = ['video/mp4', 'audio/mp3', 'application/zip', 'text/html'];
+
+      allowedTypes.forEach((type) => {
         expect(preview.isPreviewAllowed(type)).toBe(true);
       });
-      
-      disallowedTypes.forEach(type => {
+
+      disallowedTypes.forEach((type) => {
         expect(preview.isPreviewAllowed(type)).toBe(false);
       });
     });
@@ -663,10 +603,10 @@ describe('Preview', () => {
     it('should handle config from config module', () => {
       // Reset singleton
       Preview.singleton = null;
-      
+
       // Config module should be used when no config passed to constructor
       const preview = new Preview();
-      
+
       expect(preview.config.server).toBe('http://localhost:3345');
       expect(preview.timeout).toBe(5000);
     });
@@ -674,33 +614,33 @@ describe('Preview', () => {
     it('should handle missing config in config module', () => {
       // Reset singleton
       Preview.singleton = null;
-      
+
       // Mock getConfig to throw for this test
       (getConfig as any).mockImplementationOnce(() => {
         throw new Error('Configuration not initialized. Call initialize() first.');
       });
-      
+
       // This will throw because the config module throws
       expect(() => new Preview()).toThrow('Configuration not initialized');
-      
+
       // Reset the mock to its default implementation
       (getConfig as any).mockClear();
     });
 
     it('should handle partial config override', () => {
       Preview.singleton = null;
-      
+
       const partialConfig = {
         server: 'http://custom:8080',
         // timeout not specified, should use default
         routes: {
-          generatePreview: '/custom-preview'
+          generatePreview: '/custom-preview',
           // ping route not specified, should use default
-        }
+        },
       };
-      
+
       const preview = new Preview(partialConfig);
-      
+
       expect(preview.config.server).toBe('http://custom:8080');
       expect(preview.timeout).toBe(5000); // default
       expect(preview.config.routes.generatePreview).toBe('/custom-preview');

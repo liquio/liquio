@@ -245,7 +245,7 @@ describe('Provider', () => {
 
     it('parses a numeric string with a comma decimal separator', () => {
       const provider = new Provider();
-      expect(provider.parseAmount('12,50')).toBe(12.50);
+      expect(provider.parseAmount('12,50')).toBe(12.5);
     });
 
     it('throws on a malformed string', () => {

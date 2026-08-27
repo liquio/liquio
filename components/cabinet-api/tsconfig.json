@@ -10,12 +10,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noImplicitAny": false,
+    "types": ["node", "jest"],
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
     "noEmitOnError": false,
-    "ignoreDeprecations": "5.0",
-    "downlevelIteration": true
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "./**/*"

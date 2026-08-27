@@ -68,13 +68,7 @@ export class EventStopper {
    * @param {string[]} taskTemplateIdsFilter Task template IDs filter.
    * @param {StopResult} stopResult Stop result instance to fill.
    */
-  async stopTasks(
-    workflowId: string,
-    taskModel: any,
-    documentModel: any,
-    taskTemplateIdsFilter: string[],
-    stopResult: StopResult,
-  ): Promise<void> {
+  async stopTasks(workflowId: string, taskModel: any, documentModel: any, taskTemplateIdsFilter: string[], stopResult: StopResult): Promise<void> {
     try {
       const tasksInProgress = await taskModel.getTasksInProgress(workflowId);
       const tasksToStop = tasksInProgress.filter(

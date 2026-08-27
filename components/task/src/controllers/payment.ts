@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
 
@@ -79,7 +78,7 @@ export class PaymentController extends Controller {
       query: req.query,
       params: req.params,
       headers: req.headers,
-      body: bodyContent
+      body: bodyContent,
     });
 
     // Save raw status data to DB.
@@ -89,8 +88,8 @@ export class PaymentController extends Controller {
         url: req.url,
         params: req.params,
         body: bodyContent,
-        headers: req.headers
-      }
+        headers: req.headers,
+      },
     };
     let isSavedRawStatus;
     try {
@@ -119,7 +118,7 @@ export class PaymentController extends Controller {
       isSavedProcessedStatus = await (global.models.paymentLogs.save as any)({
         transactionId: statusData.transactionId,
         paymentAction: PROCESSED_PAYMENT_ACTION_TYPE,
-        paymentData: statusData
+        paymentData: statusData,
       });
     } catch (error) {
       global.log.save('save-processed-payment-logs-to-db-error', { error: error && error.message }, 'error');
@@ -170,7 +169,7 @@ export class PaymentController extends Controller {
     try {
       response = await global.businesses.document.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds);
     } catch (error) {
-      global.log.save('get-payment-receipt-error', { error: error && error.message, documentId, orderId }, 'error',);
+      global.log.save('get-payment-receipt-error', { error: error && error.message, documentId, orderId }, 'error');
       return this.responseError(res, error, 500, { documentId, orderId });
     }
 
@@ -192,7 +191,7 @@ export class PaymentController extends Controller {
     try {
       response = await global.businesses.document.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds);
     } catch (error) {
-      global.log.save('get-withdrawal-status-error', { error: error && error.message, documentId, orderId }, 'error',);
+      global.log.save('get-withdrawal-status-error', { error: error && error.message, documentId, orderId }, 'error');
       return this.responseError(res, error, 500, { documentId, orderId });
     }
 
@@ -205,12 +204,7 @@ export class PaymentController extends Controller {
    * @param {object} res HTTP response.
    */
   async validateApplePaySession(req, res) {
-    const {
-      validationUrl,
-      displayName,
-      initiative,
-      initiativeContext
-    } = req.body;
+    const { validationUrl, displayName, initiative, initiativeContext } = req.body;
 
     let response;
     try {
@@ -218,10 +212,10 @@ export class PaymentController extends Controller {
         validationUrl,
         displayName,
         initiative,
-        initiativeContext
+        initiativeContext,
       });
     } catch (error) {
-      global.log.save('validate-apple-payment-session-error', { error: error.toString() }, 'error',);
+      global.log.save('validate-apple-payment-session-error', { error: error.toString() }, 'error');
       return this.responseError(res, error, 500);
     }
 
@@ -240,11 +234,9 @@ export class PaymentController extends Controller {
       const response = await global.businesses.document.cancelOrder(paymentCustomer, orderId, transactionId, sessionId);
 
       this.responseData(res, response);
-
     } catch (error) {
       global.log.save('cancel-order-payment-controller-error', { error: error && error.message }, 'error');
       return this.responseError(res, error);
     }
   }
 }
-

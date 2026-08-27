@@ -25,15 +25,11 @@ describe('Task Controller', () => {
   });
 
   const mockUserAuth = (payload) => {
-    app.nockId
-      .get('/user/info')
-      .query({ access_token: payload.authTokens.accessToken })
-      .once()
-      .reply(200, {
-        userId: TEST_USER_ID,
-        role: 'individual',
-        services: {},
-      });
+    app.nockId.get('/user/info').query({ access_token: payload.authTokens.accessToken }).once().reply(200, {
+      userId: TEST_USER_ID,
+      role: 'individual',
+      services: {},
+    });
   };
 
   describe('GET /tasks', () => {

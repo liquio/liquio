@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -32,19 +31,7 @@ export class WorkflowHistoryEntity extends Entity {
    * @param {Date} options.createdAt Created at.
    * @param {Date} options.updatedAt Updated at.
    */
-  constructor({
-    id,
-    workflowTemplateId,
-    userId,
-    data,
-    version,
-    isCurrentVersion,
-    meta,
-    name,
-    description,
-    createdAt,
-    updatedAt
-  }) {
+  constructor({ id, workflowTemplateId, userId, data, version, isCurrentVersion, meta, name, description, createdAt, updatedAt }) {
     super();
 
     this.id = id;
@@ -60,4 +47,3 @@ export class WorkflowHistoryEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

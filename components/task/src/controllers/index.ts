@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { PingController } from './ping';
 import { ModuleController } from './module';
@@ -134,7 +133,7 @@ export class Controllers {
 
     // Init controllers.
     this.controllers = Object.entries(controllersByNames)
-      .map(v => {
+      .map((v) => {
         const name = v[0];
         const initializedController = new v[1](this.config);
         initializedController.name = name;
@@ -147,9 +146,9 @@ export class Controllers {
             const n: Record<string, any> = {};
             n[v[0] as string] = v[1];
             return n;
-          })()
+          })(),
         }),
-        {}
+        {},
       );
   }
 
@@ -157,7 +156,9 @@ export class Controllers {
    * Auth controller.
    * @returns {AuthController} Auth controller.
    */
-  get auth() { return this.controllers.auth; }
+  get auth() {
+    return this.controllers.auth;
+  }
 
   /**
    * Get handler.
@@ -173,7 +174,7 @@ export class Controllers {
     }
 
     // Define method.
-    const method = methodHandlerName? controller.methodHandler(methodHandlerName) : controller[methodName];
+    const method = methodHandlerName ? controller.methodHandler(methodHandlerName) : controller[methodName];
     if (!method) {
       return;
     }

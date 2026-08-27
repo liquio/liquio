@@ -4,7 +4,7 @@ import { getTraceId } from '@liquio/back-core';
 
 // Mock the async_local_storage module
 jest.mock('@liquio/back-core', () => ({
-  getTraceId: jest.fn()
+  getTraceId: jest.fn(),
 }));
 
 describe('HttpRequest', () => {
@@ -12,7 +12,7 @@ describe('HttpRequest', () => {
     // Reset all mocks before each test
     jest.clearAllMocks();
     (getTraceId as any).mockReturnValue('test-trace-id-123');
-    
+
     // Clean all nock interceptors
     nock.cleanAll();
   });
@@ -28,20 +28,20 @@ describe('HttpRequest', () => {
         GET: 'GET',
         POST: 'POST',
         PUT: 'PUT',
-        DELETE: 'DELETE'
+        DELETE: 'DELETE',
       });
     });
 
     it('should expose content types', () => {
       expect(HttpRequest.ContentTypes).toEqual({
         CONTENT_TYPE_JSON: 'application/json',
-        CONTENT_TYPE_FORM_URL_ENCODED: 'application/x-www-form-urlencoded'
+        CONTENT_TYPE_FORM_URL_ENCODED: 'application/x-www-form-urlencoded',
       });
     });
 
     it('should expose accept types', () => {
       expect(HttpRequest.Accepts).toEqual({
-        ACCEPT_JSON: 'application/json'
+        ACCEPT_JSON: 'application/json',
       });
     });
   });
@@ -53,15 +53,12 @@ describe('HttpRequest', () => {
 
     it('should send a GET request successfully', async () => {
       const mockResponse = { success: true, data: 'test data' };
-      
-      nock(baseUrl)
-        .get(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(200, mockResponse);
+
+      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').reply(200, mockResponse);
 
       const result = await HttpRequest.send({
         url: fullUrl,
-        method: 'GET'
+        method: 'GET',
       });
 
       expect(result).toEqual(mockResponse);
@@ -71,7 +68,7 @@ describe('HttpRequest', () => {
     it('should send a POST request with JSON body', async () => {
       const requestBody = { name: 'test', value: 123 };
       const mockResponse = { id: 1, status: 'created' };
-      
+
       nock(baseUrl)
         .post(testEndpoint, requestBody)
         .matchHeader('x-trace-id', 'test-trace-id-123')
@@ -82,9 +79,9 @@ describe('HttpRequest', () => {
         url: fullUrl,
         method: 'POST',
         headers: {
-          'content-type': 'application/json'
+          'content-type': 'application/json',
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
 
       expect(result).toEqual(mockResponse);
@@ -93,16 +90,13 @@ describe('HttpRequest', () => {
     it('should send a PUT request', async () => {
       const requestBody = { id: 1, name: 'updated' };
       const mockResponse = { success: true };
-      
-      nock(baseUrl)
-        .put(testEndpoint, JSON.stringify(requestBody))
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(200, mockResponse);
+
+      nock(baseUrl).put(testEndpoint, JSON.stringify(requestBody)).matchHeader('x-trace-id', 'test-trace-id-123').reply(200, mockResponse);
 
       const result = await HttpRequest.send({
         url: fullUrl,
         method: 'PUT',
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
 
       expect(result).toEqual(mockResponse);
@@ -110,15 +104,12 @@ describe('HttpRequest', () => {
 
     it('should send a DELETE request', async () => {
       const mockResponse = { deleted: true };
-      
-      nock(baseUrl)
-        .delete(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(200, mockResponse);
+
+      nock(baseUrl).delete(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').reply(200, mockResponse);
 
       const result = await HttpRequest.send({
         url: fullUrl,
-        method: 'DELETE'
+        method: 'DELETE',
       });
 
       expect(result).toEqual(mockResponse);
@@ -126,11 +117,11 @@ describe('HttpRequest', () => {
 
     it('should handle custom headers', async () => {
       const customHeaders = {
-        'Authorization': 'Bearer token123',
-        'Custom-Header': 'custom-value'
+        Authorization: 'Bearer token123',
+        'Custom-Header': 'custom-value',
       };
       const mockResponse = { authenticated: true };
-      
+
       nock(baseUrl)
         .get(testEndpoint)
         .matchHeader('x-trace-id', 'test-trace-id-123')
@@ -141,7 +132,7 @@ describe('HttpRequest', () => {
       const result = await HttpRequest.send({
         url: fullUrl,
         method: 'GET',
-        headers: customHeaders
+        headers: customHeaders,
       });
 
       expect(result).toEqual(mockResponse);
@@ -149,19 +140,19 @@ describe('HttpRequest', () => {
 
     it('should return full response when fullResponse is true', async () => {
       const mockResponse = { data: 'test' };
-      
-      nock(baseUrl)
-        .get(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(200, mockResponse, {
-          'Content-Type': 'application/json',
-          'X-Custom-Header': 'custom-value'
-        });
 
-      const result = await HttpRequest.send({
-        url: fullUrl,
-        method: 'GET'
-      }, true);
+      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').reply(200, mockResponse, {
+        'Content-Type': 'application/json',
+        'X-Custom-Header': 'custom-value',
+      });
+
+      const result = await HttpRequest.send(
+        {
+          url: fullUrl,
+          method: 'GET',
+        },
+        true,
+      );
 
       expect(result).toHaveProperty('response');
       expect(result).toHaveProperty('body');
@@ -172,45 +163,35 @@ describe('HttpRequest', () => {
 
     it('should handle non-JSON response bodies', async () => {
       const textResponse = 'plain text response';
-      
-      nock(baseUrl)
-        .get(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(200, textResponse);
+
+      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').reply(200, textResponse);
 
       const result = await HttpRequest.send({
         url: fullUrl,
-        method: 'GET'
+        method: 'GET',
       });
 
       expect(result).toBe(textResponse);
     });
 
     it('should handle request timeout', async () => {
-      nock(baseUrl)
-        .get(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .delay(2000)
-        .reply(200, { data: 'delayed' });
+      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').delay(2000).reply(200, { data: 'delayed' });
 
       await expect(
         HttpRequest.send({
           url: fullUrl,
           method: 'GET',
-          timeout: 1000
-        })
+          timeout: 1000,
+        }),
       ).rejects.toThrow();
     });
 
     it('should return body for HTTP error responses', async () => {
-      nock(baseUrl)
-        .get(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(503, { error: 'Network error' });
+      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').reply(503, { error: 'Network error' });
 
       const result = await HttpRequest.send({
         url: fullUrl,
-        method: 'GET'
+        method: 'GET',
       });
 
       expect(result).toEqual({ error: 'Network error' });
@@ -218,15 +199,12 @@ describe('HttpRequest', () => {
 
     it('should add trace id header when no headers provided', async () => {
       const mockResponse = { success: true };
-      
-      nock(baseUrl)
-        .get(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(200, mockResponse);
+
+      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').reply(200, mockResponse);
 
       const result = await HttpRequest.send({
         url: fullUrl,
-        method: 'GET'
+        method: 'GET',
       });
 
       expect(result).toEqual(mockResponse);
@@ -241,46 +219,49 @@ describe('HttpRequest', () => {
 
     it('should return specific header value from HEAD request', async () => {
       const headerValue = 'custom-header-value';
-      
-      nock(baseUrl)
-        .head(testEndpoint)
-        .reply(200, '', {
-          'X-Custom-Header': headerValue,
-          'Content-Length': '123'
-        });
 
-      const result = await HttpRequest.sendHeadRequest({
-        url: fullUrl,
-        method: 'HEAD'
-      }, 'x-custom-header');
+      nock(baseUrl).head(testEndpoint).reply(200, '', {
+        'X-Custom-Header': headerValue,
+        'Content-Length': '123',
+      });
+
+      const result = await HttpRequest.sendHeadRequest(
+        {
+          url: fullUrl,
+          method: 'HEAD',
+        },
+        'x-custom-header',
+      );
 
       expect(result).toBe(headerValue);
     });
 
     it('should return undefined for non-existent header', async () => {
-      nock(baseUrl)
-        .head(testEndpoint)
-        .reply(200, '', {
-          'Content-Length': '123'
-        });
+      nock(baseUrl).head(testEndpoint).reply(200, '', {
+        'Content-Length': '123',
+      });
 
-      const result = await HttpRequest.sendHeadRequest({
-        url: fullUrl,
-        method: 'HEAD'
-      }, 'non-existent-header');
+      const result = await HttpRequest.sendHeadRequest(
+        {
+          url: fullUrl,
+          method: 'HEAD',
+        },
+        'non-existent-header',
+      );
 
       expect(result).toBeUndefined();
     });
 
     it('should return undefined when header is missing on HTTP error response', async () => {
-      nock(baseUrl)
-        .head(testEndpoint)
-        .reply(503, '');
+      nock(baseUrl).head(testEndpoint).reply(503, '');
 
-      const result = await HttpRequest.sendHeadRequest({
-        url: fullUrl,
-        method: 'HEAD'
-      }, 'content-length');
+      const result = await HttpRequest.sendHeadRequest(
+        {
+          url: fullUrl,
+          method: 'HEAD',
+        },
+        'content-length',
+      );
 
       expect(result).toBeUndefined();
     });
@@ -333,7 +314,7 @@ describe('HttpRequest', () => {
       it('should return function that creates multer middleware', () => {
         const parserFactory = HttpRequest.getFormDataBodyParserInMemory();
         expect(typeof parserFactory).toBe('function');
-        
+
         const parser = parserFactory({ fileSize: 1000000 });
         expect(parser).toBeDefined();
         expect(typeof parser).toBe('function');
@@ -354,7 +335,7 @@ describe('HttpRequest', () => {
 
     beforeEach(() => {
       mockApp = {
-        use: jest.fn()
+        use: jest.fn(),
       };
     });
 
@@ -385,17 +366,14 @@ describe('HttpRequest', () => {
 
     it('should handle HTTP error status codes', async () => {
       const errorResponse = { error: 'Not Found', message: 'Resource not found' };
-      
-      nock(baseUrl)
-        .get(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(404, errorResponse);
+
+      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').reply(404, errorResponse);
 
       // Note: The current implementation doesn't reject on HTTP error codes,
       // it only rejects on network errors. This test verifies current behavior.
       const result = await HttpRequest.send({
         url: fullUrl,
-        method: 'GET'
+        method: 'GET',
       });
 
       expect(result).toEqual(errorResponse);
@@ -403,15 +381,12 @@ describe('HttpRequest', () => {
 
     it('should handle malformed JSON gracefully', async () => {
       const malformedJson = '{"invalid": json}';
-      
-      nock(baseUrl)
-        .get(testEndpoint)
-        .matchHeader('x-trace-id', 'test-trace-id-123')
-        .reply(200, malformedJson);
+
+      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').reply(200, malformedJson);
 
       const result = await HttpRequest.send({
         url: fullUrl,
-        method: 'GET'
+        method: 'GET',
       });
 
       // Should return the raw string when JSON parsing fails

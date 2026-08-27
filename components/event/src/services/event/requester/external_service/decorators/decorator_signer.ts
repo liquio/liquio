@@ -19,11 +19,7 @@ export class DecoratorSigner extends Decorator {
       throw new Error('File id is not defined.');
     }
 
-    const fileIdFunction = this.sandbox.evalWithArgs(
-      fileIdProperty,
-      [],
-      { meta: { fn: 'fileId', caller: 'DecoratorSigner.signFileDataTransform' } },
-    );
+    const fileIdFunction = this.sandbox.evalWithArgs(fileIdProperty, [], { meta: { fn: 'fileId', caller: 'DecoratorSigner.signFileDataTransform' } });
 
     if (!fileIdFunction || typeof fileIdFunction !== 'function') {
       throw new Error('Function fileId is not defined.');

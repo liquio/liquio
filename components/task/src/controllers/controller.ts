@@ -1,4 +1,3 @@
-
 import crypto from 'node:crypto';
 import _ from 'lodash';
 import * as transliteration from 'transliteration';
@@ -214,7 +213,9 @@ export class Controller {
     if (traceMeta && traceMeta?.workflowId) {
       if (Array.isArray(errorDetails)) {
         // Ignore control: payment.widget, message: checkRequired error.
-        const filteredErrorDetails = errorDetails.filter((v) => v?.control !== 'payment.widget' && v?.control !== 'payment.widget.new' && v?.message !== 'checkRequired error.');
+        const filteredErrorDetails = errorDetails.filter(
+          (v) => v?.control !== 'payment.widget' && v?.control !== 'payment.widget.new' && v?.message !== 'checkRequired error.',
+        );
 
         if (filteredErrorDetails.length) {
           global.models.workflowError.create({
@@ -223,7 +224,7 @@ export class Controller {
             code,
             queueMessage: null,
             traceMeta,
-            logId
+            logId,
           });
         }
       } else {
@@ -233,7 +234,7 @@ export class Controller {
           code,
           queueMessage: null,
           traceMeta,
-          logId
+          logId,
         });
       }
     }
@@ -334,20 +335,15 @@ export class Controller {
    * @returns {{systemId, userId, userName, orgName, position, remarks}} Request user ID.
    */
   getRequestAccessInfo(req) {
-    const systemId = req && req.basicAuthUser || null;
-    const {
-      userId = null,
-      name: userName = null,
-      companyName: orgName = null,
-      position = null
-    } = req && req.authUserInfo || {};
+    const systemId = (req && req.basicAuthUser) || null;
+    const { userId = null, name: userName = null, companyName: orgName = null, position = null } = (req && req.authUserInfo) || {};
     return {
       systemId,
       userId,
       userName,
       orgName,
       position,
-      remarks: null
+      remarks: null,
     };
   }
 
@@ -387,9 +383,9 @@ export class Controller {
     const units = this.getRequestUserUnitEntities(req);
     const { head, member, all } = units;
     return {
-      head: head.map(v => v.name),
-      member: member.map(v => v.name),
-      all: all.map(v => v.name)
+      head: head.map((v) => v.name),
+      member: member.map((v) => v.name),
+      all: all.map((v) => v.name),
     };
   }
 
@@ -402,9 +398,9 @@ export class Controller {
     const units = this.getRequestUserUnitEntities(req) || {};
     const { head = [], member = [], all = [] } = units;
     return {
-      head: head.map(v => v.id),
-      member: member.map(v => v.id),
-      all: all.map(v => v.id)
+      head: head.map((v) => v.id),
+      member: member.map((v) => v.id),
+      all: all.map((v) => v.id),
     };
   }
 
@@ -430,7 +426,6 @@ export class Controller {
     return memberUnitIds.includes(unitId);
   }
 
-
   /**
    * Get request user unit allow tokens.
    * @param {object} req HTTP request.
@@ -442,7 +437,7 @@ export class Controller {
     const ipn = this.getRequestUserIpn(req);
     const edrpou = this.getRequestUserEdrpou(req);
 
-    return [...new Set(_.flattenDeep(all.map(v => v.allowTokens))), `rnokpp:${ipn}`, `edrpou:${edrpou}`];
+    return [...new Set(_.flattenDeep(all.map((v) => v.allowTokens))), `rnokpp:${ipn}`, `edrpou:${edrpou}`];
   }
 
   /**
@@ -496,7 +491,7 @@ export class Controller {
    * @returns {boolean}
    */
   isUserSignatureCouldBeMock(token) {
-    return this.config.auth.allowedTestSign && this.config.test_users?.list?.some(user => user.token === token);
+    return this.config.auth.allowedTestSign && this.config.test_users?.list?.some((user) => user.token === token);
   }
 
   /**
@@ -506,7 +501,7 @@ export class Controller {
    * @returns {boolean}
    */
   isUserPemCouldBeMock(token) {
-    return this.config.auth.allowedTestPem && this.config.test_users?.list?.some(user => user.token === token);
+    return this.config.auth.allowedTestPem && this.config.test_users?.list?.some((user) => user.token === token);
   }
 
   /**
@@ -515,7 +510,7 @@ export class Controller {
    * @returns {object}
    */
   convertUnderscoreKeysToCamelCase(data) {
-    const mapKeysDeep = (obj, cb) => _.mapValues(_.mapKeys(obj, cb), val => (_.isObject(val) ? mapKeysDeep(val, cb) : val));
+    const mapKeysDeep = (obj, cb) => _.mapValues(_.mapKeys(obj, cb), (val) => (_.isObject(val) ? mapKeysDeep(val, cb) : val));
 
     return mapKeysDeep(data, (value, key) => {
       return _.camelCase(key);
@@ -544,7 +539,7 @@ export class Controller {
 
     if (!rules || typeof route !== 'string') return true;
 
-    const skipByRules = rules.some(rule => route.match(rule.pattern) !== null);
+    const skipByRules = rules.some((rule) => route.match(rule.pattern) !== null);
     const logByConfig = global.config.log.responsesData && global.config.log.responsesData === true;
 
     return logByConfig && !skipByRules;
@@ -594,7 +589,7 @@ export class Controller {
    */
   methodHandler(methodName) {
     return async (req, res) => {
-      const [params, query] = (['params', 'query'] as const).map(locations => matchedData(req, { locations: [locations] }));
+      const [params, query] = (['params', 'query'] as const).map((locations) => matchedData(req, { locations: [locations] }));
 
       const userId = this.getRequestUserId && this.getRequestUserId(req);
       const userUnitIds = this.getRequestUserUnitIds && this.getRequestUserUnitIds(req);
@@ -607,8 +602,4 @@ export class Controller {
       }
     };
   }
-
-
 }
-
-

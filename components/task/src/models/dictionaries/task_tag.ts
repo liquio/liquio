@@ -13,17 +13,17 @@ export class TaskTagDictionaryModel extends Dictionary {
       this.model = this.db.define(
         'taskTag',
         {
-          name: Sequelize.STRING
+          name: Sequelize.STRING,
         },
         {
           tableName: 'task_tags',
           underscored: true,
           defaultScope: {
             attributes: {
-              exclude: ['created_at', 'updated_at']
-            }
-          }
-        }
+              exclude: ['created_at', 'updated_at'],
+            },
+          },
+        },
       );
 
       TaskTagDictionaryModel.singleton = this;
@@ -48,4 +48,3 @@ export class TaskTagDictionaryModel extends Dictionary {
     return await this.model.findAll();
   }
 }
-

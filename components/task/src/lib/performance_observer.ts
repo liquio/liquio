@@ -11,7 +11,7 @@ const performanceObserver = new PerformanceObserver((items) => {
 });
 
 // Start to observing measure types.
-performanceObserver.observe({ entryTypes: [ 'measure' ], buffered: true });
+performanceObserver.observe({ entryTypes: ['measure'], buffered: true });
 
 /**
  * @param {object} req HTTP request.
@@ -38,11 +38,10 @@ export const performanceMeasureMiddleware = (req, res, next) => {
         url: req.url,
         headers: req.headers,
         userIp: { remoteAddress: req.connection.remoteAddress, xForwardedFor: req.headers['x-forwarded-for'] || null },
-        body: req.body
-      }
+        body: req.body,
+      },
     });
   });
 
   next();
 };
-

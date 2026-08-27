@@ -9,13 +9,7 @@ import { ObservabilityModule } from './observability/observability.module';
 import { X509Module } from './x509/x509.module';
 
 @Module({
-  imports: [
-    ObservabilityModule,
-    ConfigurationModule,
-    HealthcheckModule,
-    ScheduleModule.forRoot(),
-    X509Module,
-  ],
+  imports: [ObservabilityModule, ConfigurationModule, HealthcheckModule, ScheduleModule.forRoot(), X509Module],
   controllers: [AppController],
   providers: [AppService],
 })

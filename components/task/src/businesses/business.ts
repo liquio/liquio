@@ -1,4 +1,3 @@
-
 import { appendTraceMeta, getTraceMeta, getTraceId } from '@liquio/back-core';
 
 /**
@@ -39,4 +38,3 @@ export class Business {
     return getTraceId() || null;
   }
 }
-

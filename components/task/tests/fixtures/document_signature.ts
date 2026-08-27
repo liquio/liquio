@@ -10,4 +10,3 @@ export const DOCUMENT_SIGNATURE_FIXTURES = [
     type: null,
   },
 ];
-

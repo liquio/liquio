@@ -11,28 +11,28 @@ const DEFAULT_API_URL = 'http://localhost:9200';
 const DEFAULT_API_METHODS = {
   createOrUpdateData: {
     requestType: 'PUT',
-    urlSuffix: '/register_key_{key-id}/_doc/{id}'
+    urlSuffix: '/register_key_{key-id}/_doc/{id}',
   },
   deleteData: {
     requestType: 'DELETE',
-    urlSuffix: '/register_key_{key-id}/_doc/{id}'
+    urlSuffix: '/register_key_{key-id}/_doc/{id}',
   },
   dropIndex: {
     requestType: 'DELETE',
-    urlSuffix: '/register_key_{key-id}'
+    urlSuffix: '/register_key_{key-id}',
   },
   createIndex: {
     requestType: 'PUT',
-    urlSuffix: '/register_key_{key-id}'
+    urlSuffix: '/register_key_{key-id}',
   },
   getIndexCount: {
     requestType: 'GET',
-    urlSuffix: '/register_key_{key-id}/_count'
-  }
+    urlSuffix: '/register_key_{key-id}/_count',
+  },
 };
 const DEFAULT_HEADERS = {
   Accept: 'application/json',
-  'Content-Type': 'application/json'
+  'Content-Type': 'application/json',
 };
 
 /**
@@ -81,7 +81,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     // Inform.
     this.log.save('afterhandler|handling-started', {
       history: history.toJSON(),
-      afterhandlerType: ElasticAfterhandlerWorker.afterhandlerType
+      afterhandlerType: ElasticAfterhandlerWorker.afterhandlerType,
     });
 
     // Parse history entity.
@@ -108,7 +108,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
       history: history.toJSON(),
       afterhandlerType: ElasticAfterhandlerWorker.afterhandlerType,
       handlingResult,
-      handled
+      handled,
     });
     return handled;
   }
@@ -119,14 +119,14 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     // Check.
     if (!isActive) {
       this.log.save('afterhandler|get-index-count|not-active', {
-        afterhandlerType: ElasticAfterhandlerWorker.afterhandlerType
+        afterhandlerType: ElasticAfterhandlerWorker.afterhandlerType,
       });
       throw new Error('Elastic afterhandler is not active.');
     }
 
     if (!this.apiMethods.getIndexCount) {
       this.log.save('afterhandler|get-index-count|not-defined', {
-        afterhandlerType: ElasticAfterhandlerWorker.afterhandlerType
+        afterhandlerType: ElasticAfterhandlerWorker.afterhandlerType,
       });
       throw new Error('Elastic afterhandler is not defined.');
     }
@@ -136,7 +136,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
       url: `${this.apiUrl}${this.apiMethods.getIndexCount.urlSuffix}`.replace(URL_INDEX_ID_KEY, `${keyId}`),
       method: this.apiMethods.getIndexCount.requestType,
       headers: this.headers,
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.
@@ -176,7 +176,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
       keyId,
       dropIndexResult,
       createIndexResult,
-      options
+      options,
     });
     return true;
   }
@@ -214,12 +214,12 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     const requestOptions = {
       url: `${this.apiUrl}${this.apiMethods.createOrUpdateData.urlSuffix.replace(URL_DATA_ID_KEY, elasticDataId)}`.replace(
         URL_INDEX_ID_KEY,
-        `${keyId}`
+        `${keyId}`,
       ),
       method: this.apiMethods.createOrUpdateData.requestType,
       headers: this.headers,
       body: JSON.stringify(data),
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.
@@ -237,7 +237,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
       this.log.save('elastic-create-or-update-data-error-details', {
         error: errorMessage,
         params: { id },
-        requestOptions: { ...requestOptions, headers: '***' }
+        requestOptions: { ...requestOptions, headers: '***' },
       });
 
       throw new Error(errorMessage);
@@ -263,7 +263,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
       url: `${this.apiUrl}${this.apiMethods.deleteData.urlSuffix.replace(URL_DATA_ID_KEY, elasticDataId)}`.replace(URL_INDEX_ID_KEY, `${keyId}`),
       method: this.apiMethods.deleteData.requestType,
       headers: this.headers,
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.
@@ -293,7 +293,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
       url: `${this.apiUrl}${this.apiMethods.dropIndex.urlSuffix}`.replace(URL_INDEX_ID_KEY, `${keyId}`),
       method: this.apiMethods.dropIndex.requestType,
       headers: this.headers,
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.
@@ -357,9 +357,9 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
       properties: processProperties({
         data: {
           type: 'object',
-          properties: key.schema.properties
-        }
-      })
+          properties: key.schema.properties,
+        },
+      }),
     };
 
     return mappings;
@@ -381,9 +381,9 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
       headers: this.headers,
       body: JSON.stringify({
         ...options,
-        mappings
+        mappings,
       }),
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.

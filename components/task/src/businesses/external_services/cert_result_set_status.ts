@@ -2,14 +2,16 @@ import { Readable } from 'node:stream';
 
 const contentType = 'application/pdf';
 
-export async function certResultSetStatus(this: any, {
-  externalServiceUser,
-  requestId,
-  // resultData,
-  parsedResultData,
-  // resultDataSign
-}) {
-
+export async function certResultSetStatus(
+  this: any,
+  {
+    externalServiceUser,
+    requestId,
+    // resultData,
+    parsedResultData,
+    // resultDataSign
+  },
+) {
   // const signatureInfo = await this.eds.getSignatureInfo(resultDataSign);
   // if (typeof signatureInfo !== 'object') {
   //   throw new Error('Can\'t get signature info');
@@ -49,9 +51,9 @@ export async function certResultSetStatus(this: any, {
   let documentId;
 
   try {
-    const taskAndDocumentEntities = await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateIds as any)(
-      workflowId, [taskTemplateIdToReceiveStatus],
-    );
+    const taskAndDocumentEntities = await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateIds as any)(workflowId, [
+      taskTemplateIdToReceiveStatus,
+    ]);
     const { task, document } = taskAndDocumentEntities;
     documentId = document.id;
     taskId = task.id;
@@ -74,7 +76,7 @@ export async function certResultSetStatus(this: any, {
   const certDocumentSignatureInfo = await this.eds.getSignatureInfo(signedCertDocument);
 
   if (typeof certDocumentSignatureInfo !== 'object') {
-    throw new Error('Can\'t get cert document signature info');
+    throw new Error("Can't get cert document signature info");
   }
 
   const { content: certDocumentBuffer } = certDocumentSignatureInfo;
@@ -116,7 +118,7 @@ export async function certResultSetStatus(this: any, {
       updatedBy: externalServiceUser,
       fileId,
       fileName: originalFileName,
-      fileType: contentType
+      fileType: contentType,
     });
 
     global.log.save('external-services-controller|set-cert-result|set-document-file', documentFile);
@@ -124,7 +126,7 @@ export async function certResultSetStatus(this: any, {
     global.log.save('external-services-controller|set-cert-result|create-document-attachment-error', {
       originalFileName,
       contentLength,
-      documentId
+      documentId,
     });
     throw error;
   }
@@ -161,7 +163,7 @@ export async function certResultSetStatus(this: any, {
     global.messageQueue.produce(message);
   } catch (error: any) {
     if (error.details) {
-      error.message += ' (' + error.details.map(errorDetailed => errorDetailed.dataPath + ' ' + errorDetailed.message).join(', ') + ')';
+      error.message += ' (' + error.details.map((errorDetailed) => errorDetailed.dataPath + ' ' + errorDetailed.message).join(', ') + ')';
     }
     global.log.save('external-services-controller|set-cert-result|cannot-commit-task', { error: error && error.message }, 'error');
     const wrappedError = new Error('Cannot commit task.');

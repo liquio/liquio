@@ -38,7 +38,7 @@ async function main() {
   if (config.redis && config.redis.isEnabled) {
     const redisClient = new RedisClient({
       host: config.redis.host,
-      port: config.redis.port
+      port: config.redis.port,
     });
     try {
       await redisClient.connect();

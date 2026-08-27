@@ -55,11 +55,11 @@ export default class KeysController extends Controller {
       offset,
       limit,
       register_id: registerId,
-      parent_id: parentId
+      parent_id: parentId,
     } = {
       offset: 0,
       limit: 100,
-      ...matchedData(req, { locations: ['query'] })
+      ...matchedData(req, { locations: ['query'] }),
     } as any;
     const filter: { register_id?: number; parent_id?: number } = {};
     if (registerId) filter.register_id = registerId;
@@ -71,7 +71,7 @@ export default class KeysController extends Controller {
       keysModelResponse = await this.keyModel.getAll({
         offset: offset,
         limit: Math.min(limit, this.config.pagination.maxLimit),
-        filter
+        filter,
       });
     } catch (error) {
       this.log.save('get-keys-error', { error: error && error.message });
@@ -125,7 +125,7 @@ export default class KeysController extends Controller {
       offset,
       limit,
       operation,
-      record_data_like: recordDataLike
+      record_data_like: recordDataLike,
     } = { offset: 0, limit: 20, ...matchedData(req, { locations: ['query'] }) } as any;
 
     if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
@@ -157,7 +157,7 @@ export default class KeysController extends Controller {
     // Define params.
     const { registerId, name, description, schema, parentId, meta, toString, toSearchString, lock, accessMode, toExport, isEncrypted } = matchedData(
       req,
-      { locations: ['body'] }
+      { locations: ['body'] },
     ) as any;
     const { user } = req.auth;
 
@@ -178,7 +178,7 @@ export default class KeysController extends Controller {
         // Backwards compatibility: simplify after migration in bpmn-admin
         accessMode: !accessMode && lock ? 'read_only' : accessMode || 'full',
         toExport,
-        isEncrypted
+        isEncrypted,
       });
     } catch (error) {
       this.log.save('create-key-error', { error: error && error.message });
@@ -203,7 +203,7 @@ export default class KeysController extends Controller {
     const { id } = matchedData(req, { locations: ['params'] });
     const { registerId, name, description, schema, parentId, meta, toString, toSearchString, lock, accessMode, toExport, isEncrypted } = matchedData(
       req,
-      { locations: ['body'] }
+      { locations: ['body'] },
     ) as any;
     const { user } = req.auth;
 
@@ -236,7 +236,7 @@ export default class KeysController extends Controller {
         // Backwards compatibility: simplify after migration in bpmn-admin
         accessMode: !accessMode && lock ? 'read_only' : accessMode || 'full',
         toExport,
-        isEncrypted
+        isEncrypted,
       });
     } catch (error) {
       this.log.save('update-key-error', { error: error.message, toString: toString.toString() });
@@ -244,7 +244,7 @@ export default class KeysController extends Controller {
     const { data: key } = keyModelResponse || {};
 
     const [oldAfterhandlers, newAfterhandlers] = [oldKeyModelResponse.data.meta?.afterhandlers, meta?.afterhandlers].map((meta) =>
-      [].concat(meta).filter(Boolean).sort()
+      [].concat(meta).filter(Boolean).sort(),
     );
 
     if (!_.isEqual(oldAfterhandlers, newAfterhandlers)) {
@@ -329,7 +329,7 @@ export default class KeysController extends Controller {
         recordsModelResponse = await this.recordsModel.getByKeyId(keyId, false, {
           order: [['id', 'ASC']],
           offset,
-          limit: REINDEX_CHUNK_SIZE
+          limit: REINDEX_CHUNK_SIZE,
         });
       } catch (error) {
         this.log.save('get-records-by-key-id-error', { error: error && error.message });
@@ -381,7 +381,7 @@ export default class KeysController extends Controller {
         this.reindexing[keyId] = false;
         return { recordsToUpdate };
       })(),
-      new Promise((resolve) => setTimeout(() => resolve({ message: 'Reindex started.' }), 1000))
+      new Promise((resolve) => setTimeout(() => resolve({ message: 'Reindex started.' }), 1000)),
     ]);
     // Metric.
     this.responseData(res, result);
@@ -561,7 +561,7 @@ export default class KeysController extends Controller {
     this.encryption_job_queue = new JobQueue({
       onJobFailure: async (error) => {
         this.log.save('encryption-job-error', { error: error && error.message });
-      }
+      },
     });
 
     if (this.config.encryption?.check_on_startup) {

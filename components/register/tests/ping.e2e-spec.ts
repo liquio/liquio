@@ -21,7 +21,7 @@ describe('RegistersController', () => {
         .expect('Content-Type', /json/)
         .expect((response) => {
           expect(response.body).toEqual({
-            data: { message: 'pong', processPid: expect.any(Number) }
+            data: { message: 'pong', processPid: expect.any(Number) },
           });
         });
     });
@@ -37,7 +37,7 @@ describe('RegistersController', () => {
         .expect('Content-Type', /json/)
         .expect((response) => {
           expect(response.body).toEqual({
-            data: { message: 'pong', processPid: expect.any(Number) }
+            data: { message: 'pong', processPid: expect.any(Number) },
           });
         });
     });

@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -38,4 +37,3 @@ export class TaskTemplateEntity extends Entity {
     return this.getFilterProperties();
   }
 }
-

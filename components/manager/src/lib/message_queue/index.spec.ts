@@ -107,11 +107,9 @@ describe('MessageQueue', () => {
       const message = { type: 'event', workflowTemplateId: 'template1' };
       messageQueue.produce('writingQueueEvent', message);
 
-      expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledWith(
-        'event-custom',
-        Buffer.from(JSON.stringify(message)),
-        { persistent: true },
-      );
+      expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledWith('event-custom', Buffer.from(JSON.stringify(message)), {
+        persistent: true,
+      });
     });
 
     it('should send message to default queue when no specific queue matches', async () => {
@@ -132,11 +130,7 @@ describe('MessageQueue', () => {
       const message = { type: 'event', workflowTemplateId: 'template999' };
       messageQueue.produce('writingQueueEvent', message);
 
-      expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledWith(
-        'event',
-        Buffer.from(JSON.stringify(message)),
-        { persistent: true },
-      );
+      expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledWith('event', Buffer.from(JSON.stringify(message)), { persistent: true });
     });
   });
 

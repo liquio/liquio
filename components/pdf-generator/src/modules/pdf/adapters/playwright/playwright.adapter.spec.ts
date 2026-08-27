@@ -119,9 +119,7 @@ describe('PlaywrightAdapter', () => {
       const error = new Error('Cluster execution failed');
       mockCluster.execute.mockRejectedValue(error);
 
-      await expect(adapter.generateFromTemplate(mockHtml, {})).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(adapter.generateFromTemplate(mockHtml, {})).rejects.toThrow(InternalServerErrorException);
     });
 
     it('should partially update margin options when only some values provided', async () => {

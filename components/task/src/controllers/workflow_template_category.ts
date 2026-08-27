@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { WorkflowTemplateCategoryModel } from '../models/workflow_template_category';
 
@@ -42,4 +41,3 @@ export class WorkflowTemplateCategoryController extends Controller {
     this.responseData(res, workflowTemplateCategories);
   }
 }
-

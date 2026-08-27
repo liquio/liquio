@@ -32,7 +32,7 @@ export default class AccessLogValidator extends Validator {
       query('key_id').isInt().toInt().optional(),
       query('record_id').optional(),
       query('created_from').optional(),
-      query('created_to').optional()
+      query('created_to').optional(),
     ];
   }
 }

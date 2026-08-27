@@ -14,11 +14,13 @@ export class OnboardingController extends Controller {
       super(config);
       this.auth = new AuthService().provider;
 
-      this.redisClient = config?.redis?.isEnabled ? new RedisClient({
-        host: config.redis.host,
-        port: config.redis.port,
-        defaultTtl: config.redis.defaultTtl
-      }) : undefined;
+      this.redisClient = config?.redis?.isEnabled
+        ? new RedisClient({
+            host: config.redis.host,
+            port: config.redis.port,
+            defaultTtl: config.redis.defaultTtl,
+          })
+        : undefined;
 
       OnboardingController.instance = this;
     }
@@ -68,10 +70,14 @@ export class OnboardingController extends Controller {
     if (additionalOnboarding[onboardingIndex]) {
       const { handler, handlerOptions } = additionalOnboarding[onboardingIndex];
       if (typeof this[handler] === 'function') {
-        const check = await this[handler]({
-          userId,
-          authUserInfo: userInfo,
-        }, null, handlerOptions);
+        const check = await this[handler](
+          {
+            userId,
+            authUserInfo: userInfo,
+          },
+          null,
+          handlerOptions,
+        );
         if (check) {
           // if onboarding still needed or waiting for some conditions
           // do nothing
@@ -176,9 +182,11 @@ export class OnboardingController extends Controller {
     const registerResponse: any = await global.businesses.register.getRecordsByKeyIdFullAccess(keyId, {
       data: {
         [property]: edrpou,
-      }
+      },
     });
-    const { data: [record] } = registerResponse;
+    const {
+      data: [record],
+    } = registerResponse;
 
     if (this.redisClient) {
       this.redisClient.set(cacheKey, JSON.stringify({ recordExisted: !!record }), 60);
@@ -187,4 +195,3 @@ export class OnboardingController extends Controller {
     return !record;
   }
 }
-

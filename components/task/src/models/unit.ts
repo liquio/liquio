@@ -1,4 +1,3 @@
-
 import Sequelize from 'sequelize';
 import { Model } from './model';
 import { UnitEntity } from '../entities/unit';
@@ -28,7 +27,7 @@ export class UnitModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           parent_id: Sequelize.INTEGER,
           based_on: Sequelize.ARRAY(Sequelize.INTEGER),
@@ -41,14 +40,14 @@ export class UnitModel extends Model {
           allow_tokens: Sequelize.ARRAY(Sequelize.STRING),
           heads_ipn: Sequelize.ARRAY(Sequelize.STRING),
           members_ipn: Sequelize.ARRAY(Sequelize.STRING),
-          requested_members: Sequelize.ARRAY(Sequelize.JSONB)
+          requested_members: Sequelize.ARRAY(Sequelize.JSONB),
         },
         {
           tableName: 'units',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       PgPubSub.getInstance()?.subscribe('units_row_change_notify', this.onRowChange.bind(this));
@@ -69,11 +68,7 @@ export class UnitModel extends Model {
    * @returns {Promise<UnitEntity[]>}
    */
   async getAll() {
-    const { data: unitsRaw } = await RedisClient.getOrSet(
-      RedisClient.createKey('unit', 'getAll'),
-      () => this.model.findAll(),
-      this.cacheTtl.getAll,
-    );
+    const { data: unitsRaw } = await RedisClient.getOrSet(RedisClient.createKey('unit', 'getAll'), () => this.model.findAll(), this.cacheTtl.getAll);
 
     return unitsRaw.map(this.prepareEntity);
   }
@@ -116,7 +111,7 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { members: Sequelize.fn('array_append', Sequelize.col('members'), userId) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
@@ -144,7 +139,7 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { heads: Sequelize.fn('array_append', Sequelize.col('heads'), userId) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
@@ -172,7 +167,7 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { requested_members: Sequelize.fn('array_append', Sequelize.col('requested_members'), JSON.stringify(requestedMember)) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
@@ -202,11 +197,8 @@ export class UnitModel extends Model {
     const { requestedMembers } = unit;
 
     // Remove requested member.
-    const requestedMembersToUpdate = requestedMembers.filter(v => v.ipn !== requestedMemberIpn);
-    const [, unitsRaw] = await this.model.update(
-      { requested_members: requestedMembersToUpdate },
-      { where: { id: unitId }, returning: true }
-    );
+    const requestedMembersToUpdate = requestedMembers.filter((v) => v.ipn !== requestedMemberIpn);
+    const [, unitsRaw] = await this.model.update({ requested_members: requestedMembersToUpdate }, { where: { id: unitId }, returning: true });
 
     // Define and return first updated row entity.
     const [updatedUnitRaw] = unitsRaw;
@@ -225,7 +217,7 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { heads_ipn: Sequelize.fn('array_remove', Sequelize.col('heads_ipn'), ipn) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
@@ -253,7 +245,7 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { members: Sequelize.fn('array_remove', Sequelize.col('members'), userId) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
@@ -281,7 +273,7 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { members_ipn: Sequelize.fn('array_remove', Sequelize.col('members_ipn'), ipn) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
@@ -318,7 +310,7 @@ export class UnitModel extends Model {
       allowTokens: unitRaw.allow_tokens,
       headsIpn: unitRaw.heads_ipn,
       membersIpn: unitRaw.members_ipn,
-      requestedMembers: unitRaw.requested_members
+      requestedMembers: unitRaw.requested_members,
     });
   }
 
@@ -340,4 +332,3 @@ export class UnitModel extends Model {
     }
   }
 }
-

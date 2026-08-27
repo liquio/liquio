@@ -6,7 +6,7 @@ jest.mock('axios');
 
 // Mock the log module
 const mockLog = {
-  save: jest.fn()
+  save: jest.fn(),
 };
 global.log = mockLog as any;
 
@@ -18,14 +18,14 @@ const mockConfig = {
     routes: {
       generateQr: '/custom/qr',
       ping: '/custom/ping',
-      pingWithAuth: '/custom/ping_auth'
+      pingWithAuth: '/custom/ping_auth',
     },
     token: 'test-token-123',
     urlToDocument: 'https://frontend.com/document',
     urlToCaseAndProceeding: 'https://frontend.com/case',
     serverName: 'test-server',
-    getLinkToFilestorageTimeout: 25000
-  }
+    getLinkToFilestorageTimeout: 25000,
+  },
 };
 global.config = mockConfig;
 
@@ -34,10 +34,10 @@ describe('PersistLink', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Reset singleton
     (PersistLink as any).singleton = null;
-    
+
     persistLink = new PersistLink();
   });
 
@@ -45,16 +45,16 @@ describe('PersistLink', () => {
     it('should create a singleton instance', () => {
       const instance1 = new PersistLink();
       const instance2 = new PersistLink();
-      
+
       expect(instance1).toBe(instance2);
       expect((PersistLink as any).singleton).toBe(instance1);
     });
 
     it('should use default config when no config provided', () => {
       (PersistLink as any).singleton = null;
-      
+
       const instance = new PersistLink({});
-      
+
       expect(instance.config.server).toBe('https://persist-link-test-court-services.liquio.local');
       expect(instance.config.port).toBe(443);
       expect(instance.config.token).toBe('<removed>');
@@ -62,17 +62,17 @@ describe('PersistLink', () => {
 
     it('should merge provided config with defaults', () => {
       (PersistLink as any).singleton = null;
-      
+
       const customConfig = {
         server: 'https://custom-server.com',
         token: 'custom-token',
         routes: {
-          generateQr: '/custom/generate'
-        }
+          generateQr: '/custom/generate',
+        },
       };
-      
+
       const instance = new PersistLink(customConfig);
-      
+
       expect(instance.config.server).toBe('https://custom-server.com');
       expect(instance.config.token).toBe('custom-token');
       expect(instance.config.routes.generateQr).toBe('/custom/generate');
@@ -93,9 +93,9 @@ describe('PersistLink', () => {
       data: {
         data: {
           link: 'https://example.com/link',
-          qrCode: '<svg>QR code</svg>'
-        }
-      }
+          qrCode: '<svg>QR code</svg>',
+        },
+      },
     };
 
     it('should successfully get QR and link to document', async () => {
@@ -109,17 +109,17 @@ describe('PersistLink', () => {
         url: 'https://test-server.com:443/custom/qr',
         headers: {
           'Content-Type': 'application/json',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
         data: {
           type: 'simple',
           options: {
             url: `https://frontend.com/document/${documentId}`,
-            redirect: true
+            redirect: true,
           },
-          small: true
+          small: true,
         },
-        validateStatus: expect.any(Function)
+        validateStatus: expect.any(Function),
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-document-request-params', expect.any(Object));
@@ -131,7 +131,7 @@ describe('PersistLink', () => {
       (axios as any).mockRejectedValue(error);
 
       await expect(persistLink.getQrAndLinkToDocument(documentId)).rejects.toThrow('Network error');
-      
+
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-document-response-error', error);
     });
 
@@ -139,7 +139,7 @@ describe('PersistLink', () => {
       const errorResponse = {
         status: 500,
         statusText: 'Internal Server Error',
-        data: null
+        data: null,
       };
       (axios as any).mockResolvedValue(errorResponse);
 
@@ -154,9 +154,9 @@ describe('PersistLink', () => {
       data: {
         data: {
           link: 'https://example.com/case-link',
-          qrCode: '<svg>Case QR code</svg>'
-        }
-      }
+          qrCode: '<svg>Case QR code</svg>',
+        },
+      },
     };
 
     it('should successfully get QR and link to case', async () => {
@@ -170,17 +170,17 @@ describe('PersistLink', () => {
         url: 'https://test-server.com:443/custom/qr',
         headers: {
           'Content-Type': 'application/json',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
         data: {
           type: 'simple',
           options: {
             url: `https://frontend.com/case=${caseId}`,
-            redirect: true
+            redirect: true,
           },
-          small: true
+          small: true,
         },
-        validateStatus: expect.any(Function)
+        validateStatus: expect.any(Function),
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-case-request-params', expect.any(Object));
@@ -192,7 +192,7 @@ describe('PersistLink', () => {
       (axios as any).mockRejectedValue(error);
 
       await expect(persistLink.getQrAndLinkToCase(caseId)).rejects.toThrow('Case error');
-      
+
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-case-response-error', error);
     });
   });
@@ -205,9 +205,9 @@ describe('PersistLink', () => {
       data: {
         data: {
           link: 'https://example.com/proceeding-link',
-          qrCode: '<svg>Proceeding QR code</svg>'
-        }
-      }
+          qrCode: '<svg>Proceeding QR code</svg>',
+        },
+      },
     };
 
     it('should successfully get QR and link to proceeding', async () => {
@@ -221,17 +221,17 @@ describe('PersistLink', () => {
         url: 'https://test-server.com:443/custom/qr',
         headers: {
           'Content-Type': 'application/json',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
         data: {
           type: 'simple',
           options: {
             url: `https://frontend.com/case=${caseId}/proceeding=${proceedingId}`,
-            redirect: true
+            redirect: true,
           },
-          small: true
+          small: true,
         },
-        validateStatus: expect.any(Function)
+        validateStatus: expect.any(Function),
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-permission-request-params', expect.any(Object));
@@ -243,7 +243,7 @@ describe('PersistLink', () => {
       (axios as any).mockRejectedValue(error);
 
       await expect(persistLink.getQrAndLinkToProceeding(proceedingId, caseId)).rejects.toThrow('Proceeding error');
-      
+
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-permission-response-error', error);
     });
   });
@@ -254,7 +254,7 @@ describe('PersistLink', () => {
     const proceedingId = 'proc-789';
     const mockQrAndLink = {
       link: 'https://example.com/link',
-      qrCode: '<svg>QR code</svg>'
+      qrCode: '<svg>QR code</svg>',
     };
 
     beforeEach(() => {
@@ -267,7 +267,7 @@ describe('PersistLink', () => {
     describe('getLinkToDocument', () => {
       it('should return only the link from getQrAndLinkToDocument', async () => {
         const result = await persistLink.getLinkToDocument(documentId);
-        
+
         expect(result).toBe(mockQrAndLink.link);
         expect(persistLink.getQrAndLinkToDocument).toHaveBeenCalledWith(documentId);
       });
@@ -276,7 +276,7 @@ describe('PersistLink', () => {
     describe('getLinkToCase', () => {
       it('should return only the link from getQrAndLinkToCase', async () => {
         const result = await persistLink.getLinkToCase(caseId);
-        
+
         expect(result).toBe(mockQrAndLink.link);
         expect(persistLink.getQrAndLinkToCase).toHaveBeenCalledWith(caseId);
       });
@@ -285,7 +285,7 @@ describe('PersistLink', () => {
     describe('getLinkToProceeding', () => {
       it('should return only the link from getQrAndLinkToProceeding', async () => {
         const result = await persistLink.getLinkToProceeding(proceedingId, caseId);
-        
+
         expect(result).toBe(mockQrAndLink.link);
         expect(persistLink.getQrAndLinkToProceeding).toHaveBeenCalledWith(proceedingId, caseId);
       });
@@ -294,7 +294,7 @@ describe('PersistLink', () => {
     describe('getQrLinkToDocument', () => {
       it('should return only the QR code from getQrAndLinkToDocument', async () => {
         const result = await persistLink.getQrLinkToDocument(documentId);
-        
+
         expect(result).toBe(mockQrAndLink.qrCode);
         expect(persistLink.getQrAndLinkToDocument).toHaveBeenCalledWith(documentId);
       });
@@ -307,9 +307,9 @@ describe('PersistLink', () => {
       status: 200,
       data: {
         data: {
-          qrCode: '<svg>Static file QR code</svg>'
-        }
-      }
+          qrCode: '<svg>Static file QR code</svg>',
+        },
+      },
     };
 
     it('should successfully get QR link to static file in OpenStack', async () => {
@@ -323,17 +323,17 @@ describe('PersistLink', () => {
         url: 'https://test-server.com:443/custom/qr',
         headers: {
           'Content-Type': 'application/json',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
         data: {
           type: 'openStack',
           options: {
             serverName: 'test-server',
-            fileName: fileName
+            fileName: fileName,
           },
-          small: true
+          small: true,
         },
-        validateStatus: expect.any(Function)
+        validateStatus: expect.any(Function),
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-static-file-request-params', expect.any(Object));
@@ -345,7 +345,7 @@ describe('PersistLink', () => {
       (axios as any).mockRejectedValue(error);
 
       await expect(persistLink.getQrLinkToStaticFileInOpenStack(fileName)).rejects.toThrow('OpenStack error');
-      
+
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-static-file-response-error', error);
     });
   });
@@ -357,9 +357,9 @@ describe('PersistLink', () => {
       status: 200,
       data: {
         data: {
-          link: 'https://filestorage.com/file/link'
-        }
-      }
+          link: 'https://filestorage.com/file/link',
+        },
+      },
     };
 
     it('should successfully get link to static file in Filestorage', async () => {
@@ -373,19 +373,19 @@ describe('PersistLink', () => {
         url: 'https://test-server.com:443/custom/qr',
         headers: {
           'Content-Type': 'application/json',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
         data: {
           type: 'filestorage',
           options: {
             serverName: 'test-server',
-            fileId: fileId
+            fileId: fileId,
           },
           definedHash: definedHash,
-          small: true
+          small: true,
         },
         timeout: 25000,
-        validateStatus: expect.any(Function)
+        validateStatus: expect.any(Function),
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-static-file-request-params', expect.any(Object));
@@ -398,10 +398,10 @@ describe('PersistLink', () => {
       (axios as any).mockRejectedValue(error);
 
       await expect(persistLink.getLinkToStaticFileInFilestorage(fileId, definedHash)).rejects.toThrow('Filestorage error');
-      
-      expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-static-file-response-error', { 
-        error, 
-        body: { error: 'File not found' } 
+
+      expect(mockLog.save).toHaveBeenCalledWith('get-persist-link-to-static-file-response-error', {
+        error,
+        body: { error: 'File not found' },
       });
     });
   });
@@ -410,7 +410,7 @@ describe('PersistLink', () => {
     const mockResponseHeaders = {
       version: '1.0.0',
       customer: 'test-customer',
-      environment: 'test'
+      environment: 'test',
     };
     const mockResponseData = { data: { status: 'ok' } };
 
@@ -418,7 +418,7 @@ describe('PersistLink', () => {
       (axios as any).mockResolvedValue({
         status: 200,
         headers: mockResponseHeaders,
-        data: mockResponseData
+        data: mockResponseData,
       });
 
       const result = await persistLink.sendPingRequest();
@@ -427,14 +427,14 @@ describe('PersistLink', () => {
         version: '1.0.0',
         customer: 'test-customer',
         environment: 'test',
-        body: { status: 'ok' }
+        body: { status: 'ok' },
       });
 
       expect(axios).toHaveBeenCalledWith({
         method: 'GET',
         url: 'https://test-server.com:443/custom/ping_auth',
         headers: { token: 'test-token-123' },
-        validateStatus: expect.any(Function)
+        validateStatus: expect.any(Function),
       });
     });
 
@@ -442,25 +442,25 @@ describe('PersistLink', () => {
       const error = new Error('Ping error');
       // Mock console.log to avoid output during tests
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       (axios as any).mockRejectedValue(error);
 
       await expect(persistLink.sendPingRequest()).rejects.toThrow('Ping error');
-      
+
       expect(consoleSpy).toHaveBeenCalledWith('error', error);
       consoleSpy.mockRestore();
     });
 
     it('should reject on non-200 status code', async () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       (axios as any).mockResolvedValue({
         status: 500,
-        statusText: 'Internal Server Error'
+        statusText: 'Internal Server Error',
       });
 
       await expect(persistLink.sendPingRequest()).rejects.toThrow('HTTP 500: Internal Server Error');
-      
+
       expect(consoleSpy).toHaveBeenCalledWith('error', expect.any(Error));
       consoleSpy.mockRestore();
     });
@@ -469,7 +469,7 @@ describe('PersistLink', () => {
       (axios as any).mockResolvedValue({
         status: 200,
         headers: mockResponseHeaders,
-        data: {}
+        data: {},
       });
 
       const result = await persistLink.sendPingRequest();
@@ -478,7 +478,7 @@ describe('PersistLink', () => {
         version: '1.0.0',
         customer: 'test-customer',
         environment: 'test',
-        body: undefined // Since result.data is undefined when parsing '{}'
+        body: undefined, // Since result.data is undefined when parsing '{}'
       });
     });
   });
@@ -486,31 +486,31 @@ describe('PersistLink', () => {
   describe('Configuration Edge Cases', () => {
     it('should handle missing routes in custom config', () => {
       (PersistLink as any).singleton = null;
-      
+
       const customConfig = {
         server: 'https://custom.com',
-        token: 'custom-token'
+        token: 'custom-token',
         // No routes provided
       };
-      
+
       const instance = new PersistLink(customConfig);
-      
+
       expect(instance.config.routes.generateQr).toBe('/link?qr=svg'); // Should use default
       expect(instance.generateQr).toBe('https://custom.com:443/link?qr=svg');
     });
 
     it('should handle partial routes in custom config', () => {
       (PersistLink as any).singleton = null;
-      
+
       const customConfig = {
         routes: {
-          generateQr: '/custom/qr'
+          generateQr: '/custom/qr',
           // Other routes not provided
-        }
+        },
       };
-      
+
       const instance = new PersistLink(customConfig);
-      
+
       expect(instance.config.routes.generateQr).toBe('/custom/qr');
       expect(instance.config.routes.ping).toBe('/test/ping'); // Should use default
     });

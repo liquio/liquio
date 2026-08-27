@@ -105,7 +105,7 @@ export default class HistoryBusiness extends Business {
         historyId: flattenHistory.id,
         historyCreatedAt: flattenHistory.createdAt,
         operation,
-        meta: flattenHistory.meta
+        meta: flattenHistory.meta,
       };
       fieldsHistory[key].push(fieldHistoryItem);
     }

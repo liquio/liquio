@@ -1,4 +1,3 @@
-
 import { Business } from './business';
 import { Sandbox } from '../lib/sandbox';
 
@@ -62,17 +61,17 @@ export class UserInboxBusiness extends Business {
     const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
 
     // Define users list.
-    const { accessJsonSchema: { inboxes: inboxesJsonSchema }, name: documentTemplateName, jsonSchema: { fileName } } = documentTemplate;
+    const {
+      accessJsonSchema: { inboxes: inboxesJsonSchema },
+      name: documentTemplateName,
+      jsonSchema: { fileName },
+    } = documentTemplate;
     const usersList = await this.getUsersListForInboxes(inboxesJsonSchema, workflowId);
 
-    const preparedFileNameSchema = this.sandbox.evalWithArgs(
-      fileName,
-      [document.data],
-      {
-        checkArrow: true,
-        meta: { fn: 'documentTemplate.jsonSchemafileName', documentId, workflowId },
-      },
-    );
+    const preparedFileNameSchema = this.sandbox.evalWithArgs(fileName, [document.data], {
+      checkArrow: true,
+      meta: { fn: 'documentTemplate.jsonSchemafileName', documentId, workflowId },
+    });
     const preparedFileName = Array.isArray(preparedFileNameSchema) ? preparedFileNameSchema[0] : preparedFileNameSchema;
 
     // Save for all users.
@@ -81,7 +80,7 @@ export class UserInboxBusiness extends Business {
         userId: user,
         documentId,
         name: preparedFileName || documentTemplateName,
-        number: documentNumber
+        number: documentNumber,
       });
     }
   }
@@ -113,22 +112,27 @@ export class UserInboxBusiness extends Business {
 
       // Define and return users list.
       try {
-        const usersFunctionResponse = this.sandbox.evalWithArgs(
-          usersStringifiedFunction,
-          [workflowDocuments],
-          { meta: { fn: 'inboxesJsonSchema.users', workflowId } },
-        );
-        const usersAfterEvalFunction = Array.isArray(usersFunctionResponse) && usersFunctionResponse.every(v => typeof v === 'string') ?
-          usersFunctionResponse : (typeof usersFunctionResponse === 'string' ? [usersFunctionResponse] : []);
+        const usersFunctionResponse = this.sandbox.evalWithArgs(usersStringifiedFunction, [workflowDocuments], {
+          meta: { fn: 'inboxesJsonSchema.users', workflowId },
+        });
+        const usersAfterEvalFunction =
+          Array.isArray(usersFunctionResponse) && usersFunctionResponse.every((v) => typeof v === 'string')
+            ? usersFunctionResponse
+            : typeof usersFunctionResponse === 'string'
+              ? [usersFunctionResponse]
+              : [];
         global.log.save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
 
         users = users.concat(usersAfterEvalFunction);
       } catch (error) {
-        global.log.save('save-to-inboxes|users-definition-by-function|error', { inboxesJsonSchema, workflowId, error: error && error.message }, 'error');
+        global.log.save(
+          'save-to-inboxes|users-definition-by-function|error',
+          { inboxesJsonSchema, workflowId, error: error && error.message },
+          'error',
+        );
       }
     }
 
     return [...new Set(users)];
   }
 }
-

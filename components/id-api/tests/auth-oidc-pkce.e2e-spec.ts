@@ -65,27 +65,25 @@ describe('AuthController - OIDC - PKCE', () => {
         const params = new URLSearchParams(bodyText);
         observedCodeVerifier = params.get('code_verifier') || undefined;
 
-        return [200, {
-          access_token: 'access-token',
-          token_type: 'Bearer',
-          expires_in: 3600,
-        }];
+        return [
+          200,
+          {
+            access_token: 'access-token',
+            token_type: 'Bearer',
+            expires_in: 3600,
+          },
+        ];
       });
 
-    nock(dexUrl)
-      .get('/userinfo')
-      .reply(200, {
-        sub: 'user-123',
-        email: 'testuser@example.com',
-        name: 'Test User',
-        given_name: 'Test',
-        family_name: 'User',
-      });
+    nock(dexUrl).get('/userinfo').reply(200, {
+      sub: 'user-123',
+      email: 'testuser@example.com',
+      name: 'Test User',
+      given_name: 'Test',
+      family_name: 'User',
+    });
 
-    const callbackResponse = await appClient
-      .get(`/authorise/oidc/dex/callback?code=fake-code&state=${state}`)
-      .redirects(0)
-      .expect(302);
+    const callbackResponse = await appClient.get(`/authorise/oidc/dex/callback?code=fake-code&state=${state}`).redirects(0).expect(302);
 
     expect(callbackResponse.headers.location).toBe('/authorise/continue');
     expect(observedCodeVerifier).toBeDefined();

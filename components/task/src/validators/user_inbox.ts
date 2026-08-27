@@ -1,4 +1,3 @@
-
 import { checkSchema } from 'express-validator';
 import { Validator } from './validator';
 
@@ -31,54 +30,53 @@ export class UserInboxValidator extends Validator {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['count']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort.name']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['sort.number']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['sort.is_read']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['sort.created_at']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['sort.updated_at']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['filters.name']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.number']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.is_read']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
-      }
+        toBoolean: true,
+      },
     });
   }
 }
-

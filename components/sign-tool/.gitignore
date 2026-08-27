@@ -2,7 +2,6 @@
 /dist
 /node_modules
 /build
-/bundle
 
 # Logs
 logs

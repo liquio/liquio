@@ -156,13 +156,15 @@ export class TestApp extends Application {
     // Create a temporary dex.yaml with dynamic port values
     const dexTemplatePath = path.join(__dirname, 'dex.yaml');
     const dexTemplate = fs.readFileSync(dexTemplatePath, 'utf-8');
-    
+
     // We'll use localhost and let testcontainers assign actual port later
     // For now, use port 5556 in config (Dex's internal port)
     // Then replace redirect URI with the actual app port
-    const dexConfig = dexTemplate
-      .replace(/redirectURIs:\s*\n\s*- 'http:\/\/localhost:\d+/g, `redirectURIs:\n      - 'http://localhost:${config.port}`);
-    
+    const dexConfig = dexTemplate.replace(
+      /redirectURIs:\s*\n\s*- 'http:\/\/localhost:\d+/g,
+      `redirectURIs:\n      - 'http://localhost:${config.port}`,
+    );
+
     // Write config to a temporary file
     const dexTempDir = path.join(__dirname, '..', '.dex-temp');
     if (!fs.existsSync(dexTempDir)) {
@@ -170,9 +172,9 @@ export class TestApp extends Application {
     }
     const dexConfigPath = path.join(dexTempDir, `dex-${Date.now()}.yaml`);
     fs.writeFileSync(dexConfigPath, dexConfig);
-    
+
     this.dexConfigPath = dexConfigPath;
-    
+
     // Start Dex container
     this.dexContainer = await new GenericContainer('dexidp/dex:v2.45.0')
       .withExposedPorts(5556)
@@ -193,7 +195,7 @@ export class TestApp extends Application {
 
     // Allow nock to let through requests to Dex for auth/token/userinfo
     nock.enableNetConnect((host) => host.includes(dexHost));
-    
+
     // Activate nock to intercept HTTP requests
     nock.activate();
   }
@@ -223,7 +225,7 @@ export class TestApp extends Application {
   static async afterAll() {
     nock.restore();
     await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.dexContainer?.stop()]);
-    
+
     // Clean up temporary Dex config file
     if (this.dexConfigPath && fs.existsSync(this.dexConfigPath)) {
       fs.unlinkSync(this.dexConfigPath);

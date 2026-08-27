@@ -298,15 +298,7 @@ export class PersistLink {
  * @returns {string} Readable error message.
  */
 function getPersistLinkErrorMessage(preparedError: any = {}): string {
-  const {
-    error,
-    code,
-    status,
-    statusText,
-    responseData,
-    url,
-    method,
-  } = preparedError;
+  const { error, code, status, statusText, responseData, url, method } = preparedError;
 
   if (status === 401) {
     const authMessage = responseData?.error?.message || responseData?.message || 'persist-link token is invalid or not allowed';

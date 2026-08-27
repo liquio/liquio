@@ -13,72 +13,72 @@ const ADDRESS_STREET_KEY_ID = 376;
 const ERRORS = {
   default: {
     message: 'Error while processing operation.',
-    code: 500
+    code: 500,
   },
   'export-register-id-error': {
     message: 'Bad register ID.',
-    code: 400
+    code: 400,
   },
   'export-register-find-error': {
     message: 'Not found',
-    code: 404
+    code: 404,
   },
   'export-register-existence-error': {
     message: 'Not found',
-    code: 404
+    code: 404,
   },
   'export-register-keys-error': {
     message: "Can't fetch keys.",
-    code: 500
+    code: 500,
   },
   'export-register-records-error': {
     message: "Can't fetch records.",
-    code: 500
+    code: 500,
   },
   'export-register-max-limit-reached': {
     message: 'Max export limit reached.',
-    code: 403
+    code: 403,
   },
   'import-register-empty-error': {
     message: 'Empty body.',
-    code: 400
+    code: 400,
   },
   'import-register-exist': {
     message: 'Register already exists.',
-    code: 400
+    code: 400,
   },
   'import-register-id-error': {
     message: 'Invalid id in uri/body.',
-    code: 400
+    code: 400,
   },
   'import-register-not-found-error': {
     message: 'Not found.',
-    code: 404
+    code: 404,
   },
   'import-register-create-or-update-key-error': {
     message: 'Can not create or update key.',
-    code: 400
+    code: 400,
   },
   'import-register-record-register-id-error': {
     message: 'Bad record register ID.',
-    code: 400
+    code: 400,
   },
   'import-register-record-key-id-error': {
     message: 'Bad record key ID.',
-    code: 400
+    code: 400,
   },
   'import-register-create-or-update-record-error': {
     message: 'Can not create or update record.',
-    code: 400
+    code: 400,
   },
   'import-register-cycle-keys-parents': {
     message: 'Can`t import - maybe cycled keys parents.',
-    code: 400
+    code: 400,
   },
   'import-register-create-record-error': {
     message: 'Can`t import - maybe record exists in other key.',
-    code: 400
-  }
+    code: 400,
+  },
 };
 
 /**
@@ -141,8 +141,8 @@ export default class RegisterBusiness extends Business {
       limit: null,
       filter: {
         register_id: registerId,
-        id: ids
-      }
+        id: ids,
+      },
     });
 
     return originalKeysResult.data || [];
@@ -161,8 +161,8 @@ export default class RegisterBusiness extends Business {
       limit: null,
       filter: {
         register_id: registerId,
-        key_id: keyId
-      }
+        key_id: keyId,
+      },
     });
 
     return recordsModelResponse.data || [];
@@ -209,7 +209,7 @@ export default class RegisterBusiness extends Business {
       changes = {
         created: { records: {}, keys: [] },
         updated: { records: {}, keys: [] },
-        deleted: { records: {} }
+        deleted: { records: {} },
       };
     }
 
@@ -242,8 +242,8 @@ export default class RegisterBusiness extends Business {
       `,
       {
         type: Sequelize.QueryTypes.SELECT,
-        replacements: { regionName, addressRegionKeyId: ADDRESS_REGION_KEY_ID }
-      }
+        replacements: { regionName, addressRegionKeyId: ADDRESS_REGION_KEY_ID },
+      },
     );
 
     if (result && result.length > 0) {
@@ -274,8 +274,8 @@ export default class RegisterBusiness extends Business {
       `,
       {
         type: Sequelize.QueryTypes.SELECT,
-        replacements: { regionId, districtName, cityName, addressCityKeyId: ADDRESS_CITY_KEY_ID }
-      }
+        replacements: { regionId, districtName, cityName, addressCityKeyId: ADDRESS_CITY_KEY_ID },
+      },
     );
 
     if (result && result.length > 0) {
@@ -308,8 +308,8 @@ export default class RegisterBusiness extends Business {
         LIMIT 10;`,
       {
         type: Sequelize.QueryTypes.SELECT,
-        replacements: { cityId, streetName, buildingNumber, addressStreetKeyId: ADDRESS_STREET_KEY_ID }
-      }
+        replacements: { cityId, streetName, buildingNumber, addressStreetKeyId: ADDRESS_STREET_KEY_ID },
+      },
     );
 
     if (result && result.length > 0) {

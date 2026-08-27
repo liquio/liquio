@@ -24,4 +24,3 @@ export const EVENT_FIXTURES = [
     lock_id: null,
   },
 ];
-

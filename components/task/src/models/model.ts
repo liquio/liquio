@@ -1,4 +1,3 @@
-
 import _ from 'lodash';
 
 /**
@@ -22,7 +21,7 @@ export class Model {
    */
   async paginate({ currentPage = 1, perPage = 15, ...params }: any = {}) {
     const options: any = {
-      order: []
+      order: [],
     };
 
     if (perPage > global.config.model.pagination.limitPerPage) {
@@ -34,7 +33,7 @@ export class Model {
     }
 
     if (Array.isArray(params.sort)) {
-      params.sort.forEach(item => {
+      params.sort.forEach((item) => {
         if (!Array.isArray(item)) {
           return;
         }
@@ -55,8 +54,8 @@ export class Model {
       options.where = params.filters;
     }
 
-    if(params.where) {
-      options.where = {...options.where, ...params.where};
+    if (params.where) {
+      options.where = { ...options.where, ...params.where };
     }
 
     if (typeof params.subQuery !== 'undefined' && params.subQuery === false) {
@@ -77,9 +76,9 @@ export class Model {
         total: count,
         perPage: perPage,
         currentPage: currentPage,
-        lastPage: Math.max(Math.ceil(count / perPage), 1)
+        lastPage: Math.max(Math.ceil(count / perPage), 1),
       },
-      data: rows
+      data: rows,
     };
   }
 
@@ -93,12 +92,14 @@ export class Model {
    */
   async getEntitiesByRelations({ relations, sequelizeModel, entity }) {
     try {
-      await Promise.all(relations.map(async relation => {
-        const items = await sequelizeModel[`get${_.upperFirst(relation)}`]();
-        if (items) {
-          entity[relation] = items.map(item => item.prepareEntity(item));
-        }
-      }));
+      await Promise.all(
+        relations.map(async (relation) => {
+          const items = await sequelizeModel[`get${_.upperFirst(relation)}`]();
+          if (items) {
+            entity[relation] = items.map((item) => item.prepareEntity(item));
+          }
+        }),
+      );
     } catch (error) {
       global.log.save('relation-error', error, 'error');
       throw error;
@@ -125,14 +126,12 @@ export class Model {
         return Object.entries(value).map(([subKey, subValue]) => {
           return [`${_.camelCase(key)}.${_.camelCase(subKey)}`, subValue];
         });
-
       }
 
       // For other objects, return flattened array
       return Object.entries(value).map(([subKey, subValue]) => {
-        return [_.camelCase(key),subKey, subValue];
+        return [_.camelCase(key), subKey, subValue];
       });
     });
   }
 }
-

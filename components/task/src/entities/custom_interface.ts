@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -39,4 +38,3 @@ export class CustomInterfaceEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

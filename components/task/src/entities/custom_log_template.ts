@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -42,4 +41,3 @@ export class CustomLogTemplateEntity extends Entity {
     this.isGetWorkflowData = isGetWorkflowData;
   }
 }
-

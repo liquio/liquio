@@ -43,15 +43,17 @@ export class TaskActivity {
       if (!details.assignedUsers || !details.assignedUnits || !details.unassignedUsers || !details.unassignedUnits) {
         throw new InternalServerError('TaskActivity.details.assignedUsers/assignedUnits/unassignedUsers/unassignedUnits required.');
       }
-      if (
-        (details.changeType === 'BY_USER' || details.changeType === 'REASSIGN_TRIGGERED_BY_USER') &&
-        (!details.userId || !details.userUnits)
-      ) {
+      if ((details.changeType === 'BY_USER' || details.changeType === 'REASSIGN_TRIGGERED_BY_USER') && (!details.userId || !details.userUnits)) {
         throw new InternalServerError('TaskActivity.details.userId/userUnits required.');
       }
     }
     if (type === 'TASK_COMMITTED') {
-      if ((details.commitType === 'BY_EXTERNAL_SYSTEM' || details.commitType === 'AUTO_COMMIT_BY_SYSTEM' || details.commitType === 'DELAYED_AUTO_COMMIT_BY_SYSTEM') && !details.systemName) {
+      if (
+        (details.commitType === 'BY_EXTERNAL_SYSTEM' ||
+          details.commitType === 'AUTO_COMMIT_BY_SYSTEM' ||
+          details.commitType === 'DELAYED_AUTO_COMMIT_BY_SYSTEM') &&
+        !details.systemName
+      ) {
         throw new InternalServerError('TaskActivity.details.systemName required.');
       }
       if (details.changeType === 'BY_USER' && (!details.userId || !details.userUnits)) {
@@ -64,4 +66,3 @@ export class TaskActivity {
     this.details = details;
   }
 }
-

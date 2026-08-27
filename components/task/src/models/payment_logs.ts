@@ -22,8 +22,8 @@ export class PaymentLogsModel extends Model {
           tableName: 'payment_logs',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       PaymentLogsModel.singleton = this;
@@ -57,8 +57,7 @@ export class PaymentLogsModel extends Model {
     return {
       transaction_id: item.transactionId,
       payment_action: item.paymentAction,
-      data: item.paymentData
+      data: item.paymentData,
     };
   }
 }
-

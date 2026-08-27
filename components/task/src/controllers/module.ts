@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 
 /**
@@ -34,4 +33,3 @@ export class ModuleController extends Controller {
     this.responseData(res, responseData);
   }
 }
-

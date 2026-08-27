@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -56,7 +55,7 @@ export class DocumentAttachmentEntity extends Entity {
   static getPlaceholder(fileId, dataPath) {
     return {
       isAttachmentPlaceholder: true,
-      data: { fileId, dataPath }
+      data: { fileId, dataPath },
     };
   }
 
@@ -68,4 +67,3 @@ export class DocumentAttachmentEntity extends Entity {
     return this.getFilterProperties();
   }
 }
-

@@ -101,7 +101,7 @@ export default class RecordsController extends Controller {
       paths,
       join_by: joinBy,
       csv_map: csvMap,
-      no_limit: noLimit
+      no_limit: noLimit,
     } = { offset: 0, limit: 20, ...matchedQueryData, ...matchedBodyData } as any;
 
     let recordIdsList;
@@ -262,7 +262,7 @@ export default class RecordsController extends Controller {
       residentshipStatusDateFrom,
       residentshipStatusDateTo,
       dataDateFrom,
-      dataDateTo
+      dataDateTo,
     });
 
     if (csvMap) {
@@ -284,7 +284,7 @@ export default class RecordsController extends Controller {
         limit: csvMap && noLimit ? undefined : Math.min(limit, this.config.pagination.maxLimit),
         filter,
         sort,
-        joinBy
+        joinBy,
       });
 
       if (recordsModelResponse && recordsModelResponse.data) {
@@ -342,7 +342,7 @@ export default class RecordsController extends Controller {
 
       const asyncParser = new AsyncParser({
         quote: '',
-        fields: Object.keys(csvMapParsed)
+        fields: Object.keys(csvMapParsed),
       });
 
       asyncParser.processor
@@ -357,9 +357,9 @@ export default class RecordsController extends Controller {
         const row = csvEntries.reduce(
           (t, [key, value]) => ({
             ...t,
-            [key]: `"${`${_.get(record, value as string) || ''}`.replace(/"/g, '\\"')}"`
+            [key]: `"${`${_.get(record, value as string) || ''}`.replace(/"/g, '\\"')}"`,
           }),
-          {}
+          {},
         );
         asyncParser.input.push(JSON.stringify(row));
       }
@@ -403,7 +403,7 @@ export default class RecordsController extends Controller {
       no_limit: noLimit,
       limit: responseLimit = 20,
       offset: responseOffset = 0,
-      additional_filter: queryAdditionalFilter
+      additional_filter: queryAdditionalFilter,
     } = { ...matchedQueryData, ...matchedBodyData } as any;
     const { additionalFilter: bodyAdditionalFilter, additional_filter: bodyAdditionalFilterLegacy, additionalFilterData } = matchedBodyData as any;
 
@@ -532,7 +532,7 @@ export default class RecordsController extends Controller {
           filter,
           sort,
           changedFrom,
-          changedTo
+          changedTo,
         });
 
         if (recordsModelResponse && recordsModelResponse.data) {
@@ -576,7 +576,7 @@ export default class RecordsController extends Controller {
         if (responseRecords.length > ADDITIONAL_FILTER_RECORD_MAX_COUNT) {
           this.log.save('get-records-filtered-additional-filter-error', {
             recordsCount: responseRecords.length,
-            maxRecordsCount: ADDITIONAL_FILTER_RECORD_MAX_COUNT
+            maxRecordsCount: ADDITIONAL_FILTER_RECORD_MAX_COUNT,
           });
           return this.responseError(res, 'To many records for additional filter.');
         }
@@ -593,7 +593,7 @@ export default class RecordsController extends Controller {
             this.log.save('get-records-filtered-additional-filter-error', {
               error: error.message,
               additionalFilter,
-              record: record.toJSON()
+              record: record.toJSON(),
             });
             return this.responseError(res, `Internal Error. Additional filter error. ${error.message}.`);
           }
@@ -637,7 +637,7 @@ export default class RecordsController extends Controller {
 
       const asyncParser = new AsyncParser({
         quote: '',
-        fields: Object.keys(csvMapParsed)
+        fields: Object.keys(csvMapParsed),
       });
 
       asyncParser.processor
@@ -652,9 +652,9 @@ export default class RecordsController extends Controller {
         const row = csvEntries.reduce(
           (t, [key, value]) => ({
             ...t,
-            [key]: `"${`${_.get(record, value as string) || ''}`.replace(/"/g, '\\"')}"`
+            [key]: `"${`${_.get(record, value as string) || ''}`.replace(/"/g, '\\"')}"`,
           }),
-          {}
+          {},
         );
         asyncParser.input.push(JSON.stringify(row));
       }
@@ -724,7 +724,7 @@ export default class RecordsController extends Controller {
       background,
       isCalculateSearchStrings = false,
       updateByDataField,
-      isReturnCreatedRecords
+      isReturnCreatedRecords,
     } = matchedData(req, { locations: ['body'] });
     const { user } = req.auth;
 
@@ -766,7 +766,7 @@ export default class RecordsController extends Controller {
 
     if (isCalculateSearchStrings) {
       const {
-        data: { toSearchString = '() => { return "" }' }
+        data: { toSearchString = '() => { return "" }' },
       } = keyModelResponse;
       records = records.map((record) => {
         const isolate = new Isolation();
@@ -793,7 +793,7 @@ export default class RecordsController extends Controller {
           searchString: isCalculateSearchStrings ? v.searchString : v.data && v.data.fullTextAddress,
           keyId,
           user,
-          isEncrypted: isKeyEncrypted
+          isEncrypted: isKeyEncrypted,
         }));
     }
 
@@ -812,7 +812,7 @@ export default class RecordsController extends Controller {
                 registerId,
                 keyId,
                 user,
-                isEncrypted: isKeyEncrypted
+                isEncrypted: isKeyEncrypted,
               }));
     }
 
@@ -827,7 +827,7 @@ export default class RecordsController extends Controller {
           ...v,
           registerId,
           keyId,
-          user
+          user,
         }));
     }
 
@@ -839,10 +839,10 @@ export default class RecordsController extends Controller {
         {
           keyRecords: records.length,
           recordsToImport: recordsToImport.length,
-          recordsToUpdate: recordsToUpdate.length
+          recordsToUpdate: recordsToUpdate.length,
         },
         undefined,
-        202
+        202,
       );
     }
 
@@ -875,7 +875,7 @@ export default class RecordsController extends Controller {
           registerId,
           record: recordToUpdateByDataField,
           dataFieldName: updateByDataField,
-          dataFieldValue: recordToUpdateByDataField.data[updateByDataField]
+          dataFieldValue: recordToUpdateByDataField.data[updateByDataField],
         });
         updatedRecordsByDataField++;
       } catch (error) {
@@ -891,7 +891,7 @@ export default class RecordsController extends Controller {
         recordsToUpdate: recordsToUpdate.length,
         importedRecords,
         updatedRecords,
-        updatedRecordsByDataField
+        updatedRecordsByDataField,
       });
     }
   }
@@ -936,7 +936,7 @@ export default class RecordsController extends Controller {
     }
 
     const {
-      data: { toSearchString: toSearchStringFunction = '() => { return "" }' }
+      data: { toSearchString: toSearchStringFunction = '() => { return "" }' },
     } = keyModelResponse;
 
     // Create records.
@@ -960,7 +960,7 @@ export default class RecordsController extends Controller {
           searchString: searchString,
           searchString2: searchString2,
           searchString3: searchString3,
-          signature: null
+          signature: null,
         };
       });
       createdRecords = await this.recordModel.bulkCreate(recordsToCreate, true, isDisableHooks);
@@ -1003,23 +1003,23 @@ export default class RecordsController extends Controller {
         {
           register_id: registerId,
           key_id: keyId,
-          id: { [Sequelize.Op.notIn]: skipRecordIds }
+          id: { [Sequelize.Op.notIn]: skipRecordIds },
         },
         undefined,
-        () => {}
+        () => {},
       );
       this.log.save('bulk-delete-records-end', result);
 
       this.responseData(res, {
         removedRecords: result.removedRecords,
-        nonRemovedRecords: result.nonRemovedRecords
+        nonRemovedRecords: result.nonRemovedRecords,
       });
     } catch (error) {
       this.log.save('bulk-delete-records-error', {
         error: error && error.message,
         registerId,
         keyId,
-        skipRecordIds
+        skipRecordIds,
       });
       return this.responseError(res, 'Error while deleting records.', 500);
     }
@@ -1034,7 +1034,7 @@ export default class RecordsController extends Controller {
       split_by_fields: splitByFields = false,
       split_by_fields_order: splitByFieldsOrder = 'asc',
       offset,
-      limit
+      limit,
     } = { offset: 0, limit: 20, ...matchedData(req, { locations: ['query'] }) } as any;
 
     // Get history records.
@@ -1167,10 +1167,10 @@ export default class RecordsController extends Controller {
           searchString3,
           person,
           signature,
-          isEncrypted: keyModelResponse.data.isEncrypted
+          isEncrypted: keyModelResponse.data.isEncrypted,
         } as any,
         true,
-        historyMeta
+        historyMeta,
       );
     } catch (error) {
       this.log.save('create-record-error', { error: error && error.message });
@@ -1278,7 +1278,7 @@ export default class RecordsController extends Controller {
       person,
       signature,
       isEncrypted: modelResponse.data.isEncrypted,
-      allowTokens: allowTokensFiltered
+      allowTokens: allowTokensFiltered,
     };
     let recordModelResponse;
     try {
@@ -1445,7 +1445,7 @@ export default class RecordsController extends Controller {
         if (Array.isArray(data[dataKey])) {
           if (data[dataKey].includes('null')) {
             data[dataKey] = {
-              [Sequelize.Op.or]: [{ [Sequelize.Op.in]: data[dataKey].filter((v) => v !== 'null') }, { [Sequelize.Op.is]: null }]
+              [Sequelize.Op.or]: [{ [Sequelize.Op.in]: data[dataKey].filter((v) => v !== 'null') }, { [Sequelize.Op.is]: null }],
             };
           } else {
             data[dataKey] = { [Sequelize.Op.in]: data[dataKey] };
@@ -1514,7 +1514,7 @@ export default class RecordsController extends Controller {
     keyId: number,
     records: RecordEntity[] = [],
     recordData?: any,
-    signature?: any
+    signature?: any,
   ) {
     if (type === 'GET') {
       const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
@@ -1531,7 +1531,7 @@ export default class RecordsController extends Controller {
             await this.sign.verifySignatureExternal(recordDataInBase64, record.signature);
           } catch (error) {
             throw new Error(
-              `Internal Error. BPMN Register. Verify signature error. Record ${record.id}. ${error.message}. ${error.response?.body?.error}.`
+              `Internal Error. BPMN Register. Verify signature error. Record ${record.id}. ${error.message}. ${error.response?.body?.error}.`,
             );
           }
         }
@@ -1540,7 +1540,7 @@ export default class RecordsController extends Controller {
         for (const record of records) {
           if (record.signature) {
             throw new Error(
-              `Internal Error. BPMN Register. Record ${record.id} has a signature. But key ${record.keyId} does not require a signature`
+              `Internal Error. BPMN Register. Record ${record.id} has a signature. But key ${record.keyId} does not require a signature`,
             );
           }
         }
@@ -1574,7 +1574,7 @@ export default class RecordsController extends Controller {
           throw new global.ErrorWithDetails('User do not have permission to sign record.', {
             signature,
             verifySignatureResponse,
-            validationIdentity
+            validationIdentity,
           });
         }
       }
@@ -1604,7 +1604,7 @@ export default class RecordsController extends Controller {
       and: Sequelize.Op.and,
       any: Sequelize.Op.any,
       all: Sequelize.Op.all,
-      contains: Sequelize.Op.contains
+      contains: Sequelize.Op.contains,
     };
 
     function replace(object) {
@@ -1674,7 +1674,7 @@ export default class RecordsController extends Controller {
           'iframe',
           'header',
           'footer',
-          'a'
+          'a',
         ],
         ALLOWED_ATTR: [
           'style',
@@ -1692,8 +1692,8 @@ export default class RecordsController extends Controller {
           'title',
           'href',
           'rel',
-          'target'
-        ]
+          'target',
+        ],
       };
 
       const flattenRecordData = flattenjs.flatten(recordData);
@@ -1706,7 +1706,7 @@ export default class RecordsController extends Controller {
         if (value !== sanitizedValue) {
           errors.push({
             key,
-            value
+            value,
           });
         }
       }

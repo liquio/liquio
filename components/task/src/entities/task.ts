@@ -380,4 +380,3 @@ export class TaskEntity extends Entity {
     return false;
   }
 }
-

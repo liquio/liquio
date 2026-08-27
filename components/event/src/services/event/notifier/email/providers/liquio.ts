@@ -408,16 +408,14 @@ export class LiquioProvider extends Provider {
       filestorage,
     } = eventContext;
 
-    const fileIds = typeof fileIdsFunction === 'string' ? this.sandbox.evalWithArgs(
-      fileIdsFunction,
-      [documents, events],
-      { meta: { fn: 'fileIds', caller: 'LiquioNotifier.getAttachments' } },
-    ) : [];
-    const p7sFileIds = typeof p7sFileIdsFunction === 'string' ? this.sandbox.evalWithArgs(
-      p7sFileIdsFunction,
-      [documents, events],
-      { meta: { fn: 'p7sFileIds', caller: 'LiquioNotifier.getAttachments' } },
-    ) : [];
+    const fileIds =
+      typeof fileIdsFunction === 'string'
+        ? this.sandbox.evalWithArgs(fileIdsFunction, [documents, events], { meta: { fn: 'fileIds', caller: 'LiquioNotifier.getAttachments' } })
+        : [];
+    const p7sFileIds =
+      typeof p7sFileIdsFunction === 'string'
+        ? this.sandbox.evalWithArgs(p7sFileIdsFunction, [documents, events], { meta: { fn: 'p7sFileIds', caller: 'LiquioNotifier.getAttachments' } })
+        : [];
 
     const attachments = await this.getAttachments(filestorage, fileIds, p7sFileIds);
 

@@ -1,4 +1,3 @@
-
 import { randomUUID } from 'node:crypto';
 
 import { Controller } from './controller';
@@ -42,12 +41,16 @@ export class ExternalReaderController extends Controller {
     try {
       const { service, method } = req.params;
       const { data: response } = await this.externalReader.getCaptchaChallenge(service, method);
-      return this.responseData(res, response?.challenge || {
-        enabled: false,
-        challenge: null,
-      }, true);
+      return this.responseData(
+        res,
+        response?.challenge || {
+          enabled: false,
+          challenge: null,
+        },
+        true,
+      );
     } catch (error) {
-      global.log.save('external-reader|get-captcha-challenge|error', { error: error && error.message || error }, 'error');
+      global.log.save('external-reader|get-captcha-challenge|error', { error: (error && error.message) || error }, 'error');
       return this.responseError(res, error);
     }
   }
@@ -71,7 +74,7 @@ export class ExternalReaderController extends Controller {
     }
 
     // Check params.
-    const isWrongParam = (param) => typeof param !== 'string' || param.split('').some(p => ['/', '?'].includes(p));
+    const isWrongParam = (param) => typeof param !== 'string' || param.split('').some((p) => ['/', '?'].includes(p));
     if (isWrongParam(service) || isWrongParam(method)) {
       global.log.save('external-reader|get-data|params-error', { service, method }, 'error');
       return this.responseError(res, 'Incorrect service or method name.', 400);
@@ -82,20 +85,20 @@ export class ExternalReaderController extends Controller {
     let meta;
     try {
       const getDataByUserResponse = await this.externalReader.getDataByUser(
-        service, 
-        method, 
+        service,
+        method,
         captchaPayload,
-        oauthToken, 
-        user, 
+        oauthToken,
+        user,
         nonUserFilter,
         extraParams,
         userUnits,
-        enabledMocksHeader
+        enabledMocksHeader,
       );
       data = getDataByUserResponse.data;
       meta = getDataByUserResponse.meta;
     } catch (error) {
-      global.log.save('external-reader|get-data|error', { error: error && error.message || error, service, method, nonUserFilter, user }, 'error');
+      global.log.save('external-reader|get-data|error', { error: (error && error.message) || error, service, method, nonUserFilter, user }, 'error');
 
       let code = 500;
       if (error.message.includes('Authentication error')) {
@@ -143,7 +146,7 @@ export class ExternalReaderController extends Controller {
     }
 
     // Check params.
-    const isWrongParam = (param) => typeof param !== 'string' || param.split('').some(p => ['/', '?'].includes(p));
+    const isWrongParam = (param) => typeof param !== 'string' || param.split('').some((p) => ['/', '?'].includes(p));
     if (isWrongParam(service) || isWrongParam(method)) {
       global.log.save('external-reader|get-data|params-error', { service, method }, 'error');
       return this.responseError(res, 'Incorrect service or method name.', 400);
@@ -151,13 +154,17 @@ export class ExternalReaderController extends Controller {
 
     requestId = randomUUID();
 
-    await global.redisClient.set(`external-reader-request-id:${requestId}`, {
-      status: 'processing'
-    }, 60 * 60);
+    await global.redisClient.set(
+      `external-reader-request-id:${requestId}`,
+      {
+        status: 'processing',
+      },
+      60 * 60,
+    );
 
     (async () => {
       try {
-        const getDataByUserResponse = (await this.externalReader.getDataByUser(
+        const getDataByUserResponse = await this.externalReader.getDataByUser(
           service,
           method,
           captchaPayload,
@@ -168,26 +175,37 @@ export class ExternalReaderController extends Controller {
           userUnits,
           enabledMocksHeader,
           token,
-          this.config.external_reader.asyncTimeout || 1000 * 60 * 60
-        ));
+          this.config.external_reader.asyncTimeout || 1000 * 60 * 60,
+        );
 
-        await global.redisClient.set(`external-reader-request-id:${requestId}`, {
-          data: getDataByUserResponse.data,
-          meta: getDataByUserResponse.meta,
-        }, 60 * 60);
-
+        await global.redisClient.set(
+          `external-reader-request-id:${requestId}`,
+          {
+            data: getDataByUserResponse.data,
+            meta: getDataByUserResponse.meta,
+          },
+          60 * 60,
+        );
       } catch (error) {
-        global.log.save('external-reader|get-data|error', { error: error && error.message || error, service, method, nonUserFilter, user }, 'error');
+        global.log.save(
+          'external-reader|get-data|error',
+          { error: (error && error.message) || error, service, method, nonUserFilter, user },
+          'error',
+        );
 
         let code = 500;
         if (error.message.includes('Authentication error')) {
           code = 401;
         }
 
-        await global.redisClient.set(`external-reader-request-id:${requestId}`, {
-          errorCode: code,
-          error: error.message
-        }, 60 * 60);
+        await global.redisClient.set(
+          `external-reader-request-id:${requestId}`,
+          {
+            errorCode: code,
+            error: error.message,
+          },
+          60 * 60,
+        );
       }
     })();
 
@@ -230,7 +248,7 @@ export class ExternalReaderController extends Controller {
     try {
       response = await this.externalReader.deleteCacheByUser(oauthToken, user);
     } catch (error) {
-      global.log.save('external-reader|delete-cache|error', { error: error && error.message || error, user }, 'error');
+      global.log.save('external-reader|delete-cache|error', { error: (error && error.message) || error, user }, 'error');
       return this.responseError(res, error.message);
     }
 
@@ -251,9 +269,8 @@ export class ExternalReaderController extends Controller {
 
       return this.responseData(res, response);
     } catch (error) {
-      global.log.save('external-reader|get-captcha-providers|error', { error: error && error.message || error }, 'error');
+      global.log.save('external-reader|get-captcha-providers|error', { error: (error && error.message) || error }, 'error');
       return this.responseError(res, error);
     }
   }
 }
-

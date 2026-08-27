@@ -45,7 +45,7 @@ describe('JobQueue', function () {
       },
       onRunFinished: async () => {
         runFinished = true;
-      }
+      },
     });
 
     const job = async () => {
@@ -73,7 +73,7 @@ describe('JobQueue', function () {
       },
       onRunFinished: async () => {
         runFinished = true;
-      }
+      },
     });
 
     const job = async () => {

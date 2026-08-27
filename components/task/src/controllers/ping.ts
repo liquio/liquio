@@ -507,4 +507,3 @@ export class PingController extends Controller {
     return result;
   }
 }
-

@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -50,4 +49,3 @@ export class DocumentSignatureEntity extends Entity {
     return this.getFilterProperties();
   }
 }
-

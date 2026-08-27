@@ -87,10 +87,7 @@ describe('MessageQueue', () => {
     it('should establish amqp connection and subscribe to events', async () => {
       await messageQueue.initConnection();
 
-      expect(amqp.connect).toHaveBeenCalledWith(
-        'amqp://localhost',
-        expect.any(Function),
-      );
+      expect(amqp.connect).toHaveBeenCalledWith('amqp://localhost', expect.any(Function));
       expect(messageQueue.connection).toBeDefined();
       expect(messageQueue.connection.on).toHaveBeenCalledWith('error', expect.any(Function));
       expect(messageQueue.connection.on).toHaveBeenCalledWith('close', expect.any(Function));
@@ -98,7 +95,7 @@ describe('MessageQueue', () => {
 
     it('should call reconnect on connection error', async () => {
       const reconnectSpy = jest.spyOn(messageQueue, 'reconnect');
-      
+
       amqp.connect.mockImplementationOnce((url, callback) => {
         const err = new Error('Connection failed');
         callback(err);
@@ -135,14 +132,8 @@ describe('MessageQueue', () => {
       await messageQueue.initChannels();
       messageQueue.initQueues();
 
-      expect(messageQueue.channels.reading.assertQueue).toHaveBeenCalledWith(
-        'readingQueue',
-        { durable: true },
-      );
-      expect(messageQueue.channels.writing.assertQueue).toHaveBeenCalledWith(
-        'writingQueue',
-        { durable: true },
-      );
+      expect(messageQueue.channels.reading.assertQueue).toHaveBeenCalledWith('readingQueue', { durable: true });
+      expect(messageQueue.channels.writing.assertQueue).toHaveBeenCalledWith('writingQueue', { durable: true });
     });
 
     it('should assert error queues with ttl and dead letter routing', async () => {
@@ -156,9 +147,7 @@ describe('MessageQueue', () => {
       expect(errorQueueCalls.length).toBeGreaterThan(0);
 
       // Verify at least one error queue has proper configuration
-      const errorQueueCall = errorQueueCalls.find(
-        call => call[0] === 'readingQueue-errors-10m'
-      );
+      const errorQueueCall = errorQueueCalls.find((call) => call[0] === 'readingQueue-errors-10m');
       expect(errorQueueCall).toBeDefined();
       expect(errorQueueCall[1].arguments['x-message-ttl']).toBe(10 * 60 * 1000);
       expect(errorQueueCall[1].arguments['x-dead-letter-routing-key']).toBe('readingQueue');
@@ -169,10 +158,7 @@ describe('MessageQueue', () => {
     it('should initialize the connection, channels, and queues', async () => {
       await messageQueue.init();
 
-      expect(amqp.connect).toHaveBeenCalledWith(
-        'amqp://localhost',
-        expect.any(Function),
-      );
+      expect(amqp.connect).toHaveBeenCalledWith('amqp://localhost', expect.any(Function));
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
       expect(messageQueue.channels).toBeDefined();
       expect(global.log.save).toHaveBeenCalled();
@@ -181,7 +167,7 @@ describe('MessageQueue', () => {
     it('should call onInit callback if provided', async () => {
       const onInitCallback = jest.fn();
       (MessageQueue as any).singleton = null;
-      
+
       const mqWithCallback = new MessageQueue(
         {
           amqpConnection: 'amqp://localhost',
@@ -189,7 +175,7 @@ describe('MessageQueue', () => {
           readingQueueName: 'readingQueue',
           writingQueueName: 'writingQueue',
         },
-        { onInit: onInitCallback }
+        { onInit: onInitCallback },
       );
 
       await mqWithCallback.init();
@@ -257,20 +243,16 @@ describe('MessageQueue', () => {
 
       await messageQueue.init();
       messageQueue.subscribeToConsuming(handler);
-      const decoratedHandler =
-        messageQueue.channels.reading.consume.mock.calls[0][1];
+      const decoratedHandler = messageQueue.channels.reading.consume.mock.calls[0][1];
 
       decoratedHandler({ content: Buffer.from(JSON.stringify(message)) });
 
       await delay(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith(
-        'message-from-queue-handled',
-        {
-          messageString: JSON.stringify(message),
-        },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-handled', {
+        messageString: JSON.stringify(message),
+      });
     });
 
     it('should not acknowledge message if handler returns false', async () => {
@@ -279,20 +261,16 @@ describe('MessageQueue', () => {
 
       await messageQueue.init();
       messageQueue.subscribeToConsuming(handler);
-      const decoratedHandler =
-        messageQueue.channels.reading.consume.mock.calls[0][1];
+      const decoratedHandler = messageQueue.channels.reading.consume.mock.calls[0][1];
 
       decoratedHandler({ content: Buffer.from(JSON.stringify(message)) });
 
       await delay(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.nack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith(
-        'message-from-queue-not-handled',
-        {
-          messageString: JSON.stringify(message),
-        },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-not-handled', {
+        messageString: JSON.stringify(message),
+      });
     });
 
     it('should support subscribing to custom channel and queue', async () => {
@@ -325,10 +303,7 @@ describe('MessageQueue', () => {
 
       await messageQueue.close();
 
-      expect(global.log.save).toHaveBeenCalledWith(
-        'can-not-close-connection',
-        'Close failed',
-      );
+      expect(global.log.save).toHaveBeenCalledWith('can-not-close-connection', 'Close failed');
     });
 
     it('should handle closing when no connection exists', async () => {

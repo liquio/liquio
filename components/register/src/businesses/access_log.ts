@@ -55,7 +55,7 @@ export default class AccessLogBusiness extends Business {
       .map((v) => ({
         recordId: v.id,
         keyId: v.keyId,
-        data
+        data,
       }));
 
     // Save to access log.
@@ -65,12 +65,12 @@ export default class AccessLogBusiness extends Business {
   async updateKeyIdsToSaveAccessLog() {
     const options = {
       filters: { isSaveViewingHistory: true },
-      attributes: ['id']
+      attributes: ['id'],
     };
     const { data: keyIds } = await RedisClient.getOrSet(
       ['accessLog', 'keyIdsToSave'],
       async () => [...(await this.keyModel.findByMetaFilters(options)).map((el) => el.id), ...this.keyIdsToSaveAccessLogFromConfig],
-      this.ttl
+      this.ttl,
     );
     this.keyIdsToSaveAccessLog = keyIds;
   }

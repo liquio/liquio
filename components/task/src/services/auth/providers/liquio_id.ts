@@ -1,4 +1,3 @@
-
 import cyrillicToTranslit from 'cyrillic-to-translit-js';
 import PropByPath from 'prop-by-path';
 import * as crypto from 'node:crypto';
@@ -30,7 +29,7 @@ const DEFAULT_ROUTES = {
   addTestCode: '/oauth/token/test_code',
   ping: '/test/ping',
   pingWithAuth: '/test/ping_with_auth',
-  prepareUser: '/user/prepare'
+  prepareUser: '/user/prepare',
 };
 const USER_INFO_UPDATED_RESPONSE = 'ok';
 const SEARCH_USERS_LIMIT = 10;
@@ -107,7 +106,7 @@ export class LiquioIdProvider extends Provider {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_FORM_URL_ENCODED,
         'x-trace-id': getTraceId(),
       },
-      body: `grant_type=authorization_code&code=${code}&client_id=${this.clientId}&client_secret=${this.clientSecret}`
+      body: `grant_type=authorization_code&code=${code}&client_id=${this.clientId}&client_secret=${this.clientSecret}`,
     });
 
     // Check response.
@@ -119,7 +118,7 @@ export class LiquioIdProvider extends Provider {
     // Return tokens.
     return {
       accessToken: response.access_token,
-      refreshToken: response.refresh_token
+      refreshToken: response.refresh_token,
     };
   }
 
@@ -137,7 +136,7 @@ export class LiquioIdProvider extends Provider {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_FORM_URL_ENCODED,
         'x-trace-id': getTraceId(),
       },
-      body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=${this.clientId}&client_secret=${this.clientSecret}`
+      body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=${this.clientId}&client_secret=${this.clientSecret}`,
     });
 
     // Check response.
@@ -148,7 +147,7 @@ export class LiquioIdProvider extends Provider {
     // Return tokens.
     return {
       accessToken: response.access_token,
-      refreshToken: response.refresh_token
+      refreshToken: response.refresh_token,
     };
   }
 
@@ -163,16 +162,20 @@ export class LiquioIdProvider extends Provider {
       url: `${this.server}:${this.port}${this.routes.getUserInfo}?access_token=${accessToken}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     // Check response.
     if (!response.userId) {
-      global.log.save('login-error-id-response-without-user-id', {
-        response,
-        tokenShort: `${accessToken.slice(0, 8)}****${accessToken.slice(-8)}`,
-        tokenHash: crypto.createHash('sha256').update(accessToken).digest('hex')
-      }, 'error');
+      global.log.save(
+        'login-error-id-response-without-user-id',
+        {
+          response,
+          tokenShort: `${accessToken.slice(0, 8)}****${accessToken.slice(-8)}`,
+          tokenHash: crypto.createHash('sha256').update(accessToken).digest('hex'),
+        },
+        'error',
+      );
       throw new Error(ERROR_MESSAGE_USER_ID_NOT_RESPONSED);
     }
     if (!response.services) {
@@ -232,12 +235,12 @@ export class LiquioIdProvider extends Provider {
       id_card_issue_date: options.idCardIssueDate,
       id_card_issued_by: options.idCardIssuedBy,
       id_card_expiry_date: options.idCardExpiryDate,
-      is_private_house: options.isPrivateHouse === true ? 'true' : options.isPrivateHouse === false ? 'false' : undefined
+      is_private_house: options.isPrivateHouse === true ? 'true' : options.isPrivateHouse === false ? 'false' : undefined,
     };
 
     const bodyUpdatingParamsArray = Object.entries(updatingParams)
-      .filter(v => typeof v[1] === 'string')
-      .map(v => `&${v[0]}=${encodeURIComponent(v[1])}`);
+      .filter((v) => typeof v[1] === 'string')
+      .map((v) => `&${v[0]}=${encodeURIComponent(v[1])}`);
     const bodyUpdatingParams = bodyUpdatingParamsArray.join('');
     const body = `${bodyRequiredProperties}${bodyUpdatingParams}`;
     const requestOptions = {
@@ -248,7 +251,7 @@ export class LiquioIdProvider extends Provider {
         'x-trace-id': getTraceId(),
       },
       body,
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request to update user info.
@@ -257,7 +260,7 @@ export class LiquioIdProvider extends Provider {
     global.log.save('user-info-updating-response', response);
 
     // Return is update indicator.
-    if (response !== USER_INFO_UPDATED_RESPONSE){
+    if (response !== USER_INFO_UPDATED_RESPONSE) {
       throw new Error(response);
     }
 
@@ -271,7 +274,7 @@ export class LiquioIdProvider extends Provider {
    * @returns {Promise<{}[]>} Users info promise.
    */
   async getUsersByIds(usersIds, withPrivateProps = false) {
-    const normalizedUserIds = (Array.isArray(usersIds) ? usersIds : [usersIds]).filter(v => typeof v === 'string' && v.length === 24);
+    const normalizedUserIds = (Array.isArray(usersIds) ? usersIds : [usersIds]).filter((v) => typeof v === 'string' && v.length === 24);
 
     // Check if empty.
     if (normalizedUserIds.length === 0) {
@@ -289,10 +292,10 @@ export class LiquioIdProvider extends Provider {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        Authorization: this.basicAuthHeader
+        Authorization: this.basicAuthHeader,
       },
       body: JSON.stringify(bodyObject),
-      timeout: this.timeout
+      timeout: this.timeout,
     });
     global.log.save('get-user-by-id-response', { usersIds, normalizedUserIds, response });
 
@@ -301,7 +304,7 @@ export class LiquioIdProvider extends Provider {
       throw new Error(ERROR_MESSAGE_USER_NOT_RESPONSED);
     }
 
-    const mainUsersInfo = response.map(user => this.getMainUserInfo(user, withPrivateProps));
+    const mainUsersInfo = response.map((user) => this.getMainUserInfo(user, withPrivateProps));
 
     // Return main users info.
     return mainUsersInfo;
@@ -326,11 +329,11 @@ export class LiquioIdProvider extends Provider {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        Authorization: this.basicAuthHeader
+        Authorization: this.basicAuthHeader,
       },
       json: true,
       body: bodyObject,
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     global.log.save('update-user-onboarding-response', response);
@@ -353,10 +356,10 @@ export class LiquioIdProvider extends Provider {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        Authorization: this.basicAuthHeader
+        Authorization: this.basicAuthHeader,
       },
       body: JSON.stringify(bodyObject),
-      timeout: this.timeout
+      timeout: this.timeout,
     });
     global.log.save('user-searching-response', response);
 
@@ -389,10 +392,10 @@ export class LiquioIdProvider extends Provider {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        Authorization: this.basicAuthHeader
+        Authorization: this.basicAuthHeader,
       },
       body: JSON.stringify(bodyObject),
-      timeout: this.timeout
+      timeout: this.timeout,
     });
     global.log.save('user-find-by-code-response', response);
 
@@ -402,7 +405,7 @@ export class LiquioIdProvider extends Provider {
     }
 
     // Prepare data to return. Needs to return array if input IPN is array too.
-    const mainUsersInfo = response.map(user => this.getMainUserInfo(user, withPrivateProps));
+    const mainUsersInfo = response.map((user) => this.getMainUserInfo(user, withPrivateProps));
     const [mainUserInfo = null] = mainUsersInfo;
     const needsReturnArray = Array.isArray(code);
     const infoToReturn = needsReturnArray ? mainUsersInfo : mainUserInfo;
@@ -427,9 +430,9 @@ export class LiquioIdProvider extends Provider {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        Authorization: this.basicAuthHeader
+        Authorization: this.basicAuthHeader,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
     global.log.save('user-find-by-email-response', response);
 
@@ -439,7 +442,7 @@ export class LiquioIdProvider extends Provider {
     }
 
     // Prepare data to return.
-    const mainUsersInfo = response.map(user => this.getMainUserInfo(user, withPrivateProps));
+    const mainUsersInfo = response.map((user) => this.getMainUserInfo(user, withPrivateProps));
     const [mainUserInfo = null] = mainUsersInfo;
     const needsReturnArray = Array.isArray(email);
     const infoToReturn = needsReturnArray ? mainUsersInfo : mainUserInfo;
@@ -461,9 +464,9 @@ export class LiquioIdProvider extends Provider {
       method: HttpRequest.Methods.GET,
       headers: {
         'x-trace-id': getTraceId(),
-        Authorization: this.basicAuthHeader
+        Authorization: this.basicAuthHeader,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
     global.log.save('email-existance-response', response);
 
@@ -518,17 +521,19 @@ export class LiquioIdProvider extends Provider {
       avaUrl: user.avaUrl ? `${this.server}:${this.port}${user.avaUrl}` : '',
       status: user.status,
       valid: user.valid,
-      position: myInfo ?
-        PropByPath.get(user, 'services.eds.data.title') :
-        user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.title || undefined,
+      position: myInfo
+        ? PropByPath.get(user, 'services.eds.data.title')
+        : (user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.title) || undefined,
       pem: user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.pem,
       encodeCertSerial: user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.encodeCertSerial,
       encodeCert: user.user_services && user.user_services[0] && user.user_services[0].data && user.user_services[0].data.encodeCert,
-      services: withPrivateProps ? user.services || {
-        eds: user.user_services && user.user_services[0] && user.user_services[0].provider === 'eds' ? user.user_services[0] : undefined,
-        govid: user.user_services && user.user_services[0] && user.user_services[0].provider === 'govid' ? user.user_services[0] : undefined,
-        ldap: user.user_services && user.user_services[0] && user.user_services[0].provider === 'ldap' ? user.user_services[0] : undefined,
-      } : undefined
+      services: withPrivateProps
+        ? user.services || {
+            eds: user.user_services && user.user_services[0] && user.user_services[0].provider === 'eds' ? user.user_services[0] : undefined,
+            govid: user.user_services && user.user_services[0] && user.user_services[0].provider === 'govid' ? user.user_services[0] : undefined,
+            ldap: user.user_services && user.user_services[0] && user.user_services[0].provider === 'ldap' ? user.user_services[0] : undefined,
+          }
+        : undefined,
     };
   }
 
@@ -542,7 +547,7 @@ export class LiquioIdProvider extends Provider {
       url: `${this.server}:${this.port}${this.routes.sendSms}?phone=${phone}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     global.log.save('user-send-sms', response);
@@ -566,7 +571,7 @@ export class LiquioIdProvider extends Provider {
       url: `${this.server}:${this.port}${this.routes.verifyPhone}?phone=${phone}&code=${code}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     global.log.save('user-phone-verification', response);
@@ -592,7 +597,7 @@ export class LiquioIdProvider extends Provider {
       url: `${this.server}:${this.port}${this.routes.verifyPhoneAndSet}?phone=${phone}&code=${code}&access_token=${accessToken}`,
       method: HttpRequest.Methods.POST,
       headers: { 'x-trace-id': getTraceId() },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
     global.log.save('user-phone-verification-response', { phone, code, accessToken, response });
 
@@ -611,7 +616,7 @@ export class LiquioIdProvider extends Provider {
       url: `${this.server}:${this.port}${this.routes.phoneExist}?phone=${phone}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     // Log result.
@@ -640,7 +645,7 @@ export class LiquioIdProvider extends Provider {
       url: `${this.server}:${this.port}${this.routes.changeEmail}?email=${email}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     global.log.save('user-change-email', response);
@@ -665,7 +670,7 @@ export class LiquioIdProvider extends Provider {
       url: `${this.server}:${this.port}${this.routes.confirmChangeEmail}?email=${email}&code_email=${code}&access_token=${accessToken}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     global.log.save('user-confirm-change-email', response);
@@ -689,7 +694,7 @@ export class LiquioIdProvider extends Provider {
       url: `${this.server}:${this.port}${this.routes.checkEmailConfirmationCode}?email=${email}&code_email=${code}&access_token=${accessToken}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     global.log.save('liquio-id|check-email-confirmation-code|response', response);
@@ -720,7 +725,7 @@ export class LiquioIdProvider extends Provider {
         Authorization: this.basicAuthHeader,
       },
       body: JSON.stringify({ code, userId }),
-      timeout: this.timeout
+      timeout: this.timeout,
     });
     global.log.save('add-test-code-response', response);
 
@@ -748,15 +753,18 @@ export class LiquioIdProvider extends Provider {
     const fullResponse = true;
 
     try {
-      const responseData = await HttpRequest.send({
-        url: `${this.server}:${this.port}${this.routes.pingWithAuth}`,
-        method: HttpRequest.Methods.GET,
-        headers: {
-          'x-trace-id': getTraceId(),
-          Authorization: this.basicAuthHeader
+      const responseData = await HttpRequest.send(
+        {
+          url: `${this.server}:${this.port}${this.routes.pingWithAuth}`,
+          method: HttpRequest.Methods.GET,
+          headers: {
+            'x-trace-id': getTraceId(),
+            Authorization: this.basicAuthHeader,
+          },
+          timeout: this.timeout,
         },
-        timeout: this.timeout
-      }, fullResponse);
+        fullResponse,
+      );
       global.log.save('send-ping-request-to-liquio-id', responseData);
 
       const body = responseData && responseData.body;
@@ -766,7 +774,9 @@ export class LiquioIdProvider extends Provider {
       const environment = headers && headers.environment;
 
       return { version, customer, environment, body };
-    } catch (error) { global.log.save('send-ping-request-to-liquio-id-error', error.message); }
+    } catch (error) {
+      global.log.save('send-ping-request-to-liquio-id-error', error.message);
+    }
   }
 
   /**
@@ -792,7 +802,7 @@ export class LiquioIdProvider extends Provider {
         'x-trace-id': getTraceId(),
       },
       body,
-      timeout: this.timeout
+      timeout: this.timeout,
     };
     global.log.save('logout-other-sessions-options', { options }, 'info');
     try {
@@ -816,7 +826,6 @@ export class LiquioIdProvider extends Provider {
    * @param {string} email Email.
    */
   async prepareUser(name, surname, middlename, ipn, email) {
-
     // Define request body.
     const bodyRequiredProperties = `MIME+Type=application%2Fx-www-form-urlencoded&name=${name}&surname=${surname}&middlename=${middlename}&ipn=${ipn}&email=${email}`;
     const body = `${bodyRequiredProperties}`;
@@ -833,10 +842,14 @@ export class LiquioIdProvider extends Provider {
         Authorization: this.basicAuthHeader,
       },
       body,
-      timeout: this.timeout
+      timeout: this.timeout,
     };
     global.log.save('prepare-user-options', { options }, 'info');
-    try { response = await HttpRequest.send(options); } catch (error) { global.log.save('prepare-user-error', { error: error && error.message, body }); }
+    try {
+      response = await HttpRequest.send(options);
+    } catch (error) {
+      global.log.save('prepare-user-error', { error: error && error.message, body });
+    }
 
     // Check response.
     if (!response.userId) {
@@ -859,10 +872,11 @@ export class LiquioIdProvider extends Provider {
    */
   normalizeUserName(name) {
     // Return as is if not a string.
-    if (typeof name !== 'string') { return name; }
+    if (typeof name !== 'string') {
+      return name;
+    }
 
     // Return normalized name.
     return name.trim();
   }
 }
-

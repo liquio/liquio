@@ -65,8 +65,8 @@ export class RegistersDefaultValueFiller extends Filler {
           const filterValue =
             typeof filter.value === 'string' && filter.value.startsWith('user.')
               ? this.sandbox.evalWithArgs(`user => ${filter.value}`, [userInfo], {
-                meta: { fn: 'RegistersDefaultValueFiller.fill.filters', filterName: filter.name },
-              })
+                  meta: { fn: 'RegistersDefaultValueFiller.fill.filters', filterName: filter.name },
+                })
               : filter.value;
 
           filtersObject[filter.name] = filterValue;
@@ -129,4 +129,3 @@ export class RegistersDefaultValueFiller extends Filler {
     return objectToFill;
   }
 }
-

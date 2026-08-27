@@ -1,4 +1,3 @@
-
 import Sequelize from 'sequelize';
 import { Model } from './model';
 import { CustomLogEntity } from '../entities/custom_log';
@@ -29,79 +28,79 @@ export class CustomLogModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           custom_log_template_id: {
             allowNull: true,
             type: Sequelize.INTEGER,
-            references: { model: 'custom_log_templates', key: 'id' }
+            references: { model: 'custom_log_templates', key: 'id' },
           },
           name: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           type: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           document_id: {
             allowNull: true,
             type: Sequelize.UUID,
-            references: { model: 'documents', key: 'id' }
+            references: { model: 'documents', key: 'id' },
           },
           request_id: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           method: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           url: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           uri_pattern: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           ip: {
             allowNull: true,
             type: Sequelize.ARRAY(Sequelize.STRING),
-            defaultValue: []
+            defaultValue: [],
           },
           user_agent: {
             allowNull: true,
-            type: Sequelize.TEXT
+            type: Sequelize.TEXT,
           },
           user_id: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           user_name: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           custom: {
             allowNull: false,
             type: Sequelize.JSONB,
-            defaultValue: {}
+            defaultValue: {},
           },
           created_at: {
             allowNull: false,
-            type: Sequelize.DATE
+            type: Sequelize.DATE,
           },
           updated_at: {
             allowNull: false,
-            type: Sequelize.DATE
-          }
+            type: Sequelize.DATE,
+          },
         },
         {
           tableName: 'custom_logs',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Sequelize model params.
@@ -122,7 +121,7 @@ export class CustomLogModel extends Model {
   async getAll() {
     // DB query.
     const raw = await this.model.findAll({
-      sort: [['created_at', 'asc']]
+      sort: [['created_at', 'asc']],
     });
 
     // Return entities.
@@ -187,7 +186,7 @@ export class CustomLogModel extends Model {
       custom: item.custom,
       defaultValue: item.defaultValue,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 
@@ -214,8 +213,7 @@ export class CustomLogModel extends Model {
       custom: item.custom,
       defaultValue: item.defaultValue,
       created_at: item.createdAt,
-      updated_at: item.updatedAt
+      updated_at: item.updatedAt,
     };
   }
 }
-

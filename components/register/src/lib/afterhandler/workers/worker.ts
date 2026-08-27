@@ -118,7 +118,7 @@ export default class AfterhandlerWorker {
       } catch (error) {
         this.log.save('afterhandler-worker|error', {
           error: error && error.message,
-          afterhandlerType: this.afterhandlerType
+          afterhandlerType: this.afterhandlerType,
         });
         try {
           if (afterhandlerId) {
@@ -128,7 +128,7 @@ export default class AfterhandlerWorker {
           this.log.save('afterhandler-worker-set-synced-with-error|error', {
             afterhandlerId,
             error: error && error.message,
-            afterhandlerType: this.afterhandlerType
+            afterhandlerType: this.afterhandlerType,
           });
         }
       }

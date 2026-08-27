@@ -138,7 +138,7 @@ describe('EventBusiness - Delay type events', () => {
         name: 'Dynamic Delay Event',
         description: 'Event to schedule dynamic delay',
         json_schema: JSON.stringify({
-          delay: '() => \'1d\'', // Dynamic delay function: 1 day
+          delay: "() => '1d'", // Dynamic delay function: 1 day
         }),
         html_template: '',
       });

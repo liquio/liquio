@@ -127,7 +127,7 @@ export class EventModel extends Model {
         where: {
           event_type_id: DELAY_TYPE,
           done: false,
-          [Sequelize.Op.and]: Sequelize.literal('due_date < (now() - interval \'1 hour\')'),
+          [Sequelize.Op.and]: Sequelize.literal("due_date < (now() - interval '1 hour')"),
           lock_id: {
             [Sequelize.Op.ne]: null,
           },

@@ -32,7 +32,7 @@ export default class CustomController extends Controller {
   async getPostCode(req: Request, res: Response) {
     // Define params.
     const { regionName, districtName, cityName, streetName, buildingNumber } = {
-      ...matchedData(req, { locations: ['query'] })
+      ...matchedData(req, { locations: ['query'] }),
     };
 
     let regionIds;
@@ -55,7 +55,7 @@ export default class CustomController extends Controller {
       buildingNumber,
       regionIds,
       cityIds,
-      postalCodes
+      postalCodes,
     };
 
     // Response.

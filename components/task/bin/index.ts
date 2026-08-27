@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-
 import yargsFactory from 'yargs';
 
 import { BpmnTaskCore } from '../src/app';

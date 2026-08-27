@@ -20,7 +20,7 @@ export const config: Config = {
   auth: {
     tokens: ['Basic dGVzdDp0ZXN0'],
     allowRawSequelizeParamsUsers: [],
-    limitedAccess: []
+    limitedAccess: [],
   },
   afterhandler: {
     options: { reindexLimit: 100 },
@@ -37,15 +37,15 @@ export const config: Config = {
             getData: { requestType: 'GET', urlSuffix: '/api/documents/{id}' },
             createData: { requestType: 'POST', urlSuffix: '/api/documents' },
             updateData: { requestType: 'PUT', urlSuffix: '/api/documents' },
-            deleteData: { requestType: 'POST', urlSuffix: '/api/documents/revoke' }
+            deleteData: { requestType: 'POST', urlSuffix: '/api/documents/revoke' },
           },
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
-            Authorization: '<removed>'
-          }
-        }
-      }
+            Authorization: '<removed>',
+          },
+        },
+      },
     },
     elastic: {
       isActive: false,
@@ -59,15 +59,15 @@ export const config: Config = {
           deleteData: { requestType: 'DELETE', urlSuffix: '/register_key_{key-id}/_doc/{id}' },
           dropIndex: { requestType: 'DELETE', urlSuffix: '/register_key_{key-id}' },
           createIndex: { requestType: 'PUT', urlSuffix: '/register_key_{key-id}' },
-          getIndexCount: { requestType: 'GET', urlSuffix: '/register_key_{key-id}/_count' }
+          getIndexCount: { requestType: 'GET', urlSuffix: '/register_key_{key-id}/_count' },
         },
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          Authorization: 'Basic <removed>'
-        }
-      }
-    }
+          Authorization: 'Basic <removed>',
+        },
+      },
+    },
   },
   key_signature: {},
   db: {
@@ -81,64 +81,64 @@ export const config: Config = {
     dialectOptions: {
       socketPath: '',
       supportBigNumbers: true,
-      bigNumberStrings: true
+      bigNumberStrings: true,
     },
     pool: {
       max: 5,
       min: 0,
       acquire: 30000,
-      idle: 10000
+      idle: 10000,
     },
     logging: false,
-    migrationStorageTableName: 'sequelize_meta'
+    migrationStorageTableName: 'sequelize_meta',
   },
   encryption: {
     key: 'pFtBuAmNreLJAb6U137WWDSK0wFi3KL1',
     iv_size: 12,
-    batch_job_size: 100
+    batch_job_size: 100,
   },
   log: {
     console: [],
     responsesData: false,
-    excludeParams: ['token', 'authorization', 'Authorization']
+    excludeParams: ['token', 'authorization', 'Authorization'],
   },
   redis: {
     isEnabled: false,
     host: '',
     port: 6379,
-    defaultTtl: 30
+    defaultTtl: 30,
   },
   sign: {
     timeout: 10000,
     url: 'http://sign',
-    token: ''
+    token: '',
   },
   filters: {
-    wrongValues: ['@']
+    wrongValues: ['@'],
   },
   search: {
     main: {
       resultsCount: 10,
       doNotSearchThisWords: [],
-      replaceWords: []
-    }
+      replaceWords: [],
+    },
   },
   server: {
     hostname: 'localhost',
     port: 3000,
     maxBodySize: '10mb',
     customer: 'test',
-    environment: 'test'
+    environment: 'test',
   },
   pagination: {
     maxLimit: 100000,
     maxExportLimit: 1000000,
-    packetLimit: 1000
-  }
+    packetLimit: 1000,
+  },
 };
 
 const consoleLogProvider = new ConsoleLogProvider('console', {
-  excludeParams: config.log?.excludeParams
+  excludeParams: config.log?.excludeParams,
 });
 
 const log = new Log(process.env.ENABLE_CONSOLE_LOG ? [consoleLogProvider] : [], process.env.ENABLE_CONSOLE_LOG ? ['console'] : []);
@@ -170,7 +170,7 @@ export async function startApp(config: Config) {
   if (config.redis && config.redis.isEnabled) {
     new RedisClient({
       host: config.redis.host,
-      port: config.redis.port
+      port: config.redis.port,
     });
   }
 
@@ -210,8 +210,8 @@ export async function insertData(sequelize) {
       created_by: 'liquio-stage',
       updated_by: 'liquio-stage',
       created_at: '2022-01-24T09:00:44.385Z',
-      updated_at: '2024-05-13T10:34:25.070Z'
-    }
+      updated_at: '2024-05-13T10:34:25.070Z',
+    },
   };
 
   // Registers
@@ -230,10 +230,10 @@ export async function insertData(sequelize) {
           register.created_by,
           register.updated_by,
           register.created_at,
-          register.updated_at
-        ]
+          register.updated_at,
+        ],
       },
-      { raw: true }
+      { raw: true },
     );
   }
 
@@ -255,7 +255,7 @@ export async function insertData(sequelize) {
       to_search_string:
         "(record) => {\n    const casesIndicatorsMap = {\n        case8: '8',\n        case13: '13',\n        case14: '14',\n        case15: '15',\n        case16: '16',\n        case18: '18',\n        case27: '27'\n    };\n    const casesIndicators = '|' + Object.entries(casesIndicatorsMap).map(v => record.data[v[0]] ? v[1] : null).filter(v => !!v).join('|') + '|';\n    return [record.data.atuId, record.data.OBJ_ID, casesIndicators];\n};",
       to_export: '(record) => { return null; }',
-      is_encrypted: false
+      is_encrypted: false,
     },
     151: {
       id: 151,
@@ -273,7 +273,7 @@ export async function insertData(sequelize) {
       to_string: '(record) => { return record.data.NAME; };',
       to_search_string: '(record) => { return [record.data.RET_ID]; };',
       to_export: '(record) => { return null; }',
-      is_encrypted: false
+      is_encrypted: false,
     },
     163: {
       id: 163,
@@ -290,7 +290,7 @@ export async function insertData(sequelize) {
       to_string: '() => "";',
       to_search_string: '() => "";',
       to_export: '(record) => { return null; }',
-      is_encrypted: false
+      is_encrypted: false,
     },
     164: {
       id: 164,
@@ -308,8 +308,8 @@ export async function insertData(sequelize) {
       to_string: '() => "";',
       to_search_string: '() => "";',
       to_export: '(record) => { return null; }',
-      is_encrypted: false
-    }
+      is_encrypted: false,
+    },
   };
 
   // Keys
@@ -334,10 +334,10 @@ export async function insertData(sequelize) {
           key.to_string,
           key.to_search_string,
           key.to_export,
-          key.is_encrypted
-        ]
+          key.is_encrypted,
+        ],
       },
-      { raw: true }
+      { raw: true },
     );
   }
 
@@ -357,7 +357,7 @@ export async function insertData(sequelize) {
       search_string_2: '88490',
       search_string_3: '|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '87617e50-09b8-11ee-8bd8-f1f3dc4af6ad': {
       id: '87617e50-09b8-11ee-8bd8-f1f3dc4af6ad',
@@ -374,7 +374,7 @@ export async function insertData(sequelize) {
       search_string_2: '88554',
       search_string_3: '|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '8b3828d0-09b8-11ee-8bd8-f1f3dc4af6ad': {
       id: '8b3828d0-09b8-11ee-8bd8-f1f3dc4af6ad',
@@ -391,7 +391,7 @@ export async function insertData(sequelize) {
       search_string_2: '88519',
       search_string_3: '|8|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '8ade9720-09b8-11ee-8bd8-f1f3dc4af6ad': {
       id: '8ade9720-09b8-11ee-8bd8-f1f3dc4af6ad',
@@ -408,7 +408,7 @@ export async function insertData(sequelize) {
       search_string_2: '89783',
       search_string_3: '|8|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '8940ecb0-09b8-11ee-8bd8-f1f3dc4af6ad': {
       id: '8940ecb0-09b8-11ee-8bd8-f1f3dc4af6ad',
@@ -425,7 +425,7 @@ export async function insertData(sequelize) {
       search_string_2: '89028',
       search_string_3: '|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdecae2-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdecae2-7d38-11ec-a6de-b57280148b1b',
@@ -442,7 +442,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdecaf1-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdecaf1-7d38-11ec-a6de-b57280148b1b',
@@ -459,7 +459,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdea3f8-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdea3f8-7d38-11ec-a6de-b57280148b1b',
@@ -476,7 +476,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdea3fd-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdea3fd-7d38-11ec-a6de-b57280148b1b',
@@ -493,7 +493,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdea402-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdea402-7d38-11ec-a6de-b57280148b1b',
@@ -510,7 +510,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '99afab63-7d38-11ec-a6de-b57280148b1b': {
       id: '99afab63-7d38-11ec-a6de-b57280148b1b',
@@ -527,7 +527,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '99afab68-7d38-11ec-a6de-b57280148b1b': {
       id: '99afab68-7d38-11ec-a6de-b57280148b1b',
@@ -544,7 +544,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '99afab6a-7d38-11ec-a6de-b57280148b1b': {
       id: '99afab6a-7d38-11ec-a6de-b57280148b1b',
@@ -561,7 +561,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '99afab6f-7d38-11ec-a6de-b57280148b1b': {
       id: '99afab6f-7d38-11ec-a6de-b57280148b1b',
@@ -578,7 +578,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '60d82005-7d38-11ec-a6de-b57280148b1b': {
       id: '60d82005-7d38-11ec-a6de-b57280148b1b',
@@ -595,7 +595,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '44108792-7d37-11ec-a6de-b57280148b1b': {
       id: '44108792-7d37-11ec-a6de-b57280148b1b',
@@ -612,7 +612,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '44108793-7d37-11ec-a6de-b57280148b1b': {
       id: '44108793-7d37-11ec-a6de-b57280148b1b',
@@ -629,7 +629,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '4410aea3-7d37-11ec-a6de-b57280148b1b': {
       id: '4410aea3-7d37-11ec-a6de-b57280148b1b',
@@ -646,7 +646,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '4410aea8-7d37-11ec-a6de-b57280148b1b': {
       id: '4410aea8-7d37-11ec-a6de-b57280148b1b',
@@ -663,7 +663,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '44108794-7d37-11ec-a6de-b57280148b1b': {
       id: '44108794-7d37-11ec-a6de-b57280148b1b',
@@ -680,8 +680,8 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
-    }
+      is_encrypted: false,
+    },
   };
 
   // Records
@@ -706,17 +706,17 @@ export async function insertData(sequelize) {
           record.search_string_2,
           record.search_string_3,
           record.signature,
-          record.is_encrypted
-        ]
+          record.is_encrypted,
+        ],
       },
-      { raw: true }
+      { raw: true },
     );
   }
 
   return {
     REGISTERS,
     KEYS,
-    RECORDS
+    RECORDS,
   };
 }
 
@@ -751,7 +751,7 @@ export async function teardownApp(pgContainer: any, app: any, db: any) {
       await Promise.all(
         workers.map((worker: any) => {
           return worker.stop?.() || Promise.resolve();
-        })
+        }),
       );
       testDebug('Afterhandler workers stopped');
 
@@ -819,5 +819,5 @@ module.exports = {
   startApp,
   runMigrations,
   insertData,
-  teardownApp
+  teardownApp,
 };

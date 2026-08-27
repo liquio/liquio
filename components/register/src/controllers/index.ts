@@ -72,7 +72,7 @@ export default class Controllers {
       custom: CustomController,
       export: ExportController,
       import: ImportController,
-      rollback: RollbackController
+      rollback: RollbackController,
     };
 
     // Init controllers.
@@ -90,9 +90,9 @@ export default class Controllers {
             const n = {};
             n[v[0] as any] = v[1];
             return n;
-          })()
+          })(),
         }),
-        {}
+        {},
       );
   }
 }

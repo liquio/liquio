@@ -96,10 +96,14 @@ export class Sign {
     try {
       return (await axios(requestOptions)).data;
     } catch (error: any) {
-      global.log.save('sign-service-sign-hash-error', {
-        ...prepareAxiosErrorToLog(error),
-        requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
-      }, 'error');
+      global.log.save(
+        'sign-service-sign-hash-error',
+        {
+          ...prepareAxiosErrorToLog(error),
+          requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
+        },
+        'error',
+      );
       throw error;
     }
   }

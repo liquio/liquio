@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 import { DocumentTemplateEntity } from './document_template';
 import { Sandbox } from '../lib/sandbox';
@@ -85,7 +84,7 @@ export class DocumentEntity extends Entity {
     signatureRejections,
     asic,
     attachments,
-    documentTemplate
+    documentTemplate,
   }: any) {
     super();
 
@@ -139,7 +138,7 @@ export class DocumentEntity extends Entity {
       'signatureRejections',
       'asic',
       'attachments',
-      'calculatedGetters'
+      'calculatedGetters',
     ];
   }
 
@@ -165,7 +164,7 @@ export class DocumentEntity extends Entity {
       'signatures',
       'signatureRejections',
       'asic',
-      'attachments'
+      'attachments',
     ];
   }
 
@@ -195,9 +194,7 @@ export class DocumentEntity extends Entity {
             const getterCurrentValue = this.data[stepName] && this.data[stepName][controlName];
             const getterFunctionString = control.value;
             if (!getterFunctionString) {
-              throw new Error(
-                `Getter function is not defined for control ${stepName}.${controlName}.`
-              );
+              throw new Error(`Getter function is not defined for control ${stepName}.${controlName}.`);
             }
             const getterFunction = DocumentEntity.sandbox.eval(control.value);
             const stepData = this.data[stepName] || {};
@@ -217,4 +214,3 @@ export class DocumentEntity extends Entity {
     }
   }
 }
-

@@ -21,32 +21,32 @@ export class DocumentSignatureRejectionModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           document_id: {
             allowNull: false,
             type: Sequelize.UUID,
-            references: { model: 'documents', key: 'id' }
+            references: { model: 'documents', key: 'id' },
           },
           user_id: {
             allowNull: false,
-            type: Sequelize.TEXT
+            type: Sequelize.TEXT,
           },
           data: {
             allowNull: false,
-            type: Sequelize.JSON
+            type: Sequelize.JSON,
           },
           created_by: {
             allowNull: false,
-            type: Sequelize.STRING
-          }
+            type: Sequelize.STRING,
+          },
         },
         {
           tableName: 'document_signature_rejections',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Init singleton.
@@ -67,7 +67,7 @@ export class DocumentSignatureRejectionModel extends Model {
     const documentSignatureRejections = await this.model.findAll({ where: { document_id: documentId } });
 
     // Convert to entities.
-    const documentSignaturesEntities = documentSignatureRejections.map(item => {
+    const documentSignaturesEntities = documentSignatureRejections.map((item) => {
       return this.prepareEntity(item);
     });
 
@@ -124,7 +124,7 @@ export class DocumentSignatureRejectionModel extends Model {
       userId: item.user_id,
       data: item.data,
       createdAt: item.created_at,
-      createdBy: item.created_by
+      createdBy: item.created_by,
     });
   }
 
@@ -139,8 +139,7 @@ export class DocumentSignatureRejectionModel extends Model {
       user_id: item.userId,
       data: item.data,
       created_at: item.createdAt,
-      created_by: item.createdBy
+      created_by: item.createdBy,
     };
   }
 }
-

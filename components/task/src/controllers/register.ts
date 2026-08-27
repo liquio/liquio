@@ -1,4 +1,3 @@
-
 import { matchedData } from 'express-validator';
 import _ from 'lodash';
 
@@ -82,7 +81,7 @@ export class RegisterController extends Controller {
   async getRecordsByKeyId(req, res) {
     // Define params.
     const { key_id: keyId } = matchedData(req, { locations: ['params'] });
-    /* eslint-disable prefer-const -- some residentship/data_date fields below are reassigned; the rest of this destructuring isn't. */
+
     let {
       offset,
       limit = RECORDS_DEFAULT_LIMIT,
@@ -106,9 +105,9 @@ export class RegisterController extends Controller {
       residentship_status_date_from,
       residentship_status_date_to,
       data_date_from,
-      data_date_to
+      data_date_to,
     } = matchedData(req, { locations: ['query'] });
-    /* eslint-enable prefer-const */
+
     const userUnitIds = this.getRequestUserUnitIds(req);
     const accessInfo = this.getRequestAccessInfo(req);
     const allowTokens = this.getRequestUserUnitAllowTokens(req);
@@ -133,33 +132,40 @@ export class RegisterController extends Controller {
 
     let records;
     try {
-      records = await global.businesses.register.getRecordsByKeyId(keyId, userUnitIds, {
-        offset,
-        limit: Math.min(limit, RECORDS_MAX_LIMIT),
-        key_id: keyId,
-        data,
-        data_like: dataLike,
-        data_nested,
-        sort,
-        search,
-        search_2,
-        search_3,
-        search_equal,
-        search_equal_2,
-        search_equal_3,
-        created_from,
-        created_to,
-        updated_from,
-        updated_to,
-        residentship_date_from,
-        residentship_date_to,
-        residentship_status_date_from,
-        residentship_status_date_to,
-        data_date_from,
-        data_date_to
-        // is_search_string_array: true
-        // is_search_string_array: (Array.isArray(search_equal) || Array.isArray(search_equal_2) || Array.isArray(search_equal_3)) ? true : undefined
-      }, strict, allowTokens, accessInfo);
+      records = await global.businesses.register.getRecordsByKeyId(
+        keyId,
+        userUnitIds,
+        {
+          offset,
+          limit: Math.min(limit, RECORDS_MAX_LIMIT),
+          key_id: keyId,
+          data,
+          data_like: dataLike,
+          data_nested,
+          sort,
+          search,
+          search_2,
+          search_3,
+          search_equal,
+          search_equal_2,
+          search_equal_3,
+          created_from,
+          created_to,
+          updated_from,
+          updated_to,
+          residentship_date_from,
+          residentship_date_to,
+          residentship_status_date_from,
+          residentship_status_date_to,
+          data_date_from,
+          data_date_to,
+          // is_search_string_array: true
+          // is_search_string_array: (Array.isArray(search_equal) || Array.isArray(search_equal_2) || Array.isArray(search_equal_3)) ? true : undefined
+        },
+        strict,
+        allowTokens,
+        accessInfo,
+      );
 
       const recordKey = await this.registerService.findKeyById(keyId);
       if (!recordKey) {
@@ -170,17 +176,13 @@ export class RegisterController extends Controller {
       if (Array.isArray(records.data) && keyToString !== undefined && keyToString.startsWith('(')) {
         for (const record of records.data) {
           if (!record.data) {
-            record.stringified = this.sandbox.evalWithArgs(
-              keyToString,
-              [{ data: record }],
-              { meta: { fn: 'getRecordsByKeyId.keyToString', keyId, recordId: record.id } },
-            );
+            record.stringified = this.sandbox.evalWithArgs(keyToString, [{ data: record }], {
+              meta: { fn: 'getRecordsByKeyId.keyToString', keyId, recordId: record.id },
+            });
           } else {
-            record.stringified = this.sandbox.evalWithArgs(
-              keyToString,
-              [record],
-              { meta: { fn: 'getRecordsByKeyId.keyToString', keyId, recordId: record.id } },
-            );
+            record.stringified = this.sandbox.evalWithArgs(keyToString, [record], {
+              meta: { fn: 'getRecordsByKeyId.keyToString', keyId, recordId: record.id },
+            });
           }
         }
       }
@@ -211,21 +213,15 @@ export class RegisterController extends Controller {
 
     let records;
     try {
-      records = await this.registerService.search(
-        keyId,
-        normalizedText,
-        accessInfo,
-        Math.min(limit, RECORDS_MAX_LIMIT),
-        offset
-      );
+      records = await this.registerService.search(keyId, normalizedText, accessInfo, Math.min(limit, RECORDS_MAX_LIMIT), offset);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     await (global.businesses.register as any).prepareData();
-    const keyInfo = global.businesses.register.keys.find(v => v.id === keyId);
+    const keyInfo = global.businesses.register.keys.find((v) => v.id === keyId);
     const { toString, schema: keySchema } = keyInfo;
-    records.data = records.data.map(v => global.businesses.register.convertToStrictRecord(v, toString, keySchema));
+    records.data = records.data.map((v) => global.businesses.register.convertToStrictRecord(v, toString, keySchema));
 
     this.responseData(res, records, true);
   }
@@ -247,7 +243,7 @@ export class RegisterController extends Controller {
         offset,
         limit: Math.min(limit, HISTORY_MAX_LIMIT),
         record_data_like: recordDataLike,
-        operation
+        operation,
       });
     } catch (error) {
       return this.responseError(res, error);
@@ -270,8 +266,10 @@ export class RegisterController extends Controller {
     let viewingHistory;
     try {
       viewingHistory = await global.businesses.register.getViewingHistoryByKeyId(keyId, userUnitIds, {
-        offset, limit: Math.min(limit, HISTORY_MAX_LIMIT),
-        created_from, created_to
+        offset,
+        limit: Math.min(limit, HISTORY_MAX_LIMIT),
+        created_from,
+        created_to,
       });
     } catch (error) {
       return this.responseError(res, error);
@@ -329,8 +327,10 @@ export class RegisterController extends Controller {
     let viewingHistory;
     try {
       viewingHistory = await global.businesses.register.getViewingHistoryByRecordId(keyId, recordId, userUnitIds, {
-        offset, limit: Math.min(limit, HISTORY_MAX_LIMIT),
-        created_from, created_to
+        offset,
+        limit: Math.min(limit, HISTORY_MAX_LIMIT),
+        created_from,
+        created_to,
       });
     } catch (error) {
       return this.responseError(res, error);
@@ -355,7 +355,7 @@ export class RegisterController extends Controller {
       data_like: dataLike,
       control,
       control_index: controlIndex,
-      search
+      search,
     } = matchedData(req, { locations: ['query'] });
     const userUnitIds = this.getRequestUserUnitIds(req);
     const accessInfo = this.getRequestAccessInfo(req);
@@ -419,12 +419,12 @@ export class RegisterController extends Controller {
       const step = _.at(document, 'data.' + stepName)[0];
       const stepTemplate = _.at(jsonSchema, 'properties.' + stepName)[0];
       // if (!step) return this.responseError(res, 'Document doesn\'t have ' + stepName, 400 );
-      if (!stepTemplate) return this.responseError(res, 'Document template doesn\'t have ' + stepName, 400);
+      if (!stepTemplate) return this.responseError(res, "Document template doesn't have " + stepName, 400);
 
       // Try to get iterator value.
-      const iteratorValue = controlParts.find(v => parseInt(v) == v);
+      const iteratorValue = controlParts.find((v) => parseInt(v) == v);
       // All numeric path segments, in order (one per nested array).
-      const controlIndexes = controlParts.filter(v => `${parseInt(v)}` === `${v}`).map(Number);
+      const controlIndexes = controlParts.filter((v) => `${parseInt(v)}` === `${v}`).map(Number);
 
       // Get step element from path.
       elementName = global.businesses.register.getTemplatePathFromDataPath(controlParts.join('.'));
@@ -432,7 +432,7 @@ export class RegisterController extends Controller {
       const elementTemplate = _.at(stepTemplate, elementName)[0];
 
       // Check if incorrect option control or keyId.
-      if (!elementTemplate) return this.responseError(res, 'Document template doesn\'t have passed control.', 400, { control });
+      if (!elementTemplate) return this.responseError(res, "Document template doesn't have passed control.", 400, { control });
       const possibleRegisterControls = ['register', 'register.select', 'registry.search', 'schedule.calendar'];
       if (!possibleRegisterControls.includes(elementTemplate?.control)) {
         return this.responseError(res, 'Control is not register control.', 400, { control, elementTemplate, possibleRegisterControls });
@@ -443,48 +443,64 @@ export class RegisterController extends Controller {
           return this.responseError(res, 'Control has another keyId option.', 400, { control, elementTemplate, keyId });
         }
         if (!elementTemplate.whiteList || !Array.isArray(elementTemplate.whiteList) || elementTemplate.whiteList.length === 0) {
-          return this.responseError(res, 'Must be defined "whiteList" option - an array of possible key ids.', 400, { control, elementTemplate, keyId });
+          return this.responseError(res, 'Must be defined "whiteList" option - an array of possible key ids.', 400, {
+            control,
+            elementTemplate,
+            keyId,
+          });
         }
         const keyIdCalculated = keyIdFunction(document.data, controlIndex, controlIndexes);
-        if (!elementTemplate.whiteList.some(wlKeyId => `${wlKeyId}`.trim() === `${keyIdCalculated}`.trim() && `${keyIdCalculated}`.trim() === `${keyId}`)) {
-          return this.responseError(res, 'Calculated keyId must be pressent in "whiteList" option.', 400, { control, elementTemplate, keyId, calculatedKeyId: keyIdCalculated, whiteList: elementTemplate.whiteList });
+        if (
+          !elementTemplate.whiteList.some(
+            (wlKeyId) => `${wlKeyId}`.trim() === `${keyIdCalculated}`.trim() && `${keyIdCalculated}`.trim() === `${keyId}`,
+          )
+        ) {
+          return this.responseError(res, 'Calculated keyId must be pressent in "whiteList" option.', 400, {
+            control,
+            elementTemplate,
+            keyId,
+            calculatedKeyId: keyIdCalculated,
+            whiteList: elementTemplate.whiteList,
+          });
         }
       }
 
       // Define autosave params.
       if (elementTemplate) {
         const { setDefined, multiple } = elementTemplate;
-        isAutosave = typeof setDefined === 'string' && setDefined.startsWith('(')
-          ? this.sandbox.evalWithArgs(
-            setDefined,
-            [document.data, controlIndex, controlIndexes],
-            { meta: { fn: 'getFilteredRecordsByKeyId.setDefined', documentId, controlIndex } },
-          )
-          : !!setDefined;
+        isAutosave =
+          typeof setDefined === 'string' && setDefined.startsWith('(')
+            ? this.sandbox.evalWithArgs(setDefined, [document.data, controlIndex, controlIndexes], {
+                meta: { fn: 'getFilteredRecordsByKeyId.setDefined', documentId, controlIndex },
+              })
+            : !!setDefined;
         isMultiple = !!multiple;
       }
 
       // Define withLinkedObjects param.
       const withLinkedObjectsOption = elementTemplate?.withLinkedObjects;
-      withLinkedObjects = typeof withLinkedObjectsOption === 'string' && withLinkedObjectsOption.startsWith('(')
-        ? this.sandbox.evalWithArgs(
-          withLinkedObjectsOption,
-          [document.data, controlIndex, controlIndexes],
-          { meta: { fn: 'getFilteredRecordsByKeyId.withLinkedObjects', documentId, controlIndex } },
-        )
-        : !!withLinkedObjectsOption;
+      withLinkedObjects =
+        typeof withLinkedObjectsOption === 'string' && withLinkedObjectsOption.startsWith('(')
+          ? this.sandbox.evalWithArgs(withLinkedObjectsOption, [document.data, controlIndex, controlIndexes], {
+              meta: { fn: 'getFilteredRecordsByKeyId.withLinkedObjects', documentId, controlIndex },
+            })
+          : !!withLinkedObjectsOption;
 
       // Add additional data to body if has additional filters.
       const additionalFilter = elementTemplate && elementTemplate.additionalFilter;
-      if (additionalFilter) body = { // { additionalFilter, additionalFilterData: { element, step, document } }
-        additionalFilter: elementTemplate.additionalFilter,
-        additionalFilterData: {
-          element, step, document
-        }
-      };
+      if (additionalFilter)
+        body = {
+          // { additionalFilter, additionalFilterData: { element, step, document } }
+          additionalFilter: elementTemplate.additionalFilter,
+          additionalFilterData: {
+            element,
+            step,
+            document,
+          },
+        };
 
       // Format filters if exists.
-      filters = elementTemplate && elementTemplate.filters || [];
+      filters = (elementTemplate && elementTemplate.filters) || [];
 
       // check is filters defined
       // if (additionalFilter && (!filters || !filters.length)) {
@@ -493,42 +509,43 @@ export class RegisterController extends Controller {
 
       if (controlIndexes?.length) {
         // Replace each `.X.` placeholder positionally to support nested arrays.
-        filters.forEach(v => {
+        filters.forEach((v) => {
           if (!v.value || typeof v.value !== 'string') return;
           let placeholderPos = 0;
           v.value = v.value.replace(/\.X\./g, () => {
-            const idx = placeholderPos < controlIndexes.length
-              ? controlIndexes[placeholderPos]
-              : controlIndexes[controlIndexes.length - 1];
+            const idx = placeholderPos < controlIndexes.length ? controlIndexes[placeholderPos] : controlIndexes[controlIndexes.length - 1];
             placeholderPos++;
             return `.${idx}.`;
           });
         });
       } else if (iteratorValue) {
-        filters.forEach(v => {
+        filters.forEach((v) => {
           if (v.value) v.value = v.value.replace('.X.', `.${iteratorValue}.`);
         });
       }
       filtersType = elementTemplate && elementTemplate.filtersType;
       if (filtersType === 'or') {
         // OR filters.
-        if (filters) for (const filterIndex in filters) {
-          const filter = filters[filterIndex];
-          data['_filters_type'] = filtersType;
-          data[`${filter.name}|${filterIndex}`] = filter.value;
-        }
+        if (filters)
+          for (const filterIndex in filters) {
+            const filter = filters[filterIndex];
+            data['_filters_type'] = filtersType;
+            data[`${filter.name}|${filterIndex}`] = filter.value;
+          }
       } else {
         // AND filters (default).
-        if (filters) for (const filter of filters) {
-          data[filter.name] = filter.value;
-        }
+        if (filters)
+          for (const filter of filters) {
+            data[filter.name] = filter.value;
+          }
       }
 
       // Format sorting if exists.
       const sortBy = elementTemplate && elementTemplate.sortBy;
-      if (sortBy && typeof sortBy === 'object') for (const [sortKey, sortValue] of Object.entries(sortBy)) {
-        sort[sortKey] = sortValue;
-      }
+      if (sortBy && typeof sortBy === 'object')
+        for (const [sortKey, sortValue] of Object.entries(sortBy)) {
+          sort[sortKey] = sortValue;
+        }
 
       const { search, search2, search3 } = elementTemplate || {};
       if (search || search2 || search3) global.log.save('deprecated', { search, search2, search3 }, 'warning');
@@ -537,39 +554,33 @@ export class RegisterController extends Controller {
       const searchFunction = elementTemplate?.searchEqual || elementTemplate?.search;
       if (searchFunction) {
         try {
-          searchEqual = this.sandbox.evalWithArgs(
-            searchFunction,
-            [document.data, controlIndex, controlIndexes],
-            { meta: { fn: 'getFilteredRecordsByKeyId.searchEqual', keyId } },
-          );
+          searchEqual = this.sandbox.evalWithArgs(searchFunction, [document.data, controlIndex, controlIndexes], {
+            meta: { fn: 'getFilteredRecordsByKeyId.searchEqual', keyId },
+          });
         } catch {
-          this.responseError(res, 'Search equal definition error.'); 
+          this.responseError(res, 'Search equal definition error.');
         }
       }
 
       const searchFunction2 = elementTemplate?.searchEqual2 || elementTemplate?.search2;
       if (searchFunction2) {
         try {
-          searchEqual2 = this.sandbox.evalWithArgs(
-            searchFunction2,
-            [document.data, controlIndex, controlIndexes],
-            { meta: { fn: 'getFilteredRecordsByKeyId.searchEqual2', keyId } },
-          );
+          searchEqual2 = this.sandbox.evalWithArgs(searchFunction2, [document.data, controlIndex, controlIndexes], {
+            meta: { fn: 'getFilteredRecordsByKeyId.searchEqual2', keyId },
+          });
         } catch {
-          this.responseError(res, 'Search equal 2 definition error.'); 
+          this.responseError(res, 'Search equal 2 definition error.');
         }
       }
 
       const searchFunction3 = elementTemplate?.searchEqual3 || elementTemplate?.search3;
       if (searchFunction3) {
         try {
-          searchEqual3 = this.sandbox.evalWithArgs(
-            searchFunction3,
-            [document.data, controlIndex, controlIndexes],
-            { meta: { fn: 'getFilteredRecordsByKeyId.searchEqual3', keyId } },
-          );
+          searchEqual3 = this.sandbox.evalWithArgs(searchFunction3, [document.data, controlIndex, controlIndexes], {
+            meta: { fn: 'getFilteredRecordsByKeyId.searchEqual3', keyId },
+          });
         } catch {
-          this.responseError(res, 'Search equal 3 definition error.'); 
+          this.responseError(res, 'Search equal 3 definition error.');
         }
       }
 
@@ -577,39 +588,33 @@ export class RegisterController extends Controller {
       const searchLikeFunction = elementTemplate && elementTemplate.searchLike;
       if (searchLikeFunction) {
         try {
-          searchLike = this.sandbox.evalWithArgs(
-            searchLikeFunction,
-            [document.data, controlIndex, controlIndexes],
-            { meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction', keyId } },
-          );
+          searchLike = this.sandbox.evalWithArgs(searchLikeFunction, [document.data, controlIndex, controlIndexes], {
+            meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction', keyId },
+          });
         } catch {
-          this.responseError(res, 'Search like definition error.'); 
+          this.responseError(res, 'Search like definition error.');
         }
       }
 
       const searchLikeFunction2 = elementTemplate && elementTemplate.searchLike2;
       if (searchLikeFunction2) {
         try {
-          searchLike2 = this.sandbox.evalWithArgs(
-            searchLikeFunction2,
-            [document.data, controlIndex, controlIndexes],
-            { meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction2', keyId } },
-          );
+          searchLike2 = this.sandbox.evalWithArgs(searchLikeFunction2, [document.data, controlIndex, controlIndexes], {
+            meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction2', keyId },
+          });
         } catch {
-          this.responseError(res, 'Search like 2 definition error.'); 
+          this.responseError(res, 'Search like 2 definition error.');
         }
       }
 
       const searchLikeFunction3 = elementTemplate && elementTemplate.searchLike3;
       if (searchLikeFunction3) {
         try {
-          searchLike3 = this.sandbox.evalWithArgs(
-            searchLikeFunction3,
-            [document.data, controlIndex, controlIndexes],
-            { meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction3', keyId } },
-          );
+          searchLike3 = this.sandbox.evalWithArgs(searchLikeFunction3, [document.data, controlIndex, controlIndexes], {
+            meta: { fn: 'getFilteredRecordsByKeyId.searchLikeFunction3', keyId },
+          });
         } catch {
-          this.responseError(res, 'Search like 3 definition error.'); 
+          this.responseError(res, 'Search like 3 definition error.');
         }
       }
 
@@ -633,7 +638,11 @@ export class RegisterController extends Controller {
         try {
           tmpTemplateValue = _.at(jsonSchema, global.businesses.register.getTemplatePathFromDataPath(data[filterDataIndex]));
           tmpDataValue = _.at(document, data[filterDataIndex]);
-          if (tmpTemplateValue[0] || (typeof data[filterDataIndex] === 'string' && data[filterDataIndex].startsWith('data.')) || tmpDataValue[0] === false) {
+          if (
+            tmpTemplateValue[0] ||
+            (typeof data[filterDataIndex] === 'string' && data[filterDataIndex].startsWith('data.')) ||
+            tmpDataValue[0] === false
+          ) {
             if (tmpDataValue[0] || tmpDataValue[0] === false) {
               data[filterDataIndex] = tmpDataValue[0];
             } else {
@@ -649,20 +658,30 @@ export class RegisterController extends Controller {
     // Get records.
     let records;
     try {
-      records = await (global.businesses.register.getFilteredRecordsByKeyId as any)(keyId, userUnitIds, {
-        offset,
-        limit: Math.min(limit, RECORDS_MAX_LIMIT),
-        key_id: keyId,
-        data: (searchEqual || searchEqual2 || searchEqual3 || searchLike || searchLike2 || searchLike3) ? undefined : data,
-        data_like: dataLike,
-        sort,
-        search: searchLike ? searchLike : search,
-        search_2: searchLike2,
-        search_3: searchLike3,
-        search_equal: searchEqual,
-        search_equal_2: searchEqual2,
-        search_equal_3: searchEqual3,
-      }, strict, allowTokens, body, accessInfo, control, withLinkedObjects);
+      records = await (global.businesses.register.getFilteredRecordsByKeyId as any)(
+        keyId,
+        userUnitIds,
+        {
+          offset,
+          limit: Math.min(limit, RECORDS_MAX_LIMIT),
+          key_id: keyId,
+          data: searchEqual || searchEqual2 || searchEqual3 || searchLike || searchLike2 || searchLike3 ? undefined : data,
+          data_like: dataLike,
+          sort,
+          search: searchLike ? searchLike : search,
+          search_2: searchLike2,
+          search_3: searchLike3,
+          search_equal: searchEqual,
+          search_equal_2: searchEqual2,
+          search_equal_3: searchEqual3,
+        },
+        strict,
+        allowTokens,
+        body,
+        accessInfo,
+        control,
+        withLinkedObjects,
+      );
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -671,7 +690,7 @@ export class RegisterController extends Controller {
     let updatedData;
 
     //If filters defined in document schema, but neither value of them didn't calculate - will not update document (issue 4921).
-    const isDefinedFiltersEmpty = (filters?.length > 0 && _.isEmpty(data));
+    const isDefinedFiltersEmpty = filters?.length > 0 && _.isEmpty(data);
 
     if (isAutosave && !isDefinedFiltersEmpty) {
       // Update document.
@@ -690,7 +709,7 @@ export class RegisterController extends Controller {
           offset,
           limit: Math.min(limit, RECORDS_MAX_LIMIT),
           key_id: keyId,
-          data: (searchEqual || searchEqual2 || searchEqual3 || searchLike || searchLike2 || searchLike3) ? undefined : data,
+          data: searchEqual || searchEqual2 || searchEqual3 || searchLike || searchLike2 || searchLike3 ? undefined : data,
           data_like: dataLike,
           sort,
           search: searchLike ? searchLike : search,
@@ -703,9 +722,12 @@ export class RegisterController extends Controller {
         };
         const records = await this.registerService.getFilteredRecords(registerParams, body, accessInfo);
         if (Array.isArray(records.data)) {
-          valuesToSave = records.data.map(v => {
+          valuesToSave = records.data.map((v) => {
             const normalizedRecord: any = {
-              registerId: v.registerId, keyId: v.keyId, id: v.id, value: v.id
+              registerId: v.registerId,
+              keyId: v.keyId,
+              id: v.id,
+              value: v.id,
             };
             const recordEntries = Object.entries(v.data);
             for (const recordEntry of recordEntries) {
@@ -716,11 +738,9 @@ export class RegisterController extends Controller {
               }
             }
             try {
-              normalizedRecord.stringified = this.sandbox.evalWithArgs(
-                keyToString,
-                [v],
-                { meta: { fn: 'getFilteredRecordsByKeyId.keyToString', keyId, recordId: v.id } },
-              );
+              normalizedRecord.stringified = this.sandbox.evalWithArgs(keyToString, [v], {
+                meta: { fn: 'getFilteredRecordsByKeyId.keyToString', keyId, recordId: v.id },
+              });
               normalizedRecord.label = normalizedRecord.stringified;
             } catch {
               global.log.save('can-not-define-stringified-text', { record: v }, 'warn');
@@ -729,13 +749,20 @@ export class RegisterController extends Controller {
           });
         }
         const valueToSave = isMultiple ? valuesToSave : valuesToSave[0];
-        await (global.businesses.document.update as any)(documentId, [{
-          path: pathToSave,
-          value: valueToSave
-        }], userId, userUnitIds);
+        await (global.businesses.document.update as any)(
+          documentId,
+          [
+            {
+              path: pathToSave,
+              value: valueToSave,
+            },
+          ],
+          userId,
+          userUnitIds,
+        );
         updatedData = {
           path: pathToSave,
-          value: valueToSave
+          value: valueToSave,
         };
       } catch (error) {
         return this.responseError(res, error);
@@ -753,20 +780,21 @@ export class RegisterController extends Controller {
   async getRecordsTreeByKeyIds(req, res) {
     // Define params.
     const matchedParams = matchedData(req, { locations: ['params'] });
-    const keyIds = matchedParams.key_ids.split(',').map(v => parseInt(v));
-    const {
-      offset = 0,
-      limit = RECORDS_TREE_DEFAULT_LIMIT,
-      excludeList
-    } = matchedData(req, { locations: ['query'] });
+    const keyIds = matchedParams.key_ids.split(',').map((v) => parseInt(v));
+    const { offset = 0, limit = RECORDS_TREE_DEFAULT_LIMIT, excludeList } = matchedData(req, { locations: ['query'] });
     const accessInfo = this.getRequestAccessInfo(req);
 
     let records;
     try {
-      records = await global.businesses.register.getRecordsTreeByKeyIds(keyIds, {
-        offset,
-        limit: Math.min(limit, RECORDS_TREE_MAX_LIMIT)
-      }, accessInfo, excludeList);
+      records = await global.businesses.register.getRecordsTreeByKeyIds(
+        keyIds,
+        {
+          offset,
+          limit: Math.min(limit, RECORDS_TREE_MAX_LIMIT),
+        },
+        accessInfo,
+        excludeList,
+      );
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -924,11 +952,10 @@ export class RegisterController extends Controller {
     let rollbackId;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      const startRollbackResponse = await (global.businesses.register.startRollback as any)(
-        { keyId, timePoint },
-        userUnitIds,
-        { person, accessInfo },
-      );
+      const startRollbackResponse = await (global.businesses.register.startRollback as any)({ keyId, timePoint }, userUnitIds, {
+        person,
+        accessInfo,
+      });
       rollbackId = startRollbackResponse.rollbackId;
     } catch (error) {
       return this.responseError(res, error);
@@ -973,11 +1000,10 @@ export class RegisterController extends Controller {
     let rollbackedRecordResponse;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      rollbackedRecordResponse = await (global.businesses.register.rollbackRecord as any)(
-        { historyId, recordId, keyId },
-        userUnitIds,
-        { person, accessInfo },
-      );
+      rollbackedRecordResponse = await (global.businesses.register.rollbackRecord as any)({ historyId, recordId, keyId }, userUnitIds, {
+        person,
+        accessInfo,
+      });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -986,4 +1012,3 @@ export class RegisterController extends Controller {
     this.responseData(res, { rollbackedRecord });
   }
 }
-

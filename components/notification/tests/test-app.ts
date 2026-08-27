@@ -197,7 +197,7 @@ export class TestApp {
     // Deferred require: src/app.ts's start() sets global.conf/env/adminStaticDir/extensions and
     // only then requires src/server.ts (and, transitively, every model's DB connection) - importing
     // it statically here would run that boot sequence before global.log/global.conf are ready.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const start = require('../src/app').default;
     // Mirror src/index.ts's real adapter wiring: config's defaultMessenger ("testConsoleSmsAdapter")
     // routes through CustomGate to this adapter, which just logs and returns a canned response.
@@ -246,7 +246,7 @@ export class TestApp {
     if (this.httpServer) {
       await new Promise((resolve) => this.httpServer.close(resolve));
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const { connection } = require('../src/models/DB');
     await connection?.close();
   }

@@ -33,8 +33,6 @@ describe('Providers', () => {
       xroad: { providerType: 'plugin', pluginName: 'xroad' },
     };
 
-    expect(() => new Providers(config, {})).toThrow(
-      'Unknown or unloaded plugin "xroad" for external service "xroad"',
-    );
+    expect(() => new Providers(config, {})).toThrow('Unknown or unloaded plugin "xroad" for external service "xroad"');
   });
 });

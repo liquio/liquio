@@ -11,12 +11,12 @@ const AUTO_CLEAR_INTERVAL = 1000 * 60 * 60 * 24 * 7; // 1 week.
 const STATUSES = {
   Rollbacking: 'Rollbacking',
   Rollbacked: 'Rollbacked',
-  Failed: 'Failed'
+  Failed: 'Failed',
 };
 const OPERATIONS = {
   CREATE: 'create',
   UPDATE: 'update',
-  DELETE: 'delete'
+  DELETE: 'delete',
 };
 
 /**
@@ -150,15 +150,15 @@ export default class RollbackBusiness extends Business {
         isRemovedRecords: false,
         restoredRecordsCount: 0,
         isRestoredRecords: false,
-        error: null
-      }
+        error: null,
+      },
     };
     const rollbackMeta = {
       rollbackId,
       timePoint,
       timeStart: new Date().toJSON(),
       userId: accessInfo.userId,
-      userName: accessInfo.userName
+      userName: accessInfo.userName,
     };
     let allHistoryRowsByKeyId; // [{id', 'recordId', 'operation', 'createdAt}]
     try {
@@ -190,7 +190,7 @@ export default class RollbackBusiness extends Business {
       await this.restoreDeletedAndUpdatedRecords(
         rollbackId,
         { keyId, recordsIdsToRestore: deletedAndUpdatedRecordsIdsNeededToProcessing, timePoint },
-        { rollbackMeta }
+        { rollbackMeta },
       );
     } catch (error) {
       // Set error status.
@@ -232,13 +232,13 @@ export default class RollbackBusiness extends Business {
     const { removedRecords } = await this.recordModel.bulkDelete(
       {
         key_id: keyId,
-        id: { [Op.in]: recordsIdsToRemove }
+        id: { [Op.in]: recordsIdsToRemove },
       },
       undefined,
       removeCounterCb,
       user,
       { id: accessInfo.userId, name: accessInfo.userName }, // person param
-      { accessInfo, rollbackMeta } as any // historyMeta param
+      { accessInfo, rollbackMeta } as any, // historyMeta param
     );
     this.toRollback[rollbackId].details.removedRecordsCount = removedRecords;
     this.toRollback[rollbackId].details.isRemovedRecords = true;
@@ -268,7 +268,7 @@ export default class RollbackBusiness extends Business {
       return;
     }
     const {
-      data: { registerId }
+      data: { registerId },
     } = await this.keyModel.findById(keyId);
 
     this.toRollback[rollbackId].details.restoredRecordsCount = 0;
@@ -292,9 +292,9 @@ export default class RollbackBusiness extends Business {
           searchString2,
           search_string_3,
           searchString3,
-          signature
+          signature,
         },
-        person
+        person,
       } = lastHistoryRowBeforeTimePoint;
 
       const historyMeta = { ...meta.historyMeta, rollbackMeta };
@@ -320,10 +320,10 @@ export default class RollbackBusiness extends Business {
             searchString2: search_string_2 || searchString2,
             searchString3: search_string_3 || searchString3,
             person,
-            signature
+            signature,
           },
           true,
-          historyMeta
+          historyMeta,
         );
       }
       if (!isRecordExist) {
@@ -340,10 +340,10 @@ export default class RollbackBusiness extends Business {
             searchString2: search_string_2 || searchString2,
             searchString3: search_string_3 || searchString3,
             person,
-            signature
+            signature,
           },
           true,
-          historyMeta
+          historyMeta,
         );
       }
 
@@ -377,7 +377,7 @@ export default class RollbackBusiness extends Business {
     const { data: historyRow } = await this.historyModel.findById(historyId);
     if (historyRow.recordId !== recordId || historyRow.keyId !== keyId) throw new Error("Params historyId, recordId, keyId don't match");
     const {
-      data: { registerId }
+      data: { registerId },
     } = await this.keyModel.findById(keyId);
     const {
       data: {
@@ -394,16 +394,16 @@ export default class RollbackBusiness extends Business {
         searchString2,
         search_string_3,
         searchString3,
-        signature
+        signature,
       },
-      person
+      person,
     } = historyRow as any;
 
     const rollbackMeta = {
       historyId,
       timeStart: new Date().toJSON(),
       userId: accessInfo.userId,
-      userName: accessInfo.userName
+      userName: accessInfo.userName,
     };
     const historyMeta = { ...meta.historyMeta, rollbackMeta };
 
@@ -430,10 +430,10 @@ export default class RollbackBusiness extends Business {
           searchString2: search_string_2 || searchString2,
           searchString3: search_string_3 || searchString3,
           person,
-          signature
+          signature,
         },
         true,
-        historyMeta
+        historyMeta,
       );
       rollbackedRecord = recordModelResponse.data;
     }
@@ -451,10 +451,10 @@ export default class RollbackBusiness extends Business {
           searchString2: search_string_2 || searchString2,
           searchString3: search_string_3 || searchString3,
           person,
-          signature
+          signature,
         },
         true,
-        historyMeta
+        historyMeta,
       );
       rollbackedRecord = recordModelResponse.data;
     }

@@ -1,4 +1,3 @@
-
 import * as crypto from 'node:crypto';
 import { createClient } from 'redis';
 
@@ -18,15 +17,15 @@ export class RedisClient {
   /**
    * Redis client constructor.
    * @param {object} config Config object.
-  */
+   */
   constructor(config) {
     // Singleton.
     if (!RedisClient.singleton) {
       const { host, port, defaultTtl } = config;
       this.client = createClient({ socket: { host, port } });
       this.defaultTtl = defaultTtl || DEFAULT_TTL_IN_SECONDS;
-      
-      this.client.connect().catch(err => {
+
+      this.client.connect().catch((err) => {
         console.error('Redis connection error:', err);
       });
 
@@ -52,15 +51,9 @@ export class RedisClient {
    * @return {string} Hash key.
    **/
   static createKey(...args) {
-    const parts = [RedisClient.prefix, ...args].map(i => typeof i !== 'object' ? String(i) : i);
+    const parts = [RedisClient.prefix, ...args].map((i) => (typeof i !== 'object' ? String(i) : i));
 
-    return parts
-      .map((item) =>
-        typeof item === 'object'
-          ? crypto.createHash('md5').update(JSON.stringify(item)).digest('hex')
-          : item,
-      )
-      .join('.');
+    return parts.map((item) => (typeof item === 'object' ? crypto.createHash('md5').update(JSON.stringify(item)).digest('hex') : item)).join('.');
   }
 
   /**
@@ -105,10 +98,7 @@ export class RedisClient {
     }
 
     // Get payload timestamp and new timestamp.
-    const [oldTimestamp, newTimestamp] = await Promise.all([
-      redis.get(key + '.timestamp').then(JSON.parse),
-      timeFn(),
-    ]);
+    const [oldTimestamp, newTimestamp] = await Promise.all([redis.get(key + '.timestamp').then(JSON.parse), timeFn()]);
 
     // Invalidate cache if needed.
     if (!oldTimestamp || new Date(newTimestamp) > new Date(oldTimestamp)) {
@@ -184,4 +174,3 @@ export class RedisClient {
     return this.client.del(keys);
   }
 }
-

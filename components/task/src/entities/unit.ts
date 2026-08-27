@@ -91,4 +91,3 @@ export class UnitEntity extends Entity {
     return [...new Set([...this.heads, ...this.members])];
   }
 }
-

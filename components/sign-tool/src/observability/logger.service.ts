@@ -10,20 +10,13 @@ import { AsyncLocalStorageContext } from './observability.module';
 export class LoggerService extends ConsoleLogger {
   private appInfo: { name: string; version: string };
 
-  constructor(
-    private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>,
-  ) {
+  constructor(private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>) {
     super();
 
     this.prepareAppInfo();
   }
 
-  protected printMessages(
-    messages: unknown[],
-    context?: string,
-    level?: LogLevel,
-    writeStreamType?: 'stdout' | 'stderr',
-  ) {
+  protected printMessages(messages: unknown[], context?: string, level?: LogLevel, writeStreamType?: 'stdout' | 'stderr') {
     const [type, data] = messages;
 
     const logId = randomBytes(6).toString('hex');

@@ -43,7 +43,9 @@ export class AbstractGate {
     phones = phones.map((v) => v.replace(/(\+38)?(38)?(3838)?/, '38'));
     if (phones.length <= 100) {
       try {
-        this.options.url = ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') + '/Subscribe/SendSmsQ.php';
+        this.options.url =
+          ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') +
+          '/Subscribe/SendSmsQ.php';
         this.options.method = 'POST';
         this.options.form = {
           tel: phones,
@@ -75,7 +77,9 @@ export class AbstractGate {
       arr.shift();
       const promiseArr = arr.map(async (item) => {
         try {
-          this.options.url = ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') + '/Subscribe/SendSmsQ.php';
+          this.options.url =
+            ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') +
+            '/Subscribe/SendSmsQ.php';
           this.options.method = 'POST';
           this.options.form = {
             tel: item,
@@ -108,7 +112,9 @@ export class AbstractGate {
     }
 
     phone = phone.replace(/(\+38)?(38)?(3838)?/, '38');
-    this.options.url = ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') + '/Subscribe/SendSmsQ.php';
+    this.options.url =
+      ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') +
+      '/Subscribe/SendSmsQ.php';
     this.options.method = 'POST';
     this.options.form = {
       tel: phone,
@@ -122,7 +128,9 @@ export class AbstractGate {
 
   async getSMSQueue(_clear?: unknown): Promise<any> {
     try {
-      this.options.url = ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') + '/Subscribe/SmsQLog.php';
+      this.options.url =
+        ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') +
+        '/Subscribe/SmsQLog.php';
       this.options.method = 'GET';
       this.options.headers = {
         Authorization: `Bearer ${(conf as any).smsServer.access_token}`,
@@ -137,7 +145,9 @@ export class AbstractGate {
 
   async getSMSQueueCounter(): Promise<any> {
     try {
-      this.options.url = ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') + '/Subscribe/SmsQCount.php';
+      this.options.url =
+        ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') +
+        '/Subscribe/SmsQCount.php';
       this.options.method = 'GET';
       this.options.headers = {
         Authorization: `Bearer ${(conf as any).smsServer.access_token}`,
@@ -152,7 +162,9 @@ export class AbstractGate {
 
   async getSMSLog(phone?: string): Promise<any> {
     try {
-      this.options.url = ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') + '/Subscribe/SmsLog.php';
+      this.options.url =
+        ((conf as any).smsServer && (conf as any).smsServer.url ? (conf as any).smsServer.url : 'https://test.liquio.local') +
+        '/Subscribe/SmsLog.php';
       this.options.method = 'GET';
       this.options.headers = {
         Authorization: `Bearer ${(conf as any).smsServer.access_token}`,

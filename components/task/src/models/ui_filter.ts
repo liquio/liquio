@@ -1,4 +1,3 @@
-
 import Sequelize from 'sequelize';
 import { Model } from './model';
 import { UIFilterEntity } from '../entities/ui_filter';
@@ -28,36 +27,36 @@ export class UIFilterModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           name: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           filter: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           is_active: {
             type: Sequelize.BOOLEAN,
             allowNull: false,
-            defaultValue: true
+            defaultValue: true,
           },
           created_at: {
             allowNull: false,
-            type: Sequelize.DATE
+            type: Sequelize.DATE,
           },
           updated_at: {
             allowNull: false,
-            type: Sequelize.DATE
-          }
+            type: Sequelize.DATE,
+          },
         },
         {
           tableName: 'ui_filters',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Sequelize model params.
@@ -79,7 +78,7 @@ export class UIFilterModel extends Model {
     // DB query.
     const raw = await this.model.findAll({
       where: { is_active: true },
-      sort: [['created_at', 'asc']]
+      sort: [['created_at', 'asc']],
     });
 
     // Return entities.
@@ -99,7 +98,7 @@ export class UIFilterModel extends Model {
       filter: item.filter,
       isActive: item.is_active,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 
@@ -115,8 +114,7 @@ export class UIFilterModel extends Model {
       filter: item.filter,
       is_active: item.isActive,
       created_at: item.createdAt,
-      updated_at: item.updatedAt
+      updated_at: item.updatedAt,
     };
   }
 }
-

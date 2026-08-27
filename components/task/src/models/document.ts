@@ -24,7 +24,7 @@ export class DocumentModel extends Model {
           parent_id: Sequelize.UUID,
           document_template_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'document_templates', key: 'id' }
+            references: { model: 'document_templates', key: 'id' },
           },
           document_state_id: Sequelize.INTEGER,
           cancellation_type_id: Sequelize.INTEGER,
@@ -44,16 +44,16 @@ export class DocumentModel extends Model {
             type: Sequelize.JSON,
             defaultValue: {
               asicmanifestFileId: null,
-              filesIds: []
-            }
-          }
+              filesIds: [],
+            },
+          },
         },
         {
           tableName: 'documents',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -73,20 +73,21 @@ export class DocumentModel extends Model {
    */
   async findById(id, includeTask = false, includeTaskTemplate = false) {
     const document = await this.model.findByPk(id, {
-      include: [{ model: global.models.task.model, required: includeTask }]
+      include: [{ model: global.models.task.model, required: includeTask }],
     });
 
-    if (!document) { return; }
+    if (!document) {
+      return;
+    }
 
     const documentEntity = await this.prepareEntity(document);
 
     if (document.task) {
       documentEntity.task = document.task.prepareEntity(document.task);
-      if (includeTaskTemplate && !(documentEntity.task.taskTemplate?.jsonSchema)) {
+      if (includeTaskTemplate && !documentEntity.task.taskTemplate?.jsonSchema) {
         documentEntity.task.taskTemplate = await global.models.taskTemplate.findById(document.task.task_template_id);
       }
     }
-
 
     return documentEntity;
   }
@@ -98,7 +99,7 @@ export class DocumentModel extends Model {
    */
   async getByIds(ids) {
     const documents = await this.model.findAll({ where: { id: ids } });
-    return Promise.all(documents.map(item => this.prepareEntity(item)));
+    return Promise.all(documents.map((item) => this.prepareEntity(item)));
   }
 
   /**
@@ -113,9 +114,9 @@ export class DocumentModel extends Model {
       where: {
         document_template_id: documentTemplateId,
         is_final: isFinal,
-        updated_at: { [Sequelize.Op.gte]: updatedAtFrom }
+        updated_at: { [Sequelize.Op.gte]: updatedAtFrom },
       },
-      attributes: ['id', 'document_template_id', 'is_final', 'updated_at']
+      attributes: ['id', 'document_template_id', 'is_final', 'updated_at'],
     });
 
     const exists = !!rawDocument;
@@ -157,17 +158,17 @@ export class DocumentModel extends Model {
   async getFilesNamesByIds(ids) {
     const documents = await this.model.findAll({
       where: { id: ids, is_final: true },
-      attributes: ['id', 'document_template_id', 'file_id', 'file_name', 'file_size', 'created_at', 'updated_at']
+      attributes: ['id', 'document_template_id', 'file_id', 'file_name', 'file_size', 'created_at', 'updated_at'],
     });
 
-    return documents.map(item => ({
+    return documents.map((item) => ({
       documentId: item.id,
       documentTemplateId: item.document_template_id,
       fileId: item.file_id,
       fileName: item.file_name,
       fileSize: item.file_size,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     }));
   }
 
@@ -189,7 +190,7 @@ export class DocumentModel extends Model {
       createdBy: userId || SYSTEM_USER,
       updatedBy: userId || SYSTEM_USER,
       data: {},
-      number
+      number,
     });
 
     const rawDbResponse = await this.model.create(document);
@@ -216,7 +217,7 @@ export class DocumentModel extends Model {
     }
     const [, updatedDocument] = await this.model.update(document, {
       where: { id: id },
-      returning: true
+      returning: true,
     });
 
     if (updatedDocument.length === 1) {
@@ -247,10 +248,13 @@ export class DocumentModel extends Model {
   async setStatusFinal(id) {
     const documentEntity = await this.findById(id);
 
-    await this.model.update({
-      is_final: true,
-      data: documentEntity.data
-    }, { where: { id } });
+    await this.model.update(
+      {
+        is_final: true,
+        data: documentEntity.data,
+      },
+      { where: { id } },
+    );
   }
 
   /**
@@ -293,10 +297,11 @@ export class DocumentModel extends Model {
     const { data: documents } = await RedisClient.getOrSetWithTimestamp(
       RedisClient.createKey('document', 'getAllByWorkflowId', workflowId, order),
       async () => this.getTimestampByWorkflowId(workflowId),
-      async () => this.model.findAll({
-        include: [{ model: global.models.task.model, where: { workflow_id: workflowId } }],
-        order: [['created_at', order]]
-      }),
+      async () =>
+        this.model.findAll({
+          include: [{ model: global.models.task.model, where: { workflow_id: workflowId } }],
+          order: [['created_at', order]],
+        }),
       GET_ALL_BY_WORKFLOW_ID_CACHE_TTL,
     );
 
@@ -329,7 +334,7 @@ export class DocumentModel extends Model {
       {
         replacements: { workflowId },
         type: Sequelize.QueryTypes.SELECT,
-      }
+      },
     );
 
     return maxTimestamp;
@@ -365,7 +370,7 @@ export class DocumentModel extends Model {
       fileType: item.file_type,
       asic: item.asic,
       documentTemplate: docTemplate,
-      fileSize: item.file_size
+      fileSize: item.file_size,
     });
 
     newDocumentEntity.calcGetters();
@@ -396,8 +401,7 @@ export class DocumentModel extends Model {
       file_name: item.fileName,
       file_type: item.fileType,
       file_size: item.fileSize,
-      asic: item.asic
+      asic: item.asic,
     };
   }
 }
-

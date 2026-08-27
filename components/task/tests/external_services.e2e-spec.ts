@@ -302,10 +302,7 @@ describe('External Services', () => {
 
   describe('POST /external-services/ping-soap', () => {
     it('should be able to ping-soap', async () => {
-      await app
-        .request()
-        .post('/external-services/ping-soap')
-        .expect(200);
+      await app.request().post('/external-services/ping-soap').expect(200);
     });
   });
 

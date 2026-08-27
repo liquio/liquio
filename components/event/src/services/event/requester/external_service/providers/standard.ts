@@ -315,11 +315,9 @@ export class StandardProvider extends Provider {
         throw error;
       }
       if (typeof responseDecorator === 'string') {
-        response = this.sandbox.evalWithArgs(
-          responseDecorator,
-          [response],
-          { meta: { fn: 'responseDecorator', caller: 'StandardProvider.sendRmqRequest' } },
-        );
+        response = this.sandbox.evalWithArgs(responseDecorator, [response], {
+          meta: { fn: 'responseDecorator', caller: 'StandardProvider.sendRmqRequest' },
+        });
       }
       if (_.get(response, 'payload.response.output.0.success') !== true) {
         const error: any = new Error('Invalid response.');
@@ -338,11 +336,9 @@ export class StandardProvider extends Provider {
 
     if (responseFile) {
       try {
-        const executedResponseFile = this.sandbox.evalWithArgs(
-          responseFile,
-          [response],
-          { meta: { fn: 'responseFile', caller: 'StandardProvider.sendRmqRequest' } },
-        );
+        const executedResponseFile = this.sandbox.evalWithArgs(responseFile, [response], {
+          meta: { fn: 'responseFile', caller: 'StandardProvider.sendRmqRequest' },
+        });
 
         if (executedResponseFile !== null) {
           response.savedDocument = await this.saveDocument({

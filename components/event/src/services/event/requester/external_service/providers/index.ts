@@ -34,9 +34,7 @@ export class Providers {
         case 'plugin':
           this[key] = pluginRegistry ? pluginRegistry.get(providerConfig.pluginName) : undefined;
           if (!this[key]) {
-            throw new Error(
-              `Unknown or unloaded plugin "${providerConfig.pluginName}" for external service "${key}"`,
-            );
+            throw new Error(`Unknown or unloaded plugin "${providerConfig.pluginName}" for external service "${key}"`);
           }
           break;
         default:

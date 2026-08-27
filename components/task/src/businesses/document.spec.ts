@@ -297,15 +297,15 @@ describe('DocumentBusiness', () => {
 
   describe('getFileBase64', () => {
     let documentBusiness;
-    
+
     beforeEach(() => {
       // Create fresh instance for each test
       (DocumentBusiness as any).singleton = null;
       documentBusiness = new DocumentBusiness(global.config);
-      
+
       // Mock global.log to avoid logging during tests
       global.log = {
-        save: jest.fn()
+        save: jest.fn(),
       } as any;
     });
 
@@ -325,21 +325,18 @@ describe('DocumentBusiness', () => {
         url: 'https://example.com/download/test-file-id',
         method: 'GET',
         headers: {
-          'Authorization': 'Bearer token'
-        }
+          Authorization: 'Bearer token',
+        },
       };
 
       documentBusiness.storageService = {
         provider: {
-          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions)
-        }
+          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions),
+        },
       };
 
       // Mock the HTTP request using nock
-      nock('https://example.com')
-        .get('/download/test-file-id')
-        .matchHeader('Authorization', 'Bearer token')
-        .reply(200, mockFileContent);
+      nock('https://example.com').get('/download/test-file-id').matchHeader('Authorization', 'Bearer token').reply(200, mockFileContent);
 
       const result = await documentBusiness.getFileBase64(fileId);
 
@@ -354,18 +351,16 @@ describe('DocumentBusiness', () => {
 
       const mockRequestOptions = {
         url: 'https://example.com/download/empty-file-id',
-        method: 'GET'
+        method: 'GET',
       };
 
       documentBusiness.storageService = {
         provider: {
-          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions)
-        }
+          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions),
+        },
       };
 
-      nock('https://example.com')
-        .get('/download/empty-file-id')
-        .reply(200, emptyBuffer);
+      nock('https://example.com').get('/download/empty-file-id').reply(200, emptyBuffer);
 
       const result = await documentBusiness.getFileBase64(fileId);
 
@@ -380,18 +375,16 @@ describe('DocumentBusiness', () => {
 
       const mockRequestOptions = {
         url: 'https://example.com/download/binary-file-id',
-        method: 'GET'
+        method: 'GET',
       };
 
       documentBusiness.storageService = {
         provider: {
-          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions)
-        }
+          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions),
+        },
       };
 
-      nock('https://example.com')
-        .get('/download/binary-file-id')
-        .reply(200, mockBinaryContent);
+      nock('https://example.com').get('/download/binary-file-id').reply(200, mockBinaryContent);
 
       const result = await documentBusiness.getFileBase64(fileId);
 
@@ -406,18 +399,16 @@ describe('DocumentBusiness', () => {
 
       const mockRequestOptions = {
         url: 'https://example.com/download/large-file-id',
-        method: 'GET'
+        method: 'GET',
       };
 
       documentBusiness.storageService = {
         provider: {
-          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions)
-        }
+          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions),
+        },
       };
 
-      nock('https://example.com')
-        .get('/download/large-file-id')
-        .reply(200, largeContent);
+      nock('https://example.com').get('/download/large-file-id').reply(200, largeContent);
 
       const result = await documentBusiness.getFileBase64(fileId);
 
@@ -426,12 +417,12 @@ describe('DocumentBusiness', () => {
 
     it('should throw error when download options are not available', async () => {
       const fileId = 'missing-options-file-id';
-      
+
       // Mock the storage service to return null/undefined options
       documentBusiness.storageService = {
         provider: {
-          downloadFileRequestOptions: jest.fn().mockResolvedValue(null)
-        }
+          downloadFileRequestOptions: jest.fn().mockResolvedValue(null),
+        },
       };
 
       // The method doesn't check for null downloadFileRequestOptions, so it should throw
@@ -443,19 +434,17 @@ describe('DocumentBusiness', () => {
 
       const mockRequestOptions = {
         url: 'https://example.com/download/error-file-id',
-        method: 'GET'
+        method: 'GET',
       };
 
       documentBusiness.storageService = {
         provider: {
-          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions)
-        }
+          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions),
+        },
       };
 
       // Mock HTTP request to simulate transport/server failure.
-      nock('https://example.com')
-        .get('/download/error-file-id')
-        .reply(503, { error: 'Network error' });
+      nock('https://example.com').get('/download/error-file-id').reply(503, { error: 'Network error' });
 
       await expect(documentBusiness.getFileBase64(fileId)).rejects.toThrow();
     });
@@ -465,19 +454,17 @@ describe('DocumentBusiness', () => {
 
       const mockRequestOptions = {
         url: 'https://example.com/download/not-found-file-id',
-        method: 'GET'
+        method: 'GET',
       };
 
       documentBusiness.storageService = {
         provider: {
-          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions)
-        }
+          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions),
+        },
       };
 
       // Mock HTTP request to return 404
-      nock('https://example.com')
-        .get('/download/not-found-file-id')
-        .reply(404);
+      nock('https://example.com').get('/download/not-found-file-id').reply(404);
 
       await expect(documentBusiness.getFileBase64(fileId)).rejects.toThrow();
     });
@@ -490,18 +477,16 @@ describe('DocumentBusiness', () => {
 
       const mockRequestOptions = {
         url: 'https://example.com/download/text-file-id',
-        method: 'GET'
+        method: 'GET',
       };
 
       documentBusiness.storageService = {
         provider: {
-          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions)
-        }
+          downloadFileRequestOptions: jest.fn().mockResolvedValue(mockRequestOptions),
+        },
       };
 
-      nock('https://example.com')
-        .get('/download/text-file-id')
-        .reply(200, mockFileContent);
+      nock('https://example.com').get('/download/text-file-id').reply(200, mockFileContent);
 
       const result = await documentBusiness.getFileBase64(fileId);
 

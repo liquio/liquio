@@ -123,9 +123,7 @@ describe('AuthController - OIDC', () => {
   });
 
   it('should skip disabled OIDC providers', async () => {
-    const disabledLog = TestApp.logs.find(
-      (log) => log.type === 'oidc|disabled-provider' && log.data?.status === 'disabled',
-    );
+    const disabledLog = TestApp.logs.find((log) => log.type === 'oidc|disabled-provider' && log.data?.status === 'disabled');
     expect(disabledLog).toBeDefined();
 
     const response = await app.request().get('/authorise/oidc/disabled-provider');

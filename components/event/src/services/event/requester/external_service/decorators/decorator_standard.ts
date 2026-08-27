@@ -55,16 +55,12 @@ export class DecoratorStandard extends Decorator {
     const { id: documentId, fileId, data: documentData } = document || {};
     const { id: eventId, data: eventData } = event || {};
     const { preparedData } = documentData || {};
-    const fileIds = this.sandbox.evalWithArgs(
-      fileIdsFunction,
-      [document, event, documents, events],
-      { meta: { fn: 'fileIds', caller: 'DecoratorStandard.transformExternalServiceData' } },
-    );
-    const p7sFileIds = this.sandbox.evalWithArgs(
-      p7sFileIdsFunction,
-      [document, event, documents, events],
-      { meta: { fn: 'p7sFileIds', caller: 'DecoratorStandard.transformExternalServiceData' } },
-    );
+    const fileIds = this.sandbox.evalWithArgs(fileIdsFunction, [document, event, documents, events], {
+      meta: { fn: 'fileIds', caller: 'DecoratorStandard.transformExternalServiceData' },
+    });
+    const p7sFileIds = this.sandbox.evalWithArgs(p7sFileIdsFunction, [document, event, documents, events], {
+      meta: { fn: 'p7sFileIds', caller: 'DecoratorStandard.transformExternalServiceData' },
+    });
 
     // Process options data with sandbox evaluation
     let optionsData;
@@ -76,15 +72,11 @@ export class DecoratorStandard extends Decorator {
       const getFileBase64 = this.getFileBase64.bind(this, filestorage);
 
       for (const key of Object.keys(options)) {
-        optionsData[key] = await this.sandbox.evalWithArgs(
-          options[key],
-          [document, event, documents, events],
-          {
-            isAsync: true,
-            global: { getAdditionalSignatures, sign, toBase64, getFileBase64 },
-            meta: { fn: options[key], caller: 'DecoratorStandard.transform' },
-          },
-        );
+        optionsData[key] = await this.sandbox.evalWithArgs(options[key], [document, event, documents, events], {
+          isAsync: true,
+          global: { getAdditionalSignatures, sign, toBase64, getFileBase64 },
+          meta: { fn: options[key], caller: 'DecoratorStandard.transform' },
+        });
       }
     }
 
@@ -111,11 +103,9 @@ export class DecoratorStandard extends Decorator {
       if (typeOf(additionalDataSignatureIndex) === 'string') {
         let index;
         try {
-          index = this.sandbox.evalWithArgs(
-            additionalDataSignatureIndex,
-            [documents],
-            { meta: { fn: 'additionalDataSignatureIndex', caller: 'DecoratorStandard.transformExternalServiceData' } },
-          );
+          index = this.sandbox.evalWithArgs(additionalDataSignatureIndex, [documents], {
+            meta: { fn: 'additionalDataSignatureIndex', caller: 'DecoratorStandard.transformExternalServiceData' },
+          });
         } catch (error) {
           const wrapped = new Error(`DecoratorStandard.transform. additionalDataSignatureIndex function throw error. ${(error as any).toString()}`);
           (wrapped as any).cause = error;
@@ -125,11 +115,9 @@ export class DecoratorStandard extends Decorator {
       } else if (typeOf(additionalDataSignatureFilter) === 'string') {
         let filteredAdditionalSignatures;
         try {
-          filteredAdditionalSignatures = this.sandbox.evalWithArgs(
-            additionalDataSignatureFilter,
-            [documents, additionalDataSignatures],
-            { meta: { fn: 'additionalDataSignatureFilter', caller: 'DecoratorStandard.transform' } },
-          );
+          filteredAdditionalSignatures = this.sandbox.evalWithArgs(additionalDataSignatureFilter, [documents, additionalDataSignatures], {
+            meta: { fn: 'additionalDataSignatureFilter', caller: 'DecoratorStandard.transform' },
+          });
         } catch (error) {
           const wrapped = new Error(`DecoratorStandard.transform. additionalDataSignatureFilter function throw error. ${(error as any).toString()}`);
           (wrapped as any).cause = error;

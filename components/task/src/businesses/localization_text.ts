@@ -13,7 +13,7 @@ export class LocalizationTextBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor (config) {
+  constructor(config) {
     // Define singleton.
     if (!LocalizationTextBusiness.singleton) {
       this.config = config;
@@ -29,8 +29,7 @@ export class LocalizationTextBusiness {
    * Get all localization texts.
    * @returns {Promise<LocalizationTextEntity[]>}
    */
-  async getAll (params) {
+  async getAll(params) {
     return await this.localizationTextModel.getAll(params);
   }
 }
-

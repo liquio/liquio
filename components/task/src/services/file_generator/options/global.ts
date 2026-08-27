@@ -1,4 +1,3 @@
-
 import moment from 'moment';
 import { Option } from './option';
 
@@ -11,8 +10,7 @@ export class GlobalOption extends Option {
    */
   async get() {
     return {
-      'global.currentDate': moment().format('DD.MM.YYYY')
+      'global.currentDate': moment().format('DD.MM.YYYY'),
     };
   }
 }
-

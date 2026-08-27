@@ -63,9 +63,7 @@ export class FileGeneratorService {
       },
       dateFormat: function (date, format) {
         const isDateObject = date && typeof date === 'object' && date.day && date.month && date.year;
-        const dateString = isDateObject
-          ? `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`
-          : date;
+        const dateString = isDateObject ? `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}` : date;
         return moment(dateString, isDateObject && 'YYYY-MM-DD').format(format) || '';
       },
       formatNumberFinancial: function (number, afterPoint) {
@@ -98,20 +96,20 @@ export class FileGeneratorService {
       lte: (v1, v2) => Number(v1) <= Number(v2),
       or: (...args) => {
         args.pop();
-        return args.length > 2 && args.some(arg => !!arg) || false;
+        return (args.length > 2 && args.some((arg) => !!arg)) || false;
       },
       and: (...args) => {
         args.pop();
-        return args.length > 2 && args.every(arg => !!arg) || false;
+        return (args.length > 2 && args.every((arg) => !!arg)) || false;
       },
       sortBy: (valToSort, field, order = 'ASC') => {
         if (typeOf(valToSort) !== 'array' && typeOf(order) !== 'string') return valToSort;
         const orderNormalized = order.toUpperCase().trim();
         if (!['ASC', 'DESC'].includes(orderNormalized)) return valToSort;
-        return valToSort.sort((a, b) => a[field] > b[field] ? (orderNormalized === 'ASC' ? 1 : -1) : (orderNormalized === 'ASC' ? -1 : 1));
+        return valToSort.sort((a, b) => (a[field] > b[field] ? (orderNormalized === 'ASC' ? 1 : -1) : orderNormalized === 'ASC' ? -1 : 1));
       },
       size: (v) => {
-        const type =  typeOf(v);
+        const type = typeOf(v);
         if (['string', 'array'].includes(type)) return v.length;
         if (type === 'object') return Object.keys(v).length;
       },
@@ -138,7 +136,7 @@ export class FileGeneratorService {
     const options = await this.options.getOptions({
       documentTemplateSchema: documentTemplate.jsonSchema,
       documentData: document.data,
-      staticFileOptions
+      staticFileOptions,
     });
 
     // Create document HTML.
@@ -178,12 +176,7 @@ export class FileGeneratorService {
     };
 
     try {
-      const response = await global.httpClient.request(
-        pdfConfig.url,
-        requestInit,
-        'file-generator:create-pdf',
-        { isNonSensitiveDataRegime: true }
-      );
+      const response = await global.httpClient.request(pdfConfig.url, requestInit, 'file-generator:create-pdf', { isNonSensitiveDataRegime: true });
       const arrayBuffer = await response.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } catch (error) {
@@ -219,4 +212,3 @@ export class FileGeneratorService {
     return pdfOptions;
   }
 }
-

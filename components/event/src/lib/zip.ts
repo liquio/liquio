@@ -1,7 +1,7 @@
 /**
  * Make zip file
  */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const archiver = require('archiver');
 import { PassThrough } from 'node:stream';
 

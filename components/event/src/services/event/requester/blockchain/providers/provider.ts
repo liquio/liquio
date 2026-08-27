@@ -1,6 +1,5 @@
 import { ERROR_OVERRIDE } from '../../../../../constants/error';
 
- 
 export class Provider {
   /**
    * Get detail info about the document

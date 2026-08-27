@@ -8,7 +8,7 @@ describe('EventBusiness', () => {
 
     app = await TestApp.setup();
     await app.init();
-    
+
     // Note: fixtures are loaded from manager/data/test.e2e.sql
   });
 
