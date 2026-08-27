@@ -18,7 +18,7 @@
   },
   "liquioPlugin": {
     "kind": "task-payment-provider",
-    "sdkVersion": "^0.1.1"
+    "sdkVersion": "^0.1.3"
   },
   "scripts": {
     "build": "tsc",
