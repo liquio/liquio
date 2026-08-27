@@ -1,27 +1,21 @@
 {
-    "compilerOptions": {
-        "target": "ES6",
-        "module": "CommonJS",
-        "allowJs": true,
-        "checkJs": false,
-        "outDir": "./dist",
-        "rootDir": "./",
-        "strict": false,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "noImplicitAny": false,
-        "resolveJsonModule": true,
-        "forceConsistentCasingInFileNames": true,
-        "isolatedModules": true,
-        "noEmitOnError": false,
-        "ignoreDeprecations": "5.0",
-        "downlevelIteration": true
-    },
-    "include": [
-        "./**/*"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "types": ["node", "jest"],
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitOnError": false,
+    "ignoreDeprecations": "5.0"
+  },
+  "include": ["./**/*"],
+  "exclude": ["node_modules", "dist"]
 }
