@@ -43,7 +43,10 @@ export class TestHarness {
   private uniqueDbName?: string;
 
   constructor() {
-    this.config = Multiconf.get('../config-templates/register', 'KITSOFT_REGISTER_') as unknown as Config;
+    this.config = Multiconf.get(
+      process.env.CONFIG_PATH || '../../config-templates/register',
+      'KITSOFT_REGISTER_'
+    ) as unknown as Config;
   }
 
   getConfig(): Config {

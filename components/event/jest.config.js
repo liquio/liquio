@@ -11,8 +11,8 @@ const config = {
   preset: 'ts-jest/presets/js-with-ts',
 
   testMatch: [
-    '**/__tests__/**/*.(spec|test).[jt]s?(x)',
-    '**/?(*.)+(spec|test).[tj]s?(x)'
+    '**/*.spec.[jt]s?(x)',
+    '**/*.e2e-spec.[jt]s?(x)'
   ],
   testPathIgnorePatterns: [
     '/validators/test\\.[jt]s$',

@@ -29,6 +29,6 @@ export default [
     },
   },
   {
-    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js', 'test/**/*.ts'],
+    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js', 'tests/**/*.ts'],
   },
 ];

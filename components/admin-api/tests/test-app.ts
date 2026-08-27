@@ -41,8 +41,8 @@ jest.mock('../src/lib/message_queue', () => {
 });
 
 // Mock the log module
-jest.mock('back-core', () => {
-  const originalLog = jest.requireActual('back-core');
+jest.mock('@liquio/back-core', () => {
+  const originalLog = jest.requireActual('@liquio/back-core');
   const LogClass = originalLog.Log || originalLog.default || originalLog;
   const logs = [];
   class MockLog extends LogClass {

@@ -3,7 +3,7 @@ import { HttpRequest } from '../src/lib/http_request';
 import { getTraceId } from '@liquio/back-core';
 
 // Mock the async_local_storage module
-jest.mock('back-core', () => ({
+jest.mock('@liquio/back-core', () => ({
   getTraceId: jest.fn()
 }));
 

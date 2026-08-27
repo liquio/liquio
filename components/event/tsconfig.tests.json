@@ -4,7 +4,7 @@
     "noEmit": true
   },
   "include": [
-    "__tests__/**/*",
+    "tests/**/*",
     "src/**/*.spec.ts",
     "src/types/global.d.ts"
   ],

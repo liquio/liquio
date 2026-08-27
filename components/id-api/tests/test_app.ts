@@ -19,8 +19,8 @@ import { Services } from '../src/services';
 import baseConfig from './base.config.json';
 
 let logs: any[] = [];
-jest.mock('back-core', () => {
-  const original = jest.requireActual('back-core');
+jest.mock('@liquio/back-core', () => {
+  const original = jest.requireActual('@liquio/back-core');
   const debugLog = debug('test:log');
   const debugReq = debug('test:request');
   const mockLog = jest.fn();

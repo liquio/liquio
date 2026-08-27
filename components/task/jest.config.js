@@ -72,7 +72,7 @@ const config = {
   // globals: {},
 
   // The maximum amount of workers used to run your tests. Can be specified as % or a number. E.g. maxWorkers: 10% will use 10% of your CPU amount + 1 as the maximum worker number. maxWorkers: 2 will use a maximum of 2 workers.
-  // Capped low because most spec files under __tests__/ are e2e tests that each spin up their
+  // Capped low because most spec files under tests/ are e2e tests that each spin up their
   // own Postgres + Redis testcontainers; running many of those in parallel exhausts local
   // Docker/DB resources and causes flaky "connection terminated" failures.
   maxWorkers: 2,
@@ -161,8 +161,8 @@ const config = {
 
   // The glob patterns Jest uses to detect test files
   testMatch: [
-    '**/__tests__/**/*.(spec|test).[jt]s?(x)',
-    '**/?(*.)+(spec|test).[tj]s?(x)'
+    '**/*.spec.[jt]s?(x)',
+    '**/*.e2e-spec.[jt]s?(x)'
   ],
   testPathIgnorePatterns: [
     '/validators/test\\.[jt]s$',
