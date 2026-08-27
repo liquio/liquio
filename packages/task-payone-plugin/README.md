@@ -1,6 +1,6 @@
 # @liquio/task-payone-plugin
 
-A payment provider plugin for **Liquio × [PAYONE Commerce Platform](https://docs.payone.com/pcp/commerce-platform-api)**, implementing `TaskPaymentProvider` from [`@liquio/plugin-sdk`](../plugin-sdk) for `components/task`'s payment subsystem. It uses the official [PAYONE Commerce Platform Node SDK](https://github.com/PAYONE-GmbH/PCP-server-nodeJS-SDK) (`pcp-server-nodejs-sdk`).
+A payment provider plugin for **Liquio × [PAYONE E-Payment API](https://developer.payone.com/en/api-reference)**, implementing `TaskPaymentProvider` from [`@liquio/plugin-sdk`](../plugin-sdk) for `components/task`'s payment subsystem. It uses the official [`onlinepayments-sdk-nodejs`](https://github.com/OnlinePayments/onlinepayments-sdk-nodejs) Server API SDK.
 
 ## What this plugin does
 
@@ -22,7 +22,7 @@ Add an entry to `components/task`'s `plugins.json`:
   "plugins": [
     {
       "package": "@liquio/task-payone-plugin",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "isEnabled": true,
       "name": "payone",
       "options": {
@@ -53,20 +53,33 @@ Field reference (`PayoneOptions` in `src/types.ts`):
 
 Then reference `"payone"` as the `providerName` in `components/task`'s own payment configuration so `PaymentService` resolves this provider by name for the relevant customer.
 
+## Connection test
+
+Run the hosted-checkout connectivity and authentication check with the same preprod credentials used by the plugin:
+
+```bash
+PAYONE_API_KEY="..." \
+PAYONE_API_SECRET="..." \
+PAYONE_MERCHANT_ID="..." \
+npm run test:connection
+```
+
+Set `PAYONE_BASE_URL` to override the default `payment.preprod.payone.com` endpoint. The script follows PAYONE's hosted-checkout SDK example and creates a test hosted-checkout session. Set `PAYONE_TEST_AMOUNT` (in cents) and `PAYONE_TEST_CURRENCY` to change the request values.
+
 ## Supported operations
 
 | Method | Status | Detail |
 | --- | --- | --- |
-| `calculatePayment` | Supported | Creates a PAYONE commerce case with an auto-executed checkout (`CommerceCaseApiClient.createCommerceCaseRequest`) and returns the hosted-checkout redirect URL. |
-| `handleStatus` | Supported | Identifies the commerce case/checkout from the callback payload/query params and re-queries `CheckoutApiClient.getCheckoutRequest` for the authoritative status, rather than trusting the incoming callback. |
-| `cancelOrder` | Supported | Looks up the commerce case for the given checkout (`CheckoutApiClient.getCheckoutsRequest`) and cancels/reverses it via `OrderManagementCheckoutActionsApiClient.cancelOrder`. |
-| `checkStatus` | Supported | Queries `CheckoutApiClient.getCheckoutRequest` for the current status of a checkout. |
+| `calculatePayment` | Supported | Creates a PAYONE hosted checkout with `hostedCheckout.createHostedCheckout` and returns its redirect URL. |
+| `handleStatus` | Supported | Re-queries `hostedCheckout.getHostedCheckout` for the authoritative checkout status rather than trusting the incoming callback. |
+| `cancelOrder` | Supported | Resolves the hosted checkout's payment and cancels it via `payments.cancelPayment`. |
+| `checkStatus` | Supported | Queries `hostedCheckout.getHostedCheckout` for the current status of a checkout. |
 | `confirmBySmsCode` | Not supported | PAYONE's hosted redirect checkout has no SMS-confirmation step — any customer authentication (including 3-D Secure/OTP) happens entirely on PAYONE's own hosted page, so this backend is never asked to relay an SMS code. |
 | `unHoldOrder` | Not supported | `calculatePayment` always creates an auto-executed order — PAYONE captures funds immediately on checkout completion, so there is no separate authorization hold in this integration to release. |
-| `getPaymentReceiptInfo` | Not supported | PAYONE's Commerce Platform API has no receipt/invoice-document endpoint. |
+| `getPaymentReceiptInfo` | Not supported | PAYONE's Server API has no receipt/invoice-document endpoint. |
 | `getPaymentReceiptFiles` | Not supported | Same reason as `getPaymentReceiptInfo` — no file/document-download endpoint exists in PAYONE's API for a receipt file to come from. |
 | `getWithdrawalFundsStatus` | Not supported | PAYONE's API has no per-order withdrawal/payout-status endpoint — settlement to the merchant's bank account happens outside this API, per the merchant's commercial agreement with PAYONE. |
-| `sendCheckRequest` | Not supported | This is a fiscal-receipt/check-registration concept with no equivalent in PAYONE's card/redirect Commerce Platform API. |
+| `sendCheckRequest` | Not supported | This is a fiscal-receipt/check-registration concept with no equivalent in PAYONE's card/redirect Server API. |
 
 Each unsupported method throws a descriptive `Error` explaining why, rather than silently returning an empty/placeholder result — see the inline comments above each method in `src/payone_provider.ts` for the full reasoning.
 

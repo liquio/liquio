@@ -1,18 +1,5 @@
 import { PluginContext, TaskPaymentProvider } from "@liquio/plugin-sdk";
-import {
-  ApiErrorResponseException,
-  ApiException,
-  ApiResponseRetrievalException,
-  CheckoutApiClient,
-  CheckoutResponse,
-  CommerceCaseApiClient,
-  CommunicatorConfiguration,
-  CreateCommerceCaseRequest,
-  GetCheckoutsQuery,
-  OrderManagementCheckoutActionsApiClient,
-  OrderType,
-  StatusCheckout,
-} from "pcp-server-nodejs-sdk";
+import { init } from "onlinepayments-sdk-nodejs";
 
 import {
   PayoneCalculatedPaymentData,
@@ -22,32 +9,27 @@ import {
 } from "./types";
 
 /**
- * PAYONE Commerce Platform payment provider for `components/task`.
+ * PAYONE Server API payment provider for `components/task`.
  *
  * Supports PAYONE's redirect/hosted-checkout flow only - card tokenization would require
  * client-side tokenizer work in `cabinet-front` and is not implemented here.
  */
 export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
-  private readonly commerceCaseClient: CommerceCaseApiClient;
-  private readonly checkoutClient: CheckoutApiClient;
-  private readonly orderManagementClient: OrderManagementCheckoutActionsApiClient;
+  private readonly client: ReturnType<typeof init>;
 
   constructor(context: PluginContext, options: PayoneOptions) {
     super(context, options);
-    const config = new CommunicatorConfiguration(
-      options.apiKey,
-      options.apiSecret,
-      options.baseUrl,
-    );
-    this.commerceCaseClient = new CommerceCaseApiClient(config);
-    this.checkoutClient = new CheckoutApiClient(config);
-    this.orderManagementClient = new OrderManagementCheckoutActionsApiClient(
-      config,
-    );
+    const baseUrl = new URL(options.baseUrl);
+    this.client = init({
+      host: baseUrl.hostname,
+      apiKeyId: options.apiKey,
+      secretApiKey: options.apiSecret,
+      integrator: "OnlinePayments",
+    });
   }
 
   /**
-   * Create a PAYONE commerce case with an inline, auto-executed checkout and return the URL to
+   * Create a PAYONE hosted checkout and return the URL to
    * redirect the customer to in order to complete payment on PAYONE's hosted page.
    *
    * `data` is expected to already be resolved (amount/description/orderId/etc. evaluated
@@ -100,49 +82,47 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       },
     );
 
-    const request: CreateCommerceCaseRequest = {
-      merchantReference: payload.orderId,
-      checkout: {
+    const request = {
+      order: {
         amountOfMoney: {
           amount: amountInCents,
           currencyCode,
         },
-        autoExecuteOrder: true,
-        orderRequest: {
-          orderType: OrderType.Full,
-          paymentMethodSpecificInput: {
-            redirectPaymentMethodSpecificInput: {
-              paymentProductId: this.options.paymentProductId,
-              redirectionData: {
-                returnUrl,
-              },
-            },
-          },
+        references: {
+          merchantReference: payload.orderId,
         },
+      },
+      hostedCheckoutSpecificInput: {
+        returnUrl,
+        showResultPage: false,
+      },
+      redirectPaymentMethodSpecificInput: {
+        paymentProductId: this.options.paymentProductId,
       },
     };
 
     try {
-      const response = await this.commerceCaseClient.createCommerceCaseRequest(
+      const response = await this.client.hostedCheckout.createHostedCheckout(
         this.options.merchantId,
         request,
+        null,
       );
-      const redirectUrl =
-        response.checkout?.paymentResponse?.merchantAction?.redirectData
-          ?.redirectURL;
+      if (!response.isSuccess) {
+        throw this.formatSdkResponseError(response);
+      }
+      const redirectUrl = response.body.redirectUrl;
 
       if (!redirectUrl) {
         throw new Error(
-          `PayoneProvider.calculatePayment: PAYONE response did not contain a redirect URL (commerceCaseId=${response.commerceCaseId ?? "unknown"}).`,
+          `PayoneProvider.calculatePayment: PAYONE response did not contain a redirect URL (hostedCheckoutId=${response.body.hostedCheckoutId ?? "unknown"}).`,
         );
       }
 
       return {
         redirectUrl,
-        commerceCaseId: response.commerceCaseId,
-        checkoutId: response.checkout?.checkoutId,
-        paymentExecutionId:
-          response.checkout?.paymentResponse?.paymentExecutionId,
+        commerceCaseId: undefined,
+        checkoutId: response.body.hostedCheckoutId,
+        paymentExecutionId: undefined,
         orderId: payload.orderId,
         amount: payload.amount,
         currency: currencyCode,
@@ -171,19 +151,24 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
    * Translate a raw PAYONE SDK exception into a clear, loggable `Error` instead of letting an
    * opaque SDK exception escape uninterpreted.
    */
+  private formatSdkResponseError(response: {
+    status: number;
+    body: unknown;
+  }): Error {
+    return new Error(
+      `PayoneProvider: PAYONE API returned an error response (status ${response.status}): ${JSON.stringify(response.body)}`,
+    );
+  }
+
   private translateSdkError(error: unknown): Error {
-    if (error instanceof ApiErrorResponseException) {
-      const apiErrors = error.getErrors();
-      return new Error(
-        `PayoneProvider: PAYONE API returned an error response (status ${error.getStatusCode()}): ${JSON.stringify(apiErrors)}`,
-      );
-    }
-    if (error instanceof ApiResponseRetrievalException) {
-      return new Error(
-        `PayoneProvider: failed to retrieve/parse the PAYONE API response (status ${error.getStatusCode()}): ${error.getResponseBody()}`,
-      );
-    }
-    if (error instanceof ApiException) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "getStatusCode" in error &&
+      "getResponseBody" in error &&
+      typeof error.getStatusCode === "function" &&
+      typeof error.getResponseBody === "function"
+    ) {
       return new Error(
         `PayoneProvider: PAYONE API call failed (status ${error.getStatusCode()}): ${error.getResponseBody()}`,
       );
@@ -267,34 +252,20 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       );
     }
 
-    let checkout: CheckoutResponse;
+    let checkout: any;
     try {
-      checkout = await this.checkoutClient.getCheckoutRequest(
+      const response = await this.client.hostedCheckout.getHostedCheckout(
         this.options.merchantId,
-        commerceCaseId,
         checkoutId,
       );
+      if (!response.isSuccess) throw this.formatSdkResponseError(response);
+      checkout = response.body;
     } catch (error) {
       throw this.translateSdkError(error);
     }
 
-    // Status mapping (explicit, not implicit branching). Source: the real `StatusCheckout` enum
-    // shipped by the SDK. `ExtendedCheckoutStatus` is exported by the SDK but is not actually a
-    // field of `CheckoutResponse` (it only has `checkoutStatus: StatusCheckout`), so it isn't
-    // used here.
-    //   OPEN                -> false (checkout still awaiting completion)
-    //   PENDING_COMPLETION  -> false (payment in progress, not yet finalized)
-    //   COMPLETED           -> true  (order executed successfully)
-    //   BILLED              -> true  (funds collected - a strictly further-along success state)
-    //   CHARGEBACKED        -> false (funds clawed back after the fact - no longer a success)
-    //   DELETED             -> false (checkout was cancelled/removed before completion)
-    const successStatuses: ReadonlySet<StatusCheckout> = new Set([
-      StatusCheckout.COMPLETED,
-      StatusCheckout.BILLED,
-    ]);
-    const isSuccess = Boolean(
-      checkout.checkoutStatus && successStatuses.has(checkout.checkoutStatus),
-    );
+    const isSuccess = checkout.status === "PAYMENT_CREATED";
+    const payment = checkout.createdPaymentOutput?.payment;
 
     // `checkPrevTransaction` (per `document.ts#calculatePayment`'s only caller of this path with
     // it set) is used to check whether an already-`calculatePayment`'d checkout has *already*
@@ -312,7 +283,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
         "paymentExecutionId",
         "payment_execution_id",
       ]) ??
-      checkout.paymentExecutions?.[0]?.paymentExecutionId ??
+      payment?.id ??
       checkoutId;
 
     return {
@@ -321,11 +292,11 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       transactionId,
       status: { isSuccess },
       extraData: {
-        order_id: checkout.references?.merchantReference,
+        order_id: payment?.paymentOutput?.references?.merchantReference,
         commerceCaseId,
         checkoutId,
-        checkoutStatus: checkout.checkoutStatus,
-        paymentStatus: checkout.statusOutput?.paymentStatus,
+        checkoutStatus: checkout.status,
+        paymentStatus: checkout.createdPaymentOutput?.paymentStatusCategory,
         checkPrevTransaction: Boolean(checkPrevTransaction),
       },
     };
@@ -424,33 +395,37 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     }
 
     try {
-      const checkoutsResponse = await this.checkoutClient.getCheckoutsRequest(
-        this.options.merchantId,
-        new GetCheckoutsQuery().setCheckoutId(sessionId),
-      );
-      const checkout = checkoutsResponse.checkouts?.[0];
-      const commerceCaseId = checkout?.commerceCaseId;
-
-      if (!commerceCaseId) {
+      const checkoutResponse =
+        await this.client.hostedCheckout.getHostedCheckout(
+          this.options.merchantId,
+          sessionId,
+          null,
+        );
+      if (!checkoutResponse.isSuccess) {
+        throw this.formatSdkResponseError(checkoutResponse);
+      }
+      const paymentId =
+        checkoutResponse.body.createdPaymentOutput?.payment?.id ??
+        transactionId;
+      if (!paymentId) {
         throw new Error(
-          `PayoneProvider.cancelOrder: could not resolve a PAYONE commerceCaseId for checkoutId=${JSON.stringify(sessionId)} ` +
-            `(found ${checkoutsResponse.checkouts?.length ?? 0} matching checkout(s)).`,
+          `PayoneProvider.cancelOrder: hosted checkout ${JSON.stringify(sessionId)} has no created payment to cancel.`,
         );
       }
-
-      const cancelResponse = await this.orderManagementClient.cancelOrder(
+      const response = await this.client.payments.cancelPayment(
         this.options.merchantId,
-        commerceCaseId,
-        sessionId,
+        paymentId,
+        { isFinal: true },
+        null,
       );
+      if (!response.isSuccess) throw this.formatSdkResponseError(response);
 
       return {
         orderId,
         transactionId,
         sessionId,
-        commerceCaseId,
-        checkoutId: sessionId,
-        cancelResponse,
+        paymentId,
+        cancelResponse: response.body,
       };
     } catch (error) {
       throw this.translateSdkError(error);
@@ -500,30 +475,22 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     }
 
     try {
-      const checkout: CheckoutResponse =
-        await this.checkoutClient.getCheckoutRequest(
-          this.options.merchantId,
-          invoiceId,
-          sessionId,
-        );
-
-      // Same success-status table as `handleStatus` above, kept as an independent, small,
-      // duplicated const rather than a shared helper.
-      const successStatuses: ReadonlySet<StatusCheckout> = new Set([
-        StatusCheckout.COMPLETED,
-        StatusCheckout.BILLED,
-      ]);
-      const isSuccess = Boolean(
-        checkout.checkoutStatus && successStatuses.has(checkout.checkoutStatus),
+      const response = await this.client.hostedCheckout.getHostedCheckout(
+        this.options.merchantId,
+        sessionId,
       );
+      if (!response.isSuccess) throw this.formatSdkResponseError(response);
+      const checkout = response.body;
+      const payment = checkout.createdPaymentOutput?.payment;
+      const isSuccess = checkout.status === "PAYMENT_CREATED";
 
       return {
         isSuccess,
-        commerceCaseId: invoiceId,
         checkoutId: sessionId,
-        checkoutStatus: checkout.checkoutStatus,
-        paymentStatus: checkout.statusOutput?.paymentStatus,
-        orderId: checkout.references?.merchantReference,
+        hostedCheckoutStatus: checkout.status,
+        paymentStatus: checkout.createdPaymentOutput?.paymentStatusCategory,
+        orderId: payment?.paymentOutput?.references?.merchantReference,
+        paymentId: payment?.id,
       };
     } catch (error) {
       throw this.translateSdkError(error);
