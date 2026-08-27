@@ -2,7 +2,7 @@ name: Build and Push Images
 
 on:
   workflow_run:
-    workflows: [Lint]
+    workflows: [Code Quality]
     types: [completed]
     branches: [main]
 

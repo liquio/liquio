@@ -1,7 +1,9 @@
-name: Lint
+name: Code Quality
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
 
 jobs:
@@ -20,7 +22,10 @@ jobs:
       - name: Build service matrix from changed paths
         id: build-matrix
         run: |
-          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")
+            LINT_ALL=false
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
             CHANGED=""
             LINT_ALL=true
           else
@@ -32,7 +37,7 @@ jobs:
           echo "${CHANGED:-<all>}"
 
           FRONT_CORE=$(echo "$CHANGED" | grep -c '^packages/front-core/' || true)
-          WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/lint\.yml' || true)
+          WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/code-quality\.yml' || true)
 
           should_lint() {
             local svc=$1
