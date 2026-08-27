@@ -57,10 +57,7 @@ describe('PdfController (e2e)', () => {
         .expect('Content-Type', 'application/pdf')
         .expect((res) => {
           expect(res.body).toEqual(expect.any(Buffer));
-          expect(mockPdfGenerator.generateFromTemplate).toHaveBeenCalledWith(
-            requestBody.html,
-            requestBody.options,
-          );
+          expect(mockPdfGenerator.generateFromTemplate).toHaveBeenCalledWith(requestBody.html, requestBody.options);
         });
     });
 
@@ -110,11 +107,7 @@ describe('PdfController (e2e)', () => {
         },
       };
 
-      await request(app.getHttpServer())
-        .post('/pdf')
-        .auth('username', 'password')
-        .send(invalidRequestBody)
-        .expect(400);
+      await request(app.getHttpServer()).post('/pdf').auth('username', 'password').send(invalidRequestBody).expect(400);
     });
   });
 });

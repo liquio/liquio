@@ -48,7 +48,7 @@ describe('Register Controller', () => {
                 value: '1',
               },
             ],
-            searchEqual: '() => \'1\';',
+            searchEqual: "() => '1';",
           },
         },
       },
@@ -101,10 +101,7 @@ describe('Register Controller', () => {
       updated_by: TEST_USER_ID,
       data: {
         step: {
-          rows: [
-            { lookup: [{ code: 'A0' }, { code: 'A1' }] },
-            { lookup: [{ code: 'B0' }, { code: 'B1' }] },
-          ],
+          rows: [{ lookup: [{ code: 'A0' }, { code: 'A1' }] }, { lookup: [{ code: 'B0' }, { code: 'B1' }] }],
         },
       },
       description: null,
@@ -140,31 +137,24 @@ describe('Register Controller', () => {
   });
 
   const mockUserAuth = (payload) => {
-    app.nockId
-      .get('/user/info')
-      .query({ access_token: payload.authTokens.accessToken })
-      .once()
-      .reply(200, {
-        userId: TEST_USER_ID,
-        role: 'individual',
-        services: {},
-      });
+    app.nockId.get('/user/info').query({ access_token: payload.authTokens.accessToken }).once().reply(200, {
+      userId: TEST_USER_ID,
+      role: 'individual',
+      services: {},
+    });
   };
 
   const mockRegisterMetadata = () => {
     const registerBaseUrl = `${global.config.register.server}:${global.config.register.port}`;
 
-    app.nock(registerBaseUrl)
+    app
+      .nock(registerBaseUrl)
       .get('/registers')
       .query(true)
       .once()
       .reply(200, { data: [{ id: 76, parentId: null }] });
 
-    app.nock(registerBaseUrl)
-      .get('/keys')
-      .query(true)
-      .once()
-      .reply(200, registerBaseResponse);
+    app.nock(registerBaseUrl).get('/keys').query(true).once().reply(200, registerBaseResponse);
   };
 
   it('applies positional .X. placeholders for nested control paths in low-code filters', async () => {
@@ -175,14 +165,11 @@ describe('Register Controller', () => {
 
     const registerBaseUrl = `${global.config.register.server}:${global.config.register.port}`;
 
-    app.nock(registerBaseUrl)
+    app
+      .nock(registerBaseUrl)
       .post('/records/filter')
       .query((query) => {
-        return (
-          query.key_id === '13'
-          && query['data[code]'] === 'B1'
-          && !query.search_equal
-        );
+        return query.key_id === '13' && query['data[code]'] === 'B1' && !query.search_equal;
       })
       .once()
       .reply(200, {
@@ -217,14 +204,11 @@ describe('Register Controller', () => {
 
     const registerBaseUrl = `${global.config.register.server}:${global.config.register.port}`;
 
-    app.nock(registerBaseUrl)
+    app
+      .nock(registerBaseUrl)
       .post('/records/filter')
       .query((query) => {
-        return (
-          query.key_id === '13'
-          && query.search_equal === '1'
-          && typeof query['data[number]'] === 'undefined'
-        );
+        return query.key_id === '13' && query.search_equal === '1' && typeof query['data[number]'] === 'undefined';
       })
       .once()
       .reply(200, {

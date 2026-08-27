@@ -16,7 +16,7 @@ const STATUSES = {
   Preparing: 'Preparing',
   Prepared: 'Prepared',
   Exported: 'Exported',
-  Failed: 'Failed'
+  Failed: 'Failed',
 };
 
 /**
@@ -77,7 +77,7 @@ export default class ExportBusiness extends Business {
   // Get key and register and records by key ID.
   async getKeyAndRegisterAndRecords(
     keyId: number,
-    options: { onlySchema?: boolean } = {}
+    options: { onlySchema?: boolean } = {},
   ): Promise<{
     key: KeyEntity;
     register: RegisterEntity;
@@ -149,7 +149,7 @@ export default class ExportBusiness extends Business {
       options,
       data: null,
       createdAt: new Date(),
-      status: ExportBusiness.Statuses.Preparing
+      status: ExportBusiness.Statuses.Preparing,
     };
 
     // Try to set data to export.
@@ -205,7 +205,7 @@ export default class ExportBusiness extends Business {
     if (this.toExport[exportId]) {
       return {
         ...this.toExport[exportId].data,
-        options: this.toExport[exportId].options
+        options: this.toExport[exportId].options,
       };
     } else if (global.config?.redis?.isEnabled) {
       try {

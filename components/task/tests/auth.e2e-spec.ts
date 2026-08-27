@@ -40,15 +40,11 @@ describe('Auth Controller', () => {
     it('returns the authenticated user info', async () => {
       const { jwt, payload } = app.generateUserToken(TEST_USER_ID);
 
-      app.nockId
-        .get('/user/info')
-        .query({ access_token: payload.authTokens.accessToken })
-        .once()
-        .reply(200, {
-          userId: TEST_USER_ID,
-          role: 'individual',
-          services: {},
-        });
+      app.nockId.get('/user/info').query({ access_token: payload.authTokens.accessToken }).once().reply(200, {
+        userId: TEST_USER_ID,
+        role: 'individual',
+        services: {},
+      });
 
       await app
         .request()

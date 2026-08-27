@@ -1,4 +1,3 @@
-
 import { Option } from './option';
 
 // Constants.
@@ -61,7 +60,7 @@ export class PersonOption extends Option {
     // Define content parts.
     const contentPartsPromises = personsData.map(
       async (personData, index) => `${keyTextPrefix}${personsKey.text} ${isIndexNeeded ? `${index + 1}` : ''}${keyTextSuffix}${keyAndSubkeysSeparator}
-        ${await this.createContentItem(personData, staticFilePersonsOptions)}`
+        ${await this.createContentItem(personData, staticFilePersonsOptions)}`,
     );
     const contentParts = await Promise.all(contentPartsPromises);
 
@@ -88,17 +87,15 @@ export class PersonOption extends Option {
 
     // Define content item parts.
     const personsSubkeys = staticFilePersonsOptions.subkeys;
-    const contentItemPartsPromises = personsSubkeys.map(
-      async subkey =>
-        personData[subkey.path] && (!Array.isArray(subkey.allowedIsLegal) || subkey.allowedIsLegal.some(v => v === isLegalPerson))
-          ? `${subkey.text} ${personData[subkey.path]}`
-          : EMPTY_CONTENT_ITEM_PART
+    const contentItemPartsPromises = personsSubkeys.map(async (subkey) =>
+      personData[subkey.path] && (!Array.isArray(subkey.allowedIsLegal) || subkey.allowedIsLegal.some((v) => v === isLegalPerson))
+        ? `${subkey.text} ${personData[subkey.path]}`
+        : EMPTY_CONTENT_ITEM_PART,
     );
-    const contentItemParts = (await Promise.all(contentItemPartsPromises)).filter(contentItemPart => contentItemPart !== EMPTY_CONTENT_ITEM_PART);
+    const contentItemParts = (await Promise.all(contentItemPartsPromises)).filter((contentItemPart) => contentItemPart !== EMPTY_CONTENT_ITEM_PART);
 
     // Define and return content items string.
     const contentItemString = contentItemParts.join(subkeysSeparator);
     return contentItemString;
   }
 }
-

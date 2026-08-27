@@ -61,7 +61,7 @@ export class TestHarness {
       config.auth = {
         tokens: ['Basic dGVzdDp0ZXN0'], // test:test
         allowRawSequelizeParamsUsers: [],
-        limitedAccess: []
+        limitedAccess: [],
       };
     } else {
       config.auth.tokens = ['Basic dGVzdDp0ZXN0']; // test:test
@@ -235,7 +235,7 @@ export class TestHarness {
         password: this.config.db.password,
         database: process.env.DB_NAME || 'postgres',
         dialect: 'postgres',
-        logging: false
+        logging: false,
       });
 
       try {
@@ -329,7 +329,7 @@ export class TestHarness {
         password: config.db.password,
         database: config.db.database,
         dialect: 'postgres',
-        logging: false
+        logging: false,
       });
 
       try {
@@ -382,12 +382,12 @@ export class TestHarness {
         isEnabled: true,
         host: process.env.REDIS_HOST!,
         port: parseInt(process.env.REDIS_PORT || '6379', 10),
-        defaultTtl: 3600
+        defaultTtl: 3600,
       };
 
       const redisClient = new RedisClient({
         host: config.redis.host,
-        port: config.redis.port
+        port: config.redis.port,
       });
 
       // Connect to Redis
@@ -408,12 +408,12 @@ export class TestHarness {
         isEnabled: true,
         host: this.redisContainer.getHost(),
         port: this.redisContainer.getPort(),
-        defaultTtl: 3600
+        defaultTtl: 3600,
       };
 
       const redisClient = new RedisClient({
         host: config.redis.host,
-        port: config.redis.port
+        port: config.redis.port,
       });
 
       // Connect to Redis

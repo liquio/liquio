@@ -79,7 +79,7 @@ export default class AuthController extends Controller {
       if (method !== 'GET' || url !== '/records') {
         return this.responseError(res, "Basic auth user don't have access to this URL.", 401, {
           method,
-          url
+          url,
         });
       }
       const userLimitedAccessKeys = userLimitedAccess.keys || [];
@@ -87,7 +87,7 @@ export default class AuthController extends Controller {
       if (!userLimitedAccessKeys.map((v) => `${v}`).includes(req.query.key_id)) {
         return this.responseError(res, "Basic auth user don't have access to this key.", 401, {
           requestedKey: req.query.key_id,
-          userLimitedAccessKeys
+          userLimitedAccessKeys,
         });
       }
     }

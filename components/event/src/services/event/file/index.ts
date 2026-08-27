@@ -35,11 +35,9 @@ export class EventFile {
     switch (eventTemplateJsonSchemaObject?.method) {
       case 'generateCsv':
         try {
-          executedData = this.sandbox.evalWithArgs(
-            eventTemplateJsonSchemaObject.map,
-            [options.documents, options.events],
-            { meta: { fn: 'map', caller: 'EventFile.execute' } },
-          );
+          executedData = this.sandbox.evalWithArgs(eventTemplateJsonSchemaObject.map, [options.documents, options.events], {
+            meta: { fn: 'map', caller: 'EventFile.execute' },
+          });
         } catch (error: any) {
           global.log.save('file-csv-generate|exception', {
             error: error?.message,
@@ -51,11 +49,9 @@ export class EventFile {
         return await this.generateCsv(executedData, options);
       case 'generateXlsx':
         try {
-          executedData = this.sandbox.evalWithArgs(
-            eventTemplateJsonSchemaObject.map,
-            [options.documents, options.events],
-            { meta: { fn: 'map', caller: 'EventFile.execute' } },
-          );
+          executedData = this.sandbox.evalWithArgs(eventTemplateJsonSchemaObject.map, [options.documents, options.events], {
+            meta: { fn: 'map', caller: 'EventFile.execute' },
+          });
         } catch (error: any) {
           global.log.save('file-xlsx-generate|exception', {
             error: error?.message,
@@ -76,10 +72,7 @@ export class EventFile {
    * @param {object[]} data Data.
    * @param {{ filestorage }} options Options.
    */
-  async generateCsv(
-    data: any[],
-    { workflowId, eventTemplateId, filestorage, documentModel, eventModel }: any,
-  ): Promise<any> {
+  async generateCsv(data: any[], { workflowId, eventTemplateId, filestorage, documentModel, eventModel }: any): Promise<any> {
     let fileBuffer;
     try {
       const csv = data.map((row) => Object.values(row).join(',')).join('\n');
@@ -159,10 +152,7 @@ export class EventFile {
    * @param {object[]} data Data.
    * @param {{ filestorage }} options Options.
    */
-  async generateXlsx(
-    data: any[],
-    { workflowId, eventTemplateId, filestorage, documentModel, eventModel }: any,
-  ): Promise<any> {
+  async generateXlsx(data: any[], { workflowId, eventTemplateId, filestorage, documentModel, eventModel }: any): Promise<any> {
     let fileBuffer;
     try {
       // Create workbook.

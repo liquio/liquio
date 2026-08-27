@@ -1,4 +1,3 @@
-
 import { Option } from './option';
 
 /**
@@ -39,7 +38,7 @@ export class DropdownOption extends Option {
           continue;
         }
 
-        const option = field.options.find(v => v.id === documentData[stepName][fieldName]);
+        const option = field.options.find((v) => v.id === documentData[stepName][fieldName]);
         if (!option) {
           continue;
         }
@@ -51,4 +50,3 @@ export class DropdownOption extends Option {
     return data;
   }
 }
-

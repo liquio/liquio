@@ -16,8 +16,8 @@ import { UnauthorizedError } from '../lib/errors';
 import typeOf from '../lib/type_of';
 
 // Constants.
-const CANT_FIND_TASK_AND_DOCUMENT_ERROR = 'Can\'t find task and document.';
-const CANT_FIND_TASK_OR_DOCUMENT_ENTITIES_ERROR = 'Can\'t find task or document entities.';
+const CANT_FIND_TASK_AND_DOCUMENT_ERROR = "Can't find task and document.";
+const CANT_FIND_TASK_OR_DOCUMENT_ENTITIES_ERROR = "Can't find task or document entities.";
 
 /**
  * External service controller.
@@ -499,7 +499,13 @@ export class ExternalServicesController extends Controller {
     }
     const reason = parsedRequest['ext:reason'] && parsedRequest['ext:reason'][0];
 
-    global.log.save('external-services|rpzm|update-application-status-info', { sourceCode, applicationNumber, applicationStatusCode, changeDate, reason });
+    global.log.save('external-services|rpzm|update-application-status-info', {
+      sourceCode,
+      applicationNumber,
+      applicationStatusCode,
+      changeDate,
+      reason,
+    });
 
     const [event] = await this.workflowModel.db.query(
       `
@@ -607,7 +613,7 @@ export class ExternalServicesController extends Controller {
       return this.responseError(res, error);
     }
     if (!taskAndDocumentEntities) {
-      return this.responseError(res, 'Can\'t find task or document entities.');
+      return this.responseError(res, "Can't find task or document entities.");
     }
     const { document } = taskAndDocumentEntities;
     const { id: documentId } = document;
@@ -658,7 +664,7 @@ export class ExternalServicesController extends Controller {
       return this.responseError(res, error);
     }
     if (!taskAndDocumentEntities) {
-      return this.responseError(res, 'Can\'t find task or document entities.');
+      return this.responseError(res, "Can't find task or document entities.");
     }
     const { task } = taskAndDocumentEntities;
     const { id: taskId } = task;
@@ -810,4 +816,3 @@ export class ExternalServicesController extends Controller {
     return new xml2js.Builder().buildObject(soapJson);
   }
 }
-

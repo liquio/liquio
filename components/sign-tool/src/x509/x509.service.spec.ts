@@ -58,11 +58,7 @@ beforeAll(() => {
     sample1Json = fs.readFileSync(sample1JsonPath);
   }
   {
-    const certPath = path.join(
-      __dirname,
-      '__mocks__',
-      'test-person-1.cert.pem',
-    );
+    const certPath = path.join(__dirname, '__mocks__', 'test-person-1.cert.pem');
     testPersonCrtPem = fs.readFileSync(certPath, 'utf8');
     testPersonCrtB64 = testPersonCrtPem.replace(/-----[^-]+-----|\s+/g, '');
   }
@@ -96,15 +92,9 @@ describe('X509Service', () => {
       const cert = signedData.certificates
         .filter((c) => c instanceof pkijs.Certificate)
         .find((c) => {
-          const ext = c.extensions?.find(
-            (e) => e.extnID === OID_BASIC_CONSTRAINTS,
-          );
+          const ext = c.extensions?.find((e) => e.extnID === OID_BASIC_CONSTRAINTS);
           if (ext && ext.parsedValue) return !ext.parsedValue.cA;
-          return c.subject.typesAndValues.some(
-            (tv) =>
-              tv.type === OID_COMMON_NAME &&
-              tv.value.valueBlock.value === 'Test Person',
-          );
+          return c.subject.typesAndValues.some((tv) => tv.type === OID_COMMON_NAME && tv.value.valueBlock.value === 'Test Person');
         }) as pkijs.Certificate;
       expect(cert).toBeInstanceOf(pkijs.Certificate);
       const subject = cert.subject.typesAndValues.reduce(
@@ -127,36 +117,26 @@ describe('X509Service', () => {
       expect(issuer[OID_COMMON_NAME]).toBe('Liquio Test CA');
       expect(issuer[OID_ORGANIZATION_NAME]).toBe('Liquio Test CA');
       expect(issuer[OID_COUNTRY_NAME]).toBe('UA');
-      const serialHex = Buffer.from(cert.serialNumber.valueBlock.toBER())
-        .toString('hex')
-        .toUpperCase();
+      const serialHex = Buffer.from(cert.serialNumber.valueBlock.toBER()).toString('hex').toUpperCase();
       expect(serialHex).toBe('1C07D16DDAE3ECF9A031DC7F5257AD25EE541683');
       expect(signedData.signerInfos.length).toBeGreaterThan(0);
     });
 
     it('should throw on invalid base64', async () => {
-      await expect(
-        service.parseSignature('not-a-valid-base64'),
-      ).rejects.toThrow('Failed to parse signature');
+      await expect(service.parseSignature('not-a-valid-base64')).rejects.toThrow('Failed to parse signature');
     });
 
     it('should throw on invalid ASN.1', async () => {
       const badB64 = Buffer.from('hello world').toString('base64');
-      await expect(service.parseSignature(badB64)).rejects.toThrow(
-        'Failed to parse signature',
-      );
+      await expect(service.parseSignature(badB64)).rejects.toThrow('Failed to parse signature');
     });
 
     it('should throw if not a PKCS#7 SignedData structure', async () => {
-      await expect(service.parseSignature(testPersonCrtB64)).rejects.toThrow(
-        'Failed to parse signature',
-      );
+      await expect(service.parseSignature(testPersonCrtB64)).rejects.toThrow('Failed to parse signature');
     });
 
     it('should throw if signature is empty', async () => {
-      await expect(service.parseSignature('')).rejects.toThrow(
-        'Failed to parse signature',
-      );
+      await expect(service.parseSignature('')).rejects.toThrow('Failed to parse signature');
     });
 
     it('should throw if not a PKCS#7 SignedData structure', async () => {
@@ -167,9 +147,7 @@ describe('X509Service', () => {
       });
       const der = contentInfo.toSchema().toBER(false);
       const b64 = Buffer.from(der).toString('base64');
-      await expect(service.parseSignature(b64)).rejects.toThrow(
-        'Failed to parse signature: Not a PKCS#7 SignedData structure',
-      );
+      await expect(service.parseSignature(b64)).rejects.toThrow('Failed to parse signature: Not a PKCS#7 SignedData structure');
     });
   });
 
@@ -186,14 +164,8 @@ describe('X509Service', () => {
       expect(info.pem).toContain('BEGIN CERTIFICATE');
 
       // Normalize line endings for comparison
-      const decodedExtracted = Buffer.from(info.content!, 'base64')
-        .toString('utf8')
-        .replace(/\r\n/g, '\n')
-        .trim();
-      const decodedOriginal = sample1Json
-        .toString('utf8')
-        .replace(/\r\n/g, '\n')
-        .trim();
+      const decodedExtracted = Buffer.from(info.content!, 'base64').toString('utf8').replace(/\r\n/g, '\n').trim();
+      const decodedOriginal = sample1Json.toString('utf8').replace(/\r\n/g, '\n').trim();
       expect(decodedExtracted).toBe(decodedOriginal);
       if (info.signTime) {
         expect(new Date(info.signTime).toISOString()).toBe(info.signTime);
@@ -203,9 +175,7 @@ describe('X509Service', () => {
     });
 
     it('should throw on invalid base64', async () => {
-      await expect(
-        service.getSignatureInfo('not-a-valid-base64'),
-      ).rejects.toThrow(
+      await expect(service.getSignatureInfo('not-a-valid-base64')).rejects.toThrow(
         'Failed to parse or extract signature info: Failed to parse signature: ASN.1 parsing failed',
       );
     });
@@ -239,11 +209,7 @@ describe('X509Service', () => {
     });
 
     it('should not allow a self-signed user to sign in', async () => {
-      const certPath = path.join(
-        __dirname,
-        '__mocks__',
-        'test-person-2.cert.pem',
-      );
+      const certPath = path.join(__dirname, '__mocks__', 'test-person-2.cert.pem');
       const pem = fs.readFileSync(certPath, 'utf8');
       const pemB64 = Buffer.from(pem).toString('base64');
       await expect(service.getSignatureInfo(pemB64)).rejects.toThrow(
@@ -326,62 +292,40 @@ describe('X509Service', () => {
       });
       const der = contentInfo.toSchema().toBER(false);
       const b64 = Buffer.from(der).toString('base64');
-      await expect(service.getSignatureInfo(b64)).rejects.toThrow(
-        'Failed to parse or extract signature info: No signerInfo found in signature',
-      );
+      await expect(service.getSignatureInfo(b64)).rejects.toThrow('Failed to parse or extract signature info: No signerInfo found in signature');
     });
   });
 
   describe('verifyHash', () => {
     it('should return true for a valid signature and matching hash', async () => {
       const signedData = await service.parseSignature(sample1P7sB64);
-      const contentBuffer = Buffer.from(
-        signedData.encapContentInfo.eContent.valueBlock.valueHex,
-      );
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update(contentBuffer)
-        .digest('base64');
+      const contentBuffer = Buffer.from(signedData.encapContentInfo.eContent.valueBlock.valueHex);
+      const expectedHash = crypto.createHash('sha256').update(contentBuffer).digest('base64');
       const result = await service.verifyHash(expectedHash, sample1P7sB64);
       expect(result).toBe(true);
     });
 
     it('should return false if the hash does not match the signed content', async () => {
-      const wrongHash = crypto
-        .createHash('sha256')
-        .update('wrong')
-        .digest('base64');
+      const wrongHash = crypto.createHash('sha256').update('wrong').digest('base64');
       const result = await service.verifyHash(wrongHash, sample1P7sB64);
       expect(result).toBe(false);
     });
 
     it('should return false for an invalid base64 signature', async () => {
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update(sample1Json)
-        .digest('base64');
-      const result = await service.verifyHash(
-        expectedHash,
-        'not-a-valid-base64',
-      );
+      const expectedHash = crypto.createHash('sha256').update(sample1Json).digest('base64');
+      const result = await service.verifyHash(expectedHash, 'not-a-valid-base64');
       expect(result).toBe(false);
     });
 
     it('should return false for a signature that is not ASN.1', async () => {
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update(sample1Json)
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update(sample1Json).digest('base64');
       const badB64 = Buffer.from('hello world').toString('base64');
       const result = await service.verifyHash(expectedHash, badB64);
       expect(result).toBe(false);
     });
 
     it('should return false for a signature that is not PKCS#7 SignedData', async () => {
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update(sample1Json)
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update(sample1Json).digest('base64');
       const result = await service.verifyHash(expectedHash, testPersonCrtB64);
       expect(result).toBe(false);
     });
@@ -389,19 +333,13 @@ describe('X509Service', () => {
     it('should return false if signature is not signed by a trusted CA', async () => {
       // Use the test-person cert as a self-signed cert (simulate by passing its PEM as base64)
       const badCertB64 = Buffer.from(testPersonCrtPem).toString('base64');
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update(sample1Json)
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update(sample1Json).digest('base64');
       const result = await service.verifyHash(expectedHash, badCertB64);
       expect(result).toBe(false);
     });
 
     it('should return false if signature is empty', async () => {
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update(sample1Json)
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update(sample1Json).digest('base64');
       const result = await service.verifyHash(expectedHash, '');
       expect(result).toBe(false);
     });
@@ -410,20 +348,14 @@ describe('X509Service', () => {
   describe('hashData', () => {
     it('should return correct hash (base64)', async () => {
       const data = Buffer.from('test').toString('base64');
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update('test')
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update('test').digest('base64');
       const hash = await service.hashData(data, true);
       expect(hash).toBe(expectedHash);
     });
 
     it('should return correct hash (hex)', async () => {
       const data = Buffer.from('test').toString('base64');
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update('test')
-        .digest('hex');
+      const expectedHash = crypto.createHash('sha256').update('test').digest('hex');
       const hash = await service.hashData(data, false);
       expect(hash).toBe(expectedHash);
     });
@@ -453,38 +385,26 @@ describe('X509Service', () => {
 
   describe('toPem', () => {
     it('should convert base64 to PEM format', () => {
-      const service = new X509Service(
-        { get: () => ({ caCerts: [] }) } as any,
-        { setContext: () => {}, error: () => {}, log: () => {} } as any,
-      );
+      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {} } as any);
       const base64 = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7';
-      const expectedPem =
-        '-----BEGIN CERTIFICATE-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7\n-----END CERTIFICATE-----';
+      const expectedPem = '-----BEGIN CERTIFICATE-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7\n-----END CERTIFICATE-----';
       expect(service.toPem(base64)).toBe(expectedPem);
     });
   });
 
   describe('isCertSignedByCA', () => {
     it('should return false if caCerts is empty', async () => {
-      const service = new X509Service(
-        { get: () => ({ caCerts: [] }) } as any,
-        { setContext: () => {}, error: () => {}, log: () => {} } as any,
-      );
+      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {} } as any);
       const cert = { verify: jest.fn() } as any;
       (service as any).caCerts = [];
       expect(await (service as any).isCertSignedByCA(cert)).toBe(false);
     });
 
     it('should return true if cert is signed by a CA', async () => {
-      const service = new X509Service(
-        { get: () => ({ caCerts: [] }) } as any,
-        { setContext: () => {}, error: () => {}, log: () => {} } as any,
-      );
+      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {} } as any);
       const ca = {
         subject: {
-          typesAndValues: [
-            { type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } },
-          ],
+          typesAndValues: [{ type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } }],
         },
       };
       const cert = { verify: jest.fn().mockResolvedValueOnce(true) } as any;
@@ -493,15 +413,10 @@ describe('X509Service', () => {
     });
 
     it('should return false if cert is not signed by any CA', async () => {
-      const service = new X509Service(
-        { get: () => ({ caCerts: [] }) } as any,
-        { setContext: () => {}, error: () => {}, log: () => {} } as any,
-      );
+      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {} } as any);
       const ca = {
         subject: {
-          typesAndValues: [
-            { type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } },
-          ],
+          typesAndValues: [{ type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } }],
         },
       };
       const cert = { verify: jest.fn().mockResolvedValue(false) } as any;
@@ -511,15 +426,10 @@ describe('X509Service', () => {
 
     it('should return false and log error if verify throws', async () => {
       const logger = { setContext: () => {}, error: jest.fn(), log: () => {} };
-      const service = new X509Service(
-        { get: () => ({ caCerts: [] }) } as any,
-        logger as any,
-      );
+      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, logger as any);
       const ca = {
         subject: {
-          typesAndValues: [
-            { type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } },
-          ],
+          typesAndValues: [{ type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } }],
         },
       };
       const cert = {
@@ -527,10 +437,7 @@ describe('X509Service', () => {
       } as any;
       (service as any).caCerts = [ca];
       expect(await (service as any).isCertSignedByCA(cert)).toBe(false);
-      expect(logger.error).toHaveBeenCalledWith(
-        'isCertSignedByCA error',
-        expect.any(Error),
-      );
+      expect(logger.error).toHaveBeenCalledWith('isCertSignedByCA error', expect.any(Error));
     });
   });
 });

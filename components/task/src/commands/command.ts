@@ -36,7 +36,7 @@ export class Command {
   }
 
   describe(yargs) {
-    return () => Object.keys(this.args).forEach(argumentName => yargs.positional(argumentName, this.args[argumentName]));
+    return () => Object.keys(this.args).forEach((argumentName) => yargs.positional(argumentName, this.args[argumentName]));
   }
 
   async execute(_options?): Promise<any> {

@@ -70,7 +70,7 @@ export class PgPubSub {
       database: this.config.database,
       password: this.config.password,
       port: this.config.port,
-      ssl: this.config.ssl
+      ssl: this.config.ssl,
     });
 
     client.on('notification', async (msg) => {
@@ -90,7 +90,7 @@ export class PgPubSub {
       this.log.save('pgpubsub-error', {
         error: error.message,
         stack: error.stack,
-        isReconnecting: this.isReconnecting
+        isReconnecting: this.isReconnecting,
       });
 
       if (!this.isReconnecting) {
@@ -127,7 +127,7 @@ export class PgPubSub {
     } catch (error) {
       this.log.save('pgpubsub-end-client-error', {
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
     }
 
@@ -135,7 +135,7 @@ export class PgPubSub {
       try {
         this.log.save('pgpubsub-starting-to-reconnect', {
           reconnectAttempts: this.reconnectAttempts,
-          message: 'Attempting to reconnect...'
+          message: 'Attempting to reconnect...',
         });
 
         this.reconnectAttempts += 1;
@@ -143,7 +143,7 @@ export class PgPubSub {
 
         this.log.save('pgpubsub-reconnected-successfully', {
           reconnectAttempts: this.reconnectAttempts,
-          message: 'Reconnected successfully'
+          message: 'Reconnected successfully',
         });
 
         // Re-subscribe to channels.
@@ -161,7 +161,7 @@ export class PgPubSub {
         this.log.save('pgpubsub-failed-to-reconnect', {
           error: error.message,
           stack: error.stack,
-          reconnectAttempts: this.reconnectAttempts
+          reconnectAttempts: this.reconnectAttempts,
         });
       }
     }, this.config.retryConnectionTime || RETRY_CONNECTION_TIME);

@@ -894,7 +894,13 @@ export class TaskController extends Controller {
     try {
       updatedTask = await this.taskModel.setPerformerUsers(taskId, newPerformerUsers, newPerformerUserNames);
     } catch (error) {
-      global.log.save('set-performer-users-error', { error: error?.message, details: error?.details, taskId, newPerformerUsers, newPerformerUserNames });
+      global.log.save('set-performer-users-error', {
+        error: error?.message,
+        details: error?.details,
+        taskId,
+        newPerformerUsers,
+        newPerformerUserNames,
+      });
       return this.responseError(res, error, error.httpStatusCode);
     }
 
@@ -1080,4 +1086,3 @@ export class TaskController extends Controller {
     this.responseData(res, tasksWithNames);
   }
 }
-

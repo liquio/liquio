@@ -1,4 +1,3 @@
-
 import Sequelize from 'sequelize';
 import { Model } from './model';
 import { DocumentAttachmentEntity } from '../entities/document_attachment';
@@ -24,7 +23,7 @@ export class DocumentAttachmentModel extends Model {
           id: { primaryKey: true, type: Sequelize.UUID, defaultValue: Sequelize.UUIDV1 },
           document_id: {
             type: Sequelize.UUID,
-            references: { model: 'documents', key: 'id' }
+            references: { model: 'documents', key: 'id' },
           },
           link: Sequelize.STRING,
           name: Sequelize.STRING,
@@ -33,30 +32,30 @@ export class DocumentAttachmentModel extends Model {
           labels: {
             type: Sequelize.ARRAY(Sequelize.STRING),
             allowNull: false,
-            defaultValue: []
+            defaultValue: [],
           },
           is_generated: {
             type: Sequelize.BOOLEAN,
             allowNull: false,
-            defaultValue: false
+            defaultValue: false,
           },
           is_system: {
             type: Sequelize.BOOLEAN,
             allowNull: false,
-            defaultValue: false
+            defaultValue: false,
           },
           meta: {
             type: Sequelize.JSONB,
             allowNull: false,
-            defaultValue: {}
-          }
+            defaultValue: {},
+          },
         },
         {
           tableName: 'document_attachments',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       DocumentAttachmentModel.singleton = this;
@@ -73,7 +72,9 @@ export class DocumentAttachmentModel extends Model {
   async findById(id) {
     const attachment = await this.model.findByPk(id);
 
-    if (!attachment) { return; }
+    if (!attachment) {
+      return;
+    }
 
     return this.prepareEntity(attachment);
   }
@@ -184,7 +185,7 @@ export class DocumentAttachmentModel extends Model {
       isGenerated: item.is_generated,
       isSystem: item.is_system,
       meta: item.meta,
-      createdAt: item.created_at
+      createdAt: item.created_at,
     });
   }
 
@@ -207,4 +208,3 @@ export class DocumentAttachmentModel extends Model {
     };
   }
 }
-

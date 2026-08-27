@@ -662,7 +662,10 @@ export class FileStorage {
    */
   async createAsicManifest(filesIds = [], dataObject = null) {
     // Define request options.
-    global.log.save('filestorage-create-asic-manifest-initialized', { filesIds, dataObjectFields: dataObject === null ? null : Object.keys(dataObject) });
+    global.log.save('filestorage-create-asic-manifest-initialized', {
+      filesIds,
+      dataObjectFields: dataObject === null ? null : Object.keys(dataObject),
+    });
     const requestOptions = {
       url: `${this.apiHost}/files/asicmanifest`,
       method: 'POST',
@@ -850,4 +853,3 @@ export class FileStorage {
     return requestOptions;
   }
 }
-

@@ -68,7 +68,7 @@ describe('KeysController', () => {
             updatedBy: expect.anything(),
             createdAt: expect.any(String),
             updatedAt: expect.any(String),
-            data: expect.anything()
+            data: expect.anything(),
           });
         });
     });
@@ -125,7 +125,7 @@ describe('KeysController', () => {
             createdBy: 'diia-stage',
             updatedBy: 'diia-stage',
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
         });
     });
@@ -179,7 +179,7 @@ describe('KeysController', () => {
           schema: { type: 'object', properties: {} },
           toString: '(record) => { return record.data.name; }',
           toSearchString: '(record) => { return [record.data.name]; }',
-          toExport: '(record) => { return null; }'
+          toExport: '(record) => { return null; }',
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -202,7 +202,7 @@ describe('KeysController', () => {
             createdBy: expect.any(String),
             updatedBy: expect.any(String),
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
           createdId = response.body.data.id;
         });
@@ -260,7 +260,7 @@ describe('KeysController', () => {
         .send({
           registerId: 100,
           name: 'Updated Key',
-          description: 'Updated description'
+          description: 'Updated description',
         })
         .expect(404)
         .expect('Content-Type', /json/);
@@ -280,7 +280,7 @@ describe('KeysController', () => {
           schema: { type: 'object', properties: {} },
           toString: '(record) => { return record.data.name; }',
           toSearchString: '(record) => { return [record.data.name]; }',
-          toExport: '(record) => { return null; }'
+          toExport: '(record) => { return null; }',
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -300,7 +300,7 @@ describe('KeysController', () => {
           schema: { type: 'object', properties: { updated: { type: 'boolean' } } },
           toString: '(record) => { return record.data.updatedName; }',
           toSearchString: '(record) => { return [record.data.updatedName]; }',
-          toExport: '(record) => { return null; }'
+          toExport: '(record) => { return null; }',
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -341,7 +341,7 @@ describe('KeysController', () => {
           schema: { type: 'object', properties: {} },
           toString: '(record) => { return record.data.name; }',
           toSearchString: '(record) => { return [record.data.name]; }',
-          toExport: '(record) => { return null; }'
+          toExport: '(record) => { return null; }',
         })
         .expect(200)
         .expect('Content-Type', /json/)

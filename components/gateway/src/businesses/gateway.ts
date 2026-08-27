@@ -208,7 +208,7 @@ export class GatewayBusiness {
           version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
         });
         if (!createdGateway) {
-          throw new Error('Gateway wasn\'t created.');
+          throw new Error("Gateway wasn't created.");
         }
 
         // Log.

@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { UnitAccessModel } from '../models/unit_access';
 
@@ -32,8 +31,12 @@ export class UnitAccessController extends Controller {
     // Define params.
     const { unit_id: unitId, type } = req.query;
     const filter: any = {};
-    if (unitId) { filter.unit_id = (unitId === 'null' ? null : unitId); }
-    if (type) { filter.type = type; }
+    if (unitId) {
+      filter.unit_id = unitId === 'null' ? null : unitId;
+    }
+    if (type) {
+      filter.type = type;
+    }
 
     // Get unit access list.
     let unitAccessList;
@@ -59,7 +62,9 @@ export class UnitAccessController extends Controller {
     let unitAccess;
     try {
       unitAccess = await this.unitAccessModel.findById(id);
-      if (!unitAccess) { return this.responseError(res, 'Unit access not found.', 404); }
+      if (!unitAccess) {
+        return this.responseError(res, 'Unit access not found.', 404);
+      }
     } catch (error) {
       this.responseError(res, error);
     }
@@ -80,7 +85,9 @@ export class UnitAccessController extends Controller {
     let unitAccess;
     try {
       unitAccess = await this.unitAccessModel.create({ unitId, type, data });
-      if (!unitAccess) { return this.responseError(res, 'Can not create unit access.', 500); }
+      if (!unitAccess) {
+        return this.responseError(res, 'Can not create unit access.', 500);
+      }
     } catch (error) {
       this.responseError(res, error);
     }
@@ -102,7 +109,9 @@ export class UnitAccessController extends Controller {
     let unitAccess;
     try {
       unitAccess = await this.unitAccessModel.update(id, { unitId, type, data });
-      if (!unitAccess) { return this.responseError(res, 'Can not update unit access.', 500); }
+      if (!unitAccess) {
+        return this.responseError(res, 'Can not update unit access.', 500);
+      }
     } catch (error) {
       this.responseError(res, error);
     }
@@ -123,7 +132,9 @@ export class UnitAccessController extends Controller {
     let isDeleted;
     try {
       isDeleted = await this.unitAccessModel.deleteById(id);
-      if (!isDeleted) { return this.responseError(res, 'Can not delete unit access.', 500); }
+      if (!isDeleted) {
+        return this.responseError(res, 'Can not delete unit access.', 500);
+      }
     } catch (error) {
       this.responseError(res, error);
     }
@@ -131,4 +142,3 @@ export class UnitAccessController extends Controller {
     this.responseData(res, isDeleted);
   }
 }
-

@@ -10,7 +10,7 @@ export async function insertData(sequelize) {
       created_by: 'test-user',
       updated_by: 'test-user',
       created_at: '2023-01-01T00:00:00.000Z',
-      updated_at: '2023-01-01T00:00:00.000Z'
+      updated_at: '2023-01-01T00:00:00.000Z',
     },
     // Register for records.e2e.spec.ts
     200: {
@@ -22,7 +22,7 @@ export async function insertData(sequelize) {
       created_by: 'test-user',
       updated_by: 'test-user',
       created_at: '2023-01-01T00:00:00.000Z',
-      updated_at: '2023-01-01T00:00:00.000Z'
+      updated_at: '2023-01-01T00:00:00.000Z',
     },
     // Register for registers.e2e.spec.ts
     300: {
@@ -34,7 +34,7 @@ export async function insertData(sequelize) {
       created_by: 'test-user',
       updated_by: 'test-user',
       created_at: '2023-01-01T00:00:00.000Z',
-      updated_at: '2023-01-01T00:00:00.000Z'
+      updated_at: '2023-01-01T00:00:00.000Z',
     },
     // Register for afterhandler-blockchain.e2e.spec.ts
     400: {
@@ -46,7 +46,7 @@ export async function insertData(sequelize) {
       created_by: 'test-user',
       updated_by: 'test-user',
       created_at: '2023-01-01T00:00:00.000Z',
-      updated_at: '2023-01-01T00:00:00.000Z'
+      updated_at: '2023-01-01T00:00:00.000Z',
     },
     // Register for afterhandler-elastic.e2e.spec.ts
     500: {
@@ -58,7 +58,7 @@ export async function insertData(sequelize) {
       created_by: 'test-user',
       updated_by: 'test-user',
       created_at: '2023-01-01T00:00:00.000Z',
-      updated_at: '2023-01-01T00:00:00.000Z'
+      updated_at: '2023-01-01T00:00:00.000Z',
     },
     // Register for afterhandler-plink.e2e.spec.ts
     600: {
@@ -70,7 +70,7 @@ export async function insertData(sequelize) {
       created_by: 'test-user',
       updated_by: 'test-user',
       created_at: '2023-01-01T00:00:00.000Z',
-      updated_at: '2023-01-01T00:00:00.000Z'
+      updated_at: '2023-01-01T00:00:00.000Z',
     },
     // Register for afterhandler-webhook.e2e.spec.ts
     700: {
@@ -82,7 +82,7 @@ export async function insertData(sequelize) {
       created_by: 'test-user',
       updated_by: 'test-user',
       created_at: '2023-01-01T00:00:00.000Z',
-      updated_at: '2023-01-01T00:00:00.000Z'
+      updated_at: '2023-01-01T00:00:00.000Z',
     },
     // Register for encryption.e2e.spec.ts
     800: {
@@ -94,7 +94,7 @@ export async function insertData(sequelize) {
       created_by: 'test-user',
       updated_by: 'test-user',
       created_at: '2023-01-01T00:00:00.000Z',
-      updated_at: '2023-01-01T00:00:00.000Z'
+      updated_at: '2023-01-01T00:00:00.000Z',
     },
     // Legacy register (kept for backward compatibility if needed)
     90: {
@@ -106,8 +106,8 @@ export async function insertData(sequelize) {
       created_by: 'diia-stage',
       updated_by: 'diia-stage',
       created_at: '2022-01-24T09:00:44.385Z',
-      updated_at: '2024-05-13T10:34:25.070Z'
-    }
+      updated_at: '2024-05-13T10:34:25.070Z',
+    },
   };
 
   // Registers
@@ -126,10 +126,10 @@ export async function insertData(sequelize) {
           register.created_by,
           register.updated_by,
           register.created_at,
-          register.updated_at
-        ]
+          register.updated_at,
+        ],
       },
-      { raw: true }
+      { raw: true },
     );
   }
 
@@ -152,7 +152,7 @@ export async function insertData(sequelize) {
         "(record) => {\n    const casesIndicatorsMap = {\n        case8: '8',\n        case13: '13',\n        case14: '14',\n        case15: '15',\n        case16: '16',\n        case18: '18',\n        case27: '27'\n    };\n    const casesIndicators = '|' + Object.entries(casesIndicatorsMap).map(v => record.data[v[0]] ? v[1] : null).filter(v => !!v).join('|') + '|';\n    return [record.data.atuId, record.data.OBJ_ID, casesIndicators];\n};",
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     151: {
       id: 151,
@@ -171,7 +171,7 @@ export async function insertData(sequelize) {
       to_search_string: '(record) => { return [record.data.RET_ID]; };',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     163: {
       id: 163,
@@ -189,7 +189,7 @@ export async function insertData(sequelize) {
       to_search_string: '() => "";',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     164: {
       id: 164,
@@ -208,7 +208,7 @@ export async function insertData(sequelize) {
       to_search_string: '() => "";',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     // Test keys for register 100 (keys.e2e.spec.ts)
     1001: {
@@ -227,7 +227,7 @@ export async function insertData(sequelize) {
       to_search_string: '(record) => { return [record.data.name]; }',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     1002: {
       id: 1002,
@@ -245,7 +245,7 @@ export async function insertData(sequelize) {
       to_search_string: '(record) => { return [record.data.title]; }',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     // Test keys for register 200 (records.e2e.spec.ts)
     2001: {
@@ -264,7 +264,7 @@ export async function insertData(sequelize) {
       to_search_string: '(record) => { return [record.data.name]; }',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     2002: {
       id: 2002,
@@ -283,7 +283,7 @@ export async function insertData(sequelize) {
       to_search_string: '(record) => { return [record.data.field1]; }',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     // Test keys for register 800 (encryption.e2e.spec.ts)
     8001: {
@@ -303,7 +303,7 @@ export async function insertData(sequelize) {
       to_search_string: '(record) => { return [record.data.RET_ID]; }',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
+      is_encrypted: false,
     },
     8002: {
       id: 8002,
@@ -321,8 +321,8 @@ export async function insertData(sequelize) {
       to_search_string: '(record) => { return [record.data.title]; }',
       to_export: '(record) => { return null; }',
       access_mode: 'full',
-      is_encrypted: false
-    }
+      is_encrypted: false,
+    },
   };
 
   // Keys
@@ -348,10 +348,10 @@ export async function insertData(sequelize) {
           key.to_search_string,
           key.to_export,
           key.access_mode,
-          key.is_encrypted
-        ]
+          key.is_encrypted,
+        ],
       },
-      { raw: true }
+      { raw: true },
     );
   }
 
@@ -371,7 +371,7 @@ export async function insertData(sequelize) {
       search_string_2: '88490',
       search_string_3: '|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '87617e50-09b8-11ee-8bd8-f1f3dc4af6ad': {
       id: '87617e50-09b8-11ee-8bd8-f1f3dc4af6ad',
@@ -388,7 +388,7 @@ export async function insertData(sequelize) {
       search_string_2: '88554',
       search_string_3: '|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '8b3828d0-09b8-11ee-8bd8-f1f3dc4af6ad': {
       id: '8b3828d0-09b8-11ee-8bd8-f1f3dc4af6ad',
@@ -405,7 +405,7 @@ export async function insertData(sequelize) {
       search_string_2: '88519',
       search_string_3: '|8|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '8ade9720-09b8-11ee-8bd8-f1f3dc4af6ad': {
       id: '8ade9720-09b8-11ee-8bd8-f1f3dc4af6ad',
@@ -422,7 +422,7 @@ export async function insertData(sequelize) {
       search_string_2: '89783',
       search_string_3: '|8|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '8940ecb0-09b8-11ee-8bd8-f1f3dc4af6ad': {
       id: '8940ecb0-09b8-11ee-8bd8-f1f3dc4af6ad',
@@ -439,7 +439,7 @@ export async function insertData(sequelize) {
       search_string_2: '89028',
       search_string_3: '|13|14|15|16|18|27|',
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdecae2-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdecae2-7d38-11ec-a6de-b57280148b1b',
@@ -456,7 +456,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdecaf1-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdecaf1-7d38-11ec-a6de-b57280148b1b',
@@ -473,7 +473,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdea3f8-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdea3f8-7d38-11ec-a6de-b57280148b1b',
@@ -490,7 +490,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdea3fd-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdea3fd-7d38-11ec-a6de-b57280148b1b',
@@ -507,7 +507,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '3bdea402-7d38-11ec-a6de-b57280148b1b': {
       id: '3bdea402-7d38-11ec-a6de-b57280148b1b',
@@ -524,7 +524,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '99afab63-7d38-11ec-a6de-b57280148b1b': {
       id: '99afab63-7d38-11ec-a6de-b57280148b1b',
@@ -541,7 +541,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '99afab68-7d38-11ec-a6de-b57280148b1b': {
       id: '99afab68-7d38-11ec-a6de-b57280148b1b',
@@ -558,7 +558,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '99afab6a-7d38-11ec-a6de-b57280148b1b': {
       id: '99afab6a-7d38-11ec-a6de-b57280148b1b',
@@ -575,7 +575,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '99afab6f-7d38-11ec-a6de-b57280148b1b': {
       id: '99afab6f-7d38-11ec-a6de-b57280148b1b',
@@ -592,7 +592,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '60d82005-7d38-11ec-a6de-b57280148b1b': {
       id: '60d82005-7d38-11ec-a6de-b57280148b1b',
@@ -609,7 +609,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '44108792-7d37-11ec-a6de-b57280148b1b': {
       id: '44108792-7d37-11ec-a6de-b57280148b1b',
@@ -626,7 +626,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '44108793-7d37-11ec-a6de-b57280148b1b': {
       id: '44108793-7d37-11ec-a6de-b57280148b1b',
@@ -643,7 +643,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '4410aea3-7d37-11ec-a6de-b57280148b1b': {
       id: '4410aea3-7d37-11ec-a6de-b57280148b1b',
@@ -660,7 +660,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '4410aea8-7d37-11ec-a6de-b57280148b1b': {
       id: '4410aea8-7d37-11ec-a6de-b57280148b1b',
@@ -677,7 +677,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '44108794-7d37-11ec-a6de-b57280148b1b': {
       id: '44108794-7d37-11ec-a6de-b57280148b1b',
@@ -694,7 +694,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     // Test records for register 800 / key 8001 (encryption tests)
     '80000001-0000-0000-0000-000000000001': {
@@ -712,7 +712,7 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
+      is_encrypted: false,
     },
     '80000001-0000-0000-0000-000000000002': {
       id: '80000001-0000-0000-0000-000000000002',
@@ -729,8 +729,8 @@ export async function insertData(sequelize) {
       search_string_2: null,
       search_string_3: null,
       signature: null,
-      is_encrypted: false
-    }
+      is_encrypted: false,
+    },
   };
 
   // Records
@@ -755,10 +755,10 @@ export async function insertData(sequelize) {
           record.search_string_2,
           record.search_string_3,
           record.signature,
-          record.is_encrypted
-        ]
+          record.is_encrypted,
+        ],
       },
-      { raw: true }
+      { raw: true },
     );
   }
 
@@ -773,6 +773,6 @@ export async function insertData(sequelize) {
   return {
     REGISTERS,
     KEYS,
-    RECORDS
+    RECORDS,
   };
 }

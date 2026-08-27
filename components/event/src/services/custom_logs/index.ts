@@ -88,11 +88,9 @@ export class CustomLogs {
       // Custom params.
       let customParams;
       try {
-        customParams = this.sandbox.evalWithArgs(
-          schema,
-          [{ event, documents, events }],
-          { meta: { fn: 'schema', caller: 'CustomLogs.saveCustomLog' } },
-        ); // Returns `{ type, custom: { someProperty: { name, value }, ... } }`.
+        customParams = this.sandbox.evalWithArgs(schema, [{ event, documents, events }], {
+          meta: { fn: 'schema', caller: 'CustomLogs.saveCustomLog' },
+        }); // Returns `{ type, custom: { someProperty: { name, value }, ... } }`.
         global.log.save('custom-log-params-calculation-result', { schema, customParams });
       } catch (error: any) {
         global.log.save('custom-log-params-calculation-error', { error: error && error.message, schema, event });

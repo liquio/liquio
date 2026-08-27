@@ -71,11 +71,11 @@ export default class Afterhandler {
   init() {
     // Init workers.
     this.workers = Afterhandler.WorkersClasses.map((WorkerClass) =>
-      this.config[WorkerClass.afterhandlerType] ? new WorkerClass(this.config[WorkerClass.afterhandlerType], this.afterhandlerModel) : null
+      this.config[WorkerClass.afterhandlerType] ? new WorkerClass(this.config[WorkerClass.afterhandlerType], this.afterhandlerModel) : null,
     ).filter((v) => !!v);
     this.log.save(
       'afterhandler-workers-initialized',
-      Afterhandler.WorkersClasses.map((WorkerClass) => WorkerClass.afterhandlerType)
+      Afterhandler.WorkersClasses.map((WorkerClass) => WorkerClass.afterhandlerType),
     );
 
     // Start workers.

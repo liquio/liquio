@@ -1,6 +1,6 @@
 import { TestApp } from './test-app';
 import { expectAuthRequired } from './helpers/auth_guard';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const { PaymentService } = require('../src/services/payment');
 
 // Test fixture identifiers.

@@ -9,10 +9,8 @@ const getAbortError = () => import('node-fetch').then(({ AbortError }) => AbortE
 
 const DEFAULT_REQUEST_TIMEOUT = 60000; // 1 minute.
 
-
 export class HttpClient {
   config: any;
-
 
   constructor(config) {
     /**
@@ -37,34 +35,36 @@ export class HttpClient {
     try {
       const { protocol, host } = new URL(url);
       urlWithoutQueryParameters = options.isNonSensitiveDataRegime ? url : `${protocol}//${host}`;
-    } catch  {
+    } catch {
       throw new HTTPRequestError('Server is trying to sent an HTTP request with invalid URL.', {
         cause: {
           meta: meta,
-          url: options.isNonSensitiveDataRegime ? url : undefined
-        }
+          url: options.isNonSensitiveDataRegime ? url : undefined,
+        },
       });
     }
 
     const abortController = new AbortController();
-    const timeout = setTimeout(() => {
-      abortController.abort();
-    }, init.timeout || this.config?.requestTimeout || DEFAULT_REQUEST_TIMEOUT);
+    const timeout = setTimeout(
+      () => {
+        abortController.abort();
+      },
+      init.timeout || this.config?.requestTimeout || DEFAULT_REQUEST_TIMEOUT,
+    );
 
     init = {
       ...init,
       headers: {
         ...init.headers,
-        'global-trace-id': getTraceId()
+        'global-trace-id': getTraceId(),
       },
-      signal: abortController.signal
+      signal: abortController.signal,
     };
 
     let response;
     try {
       response = await nodeFetch(url, init);
     } catch (error) {
-
       // Fix import node-fetch for CommonJS modules. https://github.com/node-fetch/node-fetch/blob/HEAD/docs/v3-UPGRADE-GUIDE.md
       const AbortError = await getAbortError();
       if (error instanceof AbortError) {
@@ -76,7 +76,7 @@ export class HttpClient {
         error: error.toString(),
         stack: error.stack,
         curl: this.makeCurl(url, init),
-        ...error
+        ...error,
       });
 
       throw new HTTPRequestError('Server sent an HTTP request and got an network error.', {
@@ -84,9 +84,8 @@ export class HttpClient {
           meta: meta,
           request: `${init.method} ${options.isNonSensitiveDataRegime ? url : urlWithoutQueryParameters}`,
           errorCode: error.code,
-        }
+        },
       });
-
     } finally {
       clearTimeout(timeout);
     }
@@ -97,7 +96,7 @@ export class HttpClient {
         meta,
         curl: this.makeCurl(url, init),
         response: `${response.status} ${response.statusText}`,
-        responseBody: responseBody
+        responseBody: responseBody,
       });
 
       throw new HTTPResponseError('Server sent an HTTP request and got an error in response.', {
@@ -105,8 +104,8 @@ export class HttpClient {
           meta: meta,
           request: `${init.method} ${options.isNonSensitiveDataRegime ? url : urlWithoutQueryParameters}`,
           response: `${response.status} ${response.statusText}`,
-          responseBody: options.isNonSensitiveDataRegime ? responseBody : undefined
-        }
+          responseBody: options.isNonSensitiveDataRegime ? responseBody : undefined,
+        },
       });
     }
 
@@ -135,4 +134,3 @@ export class HttpClient {
     return curl;
   }
 }
-

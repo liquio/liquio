@@ -40,10 +40,7 @@ export class ProtectedFileController extends Controller {
    */
   async open(req, res) {
     try {
-      const {
-        key_id: keyId,
-        record_id: recordId
-      } = matchedData(req, { locations: ['params'] });
+      const { key_id: keyId, record_id: recordId } = matchedData(req, { locations: ['params'] });
       const { preview, path, p7s } = matchedData(req, { locations: ['query'] });
 
       const userUnitIds = this.getRequestUserUnitIds(req);
@@ -55,13 +52,7 @@ export class ProtectedFileController extends Controller {
         throw new InvalidParamsError('Missing required parameters: key_id, record_id, path.');
       }
 
-      const record = await this.registerBusiness.findRecordAndCheckAccess(
-        recordId,
-        keyId,
-        allowTokens,
-        userUnitIds,
-        accessInfo
-      );
+      const record = await this.registerBusiness.findRecordAndCheckAccess(recordId, keyId, allowTokens, userUnitIds, accessInfo);
 
       const attach = PropByPath.get(record || {}, path);
       const fileId = attach?.link;
@@ -92,13 +83,7 @@ export class ProtectedFileController extends Controller {
     const contentLength = req.query.content_length || req.headers['content-length'];
 
     try {
-      const { id: fileId } = await this.storageService.provider.uploadFileFromStream(
-        req,
-        originalFileName,
-        undefined,
-        contentType,
-        contentLength
-      );
+      const { id: fileId } = await this.storageService.provider.uploadFileFromStream(req, originalFileName, undefined, contentType, contentLength);
 
       this.responseData(res, {
         link: fileId,
@@ -130,4 +115,3 @@ export class ProtectedFileController extends Controller {
     return this.storageService.provider.downloadFileRequestOptions(fileId);
   }
 }
-

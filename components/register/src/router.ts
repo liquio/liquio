@@ -118,245 +118,245 @@ export default class Router {
       'GET /test/ping': {
         controller: {
           name: 'test',
-          method: 'ping'
-        }
+          method: 'ping',
+        },
       },
       'GET /test/ping_with_auth': {
         controller: {
           name: 'test',
-          method: 'ping'
+          method: 'ping',
         },
-        basicAuth: true
+        basicAuth: true,
       },
 
       // Registers controller.
       'GET /registers': {
         validator: { name: 'registers', method: 'getAll' },
         controller: { name: 'registers', method: 'getAll' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /registers/:id': {
         validator: { name: 'registers', method: 'findById' },
         controller: { name: 'registers', method: 'findById' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /registers': {
         validator: { name: 'registers', method: 'create' },
         controller: { name: 'registers', method: 'create' },
-        basicAuth: true
+        basicAuth: true,
       },
       'PUT /registers/:id': {
         validator: { name: 'registers', method: 'update' },
         controller: { name: 'registers', method: 'update' },
-        basicAuth: true
+        basicAuth: true,
       },
       'DELETE /registers/:id': {
         validator: { name: 'registers', method: 'delete' },
         controller: { name: 'registers', method: 'delete' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /registers/:id/export': {
         validator: { name: 'registers', method: 'export' },
         controller: { name: 'registers', method: 'export' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /registers/import': {
         validator: { name: 'registers', method: 'import' },
         controller: { name: 'registers', method: 'import' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /registers/:id/stream-export': {
         validator: { name: 'registers', method: 'export' },
         controller: { name: 'registers', method: 'streamExport' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /registers/stream-import': {
         validator: { name: 'registers', method: 'import' },
         controller: { name: 'registers', method: 'streamImport' },
-        basicAuth: true
+        basicAuth: true,
       },
       // Keys controller.
       'GET /keys': {
         validator: { name: 'keys', method: 'getAll' },
         controller: { name: 'keys', method: 'getAll' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /keys/synced': {
         validator: { name: 'keys', method: 'syncedByIds' },
         controller: { name: 'keys', method: 'syncedByIds' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /keys/allSynced': {
         validator: { name: 'keys', method: 'allSynced' },
         controller: { name: 'keys', method: 'allSynced' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /keys/:id': {
         validator: { name: 'keys', method: 'findById' },
         controller: { name: 'keys', method: 'findById' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /keys/:id/history': {
         validator: { name: 'keys', method: 'findHistoryByKeyId' },
         controller: { name: 'keys', method: 'findHistoryByKeyId' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /keys/:id/reindex': {
         validator: { name: 'keys', method: 'reindex' },
         controller: { name: 'keys', method: 'reindex' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /keys/:id/afterhandlers-reindex': {
         validator: { name: 'keys', method: 'afterhandlersReindex' },
         controller: { name: 'keys', method: 'afterhandlersReindex' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /keys/:id/process-encryption': {
         validator: { name: 'keys', method: 'processEncryption' },
         controller: { name: 'keys', method: 'processEncryption' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /keys': {
         validator: { name: 'keys', method: 'create' },
         controller: { name: 'keys', method: 'create' },
-        basicAuth: true
+        basicAuth: true,
       },
       'PUT /keys/:id': {
         validator: { name: 'keys', method: 'update' },
         controller: { name: 'keys', method: 'update' },
-        basicAuth: true
+        basicAuth: true,
       },
       'DELETE /keys/:id': {
         validator: { name: 'keys', method: 'delete' },
         controller: { name: 'keys', method: 'delete' },
-        basicAuth: true
+        basicAuth: true,
       },
 
       // Records controller.
       'GET /records': {
         validator: { name: 'records', method: 'getAll' },
         controller: { name: 'records', method: 'getAll' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /records-by-post': {
         validator: { name: 'records', method: 'getAllByPost' },
         controller: { name: 'records', method: 'getAll' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /records/search': {
         validator: { name: 'records', method: 'search' },
         controller: { name: 'records', method: 'search' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /records/:id': {
         validator: { name: 'records', method: 'findById' },
         controller: { name: 'records', method: 'findById' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /records/:id/history': {
         validator: { name: 'records', method: 'findHistoryByRecordId' },
         controller: { name: 'records', method: 'findHistoryByRecordId' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /records': {
         validator: { name: 'records', method: 'create' },
         controller: { name: 'records', method: 'create' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /records/bulk': {
         validator: { name: 'records', method: 'bulkImport' },
         controller: { name: 'records', method: 'bulkImport' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /records/bulk-by-person': {
         validator: { name: 'records', method: 'bulkCreateByPerson' },
         controller: { name: 'records', method: 'bulkCreateByPerson' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /records/filter': {
         validator: { name: 'records', method: 'getAllFiltered' },
         controller: { name: 'records', method: 'getAllFiltered' },
-        basicAuth: true
+        basicAuth: true,
       },
       'PATCH /records/:id': {
         validator: { name: 'records', method: 'updatePatch' },
         controller: { name: 'records', method: 'updatePatch' },
-        basicAuth: true
+        basicAuth: true,
       },
       'PUT /records/:id': {
         validator: { name: 'records', method: 'update' },
         controller: { name: 'records', method: 'update' },
-        basicAuth: true
+        basicAuth: true,
       },
       'DELETE /records/bulk': {
         validator: { name: 'records', method: 'deleteBulk' },
         controller: { name: 'records', method: 'deleteBulk' },
-        basicAuth: true
+        basicAuth: true,
       },
       'DELETE /records/:id': {
         validator: { name: 'records', method: 'delete' },
         controller: { name: 'records', method: 'delete' },
-        basicAuth: true
+        basicAuth: true,
       },
 
       // Access log controller.
       'GET /access-log': {
         validator: { name: 'accessLog', method: 'getAll' },
         controller: { name: 'accessLog', method: 'getAll' },
-        basicAuth: true
+        basicAuth: true,
       },
 
       // Custom controller.
       'GET /custom/post-code': {
         validator: { name: 'custom', method: 'getPostCode' },
         controller: { name: 'custom', method: 'getPostCode' },
-        basicAuth: true
+        basicAuth: true,
       },
 
       // Export controller.
       'POST /export/start-preparing': {
         validator: { name: 'export', method: 'startPreparingToExport' },
         controller: { name: 'export', method: 'startPreparingToExport' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /export/:exportId/status': {
         validator: { name: 'export', method: 'getExportStatus' },
         controller: { name: 'export', method: 'getExportStatus' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /export/:exportId/data': {
         validator: { name: 'export', method: 'getExportData' },
         controller: { name: 'export', method: 'getExportData' },
-        basicAuth: true
+        basicAuth: true,
       },
 
       // Import controller.
       'POST /import/start': {
         controller: { name: 'import', method: 'startImport' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /import/:importId/status': {
         validator: { name: 'import', method: 'getImportStatusWithDetails' },
         controller: { name: 'import', method: 'getImportStatusWithDetails' },
-        basicAuth: true
+        basicAuth: true,
       },
 
       // Rollback controller.
       'POST /rollback/start': {
         validator: { name: 'rollback', method: 'startRollback' },
         controller: { name: 'rollback', method: 'startRollback' },
-        basicAuth: true
+        basicAuth: true,
       },
       'GET /rollback/:rollbackId/status': {
         validator: { name: 'rollback', method: 'getRollbackStatusWithDetails' },
         controller: { name: 'rollback', method: 'getRollbackStatusWithDetails' },
-        basicAuth: true
+        basicAuth: true,
       },
       'POST /rollback/record': {
         validator: { name: 'rollback', method: 'rollbackRecord' },
         controller: { name: 'rollback', method: 'rollbackRecord' },
-        basicAuth: true
-      }
+        basicAuth: true,
+      },
     };
 
     for (const routeKey in allRoutes) {

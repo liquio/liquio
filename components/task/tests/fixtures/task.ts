@@ -83,4 +83,3 @@ export const TASK_FIXTURES = [
     updated_by: '61efddaa351d6219eee09043',
   },
 ];
-

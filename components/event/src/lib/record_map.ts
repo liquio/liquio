@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const PropByPath = require('prop-by-path');
 const { randomUUID } = crypto;
 
@@ -287,7 +287,7 @@ export class RecordMap {
     try {
       newSequenceNumber = await this.getSequenceNumberByYear(currentYear);
     } catch (error: any) {
-      error.details = 'Can\'t get sequence number by year.';
+      error.details = "Can't get sequence number by year.";
       throw error;
     }
     const newSequenceNumberString = `${newSequenceNumber}`.padStart(7, '0');
@@ -393,7 +393,10 @@ async function deepLink(method: string) {
  * @returns {Promise<{url, name, type}>} File object.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function plinkFromFilestorageAttach(attach: any, { isIncludeP7s = false, linkEnding = '' }: { isIncludeP7s?: boolean; linkEnding?: string } = {}) {
+async function plinkFromFilestorageAttach(
+  attach: any,
+  { isIncludeP7s = false, linkEnding = '' }: { isIncludeP7s?: boolean; linkEnding?: string } = {},
+) {
   // Define params.
   const { link, name, type } = attach || {};
 
@@ -433,7 +436,11 @@ async function plinkFromFilestorageAttach(attach: any, { isIncludeP7s = false, l
  * @returns {Promise<{url, name, type}>} File object.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function plinkFromFilestoragePdf(link: string, name = 'document.pdf', { isIncludeP7s = false, linkEnding = '' }: { isIncludeP7s?: boolean; linkEnding?: string } = {}) {
+async function plinkFromFilestoragePdf(
+  link: string,
+  name = 'document.pdf',
+  { isIncludeP7s = false, linkEnding = '' }: { isIncludeP7s?: boolean; linkEnding?: string } = {},
+) {
   // Check.
   if (!link) {
     // Log and exit.

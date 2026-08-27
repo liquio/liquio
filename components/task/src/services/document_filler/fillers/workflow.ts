@@ -1,4 +1,3 @@
-
 import PropByPath from 'prop-by-path';
 import { Filler } from './filler';
 
@@ -30,13 +29,16 @@ export class WorkflowFiller extends Filler {
     const { workflowId } = options;
 
     // Check options.
-    if (!workflowId) { return objectToFill; }
+    if (!workflowId) {
+      return objectToFill;
+    }
 
     // Handle all schema object pages.
     await this.handleAllElements(schemaObject, objectToFill, async (item, itemSchema) => {
       // Check current element shoudn't be defined.
-      if (!itemSchema || typeof itemSchema.value !== 'string'
-        || !itemSchema.value.startsWith('workflow.')) { return; }
+      if (!itemSchema || typeof itemSchema.value !== 'string' || !itemSchema.value.startsWith('workflow.')) {
+        return;
+      }
 
       // Define current value.
       // Sample: "workflow.number".
@@ -50,12 +52,18 @@ export class WorkflowFiller extends Filler {
       let valueToSet;
       try {
         const workflow = await global.models.workflow.findById(workflowId);
-        if (!workflow) { return; }
+        if (!workflow) {
+          return;
+        }
 
         // Define value to set.
         valueToSet = PropByPath.get(workflow, workflowPropertyPath);
-        if (valueToSet === null) { valueToSet = undefined; }
-      } catch (error) { global.log.save('workflow-field-filling-error', error, 'warn'); }
+        if (valueToSet === null) {
+          valueToSet = undefined;
+        }
+      } catch (error) {
+        global.log.save('workflow-field-filling-error', error, 'warn');
+      }
 
       // Return value to set.
       return valueToSet;
@@ -65,4 +73,3 @@ export class WorkflowFiller extends Filler {
     return objectToFill;
   }
 }
-

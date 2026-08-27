@@ -208,8 +208,8 @@ export class MessageQueue {
     const specificQueueName =
       isEvent && workflowTemplateId
         ? Object.entries(this.config.specificWritingQueuesEvent || {}).reduce((acc, [key, value]: [string, any]) => {
-          return value.includes(workflowTemplateId) ? `${defaultQueueName}-${key}` : acc;
-        }, null)
+            return value.includes(workflowTemplateId) ? `${defaultQueueName}-${key}` : acc;
+          }, null)
         : null;
 
     try {

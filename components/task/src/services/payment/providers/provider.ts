@@ -73,19 +73,18 @@ export class Provider {
     const recipients = paymentProperties && paymentProperties.recipients;
 
     if (recipients) {
-      return recipients.map(v => {
-        const obj = {};
-        for (const prop in v) {
-          obj[prop] = typeof v[prop] === 'string'
-            ? this.sandbox.evalWithArgs(
-              v[prop],
-              [document],
-              { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount', prop } },
-            )
-            : v[prop];
-        }
-        return obj;
-      }).filter(v => v && v.amount !== 0);
+      return recipients
+        .map((v) => {
+          const obj = {};
+          for (const prop in v) {
+            obj[prop] =
+              typeof v[prop] === 'string'
+                ? this.sandbox.evalWithArgs(v[prop], [document], { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount', prop } })
+                : v[prop];
+          }
+          return obj;
+        })
+        .filter((v) => v && v.amount !== 0);
     }
 
     const paymentFormula = paymentProperties && paymentProperties.amount;
@@ -96,44 +95,37 @@ export class Provider {
     const suffixFormula = paymentProperties && paymentProperties.suffixFormula;
     const orderNumFormula = paymentProperties && paymentProperties.orderNum;
 
-    const amount = this.sandbox.evalWithArgs(
-      paymentFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount.payment', documentId: document.id } },
-    );
-    const description = this.sandbox.evalWithArgs(
-      descriptionFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount.description', documentId: document.id } },
-    );
-    const orderId = this.sandbox.evalWithArgs(
-      orderIdFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount.orderId', documentId: document.id } },
-    );
-    const recipient = this.sandbox.evalWithArgs(
-      recipientFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount.recipient', documentId: document.id } },
-    );
-    const payer = this.sandbox.evalWithArgs(
-      payerFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount.payer', documentId: document.id } },
-    );
-    const orderIdSuffix = this.sandbox.evalWithArgs(
-      suffixFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount.suffix', documentId: document.id } },
-    );
-    const orderNum = this.sandbox.evalWithArgs(
-      orderNumFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'Provider.getPaymentAmount.orderNum', documentId: document.id } },
-    );
+    const amount = this.sandbox.evalWithArgs(paymentFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'Provider.getPaymentAmount.payment', documentId: document.id },
+    });
+    const description = this.sandbox.evalWithArgs(descriptionFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'Provider.getPaymentAmount.description', documentId: document.id },
+    });
+    const orderId = this.sandbox.evalWithArgs(orderIdFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'Provider.getPaymentAmount.orderId', documentId: document.id },
+    });
+    const recipient = this.sandbox.evalWithArgs(recipientFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'Provider.getPaymentAmount.recipient', documentId: document.id },
+    });
+    const payer = this.sandbox.evalWithArgs(payerFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'Provider.getPaymentAmount.payer', documentId: document.id },
+    });
+    const orderIdSuffix = this.sandbox.evalWithArgs(suffixFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'Provider.getPaymentAmount.suffix', documentId: document.id },
+    });
+    const orderNum = this.sandbox.evalWithArgs(orderNumFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'Provider.getPaymentAmount.orderNum', documentId: document.id },
+    });
 
     return isReturnOnlyList
-      ? [ { recipient, amount, description, orderId, payer, orderIdSuffix, orderNum } ]
+      ? [{ recipient, amount, description, orderId, payer, orderIdSuffix, orderNum }]
       : { recipient, amount, description, orderId, payer, orderIdSuffix, orderNum };
   }
 
@@ -151,7 +143,7 @@ export class Provider {
       transactionId,
       documentId: decodedParts[0],
       paymentControlPath: decodedParts[1],
-      timeStamp: parseInt(decodedParts[2])
+      timeStamp: parseInt(decodedParts[2]),
     };
 
     return transactionData;
@@ -234,4 +226,3 @@ export class Provider {
     }
   }
 }
-

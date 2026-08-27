@@ -24,7 +24,7 @@ export class Provider {
    * @param {number} [messageCryptTypeId] Message crypt type ID.
    * @param {object} [importantMessage] Important message.
    */
-   
+
   async send(
     _to: string | string[],
     _subject: any,
@@ -42,7 +42,7 @@ export class Provider {
    * @abstract
    * @param {object[]} messages Messages.
    */
-   
+
   async hideImportantMessages(_messages: any[]): Promise<any> {
     throw new Error(ERROR_OVERRIDE);
   }

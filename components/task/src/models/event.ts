@@ -27,19 +27,19 @@ export class EventModel extends Model {
           document_id: {
             type: Sequelize.UUID,
             allowNull: true,
-            references: { model: 'documents', key: 'id' }
+            references: { model: 'documents', key: 'id' },
           },
           version: {
             allowNull: true,
-            type: Sequelize.STRING
-          }
+            type: Sequelize.STRING,
+          },
         },
         {
           tableName: 'events',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -70,7 +70,7 @@ export class EventModel extends Model {
       documentId: item.document_id,
       version: item.version,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 
@@ -81,12 +81,11 @@ export class EventModel extends Model {
    */
   async getEventsByWorkflowId(workflowId) {
     const events = await this.model.findAll({
-      where: { workflow_id: workflowId, done: true }
+      where: { workflow_id: workflowId, done: true },
     });
 
-    return events.map(item => this.prepareEntity(item));
+    return events.map((item) => this.prepareEntity(item));
   }
-
 
   /**
    * Check exists.
@@ -98,12 +97,12 @@ export class EventModel extends Model {
   async checkExistDocumentsByWorkflowIds(workflowIds, isFinal, updatedAtFrom) {
     const rawDocument = await this.model.findOne({
       where: {
-        document_id: {[Sequelize.Op.ne]: null},
+        document_id: { [Sequelize.Op.ne]: null },
         done: isFinal,
-        workflow_id: {[Sequelize.Op.in]: workflowIds},
-        updated_at: { [Sequelize.Op.gte]: updatedAtFrom }
+        workflow_id: { [Sequelize.Op.in]: workflowIds },
+        updated_at: { [Sequelize.Op.gte]: updatedAtFrom },
       },
-      attributes: ['document_id']
+      attributes: ['document_id'],
     });
 
     const exists = !!rawDocument;
@@ -111,4 +110,3 @@ export class EventModel extends Model {
     return exists;
   }
 }
-

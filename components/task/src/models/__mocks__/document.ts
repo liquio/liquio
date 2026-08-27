@@ -29,7 +29,7 @@ export class DocumentModel {
       data: {},
       description: null,
       fileName: null,
-      fileType: null
+      fileType: null,
     });
   }
 
@@ -51,8 +51,7 @@ export class DocumentModel {
       data: data,
       description: null,
       fileName: null,
-      fileType: null
+      fileType: null,
     });
   }
 }
-

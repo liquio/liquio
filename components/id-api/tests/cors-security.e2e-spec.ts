@@ -1,5 +1,4 @@
 /// <reference types="jest" />
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
 
@@ -7,21 +6,19 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
  * CORS Security Tests
  * Validates that CORS configuration properly restricts origins
  * and prevents unauthorized cross-origin requests
- * 
+ *
  * OWASP A01:2021 - Broken Access Control
  */
 
 import { Request, Response, NextFunction } from 'express';
 
 // Mock CORS middleware from cors.ts
-const ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001')
-  .split(',')
-  .map(origin => origin.trim());
+const ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001').split(',').map((origin) => origin.trim());
 
 function setCorsForTest(req: Request, res: Response, next: NextFunction): void {
   res.header('Access-Control-Expose-Headers', 'Name, Version, Customer, Environment');
   let oneof = false;
-  
+
   // Only allow origins from the allowlist
   const origin = req.headers.origin;
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
@@ -29,7 +26,7 @@ function setCorsForTest(req: Request, res: Response, next: NextFunction): void {
     res.header('Access-Control-Allow-Credentials', 'true');
     oneof = true;
   }
-  
+
   if (req.headers['access-control-request-method']) {
     res.header('Access-Control-Allow-Methods', req.headers['access-control-request-method']);
     oneof = true;
@@ -46,7 +43,7 @@ function setCorsForTest(req: Request, res: Response, next: NextFunction): void {
     res.status(204).send();
     return;
   }
-  
+
   next();
 }
 
@@ -77,14 +74,8 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).toHaveBeenCalledWith(
-        'Access-Control-Allow-Origin',
-        'http://localhost:3000'
-      );
-      expect(headerSpy).toHaveBeenCalledWith(
-        'Access-Control-Allow-Credentials',
-        'true'
-      );
+      expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'http://localhost:3000');
+      expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Credentials', 'true');
       expect(mockNext).toHaveBeenCalled();
     });
 
@@ -96,10 +87,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).toHaveBeenCalledWith(
-        'Access-Control-Allow-Origin',
-        'http://localhost:3001'
-      );
+      expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'http://localhost:3001');
       expect(mockNext).toHaveBeenCalled();
     });
   });
@@ -113,10 +101,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).not.toHaveBeenCalledWith(
-        'Access-Control-Allow-Origin',
-        'http://malicious.com'
-      );
+      expect(headerSpy).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', 'http://malicious.com');
       expect(mockNext).toHaveBeenCalled();
     });
 
@@ -128,10 +113,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('Access-Control-Allow-Origin'),
-        expect.anything()
-      );
+      expect(headerSpy).not.toHaveBeenCalledWith(expect.stringContaining('Access-Control-Allow-Origin'), expect.anything());
     });
 
     it('should block wildcard origin attacks', () => {
@@ -142,10 +124,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).not.toHaveBeenCalledWith(
-        'Access-Control-Allow-Origin',
-        '*'
-      );
+      expect(headerSpy).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
     });
 
     it('should block null origin attacks', () => {
@@ -156,10 +135,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).not.toHaveBeenCalledWith(
-        'Access-Control-Allow-Origin',
-        'null'
-      );
+      expect(headerSpy).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', 'null');
     });
   });
 
@@ -191,10 +167,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).toHaveBeenCalledWith(
-        'Access-Control-Max-Age',
-        '31536000'
-      );
+      expect(headerSpy).toHaveBeenCalledWith('Access-Control-Max-Age', '31536000');
     });
   });
 
@@ -207,10 +180,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).toHaveBeenCalledWith(
-        'Access-Control-Expose-Headers',
-        'Name, Version, Customer, Environment'
-      );
+      expect(headerSpy).toHaveBeenCalledWith('Access-Control-Expose-Headers', 'Name, Version, Customer, Environment');
     });
 
     it('should respect request method from headers', () => {
@@ -224,10 +194,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).toHaveBeenCalledWith(
-        'Access-Control-Allow-Methods',
-        'DELETE'
-      );
+      expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'DELETE');
     });
 
     it('should respect request headers from client', () => {
@@ -241,23 +208,18 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).toHaveBeenCalledWith(
-        'Access-Control-Allow-Headers',
-        'Authorization, X-Custom-Header'
-      );
+      expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Headers', 'Authorization, X-Custom-Header');
     });
   });
 
   describe('Environment Configuration', () => {
     it('should load additional origins from CORS_ALLOWED_ORIGINS env var', () => {
       const originalEnv = process.env.CORS_ALLOWED_ORIGINS;
-      
+
       process.env.CORS_ALLOWED_ORIGINS = 'http://localhost:3000,https://api.example.com';
-      
+
       // Reload the origins
-      const loadedOrigins = process.env.CORS_ALLOWED_ORIGINS
-        .split(',')
-        .map(origin => origin.trim());
+      const loadedOrigins = process.env.CORS_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim());
 
       expect(loadedOrigins).toContain('http://localhost:3000');
       expect(loadedOrigins).toContain('https://api.example.com');
@@ -280,10 +242,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).toHaveBeenCalledWith(
-        'Access-Control-Allow-Credentials',
-        'true'
-      );
+      expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Credentials', 'true');
     });
 
     it('should NOT set credentials for unauthorized origins', () => {
@@ -294,10 +253,7 @@ describe('CORS Security - id-api', () => {
 
       setCorsForTest(mockReq as Request, mockRes as Response, mockNext);
 
-      expect(headerSpy).not.toHaveBeenCalledWith(
-        'Access-Control-Allow-Credentials',
-        'true'
-      );
+      expect(headerSpy).not.toHaveBeenCalledWith('Access-Control-Allow-Credentials', 'true');
     });
   });
 });

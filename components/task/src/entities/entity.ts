@@ -1,11 +1,9 @@
-
 import _ from 'lodash';
 
 // Constants.
 const ERROR_WRONG_ENTITY = 'Item must be Entity.';
 
 export class Entity {
-
   /**
    * Filter Response.
    * @param {Entity[]|Entity} data Data.
@@ -14,11 +12,11 @@ export class Entity {
    */
   static filterResponse(data, brief = false) {
     if (Array.isArray(data)) {
-      if (!data.every(item => item instanceof Entity)) {
+      if (!data.every((item) => item instanceof Entity)) {
         throw new Error(ERROR_WRONG_ENTITY);
       }
 
-      return data.map(item => item.filter(item, brief));
+      return data.map((item) => item.filter(item, brief));
     }
 
     if (!(data instanceof Entity)) {
@@ -62,4 +60,3 @@ export class Entity {
     return filteredObject;
   }
 }
-

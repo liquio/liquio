@@ -175,4 +175,3 @@ export class AdditionalDataSignatureModel extends Model {
     };
   }
 }
-

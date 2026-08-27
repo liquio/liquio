@@ -515,7 +515,7 @@ export class WorkflowBusiness extends Business {
 
       if (nonTabedStatusesLength === 0) {
         global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
-        throw new Error('Invalid status. Non tabed statuses don\'t exist.');
+        throw new Error("Invalid status. Non tabed statuses don't exist.");
       }
 
       let statusId;
@@ -614,4 +614,3 @@ export class WorkflowBusiness extends Business {
     return lastCalculetedStatuses;
   }
 }
-

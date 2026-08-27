@@ -7,12 +7,12 @@ import { Stream } from 'node:stream';
 import { typeOf } from './type_of';
 
 const MIME_TYPES: Record<string, number[]> = {
-  'PDF': [0x25, 0x50, 0x44, 0x46],
+  PDF: [0x25, 0x50, 0x44, 0x46],
   'APPLICATION/PDF': [0x25, 0x50, 0x44, 0x46],
-  'JPEG': [0xFF, 0xD8, 0xFF],
-  'IMAGE/JPEG': [0xFF, 0xD8, 0xFF],
-  'JPG': [0xFF, 0xD8, 0xFF],
-  'IMAGE/JPG': [0xFF, 0xD8, 0xFF],
+  JPEG: [0xff, 0xd8, 0xff],
+  'IMAGE/JPEG': [0xff, 0xd8, 0xff],
+  JPG: [0xff, 0xd8, 0xff],
+  'IMAGE/JPG': [0xff, 0xd8, 0xff],
 };
 
 export class Helpers {
@@ -52,7 +52,7 @@ export class Helpers {
       return strOrObjPrepared;
     }
 
-    const limitForObjValues = limit > 1000 ? (limit / 100) : 10;
+    const limitForObjValues = limit > 1000 ? limit / 100 : 10;
     let replacedObj = this.replaceObjValues(_.cloneDeep(strOrObjPrepared), (value: any) => {
       if (typeOf(value) === 'string') {
         return value.length > limitForObjValues ? `${value.substring(0, limitForObjValues - ending.length)}${ending}` : value;
@@ -120,12 +120,12 @@ export class Helpers {
   }
 
   /*
-  * @param {Object} obj
-  * @param {function} check
-  * @param {function} handler
-  * @param {Array} [path=[]]
-  * @return {void}
-  * */
+   * @param {Object} obj
+   * @param {function} check
+   * @param {function} handler
+   * @param {Array} [path=[]]
+   * @return {void}
+   * */
   static deepFind(obj: any, check: (obj: any, path: any[]) => boolean, handler: (obj: any, path: any[]) => void, path: any[] = []): void {
     if (check(obj, path)) {
       handler(obj, path);
@@ -186,9 +186,10 @@ export class Helpers {
       code: error.code || 'UNKNOWN_ERROR_CODE', // "ERR_BAD_REQUEST" || "ESOCKETTIMEDOUT"
       status: error.response?.status || (error as any).status || 'UNKNOWN_ERROR_STATUS', // 404 || 500 || "UNKNOWN_ERROR_STATUS"
       statusText: error.response?.statusText, // "Not Found" || null
-      responseData: responseData instanceof Stream
-        ? (responseData?.constructor?.name && `${responseData.constructor.name} stream` || 'stream.Stream')
-        : (responseData || {}), // { "error": "File not found" }
+      responseData:
+        responseData instanceof Stream
+          ? (responseData?.constructor?.name && `${responseData.constructor.name} stream`) || 'stream.Stream'
+          : responseData || {}, // { "error": "File not found" }
       url: `${error.config?.baseURL ? error.config.baseURL : ''}${error.config?.url}`, // "https://api.example.com/files/12345"
       method: (error.config?.method || '').toUpperCase(), // GET || POST
     };
@@ -218,7 +219,6 @@ export class Helpers {
 
       // Default.
       return error.toString();
-
     } catch (error: any) {
       return typeof error?.toString === 'function' ? error.toString() : error;
     }
@@ -238,9 +238,12 @@ export class Helpers {
     const code = error.code; // "ERR_BAD_REQUEST" || "ESOCKETTIMEDOUT"
     const message = error.message; // "Request failed with status code 404 || "timeout of 30000ms exceeded"
     const responseDataRaw = error.response?.data;
-    const responseData = responseDataRaw instanceof Stream
-      ? undefined
-      : ((typeof responseDataRaw === 'object' && responseDataRaw !== null) ? JSON.stringify(responseDataRaw) : responseDataRaw);
+    const responseData =
+      responseDataRaw instanceof Stream
+        ? undefined
+        : typeof responseDataRaw === 'object' && responseDataRaw !== null
+          ? JSON.stringify(responseDataRaw)
+          : responseDataRaw;
 
     // "Axios error - ERR_BAD_REQUEST - Request failed with status code 400 - {\"message\":\"Sign is required\",\"error\":\"Bad Request\",\"statusCode\":400}"
     return `${name} - ${code} - ${message}${responseData ? ` - ${responseData}` : ''}`;
@@ -252,8 +255,7 @@ export class Helpers {
     // Initialize EDS.
     let edsService;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      edsService = await (require('./eds')).getInstance();
+      edsService = await require('./eds').getInstance();
     } catch (error: any) {
       const wrapped = new Error(`Cannot initialize EDS service.${error.message}`);
       (wrapped as any).cause = error;
@@ -302,10 +304,7 @@ export class Helpers {
       asyncFunctionString = `async ${asyncFunctionString}`;
     }
     for (const asyncFunctionInside of allowedAsyncFunctions) {
-      asyncFunctionString = asyncFunctionString.replace(
-        new RegExp(`(?<!\\.)\\b${asyncFunctionInside}\\b`, 'g'),
-        `await ${asyncFunctionInside}`,
-      );
+      asyncFunctionString = asyncFunctionString.replace(new RegExp(`(?<!\\.)\\b${asyncFunctionInside}\\b`, 'g'), `await ${asyncFunctionInside}`);
     }
 
     // Return transformed function.

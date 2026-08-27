@@ -31,45 +31,54 @@ describe('EventBusiness - Unit type events', () => {
       const WORKFLOW_ID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 
       // Create workflow template
-      await app.model('workflowTemplate').create({
-        id: WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Creation Workflow',
-        description: 'Workflow for testing unit event type',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Creation Workflow',
+          description: 'Workflow for testing unit event type',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate'));
 
       // Create unit event template with unit creation config
-      await app.model('eventTemplate').create({
-        id: UNIT_EVENT_TEMPLATE_ID,
-        event_type_id: 5, // unit type = 5
-        name: 'Create Unit',
-        description: 'Event to create organizational unit',
-        json_schema: JSON.stringify({
-          eventUnitType: 'create',
-          name: '() => \'Test Organization Unit\'',
-          description: '() => \'A test organizational unit\'',
-          headsIpn: '() => [\'1234567890\']',
-        }),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create unit eventTemplate'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: UNIT_EVENT_TEMPLATE_ID,
+          event_type_id: 5, // unit type = 5
+          name: 'Create Unit',
+          description: 'Event to create organizational unit',
+          json_schema: JSON.stringify({
+            eventUnitType: 'create',
+            name: "() => 'Test Organization Unit'",
+            description: "() => 'A test organizational unit'",
+            headsIpn: "() => ['1234567890']",
+          }),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create unit eventTemplate'));
 
       // Create workflow instance
-      await app.model('workflow').create({
-        id: WORKFLOW_ID,
-        workflow_template_id: WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Creation Workflow Instance',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow'));
+      await app
+        .model('workflow')
+        .create({
+          id: WORKFLOW_ID,
+          workflow_template_id: WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Creation Workflow Instance',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow'));
 
       // Trigger unit event
       const result = await app.eventBusiness.createFromMessage({
@@ -106,45 +115,54 @@ describe('EventBusiness - Unit type events', () => {
       const WORKFLOW_ID = 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e';
 
       // Create workflow template
-      await app.model('workflowTemplate').create({
-        id: WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Result Workflow',
-        description: 'Workflow for testing unit result data',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Result Workflow',
+          description: 'Workflow for testing unit result data',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate'));
 
       // Create unit event template
-      await app.model('eventTemplate').create({
-        id: UNIT_EVENT_TEMPLATE_ID,
-        event_type_id: 5,
-        name: 'Create Department Unit',
-        description: 'Event to create department unit',
-        json_schema: JSON.stringify({
-          eventUnitType: 'create',
-          name: '() => \'Test Department\'',
-          description: '() => \'Department for testing\'',
-          headsIpn: '() => [\'9876543210\']',
-        }),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create unit eventTemplate'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: UNIT_EVENT_TEMPLATE_ID,
+          event_type_id: 5,
+          name: 'Create Department Unit',
+          description: 'Event to create department unit',
+          json_schema: JSON.stringify({
+            eventUnitType: 'create',
+            name: "() => 'Test Department'",
+            description: "() => 'Department for testing'",
+            headsIpn: "() => ['9876543210']",
+          }),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create unit eventTemplate'));
 
       // Create workflow instance
-      await app.model('workflow').create({
-        id: WORKFLOW_ID,
-        workflow_template_id: WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Result Workflow Instance',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow'));
+      await app
+        .model('workflow')
+        .create({
+          id: WORKFLOW_ID,
+          workflow_template_id: WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Result Workflow Instance',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow'));
 
       // Trigger unit event
       const result = await app.eventBusiness.createFromMessage({
@@ -185,45 +203,54 @@ describe('EventBusiness - Unit type events', () => {
       const WORKFLOW_ID = 'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f';
 
       // Create workflow template
-      await app.model('workflowTemplate').create({
-        id: WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Completion Workflow',
-        description: 'Workflow for testing unit event completion',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Completion Workflow',
+          description: 'Workflow for testing unit event completion',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate'));
 
       // Create unit event template
-      await app.model('eventTemplate').create({
-        id: UNIT_EVENT_TEMPLATE_ID,
-        event_type_id: 5,
-        name: 'Create Division Unit',
-        description: 'Event to create division unit',
-        json_schema: JSON.stringify({
-          eventUnitType: 'create',
-          name: '() => \'Test Division\'',
-          description: '() => \'Division for testing\'',
-          headsIpn: '() => [\'5555555555\']',
-        }),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create unit eventTemplate'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: UNIT_EVENT_TEMPLATE_ID,
+          event_type_id: 5,
+          name: 'Create Division Unit',
+          description: 'Event to create division unit',
+          json_schema: JSON.stringify({
+            eventUnitType: 'create',
+            name: "() => 'Test Division'",
+            description: "() => 'Division for testing'",
+            headsIpn: "() => ['5555555555']",
+          }),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create unit eventTemplate'));
 
       // Create workflow instance
-      await app.model('workflow').create({
-        id: WORKFLOW_ID,
-        workflow_template_id: WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Completion Workflow Instance',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow'));
+      await app
+        .model('workflow')
+        .create({
+          id: WORKFLOW_ID,
+          workflow_template_id: WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Completion Workflow Instance',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow'));
 
       // Trigger unit event
       const result = await app.eventBusiness.createFromMessage({
@@ -260,7 +287,10 @@ describe('EventBusiness - Unit type events', () => {
         .post('/user/info/ipn')
         .reply(200, [{ userId: 'mocked-user-1', ipn: '1111111111' }])
         .post('/user/info/ipn')
-        .reply(200, [{ userId: 'mocked-user-2', ipn: '2222222222' }, { userId: 'mocked-user-3', ipn: '3333333333' }]);
+        .reply(200, [
+          { userId: 'mocked-user-2', ipn: '2222222222' },
+          { userId: 'mocked-user-3', ipn: '3333333333' },
+        ]);
 
       // First, create a unit that we'll update
       const CREATE_WORKFLOW_TEMPLATE_ID = 600004;
@@ -268,45 +298,54 @@ describe('EventBusiness - Unit type events', () => {
       const CREATE_WORKFLOW_ID = 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a';
 
       // Create workflow template
-      await app.model('workflowTemplate').create({
-        id: CREATE_WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Creation for Update Test',
-        description: 'Workflow to create unit before update',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: CREATE_WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Creation for Update Test',
+          description: 'Workflow to create unit before update',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate'));
 
       // Create unit event template for creation
-      await app.model('eventTemplate').create({
-        id: CREATE_UNIT_EVENT_TEMPLATE_ID,
-        event_type_id: 5,
-        name: 'Create Unit for Update',
-        description: 'Create unit for testing update',
-        json_schema: JSON.stringify({
-          eventUnitType: 'create',
-          name: '() => \'Updatable Unit\'',
-          description: '() => \'Unit to be updated\'',
-          headsIpn: '() => [\'1111111111\']',
-        }),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create unit eventTemplate'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: CREATE_UNIT_EVENT_TEMPLATE_ID,
+          event_type_id: 5,
+          name: 'Create Unit for Update',
+          description: 'Create unit for testing update',
+          json_schema: JSON.stringify({
+            eventUnitType: 'create',
+            name: "() => 'Updatable Unit'",
+            description: "() => 'Unit to be updated'",
+            headsIpn: "() => ['1111111111']",
+          }),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create unit eventTemplate'));
 
       // Create workflow instance
-      await app.model('workflow').create({
-        id: CREATE_WORKFLOW_ID,
-        workflow_template_id: CREATE_WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Creation Workflow',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow'));
+      await app
+        .model('workflow')
+        .create({
+          id: CREATE_WORKFLOW_ID,
+          workflow_template_id: CREATE_WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Creation Workflow',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow'));
 
       // Trigger unit creation event
       const createResult = await app.eventBusiness.createFromMessage({
@@ -332,44 +371,53 @@ describe('EventBusiness - Unit type events', () => {
       const UPDATE_WORKFLOW_ID = 'e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b';
 
       // Create workflow template for update
-      await app.model('workflowTemplate').create({
-        id: UPDATE_WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Update Workflow',
-        description: 'Workflow for testing unit update',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create update workflowTemplate'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: UPDATE_WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Update Workflow',
+          description: 'Workflow for testing unit update',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create update workflowTemplate'));
 
       // Create unit event template for update
-      await app.model('eventTemplate').create({
-        id: UPDATE_UNIT_EVENT_TEMPLATE_ID,
-        event_type_id: 5,
-        name: 'Update Unit',
-        description: 'Event to update unit heads',
-        json_schema: JSON.stringify({
-          eventUnitType: 'update',
-          id: `() => ${unitIdToUpdate}`,
-          headsIpn: '() => [\'2222222222\', \'3333333333\']',
-        }),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create update eventTemplate', true));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: UPDATE_UNIT_EVENT_TEMPLATE_ID,
+          event_type_id: 5,
+          name: 'Update Unit',
+          description: 'Event to update unit heads',
+          json_schema: JSON.stringify({
+            eventUnitType: 'update',
+            id: `() => ${unitIdToUpdate}`,
+            headsIpn: "() => ['2222222222', '3333333333']",
+          }),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create update eventTemplate', true));
 
       // Create workflow instance
-      await app.model('workflow').create({
-        id: UPDATE_WORKFLOW_ID,
-        workflow_template_id: UPDATE_WORKFLOW_TEMPLATE_ID,
-        name: 'Unit Update Workflow Instance',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create update workflow', true));
+      await app
+        .model('workflow')
+        .create({
+          id: UPDATE_WORKFLOW_ID,
+          workflow_template_id: UPDATE_WORKFLOW_TEMPLATE_ID,
+          name: 'Unit Update Workflow Instance',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create update workflow', true));
 
       // Trigger unit update event
       let updateResult;
@@ -380,7 +428,7 @@ describe('EventBusiness - Unit type events', () => {
           workflowTemplateId: UPDATE_WORKFLOW_TEMPLATE_ID,
         });
         // Give the event a moment to be persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (error) {
         console.error('[DEBUG] updateResult error:', error.message, error.stack);
         throw error;

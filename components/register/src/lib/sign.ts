@@ -6,7 +6,7 @@ import { Log } from '@liquio/back-core';
 
 // Constants.
 const ROUTES = {
-  verifySignatureExternal: '/verify-signature-external'
+  verifySignatureExternal: '/verify-signature-external',
 };
 
 export interface SignConfig {
@@ -57,9 +57,9 @@ export default class Sign {
       headers: { token: this.token },
       data: {
         data,
-        signature
+        signature,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     };
     try {
       const { data: response } = await axios(requestOptions);
@@ -71,10 +71,10 @@ export default class Sign {
           ...prepareAxiosErrorToLog(error),
           requestOptions: {
             ...requestOptions,
-            headers: '*****'
-          }
+            headers: '*****',
+          },
         },
-        'error'
+        'error',
       );
       throw error;
     }

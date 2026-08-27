@@ -57,11 +57,11 @@ export class ExternalServiceRequester {
       additionalDocumentTemplateIds = [],
       workflowId,
     } = data;
-    const documentTemplateId = documentTemplateIdFunction ? this.sandbox.evalWithArgs(
-      documentTemplateIdFunction,
-      [documents, events],
-      { meta: { fn: 'documentTemplateIdFunction', caller: 'ExternalServiceRequester.send' } },
-    ) : staticDocumentTemplateId;
+    const documentTemplateId = documentTemplateIdFunction
+      ? this.sandbox.evalWithArgs(documentTemplateIdFunction, [documents, events], {
+          meta: { fn: 'documentTemplateIdFunction', caller: 'ExternalServiceRequester.send' },
+        })
+      : staticDocumentTemplateId;
     const document = documents?.find((d) => d.documentTemplateId === documentTemplateId);
     const event = events?.sort((a, b) => b.createdAt - a.createdAt).find((e) => e.eventTemplateId === eventTemplateId);
     const additionalDocuments = documents?.filter((d) => additionalDocumentTemplateIds.some((dId) => d.documentTemplateId === dId));

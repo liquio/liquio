@@ -22,20 +22,20 @@ export class NumberTemplateModel extends Model {
         'numberTemplate',
         {
           name: Sequelize.STRING,
-          template: Sequelize.STRING
+          template: Sequelize.STRING,
         },
         {
           tableName: 'number_templates',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       PgPubSub.getInstance()?.subscribe('number_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache?.numberTemplate?.findById || DEFAULT_CACHE_TTL
+        findById: global.config.cache?.numberTemplate?.findById || DEFAULT_CACHE_TTL,
       };
 
       NumberTemplateModel.singleton = this;
@@ -53,15 +53,17 @@ export class NumberTemplateModel extends Model {
     const { data: numberTemplate } = await RedisClient.getOrSet(
       RedisClient.createKey('number_template', 'findById', id),
       () => this.model.findByPk(id),
-      this.cacheTtl.findById
+      this.cacheTtl.findById,
     );
 
-    if (!numberTemplate) { return; }
+    if (!numberTemplate) {
+      return;
+    }
 
     return new NumberTemplateEntity({
       id: numberTemplate.id,
       name: numberTemplate.name,
-      template: numberTemplate.template
+      template: numberTemplate.template,
     });
   }
 
@@ -74,7 +76,7 @@ export class NumberTemplateModel extends Model {
     const sequenceName = `number_template_sequence_${numberTemplateId}`;
     const [increment] = await this.model.sequelize.query('SELECT nextval(:sequenceName)', {
       replacements: { sequenceName },
-      type: Sequelize.QueryTypes.SELECT
+      type: Sequelize.QueryTypes.SELECT,
     });
 
     return increment && increment.nextval;
@@ -98,4 +100,3 @@ export class NumberTemplateModel extends Model {
     }
   }
 }
-

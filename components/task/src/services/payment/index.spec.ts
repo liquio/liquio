@@ -68,10 +68,7 @@ describe('PaymentService', () => {
 
       expect(result).toBe(providerResult);
       expect(fakeProvider.calculatePayment).toHaveBeenCalledWith(data);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'calculate-payment-data-provider-result',
-        { result: providerResult },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('calculate-payment-data-provider-result', { result: providerResult });
     });
 
     it('wraps the provider error into a new Error with .cause set', async () => {
@@ -83,11 +80,7 @@ describe('PaymentService', () => {
         message: 'calc boom',
         cause: originalError,
       });
-      expect(global.log.save).toHaveBeenCalledWith(
-        'calculate-payment-data-error',
-        { error: 'calc boom' },
-        'error',
-      );
+      expect(global.log.save).toHaveBeenCalledWith('calculate-payment-data-error', { error: 'calc boom' }, 'error');
     });
 
     it('throws a wrapped Error (not the raw BadRequestError) for an unknown provider', async () => {
@@ -113,28 +106,11 @@ describe('PaymentService', () => {
       const providerResult = { status: 'ok' };
       fakeProvider.handleStatus.mockResolvedValue(providerResult);
 
-      const result = await paymentService.handleStatus(
-        data,
-        providerOptions,
-        status,
-        queryParamsObject,
-        headersObject,
-        checkPrevTransaction,
-      );
+      const result = await paymentService.handleStatus(data, providerOptions, status, queryParamsObject, headersObject, checkPrevTransaction);
 
       expect(result).toBe(providerResult);
-      expect(fakeProvider.handleStatus).toHaveBeenCalledWith(
-        data,
-        providerOptions,
-        status,
-        queryParamsObject,
-        headersObject,
-        checkPrevTransaction,
-      );
-      expect(global.log.save).toHaveBeenCalledWith(
-        'handle-payment-status-on-provider-result',
-        { result: providerResult },
-      );
+      expect(fakeProvider.handleStatus).toHaveBeenCalledWith(data, providerOptions, status, queryParamsObject, headersObject, checkPrevTransaction);
+      expect(global.log.save).toHaveBeenCalledWith('handle-payment-status-on-provider-result', { result: providerResult });
     });
 
     it('wraps the provider error into a new Error with .cause set', async () => {
@@ -142,17 +118,11 @@ describe('PaymentService', () => {
       fakeProvider.handleStatus.mockRejectedValue(originalError);
       const providerOptions = { providerName: 'fakeProvider' };
 
-      await expect(
-        paymentService.handleStatus({}, providerOptions, 'x', {}, {}, false),
-      ).rejects.toMatchObject({
+      await expect(paymentService.handleStatus({}, providerOptions, 'x', {}, {}, false)).rejects.toMatchObject({
         message: 'status boom',
         cause: originalError,
       });
-      expect(global.log.save).toHaveBeenCalledWith(
-        'handle-payment-status-on-provider-error',
-        { error: originalError },
-        'error',
-      );
+      expect(global.log.save).toHaveBeenCalledWith('handle-payment-status-on-provider-error', { error: originalError }, 'error');
     });
 
     it('throws a wrapped Error (not the raw BadRequestError) for an unknown provider', async () => {
@@ -179,10 +149,7 @@ describe('PaymentService', () => {
 
       expect(result).toBe(providerResult);
       expect(fakeProvider.confirmBySmsCode).toHaveBeenCalledWith(providerOptions, calculatedData, smsCode);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'confirm-payment-by-sms-code-result',
-        { result: providerResult },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('confirm-payment-by-sms-code-result', { result: providerResult });
     });
 
     it('rethrows the original error unmodified', async () => {
@@ -190,22 +157,14 @@ describe('PaymentService', () => {
       fakeProvider.confirmBySmsCode.mockRejectedValue(originalError);
       const providerOptions = { providerName: 'fakeProvider' };
 
-      await expect(
-        paymentService.confirmBySmsCode(providerOptions, {}, '0000'),
-      ).rejects.toBe(originalError);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'confirm-payment-by-sms-code-error',
-        { error: originalError },
-        'error',
-      );
+      await expect(paymentService.confirmBySmsCode(providerOptions, {}, '0000')).rejects.toBe(originalError);
+      expect(global.log.save).toHaveBeenCalledWith('confirm-payment-by-sms-code-error', { error: originalError }, 'error');
     });
 
     it('throws a raw BadRequestError for an unknown provider', async () => {
       const providerOptions = { providerName: 'unknownProvider' };
 
-      await expect(
-        paymentService.confirmBySmsCode(providerOptions, {}, '0000'),
-      ).rejects.toThrow(BadRequestError);
+      await expect(paymentService.confirmBySmsCode(providerOptions, {}, '0000')).rejects.toThrow(BadRequestError);
     });
   });
 
@@ -219,10 +178,7 @@ describe('PaymentService', () => {
 
       expect(result).toBe(providerResult);
       expect(fakeProvider.cancelOrder).toHaveBeenCalledWith(providerOptions, 'order-1', 'txn-1', 'session-1');
-      expect(global.log.save).toHaveBeenCalledWith(
-        'cancel-order-payment-service-result',
-        { result: providerResult },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('cancel-order-payment-service-result', { result: providerResult });
     });
 
     it('rethrows the original error unmodified', async () => {
@@ -230,22 +186,14 @@ describe('PaymentService', () => {
       fakeProvider.cancelOrder.mockRejectedValue(originalError);
       const providerOptions = { providerName: 'fakeProvider' };
 
-      await expect(
-        paymentService.cancelOrder(providerOptions, 'order-1', 'txn-1', 'session-1'),
-      ).rejects.toBe(originalError);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'cancel-order-payment-service-error',
-        { error: 'cancel boom' },
-        'error',
-      );
+      await expect(paymentService.cancelOrder(providerOptions, 'order-1', 'txn-1', 'session-1')).rejects.toBe(originalError);
+      expect(global.log.save).toHaveBeenCalledWith('cancel-order-payment-service-error', { error: 'cancel boom' }, 'error');
     });
 
     it('throws a raw BadRequestError for an unknown provider', async () => {
       const providerOptions = { providerName: 'unknownProvider' };
 
-      await expect(
-        paymentService.cancelOrder(providerOptions, 'order-1', 'txn-1', 'session-1'),
-      ).rejects.toThrow(BadRequestError);
+      await expect(paymentService.cancelOrder(providerOptions, 'order-1', 'txn-1', 'session-1')).rejects.toThrow(BadRequestError);
     });
   });
 
@@ -259,10 +207,7 @@ describe('PaymentService', () => {
 
       expect(result).toBe(providerResult);
       expect(fakeProvider.unHoldOrder).toHaveBeenCalledWith(data);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'unhold-payment-result',
-        { result: providerResult },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('unhold-payment-result', { result: providerResult });
     });
 
     it('rethrows the original error unmodified', async () => {
@@ -271,11 +216,7 @@ describe('PaymentService', () => {
       const data = { paymentOptions: { providerName: 'fakeProvider' } };
 
       await expect(paymentService.unHoldPayment(data)).rejects.toBe(originalError);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'unhold-payment-error',
-        { error: originalError },
-        'error',
-      );
+      expect(global.log.save).toHaveBeenCalledWith('unhold-payment-error', { error: originalError }, 'error');
     });
 
     it('throws a raw BadRequestError for an unknown provider', async () => {
@@ -295,10 +236,7 @@ describe('PaymentService', () => {
 
       expect(result).toBe(providerResult);
       expect(fakeProvider.checkStatus).toHaveBeenCalledWith(providerOptions, 'session-1', 'invoice-1');
-      expect(global.log.save).toHaveBeenCalledWith(
-        'cancel-payment-result',
-        { result: providerResult },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('cancel-payment-result', { result: providerResult });
     });
 
     it('rethrows the original error unmodified', async () => {
@@ -306,22 +244,14 @@ describe('PaymentService', () => {
       fakeProvider.checkStatus.mockRejectedValue(originalError);
       const providerOptions = { providerName: 'fakeProvider' };
 
-      await expect(
-        paymentService.checkStatus(providerOptions, 'session-1', 'invoice-1'),
-      ).rejects.toBe(originalError);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'cancel-payment-error',
-        { error: originalError },
-        'error',
-      );
+      await expect(paymentService.checkStatus(providerOptions, 'session-1', 'invoice-1')).rejects.toBe(originalError);
+      expect(global.log.save).toHaveBeenCalledWith('cancel-payment-error', { error: originalError }, 'error');
     });
 
     it('throws a raw BadRequestError for an unknown provider', async () => {
       const providerOptions = { providerName: 'unknownProvider' };
 
-      await expect(
-        paymentService.checkStatus(providerOptions, 'session-1', 'invoice-1'),
-      ).rejects.toThrow(BadRequestError);
+      await expect(paymentService.checkStatus(providerOptions, 'session-1', 'invoice-1')).rejects.toThrow(BadRequestError);
     });
   });
 
@@ -338,10 +268,7 @@ describe('PaymentService', () => {
         paymentSystemParams: providerOptions,
         orderId: 'order-1',
       });
-      expect(global.log.save).toHaveBeenCalledWith(
-        'get-payment-receipt-info-result',
-        { result: providerResult },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('get-payment-receipt-info-result', { result: providerResult });
     });
 
     it('rethrows the original error unmodified', async () => {
@@ -349,22 +276,14 @@ describe('PaymentService', () => {
       fakeProvider.getPaymentReceiptInfo.mockRejectedValue(originalError);
       const providerOptions = { providerName: 'fakeProvider' };
 
-      await expect(
-        paymentService.getPaymentReceiptInfo(providerOptions, 'order-1'),
-      ).rejects.toBe(originalError);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'get-payment-receipt-info-error',
-        { error: 'receipt info boom' },
-        'error',
-      );
+      await expect(paymentService.getPaymentReceiptInfo(providerOptions, 'order-1')).rejects.toBe(originalError);
+      expect(global.log.save).toHaveBeenCalledWith('get-payment-receipt-info-error', { error: 'receipt info boom' }, 'error');
     });
 
     it('throws a raw BadRequestError for an unknown provider', async () => {
       const providerOptions = { providerName: 'unknownProvider' };
 
-      await expect(
-        paymentService.getPaymentReceiptInfo(providerOptions, 'order-1'),
-      ).rejects.toThrow(BadRequestError);
+      await expect(paymentService.getPaymentReceiptInfo(providerOptions, 'order-1')).rejects.toThrow(BadRequestError);
     });
   });
 
@@ -384,18 +303,15 @@ describe('PaymentService', () => {
         receiptFormat: 'pdf',
         paymentControlSchema,
       });
-      expect(global.log.save).toHaveBeenCalledWith(
-        'get-payment-receipt-result',
-        {
-          result: [
-            {
-              fileBuffer: '****',
-              contentType: 'application/pdf',
-              fileBufferLength: providerResult[0].fileBuffer.length,
-            },
-          ],
-        },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('get-payment-receipt-result', {
+        result: [
+          {
+            fileBuffer: '****',
+            contentType: 'application/pdf',
+            fileBufferLength: providerResult[0].fileBuffer.length,
+          },
+        ],
+      });
     });
 
     it('rethrows the original error unmodified', async () => {
@@ -403,22 +319,14 @@ describe('PaymentService', () => {
       fakeProvider.getPaymentReceiptFiles.mockRejectedValue(originalError);
       const providerOptions = { providerName: 'fakeProvider' };
 
-      await expect(
-        paymentService.getPaymentReceiptFiles(providerOptions, 'order-1', 'pdf', {}),
-      ).rejects.toBe(originalError);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'get-payment-receipt-error',
-        { error: 'receipt files boom' },
-        'error',
-      );
+      await expect(paymentService.getPaymentReceiptFiles(providerOptions, 'order-1', 'pdf', {})).rejects.toBe(originalError);
+      expect(global.log.save).toHaveBeenCalledWith('get-payment-receipt-error', { error: 'receipt files boom' }, 'error');
     });
 
     it('throws a raw BadRequestError for an unknown provider', async () => {
       const providerOptions = { providerName: 'unknownProvider' };
 
-      await expect(
-        paymentService.getPaymentReceiptFiles(providerOptions, 'order-1', 'pdf', {}),
-      ).rejects.toThrow(BadRequestError);
+      await expect(paymentService.getPaymentReceiptFiles(providerOptions, 'order-1', 'pdf', {})).rejects.toThrow(BadRequestError);
     });
   });
 
@@ -435,10 +343,7 @@ describe('PaymentService', () => {
         paymentSystemParams: providerOptions,
         orderId: 'order-1',
       });
-      expect(global.log.save).toHaveBeenCalledWith(
-        'get-withdrawal-status-provider-result',
-        { result: providerResult },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('get-withdrawal-status-provider-result', { result: providerResult });
     });
 
     it('rethrows the original error unmodified', async () => {
@@ -446,22 +351,14 @@ describe('PaymentService', () => {
       fakeProvider.getWithdrawalFundsStatus.mockRejectedValue(originalError);
       const providerOptions = { providerName: 'fakeProvider' };
 
-      await expect(
-        paymentService.getWithdrawalFundsStatus(providerOptions, 'order-1'),
-      ).rejects.toBe(originalError);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'get-withdrawal-status-provider-error',
-        { error: originalError },
-        'error',
-      );
+      await expect(paymentService.getWithdrawalFundsStatus(providerOptions, 'order-1')).rejects.toBe(originalError);
+      expect(global.log.save).toHaveBeenCalledWith('get-withdrawal-status-provider-error', { error: originalError }, 'error');
     });
 
     it('throws a raw BadRequestError for an unknown provider', async () => {
       const providerOptions = { providerName: 'unknownProvider' };
 
-      await expect(
-        paymentService.getWithdrawalFundsStatus(providerOptions, 'order-1'),
-      ).rejects.toThrow(BadRequestError);
+      await expect(paymentService.getWithdrawalFundsStatus(providerOptions, 'order-1')).rejects.toThrow(BadRequestError);
     });
   });
 
@@ -475,10 +372,7 @@ describe('PaymentService', () => {
 
       expect(result).toBe(providerResult);
       expect(fakeProvider.sendCheckRequest).toHaveBeenCalledWith(providerOptions);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'send-check-request-result',
-        { result: providerResult },
-      );
+      expect(global.log.save).toHaveBeenCalledWith('send-check-request-result', { result: providerResult });
     });
 
     it('rethrows the original error unmodified', async () => {
@@ -486,22 +380,14 @@ describe('PaymentService', () => {
       fakeProvider.sendCheckRequest.mockRejectedValue(originalError);
       const providerOptions = { providerName: 'fakeProvider' };
 
-      await expect(
-        paymentService.sendCheckRequest(providerOptions),
-      ).rejects.toBe(originalError);
-      expect(global.log.save).toHaveBeenCalledWith(
-        'send-check-request-error',
-        { error: originalError },
-        'error',
-      );
+      await expect(paymentService.sendCheckRequest(providerOptions)).rejects.toBe(originalError);
+      expect(global.log.save).toHaveBeenCalledWith('send-check-request-error', { error: originalError }, 'error');
     });
 
     it('throws a raw BadRequestError for an unknown provider', async () => {
       const providerOptions = { providerName: 'unknownProvider' };
 
-      await expect(
-        paymentService.sendCheckRequest(providerOptions),
-      ).rejects.toThrow(BadRequestError);
+      await expect(paymentService.sendCheckRequest(providerOptions)).rejects.toThrow(BadRequestError);
     });
   });
 });

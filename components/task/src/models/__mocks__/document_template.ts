@@ -15,16 +15,16 @@ export class DocumentTemplateModel {
     const documentTemplates = [
       new DocumentTemplateEntity({
         id: 1,
-        name: 'Test 1'
+        name: 'Test 1',
       }),
       new DocumentTemplateEntity({
         id: 2,
-        name: 'Test 2'
+        name: 'Test 2',
       }),
       new DocumentTemplateEntity({
         id: 3,
-        name: 'Test 3'
-      })
+        name: 'Test 3',
+      }),
     ];
 
     return documentTemplates;
@@ -38,8 +38,7 @@ export class DocumentTemplateModel {
       id: 1,
       name: 'Test 1',
       json_schema: {},
-      html_template: ''
+      html_template: '',
     });
   }
 }
-

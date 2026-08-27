@@ -177,7 +177,7 @@ describe('DocumentBusiness payment methods', () => {
 
       await expect(
         documentBusiness.calculatePayment(documentId, payload, userId, userName, userUnitIds, userContactData, undefined, undefined),
-      ).rejects.toThrow('Can\'t get payment data.');
+      ).rejects.toThrow("Can't get payment data.");
     });
 
     it('throws NotFoundError when the document does not exist', async () => {
@@ -264,7 +264,7 @@ describe('DocumentBusiness payment methods', () => {
       documentBusiness.paymentService.handleStatus.mockResolvedValue(undefined);
 
       await expect(documentBusiness.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false)).rejects.toThrow(
-        'Can\'t get payment status.',
+        "Can't get payment status.",
       );
     });
 
@@ -393,7 +393,7 @@ describe('DocumentBusiness payment methods', () => {
       documentBusiness.paymentService.getPaymentReceiptInfo.mockResolvedValue(undefined);
 
       await expect(documentBusiness.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
-        'Can\'t get payment receipt.',
+        "Can't get payment receipt.",
       );
     });
   });
@@ -433,7 +433,7 @@ describe('DocumentBusiness payment methods', () => {
       documentBusiness.paymentService.getWithdrawalFundsStatus.mockResolvedValue(undefined);
 
       await expect(documentBusiness.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
-        'Can\'t get payment data.',
+        "Can't get payment data.",
       );
     });
   });

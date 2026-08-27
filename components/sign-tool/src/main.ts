@@ -4,10 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as bodyParser from 'body-parser';
 
 import { AppModule } from './app.module';
-import {
-  Configuration,
-  ConfigurationService,
-} from './configuration/configuration.service';
+import { Configuration, ConfigurationService } from './configuration/configuration.service';
 import { LoggingInterceptor } from './observability/logging.interceptor';
 import { LoggerService } from './observability/logger.service';
 import { ObservabilityModule } from './observability/observability.module';
@@ -31,9 +28,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { logger });
 
-  const config: Configuration['server'] = app
-    .get(ConfigurationService)
-    .get('server');
+  const config: Configuration['server'] = app.get(ConfigurationService).get('server');
 
   if (config.isSwaggerEnabled) {
     useSwagger(app);
@@ -42,9 +37,7 @@ async function bootstrap() {
   // Set the payload size limit
   if (config.acceptedBodySize) {
     app.use(bodyParser.json({ limit: config.acceptedBodySize }));
-    app.use(
-      bodyParser.urlencoded({ limit: config.acceptedBodySize, extended: true }),
-    );
+    app.use(bodyParser.urlencoded({ limit: config.acceptedBodySize, extended: true }));
   }
 
   app.useGlobalInterceptors(new LoggingInterceptor(logger));

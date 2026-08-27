@@ -1,4 +1,3 @@
-
 import { HttpRequest } from '../lib/http_request';
 import { DownloadToken } from '../lib/download_token';
 import { getTraceId } from '@liquio/back-core';
@@ -44,7 +43,7 @@ export class NotifierService {
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        Authorization: `Basic ${Buffer.from(`${this.user}:${this.password}`, 'utf8').toString('base64')}`
+        Authorization: `Basic ${Buffer.from(`${this.user}:${this.password}`, 'utf8').toString('base64')}`,
       };
       this.timeout = config.notifier.timeout || 30000;
       this.clientId = config.notifier.clientId;
@@ -72,23 +71,12 @@ export class NotifierService {
       queryParams && queryParams.filters && queryParams.filters.is_read && !isNaN(parseInt(queryParams.filters.is_read))
         ? `&is_read=${queryParams.filters.is_read}`
         : '';
-    const orderByDateQueryParam =
-      queryParams && queryParams.sort && queryParams.sort.date
-        ? `&order_date=${queryParams.sort.date}`
-        : '';
-    const searchQueryParam =
-      queryParams && queryParams.search
-        ? `&search=${encodeURIComponent(queryParams.search)}`
-        : '';
+    const orderByDateQueryParam = queryParams && queryParams.sort && queryParams.sort.date ? `&order_date=${queryParams.sort.date}` : '';
+    const searchQueryParam = queryParams && queryParams.search ? `&search=${encodeURIComponent(queryParams.search)}` : '';
     const fromCreatedAtQueryParam =
-      queryParams && queryParams.from_created_at
-        ? `&from_created_at=${encodeURIComponent(queryParams.from_created_at)}`
-        : '';
-    const toCreatedAtQueryParam =
-      queryParams && queryParams.to_created_at
-        ? `&to_created_at=${encodeURIComponent(queryParams.to_created_at)}`
-        : '';
-    const clientId = (typeof this.clientId !== 'undefined' && this.clientId !== '') ? `&client_id=${this.clientId}` : '';
+      queryParams && queryParams.from_created_at ? `&from_created_at=${encodeURIComponent(queryParams.from_created_at)}` : '';
+    const toCreatedAtQueryParam = queryParams && queryParams.to_created_at ? `&to_created_at=${encodeURIComponent(queryParams.to_created_at)}` : '';
+    const clientId = typeof this.clientId !== 'undefined' && this.clientId !== '' ? `&client_id=${this.clientId}` : '';
 
     try {
       // Do request to get message list.
@@ -101,7 +89,7 @@ export class NotifierService {
         url,
         method: HttpRequest.Methods.GET,
         headers: this.getHeadersWithTraceId(),
-        timeout: this.timeout
+        timeout: this.timeout,
       });
       global.log.save('get-message-list-response', response);
 
@@ -113,13 +101,13 @@ export class NotifierService {
       // Append download token to attachments.
       for (const result of responseResult) {
         if (result?.meta?.attachments?.length) {
-          result.meta.attachments = result.meta.attachments.map(v => ({ ...v, downloadToken: this.downloadToken.generate(v.fileId) }));
+          result.meta.attachments = result.meta.attachments.map((v) => ({ ...v, downloadToken: this.downloadToken.generate(v.fileId) }));
         }
       }
 
       const data = {
         data: responseResult,
-        meta: responseMeta
+        meta: responseMeta,
       };
 
       return data;
@@ -144,7 +132,7 @@ export class NotifierService {
         url,
         method: HttpRequest.Methods.PUT,
         headers: this.getHeadersWithTraceId(),
-        timeout: this.timeout
+        timeout: this.timeout,
       });
       global.log.save('set-message-state-isread-response', response);
       return response;
@@ -163,7 +151,7 @@ export class NotifierService {
       // Prepare params.
       const queryParams = `?access_token=${accessToken}`;
 
-      const clientId = (typeof this.clientId !== 'undefined' && this.clientId !== '') ? `&client_id=${this.clientId}` : '';
+      const clientId = typeof this.clientId !== 'undefined' && this.clientId !== '' ? `&client_id=${this.clientId}` : '';
 
       const url = `${this.server}:${this.port}${ROUTES.getImportantMessages}${queryParams}${clientId}`;
       global.log.save('get-important-messages-request', url);
@@ -173,12 +161,12 @@ export class NotifierService {
         url,
         method: HttpRequest.Methods.GET,
         headers: this.getHeadersWithTraceId(),
-        timeout: this.timeout
+        timeout: this.timeout,
       });
       global.log.save('get-important-messages-response', response);
-      return response && response.data || [];
+      return (response && response.data) || [];
     } catch (error) {
-      global.log.save('get-important-messages-error', { error: error && error.message || error });
+      global.log.save('get-important-messages-error', { error: (error && error.message) || error });
     }
   }
 
@@ -201,12 +189,12 @@ export class NotifierService {
         url,
         method: HttpRequest.Methods.PUT,
         headers: this.getHeadersWithTraceId(),
-        timeout: this.timeout
+        timeout: this.timeout,
       });
       global.log.save('hide-important-message-response', response);
-      return response && response.data || response;
+      return (response && response.data) || response;
     } catch (error) {
-      global.log.save('hide-important-message-error', { error: error && error.message || error, messageId });
+      global.log.save('hide-important-message-error', { error: (error && error.message) || error, messageId });
       throw error;
     }
   }
@@ -232,12 +220,12 @@ export class NotifierService {
         method: HttpRequest.Methods.PUT,
         headers: this.getHeadersWithTraceId(),
         body: JSON.stringify({ decryptedBase64 }),
-        timeout: this.timeout
+        timeout: this.timeout,
       });
       global.log.save('decrypt-response', response);
-      return response && response.data || response;
+      return (response && response.data) || response;
     } catch (error) {
-      global.log.save('decrypt-error', { error: error && error.message || error, messageId, decryptedBase64 });
+      global.log.save('decrypt-error', { error: (error && error.message) || error, messageId, decryptedBase64 });
     }
   }
 
@@ -249,7 +237,7 @@ export class NotifierService {
    */
   async getCountUnreadMessages(accessToken, userId) {
     try {
-      const clientId = (typeof this.clientId !== 'undefined' && this.clientId !== '') ? `&client_id=${this.clientId}` : '';
+      const clientId = typeof this.clientId !== 'undefined' && this.clientId !== '' ? `&client_id=${this.clientId}` : '';
       const queryParams = accessToken ? `?access_token=${accessToken}` : `?user_id=${userId}${clientId}`;
       const url = `${this.server}:${this.port}${ROUTES.getCountUnreadMessages}${queryParams}`;
       global.log.save('get-count-unread-messages-request', url);
@@ -258,7 +246,7 @@ export class NotifierService {
         url,
         method: HttpRequest.Methods.GET,
         headers: { 'x-trace-id': getTraceId() },
-        timeout: this.timeout
+        timeout: this.timeout,
       });
       global.log.save('get-count-unread-messages-response', response);
       return response;
@@ -275,12 +263,15 @@ export class NotifierService {
     const fullResponse = true;
 
     try {
-      const responseData = await HttpRequest.send({
-        url: `${this.server}:${this.port}${this.routes.ping}_with_auth`,
-        method: HttpRequest.Methods.GET,
-        headers: this.getHeadersWithTraceId(),
-        timeout: this.timeout
-      }, fullResponse);
+      const responseData = await HttpRequest.send(
+        {
+          url: `${this.server}:${this.port}${this.routes.ping}_with_auth`,
+          method: HttpRequest.Methods.GET,
+          headers: this.getHeadersWithTraceId(),
+          timeout: this.timeout,
+        },
+        fullResponse,
+      );
       global.log.save('send-ping-request-to-notify', responseData);
       const body = responseData && responseData.body;
       const headers = responseData && responseData.response && responseData.response.headers;
@@ -288,7 +279,9 @@ export class NotifierService {
       const customer = headers && headers.customer;
       const environment = headers && headers.environment;
       return { version, customer, environment, body };
-    } catch (error) { global.log.save('send-ping-request-to-notify', error.message); }
+    } catch (error) {
+      global.log.save('send-ping-request-to-notify', error.message);
+    }
   }
 
   /**
@@ -306,7 +299,7 @@ export class NotifierService {
         list_user_id: Array.isArray(to) ? to : [to],
         title_message: subject,
         full_message: html,
-        template_id: templateId
+        template_id: templateId,
       };
       const body = JSON.stringify(bodyObject);
 
@@ -316,12 +309,14 @@ export class NotifierService {
         method: HttpRequest.Methods.POST,
         headers: this.getHeadersWithTraceId(),
         body,
-        timeout: this.timeout
+        timeout: this.timeout,
       };
       global.log.save('sending-to-user-request', { body, requestOptions });
       response = await HttpRequest.send(requestOptions);
       global.log.save('sending-to-user-response', response);
-    } catch (error) { global.log.save('sending-to-user-error', error.message); }
+    } catch (error) {
+      global.log.save('sending-to-user-error', error.message);
+    }
 
     return response && response.sendByEmail && response && response.sendByEmail.length ? true : false;
   }
@@ -338,7 +333,7 @@ export class NotifierService {
         list_email: emailsList,
         title_message: subject,
         full_message: message,
-        template_id: templateId
+        template_id: templateId,
       };
       const body = JSON.stringify(bodyObject);
 
@@ -350,11 +345,11 @@ export class NotifierService {
         method: HttpRequest.Methods.POST,
         headers: this.getHeadersWithTraceId(),
         body,
-        timeout: this.timeout
+        timeout: this.timeout,
       });
       global.log.save('notifier-email-sending-response', response, 'info');
       return {
-        response
+        response,
       };
     } catch (error) {
       global.log.save('system-notifier-email-sending-error', error.message, 'error');
@@ -369,4 +364,3 @@ export class NotifierService {
     };
   }
 }
-

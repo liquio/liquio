@@ -1,4 +1,3 @@
-
 import { createClient } from 'redis';
 
 import { CustomLogEntity } from '../../entities/custom_log';
@@ -20,7 +19,7 @@ export class CustomLogs {
    * @param {object} [config] Document update log config. Global config `custom_logs` used by default.
    * @param {object} [redisConfig] Redis config. Global config `redis` used by default.
    */
-  constructor(config = global.config.custom_logs, redisConfig= global.config.redis) {
+  constructor(config = global.config.custom_logs, redisConfig = global.config.redis) {
     // Singleton.
     if (!CustomLogs.singleton) {
       // Save params.
@@ -28,15 +27,22 @@ export class CustomLogs {
       const { isEnabled: isRedisEnabled, host, port } = redisConfig || {};
 
       // Custom log config.
-      const { cacheEnabled, redis: { ttl } } = config;
-      this.cacheEnabled = (isRedisEnabled && cacheEnabled);
-      this.client = this.cacheEnabled && createClient({ socket: { host, port } }) || null;
-      this.client?.connect().catch(error => {
+      const {
+        cacheEnabled,
+        redis: { ttl },
+      } = config;
+      this.cacheEnabled = isRedisEnabled && cacheEnabled;
+      this.client = (this.cacheEnabled && createClient({ socket: { host, port } })) || null;
+      this.client?.connect().catch((error) => {
         global.log.save('custom-logs-cache-connection-error', error, 'error');
       });
 
       this.ttl = ttl;
-      if (this.client) { global.log.save('custom-logs-cache-initialized', { cacheEnabled, host, port }); } else { global.log.save('custom-logs-cache-not-initialized', { cacheEnabled }); }
+      if (this.client) {
+        global.log.save('custom-logs-cache-initialized', { cacheEnabled, host, port });
+      } else {
+        global.log.save('custom-logs-cache-not-initialized', { cacheEnabled });
+      }
 
       this.sandbox = new Sandbox();
 
@@ -65,7 +71,7 @@ export class CustomLogs {
       performerUnits,
       requiredPerformerUnits,
       requestBody,
-      task
+      task,
     } = options;
 
     let customLogTemplates;
@@ -75,8 +81,10 @@ export class CustomLogs {
       const { taskTemplateId } = task || {};
 
       // Get custom log templates.
-      customLogTemplates = await global.models.customLogTemplate
-        .getByOperationTypeAndDocumentTemplateIdWithCache(operationType, documentTemplateId || taskTemplateId);
+      customLogTemplates = await global.models.customLogTemplate.getByOperationTypeAndDocumentTemplateIdWithCache(
+        operationType,
+        documentTemplateId || taskTemplateId,
+      );
     } else {
       customLogTemplates = await global.models.customLogTemplate.getByOperationType(operationType);
     }
@@ -104,12 +112,21 @@ export class CustomLogs {
         // Returns `{ type, custom: { someProperty: { name, value }, ... } }`.
         customParams = this.sandbox.evalWithArgs(
           schema,
-          [{
-            document, unitBefore, unitAfter, documents, events,
-            performerUsers, performerUserNames, performerUnits, requiredPerformerUnits,
-            requestBody,
-            userIp: mainParams.userIp
-          }],
+          [
+            {
+              document,
+              unitBefore,
+              unitAfter,
+              documents,
+              events,
+              performerUsers,
+              performerUserNames,
+              performerUnits,
+              requiredPerformerUnits,
+              requestBody,
+              userIp: mainParams.userIp,
+            },
+          ],
           { meta: { fn: 'saveCustomLog.customLogTemplate.schema', workflowId, documentId: document.id } },
         );
 
@@ -136,7 +153,7 @@ export class CustomLogs {
 
       // Create custom log.
       const customLog = await global.models.customLog.create(logParams);
-      global.log.save('custom-log-created', { customLogId: customLog && customLog.id || null });
+      global.log.save('custom-log-created', { customLogId: (customLog && customLog.id) || null });
 
       // Save to cache.
       if (this.cacheEnabled) {
@@ -178,10 +195,7 @@ export class CustomLogs {
    */
   getCustomLogMainParams(customLogTemplate, options) {
     // Parse options.
-    const {
-      request,
-      document
-    } = options;
+    const { request, document } = options;
 
     // Prepare main params.
     const customLogTemplateId = customLogTemplate.id;
@@ -189,7 +203,7 @@ export class CustomLogs {
     const documentId = document && document.id;
     const { requestId, method, url, uriPattern, userIp, userAgent, user } = request || {};
     const { remoteAddress, xForwardedFor } = userIp || {};
-    const ip = [...new Set([remoteAddress, ...((xForwardedFor || '').split(','))].filter(v => !!v).map(v => v.trim()))];
+    const ip = [...new Set([remoteAddress, ...(xForwardedFor || '').split(',')].filter((v) => !!v).map((v) => v.trim()))];
     const { id: userId, name: userName } = user || {};
 
     // Return main params.
@@ -205,9 +219,8 @@ export class CustomLogs {
       userAgent,
       userId,
       userName,
-      userIp: xForwardedFor
+      userIp: xForwardedFor,
     };
     return mainParams;
   }
 }
-

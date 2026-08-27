@@ -21,4 +21,3 @@ export const TASK_TEMPLATE_FIXTURES = [
     updated_at: '2023-02-14T14:02:01.867Z',
   },
 ];
-

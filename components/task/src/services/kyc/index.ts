@@ -154,4 +154,3 @@ export class KycService {
     return session;
   }
 }
-

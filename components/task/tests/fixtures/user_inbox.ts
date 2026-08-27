@@ -11,4 +11,3 @@ export const USER_INBOX_FIXTURES = [
     meta: '{}',
   },
 ];
-

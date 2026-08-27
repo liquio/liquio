@@ -1,4 +1,3 @@
-
 import { checkSchema } from 'express-validator';
 import { Validator } from './validator';
 
@@ -29,13 +28,12 @@ export class DocumentValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isUUID: true
+        isUUID: true,
       },
       ['file_name']: {
         in: ['query'],
-        isString: true
+        isString: true,
       },
     });
   }
 }
-

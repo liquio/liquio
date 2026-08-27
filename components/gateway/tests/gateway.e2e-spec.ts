@@ -83,10 +83,10 @@ describe('Gateway Business (via RabbitMQ)', () => {
     expect(outMessage).toMatchObject({ workflowId });
     expect(typeof outMessage.gatewayId).toBe('string');
 
-    const [gatewayRow] = await global.db.query(
-      'SELECT gateway_type_id, gateway_template_id, "data" FROM gateways WHERE id = :id',
-      { replacements: { id: outMessage.gatewayId }, type: 'SELECT' },
-    );
+    const [gatewayRow] = await global.db.query('SELECT gateway_type_id, gateway_template_id, "data" FROM gateways WHERE id = :id', {
+      replacements: { id: outMessage.gatewayId },
+      type: 'SELECT',
+    });
     expect(gatewayRow).toMatchObject({ gateway_type_id: 2, gateway_template_id: PARALLEL_GATEWAY_TEMPLATE_ID });
     expect(gatewayRow.data).toEqual({ resultSequences: sequenceIds });
   });
@@ -111,10 +111,10 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const outMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueName);
     expect(outMessage).toMatchObject({ workflowId });
 
-    const [gatewayRow] = await global.db.query(
-      'SELECT gateway_type_id, "data" FROM gateways WHERE id = :id',
-      { replacements: { id: outMessage.gatewayId }, type: 'SELECT' },
-    );
+    const [gatewayRow] = await global.db.query('SELECT gateway_type_id, "data" FROM gateways WHERE id = :id', {
+      replacements: { id: outMessage.gatewayId },
+      type: 'SELECT',
+    });
     expect(gatewayRow).toMatchObject({ gateway_type_id: 3 });
     expect(gatewayRow.data).toEqual({ resultSequences: sequenceIds });
   });
@@ -159,10 +159,10 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const outMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueName);
     expect(outMessage).toMatchObject({ workflowId });
 
-    const [gatewayRow] = await global.db.query(
-      'SELECT gateway_type_id, "data" FROM gateways WHERE id = :id',
-      { replacements: { id: outMessage.gatewayId }, type: 'SELECT' },
-    );
+    const [gatewayRow] = await global.db.query('SELECT gateway_type_id, "data" FROM gateways WHERE id = :id', {
+      replacements: { id: outMessage.gatewayId },
+      type: 'SELECT',
+    });
     expect(gatewayRow).toMatchObject({ gateway_type_id: 1 });
     expect(gatewayRow.data).toMatchObject({
       resultSequence: 'Flow_1iyqzew',
@@ -184,8 +184,8 @@ describe('Gateway Business (via RabbitMQ)', () => {
     });
 
     // The debug branch doesn't log or produce a queue message, so poll for the row it writes.
-    const debugRow = await waitForRow(
-      () => global.db.query('SELECT workflow_id, service_name, "data" FROM workflow_debug WHERE id = :id', {
+    const debugRow = await waitForRow(() =>
+      global.db.query('SELECT workflow_id, service_name, "data" FROM workflow_debug WHERE id = :id', {
         replacements: { id: debugId },
         type: 'SELECT',
       }),

@@ -81,7 +81,7 @@ export class PgPubSub {
       database: this.config.database,
       password: this.config.password,
       port: this.config.port,
-      ssl: this.config.ssl
+      ssl: this.config.ssl,
     });
 
     client.on('notification', async (msg) => {
@@ -101,7 +101,7 @@ export class PgPubSub {
       global.log.save('pgpubsub-error', {
         error: error.message,
         stack: error.stack,
-        isReconnecting: this.isReconnecting
+        isReconnecting: this.isReconnecting,
       });
 
       if (!this.isReconnecting) {
@@ -126,7 +126,7 @@ export class PgPubSub {
   /**
    * Handles reconnection logic.
    */
-  async reconnect(){
+  async reconnect() {
     if (this.reconnectTimer) return;
 
     this.isReconnecting = true;
@@ -154,11 +154,11 @@ export class PgPubSub {
 
         global.log.save('pgpubsub-reconnected-successfully', {
           reconnectAttempts: this.reconnectAttempts,
-          message: 'Reconnected successfully'
+          message: 'Reconnected successfully',
         });
 
         // Re-subscribe to channels.
-        for (const [channel,] of this.subscriptions.entries()) {
+        for (const [channel] of this.subscriptions.entries()) {
           await this.enqueueClientQuery('LISTEN ' + channel);
           global.log.save('pgpubsub-resubscribed', { channel });
         }
@@ -240,4 +240,3 @@ export class PgPubSub {
     global.log.save('pgpubsub-unsubscribed', { channel: channelName });
   }
 }
-

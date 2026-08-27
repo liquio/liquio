@@ -1,4 +1,3 @@
-
 import _ from 'lodash';
 import qs from 'qs';
 import { randomUUID } from 'node:crypto';
@@ -43,7 +42,7 @@ export class MessageQueue {
         errorQueueName1H: `${config.readingQueueName}-errors-1h`,
         errorQueueName2H: `${config.readingQueueName}-errors-2h`,
         errorQueueName8H: `${config.readingQueueName}-errors-8h`,
-        errorQueueName1D: `${config.readingQueueName}-errors-1d`
+        errorQueueName1D: `${config.readingQueueName}-errors-1d`,
       };
       this.connection = null;
       this.channels = null;
@@ -141,7 +140,7 @@ export class MessageQueue {
       this.createNewChannel(),
       this.createNewChannel(),
       this.createNewChannel(),
-      this.createNewChannel()
+      this.createNewChannel(),
     ]);
     global.log.save('amqp-channel-opened', true);
 
@@ -178,10 +177,10 @@ export class MessageQueue {
       { ttl: ttl1H, queueName: this.config.errorQueueName1H },
       { ttl: ttl2H, queueName: this.config.errorQueueName2H },
       { ttl: ttl8H, queueName: this.config.errorQueueName8H },
-      { ttl: ttl1D, queueName: this.config.errorQueueName1D }
+      { ttl: ttl1D, queueName: this.config.errorQueueName1D },
     ];
 
-    ttlsAndQueueNames.forEach(ttlAndQueueName => {
+    ttlsAndQueueNames.forEach((ttlAndQueueName) => {
       this.channels.errors.assertQueue(
         ttlAndQueueName.queueName,
         this.getQueueParams(ttlAndQueueName.queueName, {
@@ -189,9 +188,9 @@ export class MessageQueue {
           arguments: {
             'x-dead-letter-exchange': '',
             'x-message-ttl': ttlAndQueueName.ttl,
-            'x-dead-letter-routing-key': this.config.readingQueueName
-          }
-        })
+            'x-dead-letter-routing-key': this.config.readingQueueName,
+          },
+        }),
       );
     });
 
@@ -205,28 +204,25 @@ export class MessageQueue {
      *   "1h": 3600,
      *   "1d": 86400
      * }
-    */
+     */
     const config: any = this.config || {};
     const { delayedAutoCommitQueues = {}, readingQueueName } = config;
 
     if (Object.keys(delayedAutoCommitQueues).length) {
       this.channels.delayedAutoCommit.assertQueue(`${readingQueueName}-delayed-auto-commit`, { durable: true }); // Reading queue.
 
-      Object.entries(delayedAutoCommitQueues).forEach(([queueSuffix, xMessageTtlInSeconds]: [string, any]) => { // Writing queues.
-        this.channels.delayedAutoCommit.assertQueue(
-          `${readingQueueName}-delayed-auto-commit-${queueSuffix}`,
-          {
-            durable: true,
-            arguments: {
-              'x-dead-letter-exchange': '',
-              'x-dead-letter-routing-key': `${readingQueueName}-delayed-auto-commit`,
-              'x-message-ttl': xMessageTtlInSeconds * 1000
-            }
-          }
-        );
+      Object.entries(delayedAutoCommitQueues).forEach(([queueSuffix, xMessageTtlInSeconds]: [string, any]) => {
+        // Writing queues.
+        this.channels.delayedAutoCommit.assertQueue(`${readingQueueName}-delayed-auto-commit-${queueSuffix}`, {
+          durable: true,
+          arguments: {
+            'x-dead-letter-exchange': '',
+            'x-dead-letter-routing-key': `${readingQueueName}-delayed-auto-commit`,
+            'x-message-ttl': xMessageTtlInSeconds * 1000,
+          },
+        });
       });
     }
-
   }
 
   /**
@@ -236,7 +232,7 @@ export class MessageQueue {
   getQueueParams(queueName, defaults: any = { durable: true }) {
     const { queueParams = [] } = this.config;
 
-    return queueParams.filter(param => queueName === param.queueName).reduce((acc, { params = {} }) => _.merge(acc, params), defaults);
+    return queueParams.filter((param) => queueName === param.queueName).reduce((acc, { params = {} }) => _.merge(acc, params), defaults);
   }
 
   /**
@@ -291,7 +287,7 @@ export class MessageQueue {
 
       // Send message to queue.
       this.channels[channel].sendToQueue(queueName, preparedMessage, {
-        persistent: true
+        persistent: true,
       });
       global.log.save('amqp-message-sent', { messageString });
       return true;
@@ -300,9 +296,9 @@ export class MessageQueue {
       try {
         // Try to send message to queue again.
         global.log.save('amqp-message-try-to-send-again', { messageString });
-        await new Promise(resolve => setTimeout(resolve, RETRY_SEND_MESSAGE_TIME));
+        await new Promise((resolve) => setTimeout(resolve, RETRY_SEND_MESSAGE_TIME));
         this.channels[channel].sendToQueue(queueName, preparedMessage, {
-          persistent: true
+          persistent: true,
         });
         global.log.save('amqp-message-sent', { messageString });
         return true;
@@ -323,9 +319,7 @@ export class MessageQueue {
   subscribeToConsuming(handler, channel = 'reading', queueName = this.config.readingQueueName) {
     // Decorate handler.
     const decoratedHandler = async (message) => {
-
       runInAsyncLocalStorage(async () => {
-
         // Convert message.
         const messageString = message.content.toString();
         global.log.save('message-from-queue-to-handle', { messageString });
@@ -441,4 +435,3 @@ export class MessageQueue {
     setTimeout(() => process.kill(process.pid, 'SIGTERM'), 5000);
   }
 }
-

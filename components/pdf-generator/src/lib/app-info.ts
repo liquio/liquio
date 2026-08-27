@@ -55,11 +55,7 @@ class AppInfo {
 
       packageJsonFileData = JSON.parse(packageJsonFileContent);
     } catch (error) {
-      log.save(
-        'app-info|cannot-read-package-json-file',
-        { error: error && error.message },
-        LogLevel.ERROR,
-      );
+      log.save('app-info|cannot-read-package-json-file', { error: error && error.message }, LogLevel.ERROR);
     }
 
     this._name = packageJsonFileData.name;

@@ -1,4 +1,3 @@
-
 import { Filler } from './filler';
 import { TaskModel } from '../../../models/task';
 
@@ -48,11 +47,9 @@ export class WorkflowTasksFunctionFiller extends Filler {
       let valueToSet;
       try {
         const tasks = await this.taskModel.getAllByWorkflowId(workflowId);
-        valueToSet = this.sandbox.evalWithArgs(
-          itemSchema.taskFunction,
-          tasks,
-          { meta: { fn: 'WorkflowTasksFunctionFiller.fill.taskFunction', workflowId } },
-        );
+        valueToSet = this.sandbox.evalWithArgs(itemSchema.taskFunction, tasks, {
+          meta: { fn: 'WorkflowTasksFunctionFiller.fill.taskFunction', workflowId },
+        });
 
         if (valueToSet === null) {
           valueToSet = undefined;
@@ -69,4 +66,3 @@ export class WorkflowTasksFunctionFiller extends Filler {
     return objectToFill;
   }
 }
-

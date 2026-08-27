@@ -19,9 +19,9 @@ export class TaskModel {
           total: 0,
           perPage: 15,
           currentPage: 1,
-          lastPage: 1
+          lastPage: 1,
         },
-        data: []
+        data: [],
       };
     }
     const tasks = {
@@ -29,7 +29,7 @@ export class TaskModel {
         total: 2,
         perPage: 15,
         currentPage: 1,
-        lastPage: 1
+        lastPage: 1,
       },
       data: [
         new TaskEntity({
@@ -47,7 +47,7 @@ export class TaskModel {
           createdBy: '5b75893b181a377d0cfa5cc3',
           updatedBy: '5b75893b181a377d0cfa5cc3',
           cancellationTypeId: null,
-          dueDate: null
+          dueDate: null,
         }),
         new TaskEntity({
           id: 'dbb56aa0-2ec7-11e9-becf-9b1b108685ec',
@@ -64,9 +64,9 @@ export class TaskModel {
           createdBy: '5b75893b181a377d0cfa5cc3',
           updatedBy: '5b75893b181a377d0cfa5cc3',
           cancellationTypeId: null,
-          dueDate: null
-        })
-      ]
+          dueDate: null,
+        }),
+      ],
     };
 
     return tasks;
@@ -97,7 +97,7 @@ export class TaskModel {
         data: {},
         description: null,
         fileName: null,
-        fileType: null
+        fileType: null,
       }),
       signerUsers: [],
       performerUsers: ['5b75893b181a377d0cfa5cc3'],
@@ -107,7 +107,7 @@ export class TaskModel {
       createdBy: '5b75893b181a377d0cfa5cc3',
       updatedBy: '5b75893b181a377d0cfa5cc3',
       cancellationTypeId: null,
-      dueDate: null
+      dueDate: null,
     });
   }
 
@@ -131,10 +131,9 @@ export class TaskModel {
       createdBy: '5b75893b181a377d0cfa5cc3',
       updatedBy: '5b75893b181a377d0cfa5cc3',
       cancellationTypeId: null,
-      dueDate: null
+      dueDate: null,
     });
   }
 
   async setStatusFinished() {}
 }
-

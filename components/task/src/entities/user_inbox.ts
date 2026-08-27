@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -58,4 +57,3 @@ export class UserInboxEntity extends Entity {
     return this.getFilterProperties();
   }
 }
-

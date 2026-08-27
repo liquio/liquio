@@ -245,11 +245,10 @@ export class LiquioProvider extends Provider {
       requestMethod = 'GET',
     } = eventContext;
     // Get additional filter function if exists.
-    const additionalFilterFunction = typeof additionalFilter === 'string' ? this.sandbox.evalWithArgs(
-      additionalFilter,
-      [],
-      { meta: { fn: 'additionalFilter', caller: 'LiquioProvider.getRecord' } },
-    ) : undefined;
+    const additionalFilterFunction =
+      typeof additionalFilter === 'string'
+        ? this.sandbox.evalWithArgs(additionalFilter, [], { meta: { fn: 'additionalFilter', caller: 'LiquioProvider.getRecord' } })
+        : undefined;
 
     let requestOptions: any;
 
@@ -351,7 +350,14 @@ export class LiquioProvider extends Provider {
       try {
         response.data = response.data.filter((record: any) => additionalFilterFunction(record, documents, events));
       } catch (error: any) {
-        global.log.save(`${method}|error-calling-additional-filter-function`, { error: error?.message, registerId, keyId, path, name, additionalFilter });
+        global.log.save(`${method}|error-calling-additional-filter-function`, {
+          error: error?.message,
+          registerId,
+          keyId,
+          path,
+          name,
+          additionalFilter,
+        });
         throw error;
       }
     }
@@ -762,11 +768,11 @@ export class LiquioProvider extends Provider {
 
     // Calc and return access info.
     const accessInfo =
-      typeof accessInfoObjectOrFunction === 'string' ? this.sandbox.evalWithArgs(
-        accessInfoObjectOrFunction,
-        [documents, events],
-        { meta: { fn: 'accessInfo', caller: 'LiquioProvider.getAccessInfo' } },
-      ) : accessInfoObjectOrFunction || {};
+      typeof accessInfoObjectOrFunction === 'string'
+        ? this.sandbox.evalWithArgs(accessInfoObjectOrFunction, [documents, events], {
+            meta: { fn: 'accessInfo', caller: 'LiquioProvider.getAccessInfo' },
+          })
+        : accessInfoObjectOrFunction || {};
     const calculatedAccessInfo = {
       workflowId,
       requestAt: new Date().toISOString(),

@@ -64,9 +64,9 @@ describe('RecordsController', () => {
                   createdBy: expect.any(String),
                   updatedBy: expect.any(String),
                   createdAt: expect.any(String),
-                  updatedAt: expect.any(String)
+                  updatedAt: expect.any(String),
                 }
-              : {}
+              : {},
           );
         });
     });
@@ -124,7 +124,7 @@ describe('RecordsController', () => {
             createdBy: 'diia-stage',
             updatedBy: 'diia-stage',
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
         });
     });
@@ -175,8 +175,8 @@ describe('RecordsController', () => {
           keyId: 2001,
           data: {
             name: 'Test Record',
-            data: 'TEST001'
-          }
+            data: 'TEST001',
+          },
         });
 
       expect(response.status).toBe(200);
@@ -188,7 +188,7 @@ describe('RecordsController', () => {
         keyId: 2001,
         data: {
           name: 'Test Record',
-          data: 'TEST001'
+          data: 'TEST001',
         },
         meta: expect.anything(),
         allowTokens: expect.anything(),
@@ -197,7 +197,7 @@ describe('RecordsController', () => {
         createdBy: expect.any(String),
         updatedBy: expect.any(String),
         createdAt: expect.any(String),
-        updatedAt: expect.any(String)
+        updatedAt: expect.any(String),
       });
       createdId = response.body.data.id;
 
@@ -254,7 +254,7 @@ describe('RecordsController', () => {
         .send({
           registerId: 200,
           keyId: 2001,
-          data: { name: 'Updated' }
+          data: { name: 'Updated' },
         })
         .expect(500)
         .expect('Content-Type', /json/);
@@ -272,8 +272,8 @@ describe('RecordsController', () => {
           keyId: 2001,
           data: {
             name: 'Record to Update',
-            data: 'TEST002'
-          }
+            data: 'TEST002',
+          },
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -292,8 +292,8 @@ describe('RecordsController', () => {
           keyId: 2001,
           data: {
             name: 'Updated Record Name',
-            data: 'TEST002_UPDATED'
-          }
+            data: 'TEST002_UPDATED',
+          },
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -353,7 +353,7 @@ describe('RecordsController', () => {
           .send({
             registerId: 200,
             keyId: 2001,
-            data: { name, data: dataValue }
+            data: { name, data: dataValue },
           })
           .expect(200);
 
@@ -371,10 +371,10 @@ describe('RecordsController', () => {
           key_id: 2001,
           register_id: 200,
           data: {
-            data: 'BODY_FILTER_MATCH_001'
+            data: 'BODY_FILTER_MATCH_001',
           },
           limit: 50,
-          offset: 0
+          offset: 0,
         })
         .expect(200)
         .expect('Content-Type', /json/);
@@ -431,8 +431,8 @@ describe('RecordsController', () => {
           keyId: 2001,
           data: {
             name: 'Record to Delete',
-            data: 'TEST003'
-          }
+            data: 'TEST003',
+          },
         })
         .expect(200)
         .expect('Content-Type', /json/)

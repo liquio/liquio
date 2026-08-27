@@ -71,12 +71,7 @@ describe('Containers Controller', () => {
         },
       } = await app.request().post('/containers').set('Authorization', AUTH_HEADER).send({ name: 'before-update' }).expect(200);
 
-      const response = await app
-        .request()
-        .put(`/containers/${id}`)
-        .set('Authorization', AUTH_HEADER)
-        .send({ name: 'after-update' })
-        .expect(200);
+      const response = await app.request().put(`/containers/${id}`).set('Authorization', AUTH_HEADER).send({ name: 'after-update' }).expect(200);
 
       expect(response.body.data).toMatchObject({ id, name: 'after-update' });
     });

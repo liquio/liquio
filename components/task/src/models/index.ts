@@ -1,4 +1,3 @@
-
 // const DictionariesModel = require('./dictionaries');
 import { WorkflowModel } from './workflow';
 import { WorkflowTemplateCategoryModel } from './workflow_template_category';
@@ -137,18 +136,22 @@ export class Models {
       externalServicesStatuses: ExternalServicesStatusesModel,
       kycSession: KycSessionModel,
       cabinetMenu: CabinetMenuModel,
-      ...customModels
+      ...customModels,
     };
 
     // Init models.
     this.models = (Object.entries(namesOfModels) as any[])
-      .map(v => [v[0], new v[1]()])
+      .map((v) => [v[0], new v[1]()])
       .reduce(
         (t, v) => ({
           ...t,
-          ...(() => { const n: any = {}; n[v[0]] = v[1]; return n; })()
+          ...(() => {
+            const n: any = {};
+            n[v[0]] = v[1];
+            return n;
+          })(),
         }),
-        {}
+        {},
       );
 
     global.models = this.models;
@@ -165,7 +168,10 @@ export class Models {
     this.models.workflow.model.hasMany(this.models.gateway.model, { foreignKey: 'workflow_id', targetKey: 'id' });
     this.models.workflow.model.hasMany(this.models.workflowError.model, { foreignKey: 'workflow_id', targetKey: 'id' });
     this.models.workflow.model.hasMany(this.models.workflowRestart.model, { foreignKey: 'workflow_id', targetKey: 'id' });
-    this.models.workflowTemplate.model.belongsTo(this.models.workflowTemplateCategory.model, { foreignKey: 'workflow_template_category_id', targetKey: 'id' });
+    this.models.workflowTemplate.model.belongsTo(this.models.workflowTemplateCategory.model, {
+      foreignKey: 'workflow_template_category_id',
+      targetKey: 'id',
+    });
     this.models.task.model.belongsTo(this.models.document.model, { foreignKey: 'document_id', targetKey: 'id' });
     this.models.task.model.belongsTo(this.models.workflow.model, { foreignKey: 'workflow_id', targetKey: 'id' });
     this.models.task.model.belongsTo(this.models.taskTemplate.model, { foreignKey: 'task_template_id', targetKey: 'id' });

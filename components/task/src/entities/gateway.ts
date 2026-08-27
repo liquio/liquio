@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -48,4 +47,3 @@ export class GatewayEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

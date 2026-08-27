@@ -81,7 +81,7 @@ export class Sandbox {
 
     // Select all workflow templates that have global functions defined in their data.
     const workflowTemplates = await models.models.workflowTemplate.model.findAll({
-      where: literal('data::jsonb ? \'globalFunctions\''),
+      where: literal("data::jsonb ? 'globalFunctions'"),
       attributes: ['id', 'data'],
     });
 
@@ -90,26 +90,25 @@ export class Sandbox {
       const globalFunctions = workflowTemplate.data?.globalFunctions || {};
 
       if (typeof globalFunctions !== 'object') {
-        global.log.save('sandbox-warning', {
-          workflowTemplateId: workflowTemplate.id,
-          message: 'Invalid globalFunctions for workflow template, must be an object.',
-          data: workflowTemplate.data,
-        }, 'warn');
+        global.log.save(
+          'sandbox-warning',
+          {
+            workflowTemplateId: workflowTemplate.id,
+            message: 'Invalid globalFunctions for workflow template, must be an object.',
+            data: workflowTemplate.data,
+          },
+          'warn',
+        );
         continue;
       }
 
-      this.updateWorkflowTemplateFunctions(
-        workflowTemplate.id,
-        workflowTemplate.data?.globalFunctions || {},
-      );
+      this.updateWorkflowTemplateFunctions(workflowTemplate.id, workflowTemplate.data?.globalFunctions || {});
     }
   }
 
   updateWorkflowTemplateFunctions(workflowTemplateId, globalFunctions: any) {
     // Filter out empty strings.
-    const pairs = Object.entries(
-      globalFunctions || {},
-    ).filter(([, v]) => {
+    const pairs = Object.entries(globalFunctions || {}).filter(([, v]) => {
       return typeof v === 'string' && v.length > 0;
     });
 
@@ -118,22 +117,29 @@ export class Sandbox {
       this.workflowTemplateFunctions[workflowTemplateId] ??= {};
 
       try {
-        this.workflowTemplateFunctions[workflowTemplateId][functionName] = this.eval(
-          functionCode,
-          { isAsync: functionCode.trim().startsWith('async') },
-        );
+        this.workflowTemplateFunctions[workflowTemplateId][functionName] = this.eval(functionCode, {
+          isAsync: functionCode.trim().startsWith('async'),
+        });
 
-        global.log.save('sandbox-global-function', {
-          workflowTemplateId,
-          functionName,
-        }, 'info');
+        global.log.save(
+          'sandbox-global-function',
+          {
+            workflowTemplateId,
+            functionName,
+          },
+          'info',
+        );
       } catch (error) {
-        global.log.save('sandbox-global-function-error', {
-          workflowTemplateId,
-          functionName,
-          error: error.message,
-          code: functionCode,
-        }, 'warn');
+        global.log.save(
+          'sandbox-global-function-error',
+          {
+            workflowTemplateId,
+            functionName,
+            error: error.message,
+            code: functionCode,
+          },
+          'warn',
+        );
       }
     }
   }
@@ -179,10 +185,7 @@ export class Sandbox {
       return options.defaultValue;
     }
 
-    const hash = crypto.createHash('sha1')
-      .update(code)
-      .update(JSON.stringify(options))
-      .digest('base64url');
+    const hash = crypto.createHash('sha1').update(code).update(JSON.stringify(options)).digest('base64url');
     if (this.cache.has(hash)) {
       return this.cache.get(hash);
     }
@@ -195,7 +198,7 @@ export class Sandbox {
     const workflowTemplateId = options.workflowTemplateId || meta.workflowTemplateId;
     if (workflowTemplateId) {
       options.global[this.globalFunctionsObject].workflow = {
-        ...this.workflowTemplateFunctions[workflowTemplateId]
+        ...this.workflowTemplateFunctions[workflowTemplateId],
       };
     }
 
@@ -205,19 +208,13 @@ export class Sandbox {
     if (options.isAsync) {
       const asyncFunctions = Object.entries(globalContext)
         .filter(([, value]) => {
-          return (
-            typeof value === 'function' &&
-            value.constructor.name === 'AsyncFunction'
-          );
+          return typeof value === 'function' && value.constructor.name === 'AsyncFunction';
         })
         .map(([key]) => key);
 
-      transformedCode = Helpers.transformFunctionToAsync(
-        transformedCode,
-        asyncFunctions,
-      );
+      transformedCode = Helpers.transformFunctionToAsync(transformedCode, asyncFunctions);
     }
-    
+
     // Setup function with global context pulled from options.
     const keys = Object.keys(globalContext);
     const values = Object.values(globalContext);
@@ -253,12 +250,7 @@ export class Sandbox {
       const time = Date.now();
 
       // Temporary fix for old low code snippets.
-      if (
-        options.isAsync &&
-        code.trim().startsWith('(') &&
-        !code.trim().startsWith('async') &&
-        /\bawait\b/.test(code)
-      ) {
+      if (options.isAsync && code.trim().startsWith('(') && !code.trim().startsWith('async') && /\bawait\b/.test(code)) {
         code = `async ${code}`;
       }
 
@@ -407,4 +399,3 @@ function base64Encode(rawString = '', rawStringEncoding: BufferEncoding = 'utf8'
 function toBase64(data) {
   return Buffer.from(data).toString('base64');
 }
-

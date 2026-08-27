@@ -179,19 +179,19 @@ export class BpmnTaskCore {
     // Init BPMN Task redis.
     global.redisClient = config?.redis?.isEnabled
       ? new RedisClient({
-        host: config.redis.host,
-        port: config.redis.port,
-        defaultTtl: config.redis.defaultTtl,
-      })
+          host: config.redis.host,
+          port: config.redis.port,
+          defaultTtl: config.redis.defaultTtl,
+        })
       : undefined;
 
     // Init common BPMN redis.
     global.redisClientCommonBpmn = config?.redis?.redisCommonBpmn?.isEnabled
       ? new RedisClient({
-        host: config.redis.redisCommonBpmn.host,
-        port: config.redis.redisCommonBpmn.port,
-        defaultTtl: config.redis.redisCommonBpmn.defaultTtl,
-      })
+          host: config.redis.redisCommonBpmn.host,
+          port: config.redis.redisCommonBpmn.port,
+          defaultTtl: config.redis.redisCommonBpmn.defaultTtl,
+        })
       : undefined;
 
     const taskBusiness = businesses.businesses.task;

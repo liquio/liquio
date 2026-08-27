@@ -22,14 +22,14 @@ export class WorkflowTemplateCategoryModel extends Model {
         'workflowTemplateCategory',
         {
           parent_id: Sequelize.INTEGER,
-          name: Sequelize.STRING
+          name: Sequelize.STRING,
         },
         {
           tableName: 'workflow_template_categories',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -37,7 +37,7 @@ export class WorkflowTemplateCategoryModel extends Model {
       PgPubSub.getInstance().subscribe('workflow_template_category_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        getAll: global.config.cache.workflowTemplateCategory?.getAll || DEFAULT_CACHE_TTL
+        getAll: global.config.cache.workflowTemplateCategory?.getAll || DEFAULT_CACHE_TTL,
       };
 
       WorkflowTemplateCategoryModel.singleton = this;
@@ -54,10 +54,10 @@ export class WorkflowTemplateCategoryModel extends Model {
     const { data: workflowTemplateCategories } = await RedisClient.getOrSet(
       RedisClient.createKey('workflow_template_category', 'getAll'),
       () => this.model.findAll(),
-      this.cacheTtl.getAll
+      this.cacheTtl.getAll,
     );
 
-    return workflowTemplateCategories.map(item => this.prepareEntity(item));
+    return workflowTemplateCategories.map((item) => this.prepareEntity(item));
   }
 
   /**
@@ -69,7 +69,7 @@ export class WorkflowTemplateCategoryModel extends Model {
     return new WorkflowTemplateCategoryEntity({
       id: item.id,
       parentId: item.parent_id,
-      name: item.name
+      name: item.name,
     });
   }
 
@@ -81,7 +81,7 @@ export class WorkflowTemplateCategoryModel extends Model {
   prepareForModel(item) {
     return {
       parent_id: item.parentId,
-      name: item.name
+      name: item.name,
     };
   }
 
@@ -103,4 +103,3 @@ export class WorkflowTemplateCategoryModel extends Model {
     }
   }
 }
-

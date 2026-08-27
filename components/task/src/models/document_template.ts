@@ -28,23 +28,23 @@ export class DocumentTemplateModel extends Model {
           access_json_schema: {
             type: Sequelize.JSON,
             allowNull: false,
-            defaultValue: {}
+            defaultValue: {},
           },
-          additional_data_to_sign: Sequelize.TEXT
+          additional_data_to_sign: Sequelize.TEXT,
         },
         {
           tableName: 'document_templates',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       PgPubSub.getInstance().subscribe('document_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
         findById: global.config.cache.documentTemplate?.findById || DEFAULT_CACHE_TTL,
-        substituteJsonProps: global.config.cache.documentTemplate?.substituteJsonProps || DEFAULT_CACHE_TTL
+        substituteJsonProps: global.config.cache.documentTemplate?.substituteJsonProps || DEFAULT_CACHE_TTL,
       };
 
       DocumentTemplateModel.singleton = this;
@@ -60,10 +60,10 @@ export class DocumentTemplateModel extends Model {
   async getAll() {
     const documentTemplates = await this.model.findAll({
       include: [{ model: global.models.taskTemplate.model, attributes: ['id', 'name'] }],
-      attributes: ['id', 'name']
+      attributes: ['id', 'name'],
     });
 
-    const documentTemplatesEntities = documentTemplates.map(item => {
+    const documentTemplatesEntities = documentTemplates.map((item) => {
       const documentTemplate = this.prepareEntity(item);
       const taskTemplate = global.models.taskTemplate.prepareEntity(item.taskTemplate);
       documentTemplate.taskTemplate = taskTemplate;
@@ -79,12 +79,12 @@ export class DocumentTemplateModel extends Model {
    */
   async getAllAccessJsonSchemas() {
     const documentTemplatesRaw = await this.model.findAll({
-      attributes: ['id', 'access_json_schema']
+      attributes: ['id', 'access_json_schema'],
     });
 
-    const documentTemplatesInfo = documentTemplatesRaw.map(item => ({
+    const documentTemplatesInfo = documentTemplatesRaw.map((item) => ({
       documentTemplateId: item.id,
-      accessJsonSchema: item.access_json_schema
+      accessJsonSchema: item.access_json_schema,
     }));
     return documentTemplatesInfo;
   }
@@ -96,12 +96,12 @@ export class DocumentTemplateModel extends Model {
   async getAccessJsonSchemasByIds(ids) {
     const documentTemplatesRaw = await this.model.findAll({
       where: { id: ids },
-      attributes: ['id', 'access_json_schema']
+      attributes: ['id', 'access_json_schema'],
     });
 
-    return documentTemplatesRaw.map(item => ({
+    return documentTemplatesRaw.map((item) => ({
       documentTemplateId: item.id,
-      accessJsonSchema: item.access_json_schema
+      accessJsonSchema: item.access_json_schema,
     }));
   }
 
@@ -114,7 +114,7 @@ export class DocumentTemplateModel extends Model {
     const { data: documentTemplate } = await RedisClient.getOrSet(
       RedisClient.createKey('document_template', 'findById', id),
       () => this.model.findByPk(id),
-      this.cacheTtl.findById
+      this.cacheTtl.findById,
     );
 
     const documentTemplateEntity = this.prepareEntity(documentTemplate);
@@ -139,12 +139,12 @@ export class DocumentTemplateModel extends Model {
     for (const prop in properties) {
       const importProp = properties[prop].import;
       if (!importProp) continue;
-      if (typeof importProp === 'string' && (/document.(\d+)/.test(importProp))) {
+      if (typeof importProp === 'string' && /document.(\d+)/.test(importProp)) {
         const documentTemplateId = Number(importProp.split('.')[1]);
-        documentWithIds.push(documentTemplateId) ;
+        documentWithIds.push(documentTemplateId);
       } else if (Array.isArray(importProp)) {
-        importProp.forEach(ip => {
-          if (typeof ip === 'string' && (/document.(\d+)/.test(ip))) {
+        importProp.forEach((ip) => {
+          if (typeof ip === 'string' && /document.(\d+)/.test(ip)) {
             const documentTemplateId = Number(ip.split('.')[1]);
             documentWithIds.push(documentTemplateId);
           }
@@ -159,35 +159,41 @@ export class DocumentTemplateModel extends Model {
     }
 
     // find template by documentWithId and property key name. return found object or empty object
-    const getPropertiesByDocument = key => async documentWithId => {
-      if (!(typeof documentWithId === 'string' && (/document.(\d+)/.test(documentWithId)))) {
+    const getPropertiesByDocument = (key) => async (documentWithId) => {
+      if (!(typeof documentWithId === 'string' && /document.(\d+)/.test(documentWithId))) {
         throw new Error(`Passed incorrect value to import - "${documentWithId}" while importing step "${key}"`);
       }
       const documentTemplateId = documentWithId.split('.')[1];
 
       const documentTemplate = documentTemplateMap.get(documentTemplateId);
       if (!documentTemplate) {
-        throw new Error(`Cannot find document by ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`);
+        throw new Error(
+          `Cannot find document by ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`,
+        );
       }
       let jsonSchema;
       try {
         jsonSchema = jsoncParser.parse(documentTemplate.json_schema);
       } catch (error) {
         global.log.save('substitute-json-schema-parse-error', error.toString(), 'error');
-        const wrapped: any = new Error(`Cannot parse JSON schema from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`);
+        const wrapped: any = new Error(
+          `Cannot parse JSON schema from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`,
+        );
         wrapped.cause = error;
         throw wrapped;
       }
 
       if (!jsonSchema.properties?.[key]) {
-        throw new Error(`Cannot get property (properties.${key}) from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`);
+        throw new Error(
+          `Cannot get property (properties.${key}) from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`,
+        );
       }
 
       return jsonSchema.properties[key];
     };
 
     // update jsonSchema.properties[key] with imported values
-    const processProperties = async key => {
+    const processProperties = async (key) => {
       const importProp = properties[key].import;
       if (importProp === undefined || importProp === null) return;
 
@@ -195,8 +201,8 @@ export class DocumentTemplateModel extends Model {
       const concatedResult = result.reduce((acc, cur) => ({ ...cur, ...acc }), {});
 
       // if all objects in array has `properties` key, concat them
-      if (result.every(item => item.properties)) {
-        concatedResult.properties = result.map(item => item.properties).reduce((acc, cur) => ({ ...cur, ...acc }), {});
+      if (result.every((item) => item.properties)) {
+        concatedResult.properties = result.map((item) => item.properties).reduce((acc, cur) => ({ ...cur, ...acc }), {});
       }
 
       jsonSchema.properties[key] = concatedResult;
@@ -224,7 +230,7 @@ export class DocumentTemplateModel extends Model {
       jsonSchema: item.json_schema,
       htmlTemplate: item.html_template,
       accessJsonSchema: item.access_json_schema,
-      additionalDataToSign: item.additional_data_to_sign
+      additionalDataToSign: item.additional_data_to_sign,
     });
   }
 

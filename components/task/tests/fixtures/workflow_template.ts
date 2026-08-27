@@ -2,7 +2,7 @@ export const WORKFLOW_TEMPLATE_FIXTURES = [
   {
     id: 161070,
     workflow_template_category_id: 29,
-    name: 'Valentine\'s Day',
+    name: "Valentine's Day",
     description: '',
     xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
     data: {
@@ -79,4 +79,3 @@ export const WORKFLOW_TEMPLATE_FIXTURES = [
     errors_subscribers: [],
   },
 ];
-

@@ -1,4 +1,3 @@
-
 import Sequelize from 'sequelize';
 import { Model } from './model';
 import { CustomInterfaceEntity } from '../entities/custom_interface';
@@ -28,46 +27,46 @@ export class CustomInterfaceModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           name: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           route: {
             allowNull: false,
             type: Sequelize.STRING,
-            unique: true
+            unique: true,
           },
           is_active: {
             type: Sequelize.BOOLEAN,
             allowNull: false,
-            defaultValue: true
+            defaultValue: true,
           },
           interface_schema: {
             allowNull: false,
-            type: Sequelize.TEXT
+            type: Sequelize.TEXT,
           },
           units: {
             allowNull: false,
             type: Sequelize.ARRAY(Sequelize.INTEGER),
-            defaultValue: []
+            defaultValue: [],
           },
           created_at: {
             allowNull: false,
-            type: Sequelize.DATE
+            type: Sequelize.DATE,
           },
           updated_at: {
             allowNull: false,
-            type: Sequelize.DATE
-          }
+            type: Sequelize.DATE,
+          },
         },
         {
           tableName: 'custom_interfaces',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Sequelize model params.
@@ -99,7 +98,7 @@ export class CustomInterfaceModel extends Model {
   async getAll({ route }) {
     // DB query.
     const raw = await this.model.findAll({
-      where: { route, is_active: true }
+      where: { route, is_active: true },
     });
 
     // Return entities.
@@ -121,7 +120,7 @@ export class CustomInterfaceModel extends Model {
       interfaceSchema: item.interface_schema,
       units: item.units,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 
@@ -139,8 +138,7 @@ export class CustomInterfaceModel extends Model {
       interface_schema: item.interfaceSchema,
       units: item.units,
       created_at: item.createdAt,
-      updated_at: item.updatedAt
+      updated_at: item.updatedAt,
     };
   }
 }
-

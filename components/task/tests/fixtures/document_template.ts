@@ -52,7 +52,7 @@ export const DOCUMENT_TEMPLATE_FIXTURES = [
             ipn: {
               type: 'object',
               description: 'Дані таски 161019001',
-              value: '({documents}) => \'3277334387\'',
+              value: "({documents}) => '3277334387'",
               readOnly: true,
               hidden: true,
             },
@@ -60,7 +60,7 @@ export const DOCUMENT_TEMPLATE_FIXTURES = [
               type: 'array',
               description: 'Масив підписантів',
               value:
-                '() => [{firstName: \'Микола\',lastName: \'Тест\',middleName: \'Максимович\',ipn: \'8888888888\',email: \'gogigogotes.t.987789987789987789@gmail.com\'}, {firstName: \'Артур\',lastName: \'Тестрибаков\',middleName: \'Андрійович\',ipn: \'5421463126\',email: \'johnsnow698754999@gmail.com\'}];',
+                "() => [{firstName: 'Микола',lastName: 'Тест',middleName: 'Максимович',ipn: '8888888888',email: 'gogigogotes.t.987789987789987789@gmail.com'}, {firstName: 'Артур',lastName: 'Тестрибаков',middleName: 'Андрійович',ipn: '5421463126',email: 'johnsnow698754999@gmail.com'}];",
               hidden: true,
             },
           },
@@ -76,14 +76,14 @@ export const DOCUMENT_TEMPLATE_FIXTURES = [
               calcSigners: '(document) => document?.data?.calculated?.signersArray;',
               letterTitle: '(document) => `Заява на редагування спортивної споруди № очікує вашого підпису`;',
               letterTemplate:
-                '(document, firstName, lastName, middleName, ipn, email, signerUrl) => `<div style=\'font-size:20px\'> <p>👋 Вітаємо, !</p> <p>Уповноваженою особою було створено заяву на редагування спортивної споруди № .  Будь ласка, <a href=\'${signerUrl}\' target=\'_blank\'>затвердіть заяву</a>, наклавши електронний підпис.</p> </div>`;',
+                "(document, firstName, lastName, middleName, ipn, email, signerUrl) => `<div style='font-size:20px'> <p>👋 Вітаємо, !</p> <p>Уповноваженою особою було створено заяву на редагування спортивної споруди № .  Будь ласка, <a href='${signerUrl}' target='_blank'>затвердіть заяву</a>, наклавши електронний підпис.</p> </div>`;",
               rejectSignLetterTitle: '(document) => `Підписання заяви на редагування спортивної споруди №  відхилено`;',
               rejectSignLetterTemplate:
-                '(document, firstName, lastName, middleName, ipn, email, userId) => `<div style=\'font-size:20px\'> <p>👋 Вітаємо, !</p></div>`;',
+                "(document, firstName, lastName, middleName, ipn, email, userId) => `<div style='font-size:20px'> <p>👋 Вітаємо, !</p></div>`;",
               cancelSignsLetterTitle:
                 '(document) => {const workflowNumber = document?.data?.calculated?.workflowNumber;return `Підписання заяви на редагування спортивної споруди № ${workflowNumber} відкликано`};',
               cancelSignsLetterTemplate:
-                '(document, firstName, lastName, middleName, ipn, email, signerUrl) => `<div style=\'font-size:20px\'> <p>👋 Вітаємо,!</p> <p> відкликав заяву на редагування спортивної споруди № , тому заяву було анульовано. Ви можете звернутись до заявника за деталями або подати заяву самостійно.</p> </div>`;',
+                "(document, firstName, lastName, middleName, ipn, email, signerUrl) => `<div style='font-size:20px'> <p>👋 Вітаємо,!</p> <p> відкликав заяву на редагування спортивної споруди № , тому заяву було анульовано. Ви можете звернутись до заявника за деталями або подати заяву самостійно.</p> </div>`;",
               templateId: 1,
             },
           },
@@ -98,4 +98,3 @@ export const DOCUMENT_TEMPLATE_FIXTURES = [
     additional_data_to_sign: null,
   },
 ];
-

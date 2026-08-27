@@ -60,7 +60,7 @@ describe('RegistersController', () => {
             createdBy: expect.any(String),
             updatedBy: expect.any(String),
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
         });
     });
@@ -86,7 +86,7 @@ describe('RegistersController', () => {
             createdBy: 'test-user',
             updatedBy: 'test-user',
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
         });
     });
@@ -120,7 +120,7 @@ describe('RegistersController', () => {
             createdBy: 'test-user',
             updatedBy: 'test-user',
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
         });
     });
@@ -160,7 +160,7 @@ describe('RegistersController', () => {
           expect(response.body.errors[0]).toEqual({
             location: 'body',
             msg: expect.any(String),
-            param: 'description'
+            param: 'description',
           });
         });
     });
@@ -174,7 +174,7 @@ describe('RegistersController', () => {
         .set('Authorization', validAuth)
         .send({
           name: 'New Test Register',
-          description: 'A test register description'
+          description: 'A test register description',
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -190,7 +190,7 @@ describe('RegistersController', () => {
             createdBy: expect.any(String),
             updatedBy: expect.any(String),
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
           createdId = response.body.data.id;
         });
@@ -214,7 +214,7 @@ describe('RegistersController', () => {
             createdBy: expect.any(String),
             updatedBy: expect.any(String),
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
         });
     });
@@ -250,7 +250,7 @@ describe('RegistersController', () => {
           expect(response.body.errors[0]).toEqual({
             location: 'body',
             msg: expect.any(String),
-            param: 'description'
+            param: 'description',
           });
         });
     });
@@ -262,7 +262,7 @@ describe('RegistersController', () => {
         .set('Authorization', validAuth)
         .send({
           name: 'Updated Register',
-          description: 'Updated description'
+          description: 'Updated description',
         })
         .expect(500)
         .expect('Content-Type', /json/);
@@ -277,7 +277,7 @@ describe('RegistersController', () => {
         .set('Authorization', validAuth)
         .send({
           name: 'Register to Update',
-          description: 'Original description'
+          description: 'Original description',
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -293,7 +293,7 @@ describe('RegistersController', () => {
         .set('Authorization', validAuth)
         .send({
           name: 'Updated Test Register',
-          description: 'Updated description'
+          description: 'Updated description',
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -309,7 +309,7 @@ describe('RegistersController', () => {
             createdBy: expect.any(String),
             updatedBy: expect.any(String),
             createdAt: expect.any(String),
-            updatedAt: expect.any(String)
+            updatedAt: expect.any(String),
           });
         });
 
@@ -340,7 +340,7 @@ describe('RegistersController', () => {
         .set('Authorization', validAuth)
         .send({
           name: 'Register to Delete',
-          description: 'This register will be deleted'
+          description: 'This register will be deleted',
         })
         .expect(200)
         .expect('Content-Type', /json/)

@@ -290,8 +290,8 @@ export class ExternalReader {
       // Additional preparations.
       data.data.attachments = extraParams.prepareAttachments?.includes('=>')
         ? this.sandbox.evalWithArgs(extraParams.prepareAttachments, [{ attachments: data.data.attachments, filters: nonUserFilter }], {
-          meta: { fn: 'getDataByUser.prepareAttachments', service, method },
-        })
+            meta: { fn: 'getDataByUser.prepareAttachments', service, method },
+          })
         : data.data.attachments;
 
       // Save new attachments.
@@ -437,4 +437,3 @@ export class ExternalReader {
     return response.data;
   }
 }
-

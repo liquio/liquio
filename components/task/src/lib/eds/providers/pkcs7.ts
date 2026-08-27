@@ -47,7 +47,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
       // Get signature info from sign-tool
       const signatureInfo = await this.getSignatureInfo(signature, undefined, false, Buffer.from(contentShouldBeSigned));
       if (!signatureInfo) {
-        global.log.save('check-signature-error', 'Can\'t define signature info.', 'warn');
+        global.log.save('check-signature-error', "Can't define signature info.", 'warn');
         return false;
       }
 
@@ -62,7 +62,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
 
       // Check if certificate matches user's certificate (if provided)
       if (userCertPem && pem !== userCertPem) {
-        global.log.save('check-signature-error', 'Signature certificate does not match user\'s certificate.', 'warn');
+        global.log.save('check-signature-error', "Signature certificate does not match user's certificate.", 'warn');
         return false;
       }
 
@@ -523,4 +523,3 @@ export class Pkcs7EdsProvider extends EdsProvider {
     }
   }
 }
-

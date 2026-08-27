@@ -16,11 +16,7 @@ export class StaticRoutes extends MessangerModel {
   }
 
   buildAdminView(urlName: any, fileName: any) {
-    router.get(
-      urlName,
-      this.getAdminView.bind(this),
-      (req: any, res: any) => res.sendFile(path.join(adminStaticDir, fileName)),
-    );
+    router.get(urlName, this.getAdminView.bind(this), (req: any, res: any) => res.sendFile(path.join(adminStaticDir, fileName)));
   }
 
   registerRoutes() {

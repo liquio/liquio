@@ -46,11 +46,9 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
 
     let merchantName;
     try {
-      merchantName = this.sandbox.evalWithArgs(
-        options.merchantName,
-        [documents, events],
-        { meta: { fn: 'merchantName', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' } },
-      );
+      merchantName = this.sandbox.evalWithArgs(options.merchantName, [documents, events], {
+        meta: { fn: 'merchantName', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' },
+      });
     } catch (error) {
       throw new EvaluateSchemaFunctionError(
         'saveDocument.standardPaymentReceipt.getPaymentReceipt.options.merchantName schema function throw error.',
@@ -60,11 +58,9 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
 
     let orderId;
     try {
-      orderId = this.sandbox.evalWithArgs(
-        options.orderId,
-        [documents, events],
-        { meta: { fn: 'orderId', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' } },
-      );
+      orderId = this.sandbox.evalWithArgs(options.orderId, [documents, events], {
+        meta: { fn: 'orderId', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' },
+      });
     } catch (error) {
       throw new EvaluateSchemaFunctionError('saveDocument.standardPaymentReceipt.getPaymentReceipt.options.orderId schema function throw error.', {
         cause: { error },
@@ -73,11 +69,9 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
 
     let receiptName;
     try {
-      receiptName = this.sandbox.evalWithArgs(
-        options.receiptName,
-        [documents, events],
-        { meta: { fn: 'receiptName', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' } },
-      );
+      receiptName = this.sandbox.evalWithArgs(options.receiptName, [documents, events], {
+        meta: { fn: 'receiptName', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' },
+      });
     } catch (error) {
       throw new EvaluateSchemaFunctionError(
         'saveDocument.standardPaymentReceipt.getPaymentReceipt.options.receiptName schema function throw error.',
@@ -87,11 +81,9 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
 
     let receiptFormat;
     try {
-      receiptFormat = this.sandbox.evalWithArgs(
-        options.receiptFormat,
-        [documents, events],
-        { meta: { fn: 'receiptFormat', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' } },
-      );
+      receiptFormat = this.sandbox.evalWithArgs(options.receiptFormat, [documents, events], {
+        meta: { fn: 'receiptFormat', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' },
+      });
     } catch (error) {
       throw new EvaluateSchemaFunctionError(
         'saveDocument.standardPaymentReceipt.getPaymentReceipt.options.receiptFormat schema function throw error.',
@@ -101,11 +93,9 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
 
     let receiptMeta;
     try {
-      receiptMeta = this.sandbox.evalWithArgs(
-        options.receiptMeta,
-        [documents, events],
-        { meta: { fn: 'receiptMeta', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' } },
-      );
+      receiptMeta = this.sandbox.evalWithArgs(options.receiptMeta, [documents, events], {
+        meta: { fn: 'receiptMeta', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' },
+      });
     } catch (error) {
       throw new EvaluateSchemaFunctionError(
         'saveDocument.standardPaymentReceipt.getPaymentReceipt.options.receiptMeta schema function throw error.',
@@ -115,11 +105,9 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
 
     let documentId;
     try {
-      documentId = this.sandbox.evalWithArgs(
-        options.documentId,
-        [documents, events],
-        { meta: { fn: 'documentId', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' } },
-      );
+      documentId = this.sandbox.evalWithArgs(options.documentId, [documents, events], {
+        meta: { fn: 'documentId', caller: 'StandardPaymentReceiptProvider.getPaymentReceipt' },
+      });
     } catch (error) {
       throw new EvaluateSchemaFunctionError('saveDocument.standardPaymentReceipt.getPaymentReceipt.options.documentId schema function throw error.', {
         cause: { error },
@@ -141,7 +129,9 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
     for (const [index, receipt] of receiptFiles.entries()) {
       // Check that is correct receipt format.
       if (CONTENT_TYPES[receiptFormat].toUpperCase() !== receipt.dataType.toUpperCase()) {
-        global.log.save('standard-payment-receipt-document-request-provider|get-payment-receipt|received-invalid-format', { contentType: receipt.dataType });
+        global.log.save('standard-payment-receipt-document-request-provider|get-payment-receipt|received-invalid-format', {
+          contentType: receipt.dataType,
+        });
         throw new ExternalServiceError(
           'StandardPaymentReceiptDocumentRequesterProvider.getPaymentReceipt. Payment customer API respond with wrong content type',
         );

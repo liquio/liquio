@@ -226,11 +226,12 @@ export class DecoratorTrembita extends Decorator {
     if (options && typeof options === 'object' && Object.keys(options).length > 0) {
       // Execute function from json schema.
 
-      if (options.needSendFileFromEvent && this.sandbox.evalWithArgs(
-        options.needSendFileFromEvent,
-        [document],
-        { meta: { fn: 'needSendFileFromEvent', caller: 'DecoratorTrembita.transform' } },
-      )) {
+      if (
+        options.needSendFileFromEvent &&
+        this.sandbox.evalWithArgs(options.needSendFileFromEvent, [document], {
+          meta: { fn: 'needSendFileFromEvent', caller: 'DecoratorTrembita.transform' },
+        })
+      ) {
         // Get file from event.
         const { fileBase64, fileId: fileIdFromEvent } = await this.getFileFromEvent(
           filestorage,

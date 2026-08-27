@@ -72,7 +72,7 @@ export class KycSessionModel extends Model {
           tableName: 'kyc_sessions',
           createdAt: 'createdAt',
           updatedAt: 'updatedAt',
-        }
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -103,4 +103,3 @@ export class KycSessionModel extends Model {
     });
   }
 }
-

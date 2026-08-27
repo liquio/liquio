@@ -70,7 +70,10 @@ describe('AuthController', () => {
       const randomUuid = crypto.randomUUID();
       const accessToken = `${randomUuid.slice(0, 14)}1${randomUuid.slice(15)}`;
       const expires = new Date(Date.now() + 60 * 60 * 1000);
-      const client = await app.model('client').findOne().then((row) => row?.dataValues as any);
+      const client = await app
+        .model('client')
+        .findOne()
+        .then((row) => row?.dataValues as any);
 
       await app.model('user').update({ isActive: false }, { where: { userId: users.local1!.userId } });
 

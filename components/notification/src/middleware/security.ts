@@ -18,16 +18,16 @@ import cors from 'cors';
 export function cspMiddleware(options: { directives?: Record<string, string[]> } = {}): (req: any, res: any, next: any) => void {
   const defaults = {
     directives: {
-      defaultSrc: ['\'self\''],
-      scriptSrc: ['\'self\''],
-      styleSrc: ['\'self\'', '\'unsafe-inline\''], // Note: unsafe-inline should be removed in production
-      imgSrc: ['\'self\'', 'data:', 'https:'],
-      fontSrc: ['\'self\''],
-      connectSrc: ['\'self\''],
-      frameSrc: ['\'none\''],
-      objectSrc: ['\'none\''],
-      mediaSrc: ['\'self\''],
-      childSrc: ['\'none\''],
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Note: unsafe-inline should be removed in production
+      imgSrc: ["'self'", 'data:', 'https:'],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      childSrc: ["'none'"],
     },
     ...options,
   };
@@ -66,17 +66,11 @@ export function securityHeadersMiddleware(options: { frameOptions?: string } = {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
     // Permissions policy
-    res.setHeader(
-      'Permissions-Policy',
-      'geolocation=(), microphone=(), camera=(), payment=()',
-    );
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
 
     // HSTS (only enable in production)
     if (process.env.NODE_ENV === 'production') {
-      res.setHeader(
-        'Strict-Transport-Security',
-        'max-age=31536000; includeSubDomains; preload',
-      );
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
 
     next();

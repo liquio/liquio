@@ -47,7 +47,7 @@ export class VerifiedUserInfoFiller extends Filler {
       for (const field of fields) {
         valueToSet.verified = {
           ...valueToSet.verified,
-          [field]: false
+          [field]: false,
         };
       }
 
@@ -56,7 +56,7 @@ export class VerifiedUserInfoFiller extends Filler {
           valueToSet.verified.email = userInfo.email ? true : false;
           if (userInfo.email !== '') {
             valueToSet.email = {
-              value: userInfo.email
+              value: userInfo.email,
             };
           }
         }
@@ -65,20 +65,20 @@ export class VerifiedUserInfoFiller extends Filler {
           valueToSet.verified.phone = userInfo.phone ? true : false;
           if (userInfo.phone !== '') {
             valueToSet.phone = {
-              value: userInfo.phone
+              value: userInfo.phone,
             };
           }
         }
 
         if (fields.includes('birthday')) {
           valueToSet.birthday = {
-            date: this.getBirthdayByRnokpp(userInfo?.ipn)
+            date: this.getBirthdayByRnokpp(userInfo?.ipn),
           };
         }
 
         if (fields.includes('gender')) {
           valueToSet.gender = {
-            value: this.getGenderByRnokpp(userInfo?.ipn)
+            value: this.getGenderByRnokpp(userInfo?.ipn),
           };
         }
 
@@ -91,23 +91,12 @@ export class VerifiedUserInfoFiller extends Filler {
           {},
           undefined,
           undefined,
-          enabledMocksHeader
+          enabledMocksHeader,
         );
 
-        valueToSet = await this.prepareData(
-          valueToSet,
-          fields,
-          userInfo,
-          passport,
-          oauthToken,
-          enabledMocksHeader
-        );
+        valueToSet = await this.prepareData(valueToSet, fields, userInfo, passport, oauthToken, enabledMocksHeader);
       } catch (error) {
-        global.log.save(
-          'verified-user-info-field-filling-error',
-          { error: (error && error.message) || error, stack: error.stack },
-          'warn'
-        );
+        global.log.save('verified-user-info-field-filling-error', { error: (error && error.message) || error, stack: error.stack }, 'warn');
       }
 
       return valueToSet;
@@ -134,7 +123,7 @@ export class VerifiedUserInfoFiller extends Filler {
       valueToSet.verified.unzr = data?.eddr_info === 'true' && data?.unzr !== '' ? true : false;
       if (data?.unzr !== '') {
         valueToSet.unzr = {
-          value: data?.unzr
+          value: data?.unzr,
         };
       }
     }
@@ -146,7 +135,7 @@ export class VerifiedUserInfoFiller extends Filler {
           date: data?.date_birth,
           place: data?.birth_place,
           country: data?.birth_country,
-          countryId: data?.birth_country_id
+          countryId: data?.birth_country_id,
         };
       }
     }
@@ -155,14 +144,13 @@ export class VerifiedUserInfoFiller extends Filler {
       valueToSet.verified.gender = data?.eddr_info === 'true' && data?.gender !== '' ? true : false;
       if (data?.eddr_info === 'true' && data?.gender !== '') {
         valueToSet.gender = {
-          value: data?.gender === 'M' ? 'male' : 'female'
+          value: data?.gender === 'M' ? 'male' : 'female',
         };
       }
     }
 
     if (fields.includes('passport')) {
-      valueToSet.verified.passport =
-        data?.eddr_info === 'true' && data?.documents?.documents === 'true' ? true : false;
+      valueToSet.verified.passport = data?.eddr_info === 'true' && data?.documents?.documents === 'true' ? true : false;
       if (data?.eddr_info === 'true' && data?.documents?.documents === 'true') {
         valueToSet.passport = {
           type: data?.documents?.type === 'pass' ? 'passport' : 'idCard',
@@ -170,7 +158,7 @@ export class VerifiedUserInfoFiller extends Filler {
           number: data?.documents?.number,
           issuedBy: data?.documents?.dep_issue,
           issuedAt: data?.documents?.date_issue,
-          expireDate: data?.documents?.date_expiry
+          expireDate: data?.documents?.date_expiry,
         };
       }
     }
@@ -220,4 +208,3 @@ export class VerifiedUserInfoFiller extends Filler {
     return dateOfBirth?.toLocaleDateString('uk-UA');
   }
 }
-

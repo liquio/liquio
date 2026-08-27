@@ -77,8 +77,14 @@ export class PaymentService {
 
     let result;
     try {
-      result = await this.getProvider(providerName)
-        .handleStatus(data, providerOptions, status, queryParamsObject, headersObject, checkPrevTransaction);
+      result = await this.getProvider(providerName).handleStatus(
+        data,
+        providerOptions,
+        status,
+        queryParamsObject,
+        headersObject,
+        checkPrevTransaction,
+      );
     } catch (error) {
       global.log.save('handle-payment-status-on-provider-error', { error }, 'error');
       const wrapped: any = new Error(error.message || error);
@@ -219,7 +225,9 @@ export class PaymentService {
       throw error;
     }
 
-    global.log.save('get-payment-receipt-result', { result: result.map((v) => ({ ...v, fileBuffer: '****', fileBufferLength: v.fileBuffer?.length })) });
+    global.log.save('get-payment-receipt-result', {
+      result: result.map((v) => ({ ...v, fileBuffer: '****', fileBufferLength: v.fileBuffer?.length })),
+    });
 
     return result;
   }
@@ -263,4 +271,3 @@ export class PaymentService {
     return result;
   }
 }
-

@@ -1,7 +1,7 @@
 // Constants.
 const EVENTS = {
   end: 'end',
-  data: 'data'
+  data: 'data',
 };
 
 /**

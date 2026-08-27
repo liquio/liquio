@@ -33,7 +33,9 @@ export class XmlJsConverter {
     return new Promise((resolve, reject) => {
       this.parseString(xml, options, (error: any, jsObject: any) => {
         // Check.
-        if (error) { reject(error); }
+        if (error) {
+          reject(error);
+        }
 
         // Resolve JS object.
         resolve(jsObject);
@@ -94,11 +96,14 @@ export class XmlJsConverter {
         value = v.length <= 1 ? v.shift() : v.map((item: any) => this.normalizeObj({ data: item, prefix, prefixList }));
       }
 
-      result[key] = value && Object.getPrototypeOf(value) === Object.prototype ? this.normalizeObj({
-        data: value,
-        prefix,
-        prefixList,
-      }) : value;
+      result[key] =
+        value && Object.getPrototypeOf(value) === Object.prototype
+          ? this.normalizeObj({
+              data: value,
+              prefix,
+              prefixList,
+            })
+          : value;
     }
     return result;
   }

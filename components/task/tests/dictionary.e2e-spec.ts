@@ -40,7 +40,7 @@ describe('Dictionary Controller', () => {
         .get('/dictionaries/does-not-exist')
         .expect(404)
         .expect((response) => {
-          expect(response.body.error.message).toContain('doesn\'t exist');
+          expect(response.body.error.message).toContain("doesn't exist");
         });
     });
   });

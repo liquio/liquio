@@ -75,9 +75,9 @@ export default class Controller {
       error: {
         message,
         details,
-        code
+        code,
       },
-      traceId: getTraceId()
+      traceId: getTraceId(),
     };
 
     // Log.

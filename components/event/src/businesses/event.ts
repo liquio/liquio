@@ -120,22 +120,44 @@ export class EventBusiness {
 
     try {
       calculated.emails = this.sandbox.evalWithArgs(jsonSchemaObject.emails || '() => { return []; }', [documents, events], { eventTemplateId });
-      calculated.emailsByUserId = this.sandbox.evalWithArgs(jsonSchemaObject.emailsByUserId || '() => { return []; }', [documents, events], { eventTemplateId });
-      calculated.emailsSubscribeToDigest = this.sandbox.evalWithArgs(jsonSchemaObject.emailsSubscribeToDigest || '() => { return []; }', [documents, events], { eventTemplateId });
-      calculated.emailsByUnitId = this.sandbox.evalWithArgs(jsonSchemaObject.emailsByUnitId || '() => { return []; }', [documents, events], { eventTemplateId });
-      calculated.emailsHeadByUnitId = this.sandbox.evalWithArgs(jsonSchemaObject.emailsHeadByUnitId || '() => { return []; }', [documents, events], { eventTemplateId });
-      calculated.emailsMemberByUnitId = this.sandbox.evalWithArgs(jsonSchemaObject.emailsMemberByUnitId || '() => { return []; }', [documents, events], { eventTemplateId });
-      calculated.emailsByIpn = this.sandbox.evalWithArgs(jsonSchemaObject.emailsByIpn || '() => { return []; }', [documents, events], { eventTemplateId });
-      calculated.emailTemplateId = this.sandbox.evalWithArgs(jsonSchemaObject.emailTemplateId || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.emailsByUserId = this.sandbox.evalWithArgs(jsonSchemaObject.emailsByUserId || '() => { return []; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.emailsSubscribeToDigest = this.sandbox.evalWithArgs(
+        jsonSchemaObject.emailsSubscribeToDigest || '() => { return []; }',
+        [documents, events],
+        { eventTemplateId },
+      );
+      calculated.emailsByUnitId = this.sandbox.evalWithArgs(jsonSchemaObject.emailsByUnitId || '() => { return []; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.emailsHeadByUnitId = this.sandbox.evalWithArgs(jsonSchemaObject.emailsHeadByUnitId || '() => { return []; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.emailsMemberByUnitId = this.sandbox.evalWithArgs(
+        jsonSchemaObject.emailsMemberByUnitId || '() => { return []; }',
+        [documents, events],
+        { eventTemplateId },
+      );
+      calculated.emailsByIpn = this.sandbox.evalWithArgs(jsonSchemaObject.emailsByIpn || '() => { return []; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.emailTemplateId = this.sandbox.evalWithArgs(jsonSchemaObject.emailTemplateId || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
       calculated.phones = this.sandbox.evalWithArgs(jsonSchemaObject.phones || '() => { return []; }', [documents, events], { eventTemplateId });
-      calculated.subject = this.sandbox.evalWithArgs(jsonSchemaObject.subject || '() => { return \'\'; }', [documents, events], { eventTemplateId });
+      calculated.subject = this.sandbox.evalWithArgs(jsonSchemaObject.subject || "() => { return ''; }", [documents, events], { eventTemplateId });
       calculated.fullText = await this.sandbox.evalWithArgs(
-        (jsonSchemaObject.fullText && this.transformFunctionToAsync(jsonSchemaObject.fullText)) || '() => { return \'\'; }',
+        (jsonSchemaObject.fullText && this.transformFunctionToAsync(jsonSchemaObject.fullText)) || "() => { return ''; }",
         [documents, events, workflowId],
         { isAsync: true, eventTemplateId },
       );
-      calculated.shortText = this.sandbox.evalWithArgs(jsonSchemaObject.shortText || '() => { return \'\'; }', [documents, events], { eventTemplateId });
-      calculated.saveToBlockchain = this.sandbox.evalWithArgs(jsonSchemaObject.saveToBlockchain || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.shortText = this.sandbox.evalWithArgs(jsonSchemaObject.shortText || "() => { return ''; }", [documents, events], {
+        eventTemplateId,
+      });
+      calculated.saveToBlockchain = this.sandbox.evalWithArgs(jsonSchemaObject.saveToBlockchain || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
       calculated.saveToRegisters = await new RecordMap(jsonSchemaObject.saveToRegisters, documents, events, undefined, eventTemplateId).getRecord();
       if (jsonSchemaObject.saveToRegistersList) {
         calculated.saveToRegistersList = [];
@@ -145,7 +167,11 @@ export class EventBusiness {
           calculated.saveToRegistersList.push(record);
         }
       }
-      calculated.saveRegisterRecordsToCsv = this.sandbox.evalWithArgs(jsonSchemaObject.saveRegisterRecordsToCsv || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.saveRegisterRecordsToCsv = this.sandbox.evalWithArgs(
+        jsonSchemaObject.saveRegisterRecordsToCsv || '() => { return; }',
+        [documents, events],
+        { eventTemplateId },
+      );
       calculated.updateRegisters = await new RecordMap(jsonSchemaObject.updateRegisters, documents, events, undefined, eventTemplateId).getRecord();
       if (jsonSchemaObject.updateRegistersList) {
         calculated.updateRegistersList = [];
@@ -156,7 +182,9 @@ export class EventBusiness {
         }
         calculated.updateRegistersList = await Promise.all(promises);
       }
-      calculated.deleteRegisters = this.sandbox.evalWithArgs(jsonSchemaObject.deleteRegisters || '() => { return \'\'; }', [documents, events], { eventTemplateId });
+      calculated.deleteRegisters = this.sandbox.evalWithArgs(jsonSchemaObject.deleteRegisters || "() => { return ''; }", [documents, events], {
+        eventTemplateId,
+      });
       if (jsonSchemaObject.deleteRegistersList) {
         calculated.deleteRegistersList = {
           recordIds: this.sandbox.evalWithArgs(jsonSchemaObject.deleteRegistersList.recordIds, [documents, events], { eventTemplateId }),
@@ -165,9 +193,15 @@ export class EventBusiness {
           returnDeletedRecords: jsonSchemaObject.deleteRegistersList.returnDeletedRecords,
         };
       }
-      calculated.getRegisters = this.sandbox.evalWithArgs(jsonSchemaObject.getRegisters || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.countRegisters = this.sandbox.evalWithArgs(jsonSchemaObject.countRegisters || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.getRegistersByPost = this.sandbox.evalWithArgs(jsonSchemaObject.getRegistersByPost || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.getRegisters = this.sandbox.evalWithArgs(jsonSchemaObject.getRegisters || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.countRegisters = this.sandbox.evalWithArgs(jsonSchemaObject.countRegisters || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.getRegistersByPost = this.sandbox.evalWithArgs(jsonSchemaObject.getRegistersByPost || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
       calculated.sendToExternalService = jsonSchemaObject.sendToExternalService;
       calculated.taskTemplateIdsFilter = jsonSchemaObject.taskTemplateIdsFilter;
       calculated.eventTemplateIdsFilter = jsonSchemaObject.eventTemplateIdsFilter;
@@ -176,15 +210,19 @@ export class EventBusiness {
         id: this.sandbox.evalWithArgs(jsonSchemaObject.id || '() => { return; }', [documents, events], { eventTemplateId }),
         parentId: this.sandbox.evalWithArgs(jsonSchemaObject.parentId || '() => { return; }', [documents, events], { eventTemplateId }),
         basedOn: this.sandbox.evalWithArgs(jsonSchemaObject.basedOn || '() => { return []; }', [documents, events], { eventTemplateId }),
-        name: this.sandbox.evalWithArgs(jsonSchemaObject.name || '() => { return \'\'; }', [documents, events], { eventTemplateId }),
-        description: this.sandbox.evalWithArgs(jsonSchemaObject.description || '() => { return \'\'; }', [documents, events], { eventTemplateId }),
+        name: this.sandbox.evalWithArgs(jsonSchemaObject.name || "() => { return ''; }", [documents, events], { eventTemplateId }),
+        description: this.sandbox.evalWithArgs(jsonSchemaObject.description || "() => { return ''; }", [documents, events], { eventTemplateId }),
         menuConfig: jsonSchemaObject.menuConfig,
         allowTokens: this.sandbox.evalWithArgs(jsonSchemaObject.allowTokens || '() => { return []; }', [documents, events], { eventTemplateId }),
-        allowTokenEqualsId: this.sandbox.evalWithArgs(jsonSchemaObject.allowTokenEqualsId || '() => { return false; }', [documents, events], { eventTemplateId }),
+        allowTokenEqualsId: this.sandbox.evalWithArgs(jsonSchemaObject.allowTokenEqualsId || '() => { return false; }', [documents, events], {
+          eventTemplateId,
+        }),
         isAllowTokensMustBeAppended: jsonSchemaObject.isAllowTokensMustBeAppended || false,
         data: this.sandbox.evalWithArgs(jsonSchemaObject.data || '() => { return {}; }', [documents, events], { eventTemplateId }),
         heads:
-          calculated.eventUnitType === 'update' && !jsonSchemaObject.heads ? null : this.sandbox.evalWithArgs(jsonSchemaObject.heads || '() => { return []; }', [documents, events], { eventTemplateId }),
+          calculated.eventUnitType === 'update' && !jsonSchemaObject.heads
+            ? null
+            : this.sandbox.evalWithArgs(jsonSchemaObject.heads || '() => { return []; }', [documents, events], { eventTemplateId }),
         members:
           calculated.eventUnitType === 'update' && !jsonSchemaObject.members
             ? null
@@ -204,10 +242,18 @@ export class EventBusiness {
           userIds: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.userIds || '() => { return []; }', [documents, events], { eventTemplateId }),
           unitIds: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.unitIds || '() => { return []; }', [documents, events], { eventTemplateId }),
           ids: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.ids || '() => { return []; }', [documents, events], { eventTemplateId }),
-          codes: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.ipnArray || jsonSchemaObject.searchData.codes || '() => { return []; }', [documents, events], { eventTemplateId }),
-          code: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.ipn || jsonSchemaObject.searchData.code || '() => { return \'\'; }', [documents, events], { eventTemplateId }),
+          codes: this.sandbox.evalWithArgs(
+            jsonSchemaObject.searchData.ipnArray || jsonSchemaObject.searchData.codes || '() => { return []; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
+          code: this.sandbox.evalWithArgs(
+            jsonSchemaObject.searchData.ipn || jsonSchemaObject.searchData.code || "() => { return ''; }",
+            [documents, events],
+            { eventTemplateId },
+          ),
           edrpou: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.edrpou || '() => []', [documents, events], { eventTemplateId }),
-          search: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.search || '() => { return \'\'; }', [documents, events], { eventTemplateId }),
+          search: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.search || "() => { return ''; }", [documents, events], { eventTemplateId }),
           basedOn: this.sandbox.evalWithArgs(jsonSchemaObject.searchData.basedOn || '() => { return []; }', [documents, events], { eventTemplateId }),
         };
       } else if (jsonSchemaObject.searchData) {
@@ -220,56 +266,124 @@ export class EventBusiness {
       calculated.ipn = this.sandbox.evalWithArgs(jsonSchemaObject.ipn || '() => { return; }', [documents, events], { eventTemplateId });
       calculated.ipnList = this.sandbox.evalWithArgs(jsonSchemaObject.ipnList || '() => { return; }', [documents, events], { eventTemplateId });
       calculated.userName = this.sandbox.evalWithArgs(jsonSchemaObject.userName || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.initUserName = this.sandbox.evalWithArgs(jsonSchemaObject.initUserName || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.initUserName = this.sandbox.evalWithArgs(jsonSchemaObject.initUserName || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
       calculated.initUserId = this.sandbox.evalWithArgs(jsonSchemaObject.initUserId || '() => { return; }', [documents, events], { eventTemplateId });
 
       if (jsonSchemaObject.userData) {
         const addressStructRegion = this.sandbox.evalWithArgs(
-          jsonSchemaObject.userData.addressStructRegion || '() => { return { id: \'\', registerRecordId: \'\', name: \'\'}; }',
+          jsonSchemaObject.userData.addressStructRegion || "() => { return { id: '', registerRecordId: '', name: ''}; }",
           [documents, events],
-          { eventTemplateId }
+          { eventTemplateId },
         );
         const addressStructDistrict = this.sandbox.evalWithArgs(
-          jsonSchemaObject.userData.addressStructDistrict || '() => { return { id: \'\', registerRecordId: \'\', name: \'\'}; }',
+          jsonSchemaObject.userData.addressStructDistrict || "() => { return { id: '', registerRecordId: '', name: ''}; }",
           [documents, events],
-          { eventTemplateId }
+          { eventTemplateId },
         );
         const addressStructCity = this.sandbox.evalWithArgs(
-          jsonSchemaObject.userData.addressStructCity || '() => { return { id: \'\', registerRecordId: \'\', name: \'\', type: \'\'}; }',
+          jsonSchemaObject.userData.addressStructCity || "() => { return { id: '', registerRecordId: '', name: '', type: ''}; }",
           [documents, events],
-          { eventTemplateId }
+          { eventTemplateId },
         );
         const addressStructStreet = this.sandbox.evalWithArgs(
-          jsonSchemaObject.userData.addressStructStreet || '() => { return { id: \'\', registerRecordId: \'\', name: \'\', type: \'\' }; }',
+          jsonSchemaObject.userData.addressStructStreet || "() => { return { id: '', registerRecordId: '', name: '', type: '' }; }",
           [documents, events],
-          { eventTemplateId }
+          { eventTemplateId },
         );
-        const addressStructBuilding = this.sandbox.evalWithArgs(jsonSchemaObject.userData.addressStructBuilding || '() => { return \'\'; }', [documents, events], { eventTemplateId });
-        const addressStructKorp = this.sandbox.evalWithArgs(jsonSchemaObject.userData.addressStructKorp || '() => { return \'\'; }', [documents, events], { eventTemplateId });
-        const addressStructApt = this.sandbox.evalWithArgs(jsonSchemaObject.userData.addressStructApt || '() => { return \'\'; }', [documents, events], { eventTemplateId });
-        const addressStructIndex = this.sandbox.evalWithArgs(jsonSchemaObject.userData.addressStructIndex || '() => { return \'\'; }', [documents, events], { eventTemplateId });
+        const addressStructBuilding = this.sandbox.evalWithArgs(
+          jsonSchemaObject.userData.addressStructBuilding || "() => { return ''; }",
+          [documents, events],
+          { eventTemplateId },
+        );
+        const addressStructKorp = this.sandbox.evalWithArgs(
+          jsonSchemaObject.userData.addressStructKorp || "() => { return ''; }",
+          [documents, events],
+          { eventTemplateId },
+        );
+        const addressStructApt = this.sandbox.evalWithArgs(
+          jsonSchemaObject.userData.addressStructApt || "() => { return ''; }",
+          [documents, events],
+          { eventTemplateId },
+        );
+        const addressStructIndex = this.sandbox.evalWithArgs(
+          jsonSchemaObject.userData.addressStructIndex || "() => { return ''; }",
+          [documents, events],
+          { eventTemplateId },
+        );
         calculated.userData = {
           gender: this.sandbox.evalWithArgs(jsonSchemaObject.userData.gender || '() => { return; }', [documents, events], { eventTemplateId }),
           birthday: this.sandbox.evalWithArgs(jsonSchemaObject.userData.birthday || '() => { return; }', [documents, events], { eventTemplateId }),
-          isIndividualEntrepreneur: this.sandbox.evalWithArgs(jsonSchemaObject.userData.isIndividualEntrepreneur || '() => { return; }', [documents, events], { eventTemplateId }),
-          legalEntityDateRegistration: this.sandbox.evalWithArgs(jsonSchemaObject.userData.legalEntityDateRegistration || '() => { return; }', [documents, events], { eventTemplateId }),
+          isIndividualEntrepreneur: this.sandbox.evalWithArgs(
+            jsonSchemaObject.userData.isIndividualEntrepreneur || '() => { return; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
+          legalEntityDateRegistration: this.sandbox.evalWithArgs(
+            jsonSchemaObject.userData.legalEntityDateRegistration || '() => { return; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
           address: this.sandbox.evalWithArgs(jsonSchemaObject.userData.address || '() => { return; }', [documents, events], { eventTemplateId }),
-          passportSeries: this.sandbox.evalWithArgs(jsonSchemaObject.userData.passportSeries || '() => { return; }', [documents, events], { eventTemplateId }),
-          passportNumber: this.sandbox.evalWithArgs(jsonSchemaObject.userData.passportNumber || '() => { return; }', [documents, events], { eventTemplateId }),
-          passportIssueDate: this.sandbox.evalWithArgs(jsonSchemaObject.userData.passportIssueDate || '() => { return; }', [documents, events], { eventTemplateId }),
-          passportIssuedBy: this.sandbox.evalWithArgs(jsonSchemaObject.userData.passportIssuedBy || '() => { return; }', [documents, events], { eventTemplateId }),
-          foreignersDocumentSeries: this.sandbox.evalWithArgs(jsonSchemaObject.userData.foreignersDocumentSeries || '() => { return; }', [documents, events], { eventTemplateId }),
-          foreignersDocumentNumber: this.sandbox.evalWithArgs(jsonSchemaObject.userData.foreignersDocumentNumber || '() => { return; }', [documents, events], { eventTemplateId }),
-          foreignersDocumentIssueDate: this.sandbox.evalWithArgs(jsonSchemaObject.userData.foreignersDocumentIssueDate || '() => { return; }', [documents, events], { eventTemplateId }),
-          foreignersDocumentExpireDate: this.sandbox.evalWithArgs(jsonSchemaObject.userData.foreignersDocumentExpireDate || '() => { return; }', [documents, events], { eventTemplateId }),
-          foreignersDocumentIssuedBy: this.sandbox.evalWithArgs(jsonSchemaObject.userData.foreignersDocumentIssuedBy || '() => { return; }', [documents, events], { eventTemplateId }),
-          idCardNumber: this.sandbox.evalWithArgs(jsonSchemaObject.userData.idCardNumber || '() => { return; }', [documents, events], { eventTemplateId }),
-          idCardIssueDate: this.sandbox.evalWithArgs(jsonSchemaObject.userData.idCardIssueDate || '() => { return; }', [documents, events], { eventTemplateId }),
-          idCardIssuedBy: this.sandbox.evalWithArgs(jsonSchemaObject.userData.idCardIssuedBy || '() => { return; }', [documents, events], { eventTemplateId }),
-          idCardExpiryDate: this.sandbox.evalWithArgs(jsonSchemaObject.userData.idCardExpiryDate || '() => { return; }', [documents, events], { eventTemplateId }),
-          onboardingTaskId: this.sandbox.evalWithArgs(jsonSchemaObject.userData.onboardingTaskId || '() => { return; }', [documents, events], { eventTemplateId }),
-          needOnboarding: this.sandbox.evalWithArgs(jsonSchemaObject.userData.needOnboarding || '() => { return; }', [documents, events], { eventTemplateId }),
-          isPrivateHouse: this.sandbox.evalWithArgs(jsonSchemaObject.userData.isPrivateHouse || '() => { return; }', [documents, events], { eventTemplateId }),
+          passportSeries: this.sandbox.evalWithArgs(jsonSchemaObject.userData.passportSeries || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          passportNumber: this.sandbox.evalWithArgs(jsonSchemaObject.userData.passportNumber || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          passportIssueDate: this.sandbox.evalWithArgs(jsonSchemaObject.userData.passportIssueDate || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          passportIssuedBy: this.sandbox.evalWithArgs(jsonSchemaObject.userData.passportIssuedBy || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          foreignersDocumentSeries: this.sandbox.evalWithArgs(
+            jsonSchemaObject.userData.foreignersDocumentSeries || '() => { return; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
+          foreignersDocumentNumber: this.sandbox.evalWithArgs(
+            jsonSchemaObject.userData.foreignersDocumentNumber || '() => { return; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
+          foreignersDocumentIssueDate: this.sandbox.evalWithArgs(
+            jsonSchemaObject.userData.foreignersDocumentIssueDate || '() => { return; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
+          foreignersDocumentExpireDate: this.sandbox.evalWithArgs(
+            jsonSchemaObject.userData.foreignersDocumentExpireDate || '() => { return; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
+          foreignersDocumentIssuedBy: this.sandbox.evalWithArgs(
+            jsonSchemaObject.userData.foreignersDocumentIssuedBy || '() => { return; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
+          idCardNumber: this.sandbox.evalWithArgs(jsonSchemaObject.userData.idCardNumber || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          idCardIssueDate: this.sandbox.evalWithArgs(jsonSchemaObject.userData.idCardIssueDate || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          idCardIssuedBy: this.sandbox.evalWithArgs(jsonSchemaObject.userData.idCardIssuedBy || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          idCardExpiryDate: this.sandbox.evalWithArgs(jsonSchemaObject.userData.idCardExpiryDate || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          onboardingTaskId: this.sandbox.evalWithArgs(jsonSchemaObject.userData.onboardingTaskId || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          needOnboarding: this.sandbox.evalWithArgs(jsonSchemaObject.userData.needOnboarding || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          isPrivateHouse: this.sandbox.evalWithArgs(jsonSchemaObject.userData.isPrivateHouse || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
           addressStruct: {
             region: addressStructRegion,
             district: addressStructDistrict,
@@ -288,25 +402,61 @@ export class EventBusiness {
       if (jsonSchemaObject.serviceRepositoryData) {
         calculated.serviceRepositoryData = {
           userIpn: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.userIpn || '() => { return; }', [documents], { eventTemplateId }),
-          requestId: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.requestId || '() => { return; }', [documents], { eventTemplateId }),
-          serviceName: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.serviceName || '() => { return; }', [documents], { eventTemplateId }),
-          repositoryServiceId: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.serviceId || '() => { return; }', [documents, events], { eventTemplateId }),
-          statusId: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.status || '() => { return; }', [documents, events], { eventTemplateId }),
-          statusComment: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.statusComment || '() => { return; }', [documents, events], { eventTemplateId }),
+          requestId: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.requestId || '() => { return; }', [documents], {
+            eventTemplateId,
+          }),
+          serviceName: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.serviceName || '() => { return; }', [documents], {
+            eventTemplateId,
+          }),
+          repositoryServiceId: this.sandbox.evalWithArgs(
+            jsonSchemaObject.serviceRepositoryData.serviceId || '() => { return; }',
+            [documents, events],
+            { eventTemplateId },
+          ),
+          statusId: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.status || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
+          statusComment: this.sandbox.evalWithArgs(jsonSchemaObject.serviceRepositoryData.statusComment || '() => { return; }', [documents, events], {
+            eventTemplateId,
+          }),
         };
       }
-      calculated.sendToCabinetOnly = this.sandbox.evalWithArgs(jsonSchemaObject.sendToCabinetOnly || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.messageCryptTypeId = this.sandbox.evalWithArgs(jsonSchemaObject.messageCryptTypeId || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.importantMessage = this.sandbox.evalWithArgs(jsonSchemaObject.importantMessage || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.hideImportantMessages = this.sandbox.evalWithArgs(jsonSchemaObject.hideImportantMessages || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.sendToCabinetOnly = this.sandbox.evalWithArgs(jsonSchemaObject.sendToCabinetOnly || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.messageCryptTypeId = this.sandbox.evalWithArgs(jsonSchemaObject.messageCryptTypeId || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.importantMessage = this.sandbox.evalWithArgs(jsonSchemaObject.importantMessage || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.hideImportantMessages = this.sandbox.evalWithArgs(
+        jsonSchemaObject.hideImportantMessages || '() => { return; }',
+        [documents, events],
+        { eventTemplateId },
+      );
       calculated.sender = this.sandbox.evalWithArgs(jsonSchemaObject.sender || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.createWorkflows = this.sandbox.evalWithArgs(jsonSchemaObject.createWorkflows || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.createWorkflowsExternal = this.sandbox.evalWithArgs(jsonSchemaObject.createWorkflowsExternal || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.sendStatusExternal = this.sandbox.evalWithArgs(jsonSchemaObject.sendStatusExternal || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.createWorkflows = this.sandbox.evalWithArgs(jsonSchemaObject.createWorkflows || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
+      calculated.createWorkflowsExternal = this.sandbox.evalWithArgs(
+        jsonSchemaObject.createWorkflowsExternal || '() => { return; }',
+        [documents, events],
+        { eventTemplateId },
+      );
+      calculated.sendStatusExternal = this.sandbox.evalWithArgs(jsonSchemaObject.sendStatusExternal || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
       calculated.sendStatus = this.sandbox.evalWithArgs(jsonSchemaObject.sendStatus || '() => { return; }', [documents, events], { eventTemplateId });
-      calculated.setNewTasksPerformers = this.sandbox.evalWithArgs(jsonSchemaObject.setNewTasksPerformers || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.setNewTasksPerformers = this.sandbox.evalWithArgs(
+        jsonSchemaObject.setNewTasksPerformers || '() => { return; }',
+        [documents, events],
+        { eventTemplateId },
+      );
       calculated.eventMeta = jsonSchemaObject.eventMeta;
-      calculated.metaObject = this.sandbox.evalWithArgs(jsonSchemaObject.metaFunction || '() => { return; }', [documents, events], { eventTemplateId });
+      calculated.metaObject = this.sandbox.evalWithArgs(jsonSchemaObject.metaFunction || '() => { return; }', [documents, events], {
+        eventTemplateId,
+      });
       calculated.taskId = this.sandbox.evalWithArgs(jsonSchemaObject.taskId || '() => { return; }', [documents, events], { eventTemplateId });
       calculated.delay = /^\(/.test(jsonSchemaObject.delay)
         ? this.sandbox.evalWithArgs(jsonSchemaObject.delay, [documents, events], { eventTemplateId })
@@ -336,7 +486,7 @@ export class EventBusiness {
         !calculated.shortText &&
         Object.keys(jsonSchemaObject).length > 0 // Events with empty schema will not fail.
       ) {
-        throw new Error('Using event type \'notification\'. Required options were not passed.');
+        throw new Error("Using event type 'notification'. Required options were not passed.");
       }
       const sendResults = await this.sendNotification({
         emails: calculated.emails,
@@ -607,12 +757,10 @@ export class EventBusiness {
       }
 
       const recordIdsLength = recordIds.length;
-      const isKeyAllowedToDeleteMore100ThanRecords = config.requester?.registers?.keysAllowedToDeleteMoreThan100Records?.includes(
-        Number(keyId),
-      );
+      const isKeyAllowedToDeleteMore100ThanRecords = config.requester?.registers?.keysAllowedToDeleteMoreThan100Records?.includes(Number(keyId));
       if (recordIdsLength > 100) {
         if (!isKeyAllowedToDeleteMore100ThanRecords) {
-          throw new Error('deleteRegistersList: deleted recods count mustn\'t be more than 100.');
+          throw new Error("deleteRegistersList: deleted recods count mustn't be more than 100.");
         }
         global.log.save('delete-registers-list|delete-more-than-100-records', { keyId, recordIdsLength, workflowId, eventTemplateId }, 'warn');
       }
@@ -1364,7 +1512,7 @@ export class EventBusiness {
           version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
         });
         if (!createdEvent) {
-          throw new Error('Event wasn\'t created.');
+          throw new Error("Event wasn't created.");
         }
 
         // Set workflow status.
@@ -1401,7 +1549,12 @@ export class EventBusiness {
     } catch (error) {
       try {
         // Create error.
-        global.log.save('event-handling-by-message-from-queue-error', { messageObject, error: error.toString(), stack: error.stack, details: error.cause });
+        global.log.save('event-handling-by-message-from-queue-error', {
+          messageObject,
+          error: error.toString(),
+          stack: error.stack,
+          details: error.cause,
+        });
 
         // If enabled debug model.
         if (typeof messageObject.debugId !== 'undefined' && messageObject && messageObject.workflowId) {
@@ -1840,11 +1993,14 @@ export class EventBusiness {
    */
   async sendToInboxesIfNeedIt({ workflowId, workflowTemplateId, inboxesJsonSchema, document, documents, events }: any) {
     // Get document template.
-    const { id: documentId, documentTemplateId, number: documentNumber, } = document;
+    const { id: documentId, documentTemplateId, number: documentNumber } = document;
     const documentTemplate = await this.documentTemplateModel.findByIdCached(documentTemplateId);
 
     // Define users list.
-    const { name: documentTemplateName, jsonSchema: { fileName } } = documentTemplate;
+    const {
+      name: documentTemplateName,
+      jsonSchema: { fileName },
+    } = documentTemplate;
     const usersList = await this.getUsersListForInboxes({ inboxesJsonSchema, workflowId, workflowTemplateId, documents });
 
     // Save for all users.
@@ -1984,7 +2140,7 @@ export class EventBusiness {
 
       if (nonTabedStatusesLength === 0) {
         global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
-        throw new Error('Invalid status. Non tabed statuses don\'t exist.');
+        throw new Error("Invalid status. Non tabed statuses don't exist.");
       }
 
       let statusId;
@@ -2137,7 +2293,7 @@ export class EventBusiness {
  * @param {boolean} additionalOptions.isIncludeP7s Is include p7s file.
  * @returns {Promise<{url, name, type}>} File object.
  */
- 
+
 async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEnding = '' } = {}) {
   // Define params.
   const { link, name, type } = attach || {};
@@ -2176,7 +2332,7 @@ async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEn
  * @param {boolean} additionalOptions.isIncludeP7s Is include p7s file.
  * @returns {Promise<{url, name, type}>} File object.
  */
- 
+
 async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP7s = false, linkEnding = '' } = {}) {
   // Check.
   if (!link) {

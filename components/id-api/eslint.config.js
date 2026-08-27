@@ -4,11 +4,13 @@ import prettierConfig from 'eslint-config-prettier';
 
 export default [
   {
-    files: ['**/*.ts'],
+    files: ['**/*.ts', '**/*.js'],
+    ignores: ['tests/**', '**/*.spec.ts', '**/*.e2e-spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
         project: 'tsconfig.json',
+        tsconfigRootDir: import.meta.dirname,
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
@@ -29,6 +31,28 @@ export default [
     },
   },
   {
-    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js', 'tests/**/*.ts'],
+    files: ['tests/**/*.ts', '**/*.spec.ts', '**/*.e2e-spec.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+      prettier: prettierPlugin,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      ...prettierConfig.rules,
+      'prettier/prettier': 'error',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js', 'migrations/**', 'eslint.config.js', 'jest.config.js', 'migrations-config.js', 'node_modules/**'],
   },
 ];

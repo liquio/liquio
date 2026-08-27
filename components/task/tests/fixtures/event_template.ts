@@ -11,4 +11,3 @@ export const EVENT_TEMPLATE_FIXTURES = [
     updated_at: '2022-08-25T14:22:02.301Z',
   },
 ];
-

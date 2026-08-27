@@ -1,4 +1,3 @@
-
 import Sequelize from 'sequelize';
 import { Model } from './model';
 import { AccessHistoryEntity } from '../entities/access_history';
@@ -28,19 +27,19 @@ export class AccessHistoryModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           user_id: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           user_name: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           ipn: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           operation_type: {
             allowNull: false,
@@ -51,44 +50,44 @@ export class AccessHistoryModel extends Model {
               'deleted-from-head-unit',
               'deleted-from-member-unit',
               'added-to-admin',
-              'deleted-from-admin'
-            ]
+              'deleted-from-admin',
+            ],
           },
           unit_id: {
             allowNull: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           unit_name: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           init_user_id: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           init_user_name: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           init_ipn: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           init_workflow_id: {
             allowNull: true,
-            type: Sequelize.UUID
+            type: Sequelize.UUID,
           },
           init_workflow_name: {
             allowNull: true,
-            type: Sequelize.STRING
-          }
+            type: Sequelize.STRING,
+          },
         },
         {
           tableName: 'access_history',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Sequelize model params.
@@ -138,7 +137,7 @@ export class AccessHistoryModel extends Model {
   async update(unitId, ipn, operationType, data) {
     const accessHistory = await this.model.findOne({
       where: { unit_id: unitId, ipn: ipn, operation_type: operationType },
-      order: [['created_at', 'desc']]
+      order: [['created_at', 'desc']],
     });
 
     if (!accessHistory) {
@@ -147,7 +146,7 @@ export class AccessHistoryModel extends Model {
 
     const [, updatedAccessHistory] = await this.model.update(this.prepareForModel(data), {
       where: { id: accessHistory.id },
-      returning: true
+      returning: true,
     });
 
     if (updatedAccessHistory.length === 1) {
@@ -172,7 +171,7 @@ export class AccessHistoryModel extends Model {
       unitName: unit && unit.name,
       initUserId: currentUser.userId,
       initUserName: currentUser.name,
-      initIpn: currentUser.ipn
+      initIpn: currentUser.ipn,
     });
   }
 
@@ -196,7 +195,7 @@ export class AccessHistoryModel extends Model {
       initWorkflowId: item.init_workflow_id,
       initWorkflowName: item.init_workflow_name,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 
@@ -220,8 +219,7 @@ export class AccessHistoryModel extends Model {
       init_workflow_id: item.initWorkflowId,
       init_workflow_name: item.initWorkflowName,
       created_at: item.createdAt,
-      updated_at: item.updatedAt
+      updated_at: item.updatedAt,
     };
   }
 }
-

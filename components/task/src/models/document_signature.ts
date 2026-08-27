@@ -17,19 +17,19 @@ export class DocumentSignatureModel extends Model {
           id: { primaryKey: true, type: Sequelize.UUID, defaultValue: Sequelize.UUIDV1 },
           document_id: {
             type: Sequelize.UUID,
-            references: { model: 'documents', key: 'id' }
+            references: { model: 'documents', key: 'id' },
           },
           signature: Sequelize.TEXT,
           type: Sequelize.STRING,
           certificate: Sequelize.TEXT,
-          created_by: Sequelize.STRING
+          created_by: Sequelize.STRING,
         },
         {
           tableName: 'document_signatures',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       DocumentSignatureModel.singleton = this;
@@ -49,8 +49,8 @@ export class DocumentSignatureModel extends Model {
   async getByDocumentId(documentId, createdBy?, attributes?, order?) {
     const options: any = {
       where: {
-        document_id: documentId
-      }
+        document_id: documentId,
+      },
     };
 
     if (createdBy) {
@@ -69,7 +69,7 @@ export class DocumentSignatureModel extends Model {
     const documentSignature = await this.model.findAll(options);
 
     // Convert to entities.
-    const documentSignaturesEntities = documentSignature.map(item => {
+    const documentSignaturesEntities = documentSignature.map((item) => {
       return this.prepareEntity(item);
     });
 
@@ -118,7 +118,7 @@ export class DocumentSignatureModel extends Model {
       type: item.type,
       certificate: item.certificate,
       createdBy: item.created_by,
-      createdAt: item.created_at
+      createdAt: item.created_at,
     });
   }
 
@@ -133,8 +133,7 @@ export class DocumentSignatureModel extends Model {
       signature: item.signature,
       type: item.type,
       certificate: item.certificate,
-      created_by: item.createdBy
+      created_by: item.createdBy,
     };
   }
 }
-

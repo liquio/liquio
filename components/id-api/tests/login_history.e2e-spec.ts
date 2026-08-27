@@ -320,10 +320,7 @@ describe('LoginHistoryController', () => {
 
   describe('Authentication', () => {
     it('requires basic auth to access login history', async () => {
-      await app
-        .request()
-        .get('/login_history?offset=0&limit=10')
-        .expect(401);
+      await app.request().get('/login_history?offset=0&limit=10').expect(401);
     });
   });
 });

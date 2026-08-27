@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 // Constants.
@@ -43,6 +42,7 @@ export class UnitAccessEntity extends Entity {
    * Types.
    * @returns {TYPES} Unit access types.
    */
-  static get Types() { return TYPES; }
+  static get Types() {
+    return TYPES;
+  }
 }
-

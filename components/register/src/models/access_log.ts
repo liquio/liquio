@@ -25,37 +25,37 @@ export default class AccessLogModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           record_id: {
             allowNull: false,
-            type: Sequelize.UUID
+            type: Sequelize.UUID,
           },
           key_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
-            references: { model: 'keys', key: 'id' }
+            references: { model: 'keys', key: 'id' },
           },
           data: {
             allowNull: false,
             type: Sequelize.JSONB,
-            defaultValue: {}
+            defaultValue: {},
           },
           created_at: {
             allowNull: false,
-            type: Sequelize.DATE
+            type: Sequelize.DATE,
           },
           updated_at: {
             allowNull: false,
-            type: Sequelize.DATE
-          }
+            type: Sequelize.DATE,
+          },
         },
         {
           tableName: 'access_log',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
       AccessLogModel.singleton = this;
     }
@@ -140,7 +140,7 @@ export default class AccessLogModel extends Model {
     const accessLogToCreateRaw = {
       record_id: recordId,
       key_id: keyId,
-      data: data
+      data: data,
     };
 
     // DB query.
@@ -161,7 +161,7 @@ export default class AccessLogModel extends Model {
     const accessLogsToCreateRaw = list.map((v) => ({
       record_id: v.recordId,
       key_id: v.keyId,
-      data: v.data
+      data: v.data,
     }));
 
     // DB query.

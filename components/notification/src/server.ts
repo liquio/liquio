@@ -2,12 +2,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 
 import { asyncLocalStorageMiddleware } from '@liquio/back-core';
-import {
-  securityHeadersMiddleware,
-  inputSanitizationMiddleware,
-  corsValidationMiddleware,
-  responseEncodingMiddleware,
-} from './middleware/security';
+import { securityHeadersMiddleware, inputSanitizationMiddleware, corsValidationMiddleware, responseEncodingMiddleware } from './middleware/security';
 import { AppIdentHeaders } from './lib/app_ident_headers';
 
 import { Lists } from './controllers/ListsAndTransports';
@@ -22,9 +17,11 @@ const { env } = global as any;
 
 // CORS configuration from global.conf
 const corsConfig = {
-  allowedOrigins: (global as any).conf?.cors?.allowedOrigins || (env === 'localhost'
-    ? ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8080']
-    : ['http://localhost:3000', 'http://localhost:3001']),
+  allowedOrigins:
+    (global as any).conf?.cors?.allowedOrigins ||
+    (env === 'localhost'
+      ? ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8080']
+      : ['http://localhost:3000', 'http://localhost:3001']),
 };
 
 const app = express();
@@ -81,21 +78,29 @@ app.use((req: any, res: any) => {
 
 // Global error handler for uncaught errors.
 app.use((err: any, req: any, res: any, _next: any) => {
-  global.log.save('server-uncaught-exception', {
-    error: err?.message,
-    stack: err?.stack,
-    method: req?.method,
-    url: req?.url,
-  }, 'error');
+  global.log.save(
+    'server-uncaught-exception',
+    {
+      error: err?.message,
+      stack: err?.stack,
+      method: req?.method,
+      url: req?.url,
+    },
+    'error',
+  );
   res.status(err?.statusCode || 500).send({ error: 'Internal server error' });
 });
 
 // Handle unhandled promise rejections.
 process.on('unhandledRejection', (reason: any, _promise) => {
-  global.log.save('unhandled-rejection', {
-    reason: reason?.message || String(reason),
-    stack: reason?.stack,
-  }, 'error');
+  global.log.save(
+    'unhandled-rejection',
+    {
+      reason: reason?.message || String(reason),
+      stack: reason?.stack,
+    },
+    'error',
+  );
 });
 
 export { app as server };

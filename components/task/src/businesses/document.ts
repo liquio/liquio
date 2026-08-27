@@ -70,14 +70,14 @@ const EVENT_FILE_DOCUMENT_TEMPLATE_ID = 999999999;
 const APLICATION_PDF = 'application/pdf';
 const NAME_TAG_REGEX = /<meta name=['|"]{1}description['|"]{1} content=['|"]{1}([waА-Яа-яёЁЇїІіЄєҐґ \-()[\]{}]{1,200})['|"]{1}[ />|>| >]/gim;
 
-const ERROR_GET_DATA_FOR_SIGN = 'Can\'t get data for sign.';
+const ERROR_GET_DATA_FOR_SIGN = "Can't get data for sign.";
 const ERROR_WRONG_SIGNED_RECORDS_COUNT = 'Wrong signed records count.';
-const ERROR_DEFINE_SIGNATURE_INFO = 'Can\'t define signature info.';
+const ERROR_DEFINE_SIGNATURE_INFO = "Can't define signature info.";
 const ERROR_SIGNED_CONTENT_NOT_MATCH = 'Signed content not match needed.';
 const ERROR_ATTACHMENT_FILE_NOT_FOUND = 'Attachment file link not found.';
-const ERROR_GET_PAYMENT_DATA = 'Can\'t get payment data.';
+const ERROR_GET_PAYMENT_DATA = "Can't get payment data.";
 const ERROR_NOT_ALL_FILES_ARE_SIGNED = 'Not all files are signed (P7S).';
-const ERROR_DOCUMENT_ACCESS = 'User doesn\'t have any access to document.';
+const ERROR_DOCUMENT_ACCESS = "User doesn't have any access to document.";
 
 /**
  * Documents business.
@@ -392,7 +392,7 @@ export class DocumentBusiness extends Business {
         try {
           contentString = content ? content.toString(SIGNATURE_ENCODING) : null;
         } catch {
-          throw new Error('Can\'t define signed content.');
+          throw new Error("Can't define signed content.");
         }
 
         // Check signature.
@@ -474,13 +474,13 @@ export class DocumentBusiness extends Business {
       certificate: pemBuffer || mockPemBufferIfNeedIt,
     });
     if (!isSigned) {
-      throw new Error('Can\'t sign document.');
+      throw new Error("Can't sign document.");
     }
 
     // Get signed document.
     const signedDocument: any = await global.models.document.findById(documentId);
     if (!signedDocument) {
-      throw new Error('Can\'t get signed document.');
+      throw new Error("Can't get signed document.");
     }
 
     // Add multiSignInfo.
@@ -529,7 +529,7 @@ export class DocumentBusiness extends Business {
       throw error;
     }
     if (!multisignerControl) {
-      throw new NotFoundError('Can\'t find multisigner control.');
+      throw new NotFoundError("Can't find multisigner control.");
     }
     const { minSignaturesLimit } = multisignerControl;
 
@@ -681,7 +681,7 @@ export class DocumentBusiness extends Business {
           'error',
         );
 
-        const wrappedError = new Error('Can\'t save p7s signature.');
+        const wrappedError = new Error("Can't save p7s signature.");
         (wrappedError as any).cause = error;
         throw wrappedError;
       }
@@ -804,7 +804,7 @@ export class DocumentBusiness extends Business {
           'error',
         );
 
-        const wrappedError = new Error('Can\'t save additional p7s signature.');
+        const wrappedError = new Error("Can't save additional p7s signature.");
         (wrappedError as any).cause = error;
         throw wrappedError;
       }
@@ -924,7 +924,7 @@ export class DocumentBusiness extends Business {
     }
     const response = await axios({
       ...downloadFileRequestOptions,
-      responseType: 'arraybuffer'
+      responseType: 'arraybuffer',
     });
     const file = Buffer.from(response.data);
     if (!file) {
@@ -974,7 +974,7 @@ export class DocumentBusiness extends Business {
 
     const response = await axios({
       ...downloadFileRequestOptions,
-      responseType: 'arraybuffer'
+      responseType: 'arraybuffer',
     });
     const file = Buffer.from(response.data);
     if (!file) {
@@ -1008,7 +1008,7 @@ export class DocumentBusiness extends Business {
    */
   checkUserInfoMatchToSignatureInfo(userInfo, signatureInfo) {
     if (!userInfo?.ipn) {
-      throw new Error('User\'s ipn is empty.');
+      throw new Error("User's ipn is empty.");
     }
 
     const signatureIPN = signatureInfo?.signer?.ipn?.DRFO;
@@ -1050,7 +1050,7 @@ export class DocumentBusiness extends Business {
 
     if ((signatureEDRPOU || userInfo.edrpou) && signatureEDRPOU !== userInfo.edrpou) {
       // For example, if a user has login with legal key, but tries to sign with person key.
-      throw new Error('EDRPOU from sign certificate not match user\'s EDRPOU.');
+      throw new Error("EDRPOU from sign certificate not match user's EDRPOU.");
     }
 
     // Compare user-applicant name and user-signer name.
@@ -1279,7 +1279,7 @@ export class DocumentBusiness extends Business {
     // Check if document has signers.
     const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
     if (documentSignatures && documentSignatures.length > 0) {
-      throw new Error('Can\'t update - document contains signatures.');
+      throw new Error("Can't update - document contains signatures.");
     }
 
     // Get JSON schema.
@@ -1384,14 +1384,14 @@ export class DocumentBusiness extends Business {
       const allowAdd =
         typeof allowAddBoolOrFunction === 'string'
           ? this.sandbox.evalWithArgs(allowAddBoolOrFunction, [propertyData, pageObject, documentData], {
-            meta: { fn: 'allowAdd', documentId: document.id },
-          })
+              meta: { fn: 'allowAdd', documentId: document.id },
+            })
           : !!allowAddBoolOrFunction;
       const allowDelete =
         typeof allowDeleteBoolOrFunction === 'string'
           ? this.sandbox.evalWithArgs(allowDeleteBoolOrFunction, [propertyData, pageObject, documentData], {
-            meta: { fn: 'allowDelete', documentId: document.id },
-          })
+              meta: { fn: 'allowDelete', documentId: document.id },
+            })
           : !!allowDeleteBoolOrFunction;
 
       // Chech operation allowed by schema.
@@ -1639,7 +1639,7 @@ export class DocumentBusiness extends Business {
     // Delete attachment from DB.
     const deleted = await global.models.documentAttachment.delete(attachmentId);
     if (!deleted) {
-      throw new Error('Can\'t delete attachment.');
+      throw new Error("Can't delete attachment.");
     }
 
     // Return file link.
@@ -1672,13 +1672,13 @@ export class DocumentBusiness extends Business {
     }
 
     // Define needed document templates to show files preview. All files from current workflow should be shown if filter not defined.
-    /* eslint-disable prefer-const -- filesEventTemplateIds is reassigned below; the rest of this destructuring isn't. */
+
     let {
       documentTemplateIds: filesDocumentTemplateIds = [],
       documentTemplateId: filesDocumentTemplateId,
       eventTemplateIds: filesEventTemplateIds = [],
     } = controlSchema || {};
-    /* eslint-enable prefer-const */
+
     const documentTemplateIds = isDirect ? [filesDocumentTemplateId] : filesDocumentTemplateIds;
 
     // Define documents IDs from current workflow.
@@ -1924,19 +1924,18 @@ export class DocumentBusiness extends Business {
     const recipients = paymentProperties && paymentProperties.recipients;
 
     if (recipients) {
-      return recipients.map(v => {
-        const obj = {};
-        for (const prop in v) {
-          obj[prop] = typeof v[prop] === 'string'
-            ? this.sandbox.evalWithArgs(
-              v[prop],
-              [document],
-              { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount', prop } },
-            )
-            : v[prop];
-        }
-        return obj;
-      }).filter(v => v && v.amount !== 0);
+      return recipients
+        .map((v) => {
+          const obj = {};
+          for (const prop in v) {
+            obj[prop] =
+              typeof v[prop] === 'string'
+                ? this.sandbox.evalWithArgs(v[prop], [document], { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount', prop } })
+                : v[prop];
+          }
+          return obj;
+        })
+        .filter((v) => v && v.amount !== 0);
     }
 
     const paymentFormula = paymentProperties && paymentProperties.amount;
@@ -1947,44 +1946,37 @@ export class DocumentBusiness extends Business {
     const suffixFormula = paymentProperties && paymentProperties.suffixFormula;
     const orderNumFormula = paymentProperties && paymentProperties.orderNum;
 
-    const amount = this.sandbox.evalWithArgs(
-      paymentFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount.payment', documentId: document.id } },
-    );
-    const description = this.sandbox.evalWithArgs(
-      descriptionFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount.description', documentId: document.id } },
-    );
-    const orderId = this.sandbox.evalWithArgs(
-      orderIdFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount.orderId', documentId: document.id } },
-    );
-    const recipient = this.sandbox.evalWithArgs(
-      recipientFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount.recipient', documentId: document.id } },
-    );
-    const payer = this.sandbox.evalWithArgs(
-      payerFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount.payer', documentId: document.id } },
-    );
-    const orderIdSuffix = this.sandbox.evalWithArgs(
-      suffixFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount.suffix', documentId: document.id } },
-    );
-    const orderNum = this.sandbox.evalWithArgs(
-      orderNumFormula,
-      [document],
-      { checkArrow: true, meta: { fn: 'DocumentBusiness.resolvePaymentAmount.orderNum', documentId: document.id } },
-    );
+    const amount = this.sandbox.evalWithArgs(paymentFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'DocumentBusiness.resolvePaymentAmount.payment', documentId: document.id },
+    });
+    const description = this.sandbox.evalWithArgs(descriptionFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'DocumentBusiness.resolvePaymentAmount.description', documentId: document.id },
+    });
+    const orderId = this.sandbox.evalWithArgs(orderIdFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'DocumentBusiness.resolvePaymentAmount.orderId', documentId: document.id },
+    });
+    const recipient = this.sandbox.evalWithArgs(recipientFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'DocumentBusiness.resolvePaymentAmount.recipient', documentId: document.id },
+    });
+    const payer = this.sandbox.evalWithArgs(payerFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'DocumentBusiness.resolvePaymentAmount.payer', documentId: document.id },
+    });
+    const orderIdSuffix = this.sandbox.evalWithArgs(suffixFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'DocumentBusiness.resolvePaymentAmount.suffix', documentId: document.id },
+    });
+    const orderNum = this.sandbox.evalWithArgs(orderNumFormula, [document], {
+      checkArrow: true,
+      meta: { fn: 'DocumentBusiness.resolvePaymentAmount.orderNum', documentId: document.id },
+    });
 
     return isReturnOnlyList
-      ? [ { recipient, amount, description, orderId, payer, orderIdSuffix, orderNum } ]
+      ? [{ recipient, amount, description, orderId, payer, orderIdSuffix, orderNum }]
       : { recipient, amount, description, orderId, payer, orderIdSuffix, orderNum };
   }
 
@@ -2021,7 +2013,11 @@ export class DocumentBusiness extends Business {
     if (!paymentProperties) {
       throw new Error('Can not find payment properties in JSON schema.');
     }
-    global.log.save('payment-properties', { documentTemplateId: documentTemplate.id, documentTemplateName: documentTemplate.name, paymentProperties });
+    global.log.save('payment-properties', {
+      documentTemplateId: documentTemplate.id,
+      documentTemplateName: documentTemplate.name,
+      paymentProperties,
+    });
     const paymentCustomer = paymentProperties && paymentProperties.customer;
     const paymentSystemParams = this.config.payment && this.config.payment[paymentCustomer];
 
@@ -2076,9 +2072,7 @@ export class DocumentBusiness extends Business {
       paymentDocumentPath,
       userContactData,
       sumForTest,
-      ...(isRecipientsList
-        ? { recipients: resolvedPaymentAmount }
-        : resolvedPaymentAmount),
+      ...(isRecipientsList ? { recipients: resolvedPaymentAmount } : resolvedPaymentAmount),
     });
     if (!paymentData) {
       throw new Error(ERROR_GET_PAYMENT_DATA);
@@ -2118,7 +2112,11 @@ export class DocumentBusiness extends Business {
     // Get provider options.
     global.log.save('external-services-payment-status-business-payload', payload);
     const providerOptions = this.config && this.config.payment && this.config.payment[paymentCustomer];
-    global.log.save('get-provider-options-to-handle-payment-status', { ...providerOptions, rsaPrivateKeyInBase64: '****', rsaPublicKeyInBase64: '****' });
+    global.log.save('get-provider-options-to-handle-payment-status', {
+      ...providerOptions,
+      rsaPrivateKeyInBase64: '****',
+      rsaPublicKeyInBase64: '****',
+    });
 
     // Get status info.
     const statusInfo = await this.paymentService.handleStatus(
@@ -2130,7 +2128,7 @@ export class DocumentBusiness extends Business {
       checkPrevTransaction,
     );
     if (!statusInfo) {
-      throw new NotFoundError('Can\'t get payment status.');
+      throw new NotFoundError("Can't get payment status.");
     }
     global.log.save('get-payment-status-info-from-payment-provider', { statusInfo });
 
@@ -2187,7 +2185,11 @@ export class DocumentBusiness extends Business {
     // Get payment schema control template.
     const template = await global.models.documentTemplate.findById(document.documentTemplateId);
     if (!template) {
-      global.log.save('handle-payment-status-not-found-document-template-error', { templateId: document.documentTemplateId, documentId, taskId: task.id });
+      global.log.save('handle-payment-status-not-found-document-template-error', {
+        templateId: document.documentTemplateId,
+        documentId,
+        taskId: task.id,
+      });
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
     const paymentSchemaControl = PropByPath.get(template.jsonSchema.properties, paymentControlPath) || {};
@@ -2206,7 +2208,9 @@ export class DocumentBusiness extends Business {
           try {
             await this.updateOneRegisterRecord(handler, document, statusInfo);
           } catch (error) {
-            const wrappedError = new Error(`${paymentControlPath}.onReceiveStatusHandlers.register.update-one-record. Cannot update record. ${error.toString()}`);
+            const wrappedError = new Error(
+              `${paymentControlPath}.onReceiveStatusHandlers.register.update-one-record. Cannot update record. ${error.toString()}`,
+            );
             (wrappedError as any).cause = error;
             throw wrappedError;
           }
@@ -2414,7 +2418,11 @@ export class DocumentBusiness extends Business {
 
     // OR transaction Id when failed payment.
     const providerTransactionId = paidOrder && paidOrder.extraData && (paidOrder.extraData.paymentId || paidOrder.extraData.externalTransactionId);
-    global.log.save('prepare-params-to-unhold-payment', { paymentOptions: paymentSystemParams, transactionId: providerTransactionId, sessionId }, 'info');
+    global.log.save(
+      'prepare-params-to-unhold-payment',
+      { paymentOptions: paymentSystemParams, transactionId: providerTransactionId, sessionId },
+      'info',
+    );
 
     let unholdPaymentRes;
     try {
@@ -2468,7 +2476,7 @@ export class DocumentBusiness extends Business {
       throw wrappedError;
     }
     if (!taskAndDocumentEntities) {
-      throw new Error('Can\'t find task or document entities.');
+      throw new Error("Can't find task or document entities.");
     }
     const { document } = taskAndDocumentEntities;
 
@@ -2503,7 +2511,7 @@ export class DocumentBusiness extends Business {
       throw error;
     }
     if (!multisignerControl) {
-      throw new Error('Can\'t find multisigner control.');
+      throw new Error("Can't find multisigner control.");
     }
 
     // Get signers data.
@@ -2568,7 +2576,7 @@ export class DocumentBusiness extends Business {
     // Find signers control.
     const multisignerControlArray = JSONPath(`$..[?(@.control === '${controlName}')]`, jsonSchema);
     if (!multisignerControlArray || multisignerControlArray.length > 1) {
-      throw new Error('Can\'t find signers control.');
+      throw new Error("Can't find signers control.");
     }
 
     return multisignerControlArray[0];
@@ -2775,7 +2783,12 @@ export class DocumentBusiness extends Business {
       return; // Skip, strict sequential sign rule disabled.
     }
 
-    const signatures = await (global.models.documentSignature.getByDocumentId as any)(document.id, undefined, ['created_by'], [['created_at', 'asc']]);
+    const signatures = await (global.models.documentSignature.getByDocumentId as any)(
+      document.id,
+      undefined,
+      ['created_by'],
+      [['created_at', 'asc']],
+    );
     const alreadySignedByUsers = signatures.map((v) => v.createdBy);
     const needToBySignedByUsers = task.signerUsers;
 
@@ -2873,7 +2886,7 @@ export class DocumentBusiness extends Business {
       throw error;
     }
     if (!multisignerControl || !multisignerSchemaPath) {
-      throw new Error('Can\'t find multisigner control.');
+      throw new Error("Can't find multisigner control.");
     }
 
     const calcSignersFormula = multisignerControl.calcSigners;
@@ -2886,7 +2899,7 @@ export class DocumentBusiness extends Business {
     const signersArray = this.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'calcSigners', documentId: document.id } });
     if (!signersArray) {
       global.log.save('multisigners-calculate-signers-by-formula-error', { taskId }, 'error');
-      throw new Error('Can\'t calculate signers by formula.');
+      throw new Error("Can't calculate signers by formula.");
     }
 
     // Filter signers.
@@ -3068,7 +3081,6 @@ export class DocumentBusiness extends Business {
 
     const nonUserFilter: any = {};
     if (typeof externalReaderCheckProperty.filters !== 'undefined') {
-      // eslint-disable-next-line prefer-const -- value is reassigned below; name isn't.
       for (let [name, value] of Object.entries(externalReaderCheckProperty.filters) as any) {
         if (Array.isArray(index)) {
           for (let i = 0; i < index.length; i++) {
@@ -3081,10 +3093,10 @@ export class DocumentBusiness extends Business {
         // Get value as is
         if (typeof value !== 'string') {
           nonUserFilter[name] = value;
-        // Get value as is
+          // Get value as is
         } else if (value.startsWith('#')) {
           nonUserFilter[name] = value.substring(1);
-        // Get value from function.
+          // Get value from function.
         } else if (value.startsWith('(')) {
           const filterPathExists = typeof externalReaderCheckProperty.filtersPath !== 'undefined';
           if (!filterPathExists) {
@@ -3108,7 +3120,7 @@ export class DocumentBusiness extends Business {
             ],
             { meta: { fn: 'externalReaderCheckProperty', documentId: document.id, service, method, path } },
           );
-        // Get value from document
+          // Get value from document
         } else {
           nonUserFilter[name] = PropByPath.get(documentDataObject, value);
         }
@@ -3168,7 +3180,15 @@ export class DocumentBusiness extends Business {
 
     extraParams.prepareAttachments = prepareAttachments;
 
-    global.log.save('check-and-save-data-from-external-reader-prepared-filter', { service, method, documentId, userId, path, nonUserFilter, extraParams });
+    global.log.save('check-and-save-data-from-external-reader-prepared-filter', {
+      service,
+      method,
+      documentId,
+      userId,
+      path,
+      nonUserFilter,
+      extraParams,
+    });
 
     // Check onRequest handlers.
     if (typeOf(externalReaderCheckProperty.onRequest) === 'object') {
@@ -3179,8 +3199,8 @@ export class DocumentBusiness extends Business {
           typeOf(onRequest.isRemovePreviousResponse) === 'boolean'
             ? onRequest.isRemovePreviousResponse
             : this.sandbox.evalWithArgs(onRequest.isRemovePreviousResponse, [document], {
-              meta: { fn: 'isRemovePreviousResponse', documentId: document.id, service, method, path },
-            });
+                meta: { fn: 'isRemovePreviousResponse', documentId: document.id, service, method, path },
+              });
 
         if (typeOf(isRemovePreviousResponse) !== 'boolean') {
           throw new InvalidSchemaError('externalReaderCheck.onRequest.isRemovePreviousResponse should be type of (boolean|function<boolean>).');
@@ -3200,7 +3220,9 @@ export class DocumentBusiness extends Business {
         try {
           attachments = await this.documentAttachmentModel.getByDocumentIdAndMeta(documentId, { fromExternalReader: `${service}.${method}` });
         } catch (error) {
-          const wrappedError = new Error(`DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot get old attachments info for rewriting. ${error.toString()}`);
+          const wrappedError = new Error(
+            `DocumentBusiness.checkAndSaveDataFromExternalReader. Cannot get old attachments info for rewriting. ${error.toString()}`,
+          );
           (wrappedError as any).cause = error;
           throw wrappedError;
         }
@@ -3242,7 +3264,7 @@ export class DocumentBusiness extends Business {
       customTimeout,
     );
     if (!externalReaderResult || typeof externalReaderResult.data === 'undefined') {
-      throw new Error('Can\'t get external reader check data.');
+      throw new Error("Can't get external reader check data.");
     }
     global.log.save('external-reader-check-data', { externalReaderResult });
 
@@ -3353,7 +3375,7 @@ export class DocumentBusiness extends Business {
 
         if (isExecute) {
           if (!Object.keys(global.config?.message_queue?.delayedAutoCommitQueues || {})?.includes(timer)) {
-            throw new InvalidSchemaError('externalReaderCheck.onResponse.startAutoCommitTimer. Invalid \'timer\' value.');
+            throw new InvalidSchemaError("externalReaderCheck.onResponse.startAutoCommitTimer. Invalid 'timer' value.");
           }
 
           const message = { taskId: documentToUpdate.task.id };
@@ -3500,7 +3522,7 @@ export class DocumentBusiness extends Business {
 
     const receipt = await this.paymentService.getPaymentReceiptInfo(paymentSystemParams, orderId);
     if (!receipt) {
-      throw new Error('Can\'t get payment receipt.');
+      throw new Error("Can't get payment receipt.");
     }
     global.log.save('get-payment-receipt', { receipt });
 
@@ -3561,7 +3583,11 @@ export class DocumentBusiness extends Business {
     if (!paymentProperties) {
       throw new Error('Can not find payment properties in JSON schema.');
     }
-    global.log.save('payment-properties', { documentTemplateId: documentTemplate.id, documentTemplateName: documentTemplate.name, paymentProperties });
+    global.log.save('payment-properties', {
+      documentTemplateId: documentTemplate.id,
+      documentTemplateName: documentTemplate.name,
+      paymentProperties,
+    });
     const paymentCustomer = paymentProperties && paymentProperties.customer;
     const paymentSystemParams = this.config.payment && this.config.payment[paymentCustomer];
 
@@ -3870,9 +3896,9 @@ export class DocumentBusiness extends Business {
       const pdfFileNameSchema =
         typeof documentTemplate.jsonSchema.fileName === 'string'
           ? this.sandbox.evalWithArgs(documentTemplate.jsonSchema.fileName, [document.data], {
-            checkArrow: true,
-            meta: { fn: 'documentTemplate.jsonSchema.fileName', documentId },
-          })
+              checkArrow: true,
+              meta: { fn: 'documentTemplate.jsonSchema.fileName', documentId },
+            })
           : documentTemplate.jsonSchema.fileName;
 
       const pdfFileName =
@@ -3947,7 +3973,11 @@ export class DocumentBusiness extends Business {
       bufferStream.end(pdfBuffer);
 
       const fileInfo = await this.storageService.provider.uploadFileFromStream(
-        bufferStream, pdfFileName, undefined, APLICATION_PDF, pdfBuffer.length,
+        bufferStream,
+        pdfFileName,
+        undefined,
+        APLICATION_PDF,
+        pdfBuffer.length,
       );
 
       const { id: fileId } = fileInfo;
@@ -3996,7 +4026,7 @@ export class DocumentBusiness extends Business {
       fileSize: mainPdfFileSize,
     });
     if (!created) {
-      throw new Error('Can\'t add file.');
+      throw new Error("Can't add file.");
     }
 
     // Delete last attachments.
@@ -4037,7 +4067,7 @@ export class DocumentBusiness extends Business {
 
       const pdf = await this.createPdf({ document, userId: messageObject.userId });
       if (!pdf) {
-        throw new Error('PDF wasn\'t created.');
+        throw new Error("PDF wasn't created.");
       }
     } catch (error) {
       global.log.save('pdf-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error });
@@ -4221,7 +4251,6 @@ export class DocumentBusiness extends Business {
       throw new InvalidSchemaError('Invalid strictMultiSignCheck control. isEnabled/errors required.');
     }
 
-    // eslint-disable-next-line prefer-const -- isEnabled is reassigned below; the rest of this destructuring isn't.
     let { isEnabled, excludeOwner, context: checkContext = [], errors: checkErrors = [] } = strictMultiSignCheck;
 
     try {
@@ -4441,7 +4470,6 @@ export class DocumentBusiness extends Business {
   async saveAttachmentsP7SSignatures(attachmentsSignatures, document, userInfo) {
     const promisesResults = await Promise.allSettled(
       attachmentsSignatures.map(async (item) => {
-        // eslint-disable-next-line prefer-const -- p7sSignature is reassigned below; the rest of this destructuring isn't.
         let { name, contentType, fileContent, p7sSignature, isHashToInternalSignature } = item;
 
         if (!name || !contentType || !fileContent || !p7sSignature) {
@@ -4570,4 +4598,3 @@ export class DocumentBusiness extends Business {
     }
   }
 }
-

@@ -5,13 +5,13 @@ import axios from 'axios';
 
 // Mock the log module
 const mockLog = {
-  save: jest.fn()
+  save: jest.fn(),
 };
 global.log = mockLog as any;
 
 // Mock async_local_storage
 jest.mock('@liquio/back-core', () => ({
-  getTraceId: jest.fn().mockReturnValue('test-trace-id-123')
+  getTraceId: jest.fn().mockReturnValue('test-trace-id-123'),
 }));
 
 // Mock global config
@@ -22,8 +22,8 @@ const mockConfig = {
     containerId: 'test-container-456',
     signatureTimeout: 40000,
     downloadUploadTimeout: 60000,
-    timeout: 10000
-  }
+    timeout: 10000,
+  },
 };
 global.config = mockConfig;
 
@@ -33,27 +33,27 @@ describe('FileStorage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Reset singleton
     (FileStorage as any).singleton = null;
-    
+
     fileStorage = new FileStorage();
-    
+
     // Clear any pending nock interceptors
     nock.cleanAll();
-    
+
     // Disable all real network connections to force all requests through nock
     nock.disableNetConnect();
   });
 
   afterEach(async () => {
     // Add a brief delay to let any async operations complete
-    await new Promise(resolve => setTimeout(resolve, 10));
-    
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
     // Force cleanup of nock and any pending interceptors
     nock.cleanAll();
     nock.enableNetConnect(); // Re-enable network connections after each test
-    
+
     // Clean up any axios connections that might still be open
     if (axios.defaults.httpAgent && typeof axios.defaults.httpAgent.destroy === 'function') {
       axios.defaults.httpAgent.destroy();
@@ -61,7 +61,7 @@ describe('FileStorage', () => {
     if (axios.defaults.httpsAgent && typeof axios.defaults.httpsAgent.destroy === 'function') {
       axios.defaults.httpsAgent.destroy();
     }
-    
+
     // Force garbage collection if available
     if (global.gc) {
       global.gc();
@@ -71,9 +71,9 @@ describe('FileStorage', () => {
   afterAll(async () => {
     nock.restore();
     nock.enableNetConnect(); // Ensure network connections are restored
-    
+
     // Clean up axios instances and close any open connections
-    
+
     // Force close any existing HTTP/HTTPS agents
     if (axios.defaults.httpAgent) {
       axios.defaults.httpAgent.destroy();
@@ -81,10 +81,10 @@ describe('FileStorage', () => {
     if (axios.defaults.httpsAgent) {
       axios.defaults.httpsAgent.destroy();
     }
-    
+
     // Wait a bit for cleanup to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     // Force Jest to exit by clearing any remaining timers
     if (global.gc) {
       global.gc();
@@ -95,7 +95,7 @@ describe('FileStorage', () => {
     it('should create a singleton instance', () => {
       const instance1 = new FileStorage();
       const instance2 = new FileStorage();
-      
+
       expect(instance1).toBe(instance2);
       expect((FileStorage as any).singleton).toBe(instance1);
     });
@@ -111,18 +111,18 @@ describe('FileStorage', () => {
 
     it('should use provided config when given', () => {
       (FileStorage as any).singleton = null;
-      
+
       const customConfig = {
         apiHost: 'https://custom-filestorage.com',
         token: 'custom-token',
         containerId: 'custom-container',
         signatureTimeout: 50000,
         downloadUploadTimeout: 70000,
-        timeout: 15000
+        timeout: 15000,
       };
-      
+
       const instance = new FileStorage(customConfig);
-      
+
       expect(instance.apiHost).toBe('https://custom-filestorage.com');
       expect(instance.token).toBe('custom-token');
       expect(instance.containerId).toBe('custom-container');
@@ -146,7 +146,7 @@ describe('FileStorage', () => {
       createdBy: 'user-123',
       updatedBy: 'user-123',
       createdAt: '2023-01-01T00:00:00Z',
-      updatedAt: '2023-01-01T00:00:00Z'
+      updatedAt: '2023-01-01T00:00:00Z',
     };
 
     it('should successfully get file info', async () => {
@@ -223,9 +223,9 @@ describe('FileStorage', () => {
         method: 'GET',
         headers: {
           'x-trace-id': 'test-trace-id-123',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
-        timeout: 60000
+        timeout: 60000,
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('filestorage-download-request-options-initialized', { fileId });
@@ -244,9 +244,9 @@ describe('FileStorage', () => {
         method: 'GET',
         headers: {
           'x-trace-id': 'test-trace-id-123',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
-        timeout: 10000
+        timeout: 10000,
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('filestorage-download-preview-request-options-initialized', { fileId });
@@ -265,9 +265,9 @@ describe('FileStorage', () => {
         method: 'GET',
         headers: {
           'x-trace-id': 'test-trace-id-123',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
-        timeout: 60000
+        timeout: 60000,
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('filestorage-download-zip-request-options-initialized', { filesIds });
@@ -291,13 +291,16 @@ describe('FileStorage', () => {
           'x-trace-id': 'test-trace-id-123',
           token: 'test-token-123',
           'Content-Type': contentType,
-          'Content-Length': contentLength
+          'Content-Length': contentLength,
         },
-        timeout: 60000
+        timeout: 60000,
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('filestorage-upload-request-options-initialized', {
-        name, description, contentType, contentLength
+        name,
+        description,
+        contentType,
+        contentLength,
       });
     });
 
@@ -328,8 +331,8 @@ describe('FileStorage', () => {
         createdBy: 'user-123',
         updatedBy: 'user-123',
         createdAt: '2023-01-01T00:00:00Z',
-        updatedAt: '2023-01-01T00:00:00Z'
-      }
+        updatedAt: '2023-01-01T00:00:00Z',
+      },
     ];
 
     it('should successfully get signatures', async () => {
@@ -364,7 +367,7 @@ describe('FileStorage', () => {
       createdBy: 'user-123',
       updatedBy: 'user-123',
       createdAt: '2023-01-01T00:00:00Z',
-      updatedAt: '2023-01-01T00:00:00Z'
+      updatedAt: '2023-01-01T00:00:00Z',
     };
 
     it('should successfully add signature', async () => {
@@ -389,18 +392,16 @@ describe('FileStorage', () => {
       const responseWithLargeData = {
         ...mockCreatedSignature,
         signature: largeSignature,
-        certificate: largeCertificate
+        certificate: largeCertificate,
       };
 
-      nock(baseUrl)
-        .post('/signatures')
-        .reply(200, { data: responseWithLargeData });
+      nock(baseUrl).post('/signatures').reply(200, { data: responseWithLargeData });
 
       await fileStorage.addSignature(fileId, signedData, largeSignature, largeCertificate, meta);
 
       // Verify that large data is truncated in logs
       const logCalls = mockLog.save.mock.calls;
-      const responseLogCall = logCalls.find(call => call[0] === 'filestorage-add-signature-response');
+      const responseLogCall = logCalls.find((call) => call[0] === 'filestorage-add-signature-response');
       expect(responseLogCall[1].signatureResponse.data.signature).toMatch(/<\.\.\.cut>/);
       expect(responseLogCall[1].signatureResponse.data.certificate).toMatch(/<\.\.\.cut>/);
     });
@@ -417,9 +418,9 @@ describe('FileStorage', () => {
         method: 'GET',
         headers: {
           'x-trace-id': 'test-trace-id-123',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
-        timeout: 40000
+        timeout: 40000,
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('filestorage-get-p7s-signature-info-initialized', { fileId });
@@ -438,9 +439,9 @@ describe('FileStorage', () => {
         method: 'GET',
         headers: {
           'x-trace-id': 'test-trace-id-123',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
-        timeout: 40000
+        timeout: 40000,
       });
     });
 
@@ -474,13 +475,11 @@ describe('FileStorage', () => {
       createdBy: 'user-123',
       updatedBy: 'user-123',
       createdAt: '2023-01-01T00:00:00Z',
-      updatedAt: '2023-01-01T00:00:00Z'
+      updatedAt: '2023-01-01T00:00:00Z',
     };
 
     it('should successfully get P7S signature info', async () => {
-      nock(baseUrl)
-        .get(`/p7s_signatures/${fileId}/info`)
-        .reply(200, { data: mockP7sSignature });
+      nock(baseUrl).get(`/p7s_signatures/${fileId}/info`).reply(200, { data: mockP7sSignature });
 
       const result = await fileStorage.getP7SSignatureInfo(fileId);
 
@@ -500,13 +499,11 @@ describe('FileStorage', () => {
       createdBy: 'user-123',
       updatedBy: 'user-123',
       createdAt: '2023-01-01T00:00:00Z',
-      updatedAt: '2023-01-01T00:00:00Z'
+      updatedAt: '2023-01-01T00:00:00Z',
     };
 
     it('should successfully get P7S signature as data', async () => {
-      nock(baseUrl)
-        .get(`/files/${fileId}/p7s`)
-        .reply(200, { data: mockP7sData });
+      nock(baseUrl).get(`/files/${fileId}/p7s`).reply(200, { data: mockP7sData });
 
       const result = await fileStorage.getP7sSignature(fileId);
 
@@ -516,9 +513,7 @@ describe('FileStorage', () => {
 
     it('should throw error when user already signed the file', async () => {
       const mockDataWithSameUser = { ...mockP7sData, isLastUserTheSame: true };
-      nock(baseUrl)
-        .get(`/files/${fileId}/p7s`)
-        .reply(200, { data: mockDataWithSameUser });
+      nock(baseUrl).get(`/files/${fileId}/p7s`).reply(200, { data: mockDataWithSameUser });
 
       await expect(fileStorage.getP7sSignature(fileId)).rejects.toThrow('User already signed this file (P7S).');
     });
@@ -533,7 +528,7 @@ describe('FileStorage', () => {
 
       // When asFile=true, the method returns request(requestOptions) directly
       const result = await fileStorage.getP7sSignature(fileId, true);
-      
+
       // result is a request object which has stream-like properties
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
@@ -552,14 +547,12 @@ describe('FileStorage', () => {
       createdBy: 'user-123',
       updatedBy: 'user-123',
       createdAt: '2023-01-01T00:00:00Z',
-      updatedAt: '2023-01-01T00:00:00Z'
+      updatedAt: '2023-01-01T00:00:00Z',
     };
 
     it('should successfully add P7S signature', async () => {
       // Use a more specific mock to avoid interference
-      nock(baseUrl)
-        .post('/p7s_signatures')
-        .reply(200, { data: mockCreatedP7sSignature });
+      nock(baseUrl).post('/p7s_signatures').reply(200, { data: mockCreatedP7sSignature });
 
       const result = await fileStorage.addP7sSignature(fileId, p7s, user);
 
@@ -576,7 +569,7 @@ describe('FileStorage', () => {
     const mockUpdatedP7sSignature = {
       id,
       p7s,
-      updatedAt: '2023-01-02T00:00:00Z'
+      updatedAt: '2023-01-02T00:00:00Z',
     };
 
     it('should successfully update P7S signature', async () => {
@@ -631,7 +624,7 @@ describe('FileStorage', () => {
       createdBy: 'user-123',
       updatedBy: 'user-123',
       createdAt: '2023-01-01T00:00:00Z',
-      updatedAt: '2023-01-01T00:00:00Z'
+      updatedAt: '2023-01-01T00:00:00Z',
     };
 
     it('should successfully copy file', async () => {
@@ -657,7 +650,7 @@ describe('FileStorage', () => {
       id: 'manifest-123',
       filesIds,
       dataObject,
-      createdAt: '2023-01-01T00:00:00Z'
+      createdAt: '2023-01-01T00:00:00Z',
     };
 
     it('should successfully create ASIC manifest', async () => {
@@ -677,9 +670,7 @@ describe('FileStorage', () => {
     });
 
     it('should create ASIC manifest with empty arrays as defaults', async () => {
-      nock(baseUrl)
-        .post('/files/asicmanifest', { filesIds: [], dataObject: null })
-        .reply(200, { data: mockAsicManifest });
+      nock(baseUrl).post('/files/asicmanifest', { filesIds: [], dataObject: null }).reply(200, { data: mockAsicManifest });
 
       const result = await fileStorage.createAsicManifest();
 
@@ -688,16 +679,14 @@ describe('FileStorage', () => {
 
     it('should handle large data object logging correctly', async () => {
       const largeDataObject = { data: 'x'.repeat(150000) }; // Large data object
-      
-      nock(baseUrl)
-        .post('/files/asicmanifest')
-        .reply(200, { data: mockAsicManifest });
+
+      nock(baseUrl).post('/files/asicmanifest').reply(200, { data: mockAsicManifest });
 
       await fileStorage.createAsicManifest(filesIds, largeDataObject);
 
       // Verify that large data is truncated in logs
       const logCalls = mockLog.save.mock.calls;
-      const definedLogCall = logCalls.find(call => call[0] === 'filestorage-create-asic-manifest-defined');
+      const definedLogCall = logCalls.find((call) => call[0] === 'filestorage-create-asic-manifest-defined');
       expect(definedLogCall[1].requestOptions.body).toMatch(/<\.\.\.cut>/);
     });
   });
@@ -715,10 +704,10 @@ describe('FileStorage', () => {
         headers: {
           'Content-Type': 'application/json',
           'x-trace-id': 'test-trace-id-123',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
         body: JSON.stringify({ manifestFileId, filesIds }),
-        timeout: 40000
+        timeout: 40000,
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('filestorage-create-asic-request-options-initialized', { filesIds });
@@ -729,7 +718,7 @@ describe('FileStorage', () => {
   describe('generateFileName', () => {
     it('should generate a file name without extension', () => {
       const result = fileStorage.generateFileName();
-      
+
       expect(result).toMatch(/^[a-f0-9]{80}$/);
       expect(result).toHaveLength(80);
     });
@@ -737,7 +726,7 @@ describe('FileStorage', () => {
     it('should generate a file name with extension', () => {
       const extension = 'pdf';
       const result = fileStorage.generateFileName(extension);
-      
+
       expect(result).toMatch(new RegExp(`^[a-f0-9]{80}\\.${extension}$`));
       expect(result).toHaveLength(84); // 80 chars + . + 3 chars
     });
@@ -745,7 +734,7 @@ describe('FileStorage', () => {
     it('should generate unique file names', () => {
       const result1 = fileStorage.generateFileName();
       const result2 = fileStorage.generateFileName();
-      
+
       expect(result1).not.toBe(result2);
     });
   });
@@ -779,9 +768,9 @@ describe('FileStorage', () => {
         headers: {
           version: '1.0.0',
           customer: 'test-customer',
-          environment: 'test-env'
-        }
-      }
+          environment: 'test-env',
+        },
+      },
     };
 
     it('should successfully send ping request', async () => {
@@ -797,16 +786,14 @@ describe('FileStorage', () => {
         version: '1.0.0',
         customer: 'test-customer',
         environment: 'test-env',
-        body: mockPingResponse.body
+        body: mockPingResponse.body,
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('send-ping-request-to-filestorage', expect.any(Object));
     });
 
     it('should handle ping request error gracefully', async () => {
-      nock(baseUrl)
-        .get('/test/ping_with_auth')
-        .reply(500, { error: 'Internal server error' });
+      nock(baseUrl).get('/test/ping_with_auth').reply(500, { error: 'Internal server error' });
 
       const result = await fileStorage.sendPingRequest();
 
@@ -818,9 +805,7 @@ describe('FileStorage', () => {
 
     it('should handle ping request exception and log error', async () => {
       // Simulate transport/server failure.
-      nock(baseUrl)
-        .get('/test/ping_with_auth')
-        .reply(503, { error: 'Network error' });
+      nock(baseUrl).get('/test/ping_with_auth').reply(503, { error: 'Network error' });
 
       const result = await fileStorage.sendPingRequest();
 
@@ -835,9 +820,9 @@ describe('FileStorage', () => {
       const mockMetadata = [
         { fileId: 1, hasP7s: true },
         { fileId: 2, hasP7s: false },
-        { fileId: 3, hasP7s: true }
+        { fileId: 3, hasP7s: true },
       ];
-      
+
       // Mock the encoded response
       const encodedMetadata = Buffer.from(JSON.stringify(mockMetadata)).toString('base64');
 
@@ -859,22 +844,16 @@ describe('FileStorage', () => {
       const mockMetadata1 = Array.from({ length: 10 }, (_, i) => ({ fileId: i + 1, hasP7s: true }));
       const mockMetadata2 = Array.from({ length: 10 }, (_, i) => ({ fileId: i + 11, hasP7s: false }));
       const mockMetadata3 = Array.from({ length: 5 }, (_, i) => ({ fileId: i + 21, hasP7s: true }));
-      
+
       const encodedMetadata1 = Buffer.from(JSON.stringify(mockMetadata1)).toString('base64');
       const encodedMetadata2 = Buffer.from(JSON.stringify(mockMetadata2)).toString('base64');
       const encodedMetadata3 = Buffer.from(JSON.stringify(mockMetadata3)).toString('base64');
 
-      nock(baseUrl)
-        .head('/files/1,2,3,4,5,6,7,8,9,10/p7s_metadata')
-        .reply(200, '', { 'p7s-metadata': encodedMetadata1 });
-      
-      nock(baseUrl)
-        .head('/files/11,12,13,14,15,16,17,18,19,20/p7s_metadata')
-        .reply(200, '', { 'p7s-metadata': encodedMetadata2 });
-      
-      nock(baseUrl)
-        .head('/files/21,22,23,24,25/p7s_metadata')
-        .reply(200, '', { 'p7s-metadata': encodedMetadata3 });
+      nock(baseUrl).head('/files/1,2,3,4,5,6,7,8,9,10/p7s_metadata').reply(200, '', { 'p7s-metadata': encodedMetadata1 });
+
+      nock(baseUrl).head('/files/11,12,13,14,15,16,17,18,19,20/p7s_metadata').reply(200, '', { 'p7s-metadata': encodedMetadata2 });
+
+      nock(baseUrl).head('/files/21,22,23,24,25/p7s_metadata').reply(200, '', { 'p7s-metadata': encodedMetadata3 });
 
       const result = await fileStorage.getP7sMetadata([...fileIds]);
 
@@ -894,10 +873,10 @@ describe('FileStorage', () => {
         headers: {
           'Content-Type': 'application/json',
           'x-trace-id': 'test-trace-id-123',
-          token: 'test-token-123'
+          token: 'test-token-123',
         },
         body: JSON.stringify({ fileId }),
-        timeout: 40000
+        timeout: 40000,
       });
 
       expect(mockLog.save).toHaveBeenCalledWith('filestorage-download-asics-request-options-initialized', { fileId });
@@ -910,41 +889,33 @@ describe('FileStorage', () => {
 
     beforeEach(() => {
       // Add nock mocks for stream endpoints that are called by the stream methods
-      nock(baseUrl)
-        .get(`/files/${fileId}`)
-        .reply(200, 'file content');
-        
-      nock(baseUrl)
-        .get(`/files/${fileId}/preview`)
-        .reply(200, 'preview content');
-        
-      nock(baseUrl)
-        .get('/files/file-123,file-456/zip')
-        .reply(200, 'zip content');
-        
+      nock(baseUrl).get(`/files/${fileId}`).reply(200, 'file content');
+
+      nock(baseUrl).get(`/files/${fileId}/preview`).reply(200, 'preview content');
+
+      nock(baseUrl).get('/files/file-123,file-456/zip').reply(200, 'zip content');
+
       nock(baseUrl)
         .post('/files')
         .query(true) // Match any query parameters
         .reply(200, 'upload response');
-        
-      nock(baseUrl)
-        .post('/files/asic')
-        .reply(200, 'asic response');
+
+      nock(baseUrl).post('/files/asic').reply(200, 'asic response');
     });
 
     // These tests verify that the methods return request instances
     // Since request returns a stream-like object with pipe functionality
-    
+
     it('downloadFile should return a request object', async () => {
       const result = await fileStorage.downloadFile(fileId);
-      
+
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
     });
 
     it('downloadFilePreview should return a request object', async () => {
       const result = await fileStorage.downloadFilePreview(fileId);
-      
+
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
     });
@@ -952,7 +923,7 @@ describe('FileStorage', () => {
     it('downloadZip should return a request object', async () => {
       const filesIds = ['file-123', 'file-456'];
       const result = await fileStorage.downloadZip(filesIds);
-      
+
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
     });
@@ -962,9 +933,9 @@ describe('FileStorage', () => {
       const description = 'Test file';
       const contentType = 'application/pdf';
       const contentLength = 1024;
-      
+
       const result = await fileStorage.uploadFile(name, description, contentType, contentLength);
-      
+
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
     });
@@ -972,9 +943,9 @@ describe('FileStorage', () => {
     it('createAsic should return a request object', async () => {
       const manifestFileId = 'manifest-123';
       const filesIds = ['file-123', 'file-456'];
-      
+
       const result = await fileStorage.createAsic(manifestFileId, filesIds);
-      
+
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
     });
@@ -993,12 +964,12 @@ describe('FileStorage', () => {
     });
 
     it('should return a promise from uploadFileFromStream', () => {
-      // Create a real readable stream 
+      // Create a real readable stream
       const mockStream = new Readable({
         read() {
           this.push('test data');
           this.push(null);
-        }
+        },
       });
 
       nock(baseUrl)
@@ -1012,11 +983,11 @@ describe('FileStorage', () => {
             contentLength,
           },
         });
-      
+
       // Test that it returns a promise
       const result = fileStorage.uploadFileFromStream(mockStream, name, description, contentType, contentLength);
       expect(result).toBeInstanceOf(Promise);
-      
+
       // Clean up the promise to avoid hanging tests - just ignore any errors
       result.catch(() => {
         // Expected to fail since it's a mock, but this prevents unhandled rejection warnings
@@ -1036,7 +1007,7 @@ describe('FileStorage', () => {
     });
 
     it.skip('should handle API error response', async () => {
-      // This test is skipped due to axios/nock interaction issues in test environment  
+      // This test is skipped due to axios/nock interaction issues in test environment
       // The actual error handling is working correctly in production
       expect(true).toBe(true);
     });

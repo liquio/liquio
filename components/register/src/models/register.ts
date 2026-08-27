@@ -35,47 +35,47 @@ export default class RegisterModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           name: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           description: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           parent_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'registers', key: 'id' }
+            references: { model: 'registers', key: 'id' },
           },
           meta: {
             allowNull: false,
             type: Sequelize.JSON,
-            defaultValue: {}
+            defaultValue: {},
           },
           created_by: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           updated_by: {
             allowNull: false,
-            type: Sequelize.STRING
-          }
+            type: Sequelize.STRING,
+          },
         },
         {
           tableName: 'registers',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       PgPubSub.getInstance()?.subscribe('registers_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
         findByPk: global.config?.cache?.register?.findByPk || DEFAULT_CACHE_TTL,
-        getAll: global.config?.cache?.register?.getAll || DEFAULT_CACHE_TTL
+        getAll: global.config?.cache?.register?.getAll || DEFAULT_CACHE_TTL,
       };
 
       RegisterModel.singleton = this;
@@ -101,7 +101,7 @@ export default class RegisterModel extends Model {
     const { filter, offset, limit } = { offset: 0, limit: 2, filter: {}, ...options };
     if (filter.name) {
       filter.name = {
-        [Sequelize.Op.iLike]: `%${filter.name}%`
+        [Sequelize.Op.iLike]: `%${filter.name}%`,
       };
     }
     const queryOptions = {
@@ -110,23 +110,23 @@ export default class RegisterModel extends Model {
         ? [
             {
               model: this.keyModel.model,
-              attributes: []
-            }
+              attributes: [],
+            },
           ]
         : [],
       order: [['created_at', 'desc']],
       where: filter,
       offset,
-      limit
+      limit,
     };
 
     // DB query with cache.
     const {
-      data: { count, rows: registersRaw }
+      data: { count, rows: registersRaw },
     } = await RedisClient.getOrSet(
       ['register', 'getAll', { filter, offset, limit }],
       () => this.model.findAndCountAll(queryOptions),
-      this.cacheTtl.getAll
+      this.cacheTtl.getAll,
     );
 
     const registersEntities = registersRaw.map((registerRaw: any) => new RegisterEntity(registerRaw));
@@ -161,7 +161,7 @@ export default class RegisterModel extends Model {
     description,
     parentId,
     meta,
-    user
+    user,
   }: {
     id?: number;
     name: string;
@@ -178,7 +178,7 @@ export default class RegisterModel extends Model {
       parent_id: parentId,
       meta: meta,
       created_by: user,
-      updated_by: user
+      updated_by: user,
     };
 
     if (id) registerToCreateRaw.id = id;
@@ -207,7 +207,7 @@ export default class RegisterModel extends Model {
       description: description,
       parent_id: parentId,
       meta: meta,
-      updated_by: user
+      updated_by: user,
     });
 
     // DB query.

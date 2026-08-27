@@ -31,40 +31,49 @@ describe('EventBusiness - Clear type events', () => {
       const WORKFLOW_ID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 
       // Create workflow template
-      await app.model('workflowTemplate').create({
-        id: WORKFLOW_TEMPLATE_ID,
-        name: 'Clear Workflow',
-        description: 'Workflow for testing clear event type',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: WORKFLOW_TEMPLATE_ID,
+          name: 'Clear Workflow',
+          description: 'Workflow for testing clear event type',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate'));
 
       // Create clear event template
-      await app.model('eventTemplate').create({
-        id: CLEAR_EVENT_TEMPLATE_ID,
-        event_type_id: 8, // clear type = 8
-        name: 'Clear Workflow Data',
-        description: 'Event to clear workflow data',
-        json_schema: JSON.stringify({}),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create clear eventTemplate'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: CLEAR_EVENT_TEMPLATE_ID,
+          event_type_id: 8, // clear type = 8
+          name: 'Clear Workflow Data',
+          description: 'Event to clear workflow data',
+          json_schema: JSON.stringify({}),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create clear eventTemplate'));
 
       // Create workflow instance
-      await app.model('workflow').create({
-        id: WORKFLOW_ID,
-        workflow_template_id: WORKFLOW_TEMPLATE_ID,
-        name: 'Clear Workflow Instance',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow'));
+      await app
+        .model('workflow')
+        .create({
+          id: WORKFLOW_ID,
+          workflow_template_id: WORKFLOW_TEMPLATE_ID,
+          name: 'Clear Workflow Instance',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow'));
 
       // Trigger clear event
       const result = await app.eventBusiness.createFromMessage({
@@ -97,76 +106,94 @@ describe('EventBusiness - Clear type events', () => {
       const WORKFLOW_ID_2 = 'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f';
 
       // Create first workflow template
-      await app.model('workflowTemplate').create({
-        id: WORKFLOW_TEMPLATE_ID_1,
-        name: 'Clear Workflow 1',
-        description: 'First workflow for testing clear',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate 1'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: WORKFLOW_TEMPLATE_ID_1,
+          name: 'Clear Workflow 1',
+          description: 'First workflow for testing clear',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate 1'));
 
       // Create second workflow template
-      await app.model('workflowTemplate').create({
-        id: WORKFLOW_TEMPLATE_ID_2,
-        name: 'Clear Workflow 2',
-        description: 'Second workflow for testing clear',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate 2'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: WORKFLOW_TEMPLATE_ID_2,
+          name: 'Clear Workflow 2',
+          description: 'Second workflow for testing clear',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate 2'));
 
       // Create clear event template for first workflow
-      await app.model('eventTemplate').create({
-        id: CLEAR_EVENT_TEMPLATE_ID_1,
-        event_type_id: 8, // clear type = 8
-        name: 'Clear Workflow 1 Data',
-        description: 'Event to clear first workflow',
-        json_schema: JSON.stringify({}),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create clear eventTemplate 1'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: CLEAR_EVENT_TEMPLATE_ID_1,
+          event_type_id: 8, // clear type = 8
+          name: 'Clear Workflow 1 Data',
+          description: 'Event to clear first workflow',
+          json_schema: JSON.stringify({}),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create clear eventTemplate 1'));
 
       // Create clear event template for second workflow
-      await app.model('eventTemplate').create({
-        id: CLEAR_EVENT_TEMPLATE_ID_2,
-        event_type_id: 8, // clear type = 8
-        name: 'Clear Workflow 2 Data',
-        description: 'Event to clear second workflow',
-        json_schema: JSON.stringify({}),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create clear eventTemplate 2'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: CLEAR_EVENT_TEMPLATE_ID_2,
+          event_type_id: 8, // clear type = 8
+          name: 'Clear Workflow 2 Data',
+          description: 'Event to clear second workflow',
+          json_schema: JSON.stringify({}),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create clear eventTemplate 2'));
 
       // Create first workflow instance
-      await app.model('workflow').create({
-        id: WORKFLOW_ID_1,
-        workflow_template_id: WORKFLOW_TEMPLATE_ID_1,
-        name: 'Clear Workflow Instance 1',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow 1'));
+      await app
+        .model('workflow')
+        .create({
+          id: WORKFLOW_ID_1,
+          workflow_template_id: WORKFLOW_TEMPLATE_ID_1,
+          name: 'Clear Workflow Instance 1',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow 1'));
 
       // Create second workflow instance
-      await app.model('workflow').create({
-        id: WORKFLOW_ID_2,
-        workflow_template_id: WORKFLOW_TEMPLATE_ID_2,
-        name: 'Clear Workflow Instance 2',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow 2'));
+      await app
+        .model('workflow')
+        .create({
+          id: WORKFLOW_ID_2,
+          workflow_template_id: WORKFLOW_TEMPLATE_ID_2,
+          name: 'Clear Workflow Instance 2',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow 2'));
 
       // Trigger clear event for first workflow
       const result1 = await app.eventBusiness.createFromMessage({
@@ -207,40 +234,49 @@ describe('EventBusiness - Clear type events', () => {
       const WORKFLOW_ID = 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a';
 
       // Create workflow template
-      await app.model('workflowTemplate').create({
-        id: WORKFLOW_TEMPLATE_ID,
-        name: 'Clear Result Workflow',
-        description: 'Workflow for testing clear result',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: WORKFLOW_TEMPLATE_ID,
+          name: 'Clear Result Workflow',
+          description: 'Workflow for testing clear result',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate'));
 
       // Create clear event template
-      await app.model('eventTemplate').create({
-        id: CLEAR_EVENT_TEMPLATE_ID,
-        event_type_id: 8, // clear type = 8
-        name: 'Clear with Result',
-        description: 'Event to verify clear result',
-        json_schema: JSON.stringify({}),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create clear eventTemplate'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: CLEAR_EVENT_TEMPLATE_ID,
+          event_type_id: 8, // clear type = 8
+          name: 'Clear with Result',
+          description: 'Event to verify clear result',
+          json_schema: JSON.stringify({}),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create clear eventTemplate'));
 
       // Create workflow instance
-      await app.model('workflow').create({
-        id: WORKFLOW_ID,
-        workflow_template_id: WORKFLOW_TEMPLATE_ID,
-        name: 'Clear Result Workflow Instance',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow'));
+      await app
+        .model('workflow')
+        .create({
+          id: WORKFLOW_ID,
+          workflow_template_id: WORKFLOW_TEMPLATE_ID,
+          name: 'Clear Result Workflow Instance',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow'));
 
       // Trigger clear event
       const result = await app.eventBusiness.createFromMessage({
@@ -274,40 +310,49 @@ describe('EventBusiness - Clear type events', () => {
       const WORKFLOW_ID = 'e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b';
 
       // Create workflow template
-      await app.model('workflowTemplate').create({
-        id: WORKFLOW_TEMPLATE_ID,
-        name: 'Clear Done Workflow',
-        description: 'Workflow for testing clear completion',
-        xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
-        data: {},
-        is_active: true,
-        errors_subscribers: [],
-      }).catch(TestApp.catch('Failed to create workflowTemplate'));
+      await app
+        .model('workflowTemplate')
+        .create({
+          id: WORKFLOW_TEMPLATE_ID,
+          name: 'Clear Done Workflow',
+          description: 'Workflow for testing clear completion',
+          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          data: {},
+          is_active: true,
+          errors_subscribers: [],
+        })
+        .catch(TestApp.catch('Failed to create workflowTemplate'));
 
       // Create clear event template
-      await app.model('eventTemplate').create({
-        id: CLEAR_EVENT_TEMPLATE_ID,
-        event_type_id: 8, // clear type = 8
-        name: 'Clear Done Event',
-        description: 'Event to test clear done status',
-        json_schema: JSON.stringify({}),
-        html_template: '',
-      }).catch(TestApp.catch('Failed to create clear eventTemplate'));
+      await app
+        .model('eventTemplate')
+        .create({
+          id: CLEAR_EVENT_TEMPLATE_ID,
+          event_type_id: 8, // clear type = 8
+          name: 'Clear Done Event',
+          description: 'Event to test clear done status',
+          json_schema: JSON.stringify({}),
+          html_template: '',
+        })
+        .catch(TestApp.catch('Failed to create clear eventTemplate'));
 
       // Create workflow instance
-      await app.model('workflow').create({
-        id: WORKFLOW_ID,
-        workflow_template_id: WORKFLOW_TEMPLATE_ID,
-        name: 'Clear Done Workflow Instance',
-        is_final: false,
-        created_by: 'test-user',
-        updated_by: 'test-user',
-        data: {},
-        workflow_status_id: 1,
-        user_data: {},
-        has_unresolved_errors: false,
-        statuses: {},
-      }).catch(TestApp.catch('Failed to create workflow'));
+      await app
+        .model('workflow')
+        .create({
+          id: WORKFLOW_ID,
+          workflow_template_id: WORKFLOW_TEMPLATE_ID,
+          name: 'Clear Done Workflow Instance',
+          is_final: false,
+          created_by: 'test-user',
+          updated_by: 'test-user',
+          data: {},
+          workflow_status_id: 1,
+          user_data: {},
+          has_unresolved_errors: false,
+          statuses: {},
+        })
+        .catch(TestApp.catch('Failed to create workflow'));
 
       // Trigger clear event
       const result = await app.eventBusiness.createFromMessage({

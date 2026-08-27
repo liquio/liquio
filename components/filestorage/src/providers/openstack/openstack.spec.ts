@@ -33,8 +33,8 @@ describe('OpenStack Provider', () => {
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
-        }
+          password: 'test-password',
+        },
       };
 
       const openstack = new OpenStack(config);
@@ -50,13 +50,13 @@ describe('OpenStack Provider', () => {
         tenantName: 'test-tenant-2',
         account: {
           login: 'test-user-2',
-          password: 'test-password-2'
-        }
+          password: 'test-password-2',
+        },
       };
 
       const openstack1 = new OpenStack(config);
       const openstack2 = new OpenStack(config);
-      
+
       expect(openstack1).toBe(openstack2);
     });
 
@@ -66,15 +66,15 @@ describe('OpenStack Provider', () => {
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
-        }
+          password: 'test-password',
+        },
       };
 
       // Reset singleton for this test
       OpenStack.singleton = null;
-      
+
       const openstack = new OpenStack(config);
-      
+
       expect(openstack.authVersion).toBe(3);
       expect(openstack.container).toBe('dev');
       expect(openstack.authCacheTtl).toBe(30000);
@@ -87,13 +87,13 @@ describe('OpenStack Provider', () => {
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
-        }
+          password: 'test-password',
+        },
       };
 
       // Reset singleton for this test
       OpenStack.singleton = null;
-      
+
       const openstack = new OpenStack(config);
 
       // Check that all expected methods exist
@@ -111,24 +111,24 @@ describe('OpenStack Provider', () => {
 
   describe('getInfoToHandleFile', () => {
     let openstack;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       OpenStack.singleton = null;
-      
+
       openstack = new OpenStack({
         server: 'http://localhost:5000',
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
-        }
+          password: 'test-password',
+        },
       });
 
       // Mock the auth.getTenantAuthInfo method
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
         tenantToken: 'test-token-123',
-        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant'
+        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant',
       });
     });
 
@@ -142,7 +142,7 @@ describe('OpenStack Provider', () => {
 
       expect(result.url).toBe('http://swift.example.com/v1/AUTH_tenant/dev/test/file.txt');
       expect(result.headers).toEqual({
-        'X-Auth-Token': 'test-token-123'
+        'X-Auth-Token': 'test-token-123',
       });
     });
 
@@ -153,24 +153,18 @@ describe('OpenStack Provider', () => {
 
       expect(result.url).toBe('http://swift.example.com/v1/AUTH_tenant/custom-container/test/file.txt');
       expect(result.headers).toEqual({
-        'X-Auth-Token': 'test-token-123'
+        'X-Auth-Token': 'test-token-123',
       });
     });
 
     it('should handle different file paths correctly', async () => {
-      const testCases = [
-        'simple.txt',
-        'folder/file.txt',
-        'deep/nested/folder/file.txt',
-        'file-with-dashes.txt',
-        'file_with_underscores.txt'
-      ];
+      const testCases = ['simple.txt', 'folder/file.txt', 'deep/nested/folder/file.txt', 'file-with-dashes.txt', 'file_with_underscores.txt'];
 
       for (const filePath of testCases) {
         const result = await openstack.getInfoToHandleFile(filePath);
         expect(result.url).toBe(`http://swift.example.com/v1/AUTH_tenant/dev/${filePath}`);
         expect(result.headers).toEqual({
-          'X-Auth-Token': 'test-token-123'
+          'X-Auth-Token': 'test-token-123',
         });
       }
     });
@@ -188,44 +182,42 @@ describe('OpenStack Provider', () => {
     it('should throw error when tenantPublicUrl is not defined', async () => {
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
         tenantToken: 'test-token-123',
-        tenantPublicUrl: null
+        tenantPublicUrl: null,
       });
 
-      await expect(openstack.getInfoToHandleFile('test.txt'))
-        .rejects.toThrow('OpenStack tenent public URL not defined.');
+      await expect(openstack.getInfoToHandleFile('test.txt')).rejects.toThrow('OpenStack tenent public URL not defined.');
     });
 
     it('should throw error when tenantPublicUrl is undefined', async () => {
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
-        tenantToken: 'test-token-123'
+        tenantToken: 'test-token-123',
       });
 
-      await expect(openstack.getInfoToHandleFile('test.txt'))
-        .rejects.toThrow('OpenStack tenent public URL not defined.');
+      await expect(openstack.getInfoToHandleFile('test.txt')).rejects.toThrow('OpenStack tenent public URL not defined.');
     });
   });
 
   describe('getRequestHeaders', () => {
     let openstack;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       OpenStack.singleton = null;
-      
+
       openstack = new OpenStack({
         server: 'http://localhost:5000',
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
-        }
+          password: 'test-password',
+        },
       });
     });
 
     it('should return headers with correct structure', () => {
       const token = 'test-token-123';
       const headers = openstack.getRequestHeaders(token);
-      
+
       expect(headers).toHaveProperty('Content-Type');
       expect(headers).toHaveProperty('Accept');
       expect(headers).toHaveProperty('X-Auth-Token');
@@ -234,21 +226,21 @@ describe('OpenStack Provider', () => {
     it('should return correct Content-Type header', () => {
       const token = 'test-token-123';
       const headers = openstack.getRequestHeaders(token);
-      
+
       expect(headers['Content-Type']).toBe('application/json');
     });
 
     it('should return correct Accept header', () => {
       const token = 'test-token-123';
       const headers = openstack.getRequestHeaders(token);
-      
+
       expect(headers['Accept']).toBe('application/json');
     });
 
     it('should include the provided tenant token in X-Auth-Token header', () => {
       const token = 'test-token-123';
       const headers = openstack.getRequestHeaders(token);
-      
+
       expect(headers['X-Auth-Token']).toBe(token);
     });
 
@@ -258,10 +250,10 @@ describe('OpenStack Provider', () => {
         'token-with-123-numbers',
         'very-long-token-with-many-characters-and-numbers-12345',
         'token_with_underscores',
-        'TOKEN-WITH-UPPERCASE'
+        'TOKEN-WITH-UPPERCASE',
       ];
 
-      testTokens.forEach(token => {
+      testTokens.forEach((token) => {
         const headers = openstack.getRequestHeaders(token);
         expect(headers['X-Auth-Token']).toBe(token);
       });
@@ -286,7 +278,7 @@ describe('OpenStack Provider', () => {
       const token = 'test-token-123';
       const headers1 = openstack.getRequestHeaders(token);
       const headers2 = openstack.getRequestHeaders(token);
-      
+
       expect(headers1).not.toBe(headers2); // Different object instances
       expect(headers1).toEqual(headers2); // Same content
     });
@@ -306,25 +298,25 @@ describe('OpenStack Provider', () => {
 
   describe('downloadFile', () => {
     let openstack;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       OpenStack.singleton = null;
-      
+
       openstack = new OpenStack({
         server: 'http://localhost:5000',
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
+          password: 'test-password',
         },
-        timeout: 5000
+        timeout: 5000,
       });
 
       // Mock the auth.getTenantAuthInfo method
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
         tenantToken: 'test-token-123',
-        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant'
+        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant',
       });
     });
 
@@ -338,10 +330,7 @@ describe('OpenStack Provider', () => {
       const fileContent = 'Hello, World!';
 
       // Mock the HTTP request
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/file.txt')
-        .matchHeader('X-Auth-Token', 'test-token-123')
-        .reply(200, fileContent);
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/file.txt').matchHeader('X-Auth-Token', 'test-token-123').reply(200, fileContent);
 
       const stream = await openstack.downloadFile(filePath);
       expect(stream).toBeDefined();
@@ -349,23 +338,21 @@ describe('OpenStack Provider', () => {
 
     it('should call downloadFileRequestOptions with correct parameters', async () => {
       const filePath = 'test/file.txt';
-      
+
       // Spy on downloadFileRequestOptions
       const spy = jest.spyOn(openstack, 'downloadFileRequestOptions');
-      
+
       // Mock the HTTP request
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(200, 'content');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/file.txt').reply(200, 'content');
 
       await openstack.downloadFile(filePath);
-      
+
       expect(spy).toHaveBeenCalledWith(filePath);
     });
 
     it('should include correct headers in the request', async () => {
       const filePath = 'test/file.txt';
-      
+
       // Mock the HTTP request and verify headers
       const scope = nock('http://swift.example.com')
         .get('/v1/AUTH_tenant/dev/test/file.txt')
@@ -373,7 +360,7 @@ describe('OpenStack Provider', () => {
         .reply(200, 'content');
 
       await openstack.downloadFile(filePath);
-      
+
       expect(scope.isDone()).toBe(true);
     });
 
@@ -381,13 +368,11 @@ describe('OpenStack Provider', () => {
       const testCases = [
         { path: 'simple.txt', expected: '/v1/AUTH_tenant/dev/simple.txt' },
         { path: 'folder/file.txt', expected: '/v1/AUTH_tenant/dev/folder/file.txt' },
-        { path: 'deep/nested/folder/file.txt', expected: '/v1/AUTH_tenant/dev/deep/nested/folder/file.txt' }
+        { path: 'deep/nested/folder/file.txt', expected: '/v1/AUTH_tenant/dev/deep/nested/folder/file.txt' },
       ];
 
       for (const testCase of testCases) {
-        nock('http://swift.example.com')
-          .get(testCase.expected)
-          .reply(200, 'content');
+        nock('http://swift.example.com').get(testCase.expected).reply(200, 'content');
 
         await openstack.downloadFile(testCase.path);
       }
@@ -395,33 +380,27 @@ describe('OpenStack Provider', () => {
 
     it('should properly configure request timeout', async () => {
       const filePath = 'test/file.txt';
-      
+
       // Spy on downloadFileRequestOptions to verify timeout is passed
       const spy = jest.spyOn(openstack, 'downloadFileRequestOptions');
-      
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(200, 'content');
+
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/file.txt').reply(200, 'content');
 
       await openstack.downloadFile(filePath);
-      
+
       const requestOptions = await spy.mock.results[0].value;
       expect(requestOptions.timeout).toBe(5000);
     });
 
     it('should handle empty file path', async () => {
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/')
-        .reply(200, '');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/').reply(200, '');
 
       const stream = await openstack.downloadFile('');
       expect(stream).toBeDefined();
     });
 
     it('should handle undefined file path', async () => {
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/undefined')
-        .reply(200, '');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/undefined').reply(200, '');
 
       const stream = await openstack.downloadFile(undefined);
       expect(stream).toBeDefined();
@@ -430,25 +409,25 @@ describe('OpenStack Provider', () => {
 
   describe('downloadFileAsBuffer', () => {
     let openstack;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       OpenStack.singleton = null;
-      
+
       openstack = new OpenStack({
         server: 'http://localhost:5000',
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
+          password: 'test-password',
         },
-        timeout: 5000
+        timeout: 5000,
       });
 
       // Mock the auth.getTenantAuthInfo method
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
         tenantToken: 'test-token-123',
-        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant'
+        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant',
       });
     });
 
@@ -462,10 +441,7 @@ describe('OpenStack Provider', () => {
       const fileContent = 'Hello, World!';
 
       // Mock the HTTP request
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/file.txt')
-        .matchHeader('X-Auth-Token', 'test-token-123')
-        .reply(200, fileContent);
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/file.txt').matchHeader('X-Auth-Token', 'test-token-123').reply(200, fileContent);
 
       const buffer = await openstack.downloadFileAsBuffer(filePath);
       expect(Buffer.isBuffer(buffer)).toBe(true);
@@ -474,28 +450,24 @@ describe('OpenStack Provider', () => {
 
     it('should call downloadFileRequestOptions with correct parameters', async () => {
       const filePath = 'test/file.txt';
-      
+
       // Spy on downloadFileRequestOptions
       const spy = jest.spyOn(openstack, 'downloadFileRequestOptions');
-      
+
       // Mock the HTTP request
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(200, 'content');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/file.txt').reply(200, 'content');
 
       await openstack.downloadFileAsBuffer(filePath);
-      
+
       expect(spy).toHaveBeenCalledWith(filePath);
     });
 
     it('should handle binary data correctly', async () => {
       const filePath = 'test/image.png';
-      const binaryData = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+      const binaryData = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
       // Mock the HTTP request with binary data
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/image.png')
-        .reply(200, binaryData);
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/image.png').reply(200, binaryData);
 
       const buffer = await openstack.downloadFileAsBuffer(filePath);
       expect(Buffer.isBuffer(buffer)).toBe(true);
@@ -507,13 +479,11 @@ describe('OpenStack Provider', () => {
         { path: 'document.pdf', content: 'PDF content' },
         { path: 'image.jpg', content: 'JPEG data' },
         { path: 'data.json', content: '{"key": "value"}' },
-        { path: 'script.js', content: 'console.log("hello");' }
+        { path: 'script.js', content: 'console.log("hello");' },
       ];
 
       for (const testCase of testCases) {
-        nock('http://swift.example.com')
-          .get(`/v1/AUTH_tenant/dev/${testCase.path}`)
-          .reply(200, testCase.content);
+        nock('http://swift.example.com').get(`/v1/AUTH_tenant/dev/${testCase.path}`).reply(200, testCase.content);
 
         const buffer = await openstack.downloadFileAsBuffer(testCase.path);
         expect(buffer.toString()).toBe(testCase.content);
@@ -523,9 +493,7 @@ describe('OpenStack Provider', () => {
     it('should handle empty file correctly', async () => {
       const filePath = 'empty.txt';
 
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/empty.txt')
-        .reply(200, '');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/empty.txt').reply(200, '');
 
       const buffer = await openstack.downloadFileAsBuffer(filePath);
       expect(Buffer.isBuffer(buffer)).toBe(true);
@@ -533,9 +501,7 @@ describe('OpenStack Provider', () => {
     });
 
     it('should handle undefined file path', async () => {
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/undefined')
-        .reply(200, 'content');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/undefined').reply(200, 'content');
 
       const buffer = await openstack.downloadFileAsBuffer(undefined);
       expect(Buffer.isBuffer(buffer)).toBe(true);
@@ -543,16 +509,14 @@ describe('OpenStack Provider', () => {
 
     it('should properly configure request timeout', async () => {
       const filePath = 'test/file.txt';
-      
+
       // Spy on downloadFileRequestOptions to verify timeout is passed
       const spy = jest.spyOn(openstack, 'downloadFileRequestOptions');
-      
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(200, 'content');
+
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/file.txt').reply(200, 'content');
 
       await openstack.downloadFileAsBuffer(filePath);
-      
+
       const requestOptions = await spy.mock.results[0].value;
       expect(requestOptions.timeout).toBe(5000);
     });
@@ -560,58 +524,49 @@ describe('OpenStack Provider', () => {
     it('should handle 404 errors consistently', async () => {
       const filePath = 'nonexistent.txt';
 
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/nonexistent.txt')
-        .reply(404, 'Not Found');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/nonexistent.txt').reply(404, 'Not Found');
 
-      await expect(openstack.downloadFileAsBuffer(filePath))
-        .rejects.toThrow();
+      await expect(openstack.downloadFileAsBuffer(filePath)).rejects.toThrow();
     });
 
     it('should handle 500 server errors consistently', async () => {
       const filePath = 'test/file.txt';
 
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(500, 'Internal Server Error');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/file.txt').reply(500, 'Internal Server Error');
 
-      await expect(openstack.downloadFileAsBuffer(filePath))
-        .rejects.toThrow();
+      await expect(openstack.downloadFileAsBuffer(filePath)).rejects.toThrow();
     });
 
     it('should handle network errors consistently', async () => {
       const filePath = 'test/file.txt';
 
-      nock('http://swift.example.com')
-        .get('/v1/AUTH_tenant/dev/test/file.txt')
-        .replyWithError('Network error');
+      nock('http://swift.example.com').get('/v1/AUTH_tenant/dev/test/file.txt').replyWithError('Network error');
 
-      await expect(openstack.downloadFileAsBuffer(filePath))
-        .rejects.toThrow();
+      await expect(openstack.downloadFileAsBuffer(filePath)).rejects.toThrow();
     });
   });
 
   describe('uploadFile', () => {
     let openstack;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       OpenStack.singleton = null;
-      
+
       openstack = new OpenStack({
         server: 'http://localhost:5000',
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
+          password: 'test-password',
         },
-        timeout: 5000
+        timeout: 5000,
       });
 
       // Mock the auth.getTenantAuthInfo method
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
         tenantToken: 'test-token-123',
-        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant'
+        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant',
       });
     });
 
@@ -634,10 +589,10 @@ describe('OpenStack Provider', () => {
         .reply(201, '', { etag: expectedHash });
 
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
-      
+
       expect(result).toEqual({
         fileLink: filePath,
-        hash: expectedHash
+        hash: expectedHash,
       });
     });
 
@@ -645,17 +600,15 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
       const contentType = 'text/plain';
       const fileContent = 'Hello, World!';
-      
+
       // Spy on uploadFileRequestOptions
       const spy = jest.spyOn(openstack, 'uploadFileRequestOptions');
-      
+
       // Mock the HTTP request
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(201, '');
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/file.txt').reply(201, '');
 
       await openstack.uploadFile(filePath, contentType, fileContent);
-      
+
       expect(spy).toHaveBeenCalledWith(filePath, contentType, fileContent);
     });
 
@@ -664,14 +617,11 @@ describe('OpenStack Provider', () => {
         { contentType: 'text/plain', path: 'file.txt' },
         { contentType: 'application/json', path: 'data.json' },
         { contentType: 'image/jpeg', path: 'image.jpg' },
-        { contentType: 'application/pdf', path: 'document.pdf' }
+        { contentType: 'application/pdf', path: 'document.pdf' },
       ];
 
       for (const testCase of testCases) {
-        nock('http://swift.example.com')
-          .put(`/v1/AUTH_tenant/dev/${testCase.path}`)
-          .matchHeader('Content-Type', testCase.contentType)
-          .reply(201, '');
+        nock('http://swift.example.com').put(`/v1/AUTH_tenant/dev/${testCase.path}`).matchHeader('Content-Type', testCase.contentType).reply(201, '');
 
         await openstack.uploadFile(testCase.path, testCase.contentType, 'content');
       }
@@ -682,10 +632,7 @@ describe('OpenStack Provider', () => {
       const contentType = 'application/octet-stream';
       const fileContent = Buffer.from([0x01, 0x02, 0x03, 0x04]);
 
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/binary.dat')
-        .matchHeader('Content-Type', contentType)
-        .reply(201, '');
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/binary.dat').matchHeader('Content-Type', contentType).reply(201, '');
 
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
       expect(result.fileLink).toBe(filePath);
@@ -696,10 +643,7 @@ describe('OpenStack Provider', () => {
       const contentType = 'text/plain';
       const fileContent = 'String content';
 
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/text.txt')
-        .matchHeader('Content-Type', contentType)
-        .reply(201, '');
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/text.txt').matchHeader('Content-Type', contentType).reply(201, '');
 
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
       expect(result.fileLink).toBe(filePath);
@@ -710,10 +654,7 @@ describe('OpenStack Provider', () => {
       const contentType = 'text/plain';
       const fileContent = '';
 
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/empty.txt')
-        .matchHeader('Content-Type', contentType)
-        .reply(201, '');
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/empty.txt').matchHeader('Content-Type', contentType).reply(201, '');
 
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
       expect(result.fileLink).toBe(filePath);
@@ -739,9 +680,7 @@ describe('OpenStack Provider', () => {
       const contentType = 'text/plain';
       const fileContent = 'content';
 
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(201, '', {}); // No etag header
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/file.txt').reply(201, '', {}); // No etag header
 
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
       expect(result.fileLink).toBe(filePath);
@@ -753,9 +692,7 @@ describe('OpenStack Provider', () => {
       const contentType = 'text/plain';
       const fileContent = 'content';
 
-      nock('http://swift.example.com')
-        .put(`/v1/AUTH_tenant/dev/${filePath}`)
-        .reply(201, '');
+      nock('http://swift.example.com').put(`/v1/AUTH_tenant/dev/${filePath}`).reply(201, '');
 
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
       expect(result.fileLink).toBe(filePath);
@@ -766,9 +703,7 @@ describe('OpenStack Provider', () => {
       const contentType = 'text/plain';
       const fileContent = 'content';
 
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(400, 'Bad Request');
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/file.txt').reply(400, 'Bad Request');
 
       // Note: OpenStack uploadFile doesn't throw on HTTP errors, it resolves
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
@@ -780,9 +715,7 @@ describe('OpenStack Provider', () => {
       const contentType = 'text/plain';
       const fileContent = 'content';
 
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(403, 'Forbidden');
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/file.txt').reply(403, 'Forbidden');
 
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
       expect(result.fileLink).toBe(filePath);
@@ -793,9 +726,7 @@ describe('OpenStack Provider', () => {
       const contentType = 'text/plain';
       const fileContent = 'content';
 
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(500, 'Internal Server Error');
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/file.txt').reply(500, 'Internal Server Error');
 
       const result = await openstack.uploadFile(filePath, contentType, fileContent);
       expect(result.fileLink).toBe(filePath);
@@ -806,28 +737,23 @@ describe('OpenStack Provider', () => {
       const contentType = 'text/plain';
       const fileContent = 'content';
 
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/file.txt')
-        .replyWithError('Network error');
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/file.txt').replyWithError('Network error');
 
-      await expect(openstack.uploadFile(filePath, contentType, fileContent))
-        .rejects.toThrow('Network error');
+      await expect(openstack.uploadFile(filePath, contentType, fileContent)).rejects.toThrow('Network error');
     });
 
     it('should properly configure request timeout', async () => {
       const filePath = 'test/file.txt';
       const contentType = 'text/plain';
       const fileContent = 'content';
-      
+
       // Spy on uploadFileRequestOptions to verify timeout is passed
       const spy = jest.spyOn(openstack, 'uploadFileRequestOptions');
-      
-      nock('http://swift.example.com')
-        .put('/v1/AUTH_tenant/dev/test/file.txt')
-        .reply(201, '');
+
+      nock('http://swift.example.com').put('/v1/AUTH_tenant/dev/test/file.txt').reply(201, '');
 
       await openstack.uploadFile(filePath, contentType, fileContent);
-      
+
       const requestOptions = await spy.mock.results[0].value;
       expect(requestOptions.timeout).toBe(5000);
     });
@@ -835,25 +761,25 @@ describe('OpenStack Provider', () => {
 
   describe('deleteFile', () => {
     let openstack;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       OpenStack.singleton = null;
-      
+
       openstack = new OpenStack({
         server: 'http://localhost:5000',
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
+          password: 'test-password',
         },
-        timeout: 5000
+        timeout: 5000,
       });
 
       // Mock the auth.getTenantAuthInfo method
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
         tenantToken: 'test-token-123',
-        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant'
+        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant',
       });
     });
 
@@ -866,63 +792,59 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send
-      const mockSend = jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       const result = await openstack.deleteFile(filePath);
-      
+
       expect(result).toEqual({ success: true });
       expect(mockSend).toHaveBeenCalledWith({
         url: 'http://swift.example.com/v1/AUTH_tenant/dev/test/file.txt',
         headers: { 'X-Auth-Token': 'test-token-123' },
         method: 'DELETE',
-        timeout: 5000
+        timeout: 5000,
       });
     });
 
     it('should call getInfoToHandleFile with correct parameters', async () => {
       const filePath = 'test/file.txt';
-      
+
       // Spy on getInfoToHandleFile
       const spy = jest.spyOn(openstack, 'getInfoToHandleFile');
-      
+
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       await openstack.deleteFile(filePath);
-      
+
       expect(spy).toHaveBeenCalledWith(filePath, 'dev');
     });
 
     it('should use default container when not specified', async () => {
       const filePath = 'test/file.txt';
-      
+
       // Spy on getInfoToHandleFile
       const spy = jest.spyOn(openstack, 'getInfoToHandleFile');
-      
+
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       await openstack.deleteFile(filePath);
-      
+
       expect(spy).toHaveBeenCalledWith(filePath, 'dev');
     });
 
     it('should use custom container when specified', async () => {
       const filePath = 'test/file.txt';
       const containerName = 'custom-container';
-      
+
       // Spy on getInfoToHandleFile
       const spy = jest.spyOn(openstack, 'getInfoToHandleFile');
-      
+
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       await openstack.deleteFile(filePath, containerName);
-      
+
       expect(spy).toHaveBeenCalledWith(filePath, containerName);
     });
 
@@ -930,29 +852,23 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to verify headers
-      const mockSend = jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       await openstack.deleteFile(filePath);
-      
+
       const callArgs: any = mockSend.mock.calls[0][0];
       expect(callArgs.headers).toEqual({ 'X-Auth-Token': 'test-token-123' });
     });
 
     it('should handle different file paths correctly', async () => {
-      const testCases = [
-        'simple.txt',
-        'folder/file.txt',
-        'deep/nested/folder/file.txt'
-      ];
+      const testCases = ['simple.txt', 'folder/file.txt', 'deep/nested/folder/file.txt'];
 
       // Mock Request.send
-      const mockSend = jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       for (const filePath of testCases) {
         await openstack.deleteFile(filePath);
-        
+
         const callArgs: any = mockSend.mock.calls[mockSend.mock.calls.length - 1][0];
         expect(callArgs.url).toBe(`http://swift.example.com/v1/AUTH_tenant/dev/${filePath}`);
       }
@@ -962,8 +878,7 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({});
+      jest.spyOn(HttpRequest, 'send').mockResolvedValue({});
 
       const result = await openstack.deleteFile(filePath);
       expect(result).toEqual({});
@@ -974,8 +889,7 @@ describe('OpenStack Provider', () => {
       const responseBody = { message: 'File deleted successfully' };
 
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue(responseBody);
+      jest.spyOn(HttpRequest, 'send').mockResolvedValue(responseBody);
 
       const result = await openstack.deleteFile(filePath);
       expect(result).toEqual(responseBody);
@@ -985,11 +899,10 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to verify timeout is passed
-      const mockSend = jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       await openstack.deleteFile(filePath);
-      
+
       const callArgs: any = mockSend.mock.calls[0][0];
       expect(callArgs.timeout).toBe(5000);
     });
@@ -998,53 +911,44 @@ describe('OpenStack Provider', () => {
       const filePath = 'nonexistent.txt';
 
       // Mock Request.send to throw 404 error
-      jest.spyOn(HttpRequest, 'send')
-        .mockRejectedValue(new Error('Not Found'));
+      jest.spyOn(HttpRequest, 'send').mockRejectedValue(new Error('Not Found'));
 
-      await expect(openstack.deleteFile(filePath))
-        .rejects.toThrow('Not Found');
+      await expect(openstack.deleteFile(filePath)).rejects.toThrow('Not Found');
     });
 
     it('should handle 403 forbidden errors', async () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to throw 403 error
-      jest.spyOn(HttpRequest, 'send')
-        .mockRejectedValue(new Error('Forbidden'));
+      jest.spyOn(HttpRequest, 'send').mockRejectedValue(new Error('Forbidden'));
 
-      await expect(openstack.deleteFile(filePath))
-        .rejects.toThrow('Forbidden');
+      await expect(openstack.deleteFile(filePath)).rejects.toThrow('Forbidden');
     });
 
     it('should handle 500 server errors', async () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to throw 500 error
-      jest.spyOn(HttpRequest, 'send')
-        .mockRejectedValue(new Error('Internal Server Error'));
+      jest.spyOn(HttpRequest, 'send').mockRejectedValue(new Error('Internal Server Error'));
 
-      await expect(openstack.deleteFile(filePath))
-        .rejects.toThrow('Internal Server Error');
+      await expect(openstack.deleteFile(filePath)).rejects.toThrow('Internal Server Error');
     });
 
     it('should handle network errors', async () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to throw network error
-      jest.spyOn(HttpRequest, 'send')
-        .mockRejectedValue(new Error('Network error'));
+      jest.spyOn(HttpRequest, 'send').mockRejectedValue(new Error('Network error'));
 
-      await expect(openstack.deleteFile(filePath))
-        .rejects.toThrow('Network error');
+      await expect(openstack.deleteFile(filePath)).rejects.toThrow('Network error');
     });
 
     it('should handle undefined file path', async () => {
       // Mock Request.send
-      const mockSend = jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       await openstack.deleteFile(undefined);
-      
+
       const callArgs: any = mockSend.mock.calls[0][0];
       expect(callArgs.url).toBe('http://swift.example.com/v1/AUTH_tenant/dev/undefined');
     });
@@ -1053,11 +957,10 @@ describe('OpenStack Provider', () => {
       const filePath = 'very/deep/nested/folder/structure/with/many/levels/file.txt';
 
       // Mock Request.send
-      const mockSend = jest.spyOn(HttpRequest, 'send')
-        .mockResolvedValue({ success: true });
+      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
 
       await openstack.deleteFile(filePath);
-      
+
       const callArgs: any = mockSend.mock.calls[0][0];
       expect(callArgs.url).toBe(`http://swift.example.com/v1/AUTH_tenant/dev/${filePath}`);
     });
@@ -1065,25 +968,25 @@ describe('OpenStack Provider', () => {
 
   describe('getMetadata', () => {
     let openstack;
-    
+
     beforeEach(() => {
       // Reset singleton for each test
       OpenStack.singleton = null;
-      
+
       openstack = new OpenStack({
         server: 'http://localhost:5000',
         tenantName: 'test-tenant',
         account: {
           login: 'test-user',
-          password: 'test-password'
+          password: 'test-password',
         },
-        timeout: 5000
+        timeout: 5000,
       });
 
       // Mock the auth.getTenantAuthInfo method
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
         tenantToken: 'test-token-123',
-        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant'
+        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tenant',
       });
     });
 
@@ -1093,111 +996,105 @@ describe('OpenStack Provider', () => {
 
     it('should get metadata successfully and return storage info', async () => {
       // Mock Request.sendDetailed
-      const mockSendDetailed = (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {
-            'x-container-bytes-used': '1000000000',
-            'x-container-object-count': '100'
-          }
-        });
+      const mockSendDetailed = (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {
+          'x-container-bytes-used': '1000000000',
+          'x-container-object-count': '100',
+        },
+      });
 
       const result = await openstack.getMetadata();
-      
+
       expect(result).toEqual({
         gigabytesUsedCount: '1.00',
-        gigabytesUsedCountRound: 1
+        gigabytesUsedCountRound: 1,
       });
-      
+
       expect(mockSendDetailed).toHaveBeenCalledWith({
         url: 'http://swift.example.com/v1/AUTH_tenant/dev',
         headers: { 'X-Auth-Token': 'test-token-123' },
         method: 'HEAD',
-        timeout: 5000
+        timeout: 5000,
       });
     });
 
     it('should call auth.getTenantAuthInfo with correct method', async () => {
       // Mock Request.sendDetailed
-      (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {
-            'x-container-bytes-used': '500000000'
-          }
-        });
+      (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {
+          'x-container-bytes-used': '500000000',
+        },
+      });
 
       await openstack.getMetadata();
-      
+
       expect(openstack.auth.getTenantAuthInfo).toHaveBeenCalled();
     });
 
     it('should use default container when not specified', async () => {
       // Mock Request.sendDetailed
-      const mockSendDetailed = (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {
-            'x-container-bytes-used': '1000000000'
-          }
-        });
+      const mockSendDetailed = (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {
+          'x-container-bytes-used': '1000000000',
+        },
+      });
 
       await openstack.getMetadata();
-      
+
       const callArgs: any = mockSendDetailed.mock.calls[0][0];
       expect(callArgs.url).toBe('http://swift.example.com/v1/AUTH_tenant/dev');
     });
 
     it('should use custom container when specified', async () => {
       const containerName = 'custom-container';
-      
+
       // Mock Request.sendDetailed
-      const mockSendDetailed = (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {
-            'x-container-bytes-used': '1000000000'
-          }
-        });
+      const mockSendDetailed = (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {
+          'x-container-bytes-used': '1000000000',
+        },
+      });
 
       await openstack.getMetadata(containerName);
-      
+
       const callArgs: any = mockSendDetailed.mock.calls[0][0];
       expect(callArgs.url).toBe('http://swift.example.com/v1/AUTH_tenant/custom-container');
     });
 
     it('should include object count when showObjectCount is "true"', async () => {
       // Mock Request.sendDetailed
-      (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {
-            'x-container-bytes-used': '2000000000',
-            'x-container-object-count': '250'
-          }
-        });
+      (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {
+          'x-container-bytes-used': '2000000000',
+          'x-container-object-count': '250',
+        },
+      });
 
       const result = await openstack.getMetadata('dev', 'true');
-      
+
       expect(result).toEqual({
         gigabytesUsedCount: '2.00',
         gigabytesUsedCountRound: 2,
-        objectCount: '250'
+        objectCount: '250',
       });
     });
 
     it('should exclude object count when showObjectCount is false', async () => {
       // Mock Request.sendDetailed
-      (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {
-            'x-container-bytes-used': '3000000000',
-            'x-container-object-count': '150'
-          }
-        });
+      (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {
+          'x-container-bytes-used': '3000000000',
+          'x-container-object-count': '150',
+        },
+      });
 
       const result = await openstack.getMetadata('dev', false);
-      
+
       expect(result).toEqual({
         gigabytesUsedCount: '3.00',
-        gigabytesUsedCountRound: 3
+        gigabytesUsedCountRound: 3,
       });
-      
+
       expect(result).not.toHaveProperty('objectCount');
     });
 
@@ -1207,20 +1104,19 @@ describe('OpenStack Provider', () => {
         { bytes: '500000000', expectedGB: '0.50', expectedRound: 1 },
         { bytes: '1000000000', expectedGB: '1.00', expectedRound: 1 },
         { bytes: '1500000000', expectedGB: '1.50', expectedRound: 2 },
-        { bytes: '2750000000', expectedGB: '2.75', expectedRound: 3 }
+        { bytes: '2750000000', expectedGB: '2.75', expectedRound: 3 },
       ];
 
       for (const testCase of testCases) {
         // Mock Request.sendDetailed
-        (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-          .mockResolvedValue({
-            headers: {
-              'x-container-bytes-used': testCase.bytes
-            }
-          });
+        (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+          headers: {
+            'x-container-bytes-used': testCase.bytes,
+          },
+        });
 
         const result = await openstack.getMetadata();
-        
+
         expect(result.gigabytesUsedCount).toBe(testCase.expectedGB);
         expect(result.gigabytesUsedCountRound).toBe(testCase.expectedRound);
       }
@@ -1228,53 +1124,49 @@ describe('OpenStack Provider', () => {
 
     it('should configure request correctly', async () => {
       // Mock Request.sendDetailed to verify request configuration
-      const mockSendDetailed = (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {
-            'x-container-bytes-used': '1000000000'
-          }
-        });
+      const mockSendDetailed = (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {
+          'x-container-bytes-used': '1000000000',
+        },
+      });
 
       await openstack.getMetadata();
-      
+
       expect(mockSendDetailed).toHaveBeenCalledWith({
         url: 'http://swift.example.com/v1/AUTH_tenant/dev',
         headers: { 'X-Auth-Token': 'test-token-123' },
         method: 'HEAD',
-        timeout: 5000
+        timeout: 5000,
       });
     });
 
     it('should throw error when tenantPublicUrl is not defined', async () => {
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
         tenantToken: 'test-token-123',
-        tenantPublicUrl: null
+        tenantPublicUrl: null,
       });
 
-      await expect(openstack.getMetadata())
-        .rejects.toThrow('OpenStack tenent public URL not defined.');
+      await expect(openstack.getMetadata()).rejects.toThrow('OpenStack tenent public URL not defined.');
     });
 
     it('should throw error when tenantPublicUrl is undefined', async () => {
       openstack.auth.getTenantAuthInfo = jest.fn().mockResolvedValue({
-        tenantToken: 'test-token-123'
+        tenantToken: 'test-token-123',
       });
 
-      await expect(openstack.getMetadata())
-        .rejects.toThrow('OpenStack tenent public URL not defined.');
+      await expect(openstack.getMetadata()).rejects.toThrow('OpenStack tenent public URL not defined.');
     });
 
     it('should throw error when bytes conversion fails', async () => {
       // Mock Request.sendDetailed
-      (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {
-            'x-container-bytes-used': 'invalid-number'
-          }
-        });
+      (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {
+          'x-container-bytes-used': 'invalid-number',
+        },
+      });
 
       const result = await openstack.getMetadata();
-      
+
       // OpenStack doesn't throw error for invalid number, it returns NaN
       expect(result.gigabytesUsedCount).toBe('NaN');
       expect(result.gigabytesUsedCountRound).toBeNaN();
@@ -1282,13 +1174,12 @@ describe('OpenStack Provider', () => {
 
     it('should handle missing headers gracefully', async () => {
       // Mock Request.sendDetailed
-      (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockResolvedValue({
-          headers: {}
-        });
+      (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+        headers: {},
+      });
 
       const result = await openstack.getMetadata();
-      
+
       // OpenStack doesn't throw error for missing headers, it returns NaN
       expect(result.gigabytesUsedCount).toBe('NaN');
       expect(result.gigabytesUsedCountRound).toBeNaN();
@@ -1300,21 +1191,20 @@ describe('OpenStack Provider', () => {
         { param: 'false', shouldInclude: false },
         { param: 'TRUE', shouldInclude: false }, // Only exactly 'true' should work
         { param: '1', shouldInclude: false },
-        { param: '', shouldInclude: false }
+        { param: '', shouldInclude: false },
       ];
 
       for (const testCase of testCases) {
         // Mock Request.sendDetailed
-        (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-          .mockResolvedValue({
-            headers: {
-              'x-container-bytes-used': '1000000000',
-              'x-container-object-count': '100'
-            }
-          });
+        (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockResolvedValue({
+          headers: {
+            'x-container-bytes-used': '1000000000',
+            'x-container-object-count': '100',
+          },
+        });
 
         const result = await openstack.getMetadata('dev', testCase.param);
-        
+
         if (testCase.shouldInclude) {
           expect(result).toHaveProperty('objectCount', '100');
         } else {
@@ -1325,20 +1215,16 @@ describe('OpenStack Provider', () => {
 
     it('should handle network errors', async () => {
       // Mock Request.sendDetailed to throw network error
-      (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockRejectedValue(new Error('Network error'));
+      (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockRejectedValue(new Error('Network error'));
 
-      await expect(openstack.getMetadata())
-        .rejects.toThrow('Network error');
+      await expect(openstack.getMetadata()).rejects.toThrow('Network error');
     });
 
     it('should handle HTTP error responses gracefully', async () => {
       // Mock Request.sendDetailed to throw HTTP error
-      (jest.spyOn(HttpRequest, 'sendDetailed') as any)
-        .mockRejectedValue(new Error('Unauthorized'));
+      (jest.spyOn(HttpRequest, 'sendDetailed') as any).mockRejectedValue(new Error('Unauthorized'));
 
-      await expect(openstack.getMetadata())
-        .rejects.toThrow('Unauthorized');
+      await expect(openstack.getMetadata()).rejects.toThrow('Unauthorized');
     });
   });
 });

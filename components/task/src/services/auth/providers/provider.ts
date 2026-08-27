@@ -60,4 +60,3 @@ export class Provider {
     throw new Error(ERROR_OVERRIDE);
   }
 }
-

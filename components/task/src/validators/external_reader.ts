@@ -1,4 +1,3 @@
-
 import { checkSchema } from 'express-validator';
 import { Validator } from './validator';
 
@@ -43,14 +42,14 @@ export class ExternalReaderValidator extends Validator {
       ['filters']: {
         in: ['body'],
         custom: {
-          options: value => {
+          options: (value) => {
             if (!value || typeof value !== 'object') {
               return false;
             }
             return true;
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
@@ -73,13 +72,13 @@ export class ExternalReaderValidator extends Validator {
         in: ['body'],
         optional: true,
         custom: {
-          options: value => {
+          options: (value) => {
             if (!value || typeof value !== 'object') {
               return false;
             }
             return true;
-          }
-        }
+          },
+        },
       },
       ['captchaPayload']: {
         in: ['body'],
@@ -90,9 +89,8 @@ export class ExternalReaderValidator extends Validator {
         in: ['body'],
         isString: true,
         optional: true,
-      }
+      },
     });
-
   }
 
   /**
@@ -102,9 +100,8 @@ export class ExternalReaderValidator extends Validator {
     return checkSchema({
       ['readers']: {
         in: ['query'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 }
-

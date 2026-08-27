@@ -1,4 +1,3 @@
-
 import PropByPath from 'prop-by-path';
 
 import { DocumentHandler } from '../../../lib/document_handler';
@@ -23,7 +22,9 @@ export class Filler {
   /**
    * Fill.
    */
-  fill(..._args: any[]): any { throw new Error(ERROR_MESSAGE_METHOD_NOT_DEFINED); }
+  fill(..._args: any[]): any {
+    throw new Error(ERROR_MESSAGE_METHOD_NOT_DEFINED);
+  }
 
   /**
    * Handle all elements.
@@ -58,4 +59,3 @@ export class Filler {
     return objectToFill;
   }
 }
-

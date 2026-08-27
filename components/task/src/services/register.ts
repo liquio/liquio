@@ -1,4 +1,3 @@
-
 import { HttpRequest } from '../lib/http_request';
 import { getTraceId } from '@liquio/back-core';
 
@@ -15,7 +14,7 @@ const ROUTES = {
   pingWithAuth: '/test/ping_with_auth',
   postCode: '/custom/post-code',
   search: '/records/search',
-  rollback: '/rollback'
+  rollback: '/rollback',
 };
 const KEY_ID_ANCHOR = '{key-id}';
 const RECORD_ID_ANCHOR = '{record-id}';
@@ -70,7 +69,7 @@ export class RegisterService {
         'x-trace-id': getTraceId(),
         token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -92,9 +91,9 @@ export class RegisterService {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        token: this.token
+        token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -122,9 +121,9 @@ export class RegisterService {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        token: this.token
+        token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -146,9 +145,9 @@ export class RegisterService {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        token: this.token
+        token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -175,9 +174,9 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -201,9 +200,9 @@ export class RegisterService {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        token: this.token
+        token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -227,9 +226,9 @@ export class RegisterService {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        token: this.token
+        token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -253,9 +252,9 @@ export class RegisterService {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        token: this.token
+        token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -279,9 +278,9 @@ export class RegisterService {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        token: this.token
+        token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -302,7 +301,7 @@ export class RegisterService {
   async getRecords(params, accessInfo = {}) {
     if (typeof params.sort === 'undefined') {
       params.sort = {
-        created_at: 'desc'
+        created_at: 'desc',
       };
     }
 
@@ -315,9 +314,9 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -346,10 +345,10 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
       body: JSON.stringify(body),
-      timeout: this.timeout
+      timeout: this.timeout,
     };
     const response = await HttpRequest.send(requestOptions);
 
@@ -375,9 +374,9 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -400,11 +399,11 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
       json: true,
       body: data,
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -428,11 +427,11 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
       json: true,
       body: data,
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -458,9 +457,9 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -519,18 +518,20 @@ export class RegisterService {
         .filter(([, value]) => !isEmpty(value))
         .map((value) => {
           if (typeof value[1] === 'object' && OBJECT_TYPE_FILTER_NAMES.includes(value[0])) {
-            return Object.keys(value[1]).map(key => `${value[0]}[${key}]=${value[1][key]}`).join('&');
+            return Object.keys(value[1])
+              .map((key) => `${value[0]}[${key}]=${value[1][key]}`)
+              .join('&');
           }
 
           if (Array.isArray(value[1])) {
-            return value[1].map(item => `${value[0]}[]=${item}`).join('&');
+            return value[1].map((item) => `${value[0]}[]=${item}`).join('&');
           } else if (typeof value[1] === 'object') {
             return `${value[0]}=${JSON.stringify(value[1])}`;
           }
 
           return `${value[0]}=${value[1]}`;
         })
-        .join('&')
+        .join('&'),
     );
   }
 
@@ -542,14 +543,17 @@ export class RegisterService {
     try {
       const fullResponse = true;
 
-      const responseData = await HttpRequest.send({
-        url: `${this.server}:${this.port}${ROUTES.pingWithAuth}`,
-        method: HttpRequest.Methods.GET,
-        headers: {
-          'x-trace-id': getTraceId(),
-          token: this.token,
-        }
-      }, fullResponse);
+      const responseData = await HttpRequest.send(
+        {
+          url: `${this.server}:${this.port}${ROUTES.pingWithAuth}`,
+          method: HttpRequest.Methods.GET,
+          headers: {
+            'x-trace-id': getTraceId(),
+            token: this.token,
+          },
+        },
+        fullResponse,
+      );
       global.log.save('send-ping-request-to-register', responseData);
       const body = responseData && responseData.body;
       const headers = responseData && responseData.response && responseData.response.headers;
@@ -576,9 +580,9 @@ export class RegisterService {
       headers: {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
-        token: this.token
+        token: this.token,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -612,7 +616,7 @@ export class RegisterService {
   async startRollback({ keyId, timePoint }, { accessInfo = {} }) {
     const data = {
       keyId,
-      timePoint
+      timePoint,
     };
 
     const response = await HttpRequest.send({
@@ -622,11 +626,11 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
       json: true,
       body: data,
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -646,7 +650,7 @@ export class RegisterService {
         token: this.token,
         'x-trace-id': getTraceId(),
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -675,11 +679,11 @@ export class RegisterService {
         'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
         'x-trace-id': getTraceId(),
         token: this.token,
-        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64')
+        'access-info': Buffer.from(JSON.stringify(accessInfo), 'utf8').toString('base64'),
       },
       json: true,
       body: data,
-      timeout: this.timeout
+      timeout: this.timeout,
     });
 
     if (response.error) {
@@ -690,6 +694,4 @@ export class RegisterService {
 
     return this.prepareResponse(response);
   }
-
 }
-

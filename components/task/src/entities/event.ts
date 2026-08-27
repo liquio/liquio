@@ -71,4 +71,3 @@ export class EventEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

@@ -1,4 +1,3 @@
-
 import { matchedData } from 'express-validator';
 import { intersection } from 'lodash';
 import { Controller } from './controller';
@@ -55,7 +54,7 @@ export class CustomInterfaceController extends Controller {
               if (!PRESERVE_FIELDS_NO_ACCESS.includes(key)) {
                 delete interfaceSchema[key];
 
-              // Special case for showEmptyScreen: delete 'shown' property
+                // Special case for showEmptyScreen: delete 'shown' property
               } else if (key === 'showEmptyScreen') {
                 delete interfaceSchema[key].shown;
               }
@@ -68,7 +67,7 @@ export class CustomInterfaceController extends Controller {
             customInterface.interfaceSchema = JSON.stringify(interfaceSchema);
           }
         }
-      } catch(error) {
+      } catch (error) {
         global.log.save('custom-interface-schema-parse-error', { error: error.toString() }, 'error');
       }
     }
@@ -76,4 +75,3 @@ export class CustomInterfaceController extends Controller {
     this.responseData(res, customInterfaces);
   }
 }
-

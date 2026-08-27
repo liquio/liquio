@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -19,7 +18,7 @@ export class LocalizationLanguageEntity extends Entity {
    * @param {string} options.createdAt Created at.
    * @param {string} options.updatedAt Updated at.
    */
-  constructor ({ code, name, createdAt, updatedAt }) {
+  constructor({ code, name, createdAt, updatedAt }) {
     super();
 
     this.code = code;
@@ -28,4 +27,3 @@ export class LocalizationLanguageEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

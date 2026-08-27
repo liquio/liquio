@@ -50,4 +50,3 @@ export const WORKFLOW_FIXTURES = [
     workflow_template_id: 161243,
   },
 ];
-

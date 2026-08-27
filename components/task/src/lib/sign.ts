@@ -1,9 +1,8 @@
-
 import axios from 'axios';
 
 // Constants.
 const ROUTES = {
-  decrypt: '/decrypt'
+  decrypt: '/decrypt',
 };
 
 /**
@@ -45,7 +44,7 @@ export class Sign {
       method: 'POST',
       headers: { token: this.token },
       data: { data },
-      timeout: this.timeout
+      timeout: this.timeout,
     };
     try {
       const responseBody = (await axios(requestOptions))?.data;
@@ -57,7 +56,7 @@ export class Sign {
     } catch (error) {
       global.log.save('sign-service-decrypt-error', {
         error: error && error.message,
-        requestOptions: { ...requestOptions, body: '*****', headers: '*****' }
+        requestOptions: { ...requestOptions, body: '*****', headers: '*****' },
       });
       const wrapped: any = new Error(`Sign.decrypt. ${error?.toString()}`);
       wrapped.cause = error;
@@ -65,4 +64,3 @@ export class Sign {
     }
   }
 }
-

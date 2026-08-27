@@ -17,15 +17,15 @@ export class GatewayModel extends Model {
           id: { primaryKey: true, type: Sequelize.UUID, defaultValue: Sequelize.UUIDV1 },
           gateway_template_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'gateway_templates', key: 'id' }
+            references: { model: 'gateway_templates', key: 'id' },
           },
           gateway_type_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'gateway_types', key: 'id' }
+            references: { model: 'gateway_types', key: 'id' },
           },
           workflow_id: {
             type: Sequelize.UUID,
-            references: { model: 'workflows', key: 'id' }
+            references: { model: 'workflows', key: 'id' },
           },
           name: Sequelize.STRING,
           created_by: Sequelize.STRING,
@@ -33,15 +33,15 @@ export class GatewayModel extends Model {
           data: Sequelize.JSON,
           version: {
             allowNull: true,
-            type: Sequelize.STRING
-          }
+            type: Sequelize.STRING,
+          },
         },
         {
           tableName: 'gateways',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -69,8 +69,7 @@ export class GatewayModel extends Model {
       data: item.data,
       version: item.version,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 }
-

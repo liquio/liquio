@@ -17,7 +17,7 @@ export class WorkflowHistoryModel extends Model {
           id: { primaryKey: true, type: Sequelize.UUID, defaultValue: Sequelize.UUIDV1 },
           workflow_template_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'workflow_templates', key: 'id' }
+            references: { model: 'workflow_templates', key: 'id' },
           },
           user_id: Sequelize.STRING,
           data: Sequelize.TEXT,
@@ -25,14 +25,14 @@ export class WorkflowHistoryModel extends Model {
           is_current_version: Sequelize.BOOLEAN,
           meta: Sequelize.JSONB,
           name: Sequelize.STRING,
-          description: Sequelize.STRING
+          description: Sequelize.STRING,
         },
         {
           tableName: 'workflow_history',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -85,7 +85,7 @@ export class WorkflowHistoryModel extends Model {
       name: item.name,
       description: item.description,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 
@@ -103,8 +103,7 @@ export class WorkflowHistoryModel extends Model {
       is_current_version: item.isCurrentVersion,
       meta: item.meta,
       name: item.name,
-      description: item.description
+      description: item.description,
     };
   }
 }
-

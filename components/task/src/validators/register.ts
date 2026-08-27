@@ -1,4 +1,3 @@
-
 import { checkSchema } from 'express-validator';
 import { Validator } from './validator';
 
@@ -30,89 +29,89 @@ export class RegisterValidator extends Validator {
       ['key_id']: {
         in: ['params'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['offset']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['strict']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['data']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['data_like']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['data_nested']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['sort']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['search']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['search_2']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['search_3']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['search_equal']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['search_equal_2']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['search_equal_3']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['residentship_date_from']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['residentship_date_to']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['residentship_status_date_from']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['residentship_status_date_to']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['data_date_from']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['data_date_to']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['created_from']: {
         in: ['query'],
@@ -121,8 +120,8 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const data = new Date(value);
             return data instanceof Date && !isNaN(data.getTime());
-          }
-        }
+          },
+        },
       },
       ['created_to']: {
         in: ['query'],
@@ -131,8 +130,8 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const data = new Date(value);
             return data instanceof Date && !isNaN(data.getTime());
-          }
-        }
+          },
+        },
       },
       ['updated_from']: {
         in: ['query'],
@@ -141,8 +140,8 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const data = new Date(value);
             return data instanceof Date && !isNaN(data.getTime());
-          }
-        }
+          },
+        },
       },
       ['updated_to']: {
         in: ['query'],
@@ -151,8 +150,8 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const data = new Date(value);
             return data instanceof Date && !isNaN(data.getTime());
-          }
-        }
+          },
+        },
       },
     });
   }
@@ -165,11 +164,11 @@ export class RegisterValidator extends Validator {
       ['key_id']: {
         in: ['params'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['text']: {
         in: ['query'],
-        isString: true
+        isString: true,
       },
       ['limit']: {
         in: ['query'],
@@ -194,28 +193,28 @@ export class RegisterValidator extends Validator {
       ['key_id']: {
         in: ['params'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['offset']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['operation']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['record_data_like']: {
         in: ['query'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -227,19 +226,19 @@ export class RegisterValidator extends Validator {
       ['key_id']: {
         in: ['params'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['offset']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['created_from']: {
         in: ['query'],
@@ -248,8 +247,8 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const date = new Date(value);
             return date instanceof Date && !isNaN(date.getTime());
-          }
-        }
+          },
+        },
       },
       ['created_to']: {
         in: ['query'],
@@ -258,9 +257,9 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const date = new Date(value);
             return date instanceof Date && !isNaN(date.getTime());
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
@@ -272,39 +271,39 @@ export class RegisterValidator extends Validator {
       ['key_id']: {
         in: ['params'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['record_id']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['offset']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['operation']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['split_by_fields']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['split_by_fields_order']: {
         in: ['query'],
         optional: true,
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -316,23 +315,23 @@ export class RegisterValidator extends Validator {
       ['key_id']: {
         in: ['params'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['record_id']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['offset']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['created_from']: {
         in: ['query'],
@@ -341,8 +340,8 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const date = new Date(value);
             return date instanceof Date && !isNaN(date.getTime());
-          }
-        }
+          },
+        },
       },
       ['created_to']: {
         in: ['query'],
@@ -351,9 +350,9 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const date = new Date(value);
             return date instanceof Date && !isNaN(date.getTime());
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
@@ -365,44 +364,44 @@ export class RegisterValidator extends Validator {
       ['key_id']: {
         in: ['params'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['offset']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['strict']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['data_like']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['control']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['control_index']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['search']: {
         in: ['query'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -413,24 +412,24 @@ export class RegisterValidator extends Validator {
     return checkSchema({
       ['key_ids']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['offset']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['excludeList']: {
         in: ['query'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -441,8 +440,8 @@ export class RegisterValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -454,33 +453,33 @@ export class RegisterValidator extends Validator {
       ['keyId']: {
         in: ['body'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['registerId']: {
         in: ['body'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['data']: {
         in: ['body'],
         custom: {
-          options: value => {
+          options: (value) => {
             if (!value || typeof value !== 'object') {
               return false;
             }
             return true;
-          }
-        }
+          },
+        },
       },
       ['meta']: {
-        in: ['body']
+        in: ['body'],
       },
       ['signature']: {
         in: ['body'],
         custom: {
-          options: value => value === null || typeof value === 'string' || typeof value === 'undefined'
-        }
-      }
+          options: (value) => value === null || typeof value === 'string' || typeof value === 'undefined',
+        },
+      },
     });
   }
 
@@ -491,38 +490,38 @@ export class RegisterValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['keyId']: {
         in: ['body'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['registerId']: {
         in: ['body'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['data']: {
         in: ['body'],
         custom: {
-          options: value => {
+          options: (value) => {
             if (!value || typeof value !== 'object') {
               return false;
             }
             return true;
-          }
-        }
+          },
+        },
       },
       ['meta']: {
-        in: ['body']
+        in: ['body'],
       },
       ['signature']: {
         in: ['body'],
         custom: {
-          options: value => value === null || typeof value === 'string' || typeof value === 'undefined'
-        }
-      }
+          options: (value) => value === null || typeof value === 'string' || typeof value === 'undefined',
+        },
+      },
     });
   }
 
@@ -533,8 +532,8 @@ export class RegisterValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -546,7 +545,7 @@ export class RegisterValidator extends Validator {
       ['keyId']: {
         in: ['body'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['timePoint']: {
         in: ['body'],
@@ -554,9 +553,9 @@ export class RegisterValidator extends Validator {
           options: (value) => {
             const timeRegExp = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(:(\d{2}).(\d{3}))?Z$/;
             return timeRegExp.test(value);
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
@@ -567,8 +566,8 @@ export class RegisterValidator extends Validator {
     return checkSchema({
       ['rollbackId']: {
         in: ['params'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -579,19 +578,17 @@ export class RegisterValidator extends Validator {
     return checkSchema({
       ['historyId']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['recordId']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['keyId']: {
         in: ['body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
-
 }
-

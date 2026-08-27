@@ -24,18 +24,18 @@ export class GatewayTemplateModel extends Model {
         {
           gateway_type_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'gateway_types', key: 'id' }
+            references: { model: 'gateway_types', key: 'id' },
           },
           name: Sequelize.STRING,
           description: Sequelize.STRING,
-          json_schema: Sequelize.TEXT
+          json_schema: Sequelize.TEXT,
         },
         {
           tableName: 'gateway_templates',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -43,7 +43,7 @@ export class GatewayTemplateModel extends Model {
       PgPubSub.getInstance().subscribe('gateway_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache.gatewayTemplate?.findById || DEFAULT_CACHE_TTL
+        findById: global.config.cache.gatewayTemplate?.findById || DEFAULT_CACHE_TTL,
       };
 
       GatewayTemplateModel.singleton = this;
@@ -61,7 +61,7 @@ export class GatewayTemplateModel extends Model {
     const { data: gatewayTemplate } = await RedisClient.getOrSet(
       RedisClient.createKey('gateway_template', 'findById', id),
       () => this.model.findByPk(id),
-      this.cacheTtl.findById
+      this.cacheTtl.findById,
     );
 
     return this.prepareEntity(gatewayTemplate);
@@ -91,7 +91,7 @@ export class GatewayTemplateModel extends Model {
       description: item.description,
       jsonSchema: jsonSchema,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 
@@ -108,7 +108,7 @@ export class GatewayTemplateModel extends Model {
       description: item.description,
       json_schema: JSON.stringify(item.jsonSchema),
       created_at: item.createdAt,
-      updated_at: item.updatedAt
+      updated_at: item.updatedAt,
     };
   }
 

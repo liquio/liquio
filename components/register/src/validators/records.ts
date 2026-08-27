@@ -66,7 +66,7 @@ export default class RecordsValidator extends Validator {
       query('csv_map').optional(),
       query('no_limit').isBoolean().toBoolean().optional(),
       query('is_search_string_array').optional(),
-      body('rawSequelizeParams').optional().isObject()
+      body('rawSequelizeParams').optional().isObject(),
     ];
   }
 
@@ -115,7 +115,7 @@ export default class RecordsValidator extends Validator {
       body('csv_map').optional(),
       body('no_limit').isBoolean().toBoolean().optional(),
       body('is_search_string_array').optional(),
-      body('rawSequelizeParams').optional().isObject()
+      body('rawSequelizeParams').optional().isObject(),
     ];
   }
 
@@ -129,7 +129,7 @@ export default class RecordsValidator extends Validator {
       query('atu_region').isString(),
       query('atu_city').isString(),
       query('atu_street').isString().optional(),
-      query('key_ids')
+      query('key_ids'),
     ];
   }
 
@@ -202,7 +202,7 @@ export default class RecordsValidator extends Validator {
       body('is_encrypted').isBoolean().toBoolean().optional(),
       body('additional_filter').optional(),
       body('additionalFilter').optional(),
-      body('additionalFilterData').optional()
+      body('additionalFilterData').optional(),
     ];
   }
 
@@ -228,7 +228,7 @@ export default class RecordsValidator extends Validator {
       query('split_by_fields').isBoolean().toBoolean().optional(),
       query('split_by_fields_order').isString().optional(),
       query('offset').isInt().toInt().optional(),
-      query('limit').isInt().toInt().optional()
+      query('limit').isInt().toInt().optional(),
     ];
   }
 
@@ -253,7 +253,7 @@ export default class RecordsValidator extends Validator {
       body('updatedTo').optional(),
       body('updatedBy').optional(),
       body('person').optional(),
-      body('signature').optional()
+      body('signature').optional(),
     ];
   }
 
@@ -269,7 +269,7 @@ export default class RecordsValidator extends Validator {
       body('background').optional(),
       body('isCalculateSearchStrings').optional().isBoolean(),
       body('isReturnCreatedRecords').optional().isBoolean(),
-      body('updateByDataField').optional().isString()
+      body('updateByDataField').optional().isString(),
     ];
   }
 
@@ -283,7 +283,7 @@ export default class RecordsValidator extends Validator {
       body('keyId').isInt().toInt(),
       body('recordsData').isArray(),
       body('person').isObject(),
-      body('isDisableHooks').isBoolean().optional()
+      body('isDisableHooks').isBoolean().optional(),
     ];
   }
 
@@ -304,7 +304,7 @@ export default class RecordsValidator extends Validator {
       body('registerId').isInt().toInt(),
       body('keyIds.original').isInt(),
       body('keyIds.possible').isInt().optional(),
-      body('records').optional()
+      body('records').optional(),
     ];
   }
 
@@ -318,7 +318,7 @@ export default class RecordsValidator extends Validator {
       body('keyIds.original').isInt(),
       body('keyIds.possible').isInt().optional(),
       body('records').optional(),
-      body('options').optional()
+      body('options').optional(),
     ];
   }
 
@@ -350,7 +350,7 @@ export default class RecordsValidator extends Validator {
       body('updatedTo').optional(),
       body('updatedBy').optional(),
       body('person').optional(),
-      body('signature').optional()
+      body('signature').optional(),
     ];
   }
 
@@ -365,7 +365,7 @@ export default class RecordsValidator extends Validator {
       body('properties').isArray(),
       body('properties.*.path').isString(),
       body('properties.*.previousValue').custom((value) => ['string', 'number'].includes(typeof value)),
-      body('properties.*.value').custom((value) => ['string', 'number'].includes(typeof value))
+      body('properties.*.value').custom((value) => ['string', 'number'].includes(typeof value)),
     ];
   }
 
@@ -387,7 +387,7 @@ export default class RecordsValidator extends Validator {
       query('text').isString(),
       query('search_key').isString().optional(),
       query('limit').isString().optional(),
-      query('offset').isString().optional()
+      query('offset').isString().optional(),
     ];
   }
 }

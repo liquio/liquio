@@ -1,10 +1,9 @@
-
 import { Business } from './business';
 import { WorkflowTemplateModel } from '../models/workflow_template';
 import { Sandbox } from '../lib/sandbox';
 
 const unitIdToTemplateCategoryIds = {
-  1000770: [1000],  // еРезидент => Послуги для еРезидентів
+  1000770: [1000], // еРезидент => Послуги для еРезидентів
 };
 
 /**
@@ -49,7 +48,7 @@ export class WorkflowTemplateBusiness extends Business {
         workflowTemplate.data.entryTaskTemplateIds || [],
         user,
         unitIds,
-        units
+        units,
       );
     }
 
@@ -71,12 +70,7 @@ export class WorkflowTemplateBusiness extends Business {
       return;
     }
 
-    workflowTemplate.entryTaskTemplateIds = this.prepareEntryTaskTemplateIds(
-      workflowTemplate.data.entryTaskTemplateIds || [],
-      user,
-      unitIds,
-      units
-    );
+    workflowTemplate.entryTaskTemplateIds = this.prepareEntryTaskTemplateIds(workflowTemplate.data.entryTaskTemplateIds || [], user, unitIds, units);
 
     return workflowTemplate;
   }
@@ -97,16 +91,14 @@ export class WorkflowTemplateBusiness extends Business {
       for (const taskTemplateId of entryTaskTemplateIds) {
         if (typeof taskTemplateId === 'object' && typeof taskTemplateId.id !== 'undefined') {
           try {
-            const id = this.sandbox.evalWithArgs(
-              taskTemplateId.id,
-              [user, unitIds, units],
-              { meta: { fn: 'entryTaskTemplateIds.id', taskTemplateId: taskTemplateId.id } },
-            );
+            const id = this.sandbox.evalWithArgs(taskTemplateId.id, [user, unitIds, units], {
+              meta: { fn: 'entryTaskTemplateIds.id', taskTemplateId: taskTemplateId.id },
+            });
             if (id) {
               preparedEntryTaskTemplateIds.push({
                 id,
                 name: taskTemplateId.name || '',
-                hidden: taskTemplateId.hidden || false
+                hidden: taskTemplateId.hidden || false,
               });
             }
           } catch (error) {
@@ -114,13 +106,13 @@ export class WorkflowTemplateBusiness extends Business {
 
             preparedEntryTaskTemplateIds.push({
               name: taskTemplateId.name || '',
-              error: 'Invalid entry task template function.'
+              error: 'Invalid entry task template function.',
             });
           }
         } else {
           preparedEntryTaskTemplateIds.push({
             id: taskTemplateId,
-            name: ''
+            name: '',
           });
         }
       }
@@ -129,4 +121,3 @@ export class WorkflowTemplateBusiness extends Business {
     return preparedEntryTaskTemplateIds;
   }
 }
-

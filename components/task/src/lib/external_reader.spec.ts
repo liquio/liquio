@@ -25,7 +25,7 @@ global.config = {
     urlTemplate: 'https://template.example.com/<service>/<method>',
     basicAuthToken: 'Bearer test-token',
     timeout: 30000,
-  }
+  },
 };
 
 global.log = {
@@ -45,19 +45,19 @@ describe('ExternalReader', () => {
   beforeEach(() => {
     // Clear singleton between tests
     (ExternalReader as any).singleton = null;
-    
+
     // Clear all mocks
     jest.clearAllMocks();
-    
+
     // Setup mocks
     mockStorageService = {
       provider: {
         uploadFileFromStream: jest.fn(),
         deleteFile: jest.fn(),
-      }
+      },
     };
     (StorageService as any).mockImplementation(() => mockStorageService);
-    
+
     mockDocumentAttachmentModel = {
       deleteByDocumentId: jest.fn(),
       getByDocumentIdAndMeta: jest.fn(),
@@ -65,15 +65,15 @@ describe('ExternalReader', () => {
       create: jest.fn(),
     };
     (DocumentAttachmentModel as any).mockImplementation(() => mockDocumentAttachmentModel);
-    
+
     mockSandbox = {
       evalWithArgs: jest.fn(),
     };
     (Sandbox as any).mockImplementation(() => mockSandbox);
-    
+
     // Clear nock
     nock.cleanAll();
-    
+
     // Create instance
     externalReader = new ExternalReader();
   });
@@ -85,7 +85,7 @@ describe('ExternalReader', () => {
   describe('constructor', () => {
     it('should create singleton instance with config', () => {
       const reader = new ExternalReader();
-      
+
       expect(reader.url).toBe('https://external-reader.example.com');
       expect(reader.urlTemplate).toBe('https://template.example.com/<service>/<method>');
       expect(reader.basicAuthToken).toBe('Bearer test-token');
@@ -101,7 +101,7 @@ describe('ExternalReader', () => {
     it('should return same singleton instance on multiple calls', () => {
       const reader1 = new ExternalReader();
       const reader2 = new ExternalReader();
-      
+
       expect(reader1).toBe(reader2);
     });
 
@@ -112,9 +112,9 @@ describe('ExternalReader', () => {
         basicAuthToken: 'Custom-Token',
         timeout: 60000,
       };
-      
+
       const reader = new ExternalReader(customConfig);
-      
+
       expect(reader.url).toBe('https://custom.example.com');
       expect(reader.basicAuthToken).toBe('Custom-Token');
       expect(reader.timeout).toBe(60000);
@@ -124,10 +124,8 @@ describe('ExternalReader', () => {
   describe('getCaptchaChallenge', () => {
     it('should get captcha challenge successfully', async () => {
       const mockResponse = { challenge: 'test-challenge-123' };
-      
-      nock('https://external-reader.example.com')
-        .get('/captcha/test-service/test-method')
-        .reply(200, mockResponse);
+
+      nock('https://external-reader.example.com').get('/captcha/test-service/test-method').reply(200, mockResponse);
 
       const result = await externalReader.getCaptchaChallenge('test-service', 'test-method');
 
@@ -139,13 +137,12 @@ describe('ExternalReader', () => {
         .get('/captcha/test-service/test-method')
         .reply(503, { error: { message: 'Captcha service unavailable' } });
 
-      await expect(externalReader.getCaptchaChallenge('test-service', 'test-method'))
-        .rejects.toThrow();
+      await expect(externalReader.getCaptchaChallenge('test-service', 'test-method')).rejects.toThrow();
     });
 
     it('should include proper headers in captcha request', async () => {
       const mockResponse = { challenge: 'test-challenge' };
-      
+
       const scope = nock('https://external-reader.example.com')
         .get('/captcha/test-service/test-method')
         .matchHeader('Authorization', 'Bearer test-token')
@@ -169,14 +166,10 @@ describe('ExternalReader', () => {
 
     it('should get data successfully with url config', async () => {
       const mockResponse = { data: { items: [] }, success: true };
-      
-      nock('https://external-reader.example.com')
-        .post('/test-service/test-method')
-        .reply(200, mockResponse, { 'returned-mock': 'test-mock' });
 
-      const result = await externalReader.getData(
-        service, method, captchaPayload, oauthToken, userFilter, nonUserFilter, extraParams
-      );
+      nock('https://external-reader.example.com').post('/test-service/test-method').reply(200, mockResponse, { 'returned-mock': 'test-mock' });
+
+      const result = await externalReader.getData(service, method, captchaPayload, oauthToken, userFilter, nonUserFilter, extraParams);
 
       expect(result).toEqual(mockResponse);
     });
@@ -190,23 +183,19 @@ describe('ExternalReader', () => {
         timeout: 30000,
       };
       const readerWithTemplate = new ExternalReader(configWithoutUrl);
-      
-      const mockResponse = { data: { items: [] } };
-      
-      nock('https://template.example.com')
-        .post('/test-service/test-method')
-        .reply(200, mockResponse);
 
-      const result = await readerWithTemplate.getData(
-        service, method, captchaPayload, oauthToken, userFilter, nonUserFilter, extraParams
-      );
+      const mockResponse = { data: { items: [] } };
+
+      nock('https://template.example.com').post('/test-service/test-method').reply(200, mockResponse);
+
+      const result = await readerWithTemplate.getData(service, method, captchaPayload, oauthToken, userFilter, nonUserFilter, extraParams);
 
       expect(result).toEqual(mockResponse);
     });
 
     it('should include all required headers', async () => {
       const mockResponse = { data: { items: [] } };
-      
+
       const scope = nock('https://external-reader.example.com')
         .post('/test-service/test-method')
         .matchHeader('Authorization', 'Bearer test-token')
@@ -217,8 +206,15 @@ describe('ExternalReader', () => {
         .reply(200, mockResponse);
 
       await externalReader.getData(
-        service, method, captchaPayload, oauthToken, userFilter, nonUserFilter, 
-        extraParams, 'mock1,mock2', 'access-token-123'
+        service,
+        method,
+        captchaPayload,
+        oauthToken,
+        userFilter,
+        nonUserFilter,
+        extraParams,
+        'mock1,mock2',
+        'access-token-123',
       );
 
       expect(scope.isDone()).toBe(true);
@@ -226,18 +222,16 @@ describe('ExternalReader', () => {
 
     it('should include request body with all parameters', async () => {
       const mockResponse = { data: { items: [] } };
-      
+
       let capturedRequestBody;
       nock('https://external-reader.example.com')
         .post('/test-service/test-method')
-        .reply(function(uri, requestBody) {
+        .reply(function (uri, requestBody) {
           capturedRequestBody = requestBody;
           return [200, mockResponse];
         });
 
-      await externalReader.getData(
-        service, method, captchaPayload, oauthToken, userFilter, nonUserFilter, extraParams
-      );
+      await externalReader.getData(service, method, captchaPayload, oauthToken, userFilter, nonUserFilter, extraParams);
 
       expect(capturedRequestBody).toEqual({
         userFilter,
@@ -249,15 +243,21 @@ describe('ExternalReader', () => {
 
     it('should limit custom timeout to 5 minutes', async () => {
       const mockResponse = { data: { items: [] } };
-      
-      nock('https://external-reader.example.com')
-        .post('/test-service/test-method')
-        .reply(200, mockResponse);
+
+      nock('https://external-reader.example.com').post('/test-service/test-method').reply(200, mockResponse);
 
       // Custom timeout over 5 minutes should be limited to 5 minutes
       await externalReader.getData(
-        service, method, captchaPayload, oauthToken, userFilter, nonUserFilter, 
-        extraParams, undefined, undefined, 400000 // 6.67 minutes
+        service,
+        method,
+        captchaPayload,
+        oauthToken,
+        userFilter,
+        nonUserFilter,
+        extraParams,
+        undefined,
+        undefined,
+        400000, // 6.67 minutes
       );
 
       // Test passes if no error is thrown and request completes
@@ -268,8 +268,7 @@ describe('ExternalReader', () => {
         .post('/test-service/test-method')
         .reply(504, { error: { message: 'Socket timeout' } });
 
-      await expect(externalReader.getData(service, method, captchaPayload, oauthToken))
-        .rejects.toThrow();
+      await expect(externalReader.getData(service, method, captchaPayload, oauthToken)).rejects.toThrow();
     });
 
     it('should handle ECONNRESET error', async () => {
@@ -277,8 +276,7 @@ describe('ExternalReader', () => {
         .post('/test-service/test-method')
         .reply(502, { error: { message: 'Connection reset' } });
 
-      await expect(externalReader.getData(service, method, captchaPayload, oauthToken))
-        .rejects.toThrow();
+      await expect(externalReader.getData(service, method, captchaPayload, oauthToken)).rejects.toThrow();
     });
 
     it('should handle socket hang up error', async () => {
@@ -286,8 +284,7 @@ describe('ExternalReader', () => {
         .post('/test-service/test-method')
         .reply(503, { error: { message: 'socket hang up' } });
 
-      await expect(externalReader.getData(service, method, captchaPayload, oauthToken))
-        .rejects.toThrow();
+      await expect(externalReader.getData(service, method, captchaPayload, oauthToken)).rejects.toThrow();
 
       // Note: The socket hang up error logging might not be called in all cases
       // depending on the exact error handling logic
@@ -310,17 +307,15 @@ describe('ExternalReader', () => {
 
     it('should append returned mock header', async () => {
       const mockResponse = { data: { items: [] } };
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+
       const { appendTraceMeta } = require('@liquio/back-core');
-      
-      nock('https://external-reader.example.com')
-        .post('/test-service/test-method')
-        .reply(200, mockResponse, { 'returned-mock': 'test-mock' });
+
+      nock('https://external-reader.example.com').post('/test-service/test-method').reply(200, mockResponse, { 'returned-mock': 'test-mock' });
 
       await externalReader.getData(service, method, captchaPayload, oauthToken);
 
-      expect(appendTraceMeta).toHaveBeenCalledWith({ 
-        returnedMocksHeader: 'test-mock' 
+      expect(appendTraceMeta).toHaveBeenCalledWith({
+        returnedMocksHeader: 'test-mock',
       });
     });
   });
@@ -339,37 +334,39 @@ describe('ExternalReader', () => {
       // Mock the getData method to avoid actual HTTP calls
       jest.spyOn(externalReader, 'getData').mockResolvedValue({
         data: { items: ['item1', 'item2'] },
-        success: true
+        success: true,
       });
     });
 
     it('should get data by user successfully', async () => {
-      const result = await externalReader.getDataByUser(
-        service, method, captchaPayload, oauthToken, user, nonUserFilter, 
-        extraParams, userUnits
-      );
+      const result = await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParams, userUnits);
 
       expect(externalReader.getData).toHaveBeenCalledWith(
-        service, method, captchaPayload, oauthToken,
+        service,
+        method,
+        captchaPayload,
+        oauthToken,
         {
           ipn: user.ipn,
           edrpou: user.edrpou,
           userUnits,
-          userServices: user.services
+          userServices: user.services,
         },
-        nonUserFilter, extraParams, undefined, undefined, undefined
+        nonUserFilter,
+        extraParams,
+        undefined,
+        undefined,
+        undefined,
       );
-      
+
       expect(result).toEqual({
         data: { items: ['item1', 'item2'] },
-        success: true
+        success: true,
       });
     });
 
     it('should log response data', async () => {
-      await externalReader.getDataByUser(
-        service, method, captchaPayload, oauthToken, user
-      );
+      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
 
       expect(global.log.save).toHaveBeenCalledWith(
         'external-reader-raw-data-response',
@@ -379,11 +376,11 @@ describe('ExternalReader', () => {
           userFilter: expect.objectContaining({
             ipn: user.ipn,
             edrpou: user.edrpou,
-            userServices: '*****' // Should be hidden
+            userServices: '*****', // Should be hidden
           }),
           nonUserFilter: {},
-          data: expect.any(String)
-        })
+          data: expect.any(String),
+        }),
       );
     });
 
@@ -391,15 +388,13 @@ describe('ExternalReader', () => {
       const longData = { data: 'x'.repeat(200000) }; // Very long data
       externalReader.getData.mockResolvedValue(longData);
 
-      await externalReader.getDataByUser(
-        service, method, captchaPayload, oauthToken, user
-      );
+      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
 
       expect(global.log.save).toHaveBeenCalledWith(
         'external-reader-raw-data-response',
         expect.objectContaining({
-          data: expect.stringContaining('<...cut>')
-        })
+          data: expect.stringContaining('<...cut>'),
+        }),
       );
     });
 
@@ -408,10 +403,10 @@ describe('ExternalReader', () => {
         data: {
           attachments: [
             { name: 'file1.pdf', data: 'base64data1', description: 'File 1' },
-            { name: 'file2.pdf', data: 'base64data2', description: 'File 2' }
+            { name: 'file2.pdf', data: 'base64data2', description: 'File 2' },
           ],
-          items: []
-        }
+          items: [],
+        },
       };
 
       beforeEach(() => {
@@ -420,7 +415,7 @@ describe('ExternalReader', () => {
           id: 'file-id-123',
           name: 'file1.pdf',
           contentType: 'application/pdf',
-          contentLength: 1024
+          contentLength: 1024,
         });
         mockDocumentAttachmentModel.create.mockResolvedValue({ id: 'attachment-id' });
       });
@@ -429,16 +424,14 @@ describe('ExternalReader', () => {
         const extraParamsWithSave = {
           ...extraParams,
           isSaveAttachments: true,
-          documentId: 'doc-123'
+          documentId: 'doc-123',
         };
 
-        const result = await externalReader.getDataByUser(
-          service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave
-        );
+        const result = await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave);
 
         expect(mockStorageService.provider.uploadFileFromStream).toHaveBeenCalledTimes(2);
         expect(mockDocumentAttachmentModel.create).toHaveBeenCalledTimes(2);
-        
+
         // Base64 data should be replaced
         expect(result.data.attachments[0].data).toBe('****');
         expect(result.data.attachments[1].data).toBe('****');
@@ -448,12 +441,10 @@ describe('ExternalReader', () => {
         const extraParamsWithDelete = {
           isSaveAttachments: true,
           documentId: 'doc-123',
-          deleteOldAttachmentsBeforeSave: true
+          deleteOldAttachmentsBeforeSave: true,
         };
 
-        await externalReader.getDataByUser(
-          service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithDelete
-        );
+        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithDelete);
 
         expect(mockDocumentAttachmentModel.deleteByDocumentId).toHaveBeenCalledWith('doc-123');
       });
@@ -461,9 +452,9 @@ describe('ExternalReader', () => {
       it('should rewrite attachments when isRewriteAttachmentsOnEachRequest is enabled', async () => {
         const oldAttachments = [
           { id: 'old-1', link: 'old-file-1' },
-          { id: 'old-2', link: 'old-file-2' }
+          { id: 'old-2', link: 'old-file-2' },
         ];
-        
+
         mockDocumentAttachmentModel.getByDocumentIdAndMeta.mockResolvedValue(oldAttachments);
         mockStorageService.provider.deleteFile.mockResolvedValue();
         mockDocumentAttachmentModel.delete.mockResolvedValue();
@@ -471,76 +462,63 @@ describe('ExternalReader', () => {
         const extraParamsWithRewrite = {
           isSaveAttachments: true,
           documentId: 'doc-123',
-          isRewriteAttachmentsOnEachRequest: true
+          isRewriteAttachmentsOnEachRequest: true,
         };
 
-        await externalReader.getDataByUser(
-          service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithRewrite
-        );
+        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithRewrite);
 
-        expect(mockDocumentAttachmentModel.getByDocumentIdAndMeta).toHaveBeenCalledWith(
-          'doc-123',
-          { fromExternalReader: `${service}.${method}` }
-        );
+        expect(mockDocumentAttachmentModel.getByDocumentIdAndMeta).toHaveBeenCalledWith('doc-123', { fromExternalReader: `${service}.${method}` });
         expect(mockStorageService.provider.deleteFile).toHaveBeenCalledTimes(2);
         expect(mockDocumentAttachmentModel.delete).toHaveBeenCalledTimes(2);
       });
 
       it('should prepare attachments with sandbox when prepareAttachments is provided', async () => {
-        mockSandbox.evalWithArgs.mockReturnValue([
-          { name: 'prepared-file.pdf', data: 'prepared-data' }
-        ]);
+        mockSandbox.evalWithArgs.mockReturnValue([{ name: 'prepared-file.pdf', data: 'prepared-data' }]);
 
         const extraParamsWithPrepare = {
           isSaveAttachments: true,
           documentId: 'doc-123',
-          prepareAttachments: '(args) => { return args.attachments; }'
+          prepareAttachments: '(args) => { return args.attachments; }',
         };
 
-        await externalReader.getDataByUser(
-          service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithPrepare
-        );
+        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithPrepare);
 
         expect(mockSandbox.evalWithArgs).toHaveBeenCalledWith(
           extraParamsWithPrepare.prepareAttachments,
           expect.arrayContaining([
             expect.objectContaining({
               attachments: expect.any(Array),
-              filters: nonUserFilter
-            })
+              filters: nonUserFilter,
+            }),
           ]),
-          { meta: { fn: 'getDataByUser.prepareAttachments', service, method } }
+          { meta: { fn: 'getDataByUser.prepareAttachments', service, method } },
         );
       });
 
       it('should handle attachment upload errors', async () => {
-        mockStorageService.provider.uploadFileFromStream.mockRejectedValue(
-          new Error('Upload failed')
-        );
+        mockStorageService.provider.uploadFileFromStream.mockRejectedValue(new Error('Upload failed'));
 
         const extraParamsWithSave = {
           isSaveAttachments: true,
-          documentId: 'doc-123'
+          documentId: 'doc-123',
         };
 
-        await expect(externalReader.getDataByUser(
-          service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave
-        )).rejects.toThrow('ExternalReader.getDataByUser. Cannot upload attachment to file storage. Error: Upload failed');
+        await expect(
+          externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave),
+        ).rejects.toThrow('ExternalReader.getDataByUser. Cannot upload attachment to file storage. Error: Upload failed');
       });
 
       it('should handle database insertion errors', async () => {
-        mockDocumentAttachmentModel.create.mockRejectedValue(
-          new Error('DB insert failed')
-        );
+        mockDocumentAttachmentModel.create.mockRejectedValue(new Error('DB insert failed'));
 
         const extraParamsWithSave = {
           isSaveAttachments: true,
-          documentId: 'doc-123'
+          documentId: 'doc-123',
         };
 
-        await expect(externalReader.getDataByUser(
-          service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave
-        )).rejects.toThrow('ExternalReader.getDataByUser. Cannot insert attachment to DB. Error: DB insert failed');
+        await expect(
+          externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave),
+        ).rejects.toThrow('ExternalReader.getDataByUser. Cannot insert attachment to DB. Error: DB insert failed');
       });
     });
   });
@@ -548,7 +526,7 @@ describe('ExternalReader', () => {
   describe('getMocksKeysByUser', () => {
     beforeEach(() => {
       (global.httpClient.request as any).mockResolvedValue({
-        json: jest.fn().mockResolvedValue({ data: { mocks: ['mock1', 'mock2'] } })
+        json: jest.fn().mockResolvedValue({ data: { mocks: ['mock1', 'mock2'] } }),
       });
     });
 
@@ -566,7 +544,7 @@ describe('ExternalReader', () => {
           },
         },
         'external-reader-get-mocks-keys-by-user',
-        { isNonSensitiveDataRegime: true }
+        { isNonSensitiveDataRegime: true },
       );
 
       expect(result).toEqual({ mocks: ['mock1', 'mock2'] });
@@ -579,7 +557,7 @@ describe('ExternalReader', () => {
         'https://external-reader.example.com/mocks-keys-by-user',
         expect.any(Object),
         expect.any(String),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -590,7 +568,7 @@ describe('ExternalReader', () => {
         'https://external-reader.example.com/mocks-keys-by-user',
         expect.any(Object),
         expect.any(String),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -598,10 +576,8 @@ describe('ExternalReader', () => {
   describe('deleteCacheByUser', () => {
     it('should delete cache by user IPN', async () => {
       const mockResponse = { keys_deleted: 5 };
-      
-      nock('https://external-reader.example.com')
-        .delete('/cache/1234567890')
-        .reply(200, mockResponse);
+
+      nock('https://external-reader.example.com').delete('/cache/1234567890').reply(200, mockResponse);
 
       const result = await externalReader.deleteCacheByUser('oauth-token', { ipn: '1234567890' });
 
@@ -610,10 +586,8 @@ describe('ExternalReader', () => {
 
     it('should delete cache by user EDRPOU when IPN not available', async () => {
       const mockResponse = { keys_deleted: 3 };
-      
-      nock('https://external-reader.example.com')
-        .delete('/cache/12345678')
-        .reply(200, mockResponse);
+
+      nock('https://external-reader.example.com').delete('/cache/12345678').reply(200, mockResponse);
 
       const result = await externalReader.deleteCacheByUser('oauth-token', { edrpou: '12345678' });
 
@@ -622,7 +596,7 @@ describe('ExternalReader', () => {
 
     it('should include proper headers in delete cache request', async () => {
       const mockResponse = { keys_deleted: 1 };
-      
+
       const scope = nock('https://external-reader.example.com')
         .delete('/cache/1234567890')
         .matchHeader('Authorization', 'Bearer test-token')
@@ -639,10 +613,8 @@ describe('ExternalReader', () => {
   describe('getCaptchProviders', () => {
     it('should get captcha providers successfully', async () => {
       const mockResponse = { isEnabledFor: ['service1', 'service2'] };
-      
-      nock('https://external-reader.example.com')
-        .get('/captcha/providers/list')
-        .reply(200, mockResponse);
+
+      nock('https://external-reader.example.com').get('/captcha/providers/list').reply(200, mockResponse);
 
       const result = await externalReader.getCaptchProviders();
 
@@ -651,7 +623,7 @@ describe('ExternalReader', () => {
 
     it('should include proper headers in captcha providers request', async () => {
       const mockResponse = { isEnabledFor: [] };
-      
+
       const scope = nock('https://external-reader.example.com')
         .get('/captcha/providers/list')
         .matchHeader('Authorization', 'Bearer test-token')
@@ -665,7 +637,6 @@ describe('ExternalReader', () => {
   });
 
   describe('helper methods', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { appendTraceMeta, getTraceMeta } = require('@liquio/back-core');
 
     beforeEach(() => {
@@ -680,7 +651,7 @@ describe('ExternalReader', () => {
         externalReader.appendReturnedMocksHeader('mock1');
 
         expect(appendTraceMeta).toHaveBeenCalledWith({
-          returnedMocksHeader: 'mock1'
+          returnedMocksHeader: 'mock1',
         });
       });
 
@@ -693,7 +664,7 @@ describe('ExternalReader', () => {
         externalReader.appendReturnedMocksHeader('mock2');
 
         expect(appendTraceMeta).toHaveBeenCalledWith({
-          returnedMocksHeader: 'existing-mock|mock2'
+          returnedMocksHeader: 'existing-mock|mock2',
         });
       });
     });
@@ -703,7 +674,7 @@ describe('ExternalReader', () => {
         externalReader.appendExternalReaderErrors('Error message');
 
         expect(appendTraceMeta).toHaveBeenCalledWith({
-          externalReaderErrors: 'Error message'
+          externalReaderErrors: 'Error message',
         });
       });
 
@@ -716,7 +687,7 @@ describe('ExternalReader', () => {
         externalReader.appendExternalReaderErrors('New error');
 
         expect(appendTraceMeta).toHaveBeenCalledWith({
-          externalReaderErrors: 'Existing error|New error'
+          externalReaderErrors: 'Existing error|New error',
         });
       });
 
@@ -725,10 +696,10 @@ describe('ExternalReader', () => {
 
         externalReader.appendExternalReaderErrors('Error message');
 
-        expect(global.log.save).toHaveBeenCalledWith(
-          'external-reader-errors|trace-meta-not-found',
-          { traceId: 'test-trace-id', externalReaderError: 'Error message' }
-        );
+        expect(global.log.save).toHaveBeenCalledWith('external-reader-errors|trace-meta-not-found', {
+          traceId: 'test-trace-id',
+          externalReaderError: 'Error message',
+        });
       });
     });
   });

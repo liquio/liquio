@@ -1,4 +1,3 @@
-
 import { HttpRequest } from './http_request';
 import { getTraceId } from '@liquio/back-core';
 
@@ -35,7 +34,7 @@ export class SystemNotifier {
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        Authorization: `Basic ${Buffer.from(`${global.config.system_notifier.email.user}:${global.config.system_notifier.email.password}`, 'utf8').toString('base64')}`
+        Authorization: `Basic ${Buffer.from(`${global.config.system_notifier.email.user}:${global.config.system_notifier.email.password}`, 'utf8').toString('base64')}`,
       };
       this.emails = global.config.system_notifier.email.emails;
       this.emailSubject = global.config.system_notifier.email.subject;
@@ -52,7 +51,7 @@ export class SystemNotifier {
   async sendEmails({ workflowId, workflowTemplateName, workflowErrorsSubscribers = [], taskTemplateId, taskTemplateName, error }) {
     try {
       // Define emails to send message. Concat workflow errors subscribers and emails from config.
-      const workflowErrorsSubscribersEmails = workflowErrorsSubscribers.map(({email}) => email);
+      const workflowErrorsSubscribersEmails = workflowErrorsSubscribers.map(({ email }) => email);
       const emailsToProceed = [...workflowErrorsSubscribersEmails, ...this.emails];
 
       // Define request body.
@@ -63,7 +62,7 @@ export class SystemNotifier {
           .replace('{url}', this.adminUrl + '/workflow/journal/' + workflowId)
           .replace('{taskTemplateId}', taskTemplateId)
           .replace('{taskTemplateName}', taskTemplateName)
-          .replace('{error}', error)
+          .replace('{error}', error),
       };
       const body = JSON.stringify(bodyObject);
 
@@ -75,16 +74,16 @@ export class SystemNotifier {
         method: HttpRequest.Methods.POST,
         headers: {
           ...this.headers,
-          'x-trace-id': getTraceId()
+          'x-trace-id': getTraceId(),
         },
         body,
-        timeout: this.emailTimeout
+        timeout: this.emailTimeout,
       });
       global.log.save('system-notifier-email-sending-response', response);
 
       return {
         data: bodyObject,
-        response
+        response,
       };
     } catch (error) {
       global.log.save('system-notifier-email-sending-error', error.message, 'error');
@@ -92,4 +91,3 @@ export class SystemNotifier {
     }
   }
 }
-

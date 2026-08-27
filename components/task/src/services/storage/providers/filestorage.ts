@@ -1,4 +1,3 @@
-
 import { Provider } from './provider';
 import { FileStorage } from '../../../lib/filestorage';
 
@@ -295,4 +294,3 @@ export class FileStorageProvider extends Provider {
     return this.fileStorage.downloadFileAsicsRequestOptions(fileId);
   }
 }
-

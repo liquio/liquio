@@ -27,7 +27,7 @@ export class RedisClient {
     if (!RedisClient.singleton) {
       const { host, port, defaultTtl } = config;
       this.client = createClient({
-        socket: { host, port }
+        socket: { host, port },
       });
       this.defaultTtl = defaultTtl || DEFAULT_TTL_IN_SECONDS;
 
@@ -108,7 +108,7 @@ export class RedisClient {
     key: string | any[],
     timeFn: () => Promise<string>,
     setFn: () => Promise<any>,
-    ttl?: number
+    ttl?: number,
   ): Promise<{ data: any; isFromCache: boolean }> {
     key = Array.isArray(key) ? RedisClient.createKey(...key) : key;
 

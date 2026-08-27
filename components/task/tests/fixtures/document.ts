@@ -93,4 +93,3 @@ export const DOCUMENT_FIXTURES = [
     asic: '{"asicmanifestFileId":"test-asic-manifest-id","filesIds":["test-file-id-123"]}',
   },
 ];
-

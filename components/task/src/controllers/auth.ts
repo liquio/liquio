@@ -1,4 +1,3 @@
-
 import crypto from 'node:crypto';
 import { Controller } from './controller';
 import { AuthService as Auth } from '../services/auth';
@@ -88,11 +87,15 @@ export class AuthController extends Controller {
     try {
       authTokens = await this.auth.getTokens(code);
     } catch (err) {
-      global.log.save('auth-login-error|cannot-get-tokens', {
-        error: err.message,
-        codeShort: typeof code === 'string' ? `${code.slice(0, 8)}****${code.slice(-8)}` : String(code),
-        codeHash: crypto.createHash('sha256').update(code).digest('hex'),
-      }, 'error');
+      global.log.save(
+        'auth-login-error|cannot-get-tokens',
+        {
+          error: err.message,
+          codeShort: typeof code === 'string' ? `${code.slice(0, 8)}****${code.slice(-8)}` : String(code),
+          codeHash: crypto.createHash('sha256').update(code).digest('hex'),
+        },
+        'error',
+      );
       return this.responseError(res, err, 401);
     }
     global.log.save('auth-login-tokens', authTokens);
@@ -112,7 +115,7 @@ export class AuthController extends Controller {
       const units = await this.unitModel.getAll();
       let unitsUpdated = false;
       for (const unit of units) {
-        const headIpn = (unit.headsIpn || []).find(v => v === authUserInfo.ipn);
+        const headIpn = (unit.headsIpn || []).find((v) => v === authUserInfo.ipn);
         if (headIpn) {
           unitsUpdated = true;
           await this.unitModel.addHead(unit.id, authUserInfo.userId);
@@ -121,7 +124,7 @@ export class AuthController extends Controller {
           // Save to access history.
           await global.models.accessHistory.update(unit.id, headIpn, 'added-to-head-unit', {
             userId: authUserInfo.userId,
-            userName: userName
+            userName: userName,
           });
 
           // Handle base units.
@@ -132,11 +135,11 @@ export class AuthController extends Controller {
             // Save to access history.
             await global.models.accessHistory.update(baseUnitId, headIpn, 'added-to-head-unit', {
               userId: authUserInfo.userId,
-              userName: userName
+              userName: userName,
             });
           }
         }
-        const memberIpn = (unit.membersIpn || []).find(v => v === authUserInfo.ipn);
+        const memberIpn = (unit.membersIpn || []).find((v) => v === authUserInfo.ipn);
         if (memberIpn) {
           unitsUpdated = true;
           await this.unitModel.addMember(unit.id, authUserInfo.userId);
@@ -145,7 +148,7 @@ export class AuthController extends Controller {
           // Save to access history.
           await global.models.accessHistory.update(unit.id, memberIpn, 'added-to-member-unit', {
             userId: authUserInfo.userId,
-            userName: userName
+            userName: userName,
           });
 
           // Handle base units.
@@ -156,18 +159,19 @@ export class AuthController extends Controller {
             // Save to access history.
             await global.models.accessHistory.update(baseUnitId, memberIpn, 'added-to-member-unit', {
               userId: authUserInfo.userId,
-              userName: userName
+              userName: userName,
             });
           }
         }
-        const requestedMember = (unit.requestedMembers || []).find(v => v.ipn === authUserInfo.ipn);
+        const requestedMember = (unit.requestedMembers || []).find((v) => v.ipn === authUserInfo.ipn);
         if (requestedMember) {
           unitsUpdated = true;
           const { firstName: requestedMemberFirstName, middleName: requestedMemberMiddleName, lastName: requestedMemberLastName } = requestedMember;
           const { first_name: userFirstName, middle_name: userMiddleName, last_name: userLastName } = authUserInfo;
-          const theSameName = `${requestedMemberFirstName}`.toLowerCase() === `${userFirstName}`.toLowerCase()
-            && (`${requestedMemberMiddleName}`.toLowerCase() === `${userMiddleName}`.toLowerCase() || !requestedMemberMiddleName)
-            && `${requestedMemberLastName}`.toLowerCase() === `${userLastName}`.toLowerCase();
+          const theSameName =
+            `${requestedMemberFirstName}`.toLowerCase() === `${userFirstName}`.toLowerCase() &&
+            (`${requestedMemberMiddleName}`.toLowerCase() === `${userMiddleName}`.toLowerCase() || !requestedMemberMiddleName) &&
+            `${requestedMemberLastName}`.toLowerCase() === `${userLastName}`.toLowerCase();
           if (theSameName) {
             await this.unitModel.addMember(unit.id, authUserInfo.userId);
             await this.unitModel.removeRequestedMember(unit.id, authUserInfo.ipn);
@@ -184,7 +188,7 @@ export class AuthController extends Controller {
               firstName: requestedMemberFirstName,
               middleName: requestedMemberMiddleName,
               lastName: requestedMemberLastName,
-              wrongUserInfo: true
+              wrongUserInfo: true,
             });
           }
         }
@@ -196,12 +200,7 @@ export class AuthController extends Controller {
       }
 
       // Handle tasks where the user is a performer.
-      await this.taskModel.addPerformerUserByIpnOrEmail(
-        authUserInfo.ipn,
-        authUserInfo.email,
-        authUserInfo.userId,
-        userName,
-      );
+      await this.taskModel.addPerformerUserByIpnOrEmail(authUserInfo.ipn, authUserInfo.email, authUserInfo.userId, userName);
 
       // Handle workflows.
       await this.workflowModel.updateCreatedBy(authUserInfo.ipn, authUserInfo.userId);
@@ -263,7 +262,7 @@ export class AuthController extends Controller {
     const { code } = req.body;
 
     // Find needed test auth object.
-    const testAuth = this.config.test_users?.list?.find(v => v.code === code);
+    const testAuth = this.config.test_users?.list?.find((v) => v.code === code);
     if (!testAuth) {
       return this.responseError(res, 'Wrong test auth code.', 401);
     }
@@ -330,7 +329,9 @@ export class AuthController extends Controller {
 
         // Append userId and name to response object.
         const userId = userData.authUserInfo && userData.authUserInfo.userId;
-        const userName = userData.authUserInfo && `${userData.authUserInfo.last_name || ''} ${userData.authUserInfo.first_name || ''} ${userData.authUserInfo.middle_name || ''}`;
+        const userName =
+          userData.authUserInfo &&
+          `${userData.authUserInfo.last_name || ''} ${userData.authUserInfo.first_name || ''} ${userData.authUserInfo.middle_name || ''}`;
         res.responseMeta = res.responseMeta
           ? { ...res.responseMeta, user: { id: userId, name: userName } }
           : { user: { id: userId, name: userName } };
@@ -413,13 +414,13 @@ export class AuthController extends Controller {
 
         if (
           // Skip check for preconfigured allowed route groups.
-          !routeGroupsExceptions.some((v) => groups.includes(v))
+          !routeGroupsExceptions.some((v) => groups.includes(v)) &&
           // check only if allowableUnits are set in the configuration.
-          && Array.isArray(allowableUnits)
+          Array.isArray(allowableUnits) &&
           // ...and aren't empty.
-          && allowableUnits.length
+          allowableUnits.length &&
           // doesn't the user belong to any of the allowable units?
-          && !allowableUnits.some((v) => authUserUnitIds.all.includes(v))
+          !allowableUnits.some((v) => authUserUnitIds.all.includes(v))
         ) {
           global.log.save('user-with-restricted-units', { authUserUnitIds });
           return this.responseError(res, ERROR_MESSAGE_RESTRICTED_UNIT, 403);
@@ -434,7 +435,7 @@ export class AuthController extends Controller {
           const { adminUnitId } = global.config.admin;
           const adminUnitIds = [].concat(adminUnitId).filter(Boolean);
 
-          if (!authUserUnitIds.all.some(v => adminUnitIds.includes(v))) {
+          if (!authUserUnitIds.all.some((v) => adminUnitIds.includes(v))) {
             return this.responseError(res, ERROR_MESSAGE_DEBUG_USER_NOT_ALLOWED, 401);
           }
 
@@ -471,13 +472,12 @@ export class AuthController extends Controller {
               authUserInfo: req.authUserInfo,
               authUserId: req.authUserId,
               authUserRoles: req.authUserRoles,
-              authUserUnitEntities: req.authUserUnitEntities
+              authUserUnitEntities: req.authUserUnitEntities,
             },
-            this.caching.getCheckMiddleware.ttl
+            this.caching.getCheckMiddleware.ttl,
           );
         }
       }
-
 
       // Check user access.
       const userAccessResult = await this.userAccess.checkAccess(req);
@@ -505,8 +505,8 @@ export class AuthController extends Controller {
   async getUserUnitEntities(userId) {
     const units = await this.unitModel.getAll();
     const defaultUnits = this.config.auth.defaultUnits || [];
-    const head = units.filter(v => v.heads.includes(userId));
-    const member = units.filter(v => v.members.includes(userId) || defaultUnits.includes(v.id));
+    const head = units.filter((v) => v.heads.includes(userId));
+    const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id));
     const all = [...new Set([...head, ...member])];
 
     return { head, member, all };
@@ -518,7 +518,7 @@ export class AuthController extends Controller {
    */
   getUserRoles(req) {
     const authUserInfo = req.authUserInfo;
-    const roles = (authUserInfo.role || '').split(ROLES_SEPARATOR).filter(role => role !== '');
+    const roles = (authUserInfo.role || '').split(ROLES_SEPARATOR).filter((role) => role !== '');
     return roles;
   }
 
@@ -528,7 +528,7 @@ export class AuthController extends Controller {
    * @param {string[]} neededRoles Needed roles.
    */
   hasOneOfNeededRoles(existingRoles = [], neededRoles = []) {
-    const hasOneOfNeededRoles = existingRoles.some(existing => neededRoles.includes(existing));
+    const hasOneOfNeededRoles = existingRoles.some((existing) => neededRoles.includes(existing));
     return hasOneOfNeededRoles;
   }
 
@@ -551,12 +551,7 @@ export class AuthController extends Controller {
     // If LDAP authorization is enabled and required, but the user is not
     // authorized by LDAP and has already passed the onboarding process,
     // return an error.
-    if (
-      LdapClient.isEnabled &&
-      LdapClient.isRequired &&
-      !normalizedUserInfo.services?.ldap &&
-      normalizedUserInfo.needOnboarding === false
-    ) {
+    if (LdapClient.isEnabled && LdapClient.isRequired && !normalizedUserInfo.services?.ldap && normalizedUserInfo.needOnboarding === false) {
       return this.responseError(res, ERROR_MESSAGE_LDAP_UNAUTHORIZED, 403);
     }
 
@@ -572,7 +567,7 @@ export class AuthController extends Controller {
    * @returns {boolean}
    */
   isAuthCouldBeMock(token) {
-    return this.config.auth.allowedTestAuth && this.config.test_users?.list?.some(user => user.token === token);
+    return this.config.auth.allowedTestAuth && this.config.test_users?.list?.some((user) => user.token === token);
   }
 
   /**
@@ -582,7 +577,7 @@ export class AuthController extends Controller {
    * @param {string} token Token from auth header.
    */
   async fakeAuth(req, token) {
-    const foundUser = this.config.test_users?.list?.find(user => user.token === token);
+    const foundUser = this.config.test_users?.list?.find((user) => user.token === token);
     const { user: authUserInfo } = foundUser || {};
 
     // Append auth user info to request object.
@@ -609,11 +604,15 @@ export class AuthController extends Controller {
     // Check token in config.
     const availableTokens = this.config.basic_auth.tokens;
     const isCorrectToken = availableTokens.includes(token) || availableTokens.includes(`Basic ${token}`);
-    if (!isCorrectToken) { return this.responseError(res, 'Unknown basic auth token.', 401); }
+    if (!isCorrectToken) {
+      return this.responseError(res, 'Unknown basic auth token.', 401);
+    }
 
     // Parse token.
-    const parsedTokenParts = (Buffer.from(token, 'base64').toString('utf8')).split(':');
-    if (parsedTokenParts.length !== 2) { return this.responseError(res, 'Incorrect basic auth token.', 401); }
+    const parsedTokenParts = Buffer.from(token, 'base64').toString('utf8').split(':');
+    if (parsedTokenParts.length !== 2) {
+      return this.responseError(res, 'Incorrect basic auth token.', 401);
+    }
     global.log.save('auth|basic-auth|client-login', parsedTokenParts[0]);
 
     // Get user.
@@ -665,7 +664,9 @@ export class AuthController extends Controller {
   basicOrBearerAuth(req, res, next) {
     // Define params.
     const { authorization: token } = req.headers;
-    if (!token) { return this.responseError(res, 'Unknown basic auth token.', 401); }
+    if (!token) {
+      return this.responseError(res, 'Unknown basic auth token.', 401);
+    }
 
     // Define token parts.
     const tokenParts = token.split(' ');
@@ -709,7 +710,9 @@ export class AuthController extends Controller {
    */
   async getBearerToken(req, res) {
     // Check Basic auth user.
-    if (!req.basicAuthUser) { return this.responseError(res, 'Basic auth user is not defined.', 401); }
+    if (!req.basicAuthUser) {
+      return this.responseError(res, 'Basic auth user is not defined.', 401);
+    }
 
     // Generate Bearer token.
     const bearerToken = this.token.generateBearer(req.basicAuthUser);
@@ -720,7 +723,7 @@ export class AuthController extends Controller {
 
   async checkProtectedBasicAuth(req, res, next) {
     const { originalUrl } = req;
-    const protectedRoute = this.config.basic_auth.protectedRoutes?.find(item => item.route === originalUrl);
+    const protectedRoute = this.config.basic_auth.protectedRoutes?.find((item) => item.route === originalUrl);
     if (!protectedRoute) {
       return this.responseError(res, 'Protected route. Must define access rule in config.', 403);
     }
@@ -751,11 +754,7 @@ export class AuthController extends Controller {
     // Extract LDAP data from user info.
     const ldapInfo = userInfo?.services?.ldap;
     if (!ldapInfo) {
-      global.log.save(
-        'login-process-ldap-units|not-authenticated',
-        { services: Object.keys(userInfo.services) },
-        'warn',
-      );
+      global.log.save('login-process-ldap-units|not-authenticated', { services: Object.keys(userInfo.services) }, 'warn');
       return;
     }
 
@@ -775,11 +774,7 @@ export class AuthController extends Controller {
     try {
       ouObject = await ldapClient.findObjectByDn('organizationalUnit', userOuDn);
     } catch (error) {
-      global.log.save(
-        'login-process-ldap-units|find-ou-object-by-dn-error',
-        { userOuDn, error: error.toString() },
-        'error',
-      );
+      global.log.save('login-process-ldap-units|find-ou-object-by-dn-error', { userOuDn, error: error.toString() }, 'error');
       return;
     }
 
@@ -789,7 +784,7 @@ export class AuthController extends Controller {
     }
 
     const allUnits = await this.unitModel.getAll();
-    const associatedUnit = allUnits.find(unit => unit.data?.ldap?.dn === ouObject.dn);
+    const associatedUnit = allUnits.find((unit) => unit.data?.ldap?.dn === ouObject.dn);
 
     if (!associatedUnit) {
       global.log.save('login-process-ldap-units|associated-unit-not-found', { ouObject }, 'warn');
@@ -800,13 +795,9 @@ export class AuthController extends Controller {
       global.log.save('login-process-ldap-units|add-member', { userId: userInfo.userId, unitId: associatedUnit.id });
       await this.unitModel.addMember(associatedUnit.id, userInfo.userId);
     } else {
-      global.log.save(
-        'login-process-ldap-units|member-already-associated',
-        { userId: userInfo.userId, unitId: associatedUnit.id },
-      );
+      global.log.save('login-process-ldap-units|member-already-associated', { userId: userInfo.userId, unitId: associatedUnit.id });
     }
 
     // TODO: Remove the user from the previous unit if it is different from the current one?
   }
 }
-

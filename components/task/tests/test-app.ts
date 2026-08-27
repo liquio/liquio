@@ -29,7 +29,6 @@ jest.mock('../src/lib/message_queue', () => {
 
 // Mock the log module
 jest.mock('@liquio/back-core', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const debug = require('debug');
   const original = jest.requireActual('@liquio/back-core');
   const { Log: OriginalLog } = original;
@@ -52,7 +51,6 @@ jest.mock('@liquio/back-core', () => {
 // Mock the configuration module
 const configOverride: any = {};
 jest.mock('../src/lib/config', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Multiconf = require('multiconf');
   const baseConfig = Multiconf.get('../../config-templates/task');
 
@@ -68,7 +66,7 @@ jest.mock('../src/lib/config', () => {
 });
 
 // Obtain the default configuration object
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const { getConfig } = require('../src/lib/config');
 const defaultConfig = getConfig();
 
@@ -103,7 +101,7 @@ export class TestApp extends BpmnTaskCore {
         ...defaultConfig.auth.LiquioId,
         server: 'http://id.local',
         port: 80,
-      }
+      },
     };
 
     configOverride.prometheus = {

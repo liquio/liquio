@@ -25,7 +25,7 @@ export default class HttpRequest {
       GET: HTTP_METHOD_GET,
       POST: HTTP_METHOD_POST,
       PUT: HTTP_METHOD_PUT,
-      DELETE: HTTP_METHOD_DELETE
+      DELETE: HTTP_METHOD_DELETE,
     };
   }
 
@@ -35,7 +35,7 @@ export default class HttpRequest {
   static get ContentTypes() {
     return {
       CONTENT_TYPE_JSON,
-      CONTENT_TYPE_FORM_URL_ENCODED
+      CONTENT_TYPE_FORM_URL_ENCODED,
     };
   }
 
@@ -44,7 +44,7 @@ export default class HttpRequest {
    */
   static get Accepts() {
     return {
-      ACCEPT_JSON
+      ACCEPT_JSON,
     };
   }
 
@@ -69,7 +69,7 @@ export default class HttpRequest {
     const { body, ...rest } = requestOptions;
     const axiosOptions: AxiosRequestConfig = {
       ...rest,
-      data: body
+      data: body,
     };
     try {
       const { data: responseBody } = await axios(axiosOptions);
@@ -78,7 +78,7 @@ export default class HttpRequest {
       // Log and rethrow error
       global.log?.save('http-request-send-error', {
         requestOptions: axiosOptions,
-        ...prepareAxiosErrorToLog(error)
+        ...prepareAxiosErrorToLog(error),
       });
       throw error;
     }

@@ -83,8 +83,8 @@ describe('Record Encryption', () => {
           data: {
             NAME: 'Витяг про шифрування',
             RET_ID: '420',
-            RC_AR_TYPE: '69'
-          }
+            RC_AR_TYPE: '69',
+          },
         })
         .expect(200)
         .expect('Content-Type', /json/)
@@ -111,7 +111,7 @@ describe('Record Encryption', () => {
           registerId: 800,
           name: 'Витяг про шифрування',
           description: 'Витяг про шифрування',
-          isEncrypted: true
+          isEncrypted: true,
         })
         .expect(400);
     });
@@ -190,8 +190,8 @@ describe('Record Encryption', () => {
           data: {
             NAME: 'Витяг про розшифрування',
             RET_ID: '421',
-            RC_AR_TYPE: '70'
-          }
+            RC_AR_TYPE: '70',
+          },
         })
         .expect(200)
         .expect((response) => {
@@ -277,8 +277,8 @@ describe('Record Encryption', () => {
           data: {
             NAME: 'Витяг про смерть',
             RET_ID: '5',
-            RC_AR_TYPE: '777'
-          }
+            RC_AR_TYPE: '777',
+          },
         })
         .expect(200)
         .expect((response) => {
@@ -324,7 +324,7 @@ describe('Record Encryption', () => {
           id: keyId,
           name: 'Витяг про шифрування',
           description: 'Витяг про шифрування',
-          isEncrypted: false
+          isEncrypted: false,
         })
         .expect((response) => {
           // Accept 400 or 500 - both indicate operation not allowed
@@ -358,7 +358,7 @@ describe('Record Encryption', () => {
 
       // Check that records are decrypted in the database
       const [rawRecords] = await db.query(`SELECT * FROM records WHERE key_id = ${keyId}`, {
-        raw: true
+        raw: true,
       });
 
       for (const recordRaw of rawRecords as Array<{
@@ -408,14 +408,14 @@ describe('Record Encryption', () => {
               name: {
                 type: 'string',
                 description: 'Опис поля',
-                public: true
-              }
+                public: true,
+              },
             },
-            required: []
+            required: [],
           },
           toString: '() => "";',
           toSearchString: '() => "";',
-          toExport: '() => "";'
+          toExport: '() => "";',
         })
         .expect(200)
         .expect((response) => {
@@ -442,7 +442,7 @@ describe('Record Encryption', () => {
           toString: '() => "";',
           toSearchString: '() => "";',
           toExport: '() => "";',
-          isEncrypted: true
+          isEncrypted: true,
         })
         .expect(200)
         .expect((response) => {

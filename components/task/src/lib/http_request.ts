@@ -1,4 +1,3 @@
-
 import * as http from 'node:http';
 import * as https from 'node:https';
 import axios from 'axios';
@@ -32,7 +31,7 @@ export class HttpRequest {
       GET: HTTP_METHOD_GET,
       POST: HTTP_METHOD_POST,
       PUT: HTTP_METHOD_PUT,
-      DELETE: HTTP_METHOD_DELETE
+      DELETE: HTTP_METHOD_DELETE,
     };
   }
 
@@ -42,7 +41,7 @@ export class HttpRequest {
   static get ContentTypes() {
     return {
       CONTENT_TYPE_JSON,
-      CONTENT_TYPE_FORM_URL_ENCODED
+      CONTENT_TYPE_FORM_URL_ENCODED,
     };
   }
 
@@ -51,7 +50,7 @@ export class HttpRequest {
    */
   static get Accepts() {
     return {
-      ACCEPT_JSON
+      ACCEPT_JSON,
     };
   }
 
@@ -76,7 +75,7 @@ export class HttpRequest {
       method: requestOptions.method,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
-      validateStatus: () => true // Don't reject on HTTP error status codes
+      validateStatus: () => true, // Don't reject on HTTP error status codes
     };
 
     // Handle body data - send as string if it's a string, otherwise as data
@@ -84,7 +83,7 @@ export class HttpRequest {
       if (typeof requestOptions.body === 'string') {
         // For string bodies, we need to set the data and potentially adjust content-type
         axiosConfig.data = requestOptions.body;
-        
+
         // If it looks like JSON and no content-type is set, preserve the raw string behavior
         if (!axiosConfig.headers['content-type'] && !axiosConfig.headers['Content-Type']) {
           try {
@@ -110,18 +109,18 @@ export class HttpRequest {
       // Create fresh agents for each request in test environment
       axiosConfig.httpAgent = new http.Agent({
         keepAlive: false,
-        timeout: axiosConfig.timeout || 10000
+        timeout: axiosConfig.timeout || 10000,
       });
-      
+
       axiosConfig.httpsAgent = new https.Agent({
         keepAlive: false,
-        timeout: axiosConfig.timeout || 10000
+        timeout: axiosConfig.timeout || 10000,
       });
     }
 
     // Do request.
     const response = await axios(axiosConfig);
-    
+
     // Clean up agents in test environment
     if (process.env.NODE_ENV === 'test') {
       if (axiosConfig.httpAgent) {
@@ -162,7 +161,7 @@ export class HttpRequest {
       method: requestOptions.method,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
-      validateStatus: () => true // Don't reject on HTTP error status codes
+      validateStatus: () => true, // Don't reject on HTTP error status codes
     };
 
     // Configure axios with fresh agents for test environment
@@ -170,18 +169,18 @@ export class HttpRequest {
       // Create fresh agents for each request in test environment
       axiosConfig.httpAgent = new http.Agent({
         keepAlive: false,
-        timeout: axiosConfig.timeout || 10000
+        timeout: axiosConfig.timeout || 10000,
       });
-      
+
       axiosConfig.httpsAgent = new https.Agent({
         keepAlive: false,
-        timeout: axiosConfig.timeout || 10000
+        timeout: axiosConfig.timeout || 10000,
       });
     }
 
     // Do request.
     const response = await axios(axiosConfig);
-    
+
     // Clean up agents in test environment
     if (process.env.NODE_ENV === 'test') {
       if (axiosConfig.httpAgent) {
@@ -191,7 +190,7 @@ export class HttpRequest {
         axiosConfig.httpsAgent.destroy();
       }
     }
-    
+
     const responseInHeader = response.headers[headerName];
 
     // Return response in header.
@@ -296,17 +295,17 @@ function createSerializableResponse(axiosResponse) {
       url: axiosResponse.config.url,
       method: axiosResponse.config.method,
       headers: axiosResponse.config.headers,
-      timeout: axiosResponse.config.timeout
+      timeout: axiosResponse.config.timeout,
     },
     request: {
       method: axiosResponse.config.method,
       url: axiosResponse.config.url,
       headers: axiosResponse.config.headers,
       data: axiosResponse.config.data,
-      timeout: axiosResponse.config.timeout
+      timeout: axiosResponse.config.timeout,
     },
     // Add statusCode for backward compatibility with request library format
-    statusCode: axiosResponse.status
+    statusCode: axiosResponse.status,
   };
 }
 
@@ -324,4 +323,3 @@ function parseBody(body) {
     return body;
   }
 }
-

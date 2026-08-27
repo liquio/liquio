@@ -177,7 +177,7 @@ export class TestApp {
          ON CONFLICT (id) DO NOTHING`,
       );
       // Advance the id sequence past the manually-inserted row, so subsequent auto-increments don't collide with it.
-      await client.query('SELECT setval(pg_get_serial_sequence(\'containers\', \'id\'), (SELECT MAX(id) FROM containers))');
+      await client.query("SELECT setval(pg_get_serial_sequence('containers', 'id'), (SELECT MAX(id) FROM containers))");
     } finally {
       await client.end();
     }

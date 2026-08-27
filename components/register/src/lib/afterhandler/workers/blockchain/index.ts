@@ -43,7 +43,7 @@ export default class BlockchainAfterhandlerWorker extends AfterhandlerWorker {
   init() {
     // Parse config.
     const {
-      options: { providerName, providerParams }
+      options: { providerName, providerParams },
     } = this.config;
 
     // Define provider.
@@ -92,7 +92,7 @@ export default class BlockchainAfterhandlerWorker extends AfterhandlerWorker {
       history,
       afterhandlerType: BlockchainAfterhandlerWorker.afterhandlerType,
       handlingResult,
-      handled
+      handled,
     });
     return handled;
   }

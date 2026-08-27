@@ -71,12 +71,14 @@ export class RouterService {
     AppIdentHeaders.add(app);
 
     // Allow CORS.
-    app.use(cors({
-      origin: '*',
-      methods: 'GET, POST, PUT, DELETE, OPTIONS',
-      allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, token, Authorization, debug-user-id, enabled-mocks',
-      exposedHeaders: 'Name, Version, Customer, Environment, returned-mocks, external-reader-errors'
-    }));
+    app.use(
+      cors({
+        origin: '*',
+        methods: 'GET, POST, PUT, DELETE, OPTIONS',
+        allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, token, Authorization, debug-user-id, enabled-mocks',
+        exposedHeaders: 'Name, Version, Customer, Environment, returned-mocks, external-reader-errors',
+      }),
+    );
 
     // Init routes.
     this.initRoutes(app, customValidators, customRoutes);
@@ -108,7 +110,7 @@ export class RouterService {
     // Define all routes.
     const allRoutes = {
       ...routes,
-      ...customRoutes
+      ...customRoutes,
     };
 
     // Handle all routes.
@@ -134,9 +136,7 @@ export class RouterService {
       const externalIdHeaderAuthName = routeDescription.externalIdHeaderAuth;
 
       // Init all handlers.
-      const auth = authDescription
-        ? this.controllers.auth.getCheckMiddleware(authDescription, groupDescription)
-        : (res, req, next) => next();
+      const auth = authDescription ? this.controllers.auth.getCheckMiddleware(authDescription, groupDescription) : (res, req, next) => next();
 
       let predefineRouteBodyParser;
       switch (true) {
@@ -166,32 +166,35 @@ export class RouterService {
       }
       const routeBodyParser = predefineRouteBodyParser;
 
-      const catchAsync = fn => {
+      const catchAsync = (fn) => {
         return (req, res, next) => {
           if (typeof fn !== 'function') {
             return res.status(500).send({
               error: {
                 message: 'Controller for route not defined. Check router configuration.',
-                code: 500
-              }
+                code: 500,
+              },
             });
           }
           fn(req, res, next).catch(next);
         };
       };
-      const basicOrBearerAuth = (basicAuthDescription || basicOrBearerAuthDescription)
-        ? this.controllers.auth.basicOrBearerAuth.bind(this.controllers.auth)
-        : (res, req, next) => next();
+      const basicOrBearerAuth =
+        basicAuthDescription || basicOrBearerAuthDescription
+          ? this.controllers.auth.basicOrBearerAuth.bind(this.controllers.auth)
+          : (res, req, next) => next();
 
-      const checkProtectedBasicAuth = (basicAuthDescription && protectedBasicAuth)
-        ? this.controllers.auth.checkProtectedBasicAuth.bind(this.controllers.auth)
-        : (res, req, next) => next();
+      const checkProtectedBasicAuth =
+        basicAuthDescription && protectedBasicAuth
+          ? this.controllers.auth.checkProtectedBasicAuth.bind(this.controllers.auth)
+          : (res, req, next) => next();
 
-      const externalIdHeaderAuth = typeOf(externalIdHeaderAuthName) === 'string'
-        ? this.controllers.auth.externalIdHeaderAuth.bind(this.controllers.auth)
-        : () => (res, req, next) => next();
+      const externalIdHeaderAuth =
+        typeOf(externalIdHeaderAuthName) === 'string'
+          ? this.controllers.auth.externalIdHeaderAuth.bind(this.controllers.auth)
+          : () => (res, req, next) => next();
 
-      const middlewares = middlewaresDescription.map(v => this.controllers.getHandler(v.name, v.method));
+      const middlewares = middlewaresDescription.map((v) => this.controllers.getHandler(v.name, v.method));
       const controller = this.controllers.getHandler(controllerDescription.name, controllerDescription.method, controllerDescription.methodHandler);
       const validator =
         (validatorDescription && this.validators.getHandler(validatorDescription.name, validatorDescription.method)) || ((res, req, next) => next());
@@ -206,7 +209,7 @@ export class RouterService {
         validator,
         this.validators.getValidationResultHandler(),
         ...middlewares,
-        catchAsync(controller)
+        catchAsync(controller),
       ];
 
       // Define route.
@@ -217,8 +220,8 @@ export class RouterService {
       res.status(404).send({
         error: {
           message: 'Page not found.',
-          code: 404
-        }
+          code: 404,
+        },
       });
     });
 
@@ -227,8 +230,8 @@ export class RouterService {
       res.status(error.status || error.httpStatusCode || 500).send({
         error: {
           message: error.message || 'Internal Server Error.',
-          code: error.status || error.httpStatusCode || 500
-        }
+          code: error.status || error.httpStatusCode || 500,
+        },
       });
     });
   }
@@ -239,7 +242,7 @@ export class RouterService {
    * @param {object} app Express app.
    */
   async listen() {
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
@@ -251,7 +254,7 @@ export class RouterService {
   }
 
   async stop() {
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       if (this.server) {
         this.server.close(() => {
           global.log.save('server-listening-stopped');
