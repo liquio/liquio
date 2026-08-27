@@ -14,7 +14,7 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "noEmitOnError": false,
-    "ignoreDeprecations": "5.0"
+    "ignoreDeprecations": "6.0"
   },
   "include": ["./**/*"],
   "exclude": ["node_modules", "dist"]
