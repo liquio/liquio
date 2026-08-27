@@ -1,4 +1,4 @@
-import jsoncParser from 'jsonc-parser';
+import * as jsoncParser from 'jsonc-parser';
 
 import { Entity } from './entity';
 

@@ -93,8 +93,8 @@ describe('EventBusiness - Workflow type events', () => {
         });
       expect(workflowEvent).toBeDefined();
       expect(workflowEvent.event_type_id).toBe(7);
-      // Event is created with error since message queue is not available in tests
-      expect(workflowEvent.data.error).toBeDefined();
+      expect(workflowEvent.data.result.createWorkflows.status).toBe(true);
+      expect(workflowEvent.data.result.createWorkflows.workflowIds).toHaveLength(1);
     });
   });
 

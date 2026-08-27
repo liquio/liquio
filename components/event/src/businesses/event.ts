@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import jsoncParser from 'jsonc-parser';
+import * as jsoncParser from 'jsonc-parser';
 import Queue from 'queue-promise';
 
 import { FileStorage as Filestorage } from '../lib/filestorage';
