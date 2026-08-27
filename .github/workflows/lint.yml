@@ -90,3 +90,42 @@ jobs:
       - name: Lint ${{ matrix.service }}
         run: npm run lint
         working-directory: components/${{ matrix.service }}
+
+  test:
+    needs: [detect, lint]
+    if: needs.detect.outputs.any == 'true'
+    name: test-${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'components/${{ matrix.service }}/package-lock.json'
+
+      - name: Install dependencies for ${{ matrix.service }}
+        run: npm ci
+        working-directory: components/${{ matrix.service }}
+
+      - name: Check for a unit test script
+        id: has-test
+        run: |
+          SCRIPT=$(npm pkg get scripts.test 2>/dev/null | tr -d '"')
+          if [ -n "$SCRIPT" ] && [ "$SCRIPT" != "null" ] && [ "$SCRIPT" != "{}" ] && [[ "$SCRIPT" != *"Error: no test specified"* ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No unit test script for ${{ matrix.service }} - skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: components/${{ matrix.service }}
+
+      - name: Unit test ${{ matrix.service }}
+        if: steps.has-test.outputs.run == 'true'
+        run: npm run test
+        working-directory: components/${{ matrix.service }}
