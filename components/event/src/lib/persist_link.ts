@@ -1,0 +1,325 @@
+import axios from 'axios';
+
+import { Helpers } from './helpers';
+
+const { prepareAxiosErrorToLog } = Helpers;
+
+// Constants.
+const DEFAULT_CONFIG = {
+  server: 'https://persist-link-test-court-services.liquio.local',
+  port: 443,
+  routes: {
+    generateQr: '/link?qr=svg',
+    ping: '/test/ping',
+    pingWithAuth: '/test/ping_with_auth',
+  },
+  token: '<removed>',
+};
+
+/**
+ * Persist link.
+ */
+export class PersistLink {
+  static singleton: PersistLink;
+
+  config: any;
+  generateQr: string;
+  sendTestPingUrl: string;
+  getLinkToFilestorageTimeout: number;
+
+  /**
+   * Persist link constructor.
+   * @param {object} persistLinkConfig Persist Link config.
+   */
+  constructor(persistLinkConfig: any = global.config.persist_link) {
+    // Define singleton.
+    if (!PersistLink.singleton) {
+      this.config = { ...DEFAULT_CONFIG, ...persistLinkConfig };
+      this.config.routes = { ...DEFAULT_CONFIG.routes, ...persistLinkConfig.routes };
+      this.generateQr = `${this.config.server}:${this.config.port}${this.config.routes.generateQr}`;
+      this.sendTestPingUrl = `${this.config.server}:${this.config.port}${this.config.routes.pingWithAuth}`;
+      this.getLinkToFilestorageTimeout = (persistLinkConfig && persistLinkConfig.getLinkToFilestorageTimeout) || 30000;
+      PersistLink.singleton = this;
+    }
+    return PersistLink.singleton;
+  }
+
+  /**
+   * Get QR and link to document with access via frontend.
+   * @param {string} documentId Document ID.
+   * @returns {Promise<{link: string, qrCode: string}>} Link and QR-code promise.
+   */
+  async getQrAndLinkToDocument(documentId: string): Promise<{ link: string; qrCode: string }> {
+    const options = {
+      method: 'POST',
+      url: this.generateQr,
+      headers: {
+        'Content-Type': 'application/json',
+        token: this.config.token,
+      },
+      data: {
+        type: 'simple',
+        options: {
+          url: `${this.config.urlToDocument}/${documentId}`,
+          redirect: true,
+        },
+        small: true,
+      },
+    };
+    global.log.save('get-persist-link-to-document-request-params', options);
+
+    try {
+      const responseData = (await axios(options)).data;
+      const qrAndLink = responseData.data;
+      global.log.save('get-persist-link-to-document-response', qrAndLink);
+      return qrAndLink;
+    } catch (error: any) {
+      global.log.save('get-persist-link-to-document-response-error', prepareAxiosErrorToLog(error), 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get QR and link to case with access via frontend.
+   * @param {string} caseId Case ID.
+   * @returns {Promise<{link: string, qrCode: string}>} Link and QR-code promise.
+   */
+  async getQrAndLinkToCase(caseId: string): Promise<{ link: string; qrCode: string }> {
+    const options = {
+      method: 'POST',
+      url: this.generateQr,
+      headers: {
+        'Content-Type': 'application/json',
+        token: this.config.token,
+      },
+      data: {
+        type: 'simple',
+        options: {
+          url: `${this.config.urlToCaseAndProceeding}=${caseId}`,
+          redirect: true,
+        },
+        small: true,
+      },
+    };
+    global.log.save('get-persist-link-to-case-request-params', options);
+
+    try {
+      const responseData = (await axios(options)).data;
+      const qrAndLink = responseData.data;
+      global.log.save('get-persist-link-to-case-response', qrAndLink);
+      return qrAndLink;
+    } catch (error: any) {
+      global.log.save('get-persist-link-to-case-response-error', prepareAxiosErrorToLog(error), 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get QR and link to proceeding with access via frontend.
+   * @param {string} proceedingId Proceeding ID.
+   * @returns {Promise<{link: string, qrCode: string}>} Link and QR-code promise.
+   */
+  async getQrAndLinkToProceeding(proceedingId: string, caseId: string): Promise<{ link: string; qrCode: string }> {
+    const options = {
+      method: 'POST',
+      url: this.generateQr,
+      headers: {
+        'Content-Type': 'application/json',
+        token: this.config.token,
+      },
+      data: {
+        type: 'simple',
+        options: {
+          url: `${this.config.urlToCaseAndProceeding}=${caseId}/proceeding=${proceedingId}`,
+          redirect: true,
+        },
+        small: true,
+      },
+    };
+    global.log.save('get-persist-link-to-permission-request-params', options);
+
+    try {
+      const responseData = (await axios(options)).data;
+      const qrAndLink = responseData.data;
+      global.log.save('get-persist-link-to-permission-response', qrAndLink);
+      return qrAndLink;
+    } catch (error: any) {
+      global.log.save('get-persist-link-to-permission-response-error', prepareAxiosErrorToLog(error), 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get link to document with access via frontend.
+   * @param {string} documentId Document ID.
+   * @returns {Promise<string>} Link promise.
+   */
+  async getLinkToDocument(documentId: string): Promise<string> {
+    return (await this.getQrAndLinkToDocument(documentId)).link;
+  }
+
+  /**
+   * Get link to case with access via frontend.
+   * @param {string} caseId Case ID.
+   * @returns {Promise<string>} Link promise.
+   */
+  async getLinkToCase(caseId: string): Promise<string> {
+    return (await this.getQrAndLinkToCase(caseId)).link;
+  }
+
+  /**
+   * Get link to proceeding with access via frontend.
+   * @param {string} proceedingId Proceeding ID.
+   * @returns {Promise<string>} Link promise.
+   */
+  async getLinkToProceeding(proceedingId: string, caseId: string): Promise<string> {
+    return (await this.getQrAndLinkToProceeding(proceedingId, caseId)).link;
+  }
+
+  /**
+   * Get QR link to with access via frontend.
+   * @param {string} documentId Document ID.
+   * @returns {Promise<string>} QR code in svg format promise.
+   */
+  async getQrLinkToDocument(documentId: string): Promise<string> {
+    return (await this.getQrAndLinkToDocument(documentId)).qrCode;
+  }
+
+  /**
+   * Get QR link to static file in OpenStack.
+   * @param {string} generatedFileName Url to file in OpenStack.
+   * @return {string} QR code in svg format promise.
+   */
+  async getQrLinkToStaticFileInOpenStack(generatedFileName: string): Promise<string> {
+    const options = {
+      method: 'POST',
+      url: this.generateQr,
+      headers: {
+        'Content-Type': 'application/json',
+        token: this.config.token,
+      },
+      data: {
+        type: 'openStack',
+        options: {
+          serverName: this.config.serverName,
+          fileName: generatedFileName,
+        },
+        small: true,
+      },
+    };
+    global.log.save('get-persist-link-to-static-file-request-params', options);
+
+    try {
+      const { data: responseData } = (await axios(options)).data;
+      const generatedQr = responseData.qrCode;
+      global.log.save('get-persist-link-to-static-file-response', generatedQr);
+      return generatedQr;
+    } catch (error: any) {
+      global.log.save('get-persist-link-to-static-file-response-error', prepareAxiosErrorToLog(error), 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get link to static file in OpenStack.
+   * @param {string} fileId File ID in Filestorage.
+   * @param {string} definedHash Defined hash.
+   * @param {object} additionalOptions Additional options.
+   * @param {boolean} additionalOptions.isP7s Must we return link to p7s of file.
+   * @return {Promise<string>} QR code in svg format promise.
+   */
+  async getLinkToStaticFileInFilestorage(fileId: string, definedHash: string): Promise<string> {
+    const options = {
+      method: 'POST',
+      url: this.generateQr,
+      headers: {
+        'Content-Type': 'application/json',
+        token: this.config.token,
+      },
+      data: {
+        type: 'filestorage',
+        options: {
+          serverName: this.config.serverName,
+          fileId,
+        },
+        definedHash,
+        small: true,
+      },
+      timeout: this.getLinkToFilestorageTimeout,
+    };
+    global.log.save('get-persist-link-to-static-file-request-params', options);
+
+    try {
+      const { data: responseData } = (await axios(options)).data;
+      const generatedLink = responseData.link;
+      global.log.save('get-persist-link-to-static-file-response', generatedLink);
+      return generatedLink;
+    } catch (error: any) {
+      const preparedError = prepareAxiosErrorToLog(error);
+      global.log.save('get-persist-link-to-static-file-response-error', preparedError, 'error');
+      const wrapped = new Error(getPersistLinkErrorMessage(preparedError));
+      (wrapped as any).cause = error;
+      throw wrapped;
+    }
+  }
+
+  /**
+   * Send ping request.
+   * @returns {Promise<{}[]>}
+   */
+  async sendPingRequest(): Promise<any> {
+    const options = {
+      method: 'GET',
+      url: this.sendTestPingUrl,
+      headers: { token: this.config.token },
+    };
+
+    try {
+      const response = await axios(options);
+      const { version, customer, environment } = response.headers;
+      const responseData = response.data;
+
+      return {
+        version,
+        customer,
+        environment,
+        body: responseData?.data,
+      };
+    } catch (error: any) {
+      global.log.save('send-ping-request-response-error', prepareAxiosErrorToLog(error), 'error');
+      throw error;
+    }
+  }
+}
+
+/**
+ * Prepare readable persist-link error message for upper-level map.* handlers.
+ * @param {{error?: string, code?: string, status?: number|string, statusText?: string, responseData?: object, url?: string, method?: string}} preparedError Axios error prepared for logs.
+ * @returns {string} Readable error message.
+ */
+function getPersistLinkErrorMessage(preparedError: any = {}): string {
+  const {
+    error,
+    code,
+    status,
+    statusText,
+    responseData,
+    url,
+    method,
+  } = preparedError;
+
+  if (status === 401) {
+    const authMessage = responseData?.error?.message || responseData?.message || 'persist-link token is invalid or not allowed';
+    return `Persist-link auth error (${method || 'REQUEST'} ${url || 'unknown-url'}) [401 ${statusText || 'Unauthorized'}]: ${authMessage}`;
+  }
+
+  if (code === 'EAI_AGAIN') {
+    return `Persist-link connectivity error (${method || 'REQUEST'} ${url || 'unknown-url'}): DNS lookup failed (EAI_AGAIN)`;
+  }
+
+  if (typeof status === 'number') {
+    return `Persist-link request failed (${method || 'REQUEST'} ${url || 'unknown-url'}) [${status}${statusText ? ` ${statusText}` : ''}]: ${error || 'unknown error'}`;
+  }
+
+  return `Persist-link request failed (${method || 'REQUEST'} ${url || 'unknown-url'}): ${error || code || 'unknown error'}`;
+}
