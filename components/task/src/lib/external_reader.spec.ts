@@ -9,7 +9,7 @@ import { Sandbox } from './sandbox';
 jest.mock('../services/storage');
 jest.mock('../models/document_attachment');
 jest.mock('./sandbox');
-jest.mock('back-core', () => ({
+jest.mock('@liquio/back-core', () => ({
   appendTraceMeta: jest.fn(),
   getTraceMeta: jest.fn(() => ({
     returnedMocksHeader: '',

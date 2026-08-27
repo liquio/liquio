@@ -61,7 +61,7 @@ module.exports = [
   },
   {
     // Tests aren't part of the tsconfig project, so parse them without type-aware info.
-    files: ['__tests__/**/*.ts', 'src/**/*.spec.ts'],
+    files: ['tests/**/*.ts', 'src/**/*.spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -77,7 +77,7 @@ module.exports = [
   {
     // The e2e test harness lazily `require()`s modules inside jest.mock() factories
     // (necessary because jest.mock factories run before hoisted imports are bound).
-    files: ['__tests__/**/*.ts'],
+    files: ['tests/**/*.ts'],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },

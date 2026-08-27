@@ -13,9 +13,10 @@
     "build": "tsc",
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test": "jest src",
+    "test:watch": "jest --watch src",
+    "test:cov": "jest --coverage src",
+    "test:e2e": "jest tests"
   },
   "dependencies": {
     "@liquio/back-core": "^0.1.0",

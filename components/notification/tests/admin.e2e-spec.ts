@@ -4,7 +4,7 @@ import path from 'node:path';
 import { TestApp } from './test-app';
 
 const adminConfig = JSON.parse(
-  readFileSync(path.join(__dirname, '../../config-templates/notification/config.json'), 'utf8'),
+  readFileSync(path.join(__dirname, '../../../config-templates/notification/config.json'), 'utf8'),
 ).production.adminConfig;
 
 describe('Admin static routes', () => {

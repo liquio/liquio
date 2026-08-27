@@ -9,19 +9,19 @@
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
-    "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,apps,libs,tests}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,apps,libs,tests}/**/*.ts\" --fix",
     "plugin-installer": "liquio-plugin-installer",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --verbose --config ./test/jest-e2e.json"
+    "test:e2e": "jest --verbose --config ./tests/jest-e2e.json"
   },
   "dependencies": {
     "@liquio/plugin-installer": "^0.1.3",

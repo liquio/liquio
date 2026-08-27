@@ -26,7 +26,7 @@ jest.mock('amqplib/callback_api', () => ({
   }),
 }));
 
-jest.mock('back-core', () => ({
+jest.mock('@liquio/back-core', () => ({
   runInAsyncLocalStorage: jest.fn((handler) => {
     if (typeof handler === 'function') {
       return handler();

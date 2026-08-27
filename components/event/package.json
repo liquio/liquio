@@ -18,7 +18,7 @@
     "test": "jest src",
     "test:watch": "jest --watch src",
     "test:cov": "jest --coverage src",
-    "test:e2e": "jest --coverage --verbose __tests__",
+    "test:e2e": "jest --coverage --verbose tests",
     "test:build": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "plugin-installer": "liquio-plugin-installer"
   },

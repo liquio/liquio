@@ -6,6 +6,6 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', {}],
   },
   testPathIgnorePatterns: ['/bundle/', '/dist/'],
-  testMatch: ['**/*.spec.ts'],
+  testMatch: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
 };
