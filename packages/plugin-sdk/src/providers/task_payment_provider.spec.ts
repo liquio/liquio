@@ -1,12 +1,12 @@
 import { BasePlugin, PluginContext } from "./base_provider";
-import { TaskPaymentProvider } from "./task_payment_provider";
+import { TaskPaymentData, TaskPaymentProvider } from "./task_payment_provider";
 
 interface TestOptions {
   providerName: string;
 }
 
 class TestProvider extends TaskPaymentProvider<TestOptions> {
-  async calculatePayment(data: unknown): Promise<unknown> {
+  async calculatePayment(data: TaskPaymentData): Promise<unknown> {
     return { calculatePayment: data };
   }
 
@@ -107,9 +107,36 @@ describe("TaskPaymentProvider", () => {
   it("resolves calculatePayment() to the expected result", async () => {
     const provider = new TestProvider(context, options);
 
-    await expect(provider.calculatePayment("payload")).resolves.toEqual({
-      calculatePayment: "payload",
+    const singlePayment: TaskPaymentData = {
+      amount: 15,
+      currency: "EUR",
+      orderId: "order-1",
+      documentId: "document-1",
+    };
+
+    await expect(provider.calculatePayment(singlePayment)).resolves.toEqual({
+      calculatePayment: singlePayment,
     });
+  });
+
+  it("accepts the recipients-list payload produced by task payment controls", async () => {
+    const provider = new TestProvider(context, options);
+    const recipientsPayment: TaskPaymentData = {
+      documentId: "document-2",
+      paymentControlPath: "payment.properties.paymentControl",
+      recipients: [
+        {
+          amount: 15,
+          currency: "EUR",
+          description: "Test payment",
+          orderId: "order-2",
+        },
+      ],
+    };
+
+    await expect(provider.calculatePayment(recipientsPayment)).resolves.toEqual(
+      { calculatePayment: recipientsPayment },
+    );
   });
 
   it("resolves handleStatus() to the expected result", async () => {

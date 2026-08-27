@@ -287,6 +287,97 @@ describe("PayoneProvider", () => {
       ).toBe("https://example.com/default-return");
     });
 
+    it("resolves the recipients-list shape used by task payment controls", async () => {
+      createCommerceCaseRequestMock.mockResolvedValue({
+        commerceCaseId: "commerce-case-recipients",
+        checkout: {
+          paymentResponse: {
+            merchantAction: {
+              redirectData: {
+                redirectURL: "https://secure.payone.com/redirect/recipients",
+              },
+            },
+          },
+        },
+      });
+
+      const provider = new PayoneProvider(context, options);
+      const result = await provider.calculatePayment({
+        documentId: "doc-1",
+        paymentControlPath: "payment.properties.paymentControl",
+        recipients: [
+          {
+            amount: 15,
+            currency: "EUR",
+            description: "Test payment",
+            orderId: "order-1000239001",
+          },
+        ],
+      });
+
+      const sentRequest = createCommerceCaseRequestMock.mock.calls[0][1];
+      expect(sentRequest.checkout.amountOfMoney).toEqual({
+        amount: 1500,
+        currencyCode: "EUR",
+      });
+      expect(result).toMatchObject({
+        redirectUrl: "https://secure.payone.com/redirect/recipients",
+        amount: 15,
+        currency: "EUR",
+        orderId: "order-1000239001",
+      });
+    });
+
+    it("aggregates multiple recipients into one PAYONE checkout", async () => {
+      createCommerceCaseRequestMock.mockResolvedValue({
+        commerceCaseId: "commerce-case-multiple-recipients",
+        checkout: {
+          paymentResponse: {
+            merchantAction: {
+              redirectData: {
+                redirectURL: "https://secure.payone.com/redirect/multiple",
+              },
+            },
+          },
+        },
+      });
+
+      const provider = new PayoneProvider(context, options);
+      await provider.calculatePayment({
+        recipients: [
+          { amount: 10, currency: "EUR", orderId: "order-1" },
+          { amount: 2.5, currency: "EUR", orderId: "order-2" },
+        ],
+      });
+
+      const sentRequest = createCommerceCaseRequestMock.mock.calls[0][1];
+      expect(sentRequest.merchantReference).toBe("order-1");
+      expect(sentRequest.checkout.amountOfMoney).toEqual({
+        amount: 1250,
+        currencyCode: "EUR",
+      });
+    });
+
+    it("rejects an empty recipients list without calling PAYONE", async () => {
+      const provider = new PayoneProvider(context, options);
+
+      await expect(
+        provider.calculatePayment({ recipients: [] }),
+      ).rejects.toThrow(/missing a numeric "amount"/);
+      expect(createCommerceCaseRequestMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects a recipient with a non-numeric amount", async () => {
+      const provider = new PayoneProvider(context, options);
+
+      await expect(
+        provider.calculatePayment({
+          recipients: [{ amount: "not-a-number" as unknown as number }],
+        }),
+      ).rejects.toThrow(/missing a numeric "amount"/);
+      expect(createCommerceCaseRequestMock).not.toHaveBeenCalled();
+    });
+
     it("throws a descriptive error when the response has no redirect URL", async () => {
       createCommerceCaseRequestMock.mockResolvedValue({
         commerceCaseId: "commerce-case-3",

@@ -1,3 +1,5 @@
+import type { TaskPaymentData } from "@liquio/plugin-sdk";
+
 /**
  * Configuration options for {@link PayoneProvider}.
  * These come from the per-customer plugin config (`plugins.json`), not from code constants.
@@ -50,7 +52,7 @@ export interface PayoneOptions {
  * established convention for these resolved amounts elsewhere in `components/task`. The
  * provider is responsible for converting to integer cents before calling the PAYONE SDK.
  */
-export interface PayoneResolvedPaymentData {
+export interface PayoneResolvedPaymentData extends TaskPaymentData {
   /** Resolved decimal currency amount (not cents). */
   amount: number;
   /** ISO currency code, e.g. `UAH`/`EUR`. Falls back to a provider-level default if absent. */
@@ -61,10 +63,6 @@ export interface PayoneResolvedPaymentData {
   orderId: string;
   /** Return URL to send the customer back to after completing payment on PAYONE's hosted page. */
   returnUrl?: string;
-  documentId?: string;
-  workflowId?: string;
-  paymentControlPath?: string;
-  [key: string]: unknown;
 }
 
 /**

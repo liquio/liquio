@@ -56,7 +56,18 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
    * `components/task`'s internal `Sandbox`/JSON-schema formula machinery.
    */
   async calculatePayment(data: unknown): Promise<PayoneCalculatedPaymentData> {
-    const payload = data as PayoneResolvedPaymentData;
+    const input = data as PayoneResolvedPaymentData;
+    const recipients = input?.recipients;
+    const payload: PayoneResolvedPaymentData = recipients?.length
+      ? ({
+          ...input,
+          ...recipients[0],
+          amount: recipients.reduce(
+            (total, recipient) => total + Number(recipient.amount),
+            0,
+          ),
+        } as PayoneResolvedPaymentData)
+      : input;
 
     if (
       typeof payload?.amount !== "number" ||

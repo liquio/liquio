@@ -1,9 +1,37 @@
 import { BasePlugin } from "./base_provider";
 
+export interface TaskPaymentRecipient {
+  amount: number;
+  currency?: string;
+  description?: string;
+  orderId?: string;
+  recipient?: string;
+  payer?: string;
+  orderIdSuffix?: string;
+  orderNum?: number;
+  [key: string]: unknown;
+}
+
+export interface TaskPaymentData {
+  amount?: number;
+  currency?: string;
+  description?: string;
+  orderId?: string;
+  recipient?: string;
+  payer?: string;
+  orderIdSuffix?: string;
+  orderNum?: number;
+  recipients?: TaskPaymentRecipient[];
+  documentId?: string;
+  workflowId?: string;
+  paymentControlPath?: string;
+  [key: string]: unknown;
+}
+
 export abstract class TaskPaymentProvider<
   TOptions = Record<string, unknown>,
 > extends BasePlugin<TOptions> {
-  abstract calculatePayment(data: unknown): Promise<unknown>;
+  abstract calculatePayment(data: TaskPaymentData): Promise<unknown>;
 
   abstract handleStatus(
     data: unknown,
