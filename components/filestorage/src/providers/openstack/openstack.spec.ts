@@ -14,6 +14,7 @@ afterAll(() => {
   delete global.log;
   delete global.silentUpload;
   nock.cleanAll();
+  nock.restore();
 });
 
 describe('OpenStack Provider', () => {

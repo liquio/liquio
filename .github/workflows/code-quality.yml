@@ -73,7 +73,7 @@ jobs:
   lint:
     needs: detect
     if: needs.detect.outputs.any == 'true'
-    name: ${{ matrix.service }}
+    name: lint-${{ matrix.service }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
