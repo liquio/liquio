@@ -28,9 +28,9 @@ jest.mock('../src/lib/message_queue', () => {
 });
 
 // Mock the log module
-jest.mock('back-core', () => {
+jest.mock('@liquio/back-core', () => {
   const debug = require('debug');
-  const original = jest.requireActual('back-core');
+  const original = jest.requireActual('@liquio/back-core');
   const logs = [];
 
   class MockLog extends original.Log {
@@ -61,7 +61,7 @@ jest.mock('back-core', () => {
 const configOverride: any = {};
 jest.mock('../src/lib/config', () => {
   const Multiconf = require('multiconf');
-  const baseConfig = Multiconf.get('../config-templates/event');
+  const baseConfig = Multiconf.get('../../config-templates/event');
 
   const getMerged = () => ({ ...baseConfig, ...configOverride });
 
