@@ -13,7 +13,6 @@
     "build": "tsc",
     "lint": "eslint -c eslint.config.js .",
     "lint:fix": "eslint -c eslint.config.js . --fix",
-    "bundle": "node bundle.cjs",
     "test": "jest src",
     "test:coverage": "jest --coverage src",
     "test:e2e": "jest --coverage --verbose tests",

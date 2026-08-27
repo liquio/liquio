@@ -5,7 +5,7 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {}],
   },
-  testPathIgnorePatterns: ['/bundle/', '/dist/'],
+  testPathIgnorePatterns: ['/dist/'],
   testMatch: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
 };
