@@ -137,7 +137,7 @@
   "dependencies": {
     "@babel/core": "^7.25.0",
     "deep-diff": "^1.0.2",
-    "filesize": "^6.4.0",
+    "filesize": "^11.0.22",
     "history": "^4.10.1",
     "json5": "^2.2.3",
     "mime-types": "^2.1.35",
