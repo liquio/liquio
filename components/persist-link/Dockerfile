@@ -1,4 +1,4 @@
-FROM node:22-slim AS builder
+FROM node:24-slim AS builder
 
 WORKDIR /var/www/components/persist-link
 
@@ -12,7 +12,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-slim
+FROM node:24-slim
 
 # Set the configuration path
 ENV CONFIG_PATH=/var/www/config

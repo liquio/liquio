@@ -2,7 +2,7 @@
   "name": "liquio-notification",
   "version": "0.1.8",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
@@ -76,5 +76,14 @@
     "tough-cookie": "4.1.3",
     "cookie": "0.7.0",
     "cross-spawn": "^7.0.5"
+  },
+  "allowScripts": {
+    "core-js@2.6.12": true,
+    "cpu-features@0.0.10": true,
+    "iconv@2.3.5": true,
+    "node-expat@2.4.1": true,
+    "protobufjs@7.6.5": true,
+    "ssh2@1.17.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }

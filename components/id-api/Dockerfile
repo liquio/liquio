@@ -1,5 +1,5 @@
 # Stage 1: transpile TypeScript to JavaScript
-FROM node:22 AS build
+FROM node:24 AS build
 ARG NODE_MAX_OLD_SPACE_SIZE=4096
 ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
 
@@ -18,7 +18,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: create a new image with the build artifacts
-FROM node:22-slim AS runtime
+FROM node:24-slim AS runtime
 
 # Set up correct timezone
 ENV CONFIG_PATH=/var/www/config

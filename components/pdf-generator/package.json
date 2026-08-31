@@ -2,7 +2,7 @@
   "name": "pdf-generator",
   "version": "0.1.2",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",

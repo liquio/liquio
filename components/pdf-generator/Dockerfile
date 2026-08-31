@@ -1,5 +1,5 @@
 # Stage 1: transpile TypeScript to JavaScript
-FROM node:22 AS build
+FROM node:24 AS build
 ARG NODE_MAX_OLD_SPACE_SIZE=4096
 ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
@@ -22,7 +22,7 @@ COPY . .
 RUN pnpm run build
 
 # Stage 2: setup a runtime image with built files
-FROM node:22-slim AS runtime
+FROM node:24-slim AS runtime
 
 ENV CONFIG_PATH=/var/www/config
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
