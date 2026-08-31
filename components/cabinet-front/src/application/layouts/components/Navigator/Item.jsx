@@ -10,6 +10,8 @@ import HoverMenu from 'layouts/components/Navigator/HoverMenu';
 import styles from 'layouts/components/Navigator/itemStyles';
 import { getConfig } from 'core/helpers/configLoader';
 
+const isExternalUrl = (path) => /^https?:\/\//i.test(path);
+
 const NavigationItem = ({ t, classes, menuItem, noPadding, uiFilters }) => {
   const config = getConfig();
 
@@ -42,6 +44,48 @@ const NavigationItem = ({ t, classes, menuItem, noPadding, uiFilters }) => {
     }
   }
 
+  const listItem = (
+    <ListItem
+      dense={true}
+      tabIndex={-1}
+      component={'div'}
+      className={classNames(classes.item, classes.itemActionable, classes.subNavLink, {
+        [classes.noPadding]: !!noPadding
+      })}
+    >
+      {icon ? <ListItemIcon>{icon}</ListItemIcon> : null}
+      <ListItemText
+        classes={{
+          primary: classes.itemPrimary,
+          textDense: classes.textDense
+        }}
+      >
+        {itemName}
+        {badge && Number.isInteger(badge) ? (
+          <Badge badgeContent={badge} color="secondary" classes={{ badge: classes.badge }}>
+            <span />
+          </Badge>
+        ) : null}
+      </ListItemText>
+    </ListItem>
+  );
+
+  if (isExternalUrl(path)) {
+    return (
+      <a
+        href={path}
+        key={childId}
+        className={classes.navLink}
+        onClick={handleDrawerToggle}
+        target="_blank"
+        rel="noopener noreferrer"
+        id={childId}
+      >
+        {listItem}
+      </a>
+    );
+  }
+
   return (
     <NavLink
       exact={true}
@@ -52,29 +96,7 @@ const NavigationItem = ({ t, classes, menuItem, noPadding, uiFilters }) => {
       activeClassName="active"
       id={childId}
     >
-      <ListItem
-        dense={true}
-        tabIndex={-1}
-        component={'div'}
-        className={classNames(classes.item, classes.itemActionable, classes.subNavLink, {
-          [classes.noPadding]: !!noPadding
-        })}
-      >
-        {icon ? <ListItemIcon>{icon}</ListItemIcon> : null}
-        <ListItemText
-          classes={{
-            primary: classes.itemPrimary,
-            textDense: classes.textDense
-          }}
-        >
-          {itemName}
-          {badge && Number.isInteger(badge) ? (
-            <Badge badgeContent={badge} color="secondary" classes={{ badge: classes.badge }}>
-              <span />
-            </Badge>
-          ) : null}
-        </ListItemText>
-      </ListItem>
+      {listItem}
     </NavLink>
   );
 };
