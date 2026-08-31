@@ -14,6 +14,46 @@ const { randomUUID } = crypto;
 const DEFAULT_GLOBAL_FUNCTIONS_OBJECT = '$';
 const DEFAULT_LRU_MAX = 1000; // 1000 items
 
+/** Marks a host wrapper function (built by `compileInIsolatedVm` for async code) as
+ * promise-returning, so nesting it as a global into another isolate — as happens when a
+ * compiled workflow template function is exposed under `$.workflow` — bridges it correctly
+ * even though the wrapper itself isn't declared `async`. */
+const ASYNC_BRIDGE_MARKER = Symbol('isolatedVmAsyncBridge');
+
+/**
+ * Whether a function value is (or behaves like) an `AsyncFunction`. TypeScript targets at or
+ * below ES2016 (this repo builds at ES6) downlevel `async`/`await` into a plain function
+ * wrapping a generator via the `__awaiter` helper, which loses the native `AsyncFunction`
+ * constructor — so a TypeScript-authored async global doesn't pass a bare `constructor.name`
+ * check. Detect that shape from its source text as a fallback, alongside `ASYNC_BRIDGE_MARKER`.
+ * @param {any} value Value to check.
+ * @returns {boolean}
+ */
+function isAsyncFunctionValue(value: any): boolean {
+  if (typeof value !== 'function') return false;
+  if (value.constructor?.name === 'AsyncFunction') return true;
+  if (value[ASYNC_BRIDGE_MARKER] === true) return true;
+  return /\b__awaiter\(/.test(Function.prototype.toString.call(value));
+}
+
+/** Sandbox globals that can't be safely bridged into an `isolated-vm` isolate: they are rich
+ * library namespaces (native bindings, or objects whose methods return further class instances
+ * that lose their prototype once copied across the isolation boundary), rather than plain
+ * functions operating on cloneable data. They remain available under the default `function`
+ * isolation level. */
+const ISOLATED_VM_UNSUPPORTED_GLOBALS = new Set(['_', 'iconv', 'moment', 'crypto']);
+
+/**
+ * How evaluated code is isolated from the host process:
+ * - `function` (default): compiled with `new Function(...)`. Fast, and gives every default
+ *   global (including rich libraries like `_`/`moment`) full fidelity, but code runs in the
+ *   same V8 realm as the host — it can reach and mutate the host's global object.
+ * - `isolated-vm`: compiled and run inside a real V8 isolate (via `SandboxContext`). Code
+ *   cannot touch the host realm at all, but only plain functions and JSON-safe data can cross
+ *   the isolation boundary, so `_`, `iconv`, `moment` and `crypto` are not available.
+ */
+export type SandboxIsolationLevel = 'function' | 'isolated-vm';
+
 /**
  * Minimal structural shape for the log object each component exposes on `global.log`.
  * Consumers may instead pass a `getLog` function in the sandbox config to avoid
@@ -32,6 +72,8 @@ export interface SandboxConfig {
   logging?: boolean;
   /** Returns the logger to use. Defaults to reading `global.log`. */
   getLog?: () => SandboxLog;
+  /** How evaluated code is isolated from the host process. Default: 'function'. */
+  isolationLevel?: SandboxIsolationLevel;
   [key: string]: any;
 }
 
@@ -276,20 +318,83 @@ export class Sandbox {
     let transformedCode = Sandbox.minifyCode(code);
     if (options.isAsync) {
       const asyncFunctions = Object.entries(globalContext)
-        .filter(([, value]) => {
-          return typeof value === 'function' && (value as any).constructor.name === 'AsyncFunction';
-        })
+        .filter(([, value]) => isAsyncFunctionValue(value))
         .map(([key]) => key);
 
       transformedCode = transformFunctionToAsync(transformedCode, asyncFunctions);
     }
 
-    // Setup function with global context pulled from options.
-    const keys = Object.keys(globalContext);
-    const values = Object.values(globalContext);
-    const fn = new Function(...keys, `return ${transformedCode}`)(...values);
+    // Compile the code under the configured isolation level.
+    const fn =
+      this.config.isolationLevel === 'isolated-vm'
+        ? this.compileInIsolatedVm(transformedCode, globalContext, !!options.isAsync)
+        : new Function(...Object.keys(globalContext), `return ${transformedCode}`)(...Object.values(globalContext));
+
     this.cache.set(hash, fn);
     return fn;
+  }
+
+  /**
+   * Compile code inside a real `isolated-vm` context so it cannot reach the host's global
+   * object or Node built-ins. Only plain functions and JSON-safe data can cross the isolation
+   * boundary: functions are bridged as callables backed by an `isolated-vm` Reference (invoked
+   * synchronously via `applySync`, or asynchronously via `apply` with `{ result: { promise:
+   * true } }` for `AsyncFunction`s), arguments/return values are copied by value, and rich
+   * library namespaces in `ISOLATED_VM_UNSUPPORTED_GLOBALS` are omitted entirely.
+   * @param {string} code Minified (and, if async, already transformed) code to execute.
+   * @param {object} globalContext Globals to expose to the evaluated code.
+   * @param {boolean} isAsync Whether the top-level code is an async function.
+   * @returns {(...args: any[]) => any} Callable compiled function.
+   */
+  private compileInIsolatedVm(code: string, globalContext: Record<string, any>, isAsync: boolean): (...args: any[]) => any {
+    const context = this.createContext();
+    const refs: { refName: string; value: any }[] = [];
+
+    const buildExpr = (value: any, seen: WeakSet<object>): string => {
+      if (typeof value === 'function') {
+        const refName = `__ref_${refs.length}`;
+        const isAsyncFn = isAsyncFunctionValue(value);
+        refs.push({ refName, value });
+        const applyExpr = isAsyncFn
+          ? `${refName}.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } })`
+          : `${refName}.applySync(undefined, args, { arguments: { copy: true }, result: { copy: true } })`;
+        return `function() { var args = Array.prototype.slice.call(arguments); return ${applyExpr}; }`;
+      }
+
+      if (value !== null && typeof value === 'object') {
+        // Guard against cycles in caller-supplied globals (default globals are cycle-free).
+        if (seen.has(value)) return 'undefined';
+        seen.add(value);
+        if (Array.isArray(value)) {
+          return `[${value.map((v) => buildExpr(v, seen)).join(', ')}]`;
+        }
+        const entries = Object.entries(value).map(([key, v]) => `${JSON.stringify(key)}: ${buildExpr(v, seen)}`);
+        return `{${entries.join(', ')}}`;
+      }
+
+      return JSON.stringify(value) ?? 'undefined';
+    };
+
+    const assignments = Object.entries(globalContext)
+      .filter(([name]) => !ISOLATED_VM_UNSUPPORTED_GLOBALS.has(name))
+      .map(([name, value]) => `var ${name} = ${buildExpr(value, new WeakSet())};`)
+      .join('\n');
+
+    for (const { refName, value } of refs) {
+      context.jail.setSync(refName, new vm.Reference(value));
+    }
+
+    const wrappedCode = `(function() {\n${assignments}\nreturn ${code};\n})()`;
+
+    if (isAsync) {
+      const ref: any = context.context.evalSync(wrappedCode, { reference: true } as any);
+      const wrapped = (...args: any[]): Promise<any> =>
+        ref.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } });
+      (wrapped as any)[ASYNC_BRIDGE_MARKER] = true;
+      return wrapped;
+    }
+
+    return context.context.evalSync(wrappedCode);
   }
 
   /**

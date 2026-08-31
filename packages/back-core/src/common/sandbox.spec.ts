@@ -511,4 +511,161 @@ describe('Sandbox', () => {
       expect(contextB.eval('typeof a')).toBe('undefined');
     });
   });
+
+  describe('isolationLevel: isolated-vm', () => {
+    const vmConfig = { ...config, isolationLevel: 'isolated-vm' as const };
+
+    it('should execute a simple code', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.eval('1 + 1')).toBe(2);
+    });
+
+    it('should execute a code with arguments via evalWithArgs', () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs('(a, b) => a + b', [1, 2]);
+      expect(result).toBe(3);
+    });
+
+    it('should operate on plain object/array arguments via evalWithArgs', () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs('(items) => items.filter((i) => i.active).map((i) => i.name)', [
+        [
+          { name: 'a', active: true },
+          { name: 'b', active: false },
+          { name: 'c', active: true },
+        ],
+      ]);
+      expect(result).toEqual(['a', 'c']);
+    });
+
+    it('should eval the same real business process example as function isolation', () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs(
+        `(documents) => {
+          const unit = documents
+            ?.find((item => item?.documentTemplateId === 988071001))
+            ?.data
+            ?.calculated
+            ?.moderatorUnitIds;
+          return unit || []
+        };`,
+        [
+          [
+            {
+              documentTemplateId: 988071001,
+              data: {
+                calculated: {
+                  moderatorUnitIds: [1, 2, 3],
+                },
+              },
+            },
+          ],
+        ],
+      );
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should bridge sync default global helpers', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.evalWithArgs('() => getMd5Hash("test")', [])).toBe('098f6bcd4621d373cade4e832627b4f6');
+      expect(sandbox.evalWithArgs('() => base64Encode("hello")', [])).toBe('aGVsbG8=');
+      expect(sandbox.evalWithArgs('() => toBase64("hello")', [])).toBe('aGVsbG8=');
+      expect(sandbox.evalWithArgs('() => typeof randomUUID()', [])).toBe('string');
+    });
+
+    it('should await bridged async globals passed via evalWithArgs options', async () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs('(a) => test(a)', [42], {
+        isAsync: true,
+        global: { test: async (a: number) => a + 1 },
+      });
+      // isolated-vm's native Promise is a different realm from Jest's, so assert duck-typed
+      // thenable-ness here rather than `toBeInstanceOf(Promise)`.
+      expect(typeof result.then).toBe('function');
+      await expect(result).resolves.toBe(43);
+    });
+
+    it('should automatically add "async" to functions if isAsync is true', async () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs('(a) => await test(a)', [42], { isAsync: true, global: { test: async (a: number) => a + 1 } });
+      expect(typeof result.then).toBe('function');
+      await expect(result).resolves.toBe(43);
+    });
+
+    it('should use workflow template global functions, sync and async', async () => {
+      const sandbox = new Sandbox(vmConfig);
+
+      const models = {
+        models: {
+          workflowTemplate: {
+            model: {
+              findAll: jest.fn().mockResolvedValue([
+                { id: 1, data: { globalFunctions: { greet: '(name) => `hi ${name}`' } } },
+                { id: 2, data: { globalFunctions: { greetAsync: 'async (name) => `hi ${name}`' } } },
+              ]),
+            },
+          },
+        },
+      };
+      await sandbox.init(models);
+
+      expect(sandbox.evalWithArgs('() => $.workflow.greet("bob")', [], { workflowTemplateId: 1 })).toBe('hi bob');
+
+      // The automatic bare-identifier `await` transform only recognizes top-level global names,
+      // not nested paths like `$.workflow.greetAsync`, so the caller awaits it explicitly here —
+      // same requirement as function isolation, just more strictly enforced: crossing the
+      // isolate boundary can't structured-clone an un-awaited Promise.
+      const asyncResult = sandbox.evalWithArgs('async (name) => await $.workflow.greetAsync(name)', ['bob'], {
+        workflowTemplateId: 2,
+        isAsync: true,
+      });
+      await expect(asyncResult).resolves.toBe('hi bob');
+    });
+
+    it('should not leak assignments to predefined host globals, unlike function isolation', () => {
+      const original = (fetch as any).toString();
+      const sandbox = new Sandbox(vmConfig);
+
+      sandbox.eval('fetch = function() { return "hijacked"; }')();
+
+      expect((fetch as any).toString()).toBe(original);
+    });
+
+    it('should not expose the host global object', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.eval('typeof process')).toBe('undefined');
+      expect(sandbox.eval('typeof require')).toBe('undefined');
+    });
+
+    it('should not expose rich library namespaces (_, iconv, moment, crypto)', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.eval('typeof _')).toBe('undefined');
+      expect(sandbox.eval('typeof iconv')).toBe('undefined');
+      expect(sandbox.eval('typeof moment')).toBe('undefined');
+      expect(sandbox.eval('typeof crypto')).toBe('undefined');
+    });
+
+    it('should support a custom global added via addGlobal', () => {
+      const sandbox = new Sandbox(vmConfig);
+      sandbox.addGlobal('double', (n: number) => n * 2);
+      expect(sandbox.evalWithArgs('(n) => double(n)', [21])).toBe(42);
+    });
+
+    it('should wrap syntax errors the same way as function isolation', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(() => sandbox.evalWithArgs("(documents, events) => { return 'Тестовий юніт; }", [])).toThrow(/^Sandbox error: /);
+    });
+
+    it('should wrap runtime errors the same way as function isolation', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(() => sandbox.evalWithArgs('() => { throw new Error("boom"); }', [])).toThrow('Sandbox error: "boom"');
+    });
+
+    it('should reuse the compiled function for identical code and options', () => {
+      const sandbox = new Sandbox(vmConfig);
+      const first = sandbox.eval('() => 1');
+      const second = sandbox.eval('() => 1');
+      expect(second).toBe(first);
+    });
+  });
 });
