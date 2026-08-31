@@ -4,9 +4,17 @@ ARG NODE_MAX_OLD_SPACE_SIZE=4096
 ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
 
 WORKDIR /build/components/event
+
+# Copy package.json and package-lock.json
 COPY package*.json .
+
+# Install all dependencies
 RUN npm ci
+
+# Copy repository files
 COPY . .
+
+# Build the project
 RUN npm run build
 
 # Stage 2: runtime image
@@ -18,22 +26,22 @@ ENV CONFIG_PATH=/var/www/config
 # Set the working directory
 WORKDIR /var/www/components/event
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-
 # Copy package files and install dependencies
 COPY package*.json .
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy the application source code
-COPY . .
+# Copy the compiled application
 COPY --from=build /build/components/event/dist ./
 
+# Switch to the node user
 USER node
 
-EXPOSE 3000
+# Expose the default listening port
+EXPOSE 7004
 
+# Setup the healthcheck
 HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost:7004/test/ping || exit 1
+    CMD node -e "require('http').get('http://localhost:7004/test/ping', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-CMD ["npm", "start"]
+# Start the application
+CMD ["npm", "run", "start:prod"]

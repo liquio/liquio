@@ -3,10 +3,18 @@ FROM node:24 AS build
 ARG NODE_MAX_OLD_SPACE_SIZE=4096
 ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
 
-WORKDIR /build
-COPY package*.json /build
+WORKDIR /build/components/gateway
+
+# Copy package.json and package-lock.json
+COPY package*.json .
+
+# Install all dependencies
 RUN npm ci
+
+# Copy repository files
 COPY . .
+
+# Build the project
 RUN npm run build
 
 # Stage 2: runtime image
@@ -16,24 +24,25 @@ FROM node:24-slim AS runtime
 ENV CONFIG_PATH=/var/www/config
 
 # Set the working directory
-WORKDIR /var/www/app
-
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+WORKDIR /var/www/components/gateway
 
 # Copy package files and install dependencies
-COPY package*.json /var/www/app
-RUN npm ci --omit=dev
+COPY package*.json .
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy the application source code
-COPY . /var/www/app
-COPY --from=build /build/dist /var/www/app/
+# Copy the compiled application
+COPY --from=build /build/components/gateway/dist ./
 
+# Switch to the node user
 USER node
 
-EXPOSE 8106
+# Expose the default listening port
+EXPOSE 7003
 
+# Setup the healthcheck
 HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost:7003/test/ping || exit 1
+    CMD node -e "require('http').get('http://localhost:7003/test/ping', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-CMD ["npm", "start"]
+# Start the application
+CMD ["npm", "run", "start:prod"]
+

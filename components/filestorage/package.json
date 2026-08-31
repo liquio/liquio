@@ -9,6 +9,7 @@
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "scripts": {
     "start": "node src/app.js",
+    "start:prod": "node src/app.js",
     "start:ts": "node -r ts-node/register src/app.ts",
     "build": "tsc",
     "lint": "eslint \"**/*.{js,ts}\"",

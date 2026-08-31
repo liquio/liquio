@@ -3,10 +3,10 @@ FROM node:24 AS build
 ARG NODE_MAX_OLD_SPACE_SIZE=4096
 ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
 
-WORKDIR /build
+WORKDIR /build/components/external-reader
 
 # Copy package.json and package-lock.json
-COPY package*.json /build
+COPY package*.json .
 
 # Install all dependencies
 RUN npm ci
@@ -17,34 +17,31 @@ COPY . .
 # Build the project
 RUN npm run build
 
-# Stage 2: create a new image with the build artifacts
+# Stage 2: runtime image
 FROM node:24-slim AS runtime
 
+# Set the configuration path
 ENV CONFIG_PATH=/var/www/config
 
-# Declare working directory
-WORKDIR /var/www/app
+# Set the working directory
+WORKDIR /var/www/components/external-reader
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Copy package files and install dependencies
+COPY package*.json .
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Add dependency config first
-ADD package*.json /var/www/app
-
-# Add runtime dependencies only
-RUN npm ci --omit=dev
-
-# Copy the build artifacts from the build stage
-COPY --from=build /build/dist /var/www/app/dist
-
-# Expose the default listening port
-EXPOSE 8104
+# Copy the compiled application
+COPY --from=build /build/components/external-reader/dist ./dist
 
 # Switch to the node user
 USER node
 
+# Expose the default listening port
+EXPOSE 8104
+
+# Setup the healthcheck
 HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost:8104/test/ping || exit 1
+    CMD node -e "require('http').get('http://localhost:8104/test/ping', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Start the application
 CMD ["npm", "run", "start:prod"]
