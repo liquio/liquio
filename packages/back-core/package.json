@@ -22,8 +22,18 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "test": "jest"
   },
+  "dependencies": {
+    "acorn": "^8.18.0",
+    "iconv-lite": "^0.7.3",
+    "isolated-vm": "^7.0.1",
+    "lodash": "^4.18.1",
+    "lru-cache": "^11.5.2",
+    "moment": "^2.30.1",
+    "sequelize": "^6.37.8"
+  },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "@types/lodash": "^4.17.25",
     "@types/node": "^26.1.2",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
