@@ -144,6 +144,6 @@
     "node-forge": "1.4.0",
     "prop-types": "^15.8.1",
     "qs": "^6.11.2",
-    "@react-pdf/renderer": "^3.4.4"
+    "@react-pdf/renderer": "^4.5.1"
   }
 }
