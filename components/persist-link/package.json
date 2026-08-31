@@ -1,6 +1,6 @@
 {
   "name": "liquio-persist-link",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Persist link",
   "main": "src/app.ts",
   "directories": {
