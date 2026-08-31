@@ -1,4 +1,4 @@
-import { Sandbox } from './sandbox';
+import { Sandbox, SandboxIsolationLevel } from './sandbox';
 import { appendTraceMeta, runInAsyncLocalStorage } from './async_local_storage';
 
 const log = { save: jest.fn() };
@@ -513,7 +513,7 @@ describe('Sandbox', () => {
   });
 
   describe('isolationLevel: isolated-vm', () => {
-    const vmConfig = { ...config, isolationLevel: 'isolated-vm' as const };
+    const vmConfig = { ...config, isolationLevel: SandboxIsolationLevel.IsolatedVm };
 
     it('should execute a simple code', () => {
       const sandbox = new Sandbox(vmConfig);

@@ -20,20 +20,39 @@ const DEFAULT_LRU_MAX = 1000; // 1000 items
  * even though the wrapper itself isn't declared `async`. */
 const ASYNC_BRIDGE_MARKER = Symbol('isolatedVmAsyncBridge');
 
+/** A host wrapper function produced by `compileInIsolatedVm` for async code, tagged with
+ * `ASYNC_BRIDGE_MARKER` so it can be recognized as promise-returning when nested as a global
+ * into another isolate. */
+interface AsyncBridgeFunction {
+  (...args: unknown[]): Promise<unknown>;
+  [ASYNC_BRIDGE_MARKER]?: true;
+}
+
 /**
  * Whether a function value is (or behaves like) an `AsyncFunction`. TypeScript targets at or
  * below ES2016 (this repo builds at ES6) downlevel `async`/`await` into a plain function
  * wrapping a generator via the `__awaiter` helper, which loses the native `AsyncFunction`
  * constructor — so a TypeScript-authored async global doesn't pass a bare `constructor.name`
  * check. Detect that shape from its source text as a fallback, alongside `ASYNC_BRIDGE_MARKER`.
- * @param {any} value Value to check.
+ * @param {unknown} value Value to check.
  * @returns {boolean}
  */
-function isAsyncFunctionValue(value: any): boolean {
+function isAsyncFunctionValue(value: unknown): boolean {
   if (typeof value !== 'function') return false;
   if (value.constructor?.name === 'AsyncFunction') return true;
-  if (value[ASYNC_BRIDGE_MARKER] === true) return true;
+  if ((value as AsyncBridgeFunction)[ASYNC_BRIDGE_MARKER] === true) return true;
   return /\b__awaiter\(/.test(Function.prototype.toString.call(value));
+}
+
+/** Structural shape of a thrown value that looks like an `Error` (has a string `.message`,
+ * and optionally a parser-style `.loc`), without requiring `instanceof Error` — a real `Error`
+ * thrown inside an `isolated-vm` isolate crosses back as an object of this shape but belongs to
+ * a different V8 realm, so `instanceof` against the host's own `Error` constructor fails.
+ * @param {unknown} error Value to check.
+ * @returns {boolean}
+ */
+function isErrorLike(error: unknown): error is { message: string; loc?: { line: number; column: number } } {
+  return typeof error === 'object' && error !== null && typeof (error as { message?: unknown }).message === 'string';
 }
 
 /** Sandbox globals that can't be safely bridged into an `isolated-vm` isolate: they are rich
@@ -44,15 +63,21 @@ function isAsyncFunctionValue(value: any): boolean {
 const ISOLATED_VM_UNSUPPORTED_GLOBALS = new Set(['_', 'iconv', 'moment', 'crypto']);
 
 /**
- * How evaluated code is isolated from the host process:
- * - `function` (default): compiled with `new Function(...)`. Fast, and gives every default
- *   global (including rich libraries like `_`/`moment`) full fidelity, but code runs in the
- *   same V8 realm as the host — it can reach and mutate the host's global object.
- * - `isolated-vm`: compiled and run inside a real V8 isolate (via `SandboxContext`). Code
- *   cannot touch the host realm at all, but only plain functions and JSON-safe data can cross
- *   the isolation boundary, so `_`, `iconv`, `moment` and `crypto` are not available.
+ * How evaluated code is isolated from the host process.
  */
-export type SandboxIsolationLevel = 'function' | 'isolated-vm';
+export enum SandboxIsolationLevel {
+  /** Compiled with `new Function(...)`. Fast, and gives every default global (including rich
+   * libraries like `_`/`moment`) full fidelity, but code runs in the same V8 realm as the host
+   * — it can reach and mutate the host's global object. This is the default. */
+  Function = 'function',
+  /** Compiled and run inside a real V8 isolate (via `SandboxContext`). Code cannot touch the
+   * host realm at all, but only plain functions and JSON-safe data can cross the isolation
+   * boundary, so `_`, `iconv`, `moment` and `crypto` are not available. */
+  IsolatedVm = 'isolated-vm',
+}
+
+/** Log levels used by `Sandbox`'s own diagnostic `save()` calls. */
+export type SandboxLogLevel = 'info' | 'warn' | 'error';
 
 /**
  * Minimal structural shape for the log object each component exposes on `global.log`.
@@ -60,7 +85,7 @@ export type SandboxIsolationLevel = 'function' | 'isolated-vm';
  * depending on a process-wide global.
  */
 export interface SandboxLog {
-  save(event: string, data: Record<string, any>, level?: string): void;
+  save(event: string, data: Record<string, unknown>, level?: SandboxLogLevel): void;
 }
 
 export interface SandboxConfig {
@@ -72,14 +97,14 @@ export interface SandboxConfig {
   logging?: boolean;
   /** Returns the logger to use. Defaults to reading `global.log`. */
   getLog?: () => SandboxLog;
-  /** How evaluated code is isolated from the host process. Default: 'function'. */
+  /** How evaluated code is isolated from the host process. Default: `SandboxIsolationLevel.Function`. */
   isolationLevel?: SandboxIsolationLevel;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface EvalOptions {
   /** Extra globals to expose to the evaluated code, merged over the sandbox defaults. */
-  global?: Record<string, any>;
+  global?: Record<string, unknown>;
   /** Evaluate code as an async function, awaiting any async globals it calls. */
   isAsync?: boolean;
   /** Throw an error if code is undefined. */
@@ -89,10 +114,10 @@ export interface EvalOptions {
   /** Workflow template ID whose global functions should be exposed as `$.workflow`. */
   workflowTemplateId?: string | number;
   /** Default value to return if code is empty/undefined. */
-  defaultValue?: any;
+  defaultValue?: unknown;
   /** Meta data for logging. */
-  meta?: Record<string, any>;
-  [key: string]: any;
+  meta?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 /**
@@ -108,9 +133,9 @@ export class Sandbox {
   config: SandboxConfig;
   isolate: vm.Isolate;
   globalFunctionsObject: string;
-  defaultGlobals: Record<string, any>;
-  cache: LRUCache<string, any>;
-  workflowTemplateFunctions: Record<string | number, Record<string, any>>;
+  defaultGlobals: Record<string, unknown>;
+  cache: LRUCache<string, unknown>;
+  workflowTemplateFunctions: Record<string | number, Record<string, unknown>>;
 
   /**
    * Get the singleton instance of the Sandbox.
@@ -166,10 +191,10 @@ export class Sandbox {
    * Register a new default global for evaluated code. Fails if the name is already taken,
    * so components don't silently shadow one of the built-in helpers or each other's globals.
    * @param {string} name Global name.
-   * @param {any} value Global value.
+   * @param {unknown} value Global value.
    * @returns {Sandbox}
    */
-  addGlobal(name: string, value: any): Sandbox {
+  addGlobal(name: string, value: unknown): Sandbox {
     if (typeof name !== 'string' || name.length === 0) {
       throw new Error('Global name must be a non-empty string');
     }
@@ -204,7 +229,7 @@ export class Sandbox {
       const globalFunctions = workflowTemplate.data?.globalFunctions || {};
 
       if (typeof globalFunctions !== 'object') {
-        this.getLog().save(
+        this.log.save(
           'sandbox-warning',
           {
             workflowTemplateId: workflowTemplate.id,
@@ -225,7 +250,7 @@ export class Sandbox {
    * @param {string|number} workflowTemplateId Workflow template ID.
    * @param {object} globalFunctions Map of function name to function source code.
    */
-  updateWorkflowTemplateFunctions(workflowTemplateId: string | number, globalFunctions: Record<string, any>): void {
+  updateWorkflowTemplateFunctions(workflowTemplateId: string | number, globalFunctions: Record<string, unknown>): void {
     // Filter out empty strings.
     const pairs = Object.entries(globalFunctions || {}).filter(([, v]) => {
       return typeof v === 'string' && v.length > 0;
@@ -240,7 +265,7 @@ export class Sandbox {
           isAsync: functionCode.trim().startsWith('async'),
         });
 
-        this.getLog().save(
+        this.log.save(
           'sandbox-global-function',
           {
             workflowTemplateId,
@@ -248,13 +273,13 @@ export class Sandbox {
           },
           'info',
         );
-      } catch (error: any) {
-        this.getLog().save(
+      } catch (error) {
+        this.log.save(
           'sandbox-global-function-error',
           {
             workflowTemplateId,
             functionName,
-            error: error.message,
+            error: error instanceof Error ? error.message : String(error),
             code: functionCode,
           },
           'warn',
@@ -302,15 +327,14 @@ export class Sandbox {
     }
 
     options.global ??= {};
-    options.global[this.globalFunctionsObject] = { workflow: {} };
+    const workflowScope: { workflow: Record<string, unknown> } = { workflow: {} };
+    options.global[this.globalFunctionsObject] = workflowScope;
     options.global.log = this.getSandboxLog({ ...options.meta, hash, workflowTemplateId: options.workflowTemplateId });
 
     // Add workflow template global functions to the execution context.
     const workflowTemplateId = options.workflowTemplateId || meta.workflowTemplateId;
     if (workflowTemplateId) {
-      options.global[this.globalFunctionsObject].workflow = {
-        ...this.workflowTemplateFunctions[workflowTemplateId],
-      };
+      workflowScope.workflow = { ...this.workflowTemplateFunctions[workflowTemplateId] };
     }
 
     const globalContext = { ...this.defaultGlobals, ...options.global };
@@ -326,7 +350,7 @@ export class Sandbox {
 
     // Compile the code under the configured isolation level.
     const fn =
-      this.config.isolationLevel === 'isolated-vm'
+      this.config.isolationLevel === SandboxIsolationLevel.IsolatedVm
         ? this.compileInIsolatedVm(transformedCode, globalContext, !!options.isAsync)
         : new Function(...Object.keys(globalContext), `return ${transformedCode}`)(...Object.values(globalContext));
 
@@ -346,11 +370,11 @@ export class Sandbox {
    * @param {boolean} isAsync Whether the top-level code is an async function.
    * @returns {(...args: any[]) => any} Callable compiled function.
    */
-  private compileInIsolatedVm(code: string, globalContext: Record<string, any>, isAsync: boolean): (...args: any[]) => any {
+  private compileInIsolatedVm(code: string, globalContext: Record<string, unknown>, isAsync: boolean): (...args: any[]) => any {
     const context = this.createContext();
-    const refs: { refName: string; value: any }[] = [];
+    const refs: { refName: string; value: unknown }[] = [];
 
-    const buildExpr = (value: any, seen: WeakSet<object>): string => {
+    const buildExpr = (value: unknown, seen: WeakSet<object>): string => {
       if (typeof value === 'function') {
         const refName = `__ref_${refs.length}`;
         const isAsyncFn = isAsyncFunctionValue(value);
@@ -387,10 +411,10 @@ export class Sandbox {
     const wrappedCode = `(function() {\n${assignments}\nreturn ${code};\n})()`;
 
     if (isAsync) {
-      const ref: any = context.context.evalSync(wrappedCode, { reference: true } as any);
-      const wrapped = (...args: any[]): Promise<any> =>
+      const ref = context.context.evalSync(wrappedCode, { reference: true });
+      const wrapped: AsyncBridgeFunction = (...args) =>
         ref.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } });
-      (wrapped as any)[ASYNC_BRIDGE_MARKER] = true;
+      wrapped[ASYNC_BRIDGE_MARKER] = true;
       return wrapped;
     }
 
@@ -428,12 +452,14 @@ export class Sandbox {
         code = `async ${code}`;
       }
 
-      let isArrowFunction, arrowParams, acornError;
+      let isArrowFunction: boolean | undefined;
+      let arrowParams: Array<string | undefined> | undefined;
+      let acornError: unknown;
       try {
-        const { body } = acorn.parse(code, { ecmaVersion: 2020 }) as any;
-        if (body[0].type === 'ExpressionStatement' && body[0].expression.type === 'ArrowFunctionExpression') {
+        const [firstStatement] = acorn.parse(code, { ecmaVersion: 2020 }).body;
+        if (firstStatement?.type === 'ExpressionStatement' && firstStatement.expression.type === 'ArrowFunctionExpression') {
           isArrowFunction = true;
-          arrowParams = body[0].expression.params.map((param: any) => param.name);
+          arrowParams = firstStatement.expression.params.map((param) => ('name' in param ? param.name : undefined));
           if (isArrowFunction && Array.isArray(arrowParams) && args) {
             args = args.slice(0, arrowParams.length);
           }
@@ -452,14 +478,14 @@ export class Sandbox {
 
       if (typeof fn !== 'function') {
         if (!options.checkArrow) {
-          this.getLog().save('sandbox-warning', { ...meta, error: 'Function not found', acornError, code }, 'warn');
+          this.log.save('sandbox-warning', { ...meta, error: 'Function not found', acornError, code }, 'warn');
         }
         return fn;
       }
 
       if (this.config.logging) {
         const result = fn(...(args || []));
-        this.getLog().save('sandbox-eval', { ...meta, isArrowFunction, arrowParams, duration: Date.now() - time });
+        this.log.save('sandbox-eval', { ...meta, isArrowFunction, arrowParams, duration: Date.now() - time });
         return result;
       } else {
         return fn(...(args || []));
@@ -469,40 +495,46 @@ export class Sandbox {
     }
   }
 
-  throwError(error: any, code: any, meta: any): Error {
-    this.getLog().save('sandbox-error', { ...meta, error: error.message, code }, 'error');
+  throwError(error: unknown, code: string | undefined, meta: Record<string, unknown>): Error {
+    // Duck-type rather than `instanceof Error`: an error thrown inside an `isolated-vm` isolate
+    // crosses back as an object shaped like an Error, but isn't recognized by the host's own
+    // Error constructor since it belongs to a different V8 realm.
+    const errorLike = isErrorLike(error) ? error : undefined;
+    const message = errorLike?.message ?? String(error);
+    const loc = errorLike?.loc;
 
-    let errorMessage = `Sandbox error: "${error.message}"`;
+    this.log.save('sandbox-error', { ...meta, error: message, code }, 'error');
+
+    let errorMessage = `Sandbox error: "${message}"`;
     if (meta.fn) {
-      errorMessage += ` in ${meta.fn}`;
+      errorMessage += ` in ${String(meta.fn)}`;
     }
     if (meta.caller) {
-      errorMessage += ` called by ${meta.caller}`;
+      errorMessage += ` called by ${String(meta.caller)}`;
     }
 
-    if (error.loc) {
-      const excerpt = code.split('\n')[error.loc.line - 1];
-      errorMessage += `\n  ${excerpt}\n  ${' '.repeat(error.loc.column)}^`;
+    if (loc && typeof code === 'string') {
+      const excerpt = code.split('\n')[loc.line - 1];
+      errorMessage += `\n  ${excerpt}\n  ${' '.repeat(loc.column)}^`;
     }
 
     return new Error(errorMessage);
   }
 
   /**
-   * Resolve the logger to use, defaulting to `global.log` for backwards compatibility
-   * with components that set it up as a process-wide singleton.
-   * @returns {SandboxLog}
+   * The logger to use, defaulting to `global.log` for backwards compatibility with components
+   * that set it up as a process-wide singleton.
    */
-  private getLog(): SandboxLog {
+  private get log(): SandboxLog {
     if (this.config.getLog) {
       return this.config.getLog();
     }
-    return (global as any).log;
+    return (global as unknown as { log: SandboxLog }).log;
   }
 
-  private getSandboxLog(meta: Record<string, any>): (data: any) => void {
-    return (data: any) => {
-      this.getLog().save('sandbox-log', { data, meta }, 'info');
+  private getSandboxLog(meta: Record<string, unknown>): (data: unknown) => void {
+    return (data: unknown) => {
+      this.log.save('sandbox-log', { data, meta }, 'info');
     };
   }
 }
@@ -518,7 +550,7 @@ export class SandboxContext {
     this.jail = this.context.global;
   }
 
-  set(name: string, value: any): SandboxContext {
+  set(name: string, value: unknown): SandboxContext {
     this.jail.setSync(name, new vm.Reference(value));
     return this;
   }
