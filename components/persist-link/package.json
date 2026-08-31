@@ -24,7 +24,7 @@
     "node": "22"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.1.0",
+    "@liquio/back-core": "^0.1.1",
     "acorn": "^8.17.0",
     "axios": "^1.11.0",
     "body-parser": "^2.3.0",

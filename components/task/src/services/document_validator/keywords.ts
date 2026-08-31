@@ -1,7 +1,7 @@
 import _ from 'lodash';
 
 import { JSONPath } from '../../lib/jsonpath';
-import { Sandbox } from '../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 // Constants.
 const KEYWORD_CHECK_VALID = 'checkValid';

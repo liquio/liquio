@@ -13,7 +13,7 @@ const templateModelMock = jest.fn();
 jest.mock('../../../models/template', () => templateModelMock);
 
 const sandboxMock = jest.fn();
-jest.mock('../../../lib/sandbox', () => sandboxMock);
+jest.mock('@liquio/back-core', () => ({ Sandbox: sandboxMock }));
 
 const filestorageHandlerMock = jest.fn();
 jest.mock('../filestorage/filestorage_handler', () => filestorageHandlerMock);
@@ -27,7 +27,7 @@ jest.mock('html-pdf', () => ({ create: pdfCreate }));
 import ExternalLinkProvider from './index';
 import FilestorageHandler from '../filestorage/filestorage_handler';
 import RegisterProvider from './providers/register';
-import Sandbox from '../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import TemplateModel from '../../../models/template';
 
 const createRes = () => ({

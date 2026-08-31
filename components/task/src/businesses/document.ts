@@ -29,7 +29,7 @@ import { UnitModel } from '../models/unit';
 import { Helpers } from '../lib/helpers';
 import { NumberGenerator } from '../lib/number_generator';
 import typeOf from '../lib/type_of';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import {
   EvaluateSchemaFunctionError,
   InvalidSchemaError,

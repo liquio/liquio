@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { Sandbox } from './sandbox';
+import { Sandbox } from '@liquio/back-core';
 import { InvalidSchemaError } from './errors';
 
 // Constants.

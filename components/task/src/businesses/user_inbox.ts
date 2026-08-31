@@ -1,5 +1,5 @@
 import { Business } from './business';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 /**
  * User inbox business.

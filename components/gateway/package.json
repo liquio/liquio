@@ -21,6 +21,7 @@
     "test:e2e": "jest tests"
   },
   "dependencies": {
+    "@liquio/back-core": "^0.1.1",
     "acorn": "^8.18.0",
     "amqplib": "^2.0.1",
     "axios": "^1.15.2",

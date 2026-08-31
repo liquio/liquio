@@ -5,7 +5,7 @@ const { randomUUID } = crypto;
 
 import { PersistLink } from './persist_link';
 import { FileStorage } from './filestorage';
-import { Sandbox } from './sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 // Constants.
 const RANDOM_PART_MIN = 100000000000;

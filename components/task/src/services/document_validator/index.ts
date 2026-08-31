@@ -8,7 +8,7 @@ import { Keywords } from './keywords';
 import { ValidatorError } from './validator_error';
 import { Paths } from './paths';
 import { RegisterService } from '../../services/register';
-import { Sandbox } from '../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 // Constants.
 // const CONTROL_PAYMENT_NAME = 'payment';

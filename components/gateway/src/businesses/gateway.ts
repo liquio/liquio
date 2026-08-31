@@ -1,7 +1,7 @@
 import { parse as parseJsonc } from 'jsonc-parser';
 
 import { SystemNotifier } from '../lib/system_notifier';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import { GatewayTypeEntity } from '../entities/gateway_type';
 import { WorkflowErrorModel } from '../models/workflow_error';
 import { WorkflowDebugModel } from '../models/workflow_debug';

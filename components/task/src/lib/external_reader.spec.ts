@@ -3,12 +3,11 @@ import nock from 'nock';
 import { ExternalReader } from './external_reader';
 import { StorageService } from '../services/storage';
 import { DocumentAttachmentModel } from '../models/document_attachment';
-import { Sandbox } from './sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 // Mock dependencies
 jest.mock('../services/storage');
 jest.mock('../models/document_attachment');
-jest.mock('./sandbox');
 jest.mock('@liquio/back-core', () => ({
   appendTraceMeta: jest.fn(),
   getTraceMeta: jest.fn(() => ({
@@ -16,6 +15,7 @@ jest.mock('@liquio/back-core', () => ({
     externalReaderErrors: '',
   })),
   getTraceId: jest.fn(() => 'test-trace-id'),
+  Sandbox: jest.fn(),
 }));
 
 // Mock global objects

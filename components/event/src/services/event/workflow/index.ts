@@ -7,7 +7,7 @@ import { TaskModel } from '../../../models/task';
 import { Helpers } from '../../../lib/helpers';
 const { prepareAxiosErrorToLog } = Helpers;
 import { SYSTEM_USER } from '../../../constants/common';
-import { Sandbox } from '../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import { typeOf } from '../../../lib/type_of';
 
 /**

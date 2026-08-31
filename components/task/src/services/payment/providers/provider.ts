@@ -2,7 +2,7 @@
 import * as crypto from 'node:crypto';
 import PropByPath from 'prop-by-path';
 
-import { Sandbox } from '../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 // Constants.
 const TRANSACTION_SEPARATOR = '/';
