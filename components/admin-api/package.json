@@ -30,7 +30,7 @@
     "express-http-proxy": "^2.1.2",
     "express-validator": "^7.3.1",
     "influxdb-nodejs": "^3.1.0",
-    "isolated-vm": "^6.0.2",
+    "isolated-vm": "^7.0.1",
     "jsonc-parser": "^3.2.0",
     "jsonpath": "^1.0.2",
     "jsonwebtoken": "^9.0.3",
