@@ -2,13 +2,14 @@
   "name": "liquio-cabinet-api",
   "version": "0.1.4",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "main": "src/index.ts",
   "scripts": {
     "start": "node --max-http-header-size=65535 src/index.js",
+    "start:prod": "node --max-http-header-size=65535 src/index.js",
     "start:ts": "node --max-http-header-size=65535 -r ts-node/register src/index.ts",
     "build": "tsc",
     "lint": "eslint \"**/*.ts\"",

@@ -2,7 +2,7 @@
   "name": "liquio-id-api",
   "version": "0.1.13",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
@@ -105,5 +105,13 @@
   "overrides": {
     "form-data": "2.5.5",
     "dottie": "^2.0.7"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "cpu-features@0.0.10": true,
+    "protobufjs@7.5.4": true,
+    "ssh2@1.17.0": true,
+    "unrs-resolver@1.12.2": true,
+    "@scarf/scarf@1.4.0": true
   }
 }

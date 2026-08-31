@@ -2,13 +2,14 @@
   "name": "liquio-admin-api",
   "version": "0.1.21",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "start:prod": "node src/index.js",
     "start:ts": "node -r ts-node/register src/index.ts",
     "build": "tsc",
     "lint": "eslint \"**/*.ts\"",

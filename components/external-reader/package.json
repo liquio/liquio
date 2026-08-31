@@ -2,7 +2,7 @@
   "name": "liquio-external-reader",
   "version": "0.1.5",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "description": "External reader service for Liquio",
   "private": true,

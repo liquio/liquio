@@ -2,12 +2,12 @@
   "name": "pdf-generator",
   "version": "0.1.2",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "scripts": {
-    "postinstall": "playwright install chromium && playwright install-deps",
+    "postinstall": "playwright install chromium && playwright install-deps chromium",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "start": "nest start",

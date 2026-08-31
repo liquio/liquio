@@ -2,13 +2,14 @@
   "name": "liquio-register",
   "version": "0.1.4",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "main": "src/index.ts",
   "scripts": {
     "start": "node --max-http-header-size=65535 --max_old_space_size=8192 src/index.js",
+    "start:prod": "node --max-http-header-size=65535 --max_old_space_size=8192 src/index.js",
     "start:ts": "node --max-http-header-size=65535 --max_old_space_size=8192 --expose-gc -r ts-node/register src/index.ts",
     "start:dev": "DISABLE_LOG=true node --max_old_space_size=8192 --expose-gc -r ts-node/register src/index.ts",
     "build": "tsc",
@@ -29,7 +30,7 @@
     "express": "^5.2.1",
     "express-validator": "^6.14.3",
     "flattenjs": "^2.1.3",
-    "isolated-vm": "^6.0.1",
+    "isolated-vm": "^6.1.2",
     "jsdom": "^27.3.0",
     "json2csv": "^5.0.7",
     "lodash": "^4.18.1",
@@ -67,5 +68,12 @@
   "overrides": {
     "form-data": "2.5.5",
     "tough-cookie": "^5.0.0"
+  },
+  "allowScripts": {
+    "cpu-features@0.0.10": true,
+    "protobufjs@7.5.4": true,
+    "ssh2@1.17.0": true,
+    "unrs-resolver@1.12.2": true,
+    "isolated-vm@6.2.0": true
   }
 }

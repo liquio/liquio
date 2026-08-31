@@ -2,7 +2,7 @@
   "name": "liquio-sign-tool",
   "version": "0.1.0",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
@@ -87,5 +87,10 @@
   },
   "overrides": {
     "form-data": "2.5.5"
+  },
+  "allowScripts": {
+    "@nestjs/core@11.1.16": true,
+    "@scarf/scarf@1.4.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }

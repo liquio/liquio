@@ -2,13 +2,14 @@
   "name": "liquio-task",
   "version": "0.1.18",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "start:prod": "node src/index.js",
     "start:ts": "node -r ts-node/register src/index.ts",
     "start:dev": "DISABLE_LOG=true node index.js",
     "build": "tsc",
@@ -107,5 +108,12 @@
     "express-xml-bodyparser": {
       "xml2js": "0.6.2"
     }
+  },
+  "allowScripts": {
+    "cpu-features@0.0.10": true,
+    "isolated-vm@6.2.0": true,
+    "protobufjs@7.6.5": true,
+    "ssh2@1.17.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }
