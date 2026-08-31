@@ -39,7 +39,7 @@ jobs:
           FRONT_CORE=$(echo "$CHANGED" | grep -c '^packages/front-core/' || true)
           WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/code-quality\.yml' || true)
 
-          should_lint() {
+          should_lint_component() {
             local svc=$1
             [ "$LINT_ALL" = "true" ] && return 0
             [ "$WORKFLOW" -gt 0 ] && return 0
@@ -50,13 +50,29 @@ jobs:
             return 1
           }
 
+          should_lint_package() {
+            local pkg=$1
+            [ "$LINT_ALL" = "true" ] && return 0
+            [ "$WORKFLOW" -gt 0 ] && return 0
+            echo "$CHANGED" | grep -q "^packages/${pkg}/" && return 0
+            return 1
+          }
+
           INCLUDES=()
           for svc in admin-api admin-front cabinet-api cabinet-front event \
                      external-reader filestorage gateway id-api id-front \
                      manager notification pdf-generator register sign-tool \
                      task persist-link; do
-            if should_lint "$svc"; then
-              INCLUDES+=("{\"service\":\"$svc\"}")
+            if should_lint_component "$svc"; then
+              INCLUDES+=("{\"name\":\"$svc\",\"path\":\"components/$svc\"}")
+            fi
+          done
+
+          # packages/* that ship both lint and test scripts (packages/front-core is
+          # source consumed via file: dependency and has neither, so it's excluded)
+          for pkg in back-core event-xroad-plugin plugin-installer plugin-sdk task-payone-plugin; do
+            if should_lint_package "$pkg"; then
+              INCLUDES+=("{\"name\":\"$pkg\",\"path\":\"packages/$pkg\"}")
             fi
           done
 
@@ -73,7 +89,7 @@ jobs:
   lint:
     needs: detect
     if: needs.detect.outputs.any == 'true'
-    name: lint-${{ matrix.service }}
+    name: lint-${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -86,20 +102,33 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: 'components/${{ matrix.service }}/package-lock.json'
+          cache-dependency-path: '${{ matrix.path }}/package-lock.json'
 
-      - name: Install dependencies for ${{ matrix.service }}
+      - name: Install dependencies for ${{ matrix.name }}
         run: npm ci
-        working-directory: components/${{ matrix.service }}
+        working-directory: ${{ matrix.path }}
 
-      - name: Lint ${{ matrix.service }}
+      - name: Check for a lint script
+        id: has-lint
+        run: |
+          SCRIPT=$(npm pkg get scripts.lint 2>/dev/null | tr -d '"')
+          if [ -n "$SCRIPT" ] && [ "$SCRIPT" != "null" ] && [ "$SCRIPT" != "{}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No lint script for ${{ matrix.name }} - skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: ${{ matrix.path }}
+
+      - name: Lint ${{ matrix.name }}
+        if: steps.has-lint.outputs.run == 'true'
         run: npm run lint
-        working-directory: components/${{ matrix.service }}
+        working-directory: ${{ matrix.path }}
 
   test:
     needs: [detect, lint]
     if: needs.detect.outputs.any == 'true'
-    name: test-${{ matrix.service }}
+    name: test-${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -112,11 +141,11 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: 'components/${{ matrix.service }}/package-lock.json'
+          cache-dependency-path: '${{ matrix.path }}/package-lock.json'
 
-      - name: Install dependencies for ${{ matrix.service }}
+      - name: Install dependencies for ${{ matrix.name }}
         run: npm ci
-        working-directory: components/${{ matrix.service }}
+        working-directory: ${{ matrix.path }}
 
       - name: Check for a unit test script
         id: has-test
@@ -125,12 +154,12 @@ jobs:
           if [ -n "$SCRIPT" ] && [ "$SCRIPT" != "null" ] && [ "$SCRIPT" != "{}" ] && [[ "$SCRIPT" != *"Error: no test specified"* ]]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
-            echo "No unit test script for ${{ matrix.service }} - skipping."
+            echo "No unit test script for ${{ matrix.name }} - skipping."
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
-        working-directory: components/${{ matrix.service }}
+        working-directory: ${{ matrix.path }}
 
-      - name: Unit test ${{ matrix.service }}
+      - name: Unit test ${{ matrix.name }}
         if: steps.has-test.outputs.run == 'true'
         run: npm run test
-        working-directory: components/${{ matrix.service }}
+        working-directory: ${{ matrix.path }}
