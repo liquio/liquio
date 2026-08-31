@@ -3,7 +3,7 @@ import ExcelJS from 'exceljs';
 
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../../../constants/common';
 import { ERROR_WRONG_METHOD } from '../../../constants/error';
-import { Sandbox } from '../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 /**
  * Event file.

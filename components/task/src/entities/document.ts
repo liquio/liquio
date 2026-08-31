@@ -1,6 +1,6 @@
 import { Entity } from './entity';
 import { DocumentTemplateEntity } from './document_template';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 /**
  * Document entity.

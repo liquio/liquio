@@ -1,7 +1,7 @@
 /**
  * Decorator.
  */
-import { Sandbox } from '../../../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 export class Decorator {
   sandbox: Sandbox;

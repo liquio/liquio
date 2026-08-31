@@ -1,7 +1,7 @@
 import moment from 'moment';
 
 import { Db } from './lib/db';
-import { Log, ConsoleLogProvider, getTraceId } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, getTraceId, Sandbox } from '@liquio/back-core';
 import { PluginLoader } from '@liquio/plugin-sdk';
 import { MessageQueue } from './lib/message_queue';
 import * as Errors from './lib/errors';
@@ -13,7 +13,6 @@ import { EventBusiness } from './businesses/event';
 import { RedisClient } from './lib/redis_client';
 import { HttpClient } from './lib/http_client';
 import { LogsBroadcasting } from './lib/logs_broadcasting';
-import { Sandbox } from './lib/sandbox';
 import { typeOf } from './lib/type_of';
 
 // Allow not secure connections.

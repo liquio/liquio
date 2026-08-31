@@ -23,7 +23,7 @@ import { TaskActivity } from '../types/task_activity';
 import { CustomLogs } from '../services/custom_logs';
 import { Eds } from '../lib/eds';
 import { Helpers } from '../lib/helpers';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import typeOf from '../lib/type_of';
 import { OnboardingController } from '../controllers/onboarding';
 import {

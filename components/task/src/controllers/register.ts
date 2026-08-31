@@ -3,7 +3,7 @@ import _ from 'lodash';
 
 import { Controller } from './controller';
 import { RegisterService } from '../services/register';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import { ERROR_DOCUMENT_TEMPLATE_NOT_FOUND, ERROR_DOCUMENT_NOT_FOUND } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 import typeOf from '../lib/type_of';

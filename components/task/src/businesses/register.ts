@@ -6,7 +6,7 @@ import { UnitAccessEntity } from '../entities/unit_access';
 import { RegisterService } from '../services/register';
 import { JSONPath } from '../lib/jsonpath';
 import { RedisClient } from '../lib/redis_client';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import { InvalidParamsError, ForbiddenError, NotFoundError } from '../lib/errors';
 
 // Constants.

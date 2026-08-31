@@ -1,6 +1,6 @@
 import { Decorators } from './decorators';
 import { Providers } from './providers';
-import { Sandbox } from '../../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 /**
  * External service requester.

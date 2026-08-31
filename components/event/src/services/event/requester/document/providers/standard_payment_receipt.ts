@@ -3,7 +3,7 @@ import axios from 'axios';
 
 import { ReadableData } from '../../../../../types/readable_data';
 import { InvalidSchemaError, EvaluateSchemaFunctionError, ExternalServiceError } from '../../../../../lib/errors';
-import { Sandbox } from '../../../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 const CONTENT_TYPES: Record<string, string> = {
   pdf: 'application/pdf',

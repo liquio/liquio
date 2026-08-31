@@ -1,5 +1,5 @@
 import { Checks } from './index';
-import { Sandbox } from '../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 /**
  * Disable create document service

@@ -9,7 +9,7 @@ import { getConfig, getLog } from '../../context';
 import FilestorageHandler from '../filestorage/filestorage_handler';
 import LinkProvider from '../link_provider';
 import RegisterProvider from './providers/register';
-import Sandbox from '../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import TemplateModel from '../../../models/template';
 
 // Constants.

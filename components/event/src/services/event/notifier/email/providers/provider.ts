@@ -1,5 +1,5 @@
 import { ERROR_OVERRIDE } from '../../../../../constants/error';
-import { Sandbox } from '../../../../../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 /**
  * Email provider.
