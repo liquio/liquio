@@ -234,7 +234,8 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
   ): Promise<PayoneStatusInfo> {
     const parsedData = this.parseCallbackData(data);
     const params = this.asRecord(queryParamsObject);
-    const runtimeOptions = (providerOptions ?? {}) as TaskPaymentProviderRuntimeOptions;
+    const runtimeOptions = (providerOptions ??
+      {}) as TaskPaymentProviderRuntimeOptions;
 
     // `commerceCaseId` is NOT required to identify the checkout: confirmed against real PAYONE
     // hosted-checkout return URLs, which carry only `hostedCheckoutId` (plus `RETURNMAC`) - no
