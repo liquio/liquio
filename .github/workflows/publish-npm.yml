@@ -1,32 +1,48 @@
 name: Publish to NPM
 
 on:
-  push:
+  workflow_run:
+    workflows: ['Code Quality']
+    types: [completed]
     branches: [main]
-    paths:
-      - 'packages/**'
-      - '.github/workflows/publish-npm.yml'
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package directory name under packages/ to publish (leave empty for all)'
+        required: false
+        type: string
 
 jobs:
   detect:
-    if: github.actor != 'dependabot[bot]'
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
       any: ${{ steps.build-matrix.outputs.any }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Build package matrix
         id: build-matrix
+        env:
+          ONLY_PACKAGE: ${{ inputs.package }}
         run: |
           INCLUDES=()
           for pkg_json in packages/*/package.json; do
             dir=$(dirname "$pkg_json")
+            pkg=$(basename "$dir")
+            if [ -n "$ONLY_PACKAGE" ] && [ "$pkg" != "$ONLY_PACKAGE" ]; then
+              continue
+            fi
             name=$(node -p "require('./$pkg_json').name")
             private=$(node -p "require('./$pkg_json').private || false")
             if [ "$private" = "false" ]; then
-              INCLUDES+=("{\"package\":\"$(basename "$dir")\",\"name\":\"$name\"}")
+              INCLUDES+=("{\"package\":\"$pkg\",\"name\":\"$name\"}")
             fi
           done
 
@@ -52,6 +68,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -78,16 +96,6 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         working-directory: packages/${{ matrix.package }}
         run: npm ci
-
-      - name: Lint
-        if: steps.check.outputs.skip == 'false'
-        working-directory: packages/${{ matrix.package }}
-        run: npm run lint
-
-      - name: Test
-        if: steps.check.outputs.skip == 'false'
-        working-directory: packages/${{ matrix.package }}
-        run: npm test
 
       - name: Build
         if: steps.check.outputs.skip == 'false'
