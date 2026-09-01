@@ -472,12 +472,12 @@ describe("PayoneProvider", () => {
       expect(result.status).toEqual({ isSuccess: false });
     });
 
-    it("throws a clear, descriptive error and never calls the SDK when no commerceCaseId/checkoutId can be identified", async () => {
+    it("throws a clear, descriptive error and never calls the SDK when no checkoutId can be identified", async () => {
       const provider = new PayoneProvider(context, options);
 
       await expect(
         provider.handleStatus("", options, "success", {}, {}),
-      ).rejects.toThrow(/could not identify which PAYONE commerce case/);
+      ).rejects.toThrow(/could not identify which PAYONE checkout/);
       expect(getCheckoutRequestMock).not.toHaveBeenCalled();
     });
 

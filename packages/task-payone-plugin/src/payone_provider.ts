@@ -1,4 +1,8 @@
-import { PluginContext, TaskPaymentProvider } from "@liquio/plugin-sdk";
+import {
+  PluginContext,
+  TaskPaymentProvider,
+  TaskPaymentProviderRuntimeOptions,
+} from "@liquio/plugin-sdk";
 import { init } from "onlinepayments-sdk-nodejs";
 
 import {
@@ -69,16 +73,18 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     // PAYONE's AmountOfMoney.amount is an integer number of cents, so it must be converted.
     const amountInCents = Math.round(payload.amount * 100);
     const currencyCode = payload.currency ?? this.options.defaultCurrency;
-    // Append documentId/paymentControlPath as query params so they round-trip back on the
+    // Append documentId/paymentControlPath/taskId as query params so they round-trip back on the
     // customer's browser redirect (RedirectionData.returnUrl's own JSDoc: "You can add any
     // number of key value pairs in the query string... that help you identify the customer when
     // they return"). This is what lets handleStatus identify which document/control a later
-    // callback is about - without it, handleStatus has nothing to key off.
+    // callback is about (and, via taskId, which cabinet-front URL to send the browser back to) -
+    // without it, handleStatus has nothing to key off.
     const returnUrl = this.buildReturnUrl(
       payload.returnUrl ?? this.options.defaultRedirectUrl,
       {
         documentId: payload.documentId,
         paymentControlPath: payload.paymentControlPath,
+        taskId: payload.taskId,
       },
     );
 
@@ -123,6 +129,25 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
         orderId: payload.orderId,
         amount: payload.amount,
         currency: currencyCode,
+        // `transactionId` must be present for `document.ts#handlePaymentStatus` to match this
+        // entry back up in `calculatedHistory` later - PAYONE has no separate transaction id at
+        // this point (the payment doesn't exist yet), so the checkout id is used, consistent with
+        // `handleStatus`'s own fallback (`transactionId ?? payment?.id ?? checkoutId`).
+        transactionId: response.body.hostedCheckoutId,
+        // The customer must complete payment on PAYONE's hosted page - `components/task` has two
+        // frontend payment controls that each look for this redirect under a different field
+        // (see `TaskCalculatedPaymentData`'s JSDoc), so both are populated from the same
+        // `redirectUrl`: `payment.widget`/`payment.widget.new` reads `extraData.user_action_url`,
+        // while the legacy `payment` control reads `paymentRequestData.url` - and needs it present
+        // to stop re-initiating a brand-new checkout on every poll.
+        extraData: {
+          user_action_required: true,
+          user_action_url: redirectUrl,
+        },
+        paymentRequestData: {
+          url: redirectUrl,
+          method: "GET",
+        },
       };
     } catch (error) {
       throw this.translateSdkError(error);
@@ -201,7 +226,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
    */
   async handleStatus(
     data: unknown,
-    _providerOptions: unknown,
+    providerOptions: unknown,
     _status: string,
     queryParamsObject: unknown,
     _headersObject: unknown,
@@ -209,7 +234,14 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
   ): Promise<PayoneStatusInfo> {
     const parsedData = this.parseCallbackData(data);
     const params = this.asRecord(queryParamsObject);
+    const runtimeOptions = (providerOptions ?? {}) as TaskPaymentProviderRuntimeOptions;
 
+    // `commerceCaseId` is NOT required to identify the checkout: confirmed against real PAYONE
+    // hosted-checkout return URLs, which carry only `hostedCheckoutId` (plus `RETURNMAC`) - no
+    // commerce-case identifier at all - and `CheckoutApiClient.getHostedCheckout` below only takes
+    // `merchantId`/`checkoutId` anyway. It's still picked up opportunistically (e.g. a future
+    // server-to-server webhook payload might include it) and threaded into `extraData` for
+    // correlation/audit, but its absence must not block resolving the callback.
     const commerceCaseId = this.pickField(parsedData, params, [
       "commerceCaseId",
       "commerce_case_id",
@@ -222,11 +254,10 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       "hostedCheckoutId",
     ]);
 
-    if (!commerceCaseId || !checkoutId) {
+    if (!checkoutId) {
       throw new Error(
-        `PayoneProvider.handleStatus: could not identify which PAYONE commerce case/checkout this callback is about ` +
-          `(looked for commerceCaseId/checkoutId under those and a few alternate key names in both the callback payload ` +
-          `and the query params; found commerceCaseId=${JSON.stringify(commerceCaseId)}, checkoutId=${JSON.stringify(checkoutId)}). ` +
+        `PayoneProvider.handleStatus: could not identify which PAYONE checkout this callback is about ` +
+          `(looked for checkoutId under a few alternate key names in both the callback payload and the query params). ` +
           `payloadKeys=${JSON.stringify(Object.keys(parsedData))}, queryParamKeys=${JSON.stringify(Object.keys(params))}`,
       );
     }
@@ -283,6 +314,19 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       payment?.id ??
       checkoutId;
 
+    // `document.ts#handlePaymentStatus` only issues a browser redirect when
+    // `providerOptions.doRedirect` is true, and reads the target from
+    // `extraData.redirectUrl` - build it from the `frontRedirectUrl` template (e.g.
+    // `"https://cabinet.example/tasks/{taskId}"`) using the `taskId` that round-tripped back via
+    // the returnUrl query string (see `calculatePayment`). If either is missing, `redirectUrl`
+    // stays undefined and `document.ts` falls back to responding with JSON instead of redirecting
+    // - a caller not configured for redirects (e.g. `doRedirect` left unset) is unaffected.
+    const taskId = this.pickField(parsedData, params, ["taskId", "task_id"]);
+    const redirectUrl =
+      taskId && runtimeOptions.frontRedirectUrl
+        ? runtimeOptions.frontRedirectUrl.replace(/\{taskId\}/g, taskId)
+        : undefined;
+
     return {
       documentId,
       paymentControlPath,
@@ -295,6 +339,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
         checkoutStatus: checkout.status,
         paymentStatus: checkout.createdPaymentOutput?.paymentStatusCategory,
         checkPrevTransaction: Boolean(checkPrevTransaction),
+        redirectUrl,
       },
     };
   }

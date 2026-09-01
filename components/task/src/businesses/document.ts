@@ -2065,6 +2065,7 @@ export class DocumentBusiness extends Business {
       paymentSystemParams,
       documentId: documentId || document.id,
       workflowId: workflowId || (document.task && document.task.workflowId),
+      taskId: document.task && document.task.id,
       paymentControlPath,
       paymentCustomer,
       extraData,
