@@ -16,10 +16,13 @@ if (missingEnv.length > 0) {
     PAYONE_API_SECRET: apiSecret,
     PAYONE_MERCHANT_ID: merchantId,
     PAYONE_BASE_URL = "https://payment.preprod.payone.com",
-    PAYONE_COUNTRY_CODE: countryCode = "UA",
+    PAYONE_PAYMENT_PRODUCT_ID: paymentProductIdEnv = "1",
     PAYONE_CURRENCY_CODE: currencyCode = "EUR",
     PAYONE_AMOUNT: amountEnv = "100",
+    PAYONE_RETURN_URL: returnUrl = "https://example.com/return",
   } = process.env;
+
+  const paymentProductId = Number(paymentProductIdEnv);
 
   try {
     const { init } = await import("onlinepayments-sdk-nodejs");
@@ -29,25 +32,40 @@ if (missingEnv.length > 0) {
       secretApiKey: apiSecret,
       integrator: "OnlinePayments",
     });
-    const response = await client.products.getPaymentProducts(merchantId, {
-      countryCode,
-      currencyCode,
-      amount: Number(amountEnv),
-    });
+
+    const request = {
+      order: {
+        amountOfMoney: {
+          amount: Number(amountEnv),
+          currencyCode,
+        },
+        references: {
+          merchantReference: `test-${Date.now()}`,
+        },
+      },
+      hostedCheckoutSpecificInput: {
+        returnUrl,
+        showResultPage: false,
+      },
+      redirectPaymentMethodSpecificInput: {
+        paymentProductId,
+      },
+    };
+
+    console.log(`Creating hosted checkout with paymentProductId=${paymentProductId}...`);
+    const response = await client.hostedCheckout.createHostedCheckout(
+      merchantId,
+      request,
+      null,
+    );
 
     if (!response.isSuccess) {
       throw new Error(`HTTP ${response.status}: ${JSON.stringify(response.body)}`);
     }
 
-    const products = response.body.paymentProducts ?? [];
     console.log(
-      `PAYONE products request succeeded (${PAYONE_BASE_URL}, merchant ${merchantId}, ${countryCode}/${currencyCode}, amount ${amountEnv}): ${products.length} product(s) available`,
+      `PAYONE hosted-checkout request succeeded (${PAYONE_BASE_URL}, merchant ${merchantId}): ${JSON.stringify(response.body)}`,
     );
-    for (const product of products) {
-      console.log(
-        `  id=${product.id} paymentMethod=${product.paymentMethod} group=${product.paymentProductGroup ?? "-"} usesRedirectionTo3rdParty=${product.usesRedirectionTo3rdParty ?? false}`,
-      );
-    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const cause = error && typeof error === "object" ? error.cause : undefined;
@@ -56,7 +74,7 @@ if (missingEnv.length > 0) {
         ? ` Cause: ${cause.message}`
         : "";
 
-    console.error(`PAYONE products request failed: ${message}${causeMessage}`);
+    console.error(`PAYONE checkout test failed: ${message}${causeMessage}`);
     process.exitCode = 1;
   }
 }

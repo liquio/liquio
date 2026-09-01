@@ -30,7 +30,7 @@ Add an entry to `components/task`'s `plugins.json`:
         "apiSecret": "<PAYONE API secret>",
         "baseUrl": "https://api.preprod.commerce.payone.com",
         "merchantId": "<PAYONE merchant ID>",
-        "paymentProductId": 3012,
+        "paymentProductId": "<PAYONE redirect payment product ID, from `npm run test:connection` — must have usesRedirectionTo3rdParty: true>",
         "defaultRedirectUrl": "https://cabinet.example.gov.ua/payment/return",
         "defaultCurrency": "UAH"
       }
@@ -64,7 +64,9 @@ PAYONE_MERCHANT_ID="..." \
 npm run test:connection
 ```
 
-Set `PAYONE_BASE_URL` to override the default `payment.preprod.payone.com` endpoint. The script follows PAYONE's hosted-checkout SDK example and creates a test hosted-checkout session. Set `PAYONE_TEST_AMOUNT` (in cents) and `PAYONE_TEST_CURRENCY` to change the request values.
+Set `PAYONE_BASE_URL` to override the default `payment.preprod.payone.com` endpoint. The script calls the [Get payment products](https://developer.payone.com/en/api-reference#tag/Products/operation/GetPaymentProducts) endpoint (`GET /v2/{merchantId}/products`) and lists every payment product available to the configured merchant, including whether each one is a redirect product (`usesRedirectionTo3rdParty: true`) or a card product. Set `PAYONE_COUNTRY_CODE`, `PAYONE_CURRENCY_CODE`, and `PAYONE_AMOUNT` to change the request's country/currency/amount filters (defaults: `UA`, `EUR`, `100`).
+
+Use this to pick a valid `paymentProductId` for the [Configuration](#configuration) above — the ID configured there **must** have `usesRedirectionTo3rdParty: true`, since this plugin only implements the redirect/hosted-checkout flow (see [Scope note](#scope-note-redirect-only-in-v1)). Configuring a card-only or wallet product (e.g. product `3012`, Google Pay) will fail at checkout creation with a PAYONE `UNKNOWN_PRODUCT_ID` error such as `productId '3012' found in 'RedirectPayment' but should be in 'CardPayment'`.
 
 ## Supported operations
 
