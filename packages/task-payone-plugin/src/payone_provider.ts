@@ -96,9 +96,6 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
         returnUrl,
         showResultPage: false,
       },
-      redirectPaymentMethodSpecificInput: {
-        paymentProductId: this.options.paymentProductId,
-      },
     };
 
     try {

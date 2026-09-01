@@ -14,12 +14,6 @@ export interface PayoneOptions {
   /** PAYONE merchant ID the commerce case/checkout is created under. */
   merchantId: string;
   /**
-   * ID of the specific redirect payment product to use (e.g. a specific bank/wallet product
-   * from PAYONE's product catalog). Not enumerated by the SDK - it's merchant/config-specific,
-   * so it must be configurable per deployment rather than hardcoded.
-   */
-  paymentProductId: number;
-  /**
    * Fallback return URL PAYONE redirects the customer back to after completing (or abandoning)
    * the hosted payment page, used when the resolved payment data passed to `calculatePayment`
    * doesn't carry its own return URL.

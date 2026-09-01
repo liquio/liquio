@@ -19,14 +19,8 @@ jest.mock("onlinepayments-sdk-nodejs", () => ({
               orderRequest: {
                 orderType: "FULL",
                 paymentMethodSpecificInput: {
-                  redirectPaymentMethodSpecificInput: {
-                    paymentProductId: (args[1] as any)
-                      .redirectPaymentMethodSpecificInput.paymentProductId,
-                    redirectionData: {
-                      returnUrl: (args[1] as any).hostedCheckoutSpecificInput
-                        .returnUrl,
-                    },
-                  },
+                  returnUrl: (args[1] as any).hostedCheckoutSpecificInput
+                    .returnUrl,
                 },
               },
             },
@@ -106,7 +100,6 @@ describe("PayoneProvider", () => {
     apiSecret: "test-api-secret",
     baseUrl: "https://api.preprod.commerce.payone.com",
     merchantId: "merchant-123",
-    paymentProductId: 809,
     defaultRedirectUrl: "https://example.com/default-return",
     defaultCurrency: "EUR",
   };
@@ -160,12 +153,7 @@ describe("PayoneProvider", () => {
             orderRequest: {
               orderType: OrderType.Full,
               paymentMethodSpecificInput: {
-                redirectPaymentMethodSpecificInput: {
-                  paymentProductId: 809,
-                  redirectionData: {
-                    returnUrl: "https://example.com/return",
-                  },
-                },
+                returnUrl: "https://example.com/return",
               },
             },
           },
@@ -212,7 +200,7 @@ describe("PayoneProvider", () => {
       const sentRequest = createCommerceCaseRequestMock.mock.calls[0][1];
       const sentReturnUrl = new URL(
         sentRequest.checkout.orderRequest.paymentMethodSpecificInput
-          .redirectPaymentMethodSpecificInput.redirectionData.returnUrl,
+          .returnUrl,
       );
       expect(sentReturnUrl.searchParams.get("documentId")).toBe("doc-1");
       expect(sentReturnUrl.searchParams.get("paymentControlPath")).toBe(
@@ -268,7 +256,7 @@ describe("PayoneProvider", () => {
       expect(sentRequest.checkout.amountOfMoney.currencyCode).toBe("EUR");
       expect(
         sentRequest.checkout.orderRequest.paymentMethodSpecificInput
-          .redirectPaymentMethodSpecificInput.redirectionData.returnUrl,
+          .returnUrl,
       ).toBe("https://example.com/default-return");
     });
 
