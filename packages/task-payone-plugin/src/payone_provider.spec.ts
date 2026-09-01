@@ -199,8 +199,7 @@ describe("PayoneProvider", () => {
 
       const sentRequest = createCommerceCaseRequestMock.mock.calls[0][1];
       const sentReturnUrl = new URL(
-        sentRequest.checkout.orderRequest.paymentMethodSpecificInput
-          .returnUrl,
+        sentRequest.checkout.orderRequest.paymentMethodSpecificInput.returnUrl,
       );
       expect(sentReturnUrl.searchParams.get("documentId")).toBe("doc-1");
       expect(sentReturnUrl.searchParams.get("paymentControlPath")).toBe(
@@ -255,8 +254,7 @@ describe("PayoneProvider", () => {
       const sentRequest = createCommerceCaseRequestMock.mock.calls[0][1];
       expect(sentRequest.checkout.amountOfMoney.currencyCode).toBe("EUR");
       expect(
-        sentRequest.checkout.orderRequest.paymentMethodSpecificInput
-          .returnUrl,
+        sentRequest.checkout.orderRequest.paymentMethodSpecificInput.returnUrl,
       ).toBe("https://example.com/default-return");
     });
 
