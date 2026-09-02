@@ -37,13 +37,13 @@ Per-service image tag versions managed in chart templates.
   "gateway" "0.1.4"
   "id-api" "0.1.14"
   "id-front" "0.1.3"
-  "manager" "0.1.9"
+  "manager" "0.1.10"
   "notification" "0.1.9"
   "pdf-generator" "0.1.3"
   "persist-link" "0.1.8"
   "register" "0.1.5"
   "sign-tool" "0.1.1"
-  "task" "0.1.20"
+  "task" "0.1.21"
 -}}
 {{- if and (kindIs "map" $overrides) (hasKey $overrides $component) -}}
 {{- index $overrides $component -}}
