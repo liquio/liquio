@@ -1,6 +1,6 @@
 {
   "name": "@liquio/task-payone-plugin",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "PAYONE Platform payment provider plugin for components/task, built on @liquio/plugin-sdk",
   "main": "dist/index.js",
@@ -29,7 +29,7 @@
     "test:connection": "node scripts/test-payone-connection.mjs"
   },
   "dependencies": {
-    "@liquio/plugin-sdk": "^0.1.4",
+    "@liquio/plugin-sdk": "^0.1.5",
     "onlinepayments-sdk-nodejs": "^9.1.0"
   },
   "devDependencies": {

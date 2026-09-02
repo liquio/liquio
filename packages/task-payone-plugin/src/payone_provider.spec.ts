@@ -384,6 +384,75 @@ describe("PayoneProvider", () => {
         /PAYONE API call failed \(status 400\)/,
       );
     });
+
+    describe("useTransactionBinding", () => {
+      it("persists a transaction record and carries only its id on returnUrl, instead of documentId/paymentControlPath/taskId verbatim", async () => {
+        createCommerceCaseRequestMock.mockResolvedValue({
+          commerceCaseId: "commerce-case-tx",
+          checkout: {
+            checkoutId: "checkout-tx",
+            paymentResponse: {
+              merchantAction: {
+                redirectData: {
+                  redirectURL: "https://secure.payone.com/redirect/tx",
+                },
+              },
+            },
+          },
+        });
+        const createPaymentTransactionMock = jest
+          .fn()
+          .mockResolvedValue("short-tx-id");
+        const boundContext: PluginContext = {
+          ...context,
+          paymentTransactions: {
+            create: createPaymentTransactionMock,
+            resolve: jest.fn(),
+          },
+        };
+
+        const provider = new PayoneProvider(boundContext, options);
+        await provider.calculatePayment({
+          ...resolvedData,
+          documentId: "doc-1",
+          paymentControlPath: "payment",
+          taskId: "task-1",
+          paymentSystemParams: { useTransactionBinding: true },
+        } as PayoneResolvedPaymentData);
+
+        expect(createPaymentTransactionMock).toHaveBeenCalledWith({
+          documentId: "doc-1",
+          paymentControlPath: "payment",
+          taskId: "task-1",
+        });
+
+        const sentRequest = createCommerceCaseRequestMock.mock.calls[0][1];
+        const sentReturnUrl = new URL(
+          sentRequest.checkout.orderRequest.paymentMethodSpecificInput
+            .returnUrl,
+        );
+        expect(sentReturnUrl.searchParams.get("paymentTransactionId")).toBe(
+          "short-tx-id",
+        );
+        expect(sentReturnUrl.searchParams.get("documentId")).toBeNull();
+        expect(sentReturnUrl.searchParams.get("paymentControlPath")).toBeNull();
+        expect(sentReturnUrl.searchParams.get("taskId")).toBeNull();
+      });
+
+      it("throws instead of silently falling back to a verbatim URL when no paymentTransactions service is available", async () => {
+        const provider = new PayoneProvider(context, options);
+
+        await expect(
+          provider.calculatePayment({
+            ...resolvedData,
+            documentId: "doc-1",
+            paymentControlPath: "payment",
+            paymentSystemParams: { useTransactionBinding: true },
+          } as PayoneResolvedPaymentData),
+        ).rejects.toThrow(/no paymentTransactions service was provided/);
+        expect(createCommerceCaseRequestMock).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe("handleStatus", () => {
@@ -550,6 +619,108 @@ describe("PayoneProvider", () => {
       await expect(
         provider.handleStatus("", options, "success", identifyingParams, {}),
       ).rejects.toThrow(/PAYONE API call failed \(status 404\)/);
+    });
+
+    describe("useTransactionBinding", () => {
+      const runtimeOptions = { ...options, useTransactionBinding: true };
+
+      it("resolves documentId/paymentControlPath/taskId from the payment transaction record when they aren't present on the callback", async () => {
+        getCheckoutRequestMock.mockResolvedValue({
+          checkoutStatus: "COMPLETED",
+          references: { merchantReference: "order-42" },
+        });
+        const resolvePaymentTransactionMock = jest.fn().mockResolvedValue({
+          documentId: "document-from-tx",
+          paymentControlPath: "properties.payment.fromTx",
+          taskId: "task-from-tx",
+        });
+        const boundContext: PluginContext = {
+          ...context,
+          paymentTransactions: {
+            create: jest.fn(),
+            resolve: resolvePaymentTransactionMock,
+          },
+        };
+
+        const provider = new PayoneProvider(boundContext, options);
+        const result = await provider.handleStatus(
+          "",
+          runtimeOptions,
+          "success",
+          {
+            commerceCaseId: "commerce-case-1",
+            checkoutId: "checkout-1",
+            paymentTransactionId: "short-tx-id",
+          },
+          {},
+        );
+
+        expect(resolvePaymentTransactionMock).toHaveBeenCalledWith(
+          "short-tx-id",
+        );
+        expect(result.documentId).toBe("document-from-tx");
+        expect(result.paymentControlPath).toBe("properties.payment.fromTx");
+      });
+
+      it("prefers documentId/paymentControlPath already present on the callback over the resolved transaction record", async () => {
+        getCheckoutRequestMock.mockResolvedValue({ checkoutStatus: "OPEN" });
+        const resolvePaymentTransactionMock = jest.fn().mockResolvedValue({
+          documentId: "document-from-tx",
+          paymentControlPath: "properties.payment.fromTx",
+        });
+        const boundContext: PluginContext = {
+          ...context,
+          paymentTransactions: {
+            create: jest.fn(),
+            resolve: resolvePaymentTransactionMock,
+          },
+        };
+
+        const provider = new PayoneProvider(boundContext, options);
+        const result = await provider.handleStatus(
+          "",
+          runtimeOptions,
+          "success",
+          { ...identifyingParams, paymentTransactionId: "short-tx-id" },
+          {},
+        );
+
+        expect(resolvePaymentTransactionMock).not.toHaveBeenCalled();
+        expect(result.documentId).toBe("document-1");
+        expect(result.paymentControlPath).toBe("properties.payment");
+      });
+
+      it("still throws the identification error when no transaction record is found for the id", async () => {
+        const resolvePaymentTransactionMock = jest
+          .fn()
+          .mockResolvedValue(undefined);
+        const boundContext: PluginContext = {
+          ...context,
+          paymentTransactions: {
+            create: jest.fn(),
+            resolve: resolvePaymentTransactionMock,
+          },
+        };
+
+        const provider = new PayoneProvider(boundContext, options);
+
+        await expect(
+          provider.handleStatus(
+            "",
+            runtimeOptions,
+            "success",
+            {
+              commerceCaseId: "commerce-case-1",
+              checkoutId: "checkout-1",
+              paymentTransactionId: "unknown-tx-id",
+            },
+            {},
+          ),
+        ).rejects.toThrow(
+          /could not identify which document\/paymentControlPath/,
+        );
+        expect(getCheckoutRequestMock).not.toHaveBeenCalled();
+      });
     });
   });
 

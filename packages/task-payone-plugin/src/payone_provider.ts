@@ -2,6 +2,7 @@ import {
   PluginContext,
   TaskPaymentProvider,
   TaskPaymentProviderRuntimeOptions,
+  TaskPaymentTransactionRecord,
 } from "@liquio/plugin-sdk";
 import { init } from "onlinepayments-sdk-nodejs";
 
@@ -73,19 +74,29 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     // PAYONE's AmountOfMoney.amount is an integer number of cents, so it must be converted.
     const amountInCents = Math.round(payload.amount * 100);
     const currencyCode = payload.currency ?? this.options.defaultCurrency;
-    // Append documentId/paymentControlPath/taskId as query params so they round-trip back on the
-    // customer's browser redirect (RedirectionData.returnUrl's own JSDoc: "You can add any
-    // number of key value pairs in the query string... that help you identify the customer when
-    // they return"). This is what lets handleStatus identify which document/control a later
-    // callback is about (and, via taskId, which cabinet-front URL to send the browser back to) -
-    // without it, handleStatus has nothing to key off.
+    // Append identifying query params so they round-trip back on the customer's browser redirect
+    // (RedirectionData.returnUrl's own JSDoc: "You can add any number of key value pairs in the
+    // query string... that help you identify the customer when they return"). This is what lets
+    // handleStatus identify which document/control a later callback is about (and, via taskId,
+    // which cabinet-front URL to send the browser back to) - without it, handleStatus has
+    // nothing to key off.
+    //
+    // documentId + paymentControlPath + taskId can push PAYONE's own length limit on the
+    // returnUrl a merchant may submit (PAYONE additionally appends its own RETURNMAC/
+    // hostedCheckoutId on top). When the customer's config opts in (`useTransactionBinding`),
+    // those fields are persisted via the host's `paymentTransactions` service instead, and only
+    // the resulting short id is carried on the URL - resolved back on the way in by
+    // `resolvePaymentTransaction` below.
+    const returnUrlParams = payload.paymentSystemParams?.useTransactionBinding
+      ? { paymentTransactionId: await this.createPaymentTransaction(payload) }
+      : {
+          documentId: payload.documentId,
+          paymentControlPath: payload.paymentControlPath,
+          taskId: payload.taskId,
+        };
     const returnUrl = this.buildReturnUrl(
       payload.returnUrl ?? this.options.defaultRedirectUrl,
-      {
-        documentId: payload.documentId,
-        paymentControlPath: payload.paymentControlPath,
-        taskId: payload.taskId,
-      },
+      returnUrlParams,
     );
 
     const request = {
@@ -167,6 +178,49 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       if (value) url.searchParams.set(key, value);
     }
     return url.toString();
+  }
+
+  /**
+   * Persist documentId/paymentControlPath/taskId via the host's `paymentTransactions` service
+   * (never accessed directly - this plugin has no database of its own, see `PluginContext`'s own
+   * contract) and return the short id `buildReturnUrl` embeds instead of those fields verbatim.
+   */
+  private async createPaymentTransaction(
+    payload: PayoneResolvedPaymentData,
+  ): Promise<string> {
+    if (!this.context.paymentTransactions) {
+      throw new Error(
+        "PayoneProvider.calculatePayment: useTransactionBinding is enabled for this customer, but no paymentTransactions service was provided in the plugin context.",
+      );
+    }
+    if (!payload.documentId || !payload.paymentControlPath) {
+      throw new Error(
+        "PayoneProvider.calculatePayment: useTransactionBinding requires documentId and paymentControlPath to be present on the resolved payment data.",
+      );
+    }
+    return this.context.paymentTransactions.create({
+      documentId: payload.documentId,
+      paymentControlPath: payload.paymentControlPath,
+      taskId: payload.taskId,
+    });
+  }
+
+  /**
+   * The `handleStatus` counterpart to `createPaymentTransaction` above: resolve the short id
+   * PAYONE echoed back on the return URL to its persisted documentId/paymentControlPath/taskId.
+   * Returns `undefined` (never throws) when there's no id to resolve or nothing was found - the
+   * caller falls back to whatever it could already identify directly from the callback.
+   */
+  private async resolvePaymentTransaction(
+    parsedData: Record<string, unknown>,
+    params: Record<string, unknown>,
+  ): Promise<TaskPaymentTransactionRecord | undefined> {
+    const transactionId = this.pickField(parsedData, params, [
+      "paymentTransactionId",
+      "payment_transaction_id",
+    ]);
+    if (!transactionId || !this.context.paymentTransactions) return undefined;
+    return this.context.paymentTransactions.resolve(transactionId);
   }
 
   /**
@@ -263,14 +317,32 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       );
     }
 
-    const documentId = this.pickField(parsedData, params, [
+    let documentId = this.pickField(parsedData, params, [
       "documentId",
       "document_id",
     ]);
-    const paymentControlPath = this.pickField(parsedData, params, [
+    let paymentControlPath = this.pickField(parsedData, params, [
       "paymentControlPath",
       "payment_control_path",
     ]);
+    let taskId = this.pickField(parsedData, params, ["taskId", "task_id"]);
+
+    // useTransactionBinding (see calculatePayment's createPaymentTransaction) means documentId/
+    // paymentControlPath/taskId were never put on the return URL directly - only a short
+    // paymentTransactionId was. Resolve it back to the record now, but only fill in whatever the
+    // callback itself didn't already supply (a provider must never silently prefer a stale
+    // resolved value over a fresher one actually present on the callback).
+    if (
+      (!documentId || !paymentControlPath) &&
+      runtimeOptions.useTransactionBinding
+    ) {
+      const record = await this.resolvePaymentTransaction(parsedData, params);
+      if (record) {
+        documentId = documentId ?? record.documentId;
+        paymentControlPath = paymentControlPath ?? record.paymentControlPath;
+        taskId = taskId ?? record.taskId;
+      }
+    }
 
     if (!documentId || !paymentControlPath) {
       throw new Error(
@@ -321,8 +393,8 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     // `"https://cabinet.example/tasks/{taskId}"`) using the `taskId` that round-tripped back via
     // the returnUrl query string (see `calculatePayment`). If either is missing, `redirectUrl`
     // stays undefined and `document.ts` falls back to responding with JSON instead of redirecting
-    // - a caller not configured for redirects (e.g. `doRedirect` left unset) is unaffected.
-    const taskId = this.pickField(parsedData, params, ["taskId", "task_id"]);
+    // - a caller not configured for redirects (e.g. `doRedirect` left unset) is unaffected. `taskId`
+    // was already resolved above (directly from the callback, or via the transaction record).
     const redirectUrl =
       taskId && runtimeOptions.frontRedirectUrl
         ? runtimeOptions.frontRedirectUrl.replace(/\{taskId\}/g, taskId)
