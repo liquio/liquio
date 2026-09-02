@@ -1,6 +1,6 @@
 {
   "name": "@liquio/plugin-sdk",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "Provider/plugin interfaces and runtime loader shared by Liquio backend components",
   "main": "dist/index.js",

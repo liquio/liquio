@@ -1,5 +1,10 @@
 import { BasePlugin } from "./base_provider";
 
+export type {
+  TaskPaymentTransactionRecord,
+  TaskPaymentTransactionService,
+} from "./base_provider";
+
 export interface TaskPaymentRecipient {
   amount: number;
   currency?: string;
@@ -32,6 +37,13 @@ export interface TaskPaymentData {
    */
   taskId?: string;
   paymentControlPath?: string;
+  /**
+   * The resolved per-customer config (`config/task/payment.json`'s entry for this customer) -
+   * the same object `document.ts#handlePaymentStatus` passes as `providerOptions` to
+   * `handleStatus`/`cancelOrder`/etc. Typed here as {@link TaskPaymentProviderRuntimeOptions} so a
+   * provider can read e.g. `useTransactionBinding` without an `unknown` cast.
+   */
+  paymentSystemParams?: TaskPaymentProviderRuntimeOptions;
   [key: string]: unknown;
 }
 
@@ -109,6 +121,15 @@ export interface TaskPaymentProviderRuntimeOptions {
   /** Template for the cabinet-front URL to land the customer on, e.g. `"https://cabinet.example/tasks/{taskId}"`. */
   frontRedirectUrl?: string;
   notifyUrlShortResponse?: boolean;
+  /**
+   * Opt-in, per-customer: when `true`, a provider that supports it should bind
+   * documentId/paymentControlPath/taskId to a {@link TaskPaymentTransactionRecord} (via
+   * `PluginContext.paymentTransactions`) and carry only the resulting short id on its redirect
+   * URL, instead of embedding those fields directly - for processors whose hosted-checkout
+   * return URL has a length limit that embedding them verbatim can exceed. Left `false`/unset,
+   * every existing provider/customer keeps working exactly as before.
+   */
+  useTransactionBinding?: boolean;
   [key: string]: unknown;
 }
 
