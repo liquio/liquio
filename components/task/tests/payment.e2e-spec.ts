@@ -10,7 +10,11 @@ const DOCUMENT_ID = 'a1000000-0000-4000-8000-000000000001';
 const WORKFLOW_ID = 'a2000000-0000-4000-8000-000000000002';
 const TASK_ID = 'a3000000-0000-4000-8000-000000000003';
 const TASK_TEMPLATE_ID = 900002;
-const PAYMENT_CONTROL_PATH = 'payment';
+// Schema-style path (as stored on the payment control itself and passed to the payment
+// endpoints); mirrors a real payment workflow template, where the control lives nested under a
+// dedicated step rather than at the schema root. controllers/payment.ts strips ".properties."
+// segments to get the document-data path, so the persisted data lives at payment.paymentControl.
+const PAYMENT_CONTROL_PATH = 'payment.properties.paymentControl';
 
 // Fixture provider/customer names.
 const PROVIDER_NAME = 'testProviderFake';
@@ -27,6 +31,8 @@ const FAKE_CALCULATE_RESULT = {
 };
 const FAKE_REDIRECT_URL = 'https://fake-provider.example/redirect-success';
 const DEFAULT_REDIRECT_URL = 'https://default-redirect.example';
+const RETURN_SUCCESS_REDIRECT_URL = 'https://fake-provider.example/redirect-return-success';
+const RETURN_FAIL_REDIRECT_URL = 'https://fake-provider.example/redirect-return-fail';
 
 const BASIC_AUTH_TOKEN_RAW = 'dGVzdDp0ZXN0IC1uCg==';
 const BASIC_AUTH_TOKEN = `Basic ${BASIC_AUTH_TOKEN_RAW}`;
@@ -50,7 +56,10 @@ describe('Payment Controller', () => {
     await TestApp.beforeAll();
     app = await TestApp.setup();
 
-    // Fixture document template with a payment control at the "payment" path.
+    // Fixture document template with a payment control nested under a "payment" step, shaped
+    // after a real payment workflow template: recipient/amount formulas resolved against the
+    // document, and a checkValid rule requiring a successful entry in the processed history
+    // before the step is considered valid.
     await app.model('documentTemplate').create({
       id: DOCUMENT_TEMPLATE_ID,
       name: 'Payment Test Template',
@@ -60,7 +69,33 @@ describe('Payment Controller', () => {
         signRequired: false,
         calcTriggers: [],
         properties: {
-          [PAYMENT_CONTROL_PATH]: { type: 'object', customer: CUSTOMER_SUCCESS },
+          payment: {
+            type: 'object',
+            description: 'Payment step',
+            properties: {
+              paymentControl: {
+                type: 'object',
+                control: 'payment',
+                customer: CUSTOMER_SUCCESS,
+                paymentControlPath: PAYMENT_CONTROL_PATH,
+                validateDocumentBeforePayment: true,
+                recipients: [
+                  {
+                    amount: '() => 15;',
+                    currency: 'EUR',
+                    description: "() => 'Test payment';",
+                    orderId: '(document) => document?.id;',
+                  },
+                ],
+                checkValid: [
+                  {
+                    isValid: '(value) => value?.processed?.some((v) => v?.status?.isSuccess === 1 || v?.status?.isSuccess === true);',
+                    errorText: 'Payment not completed',
+                  },
+                ],
+              },
+            },
+          },
         },
       }),
       html_template: '<html></html>',
@@ -135,9 +170,9 @@ describe('Payment Controller', () => {
       [CUSTOMER_ERROR_NO_REDIRECT]: { providerName: PROVIDER_NAME_ERROR, isDisableRedirectOnErrorCallback: true },
     };
 
-    // Prime the fixture document with calculated payment data (payment.calculated /
-    // payment.calculatedHistory) so the webhook (`handleStatus`) tests below have a
-    // matching transactionId/document to update.
+    // Prime the fixture document with calculated payment data (payment.paymentControl.calculated
+    // / payment.paymentControl.calculatedHistory) so the webhook (`handleStatus`) tests below
+    // have a matching transactionId/document to update.
     const jwt = authenticateAsFixtureUser();
     await app
       .request()
@@ -182,12 +217,12 @@ describe('Payment Controller', () => {
         .expect(200);
 
       expect(response.body.data.id).toBe(DOCUMENT_ID);
-      expect(response.body.data.data.payment.calculated).toEqual(FAKE_CALCULATE_RESULT);
-      expect(Array.isArray(response.body.data.data.payment.calculatedHistory)).toBe(true);
-      expect(response.body.data.data.payment.calculatedHistory.length).toBeGreaterThanOrEqual(1);
-      expect(response.body.data.data.payment.calculatedHistory[response.body.data.data.payment.calculatedHistory.length - 1]).toEqual(
-        FAKE_CALCULATE_RESULT,
-      );
+      expect(response.body.data.data.payment.paymentControl.calculated).toEqual(FAKE_CALCULATE_RESULT);
+      expect(Array.isArray(response.body.data.data.payment.paymentControl.calculatedHistory)).toBe(true);
+      expect(response.body.data.data.payment.paymentControl.calculatedHistory.length).toBeGreaterThanOrEqual(1);
+      expect(
+        response.body.data.data.payment.paymentControl.calculatedHistory[response.body.data.data.payment.paymentControl.calculatedHistory.length - 1],
+      ).toEqual(FAKE_CALCULATE_RESULT);
     });
   });
 
@@ -359,6 +394,72 @@ describe('Payment Controller', () => {
 
       expect(response.status).not.toBe(302);
       expect(response.body.error).toBeDefined();
+    });
+  });
+
+  // The "return" status is the browser-facing counterpart to a server-to-server webhook: the
+  // external payment processor's own hosted payment page redirects the customer's browser here
+  // (GET /payment/:customer/return) once they finish paying, whether the payment succeeded or
+  // failed. It's dispatched by the same generic controllers/payment.ts#handleStatus as any other
+  // status literal (see 'GET /payment/:customer/:status' above) - these tests exercise it under
+  // its real name and pin down that success/fail resolve to different front-end redirect targets.
+  describe('GET /payment/:customer/return', () => {
+    it('is reachable', async () => {
+      const response = await app.request().get('/payment/unknown-customer/return');
+      expect(typeof response.status).toBe('number');
+    });
+
+    it('forwards the "return" status literal to the provider and redirects to the front-end URL for a successful payment', async () => {
+      const originalHandleStatus = paymentService.providers[PROVIDER_NAME].handleStatus;
+      let receivedStatus: string | undefined;
+      paymentService.providers[PROVIDER_NAME].handleStatus = async (data, providerOptions, status) => {
+        receivedStatus = status;
+        return {
+          transactionId: FAKE_TRANSACTION_ID,
+          documentId: DOCUMENT_ID,
+          paymentControlPath: PAYMENT_CONTROL_PATH,
+          extraData: { redirectUrl: RETURN_SUCCESS_REDIRECT_URL },
+          status: { isSuccess: true },
+        };
+      };
+
+      try {
+        const response = await app.request().get(`/payment/${CUSTOMER_SUCCESS}/return`);
+
+        expect(receivedStatus).toBe('return');
+        expect(response.status).toBe(302);
+        expect(response.headers.location).toBe(RETURN_SUCCESS_REDIRECT_URL);
+      } finally {
+        paymentService.providers[PROVIDER_NAME].handleStatus = originalHandleStatus;
+      }
+    });
+
+    it('redirects to a different front-end URL when the browser return reports a failed payment', async () => {
+      const originalHandleStatus = paymentService.providers[PROVIDER_NAME].handleStatus;
+      paymentService.providers[PROVIDER_NAME].handleStatus = async () => ({
+        transactionId: FAKE_TRANSACTION_ID,
+        documentId: DOCUMENT_ID,
+        paymentControlPath: PAYMENT_CONTROL_PATH,
+        extraData: { redirectUrl: RETURN_FAIL_REDIRECT_URL },
+        status: { isSuccess: false },
+      });
+
+      try {
+        const response = await app.request().get(`/payment/${CUSTOMER_SUCCESS}/return`);
+
+        expect(response.status).toBe(302);
+        expect(response.headers.location).toBe(RETURN_FAIL_REDIRECT_URL);
+        expect(response.headers.location).not.toBe(RETURN_SUCCESS_REDIRECT_URL);
+      } finally {
+        paymentService.providers[PROVIDER_NAME].handleStatus = originalHandleStatus;
+      }
+    });
+
+    it('falls back to paymentConfig.defaultRedirect when the fixture provider throws on return', async () => {
+      const response = await app.request().get(`/payment/${CUSTOMER_ERROR}/return`);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(DEFAULT_REDIRECT_URL);
     });
   });
 

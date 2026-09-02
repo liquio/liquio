@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import type { Request } from 'express';
 import { Controller } from './controller';
 import { AuthService as Auth } from '../services/auth';
 import { LdapClient } from '../services/ldap';
@@ -18,6 +19,22 @@ const ERROR_MESSAGE_DEBUG_USER_NOT_ALLOWED = 'User without needed unit to debug 
 const ERROR_MESSAGE_DEBUG_USER_NOT_FOUND = 'Debug user not found.';
 const ERROR_MESSAGE_RESTRICTED_UNIT = 'forbidden';
 const ERROR_MESSAGE_LDAP_UNAUTHORIZED = 'Unauthorized by LDAP';
+
+// This middleware attaches authUserInfo (and friends) to req before it reaches a controller (see
+// AuthController#middleware below); it isn't part of Express's own Request type, so any
+// controller reading it types its request with AuthenticatedRequest instead of plain Request.
+export interface AuthUserInfo {
+  userId?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  ipn?: string;
+  edrpou?: string;
+}
+
+export type AuthenticatedRequest<Params, ReqBody = any, ReqQuery = any> = Request<Params, any, ReqBody, ReqQuery> & {
+  authUserInfo?: AuthUserInfo;
+};
 
 /**
  * Auth controller.

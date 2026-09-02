@@ -32,9 +32,16 @@ const defaultDeps: PluginLoadDependencies = {
 };
 
 export class PluginLoader {
+  /**
+   * @param contextExtensions Extra `PluginContext` fields merged into every plugin's context
+   *   (e.g. `{ paymentTransactions }`), supplied by the host component. `PluginLoader` itself
+   *   stays plugin-kind-agnostic (it also loads event/external-reader plugins that don't need
+   *   this) - only a host that actually loads `TaskPaymentProvider` plugins passes it.
+   */
   constructor(
     private readonly log: PluginLogger,
     private readonly deps: PluginLoadDependencies = defaultDeps,
+    private readonly contextExtensions: Partial<PluginContext> = {},
   ) {}
 
   async load(config: PluginsConfig): Promise<PluginRegistry> {
@@ -64,6 +71,7 @@ export class PluginLoader {
       const context: PluginContext = {
         log: this.log,
         pluginConfig: entry.options ?? {},
+        ...this.contextExtensions,
       };
       const instance = new PluginClass(context, entry.options ?? {});
       await instance.onInit();
