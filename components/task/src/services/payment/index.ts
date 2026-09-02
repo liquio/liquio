@@ -1,13 +1,16 @@
 import { PluginRegistry } from '@liquio/plugin-sdk';
 
 import { BadRequestError } from '../../lib/errors';
+import type { CalculatePaymentData, PaymentProviderOptions, PaymentProviderResult, PaymentReceiptFile, UnHoldPaymentData } from './types';
+
+export type { PaymentProviderOptions, PaymentProviderResult } from './types';
 
 /**
  * Payment service.
  */
 export class PaymentService {
   private static singleton: PaymentService;
-  providers: any;
+  providers: Record<string, any>;
   pluginRegistry?: PluginRegistry;
 
   constructor(_config, pluginRegistry?: PluginRegistry) {
@@ -41,10 +44,10 @@ export class PaymentService {
 
   /**
    * Calculate payment.
-   * @param {object} data Data.
-   * @returns {object} Payment params object.
+   * @param {CalculatePaymentData} data Data.
+   * @returns {Promise<PaymentProviderResult>} Payment params object.
    */
-  async calculatePayment(data) {
+  async calculatePayment(data: CalculatePaymentData): Promise<PaymentProviderResult> {
     const { paymentSystemParams } = data;
     const providerName = paymentSystemParams && paymentSystemParams.providerName;
 
@@ -65,14 +68,23 @@ export class PaymentService {
 
   /**
    * Handle payment status.
-   * @param {object} data Data.
-   * @param {object} providerOptions Provider options.
+   * @param {any} data Data - either the raw webhook/return request body, or a previously
+   *   calculated PaymentProviderResult when re-checking a known transaction.
+   * @param {PaymentProviderOptions} providerOptions Provider options.
    * @param {string} status Status.
-   * @param {object} queryParamsObject Query params object.
-   * @param {object} headersObject Headers object.
-   * @param {object} checkPrevTransaction Check previous transaction.
+   * @param {Record<string, any>} queryParamsObject Query params object.
+   * @param {Record<string, any>} headersObject Headers object.
+   * @param {boolean} [checkPrevTransaction] Check previous transaction.
+   * @returns {Promise<PaymentProviderResult>}
    */
-  async handleStatus(data, providerOptions, status, queryParamsObject, headersObject, checkPrevTransaction) {
+  async handleStatus(
+    data: any,
+    providerOptions: PaymentProviderOptions | undefined,
+    status: string,
+    queryParamsObject: Record<string, any>,
+    headersObject: Record<string, any>,
+    checkPrevTransaction?: boolean,
+  ): Promise<PaymentProviderResult> {
     const providerName = providerOptions && providerOptions.providerName;
 
     let result;
@@ -98,11 +110,12 @@ export class PaymentService {
 
   /**
    * Confirm payment by sms code.
-   * @param {object} providerOptions Provider Options.
-   * @param {object} calculatedData Calculated data.
+   * @param {PaymentProviderOptions} providerOptions Provider Options.
+   * @param {PaymentProviderResult} calculatedData Calculated data.
    * @param {string} smsCode Sms code.
+   * @returns {Promise<any>}
    */
-  async confirmBySmsCode(providerOptions, calculatedData, smsCode) {
+  async confirmBySmsCode(providerOptions: PaymentProviderOptions | undefined, calculatedData: PaymentProviderResult, smsCode: string): Promise<any> {
     const providerName = providerOptions && providerOptions.providerName;
 
     let result;
@@ -119,12 +132,13 @@ export class PaymentService {
 
   /**
    * Cancel order.
-   * @param {object} providerOptions
+   * @param {PaymentProviderOptions} providerOptions
    * @param {string} orderId
    * @param {string} transactionId
    * @param {string} sessionId
+   * @returns {Promise<any>}
    */
-  async cancelOrder(providerOptions, orderId, transactionId, sessionId) {
+  async cancelOrder(providerOptions: PaymentProviderOptions | undefined, orderId: string, transactionId: string, sessionId: string): Promise<any> {
     try {
       const providerName = providerOptions && providerOptions.providerName;
 
@@ -141,9 +155,10 @@ export class PaymentService {
 
   /**
    * Unhold payment.
-   * @param {object} data Data.
+   * @param {UnHoldPaymentData} data Data.
+   * @returns {Promise<any>}
    */
-  async unHoldPayment(data) {
+  async unHoldPayment(data: UnHoldPaymentData): Promise<any> {
     const { paymentOptions } = data;
     const providerName = paymentOptions && paymentOptions.providerName;
 
@@ -161,11 +176,12 @@ export class PaymentService {
 
   /**
    * Check payment status.
-   * @param {object} providerOptions Provider options.
+   * @param {PaymentProviderOptions} providerOptions Provider options.
    * @param {string} sessionId Session ID.
    * @param {string} invoiceId Invoice ID.
+   * @returns {Promise<any>}
    */
-  async checkStatus(providerOptions, sessionId, invoiceId) {
+  async checkStatus(providerOptions: PaymentProviderOptions | undefined, sessionId: string, invoiceId: string): Promise<any> {
     const providerName = providerOptions && providerOptions.providerName;
 
     let result;
@@ -182,11 +198,11 @@ export class PaymentService {
 
   /**
    * Get payment receipt info.
-   * @param {object} providerOptions Provider options.
+   * @param {PaymentProviderOptions} providerOptions Provider options.
    * @param {string} orderId Session ID.
-   * @return {Promise<Object>}
+   * @return {Promise<any>}
    */
-  async getPaymentReceiptInfo(providerOptions, orderId) {
+  async getPaymentReceiptInfo(providerOptions: PaymentProviderOptions | undefined, orderId: string): Promise<any> {
     const providerName = providerOptions && providerOptions.providerName;
 
     let result;
@@ -203,13 +219,18 @@ export class PaymentService {
 
   /**
    * Get payment receipt files.
-   * @param {object} providerOptions Provider options.
+   * @param {PaymentProviderOptions} providerOptions Provider options.
    * @param {string} orderId Session ID.
    * @param {'pdf'} receiptFormat Receipt format.
    * @param {Object} paymentControlSchema
-   * @return {Promise<Array<{fileBuffer: ArrayBuffer, contentType: string}>>}
+   * @return {Promise<PaymentReceiptFile[]>}
    */
-  async getPaymentReceiptFiles(providerOptions, orderId, receiptFormat, paymentControlSchema) {
+  async getPaymentReceiptFiles(
+    providerOptions: PaymentProviderOptions | undefined,
+    orderId: string,
+    receiptFormat: string,
+    paymentControlSchema: any,
+  ): Promise<PaymentReceiptFile[]> {
     const providerName = providerOptions && providerOptions.providerName;
 
     let result;
@@ -234,10 +255,11 @@ export class PaymentService {
 
   /**
    * Get withdrawal funds status.
-   * @param {object} providerOptions Provider options.
+   * @param {PaymentProviderOptions} providerOptions Provider options.
    * @param {string} orderId Session ID.
+   * @returns {Promise<any>}
    */
-  async getWithdrawalFundsStatus(providerOptions, orderId) {
+  async getWithdrawalFundsStatus(providerOptions: PaymentProviderOptions | undefined, orderId: string): Promise<any> {
     const providerName = providerOptions && providerOptions.providerName;
 
     let result;
@@ -254,9 +276,10 @@ export class PaymentService {
 
   /**
    * Send check request.
-   * @param {object} providerOptions Provider options.
+   * @param {PaymentProviderOptions} providerOptions Provider options.
+   * @returns {Promise<any>}
    */
-  async sendCheckRequest(providerOptions) {
+  async sendCheckRequest(providerOptions: PaymentProviderOptions | undefined): Promise<any> {
     const providerName = providerOptions && providerOptions.providerName;
 
     let result;

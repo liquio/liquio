@@ -1,9 +1,31 @@
+import type { Request, Response } from 'express';
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
+import type { AuthenticatedRequest } from './auth';
+import { DocumentBusiness } from '../businesses/document';
+import { PaymentLogsModel } from '../models/payment_logs';
 
 // Constants.
 const RAW_PAYMENT_ACTION_TYPE = 'raw';
 const PROCESSED_PAYMENT_ACTION_TYPE = 'processed';
+
+type CalculatePaymentDataRequest = AuthenticatedRequest<{ id: string }>;
+
+type HandleStatusRequest = Request<{ customer: string; status?: string }, any, any, { noRedirect?: string }>;
+
+type ConfirmBySmsCodeRequest = AuthenticatedRequest<{ customer: string }, { documentId: string; code: string; paymentControlPath: string }>;
+
+type GetReceiptRequest = AuthenticatedRequest<any, any, { payment_path: string; document_id: string; order_id: string }>;
+
+type GetWithdrawalStatusRequest = AuthenticatedRequest<any, any, { payment_path: string; document_id: string; order_id: string }>;
+
+type ValidateApplePaySessionRequest = Request<
+  any,
+  any,
+  { validationUrl: string; displayName: string; initiative: string; initiativeContext: string }
+>;
+
+type CancelOrderRequest = Request<any, any, { paymentCustomer: string; orderId: string; transactionId: string; sessionId: string }>;
 
 /**
  * Payment controller.
@@ -11,14 +33,21 @@ const PROCESSED_PAYMENT_ACTION_TYPE = 'processed';
 export class PaymentController extends Controller {
   private static singleton: PaymentController;
 
+  documentBusiness: DocumentBusiness;
+  paymentLogsModel: PaymentLogsModel;
+
   /**
    * Payment controller constructor.
    * @param {object} config Config object.
    */
-  constructor(config) {
+  constructor(config?: any) {
     // Define singleton.
     if (!PaymentController.singleton) {
       super(config);
+
+      this.documentBusiness = new DocumentBusiness(config);
+      this.paymentLogsModel = new PaymentLogsModel();
+
       PaymentController.singleton = this;
     }
     return PaymentController.singleton;
@@ -26,10 +55,11 @@ export class PaymentController extends Controller {
 
   /**
    * Calculate payment info.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
+   * @param {CalculatePaymentDataRequest} req HTTP request.
+   * @param {Response} res HTTP response.
+   * @returns {Promise<void>}
    */
-  async calculatePaymentData(req, res) {
+  async calculatePaymentData(req: CalculatePaymentDataRequest, res: Response): Promise<void> {
     const { id: documentId } = req.params;
     const userId = this.getRequestUserId(req);
     const userInfo = this.getRequestUserInfo(req);
@@ -40,14 +70,7 @@ export class PaymentController extends Controller {
 
     let documentWithPayment;
     try {
-      documentWithPayment = await (global.businesses.document.calculatePayment as any)(
-        documentId,
-        payload,
-        userId,
-        userName,
-        userUnitIds.all,
-        userContactInfo,
-      );
+      documentWithPayment = await this.documentBusiness.calculatePayment(documentId, payload, userId, userName, userUnitIds.all, userContactInfo);
     } catch (error) {
       global.log.save('calculate-payment-data-error', { error: error && error.message, documentId, payload, userId, userName }, 'error');
       return this.responseError(res, error, 500, { documentId });
@@ -58,10 +81,11 @@ export class PaymentController extends Controller {
 
   /**
    * Handle payment status.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
+   * @param {HandleStatusRequest} req HTTP request.
+   * @param {Response} res HTTP response.
+   * @returns {Promise<void>}
    */
-  async handleStatus(req, res) {
+  async handleStatus(req: HandleStatusRequest, res: Response): Promise<void> {
     // Get body content from stream.
     const bodyContent = await Stream.getFileContent(req);
     const { customer } = req.params;
@@ -93,7 +117,7 @@ export class PaymentController extends Controller {
     };
     let isSavedRawStatus;
     try {
-      isSavedRawStatus = await (global.models.paymentLogs.save as any)(rawPaymentInfo);
+      isSavedRawStatus = await (this.paymentLogsModel.save as any)(rawPaymentInfo);
     } catch (error) {
       global.log.save('save-raw-payment-logs-to-db-error', { error: error && error.message }, 'error');
     }
@@ -103,7 +127,7 @@ export class PaymentController extends Controller {
 
     let statusData;
     try {
-      statusData = await global.businesses.document.handlePaymentStatus(bodyContent, customer, status, queryParamsObject, headers);
+      statusData = await this.documentBusiness.handlePaymentStatus(bodyContent, customer, status, queryParamsObject, headers);
     } catch (error) {
       global.log.save('handle-payment-status-erorr', { error: error.toString(), cause: error.cause, stack: error.stack }, 'error');
       if (defaultRedirect && !queryParamsObject.noRedirect && !paymentConfig?.[customer]?.isDisableRedirectOnErrorCallback) {
@@ -115,7 +139,7 @@ export class PaymentController extends Controller {
     // Save result status data to DB.
     let isSavedProcessedStatus;
     try {
-      isSavedProcessedStatus = await (global.models.paymentLogs.save as any)({
+      isSavedProcessedStatus = await (this.paymentLogsModel.save as any)({
         transactionId: statusData.transactionId,
         paymentAction: PROCESSED_PAYMENT_ACTION_TYPE,
         paymentData: statusData,
@@ -133,10 +157,11 @@ export class PaymentController extends Controller {
 
   /**
    * Confirm payment by sms code.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
+   * @param {ConfirmBySmsCodeRequest} req HTTP request.
+   * @param {Response} res HTTP response.
+   * @returns {Promise<void>}
    */
-  async confirmBySmsCode(req, res) {
+  async confirmBySmsCode(req: ConfirmBySmsCodeRequest, res: Response): Promise<void> {
     const { customer } = req.params;
     const { documentId, code, paymentControlPath } = req.body;
     const userId = this.getRequestUserId(req);
@@ -144,7 +169,7 @@ export class PaymentController extends Controller {
 
     let response;
     try {
-      response = await global.businesses.document.confirmBySmsCode(code, customer, paymentControlPath, documentId, userId, userUnitIds);
+      response = await this.documentBusiness.confirmBySmsCode(code, customer, paymentControlPath, documentId, userId, userUnitIds);
     } catch (error) {
       global.log.save('calculate-payment-data-error', { error: error && error.message }, 'error');
       return this.responseError(res, error);
@@ -156,10 +181,11 @@ export class PaymentController extends Controller {
   /**
    * @deprecated Method not in use.
    * Get payment receipt.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
+   * @param {GetReceiptRequest} req HTTP request.
+   * @param {Response} res HTTP response.
+   * @returns {Promise<void>}
    */
-  async getReceipt(req, res) {
+  async getReceipt(req: GetReceiptRequest, res: Response): Promise<void> {
     const { payment_path: paymentControlPath, document_id: documentId, order_id: orderId } = req.query;
 
     const userId = this.getRequestUserId(req);
@@ -167,7 +193,7 @@ export class PaymentController extends Controller {
 
     let response;
     try {
-      response = await global.businesses.document.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds);
+      response = await this.documentBusiness.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds);
     } catch (error) {
       global.log.save('get-payment-receipt-error', { error: error && error.message, documentId, orderId }, 'error');
       return this.responseError(res, error, 500, { documentId, orderId });
@@ -178,10 +204,11 @@ export class PaymentController extends Controller {
 
   /**
    * Get withdrawal payment status.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
+   * @param {GetWithdrawalStatusRequest} req HTTP request.
+   * @param {Response} res HTTP response.
+   * @returns {Promise<void>}
    */
-  async getWithdrawalStatus(req, res) {
+  async getWithdrawalStatus(req: GetWithdrawalStatusRequest, res: Response): Promise<void> {
     const { payment_path: paymentControlPath, document_id: documentId, order_id: orderId } = req.query;
 
     const userId = this.getRequestUserId(req);
@@ -189,7 +216,7 @@ export class PaymentController extends Controller {
 
     let response;
     try {
-      response = await global.businesses.document.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds);
+      response = await this.documentBusiness.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds);
     } catch (error) {
       global.log.save('get-withdrawal-status-error', { error: error && error.message, documentId, orderId }, 'error');
       return this.responseError(res, error, 500, { documentId, orderId });
@@ -200,15 +227,16 @@ export class PaymentController extends Controller {
 
   /**
    * Validate apple pay payment session.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
+   * @param {ValidateApplePaySessionRequest} req HTTP request.
+   * @param {Response} res HTTP response.
+   * @returns {Promise<void>}
    */
-  async validateApplePaySession(req, res) {
+  async validateApplePaySession(req: ValidateApplePaySessionRequest, res: Response): Promise<void> {
     const { validationUrl, displayName, initiative, initiativeContext } = req.body;
 
     let response;
     try {
-      response = await global.businesses.document.validateApplePaySession({
+      response = await this.documentBusiness.validateApplePaySession({
         validationUrl,
         displayName,
         initiative,
@@ -223,15 +251,16 @@ export class PaymentController extends Controller {
   }
 
   /**
-   * Confirm payment by sms code.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
+   * Cancel payment order.
+   * @param {CancelOrderRequest} req HTTP request.
+   * @param {Response} res HTTP response.
+   * @returns {Promise<void>}
    */
-  async cancelOrder(req, res) {
+  async cancelOrder(req: CancelOrderRequest, res: Response): Promise<void> {
     try {
       const { paymentCustomer, orderId, transactionId, sessionId } = req.body;
 
-      const response = await global.businesses.document.cancelOrder(paymentCustomer, orderId, transactionId, sessionId);
+      const response = await this.documentBusiness.cancelOrder(paymentCustomer, orderId, transactionId, sessionId);
 
       this.responseData(res, response);
     } catch (error) {

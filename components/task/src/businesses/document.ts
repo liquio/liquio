@@ -1,51 +1,54 @@
-import axios from 'axios';
-import PropByPath from 'prop-by-path';
 import crypto from 'node:crypto';
 import https from 'node:https';
+import { PassThrough, Readable } from 'node:stream';
+
+import axios from 'axios';
 import flattening from 'flattening';
 import _ from 'lodash';
-import { Readable, PassThrough } from 'node:stream';
 import nodeHtmlParser from 'node-html-parser';
+import PropByPath from 'prop-by-path';
 
-import { JSONPath } from '../lib/jsonpath';
-import { Business } from './business';
-import { Eds } from '../lib/eds';
-import { Stream } from '../lib/stream';
-import { DownloadToken } from '../lib/download_token';
-import { ExternalReader } from '../lib/external_reader';
-import { StorageService } from '../services/storage';
-import { DocumentValidatorService as DocumentValidator } from '../services/document_validator';
-import { DocumentFillerService as DocumentFiller } from '../services/document_filler';
-import { VerifiedUserInfoFiller } from '../services/document_filler/fillers/verified_user_info';
-import { PaymentService } from '../services/payment';
-import { Paths } from '../services/document_validator/paths';
-import { AuthService as Auth } from '../services/auth';
-import { NotifierService as Notifier } from '../services/notifier';
-import { RegisterService } from '../services/register';
-import { FileGeneratorService } from '../services/file_generator';
-import { DocumentAttachmentModel } from '../models/document_attachment';
-import { TaskActivity } from '../types/task_activity';
-import { UnitModel } from '../models/unit';
-import { Helpers } from '../lib/helpers';
-import { NumberGenerator } from '../lib/number_generator';
-import typeOf from '../lib/type_of';
 import { Sandbox } from '@liquio/back-core';
-import {
-  EvaluateSchemaFunctionError,
-  InvalidSchemaError,
-  NotFoundError,
-  InvalidParamsError,
-  InvalidConfigError,
-  BadRequestError,
-  ForbiddenError,
-} from '../lib/errors';
+
 import {
   ERROR_DOCUMENT_ALREADY_COMMITTED,
+  ERROR_DOCUMENT_NOT_FOUND,
+  ERROR_DOCUMENT_TEMPLATE_NOT_FOUND,
   ERROR_UPDATE_DOCUMENT,
   ERROR_WORKFLOW_NOT_FOUND,
-  ERROR_DOCUMENT_TEMPLATE_NOT_FOUND,
-  ERROR_DOCUMENT_NOT_FOUND,
 } from '../constants/error';
+import { DocumentEntity } from '../entities/document';
+import { DownloadToken } from '../lib/download_token';
+import { Eds } from '../lib/eds';
+import {
+  BadRequestError,
+  EvaluateSchemaFunctionError,
+  ForbiddenError,
+  InvalidConfigError,
+  InvalidParamsError,
+  InvalidSchemaError,
+  NotFoundError,
+} from '../lib/errors';
+import { ExternalReader } from '../lib/external_reader';
+import { Helpers } from '../lib/helpers';
+import { JSONPath } from '../lib/jsonpath';
+import { NumberGenerator } from '../lib/number_generator';
+import { Stream } from '../lib/stream';
+import typeOf from '../lib/type_of';
+import { DocumentAttachmentModel } from '../models/document_attachment';
+import { UnitModel } from '../models/unit';
+import { AuthService as Auth } from '../services/auth';
+import { DocumentFillerService as DocumentFiller } from '../services/document_filler';
+import { VerifiedUserInfoFiller } from '../services/document_filler/fillers/verified_user_info';
+import { DocumentValidatorService as DocumentValidator } from '../services/document_validator';
+import { Paths } from '../services/document_validator/paths';
+import { FileGeneratorService } from '../services/file_generator';
+import { NotifierService as Notifier } from '../services/notifier';
+import { PaymentService } from '../services/payment';
+import { RegisterService } from '../services/register';
+import { StorageService } from '../services/storage';
+import { TaskActivity } from '../types/task_activity';
+import { Business } from './business';
 
 // Constants.
 const SIGNATURE_ENCODING = 'utf8';
@@ -1983,13 +1986,25 @@ export class DocumentBusiness extends Business {
   /**
    * Calculate payment.
    * @param {string} documentId Document ID.
-   * @param {string} payload Payload.
+   * @param {{paymentControlPath: string, extraData?: any}} payload Payload.
    * @param {string} userId User ID.
    * @param {string} userName User name.
    * @param {{all: number[], head: number[], member: number[]}} userUnitIds User unit IDs.
+   * @param {{email?: string, phone?: string}} userContactData User contact data.
+   * @param {string} [workflowId] Workflow ID, used instead of documentId to look up the document.
+   * @param {string} [taskTemplateId] Task template ID, used together with workflowId.
    * @returns {Promise<DocumentEntity>} Document entity.
    */
-  async calculatePayment(documentId, payload, userId, userName, userUnitIds, userContactData, workflowId, taskTemplateId) {
+  async calculatePayment(
+    documentId: string,
+    payload: { paymentControlPath: string; extraData?: any },
+    userId: string,
+    userName: string,
+    userUnitIds: { all: number[]; head: number[]; member: number[] },
+    userContactData: { email?: string; phone?: string },
+    workflowId?: string,
+    taskTemplateId?: string,
+  ): Promise<DocumentEntity> {
     // Get document.
     const document = documentId
       ? await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true)
