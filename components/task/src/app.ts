@@ -159,11 +159,17 @@ export class BpmnTaskCore {
     this.models = new Models(customModels);
     new DictionariesModel(customDictionaryModels);
 
-    // Init plugins.
+    // Init plugins. `paymentTransactions` is the only capability a TaskPaymentProvider plugin
+    // gets besides logging/config - it never touches `global.models`/`global.db` directly (see
+    // `TaskPaymentTransactionService`'s own JSDoc in `@liquio/plugin-sdk`).
     const pluginsConfig = config.plugins;
     let pluginRegistry;
     if (pluginsConfig) {
-      pluginRegistry = await new PluginLoader(log).load(pluginsConfig);
+      const paymentTransactions = {
+        create: (data) => global.models.paymentTransactions.create(data),
+        resolve: async (id) => (await global.models.paymentTransactions.findById(id)) ?? undefined,
+      };
+      pluginRegistry = await new PluginLoader(log, undefined, { paymentTransactions }).load(pluginsConfig);
     } else {
       log.save('plugin-load-summary', { configured: 0, loaded: 0, plugins: [] });
     }
