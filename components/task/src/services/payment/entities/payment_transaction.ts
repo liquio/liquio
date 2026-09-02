@@ -1,57 +1,42 @@
 /**
  * Payment transaction entity.
+ *
+ * Binds documentId/paymentControlPath/taskId/workflowId to a short opaque id (see
+ * `PaymentTransactionsModel`), so a payment provider whose redirect URL has a length limit can
+ * carry just this id instead of embedding those fields directly in the URL - see
+ * `TaskPaymentTransactionService` (`@liquio/plugin-sdk`) for the provider-facing contract this
+ * backs.
  */
 export class PaymentTransactionEntity {
-  amount: any;
-  createDate: any;
-  currency: any;
-  documentId: any;
-  errCode: any;
-  errDescription: any;
+  id: string;
+  documentId: string;
+  paymentControlPath: string;
+  taskId: string;
+  workflowId: string;
   extraData: any;
-  paymentControlPath: any;
-  status: any;
-  statusReceivedAt: any;
-  transactionId: any;
+  createdAt: Date;
+  updatedAt: Date;
 
   /**
    * Constructor.
    * @param {object} options
-   * @param {*} options.status Payment status.
-   * @param {string} options.statusReceivedAt Status receiving time.
+   * @param {string} options.id Transaction ID.
    * @param {string} options.documentId Document ID.
    * @param {string} options.paymentControlPath Payment control path.
-   * @param {string} options.transactionId Transaction ID.
-   * @param {number} options.amount Amount.
-   * @param {string} options.currency Currency.
-   * @param {string} options.createDate Create date.
-   * @param {number} [options.errCode] Error code.
-   * @param {string} [options.errDescription] Error description.
+   * @param {string} [options.taskId] Task ID.
+   * @param {string} [options.workflowId] Workflow ID.
    * @param {object} [options.extraData] Extra data.
+   * @param {Date} [options.createdAt] Create date.
+   * @param {Date} [options.updatedAt] Update date.
    */
-  constructor({
-    status,
-    statusReceivedAt,
-    documentId,
-    paymentControlPath,
-    transactionId,
-    amount,
-    currency,
-    createDate,
-    errCode,
-    errDescription,
-    extraData,
-  }) {
-    this.status = status;
-    this.statusReceivedAt = statusReceivedAt;
+  constructor({ id, documentId, paymentControlPath, taskId, workflowId, extraData, createdAt, updatedAt }) {
+    this.id = id;
     this.documentId = documentId;
     this.paymentControlPath = paymentControlPath;
-    this.transactionId = transactionId;
-    this.amount = amount;
-    this.currency = currency;
-    this.createDate = createDate;
-    this.errCode = errCode;
-    this.errDescription = errDescription;
+    this.taskId = taskId;
+    this.workflowId = workflowId;
     this.extraData = extraData;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
   }
 }

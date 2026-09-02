@@ -1,7 +1,6 @@
 import { TestApp } from './test-app';
 import { expectAuthRequired } from './helpers/auth_guard';
-
-const { PaymentService } = require('../src/services/payment');
+import { PaymentService } from '../src/services/payment';
 
 // Test fixture identifiers.
 const TEST_USER_ID = '61efddaa351d6219eee09043';
@@ -19,9 +18,11 @@ const PAYMENT_CONTROL_PATH = 'payment.properties.paymentControl';
 // Fixture provider/customer names.
 const PROVIDER_NAME = 'testProviderFake';
 const PROVIDER_NAME_ERROR = 'testProviderFakeError';
+const PROVIDER_NAME_TRANSACTION_BINDING = 'testProviderFakeTransactionBinding';
 const CUSTOMER_SUCCESS = 'testProvider';
 const CUSTOMER_ERROR = 'testProviderErr';
 const CUSTOMER_ERROR_NO_REDIRECT = 'testProviderErrNoRedirect';
+const CUSTOMER_TRANSACTION_BINDING = 'testProviderTransactionBinding';
 
 const FAKE_TRANSACTION_ID = 'txn-success-1';
 const FAKE_CALCULATE_RESULT = {
@@ -33,6 +34,7 @@ const FAKE_REDIRECT_URL = 'https://fake-provider.example/redirect-success';
 const DEFAULT_REDIRECT_URL = 'https://default-redirect.example';
 const RETURN_SUCCESS_REDIRECT_URL = 'https://fake-provider.example/redirect-return-success';
 const RETURN_FAIL_REDIRECT_URL = 'https://fake-provider.example/redirect-return-fail';
+const TRANSACTION_BINDING_REDIRECT_URL = 'https://fake-provider.example/redirect-transaction-binding';
 
 const BASIC_AUTH_TOKEN_RAW = 'dGVzdDp0ZXN0IC1uCg==';
 const BASIC_AUTH_TOKEN = `Basic ${BASIC_AUTH_TOKEN_RAW}`;
@@ -159,6 +161,27 @@ describe('Payment Controller', () => {
       },
     };
 
+    // Fixture provider standing in for a provider whose returnUrl carries only an opaque
+    // paymentTransactionId (see PayoneProvider's useTransactionBinding support) - it never
+    // receives documentId/paymentControlPath directly, it resolves them itself from
+    // global.models.paymentTransactions (the exact model/service a real provider is handed via
+    // its PluginContext.paymentTransactions, see src/app.ts).
+    paymentService.providers[PROVIDER_NAME_TRANSACTION_BINDING] = {
+      handleStatus: async (_data: any, _providerOptions: any, _status: any, queryParamsObject: any) => {
+        const record = await global.models.paymentTransactions.findById(queryParamsObject.paymentTransactionId);
+        if (!record) {
+          throw new Error(`Unknown payment transaction id: ${queryParamsObject.paymentTransactionId}`);
+        }
+        return {
+          transactionId: FAKE_TRANSACTION_ID,
+          documentId: record.documentId,
+          paymentControlPath: record.paymentControlPath,
+          extraData: { redirectUrl: TRANSACTION_BINDING_REDIRECT_URL },
+          status: { isSuccess: true },
+        };
+      },
+    };
+
     // Wire fixture customers to the fake providers/redirect behavior. document.ts and
     // controllers/payment.ts both read from `global.config.payment`/`this.config.payment`,
     // which is the exact same object reference captured at app init time (see src/app.ts,
@@ -166,6 +189,7 @@ describe('Payment Controller', () => {
     global.config.payment = {
       defaultRedirect: DEFAULT_REDIRECT_URL,
       [CUSTOMER_SUCCESS]: { providerName: PROVIDER_NAME, doRedirect: true },
+      [CUSTOMER_TRANSACTION_BINDING]: { providerName: PROVIDER_NAME_TRANSACTION_BINDING, doRedirect: true, useTransactionBinding: true },
       [CUSTOMER_ERROR]: { providerName: PROVIDER_NAME_ERROR },
       [CUSTOMER_ERROR_NO_REDIRECT]: { providerName: PROVIDER_NAME_ERROR, isDisableRedirectOnErrorCallback: true },
     };
@@ -548,6 +572,78 @@ describe('Payment Controller', () => {
 
       expect(response.status).not.toBe(302);
       expect(response.body.error).toBeDefined();
+    });
+  });
+
+  // Covers the opaque-transaction-id flow a provider uses when a hosted-checkout redirect URL has
+  // a length limit that documentId + paymentControlPath (+ taskId) would exceed if embedded
+  // directly (see PayoneProvider's useTransactionBinding support): documentId/paymentControlPath
+  // are bound to a short id in payment_transactions instead, and resolved back from the database
+  // when the customer's browser returns.
+  describe('Payment transaction binding', () => {
+    describe('PaymentTransactionsModel', () => {
+      it('round-trips documentId/paymentControlPath/taskId through create/findById', async () => {
+        const id = await global.models.paymentTransactions.create({
+          documentId: DOCUMENT_ID,
+          paymentControlPath: PAYMENT_CONTROL_PATH,
+          taskId: TASK_ID,
+        });
+        expect(typeof id).toBe('string');
+        expect(id.length).toBeGreaterThan(0);
+
+        const record = await global.models.paymentTransactions.findById(id);
+        expect(record).toMatchObject({
+          id,
+          documentId: DOCUMENT_ID,
+          paymentControlPath: PAYMENT_CONTROL_PATH,
+          taskId: TASK_ID,
+        });
+      });
+
+      it('returns null for an id that was never created', async () => {
+        const record = await global.models.paymentTransactions.findById('00000000-0000-4000-8000-000000000000');
+        expect(record).toBeNull();
+      });
+    });
+
+    describe('GET /payment/:customer/return', () => {
+      it('resolves documentId/paymentControlPath from the bound transaction record when the URL carries only the opaque id', async () => {
+        const paymentTransactionId = await global.models.paymentTransactions.create({
+          documentId: DOCUMENT_ID,
+          paymentControlPath: PAYMENT_CONTROL_PATH,
+          taskId: TASK_ID,
+        });
+
+        const response = await app.request().get(`/payment/${CUSTOMER_TRANSACTION_BINDING}/return`).query({ paymentTransactionId });
+
+        // The request never carried documentId/paymentControlPath - only the fixture provider's
+        // internal database lookup could have supplied them for the redirect to succeed.
+        expect(response.status).toBe(302);
+        expect(response.headers.location).toBe(TRANSACTION_BINDING_REDIRECT_URL);
+
+        // Data fidelity: the resolved documentId/paymentControlPath actually pointed at the right
+        // document/path - the processed-history entry landed at payment.paymentControl.processed,
+        // not somewhere else or nowhere at all.
+        const jwt = authenticateAsFixtureUser();
+        const documentResponse = await app.request().get(`/documents/${DOCUMENT_ID}`).set('token', jwt).expect(200);
+        const processedHistory = documentResponse.body.data.data.payment.paymentControl.processed;
+        expect(Array.isArray(processedHistory)).toBe(true);
+        expect(processedHistory[processedHistory.length - 1]).toMatchObject({
+          transactionId: FAKE_TRANSACTION_ID,
+          documentId: DOCUMENT_ID,
+          paymentControlPath: PAYMENT_CONTROL_PATH,
+        });
+      });
+
+      it('falls back to paymentConfig.defaultRedirect when the transaction id does not resolve to any record', async () => {
+        const response = await app
+          .request()
+          .get(`/payment/${CUSTOMER_TRANSACTION_BINDING}/return`)
+          .query({ paymentTransactionId: '00000000-0000-4000-8000-000000000000' });
+
+        expect(response.status).toBe(302);
+        expect(response.headers.location).toBe(DEFAULT_REDIRECT_URL);
+      });
     });
   });
 });
