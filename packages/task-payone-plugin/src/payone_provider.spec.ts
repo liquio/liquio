@@ -87,7 +87,12 @@ class ApiErrorResponseException extends Error {
 }
 
 import { PayoneProvider } from "./payone_provider";
-import { PayoneOptions, PayoneResolvedPaymentData } from "./types";
+import {
+  PayoneCheckoutStatus,
+  PayoneOptions,
+  PayonePaymentStatusCategory,
+  PayoneResolvedPaymentData,
+} from "./types";
 
 describe("PayoneProvider", () => {
   const context: PluginContext = {
@@ -210,6 +215,7 @@ describe("PayoneProvider", () => {
       // params the browser redirect carries.
       getCheckoutRequestMock.mockResolvedValue({
         checkoutStatus: StatusCheckout.COMPLETED,
+        statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
         references: { merchantReference: resolvedData.orderId },
       });
       const queryParamsObject = Object.fromEntries(
@@ -470,7 +476,7 @@ describe("PayoneProvider", () => {
         checkoutStatus: "COMPLETED",
         references: { merchantReference: "order-42" },
         paymentExecutions: [{ paymentExecutionId: "exec-1" }],
-        statusOutput: { paymentStatus: "PAYMENT_COMPLETED" },
+        statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
       });
 
       const provider = new PayoneProvider(context, options);
@@ -495,11 +501,42 @@ describe("PayoneProvider", () => {
           order_id: "order-42",
           commerceCaseId: "commerce-case-1",
           checkoutId: "checkout-1",
-          checkoutStatus: "PAYMENT_CREATED",
-          paymentStatus: "PAYMENT_COMPLETED",
+          checkoutStatus: PayoneCheckoutStatus.PaymentCreated,
+          paymentStatus: PayonePaymentStatusCategory.Successful,
           checkPrevTransaction: false,
         },
       });
+    });
+
+    it("returns a failure shape for a completed checkout whose payment was declined (checkout-level status alone must not imply success)", async () => {
+      // Regression test: PAYONE's hosted-checkout status reaches "COMPLETED" (translated to
+      // "PAYMENT_CREATED" by the SDK) once a payment object exists, regardless of whether that
+      // payment was authorized or rejected - the real outcome is `paymentStatusCategory`.
+      getCheckoutRequestMock.mockResolvedValue({
+        commerceCaseId: "commerce-case-1",
+        checkoutId: "checkout-1",
+        checkoutStatus: "COMPLETED",
+        references: { merchantReference: "order-42" },
+        paymentExecutions: [{ paymentExecutionId: "exec-1" }],
+        statusOutput: { paymentStatus: PayonePaymentStatusCategory.Rejected },
+      });
+
+      const provider = new PayoneProvider(context, options);
+      const result = await provider.handleStatus(
+        "",
+        options,
+        "success",
+        identifyingParams,
+        {},
+      );
+
+      expect(result.status).toEqual({ isSuccess: false });
+      expect(result.extraData.checkoutStatus).toBe(
+        PayoneCheckoutStatus.PaymentCreated,
+      );
+      expect(result.extraData.paymentStatus).toBe(
+        PayonePaymentStatusCategory.Rejected,
+      );
     });
 
     it("re-queries PAYONE and returns a failure shape for a still-open/non-terminal checkout, never trusting the incoming status", async () => {
@@ -568,7 +605,10 @@ describe("PayoneProvider", () => {
     });
 
     it("parses a JSON string webhook body (POST case) the same way as query params", async () => {
-      getCheckoutRequestMock.mockResolvedValue({ checkoutStatus: "BILLED" });
+      getCheckoutRequestMock.mockResolvedValue({
+        checkoutStatus: "BILLED",
+        statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
+      });
 
       const provider = new PayoneProvider(context, options);
       const result = await provider.handleStatus(
@@ -587,7 +627,10 @@ describe("PayoneProvider", () => {
     });
 
     it("identifies the checkout directly from `data` for the checkPrevTransaction re-check path (no query params)", async () => {
-      getCheckoutRequestMock.mockResolvedValue({ checkoutStatus: "COMPLETED" });
+      getCheckoutRequestMock.mockResolvedValue({
+        checkoutStatus: "COMPLETED",
+        statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
+      });
 
       const provider = new PayoneProvider(context, options);
       const result = await provider.handleStatus(
@@ -627,6 +670,9 @@ describe("PayoneProvider", () => {
       it("resolves documentId/paymentControlPath/taskId from the payment transaction record when they aren't present on the callback", async () => {
         getCheckoutRequestMock.mockResolvedValue({
           checkoutStatus: "COMPLETED",
+          statusOutput: {
+            paymentStatus: PayonePaymentStatusCategory.Successful,
+          },
           references: { merchantReference: "order-42" },
         });
         const resolvePaymentTransactionMock = jest.fn().mockResolvedValue({
@@ -786,7 +832,7 @@ describe("PayoneProvider", () => {
     it("re-queries the hosted checkout and returns a success shape", async () => {
       getCheckoutRequestMock.mockResolvedValue({
         checkoutStatus: "COMPLETED",
-        statusOutput: { paymentStatus: "PAYMENT_COMPLETED" },
+        statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
         references: { merchantReference: "order-42" },
       });
 
@@ -804,8 +850,8 @@ describe("PayoneProvider", () => {
       expect(result).toEqual({
         isSuccess: true,
         checkoutId: "checkout-1",
-        hostedCheckoutStatus: "PAYMENT_CREATED",
-        paymentStatus: "PAYMENT_COMPLETED",
+        hostedCheckoutStatus: PayoneCheckoutStatus.PaymentCreated,
+        paymentStatus: PayonePaymentStatusCategory.Successful,
         orderId: "order-42",
       });
     });

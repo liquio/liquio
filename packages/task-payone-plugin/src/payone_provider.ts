@@ -9,6 +9,7 @@ import { init } from "onlinepayments-sdk-nodejs";
 import {
   PayoneCalculatedPaymentData,
   PayoneOptions,
+  PayonePaymentStatusCategory,
   PayoneResolvedPaymentData,
   PayoneStatusInfo,
 } from "./types";
@@ -365,7 +366,15 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       throw this.translateSdkError(error);
     }
 
-    const isSuccess = checkout.status === "PAYMENT_CREATED";
+    // `checkout.status === "PAYMENT_CREATED"` is NOT a success indicator - per PAYONE's own
+    // status reference (https://developer.payone.com/en/integration/api-developer-guide/statuses),
+    // that hosted-checkout-level status is reached for both approved and declined payments alike
+    // ("can occur alongside declined payments when examining the nested createdPaymentOutput
+    // properties"). The actual outcome is `createdPaymentOutput.paymentStatusCategory`
+    // (SUCCESSFUL / REJECTED / STATUS_UNKNOWN).
+    const isSuccess =
+      checkout.createdPaymentOutput?.paymentStatusCategory ===
+      PayonePaymentStatusCategory.Successful;
     const payment = checkout.createdPaymentOutput?.payment;
 
     // `checkPrevTransaction` (per `document.ts#calculatePayment`'s only caller of this path with
@@ -597,7 +606,12 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       if (!response.isSuccess) throw this.formatSdkResponseError(response);
       const checkout = response.body;
       const payment = checkout.createdPaymentOutput?.payment;
-      const isSuccess = checkout.status === "PAYMENT_CREATED";
+      // See the matching comment in `handleStatus` above: checkout-level status reaching
+      // "PAYMENT_CREATED" does not imply the payment was approved - `paymentStatusCategory` is
+      // the actual outcome.
+      const isSuccess =
+        checkout.createdPaymentOutput?.paymentStatusCategory ===
+        PayonePaymentStatusCategory.Successful;
 
       return {
         isSuccess,
