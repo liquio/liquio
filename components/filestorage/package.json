@@ -24,7 +24,7 @@
     "test:e2e": "jest tests"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.1.0",
+    "@liquio/back-core": "^0.1.2",
     "adm-zip": "^0.5.10",
     "aws-sdk": "^2.1693.0",
     "axios": "^1.19.0",
