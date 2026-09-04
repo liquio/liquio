@@ -670,7 +670,9 @@ describe("PayoneProvider", () => {
       it("resolves documentId/paymentControlPath/taskId from the payment transaction record when they aren't present on the callback", async () => {
         getCheckoutRequestMock.mockResolvedValue({
           checkoutStatus: "COMPLETED",
-          statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
+          statusOutput: {
+            paymentStatus: PayonePaymentStatusCategory.Successful,
+          },
           references: { merchantReference: "order-42" },
         });
         const resolvePaymentTransactionMock = jest.fn().mockResolvedValue({
