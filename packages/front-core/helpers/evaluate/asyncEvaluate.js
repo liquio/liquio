@@ -4,7 +4,9 @@ import EvaluateError from './EvaluateError';
 
 export default (func, ...params) =>
   new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./worker.js', import.meta.url));
+    const worker = new Worker(new URL('./worker.js', import.meta.url), {
+      type: 'module',
+    });
     const commandId = customPassword();
 
     const messageListener = (e) => {

@@ -607,7 +607,9 @@ const ScheduleCalendar = ({
 
       let timeStamp = new Date().getTime();
 
-      const worker = new Worker(new URL('./worker.js', import.meta.url));
+      const worker = new Worker(new URL('./worker.js', import.meta.url), {
+        type: 'module',
+      });
 
       const messageListener = (event) => {
         const { data } = event;
