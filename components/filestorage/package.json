@@ -30,7 +30,7 @@
     "axios": "^1.19.0",
     "body-parser": "^2.3.0",
     "express": "^5.2.1",
-    "inquirer": "^8.2.6",
+    "inquirer": "^14.2.0",
     "jsontoxml": "^1.0.1",
     "jszip": "^3.10.1",
     "lodash": "^4.17.21",
