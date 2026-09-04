@@ -5,6 +5,34 @@ import type {
 } from "@liquio/plugin-sdk";
 
 /**
+ * `GetHostedCheckoutResponse.status` values (PAYONE Commerce Platform hosted-checkout-level
+ * status - NOT the outcome of the payment itself, see {@link PayonePaymentStatusCategory}).
+ * `onlinepayments-sdk-nodejs` types this field as a bare `string | null` (it ships no enums at
+ * all), so these are declared here from PAYONE's own status reference
+ * (https://developer.payone.com/en/integration/api-developer-guide/statuses).
+ */
+export enum PayoneCheckoutStatus {
+  Created = "CREATED",
+  InProgress = "IN_PROGRESS",
+  Redirected = "REDIRECTED",
+  /** Reached once a payment object exists for the checkout - for both approved *and declined*
+   * payments alike. Never sufficient on its own to determine success. */
+  PaymentCreated = "PAYMENT_CREATED",
+  CancelledByConsumer = "CANCELLED_BY_CONSUMER",
+}
+
+/**
+ * `CreatedPaymentOutput.paymentStatusCategory` values - the actual outcome of the payment
+ * underlying a hosted checkout. This, not {@link PayoneCheckoutStatus}, is what determines
+ * success/failure.
+ */
+export enum PayonePaymentStatusCategory {
+  Successful = "SUCCESSFUL",
+  Rejected = "REJECTED",
+  StatusUnknown = "STATUS_UNKNOWN",
+}
+
+/**
  * Configuration options for {@link PayoneProvider}.
  * These come from the per-customer plugin config (`plugins.json`), not from code constants.
  */
