@@ -1,9 +1,8 @@
 import {
   StyledEngineProvider,
-  ThemeProvider,
-  adaptV4Theme,
-  createTheme
+  ThemeProvider
 } from '@mui/material/styles';
+import { ThemeProvider as StylesThemeProvider } from '@mui/styles';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import React, { Suspense } from 'react';
@@ -24,6 +23,7 @@ import { getQueryLangParam } from 'actions/auth';
 import theme from 'core/theme';
 import translation from 'core/translation';
 import { getConfig } from 'helpers/configLoader';
+import createMuiTheme from 'helpers/createMuiTheme';
 
 const AppRouter = React.lazy(() => import('components/AppRouter'));
 const WebChat = React.lazy(() => import('components/WebChat'));
@@ -60,10 +60,13 @@ export default function getApp() {
   );
 
   const storeProvider = <Provider store={store}>{auth}</Provider>;
+  const muiTheme = createMuiTheme(theme);
 
   const themeProvider = (
     <StyledEngineProvider injectFirst>
-      <ThemeProvider theme={createTheme(adaptV4Theme(theme))}>{storeProvider}</ThemeProvider>
+      <ThemeProvider theme={muiTheme}>
+        <StylesThemeProvider theme={muiTheme}>{storeProvider}</StylesThemeProvider>
+      </ThemeProvider>
     </StyledEngineProvider>
   );
 

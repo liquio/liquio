@@ -14,7 +14,7 @@ COPY --from=core . .
 
 WORKDIR /build/components/admin-front
 COPY package*.json .
-RUN npm ci --omit=dev
+RUN npm ci
 
 # Prepare the source code
 COPY . .

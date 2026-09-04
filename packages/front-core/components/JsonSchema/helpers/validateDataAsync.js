@@ -2,7 +2,9 @@ import customPassword from 'helpers/customPassword';
 
 export default (pageDataOrigin = {}, schema, documentData = {}) =>
   new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./worker.js', import.meta.url));
+    const worker = new Worker(new URL('./worker.js', import.meta.url), {
+      type: 'module',
+    });
     const commandId = customPassword();
 
     const messageListener = (e) => {

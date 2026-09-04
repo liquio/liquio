@@ -4,9 +4,7 @@ import { useEffect, useState } from 'react';
 import classNames from 'classnames';
 
 import {
-  ThemeProvider,
-  createTheme,
-  adaptV4Theme,
+  ThemeProvider
 } from '@mui/material/styles';
 
 import {
@@ -29,6 +27,7 @@ import {
 import { Editable } from './Editable';
 import { SortableField } from './SortableField';
 
+import createMuiTheme from 'helpers/createMuiTheme';
 import theme from '../theme';
 
 
@@ -224,7 +223,7 @@ export const PageControls = ({
           onChange={handleChangeDescription}
         />
         <ThemeProvider
-          theme={createTheme(adaptV4Theme(theme))}
+          theme={createMuiTheme(theme)}
         >
           <DndContext
             sensors={sensors}
