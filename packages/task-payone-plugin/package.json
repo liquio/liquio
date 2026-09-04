@@ -1,0 +1,49 @@
+{
+  "name": "@liquio/task-payone-plugin",
+  "version": "0.1.6",
+  "license": "SEE LICENSE IN ../../LICENSE.md",
+  "description": "PAYONE Platform payment provider plugin for components/task, built on @liquio/plugin-sdk",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "scripts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liquio/liquio.git",
+    "directory": "packages/task-payone-plugin"
+  },
+  "liquioPlugin": {
+    "kind": "task-payment-provider",
+    "sdkVersion": "^0.1.4"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "test": "jest",
+    "test:connection": "node scripts/test-payone-connection.mjs"
+  },
+  "dependencies": {
+    "@liquio/plugin-sdk": "^0.1.5",
+    "onlinepayments-sdk-nodejs": "^9.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.1.2",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0"
+  },
+  "overrides": {
+    "brace-expansion": "^5.0.8"
+  }
+}

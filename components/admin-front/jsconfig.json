@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "baseUrl": "src",
+    "paths": {
+      "actions/*": ["../node_modules/core/actions/*", "application/actions/*"],
+      "services/*": ["../node_modules/core/services/*"],
+      "core/*": ["../node_modules/core/*"],
+      "helpers/*": ["../node_modules/core/helpers/*"],
+      "components/*": ["../node_modules/core/components/*", "application/components/*"],
+      "modules/*": ["../node_modules/core/modules/*", "application/modules/*"]
+    }
+  },
+  "include": ["src"]
+}

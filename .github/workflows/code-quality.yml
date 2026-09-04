@@ -1,0 +1,165 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      any: ${{ steps.build-matrix.outputs.any }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build service matrix from changed paths
+        id: build-matrix
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")
+            LINT_ALL=false
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            CHANGED=""
+            LINT_ALL=true
+          else
+            CHANGED=$(git diff --name-only "${{ github.event.before }}...HEAD")
+            LINT_ALL=false
+          fi
+
+          echo "Changed files:"
+          echo "${CHANGED:-<all>}"
+
+          FRONT_CORE=$(echo "$CHANGED" | grep -c '^packages/front-core/' || true)
+          WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/code-quality\.yml' || true)
+
+          should_lint_component() {
+            local svc=$1
+            [ "$LINT_ALL" = "true" ] && return 0
+            [ "$WORKFLOW" -gt 0 ] && return 0
+            echo "$CHANGED" | grep -q "^components/${svc}/" && return 0
+            if [ "$FRONT_CORE" -gt 0 ]; then
+              { [ "$svc" = "admin-front" ] || [ "$svc" = "cabinet-front" ]; } && return 0
+            fi
+            return 1
+          }
+
+          should_lint_package() {
+            local pkg=$1
+            [ "$LINT_ALL" = "true" ] && return 0
+            [ "$WORKFLOW" -gt 0 ] && return 0
+            echo "$CHANGED" | grep -q "^packages/${pkg}/" && return 0
+            return 1
+          }
+
+          INCLUDES=()
+          for svc in admin-api admin-front cabinet-api cabinet-front event \
+                     external-reader filestorage gateway id-api id-front \
+                     manager notification pdf-generator register sign-tool \
+                     task persist-link; do
+            if should_lint_component "$svc"; then
+              INCLUDES+=("{\"name\":\"$svc\",\"path\":\"components/$svc\"}")
+            fi
+          done
+
+          # packages/* that ship both lint and test scripts (packages/front-core is
+          # source consumed via file: dependency and has neither, so it's excluded)
+          for pkg in back-core event-xroad-plugin plugin-installer plugin-sdk task-payone-plugin; do
+            if should_lint_package "$pkg"; then
+              INCLUDES+=("{\"name\":\"$pkg\",\"path\":\"packages/$pkg\"}")
+            fi
+          done
+
+          if [ "${#INCLUDES[@]}" -eq 0 ]; then
+            echo "No service changes detected - skipping lint."
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'any=false' >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(printf '%s\n' "${INCLUDES[@]}" | jq -sc '{"include": .}')
+            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+            echo 'any=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  lint:
+    needs: detect
+    if: needs.detect.outputs.any == 'true'
+    name: lint-${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.path }}/package-lock.json'
+
+      - name: Install dependencies for ${{ matrix.name }}
+        run: npm ci
+        working-directory: ${{ matrix.path }}
+
+      - name: Check for a lint script
+        id: has-lint
+        run: |
+          SCRIPT=$(npm pkg get scripts.lint 2>/dev/null | tr -d '"')
+          if [ -n "$SCRIPT" ] && [ "$SCRIPT" != "null" ] && [ "$SCRIPT" != "{}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No lint script for ${{ matrix.name }} - skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: ${{ matrix.path }}
+
+      - name: Lint ${{ matrix.name }}
+        if: steps.has-lint.outputs.run == 'true'
+        run: npm run lint
+        working-directory: ${{ matrix.path }}
+
+  test:
+    needs: [detect, lint]
+    if: needs.detect.outputs.any == 'true'
+    name: test-${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.path }}/package-lock.json'
+
+      - name: Install dependencies for ${{ matrix.name }}
+        run: npm ci
+        working-directory: ${{ matrix.path }}
+
+      - name: Check for a unit test script
+        id: has-test
+        run: |
+          SCRIPT=$(npm pkg get scripts.test 2>/dev/null | tr -d '"')
+          if [ -n "$SCRIPT" ] && [ "$SCRIPT" != "null" ] && [ "$SCRIPT" != "{}" ] && [[ "$SCRIPT" != *"Error: no test specified"* ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No unit test script for ${{ matrix.name }} - skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: ${{ matrix.path }}
+
+      - name: Unit test ${{ matrix.name }}
+        if: steps.has-test.outputs.run == 'true'
+        run: npm run test
+        working-directory: ${{ matrix.path }}

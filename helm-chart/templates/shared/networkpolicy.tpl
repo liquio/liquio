@@ -75,7 +75,8 @@ spec:
 liquio.networkPolicy.backend
   Covers: id-api, admin-api, cabinet-api (public)
           event, external-reader, filestorage, manager,
-          notification, register, sign-tool, task (internal)
+          notification, pdf-generator, register, sign-tool,
+          task (internal)
   Ingress: ingress-controller + any Liquio pod (inter-service
            calls, migration jobs, healthchecks)
   Egress:  DNS; PostgreSQL/Redis/RabbitMQ (podSelector when

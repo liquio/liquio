@@ -1,0 +1,69 @@
+import { Entity } from './entity';
+
+/**
+ * Document attachment entity.
+ */
+export class DocumentAttachmentEntity extends Entity {
+  id: any;
+  documentId: any;
+  link: any;
+  name: any;
+  type: any;
+  size: any;
+  labels: any;
+  isGenerated: any;
+  isSystem: any;
+  meta: any;
+  createdAt: any;
+
+  /**
+   * Constructor.
+   * @param {object} options Document attachment object.
+   * @param {string} options.id ID.
+   * @param {string} options.documentId Document ID.
+   * @param {string} options.link Link.
+   * @param {string} options.name Name.
+   * @param {string} options.type Type.
+   * @param {number} options.size Size.
+   * @param {string[]} options.labels Labels.
+   * @param {boolean} options.isGenerated Is generated.
+   * @param {boolean} options.isSystem Is system.
+   * @param {object} options.meta Meta.
+   * @param {Date} options.createdAt Created at.
+   */
+  constructor({ id, documentId, link, name, type, size, labels, isGenerated, isSystem, meta, createdAt }) {
+    super();
+
+    this.id = id;
+    this.documentId = documentId;
+    this.link = link;
+    this.name = name;
+    this.type = type;
+    this.size = size;
+    this.labels = labels;
+    this.isGenerated = isGenerated;
+    this.isSystem = isSystem;
+    this.meta = meta;
+    this.createdAt = createdAt;
+  }
+
+  /**
+   * Get placeholder.
+   * @param {string} fileId File ID.
+   * @param {string} dataPath Data path.
+   */
+  static getPlaceholder(fileId, dataPath) {
+    return {
+      isAttachmentPlaceholder: true,
+      data: { fileId, dataPath },
+    };
+  }
+
+  getFilterProperties() {
+    return ['id', 'documentId', 'link', 'name', 'type', 'size', 'labels', 'isGenerated', 'isSystem', 'meta', 'createdAt'];
+  }
+
+  getFilterPropertiesBrief() {
+    return this.getFilterProperties();
+  }
+}

@@ -2,9 +2,15 @@ name: Build and Push Images
 
 on:
   workflow_run:
-    workflows: [Lint]
+    workflows: [Code Quality]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service directory name under components/ to build (leave empty for all changed/unpublished services)'
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -12,7 +18,9 @@ env:
 jobs:
   # ── Detect which services have changed ────────────────────────────────────
   detect:
-    if: github.event.workflow_run.conclusion == 'success' && github.actor != 'dependabot[bot]'
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
@@ -22,34 +30,61 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Build service matrix from changed paths
         id: build-matrix
+        env:
+          FORCE_SERVICE: ${{ inputs.service }}
         run: |
-          # Build only after the exact commit that passed lint.
-          BASE="${{ github.event.workflow_run.head_sha }}^"
-          HEAD="${{ github.event.workflow_run.head_sha }}"
-
-          CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Build only after the exact commit that passed lint.
+            BASE="${{ github.event.workflow_run.head_sha }}^"
+            HEAD="${{ github.event.workflow_run.head_sha }}"
+            CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
+          else
+            # Manual dispatch has no single "changed since" commit to diff against.
+            CHANGED=""
+          fi
           BUILD_ALL=false
 
           echo "Changed files:"
           echo "${CHANGED:-<all>}"
 
           # Special triggers
-          FRONT_CORE=$(echo "$CHANGED" | grep -c '^front-core/' || true)
+          FRONT_CORE=$(echo "$CHANGED" | grep -c '^packages/front-core/' || true)
           WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/docker-build\.yml' || true)
+
+          # Returns 0 (true) if ghcr.io/liquio/<svc>:<ver> already exists
+          is_published() {
+            local svc=$1 ver=$2
+            local repo="liquio/${svc}"
+            local token
+            token=$(curl -fsS "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r .token)
+            local status
+            status=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: Bearer ${token}" \
+              -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json" \
+              "https://ghcr.io/v2/${repo}/manifests/${ver}")
+            [ "$status" = "200" ]
+          }
 
           # Returns 0 (true) if the service should be built
           should_build() {
             local svc=$1
+            if [ -n "$FORCE_SERVICE" ]; then
+              [ "$svc" = "$FORCE_SERVICE" ] && return 0
+              return 1
+            fi
             [ "$BUILD_ALL" = "true" ] && return 0
             [ "$WORKFLOW" -gt 0 ] && return 0
-            echo "$CHANGED" | grep -q "^${svc}/" && return 0
+            echo "$CHANGED" | grep -q "^components/${svc}/" && return 0
             if [ "$FRONT_CORE" -gt 0 ]; then
               { [ "$svc" = "admin-front" ] || [ "$svc" = "cabinet-front" ]; } && return 0
             fi
+            local ver
+            ver=$(jq -r .version "components/${svc}/package.json")
+            ! is_published "$svc" "$ver" && return 0
             return 1
           }
 
@@ -67,7 +102,7 @@ jobs:
           # Front services that need front-core as an additional build context
           for svc in admin-front cabinet-front; do
             if should_build "$svc"; then
-              INCLUDES+=("{\"service\":\"$svc\",\"build-contexts\":\"core=./front-core\"}")
+              INCLUDES+=("{\"service\":\"$svc\",\"build-contexts\":\"core=./packages/front-core\"}")
             fi
           done
 
@@ -111,7 +146,7 @@ jobs:
       - name: Read service version
         id: pkg
         run: |
-          VERSION=$(jq -r .version ${{ matrix.service }}/package.json)
+          VERSION=$(jq -r .version components/${{ matrix.service }}/package.json)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Extract image metadata
@@ -126,7 +161,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
-          context: ./${{ matrix.service }}
+          context: ./components/${{ matrix.service }}
           build-contexts: ${{ matrix.build-contexts }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
