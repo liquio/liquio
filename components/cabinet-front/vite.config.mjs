@@ -112,13 +112,22 @@ function reactVirtualizedPropTypes() {
   return {
     name: 'react-virtualized-prop-types',
     transform(code, id) {
-      if (!id.includes('/react-virtualized/dist/es/') || !code.includes('bpfrpt_proptype_')) {
+      if (
+        !(id.includes('/react-virtualized/dist/es/') || id.includes('/react-sortable-tree/')) ||
+        !code.includes('bpfrpt_proptype_')
+      ) {
         return null;
       }
 
-      return code
+      const transformed = code
         .replace(/import\s+\{\s*bpfrpt_proptype_[^}]+\}\s+from\s+["'][^"']+["'];?\s*/g, '')
         .replace(/export\s+\{\s*bpfrpt_proptype_[^}]+\};?\s*/g, '');
+
+      const shims = [...new Set(transformed.match(/\bbpfrpt_proptype_\w+/g) || [])]
+        .map((name) => `var ${name} = {};`)
+        .join('\n');
+
+      return shims ? `${shims}\n${transformed}` : transformed;
     }
   };
 }
@@ -196,11 +205,8 @@ export default defineConfig({
     preserveSymlinks: true,
     alias: {
       'ace-builds/webpack-resolver': resolvePath('src/ace-vite-resolver.js'),
-      altcha: resolvePath('node_modules/altcha'),
-      'clipboard-polyfill': resolvePath('node_modules/clipboard-polyfill'),
       core: resolvePath('../../packages/front-core'),
-      'pdfjs-dist/build/pdf': resolvePath('node_modules/pdfjs-dist/build/pdf.mjs'),
-      'react-youtube': resolvePath('node_modules/react-youtube')
+      'pdfjs-dist/build/pdf': resolvePath('node_modules/pdfjs-dist/build/pdf.mjs')
     }
   },
   define: {
