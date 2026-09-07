@@ -110,6 +110,13 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
           merchantReference: payload.orderId,
         },
       },
+      // `authorizationMode: "SALE"` combines authorization and capture into a single step, so a
+      // completed checkout is actually settled - PAYONE's default (omitting this field) instead
+      // leaves the order authorized-only (`PENDING_CAPTURE`/`PENDING_MERCHANT`) until a separate
+      // `capturePayment` call is made, which this plugin never issues.
+      cardPaymentMethodSpecificInput: {
+        authorizationMode: "SALE",
+      },
       hostedCheckoutSpecificInput: {
         returnUrl,
         showResultPage: false,
@@ -372,10 +379,21 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     // ("can occur alongside declined payments when examining the nested createdPaymentOutput
     // properties"). The actual outcome is `createdPaymentOutput.paymentStatusCategory`
     // (SUCCESSFUL / REJECTED / STATUS_UNKNOWN).
+    const payment = checkout.createdPaymentOutput?.payment;
+    const authenticationStatus =
+      payment?.paymentOutput?.cardPaymentMethodSpecificOutput
+        ?.threeDSecureResults?.authenticationStatus;
+    // `authenticationStatus === "U"` ("unable to authenticate") means 3-D Secure was attempted
+    // but never actually completed - PAYONE's sandbox has been observed authorizing (and, with
+    // `authorizationMode: "SALE"` above, capturing) these payments anyway with liability shifted
+    // to the merchant, instead of exhibiting the outcome its own test-card documentation
+    // describes. Treat that as a failure regardless of `paymentStatusCategory` so a broken/
+    // unprovisioned 3DS check on PAYONE's side doesn't get reported as a successful payment on
+    // ours. A card that was never put through 3DS at all (no `threeDSecureResults`, e.g. a
+    // non-3DS payment method) is unaffected - only an explicit "U" forces failure.
     const isSuccess =
       checkout.createdPaymentOutput?.paymentStatusCategory ===
-      PayonePaymentStatusCategory.Successful;
-    const payment = checkout.createdPaymentOutput?.payment;
+        PayonePaymentStatusCategory.Successful && authenticationStatus !== "U";
 
     // `checkPrevTransaction` (per `document.ts#calculatePayment`'s only caller of this path with
     // it set) is used to check whether an already-`calculatePayment`'d checkout has *already*
@@ -420,6 +438,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
         checkoutId,
         checkoutStatus: checkout.status,
         paymentStatus: checkout.createdPaymentOutput?.paymentStatusCategory,
+        authenticationStatus,
         checkPrevTransaction: Boolean(checkPrevTransaction),
         redirectUrl,
       },
@@ -566,14 +585,15 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
    * The SDK method that actually matches "release a hold so funds get collected" is
    * `PaymentExecutionApiClient.capturePayment` (`CapturePaymentRequest`'s own JSDoc: "capture...
    * the amount that was authorized"). But `calculatePayment` above always sets
-   * `autoExecuteOrder: true` on the order it creates - PAYONE auto-executes/captures the order as
-   * soon as the checkout completes, so there is no separate authorize-then-hold step in this
-   * integration for `capturePayment` to ever apply to. Supporting a genuine hold/capture flow
-   * would require reworking `calculatePayment` to stop auto-executing.
+   * `cardPaymentMethodSpecificInput.authorizationMode: "SALE"` on the order it creates - PAYONE
+   * auto-executes/captures a "SALE" order as soon as the checkout completes, so there is no
+   * separate authorize-then-hold step in this integration for `capturePayment` to ever apply to.
+   * Supporting a genuine hold/capture flow would require reworking `calculatePayment` to use
+   * `"PRE_AUTHORIZATION"`/`"FINAL_AUTHORIZATION"` instead of `"SALE"`.
    */
   async unHoldOrder(_data: unknown): Promise<never> {
     throw new Error(
-      "unHoldOrder is not supported by the Payone provider (calculatePayment always creates an auto-executed order - Payone captures funds immediately on checkout completion, so there is no separate authorization hold to release in this integration).",
+      "unHoldOrder is not supported by the Payone provider (calculatePayment always creates a SALE-mode order - Payone captures funds immediately on checkout completion, so there is no separate authorization hold to release in this integration).",
     );
   }
 
@@ -606,18 +626,25 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       if (!response.isSuccess) throw this.formatSdkResponseError(response);
       const checkout = response.body;
       const payment = checkout.createdPaymentOutput?.payment;
-      // See the matching comment in `handleStatus` above: checkout-level status reaching
+      // See the matching comments in `handleStatus` above: checkout-level status reaching
       // "PAYMENT_CREATED" does not imply the payment was approved - `paymentStatusCategory` is
-      // the actual outcome.
+      // the actual outcome - and `authenticationStatus === "U"` overrides that to a failure since
+      // PAYONE's sandbox has been observed authorizing/capturing these anyway instead of
+      // reflecting its own documented test-card outcomes.
+      const authenticationStatus =
+        payment?.paymentOutput?.cardPaymentMethodSpecificOutput
+          ?.threeDSecureResults?.authenticationStatus;
       const isSuccess =
         checkout.createdPaymentOutput?.paymentStatusCategory ===
-        PayonePaymentStatusCategory.Successful;
+          PayonePaymentStatusCategory.Successful &&
+        authenticationStatus !== "U";
 
       return {
         isSuccess,
         checkoutId: sessionId,
         hostedCheckoutStatus: checkout.status,
         paymentStatus: checkout.createdPaymentOutput?.paymentStatusCategory,
+        authenticationStatus,
         orderId: payment?.paymentOutput?.references?.merchantReference,
         paymentId: payment?.id,
       };
