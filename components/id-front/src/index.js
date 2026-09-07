@@ -1,4 +1,5 @@
 import { loadConfig } from 'helpers/configLoader';
+import { loadAuthProviders } from 'helpers/authProvidersLoader';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
@@ -12,7 +13,6 @@ const DEFAULT_CONFIG = {
   SHOW_PHONE: false,
   SHOW_PHONE_CONFIRM: false,
   FORCE_REGISTER: true,
-  passwordAuth: true,
   defaultLanguage: 'en',
 };
 
@@ -21,6 +21,9 @@ const initializeApp = async () => {
   try {
     // Load configuration first
     await loadConfig(DEFAULT_CONFIG);
+
+    // Load enabled login options
+    await loadAuthProviders();
 
     // Start the application
     const { default: App } = await import('./App');

@@ -8,7 +8,6 @@
   "SHOW_PHONE": false,
   "SHOW_PHONE_CONFIRM": false,
   "FORCE_REGISTER": true,
-  "passwordAuth": true,
   "defaultLanguage": "en",
   "variables": {
     "dateFormat": "DD.MM.YYYY",

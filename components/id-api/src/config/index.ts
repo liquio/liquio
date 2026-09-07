@@ -7,6 +7,12 @@ export const DEFAULT_COOKIE_DOMAIN = '.liquio';
 export const DEFAULT_CODE_RETRIES = 5;
 export const DEFAULT_CODE_LENGTH = 6;
 
+export interface AuthProviderDisplay {
+  title?: string;
+  icon?: string;
+  description?: string;
+}
+
 export interface OIDCProviderConfig {
   issuer?: string;
   authorizationURL?: string;
@@ -20,6 +26,7 @@ export interface OIDCProviderConfig {
   mapping?: Record<string, string>;
   userInfo?: { enabled: boolean };
   usePKCE?: boolean;
+  display?: AuthProviderDisplay;
 }
 
 export interface Config {
@@ -129,10 +136,16 @@ export interface Config {
     local?: {
       isEnabled?: boolean;
       isForgotPasswordEnabled?: boolean;
+      display?: AuthProviderDisplay;
     };
-    wso2?: any;
+    wso2?: {
+      isEnabled?: boolean;
+      display?: AuthProviderDisplay;
+      [key: string]: any;
+    };
     x509?: {
       isEnabled?: boolean;
+      display?: AuthProviderDisplay;
     };
     oauth2?: StrategyOptions & { userProfileUrl: string };
     oidc?: {
