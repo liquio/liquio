@@ -46,7 +46,7 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.24",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.4.0",
     "@types/supertest": "^7.2.1",
     "debug": "^4.3.7",
     "eslint": "^10.8.1",
