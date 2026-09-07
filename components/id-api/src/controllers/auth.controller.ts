@@ -5,6 +5,7 @@ import { URL } from 'url';
 import { promisify } from 'util';
 
 import { DEFAULT_COOKIE_DOMAIN } from '../config';
+import { getEnabledAuthProviders } from '../lib/auth_providers';
 import { avatarByGender } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { ServerCrypt } from '../lib/server_crypt';
@@ -24,6 +25,7 @@ export class AuthController extends BaseController {
     const authMiddleware = AuthMiddleware.get();
 
     this.router.get('/auth', this.service('auth').prepareUser('approve'), authMiddleware.checkUserAccess(), this.getAuth.bind(this));
+    this.router.get('/auth_providers', this.getAuthProviders.bind(this));
     this.router.get('/sign_in', this.signIn.bind(this));
     this.router.get('/sign_in/requirements', this.signInRequirements.bind(this));
     this.router.get('/sign_in/requirements_phone', this.service('auth').prepareClient(), this.signInRequirementsPhone.bind(this));
@@ -64,6 +66,13 @@ export class AuthController extends BaseController {
   defaultRoute(req: Request, res: Response) {
     if (req.isAuthenticated()) res.send({ success: true, redirect: '/authorise/continue' });
     else res.redirect('/sign_in');
+  }
+
+  /**
+   * List currently enabled login options for the login page.
+   */
+  getAuthProviders(req: Request, res: Response): void {
+    res.send({ providers: getEnabledAuthProviders(this.config) });
   }
 
   signIn(req: Request, res: Response) {
