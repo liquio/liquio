@@ -575,7 +575,7 @@ describe("PayoneProvider", () => {
       );
     });
 
-    it("returns a failure shape when paymentStatusCategory is SUCCESSFUL but 3-D Secure authenticationStatus is \"U\" (unable to authenticate)", async () => {
+    it('returns a failure shape when paymentStatusCategory is SUCCESSFUL but 3-D Secure authenticationStatus is "U" (unable to authenticate)', async () => {
       // PAYONE's sandbox has been observed authorizing (and, with authorizationMode: "SALE",
       // capturing) payments for cards whose 3DS authentication never actually completed
       // ("U"), with liability shifted to the merchant, instead of exhibiting the outcome its
@@ -607,7 +607,7 @@ describe("PayoneProvider", () => {
       expect(result.extraData.authenticationStatus).toBe("U");
     });
 
-    it("returns a success shape when paymentStatusCategory is SUCCESSFUL and 3-D Secure authenticationStatus is \"Y\" (authenticated)", async () => {
+    it('returns a success shape when paymentStatusCategory is SUCCESSFUL and 3-D Secure authenticationStatus is "Y" (authenticated)', async () => {
       getCheckoutRequestMock.mockResolvedValue({
         commerceCaseId: "commerce-case-1",
         checkoutId: "checkout-1",
@@ -961,7 +961,7 @@ describe("PayoneProvider", () => {
       expect(result).toMatchObject({ isSuccess: false });
     });
 
-    it("returns a failure shape when paymentStatusCategory is SUCCESSFUL but 3-D Secure authenticationStatus is \"U\"", async () => {
+    it('returns a failure shape when paymentStatusCategory is SUCCESSFUL but 3-D Secure authenticationStatus is "U"', async () => {
       getCheckoutRequestMock.mockResolvedValue({
         checkoutStatus: "COMPLETED",
         statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
