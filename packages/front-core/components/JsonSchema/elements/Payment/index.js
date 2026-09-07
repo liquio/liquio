@@ -46,6 +46,8 @@ class Payment extends React.Component {
       timeout: null,
       inited: false,
       successMessageShown: false,
+      paymentFailed: false,
+      failureMessageShown: false,
     };
   }
 
@@ -115,9 +117,11 @@ class Payment extends React.Component {
 
     this.setState({ loading: false });
 
-    const { isSuccess } = this.state;
+    const { isSuccess, paymentFailed } = this.state;
 
-    if (!isSuccess && !silent) {
+    // `parseResult` already dispatched 'ErrorPaymentStatus' for a terminal failure - don't also
+    // tell the user it's merely pending.
+    if (!isSuccess && !paymentFailed && !silent) {
       importActions.addMessage(new Message('PendingPaymentStatus', 'warning'));
     }
   };
@@ -141,10 +145,16 @@ class Payment extends React.Component {
       ? amount.reduce((sum, item) => sum + item.amount, 0)
       : amount;
 
+    const hasProcessed =
+      typeof processed !== 'undefined' && processed.length > 0;
+
     const isSuccess =
-      (typeof processed !== 'undefined' &&
-        !!processed[processed.length - 1].status.isSuccess) ||
+      (hasProcessed && !!processed[processed.length - 1].status.isSuccess) ||
       false;
+
+    // A terminal (processed) attempt that did not succeed - as opposed to no attempt having
+    // completed yet, which is a normal pending state, not a failure.
+    const paymentFailed = hasProcessed && !isSuccess;
 
     const alreadyPassed =
       (typeof value.processed !== 'undefined' &&
@@ -153,15 +163,32 @@ class Payment extends React.Component {
 
     isSuccess && !alreadyPassed && (await importActions.loadTask(taskId));
 
-    if (isSuccess && !this.state.successMessageShown) {
-      importActions.addMessage(new Message('SuccessPaymentStatus', 'success'));
-      this.setState({ successMessageShown: true });
+    // Guarded via the setState updater form (reading `prevState`, not `this.state`) rather than
+    // a plain `!this.state.xShown` check - `parseResult` can run twice in close succession (e.g.
+    // around the PAYONE redirect-return page load), and reading `this.state` directly races
+    // against React's batching of the *other* call's pending `setState`, letting both calls see
+    // the flag as still unset and both dispatch a toast.
+    if (isSuccess) {
+      this.setState((prevState) => {
+        if (prevState.successMessageShown) return null;
+        importActions.addMessage(new Message('SuccessPaymentStatus', 'success'));
+        return { successMessageShown: true };
+      });
+    }
+
+    if (paymentFailed) {
+      this.setState((prevState) => {
+        if (prevState.failureMessageShown) return null;
+        importActions.addMessage(new Message('ErrorPaymentStatus', 'error'));
+        return { failureMessageShown: true };
+      });
     }
 
     this.setState({
       paymentValue: paymentValue && paymentValue.toFixed(2),
       paymentRequestData,
       isSuccess,
+      paymentFailed,
     });
   };
 
@@ -233,9 +260,12 @@ class Payment extends React.Component {
       isConfirmed,
     });
 
-    const { isSuccess } = this.state;
+    const { isSuccess, paymentFailed } = this.state;
 
+    // `parseResult` already dispatched 'ErrorPaymentStatus' for a terminal failure - don't also
+    // tell the user it's merely pending.
     !isSuccess &&
+      !paymentFailed &&
       importActions.addMessage(new Message('PendingPaymentStatus', 'warning'));
   };
 
@@ -276,6 +306,12 @@ class Payment extends React.Component {
       const { isSuccess } = this.state;
 
       if (!isSuccess) {
+        // A previous attempt may have already failed (persisted in the document's `processed`
+        // history, re-read by `checkPaymentStatus` above on every mount) - reset the shown-once
+        // flag so this fresh attempt can surface its own failure toast if it fails too, instead
+        // of being permanently suppressed by the last one.
+        this.setState({ failureMessageShown: false });
+
         const res = await importActions.getPaymentInfo(id, {
           paymentControlPath,
         });
