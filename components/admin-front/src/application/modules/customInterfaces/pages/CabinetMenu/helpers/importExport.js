@@ -4,19 +4,13 @@ import { createCabinetMenuItem } from './actions';
 
 const EXPORT_VERSION = 1;
 
-const stripRuntimeFields = (item) => {
-  const {
-    childrenCount,
-    depth,
-    hasChildren,
-    history,
-    createdAt,
-    updatedAt,
-    ...rest
-  } = item || {};
+const RUNTIME_FIELDS = ['childrenCount', 'depth', 'hasChildren', 'history', 'createdAt', 'updatedAt'];
 
-  return rest;
-};
+const omit = (obj, keys) => Object.fromEntries(
+  Object.entries(obj || {}).filter(([key]) => !keys.includes(key)),
+);
+
+const stripRuntimeFields = (item) => omit(item, RUNTIME_FIELDS);
 
 const getExportFilename = () => {
   const date = new Date().toISOString().slice(0, 10);
@@ -48,18 +42,8 @@ const normalizeImportedItems = (parsed) => {
 };
 
 const sanitizeImportedItem = (item) => {
-  const {
-    id,
-    childrenCount,
-    depth,
-    hasChildren,
-    history,
-    createdAt,
-    updatedAt,
-    ...rest
-  } = item || {};
-
-  const { system, ...options } = rest.options || {};
+  const rest = omit(item, ['id', ...RUNTIME_FIELDS]);
+  const options = omit(rest.options, ['system']);
 
   return {
     ...rest,

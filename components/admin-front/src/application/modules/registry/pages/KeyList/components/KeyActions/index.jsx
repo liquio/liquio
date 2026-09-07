@@ -2,8 +2,6 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { IconButton, Menu, Toolbar } from '@mui/material';
 import SearchIcon from 'assets/icons/mdi_database-search.svg';
-import DeleteIconSync from 'assets/icons/mdi_database-remove.svg';
-import AddIconSync from 'assets/icons/mdi_database-add.svg';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditKeyMenuItem from './EditKeyMenuItem';
 import DeleteKeyMenuItem from './DeleteKeyMenuItem';
@@ -16,7 +14,6 @@ const KeyActions = ({
   registerId,
   actions,
   readOnly,
-  userUnits,
 }) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
 
