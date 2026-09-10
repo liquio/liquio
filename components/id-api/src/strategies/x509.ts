@@ -1,6 +1,7 @@
 import { Strategy as PassportStrategy } from 'passport-strategy';
 
 import { Log } from '@liquio/back-core';
+
 import { Express, Request, Response } from '../types';
 import { saveSession } from '../middleware/session';
 import { SignatureInfoSigner, X509Service } from '../services/x509.service';
@@ -145,12 +146,15 @@ export async function x509(app: Express) {
         log.save('x509-strategy|authenticate|user-found', { userId: existingUser.userId }, 'info');
       }
 
-      const userService = await Models.model('userServices').upsert({
-        userId: (existingUser || newUser!).userId,
-        provider: 'x509',
-        provider_id: ipn,
-        data: userInfo,
-      });
+      const userService = await Models.model('userServices').upsert(
+        {
+          userId: (existingUser || newUser!).userId,
+          provider: 'x509',
+          provider_id: ipn,
+          data: userInfo,
+        },
+        { conflictFields: ['provider', 'provider_id'] },
+      );
 
       done(null, {
         ...(existingUser || newUser!),

@@ -1,8 +1,10 @@
 import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 import axios from 'axios';
+import { createHash } from 'crypto';
+
+import { Log } from '@liquio/back-core';
 
 import { CallbackFn, Express } from '../types';
-import { Log } from '@liquio/back-core';
 import { Models, UserAttributes } from '../models';
 import { OIDCProviderConfig } from '../config';
 import { PKCEOAuth2Strategy, generatePKCEParameters } from './passport_libs/passport-oidc/strategy';
@@ -352,14 +354,30 @@ class OidcProvider {
         }
       }
 
+      const providerKey = `oidc-${providerId}`;
+
       let existingUser: UserAttributes | null = null;
 
-      if (userData.email) {
+      const existingService = await Models.model('userServices')
+        .findOne({
+          where: { provider: providerKey, provider_id: userProviderId },
+        })
+        .then((row) => row?.dataValues);
+
+      if (existingService) {
+        existingUser = await Models.model('user')
+          .findOne({ where: { userId: existingService.userId } })
+          .then((row) => row?.dataValues as UserAttributes);
+      } else if (userData.email) {
         existingUser = await Models.model('user')
           .findOne({
             where: { email: userData.email },
           })
           .then((row) => row?.dataValues as UserAttributes);
+      }
+
+      if (!userData.ipn) {
+        userData.ipn = existingUser?.ipn || `#${createHash('sha256').update(`${providerKey}:${userProviderId}`).digest('hex')}`;
       }
 
       let user: UserAttributes;
@@ -377,17 +395,20 @@ class OidcProvider {
 
       this.log.save(`${log_tag}|user-upsert`, { userId: user.userId, is_new: !existingUser }, 'info');
 
-      const userService = await Models.model('userServices').upsert({
-        userId: user.userId,
-        provider: `oidc-${providerId}`,
-        provider_id: userProviderId,
-        data: userInfo,
-      });
+      const userService = await Models.model('userServices').upsert(
+        {
+          userId: user.userId,
+          provider: providerKey,
+          provider_id: userProviderId,
+          data: userInfo,
+        },
+        { conflictFields: ['provider', 'provider_id'] },
+      );
 
       const session = {
         ...user,
-        provider: `oidc-${providerId}`,
-        services: { [`oidc-${providerId}`]: userService },
+        provider: providerKey,
+        services: { [providerKey]: userService },
       };
 
       this.log.save(`${log_tag}|authorize-success`, { userId: user.userId }, 'info');

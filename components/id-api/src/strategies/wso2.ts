@@ -1,8 +1,9 @@
 import { Strategy } from 'passport-oauth2';
 import axios from 'axios';
 
-import { CallbackFn, Express } from '../types';
 import { Log } from '@liquio/back-core';
+
+import { CallbackFn, Express } from '../types';
 import { Models, UserAttributes } from '../models';
 
 export async function wso2(app: Express) {
@@ -106,12 +107,15 @@ export async function wso2(app: Express) {
               .then((row) => row.dataValues);
           }
 
-          const userService = await Models.model('userServices').upsert({
-            userId: (existingUser || newUser!).userId,
-            provider: 'wso2',
-            provider_id: providerId,
-            data: userInfo,
-          });
+          const userService = await Models.model('userServices').upsert(
+            {
+              userId: (existingUser || newUser!).userId,
+              provider: 'wso2',
+              provider_id: providerId,
+              data: userInfo,
+            },
+            { conflictFields: ['provider', 'provider_id'] },
+          );
 
           const session = {
             ...(existingUser || newUser!),
