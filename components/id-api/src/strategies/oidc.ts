@@ -377,8 +377,7 @@ class OidcProvider {
       }
 
       if (!userData.ipn) {
-        userData.ipn =
-          existingUser?.ipn || `#${createHash('sha256').update(`${providerKey}:${userProviderId}`).digest('hex')}`;
+        userData.ipn = existingUser?.ipn || `#${createHash('sha256').update(`${providerKey}:${userProviderId}`).digest('hex')}`;
       }
 
       let user: UserAttributes;
