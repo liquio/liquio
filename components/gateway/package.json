@@ -32,7 +32,7 @@
     "lodash": "^4.17.20",
     "moment": "^2.29.4",
     "moment-business-days": "^1.2.0",
-    "multiconf": "^4.0.0",
+    "multiconf": "^4.2.2",
     "pg": "^8.18.0",
     "pg-hstore": "^2.3.4",
     "redis": "^6.2.0",
