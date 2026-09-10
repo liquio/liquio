@@ -11,6 +11,9 @@ import { CallbackFn, Express, Request, Response } from '../types';
 
 const GENERIC_FAIL_DESCRIPTION = 'Invalid email or password.';
 
+// No external IdP session to tear down for local (email/password) auth.
+export async function logout(): Promise<void> {}
+
 export async function local(app: Express) {
   const log = Log.getInstance();
 

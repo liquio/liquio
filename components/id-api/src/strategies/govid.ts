@@ -22,6 +22,17 @@ export function getStrategy(): GovIdStrategy {
   return strategy;
 }
 
+export async function logout(
+  req: { session?: { passport?: { user?: { provider?: string; services?: Record<string, any> } } } } | undefined,
+): Promise<void> {
+  const user = req?.session?.passport?.user;
+  if (user?.provider !== 'govid' || !strategy) {
+    return;
+  }
+
+  await strategy.logout(user.services?.[user.provider]);
+}
+
 export async function govid(app: Express) {
   const log = Log.getInstance();
   const passport = app.passport;

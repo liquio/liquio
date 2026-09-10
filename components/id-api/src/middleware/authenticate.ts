@@ -7,14 +7,16 @@ import { generatePinCode } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { Models, UserAttributes } from '../models';
 import { Services } from '../services';
-import { getStrategy, govid } from '../strategies/govid';
-import { local } from '../strategies/local';
-import { oidc } from '../strategies/oidc';
-import { wso2 } from '../strategies/wso2';
-import { x509 } from '../strategies/x509';
+import { govid, logout as govidLogout } from '../strategies/govid';
+import { local, logout as localLogout } from '../strategies/local';
+import { oidc, logout as oidcLogout } from '../strategies/oidc';
+import { wso2, logout as wso2Logout } from '../strategies/wso2';
+import { x509, logout as x509Logout } from '../strategies/x509';
 import { Express, NextFunction, Request, Response } from '../types';
 import { Log, appendTraceMeta } from '@liquio/back-core';
 import { destroySession, saveSession } from './session';
+
+type StrategyLogout = (req: Request) => Promise<{ endSessionUrl?: string } | void>;
 
 export class AuthMiddleware {
   private static singleton: AuthMiddleware;
@@ -64,6 +66,34 @@ export class AuthMiddleware {
       throw new Error('AuthMiddleware not initialized. Please call AuthMiddleware.init() first.');
     }
     return AuthMiddleware.singleton;
+  }
+
+  /**
+   * Every wired-up strategy exports a logout() (even if it's a no-op stub), so
+   * this always has something to call regardless of which provider logged the
+   * user in — no per-provider special-casing needed at the call site.
+   */
+  private resolveStrategyLogout(provider: string | undefined): StrategyLogout | undefined {
+    if (!provider) {
+      return undefined;
+    }
+
+    if (provider.startsWith('oidc-')) {
+      return oidcLogout;
+    }
+
+    switch (provider) {
+      case 'govid':
+        return govidLogout;
+      case 'wso2':
+        return wso2Logout;
+      case 'x509':
+        return x509Logout;
+      case 'local':
+        return localLogout;
+      default:
+        return undefined;
+    }
   }
 
   async init() {
@@ -144,7 +174,7 @@ export class AuthMiddleware {
     };
   }
 
-  private async onLogout(req: Request, res: Response) {
+  private async onLogout(req: Request, res: Response, endSessionUrl?: string) {
     const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'logout' });
 
     let { redirect_uri: redirectUri } = matchedData(req, { locations: ['query'] });
@@ -159,29 +189,40 @@ export class AuthMiddleware {
     if (loginHistoryData) {
       await Models.model('loginHistory').create(loginHistoryData);
     }
-    // Redirect to `/` if custom redirect not defined.
-    if (!req.query.redirect_uri) {
-      return res.redirect('/');
+
+    let finalRedirect = '/';
+    if (req.query.redirect_uri) {
+      const clients = await Models.model('client')
+        .findAll()
+        .then((rows) => rows.map((row) => row.dataValues));
+      const clientsRedirectUri: string[] = clients.map((v) => v.redirectUri).reduce((t, v) => [...t, ...v], []);
+
+      finalRedirect = clientsRedirectUri.some((v) => redirectUri.startsWith(v)) ? redirectUri : '/';
     }
 
-    await Models.model('client')
-      .findAll()
-      .then((rows) => rows.map((row) => row.dataValues))
-      .then((clients) => {
-        const clientsRedirectUri: string[] = clients.map((v) => v.redirectUri).reduce((t, v) => [...t, ...v], []);
+    // No IdP session to terminate (or it's not an OIDC provider) — redirect as usual.
+    if (!endSessionUrl) {
+      return res.redirect(finalRedirect);
+    }
 
-        const isAllowedRedirectUri = clientsRedirectUri.some((v) => redirectUri.startsWith(v));
-        if (!isAllowedRedirectUri) {
-          redirectUri = '/';
-        }
+    // RP-initiated logout: send the browser to the IdP's end_session_endpoint
+    // so it actually kills its own SSO session, telling it to bounce the user
+    // back to the redirect we would otherwise have used directly.
+    const absoluteRedirect = finalRedirect.startsWith('http')
+      ? finalRedirect
+      : new URL(finalRedirect, `${req.protocol}://${req.get('host')}`).toString();
 
-        res.redirect(redirectUri);
-      });
+    const logoutUrl = new URL(endSessionUrl);
+    logoutUrl.searchParams.set('post_logout_redirect_uri', absoluteRedirect);
+
+    res.redirect(logoutUrl.toString());
   }
 
   logout(): (req: Request, res: Response, next: NextFunction) => Promise<void> | void {
     return async (req: Request, res: Response) => {
       let { passport } = req.session;
+
+      let endSessionUrl: string | undefined;
 
       if (passport && 'user' in passport) {
         let { user } = passport,
@@ -201,21 +242,26 @@ export class AuthMiddleware {
           });
         }
 
-        await Models.model('accessToken').destroy({ where: { userId } });
-        await Models.model('refreshToken').destroy({ where: { userId } });
-        await Models.model('sessions').destroy({ where: { userId: userId } });
-
-        if (provider === 'govid') {
+        // Must run before the user_sessions bulk-destroy below: RP-initiated
+        // logout reads the id_token/end_session_endpoint back from this login's
+        // session row, which that destroy would otherwise wipe out first.
+        const strategyLogout = this.resolveStrategyLogout(provider);
+        if (strategyLogout) {
           try {
-            await getStrategy().logout(user.services[provider]);
+            const result = await strategyLogout(req);
+            endSessionUrl = result?.endSessionUrl;
           } catch (error: any) {
             this.log.save('logout-error', { error: error?.message ?? error.toString() }, 'error');
           }
         }
+
+        await Models.model('accessToken').destroy({ where: { userId } });
+        await Models.model('refreshToken').destroy({ where: { userId } });
+        await Models.model('sessions').destroy({ where: { userId } });
       }
 
       res.clearCookie('jwt', { domain: this.express.config.domain ?? DEFAULT_COOKIE_DOMAIN });
-      req.logout(() => this.onLogout(req, res));
+      req.logout(() => this.onLogout(req, res, endSessionUrl));
     };
   }
 
