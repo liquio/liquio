@@ -6,6 +6,10 @@ import { Log } from '@liquio/back-core';
 import { CallbackFn, Express } from '../types';
 import { Models, UserAttributes } from '../models';
 
+// WSO2 doesn't support an external logout call today — kept as a stub so the
+// caller can always invoke a strategy's logout() uniformly.
+export async function logout(): Promise<void> {}
+
 export async function wso2(app: Express) {
   const log = Log.getInstance();
   const passport = app.passport;

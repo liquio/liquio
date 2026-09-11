@@ -6,6 +6,9 @@ import crypto from 'crypto';
  */
 export class PKCEOAuth2Strategy extends OAuth2Strategy {
   private pkceParams: { codeVerifier: string; codeChallenge: string } | null = null;
+  // id_token isn't forwarded to the verify callback by passport-oauth2, so it's
+  // stashed here keyed by access token (unique per exchange) and consumed once.
+  private idTokensByAccessToken = new Map<string, string>();
 
   constructor(options: any, verify: any) {
     super(options, verify);
@@ -17,12 +20,26 @@ export class PKCEOAuth2Strategy extends OAuth2Strategy {
       if (self.pkceParams) {
         params = { ...params, code_verifier: self.pkceParams.codeVerifier };
       }
-      return originalGetOAuthAccessToken(code, params, callback);
+      return originalGetOAuthAccessToken(code, params, (err: any, accessToken: string, refreshToken: string, tokenParams: any) => {
+        if (!err && accessToken && tokenParams?.id_token) {
+          self.idTokensByAccessToken.set(accessToken, tokenParams.id_token);
+        }
+        callback(err, accessToken, refreshToken, tokenParams);
+      });
     };
   }
 
   setPKCEParams(pkceParams: { codeVerifier: string; codeChallenge: string }) {
     this.pkceParams = pkceParams;
+  }
+
+  /**
+   * Returns the id_token captured for a given access token and forgets it.
+   */
+  consumeIdToken(accessToken: string): string | undefined {
+    const idToken = this.idTokensByAccessToken.get(accessToken);
+    this.idTokensByAccessToken.delete(accessToken);
+    return idToken;
   }
 
   authorizationParams(options: any) {
