@@ -1,15 +1,80 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
-import { DocumentEntity } from '../entities/document';
+import { DocumentEntity, DocumentEntityOptions, DocumentAsic } from '../entities/document';
 import { RedisClient } from '../lib/redis_client';
 
 // Constants.
 const SYSTEM_USER = 'system';
 const GET_ALL_BY_WORKFLOW_ID_CACHE_TTL = 600; // 10 minutes.
 
+/**
+ * Raw shape of a `documents` row as Sequelize hands it back (snake_case columns) - what
+ * {@link DocumentModel#prepareEntity} consumes and {@link DocumentModel#prepareForModel} produces.
+ * Deliberately not `this.model`'s generic type parameter: the live Sequelize instance also carries
+ * a monkey-patched `.prepareEntity` (see the constructor) and, when queried `include`-ing the
+ * task association, a `.task` property - both dynamic additions this interface does not attempt
+ * to model, so call sites that need them keep using the raw instance (typed `any`) directly.
+ */
+export interface DocumentRow {
+  id: string;
+  external_id?: string | null;
+  parent_id?: string | null;
+  document_template_id?: number | null;
+  document_state_id?: number | null;
+  cancellation_type_id?: number | null;
+  number?: string | null;
+  is_final?: boolean;
+  owner_id?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+  /** Arbitrary, document-template-defined JSON blob - not modeled precisely (see `DocumentEntity#data`). */
+  data?: any;
+  description?: string | null;
+  file_id?: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  asic: DocumentAsic;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface CreateDocumentParams {
+  parentId?: string;
+  documentTemplateId: number;
+  userId?: string;
+  number?: string;
+}
+
+export interface AddDocumentFileParams {
+  id: string;
+  updatedBy?: string;
+  fileId: string;
+  fileName: string;
+  fileType: string;
+  fileSize?: number;
+}
+
+export interface DocumentFileInfo {
+  documentId: string;
+  documentTemplateId: number;
+  fileId: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class DocumentModel extends Model {
   private static singleton: DocumentModel;
 
+  /**
+   * The live Sequelize model. Kept as `any` rather than `Sequelize.ModelStatic<...>`: besides the
+   * dynamic `.task`/`.prepareEntity` additions described on {@link DocumentRow}, it is also passed
+   * around directly as an `include`d association target elsewhere (e.g. `models/task.ts`), which
+   * would require modeling the full set of cross-model associations to type precisely.
+   */
   model: any;
 
   constructor() {
@@ -66,12 +131,11 @@ export class DocumentModel extends Model {
 
   /**
    * Find by ID.
-   * @param {string} id Document ID.
-   * @param {boolean} includeTask Include task data.
-   * @param {boolean} includeTaskTemplate Include task template.
-   * @returns {Promise<DocumentEntity>}
+   * @param id Document ID.
+   * @param includeTask Include task data.
+   * @param includeTaskTemplate Include task template.
    */
-  async findById(id, includeTask = false, includeTaskTemplate = false) {
+  async findById(id: string, includeTask = false, includeTaskTemplate = false): Promise<DocumentEntity | undefined> {
     const document = await this.model.findByPk(id, {
       include: [{ model: global.models.task.model, required: includeTask }],
     });
@@ -94,22 +158,22 @@ export class DocumentModel extends Model {
 
   /**
    * Get by IDs list.
-   * @param {string[]} ids Document IDs list.
-   * @returns {Promise<DocumentEntity[]>} Promise of documents list.
+   * @param ids Document IDs list.
+   * @returns Promise of documents list.
    */
-  async getByIds(ids) {
+  async getByIds(ids: string[]): Promise<DocumentEntity[]> {
     const documents = await this.model.findAll({ where: { id: ids } });
     return Promise.all(documents.map((item) => this.prepareEntity(item)));
   }
 
   /**
    * Check exists.
-   * @param {number} documentTemplateId Document template ID.
-   * @param {boolean} isFinal Is final indicator.
-   * @param {Date} updatedAtFrom Updated from date.
-   * @returns {Promise<boolean>} Is exists indicator promise.
+   * @param documentTemplateId Document template ID.
+   * @param isFinal Is final indicator.
+   * @param updatedAtFrom Updated from date.
+   * @returns Is exists indicator promise.
    */
-  async checkExists(documentTemplateId, isFinal, updatedAtFrom) {
+  async checkExists(documentTemplateId: number, isFinal: boolean, updatedAtFrom: Date): Promise<boolean> {
     const rawDocument = await this.model.findOne({
       where: {
         document_template_id: documentTemplateId,
@@ -126,10 +190,10 @@ export class DocumentModel extends Model {
 
   /**
    * Get by external ID.
-   * @param {string} externalId External ID.
-   * @returns {Promise<DocumentEntity>} Promise of document.
+   * @param externalId External ID.
+   * @returns Promise of document.
    */
-  async getByExternalId(externalId) {
+  async getByExternalId(externalId: string): Promise<DocumentEntity | undefined> {
     const rawDocument = await this.model.findOne({ where: { external_id: externalId } });
 
     if (!rawDocument) {
@@ -140,11 +204,7 @@ export class DocumentModel extends Model {
     return document;
   }
 
-  /**
-   * @param {string} externalId
-   * @return {Promise<boolean>}
-   */
-  async isExternalIdExists(externalId) {
+  async isExternalIdExists(externalId: string): Promise<boolean> {
     const documentId = await this.model.findOne({ attributes: ['id'], raw: true, where: { external_id: externalId } });
 
     return !!documentId;
@@ -152,10 +212,10 @@ export class DocumentModel extends Model {
 
   /**
    * Get files names.
-   * @param {string[]} ids Document IDs list.
-   * @returns {Promise<{documentId, documentTemplateId, fileName}[]>} Promise of documents file names info list.
+   * @param ids Document IDs list.
+   * @returns Promise of documents file names info list.
    */
-  async getFilesNamesByIds(ids) {
+  async getFilesNamesByIds(ids: string[]): Promise<DocumentFileInfo[]> {
     const documents = await this.model.findAll({
       where: { id: ids, is_final: true },
       attributes: ['id', 'document_template_id', 'file_id', 'file_name', 'file_size', 'created_at', 'updated_at'],
@@ -174,14 +234,8 @@ export class DocumentModel extends Model {
 
   /**
    * Create document.
-   * @param {object} data Data object.
-   * @param {string} data.parentId Document parent ID.
-   * @param {number} data.documentTemplateId Document template ID.
-   * @param {string} data.userId User ID.
-   * @param {string} data.number Generated unique number.
-   * @returns {Promise<DocumentEntity>}
    */
-  async create({ parentId, documentTemplateId, userId, number }) {
+  async create({ parentId, documentTemplateId, userId, number }: CreateDocumentParams): Promise<DocumentEntity> {
     const document = this.prepareForModel({
       parentId,
       documentTemplateId,
@@ -200,14 +254,20 @@ export class DocumentModel extends Model {
 
   /**
    * Update data.
-   * @param {string} id Document ID.
-   * @param {string} userId User ID.
-   * @param {object} data Data users.
-   * @param {boolean} [clearGeneratedFile] Clear generated file indicator. Default value: `false`.
-   * @param {boolean} [isKeepDocumentFile]
-   * @returns {Promise<DocumentEntity>} Document entity promise.
+   * @param id Document ID.
+   * @param userId User ID.
+   * @param data Data users.
+   * @param clearGeneratedFile Clear generated file indicator.
+   * @param isKeepDocumentFile
+   * @returns Document entity promise.
    */
-  async updateData(id, userId, data, clearGeneratedFile = false, isKeepDocumentFile = false) {
+  async updateData(
+    id: string,
+    userId: string | undefined,
+    data: any,
+    clearGeneratedFile = false,
+    isKeepDocumentFile = false,
+  ): Promise<DocumentEntity | undefined> {
     const document = this.prepareForModel({ data: data, updatedBy: userId });
     if (clearGeneratedFile && !isKeepDocumentFile) {
       document.file_id = null;
@@ -227,14 +287,8 @@ export class DocumentModel extends Model {
 
   /**
    * Add document file.
-   * @param {object} data Data.
-   * @param {string} data.id Document ID.
-   * @param {string} data.updatedBy User ID.
-   * @param {string} data.fileId File id.
-   * @param {string} data.fileName File name.
-   * @param {string} data.fileType File type.
    */
-  async addDocumentFile({ id, updatedBy, fileId, fileName, fileType, fileSize }) {
+  async addDocumentFile({ id, updatedBy, fileId, fileName, fileType, fileSize }: AddDocumentFileParams) {
     const document = this.prepareForModel({ updatedBy, fileId, fileName, fileType, fileSize });
     const dbResponse = await this.model.update(document, { where: { id: id } });
 
@@ -243,13 +297,13 @@ export class DocumentModel extends Model {
 
   /**
    * Set status final.
-   * @param {string} id Document ID.
-   * @returns {Promise<boolean>} Whether this call is the one that actually flipped `is_final`
+   * @param id Document ID.
+   * @returns Whether this call is the one that actually flipped `is_final`
    * from `false` to `true` (guarded by the `is_final: false` condition below). `false` means the
    * document was already final - callers must treat that as "someone else already finished this"
    * and skip any one-time completion side effects instead of repeating them.
    */
-  async setStatusFinal(id) {
+  async setStatusFinal(id: string): Promise<boolean> {
     const documentEntity = await this.findById(id);
 
     const [affectedCount] = await this.model.update(
@@ -265,19 +319,19 @@ export class DocumentModel extends Model {
 
   /**
    * Set ASIC info.
-   * @param {string} id Document ID.
-   * @param {{asicmanifestFileId, filesIds}} asic ASIC info.
+   * @param id Document ID.
+   * @param asic ASIC info.
    */
-  async setAsicInfo(id, asic) {
+  async setAsicInfo(id: string, asic: DocumentAsic): Promise<void> {
     await this.model.update({ asic }, { where: { id } });
   }
 
   /**
    * Set external ID.
-   * @param {string} id Document ID.
-   * @param {string} externalId External ID.
+   * @param id Document ID.
+   * @param externalId External ID.
    */
-  async setExternalId(id, externalId) {
+  async setExternalId(id: string, externalId: string) {
     const dbResponse = await this.model.update({ external_id: externalId }, { where: { id } });
 
     return dbResponse;
@@ -285,21 +339,17 @@ export class DocumentModel extends Model {
 
   /**
    * Delete by ID.
-   * @param {string} id ID.
-   * @returns {Promise<number>}
+   * @param id ID.
    */
-  async deleteById(id) {
+  async deleteById(id: string): Promise<void> {
     await this.model.destroy({ where: { id } });
   }
 
   /**
    * Get all documents by workflowId.
-   * @param {Object} params
-   * @param {string} params.workflowId
-   * @param {string} params.order
-   * @return {Promise<DocumentEntity>}
+   * @return Promise of documents list.
    */
-  async getAllByWorkflowId({ workflowId, order = 'desc' }) {
+  async getAllByWorkflowId({ workflowId, order = 'desc' }: { workflowId: string; order?: 'asc' | 'desc' }): Promise<DocumentEntity[]> {
     const { data: documents } = await RedisClient.getOrSetWithTimestamp(
       RedisClient.createKey('document', 'getAllByWorkflowId', workflowId, order),
       async () => this.getTimestampByWorkflowId(workflowId),
@@ -311,7 +361,7 @@ export class DocumentModel extends Model {
       GET_ALL_BY_WORKFLOW_ID_CACHE_TTL,
     );
 
-    const entities = [];
+    const entities: DocumentEntity[] = [];
     for (const item of documents) {
       const document = await this.prepareEntity(item);
       if (item.task) {
@@ -325,10 +375,10 @@ export class DocumentModel extends Model {
 
   /**
    * Timestamp workflow documents
-   * @param {string} workflowId
-   * @return {Promise<string>} Timestamp
+   * @param workflowId
+   * @return Timestamp
    */
-  async getTimestampByWorkflowId(workflowId) {
+  async getTimestampByWorkflowId(workflowId: string): Promise<string> {
     const [{ maxTimestamp }] = await this.db.query(
       `
         select
@@ -348,11 +398,9 @@ export class DocumentModel extends Model {
 
   /**
    * Prepare entity.
-   * @param {object} item Item.
-   * @param {object} documentTemplate Document template.
-   * @returns {DocumentEntity}
+   * @param item Raw document row (a live Sequelize instance, or a plain object shaped like one).
    */
-  async prepareEntity(item) {
+  async prepareEntity(item: DocumentRow): Promise<DocumentEntity> {
     const docTemplate = await global.models.documentTemplate.findById(item.document_template_id);
 
     const newDocumentEntity = new DocumentEntity({
@@ -386,10 +434,9 @@ export class DocumentModel extends Model {
 
   /**
    * Prepare for model.
-   * @param {DocumentEntity} item Item.
-   * @returns {object}
+   * @param item Camel-cased entity-shaped fields to persist (need not be a full `DocumentEntity`).
    */
-  prepareForModel(item) {
+  prepareForModel(item: Partial<DocumentEntityOptions>): Partial<DocumentRow> {
     return {
       external_id: item.externalId,
       parent_id: item.parentId,

@@ -1,66 +1,87 @@
+import { Sandbox } from '@liquio/back-core';
+
 import { Entity } from './entity';
 import { DocumentTemplateEntity } from './document_template';
-import { Sandbox } from '@liquio/back-core';
+import { DocumentSignatureEntity } from './document_signature';
+import { DocumentSignatureRejectionEntity } from './document_signature_rejection';
+import { DocumentAttachmentEntity } from './document_attachment';
+
+/** ASIC container info, as stored verbatim on the `documents.asic` JSON column. */
+export interface DocumentAsic {
+  asicmanifestFileId: string | null;
+  filesIds: string[];
+}
+
+/**
+ * Constructor input for {@link DocumentEntity} - also reused by `DocumentModel#prepareForModel`.
+ * Not `task` (assigned externally, see that field's own comment).
+ */
+export interface DocumentEntityOptions {
+  id: string;
+  externalId?: string | null;
+  parentId?: string | null;
+  documentTemplateId?: number;
+  documentStateId?: number;
+  cancellationTypeId?: number | null;
+  number?: string | null;
+  isFinal?: boolean;
+  ownerId?: string | null;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  data?: any;
+  description?: string | null;
+  fileId?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
+  signatures?: DocumentSignatureEntity[];
+  signatureRejections?: DocumentSignatureRejectionEntity[];
+  asic: DocumentAsic;
+  attachments?: DocumentAttachmentEntity[];
+  documentTemplate?: DocumentTemplateEntity;
+}
 
 /**
  * Document entity.
  */
 export class DocumentEntity extends Entity {
   task: any; // Assigned externally by models/document.js's prepareEntity.
-  id: any;
-  externalId: any;
-  parentId: any;
-  documentTemplateId: any;
-  documentStateId: any;
-  cancellationTypeId: any;
-  number: any;
-  isFinal: any;
-  ownerId: any;
-  createdBy: any;
-  updatedBy: any;
-  createdAt: any;
-  updatedAt: any;
+  id: string;
+  externalId: string | null;
+  parentId: string | null;
+  documentTemplateId: number;
+  documentStateId: number;
+  cancellationTypeId: number | null;
+  number: string | null;
+  isFinal: boolean;
+  ownerId: string | null;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  /**
+   * Arbitrary JSON blob whose shape is entirely defined by the document's template (`jsonSchema`)
+   * - deliberately left as `any` rather than `Record<string, unknown>`: business logic across the
+   * codebase deep-destructures/optional-chains into this (e.g. `data.calculated.someField`), which
+   * a `Record<string, unknown>` would reject at the first level down.
+   */
   data: any;
-  description: any;
-  fileId: any;
-  fileName: any;
-  fileType: any;
-  signatures: any;
-  signatureRejections: any;
-  asic: any;
-  attachments: any;
-  documentTemplate: any;
-  calculatedGetters: any;
+  description: string | null;
+  fileId: string | null;
+  fileName: string | null;
+  fileType: string | null;
+  fileSize: number | null;
+  signatures: DocumentSignatureEntity[];
+  signatureRejections: DocumentSignatureRejectionEntity[];
+  asic: DocumentAsic;
+  attachments: DocumentAttachmentEntity[];
+  documentTemplate: DocumentTemplateEntity;
+  calculatedGetters: string[];
 
   static sandbox = new Sandbox({});
 
-  /**
-   * Constructor.
-   * @param {object} options Document object.
-   * @param {string} options.id ID.
-   * @param {string} [options.externalId] External ID.
-   * @param {string} options.parentId Parent ID.
-   * @param {number} options.documentTemplateId Document template ID.
-   * @param {number} options.documentStateId Document state ID.
-   * @param {number} options.cancellationTypeId Cancellation type ID.
-   * @param {number} options.number Number.
-   * @param {boolean} options.isFinal Final status.
-   * @param {string} options.ownerId Owner ID.
-   * @param {string} options.createdBy Created by.
-   * @param {string} options.updatedBy Updated by.
-   * @param {string} options.createdAt Created at.
-   * @param {string} options.updatedAt Updated at.
-   * @param {object} options.data Data.
-   * @param {string} options.description Description.
-   * @param {string} options.fileId File ID.
-   * @param {string} options.fileName File name.
-   * @param {string} options.fileType File type.
-   * @param {string} options.signatures Signatures.
-   * @param {string} options.signatureRejections Signature rejections.
-   * @param {{asicmanifestFileId, filesIds}} options.asic ASIC info.
-   * @param {DocumentAttachmentEntity[]} [options.attachments] Attachments.
-   * @param {DocumentTemplateEntity} [options.documentTemplate] Document template.
-   */
   constructor({
     id,
     externalId,
@@ -80,12 +101,13 @@ export class DocumentEntity extends Entity {
     fileId,
     fileName,
     fileType,
+    fileSize,
     signatures,
     signatureRejections,
     asic,
     attachments,
     documentTemplate,
-  }: any) {
+  }: DocumentEntityOptions) {
     super();
 
     this.id = id;
@@ -106,6 +128,7 @@ export class DocumentEntity extends Entity {
     this.fileId = fileId;
     this.fileName = fileName;
     this.fileType = fileType;
+    this.fileSize = fileSize;
     this.signatures = signatures;
     this.signatureRejections = signatureRejections;
     this.asic = asic;
@@ -114,7 +137,7 @@ export class DocumentEntity extends Entity {
     this.calculatedGetters = [];
   }
 
-  getFilterProperties() {
+  getFilterProperties(): string[] {
     return [
       'id',
       'externalId',
@@ -134,6 +157,7 @@ export class DocumentEntity extends Entity {
       'fileId',
       'fileName',
       'fileType',
+      'fileSize',
       'signatures',
       'signatureRejections',
       'asic',
@@ -142,7 +166,7 @@ export class DocumentEntity extends Entity {
     ];
   }
 
-  getFilterPropertiesBrief() {
+  getFilterPropertiesBrief(): string[] {
     return [
       'id',
       'externalId',

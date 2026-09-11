@@ -1,7 +1,12 @@
-import _ from 'lodash';
+import cloneDeep from 'lodash/cloneDeep';
+import get from 'lodash/get';
+import set from 'lodash/set';
 import moment from 'moment-business-days';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import iconv from 'iconv-lite';
+import validator from 'validator';
+import PropByPath from 'prop-by-path';
+
+import { Sandbox } from '@liquio/back-core';
+
 import { SignatureInfoEntity } from '../entities/signature_info';
 import { SystemNotifier } from '../lib/system_notifier';
 import { Business } from './business';
@@ -12,18 +17,15 @@ import { DocumentChecks } from '../services/document_checks';
 import { Assigner } from '../lib/assigner';
 import { NumberGenerator } from '../lib/number_generator';
 import { AuthService as Auth } from '../services/auth';
-import PropByPath from 'prop-by-path';
 import { NotifierService as Notifier } from '../services/notifier';
 import { JSONPath } from '../lib/jsonpath';
 import { PaymentService } from '../services/payment';
 import { NotifierService } from '../services/notifier';
-import validator from 'validator';
 import { UnitModel } from '../models/unit';
 import { TaskActivity } from '../types/task_activity';
 import { CustomLogs } from '../services/custom_logs';
 import { Eds } from '../lib/eds';
 import { Helpers } from '../lib/helpers';
-import { Sandbox } from '@liquio/back-core';
 import typeOf from '../lib/type_of';
 import { OnboardingController } from '../controllers/onboarding';
 import {
@@ -1741,28 +1743,28 @@ export class TaskBusiness extends Business {
       task.lastStepLabel = name;
       task.lastStepDescription = description;
 
-      const userName = _.get(task, 'workflow.userData.userName');
+      const userName = get(task, 'workflow.userData.userName');
       if (!userName) {
-        const userNameFromTaskMeta = _.get(task, 'meta.user.name');
-        _.set(task, 'workflow.userData.userName', userNameFromTaskMeta);
+        const userNameFromTaskMeta = get(task, 'meta.user.name');
+        set(task, 'workflow.userData.userName', userNameFromTaskMeta);
       }
 
-      const isLegal = _.get(task, 'workflow.userData.isLegal');
+      const isLegal = get(task, 'workflow.userData.isLegal');
       if (typeof isLegal === 'undefined') {
-        const isLegalFromTaskMeta = _.get(task, 'meta.user.isLegal');
-        _.set(task, 'workflow.userData.isLegal', isLegalFromTaskMeta);
+        const isLegalFromTaskMeta = get(task, 'meta.user.isLegal');
+        set(task, 'workflow.userData.isLegal', isLegalFromTaskMeta);
       }
 
-      const isIndividualEntrepreneur = _.get(task, 'workflow.userData.isIndividualEntrepreneur');
+      const isIndividualEntrepreneur = get(task, 'workflow.userData.isIndividualEntrepreneur');
       if (typeof isIndividualEntrepreneur === 'undefined') {
-        const isIndividualEntrepreneurFromTaskMeta = _.get(task, 'meta.user.isIndividualEntrepreneur');
-        _.set(task, 'workflow.userData.isIndividualEntrepreneur', isIndividualEntrepreneurFromTaskMeta);
+        const isIndividualEntrepreneurFromTaskMeta = get(task, 'meta.user.isIndividualEntrepreneur');
+        set(task, 'workflow.userData.isIndividualEntrepreneur', isIndividualEntrepreneurFromTaskMeta);
       }
 
-      const companyName = _.get(task, 'workflow.userData.companyName');
+      const companyName = get(task, 'workflow.userData.companyName');
       if (isLegal && !companyName) {
-        const companyNameFromTaskMeta = _.get(task, 'meta.user.companyName');
-        _.set(task, 'workflow.userData.companyName', companyNameFromTaskMeta);
+        const companyNameFromTaskMeta = get(task, 'meta.user.companyName');
+        set(task, 'workflow.userData.companyName', companyNameFromTaskMeta);
       }
 
       if (params.filters?.extended_check_access?.is_clickable && task.taskTemplate?.jsonSchema?.extendedCheckAccess?.isClickable) {
@@ -1775,7 +1777,7 @@ export class TaskBusiness extends Business {
               currentTaskPerformerUnitIds: task.performerUnits,
               currentTaskPerformerUserIds: task.performerUsers,
               meta: task.meta,
-              taskActivityLog: _.cloneDeep(task.activityLog),
+              taskActivityLog: cloneDeep(task.activityLog),
             },
           ],
           { meta: { fn: 'task.taskTemplate.jsonSchema.extendedCheckAccess.isClickable', taskId: task.id } },
@@ -1893,7 +1895,7 @@ export class TaskBusiness extends Business {
               currentTaskPerformerUnitIds: task.performerUnits,
               currentTaskPerformerUserIds: task.performerUsers,
               meta: task.meta,
-              taskActivityLog: _.cloneDeep(task.activityLog),
+              taskActivityLog: cloneDeep(task.activityLog),
               userRoleUnits: userRoleUnits,
             },
           ],
@@ -3432,7 +3434,7 @@ export class TaskBusiness extends Business {
             optionalProjectParams: global.config?.custom?.optionalProjectParams || {},
             currentTaskPerformerUnitIds: task.performerUnits,
             meta: task.meta,
-            taskActivityLog: _.cloneDeep(task.activityLog),
+            taskActivityLog: cloneDeep(task.activityLog),
           },
         ],
         { meta: { fn: 'notifyNewPerformers', taskId: task.id } },

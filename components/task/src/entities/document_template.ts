@@ -1,29 +1,40 @@
 import * as jsoncParser from 'jsonc-parser';
+
 import { Entity } from './entity';
+
+/**
+ * Constructor input for {@link DocumentTemplateEntity}. Note `jsonSchema` here is the raw,
+ * unparsed JSON Schema *string* as stored in the DB - the constructor parses it into the object
+ * the class field of the same name then holds (see that field's own comment).
+ */
+export interface DocumentTemplateEntityOptions {
+  id: number;
+  name?: string | null;
+  jsonSchema?: string | null;
+  htmlTemplate?: string | null;
+  accessJsonSchema?: Record<string, unknown>;
+  additionalDataToSign?: string | null;
+}
 
 /**
  * Document template entity.
  */
 export class DocumentTemplateEntity extends Entity {
-  id: any;
-  name: any;
+  id: number;
+  name: string | null;
+  /**
+   * Parsed JSON Schema - an arbitrary, user-authored document describing the template's steps/
+   * controls. Left as `any` deliberately: modeling it precisely would mean typing a full JSON
+   * Schema dialect, which nothing else in this codebase does either (see `models/document_template.ts`'s
+   * `substituteJsonProps`, which walks this same structure).
+   */
   jsonSchema: any;
-  htmlTemplate: any;
-  accessJsonSchema: any;
-  additionalDataToSign: any;
+  htmlTemplate: string | null;
+  accessJsonSchema: Record<string, unknown>;
+  additionalDataToSign: string | null;
   taskTemplate: any; // Assigned externally by models/document_template.ts's getAll.
 
-  /**
-   * Constructor.
-   * @param {object} options Document template object.
-   * @param {number} options.id ID.
-   * @param {string} options.name Name.
-   * @param {string} options.jsonSchema JSON schema.
-   * @param {string} options.htmlTemplate Template data.
-   * @param {object} options.accessJsonSchema Inboxes JSON schema.
-   * @param {string} options.additionalDataToSign Additional data to sign.
-   */
-  constructor({ id, name, jsonSchema, htmlTemplate, accessJsonSchema, additionalDataToSign }: any) {
+  constructor({ id, name, jsonSchema, htmlTemplate, accessJsonSchema, additionalDataToSign }: DocumentTemplateEntityOptions) {
     super();
 
     this.id = id;
@@ -34,11 +45,11 @@ export class DocumentTemplateEntity extends Entity {
     this.additionalDataToSign = additionalDataToSign;
   }
 
-  getFilterProperties() {
+  getFilterProperties(): string[] {
     return ['id', 'name', 'jsonSchema', 'htmlTemplate', 'accessJsonSchema', 'taskTemplate', 'additionalDataToSign'];
   }
 
-  getFilterPropertiesBrief() {
+  getFilterPropertiesBrief(): string[] {
     return ['id', 'name', 'taskTemplate'];
   }
 

@@ -9,11 +9,34 @@ import { PgPubSub } from '../lib/pgpubsub';
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
 
+/** Raw shape of a `document_templates` row as Sequelize hands it back. */
+export interface DocumentTemplateRow {
+  id: number;
+  name?: string | null;
+  json_schema?: string | null;
+  html_template?: string | null;
+  access_json_schema: Record<string, unknown>;
+  additional_data_to_sign?: string | null;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface DocumentTemplateAccessSchemaInfo {
+  documentTemplateId: number;
+  accessJsonSchema: Record<string, unknown>;
+}
+
+interface RowChangeNotifyData {
+  id: number;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  table: string;
+}
+
 export class DocumentTemplateModel extends Model {
   private static singleton: DocumentTemplateModel;
 
   model: any;
-  cacheTtl: any;
+  cacheTtl: { findById: number; substituteJsonProps: number };
 
   constructor() {
     if (!DocumentTemplateModel.singleton) {
@@ -55,9 +78,8 @@ export class DocumentTemplateModel extends Model {
 
   /**
    * Get all.
-   * @returns {Promise<DocumentTemplateEntity[]>}
    */
-  async getAll() {
+  async getAll(): Promise<DocumentTemplateEntity[]> {
     const documentTemplates = await this.model.findAll({
       include: [{ model: global.models.taskTemplate.model, attributes: ['id', 'name'] }],
       attributes: ['id', 'name'],
@@ -75,9 +97,8 @@ export class DocumentTemplateModel extends Model {
 
   /**
    * Get all access JSON schemas.
-   * @returns {Promise<{documentTemplateId, accessJsonSchema}[]>}
    */
-  async getAllAccessJsonSchemas() {
+  async getAllAccessJsonSchemas(): Promise<DocumentTemplateAccessSchemaInfo[]> {
     const documentTemplatesRaw = await this.model.findAll({
       attributes: ['id', 'access_json_schema'],
     });
@@ -91,9 +112,8 @@ export class DocumentTemplateModel extends Model {
 
   /**
    * Get access JSON schemas by IDs.
-   * @returns {Promise<{documentTemplateId, accessJsonSchema}[]>}
    */
-  async getAccessJsonSchemasByIds(ids) {
+  async getAccessJsonSchemasByIds(ids: number[]): Promise<DocumentTemplateAccessSchemaInfo[]> {
     const documentTemplatesRaw = await this.model.findAll({
       where: { id: ids },
       attributes: ['id', 'access_json_schema'],
@@ -107,10 +127,9 @@ export class DocumentTemplateModel extends Model {
 
   /**
    * Find by ID.
-   * @param {number} id Document template ID.
-   * @returns {Promise<DocumentTemplateEntity>}
+   * @param id Document template ID.
    */
-  async findById(id) {
+  async findById(id: number): Promise<DocumentTemplateEntity> {
     const { data: documentTemplate } = await RedisClient.getOrSet(
       RedisClient.createKey('document_template', 'findById', id),
       () => this.model.findByPk(id),
@@ -126,16 +145,17 @@ export class DocumentTemplateModel extends Model {
   /**
    * Substitute prop in jsonSchema from other template after prepareEntity!
    * @private
-   * @param {DocumentTemplateEntity} documentTemplate Document template.
-   * @returns {Promise<DocumentTemplateEntity>}
+   * @param documentTemplate Document template. `jsonSchema` and its nested `properties` are
+   * arbitrary, user-authored JSON Schema fragments - deliberately left as `any` below rather than
+   * modeled precisely.
    */
-  async substituteJsonProps(documentTemplate) {
+  async substituteJsonProps(documentTemplate: DocumentTemplateEntity): Promise<DocumentTemplateEntity> {
     const { jsonSchema } = documentTemplate || {};
     const { properties } = jsonSchema || {};
     if (!properties) return documentTemplate;
 
     // find all documentWithId in jsonSchema
-    const documentWithIds = [];
+    const documentWithIds: number[] = [];
     for (const prop in properties) {
       const importProp = properties[prop].import;
       if (!importProp) continue;
@@ -152,7 +172,7 @@ export class DocumentTemplateModel extends Model {
       }
     }
 
-    const documentTemplateMap = new Map();
+    const documentTemplateMap = new Map<string, DocumentTemplateRow>();
     const templates = await this.model.findAll({ where: { id: documentWithIds } });
     for (const template of templates) {
       documentTemplateMap.set(`${template.id}`, template);
@@ -216,10 +236,9 @@ export class DocumentTemplateModel extends Model {
 
   /**
    * Prepare entity.
-   * @param {object} item Item.
-   * @returns {DocumentTemplateEntity}
+   * @param item Raw document template row.
    */
-  prepareEntity(item) {
+  prepareEntity(item: DocumentTemplateRow): DocumentTemplateEntity | null {
     if (typeof item !== 'object' || item === null) {
       return null;
     }
@@ -237,15 +256,10 @@ export class DocumentTemplateModel extends Model {
   /**
    * Invalidate cache on row change.
    * @private
-   * @param {string} channel Channel.
-   * @param {NotifyData} data Data.
-   *
-   * @typedef {Object} NotifyData
-   * @property {number} id Row ID.
-   * @property {'INSERT' | 'UPDATE' | 'DELETE'} action Action.
-   * @property {string} table Table name.
+   * @param channel Channel.
+   * @param data Data.
    */
-  onRowChange(channel, { id }) {
+  onRowChange(channel: string, { id }: RowChangeNotifyData): void {
     const redis = RedisClient.getInstance();
     if (redis) {
       redis.delete(RedisClient.createKey('document_template', 'findById', id));

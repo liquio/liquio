@@ -1,6 +1,34 @@
 import Sequelize from 'sequelize';
 import { Model } from './model';
-import { DocumentAttachmentEntity } from '../entities/document_attachment';
+import { DocumentAttachmentEntity, DocumentAttachmentEntityOptions } from '../entities/document_attachment';
+
+/** Raw shape of a `document_attachments` row as Sequelize hands it back. */
+export interface DocumentAttachmentRow {
+  id: string;
+  document_id: string;
+  link?: string | null;
+  name?: string | null;
+  type?: string | null;
+  size?: number | null;
+  labels: string[];
+  is_generated: boolean;
+  is_system: boolean;
+  meta: Record<string, unknown>;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface CreateDocumentAttachmentParams {
+  documentId: string;
+  link: string;
+  name: string;
+  type: string;
+  size?: number;
+  labels?: string[];
+  isGenerated?: boolean;
+  isSystem?: boolean;
+  meta?: Record<string, unknown>;
+}
 
 /**
  * Document attachment model.
@@ -66,10 +94,9 @@ export class DocumentAttachmentModel extends Model {
 
   /**
    * Find by ID.
-   * @param {string} id UUID.
-   * @returns {Promise<DocumentAttachmentEntity>}
+   * @param id UUID.
    */
-  async findById(id) {
+  async findById(id: string): Promise<DocumentAttachmentEntity | undefined> {
     const attachment = await this.model.findByPk(id);
 
     if (!attachment) {
@@ -81,10 +108,10 @@ export class DocumentAttachmentModel extends Model {
 
   /**
    * Get by document ID.
-   * @param {string} documentId Document ID.
-   * @returns {Promise<DocumentAttachmentEntity[]>} Promise of document attachments list.
+   * @param documentId Document ID.
+   * @returns Promise of document attachments list.
    */
-  async getByDocumentId(documentId) {
+  async getByDocumentId(documentId: string): Promise<DocumentAttachmentEntity[]> {
     // Get attachments RAW records from DB.
     const attachmentsRaw = await this.model.findAll({ where: { document_id: documentId } });
 
@@ -95,11 +122,11 @@ export class DocumentAttachmentModel extends Model {
 
   /**
    * Get by document id and meta.
-   * @param {string} documentId Document ID.
-   * @param {Object} meta Attachment meta property.
-   * @returns {Promise<DocumentAttachmentEntity[]>} Promise of document attachments list.
+   * @param documentId Document ID.
+   * @param meta Attachment meta property.
+   * @returns Promise of document attachments list.
    */
-  async getByDocumentIdAndMeta(documentId, meta) {
+  async getByDocumentIdAndMeta(documentId: string, meta: Record<string, unknown>): Promise<DocumentAttachmentEntity[]> {
     // Get attachments RAW records from DB.
     const attachmentsRaw = await this.model.findAll({ where: { document_id: documentId, meta: meta } });
 
@@ -109,10 +136,10 @@ export class DocumentAttachmentModel extends Model {
 
   /**
    * Get by document IDs.
-   * @param {string} documentIds Document ID.
-   * @returns {Promise<DocumentAttachmentEntity[]>} Promise of document attachments list.
+   * @param documentIds Document IDs.
+   * @returns Promise of document attachments list.
    */
-  async getByDocumentIds(documentIds) {
+  async getByDocumentIds(documentIds: string[]): Promise<DocumentAttachmentEntity[]> {
     // Get attachments RAW records from DB.
     const attachmentsRaw = await this.model.findAll({ where: { document_id: documentIds } });
 
@@ -123,17 +150,18 @@ export class DocumentAttachmentModel extends Model {
 
   /**
    * Create attachment.
-   * @param {object} data Data object.
-   * @param {string} data.documentId Document ID.
-   * @param {string} data.link Link.
-   * @param {string} data.name Name.
-   * @param {boolean} [data.isGenerated] Is generated indicator.
-   * @param {boolean} [data.isSystem] Is system.
-   * @param {string} data.type Type.
-   * @param {string[]} data.labels Labels.
-   * @param {object} data.meta Meta.
    */
-  async create({ documentId, link, name, type, size = 0, labels = [], isGenerated = false, isSystem = false, meta = {} }) {
+  async create({
+    documentId,
+    link,
+    name,
+    type,
+    size = 0,
+    labels = [],
+    isGenerated = false,
+    isSystem = false,
+    meta = {},
+  }: CreateDocumentAttachmentParams): Promise<DocumentAttachmentEntity> {
     const attachment = this.prepareForModel({ documentId, link, name, type, size, labels, isGenerated, isSystem, meta });
     const rawDbResponse = await this.model.create(attachment);
 
@@ -142,9 +170,9 @@ export class DocumentAttachmentModel extends Model {
 
   /**
    * Delete attachment.
-   * @param {string} id UUID.
+   * @param id UUID.
    */
-  async delete(id) {
+  async delete(id: string) {
     const result = await this.model.destroy({ where: { id: id } });
 
     return result;
@@ -152,28 +180,25 @@ export class DocumentAttachmentModel extends Model {
 
   /**
    * Delete by document ID.
-   * @param {string} documentId Document ID.
-   * @returns {Promise<number>}
+   * @param documentId Document ID.
    */
-  async deleteByDocumentId(documentId) {
+  async deleteByDocumentId(documentId: string): Promise<void> {
     await this.model.destroy({ where: { document_id: documentId } });
   }
 
   /**
    * Delete generated by document ID.
-   * @param {string} documentId Document ID.
-   * @returns {Promise<number>}
+   * @param documentId Document ID.
    */
-  async deleteGeneratedByDocumentId(documentId) {
+  async deleteGeneratedByDocumentId(documentId: string): Promise<void> {
     await this.model.destroy({ where: { document_id: documentId, is_generated: true } });
   }
 
   /**
    * Prepare entity.
-   * @param {object} item Item.
-   * @returns {DocumentEntity}
+   * @param item Raw document attachment row.
    */
-  prepareEntity(item) {
+  prepareEntity(item: DocumentAttachmentRow): DocumentAttachmentEntity {
     return new DocumentAttachmentEntity({
       id: item.id,
       documentId: item.document_id,
@@ -191,10 +216,9 @@ export class DocumentAttachmentModel extends Model {
 
   /**
    * Prepare for model.
-   * @param {DocumentAttachmentEntity} item Item.
-   * @returns {object}
+   * @param item Camel-cased entity-shaped fields to persist.
    */
-  prepareForModel(item) {
+  prepareForModel(item: Partial<DocumentAttachmentEntityOptions>): Partial<DocumentAttachmentRow> {
     return {
       document_id: item.documentId,
       link: item.link,
