@@ -1336,7 +1336,7 @@ export class TaskBusiness extends Business {
         // Save external generated application PDF.
         if (documentFile) {
           if (documentFile.contentType.toLowerCase() === 'application/pdf') {
-            await global.businesses.document.saveExternalPdf(documentFile, documentId, userId);
+            await global.businesses.document.files.saveExternalPdf(documentFile, documentId, userId);
           }
         }
 
@@ -1349,28 +1349,28 @@ export class TaskBusiness extends Business {
 
         // Save files.
         if (Array.isArray(files) && files.length > 0) {
-          await global.businesses.document.createAttachmentsForSystemTask(files, documentId, userId, userUnits, true);
+          await global.businesses.document.files.createAttachmentsForSystemTask(files, documentId, userId, userUnits, true);
           const updatedDocument = await global.models.document.findById(documentId);
           initData.files = updatedDocument?.data?.initData?.files;
         }
 
         // Save additional data signatures.
         if (typeOf(additionalDataSignatures) === 'array' && additionalDataSignatures.length > 0) {
-          await global.businesses.document.saveAdditionalDataSignatures(additionalDataSignatures, createdDocument, userId);
+          await global.businesses.document.signing.saveAdditionalDataSignatures(additionalDataSignatures, createdDocument, userId);
           delete initData.additionalDataSignatures;
         }
 
         // Save files as document attachments (with signatures).
         if (typeOf(attachmentsSignatures) === 'array' && attachmentsSignatures.length > 0) {
           try {
-            const savedAttachments = await global.businesses.document.saveAttachmentsP7SSignatures(attachmentsSignatures, createdDocument, {
+            const savedAttachments = await global.businesses.document.signing.saveAttachmentsP7SSignatures(attachmentsSignatures, createdDocument, {
               userId,
             });
             // Save attachment info to document.
             for (const [index, attachment] of savedAttachments.entries()) {
               // We need to get the updated document for correct saving attachment array.
               const documentToUpdate = await global.models.document.findById(documentId);
-              await global.businesses.document.saveAttachmentToDocumentData(
+              await global.businesses.document.files.saveAttachmentToDocumentData(
                 attachment,
                 `initData.attachmentsSignatures.${index}`,
                 documentToUpdate,
@@ -1440,7 +1440,7 @@ export class TaskBusiness extends Business {
         (createdTask.document as any).task = {
           workflowId: createdTask.workflowId,
         };
-        await global.businesses.document.createPdf({ document: createdTask.document, userId });
+        await global.businesses.document.files.createPdf({ document: createdTask.document, userId });
       }
     }
 
@@ -2160,9 +2160,9 @@ export class TaskBusiness extends Business {
         const attachments = await global.models.documentAttachment.getByDocumentId(document.id);
         document.attachments = attachments;
 
-        const getFileHash = global.businesses.document.getFileHash.bind(global.businesses.document, document);
-        const getFileBase64 = global.businesses.document.getFileBase64.bind(global.businesses.document);
-        const getP7sSignature = global.businesses.document.getP7sSignature.bind(this);
+        const getFileHash = global.businesses.document.signing.getFileHash.bind(global.businesses.document.signing, document);
+        const getFileBase64 = global.businesses.document.signing.getFileBase64.bind(global.businesses.document.signing);
+        const getP7sSignature = global.businesses.document.signing.getP7sSignature.bind(this);
 
         const additionalDataSignatures = await global.models.additionalDataSignature.getByDocumentId(document.id);
         const additionalDataToSign = await this.sandbox.evalWithArgs(additionalDataToSignFunction, [document], {
@@ -2230,7 +2230,7 @@ export class TaskBusiness extends Business {
 
         // Check all signs.
         const signedDocument = { ...document, task, signatures: documentSignatures };
-        const minSignaturesLimitInfo = await (global.businesses.document.handleMinSignaturesLimit as any)(signedDocument);
+        const minSignaturesLimitInfo = await (global.businesses.document.signing.handleMinSignaturesLimit as any)(signedDocument);
         const { isMinSignaturesLimitRaised = false } = minSignaturesLimitInfo || {};
         const { signerUsers } = task;
         if (Array.isArray(signerUsers) && signerUsers.length) {
@@ -2268,7 +2268,7 @@ export class TaskBusiness extends Business {
       }
 
       // Check if task has finished payment.
-      const strictPaymentControlsPath = global.businesses.document.getStrictPaymentControlPath(jsonSchema);
+      const strictPaymentControlsPath = global.businesses.document.payment.getStrictPaymentControlPath(jsonSchema);
 
       if (strictPaymentControlsPath.length) {
         for (const controlPath of strictPaymentControlsPath) {
@@ -2283,7 +2283,7 @@ export class TaskBusiness extends Business {
       const { isHoldPayment } = taskMeta || {};
       if (isHoldPayment) {
         try {
-          await global.businesses.document.unholdPayment(document, taskMeta, jsonSchema, userId);
+          await global.businesses.document.payment.unholdPayment(document, taskMeta, jsonSchema, userId);
         } catch (error) {
           global.log.save('commit-task-unhold-payment-error');
           const wrappedError = new Error(`Can not commit task - unhold payment error: ${error && error.message}`);

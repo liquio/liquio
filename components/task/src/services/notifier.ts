@@ -291,7 +291,7 @@ export class NotifierService {
    * @param {string} html HTML body.
    * @param {number} templateId Template ID.
    */
-  async sendToUser(to, subject, html, templateId) {
+  async sendToUser(to, subject, html, templateId?) {
     let response;
     try {
       // Define request body.

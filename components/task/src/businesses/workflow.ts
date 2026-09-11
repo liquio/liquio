@@ -126,7 +126,7 @@ export class WorkflowBusiness extends Business {
       workflow.documents = await (global.models.document.getAllByWorkflowId as any)({ workflowId: workflow.id });
       workflow.statuses = this.calculateReserveStatuses(workflow);
     }
-    const allFiles = await global.businesses.document.getFilesToPreview(id, undefined, undefined, undefined, undefined, true);
+    const allFiles = await global.businesses.document.files.getFilesToPreview(id, undefined, undefined, undefined, undefined, true);
     const { workflowFilesFilter = '(item) => true' } = global.config.files_filter || {};
     const workflowFilesFilterFunction = this.sandbox.eval(workflowFilesFilter);
     workflow.files = allFiles
