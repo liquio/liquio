@@ -1,0 +1,78 @@
+interface RegistryState {
+  registers: unknown[] | null;
+  keys: unknown[] | null;
+  records: Record<string, unknown>;
+  keyRecords: Record<string, unknown>;
+  relatedRecords: Record<string, unknown>;
+  customData: Record<string, unknown>;
+  history: Record<string, unknown>;
+}
+
+interface RegistryAction {
+  type: string;
+  payload?: unknown;
+  request?: unknown;
+}
+
+const initialState: RegistryState = {
+  registers: null,
+  keys: null,
+  records: {},
+  keyRecords: {},
+  relatedRecords: {},
+  customData: {},
+  history: {}
+};
+
+const REQUEST_CUSTOM_DATA_SUCCESS = 'REGISTRY/REQUEST_CUSTOM_DATA_SUCCESS';
+const REQUEST_REGISTERS_SUCCESS = 'REGISTRY/REQUEST_REGISTERS_SUCCESS';
+const REQUEST_REGISTER_KEYS_SUCCESS = 'REGISTRY/REQUEST_REGISTER_KEYS_SUCCESS';
+const REQUEST_REGISTER_RELATED_KEY_RECORDS_SUCCESS = 'REQUEST_REGISTER_RELATED_KEY_RECORDS_SUCCESS';
+const REQUEST_REGISTER_KEY_RECORD_SUCCESS = 'REGISTRY/REQUEST_REGISTER_KEY_RECORD_SUCCESS';
+
+const rootReducer = (state: RegistryState = initialState, action: RegistryAction): RegistryState => {
+  switch (action.type) {
+    case REQUEST_REGISTERS_SUCCESS:
+      return { ...state, registers: action.payload as unknown[] };
+    case REQUEST_REGISTER_KEYS_SUCCESS:
+      return { ...state, keys: action.payload as unknown[] };
+    case REQUEST_REGISTER_RELATED_KEY_RECORDS_SUCCESS: {
+      const {
+        request: { keyIds }
+      } = action as { request: { keyIds: string } };
+
+      return {
+        ...state,
+        relatedRecords: {
+          ...state.relatedRecords,
+          [keyIds]: action.payload
+        }
+      };
+    }
+    case REQUEST_REGISTER_KEY_RECORD_SUCCESS: {
+      const { id } = action.payload as { id: string | number };
+
+      return {
+        ...state,
+        records: {
+          ...state.records,
+          [id]: action.payload
+        }
+      };
+    }
+    case REQUEST_CUSTOM_DATA_SUCCESS: {
+      const { handler } = action.request as { handler: string };
+
+      return {
+        ...state,
+        customData: {
+          ...state.customData,
+          [handler]: action.payload
+        }
+      };
+    }
+    default:
+      return state;
+  }
+};
+export default rootReducer;

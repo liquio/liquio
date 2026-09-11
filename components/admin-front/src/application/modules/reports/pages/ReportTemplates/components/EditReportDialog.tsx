@@ -1,0 +1,121 @@
+import React from 'react';
+import { useTranslate } from 'react-translate';
+
+import FullScreenDialogRaw from 'components/FullScreenDialog';
+import { Tab, Tabs } from '@mui/material';
+
+import { makeStyles } from '@mui/styles';
+
+import PreloaderRaw from 'components/Preloader';
+import ReportDesigner from 'components/StimulSoft/ReportDesigner';
+import ReportViewer from 'components/StimulSoft/ReportViewer';
+
+import * as api from 'services/api';
+import { useDispatch } from 'react-redux';
+
+const FullScreenDialog = FullScreenDialogRaw as unknown as React.ComponentType<Record<string, unknown>>;
+const Preloader = PreloaderRaw as unknown as React.ComponentType<Record<string, unknown>>;
+
+const useStyles = makeStyles(() => ({
+  wrapper: {
+    display: 'block',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+}));
+
+interface ReportData {
+  id?: string;
+  data: { name?: string; template?: unknown };
+}
+
+interface EditReportDialogProps {
+  report: ReportData;
+  onChange?: (report: ReportData) => void;
+  onClose: () => void;
+  onInteraction?: (...args: unknown[]) => void;
+}
+
+const EditReportDialog = ({ report, onChange, onClose, onInteraction }: EditReportDialogProps) => {
+  const t = useTranslate('ReportListPage');
+  const classes = useStyles();
+  const dispatch = useDispatch();
+  const [reportData, setReportData] = React.useState<ReportData | undefined>();
+  const [activeTab, setActiveTab] = React.useState(0);
+
+  React.useEffect(() => {
+    const loadReport = async () => {
+      setReportData(
+        await api.get(`bi/reports/${report.id}`, 'REQUEST_REPORT', dispatch as never) as ReportData,
+      );
+    };
+
+    loadReport();
+  }, [dispatch, report.id]);
+
+  const handleChange = React.useCallback(
+    (newTemplate: unknown) => {
+      setReportData({
+        ...reportData,
+        data: {
+          ...reportData?.data,
+          template: newTemplate,
+        },
+      } as ReportData);
+
+      if (!onChange) {
+        return;
+      }
+
+      onChange({
+        ...reportData,
+        data: {
+          ...reportData?.data,
+          template: newTemplate,
+        },
+      } as ReportData);
+    },
+    [reportData, onChange],
+  );
+
+  return (
+    <FullScreenDialog
+      open={!!report}
+      disableEscapeKeyDown={true}
+      title={
+        <Tabs
+          value={activeTab}
+          onChange={(e, newActiveTab) => setActiveTab(newActiveTab)}
+        >
+          <Tab
+            classes={{ wrapper: classes.wrapper } as never}
+            label={t('EditReport', report.data as never)}
+          />
+          <Tab label={t('Preview')} />
+        </Tabs>
+      }
+      onClose={onClose}
+    >
+      {reportData ? (
+        <>
+          {activeTab === 0 ? (
+            <ReportDesigner
+              template={reportData.data.template}
+              onChange={handleChange}
+            />
+          ) : null}
+          {activeTab === 1 ? (
+            <ReportViewer report={reportData} onInteraction={onInteraction} />
+          ) : null}
+        </>
+      ) : (
+        <div style={{ height: '100%', display: 'flex' }}>
+          <Preloader flex={true} />
+        </div>
+      )}
+    </FullScreenDialog>
+  );
+};
+
+export default EditReportDialog;
