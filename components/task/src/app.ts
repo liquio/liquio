@@ -212,7 +212,7 @@ export class BpmnTaskCore {
           config.message_queue.enabledReadingGeneratingPdfMessages === true
         ) {
           messageQueue.subscribeToConsuming(
-            documentBusiness.createPdfFromMessage.bind(documentBusiness),
+            documentBusiness.files.createPdfFromMessage.bind(documentBusiness.files),
             'readingPdf',
             'bpmn-task-incoming-generating-pdf',
           );

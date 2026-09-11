@@ -98,6 +98,7 @@ export class TaskModel {
         description: null,
         fileName: null,
         fileType: null,
+        asic: { asicmanifestFileId: null, filesIds: [] },
       }),
       signerUsers: [],
       performerUsers: ['5b75893b181a377d0cfa5cc3'],

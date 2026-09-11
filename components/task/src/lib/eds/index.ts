@@ -47,7 +47,7 @@ export class Eds {
    * @param {string} [content] Content.
    * @returns {Promise<{signer, issuer, serial, content, pem}>} Signature info promise.
    */
-  async getSignatureInfo(signature, hash, signExternal, content) {
+  async getSignatureInfo(signature, hash?, signExternal?, content?) {
     return await this.provider.getSignatureInfo(signature, hash, signExternal, content);
   }
 

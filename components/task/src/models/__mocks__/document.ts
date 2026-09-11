@@ -30,6 +30,7 @@ export class DocumentModel {
       description: null,
       fileName: null,
       fileType: null,
+      asic: { asicmanifestFileId: null, filesIds: [] },
     });
   }
 
@@ -52,6 +53,7 @@ export class DocumentModel {
       description: null,
       fileName: null,
       fileType: null,
+      asic: { asicmanifestFileId: null, filesIds: [] },
     });
   }
 }

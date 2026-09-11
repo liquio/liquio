@@ -1,28 +1,29 @@
 import { Entity } from './entity';
 
+/** Constructor input for {@link DocumentSignatureEntity} - also reused by `DocumentSignatureModel#prepareForModel`. */
+export interface DocumentSignatureEntityOptions {
+  id: string;
+  documentId: string;
+  signature?: string | null;
+  type?: string | null;
+  certificate?: string | null;
+  createdBy?: string | null;
+  createdAt?: Date;
+}
+
 /**
  * Document signature entity.
  */
 export class DocumentSignatureEntity extends Entity {
-  id: any;
-  documentId: any;
-  signature: any;
-  type: any;
-  certificate: any;
-  createdBy: any;
+  id: string;
+  documentId: string;
+  signature: string | null;
+  type: string | null;
+  certificate: string | null;
+  createdBy: string | null;
+  createdAt: Date;
 
-  /**
-   * Constructor.
-   * @param {object} options Document object.
-   * @param {string} options.id ID.
-   * @param {string} options.documentId Document ID.
-   * @param {string} options.signature Signature.
-   * @param {string} options.type Signature type.
-   * @param {string} options.certificate Certificate.
-   * @param {string} options.createdBy Created by.
-   *
-   */
-  constructor({ id, documentId, signature, type, certificate, createdBy }: any) {
+  constructor({ id, documentId, signature, type, certificate, createdBy, createdAt }: DocumentSignatureEntityOptions) {
     super();
 
     this.id = id;
@@ -31,21 +32,20 @@ export class DocumentSignatureEntity extends Entity {
     this.type = type;
     this.certificate = certificate;
     this.createdBy = createdBy;
+    this.createdAt = createdAt;
   }
 
   /**
    * Get filter properties.
-   * @returns {string[]} Filter properties.
    */
-  getFilterProperties() {
-    return ['id', 'documentId', 'signature', 'type', 'certificate', 'createdBy'];
+  getFilterProperties(): string[] {
+    return ['id', 'documentId', 'signature', 'type', 'certificate', 'createdBy', 'createdAt'];
   }
 
   /**
    * Get filter properties brief.
-   * @returns {string[]} Filter properties brief.
    */
-  getFilterPropertiesBrief() {
+  getFilterPropertiesBrief(): string[] {
     return this.getFilterProperties();
   }
 }

@@ -99,6 +99,14 @@ export interface PayoneResolvedPaymentData extends TaskPaymentData {
  * processed-payment-history array.
  */
 export interface PayoneStatusInfo extends TaskPaymentStatusInfo {
+  status: {
+    isSuccess: boolean;
+    /** True while the checkout hasn't reached any terminal outcome yet (not paid, not
+     * declined/rejected, not abandoned) - i.e. still open and completable on PAYONE's hosted
+     * page. Used to avoid creating a second live checkout for an order that already has one. */
+    isPending: boolean;
+    [key: string]: unknown;
+  };
   extraData: {
     order_id?: string;
     [key: string]: unknown;

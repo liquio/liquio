@@ -1,7 +1,12 @@
-import _ from 'lodash';
+import cloneDeep from 'lodash/cloneDeep';
+import get from 'lodash/get';
+import set from 'lodash/set';
 import moment from 'moment-business-days';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import iconv from 'iconv-lite';
+import validator from 'validator';
+import PropByPath from 'prop-by-path';
+
+import { Sandbox } from '@liquio/back-core';
+
 import { SignatureInfoEntity } from '../entities/signature_info';
 import { SystemNotifier } from '../lib/system_notifier';
 import { Business } from './business';
@@ -12,18 +17,15 @@ import { DocumentChecks } from '../services/document_checks';
 import { Assigner } from '../lib/assigner';
 import { NumberGenerator } from '../lib/number_generator';
 import { AuthService as Auth } from '../services/auth';
-import PropByPath from 'prop-by-path';
 import { NotifierService as Notifier } from '../services/notifier';
 import { JSONPath } from '../lib/jsonpath';
 import { PaymentService } from '../services/payment';
 import { NotifierService } from '../services/notifier';
-import validator from 'validator';
 import { UnitModel } from '../models/unit';
 import { TaskActivity } from '../types/task_activity';
 import { CustomLogs } from '../services/custom_logs';
 import { Eds } from '../lib/eds';
 import { Helpers } from '../lib/helpers';
-import { Sandbox } from '@liquio/back-core';
 import typeOf from '../lib/type_of';
 import { OnboardingController } from '../controllers/onboarding';
 import {
@@ -1334,7 +1336,7 @@ export class TaskBusiness extends Business {
         // Save external generated application PDF.
         if (documentFile) {
           if (documentFile.contentType.toLowerCase() === 'application/pdf') {
-            await global.businesses.document.saveExternalPdf(documentFile, documentId, userId);
+            await global.businesses.document.files.saveExternalPdf(documentFile, documentId, userId);
           }
         }
 
@@ -1347,28 +1349,28 @@ export class TaskBusiness extends Business {
 
         // Save files.
         if (Array.isArray(files) && files.length > 0) {
-          await global.businesses.document.createAttachmentsForSystemTask(files, documentId, userId, userUnits, true);
+          await global.businesses.document.files.createAttachmentsForSystemTask(files, documentId, userId, userUnits, true);
           const updatedDocument = await global.models.document.findById(documentId);
           initData.files = updatedDocument?.data?.initData?.files;
         }
 
         // Save additional data signatures.
         if (typeOf(additionalDataSignatures) === 'array' && additionalDataSignatures.length > 0) {
-          await global.businesses.document.saveAdditionalDataSignatures(additionalDataSignatures, createdDocument, userId);
+          await global.businesses.document.signing.saveAdditionalDataSignatures(additionalDataSignatures, createdDocument, userId);
           delete initData.additionalDataSignatures;
         }
 
         // Save files as document attachments (with signatures).
         if (typeOf(attachmentsSignatures) === 'array' && attachmentsSignatures.length > 0) {
           try {
-            const savedAttachments = await global.businesses.document.saveAttachmentsP7SSignatures(attachmentsSignatures, createdDocument, {
+            const savedAttachments = await global.businesses.document.signing.saveAttachmentsP7SSignatures(attachmentsSignatures, createdDocument, {
               userId,
             });
             // Save attachment info to document.
             for (const [index, attachment] of savedAttachments.entries()) {
               // We need to get the updated document for correct saving attachment array.
               const documentToUpdate = await global.models.document.findById(documentId);
-              await global.businesses.document.saveAttachmentToDocumentData(
+              await global.businesses.document.files.saveAttachmentToDocumentData(
                 attachment,
                 `initData.attachmentsSignatures.${index}`,
                 documentToUpdate,
@@ -1438,7 +1440,7 @@ export class TaskBusiness extends Business {
         (createdTask.document as any).task = {
           workflowId: createdTask.workflowId,
         };
-        await global.businesses.document.createPdf({ document: createdTask.document, userId });
+        await global.businesses.document.files.createPdf({ document: createdTask.document, userId });
       }
     }
 
@@ -1741,28 +1743,28 @@ export class TaskBusiness extends Business {
       task.lastStepLabel = name;
       task.lastStepDescription = description;
 
-      const userName = _.get(task, 'workflow.userData.userName');
+      const userName = get(task, 'workflow.userData.userName');
       if (!userName) {
-        const userNameFromTaskMeta = _.get(task, 'meta.user.name');
-        _.set(task, 'workflow.userData.userName', userNameFromTaskMeta);
+        const userNameFromTaskMeta = get(task, 'meta.user.name');
+        set(task, 'workflow.userData.userName', userNameFromTaskMeta);
       }
 
-      const isLegal = _.get(task, 'workflow.userData.isLegal');
+      const isLegal = get(task, 'workflow.userData.isLegal');
       if (typeof isLegal === 'undefined') {
-        const isLegalFromTaskMeta = _.get(task, 'meta.user.isLegal');
-        _.set(task, 'workflow.userData.isLegal', isLegalFromTaskMeta);
+        const isLegalFromTaskMeta = get(task, 'meta.user.isLegal');
+        set(task, 'workflow.userData.isLegal', isLegalFromTaskMeta);
       }
 
-      const isIndividualEntrepreneur = _.get(task, 'workflow.userData.isIndividualEntrepreneur');
+      const isIndividualEntrepreneur = get(task, 'workflow.userData.isIndividualEntrepreneur');
       if (typeof isIndividualEntrepreneur === 'undefined') {
-        const isIndividualEntrepreneurFromTaskMeta = _.get(task, 'meta.user.isIndividualEntrepreneur');
-        _.set(task, 'workflow.userData.isIndividualEntrepreneur', isIndividualEntrepreneurFromTaskMeta);
+        const isIndividualEntrepreneurFromTaskMeta = get(task, 'meta.user.isIndividualEntrepreneur');
+        set(task, 'workflow.userData.isIndividualEntrepreneur', isIndividualEntrepreneurFromTaskMeta);
       }
 
-      const companyName = _.get(task, 'workflow.userData.companyName');
+      const companyName = get(task, 'workflow.userData.companyName');
       if (isLegal && !companyName) {
-        const companyNameFromTaskMeta = _.get(task, 'meta.user.companyName');
-        _.set(task, 'workflow.userData.companyName', companyNameFromTaskMeta);
+        const companyNameFromTaskMeta = get(task, 'meta.user.companyName');
+        set(task, 'workflow.userData.companyName', companyNameFromTaskMeta);
       }
 
       if (params.filters?.extended_check_access?.is_clickable && task.taskTemplate?.jsonSchema?.extendedCheckAccess?.isClickable) {
@@ -1775,7 +1777,7 @@ export class TaskBusiness extends Business {
               currentTaskPerformerUnitIds: task.performerUnits,
               currentTaskPerformerUserIds: task.performerUsers,
               meta: task.meta,
-              taskActivityLog: _.cloneDeep(task.activityLog),
+              taskActivityLog: cloneDeep(task.activityLog),
             },
           ],
           { meta: { fn: 'task.taskTemplate.jsonSchema.extendedCheckAccess.isClickable', taskId: task.id } },
@@ -1893,7 +1895,7 @@ export class TaskBusiness extends Business {
               currentTaskPerformerUnitIds: task.performerUnits,
               currentTaskPerformerUserIds: task.performerUsers,
               meta: task.meta,
-              taskActivityLog: _.cloneDeep(task.activityLog),
+              taskActivityLog: cloneDeep(task.activityLog),
               userRoleUnits: userRoleUnits,
             },
           ],
@@ -2158,9 +2160,9 @@ export class TaskBusiness extends Business {
         const attachments = await global.models.documentAttachment.getByDocumentId(document.id);
         document.attachments = attachments;
 
-        const getFileHash = global.businesses.document.getFileHash.bind(global.businesses.document, document);
-        const getFileBase64 = global.businesses.document.getFileBase64.bind(global.businesses.document);
-        const getP7sSignature = global.businesses.document.getP7sSignature.bind(this);
+        const getFileHash = global.businesses.document.signing.getFileHash.bind(global.businesses.document.signing, document);
+        const getFileBase64 = global.businesses.document.signing.getFileBase64.bind(global.businesses.document.signing);
+        const getP7sSignature = global.businesses.document.signing.getP7sSignature.bind(this);
 
         const additionalDataSignatures = await global.models.additionalDataSignature.getByDocumentId(document.id);
         const additionalDataToSign = await this.sandbox.evalWithArgs(additionalDataToSignFunction, [document], {
@@ -2228,7 +2230,7 @@ export class TaskBusiness extends Business {
 
         // Check all signs.
         const signedDocument = { ...document, task, signatures: documentSignatures };
-        const minSignaturesLimitInfo = await (global.businesses.document.handleMinSignaturesLimit as any)(signedDocument);
+        const minSignaturesLimitInfo = await (global.businesses.document.signing.handleMinSignaturesLimit as any)(signedDocument);
         const { isMinSignaturesLimitRaised = false } = minSignaturesLimitInfo || {};
         const { signerUsers } = task;
         if (Array.isArray(signerUsers) && signerUsers.length) {
@@ -2266,7 +2268,7 @@ export class TaskBusiness extends Business {
       }
 
       // Check if task has finished payment.
-      const strictPaymentControlsPath = global.businesses.document.getStrictPaymentControlPath(jsonSchema);
+      const strictPaymentControlsPath = global.businesses.document.payment.getStrictPaymentControlPath(jsonSchema);
 
       if (strictPaymentControlsPath.length) {
         for (const controlPath of strictPaymentControlsPath) {
@@ -2281,7 +2283,7 @@ export class TaskBusiness extends Business {
       const { isHoldPayment } = taskMeta || {};
       if (isHoldPayment) {
         try {
-          await global.businesses.document.unholdPayment(document, taskMeta, jsonSchema, userId);
+          await global.businesses.document.payment.unholdPayment(document, taskMeta, jsonSchema, userId);
         } catch (error) {
           global.log.save('commit-task-unhold-payment-error');
           const wrappedError = new Error(`Can not commit task - unhold payment error: ${error && error.message}`);
@@ -3432,7 +3434,7 @@ export class TaskBusiness extends Business {
             optionalProjectParams: global.config?.custom?.optionalProjectParams || {},
             currentTaskPerformerUnitIds: task.performerUnits,
             meta: task.meta,
-            taskActivityLog: _.cloneDeep(task.activityLog),
+            taskActivityLog: cloneDeep(task.activityLog),
           },
         ],
         { meta: { fn: 'notifyNewPerformers', taskId: task.id } },

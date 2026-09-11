@@ -98,7 +98,7 @@ export class DocumentController extends Controller {
     // Get list.
     let documents;
     try {
-      documents = await global.businesses.document.getForSignByUser(userId);
+      documents = await global.businesses.document.signing.getForSignByUser(userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -498,14 +498,14 @@ export class DocumentController extends Controller {
     });
 
     try {
-      await global.businesses.document.declineMultisigns(filteredSigners, taskId, documentId, userId);
+      await global.businesses.document.signing.declineMultisigns(filteredSigners, taskId, documentId, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     // Add multiSignInfo.
 
-    await global.businesses.document.addMultiSignInfo(task, { userInfo, type: 'reject' });
+    await global.businesses.document.signing.addMultiSignInfo(task, { userInfo, type: 'reject' });
 
     this.responseData(res, this.filterResponse(documentSignatureRejection));
   }
@@ -582,11 +582,11 @@ export class DocumentController extends Controller {
       }
 
       if (req.query.large_file) {
-        await global.businesses.document.addGeneratingPdfToQueue(document, userId);
+        await global.businesses.document.files.addGeneratingPdfToQueue(document, userId);
 
         return this.responseThatAccepted(res);
       }
-      pdfBuffer = await global.businesses.document.createPdf({ document, userId });
+      pdfBuffer = await global.businesses.document.files.createPdf({ document, userId });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -612,7 +612,7 @@ export class DocumentController extends Controller {
 
       document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
 
-      await global.businesses.document.addGeneratingPdfToQueue(document, userId);
+      await global.businesses.document.files.addGeneratingPdfToQueue(document, userId);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -675,7 +675,7 @@ export class DocumentController extends Controller {
 
     // Save placeholder to document data if need it.
     const attachmentPlaceholder = DocumentAttachmentEntity.getPlaceholder(fileId, documentPath);
-    await global.businesses.document.saveAttachmentToDocumentData(attachmentPlaceholder, documentPath, document, userId, userUnitIds);
+    await global.businesses.document.files.saveAttachmentToDocumentData(attachmentPlaceholder, documentPath, document, userId, userUnitIds);
 
     // Add to DB.
     let attachment;
@@ -694,7 +694,7 @@ export class DocumentController extends Controller {
     }
 
     // Save to document data if need it.
-    await global.businesses.document.saveAttachmentToDocumentData(attachment, documentPath, document, userId, userUnitIds);
+    await global.businesses.document.files.saveAttachmentToDocumentData(attachment, documentPath, document, userId, userUnitIds);
 
     this.responseData(res, attachment);
 
@@ -729,7 +729,7 @@ export class DocumentController extends Controller {
     // Get readable stream.
     let downloadFileRequestOptions;
     try {
-      const { fileLink } = await (global.businesses.document.getAttachmentFileLink as any)(documentId, attachmentId, userId);
+      const { fileLink } = await (global.businesses.document.files.getAttachmentFileLink as any)(documentId, attachmentId, userId);
       if (preview === QUERY_INDICATOR_TRUE) {
         downloadFileRequestOptions = await this.storageService.provider.downloadFilePreviewRequestOptions(fileLink);
       } else if (p7s === QUERY_INDICATOR_TRUE) {
@@ -773,7 +773,7 @@ export class DocumentController extends Controller {
 
     // Define files links.
     const { fileId: mainFileLink } = document || {};
-    const attachmentsLinks = await global.businesses.document.getAttachmentFilesLinks(documentId);
+    const attachmentsLinks = await global.businesses.document.files.getAttachmentFilesLinks(documentId);
     const documentFilesLinks = [mainFileLink, ...attachmentsLinks].filter((v) => !!v);
     if (documentFilesLinks.length === 0) {
       return this.responseError(res, 'Document without files.', 404);
@@ -857,7 +857,7 @@ export class DocumentController extends Controller {
 
     // Delete attachment from DB.
     try {
-      await global.businesses.document.deleteAttachment(documentId, attachmentId, userId);
+      await global.businesses.document.files.deleteAttachment(documentId, attachmentId, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -889,7 +889,7 @@ export class DocumentController extends Controller {
     // Get data for sign.
     let dataForSign;
     try {
-      const dataForSignWithFileIds: any = await global.businesses.document.getDataForSign(documentId);
+      const dataForSignWithFileIds: any = await global.businesses.document.signing.getDataForSign(documentId);
       dataForSign = dataForSignWithFileIds.map((v: any) => v.dataForSign);
     } catch (error) {
       return this.responseError(res, error);
@@ -952,7 +952,7 @@ export class DocumentController extends Controller {
       // Check sign available.
       let isSignAvailable;
       try {
-        isSignAvailable = await global.businesses.document.isSignAvailable(document, userInfo, userUnits);
+        isSignAvailable = await global.businesses.document.signing.isSignAvailable(document, userInfo, userUnits);
       } catch (error) {
         return this.responseError(res, error);
       }
@@ -965,7 +965,7 @@ export class DocumentController extends Controller {
 
       // Check strict sequential sign.
       if (signers.length) {
-        const nextSignerUserId = await global.businesses.document.checkSignersOrderAndGetNextSigner({ task, document });
+        const nextSignerUserId = await global.businesses.document.signing.checkSignersOrderAndGetNextSigner({ task, document });
         if (nextSignerUserId && nextSignerUserId !== userId) {
           return this.responseError(res, 'User cannot sign according to strict sign order');
         }
@@ -974,7 +974,7 @@ export class DocumentController extends Controller {
       // Get signed document.
       let signedDocument;
       try {
-        signedDocument = await global.businesses.document.sign(
+        signedDocument = await global.businesses.document.signing.sign(
           documentId,
           signature,
           userId,
@@ -991,13 +991,13 @@ export class DocumentController extends Controller {
       // Handle multi sign notification.
       if (signers.length) {
         try {
-          const nextSignerUserId = await global.businesses.document.checkSignersOrderAndGetNextSigner({ task, document });
+          const nextSignerUserId = await global.businesses.document.signing.checkSignersOrderAndGetNextSigner({ task, document });
           if (nextSignerUserId) {
             // It`s strict sequential sign - inform only next signer.
-            await global.businesses.document.sendLetterToNextSigner({ task, document, nextSignerUserId });
+            await global.businesses.document.signing.sendLetterToNextSigner({ task, document, nextSignerUserId });
           } else if (!signatures.length && performerUsers.includes(userId)) {
             // It`s regular sign and it`s initiator (first signer) request - inform all signers one time.
-            await (global.businesses.document.sendLetterToSigners as any)(document, task, signers, userId);
+            await (global.businesses.document.signing.sendLetterToSigners as any)(document, task, signers, userId);
           }
         } catch (error) {
           global.log.save('send-letter-to-signers-error', { error });
@@ -1011,7 +1011,7 @@ export class DocumentController extends Controller {
       if (commit === QUERY_INDICATOR_TRUE) {
         // Check that all users signed all files.
         try {
-          await global.businesses.document.checkP7SSignaturesCount(signedDocument);
+          await global.businesses.document.signing.checkP7SSignaturesCount(signedDocument);
         } catch (error) {
           return this.responseError(res, error.message, 500, error.details);
         }
@@ -1088,7 +1088,7 @@ export class DocumentController extends Controller {
     // Check continue sign available.
     let isSignAvailable;
     try {
-      isSignAvailable = await global.businesses.document.isContinueSignAvailable(document, userInfo, userUnits);
+      isSignAvailable = await global.businesses.document.signing.isContinueSignAvailable(document, userInfo, userUnits);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1098,7 +1098,7 @@ export class DocumentController extends Controller {
 
     // Inform signers if need it.
     try {
-      await global.businesses.document.sendLetterToSigners(document, task, signers, userId, false, false, true);
+      await global.businesses.document.signing.sendLetterToSigners(document, task, signers, userId, false, false, true);
     } catch (error) {
       global.log.save('send-letter-to-signers-by-continue-sign-error');
       return this.responseError(res, error);
@@ -1138,7 +1138,7 @@ export class DocumentController extends Controller {
     let dataForSign;
     let fileName;
     try {
-      const dataForSignP7s = await global.businesses.document.getDataForSignP7s(documentId, attachmentId, userId);
+      const dataForSignP7s = await global.businesses.document.signing.getDataForSignP7s(documentId, attachmentId, userId);
       dataForSign = dataForSignP7s.p7s;
       fileName = dataForSignP7s.fileName;
     } catch (error) {
@@ -1204,7 +1204,7 @@ export class DocumentController extends Controller {
 
     // Check strict sequential sign.
     if (document.task.signerUsers?.length) {
-      const nextSignerUserId = await global.businesses.document.checkSignersOrderAndGetNextSigner({ task: document.task, document });
+      const nextSignerUserId = await global.businesses.document.signing.checkSignersOrderAndGetNextSigner({ task: document.task, document });
       if (nextSignerUserId && nextSignerUserId !== userId) {
         return this.responseError(res, 'User cannot sign (P7S) according to strict sign order');
       }
@@ -1215,7 +1215,7 @@ export class DocumentController extends Controller {
     // P7S sign.
     let p7sSignatureResult;
     try {
-      p7sSignatureResult = await global.businesses.document.signP7s(
+      p7sSignatureResult = await global.businesses.document.signing.signP7s(
         documentId,
         attachmentId,
         p7sSignature,
@@ -1252,7 +1252,7 @@ export class DocumentController extends Controller {
     // Get additional data for sign.
     let additionalDataForSignP7s;
     try {
-      additionalDataForSignP7s = await global.businesses.document.getAdditionalDataForSignP7s(documentId, false, userInfo);
+      additionalDataForSignP7s = await global.businesses.document.signing.getAdditionalDataForSignP7s(documentId, false, userInfo);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1288,7 +1288,7 @@ export class DocumentController extends Controller {
 
     // Check strict sequential sign.
     if (document.task.signerUsers?.length) {
-      const nextSignerUserId = await global.businesses.document.checkSignersOrderAndGetNextSigner({ task: document.task, document });
+      const nextSignerUserId = await global.businesses.document.signing.checkSignersOrderAndGetNextSigner({ task: document.task, document });
       if (nextSignerUserId && nextSignerUserId !== userId) {
         return this.responseError(res, 'User cannot sign (additional P7S) according to strict sign order');
       }
@@ -1297,7 +1297,7 @@ export class DocumentController extends Controller {
     // P7S additional sign.
     let p7sSignatureResult;
     try {
-      p7sSignatureResult = await global.businesses.document.signAdditionalP7s(
+      p7sSignatureResult = await global.businesses.document.signing.signAdditionalP7s(
         documentId,
         p7sSignature,
         isUserSignatureCouldBeMock,
@@ -1336,7 +1336,7 @@ export class DocumentController extends Controller {
     // Get data to encrypt and certificate.
     let toEncrypt;
     try {
-      toEncrypt = await global.businesses.document.getDataToEncrypt(documentId);
+      toEncrypt = await global.businesses.document.signing.getDataToEncrypt(documentId);
     } catch (error) {
       this.responseError(res, error);
     }
@@ -1371,7 +1371,7 @@ export class DocumentController extends Controller {
     // Save encrypted data.
     const { encryptCert } = global.config.encrypt;
     try {
-      await global.businesses.document.saveEncryptedData(documentId, encryptedItems, encryptCert);
+      await global.businesses.document.signing.saveEncryptedData(documentId, encryptedItems, encryptCert);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1400,7 +1400,7 @@ export class DocumentController extends Controller {
     // Get files to preview.
     let filesToPreview;
     try {
-      filesToPreview = await global.businesses.document.getFilesToPreviewAndCheckAccess(documentId, step, userId, userUnitIds);
+      filesToPreview = await global.businesses.document.files.getFilesToPreviewAndCheckAccess(documentId, step, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1430,7 +1430,7 @@ export class DocumentController extends Controller {
     let directFilesToPreview;
     try {
       const isDirect = true;
-      directFilesToPreview = await global.businesses.document.getFilesToPreviewAndCheckAccess(documentId, path, userId, userUnitIds, isDirect);
+      directFilesToPreview = await global.businesses.document.files.getFilesToPreviewAndCheckAccess(documentId, path, userId, userUnitIds, isDirect);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1662,13 +1662,13 @@ export class DocumentController extends Controller {
     const { task } = updatedDocument;
     const signerIds = task && task.signerUsers;
     try {
-      await (global.businesses.document.sendLetterToSigners as any)(updatedDocument, task, signerIds, userId, isCancelSignsLetter);
+      await (global.businesses.document.signing.sendLetterToSigners as any)(updatedDocument, task, signerIds, userId, isCancelSignsLetter);
     } catch {
       global.log.save('send-letter-to-signers-error');
     }
 
     // Add multiSignInfo.
-    await global.businesses.document.addMultiSignInfo(updatedDocument.task, { userInfo, type: 'delete_sign' });
+    await global.businesses.document.signing.addMultiSignInfo(updatedDocument.task, { userInfo, type: 'delete_sign' });
 
     this.responseData(res, { document: updatedDocument });
   }

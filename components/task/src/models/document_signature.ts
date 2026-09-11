@@ -1,6 +1,26 @@
 import Sequelize from 'sequelize';
 import { Model } from './model';
-import { DocumentSignatureEntity } from '../entities/document_signature';
+import { DocumentSignatureEntity, DocumentSignatureEntityOptions } from '../entities/document_signature';
+
+/** Raw shape of a `document_signatures` row as Sequelize hands it back. */
+export interface DocumentSignatureRow {
+  id: string;
+  document_id: string;
+  signature?: string | null;
+  type?: string | null;
+  certificate?: string | null;
+  created_by?: string | null;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface CreateDocumentSignatureParams {
+  documentId: string;
+  signature: string;
+  type: string;
+  certificate: string;
+  createdBy: string;
+}
 
 export class DocumentSignatureModel extends Model {
   private static singleton: DocumentSignatureModel;
@@ -40,13 +60,13 @@ export class DocumentSignatureModel extends Model {
 
   /**
    * Get by document ID.
-   * @param {string} documentId Document ID.
-   * @param {string} createdBy Created by.
-   * @param {Array<string>} [attributes] Sequelize attributes option.
-   * @param {Array<string>} [order] Sequelize order option.
-   * @returns {Promise<DocumentSignatureEntity[]>} Document signatures list promise.
+   * @param documentId Document ID.
+   * @param createdBy Created by.
+   * @param attributes Sequelize attributes option.
+   * @param order Sequelize order option.
+   * @returns Document signatures list promise.
    */
-  async getByDocumentId(documentId, createdBy?, attributes?, order?) {
+  async getByDocumentId(documentId: string, createdBy?: string, attributes?: string[], order?: unknown[]): Promise<DocumentSignatureEntity[]> {
     const options: any = {
       where: {
         document_id: documentId,
@@ -78,15 +98,9 @@ export class DocumentSignatureModel extends Model {
 
   /**
    * Create.
-   * @param {object} data Data object.
-   * @param {number} data.documentId Document ID.
-   * @param {number} data.signature Signature.
-   * @param {string} data.type Signature type.
-   * @param {string} data.certificate Certificate.
-   * @param {string} data.createdBy Created by user ID.
-   * @returns {Promise<DocumentSignatureEntity>} Created document signature entity promise.
+   * @returns Created document signature entity promise.
    */
-  async create({ documentId, signature, type, certificate, createdBy }) {
+  async create({ documentId, signature, type, certificate, createdBy }: CreateDocumentSignatureParams): Promise<DocumentSignatureEntity> {
     // Prepare signature record.
     const signatureModel = this.prepareForModel({ documentId, signature, type, certificate, createdBy });
 
@@ -99,18 +113,17 @@ export class DocumentSignatureModel extends Model {
 
   /**
    * Delete by document ID.
-   * @param {string} documentId Document ID.
+   * @param documentId Document ID.
    */
-  async deleteByDocumentId(documentId) {
+  async deleteByDocumentId(documentId: string): Promise<void> {
     await this.model.destroy({ where: { document_id: documentId } });
   }
 
   /**
    * Prepare entity.
-   * @param {object} item Item.
-   * @returns {DocumentSignatureEntity}
+   * @param item Raw document signature row.
    */
-  prepareEntity(item) {
+  prepareEntity(item: DocumentSignatureRow): DocumentSignatureEntity {
     return new DocumentSignatureEntity({
       id: item.id,
       documentId: item.document_id,
@@ -124,10 +137,9 @@ export class DocumentSignatureModel extends Model {
 
   /**
    * Prepare for model.
-   * @param {DocumentSignatureEntity} item Item.
-   * @returns {object}
+   * @param item Camel-cased entity-shaped fields to persist.
    */
-  prepareForModel(item) {
+  prepareForModel(item: Partial<DocumentSignatureEntityOptions>): Partial<DocumentSignatureRow> {
     return {
       document_id: item.documentId,
       signature: item.signature,

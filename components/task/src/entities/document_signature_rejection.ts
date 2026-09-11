@@ -1,27 +1,27 @@
 import { Entity } from './entity';
 
+/** Constructor input for {@link DocumentSignatureRejectionEntity} - also reused by `DocumentSignatureRejectionModel#prepareForModel`. */
+export interface DocumentSignatureRejectionEntityOptions {
+  id: string;
+  documentId: string;
+  userId: string;
+  data: Record<string, unknown>;
+  createdAt?: Date;
+  createdBy: string;
+}
+
 /**
  * Document signature rejection entity.
  */
 export class DocumentSignatureRejectionEntity extends Entity {
-  id: any;
-  documentId: any;
-  userId: any;
-  data: any;
-  createdAt: any;
-  createdBy: any;
+  id: string;
+  documentId: string;
+  userId: string;
+  data: Record<string, unknown>;
+  createdAt: Date;
+  createdBy: string;
 
-  /**
-   * Constructor.
-   * @param {object} options Document object.
-   * @param {string} options.id ID.
-   * @param {string} options.documentId Document ID.
-   * @param {string} options.userId User ID.
-   * @param {object} options.data Data.
-   * @param {string} options.createdAt Created at.
-   * @param {string} options.createdBy Created by.
-   */
-  constructor({ id, documentId, userId, data, createdAt, createdBy }) {
+  constructor({ id, documentId, userId, data, createdAt, createdBy }: DocumentSignatureRejectionEntityOptions) {
     super();
 
     this.id = id;
@@ -35,14 +35,14 @@ export class DocumentSignatureRejectionEntity extends Entity {
   /**
    * Get filter properties.
    */
-  getFilterProperties() {
+  getFilterProperties(): string[] {
     return ['id', 'documentId', 'userId', 'data', 'createdAt', 'createdBy'];
   }
 
   /**
    * Get filter properties brief.
    */
-  getFilterPropertiesBrief() {
+  getFilterPropertiesBrief(): string[] {
     return this.getFilterProperties();
   }
 }

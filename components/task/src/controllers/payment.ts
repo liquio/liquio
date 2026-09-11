@@ -70,7 +70,14 @@ export class PaymentController extends Controller {
 
     let documentWithPayment;
     try {
-      documentWithPayment = await this.documentBusiness.calculatePayment(documentId, payload, userId, userName, userUnitIds.all, userContactInfo);
+      documentWithPayment = await this.documentBusiness.payment.calculatePayment(
+        documentId,
+        payload,
+        userId,
+        userName,
+        userUnitIds.all,
+        userContactInfo,
+      );
     } catch (error) {
       global.log.save('calculate-payment-data-error', { error: error && error.message, documentId, payload, userId, userName }, 'error');
       return this.responseError(res, error, 500, { documentId });
@@ -127,7 +134,7 @@ export class PaymentController extends Controller {
 
     let statusData;
     try {
-      statusData = await this.documentBusiness.handlePaymentStatus(bodyContent, customer, status, queryParamsObject, headers);
+      statusData = await this.documentBusiness.payment.handlePaymentStatus(bodyContent, customer, status, queryParamsObject, headers);
     } catch (error) {
       global.log.save('handle-payment-status-erorr', { error: error.toString(), cause: error.cause, stack: error.stack }, 'error');
       if (defaultRedirect && !queryParamsObject.noRedirect && !paymentConfig?.[customer]?.isDisableRedirectOnErrorCallback) {
@@ -169,7 +176,7 @@ export class PaymentController extends Controller {
 
     let response;
     try {
-      response = await this.documentBusiness.confirmBySmsCode(code, customer, paymentControlPath, documentId, userId, userUnitIds);
+      response = await this.documentBusiness.payment.confirmBySmsCode(code, customer, paymentControlPath, documentId, userId, userUnitIds);
     } catch (error) {
       global.log.save('calculate-payment-data-error', { error: error && error.message }, 'error');
       return this.responseError(res, error);
@@ -193,7 +200,7 @@ export class PaymentController extends Controller {
 
     let response;
     try {
-      response = await this.documentBusiness.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds);
+      response = await this.documentBusiness.payment.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds);
     } catch (error) {
       global.log.save('get-payment-receipt-error', { error: error && error.message, documentId, orderId }, 'error');
       return this.responseError(res, error, 500, { documentId, orderId });
@@ -216,7 +223,7 @@ export class PaymentController extends Controller {
 
     let response;
     try {
-      response = await this.documentBusiness.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds);
+      response = await this.documentBusiness.payment.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds);
     } catch (error) {
       global.log.save('get-withdrawal-status-error', { error: error && error.message, documentId, orderId }, 'error');
       return this.responseError(res, error, 500, { documentId, orderId });
@@ -236,7 +243,7 @@ export class PaymentController extends Controller {
 
     let response;
     try {
-      response = await this.documentBusiness.validateApplePaySession({
+      response = await this.documentBusiness.payment.validateApplePaySession({
         validationUrl,
         displayName,
         initiative,
@@ -260,7 +267,7 @@ export class PaymentController extends Controller {
     try {
       const { paymentCustomer, orderId, transactionId, sessionId } = req.body;
 
-      const response = await this.documentBusiness.cancelOrder(paymentCustomer, orderId, transactionId, sessionId);
+      const response = await this.documentBusiness.payment.cancelOrder(paymentCustomer, orderId, transactionId, sessionId);
 
       this.responseData(res, response);
     } catch (error) {
