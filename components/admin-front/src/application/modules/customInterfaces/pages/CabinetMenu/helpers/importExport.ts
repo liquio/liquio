@@ -6,19 +6,14 @@ type Dispatch = (action: unknown) => unknown;
 
 const EXPORT_VERSION = 1;
 
-const stripRuntimeFields = (item: CabinetMenuItem): Record<string, unknown> => {
-  const {
-    childrenCount,
-    depth,
-    hasChildren,
-    history,
-    createdAt,
-    updatedAt,
-    ...rest
-  } = item || {};
+const RUNTIME_FIELDS = ['childrenCount', 'depth', 'hasChildren', 'history', 'createdAt', 'updatedAt'];
 
-  return rest;
-};
+const omit = (obj: Record<string, unknown> | undefined, keys: string[]): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(obj || {}).filter(([key]) => !keys.includes(key)),
+  );
+
+const stripRuntimeFields = (item: CabinetMenuItem): Record<string, unknown> => omit(item, RUNTIME_FIELDS);
 
 const getExportFilename = (): string => {
   const date = new Date().toISOString().slice(0, 10);
@@ -50,18 +45,8 @@ const normalizeImportedItems = (parsed: unknown): CabinetMenuItem[] => {
 };
 
 const sanitizeImportedItem = (item: CabinetMenuItem): Record<string, unknown> => {
-  const {
-    id,
-    childrenCount,
-    depth,
-    hasChildren,
-    history,
-    createdAt,
-    updatedAt,
-    ...rest
-  } = item || {};
-
-  const { system, ...options } = rest.options || {};
+  const rest = omit(item, ['id', ...RUNTIME_FIELDS]);
+  const options = omit(rest.options as Record<string, unknown> | undefined, ['system']);
 
   return {
     ...rest,

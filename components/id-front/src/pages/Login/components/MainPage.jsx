@@ -6,7 +6,7 @@ import withStyles from '@mui/styles/withStyles';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import renderHTML from 'react-render-html';
 
-import { getConfig } from 'helpers/configLoader';
+import { getAuthProviders } from 'helpers/authProvidersLoader';
 import { ReactComponent as KeyIcon } from 'assets/img/ic_key.svg';
 import WSOLogo from 'assets/img/wso2-logo.png';
 
@@ -132,45 +132,59 @@ const styles = (theme) => ({
 });
 
 
+const DEFAULT_TITLES = {
+  local: 'LoginAndPass',
+  x509: 'keySign',
+};
+
 const MainPage = ({ classes, t, setLoginByOwnKey, setCredentialMethod }) => {
-  const config = getConfig();
-  const { WSO2 = {} } = config;
+  const providers = getAuthProviders();
   const chooseLoginByOwnKey = () => setLoginByOwnKey(true);
   const chooseLoginByCredentialMethod = (props) => setCredentialMethod(props || true);
 
-  const handleRedirectWso2 = React.useCallback(() => {
-    window.location.href = '/authorise/wso2';
-  }, []);
+  const handleProviderClick = (provider) => {
+    if (provider.type === 'local') {
+      return chooseLoginByCredentialMethod();
+    }
+    if (provider.type === 'x509') {
+      return chooseLoginByOwnKey();
+    }
+    if (provider.url) {
+      window.location.href = provider.url;
+    }
+    return undefined;
+  };
 
   return (
     <div className={classes.root}>
       <div className={classes.actions}>
-        <Button className={classes.button} onClick={chooseLoginByOwnKey}>
-          <div className={classes.buttonWrapper}>
-            <KeyIcon className={classes.icon}></KeyIcon>
-            {t('keySign')}
-          </div>
-          <ChevronRightIcon></ChevronRightIcon>
-        </Button>
+        {providers.map((provider) => {
+          const titleKey = DEFAULT_TITLES[provider.type];
+          const title = provider.title || (titleKey ? t(titleKey) : provider.id);
 
-        {WSO2 && WSO2.enabled && (
-          <Button className={classes.button} onClick={handleRedirectWso2}>
-            <div className={classes.buttonWrapper}>
-              <img src={WSOLogo} className={classes.authLogo} alt="" />
-            </div>
-            <ChevronRightIcon></ChevronRightIcon>
-          </Button>
-        )}
-
-        {config.passwordAuth ? (
-          <Button className={classes.button} onClick={chooseLoginByCredentialMethod}>
-            <div className={classes.buttonWrapper}>
-              <KeyIcon className={classes.icon}></KeyIcon>
-              {t('LoginAndPass')}
-            </div>
-            <ChevronRightIcon></ChevronRightIcon>
-          </Button>
-        ) : null}
+          return (
+            <Button
+              key={`${provider.type}-${provider.id}`}
+              className={classes.button}
+              onClick={() => handleProviderClick(provider)}
+              title={provider.description || undefined}
+            >
+              <div className={classes.buttonWrapper}>
+                {provider.icon ? (
+                  <img src={provider.icon} className={classes.authLogo} alt="" />
+                ) : provider.type === 'wso2' ? (
+                  <img src={WSOLogo} className={classes.authLogo} alt="" />
+                ) : (
+                  <>
+                    <KeyIcon className={classes.icon}></KeyIcon>
+                    {title}
+                  </>
+                )}
+              </div>
+              <ChevronRightIcon></ChevronRightIcon>
+            </Button>
+          );
+        })}
       </div>
       <div className={classes.info}>
         <Typography className={classes.infoTitle}>{t('infoTitle')}</Typography>
