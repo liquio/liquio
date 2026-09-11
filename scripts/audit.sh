@@ -8,6 +8,7 @@ set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+COMPONENTS_DIR="$PROJECT_ROOT/components"
 
 # Colors for output
 RED='\033[0;31m'
@@ -20,7 +21,7 @@ NC='\033[0m' # No Color
 # Dynamically discover services with package.json
 discover_services() {
   local services=()
-  cd "$PROJECT_ROOT"
+  cd "$COMPONENTS_DIR"
   for dir in */; do
     dir=${dir%/}
     if [[ -f "$dir/package.json" ]]; then
@@ -87,19 +88,19 @@ run_service_audit() {
   local options=$2
   local quiet_flag=$3
 
-  if [[ ! -d "$PROJECT_ROOT/$service" ]]; then
+  if [[ ! -d "$COMPONENTS_DIR/$service" ]]; then
     [[ -z "$quiet_flag" ]] && echo -e "${YELLOW}⊘ Service directory not found: $service (skipping)${NC}"
     return 0
   fi
 
-  if [[ ! -f "$PROJECT_ROOT/$service/package.json" ]]; then
+  if [[ ! -f "$COMPONENTS_DIR/$service/package.json" ]]; then
     [[ -z "$quiet_flag" ]] && echo -e "${YELLOW}⊘ No package.json found in $service (skipping)${NC}"
     return 0
   fi
 
   [[ -z "$quiet_flag" ]] && echo -e "${BLUE}▶ Auditing $service...${NC}"
 
-  cd "$PROJECT_ROOT/$service"
+  cd "$COMPONENTS_DIR/$service"
 
   # Build audit command
   local audit_cmd="npm audit"
@@ -210,8 +211,8 @@ main() {
       --update-packages)
         echo -e "${BLUE}Updating package-lock.json files...${NC}"
         for service in "${SERVICES[@]}"; do
-          if [[ -d "$PROJECT_ROOT/$service" ]] && [[ -f "$PROJECT_ROOT/$service/package.json" ]]; then
-            cd "$PROJECT_ROOT/$service"
+          if [[ -d "$COMPONENTS_DIR/$service" ]] && [[ -f "$COMPONENTS_DIR/$service/package.json" ]]; then
+            cd "$COMPONENTS_DIR/$service"
             echo -e "${BLUE}▶ Running npm ci in $service...${NC}"
             npm ci 2>/dev/null || echo -e "${YELLOW}⊘ npm ci failed in $service${NC}"
           fi

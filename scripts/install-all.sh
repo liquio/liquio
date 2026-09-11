@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Install dependencies for all packages in the monorepo
-# Finds all package.json files (max depth 2) and runs npm install/ci in their directories
+# Finds all package.json files (max depth 2) under components/ and runs npm install/ci in their directories
 # Usage: ./scripts/install-all.sh [options]
 #
 # Options:
@@ -11,6 +11,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+COMPONENTS_DIR="$PROJECT_ROOT/components"
 
 # Parse arguments
 USE_CI=false
@@ -28,7 +29,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-cd "$PROJECT_ROOT"
+cd "$COMPONENTS_DIR"
 
 if [ "$USE_CI" = true ]; then
   INSTALL_CMD="npm ci"

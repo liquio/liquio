@@ -1,0 +1,48 @@
+const LARGE_SCREEN_WIDTH = 600;
+
+const SET_OPEN_SIDEBAR = 'APP/SET_OPEN_SIDEBAR';
+const SET_OPEN_DAWER = 'APP/SET_OPEN_DAWER';
+const SET_MAIN_SCROLLBAR = 'APP/SET_MAIN_SCROLLBAR';
+const GET_LOCALIZATION_TEXT_SUCCESS = 'GET_LOCALIZATION_TEXT_SUCCESS';
+const GET_LOCALIZATION_LANG_SUCCESS = 'GET_LOCALIZATION_LANG_SUCCESS';
+const GET_NAVIGATION_TREE_SUCCESS = 'GET_NAVIGATION_TREE_SUCCESS';
+const GET_NAVIGATION_TREE_FAIL = 'GET_NAVIGATION_TREE_FAIL';
+
+const initialState = {
+  openSidebar: window.innerWidth > LARGE_SCREEN_WIDTH,
+  openDrawer: false,
+  mainScrollbar: null,
+  localization: [],
+  navigationTree: null,
+  navigationTreeLoaded: false
+};
+
+const rootReducer = (state = initialState, action) => {
+  switch (action.type) {
+    case SET_OPEN_SIDEBAR:
+      return { ...state, openSidebar: action.payload };
+    case SET_OPEN_DAWER:
+      return { ...state, openDrawer: action.payload };
+    case SET_MAIN_SCROLLBAR:
+      return { ...state, mainScrollbar: action.payload };
+    case GET_LOCALIZATION_TEXT_SUCCESS:
+      return { ...state, localizationTexts: action.payload };
+    case GET_LOCALIZATION_LANG_SUCCESS:
+      return { ...state, localization: action.payload };
+    case GET_NAVIGATION_TREE_SUCCESS:
+      return {
+        ...state,
+        navigationTree: Array.isArray(action.payload) ? action.payload : null,
+        navigationTreeLoaded: true
+      };
+    case GET_NAVIGATION_TREE_FAIL:
+      return {
+        ...state,
+        navigationTreeLoaded: true
+      };
+    default:
+      return state;
+  }
+};
+
+export default rootReducer;

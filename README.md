@@ -26,6 +26,10 @@ The platform is developed and supported by Kitsoft, a leading GovTech company. F
   Liquio powers over 200 government IT solutions for national and municipal authorities.  
   One of the flagship cases is Diia — Ukraine’s national e-governance portal delivering used by over 23 million people.
 
+# **Architecture**
+
+Liquio is built as a set of microservices. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full breakdown of services, externally exposed APIs, the data layer, and a C4 container diagram of cross-service connections.
+
 # **Trainings & Certifications**
 
 We provide a certification program of Liquio technology for governmental teams and other IT companies. This growing Liquio partner network ensures on the one hand the ability to develop the solutions and create new services on the platform independently.
@@ -65,7 +69,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU Affero General Public License for more details.
 
-You should have received a copy of the GNU Affero General Public License along with this program. If not, see \<https://www.gnu.org/licenses/\>.
+You should have received a copy of the GNU Affero General Public License along with this program. If not, see \<https://www.gnu.org/licenses/>.
 
 ## **Dual Licensing**
 
