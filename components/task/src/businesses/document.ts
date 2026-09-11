@@ -2066,6 +2066,12 @@ export class DocumentBusiness extends Business {
             throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
           }
           if (statusInfo.status && statusInfo.status.isSuccess) return documentWithPrevState;
+          // The previous checkout is still open on the provider's side (not yet paid, not
+          // failed/rejected/cancelled) - reuse it instead of creating a second live payment
+          // session for the same document. Without this, opening the payment page in two tabs
+          // (or re-polling before the first checkout resolves) hands out two independently
+          // completable checkouts for one order, and completing both charges the customer twice.
+          if (statusInfo.status && statusInfo.status.isPending) return documentWithPrevState;
           documentDataObject = documentWithPrevState.data;
         }
       }
@@ -2268,51 +2274,64 @@ export class DocumentBusiness extends Business {
         // Check commitAfterPayment flag in schema.
         const { commitAfterPayment } = paymentSchemaControl || {};
         if (commitAfterPayment && !document.isFinal) {
-          const finishedTask = await global.models.task.setStatusFinished(taskId);
-          await global.models.document.setStatusFinal(documentId);
+          // Atomic guard: `setStatusFinal` only flips `is_final` from `false` to `true` once
+          // (its update is conditioned on `is_final: false`), so if two concurrent payment
+          // callbacks for the same document race here (e.g. two tabs each completing their own
+          // checkout), only the one whose update actually affected a row proceeds to run the
+          // one-time completion side effects below - the other treats it as already handled and
+          // returns without re-running them. This must run (and be checked) BEFORE those side
+          // effects, not after - the earlier `!document.isFinal` check alone is a stale snapshot
+          // read at the top of this function and cannot serialize two concurrent callbacks.
+          const isNewlyFinalized = await global.models.document.setStatusFinal(documentId);
+          if (isNewlyFinalized) {
+            const finishedTask = await global.models.task.setStatusFinished(taskId);
 
-          // Handle activity.
-          await global.businesses.task.handleActivityTypeEvents(task, 'TASK_COMMITTED');
-          if (global.config.activity_log?.isEnabled) {
-            const activity = new TaskActivity({
-              type: 'TASK_COMMITTED',
-              details: {
-                commitType: 'BY_EXTERNAL_SYSTEM',
-                systemName: providerOptions.providerName,
-              } as any,
-            });
-            await global.models.task.appendActivityLog(task.id, activity);
-          }
-
-          // Set the workflow status.
-          const { workflowId, taskTemplateId } = finishedTask;
-          const { workflowTemplate }: any = await global.models.workflow.findById(workflowId as any);
-          const documents = await global.models.task.getDocumentsByWorkflowId(workflowId);
-          const events = await global.models.event.getEventsByWorkflowId(workflowId);
-          try {
-            await global.businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId as any), { documents, events });
-          } catch (error) {
-            global.log.save('set-workflow-status-error', { workflowId, error: error.message });
-            await global.models.workflowError.create(
-              {
-                error: 'Can not set the workflow status.',
+            // Handle activity.
+            await global.businesses.task.handleActivityTypeEvents(task, 'TASK_COMMITTED');
+            if (global.config.activity_log?.isEnabled) {
+              const activity = new TaskActivity({
+                type: 'TASK_COMMITTED',
                 details: {
-                  message: error.message,
-                },
-                traceMeta: {
-                  workflowId,
-                  taskId,
-                  taskTemplateId,
-                },
-                queueMessage: {},
-              },
-              'warning',
-            );
-          }
+                  commitType: 'BY_EXTERNAL_SYSTEM',
+                  systemName: providerOptions.providerName,
+                } as any,
+              });
+              await global.models.task.appendActivityLog(task.id, activity);
+            }
 
-          // Send message to RabbitMQ.
-          const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-          global.messageQueue.produce(message);
+            // Set the workflow status.
+            const { workflowId, taskTemplateId } = finishedTask;
+            const { workflowTemplate }: any = await global.models.workflow.findById(workflowId as any);
+            const documents = await global.models.task.getDocumentsByWorkflowId(workflowId);
+            const events = await global.models.event.getEventsByWorkflowId(workflowId);
+            try {
+              await global.businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId as any), {
+                documents,
+                events,
+              });
+            } catch (error) {
+              global.log.save('set-workflow-status-error', { workflowId, error: error.message });
+              await global.models.workflowError.create(
+                {
+                  error: 'Can not set the workflow status.',
+                  details: {
+                    message: error.message,
+                  },
+                  traceMeta: {
+                    workflowId,
+                    taskId,
+                    taskTemplateId,
+                  },
+                  queueMessage: {},
+                },
+                'warning',
+              );
+            }
+
+            // Send message to RabbitMQ.
+            const message = { workflowId: finishedTask.workflowId, taskId: taskId };
+            global.messageQueue.produce(message);
+          }
         }
       }
     }

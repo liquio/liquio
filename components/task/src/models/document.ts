@@ -244,17 +244,23 @@ export class DocumentModel extends Model {
   /**
    * Set status final.
    * @param {string} id Document ID.
+   * @returns {Promise<boolean>} Whether this call is the one that actually flipped `is_final`
+   * from `false` to `true` (guarded by the `is_final: false` condition below). `false` means the
+   * document was already final - callers must treat that as "someone else already finished this"
+   * and skip any one-time completion side effects instead of repeating them.
    */
   async setStatusFinal(id) {
     const documentEntity = await this.findById(id);
 
-    await this.model.update(
+    const [affectedCount] = await this.model.update(
       {
         is_final: true,
         data: documentEntity.data,
       },
-      { where: { id } },
+      { where: { id, is_final: false } },
     );
+
+    return affectedCount > 0;
   }
 
   /**

@@ -250,6 +250,297 @@ describe('Payment Controller', () => {
     });
   });
 
+  // Regression coverage for a bug where opening the payment page in two browser tabs let a
+  // customer complete (and be charged for) payment twice: each tab's calc_payment call minted its
+  // own brand-new provider checkout for the same document, so both were independently completable.
+  // The fix makes calc_payment reuse an already-calculated, still-pending checkout (as reported by
+  // the provider's `status.isPending`) instead of creating a second one.
+  describe('POST /documents/:id/calc_payment - two tabs / duplicate checkout prevention', () => {
+    const CUSTOMER_PENDING = 'testProviderPending';
+    const PROVIDER_NAME_PENDING = 'testProviderFakePending';
+    const PENDING_DOCUMENT_TEMPLATE_ID = 900010;
+    const PENDING_DOCUMENT_ID = 'a1000000-0000-4000-8000-000000000010';
+    const PENDING_TASK_ID = 'a3000000-0000-4000-8000-000000000011';
+    const PENDING_TASK_TEMPLATE_ID = 900011;
+    const PENDING_WORKFLOW_ID = 'a2000000-0000-4000-8000-000000000012';
+    const PENDING_PAYMENT_CONTROL_PATH = 'payment.properties.paymentControl';
+
+    let calculateCallCount = 0;
+
+    beforeAll(async () => {
+      await app.model('documentTemplate').create({
+        id: PENDING_DOCUMENT_TEMPLATE_ID,
+        name: 'Payment Pending Test Template',
+        json_schema: JSON.stringify({
+          title: 'Payment pending test',
+          pdfRequired: false,
+          signRequired: false,
+          calcTriggers: [],
+          properties: {
+            payment: {
+              type: 'object',
+              properties: {
+                paymentControl: {
+                  type: 'object',
+                  control: 'payment',
+                  customer: CUSTOMER_PENDING,
+                  paymentControlPath: PENDING_PAYMENT_CONTROL_PATH,
+                  recipients: [
+                    {
+                      amount: '() => 15;',
+                      currency: 'EUR',
+                      description: "() => 'Test payment';",
+                      orderId: '(document) => document?.id;',
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+        html_template: '<html></html>',
+        access_json_schema: {},
+        additional_data_to_sign: null,
+      });
+
+      await app.model('document').create({
+        id: PENDING_DOCUMENT_ID,
+        document_template_id: PENDING_DOCUMENT_TEMPLATE_ID,
+        document_state_id: 1,
+        is_final: false,
+        owner_id: TEST_USER_ID,
+        created_by: TEST_USER_ID,
+        updated_by: TEST_USER_ID,
+        data: {},
+        asic: { asicmanifestFileId: null, filesIds: [] },
+      });
+
+      await app.model('task').create({
+        id: PENDING_TASK_ID,
+        task_template_id: PENDING_TASK_TEMPLATE_ID,
+        workflow_id: PENDING_WORKFLOW_ID,
+        document_id: PENDING_DOCUMENT_ID,
+        created_by: TEST_USER_ID,
+        updated_by: TEST_USER_ID,
+        finished: false,
+        deleted: false,
+        is_current: true,
+      });
+
+      // Fixture provider standing in for PayoneProvider: `calculatePayment` mints a distinct
+      // checkout every time it's actually called (tracked via `calculateCallCount`), and
+      // `handleStatus` reports the previously-calculated checkout as still `isPending` (never
+      // `isSuccess`) - i.e. the customer hasn't finished paying on the provider's hosted page yet.
+      paymentService.providers[PROVIDER_NAME_PENDING] = {
+        calculatePayment: async () => {
+          calculateCallCount += 1;
+          const transactionId = `txn-pending-${calculateCallCount}`;
+          return {
+            transactionId,
+            extraData: {
+              user_action_required: true,
+              user_action_url: `https://fake-provider.example/pay/${transactionId}`,
+            },
+            paymentRequestData: {
+              url: `https://fake-provider.example/pay/${transactionId}`,
+              method: 'GET',
+            },
+          };
+        },
+        handleStatus: async (payload) => ({
+          transactionId: payload.transactionId,
+          documentId: PENDING_DOCUMENT_ID,
+          paymentControlPath: PENDING_PAYMENT_CONTROL_PATH,
+          extraData: {},
+          status: { isSuccess: false, isPending: true },
+        }),
+      };
+
+      global.config.payment[CUSTOMER_PENDING] = { providerName: PROVIDER_NAME_PENDING, doRedirect: true };
+    });
+
+    it('reuses the still-pending checkout instead of minting a new one when calc_payment is called again before it resolves', async () => {
+      const first = await app
+        .request()
+        .post(`/documents/${PENDING_DOCUMENT_ID}/calc_payment`)
+        .set('token', authenticateAsFixtureUser())
+        .send({ paymentControlPath: PENDING_PAYMENT_CONTROL_PATH, extraData: {} })
+        .expect(200);
+
+      expect(calculateCallCount).toBe(1);
+      const firstCalculated = first.body.data.data.payment.paymentControl.calculated;
+      expect(firstCalculated.transactionId).toBe('txn-pending-1');
+
+      // Simulates a second browser tab loading the same payment page and re-triggering
+      // calc_payment before the customer has finished paying in the first tab. A fresh token is
+      // authenticated here (mirroring a genuinely separate tab/request) since each authenticated
+      // request consumes its own single-use `/user/info` nock mock.
+      const second = await app
+        .request()
+        .post(`/documents/${PENDING_DOCUMENT_ID}/calc_payment`)
+        .set('token', authenticateAsFixtureUser())
+        .send({ paymentControlPath: PENDING_PAYMENT_CONTROL_PATH, extraData: {} })
+        .expect(200);
+
+      // The provider's calculatePayment (which would mint a brand new, independently completable
+      // checkout) must not have been called again.
+      expect(calculateCallCount).toBe(1);
+
+      const secondCalculated = second.body.data.data.payment.paymentControl.calculated;
+      expect(secondCalculated).toEqual(firstCalculated);
+      expect(second.body.data.data.payment.paymentControl.calculatedHistory).toHaveLength(1);
+    });
+  });
+
+  // Companion case to the "duplicate checkout prevention" tests above: reuse must be limited to a
+  // checkout that is genuinely still open. Once the provider reports it as terminally failed (e.g.
+  // PAYONE declined the card), the customer must be able to retry - calc_payment has to mint a
+  // fresh, independent checkout rather than getting stuck replaying the dead one.
+  describe('POST /documents/:id/calc_payment - restart after a failed payment', () => {
+    const CUSTOMER_FAILED = 'testProviderFailedRestart';
+    const PROVIDER_NAME_FAILED = 'testProviderFakeFailedRestart';
+    const FAILED_DOCUMENT_TEMPLATE_ID = 900012;
+    const FAILED_DOCUMENT_ID = 'a1000000-0000-4000-8000-000000000013';
+    const FAILED_TASK_ID = 'a3000000-0000-4000-8000-000000000014';
+    const FAILED_TASK_TEMPLATE_ID = 900013;
+    const FAILED_WORKFLOW_ID = 'a2000000-0000-4000-8000-000000000015';
+    const FAILED_PAYMENT_CONTROL_PATH = 'payment.properties.paymentControl';
+
+    let calculateCallCount = 0;
+
+    beforeAll(async () => {
+      await app.model('documentTemplate').create({
+        id: FAILED_DOCUMENT_TEMPLATE_ID,
+        name: 'Payment Restart-After-Failure Test Template',
+        json_schema: JSON.stringify({
+          title: 'Payment restart test',
+          pdfRequired: false,
+          signRequired: false,
+          calcTriggers: [],
+          properties: {
+            payment: {
+              type: 'object',
+              properties: {
+                paymentControl: {
+                  type: 'object',
+                  control: 'payment',
+                  customer: CUSTOMER_FAILED,
+                  paymentControlPath: FAILED_PAYMENT_CONTROL_PATH,
+                  recipients: [
+                    {
+                      amount: '() => 15;',
+                      currency: 'EUR',
+                      description: "() => 'Test payment';",
+                      orderId: '(document) => document?.id;',
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+        html_template: '<html></html>',
+        access_json_schema: {},
+        additional_data_to_sign: null,
+      });
+
+      await app.model('document').create({
+        id: FAILED_DOCUMENT_ID,
+        document_template_id: FAILED_DOCUMENT_TEMPLATE_ID,
+        document_state_id: 1,
+        is_final: false,
+        owner_id: TEST_USER_ID,
+        created_by: TEST_USER_ID,
+        updated_by: TEST_USER_ID,
+        data: {},
+        asic: { asicmanifestFileId: null, filesIds: [] },
+      });
+
+      await app.model('task').create({
+        id: FAILED_TASK_ID,
+        task_template_id: FAILED_TASK_TEMPLATE_ID,
+        workflow_id: FAILED_WORKFLOW_ID,
+        document_id: FAILED_DOCUMENT_ID,
+        created_by: TEST_USER_ID,
+        updated_by: TEST_USER_ID,
+        finished: false,
+        deleted: false,
+        is_current: true,
+      });
+
+      // Fixture provider standing in for PayoneProvider: `handleStatus` reports the
+      // previously-calculated checkout as terminally failed (`isSuccess: false, isPending: false`
+      // - e.g. PAYONE declined the card or the customer abandoned the hosted page), never
+      // `isPending`, so a following calc_payment call must not treat it as still-reusable.
+      paymentService.providers[PROVIDER_NAME_FAILED] = {
+        calculatePayment: async () => {
+          calculateCallCount += 1;
+          const transactionId = `txn-failed-${calculateCallCount}`;
+          return {
+            transactionId,
+            extraData: {
+              user_action_required: true,
+              user_action_url: `https://fake-provider.example/pay/${transactionId}`,
+            },
+            paymentRequestData: {
+              url: `https://fake-provider.example/pay/${transactionId}`,
+              method: 'GET',
+            },
+          };
+        },
+        handleStatus: async (payload) => ({
+          transactionId: payload.transactionId,
+          documentId: FAILED_DOCUMENT_ID,
+          paymentControlPath: FAILED_PAYMENT_CONTROL_PATH,
+          extraData: {},
+          status: { isSuccess: false, isPending: false },
+        }),
+      };
+
+      global.config.payment[CUSTOMER_FAILED] = { providerName: PROVIDER_NAME_FAILED, doRedirect: true };
+    });
+
+    it('mints a fresh checkout (does not get stuck on the dead one) when the previous payment already failed on the provider', async () => {
+      const first = await app
+        .request()
+        .post(`/documents/${FAILED_DOCUMENT_ID}/calc_payment`)
+        .set('token', authenticateAsFixtureUser())
+        .send({ paymentControlPath: FAILED_PAYMENT_CONTROL_PATH, extraData: {} })
+        .expect(200);
+
+      expect(calculateCallCount).toBe(1);
+      const firstCalculated = first.body.data.data.payment.paymentControl.calculated;
+      expect(firstCalculated.transactionId).toBe('txn-failed-1');
+
+      // Customer clicks "try again" after PAYONE declined the card on the first checkout.
+      const second = await app
+        .request()
+        .post(`/documents/${FAILED_DOCUMENT_ID}/calc_payment`)
+        .set('token', authenticateAsFixtureUser())
+        .send({ paymentControlPath: FAILED_PAYMENT_CONTROL_PATH, extraData: {} })
+        .expect(200);
+
+      // Unlike the still-pending case, a brand new checkout must have been created - the dead one
+      // is not reusable.
+      expect(calculateCallCount).toBe(2);
+
+      const secondCalculated = second.body.data.data.payment.paymentControl.calculated;
+      expect(secondCalculated.transactionId).toBe('txn-failed-2');
+      expect(secondCalculated).not.toEqual(firstCalculated);
+      expect(second.body.data.data.payment.paymentControl.calculatedHistory).toHaveLength(2);
+
+      // The failed first attempt was still recorded in the processed history (for audit purposes),
+      // just never treated as a reason to reuse it.
+      const processedHistory = second.body.data.data.payment.paymentControl.processed;
+      expect(Array.isArray(processedHistory)).toBe(true);
+      expect(processedHistory.some((v) => v.transactionId === 'txn-failed-1' && v.status?.isSuccess === false)).toBe(true);
+
+      // The retried (second) checkout has not itself been reported on yet - only the dead first
+      // one shows up in the processed history.
+      expect(processedHistory.some((v) => v.transactionId === 'txn-failed-2')).toBe(false);
+    });
+  });
+
   describe('GET /payment/receipt', () => {
     it('requires auth', async () => {
       await expectAuthRequired(app, 'get', '/payment/receipt');
@@ -644,6 +935,63 @@ describe('Payment Controller', () => {
         expect(response.status).toBe(302);
         expect(response.headers.location).toBe(DEFAULT_REDIRECT_URL);
       });
+    });
+  });
+
+  // `businesses/document.ts#handlePaymentStatus` gates its one-time "commit after payment" side
+  // effects (finish task, finalize document, fire TASK_COMMITTED activity, produce a workflow
+  // message) on `global.models.document.setStatusFinal`'s return value rather than the stale
+  // `!document.isFinal` snapshot read at the top of the function - this is what actually prevents
+  // two concurrent payment callbacks (e.g. completing payment in two browser tabs, each against
+  // its own checkout) from both running those side effects. This exercises that guarantee at the
+  // model layer directly: two concurrent calls racing to finalize the same document must not both
+  // "win".
+  describe('Document.setStatusFinal - concurrent completion (two-tab race) guard', () => {
+    const RACE_DOCUMENT_TEMPLATE_ID = 900020;
+    const RACE_DOCUMENT_ID = 'a1000000-0000-4000-8000-000000000020';
+
+    beforeAll(async () => {
+      await app.model('documentTemplate').create({
+        id: RACE_DOCUMENT_TEMPLATE_ID,
+        name: 'setStatusFinal Race Test Template',
+        json_schema: JSON.stringify({ title: 'Race test', pdfRequired: false, signRequired: false, calcTriggers: [], properties: {} }),
+        html_template: '<html></html>',
+        access_json_schema: {},
+        additional_data_to_sign: null,
+      });
+
+      await app.model('document').create({
+        id: RACE_DOCUMENT_ID,
+        document_template_id: RACE_DOCUMENT_TEMPLATE_ID,
+        document_state_id: 1,
+        is_final: false,
+        owner_id: TEST_USER_ID,
+        created_by: TEST_USER_ID,
+        updated_by: TEST_USER_ID,
+        data: {},
+        asic: { asicmanifestFileId: null, filesIds: [] },
+      });
+    });
+
+    it('only lets one of two concurrent setStatusFinal calls for the same document report success', async () => {
+      const [firstResult, secondResult] = await Promise.all([
+        global.models.document.setStatusFinal(RACE_DOCUMENT_ID),
+        global.models.document.setStatusFinal(RACE_DOCUMENT_ID),
+      ]);
+
+      // Exactly one of the two concurrent calls actually flipped is_final false -> true - a caller
+      // (handlePaymentStatus) must treat the other as "already finalized by someone else" and skip
+      // its one-time completion side effects, instead of running them a second time.
+      expect([firstResult, secondResult].filter(Boolean)).toHaveLength(1);
+
+      const documentRow = await app.model('document').findByPk(RACE_DOCUMENT_ID);
+      expect(documentRow.get('is_final')).toBe(true);
+    });
+
+    it('reports no-op (false) when called again on an already-final document', async () => {
+      // Follows the two calls above: the document is already final at this point.
+      const result = await global.models.document.setStatusFinal(RACE_DOCUMENT_ID);
+      expect(result).toBe(false);
     });
   });
 });

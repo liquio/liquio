@@ -8,6 +8,7 @@ import { init } from "onlinepayments-sdk-nodejs";
 
 import {
   PayoneCalculatedPaymentData,
+  PayoneCheckoutStatus,
   PayoneOptions,
   PayonePaymentStatusCategory,
   PayoneResolvedPaymentData,
@@ -395,6 +396,29 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       checkout.createdPaymentOutput?.paymentStatusCategory ===
         PayonePaymentStatusCategory.Successful && authenticationStatus !== "U";
 
+    // A checkout is only safe to treat as still-open/reusable while it is in one of the three
+    // pre-payment-attempt statuses - PAYONE's own lifecycle reaches `PAYMENT_CREATED` as soon as
+    // ANY payment attempt exists (approved or declined, see the comment above `isSuccess`), and
+    // there are further terminal statuses this provider does not otherwise classify (e.g. a
+    // chargeback). Rather than enumerate every terminal/failure status (and risk treating an
+    // unrecognized one as still-open), this allowlists only the statuses that are unambiguously
+    // "no payment attempt has happened yet" - anything else (including an unknown/future status)
+    // falls back to the pre-existing behavior of minting a new checkout.
+    //
+    // `document.ts#calculatePayment` uses this (via `checkPrevTransaction`) to redirect a second
+    // concurrent request (e.g. the same payment page open in two browser tabs) back to this SAME
+    // checkout instead of creating a brand new one - creating a second live checkout for the same
+    // order is what let a customer complete (and get charged for) payment twice.
+    const isPending =
+      !isSuccess &&
+      (
+        [
+          PayoneCheckoutStatus.Created,
+          PayoneCheckoutStatus.InProgress,
+          PayoneCheckoutStatus.Redirected,
+        ] as string[]
+      ).includes(checkout.status);
+
     // `checkPrevTransaction` (per `document.ts#calculatePayment`'s only caller of this path with
     // it set) is used to check whether an already-`calculatePayment`'d checkout has *already*
     // reached a terminal status before creating a brand new PAYONE checkout for the same
@@ -431,7 +455,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       documentId,
       paymentControlPath,
       transactionId,
-      status: { isSuccess },
+      status: { isSuccess, isPending },
       extraData: {
         order_id: payment?.paymentOutput?.references?.merchantReference,
         commerceCaseId,
