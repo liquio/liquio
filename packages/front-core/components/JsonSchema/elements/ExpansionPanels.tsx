@@ -19,6 +19,7 @@ interface ExpansionPanelsProps {
   onChange: (panelName: string, ...args: unknown[]) => void;
   path: Array<string | number>;
   hidden?: boolean;
+  errors?: unknown[];
   [key: string]: unknown;
 }
 
@@ -27,9 +28,10 @@ const Accordions = ({
   schema,
   readOnly,
   value = {},
-  onChange,
-  path,
+  onChange = () => null,
+  path = [],
   hidden,
+  errors = [],
   ...rest
 }: ExpansionPanelsProps) =>
   Object.keys(properties).map((panelName) => {
@@ -56,18 +58,11 @@ const Accordions = ({
                 ? schema.required.includes(panelName)
                 : schema.required
             }
+            errors={errors}
           />
         </AccordionDetails>
       </Accordion>
     );
   });
-
-Accordions.defaultProps = {
-  properties: {},
-  errors: [],
-  value: {},
-  path: [],
-  onChange: () => null,
-};
 
 export default Accordions;

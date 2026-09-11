@@ -5,16 +5,12 @@ interface ElementWrapperProps {
   children: ReactNode;
 }
 
-const ElementWrapper = ({ wrapperClass, children }: ElementWrapperProps) => {
+const ElementWrapper = ({ wrapperClass = null, children }: ElementWrapperProps) => {
   if (!wrapperClass) {
     return children;
   }
 
   return <div className={wrapperClass}>{children}</div>;
-};
-
-ElementWrapper.defaultProps = {
-  wrapperClass: null
 };
 
 export default ElementWrapper;

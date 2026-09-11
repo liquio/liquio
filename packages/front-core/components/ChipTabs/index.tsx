@@ -154,18 +154,18 @@ interface ChipTabsProps {
 
 const ChipTabs = ({
   classes,
-  className,
-  activeIndex,
-  onChange,
-  tabs,
+  className = {},
+  activeIndex = 0,
+  onChange = () => null,
+  tabs = [],
   readOnly,
-  errored,
+  errored = [],
   orientation,
   position,
-  darkTheme,
-  variant,
-  nativeStyle,
-  activeTabStyle,
+  darkTheme = false,
+  variant = 'default',
+  nativeStyle = false,
+  activeTabStyle = false,
   rootDocument
 }: ChipTabsProps) => (
   <Tabs
@@ -230,17 +230,5 @@ const ChipTabs = ({
     })}
   </Tabs>
 );
-
-ChipTabs.defaultProps = {
-  activeIndex: 0,
-  onChange: () => null,
-  tabs: [],
-  className: {},
-  errored: [],
-  darkTheme: false,
-  variant: 'default',
-  nativeStyle: false,
-  activeTabStyle: false
-};
 
 export default withStyles(styles)(ChipTabs as never) as unknown as React.ComponentType<Record<string, unknown>>;

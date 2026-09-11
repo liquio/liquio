@@ -42,7 +42,7 @@ const ExtReaderMessages = ({
   pendingMessage,
   classes,
   externalReaderErrors,
-  isProgressBar
+  isProgressBar = true
 }: any) => (
   <>
     {busy && pendingMessage && pendingMessage.length ? (
@@ -80,10 +80,6 @@ ExtReaderMessages.propTypes = {
   externalReaderErrors: PropTypes.array.isRequired,
   pendingMessage: PropTypes.array.isRequired,
   isProgressBar: PropTypes.bool
-};
-
-ExtReaderMessages.defaultProps = {
-  isProgressBar: true
 };
 
 export default withStyles(styles as any)(ExtReaderMessages as any);

@@ -179,7 +179,7 @@ interface VerifiedUserInfoProps {
 
 const VerifiedUserInfo = (props: VerifiedUserInfoProps) => {
   const {
-    hidden,
+    hidden = false,
     value = {},
     sample = false,
     required = false,
@@ -495,20 +495,6 @@ const VerifiedUserInfo = (props: VerifiedUserInfoProps) => {
       )}
     </ElementContainer>
   );
-};
-
-VerifiedUserInfo.defaultProps = {
-  hidden: false,
-  value: {},
-  sample: false,
-  required: false,
-  error: false,
-  width: '100%',
-  maxWidth: '100%',
-  noMargin: false,
-  errors: [],
-  hiddenFields: [],
-  checkIndex: false,
 };
 
 export default VerifiedUserInfo;

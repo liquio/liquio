@@ -10,6 +10,7 @@ interface ObjectElementProps {
   onChange: (key: string, ...args: unknown[]) => void;
   path: Array<string | number>;
   parentValue?: unknown;
+  errors?: unknown[];
   [key: string]: unknown;
 }
 
@@ -17,10 +18,11 @@ const ObjectElement = ({
   properties,
   schema,
   readOnly,
-  value,
-  onChange,
-  path,
+  value = {},
+  onChange = () => null,
+  path = [],
   parentValue,
+  errors = [],
   ...rest
 }: ObjectElementProps) =>
   Object.keys(properties || {}).map((key) => (
@@ -36,14 +38,8 @@ const ObjectElement = ({
       value={(value || {})[key]}
       parentValue={parentValue || value}
       onChange={onChange.bind(null, key)}
+      errors={errors}
     />
   ));
-
-ObjectElement.defaultProps = {
-  errors: [],
-  value: {},
-  path: [],
-  onChange: () => null,
-};
 
 export default ObjectElement;

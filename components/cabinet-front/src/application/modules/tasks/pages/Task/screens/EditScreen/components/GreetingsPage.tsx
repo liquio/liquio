@@ -32,7 +32,7 @@ const styles = (theme: any) => ({
   }
 });
 
-const GreetingsPage = ({ t, classes, user, title, content, onDone, actions }: any) => (
+const GreetingsPage = ({ t, classes, user, title = '', content = '', onDone = () => null, actions }: any) => (
   <Content>
     <div className={classes.root}>
       <Typography variant="h5" className={classes.title}>
@@ -69,12 +69,6 @@ GreetingsPage.propTypes = {
   title: PropTypes.string,
   content: PropTypes.string,
   onDone: PropTypes.func
-};
-
-GreetingsPage.defaultProps = {
-  title: '',
-  content: '',
-  onDone: () => null
 };
 
 const mapDispatchToProps = (dispatch: any) => ({

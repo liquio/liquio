@@ -155,7 +155,7 @@ interface PdfDocumentProps {
   isPdfBlock?: boolean;
 }
 
-const PdfDocument = ({ file, customToolbar, open, withPrint, isPdfBlock }: PdfDocumentProps) => {
+const PdfDocument = ({ file, customToolbar = null, open = true, withPrint = false, isPdfBlock }: PdfDocumentProps) => {
   const config = getConfig() as unknown as { pdfWorkerCdn?: boolean; pdfWorkerLocal?: boolean };
   configurePdfWorker(config);
 
@@ -491,12 +491,6 @@ const PdfDocument = ({ file, customToolbar, open, withPrint, isPdfBlock }: PdfDo
       )}
     </>
   );
-};
-
-PdfDocument.defaultProps = {
-  customToolbar: null,
-  open: true,
-  withPrint: false
 };
 
 export default PdfDocument;

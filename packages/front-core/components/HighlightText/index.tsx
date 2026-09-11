@@ -13,7 +13,7 @@ interface HighlightTextProps {
   highlight?: string;
 }
 
-const HighlightText = ({ classes, text, highlight }: HighlightTextProps) => {
+const HighlightText = ({ classes, text = '', highlight = '' }: HighlightTextProps) => {
   if (!text || !highlight || typeof text !== 'string') {
     return text;
   }
@@ -28,11 +28,6 @@ const HighlightText = ({ classes, text, highlight }: HighlightTextProps) => {
   return parts.map((part, index) =>
     phrases.includes(part.toLowerCase()) ? <b key={index} className={classes.highlight}>{part}</b> : <span key={index}>{part}</span>
   );
-};
-
-HighlightText.defaultProps = {
-  text: '',
-  highlight: ''
 };
 
 export default withStyles(styles)(HighlightText as never) as unknown as React.ComponentType<Record<string, unknown>>;

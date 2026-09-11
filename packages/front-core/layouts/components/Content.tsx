@@ -28,10 +28,10 @@ interface ContentProps {
 
 const Content = ({
   children,
-  className,
+  className = '',
   classes,
-  small,
-  maxWidth,
+  small = false,
+  maxWidth = '100%',
   paddingBottom,
 }: ContentProps) => (
   <main
@@ -44,11 +44,5 @@ const Content = ({
     {children}
   </main>
 );
-
-Content.defaultProps = {
-  className: '',
-  small: false,
-  maxWidth: '100%',
-};
 
 export default withStyles(styles)(Content as never) as unknown as React.ComponentType<Record<string, unknown>>;

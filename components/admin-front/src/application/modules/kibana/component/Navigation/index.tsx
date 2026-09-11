@@ -128,13 +128,10 @@ const KibanaNavigation = (props: KibanaNavigationProps) => {
 // destructured/read anywhere in this component (dead weight, not
 // introduced here) — this component itself also has zero importers
 // anywhere in the repo (confirmed via grep), so this whole file appears
-// to be dead code already.
-(KibanaNavigation as unknown as { defaultProps?: Record<string, unknown> }).defaultProps = {
-  access: {
-    userHasUnit: [1000002, 1000000042],
-  },
-};
-
+// to be dead code already. The `defaultProps` assignment itself is now
+// gone (React 19 dropped `defaultProps` support for function components
+// entirely, so it stopped doing anything either way) rather than fixing
+// it into a destructured default, since the prop it set was never used.
 const translated = translate('KibanaReports')(KibanaNavigation as never);
 
 export default withStyles(styles)(translated as never) as unknown as React.ComponentType<Record<string, unknown>>;

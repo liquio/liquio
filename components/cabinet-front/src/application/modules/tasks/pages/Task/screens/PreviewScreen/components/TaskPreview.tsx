@@ -68,7 +68,7 @@ const TaskPreview = ({
   documents,
   pdfDocuments,
   setTaskScreen,
-  customToolbar,
+  customToolbar = null,
   setLoadingState = () => {}
 }: any) => {
   const [busy, setBusy] = React.useState(true);
@@ -301,10 +301,6 @@ TaskPreview.propTypes = {
   pdfDocuments: PropTypes.object.isRequired,
   setTaskScreen: PropTypes.func.isRequired,
   customToolbar: PropTypes.node
-};
-
-TaskPreview.defaultProps = {
-  customToolbar: null
 };
 
 const mapStateToProps = ({ task: { documents }, files: { pdfDocuments, list } }: any) => ({

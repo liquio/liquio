@@ -11,7 +11,12 @@ import propsToData from 'modules/tasks/pages/Task/helpers/propsToData';
 import pdfRequired from 'modules/tasks/pages/Task/helpers/pdfRequired';
 import signRequired from 'modules/tasks/pages/Task/helpers/signRequired';
 
-const PreviewScreen = (props: any) => {
+const PreviewScreen = (rawProps: any) => {
+  // React 19 dropped `defaultProps` support for function components, so the
+  // default formerly declared via `PreviewScreen.defaultProps` below is
+  // applied here instead, ahead of destructuring, to preserve exact
+  // behavior.
+  const props = { ...rawProps, fileStorage: rawProps.fileStorage ?? {} };
   const {
     importActions,
     handleFinish,
@@ -123,10 +128,6 @@ PreviewScreen.propTypes = {
   userInfo: PropTypes.object.isRequired,
   handleFinish: PropTypes.func.isRequired,
   fileStorage: PropTypes.object
-};
-
-PreviewScreen.defaultProps = {
-  fileStorage: {}
 };
 
 const mapStateToProps = ({ task: { documents }, files: { list }, auth: { userUnits, info } }: any) => ({

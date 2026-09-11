@@ -286,14 +286,14 @@ const Header = ({
   classes,
   title,
   loading,
-  envStage,
+  envStage = ['test', 'stage', 'dev', 'development', 'stage-liquio'],
   errors,
   actions,
   userUnits,
   userInfo,
   backButton,
   onDrawerToggle,
-  hideMenuButton,
+  hideMenuButton = false,
   workflowId,
   workflowTags
 }: any) => {
@@ -557,11 +557,6 @@ Header.propTypes = {
   onDrawerToggle: PropTypes.func.isRequired,
   hideMenuButton: PropTypes.bool,
   envStage: PropTypes.array.isRequired
-};
-
-Header.defaultProps = {
-  hideMenuButton: false,
-  envStage: ['test', 'stage', 'dev', 'development', 'stage-liquio']
 };
 
 const mapStateToProps = ({ auth: { userUnits, info } }: any) => ({

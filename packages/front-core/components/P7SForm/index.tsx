@@ -56,7 +56,7 @@ interface P7SFormProps {
   [key: string]: unknown;
 }
 
-const P7SForm = ({ t, classes, setId, template, ...rest }: P7SFormProps) => {
+const P7SForm = ({ t, classes, setId = setComponentsId('sign-form'), template, ...rest }: P7SFormProps) => {
   const [tab, setTab] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
 
@@ -121,10 +121,6 @@ const P7SForm = ({ t, classes, setId, template, ...rest }: P7SFormProps) => {
       ) : null}
     </>
   );
-};
-
-P7SForm.defaultProps = {
-  setId: setComponentsId('sign-form')
 };
 
 const styled = withStyles(styles)(P7SForm as never);

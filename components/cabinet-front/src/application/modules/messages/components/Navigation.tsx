@@ -13,7 +13,15 @@ interface MessageNavigationProps {
   location?: { pathname: string };
 }
 
-const MessageNavigation = (props: MessageNavigationProps) => {
+const MessageNavigation = (rawProps: MessageNavigationProps) => {
+  // React 19 dropped `defaultProps` support for function components, so the
+  // defaults formerly declared via `MessageNavigation.defaultProps` below
+  // are applied here instead, to preserve exact behavior.
+  const props: MessageNavigationProps = {
+    ...rawProps,
+    location: rawProps.location ?? { pathname: '' },
+    unreadCount: rawProps.unreadCount ?? 0,
+  };
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [pathname, setPathname] = React.useState('');
 
@@ -33,10 +41,6 @@ const MessageNavigation = (props: MessageNavigationProps) => {
   );
 };
 
-MessageNavigation.defaultProps = {
-  location: { pathname: '' },
-  unreadCount: 0
-};
 
 interface MessagesState {
   messages: { unreadCount: number };

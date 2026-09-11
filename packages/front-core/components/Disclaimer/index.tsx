@@ -60,7 +60,7 @@ interface DisclaimerProps {
   noMargin?: boolean;
 }
 
-const Disclaimer = ({ emoji, classes, text, link, linkText, className, noMargin }: DisclaimerProps) => (
+const Disclaimer = ({ emoji = null, classes, text = null, link = null, linkText = null, className, noMargin }: DisclaimerProps) => (
   <div
     className={classNames({
       [classes.root]: true,
@@ -93,13 +93,6 @@ const Disclaimer = ({ emoji, classes, text, link, linkText, className, noMargin 
     </Typography>
   </div>
 );
-
-Disclaimer.defaultProps = {
-  text: null,
-  link: null,
-  linkText: null,
-  emoji: null
-};
 
 const styled = withStyles(styles)(Disclaimer as never);
 export default styled as unknown as React.ComponentType<Record<string, unknown>>;

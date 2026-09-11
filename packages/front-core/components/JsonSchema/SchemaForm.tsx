@@ -69,7 +69,23 @@ interface SchemaFormProps {
   [key: string]: unknown;
 }
 
-const SchemaForm = (props: SchemaFormProps) => {
+const SchemaForm = (rawProps: SchemaFormProps) => {
+  // React 19 dropped `defaultProps` support for function components, so the
+  // defaults formerly declared via `SchemaForm.defaultProps` are applied
+  // here instead, ahead of destructuring, to preserve exact behavior
+  // (including for the props read directly off `props.x` below, and the
+  // ones spread on to child elements via `{...props}`).
+  const props: SchemaFormProps = { ...rawProps };
+  props.schema = props.schema ?? {};
+  props.errors = props.errors ?? [];
+  props.path = props.path ?? [];
+  props.required = props.required ?? false;
+  props.rootDocument = props.rootDocument ?? { data: {} };
+  props.onChange = props.onChange ?? (() => null);
+  props.customControls = props.customControls ?? {};
+  props.readOnly = props.readOnly ?? false;
+  props.locked = props.locked ?? false;
+  props.renderOneLine = props.renderOneLine ?? false;
   const {
     path = [],
     value,
@@ -396,19 +412,6 @@ const SchemaForm = (props: SchemaFormProps) => {
   }
 
   return controlComponent;
-};
-
-SchemaForm.defaultProps = {
-  schema: {},
-  errors: [],
-  path: [],
-  required: false,
-  rootDocument: { data: {} },
-  onChange: () => null,
-  customControls: {},
-  readOnly: false,
-  locked: false,
-  renderOneLine: false,
 };
 
 const mapStateToProps = ({ auth: { info, userUnits } }: { auth: { info: Record<string, unknown>; userUnits: unknown[] } }) => ({

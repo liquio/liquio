@@ -58,19 +58,19 @@ interface TooltipControlProps {
 
 const TooltipControl = ({
   classes,
-  hidden,
-  description,
-  required,
-  error,
-  sample,
-  title,
-  content,
-  htmlBlock,
-  params,
+  hidden = false,
+  description = null,
+  required = false,
+  error = null,
+  sample = null,
+  title = null,
+  content = null,
+  htmlBlock = '',
+  params = null,
   rootDocument,
-  parentValue,
-  useParentData,
-  dataMapping,
+  parentValue = false,
+  useParentData = false,
+  dataMapping = null,
 }: TooltipControlProps) => {
   const [open, setOpen] = React.useState(false);
   const handleTooltipClose = () => setOpen(false);
@@ -126,21 +126,6 @@ const TooltipControl = ({
       ) : null}
     </ElementContainer>
   );
-};
-
-TooltipControl.defaultProps = {
-  hidden: false,
-  description: null,
-  sample: null,
-  error: null,
-  required: false,
-  title: null,
-  content: null,
-  htmlBlock: '',
-  useParentData: false,
-  params: null,
-  parentValue: false,
-  dataMapping: null,
 };
 
 const styled = withStyles(styles)(TooltipControl as never);

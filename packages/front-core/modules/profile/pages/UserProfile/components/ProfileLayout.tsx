@@ -131,7 +131,7 @@ const ProfileLayout = ({
   values,
   values: { isLegal },
   saving,
-  showNotification,
+  showNotification = false,
   handleChange,
   handleChangePhone,
   handleChangeDate,
@@ -173,10 +173,6 @@ const ProfileLayout = ({
       />
     </>
   );
-};
-
-ProfileLayout.defaultProps = {
-  showNotification: false,
 };
 
 export default ProfileLayout;

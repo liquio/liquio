@@ -290,7 +290,14 @@ interface NavigatorProps {
   userInfo?: unknown;
 }
 
-const Navigator = (props: NavigatorProps) => {
+const Navigator = (rawProps: NavigatorProps) => {
+  // React 19 dropped `defaultProps` support for function components, so the
+  // defaults formerly declared via `Navigator.defaultProps` below are
+  // applied here instead, ahead of destructuring, to preserve exact
+  // behavior.
+  const props: NavigatorProps = { ...rawProps };
+  props.location = props.location ?? { pathname: '' };
+  props.navigationTree = props.navigationTree ?? null;
   const {
     classes,
     location,
@@ -449,11 +456,6 @@ const Navigator = (props: NavigatorProps) => {
       )}
     </>
   );
-};
-
-Navigator.defaultProps = {
-  location: { pathname: '' },
-  navigationTree: null
 };
 
 const mapDispatchToProps = (dispatch: Dispatch) => ({

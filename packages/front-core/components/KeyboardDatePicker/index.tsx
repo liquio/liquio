@@ -46,12 +46,12 @@ interface KeyboardDatePickerProps {
 const KeyboardDatePicker = ({
   t,
   classes,
-  dateFormat,
-  name,
-  label,
+  dateFormat = 'DD MMMM YYYY',
+  name = 'default',
+  label = 'default',
   onChange,
-  value,
-  minDate,
+  value = null,
+  minDate = null,
 }: KeyboardDatePickerProps) => {
   const [date, setDate] = useState(value);
   const [open, setOpen] = React.useState(false);
@@ -123,13 +123,6 @@ const KeyboardDatePicker = ({
   );
 };
 
-KeyboardDatePicker.defaultProps = {
-  dateFormat: 'DD MMMM YYYY',
-  name: 'default',
-  label: 'default',
-  value: null,
-  minDate: null,
-};
 
 const styled = withStyles(styles)(KeyboardDatePicker as never);
 const translated = translate('DatePicker')(styled as never);

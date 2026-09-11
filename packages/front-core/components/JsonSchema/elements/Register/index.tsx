@@ -9,17 +9,13 @@ interface RegisterComponentProps {
 }
 
 const RegisterComponent = (props: RegisterComponentProps) => {
-  const { keyId } = props;
+  const { keyId = null } = props;
 
   if (keyId) {
     return <SingleKeyRegister {...(props as unknown as Record<string, unknown>)} />;
   }
 
   return <RelatedKeyRegister {...(props as unknown as Record<string, unknown>)} />;
-};
-
-RegisterComponent.defaultProps = {
-  keyId: null,
 };
 
 export default RegisterComponent;

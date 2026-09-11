@@ -141,7 +141,7 @@ interface BlockScreenProps {
   accordion?: boolean;
 }
 
-const BlockScreen = ({ dataGrid, customInterface, accordion }: BlockScreenProps) => {
+const BlockScreen = ({ dataGrid = false, customInterface = false, accordion }: BlockScreenProps) => {
   if (accordion) {
     return <AccordionComponent />;
   }
@@ -162,11 +162,6 @@ const BlockScreen = ({ dataGrid, customInterface, accordion }: BlockScreenProps)
       </LeftSidebar>
     </>
   );
-};
-
-BlockScreen.defaultProps = {
-  dataGrid: false,
-  customInterface: false
 };
 
 export default withStyles(styles)(BlockScreen as never) as unknown as React.ComponentType<Record<string, unknown>>;

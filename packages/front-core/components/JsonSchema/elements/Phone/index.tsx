@@ -51,18 +51,18 @@ const Phone = (props: PhoneProps) => {
   const {
     t,
     classes,
-    disableAreaCodes,
-    onChange,
+    disableAreaCodes = true,
+    onChange = () => null,
     value,
-    disableCountryCode,
-    autoFormat,
+    disableCountryCode = false,
+    autoFormat = true,
     enableLongNumbers,
     name: controlName,
     parentValue,
     excludeCountries: excludeCountriesProp = [],
     defaultCountry: defaultCountryProp = 'ua',
     onlyCountries: onlyCountriesProp = [],
-    error,
+    error = false,
     hidden,
     readOnly,
   } = props;
@@ -389,23 +389,6 @@ const Phone = (props: PhoneProps) => {
       ) : null}
     </>
   );
-};
-
-Phone.defaultProps = {
-  autoFormat: true,
-  disableCountryCode: false,
-  disableAreaCodes: true,
-  defaultCountry: 'ua',
-  onlyCountries: [],
-  excludeCountries: [],
-  onChange: () => null,
-  sample: null,
-  required: false,
-  error: false,
-  bottomSample: true,
-  width: '100%',
-  noMargin: false,
-  notRequiredLabel: null,
 };
 
 const styled = withStyles(styles)(formElement(Phone as unknown as React.ComponentType<Record<string, unknown>>));

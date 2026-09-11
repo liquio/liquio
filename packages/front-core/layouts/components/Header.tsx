@@ -135,7 +135,7 @@ const Header = ({
   t,
   classes,
   onDrawerToggle,
-  hideMenuButton,
+  hideMenuButton = false,
   backButton,
   userUnits,
   userInfo,
@@ -251,10 +251,6 @@ const Header = ({
       </Toolbar>
     </AppBar>
   );
-};
-
-Header.defaultProps = {
-  hideMenuButton: false,
 };
 
 const mapStateToProps = ({

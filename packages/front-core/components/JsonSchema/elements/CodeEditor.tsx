@@ -130,7 +130,7 @@ const CodeEditor = ({
   t,
   parentValue = {},
   tasks = {},
-  handleSave,
+  handleSave = null,
   defaultValue = {},
   validate = true,
   pristineAsJson = false,
@@ -359,17 +359,6 @@ const CodeEditor = ({
       </Dialog>
     </ElementContainer>
   );
-};
-
-CodeEditor.defaultProps = {
-  parentValue: {},
-  tasks: {},
-  handleSave: null,
-  defaultValue: {},
-  validate: true,
-  pristineAsJson: false,
-  autoOpen: false,
-  defaultHtmlValue: true,
 };
 
 const mapStateToProps = ({ tasks }: { tasks: unknown }) => ({ tasks });

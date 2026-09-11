@@ -78,9 +78,9 @@ const StepsMenu = ({
   jsonSchema,
   activeStep,
   handleSetStep,
-  validationPageErrors,
+  validationPageErrors = [],
   task,
-  showStepsMenu,
+  showStepsMenu = false,
   width
 }: any) => {
   const t = useTranslate('TaskPage');
@@ -211,11 +211,6 @@ StepsMenu.propTypes = {
   task: PropTypes.object.isRequired,
   showStepsMenu: PropTypes.bool,
   width: PropTypes.number.isRequired
-};
-
-StepsMenu.defaultProps = {
-  validationPageErrors: [],
-  showStepsMenu: false
 };
 
 export default StepsMenu;

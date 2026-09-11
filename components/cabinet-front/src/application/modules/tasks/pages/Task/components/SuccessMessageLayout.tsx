@@ -55,11 +55,11 @@ const styles = (theme: any) => ({
 const SuccessMessageLayout = ({
   t,
   classes,
-  finalScreen,
-  nextTasks,
+  finalScreen = {},
+  nextTasks = null,
   rootPath,
   task,
-  showNextTaskButton
+  showNextTaskButton = true
 }: any) => {
   const nextTask = (nextTasks || [])[0];
   const { callBack } = finalScreen;
@@ -204,12 +204,6 @@ SuccessMessageLayout.propTypes = {
   finalScreen: PropTypes.object,
   nextTasks: PropTypes.array,
   showNextTaskButton: PropTypes.bool
-};
-
-SuccessMessageLayout.defaultProps = {
-  finalScreen: {},
-  nextTasks: null,
-  showNextTaskButton: true
 };
 
 const translated = translate('TaskPage')(SuccessMessageLayout as any);

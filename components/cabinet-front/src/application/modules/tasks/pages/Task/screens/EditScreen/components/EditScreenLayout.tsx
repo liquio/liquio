@@ -47,9 +47,9 @@ const EditScreenLayout = ({
   origins,
   classes,
   actions,
-  storeEventError,
-  validationErrors,
-  validationPageErrors,
+  storeEventError = () => null,
+  validationErrors = null,
+  validationPageErrors = null,
   setStoreEventError,
   steps,
   stepName,
@@ -68,7 +68,7 @@ const EditScreenLayout = ({
   handleFinish,
   isUserUnitHead,
   task: { isEntry },
-  blockForward,
+  blockForward = false,
   extReaderMessages: { pendingMessage, externalReaderErrors, triggerExternalPath },
   onHandleTask,
   onCancelHandlingTask,
@@ -331,15 +331,6 @@ EditScreenLayout.propTypes = {
   externalReaderErrors: PropTypes.array,
   pendingMessage: PropTypes.array,
   blockForward: PropTypes.bool
-};
-
-EditScreenLayout.defaultProps = {
-  validationErrors: null,
-  validationPageErrors: null,
-  externalReaderErrors: null,
-  pendingMessage: null,
-  blockForward: false,
-  storeEventError: () => null
 };
 
 const styled = withStyles(styles as any)(EditScreenLayout as any);

@@ -22,17 +22,17 @@ interface AddressProps {
 
 const Address = (props: AddressProps) => {
   const {
-    recordsTree,
-    template,
-    stepName,
-    schema,
-    withNamedObjects,
-    allVisibleStreet,
-    hidden,
-    cleanWhenHidden,
-    rootDocument,
-    actions,
-    path,
+    recordsTree = null,
+    template = {},
+    stepName = '',
+    schema = {},
+    withNamedObjects = null,
+    allVisibleStreet = false,
+    hidden = false,
+    cleanWhenHidden = false,
+    rootDocument = {},
+    actions = {},
+    path = [],
     name,
     parentSchema,
     indexHidden,
@@ -75,20 +75,6 @@ const Address = (props: AddressProps) => {
       indexHidden={indexHidden}
     />
   );
-};
-
-Address.defaultProps = {
-  template: {},
-  stepName: '',
-  schema: {},
-  withNamedObjects: null,
-  allVisibleStreet: false,
-  recordsTree: null,
-  hidden: false,
-  cleanWhenHidden: false,
-  rootDocument: {},
-  actions: {},
-  path: [],
 };
 
 export default Address;

@@ -27,7 +27,7 @@ const PreviewScreenLayout = ({
   classes,
   task,
   template,
-  storeEventError,
+  storeEventError = {},
   busy,
   setBusy,
   handleFinish,
@@ -149,10 +149,6 @@ PreviewScreenLayout.propTypes = {
   pdfRequired: PropTypes.bool.isRequired,
   isUserUnitHead: PropTypes.bool.isRequired,
   showSignerList: PropTypes.bool.isRequired
-};
-
-PreviewScreenLayout.defaultProps = {
-  storeEventError: {}
 };
 
 const mapStateToProps = ({

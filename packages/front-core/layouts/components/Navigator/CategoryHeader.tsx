@@ -235,7 +235,18 @@ interface CategoryHeaderContainerProps extends Omit<CategoryHeaderProps, 'pathna
   pathname?: string;
 }
 
-const CategoryHeaderContainer = (props: CategoryHeaderContainerProps) => {
+const CategoryHeaderContainer = (rawProps: CategoryHeaderContainerProps) => {
+  // React 19 dropped `defaultProps` support for function components, so the
+  // defaults formerly declared via `CategoryHeaderContainer.defaultProps`
+  // are applied here instead, ahead of destructuring, to preserve exact
+  // behavior — `expanded`/`expandedCategory` aren't destructured here at
+  // all, they're forwarded to the inner `<CategoryHeader>` via the
+  // `{...props}` spread below.
+  const props: CategoryHeaderContainerProps = { ...rawProps };
+  props.path = props.path ?? '';
+  props.handleDrawerToggle = props.handleDrawerToggle ?? undefined;
+  props.expanded = props.expanded ?? [];
+  props.expandedCategory = props.expandedCategory ?? (() => {});
   const { classes, path, handleDrawerToggle, id, t } = props;
   const label = props.name || t(props.title || id);
 
@@ -270,13 +281,6 @@ const CategoryHeaderContainer = (props: CategoryHeaderContainerProps) => {
   ) : (
     categoryHeader
   );
-};
-
-CategoryHeaderContainer.defaultProps = {
-  path: '',
-  handleDrawerToggle: null,
-  expanded: [],
-  expandedCategory: () => {},
 };
 
 const styled = withStyles(styles)(CategoryHeaderContainer as never);

@@ -41,7 +41,7 @@ const SigningActionLayout = ({
   },
   alreadySigned,
   alreadyRejected,
-  steps,
+  steps = [],
   showSigningDialog,
   showRejectSigningDialog,
   showSuccessDialog,
@@ -50,13 +50,13 @@ const SigningActionLayout = ({
   toggleSuccessDialog,
   onSelectKey,
   onRejectSigning,
-  finished,
-  signProgress,
-  signProgressText,
+  finished = false,
+  signProgress = 0,
+  signProgressText = null,
   getDataToSign,
   onSignHash,
   finishBtnText,
-  isLiquioServerSign,
+  isLiquioServerSign = false,
   handleLiquioServerSign
 }: any) => {
   const debugMode = useSelector((state: any) => state.auth.debugMode);
@@ -284,14 +284,6 @@ SigningActionLayout.propTypes = {
   finished: PropTypes.bool,
   signProgress: PropTypes.number,
   signProgressText: PropTypes.string
-};
-
-SigningActionLayout.defaultProps = {
-  steps: [],
-  finished: false,
-  signProgress: 0,
-  signProgressText: null,
-  isLiquioServerSign: false
 };
 
 const styled = withStyles(styles as any)(SigningActionLayout as any);

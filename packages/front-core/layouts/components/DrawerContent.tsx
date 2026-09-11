@@ -94,13 +94,13 @@ interface DrawerContentProps {
 const DrawerContent = ({
   classes,
   className,
-  children,
-  drawer,
-  drawerPosition,
+  children = null,
+  drawer = null,
+  drawerPosition = 'right',
   disableScrolls,
   actions,
   openDrawer,
-  collapseButton,
+  collapseButton = true,
 }: DrawerContentProps) => {
   const t = useTranslate('Elements');
 
@@ -170,13 +170,6 @@ const DrawerContent = ({
       {drawer && drawerPosition === 'right' ? renderDrawer() : null}
     </div>
   );
-};
-
-DrawerContent.defaultProps = {
-  children: null,
-  drawer: null,
-  drawerPosition: 'right',
-  collapseButton: true,
 };
 
 const mapStateToProps = ({ app: { openDrawer } }: { app: { openDrawer: boolean } }) => ({ openDrawer });

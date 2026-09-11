@@ -26,7 +26,7 @@ const PrevNavigationButton = ({ handlePrevClick, page }: { handlePrevClick: () =
   );
 };
 
-const NextNavigationButton = ({ handleNextClick, page, pages }: { handleNextClick: () => void; page: number; pages?: number | null }) => {
+const NextNavigationButton = ({ handleNextClick, page, pages = null }: { handleNextClick: () => void; page: number; pages?: number | null }) => {
   if (page === pages) return null;
   return (
     <Button
@@ -38,10 +38,6 @@ const NextNavigationButton = ({ handleNextClick, page, pages }: { handleNextClic
       <Icon>arrow_forward</Icon>
     </Button>
   );
-};
-
-NextNavigationButton.defaultProps = {
-  pages: null,
 };
 
 const NavigationPageLabel = withStyles({})(

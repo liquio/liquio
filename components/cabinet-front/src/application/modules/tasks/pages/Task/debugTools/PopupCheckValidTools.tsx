@@ -149,8 +149,6 @@ PopupCheckValidTools.propTypes = {
   data: PropTypes.object.isRequired
 };
 
-PopupCheckValidTools.defaultProps = {};
-
 const styled = withStyles(styles as any)(PopupCheckValidTools as any);
 const translated = translate('DebugTools')(styled as any);
 export default withStyles(styles as any)(translated as any);

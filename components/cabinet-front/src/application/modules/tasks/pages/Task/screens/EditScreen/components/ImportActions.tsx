@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import { translate } from 'react-translate';
 import { Toolbar, Button } from '@mui/material';
 
-const ImportActions = ({ t, handleImport, importSchema }: any) => {
+const ImportActions = ({ t, handleImport = () => null, importSchema = null }: any) => {
   const inputEl = React.useRef<HTMLInputElement | null>(null);
 
   if (!importSchema) {
@@ -32,11 +32,6 @@ ImportActions.propTypes = {
   t: PropTypes.func.isRequired,
   handleImport: PropTypes.func,
   importSchema: PropTypes.object
-};
-
-ImportActions.defaultProps = {
-  handleImport: () => null,
-  importSchema: null
 };
 
 export default translate('TaskPage')(ImportActions as any);

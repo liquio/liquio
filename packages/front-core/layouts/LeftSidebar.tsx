@@ -130,7 +130,7 @@ const Layout = ({
   classes,
   location,
   actions,
-  openSidebar,
+  openSidebar = null,
   title,
   noTitle,
   children,
@@ -143,7 +143,7 @@ const Layout = ({
   debugTools,
   errors,
   loading,
-  breadcrumbs,
+  breadcrumbs = [],
 }: LayoutProps) => {
   const handleDrawerToggle = React.useCallback(() => {
     actions.setOpenSidebar(!openSidebar);
@@ -294,11 +294,6 @@ const Layout = ({
   );
 };
 
-Layout.defaultProps = {
-  disableScrolls: false,
-  openSidebar: null,
-  breadcrumbs: [],
-};
 
 const mapStateToProps = ({
   app: { openSidebar },

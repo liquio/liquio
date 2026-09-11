@@ -78,12 +78,12 @@ interface ExpansionPaperProps {
 
 const ExpansionPaper = ({
   classes,
-  title,
-  subTitle,
-  subTitle2,
+  title = '',
+  subTitle = '',
+  subTitle2 = '',
   children,
-  titleImportant,
-  defaultExpanded
+  titleImportant = false,
+  defaultExpanded = false
 }: ExpansionPaperProps) => {
   const [expanded, setExpanded] = React.useState(defaultExpanded);
   const ExpandIcon = expanded ? RemoveIcon : AddIcon;
@@ -127,14 +127,6 @@ const ExpansionPaper = ({
       <AccordionDetails className={classes.details}>{children}</AccordionDetails>
     </Accordion>
   );
-};
-
-ExpansionPaper.defaultProps = {
-  title: '',
-  subTitle: '',
-  subTitle2: '',
-  titleImportant: false,
-  defaultExpanded: false
 };
 
 export default withStyles(styles)(ExpansionPaper as never) as unknown as React.ComponentType<Record<string, unknown>>;

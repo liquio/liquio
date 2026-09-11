@@ -14,11 +14,6 @@ interface EJVErrorProps {
   error?: SchemaError | null;
 }
 
-const EJVError = ({ t, error }: EJVErrorProps): string | null => (error ? localizeError(t)(error).message ?? null : null);
-
-EJVError.defaultProps = {
-  t: () => '',
-  error: null
-};
+const EJVError = ({ t = () => '', error = null }: EJVErrorProps): string | null => (error ? localizeError(t)(error).message ?? null : null);
 
 export default translate('EJV')(EJVError);

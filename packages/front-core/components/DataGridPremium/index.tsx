@@ -361,37 +361,40 @@ interface DataGridProps {
 }
 
 const DataGrid = (props: DataGridProps) => {
+  // React 19 dropped `defaultProps` support for function components, so the
+  // defaults formerly declared via `DataGrid.defaultProps` are applied here
+  // instead, via the destructuring assignment, to preserve exact behavior.
   const {
     rows = [],
     columns = [],
     highlight = [],
-    loading,
-    onRowClick,
+    loading = false,
+    onRowClick = () => {},
     actions = {},
-    search: searchProps,
+    search: searchProps = '',
     rowsPerPage: pageSize = 10,
-    checkable,
-    controls,
-    count,
-    page,
-    sort,
-    keepNonExistentRowsSelected,
-    CustomToolbar,
-    CustomBottomToolbar,
-    filters,
-    rowsSelected,
-    filterHandlers,
-    startPage,
-    columnVisibilityModel: columnVisibilityModelProps,
-    pagination,
-    showRowCount,
-    getRowId,
-    height,
-    onColumnVisibilityCallback,
-    hiddenMenu,
-    localeText,
-    selectedFilters,
-    updateSelectedFilters,
+    checkable = false,
+    controls = {},
+    count = 0,
+    page = 1,
+    sort = {},
+    keepNonExistentRowsSelected = true,
+    CustomToolbar = null,
+    CustomBottomToolbar = null,
+    filters = {},
+    rowsSelected = [],
+    filterHandlers = null,
+    startPage = null,
+    columnVisibilityModel: columnVisibilityModelProps = {},
+    pagination = true,
+    showRowCount = false,
+    getRowId = null,
+    height = '100%',
+    onColumnVisibilityCallback = () => {},
+    hiddenMenu = false,
+    localeText = {},
+    selectedFilters = [],
+    updateSelectedFilters = () => {},
   } = props;
 
   const [isMobile] = React.useState(() => {
@@ -479,8 +482,11 @@ const DataGrid = (props: DataGridProps) => {
   const getRowClassName = React.useCallback(
     (row: Row) => {
       const params = createRowParams(row);
-      const clickable =
-        onRowClick && (!actions?.isRowClickable || actions.isRowClickable(params));
+      // `onRowClick` always has a value now that its default (`() => {}`,
+      // restored from the old `defaultProps`) applies again under React 19,
+      // so this check is provably always true — same behavior as when
+      // `defaultProps` last worked, just without the now-redundant guard.
+      const clickable = !actions?.isRowClickable || actions.isRowClickable(params);
       const rowId = params.id;
       return classNames({
         [classes.highlightedRow]: rowId !== undefined && highlight.includes(rowId),
@@ -975,40 +981,6 @@ const DataGrid = (props: DataGridProps) => {
       </Paper>
     </Box>
   );
-};
-
-DataGrid.defaultProps = {
-  rows: [],
-  columns: [],
-  highlight: [],
-  loading: false,
-  actions: {},
-  filters: {},
-  checkable: false,
-  controls: {},
-  count: 0,
-  page: 1,
-  rowsPerPage: 10,
-  keepNonExistentRowsSelected: true,
-  sort: {},
-  CustomToolbar: null,
-  CustomBottomToolbar: null,
-  rowsSelected: [],
-  filterHandlers: null,
-  startPage: null,
-  columnVisibilityModel: {},
-  pagination: true,
-  showRowCount: false,
-  getRowId: null,
-  onRowClick: () => { },
-  height: '100%',
-  onColumnVisibilityCallback: () => { },
-  hiddenMenu: false,
-  localeText: {},
-  search: '',
-  selectedFilters: [],
-  updateSelectedFilters: () => { },
-  isMobile: undefined,
 };
 
 export default DataGrid;

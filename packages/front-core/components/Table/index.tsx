@@ -70,9 +70,9 @@ const CustomTable = ({
   t,
   classes,
   list,
-  dataSource,
+  dataSource = {},
   createSortHandler,
-  checked,
+  checked = '',
   onCheckItem,
   onCheckboxClick,
   setId,
@@ -81,16 +81,16 @@ const CustomTable = ({
   changeCount,
   fields,
   getText,
-  labelDisplayedRows,
-  labelRowsPerPage,
+  labelDisplayedRows = 'COUNT_CASES',
+  labelRowsPerPage = 'DISPLAYED_CASES',
   onSelectAllClick,
-  highlightClaim,
-  needFullData,
+  highlightClaim = false,
+  needFullData = false,
   isOwner,
-  ownerList,
-  favorites,
-  dontHaveDelPerLabel,
-  delLabel,
+  ownerList = true,
+  favorites = [],
+  dontHaveDelPerLabel = '',
+  delLabel = 'Вибрати',
 }: CustomTableProps) => {
   const {
     tableFields,
@@ -306,25 +306,6 @@ const CustomTable = ({
       )}
     </Table>
   );
-};
-
-CustomTable.defaultProps = {
-  dataSource: {},
-  checked: '',
-  labelDisplayedRows: 'COUNT_CASES',
-  labelRowsPerPage: 'DISPLAYED_CASES',
-  onSelectAllClick: undefined,
-  highlightClaim: false,
-  needFullData: false,
-  isOwner: undefined,
-  pagination: undefined,
-  changeCount: undefined,
-  ownerList: true,
-  createSortHandler: undefined,
-  onCheckboxClick: undefined,
-  favorites: [],
-  dontHaveDelPerLabel: '',
-  delLabel: 'Вибрати',
 };
 
 export default withStyles({})(CustomTable as never) as unknown as React.ComponentType<Record<string, unknown>>;

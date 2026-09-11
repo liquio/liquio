@@ -135,7 +135,7 @@ interface EditTooltipProps {
   ariaText?: string;
 }
 
-const EditTooltip = ({ t, open, setOpen, handleClickOpen, editText, ariaText }: EditTooltipProps) => (
+const EditTooltip = ({ t, open = false, setOpen, handleClickOpen, editText, ariaText }: EditTooltipProps) => (
   <Tooltip title={editText || t('Edit')} open={open}>
     <IconButton
       onMouseOver={() => setOpen(true)}
@@ -155,10 +155,6 @@ const EditTooltip = ({ t, open, setOpen, handleClickOpen, editText, ariaText }: 
   </Tooltip>
 );
 
-EditTooltip.defaultProps = {
-  open: false,
-};
-
 interface RenderValuesProps {
   htmlBlock?: string | null;
   params?: Record<string, unknown> | null;
@@ -171,13 +167,13 @@ interface RenderValuesProps {
 }
 
 const RenderValues = ({
-  htmlBlock,
-  params,
+  htmlBlock = null,
+  params = null,
   value,
-  rootDocument,
-  properties,
+  rootDocument = null,
+  properties = null,
   renderDataItem,
-  useParentData,
+  useParentData = false,
   classes
 }: RenderValuesProps) => {
   const [ellipsisState, setEllipsisState] = useState(true);
@@ -204,14 +200,6 @@ const RenderValues = ({
       )}
     </div>
   )
-};
-
-RenderValues.defaultProps = {
-  htmlBlock: null,
-  params: null,
-  rootDocument: null,
-  properties: null,
-  useParentData: false,
 };
 
 interface WrapperProps extends WithStyles<typeof styles> {
@@ -245,29 +233,29 @@ interface WrapperProps extends WithStyles<typeof styles> {
 const Wrapper = ({
   t,
   classes,
-  description,
+  description = null,
   handleClickOpen,
   renderDataItem,
   properties,
-  htmlBlock,
-  params,
-  useOwnParams,
+  htmlBlock = null,
+  params = null,
+  useOwnParams = false,
   rootDocument,
-  editTooltip,
-  value,
-  dynamicTitle,
-  useParentData,
-  style,
+  editTooltip = false,
+  value = {},
+  dynamicTitle = false,
+  useParentData = false,
+  style = null,
   popupDeleteArrayItem,
   deleteItemAction,
   handleClose,
   editText,
-  readOnly,
+  readOnly = false,
   openEmpty,
-  forceSaving,
+  forceSaving = false,
   deleteText,
-  avoidSpaceBetweenWithActionBtn,
-  withoutPaddingTopActinBtn,
+  avoidSpaceBetweenWithActionBtn = false,
+  withoutPaddingTopActinBtn = false,
   ariaText
 }: WrapperProps) => {
   const [open, setOpen] = useState(false);
@@ -434,22 +422,6 @@ const Wrapper = ({
       </div>
     </div>
   );
-};
-
-Wrapper.defaultProps = {
-  value: {},
-  editTooltip: false,
-  dynamicTitle: false,
-  useOwnParams: false,
-  description: null,
-  htmlBlock: null,
-  params: null,
-  style: null,
-  useParentData: false,
-  readOnly: false,
-  forceSaving: false,
-  avoidSpaceBetweenWithActionBtn: false,
-  withoutPaddingTopActinBtn: false,
 };
 
 const translated = translate('Elements')(Wrapper as never);

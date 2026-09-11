@@ -82,18 +82,18 @@ interface ConfirmDialogProps {
 
 const ConfirmDialog = ({
   open,
-  loading,
-  title,
-  description,
-  handleClose,
-  handleConfirm,
+  loading = false,
+  title = '',
+  description = '',
+  handleClose = undefined,
+  handleConfirm = null,
   cancelButtonText,
   acceptButtonText,
   t,
   classes,
   children,
-  disabled,
-  acceptButtonDisabled,
+  disabled = false,
+  acceptButtonDisabled = false,
   hideClose
 }: ConfirmDialogProps) => {
   const hasCloseHandler = typeof handleClose === 'function';
@@ -175,16 +175,6 @@ const ConfirmDialog = ({
       </DialogActions>
     </Dialog>
   );
-};
-
-ConfirmDialog.defaultProps = {
-  handleClose: undefined,
-  title: '',
-  description: '',
-  handleConfirm: null,
-  loading: false,
-  disabled: false,
-  acceptButtonDisabled: false
 };
 
 const translated = translate('Elements')(ConfirmDialog as never);

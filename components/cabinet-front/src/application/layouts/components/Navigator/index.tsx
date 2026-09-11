@@ -249,7 +249,16 @@ const mapNavigationTree = (items: any[], languageCode: string, parentPath = ''):
     };
   });
 
-const Navigator = (props: any) => {
+const Navigator = (rawProps: any) => {
+  // React 19 dropped `defaultProps` support for function components, so the
+  // defaults formerly declared via `Navigator.defaultProps` below are
+  // applied here instead, ahead of destructuring, to preserve exact
+  // behavior.
+  const props = {
+    ...rawProps,
+    location: rawProps.location ?? { pathname: '' },
+    navigationTree: rawProps.navigationTree ?? null,
+  };
   const {
     classes,
     location,
@@ -417,11 +426,6 @@ Navigator.propTypes = {
   userInfo: PropTypes.object.isRequired,
   navigationTree: PropTypes.array,
   handleDrawerToggle: PropTypes.func.isRequired
-};
-
-Navigator.defaultProps = {
-  location: { pathname: '' },
-  navigationTree: null
 };
 
 const mapDispatchToProps = (dispatch: any) => ({

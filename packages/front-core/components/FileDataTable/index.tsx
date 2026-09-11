@@ -62,7 +62,25 @@ interface FileDataTableProps {
   [key: string]: unknown;
 }
 
-const FileDataTable = (props: FileDataTableProps) => {
+const FileDataTable = (rawProps: FileDataTableProps) => {
+  // React 19 dropped `defaultProps` support for function components, so the
+  // defaults formerly declared via `FileDataTable.defaultProps` are applied
+  // here instead, ahead of destructuring, to preserve exact behavior
+  // (this component destructures from `props` again further down too, in
+  // `getSettings`, so the defaults need to live on `props` itself).
+  const props: FileDataTableProps = {
+    ...rawProps,
+    actions: rawProps.actions ?? {},
+    fileStorage: rawProps.fileStorage ?? {},
+    fileControl: rawProps.fileControl ?? false,
+    handleDownload: rawProps.handleDownload ?? null,
+    printAction: rawProps.printAction ?? false,
+    darkTheme: rawProps.darkTheme ?? false,
+    defaultView: rawProps.defaultView ?? 'table',
+    pagination: rawProps.pagination ?? false,
+    loading: rawProps.loading ?? false,
+    hiddenMenu: rawProps.hiddenMenu ?? false,
+  };
   const {
     CustomToolbar,
     data,
@@ -237,19 +255,6 @@ const FileDataTable = (props: FileDataTableProps) => {
       printAction={printAction}
     />
   );
-};
-
-FileDataTable.defaultProps = {
-  actions: {},
-  fileStorage: {},
-  fileControl: false,
-  handleDownload: null,
-  printAction: false,
-  darkTheme: false,
-  defaultView: 'table',
-  pagination: false,
-  loading: false,
-  hiddenMenu: false
 };
 
 export default translate('FileDataTable')(FileDataTable as never) as unknown as React.ComponentType<

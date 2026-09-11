@@ -28,7 +28,7 @@ interface DividerElementProps extends WithStyles<typeof styles> {
   styles?: Record<string, unknown>;
 }
 
-const DividerElement = ({ classes, hidden, noMargin, margin, darkTheme, styles }: DividerElementProps) => {
+const DividerElement = ({ classes, hidden = false, noMargin = false, margin = false, darkTheme, styles }: DividerElementProps) => {
   if (hidden) {
     return null;
   }
@@ -49,12 +49,6 @@ const DividerElement = ({ classes, hidden, noMargin, margin, darkTheme, styles }
       style={customStyles}
     />
   );
-};
-
-DividerElement.defaultProps = {
-  hidden: false,
-  noMargin: false,
-  margin: false,
 };
 
 export default withStyles(styles)(DividerElement);

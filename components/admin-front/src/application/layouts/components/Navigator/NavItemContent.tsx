@@ -55,7 +55,7 @@ const NavItemContent = (props: any) => {
   const {
     location: { pathname },
   } = history;
-  const itemRef = React.useRef<HTMLLIElement | null>(null);
+  const itemRef = React.useRef<HTMLDivElement | null>(null);
   if (
     mainScrollbar &&
     mainScrollbar?.ref &&
@@ -77,10 +77,9 @@ const NavItemContent = (props: any) => {
 
   return (
     <ListItem
+      component="div"
       className={classes.listItem}
-      disableRipple
-      ref={itemRef as any}
-      {...({ button: !!path } as any)}
+      ref={itemRef}
     >
       {!childItem && icon ? (
         <ListItemIcon className={classes.icon}>{icon}</ListItemIcon>

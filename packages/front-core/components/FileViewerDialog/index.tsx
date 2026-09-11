@@ -69,12 +69,12 @@ interface FileViewerDialogProps {
 
 const FileViewerDialog = ({
   classes,
-  open,
+  open = false,
   onClose,
   extension,
-  file,
+  file = null,
   fileName,
-  darkTheme,
+  darkTheme = false,
   withPrint
 }: FileViewerDialogProps) => {
   const t = useTranslate('Elements');
@@ -114,12 +114,6 @@ const FileViewerDialog = ({
       </div>
     </Dialog>
   );
-};
-
-FileViewerDialog.defaultProps = {
-  open: false,
-  file: null,
-  darkTheme: false
 };
 
 export default withStyles(styles)(FileViewerDialog as never) as unknown as React.ComponentType<Record<string, unknown>>;

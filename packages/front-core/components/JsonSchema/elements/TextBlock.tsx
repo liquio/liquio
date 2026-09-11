@@ -155,20 +155,20 @@ interface TextBlockProps extends WithStyles<typeof styles> {
 }
 
 const TextBlock = ({
-  noMargin,
-  htmlBlock,
-  value,
+  noMargin = false,
+  htmlBlock = '',
+  value = '',
   classes,
-  pure,
-  params,
-  useParentData,
-  parentValue,
-  hidden,
+  pure = false,
+  params = null,
+  useParentData = false,
+  parentValue = false,
+  hidden = false,
   rootDocument,
-  row,
-  pathIndex,
-  dataMapping,
-  stepName,
+  row = false,
+  pathIndex = null,
+  dataMapping = null,
+  stepName = '',
   maxWidth,
   htmlBlockHelper,
   helperTopPosition,
@@ -276,22 +276,6 @@ const TextBlock = ({
       </Fade>
     </ElementContainer>
   );
-};
-
-TextBlock.defaultProps = {
-  htmlBlock: '',
-  value: '',
-  pure: false,
-  hidden: false,
-  row: false,
-  useParentData: false,
-  parentValue: false,
-  noMargin: false,
-  pathIndex: null,
-  params: null,
-  dataMapping: null,
-  stepName: '',
-  active: true,
 };
 
 const translated = translate('TextBlock')(TextBlock as never);

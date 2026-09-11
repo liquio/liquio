@@ -14,7 +14,7 @@ const styles = {
   }
 };
 
-const HandleTask = ({ t, classes, busy, meta, onHandleTask, onCancelHandlingTask }: any) => (
+const HandleTask = ({ t, classes, busy, meta, onHandleTask = () => null, onCancelHandlingTask = () => null }: any) => (
   <div className={classes.root}>
     {!meta.handling || !Object.keys(meta?.handling).length ? (
       <Button variant="contained" color="primary" disabled={busy} onClick={onHandleTask}>
@@ -43,11 +43,6 @@ HandleTask.propTypes = {
   onCancelHandlingTask: PropTypes.func,
   busy: PropTypes.bool.isRequired,
   meta: PropTypes.object.isRequired.isRequired
-};
-
-HandleTask.defaultProps = {
-  onHandleTask: () => null,
-  onCancelHandlingTask: () => null
 };
 
 const mapStateToProps = ({ auth: { info } }: any) => ({ user: info });

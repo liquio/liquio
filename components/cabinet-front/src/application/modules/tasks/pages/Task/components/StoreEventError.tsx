@@ -5,7 +5,7 @@ import { translate } from 'react-translate';
 import { Link } from 'react-router-dom';
 import { Dialog, DialogTitle, DialogContent, DialogContentText } from '@mui/material';
 
-const StoreEventError = ({ t, error, onClose }: any) =>
+const StoreEventError = ({ t, error = {}, onClose = () => null }: any) =>
   error ? (
     <Dialog open={!!(error && Object.keys(error).length)} onClose={onClose}>
       <DialogTitle>{t('ErrorDialogTitle')}</DialogTitle>
@@ -22,11 +22,6 @@ StoreEventError.propTypes = {
   error: PropTypes.object,
   t: PropTypes.func.isRequired,
   onClose: PropTypes.func
-};
-
-StoreEventError.defaultProps = {
-  error: {},
-  onClose: () => null
 };
 
 export default translate('TaskPage')(StoreEventError as any);
