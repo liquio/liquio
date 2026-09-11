@@ -145,7 +145,7 @@
     "react-quill": "^2.0.0",
     "react-redux": "9.3.0",
     "react-render-html": "0.6.0",
-    "react-resize-detector": "4.2.1",
+    "react-resize-detector": "^12.3.0",
     "react-router-dom": "5.3.4",
     "react-router-redux": "4.0.8",
     "react-split-pane": "0.1.92",

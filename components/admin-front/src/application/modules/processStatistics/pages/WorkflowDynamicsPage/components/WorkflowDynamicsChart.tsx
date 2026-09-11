@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import moment from 'moment';
 import { useDispatch } from 'react-redux';
-import ReactResizeDetector from 'react-resize-detector';
+import { useResizeDetector } from 'react-resize-detector';
 import {
   CartesianGrid,
   XAxis,
@@ -83,6 +83,8 @@ const WorkflowDynamicsChart = ({
     setHeigh(containerRef.current.clientHeight - 50);
     setWidth(containerRef.current.clientWidth);
   }, []);
+
+  useResizeDetector({ handleHeight: true, targetRef: containerRef, onResize });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -190,8 +192,6 @@ const WorkflowDynamicsChart = ({
             />
           ))}
         </LineChart>
-
-        <ReactResizeDetector handleHeight={true} onResize={onResize} />
       </div>
     </>
   ) : (

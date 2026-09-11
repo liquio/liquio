@@ -21,7 +21,7 @@ import withStyles from '@mui/styles/withStyles';
 import CloseIcon from '@mui/icons-material/Close';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import AceEditor from 'react-ace';
-import ReactResizeDetector from 'react-resize-detector';
+import { useResizeDetector } from 'react-resize-detector';
 
 import propertiesEach from 'components/JsonSchema/helpers/propertiesEach';
 import evaluate from 'helpers/evaluate';
@@ -96,71 +96,35 @@ const styles = {
 
 const LegacySplitPane = SplitPane as any;
 
-class CheckValidFunction extends React.Component<any, any> {
-  aceComponentInput: React.RefObject<any>;
-  aceComponentOutput: React.RefObject<any>;
-  aceComponentOriginData: React.RefObject<any>;
+// `react-resize-detector` v4's `<ReactResizeDetector>` render-prop component
+// (which auto-detected its nearest DOM ancestor via `ReactDOM.findDOMNode`)
+// was removed under React 19 — `findDOMNode` no longer exists. Converted
+// from a class to a function component so the replacement
+// `useResizeDetector()` hook can be used, with its `targetRef` pointed at
+// the same `rightContainer` div the old detector auto-measured.
+const CheckValidFunction = ({ t, classes, task, stepId, template, userInfo, checkValidFuncs, actions }: any) => {
+  const [open, setOpen] = React.useState(false);
+  const [selectedType, setSelectedType] = React.useState('document');
+  const [showControls, setShowControls] = React.useState(false);
+  const aceComponentInput = React.useRef<any>(null);
+  const aceComponentOutput = React.useRef<any>(null);
+  const aceComponentOriginData = React.useRef<any>(null);
+  const rightContainerRef = React.useRef<HTMLDivElement>(null);
 
-  constructor(props: any) {
-    super(props);
-    this.state = { open: false, selectedType: 'document', showControls: false };
-    this.aceComponentInput = React.createRef();
-    this.aceComponentOutput = React.createRef();
-    this.aceComponentOriginData = React.createRef();
-  }
-
-  handleChange = (property: string, value: any) => {
-    const { actions, checkValidFuncs, task } = this.props;
-
+  const handleChange = (property: string, value: any) => {
     actions.setCheckValidFunc(task?.id, {
       ...(checkValidFuncs[task?.id] || {}),
       [property]: value
     });
   };
 
-  handleTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedType = event.target.value;
-    this.setState({ selectedType, showControls: selectedType !== 'document' });
+  const handleTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newSelectedType = event.target.value;
+    setSelectedType(newSelectedType);
+    setShowControls(newSelectedType !== 'document');
   };
 
-  handleCheckFunc = () => {
-    const { task, stepId, checkValidFuncs, userInfo } = this.props;
-    const { selectedType } = this.state;
-    const { element, func } = checkValidFuncs[task?.id] || {};
-
-    if (!checkValidFuncs[task?.id]) return '';
-    if (selectedType === 'document') {
-      const result = evaluate(func, task.document.data);
-      if (result instanceof Error) {
-        (result as Error & { commit: (context: any) => void }).commit({ type: 'debug tools: check function', result });
-        return '';
-      }
-      return JSON.stringify(result, null, 4);
-    }
-
-    const elements = this.getElements();
-    const control = elements.find(({ key }: any) => key === element);
-    if (!control) return '';
-
-    const result = evaluate(
-      func,
-      control && control.data,
-      task.document.data[stepId],
-      task.document.data,
-      selectedType === 'parent' || selectedType === 'userInfo' ? control.parentData : null,
-      selectedType === 'userInfo' ? userInfo : null
-    );
-
-    if (result instanceof Error) {
-      (result as Error & { commit: (context: any) => void }).commit({ type: 'debug tools: check valid function', task });
-      return result.message;
-    }
-
-    return JSON.stringify(result, null, 4);
-  };
-
-  getElements = () => {
-    const { task, template, stepId } = this.props;
+  const getElements = () => {
     const pages = template && template.jsonSchema.properties;
     const elements: any[] = [];
 
@@ -198,10 +162,42 @@ class CheckValidFunction extends React.Component<any, any> {
     return elements;
   };
 
-  renderControls = () => {
-    const { t, task, checkValidFuncs, classes } = this.props;
+  const handleCheckFunc = () => {
+    const { element, func } = checkValidFuncs[task?.id] || {};
+
+    if (!checkValidFuncs[task?.id]) return '';
+    if (selectedType === 'document') {
+      const result = evaluate(func, task.document.data);
+      if (result instanceof Error) {
+        (result as Error & { commit: (context: any) => void }).commit({ type: 'debug tools: check function', result });
+        return '';
+      }
+      return JSON.stringify(result, null, 4);
+    }
+
+    const elements = getElements();
+    const control = elements.find(({ key }: any) => key === element);
+    if (!control) return '';
+
+    const result = evaluate(
+      func,
+      control && control.data,
+      task.document.data[stepId],
+      task.document.data,
+      selectedType === 'parent' || selectedType === 'userInfo' ? control.parentData : null,
+      selectedType === 'userInfo' ? userInfo : null
+    );
+
+    if (result instanceof Error) {
+      (result as Error & { commit: (context: any) => void }).commit({ type: 'debug tools: check valid function', task });
+      return result.message;
+    }
+
+    return JSON.stringify(result, null, 4);
+  };
+
+  const renderControls = () => {
     const { element } = checkValidFuncs[task?.id] || {};
-    const { selectedType, showControls } = this.state;
     const labelOptions = [
       { value: 'document', label: 'documentData' },
       { value: 'element', label: 'value, step, documentData' },
@@ -218,7 +214,7 @@ class CheckValidFunction extends React.Component<any, any> {
           <RadioGroup
             row
             value={selectedType}
-            onChange={this.handleTypeChange}
+            onChange={handleTypeChange}
             className={classes.radioGroup}
           >
             {labelOptions.map((option) => (
@@ -240,9 +236,9 @@ class CheckValidFunction extends React.Component<any, any> {
               variant="outlined"
               value={element || ''}
               classes={{ select: classes.select }}
-              onChange={({ target: { value } }) => this.handleChange('element', value)}
+              onChange={({ target: { value } }) => handleChange('element', value)}
             >
-              {this.getElements().map((item: any, index: number) => (
+              {getElements().map((item: any, index: number) => (
                 <MenuItem key={item.key + index} value={item.key}>
                   {[item.path, item.schema.description].filter(Boolean).join(' - ')}
                 </MenuItem>
@@ -254,56 +250,115 @@ class CheckValidFunction extends React.Component<any, any> {
     );
   };
 
-  onResize = () => {
-    this.aceComponentInput.current.editor.resize();
-    this.aceComponentOutput.current.editor.resize();
-    this.aceComponentOriginData.current.editor.resize();
-  };
+  // The original wired the resize-to-editor callback via a typo'd
+  // `onReіsize` prop (Cyrillic "і"), which `ReactResizeDetector` silently
+  // ignored — the ace editors were never actually told to resize on
+  // container resize. Preserved exactly: no `onResize` passed below.
+  useResizeDetector({ handleHeight: true, targetRef: rightContainerRef });
 
-  openModal = () => this.setState({ open: true });
+  const openModal = () => setOpen(true);
 
-  closeModal = () => this.setState({ open: false });
+  const closeModal = () => setOpen(false);
 
-  render() {
-    const { t, classes, task, checkValidFuncs } = this.props;
-    const { open } = this.state;
-    const { func } = checkValidFuncs[task?.id] || {};
+  const { func } = checkValidFuncs[task?.id] || {};
 
-    return (
-      <div className={classes.root}>
-        <LegacySplitPane split="vertical" minSize="50%">
-          <AceEditor
-            ref={this.aceComponentOriginData}
-            mode="json"
-            theme="twilight"
-            fontSize={14}
-            showPrintMargin={true}
-            showGutter={true}
-            highlightActiveLine={true}
-            value={JSON.stringify(task && task.document.data, null, 4)}
-            width="100%"
-            height="100%"
-            readOnly={true}
-            setOptions={{
-              enableBasicAutocompletion: true,
-              enableLiveAutocompletion: true,
-              enableSnippets: true,
-              showLineNumbers: true,
-              tabSize: 4
-            }}
-          />
-          <div className={classes.rightContainer}>
-            <ReactResizeDetector handleHeight={true} onReіsize={this.onResize} />
-            {this.renderControls()}
-            <div className={classes.funcContainer}>
-              <Typography variant="body1">
-                {t('Function')}
-                <IconButton onClick={this.openModal}>
-                  <FullscreenIcon />
-                </IconButton>
+  return (
+    <div className={classes.root}>
+      <LegacySplitPane split="vertical" minSize="50%">
+        <AceEditor
+          ref={aceComponentOriginData}
+          mode="json"
+          theme="twilight"
+          fontSize={14}
+          showPrintMargin={true}
+          showGutter={true}
+          highlightActiveLine={true}
+          value={JSON.stringify(task && task.document.data, null, 4)}
+          width="100%"
+          height="100%"
+          readOnly={true}
+          setOptions={{
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true,
+            enableSnippets: true,
+            showLineNumbers: true,
+            tabSize: 4
+          }}
+        />
+        <div className={classes.rightContainer} ref={rightContainerRef}>
+          {renderControls()}
+          <div className={classes.funcContainer}>
+            <Typography variant="body1">
+              {t('Function')}
+              <IconButton onClick={openModal}>
+                <FullscreenIcon />
+              </IconButton>
+            </Typography>
+            <AceEditor
+              ref={aceComponentInput}
+              mode="javascript"
+              theme="twilight"
+              fontSize={14}
+              showPrintMargin={true}
+              showGutter={true}
+              highlightActiveLine={true}
+              value={func || ''}
+              width="100%"
+              height="100%"
+              readOnly={false}
+              onChange={(value) => handleChange('func', value)}
+              wrapEnabled={true}
+              setOptions={{
+                enableBasicAutocompletion: true,
+                enableLiveAutocompletion: true,
+                enableSnippets: true,
+                showLineNumbers: true,
+                tabSize: 4,
+                highlightActiveLine: true
+              }}
+            />
+          </div>
+          <div className={classes.funcContainer}>
+            <Typography
+              variant="body1"
+              style={{ color: 'black', visibility: 'visible' }}
+              className={classes.funcContainerTitle}
+            >
+              {t('Result')}
+            </Typography>
+            <AceEditor
+              ref={aceComponentOutput}
+              mode="json"
+              theme="twilight"
+              fontSize={14}
+              showPrintMargin={true}
+              showGutter={true}
+              highlightActiveLine={true}
+              value={handleCheckFunc()}
+              width="100%"
+              height="90%"
+              readOnly={false}
+              wrapEnabled={true}
+              setOptions={{
+                enableBasicAutocompletion: true,
+                enableLiveAutocompletion: true,
+                enableSnippets: true,
+                showLineNumbers: true,
+                tabSize: 4
+              }}
+            />
+          </div>
+        </div>
+      </LegacySplitPane>
+
+      <Dialog open={open} fullScreen={true} fullWidth={true} onClose={closeModal}>
+        <div className={classes.fullHeightContainer}>
+          <LegacySplitPane split="vertical" minSize="50%" style={{ height: '100%' }}>
+            <div className={classes.editorContainer}>
+              <Typography variant="h6" style={{ height: '40px' }}>
+                Функція
               </Typography>
               <AceEditor
-                ref={this.aceComponentInput}
                 mode="javascript"
                 theme="twilight"
                 fontSize={14}
@@ -312,41 +367,9 @@ class CheckValidFunction extends React.Component<any, any> {
                 highlightActiveLine={true}
                 value={func || ''}
                 width="100%"
-                height="100%"
+                height="calc(100% - 40px)"
                 readOnly={false}
-                onChange={(value) => this.handleChange('func', value)}
-                wrapEnabled={true}
-                setOptions={{
-                  enableBasicAutocompletion: true,
-                  enableLiveAutocompletion: true,
-                  enableSnippets: true,
-                  showLineNumbers: true,
-                  tabSize: 4,
-                  highlightActiveLine: true
-                }}
-              />
-            </div>
-            <div className={classes.funcContainer}>
-              <Typography
-                variant="body1"
-                style={{ color: 'black', visibility: 'visible' }}
-                className={classes.funcContainerTitle}
-              >
-                {t('Result')}
-              </Typography>
-              <AceEditor
-                ref={this.aceComponentOutput}
-                mode="json"
-                theme="twilight"
-                fontSize={14}
-                showPrintMargin={true}
-                showGutter={true}
-                highlightActiveLine={true}
-                value={this.handleCheckFunc()}
-                width="100%"
-                height="90%"
-                readOnly={false}
-                onChange={(this as any).handleChangeFunc}
+                onChange={(value) => handleChange('func', value)}
                 wrapEnabled={true}
                 setOptions={{
                   enableBasicAutocompletion: true,
@@ -357,75 +380,42 @@ class CheckValidFunction extends React.Component<any, any> {
                 }}
               />
             </div>
-          </div>
-        </LegacySplitPane>
-
-        <Dialog open={open} fullScreen={true} fullWidth={true} onClose={this.closeModal}>
-          <div className={classes.fullHeightContainer}>
-            <LegacySplitPane split="vertical" minSize="50%" style={{ height: '100%' }}>
-              <div className={classes.editorContainer}>
-                <Typography variant="h6" style={{ height: '40px' }}>
-                  Функція
-                </Typography>
-                <AceEditor
-                  mode="javascript"
-                  theme="twilight"
-                  fontSize={14}
-                  showPrintMargin={true}
-                  showGutter={true}
-                  highlightActiveLine={true}
-                  value={func || ''}
-                  width="100%"
-                  height="calc(100% - 40px)"
-                  readOnly={false}
-                  onChange={(value) => this.handleChange('func', value)}
-                  wrapEnabled={true}
-                  setOptions={{
-                    enableBasicAutocompletion: true,
-                    enableLiveAutocompletion: true,
-                    enableSnippets: true,
-                    showLineNumbers: true,
-                    tabSize: 4
-                  }}
-                />
+            <div className={classes.editorContainer}>
+              <div className={classes.resultHeader}>
+                <Typography variant="h6">{t('Result')}</Typography>
+                <Toolbar className={classes.toolbar}>
+                  <IconButton onClick={closeModal} size="large">
+                    <CloseIcon />
+                  </IconButton>
+                </Toolbar>
               </div>
-              <div className={classes.editorContainer}>
-                <div className={classes.resultHeader}>
-                  <Typography variant="h6">{t('Result')}</Typography>
-                  <Toolbar className={classes.toolbar}>
-                    <IconButton onClick={this.closeModal} size="large">
-                      <CloseIcon />
-                    </IconButton>
-                  </Toolbar>
-                </div>
-                <AceEditor
-                  mode="json"
-                  theme="twilight"
-                  fontSize={14}
-                  showPrintMargin={true}
-                  showGutter={true}
-                  highlightActiveLine={true}
-                  value={this.handleCheckFunc()}
-                  width="100%"
-                  height="calc(100% - 40px)"
-                  readOnly={true}
-                  wrapEnabled={true}
-                  setOptions={{
-                    enableBasicAutocompletion: true,
-                    enableLiveAutocompletion: true,
-                    enableSnippets: true,
-                    showLineNumbers: true,
-                    tabSize: 4
-                  }}
-                />
-              </div>
-            </LegacySplitPane>
-          </div>
-        </Dialog>
-      </div>
-    );
-  }
-}
+              <AceEditor
+                mode="json"
+                theme="twilight"
+                fontSize={14}
+                showPrintMargin={true}
+                showGutter={true}
+                highlightActiveLine={true}
+                value={handleCheckFunc()}
+                width="100%"
+                height="calc(100% - 40px)"
+                readOnly={true}
+                wrapEnabled={true}
+                setOptions={{
+                  enableBasicAutocompletion: true,
+                  enableLiveAutocompletion: true,
+                  enableSnippets: true,
+                  showLineNumbers: true,
+                  tabSize: 4
+                }}
+              />
+            </div>
+          </LegacySplitPane>
+        </div>
+      </Dialog>
+    </div>
+  );
+};
 
 const mapStateToProps = ({ debugTools: { checkValidFuncs } }: any) => ({
   checkValidFuncs

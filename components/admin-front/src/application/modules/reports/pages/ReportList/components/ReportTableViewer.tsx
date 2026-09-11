@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactResizeDetector from 'react-resize-detector';
+import { useResizeDetector } from 'react-resize-detector';
 import { DataSheetGrid, keyColumn, textColumn } from 'react-datasheet-grid';
 
 import EmptyPage from 'components/EmptyPage';
@@ -35,6 +35,8 @@ const ReportTableViewer = ({ reportData: [, { fields, rows } = {}] = [undefined,
     setHeigh(containerRef.current.clientHeight);
   }, []);
 
+  useResizeDetector({ handleHeight: true, targetRef: containerRef, onResize });
+
   if (!columns || !Array.isArray(rows)) {
     return <EmptyPage title="Звіт не містить даних" description="" />;
   }
@@ -48,7 +50,6 @@ const ReportTableViewer = ({ reportData: [, { fields, rows } = {}] = [undefined,
         height={height}
         disableExpandSelection={true}
       />
-      <ReactResizeDetector handleHeight={true} onResize={onResize} />
     </div>
   );
 };

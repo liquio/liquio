@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
 import PerfectScrollbar from 'react-perfect-scrollbar';
-import ReactResizeDetector from 'react-resize-detector';
+import { useResizeDetector } from 'react-resize-detector';
 import withStyles from '@mui/styles/withStyles';
 import MobileDetect from 'mobile-detect';
 import 'react-perfect-scrollbar/dist/css/styles.css';
@@ -30,70 +30,63 @@ interface ScrollbarProps {
   [key: string]: unknown;
 }
 
-interface ScrollbarState {
-  isMobile: boolean;
-}
+// `react-resize-detector` v4's `<ReactResizeDetector>` render-prop component
+// (which auto-detected its nearest DOM ancestor via `ReactDOM.findDOMNode`)
+// was removed under React 19 — `findDOMNode` no longer exists. Converted
+// from a class component to a function component so the replacement
+// `useResizeDetector()` hook can be used; its `ref` is wired into
+// `PerfectScrollbar`'s own `containerRef` prop (the raw scroll-container
+// DOM node it already exposes for exactly this purpose), preserving the
+// same "observe the scroll container's own size" behavior as before.
+const Scrollbar = ({ children, classes, options, actions, saveRef, isMainScrollbar, ...rest }: ScrollbarProps) => {
+  const [isMobile] = React.useState(() => !!md.mobile());
+  const scrollBarRef = React.useRef<(PerfectScrollbar & { updateScroll: () => void }) | null>(null);
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-class Scrollbar extends React.Component<ScrollbarProps, ScrollbarState> {
-  scrollBarRef: (PerfectScrollbar & { props?: { isMainScrollbar?: boolean } }) | null = null;
-  timeout: ReturnType<typeof setTimeout> | undefined;
+  const onResize = React.useCallback(() => scrollBarRef.current && scrollBarRef.current.updateScroll(), []);
 
-  constructor(props: ScrollbarProps) {
-    super(props);
-    this.state = {
-      isMobile: !!md.mobile(),
-    };
-  }
+  const { ref: resizeRef } = useResizeDetector({ handleHeight: true, onResize });
 
-  onResize = () => this.scrollBarRef && this.scrollBarRef.updateScroll();
-
-  updateScrollOnSafari = () => {
+  const updateScrollOnSafari = React.useCallback(() => {
     const isSafari =
       (window.navigator.userAgent || '').toLowerCase().indexOf('safari') !==
         -1 || false;
-    const { isMobile } = this.state;
 
     if (!isSafari || isMobile) return;
 
-    clearTimeout(this.timeout);
+    clearTimeout(timeoutRef.current);
 
-    this.timeout = setTimeout(
-      () => this.scrollBarRef && this.scrollBarRef.updateScroll(),
+    timeoutRef.current = setTimeout(
+      () => scrollBarRef.current && scrollBarRef.current.updateScroll(),
       200,
     );
-  };
+  }, [isMobile]);
 
-  render() {
-    const { children, classes, options, ...rest } = this.props;
-
-    return (
-      <PerfectScrollbar
-        className={classes.hideDefaultScroll}
-        ref={(ref) => {
-          this.scrollBarRef = ref;
-        }}
-        onYReachEnd={this.updateScrollOnSafari}
-        options={{ minScrollbarLength: 50, ...options }}
-        {...(rest as unknown as Record<string, unknown>)}
-      >
-        {children}
-        <ReactResizeDetector handleHeight={true} onResize={this.onResize} />
-      </PerfectScrollbar>
-    );
-  }
-
-  componentDidMount() {
-    const { actions, saveRef } = this.props;
-
-    if (this.scrollBarRef && this.scrollBarRef?.props?.isMainScrollbar) {
-      actions.setMainScrollbar('mainScrollbar', this.scrollBarRef);
+  React.useEffect(() => {
+    if (scrollBarRef.current && isMainScrollbar) {
+      actions.setMainScrollbar('mainScrollbar', scrollBarRef.current);
     }
 
-    if (this.scrollBarRef && saveRef) {
-      actions.setMainScrollbar(saveRef, this.scrollBarRef);
+    if (scrollBarRef.current && saveRef) {
+      actions.setMainScrollbar(saveRef, scrollBarRef.current);
     }
-  }
-}
+  }, []);
+
+  return (
+    <PerfectScrollbar
+      className={classes.hideDefaultScroll}
+      ref={(ref: (PerfectScrollbar & { updateScroll: () => void }) | null) => {
+        scrollBarRef.current = ref;
+      }}
+      containerRef={resizeRef}
+      onYReachEnd={updateScrollOnSafari}
+      options={{ minScrollbarLength: 50, ...options }}
+      {...(rest as unknown as Record<string, unknown>)}
+    >
+      {children}
+    </PerfectScrollbar>
+  );
+};
 
 const mapStateToProps = ({ app: { mainScrollbar } }: { app: { mainScrollbar: unknown } }) => ({ mainScrollbar });
 const mapDispatchToProps = (dispatch: Dispatch) => ({

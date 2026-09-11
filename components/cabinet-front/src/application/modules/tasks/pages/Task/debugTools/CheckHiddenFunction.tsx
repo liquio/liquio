@@ -8,7 +8,7 @@ import withStyles from '@mui/styles/withStyles';
 import CloseIcon from '@mui/icons-material/Close';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import AceEditor from 'react-ace';
-import ReactResizeDetector from 'react-resize-detector';
+import { useResizeDetector } from 'react-resize-detector';
 import SplitPane from 'react-split-pane';
 
 import evaluate from 'helpers/evaluate';
@@ -49,29 +49,25 @@ const styles = {
 };
 
 const LegacySplitPane = SplitPane as any;
-const LegacyResizeDetector = ReactResizeDetector as any;
 
-class CheckHiddenFunction extends React.Component<any, any> {
-  aceComponentInput: React.RefObject<any>;
-  aceComponentOutput: React.RefObject<any>;
-  aceComponentOriginData: React.RefObject<any>;
+// `react-resize-detector` v4's `<ReactResizeDetector>` render-prop component
+// (which auto-detected its nearest DOM ancestor via `ReactDOM.findDOMNode`)
+// was removed under React 19 — `findDOMNode` no longer exists. Converted
+// from a class to a function component so the replacement
+// `useResizeDetector()` hook can be used, with its `targetRef` pointed at
+// the same `rightContainer` div the old detector auto-measured.
+const CheckHiddenFunction = ({ t, classes, task, checkHiddenFuncs, actions }: any) => {
+  const [open, setOpen] = React.useState(false);
+  const aceComponentInput = React.useRef<any>(null);
+  const aceComponentOutput = React.useRef<any>(null);
+  const aceComponentOriginData = React.useRef<any>(null);
+  const rightContainerRef = React.useRef<HTMLDivElement>(null);
 
-  constructor(props: any) {
-    super(props);
-    this.state = { open: false };
-    this.aceComponentInput = React.createRef();
-    this.aceComponentOutput = React.createRef();
-    this.aceComponentOriginData = React.createRef();
-  }
-
-  handleChangeFunc = (value: string) => {
-    const { actions, task } = this.props;
+  const handleChangeFunc = (value: string) => {
     actions.setCheckHiddenFunc(task.id, value);
   };
 
-  handleCheckFunc = () => {
-    const { task, checkHiddenFuncs } = this.props;
-
+  const handleCheckFunc = () => {
     if (!checkHiddenFuncs[task.id]) {
       return '';
     }
@@ -83,131 +79,127 @@ class CheckHiddenFunction extends React.Component<any, any> {
     return result;
   };
 
-  onResize = () => {
-    this.aceComponentInput.current.editor.resize();
-    this.aceComponentOutput.current.editor.resize();
-    this.aceComponentOriginData.current.editor.resize();
-  };
+  const onResize = React.useCallback(() => {
+    aceComponentInput.current?.editor.resize();
+    aceComponentOutput.current?.editor.resize();
+    aceComponentOriginData.current?.editor.resize();
+  }, []);
 
-  openModal = () => this.setState({ open: true });
+  useResizeDetector({ handleHeight: true, targetRef: rightContainerRef, onResize });
 
-  closeModal = () => this.setState({ open: false });
+  const openModal = () => setOpen(true);
 
-  render() {
-    const { t, classes, task, checkHiddenFuncs } = this.props;
-    const { open } = this.state;
+  const closeModal = () => setOpen(false);
 
-    return (
-      <div className={classes.root}>
-        <LegacySplitPane split="vertical" minSize="50%">
-          <AceEditor
-            ref={this.aceComponentOriginData}
-            mode="json"
-            theme="twilight"
-            fontSize={14}
-            showPrintMargin={true}
-            showGutter={true}
-            highlightActiveLine={true}
-            value={JSON.stringify(task && task.document.data, null, 4)}
-            width="100%"
-            height="100%"
-            readOnly={true}
-            setOptions={{
-              enableBasicAutocompletion: true,
-              enableLiveAutocompletion: true,
-              enableSnippets: true,
-              showLineNumbers: true,
-              tabSize: 4
-            }}
-          />
-          <div className={classes.rightContainer}>
-            <LegacyResizeDetector handleHeight={true} onResize={this.onResize} />
-            <div className={classes.funcContainer}>
-              {t('Function')}
-              <IconButton onClick={this.openModal} className={classes.iconButton} size="large">
-                <FullscreenIcon />
-              </IconButton>
-              <AceEditor
-                ref={this.aceComponentInput}
-                mode="javascript"
-                theme="twilight"
-                fontSize={14}
-                showPrintMargin={true}
-                showGutter={true}
-                highlightActiveLine={true}
-                value={checkHiddenFuncs[task && task.id] || ''}
-                width="100%"
-                height="calc(100% - 24px)"
-                readOnly={false}
-                onChange={this.handleChangeFunc}
-                wrapEnabled={true}
-                setOptions={{
-                  enableBasicAutocompletion: true,
-                  enableLiveAutocompletion: true,
-                  enableSnippets: true,
-                  showLineNumbers: true,
-                  tabSize: 4
-                }}
-              />
-            </div>
-            <div className={classes.funcContainer}>
-              {t('Result')}
-              <AceEditor
-                ref={this.aceComponentOutput}
-                mode="json"
-                theme="twilight"
-                fontSize={14}
-                showPrintMargin={true}
-                showGutter={true}
-                highlightActiveLine={true}
-                value={JSON.stringify(this.handleCheckFunc(), null, 4)}
-                width="100%"
-                height="calc(100% - 18px)"
-                readOnly={false}
-                onChange={this.handleChangeFunc}
-                setOptions={{
-                  enableBasicAutocompletion: true,
-                  enableLiveAutocompletion: true,
-                  enableSnippets: true,
-                  showLineNumbers: true,
-                  tabSize: 4
-                }}
-              />
-            </div>
-          </div>
-        </LegacySplitPane>
-        <Dialog open={open} fullScreen={true} fullWidth={true}>
-          <Toolbar className={classes.toolbar}>
-            <IconButton onClick={this.closeModal} size="large">
-              <CloseIcon />
+  return (
+    <div className={classes.root}>
+      <LegacySplitPane split="vertical" minSize="50%">
+        <AceEditor
+          ref={aceComponentOriginData}
+          mode="json"
+          theme="twilight"
+          fontSize={14}
+          showPrintMargin={true}
+          showGutter={true}
+          highlightActiveLine={true}
+          value={JSON.stringify(task && task.document.data, null, 4)}
+          width="100%"
+          height="100%"
+          readOnly={true}
+          setOptions={{
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true,
+            enableSnippets: true,
+            showLineNumbers: true,
+            tabSize: 4
+          }}
+        />
+        <div className={classes.rightContainer} ref={rightContainerRef}>
+          <div className={classes.funcContainer}>
+            {t('Function')}
+            <IconButton onClick={openModal} className={classes.iconButton} size="large">
+              <FullscreenIcon />
             </IconButton>
-          </Toolbar>
-          <AceEditor
-            mode="javascript"
-            theme="twilight"
-            fontSize={14}
-            showPrintMargin={true}
-            showGutter={true}
-            highlightActiveLine={true}
-            value={checkHiddenFuncs[task.id] || ''}
-            width="100%"
-            height="calc(100% - 18px)"
-            readOnly={false}
-            onChange={this.handleChangeFunc}
-            wrapEnabled={true}
-            setOptions={{
-              enableBasicAutocompletion: true,
-              enableLiveAutocompletion: true,
-              enableSnippets: true,
-              showLineNumbers: true,
-              tabSize: 4
-            }}
-          />
-        </Dialog>
-      </div>
-    );
-  }
-}
+            <AceEditor
+              ref={aceComponentInput}
+              mode="javascript"
+              theme="twilight"
+              fontSize={14}
+              showPrintMargin={true}
+              showGutter={true}
+              highlightActiveLine={true}
+              value={checkHiddenFuncs[task && task.id] || ''}
+              width="100%"
+              height="calc(100% - 24px)"
+              readOnly={false}
+              onChange={handleChangeFunc}
+              wrapEnabled={true}
+              setOptions={{
+                enableBasicAutocompletion: true,
+                enableLiveAutocompletion: true,
+                enableSnippets: true,
+                showLineNumbers: true,
+                tabSize: 4
+              }}
+            />
+          </div>
+          <div className={classes.funcContainer}>
+            {t('Result')}
+            <AceEditor
+              ref={aceComponentOutput}
+              mode="json"
+              theme="twilight"
+              fontSize={14}
+              showPrintMargin={true}
+              showGutter={true}
+              highlightActiveLine={true}
+              value={JSON.stringify(handleCheckFunc(), null, 4)}
+              width="100%"
+              height="calc(100% - 18px)"
+              readOnly={false}
+              onChange={handleChangeFunc}
+              setOptions={{
+                enableBasicAutocompletion: true,
+                enableLiveAutocompletion: true,
+                enableSnippets: true,
+                showLineNumbers: true,
+                tabSize: 4
+              }}
+            />
+          </div>
+        </div>
+      </LegacySplitPane>
+      <Dialog open={open} fullScreen={true} fullWidth={true}>
+        <Toolbar className={classes.toolbar}>
+          <IconButton onClick={closeModal} size="large">
+            <CloseIcon />
+          </IconButton>
+        </Toolbar>
+        <AceEditor
+          mode="javascript"
+          theme="twilight"
+          fontSize={14}
+          showPrintMargin={true}
+          showGutter={true}
+          highlightActiveLine={true}
+          value={checkHiddenFuncs[task.id] || ''}
+          width="100%"
+          height="calc(100% - 18px)"
+          readOnly={false}
+          onChange={handleChangeFunc}
+          wrapEnabled={true}
+          setOptions={{
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true,
+            enableSnippets: true,
+            showLineNumbers: true,
+            tabSize: 4
+          }}
+        />
+      </Dialog>
+    </div>
+  );
+};
 
 const mapStateToProps = ({ debugTools: { checkHiddenFuncs } }: any) => ({
   checkHiddenFuncs
