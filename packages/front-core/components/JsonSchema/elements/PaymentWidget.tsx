@@ -180,7 +180,6 @@ interface PaymentWidgetProps extends WithStyles<typeof styles> {
   finalText?: string | boolean;
   allowMethods?: string[];
   defaultMethod?: string;
-  currencyCode?: string;
   rootPath?: unknown;
   template: { jsonSchema: Record<string, unknown> };
   task?: { finished?: boolean; documentId?: unknown };
@@ -218,8 +217,7 @@ class PaymentWidget extends React.Component<PaymentWidgetProps, PaymentWidgetSta
     commitAfterPayment: false,
     finalText: false,
     allowMethods: ['googlePay', 'applePay', 'privatPay', 'card'],
-    defaultMethod: 'card',
-    currencyCode: 'UAH'
+    defaultMethod: 'card'
   };
 
   ugbToken: unknown;
@@ -844,8 +842,7 @@ class PaymentWidget extends React.Component<PaymentWidgetProps, PaymentWidgetSta
       actions,
       importActions,
       rootDocument: { id },
-      paymentControlPath,
-      currencyCode = 'UAH'
+      paymentControlPath
     } = this.props;
     const { applepay, gpay } = this.state;
 
@@ -896,7 +893,7 @@ class PaymentWidget extends React.Component<PaymentWidgetProps, PaymentWidgetSta
           }
         ],
         transactionInfo: {
-          currencyCode,
+          currencyCode: 'UAH',
           totalPriceStatus: 'FINAL',
           totalPrice: String(this.getAmount())
         }
@@ -931,7 +928,7 @@ class PaymentWidget extends React.Component<PaymentWidgetProps, PaymentWidgetSta
     } else if (applepay && window.ApplePaySession) {
       const paymentRequest = {
         countryCode: 'UA',
-        currencyCode,
+        currencyCode: 'UAH',
         supportedNetworks: ['visa', 'masterCard'],
         merchantCapabilities: ['supports3DS'],
         total: {

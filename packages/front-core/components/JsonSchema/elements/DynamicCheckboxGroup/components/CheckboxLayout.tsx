@@ -25,7 +25,19 @@ const styles = () => ({
     marginBottom: '0.35em',
   },
   labelCheckbox: {
-    padding: '5px 0'
+    padding: '5px 0',
+    minWidth: 0,
+    maxWidth: '100%',
+    marginLeft: 0,
+    marginRight: 0,
+    '& .MuiCheckbox-root': {
+      flexShrink: 0
+    },
+    '& .MuiFormControlLabel-label': {
+      minWidth: 0,
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere'
+    }
   }
 });
 

@@ -47,13 +47,15 @@ const styles = (theme: Theme) => ({
     marginBottom: 10,
   },
   actionButton: {
-    ...((theme as unknown as { paymentSuccessButton?: object }).paymentSuccessButton || {}),
+    ...((theme as unknown as { paymentSuccessButton?: object })
+      .paymentSuccessButton || {}),
   },
 });
 
 interface PaymentLayoutProps extends WithStyles<typeof styles> {
   t: Translate;
   paymentValue?: string | number;
+  recipients?: { currency?: string } | Array<{ currency?: string }>;
   loading?: boolean;
   loadingValue?: boolean;
   paymentAction: () => void;
@@ -70,56 +72,63 @@ const PaymentLayout = ({
   t,
   classes,
   paymentValue = 0,
+  recipients,
   loading = false,
   loadingValue = false,
   paymentAction,
   isSuccess = false,
   ...rest
-}: PaymentLayoutProps) => (
-  <>
-    <div
-      className={classNames({
-        [classes.wrapper]: true,
-        [classes.progressLine]: loading,
-      })}
-    >
-      <span className={classNames(classes.field, classes.flex2)}>
-        <StringElement
-          {...rest}
-          description={t('amountText')}
-          readOnly={'true'}
-          required={true}
-          value={String(paymentValue)}
-          InputProps={{
-            // MUI requires a `position` prop on InputAdornment (missing here in the
-            // original too); omitting it still renders, just without MUI's position-based
-            // styling/warning suppressed. Preserved as-is via an empty prop spread.
-            endAdornment: <InputAdornment {...({} as { position: 'start' | 'end' })}>{t('Currency')}</InputAdornment>,
-          }}
-        />
-        {loadingValue && (
-          <CircularProgress size={24} className={classes.buttonProgress} />
-        )}
-      </span>
-      <Button
-        onClick={paymentAction}
-        color="primary"
-        variant="contained"
-        className={classNames({
-          [classes.flex1]: true,
-          [classes.actionButton]: isSuccess,
-        })}
-        disabled={loadingValue || loading || isSuccess}
-        aria-label={isSuccess ? t('Paid') : t('MakePayment')}
-        startIcon={isSuccess ? <CheckRoundedIcon /> : <CreditCardIcon />}
-      >
-        {isSuccess ? t('Paid') : t('MakePayment')}
-      </Button>
-    </div>
+}: PaymentLayoutProps) => {
+  const currency = (Array.isArray(recipients) ? recipients[0] : recipients)
+    ?.currency;
 
-    <ProgressLine loading={loading} />
-  </>
-);
+  return (
+    <>
+      <div
+        className={classNames({
+          [classes.wrapper]: true,
+          [classes.progressLine]: loading,
+        })}
+      >
+        <span className={classNames(classes.field, classes.flex2)}>
+          <StringElement
+            {...rest}
+            description={t('amountText')}
+            readOnly={'true'}
+            required={true}
+            value={String(paymentValue)}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  {currency || t('Currency')}
+                </InputAdornment>
+              ),
+            }}
+          />
+          {loadingValue && (
+            <CircularProgress size={24} className={classes.buttonProgress} />
+          )}
+        </span>
+        <Button
+          onClick={paymentAction}
+          color="primary"
+          variant="contained"
+          className={classNames({
+            [classes.flex1]: true,
+            [classes.actionButton]: isSuccess,
+          })}
+          disabled={loadingValue || loading || isSuccess}
+          aria-label={isSuccess ? t('Paid') : t('MakePayment')}
+          startIcon={isSuccess ? <CheckRoundedIcon /> : <CreditCardIcon />}
+        >
+          {isSuccess ? t('Paid') : t('MakePayment')}
+        </Button>
+      </div>
+
+      <ProgressLine loading={loading} />
+    </>
+  );
+};
 
 const translated = translate('Elements')(PaymentLayout);
 const styled = withStyles(styles)(translated);

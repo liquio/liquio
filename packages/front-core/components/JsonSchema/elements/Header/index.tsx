@@ -8,7 +8,7 @@ const headerStyles: Record<string, React.CSSProperties> = {
     fontSize: 24,
     lineHeight: '26px',
     color: '#000000',
-    marginBottom: 40,
+    marginBottom: '40px',
     maxWidth: 640,
   },
   h4: {
@@ -16,7 +16,7 @@ const headerStyles: Record<string, React.CSSProperties> = {
     fontSize: 20,
     lineHeight: '26px',
     color: '#000000',
-    marginBottom: 40,
+    marginBottom: '40px',
     maxWidth: 640,
   },
   h5: {
@@ -24,7 +24,7 @@ const headerStyles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     lineHeight: '18px',
     color: '#000000',
-    marginBottom: 40,
+    marginBottom: '40px',
     maxWidth: 640,
   },
   h6: {
@@ -32,7 +32,7 @@ const headerStyles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     lineHeight: '18px',
     color: '#000000',
-    marginBottom: 40,
+    marginBottom: '40px',
     maxWidth: 640,
   },
   noMargin: {

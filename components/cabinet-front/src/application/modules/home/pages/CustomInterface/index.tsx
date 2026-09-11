@@ -24,6 +24,7 @@ import { requestExternalData } from 'application/actions/externalReader';
 import { history } from 'store';
 import processList from 'services/processList';
 import checkAccess from 'helpers/checkAccess';
+import { resolveLocalizationText } from 'helpers/localization';
 
 const PageNotFound = PageNotFoundRaw as unknown as React.ComponentType<Record<string, unknown>>;
 const EmptyPage = EmptyPageRaw as unknown as React.ComponentType<Record<string, unknown>>;
@@ -56,6 +57,7 @@ interface DebugTools {
 }
 
 interface CustomInterfaceProps {
+  localizationTexts?: Array<{ key?: string; value?: unknown; localizationLanguageCode?: string }>;
   actions: {
     getInterface: (route: string) => Promise<CustomInterfaceEntry[]>;
     setCustomInterfaceData: (data: unknown) => unknown;
@@ -71,7 +73,8 @@ const CustomInterface = ({
   actions = {} as CustomInterfaceProps['actions'],
   location = {} as CustomInterfaceProps['location'],
   userInfo = {} as UserInfo,
-  debugTools = {} as DebugTools
+  debugTools = {} as DebugTools,
+  localizationTexts = []
 }: CustomInterfaceProps) => {
   // Read at call time rather than module scope: `components/JsonSchema` is
   // a directory with a known circular-import history elsewhere in this
@@ -378,8 +381,8 @@ const CustomInterface = ({
 
       return {
         shown: evaluate(shownProp as string, documentData) === true || emptyResponse,
-        title: titleProp,
-        description,
+        title: resolveLocalizationText(titleProp, { localizationTexts }) as string | undefined,
+        description: resolveLocalizationText(description, { localizationTexts }) as string | undefined,
         emptyIcon: icon
       };
     } catch {
@@ -390,7 +393,7 @@ const CustomInterface = ({
         emptyIcon: ''
       };
     }
-  }, [showEmptyScreen, documentData]);
+  }, [showEmptyScreen, documentData, customInterface, localizationTexts]);
 
   const Icon = emptyIcon
     ? () => <img src={`/img/emptyScreens/${emptyIcon}.svg`} alt={emptyIcon} />
@@ -527,11 +530,13 @@ const CustomInterface = ({
 };
 
 interface CustomInterfaceState {
+  app: { localizationTexts?: CustomInterfaceProps['localizationTexts'] };
   auth: { info: UserInfo; userUnits: unknown[] };
   debugTools: DebugTools;
 }
 
-const mapStateToProps = ({ auth: { info, userUnits }, debugTools }: CustomInterfaceState) => ({
+const mapStateToProps = ({ auth: { info, userUnits }, debugTools, app: { localizationTexts } }: CustomInterfaceState) => ({
+  localizationTexts,
   userInfo: {
     ...info,
     userUnits
