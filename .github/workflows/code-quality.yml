@@ -147,6 +147,11 @@ jobs:
         run: npm ci
         working-directory: ${{ matrix.path }}
 
+      - name: Typecheck frontend and shared source
+        if: matrix.name == 'admin-front' || matrix.name == 'cabinet-front'
+        run: npm run typecheck && npm run lint:types
+        working-directory: ${{ matrix.path }}
+
       - name: Check for a unit test script
         id: has-test
         run: |
@@ -162,4 +167,9 @@ jobs:
       - name: Unit test ${{ matrix.name }}
         if: steps.has-test.outputs.run == 'true'
         run: npm run test
+        working-directory: ${{ matrix.path }}
+
+      - name: Build frontend
+        if: matrix.name == 'admin-front' || matrix.name == 'cabinet-front'
+        run: npm run build
         working-directory: ${{ matrix.path }}

@@ -40,6 +40,27 @@ export class MessageTemplateController extends Controller {
       return this.responseError(res, error);
     }
 
+    const { search, page, count } = req.query;
+    if (search !== undefined || page !== undefined || count !== undefined) {
+      const pageNumber = Number(page ?? 1);
+      const pageSize = Number(count ?? 10);
+      if (
+        (search !== undefined && typeof search !== 'string') ||
+        !Number.isSafeInteger(pageNumber) || pageNumber < 1 ||
+        !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100
+      ) {
+        return this.responseError(res, new Error('Invalid pagination or search parameters'), 400);
+      }
+      const query = String(search ?? '').trim().toLocaleLowerCase();
+      const filtered = messageTemplates.filter((template) =>
+        [template.template_id, template.title, template.type, template.text].some((value) =>
+          String(value ?? '').toLocaleLowerCase().includes(query),
+        ),
+      ).sort((a, b) => Number(b.template_id) - Number(a.template_id));
+      const offset = (pageNumber - 1) * pageSize;
+      return this.responseData(res, { items: filtered.slice(offset, offset + pageSize), total: filtered.length });
+    }
+
     this.responseData(res, messageTemplates);
   }
 

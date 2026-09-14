@@ -133,9 +133,9 @@ function reactVirtualizedPropTypes() {
 
 function postcssBrowserCompatibility() {
   const stubs = {
-    fs: resolvePath('../../packages/front-core/vite-browser-stubs/postcss-fs.js'),
-    'source-map-js': resolvePath('../../packages/front-core/vite-browser-stubs/source-map-js.js'),
-    url: resolvePath('../../packages/front-core/vite-browser-stubs/postcss-url.js')
+    fs: resolvePath('../../packages/front-core/vite-browser-stubs/postcss-fs.ts'),
+    'source-map-js': resolvePath('../../packages/front-core/vite-browser-stubs/source-map-js.ts'),
+    url: resolvePath('../../packages/front-core/vite-browser-stubs/postcss-url.ts')
   };
 
   return {

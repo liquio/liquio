@@ -90,3 +90,9 @@ This plugin implements PAYONE's redirect / hosted-checkout flow only — it does
 ## License
 
 SEE LICENSE IN ../../LICENSE.md
+
+## Returning to the originating cabinet page
+
+The cabinet `payment` control sends `extraData.returnPath` (pathname, query and fragment) when initializing checkout. When `paymentSystemParams.frontRedirectUrl` specifies an HTTP(S) cabinet URL, the provider accepts root-relative paths and stores the destination in the host payment transaction's `extraData`. This automatically uses transaction binding for that checkout, even when `useTransactionBinding` is not set, and requires the host `paymentTransactions` service and its database table.
+
+PAYONE still returns to the configured backend callback. After checking payment status, the provider resolves the stored path against the configured cabinet origin. The host must have `doRedirect: true` to issue the browser redirect. Missing or invalid paths retain the existing `frontRedirectUrl` fallback; callback-supplied return paths are ignored. No frontend origin is trusted, and the return path is not sent to PAYONE.
