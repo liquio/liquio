@@ -245,6 +245,17 @@ export default defineConfig({
     }
   },
   worker: {
+    // Vite bundles workers separately from build.rollupOptions, where the
+    // polyfill plugin installs Rolldown's global injections.
+    rolldownOptions: {
+      transform: {
+        inject: {
+          Buffer: 'vite-plugin-node-polyfills/shims/buffer',
+          global: 'vite-plugin-node-polyfills/shims/global',
+          process: 'vite-plugin-node-polyfills/shims/process'
+        }
+      }
+    },
     plugins: () => [
       webpackModuleRoots(),
       muiBrowserEntrypoints(),
