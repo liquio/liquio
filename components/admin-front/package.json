@@ -1,6 +1,6 @@
 {
   "name": "liquio-admin-front",
-  "version": "0.1.34",
+  "version": "0.1.35",
   "engines": {
     "node": "24"
   },
