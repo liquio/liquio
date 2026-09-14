@@ -20,7 +20,6 @@ import { getCurrentLanguageCode, getTranslationCandidates } from 'helpers/locali
 import storage from 'helpers/storage';
 import CategoryHeader from 'layouts/components/Navigator/CategoryHeader';
 import Item from 'layouts/components/Navigator/Item';
-import CreateTaskButton from 'modules/tasks/components/CreateTaskButton';
 
 const styles = (theme: any) => ({
   list: {

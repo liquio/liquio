@@ -130,7 +130,7 @@ const HeaderInfo = ({ t, classes, template, task, children }: HeaderInfoProps) =
             // wrapping fragment (which, as JSX shorthand `<>`, can't even
             // accept a `key` prop) — a pre-existing quirk (React warns about
             // the missing key on the fragment itself), preserved exactly.
-            <React.Fragment>
+            <React.Fragment key={index}>
               <ListItem key={index} alignItems="flex-start" className={classes.listItem}>
                 <ListItemText
                   primary={

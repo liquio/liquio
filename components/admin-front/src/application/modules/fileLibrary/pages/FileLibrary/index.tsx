@@ -189,6 +189,7 @@ const FileLibrary = ({ t, title, location, history, dispatch, folderPath, units 
     try {
       await navigator.clipboard.writeText(url);
       setPublicLinkCopied(true);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setPublicLinkCopied(false);
     }

@@ -1,7 +1,5 @@
 import React from 'react';
 
-import { ReactComponent as AccessibilityNewOutlinedIcon } from 'assets/img/modulesIcons/accessibility-outlined.svg';
-
 const UserListPage = React.lazy(() => import('modules/users/pages/UserList'));
 
 const access = {

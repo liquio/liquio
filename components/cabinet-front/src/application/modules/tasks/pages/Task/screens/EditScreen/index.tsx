@@ -1441,6 +1441,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
         if (updateSigners) {
           await actions.putTaskSigners(taskId, updateSigners);
         }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         setBusy(false);
         return;
@@ -1603,6 +1604,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
           : this.storeInterval;
 
       return interval;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       return this.storeInterval;
     }
@@ -1754,6 +1756,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
       if (updateSigners) {
         await actions.putTaskSigners(taskId, updateSigners);
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setBusy(false);
       return;

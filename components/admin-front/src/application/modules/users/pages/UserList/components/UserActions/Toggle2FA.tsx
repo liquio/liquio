@@ -37,6 +37,7 @@ const Toggle2FA = ({ user, load }: Toggle2FAProps) => {
       // close at all). Removed since TS can't compile a reference to an
       // undeclared identifier; behavior is otherwise unchanged (the error
       // was always caught and ignored, never surfaced to the user).
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setLoading(false);
     }

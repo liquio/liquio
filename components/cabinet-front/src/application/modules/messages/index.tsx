@@ -2,7 +2,6 @@ import moment from 'moment';
 
 import MessagePage from 'modules/messages/pages/Message';
 import MessageListPage from 'modules/messages/pages/MessageList';
-import MessagesNavigation from 'modules/messages/components/Navigation';
 import { getConfig } from 'core/helpers/configLoader';
 
 export default function getMessagesModule() {

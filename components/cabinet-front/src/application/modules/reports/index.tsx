@@ -1,6 +1,3 @@
-import React from 'react';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-
 import ReportListPage from 'application/modules/reports/pages/ReportList';
 import { getConfig } from 'core/helpers/configLoader';
 

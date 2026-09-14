@@ -120,6 +120,7 @@ const ReIndexMenuItem = ({
               break;
             }
           }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
           actions.addMessage(
             new Message(label + 'Failed', 'error', undefined, registerKey as never),

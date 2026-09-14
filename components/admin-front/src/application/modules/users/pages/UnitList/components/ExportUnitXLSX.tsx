@@ -70,6 +70,7 @@ const ExportUnitXLSX = ({ t, actions, rowsSelected, addError }: ExportUnitXLSXPr
       }
 
       buildExcelFile(responseData);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       addError(new Error('ExportErrorXLSX'));
     } finally {

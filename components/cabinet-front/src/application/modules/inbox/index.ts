@@ -1,6 +1,5 @@
 import InboxFilesPage from './pages/InboxFiles';
 import InboxFilesListPage from './pages/InboxFilesList';
-import InboxNavigation from './components/Navigation';
 
 export default {
   routes: [

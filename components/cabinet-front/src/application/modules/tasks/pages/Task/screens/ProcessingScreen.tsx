@@ -36,6 +36,7 @@ const ProcessingScreen = ({
 
       await sleep(INTERVAL);
       update();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       setTaskScreen(screens.EDIT);
     }

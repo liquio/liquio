@@ -1,6 +1,4 @@
 import React from 'react';
-
-import { ReactComponent as DoneAllIcon } from 'assets/img/modulesIcons/done-all-outlined.svg';
 import workflowEndPoint from 'application/endPoints/workflow';
 import workflowDraftEndPoint from 'application/endPoints/workflowDraft';
 import workflowTrashEndPoint from 'application/endPoints/workflowTrash';

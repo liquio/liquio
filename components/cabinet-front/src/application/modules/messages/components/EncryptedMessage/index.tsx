@@ -53,6 +53,7 @@ const EncryptedMessage = ({
         const result = await signer.execute('ArrayToString', b64text);
         setDecryptedText(result as string);
         onUpdate && onUpdate();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         // nothing to do
       }
