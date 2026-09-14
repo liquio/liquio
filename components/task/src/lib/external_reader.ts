@@ -198,9 +198,9 @@ export class ExternalReader {
     nonUserFilter = {},
     extraParams: any = {},
     userUnits = { head: [], member: [] },
-    enabledMocksHeader,
-    token,
-    customTimeout,
+    enabledMocksHeader?,
+    token?,
+    customTimeout?,
   ) {
     // Define user filter.
     const { ipn, edrpou } = user;

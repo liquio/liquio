@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import nock from 'nock';
 
-import { DocumentBusiness } from './document';
+import { DocumentBusiness } from './index';
 
 describe('DocumentBusiness', () => {
   global.config = {
@@ -43,7 +43,7 @@ describe('DocumentBusiness', () => {
       const data = 'test data';
       const expectedHash = crypto.createHash('sha512').update(data).digest('hex');
 
-      const result = documentBusiness.getSha512Hash(data);
+      const result = documentBusiness.signing.getSha512Hash(data);
 
       expect(result).toBe(expectedHash);
     });
@@ -53,13 +53,13 @@ describe('DocumentBusiness', () => {
       const hmacSecret = 'secret';
       const expectedHash = crypto.createHmac('sha512', hmacSecret).update(data).digest('hex');
 
-      const result = documentBusiness.getSha512Hash(data, { hmac: hmacSecret });
+      const result = documentBusiness.signing.getSha512Hash(data, { hmac: hmacSecret });
 
       expect(result).toBe(expectedHash);
     });
 
     it('should throw an error if data is not provided', () => {
-      expect(() => (documentBusiness.getSha512Hash as any)()).toThrow();
+      expect(() => (documentBusiness.signing.getSha512Hash as any)()).toThrow();
     });
   });
 
@@ -107,7 +107,7 @@ describe('DocumentBusiness', () => {
       nock('https://example.com').get('/download/test-file-id').matchHeader('Authorization', 'Bearer token').reply(200, mockFileContent);
 
       const document = { fileId: 'default-file-id' };
-      const result = await documentBusiness.getFileHash(document, fileId);
+      const result = await documentBusiness.signing.getFileHash(document, fileId);
 
       expect(result).toBe(expectedHash);
       expect(documentBusiness.storageService.provider.downloadFileRequestOptions).toHaveBeenCalledWith(fileId);
@@ -141,7 +141,7 @@ describe('DocumentBusiness', () => {
       nock('https://example.com').get('/download/document-file-id').reply(200, mockFileContent);
 
       const document = { fileId: documentFileId };
-      const result = await documentBusiness.getFileHash(document);
+      const result = await documentBusiness.signing.getFileHash(document);
 
       expect(result).toBe(expectedHash);
       expect(documentBusiness.storageService.provider.downloadFileRequestOptions).toHaveBeenCalledWith(documentFileId);
@@ -166,7 +166,7 @@ describe('DocumentBusiness', () => {
       };
 
       const document = { fileId: 'default-file-id' };
-      const result = await documentBusiness.getFileHash(document, fileId);
+      const result = await documentBusiness.signing.getFileHash(document, fileId);
 
       expect(result).toBeUndefined();
       expect(global.log.save).toHaveBeenCalledWith('get-file-hash-options-error', expect.objectContaining({ fileId }));
@@ -180,7 +180,7 @@ describe('DocumentBusiness', () => {
       };
 
       const document = {}; // No fileId
-      const result = await documentBusiness.getFileHash(document);
+      const result = await documentBusiness.signing.getFileHash(document);
 
       expect(result).toBeUndefined();
       expect(global.log.save).toHaveBeenCalledWith(
@@ -211,7 +211,7 @@ describe('DocumentBusiness', () => {
 
       const document = { fileId: 'default-file-id' };
 
-      await expect(documentBusiness.getFileHash(document, fileId)).rejects.toThrow();
+      await expect(documentBusiness.signing.getFileHash(document, fileId)).rejects.toThrow();
     });
 
     it('should calculate hash for empty file content', async () => {
@@ -234,7 +234,7 @@ describe('DocumentBusiness', () => {
       nock('https://example.com').get('/download/empty-file-id').reply(200, emptyBuffer);
 
       const document = { fileId: 'default-file-id' };
-      const result = await documentBusiness.getFileHash(document, fileId);
+      const result = await documentBusiness.signing.getFileHash(document, fileId);
 
       expect(result).toBe(expectedHash);
       expect(global.log.save).toHaveBeenCalledWith(
@@ -266,7 +266,7 @@ describe('DocumentBusiness', () => {
 
       const document = { fileId: 'default-file-id' };
 
-      await expect(documentBusiness.getFileHash(document, fileId)).rejects.toThrow();
+      await expect(documentBusiness.signing.getFileHash(document, fileId)).rejects.toThrow();
     });
 
     it('should handle different file content types correctly', async () => {
@@ -289,7 +289,7 @@ describe('DocumentBusiness', () => {
       nock('https://example.com').get('/download/binary-file-id').reply(200, mockBinaryContent);
 
       const document = { fileId: 'default-file-id' };
-      const result = await documentBusiness.getFileHash(document, fileId);
+      const result = await documentBusiness.signing.getFileHash(document, fileId);
 
       expect(result).toBe(expectedHash);
     });
@@ -338,7 +338,7 @@ describe('DocumentBusiness', () => {
       // Mock the HTTP request using nock
       nock('https://example.com').get('/download/test-file-id').matchHeader('Authorization', 'Bearer token').reply(200, mockFileContent);
 
-      const result = await documentBusiness.getFileBase64(fileId);
+      const result = await documentBusiness.signing.getFileBase64(fileId);
 
       expect(result).toBe(expectedBase64);
       expect(documentBusiness.storageService.provider.downloadFileRequestOptions).toHaveBeenCalledWith(fileId);
@@ -362,7 +362,7 @@ describe('DocumentBusiness', () => {
 
       nock('https://example.com').get('/download/empty-file-id').reply(200, emptyBuffer);
 
-      const result = await documentBusiness.getFileBase64(fileId);
+      const result = await documentBusiness.signing.getFileBase64(fileId);
 
       expect(result).toBe(expectedBase64);
     });
@@ -386,7 +386,7 @@ describe('DocumentBusiness', () => {
 
       nock('https://example.com').get('/download/binary-file-id').reply(200, mockBinaryContent);
 
-      const result = await documentBusiness.getFileBase64(fileId);
+      const result = await documentBusiness.signing.getFileBase64(fileId);
 
       expect(result).toBe(expectedBase64);
     });
@@ -410,7 +410,7 @@ describe('DocumentBusiness', () => {
 
       nock('https://example.com').get('/download/large-file-id').reply(200, largeContent);
 
-      const result = await documentBusiness.getFileBase64(fileId);
+      const result = await documentBusiness.signing.getFileBase64(fileId);
 
       expect(result).toBe(expectedBase64);
     });
@@ -426,7 +426,7 @@ describe('DocumentBusiness', () => {
       };
 
       // The method doesn't check for null downloadFileRequestOptions, so it should throw
-      await expect(documentBusiness.getFileBase64(fileId)).rejects.toThrow();
+      await expect(documentBusiness.signing.getFileBase64(fileId)).rejects.toThrow();
     });
 
     it('should handle network errors gracefully', async () => {
@@ -446,7 +446,7 @@ describe('DocumentBusiness', () => {
       // Mock HTTP request to simulate transport/server failure.
       nock('https://example.com').get('/download/error-file-id').reply(503, { error: 'Network error' });
 
-      await expect(documentBusiness.getFileBase64(fileId)).rejects.toThrow();
+      await expect(documentBusiness.signing.getFileBase64(fileId)).rejects.toThrow();
     });
 
     it('should handle 404 errors', async () => {
@@ -466,7 +466,7 @@ describe('DocumentBusiness', () => {
       // Mock HTTP request to return 404
       nock('https://example.com').get('/download/not-found-file-id').reply(404);
 
-      await expect(documentBusiness.getFileBase64(fileId)).rejects.toThrow();
+      await expect(documentBusiness.signing.getFileBase64(fileId)).rejects.toThrow();
     });
 
     it('should handle text file content correctly', async () => {
@@ -488,7 +488,7 @@ describe('DocumentBusiness', () => {
 
       nock('https://example.com').get('/download/text-file-id').reply(200, mockFileContent);
 
-      const result = await documentBusiness.getFileBase64(fileId);
+      const result = await documentBusiness.signing.getFileBase64(fileId);
 
       expect(result).toBe(expectedBase64);
       // Verify we can decode it back

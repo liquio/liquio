@@ -97,6 +97,7 @@ describe('External Services', () => {
               fileId: null,
               fileName: null,
               fileType: null,
+              fileSize: null,
               id: '6348ec00-111a-11ef-b95e-15b9ffbcc467',
               isFinal: false,
               number: null,

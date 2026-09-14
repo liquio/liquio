@@ -37,8 +37,8 @@ export class DocumentTemplateModel {
     return new DocumentTemplateEntity({
       id: 1,
       name: 'Test 1',
-      json_schema: {},
-      html_template: '',
+      jsonSchema: '{}',
+      htmlTemplate: '',
     });
   }
 }

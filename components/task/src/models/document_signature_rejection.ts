@@ -1,6 +1,24 @@
 import Sequelize from 'sequelize';
 import { Model } from './model';
-import { DocumentSignatureRejectionEntity } from '../entities/document_signature_rejection';
+import { DocumentSignatureRejectionEntity, DocumentSignatureRejectionEntityOptions } from '../entities/document_signature_rejection';
+
+/** Raw shape of a `document_signature_rejections` row as Sequelize hands it back. */
+export interface DocumentSignatureRejectionRow {
+  id: string;
+  document_id: string;
+  user_id: string;
+  data: Record<string, unknown>;
+  created_by: string;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface CreateDocumentSignatureRejectionParams {
+  documentId: string;
+  userId: string;
+  data: Record<string, unknown>;
+  createdBy: string;
+}
 
 export class DocumentSignatureRejectionModel extends Model {
   private static singleton: DocumentSignatureRejectionModel;
@@ -59,10 +77,10 @@ export class DocumentSignatureRejectionModel extends Model {
 
   /**
    * Get by document ID.
-   * @param {string} documentId Document ID.
-   * @returns {Promise<DocumentSignatureRejectionEntity[]>} Document signature rejections list promise.
+   * @param documentId Document ID.
+   * @returns Document signature rejections list promise.
    */
-  async getByDocumentId(documentId) {
+  async getByDocumentId(documentId: string): Promise<DocumentSignatureRejectionEntity[]> {
     // Get record.
     const documentSignatureRejections = await this.model.findAll({ where: { document_id: documentId } });
 
@@ -76,14 +94,9 @@ export class DocumentSignatureRejectionModel extends Model {
 
   /**
    * Create.
-   * @param {object} data Data object.
-   * @param {number} data.documentId Document ID.
-   * @param {number} data.userId User ID.
-   * @param {string} data.data Data.
-   * @param {string} data.createdBy Created by user ID.
-   * @returns {Promise<DocumentSignatureRejectionEntity>} Created document signature rejection entity promise.
+   * @returns Created document signature rejection entity promise.
    */
-  async create({ documentId, userId, data, createdBy }) {
+  async create({ documentId, userId, data, createdBy }: CreateDocumentSignatureRejectionParams): Promise<DocumentSignatureRejectionEntity> {
     // Prepare record.
     const signatureRejectionModel = this.prepareForModel({ documentId, userId, data, createdBy });
 
@@ -96,28 +109,26 @@ export class DocumentSignatureRejectionModel extends Model {
 
   /**
    * Delete by document ID and user ID.
-   * @param {string} documentId Document ID.
-   * @returns {Promise<number>}
+   * @param documentId Document ID.
+   * @param userId User ID.
    */
-  async deleteByDocumentIdAndUserId(documentId, userId) {
+  async deleteByDocumentIdAndUserId(documentId: string, userId: string): Promise<void> {
     await this.model.destroy({ where: { document_id: documentId, user_id: userId } });
   }
 
   /**
    * Delete by document ID.
-   * @param {string} documentId Document ID.
-   * @returns {Promise<number>}
+   * @param documentId Document ID.
    */
-  async deleteByDocumentId(documentId) {
+  async deleteByDocumentId(documentId: string): Promise<void> {
     await this.model.destroy({ where: { document_id: documentId } });
   }
 
   /**
    * Prepare entity.
-   * @param {object} item Record.
-   * @returns {DocumentSignatureRejectionEntity} Entity.
+   * @param item Raw document signature rejection row.
    */
-  prepareEntity(item) {
+  prepareEntity(item: DocumentSignatureRejectionRow): DocumentSignatureRejectionEntity {
     return new DocumentSignatureRejectionEntity({
       id: item.id,
       documentId: item.document_id,
@@ -130,10 +141,9 @@ export class DocumentSignatureRejectionModel extends Model {
 
   /**
    * Prepare for model.
-   * @param {DocumentSignatureRejectionEntity} item Entity.
-   * @returns {object} Record.
+   * @param item Camel-cased entity-shaped fields to persist.
    */
-  prepareForModel(item) {
+  prepareForModel(item: Partial<DocumentSignatureRejectionEntityOptions>): Partial<DocumentSignatureRejectionRow> {
     return {
       document_id: item.documentId,
       user_id: item.userId,

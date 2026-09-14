@@ -64,7 +64,7 @@ export class RegenerateCommand extends Command {
 
       global.log.save(`cli-command-${this.name}|generate-pdf-start`, { file_id: file.id });
       try {
-        await global.businesses.document.createPdf({ document, userId: document.createdBy });
+        await global.businesses.document.files.createPdf({ document, userId: document.createdBy });
         global.log.save(`cli-command-${this.name}|generate-pdf-end`, { file_id: file.id });
       } catch (e) {
         global.log.save(`cli-command-${this.name}|generate-pdf-error`, { message: e.message, file_id: file.id });

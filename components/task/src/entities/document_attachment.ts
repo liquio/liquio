@@ -1,37 +1,37 @@
 import { Entity } from './entity';
 
+/** Constructor input for {@link DocumentAttachmentEntity} - also reused by `DocumentAttachmentModel#prepareForModel`. */
+export interface DocumentAttachmentEntityOptions {
+  id: string;
+  documentId: string;
+  link?: string | null;
+  name?: string | null;
+  type?: string | null;
+  size?: number | null;
+  labels?: string[];
+  isGenerated?: boolean;
+  isSystem?: boolean;
+  meta?: Record<string, unknown>;
+  createdAt?: Date;
+}
+
 /**
  * Document attachment entity.
  */
 export class DocumentAttachmentEntity extends Entity {
-  id: any;
-  documentId: any;
-  link: any;
-  name: any;
-  type: any;
-  size: any;
-  labels: any;
-  isGenerated: any;
-  isSystem: any;
-  meta: any;
-  createdAt: any;
+  id: string;
+  documentId: string;
+  link: string | null;
+  name: string | null;
+  type: string | null;
+  size: number | null;
+  labels: string[];
+  isGenerated: boolean;
+  isSystem: boolean;
+  meta: Record<string, unknown>;
+  createdAt: Date;
 
-  /**
-   * Constructor.
-   * @param {object} options Document attachment object.
-   * @param {string} options.id ID.
-   * @param {string} options.documentId Document ID.
-   * @param {string} options.link Link.
-   * @param {string} options.name Name.
-   * @param {string} options.type Type.
-   * @param {number} options.size Size.
-   * @param {string[]} options.labels Labels.
-   * @param {boolean} options.isGenerated Is generated.
-   * @param {boolean} options.isSystem Is system.
-   * @param {object} options.meta Meta.
-   * @param {Date} options.createdAt Created at.
-   */
-  constructor({ id, documentId, link, name, type, size, labels, isGenerated, isSystem, meta, createdAt }) {
+  constructor({ id, documentId, link, name, type, size, labels, isGenerated, isSystem, meta, createdAt }: DocumentAttachmentEntityOptions) {
     super();
 
     this.id = id;
@@ -49,10 +49,10 @@ export class DocumentAttachmentEntity extends Entity {
 
   /**
    * Get placeholder.
-   * @param {string} fileId File ID.
-   * @param {string} dataPath Data path.
+   * @param fileId File ID.
+   * @param dataPath Data path.
    */
-  static getPlaceholder(fileId, dataPath) {
+  static getPlaceholder(fileId: string, dataPath: string) {
     return {
       isAttachmentPlaceholder: true,
       data: { fileId, dataPath },

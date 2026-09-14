@@ -532,7 +532,7 @@ describe("PayoneProvider", () => {
         documentId: "document-1",
         paymentControlPath: "properties.payment",
         transactionId: "exec-1",
-        status: { isSuccess: true },
+        status: { isSuccess: true, isPending: false },
         extraData: {
           order_id: "order-42",
           commerceCaseId: "commerce-case-1",
@@ -566,7 +566,7 @@ describe("PayoneProvider", () => {
         {},
       );
 
-      expect(result.status).toEqual({ isSuccess: false });
+      expect(result.status).toEqual({ isSuccess: false, isPending: false });
       expect(result.extraData.checkoutStatus).toBe(
         PayoneCheckoutStatus.PaymentCreated,
       );
@@ -600,7 +600,7 @@ describe("PayoneProvider", () => {
         {},
       );
 
-      expect(result.status).toEqual({ isSuccess: false });
+      expect(result.status).toEqual({ isSuccess: false, isPending: false });
       expect(result.extraData.paymentStatus).toBe(
         PayonePaymentStatusCategory.Successful,
       );
@@ -627,7 +627,7 @@ describe("PayoneProvider", () => {
         {},
       );
 
-      expect(result.status).toEqual({ isSuccess: true });
+      expect(result.status).toEqual({ isSuccess: true, isPending: false });
       expect(result.extraData.authenticationStatus).toBe("Y");
     });
 
@@ -649,7 +649,10 @@ describe("PayoneProvider", () => {
         {},
       );
 
-      expect(result.status).toEqual({ isSuccess: false });
+      // "OPEN" is not one of PAYONE's own recognized statuses (see PayoneCheckoutStatus) - an
+      // unrecognized status must never be treated as still-open/reusable (see the isPending
+      // classification tests below for the real, recognized pre-payment statuses).
+      expect(result.status).toEqual({ isSuccess: false, isPending: false });
       expect(result.transactionId).toBe("checkout-1");
     });
 
@@ -667,7 +670,101 @@ describe("PayoneProvider", () => {
         {},
       );
 
-      expect(result.status).toEqual({ isSuccess: false });
+      // A chargeback is a terminal outcome, not a still-open checkout - must not be reported as
+      // pending/reusable even though it isn't literally the CANCELLED_BY_CONSUMER status.
+      expect(result.status).toEqual({ isSuccess: false, isPending: false });
+    });
+
+    describe("isPending (duplicate-checkout prevention)", () => {
+      it.each([
+        ["CREATED", PayoneCheckoutStatus.Created],
+        ["IN_PROGRESS", PayoneCheckoutStatus.InProgress],
+        ["REDIRECTED", PayoneCheckoutStatus.Redirected],
+      ])(
+        "reports isPending: true for a checkout still in the pre-payment-attempt status %s",
+        async (_label, checkoutStatus) => {
+          getCheckoutRequestMock.mockResolvedValue({
+            commerceCaseId: "commerce-case-1",
+            checkoutId: "checkout-1",
+            checkoutStatus,
+          });
+
+          const provider = new PayoneProvider(context, options);
+          const result = await provider.handleStatus(
+            "",
+            options,
+            "success",
+            identifyingParams,
+            {},
+          );
+
+          expect(result.status).toEqual({
+            isSuccess: false,
+            isPending: true,
+          });
+        },
+      );
+
+      it("reports isPending: false once a payment attempt exists (PAYMENT_CREATED), even when declined", async () => {
+        getCheckoutRequestMock.mockResolvedValue({
+          commerceCaseId: "commerce-case-1",
+          checkoutId: "checkout-1",
+          checkoutStatus: "COMPLETED",
+          statusOutput: { paymentStatus: PayonePaymentStatusCategory.Rejected },
+        });
+
+        const provider = new PayoneProvider(context, options);
+        const result = await provider.handleStatus(
+          "",
+          options,
+          "success",
+          identifyingParams,
+          {},
+        );
+
+        expect(result.status).toEqual({ isSuccess: false, isPending: false });
+      });
+
+      it("reports isPending: false once the consumer has cancelled the checkout", async () => {
+        getCheckoutRequestMock.mockResolvedValue({
+          commerceCaseId: "commerce-case-1",
+          checkoutId: "checkout-1",
+          checkoutStatus: PayoneCheckoutStatus.CancelledByConsumer,
+        });
+
+        const provider = new PayoneProvider(context, options);
+        const result = await provider.handleStatus(
+          "",
+          options,
+          "success",
+          identifyingParams,
+          {},
+        );
+
+        expect(result.status).toEqual({ isSuccess: false, isPending: false });
+      });
+
+      it("reports isPending: false for a successful payment", async () => {
+        getCheckoutRequestMock.mockResolvedValue({
+          commerceCaseId: "commerce-case-1",
+          checkoutId: "checkout-1",
+          checkoutStatus: "COMPLETED",
+          statusOutput: {
+            paymentStatus: PayonePaymentStatusCategory.Successful,
+          },
+        });
+
+        const provider = new PayoneProvider(context, options);
+        const result = await provider.handleStatus(
+          "",
+          options,
+          "success",
+          identifyingParams,
+          {},
+        );
+
+        expect(result.status).toEqual({ isSuccess: true, isPending: false });
+      });
     });
 
     it("throws a clear, descriptive error and never calls the SDK when no checkoutId can be identified", async () => {
@@ -715,7 +812,7 @@ describe("PayoneProvider", () => {
         "merchant-123",
         "checkout-1",
       );
-      expect(result.status).toEqual({ isSuccess: true });
+      expect(result.status).toEqual({ isSuccess: true, isPending: false });
     });
 
     it("identifies the checkout directly from `data` for the checkPrevTransaction re-check path (no query params)", async () => {

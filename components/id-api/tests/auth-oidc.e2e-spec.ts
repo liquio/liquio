@@ -86,6 +86,17 @@ describe('AuthController - OIDC', () => {
           ipn: 'national_id',
         },
       },
+      'logout-provider': {
+        isEnabled: true,
+        issuer: dexUrl,
+        clientID: 'test-oidc-client-id',
+        clientSecret: 'test-oidc-secret',
+        callbackURL: `http://localhost:${config.port}/authorise/oidc/logout-provider/callback`,
+        authorizationURL: `${dexUrl}/auth`,
+        tokenURL: `${dexUrl}/token`,
+        userInfoURL: `${dexUrl}/userinfo`,
+        endSessionURL: `${dexUrl}/session/end`,
+      },
     };
     config.notify = { url: 'http://notify-service', authorization: 'bm90aWZ5Om5vdGlmeQ==' };
 
@@ -106,7 +117,7 @@ describe('AuthController - OIDC', () => {
   it('should setup OIDC provider successfully', async () => {
     const oidcInitLog = TestApp.logs.find((log) => log.type === 'oidc' && log.data?.status === 'initialized');
     expect(oidcInitLog).toBeDefined();
-    expect(oidcInitLog?.data?.providers).toBe(6);
+    expect(oidcInitLog?.data?.providers).toBe(7);
   });
 
   it('should fetch discovery metadata from issuer', async () => {
@@ -239,6 +250,77 @@ describe('AuthController - OIDC', () => {
         .then((row) => row?.dataValues);
 
       expect(userAfterSecondLogin?.ipn).toBe(expectedIpn);
+    });
+  });
+
+  describe('RP-initiated logout', () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it('should redirect to the provider end_session_endpoint with id_token_hint on logout', async () => {
+      const appClient = supertest.agent(`http://localhost:${config.port}`);
+      const sub = 'logout-user-1';
+
+      const initialResponse = await appClient.get('/authorise/oidc/logout-provider').redirects(0).expect(302);
+      const state = new URL(initialResponse.headers.location).searchParams.get('state');
+
+      nock(dexUrl).post('/token').reply(200, { access_token: 'access-token', token_type: 'Bearer', expires_in: 3600, id_token: 'fake-id-token' });
+      nock(dexUrl).get('/userinfo').reply(200, { sub, name: 'Logout User' });
+
+      await appClient.get(`/authorise/oidc/logout-provider/callback?code=fake-code&state=${state}`).redirects(0).expect(302);
+
+      const logoutResponse = await appClient.get('/logout').redirects(0).expect(302);
+
+      const logoutUrl = new URL(logoutResponse.headers.location);
+      expect(logoutUrl.origin + logoutUrl.pathname).toBe(`${dexUrl}/session/end`);
+      expect(logoutUrl.searchParams.get('id_token_hint')).toBe('fake-id-token');
+      expect(logoutUrl.searchParams.get('post_logout_redirect_uri')).toBe(`http://localhost:${config.port}/`);
+    });
+
+    it('should persist logout_data on the session row, not on user_services', async () => {
+      const appClient = supertest.agent(`http://localhost:${config.port}`);
+      const sub = 'logout-user-2';
+
+      const initialResponse = await appClient.get('/authorise/oidc/logout-provider').redirects(0).expect(302);
+      const state = new URL(initialResponse.headers.location).searchParams.get('state');
+
+      nock(dexUrl)
+        .post('/token')
+        .reply(200, { access_token: 'access-token-2', token_type: 'Bearer', expires_in: 3600, id_token: 'another-id-token' });
+      nock(dexUrl).get('/userinfo').reply(200, { sub, name: 'Logout User Two' });
+
+      await appClient.get(`/authorise/oidc/logout-provider/callback?code=fake-code-2&state=${state}`).redirects(0).expect(302);
+
+      const service = await Models.model('userServices')
+        .findOne({ where: { provider: 'oidc-logout-provider', provider_id: sub } })
+        .then((row) => row?.dataValues);
+      expect(service).toBeDefined();
+      expect((service?.data as any)?.id_token).toBeUndefined();
+      expect((service?.data as any)?.end_session_endpoint).toBeUndefined();
+
+      const sessionRow = await Models.model('sessions')
+        .findOne({ where: { userId: service!.userId } })
+        .then((row) => row?.dataValues);
+
+      expect((sessionRow?.logout_data as any)?.id_token).toBe('another-id-token');
+      expect((sessionRow?.logout_data as any)?.end_session_endpoint).toBe(`${dexUrl}/session/end`);
+    });
+
+    it('should fall back to a normal redirect when the provider has no end_session_endpoint', async () => {
+      const appClient = supertest.agent(`http://localhost:${config.port}`);
+      const sub = 'logout-user-3';
+
+      const initialResponse = await appClient.get('/authorise/oidc/dex').redirects(0).expect(302);
+      const state = new URL(initialResponse.headers.location).searchParams.get('state');
+
+      nock(dexUrl).post('/token').reply(200, { access_token: 'access-token-3', token_type: 'Bearer', expires_in: 3600 });
+      nock(dexUrl).get('/userinfo').reply(200, { sub, name: 'No Logout User', email: 'no-logout@example.com' });
+
+      await appClient.get(`/authorise/oidc/dex/callback?code=fake-code-3&state=${state}`).redirects(0).expect(302);
+
+      const logoutResponse = await appClient.get('/logout').redirects(0).expect(302);
+      expect(logoutResponse.headers.location).toBe('/');
     });
   });
 });

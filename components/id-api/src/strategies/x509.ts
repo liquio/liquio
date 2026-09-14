@@ -72,6 +72,10 @@ export class X509Strategy extends PassportStrategy {
   }
 }
 
+// x509 certificate auth has no external session to tear down — kept as a stub
+// so the caller can always invoke a strategy's logout() uniformly.
+export async function logout(): Promise<void> {}
+
 export async function x509(app: Express) {
   const log = Log.getInstance();
 

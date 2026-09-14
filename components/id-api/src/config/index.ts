@@ -18,6 +18,7 @@ export interface OIDCProviderConfig {
   authorizationURL?: string;
   tokenURL?: string;
   userInfoURL?: string;
+  endSessionURL?: string;
   clientID: string;
   clientSecret: string;
   callbackURL: string;

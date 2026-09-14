@@ -317,7 +317,7 @@ export class ExternalServicesController extends Controller {
     // Save files as document attachments (without signatures, just attachments).
     if (typeOf(files) === 'array' && files.length > 0) {
       try {
-        await (global.businesses.document.createAttachmentsForSystemTask as any)(files, documentId, externalServiceUser);
+        await (global.businesses.document.files.createAttachmentsForSystemTask as any)(files, documentId, externalServiceUser);
       } catch (error) {
         global.log.save('save-attachments-error', { error: error && error.message }, 'error');
         return onError(error, error.httpStatusCode, error.details);
@@ -327,7 +327,7 @@ export class ExternalServicesController extends Controller {
     // Save additional data signatures.
     if (typeOf(additionalDataSignatures) === 'array' && additionalDataSignatures.length > 0) {
       try {
-        await global.businesses.document.saveAdditionalDataSignatures(additionalDataSignatures, document, externalServiceUser);
+        await global.businesses.document.signing.saveAdditionalDataSignatures(additionalDataSignatures, document, externalServiceUser);
       } catch (error) {
         global.log.save('save-additional-data-signatures-error', { error: error && error.message }, 'error');
         return onError(error, error.httpStatusCode, error.details);
@@ -353,7 +353,7 @@ export class ExternalServicesController extends Controller {
     // Save files as document attachments (with signatures).
     if (typeOf(attachmentsSignatures) === 'array' && attachmentsSignatures.length > 0) {
       try {
-        const savedAttachments: any = await global.businesses.document.saveAttachmentsP7SSignatures(
+        const savedAttachments: any = await global.businesses.document.signing.saveAttachmentsP7SSignatures(
           attachmentsSignatures,
           document,
           externalServiceUser,
@@ -364,7 +364,7 @@ export class ExternalServicesController extends Controller {
           delete attachment.signatureInfo;
           // We need to get the updated document for correct saving attachment array.
           const documentToUpdate = await global.models.document.findById(documentId);
-          await global.businesses.document.saveAttachmentToDocumentData(
+          await global.businesses.document.files.saveAttachmentToDocumentData(
             attachment,
             `initData.attachmentsSignatures.${index}`,
             documentToUpdate,
@@ -728,7 +728,7 @@ export class ExternalServicesController extends Controller {
 
     let documentWithPayment;
     try {
-      documentWithPayment = await (global.businesses.document.calculatePayment as any)(
+      documentWithPayment = await (global.businesses.document.payment.calculatePayment as any)(
         undefined,
         paymentControlPath,
         externalServiceUser,

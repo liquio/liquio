@@ -1,4 +1,4 @@
-import { DocumentBusiness } from './document';
+import { DocumentBusiness } from './index';
 
 // Characterization tests for the 7 payment-orchestration methods on DocumentBusiness.
 // PaymentService is mocked out (instance property override, matching the existing
@@ -126,7 +126,7 @@ describe('DocumentBusiness payment methods', () => {
       const updatedDocument = { id: documentId, data: { payment: { calculated: paymentData } } };
       (global.models.document.updateData as jest.Mock).mockResolvedValue(updatedDocument);
 
-      const result = await documentBusiness.calculatePayment(
+      const result = await documentBusiness.payment.calculatePayment(
         documentId,
         payload,
         userId,
@@ -176,7 +176,7 @@ describe('DocumentBusiness payment methods', () => {
       documentBusiness.paymentService.calculatePayment.mockResolvedValue(undefined);
 
       await expect(
-        documentBusiness.calculatePayment(documentId, payload, userId, userName, userUnitIds, userContactData, undefined, undefined),
+        documentBusiness.payment.calculatePayment(documentId, payload, userId, userName, userUnitIds, userContactData, undefined, undefined),
       ).rejects.toThrow("Can't get payment data.");
     });
 
@@ -184,7 +184,7 @@ describe('DocumentBusiness payment methods', () => {
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(null);
 
       await expect(
-        documentBusiness.calculatePayment(documentId, payload, userId, userName, userUnitIds, userContactData, undefined, undefined),
+        documentBusiness.payment.calculatePayment(documentId, payload, userId, userName, userUnitIds, userContactData, undefined, undefined),
       ).rejects.toThrow();
       expect(documentBusiness.paymentService.calculatePayment).not.toHaveBeenCalled();
     });
@@ -230,7 +230,7 @@ describe('DocumentBusiness payment methods', () => {
       documentBusiness.paymentService.handleStatus.mockResolvedValue(statusInfo);
       global.config.payment.testCustomer.doRedirect = true;
 
-      const result = await documentBusiness.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false);
+      const result = await documentBusiness.payment.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false);
 
       expect(documentBusiness.paymentService.handleStatus).toHaveBeenCalledWith(
         payload,
@@ -255,7 +255,7 @@ describe('DocumentBusiness payment methods', () => {
       global.config.payment.testCustomer.doRedirect = false;
       global.config.payment.testCustomer.notifyUrlShortResponse = true;
 
-      const result = await documentBusiness.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false);
+      const result = await documentBusiness.payment.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false);
 
       expect(result).toEqual({ isAccepted: true });
     });
@@ -263,7 +263,7 @@ describe('DocumentBusiness payment methods', () => {
     it('throws NotFoundError when PaymentService.handleStatus returns no status info', async () => {
       documentBusiness.paymentService.handleStatus.mockResolvedValue(undefined);
 
-      await expect(documentBusiness.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false)).rejects.toThrow(
+      await expect(documentBusiness.payment.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false)).rejects.toThrow(
         "Can't get payment status.",
       );
     });
@@ -278,7 +278,7 @@ describe('DocumentBusiness payment methods', () => {
       });
       (global.models.document.findById as jest.Mock).mockResolvedValue({ id: 'doc-1', task: null });
 
-      await expect(documentBusiness.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false)).rejects.toThrow();
+      await expect(documentBusiness.payment.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false)).rejects.toThrow();
     });
   });
 
@@ -302,7 +302,7 @@ describe('DocumentBusiness payment methods', () => {
       (global.models.document.updateData as jest.Mock).mockResolvedValue(documentEntity);
       documentBusiness.paymentService.confirmBySmsCode.mockResolvedValue(undefined);
 
-      const result = await documentBusiness.confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds);
+      const result = await documentBusiness.payment.confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds);
 
       expect(documentBusiness.paymentService.confirmBySmsCode).toHaveBeenCalledWith(
         basePaymentConfig.testCustomer,
@@ -319,7 +319,7 @@ describe('DocumentBusiness payment methods', () => {
       documentBusiness.paymentService.confirmBySmsCode.mockRejectedValue(providerError);
 
       // document.ts today catches and only logs this error - it does not rethrow.
-      const result = await documentBusiness.confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds);
+      const result = await documentBusiness.payment.confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds);
 
       expect(global.log.save).toHaveBeenCalledWith('confirm-code-response-error', { error: providerError }, 'error');
       expect(result).toEqual({ isConfirmed: 0, transactionId: 'tx-1' });
@@ -328,9 +328,9 @@ describe('DocumentBusiness payment methods', () => {
     it('throws when there is no calculated payment data on the document', async () => {
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue({ id: documentId, data: {} });
 
-      await expect(documentBusiness.confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds)).rejects.toThrow(
-        'Can not handle confirm code, calculated payment data does not exist.',
-      );
+      await expect(
+        documentBusiness.payment.confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds),
+      ).rejects.toThrow('Can not handle confirm code, calculated payment data does not exist.');
       expect(documentBusiness.paymentService.confirmBySmsCode).not.toHaveBeenCalled();
     });
   });
@@ -345,7 +345,7 @@ describe('DocumentBusiness payment methods', () => {
       const cancelResult = { isCancelled: true };
       documentBusiness.paymentService.cancelOrder.mockResolvedValue(cancelResult);
 
-      const result = await documentBusiness.cancelOrder(paymentCustomer, orderId, transactionId, sessionId);
+      const result = await documentBusiness.payment.cancelOrder(paymentCustomer, orderId, transactionId, sessionId);
 
       expect(documentBusiness.paymentService.cancelOrder).toHaveBeenCalledWith(basePaymentConfig.testCustomer, orderId, transactionId, sessionId);
       expect(result).toBe(cancelResult);
@@ -355,7 +355,7 @@ describe('DocumentBusiness payment methods', () => {
       const providerError = new Error('cancel failed');
       documentBusiness.paymentService.cancelOrder.mockRejectedValue(providerError);
 
-      await expect(documentBusiness.cancelOrder(paymentCustomer, orderId, transactionId, sessionId)).rejects.toThrow(providerError);
+      await expect(documentBusiness.payment.cancelOrder(paymentCustomer, orderId, transactionId, sessionId)).rejects.toThrow(providerError);
       expect(global.log.save).toHaveBeenCalledWith('cancel-order-payment-document-error', { error: providerError.message }, 'error');
     });
   });
@@ -369,30 +369,32 @@ describe('DocumentBusiness payment methods', () => {
 
     it('resolves provider options via getPaymentProviderOptionsByDocId and forwards them to PaymentService.getPaymentReceiptInfo (happy path)', async () => {
       const providerOptions = basePaymentConfig.testCustomer;
-      jest.spyOn(documentBusiness, 'getPaymentProviderOptionsByDocId').mockResolvedValue(providerOptions);
+      jest.spyOn(documentBusiness.payment, 'getPaymentProviderOptionsByDocId').mockResolvedValue(providerOptions);
       const receipt = { url: 'https://receipt.example.com' };
       documentBusiness.paymentService.getPaymentReceiptInfo.mockResolvedValue(receipt);
 
-      const result = await documentBusiness.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds);
+      const result = await documentBusiness.payment.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds);
 
-      expect(documentBusiness.getPaymentProviderOptionsByDocId).toHaveBeenCalledWith(paymentControlPath, documentId, userId, userUnitIds);
+      expect(documentBusiness.payment.getPaymentProviderOptionsByDocId).toHaveBeenCalledWith(paymentControlPath, documentId, userId, userUnitIds);
       expect(documentBusiness.paymentService.getPaymentReceiptInfo).toHaveBeenCalledWith(providerOptions, orderId);
       expect(result).toBe(receipt);
     });
 
     it('propagates the error when resolving provider options fails', async () => {
       const lookupError = new Error('document not found');
-      jest.spyOn(documentBusiness, 'getPaymentProviderOptionsByDocId').mockRejectedValue(lookupError);
+      jest.spyOn(documentBusiness.payment, 'getPaymentProviderOptionsByDocId').mockRejectedValue(lookupError);
 
-      await expect(documentBusiness.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(lookupError);
+      await expect(documentBusiness.payment.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
+        lookupError,
+      );
       expect(documentBusiness.paymentService.getPaymentReceiptInfo).not.toHaveBeenCalled();
     });
 
     it('throws when PaymentService.getPaymentReceiptInfo returns no receipt', async () => {
-      jest.spyOn(documentBusiness, 'getPaymentProviderOptionsByDocId').mockResolvedValue(basePaymentConfig.testCustomer);
+      jest.spyOn(documentBusiness.payment, 'getPaymentProviderOptionsByDocId').mockResolvedValue(basePaymentConfig.testCustomer);
       documentBusiness.paymentService.getPaymentReceiptInfo.mockResolvedValue(undefined);
 
-      await expect(documentBusiness.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
+      await expect(documentBusiness.payment.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
         "Can't get payment receipt.",
       );
     });
@@ -407,32 +409,32 @@ describe('DocumentBusiness payment methods', () => {
 
     it('resolves provider options via getPaymentProviderOptionsByDocId and forwards them to PaymentService.getWithdrawalFundsStatus (happy path)', async () => {
       const providerOptions = basePaymentConfig.testCustomer;
-      jest.spyOn(documentBusiness, 'getPaymentProviderOptionsByDocId').mockResolvedValue(providerOptions);
+      jest.spyOn(documentBusiness.payment, 'getPaymentProviderOptionsByDocId').mockResolvedValue(providerOptions);
       const withdrawalStatus = { isWithdrawn: true };
       documentBusiness.paymentService.getWithdrawalFundsStatus.mockResolvedValue(withdrawalStatus);
 
-      const result = await documentBusiness.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds);
+      const result = await documentBusiness.payment.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds);
 
-      expect(documentBusiness.getPaymentProviderOptionsByDocId).toHaveBeenCalledWith(paymentControlPath, documentId, userId, userUnitIds);
+      expect(documentBusiness.payment.getPaymentProviderOptionsByDocId).toHaveBeenCalledWith(paymentControlPath, documentId, userId, userUnitIds);
       expect(documentBusiness.paymentService.getWithdrawalFundsStatus).toHaveBeenCalledWith(providerOptions, orderId);
       expect(result).toBe(withdrawalStatus);
     });
 
     it('propagates the error when resolving provider options fails', async () => {
       const lookupError = new Error('document not found');
-      jest.spyOn(documentBusiness, 'getPaymentProviderOptionsByDocId').mockRejectedValue(lookupError);
+      jest.spyOn(documentBusiness.payment, 'getPaymentProviderOptionsByDocId').mockRejectedValue(lookupError);
 
-      await expect(documentBusiness.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
+      await expect(documentBusiness.payment.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
         lookupError,
       );
       expect(documentBusiness.paymentService.getWithdrawalFundsStatus).not.toHaveBeenCalled();
     });
 
     it('throws when PaymentService.getWithdrawalFundsStatus returns no status', async () => {
-      jest.spyOn(documentBusiness, 'getPaymentProviderOptionsByDocId').mockResolvedValue(basePaymentConfig.testCustomer);
+      jest.spyOn(documentBusiness.payment, 'getPaymentProviderOptionsByDocId').mockResolvedValue(basePaymentConfig.testCustomer);
       documentBusiness.paymentService.getWithdrawalFundsStatus.mockResolvedValue(undefined);
 
-      await expect(documentBusiness.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
+      await expect(documentBusiness.payment.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds)).rejects.toThrow(
         "Can't get payment data.",
       );
     });
@@ -462,7 +464,7 @@ describe('DocumentBusiness payment methods', () => {
       const applePayResponse = { epochTimestamp: 123, merchantSessionIdentifier: 'abc' };
       (global.httpClient.request as jest.Mock).mockResolvedValue({ json: jest.fn().mockResolvedValue(applePayResponse) });
 
-      const result = await documentBusiness.validateApplePaySession(validSession);
+      const result = await documentBusiness.payment.validateApplePaySession(validSession);
 
       expect(global.httpClient.request).toHaveBeenCalledWith(
         validSession.validationUrl,
@@ -476,13 +478,13 @@ describe('DocumentBusiness payment methods', () => {
     it('throws InvalidConfigError when payment.applePay config is missing', async () => {
       global.config.payment.applePay = undefined;
 
-      await expect(documentBusiness.validateApplePaySession(validSession)).rejects.toThrow('payment.applePay required.');
+      await expect(documentBusiness.payment.validateApplePaySession(validSession)).rejects.toThrow('payment.applePay required.');
       expect(global.httpClient.request).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenError when the validationUrl domain is not the allowed Apple Pay gateway', async () => {
       await expect(
-        documentBusiness.validateApplePaySession({ ...validSession, validationUrl: 'https://not-allowed.example.com/session' }),
+        documentBusiness.payment.validateApplePaySession({ ...validSession, validationUrl: 'https://not-allowed.example.com/session' }),
       ).rejects.toThrow(/not allowed Apple Pay gateway/);
       expect(global.httpClient.request).not.toHaveBeenCalled();
     });
