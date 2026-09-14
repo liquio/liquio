@@ -93,7 +93,7 @@
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-prettier": "^5.2.6",
     "jest": "^30.4.2",
-    "nock": "^14.0.4",
+    "nock": "^14.0.17",
     "portfinder": "^1.0.37",
     "prettier": "^3.8.4",
     "supertest": "^7.1.0",
