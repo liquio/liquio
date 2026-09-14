@@ -1,3 +1,4 @@
+import { resolveReturnPath } from "./return_path";
 import {
   PluginContext,
   TaskPaymentProvider,
@@ -88,13 +89,29 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     // those fields are persisted via the host's `paymentTransactions` service instead, and only
     // the resulting short id is carried on the URL - resolved back on the way in by
     // `resolvePaymentTransaction` below.
-    const returnUrlParams = payload.paymentSystemParams?.useTransactionBinding
-      ? { paymentTransactionId: await this.createPaymentTransaction(payload) }
-      : {
-          documentId: payload.documentId,
-          paymentControlPath: payload.paymentControlPath,
-          taskId: payload.taskId,
-        };
+    const requestedReturnPath = (
+      input.extraData as { returnPath?: unknown } | undefined
+    )?.returnPath;
+    const returnPath = resolveReturnPath(
+      requestedReturnPath,
+      payload.paymentSystemParams?.frontRedirectUrl,
+    )
+      ? (requestedReturnPath as string)
+      : undefined;
+    // Keep the browser destination in server-side metadata, never on the provider URL.
+    const returnUrlParams =
+      payload.paymentSystemParams?.useTransactionBinding || returnPath
+        ? {
+            paymentTransactionId: await this.createPaymentTransaction(
+              payload,
+              returnPath,
+            ),
+          }
+        : {
+            documentId: payload.documentId,
+            paymentControlPath: payload.paymentControlPath,
+            taskId: payload.taskId,
+          };
     const returnUrl = this.buildReturnUrl(
       payload.returnUrl ?? this.options.defaultRedirectUrl,
       returnUrlParams,
@@ -195,6 +212,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
    */
   private async createPaymentTransaction(
     payload: PayoneResolvedPaymentData,
+    returnPath?: string,
   ): Promise<string> {
     if (!this.context.paymentTransactions) {
       throw new Error(
@@ -210,6 +228,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       documentId: payload.documentId,
       paymentControlPath: payload.paymentControlPath,
       taskId: payload.taskId,
+      ...(returnPath ? { extraData: { returnPath } } : {}),
     });
   }
 
@@ -334,6 +353,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       "payment_control_path",
     ]);
     let taskId = this.pickField(parsedData, params, ["taskId", "task_id"]);
+    let returnPath: unknown;
 
     // useTransactionBinding (see calculatePayment's createPaymentTransaction) means documentId/
     // paymentControlPath/taskId were never put on the return URL directly - only a short
@@ -342,13 +362,24 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     // resolved value over a fresher one actually present on the callback).
     if (
       (!documentId || !paymentControlPath) &&
-      runtimeOptions.useTransactionBinding
+      (runtimeOptions.useTransactionBinding ||
+        this.pickField(parsedData, params, [
+          "paymentTransactionId",
+          "payment_transaction_id",
+        ]))
     ) {
       const record = await this.resolvePaymentTransaction(parsedData, params);
       if (record) {
         documentId = documentId ?? record.documentId;
         paymentControlPath = paymentControlPath ?? record.paymentControlPath;
         taskId = taskId ?? record.taskId;
+        if (
+          documentId === record.documentId &&
+          paymentControlPath === record.paymentControlPath &&
+          taskId === record.taskId
+        ) {
+          returnPath = record.extraData?.returnPath;
+        }
       }
     }
 
@@ -423,9 +454,10 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
     // - a caller not configured for redirects (e.g. `doRedirect` left unset) is unaffected. `taskId`
     // was already resolved above (directly from the callback, or via the transaction record).
     const redirectUrl =
-      taskId && runtimeOptions.frontRedirectUrl
+      resolveReturnPath(returnPath, runtimeOptions.frontRedirectUrl) ??
+      (taskId && runtimeOptions.frontRedirectUrl
         ? runtimeOptions.frontRedirectUrl.replace(/\{taskId\}/g, taskId)
-        : undefined;
+        : undefined);
 
     return {
       documentId,

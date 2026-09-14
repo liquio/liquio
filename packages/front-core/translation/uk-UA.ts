@@ -891,6 +891,7 @@ export default {
     FROM: 'з',
     MakePayment: 'Оплатити',
     Paid: 'Сплачено',
+    PaymentError: 'Оплата не пройшла',
     SYMBOLS_COUNT: 'Введено символів: {{num}} {{max}} ',
     Currency: 'грн',
     amountText: 'Сума оплати',

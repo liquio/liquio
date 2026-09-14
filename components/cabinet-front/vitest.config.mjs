@@ -5,6 +5,7 @@ import viteConfig from './vite.config.mjs';
 const require = createRequire(import.meta.url);
 
 export default mergeConfig(viteConfig, defineConfig({
+  cacheDir: 'node_modules/.vite-vitest',
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: { '@testing-library/react': require.resolve('@testing-library/react') }

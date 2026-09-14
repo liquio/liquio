@@ -9,6 +9,8 @@ import EJVError from 'components/JsonSchema/components/EJVError';
 import { allCountries } from './dataCountriesFilter';
 import type { CountryItem } from './dataCountriesFilter';
 
+const EMPTY_COUNTRIES: string[] = [];
+
 const styles = {
   hideAction: {
     '& .MuiInputAdornment-root': {
@@ -59,9 +61,9 @@ const Phone = (props: PhoneProps) => {
     enableLongNumbers,
     name: controlName,
     parentValue,
-    excludeCountries: excludeCountriesProp = [],
+    excludeCountries: excludeCountriesProp = EMPTY_COUNTRIES,
     defaultCountry: defaultCountryProp = 'ua',
-    onlyCountries: onlyCountriesProp = [],
+    onlyCountries: onlyCountriesProp = EMPTY_COUNTRIES,
     error = false,
     hidden,
     readOnly,

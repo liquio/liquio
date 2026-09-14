@@ -14,6 +14,8 @@ assert.equal(config.error, undefined);
 const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, appRoot);
 assert.deepEqual(parsed.errors, []);
 const server = await createServer({
+  // Validation must not invalidate a running dev server's optimized bundles.
+  cacheDir: path.join(appRoot, 'node_modules/.vite-resolution-check'),
   server: { middlewareMode: true, ws: false, watch: null },
   optimizeDeps: { noDiscovery: true, include: [], entries: [] }
 });

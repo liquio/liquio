@@ -935,6 +935,7 @@ export default {
     FROM: 'von',
     MakePayment: 'Bezahlen',
     Paid: 'Bezahlt',
+    PaymentError: 'Zahlung fehlgeschlagen',
     SYMBOLS_COUNT: 'Eingegebene Zeichen: {{num}} {{max}} ',
     Currency: 'UAH',
     amountText: 'Zahlungsbetrag',

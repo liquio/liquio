@@ -942,6 +942,7 @@ export default {
     FROM: 'de',
     MakePayment: 'Payer',
     Paid: 'Payé',
+    PaymentError: 'Paiement échoué',
     SYMBOLS_COUNT: 'Caractères saisis : {{num}} / {{max}}',
     Currency: 'UAH',
     amountText: 'Montant du paiement',

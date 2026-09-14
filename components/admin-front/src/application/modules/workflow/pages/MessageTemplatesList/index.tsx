@@ -2,7 +2,6 @@ import React from 'react';
 import { useTranslate } from 'react-translate';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
-import sortArray from 'sort-array';
 import LeftSidebarLayout from 'layouts/LeftSidebar';
 import {
   requestMessagesTemplate,
@@ -10,7 +9,7 @@ import {
   createMessagesTemplate,
   deleteMessagesTemplate,
   exportMessagesTemplate,
-  importMessagesTemplate,
+  importMessagesTemplate
 } from 'application/actions/messagesTemplates';
 import { addMessage } from 'actions/error';
 import {
@@ -22,7 +21,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Typography,
+  Typography
 } from '@mui/material';
 import { makeStyles } from '@mui/styles';
 import EditIcon from '@mui/icons-material/Edit';
@@ -37,37 +36,49 @@ import downloadBase64Attach from 'helpers/downloadBase64Attach';
 import parseFile from 'helpers/parseFile';
 import CloseIcon from '@mui/icons-material/Close';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import AddIcon from '@mui/icons-material/Add';
+import ImportIcon from '@mui/icons-material/Publish';
+import MessageTemplatePreview from './MessageTemplatePreview';
+import { Theme } from '@mui/material/styles';
 
-const styles = () => ({
+const styles = (theme: Theme & { buttonBg?: string; searchInputBg?: string; listHover?: string }) => ({
   root: {
-    display: 'flex',
+    display: 'flex'
   },
   saveButton: {
     position: 'absolute' as const,
     right: 50,
-    top: 4,
+    top: 4
   },
   disabled: {
-    opacity: 0.3,
+    opacity: 0.3
   },
   createButton: {
     display: 'flex',
     alignSelf: 'flex-start',
-    margin: 12,
+    marginLeft: 10,
+    color: theme.buttonBg,
+    background: theme.searchInputBg,
+    boxShadow: 'none',
+    '&:hover': {
+      background: theme.listHover,
+      boxShadow: 'none'
+    }
   },
   actionButton: {
-    marginLeft: 10,
+    marginLeft: 10
   },
   flex: {
-    display: 'flex',
+    display: 'flex'
   },
   editorWrapper: {
-    height: 'calc(100vh - 50px)',
+    height: 'calc(100vh - 50px)'
   },
   error: {
     fontSize: 14,
-    marginTop: 10,
-  },
+    marginTop: 10
+  }
 });
 
 const useStyles = makeStyles(styles);
@@ -86,7 +97,11 @@ interface MessageTemplatesListProps {
   loading?: boolean;
   location: unknown;
   actions: {
-    requestMessagesTemplate: () => Promise<MessageTemplate[] | Error>;
+    requestMessagesTemplate: (params?: {
+      search: string;
+      page: number;
+      count: number;
+    }) => Promise<MessageTemplate[] | { items: MessageTemplate[]; total: number } | Error>;
     updateMessagesTemplate: (data: MessageTemplate) => Promise<MessageTemplate | Error>;
     createMessagesTemplate: (data: MessageTemplate) => Promise<MessageTemplate | Error>;
     deleteMessagesTemplate: (data: MessageTemplate) => Promise<unknown>;
@@ -104,13 +119,20 @@ const MessageTemplatesList = ({
   location,
   actions,
   userInfo,
-  userUnits,
+  userUnits
 }: MessageTemplatesListProps) => {
   const t = useTranslate('MessageTemplatesList');
+  const tElements = useTranslate('Elements');
   const classes = useStyles();
 
   const [loading, setLoading] = React.useState(!!loadingOrigin);
   const [list, setList] = React.useState<MessageTemplate[]>([]);
+  const [search, setSearch] = React.useState('');
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [count, setCount] = React.useState(0);
+  const requestId = React.useRef(0);
+  const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
   const [openCreateDialog, setOpenCreateDialog] = React.useState(false);
   const [templateTitle, setTemplateTitle] = React.useState('');
   const [templateType, setTemplateType] = React.useState('sms');
@@ -125,11 +147,7 @@ const MessageTemplatesList = ({
   const [openModalDublicate, setOpenModalDublicate] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const isEditable = checkAccess(
-    { userHasUnit: [1000002] },
-    userInfo,
-    userUnits as never,
-  );
+  const isEditable = checkAccess({ userHasUnit: [1000002] }, userInfo, userUnits as never);
 
   const handleClickEdit = (row: MessageTemplate) => {
     const bodyToEdit: MessageTemplate = { ...row };
@@ -171,10 +189,8 @@ const MessageTemplatesList = ({
 
     const newTemplate: MessageTemplate = {
       title: templateTitle || editContentObj?.title,
-      type: !chosenId
-        ? templateType || 'sms'
-        : templateType || editContentObj?.type,
-      text: templateHTML || editContentObj?.text,
+      type: !chosenId ? templateType || 'sms' : templateType || editContentObj?.type,
+      text: templateHTML || editContentObj?.text
     };
     let result: MessageTemplate | Error | null = null;
 
@@ -190,8 +206,7 @@ const MessageTemplatesList = ({
       return;
     }
 
-    const newList = await actions.requestMessagesTemplate();
-    setList(newList as MessageTemplate[]);
+    await load();
     setOpenCreateDialog(false);
     setContent('');
     setChosenId(null);
@@ -204,8 +219,7 @@ const MessageTemplatesList = ({
 
   const handleDelete = async () => {
     await actions.deleteMessagesTemplate(deletingItem as MessageTemplate);
-    const newList = await actions.requestMessagesTemplate();
-    setList(newList as MessageTemplate[]);
+    await load();
     setContent('');
     setChosenId(null);
   };
@@ -229,18 +243,19 @@ const MessageTemplatesList = ({
       {
         fileName: row?.title
           ? `template-${row.title}-${row.template_id}.dat`
-          : 'message-templates.dat',
+          : 'message-templates.dat'
       },
-      blob as string,
+      blob as string
     );
   };
 
-  const checkDuplicates = (importedTemplates: MessageTemplate[]) => {
-    const importedIds = importedTemplates.map(
-      (template) => template.template_id,
-    );
+  const checkDuplicates = (
+    importedTemplates: MessageTemplate[],
+    existingTemplates: MessageTemplate[]
+  ) => {
+    const importedIds = importedTemplates.map((template) => template.template_id);
     const duplicateIds = importedIds.filter((id) =>
-      list.some((template) => template.template_id === id),
+      existingTemplates.some((template) => template.template_id === id)
     );
     return duplicateIds as (string | number)[];
   };
@@ -250,7 +265,13 @@ const MessageTemplatesList = ({
 
     parseFile(file, async (importedTemplatesRaw) => {
       const importedTemplates = importedTemplatesRaw as MessageTemplate[];
-      const duplicateIds = checkDuplicates(importedTemplates);
+      const existingTemplates = await actions.requestMessagesTemplate();
+      if (existingTemplates instanceof Error || !Array.isArray(existingTemplates)) {
+        actions.addMessage(new Message('ErrorGettingMessagesTemplates', 'error'));
+        setLoading(false);
+        return;
+      }
+      const duplicateIds = checkDuplicates(importedTemplates, existingTemplates);
       if (duplicateIds.length > 0) {
         setDuplicateIds(duplicateIds);
         setOpenModalDublicate(true);
@@ -262,12 +283,14 @@ const MessageTemplatesList = ({
     setLoading(true);
   };
 
-  const handleImport = async (file: File, rewriteTemplateIds: (string | number)[] | null = null, withRewrite?: boolean) => {
+  const handleImport = async (
+    file: File,
+    rewriteTemplateIds: (string | number)[] | null = null,
+    withRewrite?: boolean
+  ) => {
     const params =
       rewriteTemplateIds && withRewrite
-        ? rewriteTemplateIds
-          .map((id, index) => `rewriteTemplateIds[${index}]=${id}`)
-          .join('&')
+        ? rewriteTemplateIds.map((id, index) => `rewriteTemplateIds[${index}]=${id}`).join('&')
         : null;
 
     const importResult = await actions.importMessagesTemplate(file, params);
@@ -279,11 +302,8 @@ const MessageTemplatesList = ({
     if (importResult instanceof Error) {
       actions.addMessage(new Message('InvalidFile', 'error'));
     } else {
-      actions.addMessage(
-        new Message('MessageTemplateAlreadyExported', 'success'),
-      );
-      const newList = await actions.requestMessagesTemplate();
-      setList(newList as MessageTemplate[]);
+      actions.addMessage(new Message('MessageTemplateAlreadyExported', 'success'));
+      await load();
     }
   };
 
@@ -299,49 +319,59 @@ const MessageTemplatesList = ({
     }
   };
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const result = await actions.requestMessagesTemplate();
-      setLoading(false);
-      if (result instanceof Error) {
-        actions.addMessage(
-          new Message('ErrorGettingMessagesTemplates', 'error'),
-        );
-        return;
-      }
+  const load = React.useCallback(async () => {
+    const id = ++requestId.current;
+    setLoading(true);
+    const result = await actions.requestMessagesTemplate({
+      search,
+      page: page + 1,
+      count: rowsPerPage
+    });
+    if (id !== requestId.current) return;
+    setLoading(false);
+    if (result instanceof Error) {
+      actions.addMessage(new Message('ErrorGettingMessagesTemplates', 'error'));
+      return;
+    }
+    // Older admin-api versions return the complete array even when query
+    // parameters are present. Keep that response usable while the paginated
+    // endpoint rolls out.
+    if (Array.isArray(result)) {
       setList(result);
-    };
-    fetchData();
-  }, [actions]);
+      setCount(result.length);
+      return;
+    }
+    const lastPage = Math.max(0, Math.ceil(result.total / rowsPerPage) - 1);
+    if (page > lastPage) {
+      setPage(lastPage);
+      return;
+    }
+    setList(result.items);
+    setCount(result.total);
+  }, [actions, search, page, rowsPerPage]);
 
-  sortArray(list, {
-    by: 'template_id',
-    order: 'desc',
-  });
+  React.useEffect(() => {
+    load();
+    return () => {
+      requestId.current += 1;
+    };
+  }, [load]);
 
   const columns: Record<string, unknown>[] = [
     {
       id: 'template_id',
-      name: t('template_id'),
+      name: t('template_id')
     },
     {
       id: 'type',
-      name: t('type'),
-    },
-    {
-      id: 'text',
-      name: t('text'),
-      cellStyle: {
-        maxWidth: 300,
-      },
+      name: t('type')
     },
     {
       id: 'title',
       name: t('title'),
       cellStyle: {
-        maxWidth: 300,
-      },
+        maxWidth: 300
+      }
     },
     {
       id: 'actions',
@@ -350,6 +380,15 @@ const MessageTemplatesList = ({
       name: t('Actions'),
       render: (edit: unknown, row: MessageTemplate) => (
         <div className={classes.flex}>
+          <Tooltip title={tElements('Preview')}>
+            <IconButton
+              onClick={() => setPreviewTemplate(row)}
+              aria-label={tElements('Preview')}
+              size="large"
+            >
+              <VisibilityOutlinedIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title={t('EditTemplate')}>
             <IconButton onClick={() => handleClickEdit(row)} size="large">
               <EditIcon />
@@ -368,8 +407,8 @@ const MessageTemplatesList = ({
             </Tooltip>
           ) : null}
         </div>
-      ),
-    },
+      )
+    }
   ];
 
   return (
@@ -379,34 +418,6 @@ const MessageTemplatesList = ({
       loading={loading}
       flexContent={true}
     >
-      <div style={{ display: 'flex' }}>
-        {!!isEditable && (
-          <Button
-            color="primary"
-            variant="contained"
-            onClick={handleCreateTemplate}
-            className={classes.createButton}
-          >
-            {t('Create')}
-          </Button>
-        )}
-        <Button
-          color="primary"
-          variant="contained"
-          onClick={handleExport as never}
-          className={classes.createButton}
-        >
-          {t('Export')}
-        </Button>
-        <Button
-          color="primary"
-          variant="contained"
-          onClick={handleUploadClick}
-          className={classes.createButton}
-        >
-          {t('Import')}
-        </Button>
-      </div>
       <input
         ref={inputRef}
         type="file"
@@ -417,28 +428,78 @@ const MessageTemplatesList = ({
       />
       <DataTable
         data={list}
+        search={search}
+        page={page}
+        count={count}
+        rowsPerPage={rowsPerPage}
+        updateOnChangeSearch={false}
+        actions={{
+          load,
+          onSearchChange: (value: string) => {
+            setSearch(value);
+            setPage(0);
+          },
+          onChangePage: setPage,
+          onChangeRowsPerPage: (value: number) => {
+            setRowsPerPage(value);
+            setPage(0);
+          }
+        }}
+        CustomToolbar={() => (
+          <div className={classes.flex}>
+            {!!isEditable && (
+              <Button
+                color="primary"
+                variant="contained"
+                onClick={handleCreateTemplate}
+                startIcon={<AddIcon />}
+                className={classes.createButton}
+              >
+                {t('Create')}
+              </Button>
+            )}
+            <Button
+              color="primary"
+              variant="contained"
+              onClick={() => handleExport({})}
+              startIcon={<SaveAltIcon />}
+              className={classes.createButton}
+            >
+              {t('Export')}
+            </Button>
+            <Button
+              color="primary"
+              variant="contained"
+              onClick={handleUploadClick}
+              startIcon={<ImportIcon />}
+              className={classes.createButton}
+            >
+              {t('Import')}
+            </Button>
+          </div>
+        )}
+
         darkTheme={true}
         columns={columns}
         controls={{
-          pagination: false,
-          toolbar: false,
-          search: false,
+          pagination: true,
+          toolbar: true,
+          search: true,
           header: true,
-          refresh: false,
+          refresh: true,
           switchView: false,
           customizateColumns: false,
-          bottomPagination: false,
+          bottomPagination: true
         }}
       />
-      <Dialog
-        open={openCreateDialog}
-        onClose={handleCloseCreateDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>
-          {editContentObj.title ? t('EditTemplate') : t('CreateTemplate')}
-        </DialogTitle>
+      <MessageTemplatePreview
+        open={previewTemplate !== null}
+        html={previewTemplate?.text || ''}
+        title={previewTemplate?.title || String(previewTemplate?.template_id ?? '')}
+        onClose={() => setPreviewTemplate(null)}
+      />
+      <Dialog open={openCreateDialog} onClose={handleCloseCreateDialog} fullWidth maxWidth="sm">
+        <DialogTitle>{editContentObj.title ? t('EditTemplate') : t('CreateTemplate')}</DialogTitle>
         <DialogContent>
           <TextField
             label={t('title')}
@@ -457,11 +518,15 @@ const MessageTemplatesList = ({
             value={templateType || editContentObj.type}
             onChange={(e) => setTemplateType(e.target.value)}
             SelectProps={{
-              native: true,
+              native: true
             }}
           >
-            <option value="sms" style={{ color: 'initial' }}>{'SMS'}</option>
-            <option value="email" style={{ color: 'initial' }}>{'Email'}</option>
+            <option value="sms" style={{ color: 'initial' }}>
+              {'SMS'}
+            </option>
+            <option value="email" style={{ color: 'initial' }}>
+              {'Email'}
+            </option>
           </TextField>
           <Button
             variant="outlined"
@@ -479,11 +544,7 @@ const MessageTemplatesList = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseCreateDialog}>{t('Cancel')}</Button>
-          <Button
-            onClick={handleSaveTemplate}
-            color="primary"
-            variant="contained"
-          >
+          <Button onClick={handleSaveTemplate} color="primary" variant="contained">
             {t('Save')}
           </Button>
         </DialogActions>
@@ -506,15 +567,12 @@ const MessageTemplatesList = ({
           style={{
             display: 'flex',
             justifyContent: 'space-around',
-            alignItems: 'center',
+            alignItems: 'center'
           }}
         >
           <DialogTitle>{t('DublicateTemplateTitle')}</DialogTitle>
           <Tooltip title={t('DeleteStatus')}>
-            <IconButton
-              onClick={() => setOpenModalDublicate(false)}
-              size="large"
-            >
+            <IconButton onClick={() => setOpenModalDublicate(false)} size="large">
               <CloseIcon />
             </IconButton>
           </Tooltip>
@@ -539,7 +597,7 @@ const MessageTemplatesList = ({
         open={openConfirm}
         title={t('DeletePrompt')}
         description={t('DeletePromtDescription', {
-          title: deletingItem?.title,
+          title: deletingItem?.title
         })}
         darkTheme={true}
         handleClose={() => {
@@ -555,39 +613,25 @@ const MessageTemplatesList = ({
   );
 };
 
-const mapStateToProps = ({ auth: { info, userUnits } }: { auth: { info: Record<string, unknown>; userUnits: unknown[] } }) => ({
+const mapStateToProps = ({
+  auth: { info, userUnits }
+}: {
+  auth: { info: Record<string, unknown>; userUnits: unknown[] };
+}) => ({
   userInfo: info,
-  userUnits,
+  userUnits
 });
 
 const mapDispatchToProps = (dispatch: Dispatch) => ({
   actions: {
-    requestMessagesTemplate: bindActionCreators(
-      requestMessagesTemplate,
-      dispatch,
-    ),
-    updateMessagesTemplate: bindActionCreators(
-      updateMessagesTemplate,
-      dispatch,
-    ),
-    createMessagesTemplate: bindActionCreators(
-      createMessagesTemplate,
-      dispatch,
-    ),
-    deleteMessagesTemplate: bindActionCreators(
-      deleteMessagesTemplate,
-      dispatch,
-    ),
-    exportMessagesTemplate: bindActionCreators(
-      exportMessagesTemplate,
-      dispatch,
-    ),
-    importMessagesTemplate: bindActionCreators(
-      importMessagesTemplate,
-      dispatch,
-    ),
-    addMessage: bindActionCreators(addMessage, dispatch),
-  },
+    requestMessagesTemplate: bindActionCreators(requestMessagesTemplate, dispatch),
+    updateMessagesTemplate: bindActionCreators(updateMessagesTemplate, dispatch),
+    createMessagesTemplate: bindActionCreators(createMessagesTemplate, dispatch),
+    deleteMessagesTemplate: bindActionCreators(deleteMessagesTemplate, dispatch),
+    exportMessagesTemplate: bindActionCreators(exportMessagesTemplate, dispatch),
+    importMessagesTemplate: bindActionCreators(importMessagesTemplate, dispatch),
+    addMessage: bindActionCreators(addMessage, dispatch)
+  }
 });
 
 const moduled = asModulePage(MessageTemplatesList as never);

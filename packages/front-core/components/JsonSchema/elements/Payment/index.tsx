@@ -382,6 +382,9 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
 
         const res = await importActions.getPaymentInfo(id, {
           paymentControlPath,
+          extraData: {
+            returnPath: window.location.pathname + window.location.search + window.location.hash,
+          },
         });
 
         const failed = typeof res === 'undefined';
@@ -445,11 +448,12 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
   };
 
   render = () => {
-    const { paymentType, hidden, readOnly, schema, commitAfterPayment } = this.props;
-    const { isSuccess } = this.state;
+    const { paymentType, hidden, readOnly, schema, commitAfterPayment, t } = this.props;
+    const { isSuccess, paymentFailed } = this.state;
     const { jsonSchema, rootPath, task, taskId } = this.props;
     const properties = { ...this.props, ...this.state } as unknown as Record<string, unknown>;
     const { disabledText = '' } = schema || {};
+    const error = paymentFailed && !isSuccess ? { message: t('PaymentError') } : properties?.error;
 
     if (hidden) return null;
 
@@ -474,7 +478,7 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
             description={properties?.description as string}
             variant={properties?.variant as never}
             required={properties?.required as boolean}
-            error={properties?.error}
+            error={error}
             bottomSample={true}
             className={(properties?.classes as { groupWrapper?: string })?.groupWrapper}
             noMargin={properties?.noMargin as boolean}

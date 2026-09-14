@@ -1072,4 +1072,101 @@ describe("PayoneProvider", () => {
       );
     });
   });
+  describe("frontend return path", () => {
+    const returnPath = "/tasks/task-1/personalInfo?lang=de#payment";
+    const runtimeOptions = {
+      ...options,
+      frontRedirectUrl: "https://cabinet.example/tasks/{taskId}",
+    };
+
+    it.each(["COMPLETED", "CANCELLED"])(
+      "persists and restores the path after a %s checkout without changing the backend callback",
+      async (checkoutStatus) => {
+        createCommerceCaseRequestMock.mockResolvedValue({
+          checkout: {
+            checkoutId: "checkout-return",
+            paymentResponse: {
+              merchantAction: {
+                redirectData: { redirectURL: "https://secure.payone.com/pay" },
+              },
+            },
+          },
+        });
+        getCheckoutRequestMock.mockResolvedValue({ checkoutStatus });
+        let record: any;
+        const create = jest.fn(async (data) => {
+          record = data;
+          return "return-tx";
+        });
+        const resolve = jest.fn(async () => record);
+        const provider = new PayoneProvider(
+          { ...context, paymentTransactions: { create, resolve } },
+          options,
+        );
+        await provider.calculatePayment({
+          ...resolvedData,
+          documentId: "doc-1",
+          taskId: "task-1",
+          paymentControlPath: "payment.control",
+          paymentSystemParams: runtimeOptions,
+          extraData: { returnPath },
+        });
+        expect(record.extraData).toEqual({ returnPath });
+        const callback = new URL(
+          createHostedCheckoutRawRequestMock.mock.calls[0][0]
+            .hostedCheckoutSpecificInput.returnUrl,
+        );
+        expect(callback.origin + callback.pathname).toBe(
+          "https://example.com/return",
+        );
+        expect(callback.searchParams.get("paymentTransactionId")).toBe(
+          "return-tx",
+        );
+        expect(callback.searchParams.has("returnPath")).toBe(false);
+        const status = await provider.handleStatus(
+          "",
+          runtimeOptions,
+          "success",
+          {
+            paymentTransactionId: "return-tx",
+            hostedCheckoutId: "checkout-return",
+            returnPath: "//evil.example",
+          },
+          {},
+        );
+        expect(status.extraData.redirectUrl).toBe(
+          "https://cabinet.example" + returnPath,
+        );
+        expect(getCheckoutRequestMock).toHaveBeenCalled();
+      },
+    );
+
+    it("ignores an unsafe frontend path and retains legacy initialization", async () => {
+      createCommerceCaseRequestMock.mockResolvedValue({
+        checkout: {
+          checkoutId: "checkout-return",
+          paymentResponse: {
+            merchantAction: {
+              redirectData: { redirectURL: "https://secure.payone.com/pay" },
+            },
+          },
+        },
+      });
+      const provider = new PayoneProvider(context, options);
+      await provider.calculatePayment({
+        ...resolvedData,
+        documentId: "doc-1",
+        taskId: "task-1",
+        paymentControlPath: "payment.control",
+        paymentSystemParams: runtimeOptions,
+        extraData: { returnPath: "//evil.example" },
+      });
+      const callback = new URL(
+        createHostedCheckoutRawRequestMock.mock.calls[0][0]
+          .hostedCheckoutSpecificInput.returnUrl,
+      );
+      expect(callback.searchParams.get("taskId")).toBe("task-1");
+      expect(callback.searchParams.has("paymentTransactionId")).toBe(false);
+    });
+  });
 });

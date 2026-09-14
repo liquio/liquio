@@ -25,6 +25,7 @@ import { history } from 'store';
 import processList from 'services/processList';
 import checkAccess from 'helpers/checkAccess';
 import { resolveLocalizationText } from 'helpers/localization';
+import localizeInterface from './localizeInterface';
 
 const PageNotFound = PageNotFoundRaw as unknown as React.ComponentType<Record<string, unknown>>;
 const EmptyPage = EmptyPageRaw as unknown as React.ComponentType<Record<string, unknown>>;
@@ -69,12 +70,14 @@ interface CustomInterfaceProps {
   debugTools?: DebugTools;
 }
 
+const EMPTY_LOCALIZATION_TEXTS: NonNullable<CustomInterfaceProps['localizationTexts']> = [];
+
 const CustomInterface = ({
   actions = {} as CustomInterfaceProps['actions'],
   location = {} as CustomInterfaceProps['location'],
   userInfo = {} as UserInfo,
   debugTools = {} as DebugTools,
-  localizationTexts = []
+  localizationTexts = EMPTY_LOCALIZATION_TEXTS
 }: CustomInterfaceProps) => {
   // Read at call time rather than module scope: `components/JsonSchema` is
   // a directory with a known circular-import history elsewhere in this
@@ -82,7 +85,17 @@ const CustomInterface = ({
   // ever ends up on a cycle through it (see TYPESCRIPT.md's CodeEditDialog
   // batch notes for the same bug class) — deferring costs nothing.
   const SchemaFormLoose = SchemaForm as unknown as React.ComponentType<Record<string, unknown>>;
-  const [customInterface, setCustomInterface] = React.useState<CustomInterfaceEntry[] | undefined>();
+  const [rawCustomInterface, setCustomInterface] = React.useState<CustomInterfaceEntry[] | undefined>();
+  const customInterface = React.useMemo(
+    () => rawCustomInterface?.map(({ interfaceSchema, ...entry }) => ({
+      ...entry,
+      name: resolveLocalizationText(entry.name, { localizationTexts }) as string | undefined,
+      interfaceSchema: interfaceSchema
+        ? JSON.stringify(localizeInterface(JSON.parse(interfaceSchema), { localizationTexts }))
+        : interfaceSchema
+    })),
+    [rawCustomInterface, localizationTexts]
+  );
   const [value, setValue] = React.useState<Record<string, unknown>>({});
   const [fetchedData, setFetchedData] = React.useState<Record<string, unknown>>({});
   const [filters, setFilters] = React.useState<Record<string, unknown>>({});

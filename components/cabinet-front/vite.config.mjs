@@ -204,6 +204,9 @@ export default defineConfig({
   resolve: {
     preserveSymlinks: true,
     alias: {
+      // The UMD bundle embeds React 17 internals; compile the published source
+      // against this application's React and MUI versions instead.
+      'material-ui-phone-number': resolvePath('node_modules/material-ui-phone-number/src/components/index.jsx'),
       'ace-builds/webpack-resolver': resolvePath('src/ace-vite-resolver.js'),
       core: resolvePath('../../packages/front-core'),
       'pdfjs-dist/build/pdf': resolvePath('node_modules/pdfjs-dist/build/pdf.mjs')
@@ -219,6 +222,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     entries: ['index.html'],
+    // The phone source mixes ESM components with CommonJS country data.
+    // Prebundle the complete package, plus MUI's nested CommonJS dependency.
+    include: ['material-ui-phone-number', '@mui/material > react-is'],
+    extensions: ['.jsx'],
     rolldownOptions: {
       plugins: [muiBrowserEntrypoints(), postcssBrowserCompatibility(), reactVirtualizedPropTypes()],
       moduleTypes: {

@@ -911,6 +911,7 @@ export default {
     FROM: 'van',
     MakePayment: 'Betalen',
     Paid: 'Betaald',
+    PaymentError: 'Betaling mislukt',
     SYMBOLS_COUNT: 'Ingevoerde tekens: {{num}} {{max}} ',
     Currency: 'UAH',
     amountText: 'Betalingsbedrag',
