@@ -109,9 +109,9 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
       phoneNotValid: false,
       timeout: null,
       inited: false,
-      successMessageShown: false,
+      successShownForTransactionId: null,
       paymentFailed: false,
-      failureMessageShown: false,
+      failureShownForTransactionId: null,
     };
   }
 
@@ -216,9 +216,9 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
     const hasProcessed =
       typeof processed !== 'undefined' && processed.length > 0;
 
-    const isSuccess =
-      (hasProcessed && !!processed[processed.length - 1].status.isSuccess) ||
-      false;
+    const lastProcessed = hasProcessed ? processed[processed.length - 1] : undefined;
+
+    const isSuccess = (hasProcessed && !!lastProcessed?.status.isSuccess) || false;
 
     // A terminal (processed) attempt that did not succeed - as opposed to no attempt having
     // completed yet, which is a normal pending state, not a failure.
@@ -231,24 +231,27 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
 
     isSuccess && !alreadyPassed && (await importActions.loadTask(taskId));
 
-    // Guarded via the setState updater form (reading `prevState`, not `this.state`) rather than
-    // a plain `!this.state.xShown` check - `parseResult` can run twice in close succession (e.g.
-    // around the PAYONE redirect-return page load), and reading `this.state` directly races
-    // against React's batching of the *other* call's pending `setState`, letting both calls see
-    // the flag as still unset and both dispatch a toast.
+    // `parseResult` can be called several times for the same underlying attempt (e.g.
+    // `checkPaymentStatus` followed by `initPayment` on the same mount, since a rejected attempt's
+    // `processed` entry doesn't change until the provider's webhook lands). Keying the "already
+    // shown" guard by the attempt's own `transactionId` - rather than a one-shot boolean - means a
+    // toast fires exactly once per distinct attempt, however many times its result is parsed, with
+    // no need to manually reset the guard when a new attempt starts.
+    const lastProcessedTransactionId = lastProcessed?.transactionId ?? null;
+
     if (isSuccess) {
       this.setState((prevState) => {
-        if (prevState.successMessageShown) return null;
+        if (prevState.successShownForTransactionId === lastProcessedTransactionId) return null;
         importActions.addMessage(new Message('SuccessPaymentStatus', 'success'));
-        return { successMessageShown: true };
+        return { successShownForTransactionId: lastProcessedTransactionId };
       });
     }
 
     if (paymentFailed) {
       this.setState((prevState) => {
-        if (prevState.failureMessageShown) return null;
+        if (prevState.failureShownForTransactionId === lastProcessedTransactionId) return null;
         importActions.addMessage(new Message('ErrorPaymentStatus', 'error'));
-        return { failureMessageShown: true };
+        return { failureShownForTransactionId: lastProcessedTransactionId };
       });
     }
 
@@ -374,12 +377,6 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
       const { isSuccess } = this.state;
 
       if (!isSuccess) {
-        // A previous attempt may have already failed (persisted in the document's `processed`
-        // history, re-read by `checkPaymentStatus` above on every mount) - reset the shown-once
-        // flag so this fresh attempt can surface its own failure toast if it fails too, instead
-        // of being permanently suppressed by the last one.
-        this.setState({ failureMessageShown: false });
-
         const res = await importActions.getPaymentInfo(id, {
           paymentControlPath,
           extraData: {
@@ -419,7 +416,11 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
 
   init = async () => {
     await this.checkPaymentStatus({ silent: true });
-    this.initPayment();
+    // Awaited so `processList`'s in-flight dedup entry for this control stays held for the whole
+    // init cycle - otherwise it clears as soon as `checkPaymentStatus` resolves, and the
+    // `loadingValue`/`inited` state change at the end of `initPayment` can trigger
+    // `componentDidUpdate` to schedule a second, overlapping `init` call.
+    await this.initPayment();
   };
 
   componentDidUpdate = (_: unknown, prevState: PaymentState) => {
