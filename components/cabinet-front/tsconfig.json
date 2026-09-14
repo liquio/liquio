@@ -6,6 +6,9 @@
       "vite/client"
     ],
     "paths": {
+      "core/theme": [
+        "src/superstructure/core/theme.ts"
+      ],
       "core/*": [
         "../../packages/front-core/*"
       ],

@@ -208,6 +208,7 @@ export default defineConfig({
       // against this application's React and MUI versions instead.
       'material-ui-phone-number': resolvePath('node_modules/material-ui-phone-number/src/components/index.jsx'),
       'ace-builds/webpack-resolver': resolvePath('src/ace-vite-resolver.js'),
+      'core/theme': resolvePath('src/superstructure/core/theme.ts'),
       core: resolvePath('../../packages/front-core'),
       'pdfjs-dist/build/pdf': resolvePath('node_modules/pdfjs-dist/build/pdf.mjs')
     }
