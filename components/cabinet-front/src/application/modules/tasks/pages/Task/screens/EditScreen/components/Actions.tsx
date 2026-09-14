@@ -59,6 +59,7 @@ const Actions = (props: any) => {
         }
 
         return text;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         return defaultText;
       }

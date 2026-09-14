@@ -47,6 +47,7 @@ class UncreatedTask extends React.Component<UncreatedTaskProps> {
     try {
       const { taskId } = result;
       history.push(`/tasks/${taskId}`);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       history.push('/tasks');
     }

@@ -41,6 +41,7 @@ const ImportantMessages = ({ classes, setMessageHidden }: any) => {
 
     try {
       setMessageHidden(messageId);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // Nothing to do
     }

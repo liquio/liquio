@@ -1,6 +1,5 @@
 import React from 'react';
 
-import { ReactComponent as WorkOutlineIcon } from 'assets/img/modulesIcons/workout-outlined.svg';
 import taskEndPoint from 'application/endPoints/task';
 import unitTaskEndPoint from 'application/endPoints/unitTask';
 import closedTaskEndPoint from 'application/endPoints/closedTask';
@@ -12,8 +11,6 @@ const OnboardingTaskPage = React.lazy(() => import('modules/tasks/pages/Onboardi
 const UncreatedTask = React.lazy(() => import('modules/tasks/pages/UncreatedTask'));
 const MultisignTask = React.lazy(() => import('modules/tasks/pages/MultisignTask'));
 const ProcessesPage = React.lazy(() => import('modules/tasks/components/CreateTaskDialog'));
-const MyTaskNavigation = React.lazy(() => import('./components/MyTaskNavigation'));
-const UnitTaskNavigation = React.lazy(() => import('./components/UnitTaskNavigation'));
 
 interface HiddenColumns {
   notUnitedUser: string[];

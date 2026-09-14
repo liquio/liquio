@@ -232,6 +232,7 @@ const CabinetMenuDialog = ({
         if (isActive) {
           setCustomInterfaceOptions(nextOptions);
         }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (loadError) {
         if (isActive) {
           setCustomInterfaceOptions([]);

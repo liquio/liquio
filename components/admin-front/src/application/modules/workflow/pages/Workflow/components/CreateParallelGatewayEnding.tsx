@@ -79,6 +79,7 @@ const CreateParallelGatewayEnding = ({ t, modeler, selection, classes }: CreateP
             );
             newElement.businessObject.id = endId;
             modeling.updateProperties(newElement, { id: endId });
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
             // Nothing to do
           }

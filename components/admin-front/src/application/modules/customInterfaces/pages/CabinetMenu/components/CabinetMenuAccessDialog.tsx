@@ -225,6 +225,7 @@ const CabinetMenuAccessDialog = ({
             name: item.name || String(item.id),
           })));
         }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         if (isActive) {
           setUnitOptions([]);

@@ -26,6 +26,7 @@ const NavigationList = ({ t }: NavigationListProps) => {
         dispatch,
       )) as KibanaReport[];
       setReports(results);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // no-op, matches original empty catch
     }

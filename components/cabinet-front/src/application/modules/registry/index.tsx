@@ -1,6 +1,3 @@
-import React from 'react';
-
-import { ReactComponent as StorageOutlinedIcon } from 'assets/img/modulesIcons/storage-outlined.svg';
 import RegistryPage from './pages/RegistryReforged';
 
 export default {

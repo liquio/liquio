@@ -27,6 +27,7 @@ class RejectWorkflow extends React.Component<RejectWorkflowProps, RejectWorkflow
     try {
       const task = (await actions.createTask({ copyFrom })) as { id: string | number };
       history.push(`/tasks/${task.id}`);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       this.setState({ busy: false });
     }
