@@ -79,11 +79,11 @@ interface PaymentState {
   phoneNotValid: boolean;
   timeout: unknown;
   inited: boolean;
-  successMessageShown: boolean;
   paymentFailed: boolean;
-  failureMessageShown: boolean;
   isConfirmed?: boolean;
   failed?: boolean;
+  successShownForTransactionId?: string | number | null;
+  failureShownForTransactionId?: string | number | null;
 }
 
 class Payment extends React.Component<PaymentProps, PaymentState> {
@@ -199,7 +199,7 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
     const dataPath = paymentControlPath.replace(/properties./g, '');
 
     const paymentInfo = objectPath.get(result.data, dataPath) as {
-      processed?: Array<{ status: { isSuccess?: boolean } }>;
+      processed?: Array<{ status: { isSuccess?: boolean }; transactionId?: string | number }>;
       calculated: { amount: number | Array<{ amount: number }>; paymentRequestData: PaymentRequestData };
     } | undefined;
 
