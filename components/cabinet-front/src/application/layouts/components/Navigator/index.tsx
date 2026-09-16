@@ -20,6 +20,7 @@ import { getCurrentLanguageCode, getTranslationCandidates } from 'helpers/locali
 import storage from 'helpers/storage';
 import CategoryHeader from 'layouts/components/Navigator/CategoryHeader';
 import Item from 'layouts/components/Navigator/Item';
+import CreateTaskButton from 'modules/tasks/components/CreateTaskButton';
 
 const styles = (theme: any) => ({
   list: {
@@ -396,7 +397,7 @@ const Navigator = (rawProps: any) => {
 
   return (
     <>
-      {/* {checkAccess({
+      {checkAccess({
         access: {
           isUnitedUser: false,
           unitHasAccessTo: 'navigation.tasks.CreateTaskButton'
@@ -405,9 +406,7 @@ const Navigator = (rawProps: any) => {
         <CreateTaskButton isSidebar={true} />
       ) : (
         <div className={classes.emptyCreateButton} />
-      )}*/}
-
-      <div className={classes.emptyCreateButton} />
+      )}
 
       {isMobile ? (
         <div className={classes.verticalScroll}>{contentWithoutScroll()}</div>
