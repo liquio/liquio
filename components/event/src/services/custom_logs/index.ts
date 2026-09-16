@@ -1,7 +1,5 @@
-import { createClient } from 'redis';
-
 import { CustomLogEntity } from '../../entities/custom_log';
-import { Sandbox } from '@liquio/back-core';
+import { RedisClient, Sandbox } from '@liquio/back-core';
 
 /**
  * Custom logs.
@@ -34,7 +32,7 @@ export class CustomLogs {
         redis: { ttl },
       } = config;
       this.cacheEnabled = isRedisEnabled && cacheEnabled;
-      this.client = (this.cacheEnabled && (createClient as any)(port, host)) || null;
+      this.client = this.cacheEnabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => global.log }) : null;
 
       this.ttl = ttl;
       if (this.client) {
@@ -131,7 +129,7 @@ export class CustomLogs {
     // Save data to cache.
     const cacheKey = CustomLogEntity.getCacheKey(logParams);
     const dataString = JSON.stringify(logParams);
-    this.client.set(cacheKey, dataString, 'EX', this.ttl);
+    await this.client.set(cacheKey, dataString, this.ttl);
   }
 
   /**
@@ -142,12 +140,7 @@ export class CustomLogs {
   async isCacheExist(logParams: any): Promise<boolean> {
     // Get data from cache.
     const cacheKey = CustomLogEntity.getCacheKey(logParams);
-    const dataString = await new Promise((resolve, reject) => {
-      this.client.get(cacheKey, (error: any, value: any) => {
-        if (error) return reject(error);
-        resolve(value);
-      });
-    });
+    const dataString = await this.client.get(cacheKey);
 
     // Return cache exist indicator.
     return !!dataString;

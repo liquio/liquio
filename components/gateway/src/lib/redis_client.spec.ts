@@ -1,258 +1,54 @@
-import * as redis from 'redis';
+const constructorSpy = jest.fn();
+const mockMethods = {
+  get: jest.fn(),
+  set: jest.fn(),
+  delete: jest.fn(),
+};
+
+class BackCoreRedisClientMock {
+  config: any;
+  constructor(config: any) {
+    constructorSpy(config);
+    this.config = config;
+  }
+}
+Object.assign(BackCoreRedisClientMock.prototype, mockMethods);
+
+jest.mock('@liquio/back-core', () => ({ RedisClient: BackCoreRedisClientMock }));
 
 import { RedisClient } from './redis_client';
 
-describe('RedisClient', () => {
-  let mockClient: any;
-
+describe('RedisClient (gateway wrapper)', () => {
   beforeEach(() => {
-    // Clear the singleton before each test
-    (RedisClient as any).singleton = null;
-
-    // Mock the redis client with v5 Promise API
-    /** @type {!Partial<import('redis').RedisClientType>} */
-    mockClient = {
-      connect: jest.fn().mockReturnValue(Promise.resolve(undefined)),
-      set: jest.fn().mockResolvedValue('OK'),
-      get: jest.fn().mockResolvedValue(null),
-      del: jest.fn().mockResolvedValue(0),
-    };
-
-    // Mock the redis.createClient
-    jest.spyOn(redis, 'createClient').mockReturnValue(mockClient);
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
-    jest.restoreAllMocks();
+    (RedisClient as any).singleton = undefined;
+    global.log = { save: jest.fn() } as any;
   });
 
-  describe('Constructor', () => {
-    it('should compile without errors', () => {
-      expect(RedisClient).toBeDefined();
-      expect(typeof RedisClient).toBe('function');
-    });
+  it('configures the back-core client with getLog', () => {
+    new RedisClient({ host: 'localhost', port: 6379, defaultTtl: 60 });
 
-    it('should create a singleton instance', () => {
-      const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-      const instance1 = new RedisClient(config as any);
-      const instance2 = new RedisClient(config as any);
-
-      expect(instance1).toBe(instance2);
-    });
-
-    it('should connect to redis with provided host and port', () => {
-      const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-      new RedisClient(config as any);
-
-      // v5: createClient expects socket object
-      expect(redis.createClient).toHaveBeenCalledWith({
-        socket: { host: 'localhost', port: 6379 },
-      });
-    });
-
-    it('should set default TTL from config', () => {
-      const config = { host: 'localhost', port: 6379, defaultTtl: 600 };
-      const instance = new RedisClient(config as any);
-
-      expect(instance.defaultTtl).toBe(600);
-    });
-
-    it('should handle undefined default TTL', () => {
-      const config = { host: 'localhost', port: 6379 };
-      const instance = new RedisClient(config as any);
-
-      expect(instance.defaultTtl).toBeUndefined();
-    });
+    expect(constructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379, defaultTtl: 60 }));
+    const config = constructorSpy.mock.calls[0][0];
+    expect(config.getLog()).toBe(global.log);
   });
 
-  describe('Instance Methods', () => {
-    let instance: RedisClient;
+  it('is a singleton across constructions', () => {
+    const instance1 = new RedisClient({ host: 'localhost', port: 6379 });
+    const instance2 = new RedisClient({ host: 'localhost', port: 6379 });
 
-    beforeEach(() => {
-      const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-      instance = new RedisClient(config as any);
-    });
-
-    describe('set', () => {
-      it('should set string data', async () => {
-        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-        const instance = new RedisClient(config as any);
-
-        const result = await instance.set('key', 'value');
-
-        // v5: set uses Promise API with options object
-        expect(result).toBe('OK');
-        expect(mockClient.set).toHaveBeenCalledWith('key', 'value', { EX: 300 });
-      });
-
-      it('should stringify object data', async () => {
-        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-        const instance = new RedisClient(config as any);
-        const obj = { id: 1, name: 'test' };
-
-        await instance.set('key', obj);
-
-        expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(obj), { EX: 300 });
-      });
-
-      it('should use provided TTL', async () => {
-        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-        const instance = new RedisClient(config as any);
-
-        await instance.set('key', 'value', 600);
-
-        expect(mockClient.set).toHaveBeenCalledWith('key', 'value', { EX: 600 });
-      });
-
-      it('should use default TTL if not provided', async () => {
-        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-        const instance = new RedisClient(config as any);
-
-        await instance.set('key', 'value');
-
-        expect(mockClient.set).toHaveBeenCalledWith('key', 'value', { EX: 300 });
-      });
-
-      it('should return OK on success', async () => {
-        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-        const instance = new RedisClient(config as any);
-
-        const result = await instance.set('key', 'value');
-
-        expect(result).toBe('OK');
-      });
-
-      it('should reject on error', async () => {
-        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-        const instance = new RedisClient(config as any);
-        const error = new Error('Connection failed');
-        mockClient.set.mockRejectedValueOnce(error);
-
-        await expect(instance.set('key', 'value')).rejects.toBe(error);
-      });
-
-      it('should handle empty string values', async () => {
-        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-        const instance = new RedisClient(config as any);
-
-        await instance.set('key', '');
-
-        expect(mockClient.set).toHaveBeenCalledWith('key', '', { EX: 300 });
-      });
-
-      it('should handle objects with null values', async () => {
-        const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-        const instance = new RedisClient(config as any);
-        const objWithNull = { id: 1, value: null };
-
-        await instance.set('key', objWithNull);
-
-        expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(objWithNull), { EX: 300 });
-      });
-    });
-
-    describe('get', () => {
-      it('should get data from redis', async () => {
-        mockClient.get.mockResolvedValueOnce('value');
-
-        const result = await instance.get('key');
-
-        expect(result).toBe('value');
-        expect(mockClient.get).toHaveBeenCalledWith('key');
-      });
-
-      it('should return null if key not found', async () => {
-        mockClient.get.mockResolvedValueOnce(null);
-
-        const result = await instance.get('key');
-
-        expect(result).toBeNull();
-      });
-
-      it('should handle JSON data', async () => {
-        const obj = { id: 1, name: 'test' };
-        mockClient.get.mockResolvedValueOnce(JSON.stringify(obj));
-
-        const result = await instance.get('key');
-
-        expect(result).toBe(JSON.stringify(obj));
-      });
-
-      it('should reject on error', async () => {
-        const error = new Error('Connection failed');
-        mockClient.get.mockRejectedValueOnce(error);
-
-        await expect(instance.get('key')).rejects.toBe(error);
-      });
-    });
-
-    describe('delete', () => {
-      it('should delete a key', async () => {
-        mockClient.del.mockResolvedValueOnce(1);
-
-        const result = await instance.delete('key');
-
-        expect(result).toBe(1);
-        expect(mockClient.del).toHaveBeenCalledWith('key');
-      });
-
-      it('should return 0 if key not found', async () => {
-        mockClient.del.mockResolvedValueOnce(0);
-
-        const result = await instance.delete('key');
-
-        expect(result).toBe(0);
-      });
-
-      it('should reject on error', async () => {
-        const error = new Error('Connection failed');
-        mockClient.del.mockRejectedValueOnce(error);
-
-        await expect(instance.delete('key')).rejects.toBe(error);
-      });
-    });
+    expect(instance1).toBe(instance2);
+    expect(constructorSpy).toHaveBeenCalledTimes(1);
   });
 
-  describe('Edge Cases', () => {
-    let instance: RedisClient;
+  it('inherits get/set/delete from back-core unchanged', async () => {
+    const instance = new RedisClient({ host: 'localhost', port: 6379 });
+    mockMethods.set.mockResolvedValue('OK');
+    mockMethods.get.mockResolvedValue('value');
+    mockMethods.delete.mockResolvedValue(1);
 
-    beforeEach(() => {
-      const config = { host: 'localhost', port: 6379, defaultTtl: 300 };
-      instance = new RedisClient(config as any);
-    });
-
-    it('should handle special characters in keys', async () => {
-      const specialKey = 'key:with:colons:and:dots.';
-      mockClient.set.mockResolvedValueOnce('OK');
-
-      await instance.set(specialKey, 'value');
-
-      expect(mockClient.set).toHaveBeenCalledWith(specialKey, 'value', { EX: 300 });
-    });
-
-    it('should handle very large TTL values', async () => {
-      mockClient.set.mockResolvedValueOnce('OK');
-
-      await instance.set('key', 'value', 999999);
-
-      expect(mockClient.set).toHaveBeenCalledWith('key', 'value', { EX: 999999 });
-    });
-
-    it('should handle complex nested objects', async () => {
-      const complexObj = {
-        users: [
-          { id: 1, name: 'Alice', tags: ['admin', 'user'] },
-          { id: 2, name: 'Bob', tags: ['user'] },
-        ],
-        metadata: { created: '2024-01-01', version: 1 },
-      };
-
-      mockClient.set.mockResolvedValueOnce('OK');
-
-      await instance.set('key', complexObj);
-
-      expect(mockClient.set).toHaveBeenCalledWith('key', JSON.stringify(complexObj), { EX: 300 });
-    });
+    expect(await instance.set('key', 'value')).toBe('OK');
+    expect(await instance.get('key')).toBe('value');
+    expect(await instance.delete('key')).toBe(1);
   });
 });

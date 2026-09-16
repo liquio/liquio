@@ -3,6 +3,8 @@ const mockMethods = {
   get: jest.fn(),
   set: jest.fn(),
   delete: jest.fn(),
+  connect: jest.fn(),
+  close: jest.fn(),
 };
 
 class BackCoreRedisClientMock {
@@ -18,7 +20,7 @@ jest.mock('@liquio/back-core', () => ({ RedisClient: BackCoreRedisClientMock }))
 
 import { RedisClient } from './redis_client';
 
-describe('RedisClient (manager wrapper)', () => {
+describe('RedisClient (admin-api wrapper)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (RedisClient as any).singleton = undefined;
@@ -26,9 +28,9 @@ describe('RedisClient (manager wrapper)', () => {
   });
 
   it('configures the back-core client with getLog', () => {
-    new RedisClient({ host: 'localhost', port: 6379, defaultTtl: 60 });
+    new RedisClient({ host: 'localhost', port: 6379 });
 
-    expect(constructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379, defaultTtl: 60 }));
+    expect(constructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379 }));
     const config = constructorSpy.mock.calls[0][0];
     expect(config.getLog()).toBe(global.log);
   });
@@ -41,7 +43,7 @@ describe('RedisClient (manager wrapper)', () => {
     expect(constructorSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('inherits get/set/delete from back-core unchanged', async () => {
+  it('inherits get/set/delete/connect/close from back-core unchanged', async () => {
     const instance = new RedisClient({ host: 'localhost', port: 6379 });
     mockMethods.set.mockResolvedValue('OK');
     mockMethods.get.mockResolvedValue('value');
@@ -50,5 +52,9 @@ describe('RedisClient (manager wrapper)', () => {
     expect(await instance.set('key', 'value')).toBe('OK');
     expect(await instance.get('key')).toBe('value');
     expect(await instance.delete('key')).toBe(1);
+    await instance.connect();
+    await instance.close();
+    expect(mockMethods.connect).toHaveBeenCalled();
+    expect(mockMethods.close).toHaveBeenCalled();
   });
 });

@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 
 import Multiconf from 'multiconf';
-import { createClient } from 'redis';
 
 import { Db } from './lib/db';
+import { RedisClient } from './lib/redis_client';
 import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
@@ -49,9 +49,7 @@ async function main() {
   }
 
   if (config?.redis?.isEnabled) {
-    const client = createClient({
-      socket: { host: config.redis.host, port: config.redis.port },
-    });
+    const client = new RedisClient({ host: config.redis.host, port: config.redis.port });
     await client.connect();
     global.redis = client;
   }

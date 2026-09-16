@@ -3,8 +3,8 @@ import { RedisClient as BackCoreRedisClient, RedisClientConfig } from '@liquio/b
 export type RedisConfig = Omit<RedisClientConfig, 'getLog' | 'prefix'>;
 
 /**
- * Gateway's redis client: a thin, singleton-per-process binding of `@liquio/back-core`'s
- * `RedisClient`. `get`/`set`/`delete` are inherited unchanged.
+ * Admin-api's redis client: a thin, singleton-per-process binding of `@liquio/back-core`'s
+ * `RedisClient`. `get`/`set`/`delete`/`connect`/`close` are inherited unchanged.
  */
 export class RedisClient extends BackCoreRedisClient {
   static singleton: RedisClient;

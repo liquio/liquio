@@ -1,72 +1,23 @@
-import { createClient } from 'redis';
+import { RedisClient as BackCoreRedisClient, RedisClientConfig } from '@liquio/back-core';
+
+export type RedisConfig = Omit<RedisClientConfig, 'getLog' | 'prefix'>;
 
 /**
- * Redis client.
+ * Manager's redis client: a thin, singleton-per-process binding of `@liquio/back-core`'s
+ * `RedisClient`. `get`/`set`/`delete` are inherited unchanged.
  */
-export class RedisClient {
+export class RedisClient extends BackCoreRedisClient {
   static singleton: RedisClient;
 
-  client: any;
-  defaultTtl: number;
-
   /**
-   * Redis client constructor.
+   * @param {RedisConfig} config Config object.
    */
-  constructor(config) {
-    // Singleton.
-    if (!RedisClient.singleton) {
-      const { host, port, defaultTtl } = config;
-      // v5: use socket object
-      this.client = createClient({
-        socket: { host, port },
-      });
-      this.defaultTtl = defaultTtl;
-
-      // Connect to redis in background (don't wait for it)
-      this.client.connect().catch((err) => {
-        console.error('Redis connection error:', err);
-      });
-
-      // Define singleton.
-      RedisClient.singleton = this;
+  constructor(config: RedisConfig) {
+    if (RedisClient.singleton) {
+      return RedisClient.singleton;
     }
 
-    // Return singleton.
-    return RedisClient.singleton;
-  }
-
-  /**
-   * Set data to redis.
-   * @param {string} key Key for data.
-   * @param {object|string} data Data to set.
-   * @param {number} ttl Time to live.
-   * @return {Promise<string>} OK.
-   */
-  async set(key, data, ttl = this.defaultTtl) {
-    if (typeof data === 'object') {
-      data = JSON.stringify(data);
-    }
-    // v5: Promise API with options object
-    return this.client.set(key, data, { EX: ttl });
-  }
-
-  /**
-   * Get data from redis.
-   * @param {string} key Key for data.
-   * @return {Promise<string>}.
-   */
-  async get(key) {
-    // v5: Direct Promise return
-    return this.client.get(key);
-  }
-
-  /**
-   * Delete data from redis.
-   * @param {string} key Key for data.
-   * @return {Promise<number>} Deleted keys.
-   */
-  async delete(key) {
-    // v5: use del() instead of delete()
-    return this.client.del(key);
+    super({ ...config, prefix: process.env.npm_package_name, getLog: () => global.log });
+    RedisClient.singleton = this;
   }
 }

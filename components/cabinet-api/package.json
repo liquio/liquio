@@ -19,7 +19,7 @@
     "test:cov": "jest --coverage"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.1.0",
+    "@liquio/back-core": "^0.2.0",
     "axios": "^1.15.2",
     "body-parser": "^1.19.0",
     "compression": "^1.7.4",
@@ -34,7 +34,6 @@
     "multiconf": "^4.2.1",
     "pg": "^8.20.0",
     "prop-by-path": "^1.0.5",
-    "redis": "^5.11.0",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {

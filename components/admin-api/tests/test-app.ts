@@ -11,10 +11,10 @@ import { RedisContainer } from '@testcontainers/redis';
 import { randomBytes } from 'crypto';
 import * as jsonwebtoken from 'jsonwebtoken';
 import * as Multiconf from 'multiconf';
-import * as redis from 'redis';
 
 import { Db } from '../src/lib/db';
 import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { RedisClient } from '../src/lib/redis_client';
 import { MessageQueue } from '../src/lib/message_queue';
 import { RouterService } from '../src/services/router';
 import { Models } from '../src/models';
@@ -274,9 +274,7 @@ export class TestApp {
     }
 
     if (config?.redis?.isEnabled) {
-      const client = redis.createClient({
-        socket: { host: config.redis.host, port: config.redis.port },
-      });
+      const client = new RedisClient({ host: config.redis.host, port: config.redis.port });
       await client.connect();
       global.redis = client;
     }
@@ -365,7 +363,7 @@ export class TestApp {
   // Destroy the application
   async destroy() {
     if (global.redis) {
-      await global.redis.disconnect();
+      await global.redis.close();
     }
     if (global.db) {
       await global.db.close();
