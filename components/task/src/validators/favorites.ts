@@ -1,4 +1,3 @@
-
 import { checkSchema } from 'express-validator';
 import { Validator } from './validator';
 
@@ -16,7 +15,7 @@ export class FavoritesValidator extends Validator {
     super(validationConfig);
 
     // Define singleton.
-    return FavoritesValidator.singleton || ( FavoritesValidator.singleton = this );
+    return FavoritesValidator.singleton || (FavoritesValidator.singleton = this);
   }
 
   /**
@@ -36,4 +35,3 @@ export class FavoritesValidator extends Validator {
     });
   }
 }
-

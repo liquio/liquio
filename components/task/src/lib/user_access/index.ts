@@ -1,10 +1,7 @@
-
 import { UserIpAccessProvider } from './access_providers/user_ip';
 
 // Providers.
-const PROVIDERS_CLASSES = [
-  UserIpAccessProvider
-];
+const PROVIDERS_CLASSES = [UserIpAccessProvider];
 
 /**
  * User access.
@@ -21,7 +18,7 @@ export class UserAccess {
     // Singleton.
     if (!UserAccess.singleton) {
       // Init providers.
-      this.providers = UserAccess.ProvidersClasses.map(v => new v(global.config));
+      this.providers = UserAccess.ProvidersClasses.map((v) => new v(global.config));
 
       // Define singleton.
       UserAccess.singleton = this;
@@ -63,4 +60,3 @@ export class UserAccess {
     return PROVIDERS_CLASSES;
   }
 }
-

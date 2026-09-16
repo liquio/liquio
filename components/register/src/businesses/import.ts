@@ -14,7 +14,7 @@ const IMPORT_IN_ONE_TIME_COUNT = 100;
 const STATUSES = {
   Importing: 'Importing',
   Imported: 'Imported',
-  Failed: 'Failed'
+  Failed: 'Failed',
 };
 
 /**
@@ -149,7 +149,7 @@ export default class ImportBusiness extends Business {
     { key, register, records, options = {} },
     removeOldRecords = false,
     user = 'system',
-    accessInfo = { userId: null, userName: null }
+    accessInfo = { userId: null, userName: null },
   ) {
     await this.validate({ key, register, records, options });
     const importId = this.generateImportId();
@@ -184,7 +184,7 @@ export default class ImportBusiness extends Business {
     { key, register, records, options = {} },
     removeOldRecords = false,
     user = 'system',
-    accessInfo = { userId: null, userName: null }
+    accessInfo = { userId: null, userName: null },
   ) {
     // Define params.
     const onlySchema = options['onlySchema'] ?? false;
@@ -360,7 +360,7 @@ export default class ImportBusiness extends Business {
     { key, register, records },
     removeOldRecords = false,
     user = 'system',
-    accessInfo = { userId: null, userName: null }
+    accessInfo = { userId: null, userName: null },
   ) {
     // Remove old records if need it.
     if (removeOldRecords) {
@@ -373,13 +373,13 @@ export default class ImportBusiness extends Business {
         {
           register_id: register.id,
           key_id: key.id,
-          id: { [Sequelize.Op.notIn]: records.map((record) => record.id) }
+          id: { [Sequelize.Op.notIn]: records.map((record) => record.id) },
         },
         undefined,
         removeCounterCb,
         user,
         person,
-        historyMeta
+        historyMeta,
       );
       this.toImport[importId].details.removedOldRecordsCount = removedRecords;
       this.toImport[importId].details.removedOldRecords = true;
@@ -440,8 +440,8 @@ export default class ImportBusiness extends Business {
         updatedRecordsCount: 0,
         removedOldRecords: false,
         removedOldRecordsCount: 0,
-        error: null
-      }
+        error: null,
+      },
     };
 
     await this.updateToImportState(importId);

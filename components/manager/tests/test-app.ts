@@ -13,7 +13,7 @@ import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as Multiconf from 'multiconf';
 
 import { Db } from '../src/lib/db';
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import { MessageQueue } from '../src/lib/message_queue';
 import { RouterService } from '../src/services/router';
 import { WorkflowBusiness } from '../src/businesses/workflow';
@@ -24,8 +24,8 @@ const debug = createDebug;
 jest.setTimeout(30000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
-jest.mock('back-core', () => {
-  const original = jest.requireActual('back-core');
+jest.mock('@liquio/back-core', () => {
+  const original = jest.requireActual('@liquio/back-core');
   const { Log: OriginalLog } = original;
   const logs = [];
   const emitter = new EventEmitter();

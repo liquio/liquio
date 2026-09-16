@@ -16,18 +16,18 @@ export class WorkflowTemplateModel {
       new WorkflowTemplateEntity({
         id: 1,
         name: 'Test 1',
-        description: ''
+        description: '',
       }),
       new WorkflowTemplateEntity({
         id: 2,
         name: 'Test 2',
-        description: ''
+        description: '',
       }),
       new WorkflowTemplateEntity({
         id: 3,
         name: 'Test 3',
-        description: ''
-      })
+        description: '',
+      }),
     ];
 
     return workflowTemplates;
@@ -40,8 +40,7 @@ export class WorkflowTemplateModel {
     return new WorkflowTemplateEntity({
       id: 1,
       name: 'Test 1',
-      description: ''
+      description: '',
     });
   }
 }
-

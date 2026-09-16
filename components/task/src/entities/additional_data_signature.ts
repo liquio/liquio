@@ -91,4 +91,3 @@ export class AdditionalDataSignatureEntity extends Entity {
     return this.getFilterProperties();
   }
 }
-

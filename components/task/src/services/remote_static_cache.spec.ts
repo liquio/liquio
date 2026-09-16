@@ -1,7 +1,6 @@
 import nock from 'nock';
 import * as redis from 'redis';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { RemoteStaticCache } = require('./remote_static_cache');
 
 // Mock redis client
@@ -54,7 +53,7 @@ describe('RemoteStaticCache', () => {
       expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-initialized', {
         useCache: true,
         host: 'localhost',
-        port: 6379
+        port: 6379,
       });
     });
 
@@ -67,7 +66,7 @@ describe('RemoteStaticCache', () => {
       expect(redis.createClient).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
       expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
-        useCache: true
+        useCache: true,
       });
     });
 
@@ -80,7 +79,7 @@ describe('RemoteStaticCache', () => {
       expect(redis.createClient).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
       expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
-        useCache: false
+        useCache: false,
       });
     });
 
@@ -125,9 +124,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request for update
-      nock('https://api.example.com')
-        .get('/data')
-        .reply(200, newData);
+      nock('https://api.example.com').get('/data').reply(200, newData);
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 
@@ -146,9 +143,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(null);
 
       // Mock HTTP request for update
-      nock('https://api.example.com')
-        .get('/data')
-        .reply(200, newData);
+      nock('https://api.example.com').get('/data').reply(200, newData);
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 
@@ -175,9 +170,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request to fail
-      nock('https://api.example.com')
-        .get('/data')
-        .replyWithError(new Error('Network error'));
+      nock('https://api.example.com').get('/data').replyWithError(new Error('Network error'));
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 
@@ -194,9 +187,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request with custom timeout
-      nock('https://api.example.com')
-        .get('/data')
-        .reply(200, { success: true });
+      nock('https://api.example.com').get('/data').reply(200, { success: true });
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl, { timeout: 10000 });
 
@@ -225,9 +216,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request
-      nock('https://api.example.com')
-        .get('/data')
-        .reply(200, { success: true });
+      nock('https://api.example.com').get('/data').reply(200, { success: true });
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 

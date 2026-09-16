@@ -1,4 +1,3 @@
-
 import { createClient } from 'redis';
 import axios from 'axios';
 
@@ -27,13 +26,15 @@ export class RemoteStaticCache {
 
       // Remote static cache config.
       const { useCache = false } = config || {};
-      this.client = (isRedisEnabled && useCache)
-        ? host && port ? createClient({ socket: { host, port } }) : undefined
-        : undefined;
-      this.client?.connect().catch(error => {
+      this.client = isRedisEnabled && useCache ? (host && port ? createClient({ socket: { host, port } }) : undefined) : undefined;
+      this.client?.connect().catch((error) => {
         global.log.save('remote-static-cache-connection-error', error, 'error');
       });
-      if (this.client) { global.log.save('remote-static-cache-initialized', { useCache, host, port }); } else { global.log.save('remote-static-cache-not-initialized', { useCache }); }
+      if (this.client) {
+        global.log.save('remote-static-cache-initialized', { useCache, host, port });
+      } else {
+        global.log.save('remote-static-cache-not-initialized', { useCache });
+      }
       // Define singleton.
       RemoteStaticCache.singleton = this;
     }
@@ -52,7 +53,10 @@ export class RemoteStaticCache {
     const key = this.formKeyFromUrl(url);
 
     // Check if connected to Redis.
-    if (!this.client) { global.log.save('redis-client-is-not-defined-for-static-cache'); return; }
+    if (!this.client) {
+      global.log.save('redis-client-is-not-defined-for-static-cache');
+      return;
+    }
 
     // Get cache as string.
     const dataString = await this.client.get(key);
@@ -84,4 +88,3 @@ export class RemoteStaticCache {
     return `${CACHE_KEY_PREFIX}:${urlBase64}`;
   }
 }
-

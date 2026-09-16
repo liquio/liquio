@@ -65,7 +65,7 @@ export default class Model {
       residentshipStatusDateFrom,
       residentshipStatusDateTo,
       dataDateFrom,
-      dataDateTo
+      dataDateTo,
     } = dateFilers;
 
     // Prepare containers for filters.

@@ -13,7 +13,7 @@ export class LocalizationLanguageBusiness {
    * Constructor.
    * @param {object} config Config object.
    */
-  constructor (config) {
+  constructor(config) {
     // Define singleton.
     if (!LocalizationLanguageBusiness.singleton) {
       this.config = config;
@@ -29,8 +29,7 @@ export class LocalizationLanguageBusiness {
    * Get all localization languages.
    * @returns {Promise<LocalizationLanguageEntity[]>}
    */
-  async getAll (params) {
+  async getAll(params) {
     return await this.localizationLanguageModel.getAll(params);
   }
 }
-

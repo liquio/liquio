@@ -1,4 +1,3 @@
-
 import PropByPath from 'prop-by-path';
 import { Filler } from './filler';
 import { TaskModel } from '../../../models/task';
@@ -35,13 +34,16 @@ export class WorkflowDocumentsFiller extends Filler {
     const { workflowId, documents } = options;
 
     // Check options.
-    if (!workflowId) { return objectToFill; }
+    if (!workflowId) {
+      return objectToFill;
+    }
 
     // Handle all schema object pages.
     await this.handleAllElements(schemaObject, objectToFill, async (item, itemSchema) => {
       // Check current element shoudn't be defined.
-      if (!itemSchema || typeof itemSchema.value !== 'string'
-        || !itemSchema.value.startsWith('documents.')) { return; }
+      if (!itemSchema || typeof itemSchema.value !== 'string' || !itemSchema.value.startsWith('documents.')) {
+        return;
+      }
 
       // Define current value.
       // Sample: "documents.11.data.cancellation.text".
@@ -57,8 +59,9 @@ export class WorkflowDocumentsFiller extends Filler {
         // Prepare documents template IDs.  Sort documents from old to new to get last document with the same template ID.
         // Sample: { 11: { data: { cancellation: { text: "abc" } } } }.
         const documentsByTemplateIds: any = {};
-        documents.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-          .forEach(v => documentsByTemplateIds[v.documentTemplateId] = v);
+        documents
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          .forEach((v) => (documentsByTemplateIds[v.documentTemplateId] = v));
 
         // Define value to set.
         // Sample: "abc".
@@ -66,7 +69,9 @@ export class WorkflowDocumentsFiller extends Filler {
         if (valueToSet === null && itemSchema.allowNull !== true) {
           valueToSet = undefined;
         }
-      } catch (error) { global.log.save('workflow-document-field-filling-error', error, 'warn'); }
+      } catch (error) {
+        global.log.save('workflow-document-field-filling-error', error, 'warn');
+      }
 
       // Return value to set.
       return valueToSet;
@@ -76,4 +81,3 @@ export class WorkflowDocumentsFiller extends Filler {
     return objectToFill;
   }
 }
-

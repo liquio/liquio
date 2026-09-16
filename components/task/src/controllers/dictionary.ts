@@ -1,9 +1,8 @@
-
 import { Controller } from './controller';
 import { DictionaryModels } from '../models/dictionaries';
 
 // Constants.
-const ERROR_DICTIONARY_DOES_NOT_EXIST = 'Dictionary doesn\'t exist.';
+const ERROR_DICTIONARY_DOES_NOT_EXIST = "Dictionary doesn't exist.";
 
 /**
  * Dictionary controller.
@@ -63,4 +62,3 @@ export class DictionaryController extends Controller {
     this.responseData(res, dictionary);
   }
 }
-

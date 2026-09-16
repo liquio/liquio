@@ -4,7 +4,7 @@ import Entity from './entity';
 const OPERATIONS = {
   Create: 'create',
   Update: 'update',
-  Delete: 'delete'
+  Delete: 'delete',
 };
 
 /**

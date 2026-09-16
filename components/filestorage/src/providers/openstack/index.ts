@@ -142,7 +142,7 @@ export class OpenStack extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
-      responseType: 'stream'
+      responseType: 'stream',
     });
 
     return response.data;
@@ -166,7 +166,7 @@ export class OpenStack extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
-      responseType: 'arraybuffer'
+      responseType: 'arraybuffer',
     });
 
     // Convert ArrayBuffer to Buffer
@@ -233,7 +233,7 @@ export class OpenStack extends Provider {
         headers: requestOptions.headers,
         data: requestOptions.body,
         timeout: requestOptions.timeout,
-        validateStatus: () => true // Don't throw on any status code
+        validateStatus: () => true, // Don't throw on any status code
       });
 
       // Check response and log
@@ -338,10 +338,10 @@ export class OpenStack extends Provider {
 
     return showObjectCount === 'true'
       ? {
-        gigabytesUsedCount,
-        gigabytesUsedCountRound,
-        objectCount,
-      }
+          gigabytesUsedCount,
+          gigabytesUsedCountRound,
+          objectCount,
+        }
       : { gigabytesUsedCount, gigabytesUsedCountRound };
   }
 

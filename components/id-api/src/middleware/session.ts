@@ -5,7 +5,7 @@ import { Op } from 'sequelize';
 
 import { DEFAULT_COOKIE_DOMAIN } from '../config';
 import { avatarByGender } from '../lib/helpers';
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { Models, UserAttributes } from '../models';
 import { Express, NextFunction, Request, Response } from '../types';
 

@@ -39,11 +39,11 @@ export default class AccessLogController extends Controller {
       key_id: keyId,
       record_id: recordId,
       created_from: createdFrom,
-      created_to: createdTo
+      created_to: createdTo,
     } = {
       offset: 0,
       limit: 5,
-      ...(matchedData(req, { locations: ['query'] }) as any)
+      ...(matchedData(req, { locations: ['query'] }) as any),
     };
     const filter: { key_id?: number; record_id?: string; created_from?: string; created_to?: string } = {};
     if (keyId) filter.key_id = keyId;
@@ -57,7 +57,7 @@ export default class AccessLogController extends Controller {
       accessLogModelResponse = await this.accessLogModel.getAll({
         offset: offset,
         limit: Math.min(limit, this.config.pagination.maxLimit),
-        filter
+        filter,
       });
     } catch (error) {
       this.log.save('get-access-log-error', { error: error && error.message });

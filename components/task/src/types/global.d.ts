@@ -28,6 +28,7 @@ import { EventTemplateModel } from '../models/event_template';
 import { GatewayModel } from '../models/gateway';
 import { GatewayTemplateModel } from '../models/gateway_template';
 import { PaymentLogsModel } from '../models/payment_logs';
+import { PaymentTransactionsModel } from '../models/payment_transactions';
 import { CustomLogTemplateModel } from '../models/custom_log_template';
 import { CustomLogModel } from '../models/custom_log';
 import { AccessHistoryModel } from '../models/access_history';
@@ -38,7 +39,7 @@ import { FavoritesModel } from '../models/favorites';
 import { ExternalServicesStatusesModels } from '../models/external_services_statuses';
 import { KycSessionModel } from '../models/kyc_session';
 
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 
 import { HttpClient as httpClient } from '../lib/http_client';
 
@@ -76,6 +77,7 @@ declare global {
     gateway: GatewayModel;
     gatewayTemplate: GatewayTemplateModel;
     paymentLogs: PaymentLogsModel;
+    paymentTransactions: PaymentTransactionsModel;
     customLogTemplate: CustomLogTemplateModel;
     customLog: CustomLogModel;
     accessHistory: AccessHistoryModel;

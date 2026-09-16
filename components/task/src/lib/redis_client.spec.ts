@@ -6,7 +6,7 @@ describe('RedisClient', () => {
 
   beforeEach(() => {
     // Clear the singleton before each test
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     RedisClient = require('./redis_client').RedisClient;
     (RedisClient as any).singleton = null;
 
@@ -22,7 +22,7 @@ describe('RedisClient', () => {
     };
 
     // Mock the redis.createClient
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     jest.spyOn(require('redis'), 'createClient').mockReturnValue(mockClient);
   });
 
@@ -49,7 +49,6 @@ describe('RedisClient', () => {
       const config = { host: 'localhost', port: 6379 };
       new RedisClient(config);
 
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       expect(require('redis').createClient).toHaveBeenCalledWith({
         socket: { host: 'localhost', port: 6379 },
       });
@@ -116,10 +115,7 @@ describe('RedisClient', () => {
         const obj = { id: 1, name: 'test' };
         const key = RedisClient.createKey('user', obj);
 
-        const expectedHash = crypto
-          .createHash('md5')
-          .update(JSON.stringify(obj))
-          .digest('hex');
+        const expectedHash = crypto.createHash('md5').update(JSON.stringify(obj)).digest('hex');
 
         expect(key).toContain('test-service.user.');
         expect(key).toContain(expectedHash);
@@ -206,11 +202,7 @@ describe('RedisClient', () => {
 
         await RedisClient.getOrSet('test-key', fn, 600);
 
-        expect(mockClient.set).toHaveBeenCalledWith(
-          'test-key',
-          JSON.stringify(freshData),
-          { EX: 600 }
-        );
+        expect(mockClient.set).toHaveBeenCalledWith('test-key', JSON.stringify(freshData), { EX: 600 });
       });
 
       it('should handle null data', async () => {
@@ -274,9 +266,7 @@ describe('RedisClient', () => {
         const oldTimestamp = new Date('2024-01-01');
         const newTimestamp = new Date('2024-01-02');
 
-        mockClient.get
-          .mockResolvedValueOnce(JSON.stringify(oldTimestamp))
-          .mockResolvedValueOnce(null);
+        mockClient.get.mockResolvedValueOnce(JSON.stringify(oldTimestamp)).mockResolvedValueOnce(null);
 
         const timeFn = jest.fn().mockResolvedValue(newTimestamp);
         const setFn = jest.fn().mockResolvedValue({ id: 1 });

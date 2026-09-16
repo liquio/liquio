@@ -1,8 +1,9 @@
-import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 import axios from 'axios';
+import { createHash } from 'crypto';
+
+import { Log } from '@liquio/back-core';
 
 import { CallbackFn, Express } from '../types';
-import { Log } from 'back-core';
 import { Models, UserAttributes } from '../models';
 import { OIDCProviderConfig } from '../config';
 import { PKCEOAuth2Strategy, generatePKCEParameters } from './passport_libs/passport-oidc/strategy';
@@ -11,6 +12,7 @@ interface OIDCMetadata {
   authorization_endpoint: string;
   token_endpoint: string;
   userinfo_endpoint: string;
+  end_session_endpoint?: string;
 }
 
 interface OIDCProviderRuntimeState {
@@ -93,9 +95,12 @@ class OidcProvider {
     try {
       const metadata = await this.resolveOIDCEndpoints(providerId, provider);
       const strategyName = `oidc-${providerId}`;
-      const strategyClass = provider.usePKCE ? PKCEOAuth2Strategy : OAuth2Strategy;
 
-      const strategyInstance = new (strategyClass as any)(
+      // Always use the PKCE-capable strategy: it behaves exactly like plain
+      // OAuth2Strategy unless PKCE params are set, and it's also what lets us
+      // capture the id_token needed for RP-initiated logout on any provider.
+      let strategyInstance!: PKCEOAuth2Strategy;
+      strategyInstance = new PKCEOAuth2Strategy(
         {
           authorizationURL: metadata.authorization_endpoint,
           tokenURL: metadata.token_endpoint,
@@ -105,15 +110,14 @@ class OidcProvider {
           scope: provider.scope || 'openid profile email',
           passReqToCallback: true,
         },
-        (req: any, accessToken: string, refreshToken: string, profile: any, done: CallbackFn) =>
-          this.verifyOIDCUser(providerId, provider, metadata, accessToken, done),
+        (req: any, accessToken: string, refreshToken: string, profile: any, done: CallbackFn) => {
+          const idToken = strategyInstance.consumeIdToken(accessToken);
+          return this.verifyOIDCUser(providerId, provider, metadata, accessToken, idToken, req, done);
+        },
       );
 
       this.app.passport.use(strategyName, strategyInstance);
-
-      if (provider.usePKCE && strategyInstance instanceof PKCEOAuth2Strategy) {
-        this.strategyInstances.set(strategyName, strategyInstance);
-      }
+      this.strategyInstances.set(strategyName, strategyInstance);
 
       this.providerStates.set(providerId, { status: 'initialized' });
       this.log.save(`oidc|${providerId}|strategy-registered`, { status: 'success', strategy_name: strategyName }, 'info');
@@ -198,6 +202,16 @@ class OidcProvider {
           req.session.save();
           await new Promise((resolve) => setTimeout(resolve, 250));
 
+          const oidcLogout = (req as any)._oidcLogout as { idToken: string; endSessionEndpoint: string } | undefined;
+          if (oidcLogout) {
+            await Models.model('sessions')
+              .update(
+                { logout_data: { provider: 'oidc', id_token: oidcLogout.idToken, end_session_endpoint: oidcLogout.endSessionEndpoint } },
+                { where: { sid: req.sessionID } },
+              )
+              .catch((error: any) => this.log.save(`oidc|${providerId}|logout-token-persist-error`, { error: error.message }, 'error'));
+          }
+
           this.log.save(`oidc|${providerId}|callback`, { status: 'success', userId: user.userId, isAuthenticated: req.isAuthenticated() }, 'info');
 
           res.redirect('/authorise/continue');
@@ -261,6 +275,7 @@ class OidcProvider {
         authorization_endpoint: provider.authorizationURL,
         token_endpoint: provider.tokenURL,
         userinfo_endpoint: provider.userInfoURL,
+        end_session_endpoint: provider.endSessionURL,
       };
     }
 
@@ -284,6 +299,7 @@ class OidcProvider {
           authorization_endpoint: data.authorization_endpoint,
           token_endpoint: data.token_endpoint,
           userinfo_endpoint: data.userinfo_endpoint,
+          end_session_endpoint: data.end_session_endpoint,
         },
         'info',
       );
@@ -292,6 +308,7 @@ class OidcProvider {
         authorization_endpoint: data.authorization_endpoint,
         token_endpoint: data.token_endpoint,
         userinfo_endpoint: data.userinfo_endpoint,
+        end_session_endpoint: data.end_session_endpoint,
       };
     } catch (error: any) {
       const response = error.response?.data;
@@ -308,6 +325,8 @@ class OidcProvider {
     provider: OIDCProviderConfig,
     metadata: OIDCMetadata,
     accessToken: string,
+    idToken: string | undefined,
+    req: any,
     done: CallbackFn,
   ): Promise<void> {
     const log_tag = `oidc|${providerId}|verify`;
@@ -352,14 +371,30 @@ class OidcProvider {
         }
       }
 
+      const providerKey = `oidc-${providerId}`;
+
       let existingUser: UserAttributes | null = null;
 
-      if (userData.email) {
+      const existingService = await Models.model('userServices')
+        .findOne({
+          where: { provider: providerKey, provider_id: userProviderId },
+        })
+        .then((row) => row?.dataValues);
+
+      if (existingService) {
+        existingUser = await Models.model('user')
+          .findOne({ where: { userId: existingService.userId } })
+          .then((row) => row?.dataValues as UserAttributes);
+      } else if (userData.email) {
         existingUser = await Models.model('user')
           .findOne({
             where: { email: userData.email },
           })
           .then((row) => row?.dataValues as UserAttributes);
+      }
+
+      if (!userData.ipn) {
+        userData.ipn = existingUser?.ipn || `#${createHash('sha256').update(`${providerKey}:${userProviderId}`).digest('hex')}`;
       }
 
       let user: UserAttributes;
@@ -377,18 +412,28 @@ class OidcProvider {
 
       this.log.save(`${log_tag}|user-upsert`, { userId: user.userId, is_new: !existingUser }, 'info');
 
-      const userService = await Models.model('userServices').upsert({
-        userId: user.userId,
-        provider: `oidc-${providerId}`,
-        provider_id: userProviderId,
-        data: userInfo,
-      });
+      const [userServiceRecord] = await Models.model('userServices').upsert(
+        {
+          userId: user.userId,
+          provider: providerKey,
+          provider_id: userProviderId,
+          data: userInfo,
+        },
+        { conflictFields: ['provider', 'provider_id'] },
+      );
 
       const session = {
         ...user,
-        provider: `oidc-${providerId}`,
-        services: { [`oidc-${providerId}`]: userService },
+        provider: providerKey,
+        services: { [providerKey]: userServiceRecord.dataValues },
       };
+
+      // Stashed on `req` (not the session/user object) so the callback route can
+      // persist it onto this login's user_sessions row once it exists, without
+      // ever putting the id_token where it could be echoed back to the client.
+      if (idToken && metadata.end_session_endpoint) {
+        (req as any)._oidcLogout = { idToken, endSessionEndpoint: metadata.end_session_endpoint };
+      }
 
       this.log.save(`${log_tag}|authorize-success`, { userId: user.userId }, 'info');
 
@@ -421,4 +466,33 @@ class OidcProvider {
 export async function oidc(app: Express): Promise<void> {
   const provider = new OidcProvider(app);
   await provider.init();
+}
+
+/**
+ * RP-initiated logout: reads back the id_token + end_session_endpoint stashed
+ * on this login session at login time, and returns a Keycloak (or any OIDC
+ * provider) end-session URL for the caller to redirect the browser to, so the
+ * upstream SSO session is actually terminated instead of just the local one.
+ */
+export async function logout(
+  req: { session?: { passport?: { user?: { provider?: string } } }; sessionID?: string } | undefined,
+): Promise<{ endSessionUrl?: string } | void> {
+  const provider = req?.session?.passport?.user?.provider;
+  if (!provider?.startsWith('oidc-') || !req?.sessionID) {
+    return;
+  }
+
+  const sessionRow = await Models.model('sessions')
+    .findOne({ where: { sid: req.sessionID } })
+    .then((row) => row?.dataValues);
+
+  const logoutData = sessionRow?.logout_data as { id_token?: string; end_session_endpoint?: string } | null | undefined;
+  if (!logoutData?.id_token || !logoutData?.end_session_endpoint) {
+    return;
+  }
+
+  const endSessionUrl = new URL(logoutData.end_session_endpoint);
+  endSessionUrl.searchParams.set('id_token_hint', logoutData.id_token);
+
+  return { endSessionUrl: endSessionUrl.toString() };
 }

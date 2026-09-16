@@ -1,12 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsNotEmpty,
-  IsNumber,
-  IsObject,
-  IsOptional,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
+import { IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { Orientation, PdfGenerationOptions } from '@modules/pdf/pdf.types';
 

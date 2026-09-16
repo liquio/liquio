@@ -1,7 +1,7 @@
 import { matchedData, query } from 'express-validator';
 import { FindOptions } from 'sequelize';
 
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';
@@ -20,6 +20,17 @@ export function getStrategy(): GovIdStrategy {
     throw new Error('GovId strategy is not initialized.');
   }
   return strategy;
+}
+
+export async function logout(
+  req: { session?: { passport?: { user?: { provider?: string; services?: Record<string, any> } } } } | undefined,
+): Promise<void> {
+  const user = req?.session?.passport?.user;
+  if (user?.provider !== 'govid' || !strategy) {
+    return;
+  }
+
+  await strategy.logout(user.services?.[user.provider]);
 }
 
 export async function govid(app: Express) {

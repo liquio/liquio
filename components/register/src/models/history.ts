@@ -38,54 +38,54 @@ export default class HistoryModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           record_id: {
             allowNull: false,
-            type: Sequelize.UUID
+            type: Sequelize.UUID,
           },
           register_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'registers', key: 'id' }
+            references: { model: 'registers', key: 'id' },
           },
           key_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'keys', key: 'id' }
+            references: { model: 'keys', key: 'id' },
           },
           operation: {
             allowNull: false,
-            type: Sequelize.ENUM('create', 'update', 'delete')
+            type: Sequelize.ENUM('create', 'update', 'delete'),
           },
           data: {
             allowNull: false,
             type: Sequelize.JSONB,
-            defaultValue: {}
+            defaultValue: {},
           },
           created_by: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           updated_by: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           person: {
             allowNull: false,
             type: Sequelize.JSONB,
-            defaultValue: { id: null, name: null }
+            defaultValue: { id: null, name: null },
           },
           meta: {
             allowNull: false,
             type: Sequelize.JSONB,
-            defaultValue: {}
-          }
+            defaultValue: {},
+          },
         },
         {
           tableName: 'history',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Init singleton.
@@ -129,7 +129,7 @@ export default class HistoryModel extends Model {
     // Handle options.
     const { offset, limit, operation, recordDataLike } = { offset: 0, limit: 2, ...options } as any;
     const filter: any = {
-      key_id: keyId
+      key_id: keyId,
     };
     if (operation) {
       filter.operation = operation;
@@ -196,8 +196,8 @@ export default class HistoryModel extends Model {
     const filters = {
       key_id: keyId,
       created_at: {
-        [Op.gt]: new Date(createdAfter)
-      }
+        [Op.gt]: new Date(createdAfter),
+      },
     };
 
     const LIMIT = 100000;
@@ -207,7 +207,7 @@ export default class HistoryModel extends Model {
       where: filters,
       attributes: ['id', 'record_id', 'operation', 'created_at'],
       offset: 0,
-      limit: LIMIT
+      limit: LIMIT,
     };
     let receivedRowsCount = 0;
     const result = [];

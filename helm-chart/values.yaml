@@ -429,6 +429,17 @@ initContainerResources:
     cpu: 50m
     memory: 32Mi
 
+# Resource limits for the plugin-installer init container specifically - it runs
+# a real `npm install`, which needs meaningfully more memory than the plain
+# nc-based wait-for-* init containers above.
+pluginInstallerResources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
 # Node selector for pod assignment
 nodeSelector: {}
 

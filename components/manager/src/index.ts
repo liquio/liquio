@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import Multiconf from 'multiconf';
 
 import { Db } from './lib/db';
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
 import { WorkflowBusiness } from './businesses/workflow';

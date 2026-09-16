@@ -4,7 +4,7 @@ import { ContentInfo } from 'pkijs';
 import { Strategy } from 'passport-strategy';
 
 import { Config } from '../../../config';
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { Request, StrategyVerify } from '../../../types';
 
 const NAMES_NA_LIST = ['n/a', 'n\\a'];

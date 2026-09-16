@@ -12,7 +12,7 @@ import {
 } from '@node-oauth/oauth2-server';
 import crypto from 'crypto';
 
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { Models } from '../models';
 import { AuthCodeAttributes } from '../models/auth_code.model';
 

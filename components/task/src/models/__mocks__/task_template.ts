@@ -15,16 +15,16 @@ export class TaskTemplateModel {
     const taslTemplates = [
       new TaskTemplateEntity({
         id: 1,
-        name: 'Test 1'
+        name: 'Test 1',
       }),
       new TaskTemplateEntity({
         id: 2,
-        name: 'Test 2'
+        name: 'Test 2',
       }),
       new TaskTemplateEntity({
         id: 3,
-        name: 'Test 3'
-      })
+        name: 'Test 3',
+      }),
     ];
 
     return taslTemplates;
@@ -39,8 +39,7 @@ export class TaskTemplateModel {
       name: 'Test 1',
       documentTemplateId: 1,
       json_schema: {},
-      html_template: ''
+      html_template: '',
     });
   }
 }
-

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, InternalServerErrorException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { PlaywrightConfig } from '@common/types/config.types';
 import { Config } from '@lib/config';

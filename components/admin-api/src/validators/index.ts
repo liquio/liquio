@@ -33,6 +33,7 @@ import { LocalizationLanguageValidator } from './localization_language';
 import { LocalizationTextValidator } from './localization_text';
 import { UserSettingsValidator } from './user_settings';
 import { FileLibraryValidator } from './file_library';
+import { CabinetMenuValidator } from './cabinet_menu';
 
 export class Validators {
   static singleton: Validators;
@@ -90,6 +91,7 @@ export class Validators {
       localizationText: LocalizationTextValidator,
       userSettings: UserSettingsValidator,
       fileLibrary: FileLibraryValidator,
+      cabinetMenu: CabinetMenuValidator,
       ...customValidators,
     };
 

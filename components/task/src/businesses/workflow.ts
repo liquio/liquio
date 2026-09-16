@@ -6,7 +6,7 @@ import { Business } from './business';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { Eds } from '../lib/eds';
 import { StorageService } from '../services/storage';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 import typeOf from '../lib/type_of';
 import { EvaluateSchemaFunctionError, NotFoundError, ForbiddenError } from '../lib/errors';
 import { ERROR_WORKFLOW_NOT_FOUND, ERROR_WORKFLOW_ACCESS } from '../constants/error';
@@ -126,7 +126,7 @@ export class WorkflowBusiness extends Business {
       workflow.documents = await (global.models.document.getAllByWorkflowId as any)({ workflowId: workflow.id });
       workflow.statuses = this.calculateReserveStatuses(workflow);
     }
-    const allFiles = await global.businesses.document.getFilesToPreview(id, undefined, undefined, undefined, undefined, true);
+    const allFiles = await global.businesses.document.files.getFilesToPreview(id, undefined, undefined, undefined, undefined, true);
     const { workflowFilesFilter = '(item) => true' } = global.config.files_filter || {};
     const workflowFilesFilterFunction = this.sandbox.eval(workflowFilesFilter);
     workflow.files = allFiles
@@ -515,7 +515,7 @@ export class WorkflowBusiness extends Business {
 
       if (nonTabedStatusesLength === 0) {
         global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
-        throw new Error('Invalid status. Non tabed statuses don\'t exist.');
+        throw new Error("Invalid status. Non tabed statuses don't exist.");
       }
 
       let statusId;
@@ -614,4 +614,3 @@ export class WorkflowBusiness extends Business {
     return lastCalculetedStatuses;
   }
 }
-

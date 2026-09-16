@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { PingController } from './ping';
 import { ModuleController } from './module';
@@ -30,6 +29,7 @@ import { LocalizationLanguageController } from './localization_language';
 import { LocalizationTextController } from './localization_text';
 import { ProtectedFileController } from './protected_file';
 import { KycController } from './kyc';
+import { CabinetMenuController } from './cabinet_menu';
 
 // Constants.
 const CONTROLLERS_CLASSES_LIST = {
@@ -61,6 +61,7 @@ const CONTROLLERS_CLASSES_LIST = {
   CustomInterfaceController,
   FavoritesController,
   KycController,
+  CabinetMenuController,
 };
 
 export class Controllers {
@@ -127,11 +128,12 @@ export class Controllers {
       localizationText: LocalizationTextController,
       protectedFile: ProtectedFileController,
       kyc: KycController,
+      cabinetMenu: CabinetMenuController,
     };
 
     // Init controllers.
     this.controllers = Object.entries(controllersByNames)
-      .map(v => {
+      .map((v) => {
         const name = v[0];
         const initializedController = new v[1](this.config);
         initializedController.name = name;
@@ -144,9 +146,9 @@ export class Controllers {
             const n: Record<string, any> = {};
             n[v[0] as string] = v[1];
             return n;
-          })()
+          })(),
         }),
-        {}
+        {},
       );
   }
 
@@ -154,7 +156,9 @@ export class Controllers {
    * Auth controller.
    * @returns {AuthController} Auth controller.
    */
-  get auth() { return this.controllers.auth; }
+  get auth() {
+    return this.controllers.auth;
+  }
 
   /**
    * Get handler.
@@ -170,7 +174,7 @@ export class Controllers {
     }
 
     // Define method.
-    const method = methodHandlerName? controller.methodHandler(methodHandlerName) : controller[methodName];
+    const method = methodHandlerName ? controller.methodHandler(methodHandlerName) : controller[methodName];
     if (!method) {
       return;
     }
@@ -180,4 +184,3 @@ export class Controllers {
     return handler;
   }
 }
-

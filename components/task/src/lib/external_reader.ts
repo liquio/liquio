@@ -1,10 +1,9 @@
 import axios from 'axios';
 import { PassThrough } from 'node:stream';
 
-import { appendTraceMeta, getTraceMeta, getTraceId } from 'back-core';
+import { appendTraceMeta, getTraceMeta, getTraceId, Sandbox } from '@liquio/back-core';
 import { StorageService } from '../services/storage';
 import { DocumentAttachmentModel } from '../models/document_attachment';
-import { Sandbox } from './sandbox';
 import typeOf from './type_of';
 
 const HIDE_REPLACEMENT_TEXT = '*****';
@@ -199,9 +198,9 @@ export class ExternalReader {
     nonUserFilter = {},
     extraParams: any = {},
     userUnits = { head: [], member: [] },
-    enabledMocksHeader,
-    token,
-    customTimeout,
+    enabledMocksHeader?,
+    token?,
+    customTimeout?,
   ) {
     // Define user filter.
     const { ipn, edrpou } = user;
@@ -290,8 +289,8 @@ export class ExternalReader {
       // Additional preparations.
       data.data.attachments = extraParams.prepareAttachments?.includes('=>')
         ? this.sandbox.evalWithArgs(extraParams.prepareAttachments, [{ attachments: data.data.attachments, filters: nonUserFilter }], {
-          meta: { fn: 'getDataByUser.prepareAttachments', service, method },
-        })
+            meta: { fn: 'getDataByUser.prepareAttachments', service, method },
+          })
         : data.data.attachments;
 
       // Save new attachments.
@@ -437,4 +436,3 @@ export class ExternalReader {
     return response.data;
   }
 }
-

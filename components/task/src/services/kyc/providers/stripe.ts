@@ -51,11 +51,11 @@ export class StripeProvider extends KycProvider {
   }
 
   async createSession(userId, returnUrl) {
-    const data = await this.sendRequest(
-      'post',
-      'v1/identity/verification_sessions',
-      { type: 'document', client_reference_id: userId, return_url: returnUrl }
-    );
+    const data = await this.sendRequest('post', 'v1/identity/verification_sessions', {
+      type: 'document',
+      client_reference_id: userId,
+      return_url: returnUrl,
+    });
 
     global.log.save('kyc-provider|stripe|create-session', { data });
 
@@ -67,10 +67,7 @@ export class StripeProvider extends KycProvider {
   }
 
   async getSession(sessionId) {
-    const data = await this.sendRequest(
-      'get',
-      `v1/identity/verification_sessions/${sessionId}`
-    );
+    const data = await this.sendRequest('get', `v1/identity/verification_sessions/${sessionId}`);
 
     global.log.save('kyc-provider|stripe|get-session', { data });
 
@@ -85,11 +82,9 @@ export class StripeProvider extends KycProvider {
    * @private
    */
   get headers() {
-    const basicToken = Buffer.from(`${this.config.secretKey}:`).toString(
-      'base64'
-    );
+    const basicToken = Buffer.from(`${this.config.secretKey}:`).toString('base64');
     return {
-      'Authorization': `Basic ${basicToken}`,
+      Authorization: `Basic ${basicToken}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     };
   }
@@ -125,7 +120,7 @@ export class StripeProvider extends KycProvider {
           body,
           response: error.response?.data,
         },
-        'error'
+        'error',
       );
       const wrapped: any = new Error(`Stripe request failed: ${error.message}`);
       wrapped.cause = error;
@@ -133,4 +128,3 @@ export class StripeProvider extends KycProvider {
     }
   }
 }
-

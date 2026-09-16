@@ -29,7 +29,8 @@ export class DocumentModel {
       data: {},
       description: null,
       fileName: null,
-      fileType: null
+      fileType: null,
+      asic: { asicmanifestFileId: null, filesIds: [] },
     });
   }
 
@@ -51,8 +52,8 @@ export class DocumentModel {
       data: data,
       description: null,
       fileName: null,
-      fileType: null
+      fileType: null,
+      asic: { asicmanifestFileId: null, filesIds: [] },
     });
   }
 }
-

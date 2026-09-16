@@ -305,7 +305,7 @@ export class TaskController extends Controller {
     try {
       const task = await global.models.task.findById(taskId);
       const document = await global.models.document.findById(task.document.id); // Get by document model because of json_schema.
-      await global.businesses.document.checkP7SSignaturesCount(document);
+      await global.businesses.document.signing.checkP7SSignaturesCount(document);
     } catch (error) {
       return this.responseError(res, error.message, 500, error.details);
     }
@@ -424,7 +424,7 @@ export class TaskController extends Controller {
     try {
       const { document } = task;
       const { signatures } = document;
-      task.minSignaturesLimitInfo = await (global.businesses.document.handleMinSignaturesLimit as any)({ ...document, task, signatures });
+      task.minSignaturesLimitInfo = await (global.businesses.document.signing.handleMinSignaturesLimit as any)({ ...document, task, signatures });
     } catch (error) {
       global.log.save('signatures-limit-info-not-defined', { taskId: id, message: error && error.message });
     }
@@ -894,7 +894,13 @@ export class TaskController extends Controller {
     try {
       updatedTask = await this.taskModel.setPerformerUsers(taskId, newPerformerUsers, newPerformerUserNames);
     } catch (error) {
-      global.log.save('set-performer-users-error', { error: error?.message, details: error?.details, taskId, newPerformerUsers, newPerformerUserNames });
+      global.log.save('set-performer-users-error', {
+        error: error?.message,
+        details: error?.details,
+        taskId,
+        newPerformerUsers,
+        newPerformerUserNames,
+      });
       return this.responseError(res, error, error.httpStatusCode);
     }
 
@@ -1080,4 +1086,3 @@ export class TaskController extends Controller {
     this.responseData(res, tasksWithNames);
   }
 }
-

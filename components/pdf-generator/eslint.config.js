@@ -9,6 +9,7 @@ export default [
       parser: tseslint.parser,
       parserOptions: {
         project: 'tsconfig.json',
+        tsconfigRootDir: import.meta.dirname,
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
@@ -29,6 +30,6 @@ export default [
     },
   },
   {
-    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js'],
+    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js', 'eslint.config.js', 'jest.config.js', 'node_modules/**'],
   },
 ];

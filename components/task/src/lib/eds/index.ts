@@ -1,4 +1,3 @@
-
 import providers from './providers';
 
 // Constants.
@@ -23,7 +22,7 @@ export class Eds {
     if (!Eds.singleton) {
       this.config = edsConfig;
       this.providerName = edsConfig.providerName || DEFAULT_PROVIDER_NAME;
-      const Provider = providers.find(provider => provider.name === this.providerName);
+      const Provider = providers.find((provider) => provider.name === this.providerName);
       this.provider = new Provider(this.config[this.providerName]);
       Eds.singleton = this;
     }
@@ -48,7 +47,7 @@ export class Eds {
    * @param {string} [content] Content.
    * @returns {Promise<{signer, issuer, serial, content, pem}>} Signature info promise.
    */
-  async getSignatureInfo(signature, hash, signExternal, content) {
+  async getSignatureInfo(signature, hash?, signExternal?, content?) {
     return await this.provider.getSignatureInfo(signature, hash, signExternal, content);
   }
 
@@ -105,4 +104,3 @@ export class Eds {
     return this.provider.verifyHash(hash, sign);
   }
 }
-

@@ -1,4 +1,3 @@
-
 import { Option } from './option';
 import { GlobalOption } from './global';
 import { DropdownOption } from './dropdown';
@@ -142,4 +141,3 @@ export class Options {
     return newText;
   }
 }
-

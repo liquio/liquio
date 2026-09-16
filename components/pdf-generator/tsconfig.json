@@ -19,6 +19,7 @@
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
     "experimentalDecorators": true,
+    "resolveJsonModule": true,
     "paths": {
       "src/*": ["src/*"],
       "@common/*": ["src/common/*"],

@@ -1,8 +1,6 @@
-
 import Sequelize from 'sequelize';
 import { Model } from './model';
 import { ExternalServiceStatusEntity } from '../entities/external_service_status';
-
 
 export class ExternalServicesStatusesModel extends Model {
   private static singleton: ExternalServicesStatusesModel;
@@ -25,16 +23,16 @@ export class ExternalServicesStatusesModel extends Model {
           service: { allowNull: false, type: Sequelize.STRING(255) },
           request_user: { allowNull: false, type: Sequelize.STRING(255) },
           request_ip: { allowNull: false, type: Sequelize.STRING(255) },
-          request_body: { allowNull: false, type: Sequelize.TEXT, },
-          state: { allowNull: false, type: Sequelize.ENUM, values: [ 'received', 'pending', 'fulfilled', 'rejected' ] },
-          rejected_reason: { allowNull: true, type: Sequelize.TEXT, }
+          request_body: { allowNull: false, type: Sequelize.TEXT },
+          state: { allowNull: false, type: Sequelize.ENUM, values: ['received', 'pending', 'fulfilled', 'rejected'] },
+          rejected_reason: { allowNull: true, type: Sequelize.TEXT },
         },
         {
           tableName: 'external_services_statuses',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Define singleton.
@@ -77,7 +75,7 @@ export class ExternalServicesStatusesModel extends Model {
     `;
     let statuses;
     try {
-      const [ results ] = await this.db.query(query, { replacements: { limit: limit } });
+      const [results] = await this.db.query(query, { replacements: { limit: limit } });
       statuses = results;
     } catch (error) {
       throw new global.SequelizeDbError(error);
@@ -94,11 +92,11 @@ export class ExternalServicesStatusesModel extends Model {
     await this.model.update(
       {
         state: 'fulfilled',
-        rejected_reason: null
+        rejected_reason: null,
       },
       {
-        where: { id: { [Sequelize.Op.in]: ids } }
-      }
+        where: { id: { [Sequelize.Op.in]: ids } },
+      },
     );
   }
 
@@ -107,15 +105,19 @@ export class ExternalServicesStatusesModel extends Model {
    * @return {Promise<void>}
    */
   async setRejectedState(statuses) {
-    await Promise.all(statuses.map(status => this.model.update(
-      {
-        state: 'rejected',
-        rejected_reason: status.rejectedReason
-      },
-      {
-        where: { id: status.id }
-      }
-    )));
+    await Promise.all(
+      statuses.map((status) =>
+        this.model.update(
+          {
+            state: 'rejected',
+            rejected_reason: status.rejectedReason,
+          },
+          {
+            where: { id: status.id },
+          },
+        ),
+      ),
+    );
   }
 
   /**
@@ -143,7 +145,7 @@ export class ExternalServicesStatusesModel extends Model {
       requestIp: item.request_ip,
       requestBody: item.request_body,
       state: item.state,
-      rejectedReason: item.rejected_reason
+      rejectedReason: item.rejected_reason,
     });
   }
 
@@ -154,8 +156,7 @@ export class ExternalServicesStatusesModel extends Model {
       request_ip: item.requestIp,
       request_body: item.requestBody,
       state: item.state,
-      rejected_reason: item.rejectedReason
+      rejected_reason: item.rejectedReason,
     };
   }
 }
-

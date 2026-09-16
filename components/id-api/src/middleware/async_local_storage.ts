@@ -1,4 +1,4 @@
-import { asyncLocalStorageMiddleware } from 'back-core';
+import { asyncLocalStorageMiddleware } from '@liquio/back-core';
 
 import { Express } from '../types';
 

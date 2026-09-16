@@ -1,5 +1,5 @@
 # Stage 1: Build the frontend
-FROM node:22 AS frontend
+FROM node:24 AS frontend
 ARG NODE_MAX_OLD_SPACE_SIZE=4096
 ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
 

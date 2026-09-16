@@ -5,7 +5,7 @@ import { Entity } from '../entities/entity';
 import { matchedData } from 'express-validator';
 import { File } from '../types/file';
 import { Stream } from '../lib/stream';
-import { getTraceId } from 'back-core';
+import { getTraceId } from '@liquio/back-core';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;

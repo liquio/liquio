@@ -1,9 +1,14 @@
 import { Strategy } from 'passport-oauth2';
 import axios from 'axios';
 
+import { Log } from '@liquio/back-core';
+
 import { CallbackFn, Express } from '../types';
-import { Log } from 'back-core';
 import { Models, UserAttributes } from '../models';
+
+// WSO2 doesn't support an external logout call today — kept as a stub so the
+// caller can always invoke a strategy's logout() uniformly.
+export async function logout(): Promise<void> {}
 
 export async function wso2(app: Express) {
   const log = Log.getInstance();
@@ -106,12 +111,15 @@ export async function wso2(app: Express) {
               .then((row) => row.dataValues);
           }
 
-          const userService = await Models.model('userServices').upsert({
-            userId: (existingUser || newUser!).userId,
-            provider: 'wso2',
-            provider_id: providerId,
-            data: userInfo,
-          });
+          const userService = await Models.model('userServices').upsert(
+            {
+              userId: (existingUser || newUser!).userId,
+              provider: 'wso2',
+              provider_id: providerId,
+              data: userInfo,
+            },
+            { conflictFields: ['provider', 'provider_id'] },
+          );
 
           const session = {
             ...(existingUser || newUser!),

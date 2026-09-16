@@ -3,7 +3,7 @@ import PropByPath from 'prop-by-path';
 
 import BaseProvider from './provider';
 import HttpRequest from '../../http_request';
-import { getTraceId } from 'back-core';
+import { getTraceId } from '@liquio/back-core';
 
 // Constants.
 const DEFAULT_ROUTES = {

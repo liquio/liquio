@@ -4,13 +4,10 @@ import { PassThrough } from 'node:stream';
 const DEFAULT_PORT = 5000;
 const DEFAULT_HEARTBEAT_TIMEOUT = 30000;
 
-
 export class LogsBroadcasting {
   isAlive: any;
 
-
-  constructor() {
-  }
+  constructor() {}
 
   /**
    * @public
@@ -39,7 +36,6 @@ export class LogsBroadcasting {
 
     // Handle connection.
     webSocketServer.on('connection', (socket) => {
-
       // Check that connection alive.
       socket.isAlive = true;
       socket.on('pong', function () {
@@ -76,4 +72,3 @@ export class LogsBroadcasting {
     global.log.save('logs-broadcasting-started', { port: port });
   }
 }
-

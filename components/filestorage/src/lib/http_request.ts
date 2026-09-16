@@ -107,7 +107,7 @@ export class HttpRequest {
       }
 
       const response = await axiosInstance(axiosConfig);
-      
+
       // Return parsed body object - only the data part to avoid circular refs
       return parseBody(response.data);
     } catch (error) {
@@ -163,29 +163,29 @@ export class HttpRequest {
       }
 
       const response = await axiosInstance(axiosConfig);
-      
+
       // Return parsed body object and headers - only the data part to avoid circular refs
-      return { 
-        body: parseBody(response.data), 
-        headers: response.headers, 
+      return {
+        body: parseBody(response.data),
+        headers: response.headers,
         rawResponse: {
           status: response.status,
           statusText: response.statusText,
-          headers: response.headers
-        } 
+          headers: response.headers,
+        },
       };
     } catch (error) {
       // Handle axios errors
       if (error.response) {
         // Server responded with error status - return detailed error info
-        return { 
-          body: parseBody(error.response.data), 
+        return {
+          body: parseBody(error.response.data),
           headers: error.response.headers,
           rawResponse: {
             status: error.response.status,
             statusText: error.response.statusText,
-            headers: error.response.headers
-          }
+            headers: error.response.headers,
+          },
         };
       }
       // Network or other errors - throw a clean error message
@@ -225,7 +225,7 @@ export class HttpRequest {
     if (httpsAgent) {
       httpsAgent.destroy();
     }
-    
+
     // Clear any axios instance defaults and interceptors
     (axiosInstance as any).defaults = {};
     axiosInstance.interceptors.request.clear();
@@ -244,7 +244,7 @@ function parseBody(body) {
   if (typeof body === 'object') {
     return body;
   }
-  
+
   // If body is string, try to parse as JSON
   if (typeof body === 'string') {
     try {
@@ -254,7 +254,7 @@ function parseBody(body) {
       return body;
     }
   }
-  
+
   // Return body as is for other types
   return body;
 }

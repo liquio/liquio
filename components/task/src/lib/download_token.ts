@@ -1,9 +1,8 @@
-
 import jwt from 'jsonwebtoken';
 
 // Constants.
 const DEFAULT_CONFIG = {
-  lifetimeInSeconds: 3600
+  lifetimeInSeconds: 3600,
 };
 
 /**
@@ -61,4 +60,3 @@ export class DownloadToken {
     return fileId;
   }
 }
-

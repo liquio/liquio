@@ -1,4 +1,3 @@
-
 import { Provider as BaseProvider } from './providers/provider';
 import { FileStorageProvider } from './providers/filestorage';
 
@@ -32,4 +31,3 @@ export class StorageService {
     return StorageService.singleton;
   }
 }
-

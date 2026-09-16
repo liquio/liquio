@@ -110,12 +110,7 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
     return targetBody as unknown as RequestBody;
   }
 
-  private async request(
-    method: string,
-    url: string,
-    data?: unknown,
-    params?: unknown,
-  ): Promise<ProviderResponse> {
+  private async request(method: string, url: string, data?: unknown, params?: unknown): Promise<ProviderResponse> {
     try {
       const response = await this.client.request({
         method,

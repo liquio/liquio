@@ -21,12 +21,7 @@ export class LoggerService extends ConsoleLogger {
     this.prepareAppInfo();
   }
 
-  protected printMessages(
-    messages: unknown[],
-    context?: string,
-    level?: LogLevel,
-    writeStreamType?: 'stdout' | 'stderr',
-  ) {
+  protected printMessages(messages: unknown[], context?: string, level?: LogLevel, writeStreamType?: 'stdout' | 'stderr') {
     const [type, data] = messages;
 
     const logId = randomBytes(6).toString('hex');

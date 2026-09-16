@@ -15,11 +15,7 @@ import { ObservabilityModule } from '@components/observability/observability.mod
 import { AppModule } from './app.module';
 
 function useSwagger(app: INestApplication) {
-  const config = new DocumentBuilder()
-    .setTitle(name)
-    .setDescription(description)
-    .setVersion(version)
-    .build();
+  const config = new DocumentBuilder().setTitle(name).setDescription(description).setVersion(version).build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 }

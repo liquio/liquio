@@ -13,7 +13,6 @@ export class LocalizationTextModel extends Model {
   constructor() {
     super();
     if (!LocalizationTextModel.singleton) {
-
       this.model = this.db.define(
         'localization_text',
         {
@@ -107,4 +106,3 @@ export class LocalizationTextModel extends Model {
     };
   }
 }
-

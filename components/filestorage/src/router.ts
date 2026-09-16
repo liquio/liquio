@@ -7,7 +7,7 @@ import { AppIdentHeaders } from './lib/app_ident_headers';
 import { HttpRequest } from './lib/http_request';
 import { Controllers } from './controllers';
 import swaggerDocument from '../swagger.json';
-import { asyncLocalStorageMiddleware } from 'back-core';
+import { asyncLocalStorageMiddleware } from '@liquio/back-core';
 
 /**
  * Router.

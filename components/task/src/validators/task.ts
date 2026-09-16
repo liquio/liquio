@@ -1,11 +1,10 @@
-
 import { checkSchema, ParamSchema } from 'express-validator';
 import validatorHelper from 'validator';
 import { Validator } from './validator';
 const validationCheckSchemaOrderInQuery: ParamSchema = {
   in: ['query'],
   optional: true,
-  isIn: { options: [['asc', 'desc']] }
+  isIn: { options: [['asc', 'desc']] },
 };
 
 /**
@@ -37,13 +36,13 @@ export class TaskValidator extends Validator {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['count']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort.performer_units']: validationCheckSchemaOrderInQuery,
       ['sort.performer_user_names']: validationCheckSchemaOrderInQuery,
@@ -57,55 +56,55 @@ export class TaskValidator extends Validator {
       ['sort.meta.*']: validationCheckSchemaOrderInQuery,
       ['filters']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.name']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.finished']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['filters.deleted']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['filters.assigned_to']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['me', 'unit']] }
+        isIn: { options: [['me', 'unit']] },
       },
       ['filters.closed_by']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['me', 'unit']] }
+        isIn: { options: [['me', 'unit']] },
       },
       ['filters.search']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.workflow_name']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.workflow_created_by']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.number']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.task_template_id']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['filters.task_template_id_list']: {
         in: ['query'],
@@ -116,27 +115,27 @@ export class TaskValidator extends Validator {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['filters.performer_username']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.without_performer_username']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['filters.labels.*']: {
         in: ['query'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.meta.*']: {
         in: ['query'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.due_date_from']: {
         in: ['query'],
@@ -145,8 +144,8 @@ export class TaskValidator extends Validator {
           options: (value) => {
             const data = new Date(value);
             return data instanceof Date && !isNaN(data.getTime());
-          }
-        }
+          },
+        },
       },
       ['filters.due_date_to']: {
         in: ['query'],
@@ -155,36 +154,36 @@ export class TaskValidator extends Validator {
           options: (value) => {
             const data = new Date(value);
             return data instanceof Date && !isNaN(data.getTime());
-          }
-        }
+          },
+        },
       },
       ['filters.is_read']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['filters.is_current']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['filters.is_entry']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['from_created_at']: {
         in: ['query'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['to_created_at']: {
         in: ['query'],
         optional: true,
-        isString: true
+        isString: true,
       },
     });
   }
@@ -196,15 +195,15 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['dueDate']: {
         in: ['body'],
         exists: {
           options: {
             checkNull: false,
-            checkFalsy: false
-          }
+            checkFalsy: false,
+          },
         },
         bail: true,
         custom: {
@@ -215,9 +214,9 @@ export class TaskValidator extends Validator {
               return true;
             }
             return false;
-          }
-        }
-      } as any
+          },
+        },
+      } as any,
     });
   }
 
@@ -228,17 +227,17 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['meta']: {
-        in: ['body']
+        in: ['body'],
       },
       ['override']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
-      }
+        toBoolean: true,
+      },
     });
   }
 
@@ -250,39 +249,39 @@ export class TaskValidator extends Validator {
       ['sort.name']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['sort.created_at']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['filters.name']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters.finished']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['filters.deleted']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['filters.assigned_to']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['me', 'unit']] }
+        isIn: { options: [['me', 'unit']] },
       },
       ['filters.closed_by']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['me', 'unit']] }
-      }
+        isIn: { options: [['me', 'unit']] },
+      },
     });
   }
 
@@ -293,8 +292,8 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['signer_request']: {
         in: ['query'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -305,8 +304,8 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['signer_request']: {
         in: ['query'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -317,12 +316,12 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['workflowId']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['taskTemplateId']: {
         in: ['params'],
-        isInt: true
-      }
+        isInt: true,
+      },
     });
   }
 
@@ -333,54 +332,54 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['unit_id']: {
         in: ['body'],
-        isInt: true
+        isInt: true,
       },
       ['group_by']: {
         in: ['body'],
         isString: true,
-        isIn: { options: [['by_template', 'by_status']] }
+        isIn: { options: [['by_template', 'by_status']] },
       },
       ['sort.by']: {
         in: ['body'],
         isArray: true,
         optional: true,
-        isIn: { options: [['tasks']] }
+        isIn: { options: [['tasks']] },
       },
       ['sort.order']: {
         in: ['body'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['filters.task_template_id']: {
         in: ['body'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.performer_users']: {
         in: ['body'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.task_status']: {
         in: ['body'],
         optional: true,
-        isIn: { options: [['finished', 'deleted']] }
+        isIn: { options: [['finished', 'deleted']] },
       },
       ['filters.is_performers_users_must_be_defined']: {
         in: ['body'],
         optional: true,
-        isBoolean: true
+        isBoolean: true,
       },
       ['filters.date.from']: {
         in: ['body'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.date.to']: {
         in: ['body'],
         optional: true,
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -391,61 +390,61 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['unit_id']: {
         in: ['body'],
-        isInt: true
+        isInt: true,
       },
       ['page']: {
         in: ['body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['count']: {
         in: ['body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort.by']: {
         in: ['body'],
         isArray: true,
         optional: true,
-        isIn: { options: [['tasks']] }
+        isIn: { options: [['tasks']] },
       },
       ['sort.order']: {
         in: ['body'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
+        isIn: { options: [['asc', 'desc']] },
       },
       ['filters.task_template_id']: {
         in: ['body'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.performer_users']: {
         in: ['body'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.task_status']: {
         in: ['body'],
         optional: true,
-        isIn: { options: [['finished', 'deleted']] }
+        isIn: { options: [['finished', 'deleted']] },
       },
       ['filters.is_performers_users_must_be_defined']: {
         in: ['body'],
         optional: true,
-        isBoolean: true
+        isBoolean: true,
       },
       ['filters.date.from']: {
         in: ['body'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.date.to']: {
         in: ['body'],
         optional: true,
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -456,12 +455,12 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['workflowTemplateId']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['taskTemplateId']: {
         in: ['body'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -472,9 +471,8 @@ export class TaskValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isUUID: true
-      }
+        isUUID: true,
+      },
     });
   }
 }
-

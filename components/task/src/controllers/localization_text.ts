@@ -1,4 +1,3 @@
-
 import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { LocalizationTextBusiness as LocalizationTextBussiness } from '../businesses/localization_text';
@@ -40,4 +39,3 @@ export class LocalizationTextController extends Controller {
     this.responseData(res, localizationTexts, true);
   }
 }
-

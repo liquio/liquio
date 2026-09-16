@@ -19,12 +19,10 @@
     "jest.config.js",
     "eslint.config.js",
     "migrations-config.js",
-    "bundle.cjs",
     "dist",
-    "bundle",
     "node_modules",
     "migrations",
-    "test",
+    "tests",
     "coverage"
   ]
 }

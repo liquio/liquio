@@ -1,13 +1,9 @@
-
 import { DictionaryModel } from './dictionary';
 import { TaskTagDictionaryModel } from './task_tag';
 import { WorkflowStatusDictionaryModel } from './workflow_status';
 
 // Constants.
-const MODEL_CLASSES = [
-  TaskTagDictionaryModel,
-  WorkflowStatusDictionaryModel
-];
+const MODEL_CLASSES = [TaskTagDictionaryModel, WorkflowStatusDictionaryModel];
 const ERROR_BASE_MODEL = 'Must be extends of DictionaryModel.';
 
 export class DictionaryModels {
@@ -83,7 +79,7 @@ export class DictionaryModels {
    * @returns {Promise<object[]>}
    */
   async getByName(name) {
-    const model = this.models.find(model => {
+    const model = this.models.find((model) => {
       return model.name === name;
     });
 
@@ -94,4 +90,3 @@ export class DictionaryModels {
     return await model.getAll();
   }
 }
-

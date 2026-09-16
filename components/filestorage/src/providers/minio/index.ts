@@ -105,7 +105,7 @@ export class Minio extends Provider {
         method: HttpRequest.Methods.GET,
         timeout: this.timeout,
       });
-    
+
     return { url, headers, method: HttpRequest.Methods.GET, timeout: this.timeout };
   }
 
@@ -296,10 +296,10 @@ export class Minio extends Provider {
 
     return showObjectCount === 'true'
       ? {
-        gigabytesUsedCount,
-        gigabytesUsedCountRound,
-        objectCount,
-      }
+          gigabytesUsedCount,
+          gigabytesUsedCountRound,
+          objectCount,
+        }
       : { gigabytesUsedCount, gigabytesUsedCountRound };
   }
 

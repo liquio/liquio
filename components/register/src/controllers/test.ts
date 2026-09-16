@@ -30,7 +30,7 @@ export default class TestController extends Controller {
     const processPid = process.pid;
     const responseData = {
       processPid,
-      message: MESSAGE_PONG
+      message: MESSAGE_PONG,
     };
 
     // Response.

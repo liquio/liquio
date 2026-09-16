@@ -1,9 +1,53 @@
+import camelCase from 'lodash/camelCase';
+import upperFirst from 'lodash/upperFirst';
 
-import _ from 'lodash';
+/**
+ * Params accepted by {@link Model#paginate}. Spread across a real caller's query params, so this
+ * intentionally keeps an index signature for whatever extra filter fields a subclass passes
+ * through in `...params` (folded into `options.where` below).
+ */
+export interface PaginateParams {
+  currentPage?: number;
+  perPage?: number;
+  /** List of `[field, ...subFields, direction]` tuples (or bare `[field, direction]`). */
+  sort?: unknown[];
+  filters?: Record<string, unknown>;
+  where?: Record<string, unknown>;
+  subQuery?: boolean;
+  include?: unknown;
+  [key: string]: unknown;
+}
+
+export interface PaginatedResult<TRow = unknown> {
+  pagination: {
+    total: number;
+    perPage: number;
+    currentPage: number;
+    lastPage: number;
+  };
+  data: TRow[];
+}
+
+/**
+ * Minimal shape {@link Model#paginate} needs from whatever it's invoked on. It is never called as
+ * a normal instance method - every subclass that uses it reattaches it directly onto its
+ * Sequelize model instead (`this.model.paginate = this.paginate;`) and calls it from there
+ * (`this.model.paginate(...)`), so `this` inside the method body is that Sequelize model, not a
+ * `Model` instance - hence the explicit `this` parameter type below instead of `(this as any)`.
+ */
+export interface FindAndCountable<TRow = unknown> {
+  findAndCountAll(options: Record<string, unknown>): Promise<{ count: number; rows: TRow[] }>;
+}
+
+export interface GetEntitiesByRelationsParams<TEntity = Record<string, unknown>> {
+  relations: string[];
+  /** A live Sequelize model instance exposing association getters (e.g. `getTasks()`). */
+  sequelizeModel: Record<string, unknown>;
+  entity: TEntity;
+}
 
 /**
  * Base model.
- * @typedef {import('sequelize/lib/model')} Model
  */
 export class Model {
   db: any;
@@ -13,16 +57,15 @@ export class Model {
   }
 
   /**
-   * Pagination.
-   * @param {object} [data] Data object.
-   * @param {number} [data.currentPage] Offset.
-   * @param {number} [data.perPage] Limit items.
-   * @param {object} [data.params] Options to filter query.
-   * @returns {Promise<object>}
+   * Pagination. See {@link FindAndCountable} for why `this` is typed explicitly here.
+   * @returns Paginated rows plus page metadata.
    */
-  async paginate({ currentPage = 1, perPage = 15, ...params }: any = {}) {
-    const options: any = {
-      order: []
+  async paginate<TRow = unknown>(
+    this: FindAndCountable<TRow>,
+    { currentPage = 1, perPage = 15, ...params }: PaginateParams = {},
+  ): Promise<PaginatedResult<TRow>> {
+    const options: Record<string, unknown> = {
+      order: [],
     };
 
     if (perPage > global.config.model.pagination.limitPerPage) {
@@ -34,7 +77,7 @@ export class Model {
     }
 
     if (Array.isArray(params.sort)) {
-      params.sort.forEach(item => {
+      params.sort.forEach((item) => {
         if (!Array.isArray(item)) {
           return;
         }
@@ -43,20 +86,20 @@ export class Model {
           item.push('desc');
         }
 
-        options.order.push(item);
+        (options.order as unknown[]).push(item);
       });
     }
 
-    if (options.order.length === 0) {
-      options.order.push(['created_at', 'desc']);
+    if ((options.order as unknown[]).length === 0) {
+      (options.order as unknown[]).push(['created_at', 'desc']);
     }
 
     if (params.filters) {
       options.where = params.filters;
     }
 
-    if(params.where) {
-      options.where = {...options.where, ...params.where};
+    if (params.where) {
+      options.where = { ...(options.where as Record<string, unknown>), ...params.where };
     }
 
     if (typeof params.subQuery !== 'undefined' && params.subQuery === false) {
@@ -70,35 +113,37 @@ export class Model {
     options.offset = (currentPage - 1) * perPage;
     options.limit = perPage;
 
-    const { count, rows } = await (this as any).findAndCountAll(options);
+    const { count, rows } = await this.findAndCountAll(options);
 
     return {
       pagination: {
         total: count,
         perPage: perPage,
         currentPage: currentPage,
-        lastPage: Math.max(Math.ceil(count / perPage), 1)
+        lastPage: Math.max(Math.ceil(count / perPage), 1),
       },
-      data: rows
+      data: rows,
     };
   }
 
   /**
    * Get entities by relations.
-   * @param {object} options Relations.
-   * @param {string[]} options.relations Relations.
-   * @param {Model} options.sequelizeModel Sequelize model.
-   * @param {object} options.entity Enity.
-   * @returns {object}
+   * @returns `entity`, mutated in place with each resolved relation attached.
    */
-  async getEntitiesByRelations({ relations, sequelizeModel, entity }) {
+  async getEntitiesByRelations<TEntity = Record<string, unknown>>({
+    relations,
+    sequelizeModel,
+    entity,
+  }: GetEntitiesByRelationsParams<TEntity>): Promise<TEntity> {
     try {
-      await Promise.all(relations.map(async relation => {
-        const items = await sequelizeModel[`get${_.upperFirst(relation)}`]();
-        if (items) {
-          entity[relation] = items.map(item => item.prepareEntity(item));
-        }
-      }));
+      await Promise.all(
+        relations.map(async (relation) => {
+          const items = await (sequelizeModel[`get${upperFirst(relation)}`] as () => Promise<any[]>)();
+          if (items) {
+            (entity as Record<string, unknown>)[relation] = items.map((item) => item.prepareEntity(item));
+          }
+        }),
+      );
     } catch (error) {
       global.log.save('relation-error', error, 'error');
       throw error;
@@ -108,12 +153,11 @@ export class Model {
   }
 
   /**
-   * Prepare object to array.
+   * Turn a `{ field: 'asc' | 'desc' | { subField: 'asc' | 'desc' } }`-shaped sort object into the
+   * array-of-tuples form Sequelize's `order` option expects.
    * @private
-   * @param {object} options Options.
-   * @returns {[]}
    */
-  prepareSort(options) {
+  prepareSort(options: Record<string, unknown>): unknown[][] {
     return Object.entries(options).flatMap(([key, value]) => {
       // If value is not an object, return the key-value pair
       if (typeof value !== 'object' || Array.isArray(value)) {
@@ -122,17 +166,15 @@ export class Model {
 
       // Handle the 'meta' by flattening and joining with '.'
       if (key === 'meta') {
-        return Object.entries(value).map(([subKey, subValue]) => {
-          return [`${_.camelCase(key)}.${_.camelCase(subKey)}`, subValue];
+        return Object.entries(value as Record<string, unknown>).map(([subKey, subValue]) => {
+          return [`${camelCase(key)}.${camelCase(subKey)}`, subValue];
         });
-
       }
 
       // For other objects, return flattened array
-      return Object.entries(value).map(([subKey, subValue]) => {
-        return [_.camelCase(key),subKey, subValue];
+      return Object.entries(value as Record<string, unknown>).map(([subKey, subValue]) => {
+        return [camelCase(key), subKey, subValue];
       });
     });
   }
 }
-

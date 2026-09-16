@@ -1,4 +1,3 @@
-
 import { checkSchema } from 'express-validator';
 import { Validator } from './validator';
 
@@ -12,7 +11,7 @@ export class LocalizationLanguageValidator extends Validator {
    * Constructor.
    * @param {object} validationConfig Validation config object.
    */
-  constructor (validationConfig) {
+  constructor(validationConfig) {
     super(validationConfig);
 
     // Define singleton.
@@ -25,14 +24,13 @@ export class LocalizationLanguageValidator extends Validator {
   /**
    * Schema.
    */
-  getAll () {
+  getAll() {
     return checkSchema({
       ['filters.code']: {
         in: ['query'],
         optional: true,
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 }
-

@@ -12,25 +12,25 @@ describe('WorkflowBusiness', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token'
+          Authorization: 'Bearer test-token',
         },
         template: 'workflow-template-id',
-        timeout: 30000
-      }
+        timeout: 30000,
+      },
     },
     storage: {
       FileStorage: {
         host: 'localhost',
-        port: 3001
-      }
+        port: 3001,
+      },
     },
-    eds: { 
-      timeout: 30000, 
+    eds: {
+      timeout: 30000,
       pkcs7: {
         timeout: 30000,
-        signToolUrl: 'http://localhost:3004'
-      }
-    }
+        signToolUrl: 'http://localhost:3004',
+      },
+    },
   };
 
   it('should initialize', () => {
@@ -40,7 +40,7 @@ describe('WorkflowBusiness', () => {
 
   describe('getAllElasticFiltered', () => {
     let workflowBusiness;
-    
+
     beforeEach(() => {
       // Create fresh instance for each test
       (WorkflowBusiness as any).singleton = null;
@@ -72,19 +72,19 @@ describe('WorkflowBusiness', () => {
                 workflowStatusId: 1,
                 userworkflowTemplate: {
                   id: 'template-1',
-                  name: 'Test Template'
+                  name: 'Test Template',
                 },
                 logs: [
                   {
                     type: 'workflow_incoming_message',
                     createdAt: '2023-01-01T00:00:00.000Z',
-                    details: '{"sourceRef": "task-1", "targetRef": "task-2"}'
-                  }
-                ]
-              }
+                    details: '{"sourceRef": "task-1", "targetRef": "task-2"}',
+                  },
+                ],
+              },
             },
             {
-              _id: 'workflow-2', 
+              _id: 'workflow-2',
               _source: {
                 createdBy: 'user-2',
                 updatedBy: 'user-2',
@@ -97,13 +97,13 @@ describe('WorkflowBusiness', () => {
                 workflowStatusId: 2,
                 userworkflowTemplate: {
                   id: 'template-2',
-                  name: 'Test Template 2'
+                  name: 'Test Template 2',
                 },
-                logs: []
-              }
-            }
-          ]
-        }
+                logs: [],
+              },
+            },
+          ],
+        },
       };
 
       // Mock the Elasticsearch request
@@ -117,7 +117,7 @@ describe('WorkflowBusiness', () => {
         currentPage: 1,
         perPage: 10,
         sort: {},
-        filters: {}
+        filters: {},
       };
 
       const result = await workflowBusiness.getAllElasticFiltered(params);
@@ -129,7 +129,7 @@ describe('WorkflowBusiness', () => {
             workflowTemplateId: 'template-1',
             workflowTemplate: {
               id: 'template-1',
-              name: 'Test Template'
+              name: 'Test Template',
             },
             data: {
               messages: [
@@ -137,9 +137,9 @@ describe('WorkflowBusiness', () => {
                   type: 'in',
                   createdAt: '2023-01-01T00:00:00.000Z',
                   sourceRef: 'task-1',
-                  targetRef: 'task-2'
-                }
-              ]
+                  targetRef: 'task-2',
+                },
+              ],
             },
             createdBy: 'user-1',
             updatedBy: 'user-1',
@@ -149,17 +149,17 @@ describe('WorkflowBusiness', () => {
             userData: 'test-data',
             isWorkflowContainsErrors: false,
             hasUnresolvedErrors: false,
-            workflowStatusId: 1
+            workflowStatusId: 1,
           },
           {
             id: 'workflow-2',
             workflowTemplateId: 'template-2',
             workflowTemplate: {
               id: 'template-2',
-              name: 'Test Template 2'
+              name: 'Test Template 2',
             },
             data: {
-              messages: undefined
+              messages: undefined,
             },
             createdBy: 'user-2',
             updatedBy: 'user-2',
@@ -169,15 +169,15 @@ describe('WorkflowBusiness', () => {
             userData: 'test-data-2',
             isWorkflowContainsErrors: true,
             hasUnresolvedErrors: true,
-            workflowStatusId: 2
-          }
+            workflowStatusId: 2,
+          },
         ],
         pagination: {
           total: 2,
           currentPage: 1,
           perPage: 10,
-          lastPage: 1
-        }
+          lastPage: 1,
+        },
       });
     });
 
@@ -192,17 +192,17 @@ describe('WorkflowBusiness', () => {
                 createdBy: 'user-1',
                 number: 'WF-FILTERED',
                 userworkflowTemplate: { id: 'template-1' },
-                logs: []
-              }
-            }
-          ]
-        }
+                logs: [],
+              },
+            },
+          ],
+        },
       };
 
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function(uri, requestBody) {
+        .reply(function (uri, requestBody) {
           capturedRequestBody = requestBody;
           return [200, mockElasticsearchResponse];
         });
@@ -220,8 +220,8 @@ describe('WorkflowBusiness', () => {
           workflow_status_id: 1,
           has_unresolved_errors: false,
           type: 'standard',
-          createdAt: '2023-01-01'
-        }
+          createdAt: '2023-01-01',
+        },
       };
 
       await workflowBusiness.getAllElasticFiltered(params);
@@ -241,20 +241,20 @@ describe('WorkflowBusiness', () => {
           selected_createdAt_range_end: '2023-01-01',
           selected_sort_createdAt: 'desc',
           selected_size: 5,
-          selected_from: 0
-        }
+          selected_from: 0,
+        },
       });
     });
 
     it('should handle sort parameters correctly', async () => {
       const mockElasticsearchResponse = {
-        hits: { total: { value: 0 }, hits: [] }
+        hits: { total: { value: 0 }, hits: [] },
       };
 
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function(uri, requestBody) {
+        .reply(function (uri, requestBody) {
           capturedRequestBody = requestBody;
           return [200, mockElasticsearchResponse];
         });
@@ -263,7 +263,7 @@ describe('WorkflowBusiness', () => {
         currentPage: 2,
         perPage: 20,
         sort: { created_at: 'ASC' }, // Test case conversion
-        filters: {}
+        filters: {},
       };
 
       await workflowBusiness.getAllElasticFiltered(params);
@@ -275,13 +275,13 @@ describe('WorkflowBusiness', () => {
 
     it('should use default sort when no sort parameters provided', async () => {
       const mockElasticsearchResponse = {
-        hits: { total: { value: 0 }, hits: [] }
+        hits: { total: { value: 0 }, hits: [] },
       };
 
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function(uri, requestBody) {
+        .reply(function (uri, requestBody) {
           capturedRequestBody = requestBody;
           return [200, mockElasticsearchResponse];
         });
@@ -290,7 +290,7 @@ describe('WorkflowBusiness', () => {
         currentPage: 1,
         perPage: 10,
         sort: {}, // Empty sort
-        filters: {}
+        filters: {},
       };
 
       await workflowBusiness.getAllElasticFiltered(params);
@@ -302,19 +302,17 @@ describe('WorkflowBusiness', () => {
       const mockElasticsearchResponse = {
         hits: {
           total: { value: 100 },
-          hits: []
-        }
+          hits: [],
+        },
       };
 
-      nock('https://elasticsearch.example.com')
-        .post('/search')
-        .reply(200, mockElasticsearchResponse);
+      nock('https://elasticsearch.example.com').post('/search').reply(200, mockElasticsearchResponse);
 
       const params = {
         currentPage: 3,
         perPage: 25,
         sort: {},
-        filters: {}
+        filters: {},
       };
 
       const result = await workflowBusiness.getAllElasticFiltered(params);
@@ -323,7 +321,7 @@ describe('WorkflowBusiness', () => {
         total: 100,
         currentPage: 3,
         perPage: 25,
-        lastPage: 4 // Math.ceil(100 / 25) = 4
+        lastPage: 4, // Math.ceil(100 / 25) = 4
       });
     });
 
@@ -341,28 +339,26 @@ describe('WorkflowBusiness', () => {
                   {
                     type: 'workflow_incoming_message',
                     createdAt: '2023-01-01T10:00:00.000Z',
-                    details: '{"action": "start"}'
+                    details: '{"action": "start"}',
                   },
                   {
                     type: 'workflow_outgoing_message', // Using 'outgoing' to match the filter
                     createdAt: '2023-01-01T11:00:00.000Z',
-                    details: '{"action": "complete"}'
+                    details: '{"action": "complete"}',
                   },
                   {
                     type: 'other_message_type', // Should be filtered out
                     createdAt: '2023-01-01T12:00:00.000Z',
-                    details: '{"action": "ignored"}'
-                  }
-                ]
-              }
-            }
-          ]
-        }
+                    details: '{"action": "ignored"}',
+                  },
+                ],
+              },
+            },
+          ],
+        },
       };
 
-      nock('https://elasticsearch.example.com')
-        .post('/search')
-        .reply(200, mockElasticsearchResponse);
+      nock('https://elasticsearch.example.com').post('/search').reply(200, mockElasticsearchResponse);
 
       const result = await workflowBusiness.getAllElasticFiltered();
 
@@ -370,26 +366,24 @@ describe('WorkflowBusiness', () => {
         {
           type: 'in',
           createdAt: '2023-01-01T10:00:00.000Z',
-          action: 'start'
+          action: 'start',
         },
         {
           type: 'out',
           createdAt: '2023-01-01T11:00:00.000Z',
-          action: 'complete'
-        }
+          action: 'complete',
+        },
       ]);
     });
 
     it('should handle network errors gracefully', async () => {
-      nock('https://elasticsearch.example.com')
-        .post('/search')
-        .reply(503, { error: 'Network connection failed' });
+      nock('https://elasticsearch.example.com').post('/search').reply(503, { error: 'Network connection failed' });
 
       const params = {
         currentPage: 1,
         perPage: 10,
         sort: {},
-        filters: {}
+        filters: {},
       };
 
       await expect(workflowBusiness.getAllElasticFiltered(params)).rejects.toThrow();
@@ -397,37 +391,33 @@ describe('WorkflowBusiness', () => {
 
     it('should handle timeout errors', async () => {
       // Mock timeout-like response.
-      nock('https://elasticsearch.example.com')
-        .post('/search')
-        .reply(504, { error: 'connect ETIMEDOUT' });
+      nock('https://elasticsearch.example.com').post('/search').reply(504, { error: 'connect ETIMEDOUT' });
 
       const params = {
         currentPage: 1,
         perPage: 10,
         sort: {},
-        filters: {}
+        filters: {},
       };
 
       await expect(workflowBusiness.getAllElasticFiltered(params)).rejects.toThrow();
     });
 
     it('should handle HTTP error responses', async () => {
-      nock('https://elasticsearch.example.com')
-        .post('/search')
-        .reply(500, { error: 'Internal Server Error' });
+      nock('https://elasticsearch.example.com').post('/search').reply(500, { error: 'Internal Server Error' });
 
       await expect(workflowBusiness.getAllElasticFiltered()).rejects.toThrow();
     });
 
     it('should handle empty parameters object', async () => {
       const mockElasticsearchResponse = {
-        hits: { total: { value: 0 }, hits: [] }
+        hits: { total: { value: 0 }, hits: [] },
       };
 
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function(uri, requestBody) {
+        .reply(function (uri, requestBody) {
           capturedRequestBody = requestBody;
           return [200, mockElasticsearchResponse];
         });
@@ -442,13 +432,13 @@ describe('WorkflowBusiness', () => {
 
     it('should skip unknown filter fields', async () => {
       const mockElasticsearchResponse = {
-        hits: { total: { value: 0 }, hits: [] }
+        hits: { total: { value: 0 }, hits: [] },
       };
 
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function(uri, requestBody) {
+        .reply(function (uri, requestBody) {
           capturedRequestBody = requestBody;
           return [200, mockElasticsearchResponse];
         });
@@ -457,8 +447,8 @@ describe('WorkflowBusiness', () => {
         filters: {
           number: 'WF-001', // Known field
           unknown_field: 'should be ignored', // Unknown field
-          invalid_filter: 'also ignored'
-        }
+          invalid_filter: 'also ignored',
+        },
       };
 
       await workflowBusiness.getAllElasticFiltered(params);
@@ -470,13 +460,13 @@ describe('WorkflowBusiness', () => {
 
     it('should skip unknown sort fields', async () => {
       const mockElasticsearchResponse = {
-        hits: { total: { value: 0 }, hits: [] }
+        hits: { total: { value: 0 }, hits: [] },
       };
 
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function(uri, requestBody) {
+        .reply(function (uri, requestBody) {
           capturedRequestBody = requestBody;
           return [200, mockElasticsearchResponse];
         });
@@ -484,8 +474,8 @@ describe('WorkflowBusiness', () => {
       const params = {
         sort: {
           created_at: 'asc', // Known field
-          unknown_sort_field: 'desc' // Unknown field
-        }
+          unknown_sort_field: 'desc', // Unknown field
+        },
       };
 
       await workflowBusiness.getAllElasticFiltered(params);

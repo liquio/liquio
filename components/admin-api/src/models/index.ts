@@ -39,6 +39,7 @@ import { AdditionalDataSignatureModel } from './additional_data_signature';
 import { UserSettingsModel } from './user_settings';
 import { FileLibraryItemModel } from './file_library_item';
 import { FileLibraryGrantModel } from './file_library_grant';
+import { CabinetMenuModel } from './cabinet_menu';
 
 // Constants.
 const MODELS_CLASSES_LIST = {
@@ -83,6 +84,7 @@ const MODELS_CLASSES_LIST = {
   UserSettingsModel,
   FileLibraryItemModel,
   FileLibraryGrantModel,
+  CabinetMenuModel,
 };
 
 export class Models {
@@ -169,6 +171,7 @@ export class Models {
       userSettings: UserSettingsModel,
       fileLibraryItem: FileLibraryItemModel,
       fileLibraryGrant: FileLibraryGrantModel,
+      cabinetMenu: CabinetMenuModel,
       ...customModels,
     };
 

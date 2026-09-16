@@ -1571,6 +1571,14 @@ export const routes = {
     },
     auth: ['individual'],
   },
+  'GET /navigation-tree': {
+    middlewares: [],
+    controller: {
+      name: 'cabinetMenu',
+      method: 'getNavigationTree',
+    },
+    auth: ['individual'],
+  },
   // outdated. see `favorites` implimentation in `bpm-workflow-handler service`
   'GET /favorites/:entity_type': {
     groups: [GROUPS.USER],
@@ -1625,4 +1633,3 @@ export const routes = {
     auth: ['individual'],
   },
 };
-

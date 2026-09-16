@@ -69,10 +69,7 @@ export class CaptchaService {
     }
 
     // Skip if the service or method is not in the enabled list
-    if (
-      !this.isEnabledFor.includes([service, '*'].join('.')) &&
-      !this.isEnabledFor.includes([service, method].join('.'))
-    ) {
+    if (!this.isEnabledFor.includes([service, '*'].join('.')) && !this.isEnabledFor.includes([service, method].join('.'))) {
       return null;
     }
 

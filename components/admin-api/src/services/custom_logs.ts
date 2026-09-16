@@ -1,7 +1,7 @@
 import { createClient, type RedisClientType } from 'redis';
 
 import { CustomLogEntity } from '../entities/custom_log';
-import { Sandbox } from '../lib/sandbox';
+import { Sandbox } from '@liquio/back-core';
 
 /**
  * Custom logs.

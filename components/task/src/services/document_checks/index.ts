@@ -3,7 +3,7 @@ import { DisableCreate } from './checks/disable_create';
 
 // Constants.
 const CHECKS_LIST = {
-  DisableCreate
+  DisableCreate,
 };
 
 /**
@@ -21,7 +21,7 @@ export class DocumentChecks {
     // Define singleton.
     if (!DocumentChecks.singleton) {
       const checksClasses = [...Object.values(DocumentChecks.List), ...customChecks];
-      this.initializedChecks = checksClasses.map(v => new v());
+      this.initializedChecks = checksClasses.map((v) => new v());
       DocumentChecks.singleton = this;
     }
     return DocumentChecks.singleton;
@@ -64,4 +64,3 @@ export class DocumentChecks {
     return commonResult;
   }
 }
-

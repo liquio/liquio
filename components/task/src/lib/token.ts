@@ -1,9 +1,8 @@
-
 import jwt from 'jsonwebtoken';
 
 // Constants.
 const DEFAULT_JWT_OPTIONS = {
-  expiresIn: '1d'
+  expiresIn: '1d',
 };
 
 /**
@@ -40,7 +39,7 @@ export class Token {
     // Define token data.
     const tokenData = {
       userId: userInfo.authUserInfo.userId,
-      authTokens: userInfo.authTokens
+      authTokens: userInfo.authTokens,
     };
 
     // Return token.
@@ -56,7 +55,7 @@ export class Token {
   generateBearer(userInfo) {
     // Define token data.
     const tokenData = {
-      user: userInfo
+      user: userInfo,
     };
 
     // Return token.
@@ -75,4 +74,3 @@ export class Token {
     return tokenData;
   }
 }
-

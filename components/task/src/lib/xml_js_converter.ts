@@ -1,4 +1,3 @@
-
 import xml2js from 'xml2js';
 
 /**
@@ -33,7 +32,9 @@ export class XmlJsConverter {
     return new Promise((resolve, reject) => {
       this.parseString(xml, (error, jsObject) => {
         // Check.
-        if (error) { reject(error); }
+        if (error) {
+          reject(error);
+        }
 
         // Resolve JS object.
         resolve(jsObject);
@@ -51,7 +52,7 @@ export class XmlJsConverter {
     // Convert to JS object.
     const jsObject = await this.convertXmlToJsObject(xml);
 
-    // Define and return 
+    // Define and return
     const jsonString = JSON.stringify(jsObject, null, space);
     return jsonString;
   }
@@ -66,4 +67,3 @@ export class XmlJsConverter {
     return builder.buildObject(json);
   }
 }
-

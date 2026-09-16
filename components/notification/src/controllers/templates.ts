@@ -82,7 +82,7 @@ export class Template {
 
   async addTemplate(req: any, res: any) {
     if (!req.body.type || req.body.type.trim() == '' || (req.body.type && req.body.type != 'sms' && req.body.type != 'email')) {
-      return res.send(400, { message: 'Type must be \'sms\' or \'email\'' });
+      return res.send(400, { message: "Type must be 'sms' or 'email'" });
     }
     if (!req.body.text || req.body.text.trim() == '') {
       return res.send(400, { message: 'Text id empty' });
@@ -104,7 +104,7 @@ export class Template {
 
   async changeTemplate(req: any, res: any) {
     if (!req.body.type || req.body.type.trim() == '' || (req.body.type && req.body.type != 'sms' && req.body.type != 'email')) {
-      return res.send(400, { message: 'Type must be \'sms\' or \'email\'' });
+      return res.send(400, { message: "Type must be 'sms' or 'email'" });
     }
     if (!req.body.text || req.body.text.trim() == '') {
       return res.send(400, { message: 'Text id empty' });
@@ -186,7 +186,7 @@ export class Template {
       if (importingTemplateIds.every((templateId: any) => !existingTemplateIds.includes(templateId))) {
         const createdTemplates = await Templates.bulkCreate(dataToImport);
 
-        this.log.save('import-message-templates|imported|importing-templates-don\'t-exist', {
+        this.log.save("import-message-templates|imported|importing-templates-don't-exist", {
           createdTemplatesCount: createdTemplates?.length || 0,
         });
 

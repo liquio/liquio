@@ -1,4 +1,4 @@
-import { getTraceId } from 'back-core';
+import { getTraceId } from '@liquio/back-core';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;

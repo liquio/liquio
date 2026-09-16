@@ -3,7 +3,7 @@ import { AuthService as Auth } from '../services/auth';
 import { NotifierService } from '../services/notifier';
 import { RegisterService } from '../services/register';
 import { Eds } from '../lib/eds';
-import { AppInfo } from 'back-core';
+import { AppInfo } from '@liquio/back-core';
 import { FileStorage } from '../lib/filestorage';
 import { HttpRequest } from '../lib/http_request';
 import { PaymentService } from '../services/payment';
@@ -507,4 +507,3 @@ export class PingController extends Controller {
     return result;
   }
 }
-

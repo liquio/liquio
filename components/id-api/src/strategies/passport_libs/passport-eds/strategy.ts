@@ -1,4 +1,4 @@
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { Services } from '../../../services';
 import { Request, Strategy, StrategyVerify } from '../../../types';
 

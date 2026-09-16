@@ -1,8 +1,4 @@
-export const sensitiveReplace = (
-  targetObjectString: string,
-  excludeParams: string[] = [],
-  replaceMask = '****',
-): string => {
+export const sensitiveReplace = (targetObjectString: string, excludeParams: string[] = [], replaceMask = '****'): string => {
   const regex = new RegExp(`"(${excludeParams.join('|')})": ?"(.+?)"`, 'gm');
   const matches = [...targetObjectString.matchAll(regex)];
 

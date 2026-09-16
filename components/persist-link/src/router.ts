@@ -1,7 +1,7 @@
 // Import.
 import express from 'express';
 
-import { asyncLocalStorageMiddleware } from 'back-core';
+import { asyncLocalStorageMiddleware } from '@liquio/back-core';
 import { getLog } from './lib/context';
 import AppIdentHeaders from './lib/app_ident_headers';
 import Controllers from './controllers';

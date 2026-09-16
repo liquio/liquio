@@ -98,9 +98,7 @@ describe('X509Controller', () => {
           expect(res.body.issuer.commonName).toBe('Liquio Test CA');
           expect(res.body.issuer.organizationName).toBe('Liquio Test CA');
           expect(res.body.issuer.countryName).toBe('UA');
-          expect(res.body.serial).toBe(
-            '1DD5E3F086BA70CFE146B5B76F56BA03730FBECC',
-          );
+          expect(res.body.serial).toBe('1DD5E3F086BA70CFE146B5B76F56BA03730FBECC');
           expect(res.body.pem).toContain('BEGIN CERTIFICATE');
         });
     });
@@ -119,32 +117,21 @@ describe('X509Controller', () => {
   describe('POST /x509/verify-hash', () => {
     it('should return true (201) when signature is valid', async () => {
       // Compute the hash of the extracted content (base64-encoded SHA-256)
-      const der = sampleP7sDer.buffer.slice(
-        sampleP7sDer.byteOffset,
-        sampleP7sDer.byteOffset + sampleP7sDer.byteLength,
-      ) as ArrayBuffer;
+      const der = sampleP7sDer.buffer.slice(sampleP7sDer.byteOffset, sampleP7sDer.byteOffset + sampleP7sDer.byteLength) as ArrayBuffer;
       const asn1 = asn1js.fromBER(der);
       const contentInfo = new pkijs.ContentInfo({ schema: asn1.result });
       const signedData = new pkijs.SignedData({ schema: contentInfo.content });
 
       // Check if content is embedded or we need to use the original JSON file
       let contentBuffer: Buffer;
-      if (
-        signedData.encapContentInfo.eContent &&
-        signedData.encapContentInfo.eContent.valueBlock
-      ) {
-        contentBuffer = Buffer.from(
-          signedData.encapContentInfo.eContent.valueBlock.valueHex,
-        );
+      if (signedData.encapContentInfo.eContent && signedData.encapContentInfo.eContent.valueBlock) {
+        contentBuffer = Buffer.from(signedData.encapContentInfo.eContent.valueBlock.valueHex);
       } else {
         // Use the original JSON content
         contentBuffer = sampleJson;
       }
 
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update(contentBuffer)
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update(contentBuffer).digest('base64');
       const payload = { hash: expectedHash, sign: sampleP7sB64 };
       await request(app.getHttpServer())
         .post('/x509/verify-hash')
@@ -184,10 +171,7 @@ describe('X509Controller', () => {
         data: Buffer.from('test').toString('base64'),
         isReturnAsBase64: true,
       };
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update('test')
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update('test').digest('base64');
       await request(app.getHttpServer())
         .post('/x509/hash-data')
         .send(payload)
@@ -213,9 +197,7 @@ describe('X509Controller', () => {
         .send({ data: 'not-base64', isReturnAsBase64: true })
         .expect(400)
         .expect((res) => {
-          expect(res.body.message).toBe(
-            'Invalid data, expected base64-encoded string',
-          );
+          expect(res.body.message).toBe('Invalid data, expected base64-encoded string');
         });
     });
   });
@@ -291,10 +273,7 @@ describe('X509Controller', () => {
       const sigDer = fs.readFileSync(sigPath);
       const sigB64 = sigDer.toString('base64');
       const payload = { sign: sigB64 };
-      await request(app.getHttpServer())
-        .post('/x509/signature-info')
-        .send(payload)
-        .expect(400);
+      await request(app.getHttpServer()).post('/x509/signature-info').send(payload).expect(400);
     });
   });
 });

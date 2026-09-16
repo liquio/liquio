@@ -24,7 +24,7 @@ export class FavoritesController extends Controller {
    * @param {string} userId User Id.
    */
   async getAll({ params: { entity_type }, userId: user_id }) {
-    return this.model.findAll({ where: { user_id, entity_type }});
+    return this.model.findAll({ where: { user_id, entity_type } });
   }
 
   /**
@@ -34,7 +34,7 @@ export class FavoritesController extends Controller {
    * @param {string} userId User Id.
    */
   async getOne({ params: { entity_type, entity_id }, userId: user_id }) {
-    return this.model.findOne({ where: { user_id, entity_type, entity_id }});
+    return this.model.findOne({ where: { user_id, entity_type, entity_id } });
   }
 
   /**
@@ -54,7 +54,6 @@ export class FavoritesController extends Controller {
    * @param {string} userId User Id.
    */
   async remove({ params: { entity_type, entity_id }, userId: user_id }) {
-    return this.model.destroy({ where: { user_id, entity_type, entity_id }});
+    return this.model.destroy({ where: { user_id, entity_type, entity_id } });
   }
 }
-

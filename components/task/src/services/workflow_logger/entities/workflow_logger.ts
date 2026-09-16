@@ -30,7 +30,8 @@ export class WorkflowLoggerEntity {
    */
   sortLogs() {
     // Sort logs by creating timestamp.
-    this.logs = this.logs.sort((a, b) => { return +new Date(a.createdAt) - +new Date(b.createdAt); });
+    this.logs = this.logs.sort((a, b) => {
+      return +new Date(a.createdAt) - +new Date(b.createdAt);
+    });
   }
 }
-

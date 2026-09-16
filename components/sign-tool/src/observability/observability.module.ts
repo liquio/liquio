@@ -26,9 +26,7 @@ export class ObservabilityModule {
     return als;
   }
 
-  constructor(
-    private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>,
-  ) {}
+  constructor(private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>) {}
 
   configure(consumer: MiddlewareConsumer) {
     consumer

@@ -1,6 +1,6 @@
 import nodeRSA from 'node-rsa';
 
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { convertAllEscapes } from '../lib/string_converter';
 import { Models } from '../models';
 import { UserServicesCreationAttributes } from '../models/user_services.model';

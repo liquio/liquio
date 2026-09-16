@@ -1,4 +1,3 @@
-
 import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { WorkflowLoggerService } from '../services/workflow_logger';
@@ -56,7 +55,7 @@ export class WorkflowLogController extends Controller {
         fromCreatedAt: from_created_at,
         toCreatedAt: to_created_at,
         currentPage: page,
-        perPage: count
+        perPage: count,
       });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
@@ -80,7 +79,7 @@ export class WorkflowLogController extends Controller {
         workflowTemplateId,
         currentPage: page,
         perPage: count,
-        sort
+        sort,
       });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
@@ -89,4 +88,3 @@ export class WorkflowLogController extends Controller {
     this.responseData(res, workflows, true);
   }
 }
-

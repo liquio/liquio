@@ -1,6 +1,6 @@
 import querystring from 'querystring';
 
-import { AppInfo, getTraceId } from 'back-core';
+import { AppInfo, getTraceId } from '@liquio/back-core';
 import { HttpRequest } from '../lib/http_request';
 
 // Constants.

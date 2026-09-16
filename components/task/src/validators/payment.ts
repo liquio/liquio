@@ -1,4 +1,3 @@
-
 import { checkSchema } from 'express-validator';
 import { Validator } from './validator';
 
@@ -33,8 +32,8 @@ export class PaymentValidator extends Validator {
       },
       ['paymentControlPath']: {
         in: ['body'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -45,16 +44,16 @@ export class PaymentValidator extends Validator {
     return checkSchema({
       ['paymentControlPath']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['documentId']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['code']: {
         in: ['body'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -65,16 +64,16 @@ export class PaymentValidator extends Validator {
     return checkSchema({
       ['payment_path']: {
         in: ['query'],
-        isString: true
+        isString: true,
       },
       ['document_id']: {
         in: ['query'],
-        isString: true
+        isString: true,
       },
       ['order_id']: {
         in: ['query'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -85,21 +84,20 @@ export class PaymentValidator extends Validator {
     return checkSchema({
       ['validationUrl']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['displayName']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['initiative']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['initiativeContext']: {
         in: ['body'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 }
-

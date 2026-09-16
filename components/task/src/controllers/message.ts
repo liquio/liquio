@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { NotifierService } from '../services/notifier';
 
@@ -152,4 +151,3 @@ export class MessageController extends Controller {
     this.responseData(res, result);
   }
 }
-

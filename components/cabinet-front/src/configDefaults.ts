@@ -1,0 +1,26 @@
+import type { ConfigDefaults } from 'core/types/config';
+
+const defaults = {
+  application: {
+    name: 'liquio',
+    environment: 'dev',
+    type: 'manager',
+    version: 'SETVERSION'
+  },
+  certificateExpWarning: 10,
+  variables: {
+    dateFormat: 'DD/MM/YYYY',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm'
+  },
+  defaultRoute: '/messages',
+  backendUrl: 'http://localhost:8101',
+  authLink: 'http://localhost:8101/redirect/auth',
+  idAuthLink: 'http://localhost:8080/authorise',
+  clientId: 'liquio-portal',
+  defaultLanguage: 'en-GB',
+  features: {
+    navigationTreePreloading: false
+  }
+} satisfies ConfigDefaults;
+
+export default defaults;

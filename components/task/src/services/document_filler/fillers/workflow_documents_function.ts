@@ -1,4 +1,3 @@
-
 import { Filler } from './filler';
 import { TaskModel } from '../../../models/task';
 
@@ -49,11 +48,9 @@ export class WorkflowDocumentsFunctionFiller extends Filler {
       let valueToSet;
       try {
         // Process string function.
-        valueToSet = this.sandbox.evalWithArgs(
-          itemSchema.documentFunction,
-          [itemSchema.isCurrentOnly === false ? allProcessDocuments : documents],
-          { meta: { fn: 'WorkflowDocumentsFunctionFiller.fill.documentFunction', workflowId } },
-        );
+        valueToSet = this.sandbox.evalWithArgs(itemSchema.documentFunction, [itemSchema.isCurrentOnly === false ? allProcessDocuments : documents], {
+          meta: { fn: 'WorkflowDocumentsFunctionFiller.fill.documentFunction', workflowId },
+        });
 
         // Check.
         if (valueToSet === null && !itemSchema.allowNull) {
@@ -71,4 +68,3 @@ export class WorkflowDocumentsFunctionFiller extends Filler {
     return objectToFill;
   }
 }
-

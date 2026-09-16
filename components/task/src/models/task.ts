@@ -247,11 +247,11 @@ export class TaskModel extends Model {
         attributes: Array.isArray(withWorkflow) ? withWorkflow : undefined,
         include: withWorkflowTemplate
           ? [
-            {
-              model: global.models.workflowTemplate.model,
-              attributes: Array.isArray(withWorkflowTemplate) ? withWorkflowTemplate : undefined,
-            },
-          ]
+              {
+                model: global.models.workflowTemplate.model,
+                attributes: Array.isArray(withWorkflowTemplate) ? withWorkflowTemplate : undefined,
+              },
+            ]
           : [],
       });
     }
@@ -1102,7 +1102,7 @@ export class TaskModel extends Model {
           },
           {
             [Sequelize.Op.or]: [
-              Sequelize.literal('required_performer_units = \'{}\''),
+              Sequelize.literal("required_performer_units = '{}'"),
               { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
             ],
           },
@@ -1129,7 +1129,7 @@ export class TaskModel extends Model {
 
       sequelizeOptions.filters[Sequelize.Op.and].push({
         [Sequelize.Op.or]: [
-          Sequelize.literal('required_performer_units = \'{}\''),
+          Sequelize.literal("required_performer_units = '{}'"),
           { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
         ].filter((v) => v !== null),
       });
@@ -1151,7 +1151,7 @@ export class TaskModel extends Model {
         });
         sequelizeOptions.filters[Sequelize.Op.and].push({
           [Sequelize.Op.or]: [
-            Sequelize.literal('required_performer_units = \'{}\''),
+            Sequelize.literal("required_performer_units = '{}'"),
             { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
           ].filter((v) => v !== null),
         });
@@ -1241,9 +1241,9 @@ export class TaskModel extends Model {
     }
     if (_.has(filters, 'without_performer_username')) {
       if (filters.without_performer_username === true) {
-        sequelizeOptions.filters[Sequelize.Op.and].push(Sequelize.literal('array_to_string(performer_usernames, \'||\') = \'\''));
+        sequelizeOptions.filters[Sequelize.Op.and].push(Sequelize.literal("array_to_string(performer_usernames, '||') = ''"));
       } else {
-        sequelizeOptions.filters[Sequelize.Op.and].push(Sequelize.literal('array_to_string(performer_usernames, \'||\') != \'\''));
+        sequelizeOptions.filters[Sequelize.Op.and].push(Sequelize.literal("array_to_string(performer_usernames, '||') != ''"));
       }
     }
 
@@ -1489,7 +1489,7 @@ export class TaskModel extends Model {
     }
 
     if (options.filters.is_performers_users_must_be_defined) {
-      query.where.performer_users = Sequelize.literal('performer_users != \'{}\'::CHARACTER VARYING[]');
+      query.where.performer_users = Sequelize.literal("performer_users != '{}'::CHARACTER VARYING[]");
     }
 
     if (options.filters.date && options.filters.date.from && options.filters.date.to) {
@@ -1803,4 +1803,3 @@ export class TaskModel extends Model {
     };
   }
 }
-

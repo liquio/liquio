@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { appendTraceMeta } from 'back-core';
+import { appendTraceMeta } from '@liquio/back-core';
 
 /**
  * Auth controller.

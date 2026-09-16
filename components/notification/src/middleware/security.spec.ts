@@ -36,11 +36,11 @@ describe('Security Middleware - express integration', () => {
     it('includes script-src directive', async () => {
       const app = makeApp(cspMiddleware());
       const res = await request(app).get('/test');
-      expect(res.headers['content-security-policy']).toEqual(expect.stringContaining('script-src \'self\''));
+      expect(res.headers['content-security-policy']).toEqual(expect.stringContaining("script-src 'self'"));
     });
 
     it('respects custom directives', async () => {
-      const app = makeApp(cspMiddleware({ directives: { scriptSrc: ['\'self\'', 'https://trusted.com'] } }));
+      const app = makeApp(cspMiddleware({ directives: { scriptSrc: ["'self'", 'https://trusted.com'] } }));
       const res = await request(app).get('/test');
       expect(res.headers['content-security-policy']).toEqual(expect.stringContaining('https://trusted.com'));
     });
@@ -89,26 +89,38 @@ describe('Security Middleware - express integration', () => {
 
   describe('corsValidationMiddleware (real cors)', () => {
     it('allows requests from whitelisted origin', async () => {
-      const app = makeApp(corsValidationMiddleware({ allowedOrigins: ['http://localhost:3000'] }), (req: any, res: any) => { res.send('ok'); return; });
+      const app = makeApp(corsValidationMiddleware({ allowedOrigins: ['http://localhost:3000'] }), (req: any, res: any) => {
+        res.send('ok');
+        return;
+      });
       const res = await request(app).get('/test').set('Origin', 'http://localhost:3000');
       expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000');
       expect(res.headers['access-control-allow-credentials']).toBe('true');
     });
 
     it('rejects non-whitelisted origin by not setting CORS headers', async () => {
-      const app = makeApp(corsValidationMiddleware({ allowedOrigins: ['http://localhost:3000'] }), (req: any, res: any) => { res.send('ok'); return; });
+      const app = makeApp(corsValidationMiddleware({ allowedOrigins: ['http://localhost:3000'] }), (req: any, res: any) => {
+        res.send('ok');
+        return;
+      });
       const res = await request(app).get('/test').set('Origin', 'http://evil.com');
       expect(res.headers['access-control-allow-origin']).toBeUndefined();
     });
 
     it('handles OPTIONS preflight with 204', async () => {
-      const app = makeApp(corsValidationMiddleware({ allowedOrigins: ['http://localhost:3000'] }), (req: any, res: any) => { res.send('ok'); return; });
+      const app = makeApp(corsValidationMiddleware({ allowedOrigins: ['http://localhost:3000'] }), (req: any, res: any) => {
+        res.send('ok');
+        return;
+      });
       const res = await request(app).options('/test').set('Origin', 'http://localhost:3000');
       expect(res.status).toBe(204);
     });
 
     it('sets proper CORS headers', async () => {
-      const app = makeApp(corsValidationMiddleware({ allowedOrigins: ['http://localhost:3000'] }), (req: any, res: any) => { res.send('ok'); return; });
+      const app = makeApp(corsValidationMiddleware({ allowedOrigins: ['http://localhost:3000'] }), (req: any, res: any) => {
+        res.send('ok');
+        return;
+      });
       const res = await request(app).get('/test').set('Origin', 'http://localhost:3000');
       expect(res.headers['access-control-allow-credentials']).toBe('true');
       expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000');
@@ -120,7 +132,9 @@ describe('Security Middleware - express integration', () => {
       const app = express();
       app.use(express.json());
       app.use(responseEncodingMiddleware());
-      app.get('/test', (req, res) => { (res as any).send(200, { data: 'x' }); });
+      app.get('/test', (req, res) => {
+        (res as any).send(200, { data: 'x' });
+      });
       const res = await request(app).get('/test');
       expect(res.headers['content-type']).toEqual(expect.stringContaining('application/json'));
     });

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { AuthorizeModel } from '../models/authorize';
-import { appendTraceMeta } from 'back-core';
+import { appendTraceMeta } from '@liquio/back-core';
 
 const Authorize = new AuthorizeModel().Authorize;
 

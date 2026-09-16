@@ -22,7 +22,7 @@ export class RedisClient {
       this.defaultTtl = defaultTtl;
 
       // Connect to redis in background (don't wait for it)
-      this.client.connect().catch(err => {
+      this.client.connect().catch((err) => {
         console.error('Redis connection error:', err);
       });
 

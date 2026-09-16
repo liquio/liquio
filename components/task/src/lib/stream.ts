@@ -1,7 +1,7 @@
 // Constants.
 const EVENTS = {
   end: 'end',
-  data: 'data'
+  data: 'data',
 };
 
 /**
@@ -12,7 +12,9 @@ export class Stream {
    * Events.
    * @returns {EVENTS}
    */
-  static get Events() { return EVENTS; }
+  static get Events() {
+    return EVENTS;
+  }
 
   /**
    * Wait event.
@@ -22,7 +24,11 @@ export class Stream {
    */
   static async waitEvent(stream, event) {
     return new Promise((resolve, reject) => {
-      try { stream.on(event, resolve); } catch (error) { reject(error); }
+      try {
+        stream.on(event, resolve);
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -49,4 +55,3 @@ export class Stream {
     return fileContent;
   }
 }
-

@@ -33,13 +33,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
     // Handle all schema object pages.
     await this.handleAllElements(schemaObject, objectToFill, async (item, itemSchema) => {
       // Check that the current element shouldn't be defined.
-      if (
-        !itemSchema ||
-        itemSchema.control !== 'copyWorkflowDocument' ||
-        !userInfo ||
-        !userUnitsEntities ||
-        !oauthToken
-      ) {
+      if (!itemSchema || itemSchema.control !== 'copyWorkflowDocument' || !userInfo || !userUnitsEntities || !oauthToken) {
         return;
       }
 
@@ -48,58 +42,33 @@ export class CopyWorkflowDocumentFiller extends Filler {
 
         const { workflowId, taskTemplateId } = PropByPath.get(objectToFill, path) || {};
         if (!workflowId || !taskTemplateId) {
-          global.log.save(
-            'copy-workflow-document-filling-not-defined',
-            { path, workflowId, taskTemplateId },
-            'warn'
-          );
+          global.log.save('copy-workflow-document-filling-not-defined', { path, workflowId, taskTemplateId }, 'warn');
           return;
         }
 
-        const { document } =
-          (await global.models.task.findDocumentByWorkflowIdAndTaskTemplateId(
-            workflowId,
-            taskTemplateId,
-            true
-          )) || {};
+        const { document } = (await global.models.task.findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId, true)) || {};
 
         if (!document) {
-          global.log.save(
-            'copy-workflow-document-filling-document-not-found',
-            { workflowId, taskTemplateId },
-            'warn'
-          );
+          global.log.save('copy-workflow-document-filling-document-not-found', { workflowId, taskTemplateId }, 'warn');
           return;
         }
 
         if (rawUnitId) {
           const unitId = this.getUnitId(rawUnitId, { objectToFill, userInfo });
           if (!unitId) {
-            global.log.save(
-              'copy-workflow-document-filling-unit-id-not-defined', 
-              { unitId, workflowId, taskTemplateId }, 
-              'warn'
-            );
+            global.log.save('copy-workflow-document-filling-unit-id-not-defined', { unitId, workflowId, taskTemplateId }, 'warn');
             return;
           }
 
           const isUserInUnit = userUnitsEntities.all.some((unit) => unit.id === unitId);
           if (!isUserInUnit) {
-            global.log.save(
-              'copy-workflow-document-filling-user-not-in-unit', 
-              { unitId, workflowId, taskTemplateId }, 
-              'warn'
-            );
+            global.log.save('copy-workflow-document-filling-user-not-in-unit', { unitId, workflowId, taskTemplateId }, 'warn');
             return;
           }
         } else {
           // Check if the current user is the creator.
           if (document.createdBy !== userInfo.userId) {
-            global.log.save(
-              'copy-workflow-document-filling-not-allowed',
-              { createdBy: document.createdBy, userId: userInfo.userId },
-              'warn'
-            );
+            global.log.save('copy-workflow-document-filling-not-allowed', { createdBy: document.createdBy, userId: userInfo.userId }, 'warn');
             return;
           }
         }
@@ -122,15 +91,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
         const attachments = await global.models.documentAttachment.getByDocumentId(document.id);
         const copyAttachments = [];
         for (const attachment of attachments) {
-          const {
-            link,
-            name,
-            type,
-            labels = [],
-            meta = {},
-            isGenerated,
-            isSystem
-          } = attachment || {};
+          const { link, name, type, labels = [], meta = {}, isGenerated, isSystem } = attachment || {};
 
           const file = await this.storageService.provider.copyFile(link);
 
@@ -143,7 +104,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
               isGenerated,
               isSystem,
               labels,
-              meta
+              meta,
             });
 
             copyAttachments.push(documentAttachment);
@@ -153,7 +114,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
         // Update the document data with the new attachment information.
         const updatedObjectToFill = this.updateDocumentAttachments(objectToFill, {
           attachments,
-          copyAttachments
+          copyAttachments,
         });
 
         for (const step of steps) {
@@ -167,11 +128,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
           PropByPath.set(objectToFill, step, stepValue);
         }
       } catch (error) {
-        global.log.save(
-          'copy-workflow-document-filling-error',
-          { error: (error && error.message) || error, stack: error.stack },
-          'warn'
-        );
+        global.log.save('copy-workflow-document-filling-error', { error: (error && error.message) || error, stack: error.stack }, 'warn');
       }
     });
 
@@ -220,11 +177,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
     }
 
     try {
-      const unitId = this.sandbox.evalWithArgs(
-        rawUnitId,
-        [objectToFill, userInfo],
-        { meta: { fn: 'CopyWorkflowDocumentFiller.fill.unitId' } },
-      );
+      const unitId = this.sandbox.evalWithArgs(rawUnitId, [objectToFill, userInfo], { meta: { fn: 'CopyWorkflowDocumentFiller.fill.unitId' } });
       return unitId;
     } catch (error) {
       global.log.save('copy-workflow-document-filling-unit-id-eval-error', error, 'error');
@@ -232,4 +185,3 @@ export class CopyWorkflowDocumentFiller extends Filler {
     }
   }
 }
-

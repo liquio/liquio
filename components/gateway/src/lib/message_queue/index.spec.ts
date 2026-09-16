@@ -274,10 +274,13 @@ describe('MessageQueue', () => {
       decoratedHandler({ content: Buffer.from('invalid json') });
 
       await delay(500);
-      expect(global.log.save).toHaveBeenCalledWith('message-parse-error', expect.objectContaining({
-        error: expect.any(String),
-        messageString: 'invalid json',
-      }));
+      expect(global.log.save).toHaveBeenCalledWith(
+        'message-parse-error',
+        expect.objectContaining({
+          error: expect.any(String),
+          messageString: 'invalid json',
+        }),
+      );
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
       expect(handler).not.toHaveBeenCalled();
     });

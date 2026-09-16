@@ -13,17 +13,17 @@ export class WorkflowStatusDictionaryModel extends Dictionary {
       this.model = this.db.define(
         'workflowStatus',
         {
-          name: Sequelize.STRING
+          name: Sequelize.STRING,
         },
         {
           tableName: 'workflow_statuses',
           underscored: true,
           defaultScope: {
             attributes: {
-              exclude: ['created_at', 'updated_at']
-            }
-          }
-        }
+              exclude: ['created_at', 'updated_at'],
+            },
+          },
+        },
       );
 
       WorkflowStatusDictionaryModel.singleton = this;
@@ -48,4 +48,3 @@ export class WorkflowStatusDictionaryModel extends Dictionary {
     return await this.model.findAll();
   }
 }
-

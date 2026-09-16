@@ -11,7 +11,7 @@ import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
 
-import { ConsoleLogProvider, Log } from 'back-core';
+import { ConsoleLogProvider, Log } from '@liquio/back-core';
 import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
 
 const debug = createDebug;
@@ -20,8 +20,8 @@ const debug = createDebug;
 jest.setTimeout(30000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
-jest.mock('back-core', () => {
-  const original = jest.requireActual('back-core');
+jest.mock('@liquio/back-core', () => {
+  const original = jest.requireActual('@liquio/back-core');
   const { Log: OriginalLog } = original;
   const logs = [];
   const emitter = new EventEmitter();
@@ -64,7 +64,7 @@ jest.mock('back-core', () => {
 // Point every still-eager `import { conf } from '../config/config'` (several controllers do this
 // at module scope) at the tracked config-templates directory rather than the gitignored, optional
 // `config/notification` directory a local dev checkout may or may not have populated.
-process.env.CONFIG_PATH = path.join(__dirname, '../../config-templates/notification');
+process.env.CONFIG_PATH = path.join(__dirname, '../../../config-templates/notification');
 
 // Jest force-sets NODE_ENV=test if nothing else set it, before any test file runs. config.ts
 // resolves its env block as `process.env.NODE_ENV || mergedConfig.default_env`, so that forced
@@ -197,7 +197,7 @@ export class TestApp {
     // Deferred require: src/app.ts's start() sets global.conf/env/adminStaticDir/extensions and
     // only then requires src/server.ts (and, transitively, every model's DB connection) - importing
     // it statically here would run that boot sequence before global.log/global.conf are ready.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const start = require('../src/app').default;
     // Mirror src/index.ts's real adapter wiring: config's defaultMessenger ("testConsoleSmsAdapter")
     // routes through CustomGate to this adapter, which just logs and returns a canned response.
@@ -246,7 +246,7 @@ export class TestApp {
     if (this.httpServer) {
       await new Promise((resolve) => this.httpServer.close(resolve));
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const { connection } = require('../src/models/DB');
     await connection?.close();
   }

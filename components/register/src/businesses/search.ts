@@ -30,7 +30,7 @@ export default class SearchBusiness extends Business {
     searchConfig: {
       doNotSearchThisWords?: string[];
       replaceWords?: { from: string; to: string }[];
-    } = {}
+    } = {},
   ) {
     // Define search params.
     const { doNotSearchThisWords = [], replaceWords = [] } = searchConfig;

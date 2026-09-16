@@ -1,4 +1,3 @@
-
 // const DictionariesModel = require('./dictionaries');
 import { WorkflowModel } from './workflow';
 import { WorkflowTemplateCategoryModel } from './workflow_template_category';
@@ -22,6 +21,7 @@ import { EventTemplateModel } from './event_template';
 import { GatewayModel } from './gateway';
 import { GatewayTemplateModel } from './gateway_template';
 import { PaymentLogsModel } from './payment_logs';
+import { PaymentTransactionsModel } from './payment_transactions';
 import { CustomLogTemplateModel } from './custom_log_template';
 import { CustomLogModel } from './custom_log';
 import { AccessHistoryModel } from './access_history';
@@ -31,6 +31,7 @@ import { WorkflowHistoryModel } from './workflow_history';
 import { FavoritesModel } from './favorites';
 import { ExternalServicesStatusesModel } from './external_services_statuses';
 import { KycSessionModel } from './kyc_session';
+import { CabinetMenuModel } from './cabinet_menu';
 
 // Constants.
 const MODELS_CLASSES_LIST = {
@@ -57,6 +58,7 @@ const MODELS_CLASSES_LIST = {
   GatewayModel,
   GatewayTemplateModel,
   PaymentLogsModel,
+  PaymentTransactionsModel,
   CustomLogTemplateModel,
   CustomLogModel,
   AccessHistoryModel,
@@ -66,6 +68,7 @@ const MODELS_CLASSES_LIST = {
   FavoritesModel,
   ExternalServicesStatusesModel,
   KycSessionModel,
+  CabinetMenuModel,
 };
 
 export class Models {
@@ -125,6 +128,7 @@ export class Models {
       gateway: GatewayModel,
       gatewayTemplate: GatewayTemplateModel,
       paymentLogs: PaymentLogsModel,
+      paymentTransactions: PaymentTransactionsModel,
       customLogTemplate: CustomLogTemplateModel,
       customLog: CustomLogModel,
       accessHistory: AccessHistoryModel,
@@ -134,18 +138,23 @@ export class Models {
       favorites: FavoritesModel,
       externalServicesStatuses: ExternalServicesStatusesModel,
       kycSession: KycSessionModel,
-      ...customModels
+      cabinetMenu: CabinetMenuModel,
+      ...customModels,
     };
 
     // Init models.
     this.models = (Object.entries(namesOfModels) as any[])
-      .map(v => [v[0], new v[1]()])
+      .map((v) => [v[0], new v[1]()])
       .reduce(
         (t, v) => ({
           ...t,
-          ...(() => { const n: any = {}; n[v[0]] = v[1]; return n; })()
+          ...(() => {
+            const n: any = {};
+            n[v[0]] = v[1];
+            return n;
+          })(),
         }),
-        {}
+        {},
       );
 
     global.models = this.models;
@@ -162,7 +171,10 @@ export class Models {
     this.models.workflow.model.hasMany(this.models.gateway.model, { foreignKey: 'workflow_id', targetKey: 'id' });
     this.models.workflow.model.hasMany(this.models.workflowError.model, { foreignKey: 'workflow_id', targetKey: 'id' });
     this.models.workflow.model.hasMany(this.models.workflowRestart.model, { foreignKey: 'workflow_id', targetKey: 'id' });
-    this.models.workflowTemplate.model.belongsTo(this.models.workflowTemplateCategory.model, { foreignKey: 'workflow_template_category_id', targetKey: 'id' });
+    this.models.workflowTemplate.model.belongsTo(this.models.workflowTemplateCategory.model, {
+      foreignKey: 'workflow_template_category_id',
+      targetKey: 'id',
+    });
     this.models.task.model.belongsTo(this.models.document.model, { foreignKey: 'document_id', targetKey: 'id' });
     this.models.task.model.belongsTo(this.models.workflow.model, { foreignKey: 'workflow_id', targetKey: 'id' });
     this.models.task.model.belongsTo(this.models.taskTemplate.model, { foreignKey: 'task_template_id', targetKey: 'id' });
@@ -171,4 +183,3 @@ export class Models {
     this.models.document.model.hasOne(this.models.task.model, { foreignKey: 'document_id', targetKey: 'id' });
   }
 }
-

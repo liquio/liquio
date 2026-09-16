@@ -1,4 +1,4 @@
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 
 /**
  * Business.

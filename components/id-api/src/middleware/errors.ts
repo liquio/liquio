@@ -1,7 +1,7 @@
 import { Express, NextFunction } from 'express';
 
 import { HttpError } from '../lib/http_error';
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { Request, Response } from '../types';
 
 export function useErrorHandler(express: Express) {

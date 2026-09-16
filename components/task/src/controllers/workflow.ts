@@ -1,4 +1,3 @@
-
 import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 
@@ -35,10 +34,7 @@ export class WorkflowController extends Controller {
     let workflows;
     try {
       const onboardingWorkflowTemplateIds = [];
-      if (
-        global.config.onboarding?.onboardingTemplate?.workflowTemplateId &&
-        global.config.onboarding?.onboardingTemplate?.taskTemplateId
-      ) {
+      if (global.config.onboarding?.onboardingTemplate?.workflowTemplateId && global.config.onboarding?.onboardingTemplate?.taskTemplateId) {
         onboardingWorkflowTemplateIds.push(global.config.onboarding.onboardingTemplate.workflowTemplateId);
       }
 
@@ -48,7 +44,7 @@ export class WorkflowController extends Controller {
         perPage: count,
         sort: sort,
         filters: filters,
-        onboardingWorkflowTemplateIds
+        onboardingWorkflowTemplateIds,
       });
       workflows.data = this.filterResponse(workflows.data, true);
     } catch (error) {
@@ -90,7 +86,7 @@ export class WorkflowController extends Controller {
       count: 20,
       sort: {},
       filters: {},
-      ...matchedData(req, { locations: ['query'] })
+      ...matchedData(req, { locations: ['query'] }),
     };
 
     let workflows;
@@ -111,4 +107,3 @@ export class WorkflowController extends Controller {
     this.responseData(res, workflows, true);
   }
 }
-

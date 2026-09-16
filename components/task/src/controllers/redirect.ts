@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { AuthService } from '../services/auth';
 
@@ -70,4 +69,3 @@ export class RedirectController extends Controller {
     this.redirect(res, redirectUrl);
   }
 }
-

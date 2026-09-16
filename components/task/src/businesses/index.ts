@@ -1,4 +1,3 @@
-
 import { Business } from './business';
 import { WorkflowBusiness } from './workflow';
 import { WorkflowTemplateBusiness } from './workflow_template';
@@ -7,6 +6,7 @@ import { DocumentBusiness } from './document';
 import { RegisterBusiness } from './register';
 import { UserInboxBusiness } from './user_inbox';
 import { ExternalServicesBusiness } from './external_services';
+import { CabinetMenuBusiness } from './cabinet_menu';
 
 // Constants.
 const BUSINESSES_CLASSES_LIST = [
@@ -17,7 +17,8 @@ const BUSINESSES_CLASSES_LIST = [
   DocumentBusiness,
   RegisterBusiness,
   UserInboxBusiness,
-  ExternalServicesBusiness
+  ExternalServicesBusiness,
+  CabinetMenuBusiness,
 ];
 
 /**
@@ -64,11 +65,12 @@ export class Businesses {
       register: RegisterBusiness,
       userInbox: UserInboxBusiness,
       externalServices: ExternalServicesBusiness,
+      cabinetMenu: CabinetMenuBusiness,
     };
 
     // Init controllers.
     this.businesses = Object.entries(businessesByNames)
-      .map(v => [v[0], new v[1](this.config)])
+      .map((v) => [v[0], new v[1](this.config)])
       .reduce(
         (t, v) => ({
           ...t,
@@ -76,12 +78,11 @@ export class Businesses {
             const n: Record<string, any> = {};
             n[v[0] as string] = v[1];
             return n;
-          })()
+          })(),
         }),
-        {}
+        {},
       );
 
     global.businesses = this.businesses;
   }
 }
-

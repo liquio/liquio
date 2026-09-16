@@ -5,11 +5,7 @@ import { randomUUID } from 'crypto';
 
 const storage = new AsyncLocalStorage<Map<string, unknown>>();
 
-export const asyncLocalStorageMiddleware = (
-  req: RequestWithTrace,
-  res: Response,
-  next: NextFunction,
-) => {
+export const asyncLocalStorageMiddleware = (req: RequestWithTrace, res: Response, next: NextFunction) => {
   const traceId = req.headers['x-trace-id'] || req.traceId || randomUUID();
 
   res.set('x-trace-id', traceId);

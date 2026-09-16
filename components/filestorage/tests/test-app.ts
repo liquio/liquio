@@ -9,7 +9,7 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
 
 import { Db } from '../src/lib/db';
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import { Providers } from '../src/providers';
 import { Models } from '../src/models';
 import { Router } from '../src/router';
@@ -20,8 +20,8 @@ const debug = createDebug;
 jest.setTimeout(30000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
-jest.mock('back-core', () => {
-  const original = jest.requireActual('back-core');
+jest.mock('@liquio/back-core', () => {
+  const original = jest.requireActual('@liquio/back-core');
   const { Log: OriginalLog } = original;
   const logs = [];
   const emitter = new EventEmitter();
@@ -177,7 +177,7 @@ export class TestApp {
          ON CONFLICT (id) DO NOTHING`,
       );
       // Advance the id sequence past the manually-inserted row, so subsequent auto-increments don't collide with it.
-      await client.query('SELECT setval(pg_get_serial_sequence(\'containers\', \'id\'), (SELECT MAX(id) FROM containers))');
+      await client.query("SELECT setval(pg_get_serial_sequence('containers', 'id'), (SELECT MAX(id) FROM containers))");
     } finally {
       await client.end();
     }

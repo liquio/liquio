@@ -1,12 +1,9 @@
-
 import Sequelize from 'sequelize';
 import { Model } from './model';
 import { WorkflowErrorEntity } from '../entities/workflow_error';
 
 // Constants.
-const SUPPRESSED_ERRORS = [
-  'NotFoundError: Task not found.'
-];
+const SUPPRESSED_ERRORS = ['NotFoundError: Task not found.'];
 
 /**
  * Workflow error model.
@@ -25,7 +22,7 @@ export class WorkflowErrorModel extends Model {
         {
           workflow_id: {
             type: Sequelize.UUID,
-            references: { model: 'workflows', key: 'id' }
+            references: { model: 'workflows', key: 'id' },
           },
           service_name: Sequelize.STRING,
           data: Sequelize.JSON,
@@ -33,15 +30,15 @@ export class WorkflowErrorModel extends Model {
             allowNull: false,
             type: Sequelize.ENUM,
             values: ['error', 'warning'],
-            defaultValue: 'error'
-          }
+            defaultValue: 'error',
+          },
         },
         {
           tableName: 'workflow_errors',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -75,7 +72,7 @@ export class WorkflowErrorModel extends Model {
       workflow_id: workflowId,
       service_name: 'task',
       data,
-      type
+      type,
     });
   }
 
@@ -101,8 +98,7 @@ export class WorkflowErrorModel extends Model {
       data: item.data,
       type: item.type,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 }
-

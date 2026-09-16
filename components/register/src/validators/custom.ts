@@ -30,7 +30,7 @@ export default class CustomValidator extends Validator {
       query('districtName').isString(),
       query('cityName').isString(),
       query('streetName').isString(),
-      query('buildingNumber').isString()
+      query('buildingNumber').isString(),
     ];
   }
 }

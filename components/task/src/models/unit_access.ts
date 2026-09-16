@@ -29,35 +29,35 @@ export class UnitAccessModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           unit_id: {
             allowNull: true,
             type: Sequelize.INTEGER,
-            references: { model: 'units', key: 'id' }
+            references: { model: 'units', key: 'id' },
           },
           type: {
             allowNull: false,
             type: Sequelize.ENUM,
-            values: ['register']
+            values: ['register'],
           },
           data: {
             allowNull: false,
             type: Sequelize.JSONB,
-            defaultValue: {}
+            defaultValue: {},
           },
           meta: {
             allowNull: false,
             type: Sequelize.JSONB,
-            defaultValue: {}
-          }
+            defaultValue: {},
+          },
         },
         {
           tableName: 'unit_access',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.paginate = this.paginate;
@@ -66,7 +66,7 @@ export class UnitAccessModel extends Model {
       PgPubSub.getInstance().subscribe('unit_access_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        getAllWithCache: global.config.cache.unitAccess?.getAllWithCache || DEFAULT_CACHE_TTL
+        getAllWithCache: global.config.cache.unitAccess?.getAllWithCache || DEFAULT_CACHE_TTL,
       };
 
       UnitAccessModel.singleton = this;
@@ -96,7 +96,7 @@ export class UnitAccessModel extends Model {
     const { data: unitAccesssRaw } = await RedisClient.getOrSet(
       RedisClient.createKey('unitAccess', 'getAllWithCache'),
       () => this.model.findAll(),
-      this.cacheTtl.getAllWithCache
+      this.cacheTtl.getAllWithCache,
     );
 
     return unitAccesssRaw.map(this.prepareEntity);
@@ -110,7 +110,9 @@ export class UnitAccessModel extends Model {
   async findById(id) {
     const unitAccessRaw = await this.model.findByPk(id);
 
-    if (!unitAccessRaw) { return; }
+    if (!unitAccessRaw) {
+      return;
+    }
     const unitAccess = this.prepareEntity(unitAccessRaw);
     return unitAccess;
   }
@@ -126,8 +128,8 @@ export class UnitAccessModel extends Model {
   async create({ unitId, type, data = {} }: any) {
     const unitKeys = data?.keys
       ? Object.keys(data.keys)
-        .flatMap((permision) => data.keys[permision])
-        .filter(Boolean)
+          .flatMap((permision) => data.keys[permision])
+          .filter(Boolean)
       : [];
 
     const keys = data?.strictAccess?.keys || unitKeys;
@@ -135,7 +137,7 @@ export class UnitAccessModel extends Model {
     // Set updatedAt to current timestamp for each key on creation.
     const meta = keys.reduce((acc, key) => {
       acc[key] = {
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
       return acc;
     }, {});
@@ -163,14 +165,17 @@ export class UnitAccessModel extends Model {
     const keysWithChangedStrictAccess = this.getKeysWithChangedStrictAccess(existingUnitAccess, data);
     const uniqueModifiedAccessKeys = [...new Set([...keysWithChangedAccess, ...keysWithChangedStrictAccess])];
 
-    const keyMetadataWithUpdatedTimestamps = uniqueModifiedAccessKeys?.reduce((metadataMap, accessKey) => {
-      const existingKeyMetadata = metadataMap.get(accessKey) || {};
-      metadataMap.set(accessKey, {
-        ...existingKeyMetadata,
-        updatedAt: new Date()
-      });
-      return metadataMap;
-    }, new Map(Object.entries(existingUnitAccess.meta)));
+    const keyMetadataWithUpdatedTimestamps = uniqueModifiedAccessKeys?.reduce(
+      (metadataMap, accessKey) => {
+        const existingKeyMetadata = metadataMap.get(accessKey) || {};
+        metadataMap.set(accessKey, {
+          ...existingKeyMetadata,
+          updatedAt: new Date(),
+        });
+        return metadataMap;
+      },
+      new Map(Object.entries(existingUnitAccess.meta)),
+    );
 
     const updatedMetadata = Object.fromEntries(keyMetadataWithUpdatedTimestamps);
 
@@ -200,7 +205,7 @@ export class UnitAccessModel extends Model {
 
     // hideKey, allowHead, allowRead, allowCreate, allowUpdate, allowDelete, allowHistory
     const permisions = Object.keys(unitKeys);
-    
+
     // Get all keys, for which access was changed.
     const keysWithChangedAccess = permisions.flatMap((permision) => {
       const existingKeys = existingUnitAccess?.data?.keys?.[permision] || [];
@@ -242,7 +247,7 @@ export class UnitAccessModel extends Model {
       data: item.data,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
-      meta: item.meta
+      meta: item.meta,
     });
   }
 
@@ -264,4 +269,3 @@ export class UnitAccessModel extends Model {
     }
   }
 }
-

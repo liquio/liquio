@@ -13,8 +13,6 @@ services:
   id-api:
     build:
       context: ./components/id-api
-      additional_contexts:
-        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_ID_API_PORT}:8100"
@@ -28,8 +26,6 @@ services:
   id-migrations:
     build:
       context: ./components/id-api
-      additional_contexts:
-        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -40,8 +36,6 @@ services:
   admin-api:
     build:
       context: ./components/admin-api
-      additional_contexts:
-        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_ADMIN_API_PORT}:8102"
@@ -73,8 +67,6 @@ services:
   cabinet-api:
     build:
       context: ./components/cabinet-api
-      additional_contexts:
-        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_CABINET_API_PORT}:8101"
@@ -105,8 +97,6 @@ services:
   manager-migrations:
     build:
       context: ./components/manager
-      additional_contexts:
-        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -117,8 +107,6 @@ services:
   manager:
     build:
       context: ./components/manager
-      additional_contexts:
-        back-core: ./packages/back-core
     restart: on-failure
     volumes:
       - ./config/manager:/var/www/config:ro
@@ -130,8 +118,6 @@ services:
   register:
     build:
       context: ./components/register
-      additional_contexts:
-        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_REGISTER_PORT}:8103"
@@ -143,8 +129,6 @@ services:
   register-migrations:
     build:
       context: ./components/register
-      additional_contexts:
-        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -154,18 +138,33 @@ services:
       - rabbitmq
       - redis
 
-  event:
+  event-plugin-installer:
     build:
       context: ./components/event
-      additional_contexts:
-        back-core: ./packages/back-core
+    command: ["npm", "run", "plugin-installer"]
     restart: on-failure
     volumes:
       - ./config/event:/var/www/config:ro
+      - event-plugins:/var/www/plugins
+    environment:
+      PLUGINS_INSTALL_DIR: /var/www/plugins
+
+  event:
+    build:
+      context: ./components/event
+    restart: on-failure
+    volumes:
+      - ./config/event:/var/www/config:ro
+      - event-plugins:/var/www/plugins:ro
     depends_on:
-      - postgres
-      - rabbitmq
-      - redis
+      event-plugin-installer:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
 
   gateway:
     build:
@@ -187,24 +186,37 @@ services:
     volumes:
       - ./config/sign-tool:/var/www/config:ro
 
-  task:
+  task-plugin-installer:
     build:
       context: ./components/task
-      additional_contexts:
-        back-core: ./packages/back-core
+    command: ["npm", "run", "plugin-installer"]
     restart: on-failure
     volumes:
       - ./config/task:/var/www/config:ro
+      - task-plugins:/var/www/plugins
+    environment:
+      PLUGINS_INSTALL_DIR: /var/www/plugins
+
+  task:
+    build:
+      context: ./components/task
+    restart: on-failure
+    volumes:
+      - ./config/task:/var/www/config:ro
+      - task-plugins:/var/www/plugins:ro
     depends_on:
-      - postgres
-      - rabbitmq
-      - redis
+      task-plugin-installer:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
 
   notification:
     build:
       context: ./components/notification
-      additional_contexts:
-        back-core: ./packages/back-core
     restart: on-failure
     volumes:
       - ./config/notification:/var/www/config:ro
@@ -214,14 +226,23 @@ services:
   notification-migrations:
     build:
       context: ./components/notification
-      additional_contexts:
-        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
       - ./config/notification:/var/www/config:ro
     depends_on:
       - postgres
+
+  external-reader-plugin-installer:
+    build:
+      context: ./components/external-reader
+    command: ["npm", "run", "plugin-installer"]
+    restart: on-failure
+    volumes:
+      - ./config/external-reader:/var/www/config:ro
+      - external-reader-plugins:/var/www/plugins
+    environment:
+      PLUGINS_INSTALL_DIR: /var/www/plugins
 
   external-reader:
     build:
@@ -231,6 +252,10 @@ services:
       - "${SVC_EXTERNAL_READER_PORT}:8104"
     volumes:
       - ./config/external-reader:/var/www/config:ro
+      - external-reader-plugins:/var/www/plugins:ro
+    depends_on:
+      external-reader-plugin-installer:
+        condition: service_completed_successfully
 
   pdf-generator:
     build:
@@ -244,8 +269,6 @@ services:
   filestorage:
     build:
       context: ./components/filestorage
-      additional_contexts:
-        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_FILESTORAGE_PORT}:8105"
@@ -257,8 +280,6 @@ services:
   filestorage-migrations:
     build:
       context: ./components/filestorage
-      additional_contexts:
-        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -269,8 +290,6 @@ services:
   persist-link-migrations:
     build:
       context: ./components/persist-link
-      additional_contexts:
-        back-core: ./packages/back-core
     command: ["npm", "run", "migration-up"]
     restart: on-failure
     volumes:
@@ -281,8 +300,6 @@ services:
   persist-link:
     build:
       context: ./components/persist-link
-      additional_contexts:
-        back-core: ./packages/back-core
     restart: on-failure
     ports:
       - "${SVC_PERSIST_LINK_PORT}:3346"
@@ -342,3 +359,6 @@ volumes:
   postgres_data:
   rabbitmq_data:
   redis_data:
+  event-plugins:
+  external-reader-plugins:
+  task-plugins:

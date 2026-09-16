@@ -1,4 +1,3 @@
-
 import { checkSchema } from 'express-validator';
 import { Validator } from './validator';
 
@@ -29,8 +28,8 @@ export class WorkflowLogValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -43,30 +42,30 @@ export class WorkflowLogValidator extends Validator {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['from_created_at']: {
         in: ['query'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['to_created_at']: {
         in: ['query'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['page']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['count']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -77,32 +76,31 @@ export class WorkflowLogValidator extends Validator {
     return checkSchema({
       ['date']: {
         in: ['query'],
-        isString: true
+        isString: true,
       },
       ['workflow_template_id']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['page']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['count']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort.updated_at']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['asc', 'desc']] }
-      }
+        isIn: { options: [['asc', 'desc']] },
+      },
     });
   }
 }
-

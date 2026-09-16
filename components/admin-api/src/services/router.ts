@@ -43,8 +43,9 @@ import { LocalizationLanguageController } from '../controllers/localization_lang
 import { LocalizationTextController } from '../controllers/localization_text';
 import { UserSettingsController } from '../controllers/user_settings';
 import { FileLibraryController } from '../controllers/file_library';
+import { CabinetMenuController } from '../controllers/cabinet_menu';
 import { Validators } from '../validators';
-import { asyncLocalStorageMiddleware } from 'back-core';
+import { asyncLocalStorageMiddleware } from '@liquio/back-core';
 import {
   UNIT_ADMIN_UNIT,
   SECURITY_ADMIN_UNIT,
@@ -206,6 +207,7 @@ export class RouterService {
     const localizationTextController = new LocalizationTextController(this.config);
     const userSettingsController = new UserSettingsController(this.config);
     const fileLibraryController = new FileLibraryController(this.config);
+    const cabinetMenuController = new CabinetMenuController(this.config);
 
     // Init validators.
     const validators = new Validators(this.config);
@@ -1520,6 +1522,49 @@ export class RouterService {
       validators.getHandler('customInterface', 'delete'),
       validators.getValidationResultHandler(),
       customInterfaceController.delete.bind(customInterfaceController),
+    );
+
+    app.get(
+      '/cabinet-menu',
+      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT]),
+      validators.getHandler('cabinetMenu', 'getAll'),
+      validators.getValidationResultHandler(),
+      cabinetMenuController.getAll.bind(cabinetMenuController),
+    );
+    app.post(
+      '/cabinet-menu',
+      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT]),
+      validators.getHandler('cabinetMenu', 'create'),
+      validators.getValidationResultHandler(),
+      cabinetMenuController.create.bind(cabinetMenuController),
+    );
+    app.get(
+      '/cabinet-menu/:id',
+      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT]),
+      validators.getHandler('cabinetMenu', 'findById'),
+      validators.getValidationResultHandler(),
+      cabinetMenuController.findById.bind(cabinetMenuController),
+    );
+    app.post(
+      '/cabinet-menu/sort',
+      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT]),
+      validators.getHandler('cabinetMenu', 'sort'),
+      validators.getValidationResultHandler(),
+      cabinetMenuController.sort.bind(cabinetMenuController),
+    );
+    app.put(
+      '/cabinet-menu/:id',
+      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT]),
+      validators.getHandler('cabinetMenu', 'update'),
+      validators.getValidationResultHandler(),
+      cabinetMenuController.update.bind(cabinetMenuController),
+    );
+    app.delete(
+      '/cabinet-menu/:id',
+      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT]),
+      validators.getHandler('cabinetMenu', 'delete'),
+      validators.getValidationResultHandler(),
+      cabinetMenuController.delete.bind(cabinetMenuController),
     );
 
     app.get(

@@ -1,7 +1,6 @@
 const DEFAULT_INTERVAL_IN_MINUTES = 15;
 const DEFAULT_PART_SIZE = 10;
 
-
 export class ExternalServicesStatusesDaemon {
   private static singleton: ExternalServicesStatusesDaemon;
 
@@ -37,13 +36,15 @@ export class ExternalServicesStatusesDaemon {
         return;
       }
 
-      const handleResults = await Promise.allSettled(statusesWithReceivedState.map(async (status) => {
-        const serviceHandler = await global.businesses.externalServices.servicesHandlers[status.service]?.bind(global.businesses);
-        if (!serviceHandler) {
-          throw new Error(`Invalid status service name: ${status.service}`);
-        }
-        return await serviceHandler(status);
-      }));
+      const handleResults = await Promise.allSettled(
+        statusesWithReceivedState.map(async (status) => {
+          const serviceHandler = await global.businesses.externalServices.servicesHandlers[status.service]?.bind(global.businesses);
+          if (!serviceHandler) {
+            throw new Error(`Invalid status service name: ${status.service}`);
+          }
+          return await serviceHandler(status);
+        }),
+      );
 
       const fulfilledStatuses = [];
       const rejectedStatuses = [];
@@ -68,10 +69,8 @@ export class ExternalServicesStatusesDaemon {
 
       global.log.save('external-services-statuses-daemon|end', {
         fulfilledStatuses: fulfilledStatuses.length,
-        rejectedStatuses: rejectedStatuses.length
+        rejectedStatuses: rejectedStatuses.length,
       });
-
     }, this.intervalInMilliseconds);
   }
 }
-

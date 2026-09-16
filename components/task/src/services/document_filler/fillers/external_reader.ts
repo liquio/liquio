@@ -1,4 +1,3 @@
-
 import { Filler } from './filler';
 import { ExternalReader } from '../../../lib/external_reader';
 
@@ -41,8 +40,9 @@ export class ExternalReaderFiller extends Filler {
     // Handle all schema object pages.
     await this.handleAllElements(schemaObject, objectToFill, async (item, itemSchema) => {
       // Check current element shoudn't be defined.
-      if (!itemSchema || typeof itemSchema.value !== 'string'
-        || !itemSchema.value.startsWith('external-reader.')) { return; }
+      if (!itemSchema || typeof itemSchema.value !== 'string' || !itemSchema.value.startsWith('external-reader.')) {
+        return;
+      }
 
       // Define current value.
       const { value: currentValue, filters } = itemSchema;
@@ -64,14 +64,16 @@ export class ExternalReaderFiller extends Filler {
           normalizedFilters,
           undefined,
           userUnits,
-          options.enabledMocksHeader
+          options.enabledMocksHeader,
         );
 
         // Define value to set.
         if (records && typeof records.data !== 'undefined') {
           valueToSet = records.data;
         }
-      } catch (error) { global.log.save('external-services-field-filling-error', { error: error && error.message || error }, 'warn'); }
+      } catch (error) {
+        global.log.save('external-services-field-filling-error', { error: (error && error.message) || error }, 'warn');
+      }
 
       // Return value to set.
       return valueToSet;
@@ -89,9 +91,9 @@ export class ExternalReaderFiller extends Filler {
   getUserUnitIds(userUnitsEntities = { head: [], member: [], all: [] }) {
     const { head = [], member = [], all = [] } = userUnitsEntities;
     return {
-      head: head.map(v => v.id),
-      member: member.map(v => v.id),
-      all: all.map(v => v.id)
+      head: head.map((v) => v.id),
+      member: member.map((v) => v.id),
+      all: all.map((v) => v.id),
     };
   }
 
@@ -106,7 +108,9 @@ export class ExternalReaderFiller extends Filler {
    */
   async normalizeFilters(filters, objectToFill, documents, allProcessDocuments, events) {
     // Check if not filters.
-    if (typeof filters !== 'object' || Array.isArray(filters)) { return filters; }
+    if (typeof filters !== 'object' || Array.isArray(filters)) {
+      return filters;
+    }
 
     // Normalize filters.
     const normalizedFilters = {};
@@ -135,4 +139,3 @@ export class ExternalReaderFiller extends Filler {
     return normalizedFilters;
   }
 }
-

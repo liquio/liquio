@@ -32,8 +32,8 @@ export class WorkflowRestartModel extends Model {
           tableName: 'workflow_restarts',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -71,8 +71,7 @@ export class WorkflowRestartModel extends Model {
       workflow_id: item.workflowId,
       workflow_error_id: item.workflowErrorId,
       type: item.type,
-      data: item.data
+      data: item.data,
     };
   }
 }
-

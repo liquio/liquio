@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { TaskTemplateModel } from '../models/task_template';
 import { ERROR_TASK_TEMPLATE_NOT_FOUND } from '../constants/error';
@@ -67,4 +66,3 @@ export class TaskTemplateController extends Controller {
     this.responseData(res, this.filterResponse(taskTemplate));
   }
 }
-

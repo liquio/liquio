@@ -1,4 +1,3 @@
-
 import { AccessProvider } from './provider';
 
 // Constants.
@@ -90,15 +89,17 @@ export class UserIpAccessProvider extends AccessProvider {
    */
   matchIpPattern(requestIp, userIpPattern) {
     // Parse request IP and user IP pattern.
-    const requestIpParts = requestIp.split('.').map(v => parseInt(v)); // Sample: `[10, 10, 5, 109]`.
-    const userIpPatternParts = userIpPattern.split(/[.-]/).map(v => parseInt(v)); // Samples: `[10, 10, 5, 109]`, `[10, 10, 5, 109, 110]`.
+    const requestIpParts = requestIp.split('.').map((v) => parseInt(v)); // Sample: `[10, 10, 5, 109]`.
+    const userIpPatternParts = userIpPattern.split(/[.-]/).map((v) => parseInt(v)); // Samples: `[10, 10, 5, 109]`, `[10, 10, 5, 109, 110]`.
 
     // Check IP match pattern.
-    return requestIpParts[0] === userIpPatternParts[0] &&
+    return (
+      requestIpParts[0] === userIpPatternParts[0] &&
       requestIpParts[1] === userIpPatternParts[1] &&
       requestIpParts[2] === userIpPatternParts[2] &&
       requestIpParts[3] >= userIpPatternParts[3] &&
-      requestIpParts[3] <= (userIpPatternParts[4] || userIpPatternParts[3]);
+      requestIpParts[3] <= (userIpPatternParts[4] || userIpPatternParts[3])
+    );
   }
 
   /**
@@ -127,7 +128,6 @@ export class UserIpAccessProvider extends AccessProvider {
 
     // Define and return request IP list.
     // Sample: `['127.0.0.1', '203.0.113.195', '70.41.3.18', '150.172.238.178']`.
-    return [...new Set([remoteAddress, ...((xForwardedForHeader || '').split(','))].filter(v => !!v).map(v => v.trim()))];
+    return [...new Set([remoteAddress, ...(xForwardedForHeader || '').split(',')].filter((v) => !!v).map((v) => v.trim()))];
   }
 }
-

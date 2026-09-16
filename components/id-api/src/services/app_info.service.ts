@@ -1,4 +1,4 @@
-import { AppInfo } from 'back-core';
+import { AppInfo } from '@liquio/back-core';
 
 import { BaseService } from './base_service';
 

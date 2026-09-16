@@ -29,11 +29,11 @@ export class ProtectedFileValidator extends Validator {
       ['key_id']: {
         in: ['params'],
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['record_id']: {
         in: ['params'],
-        isUUID: true
+        isUUID: true,
       },
       ['path']: {
         in: ['query'],
@@ -43,14 +43,14 @@ export class ProtectedFileValidator extends Validator {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
+        toBoolean: true,
       },
       ['p7s']: {
         in: ['query'],
         optional: true,
         isBoolean: true,
-        toBoolean: true
-      }
+        toBoolean: true,
+      },
     });
   }
 
@@ -61,10 +61,8 @@ export class ProtectedFileValidator extends Validator {
     return checkSchema({
       ['file_name']: {
         in: ['query'],
-        isString: true
+        isString: true,
       },
     });
   }
-
 }
-

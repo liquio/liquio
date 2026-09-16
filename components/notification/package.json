@@ -1,15 +1,15 @@
 {
   "name": "liquio-notification",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
-  "type": "commonjs",
   "main": "src/index.js",
   "scripts": {
     "start": "node ./src/index.js",
+    "start:prod": "node ./src/index.js",
     "start:ts": "node -r ts-node/register src/index.ts",
     "start-dev": "NODE_ENV=dev npm start",
     "build": "tsc",
@@ -22,8 +22,8 @@
     "test:e2e": "jest tests"
   },
   "dependencies": {
+    "@liquio/back-core": "^0.1.0",
     "axios": "^1.13.6",
-    "back-core": "file:../../packages/back-core",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
@@ -59,14 +59,14 @@
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-stage-0": "^6.24.1",
     "debug": "^4.3.7",
-    "eslint": "^10.2.1",
-    "eslint-plugin-jsdoc": "^62.8.0",
-    "globals": "^17.4.0",
-    "jest": "^30.3.0",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "jest": "^30.4.2",
     "nock": "^14.0.10",
     "portfinder": "^1.0.37",
     "supertest": "^7.2.2",
-    "ts-jest": "^29.4.11",
+    "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1"
@@ -77,5 +77,14 @@
     "tough-cookie": "4.1.3",
     "cookie": "0.7.0",
     "cross-spawn": "^7.0.5"
+  },
+  "allowScripts": {
+    "core-js@2.6.12": true,
+    "cpu-features@0.0.10": true,
+    "iconv@2.3.5": true,
+    "node-expat@2.4.1": true,
+    "protobufjs@7.6.5": true,
+    "ssh2@1.17.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }

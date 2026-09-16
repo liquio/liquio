@@ -83,4 +83,3 @@ export class KycController extends Controller {
     }
   }
 }
-

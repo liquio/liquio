@@ -16,7 +16,7 @@ export class DocumentHandler {
     const propertiesContainer = [];
 
     // Handle child items keys.
-    childItemsKeys.forEach(childItemKey => {
+    childItemsKeys.forEach((childItemKey) => {
       // Define and save child properties data.
       const childItemSchemaObject = properties[childItemKey];
       const pathToSchemaChildItem = pathToSchemaItem ? `${pathToSchemaItem}.properties.${childItemKey}` : `properties.${childItemKey}`;
@@ -24,7 +24,7 @@ export class DocumentHandler {
       propertiesContainer.push({
         schemaObject: childItemSchemaObject,
         schemaPath: pathToSchemaChildItem,
-        path: pathToChildItem
+        path: pathToChildItem,
       });
 
       // Define and save next level child properties.
@@ -36,4 +36,3 @@ export class DocumentHandler {
     return propertiesContainer;
   }
 }
-

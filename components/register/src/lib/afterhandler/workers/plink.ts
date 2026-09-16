@@ -50,13 +50,13 @@ export default class PLinkAfterhandlerWorker extends AfterhandlerWorker {
     // Inform.
     this.log.save('afterhandler|handling-started', {
       history: history.toJSON(),
-      afterhandlerType: PLinkAfterhandlerWorker.afterhandlerType
+      afterhandlerType: PLinkAfterhandlerWorker.afterhandlerType,
     });
 
     // Parse history entity.
     const { recordId, operation, data } = history;
     const {
-      data: { keyId }
+      data: { keyId },
     } = history;
 
     // Save to plink.
@@ -74,7 +74,7 @@ export default class PLinkAfterhandlerWorker extends AfterhandlerWorker {
       history: history.toJSON(),
       afterhandlerType: PLinkAfterhandlerWorker.afterhandlerType,
       handlingResult,
-      handled
+      handled,
     });
 
     return handled;
@@ -91,7 +91,7 @@ export default class PLinkAfterhandlerWorker extends AfterhandlerWorker {
     const { isActive } = this.config;
     if (!isActive) {
       this.log.save('afterhandler|reindex-reset|not-active', {
-        afterhandlerType: PLinkAfterhandlerWorker.afterhandlerType
+        afterhandlerType: PLinkAfterhandlerWorker.afterhandlerType,
       });
 
       return true;
@@ -109,7 +109,7 @@ export default class PLinkAfterhandlerWorker extends AfterhandlerWorker {
     const { isActive } = this.config;
     if (!isActive) {
       this.log.save('afterhandler|reindex-add|not-active', {
-        afterhandlerType: PLinkAfterhandlerWorker.afterhandlerType
+        afterhandlerType: PLinkAfterhandlerWorker.afterhandlerType,
       });
 
       return true;
@@ -146,13 +146,13 @@ export default class PLinkAfterhandlerWorker extends AfterhandlerWorker {
             templateName: 'register',
             templateMethod: method,
             filter: {
-              recordId: id
-            }
+              recordId: id,
+            },
           },
           small: true,
-          definedHash: hash
+          definedHash: hash,
         },
-        timeout: this.timeout
+        timeout: this.timeout,
       };
       this.log.save('plink-request', requestOptions);
 
@@ -173,7 +173,7 @@ export default class PLinkAfterhandlerWorker extends AfterhandlerWorker {
         keyId,
         id,
         data,
-        ...prepareAxiosErrorToLog(error)
+        ...prepareAxiosErrorToLog(error),
       });
       if (error.response?.status === 400) {
         throw new Error(error.response.data?.error?.message || 'Bad Request');

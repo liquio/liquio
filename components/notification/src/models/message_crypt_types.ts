@@ -24,7 +24,7 @@ export class MessageCryptTypesModel extends AbstractDB {
         rule_to_show: {
           allowNull: false,
           type: this.DataTypes.TEXT,
-          defaultValue: '(decryptedBase64) => Buffer.from(decryptedBase64, \'base64\').toString(\'utf8\');',
+          defaultValue: "(decryptedBase64) => Buffer.from(decryptedBase64, 'base64').toString('utf8');",
         },
         created_at: {
           allowNull: false,

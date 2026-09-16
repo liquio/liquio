@@ -9,13 +9,15 @@ export class Paths {
    */
   static getJsonSchemaPath(dataObjectPath) {
     // Check input params.
-    if (typeof dataObjectPath !== 'string') { 
+    if (typeof dataObjectPath !== 'string') {
       return;
     }
 
     // Return schema path.
-    const jsonSchemaPath = dataObjectPath.split('.').map(pathPart => `properties.${pathPart}`).join('.');
+    const jsonSchemaPath = dataObjectPath
+      .split('.')
+      .map((pathPart) => `properties.${pathPart}`)
+      .join('.');
     return jsonSchemaPath;
   }
 }
-

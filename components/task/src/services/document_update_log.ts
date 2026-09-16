@@ -1,4 +1,3 @@
-
 import PropByPath from 'prop-by-path';
 import { createClient } from 'redis';
 import { DocumentUpdateLogEntity } from '../entities/document_update_log';
@@ -25,14 +24,21 @@ export class DocumentUpdateLog {
       const { isEnabled: isRedisEnabled, host, port } = redisConfig || {};
 
       // Document updated log config.
-      const { enabled, redis: { ttl } } = config || { redis: { ttl: 60 } };
-      this.enabled = (isRedisEnabled && enabled);
-      this.client = this.enabled && createClient({ socket: { host, port } }) || null;
-      this.client?.connect().catch(error => {
+      const {
+        enabled,
+        redis: { ttl },
+      } = config || { redis: { ttl: 60 } };
+      this.enabled = isRedisEnabled && enabled;
+      this.client = (this.enabled && createClient({ socket: { host, port } })) || null;
+      this.client?.connect().catch((error) => {
         global.log.save('document-update-log-connection-error', error, 'error');
       });
       this.ttl = ttl;
-      if (this.client) { global.log.save('document-update-log-initialized', { enabled, host, port }); } else { global.log.save('document-update-log-not-initialized', { enabled }); }
+      if (this.client) {
+        global.log.save('document-update-log-initialized', { enabled, host, port });
+      } else {
+        global.log.save('document-update-log-not-initialized', { enabled });
+      }
 
       // Define singleton.
       DocumentUpdateLog.singleton = this;
@@ -52,17 +58,21 @@ export class DocumentUpdateLog {
    */
   async handleDocumentUpdate(updatedDocument, properties, userId, lastUpdateLogId) {
     // Check if document update log service disabled.
-    if (!this.enabled) { return undefined; }
+    if (!this.enabled) {
+      return undefined;
+    }
 
     // Create update log entity.
     const createdAt = new Date(updatedDocument.updatedAt);
     const documentId = updatedDocument.id;
-    const changes = properties.map(v => ({ path: v.path, value: PropByPath.get(updatedDocument.data, v.path) }));
+    const changes = properties.map((v) => ({ path: v.path, value: PropByPath.get(updatedDocument.data, v.path) }));
     const documentUpdateLogEntity = new DocumentUpdateLogEntity({ documentId, createdAt, userId, changes });
 
     // Save update log entity. Return if last update log ID not defined.
     await this.set(documentUpdateLogEntity);
-    if (!lastUpdateLogId) { return [documentUpdateLogEntity]; }
+    if (!lastUpdateLogId) {
+      return [documentUpdateLogEntity];
+    }
 
     // Define and return update logs entities.
     const fromDate = new Date(parseInt(lastUpdateLogId.split('.')[3]));
@@ -82,7 +92,7 @@ export class DocumentUpdateLog {
     const idsSearchPattern = DocumentUpdateLogEntity.getIdSearchPattern(documentId);
     const documentUpdateLogIds = await this.client.keys(idsSearchPattern);
     const documentUpdateLogIdsToGet = fromDate
-      ? documentUpdateLogIds.filter(v => new Date(parseInt(v.split('.')[3])) >= new Date(fromDate))
+      ? documentUpdateLogIds.filter((v) => new Date(parseInt(v.split('.')[3])) >= new Date(fromDate))
       : documentUpdateLogIds;
 
     // Get by IDs list. Sorted from new logs.
@@ -129,4 +139,3 @@ export class DocumentUpdateLog {
     await this.client.set(documentUpdateLogEntity.id, dataString, { EX: this.ttl });
   }
 }
-

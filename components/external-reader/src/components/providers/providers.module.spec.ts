@@ -142,9 +142,7 @@ describe('ProvidersModule', () => {
     });
 
     it('should handle errors correctly', async () => {
-      nock('http://example.com')
-        .get('/error')
-        .reply(500, { message: 'Internal server error', statusCode: 500 });
+      nock('http://example.com').get('/error').reply(500, { message: 'Internal server error', statusCode: 500 });
 
       await supertest(app.getHttpServer())
         .post('/exampleService1/get')

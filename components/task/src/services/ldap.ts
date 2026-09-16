@@ -13,7 +13,7 @@ export class LdapClient {
     url: 'ldap://domain.loc',
     baseDN: 'dc=DOMAIN,dc=LOC',
     username: 'admin@domain.loc',
-    password: '<removed>'
+    password: '<removed>',
   };
 
   static async initialize(config) {
@@ -90,4 +90,3 @@ export class LdapClient {
     }
   }
 }
-

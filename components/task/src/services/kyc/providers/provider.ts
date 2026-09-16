@@ -1,6 +1,5 @@
 export class KycProvider {
-  constructor() {
-  }
+  constructor() {}
 
   /**
    * @abstract
@@ -23,4 +22,3 @@ export class KycProvider {
     throw new Error('Method must be override for a specific provider.');
   }
 }
-

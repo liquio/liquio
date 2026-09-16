@@ -1,4 +1,3 @@
-
 import os from 'node:os';
 import { Controller } from './controller';
 
@@ -38,10 +37,9 @@ export class MonitorController extends Controller {
       loadAvg: os.loadavg(),
       totalMemGb: (os.totalmem() / 1024 / 1024 / 1024).toFixed(3),
       freeMemGb: (os.freemem() / 1024 / 1024 / 1024).toFixed(3),
-      cpus: os.cpus()
+      cpus: os.cpus(),
     };
 
     this.responseData(res, systemInfo);
   }
 }
-

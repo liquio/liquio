@@ -131,7 +131,8 @@ export class TestController {
       case AUTH_SERVICE_NAME: {
         pingUrl = ((conf as any).pingRoutes.authService || AUTH_SERVICE_PING_URL) + '_with_auth';
         const basicAuthToken =
-          (conf as any).auth_server.basicAuthToken || Buffer.from((conf as any).auth_server.user + ':' + (conf as any).auth_server.password, 'utf8').toString('base64');
+          (conf as any).auth_server.basicAuthToken ||
+          Buffer.from((conf as any).auth_server.user + ':' + (conf as any).auth_server.password, 'utf8').toString('base64');
         headers = { Authorization: basicAuthToken.startsWith('Basic ') ? basicAuthToken : 'Basic ' + basicAuthToken };
         break;
       }

@@ -1,5 +1,5 @@
 # Build the frontend application
-FROM node:22 AS frontend
+FROM node:24 AS frontend
 ARG NODE_MAX_OLD_SPACE_SIZE=2048
 ARG GENERATE_SOURCEMAP=false
 ARG DISABLE_ESLINT_PLUGIN=true
@@ -14,7 +14,7 @@ COPY --from=core . .
 
 WORKDIR /build/components/admin-front
 COPY package*.json .
-RUN npm ci --omit=dev
+RUN npm ci
 
 # Prepare the source code
 COPY . .

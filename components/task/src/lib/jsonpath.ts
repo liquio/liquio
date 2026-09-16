@@ -1,13 +1,7 @@
 import { JSONPath as JSONPathOrigin } from 'jsonpath-plus';
 import * as crypto from 'node:crypto';
 
-function searchByKeyValue(
-  obj,
-  searchKey,
-  sign,
-  searchValue,
-  { onlyInArrays = false } = {},
-) {
+function searchByKeyValue(obj, searchKey, sign, searchValue, { onlyInArrays = false } = {}) {
   const result = [];
   let level = 0;
   function searchInObj(obj2, { isArray = false, inRoot = false } = {}) {
@@ -47,11 +41,7 @@ function searchByKeys(obj, searchKeys, { onlyInArrays = false } = {}) {
       }
     } else if (typeof obj2 === 'object' && obj2 !== null) {
       const arrayIncludeOrNot = (onlyInArrays && isArray) || !onlyInArrays;
-      if (
-        arrayIncludeOrNot &&
-        searchKeys.every((key) => typeof obj2[key] != 'undefined')
-      )
-        result.push(obj2);
+      if (arrayIncludeOrNot && searchKeys.every((key) => typeof obj2[key] != 'undefined')) result.push(obj2);
       for (const key in obj2) {
         searchInObj(obj2[key]);
       }
@@ -66,8 +56,7 @@ const timeouts = [];
 
 export const JSONPath = (objOrPath, jsonDocument?) => {
   const startTime = Date.now();
-  const { path = objOrPath, json = jsonDocument } =
-    typeof objOrPath !== 'string' && objOrPath;
+  const { path = objOrPath, json = jsonDocument } = typeof objOrPath !== 'string' && objOrPath;
 
   if (!path || !json) return JSONPathOrigin({ path, json });
 
@@ -81,12 +70,9 @@ export const JSONPath = (objOrPath, jsonDocument?) => {
 
   let result;
 
-  const match1 = path.match(
-    /^\$\.\.\[\?\(@\.(\w+)\s+(===?|>=?|<=?)\s+(["'](.*)['"]|true|false)\)\]$/,
-  );
+  const match1 = path.match(/^\$\.\.\[\?\(@\.(\w+)\s+(===?|>=?|<=?)\s+(["'](.*)['"]|true|false)\)\]$/);
   if (match1) {
-    const sign =
-      match1[3] === 'true' ? true : match1[3] === 'false' ? false : match1[4];
+    const sign = match1[3] === 'true' ? true : match1[3] === 'false' ? false : match1[4];
     result = searchByKeyValue(json, match1[1], match1[2], sign);
   }
 

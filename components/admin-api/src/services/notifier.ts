@@ -1,7 +1,7 @@
 import querystring from 'querystring';
 
 import { HttpRequest } from '../lib/http_request';
-import { getTraceId } from 'back-core';
+import { getTraceId } from '@liquio/back-core';
 
 /**
  * Notifier service.

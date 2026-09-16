@@ -11,7 +11,9 @@ if (!fs.existsSync(CONFIG_PATH)) {
 }
 
 // Load merged config from CONFIG_PATH and optional SECRET_PATH.
-const mergedConfig: any = (Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`) as any).config;
+const mergedConfig: any = (
+  Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`) as any
+).config;
 
 // Init config versions.
 const versionsConfText = fs.readFileSync(path.join(process.cwd(), './src/config/versions.json.default'), 'utf8');

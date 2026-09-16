@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 import { DocumentTemplateModel } from '../models/document_template';
 import { RedisClient as redisClient } from '../lib/redis_client';
@@ -36,14 +35,11 @@ export class DocumentTemplateController extends Controller {
     // Get document templates.
     let documentTemplates;
     try {
-      const { data: cachedDocumentTemplates } = await redisClient.getOrSet(
-        'task.documentTemplate.getAll',
-        async () => {
-          documentTemplates = await this.documentTemplateModel.getAll();
-          documentTemplates = this.filterResponse(documentTemplates, true);
-          return documentTemplates;
-        },
-      );
+      const { data: cachedDocumentTemplates } = await redisClient.getOrSet('task.documentTemplate.getAll', async () => {
+        documentTemplates = await this.documentTemplateModel.getAll();
+        documentTemplates = this.filterResponse(documentTemplates, true);
+        return documentTemplates;
+      });
       documentTemplates = cachedDocumentTemplates;
     } catch (error) {
       return this.responseError(res, error);
@@ -75,4 +71,3 @@ export class DocumentTemplateController extends Controller {
     this.responseData(res, documentTemplate);
   }
 }
-

@@ -34,17 +34,17 @@ export default class RecordModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           register_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
-            references: { model: 'registers', key: 'id' }
+            references: { model: 'registers', key: 'id' },
           },
           key_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
-            references: { model: 'keys', key: 'id' }
+            references: { model: 'keys', key: 'id' },
           },
           data: {
             allowNull: false,
@@ -61,44 +61,44 @@ export default class RecordModel extends Model {
               } else {
                 return rawData;
               }
-            }
+            },
           },
           meta: {
             allowNull: false,
             type: Sequelize.JSON,
-            defaultValue: {}
+            defaultValue: {},
           },
           allow_tokens: {
             allowNull: false,
             type: Sequelize.ARRAY(Sequelize.STRING),
-            defaultValue: []
+            defaultValue: [],
           },
           search_string: {
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           search_string_2: {
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           search_string_3: {
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           signature: {
             allowNull: true,
-            type: Sequelize.TEXT
+            type: Sequelize.TEXT,
           },
           is_encrypted: {
             allowNull: false,
             type: Sequelize.BOOLEAN,
-            defaultValue: false
+            defaultValue: false,
           },
           created_by: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           updated_by: {
             allowNull: false,
-            type: Sequelize.STRING
-          }
+            type: Sequelize.STRING,
+          },
         },
         {
           tableName: 'records',
@@ -115,9 +115,9 @@ export default class RecordModel extends Model {
                   // Do nothing to prevent saving record with invalid data
                 }
               }
-            }
-          }
-        }
+            },
+          },
+        },
       );
       RecordModel.singleton = this;
     }
@@ -138,8 +138,8 @@ export default class RecordModel extends Model {
         // OR filters type.
         filter[Sequelize.Op.and] = [
           {
-            [Sequelize.Op.or]: [{ allow_tokens: { [Sequelize.Op.overlap]: [filter.allow_tokens] } }, { allow_tokens: [] }]
-          }
+            [Sequelize.Op.or]: [{ allow_tokens: { [Sequelize.Op.overlap]: [filter.allow_tokens] } }, { allow_tokens: [] }],
+          },
         ];
       } else {
         // AND filters type (default).
@@ -177,7 +177,7 @@ export default class RecordModel extends Model {
       Array.isArray as any,
       ((value, path) => {
         objectPath.set(filter.data, path, { [Sequelize.Op.or]: value });
-      }) as any
+      }) as any,
     );
 
     deepFind(
@@ -185,7 +185,7 @@ export default class RecordModel extends Model {
       ((value) => value === 'null') as any,
       ((value, path) => {
         objectPath.set(filter.data, path, null);
-      }) as any
+      }) as any,
     );
 
     let attributes, replacements, order;
@@ -241,7 +241,7 @@ export default class RecordModel extends Model {
         from records r1
         left join records r2 on r2.id::text = r1.data->>:joinBy
         where ${wherePart} limit :limit offset :offset`,
-        { type: Sequelize.QueryTypes.SELECT, replacements: { joinBy, limit: +queryOptions.limit, offset: +queryOptions.offset } }
+        { type: Sequelize.QueryTypes.SELECT, replacements: { joinBy, limit: +queryOptions.limit, offset: +queryOptions.offset } },
       );
 
       // Count data with left join.
@@ -251,7 +251,7 @@ export default class RecordModel extends Model {
         from records r1
         left join records r2 on r2.id::text = r1.data->>:joinBy
         where ${wherePart}`,
-        { type: Sequelize.QueryTypes.SELECT, replacements: { joinBy } }
+        { type: Sequelize.QueryTypes.SELECT, replacements: { joinBy } },
       );
 
       const { count } = (resultsCount && resultsCount[0]) || {};
@@ -273,7 +273,7 @@ export default class RecordModel extends Model {
     const likeOperator = searchKey === 'search_string' ? Sequelize.Op.like : Sequelize.Op.iLike;
     const where = {
       key_id: keyId,
-      [Sequelize.Op.and]: textList.map((v) => ({ [searchKey]: { [likeOperator]: `%${v}%` } }))
+      [Sequelize.Op.and]: textList.map((v) => ({ [searchKey]: { [likeOperator]: `%${v}%` } })),
     };
     const queryOptions = { order, where, limit, offset };
 
@@ -316,8 +316,8 @@ export default class RecordModel extends Model {
     const where: any = {
       key_id: keyId,
       data: {
-        [Sequelize.Op.or]: filters
-      }
+        [Sequelize.Op.or]: filters,
+      },
     };
     if (recordIdToRemove) where.id = { [Sequelize.Op.ne]: recordIdToRemove };
     const count = await this.model.count({ where });
@@ -331,7 +331,7 @@ export default class RecordModel extends Model {
     // DB query.
     const recordsRaw = await this.model.findAll({
       ...queryOptions,
-      where: { key_id: keyId }
+      where: { key_id: keyId },
     });
     const recordEntities = recordsRaw.map((recordRaw: any) => new RecordEntity(recordRaw, withSearchStrings));
 
@@ -345,10 +345,10 @@ export default class RecordModel extends Model {
       where: { key_id: keyId },
       order: [
         ['created_at', 'asc'],
-        ['id', 'asc']
+        ['id', 'asc'],
       ],
       offset,
-      limit
+      limit,
     });
     const recordEntities = recordsRaw.map((recordRaw) => new RecordEntity(recordRaw));
 
@@ -370,10 +370,10 @@ export default class RecordModel extends Model {
       searchString3,
       person,
       signature,
-      isEncrypted
+      isEncrypted,
     }: Partial<RecordCreateRaw>,
     _addToHistory = true,
-    historyMeta?: any
+    historyMeta?: any,
   ): Promise<ModelItemResponse<RecordEntity>> {
     // Prepare RAW.
     const recordToCreateRaw: any = {
@@ -388,7 +388,7 @@ export default class RecordModel extends Model {
       created_by: user,
       updated_by: user,
       signature: signature,
-      is_encrypted: isEncrypted
+      is_encrypted: isEncrypted,
     };
 
     if (id) recordToCreateRaw.id = id;
@@ -422,7 +422,7 @@ export default class RecordModel extends Model {
         search_string_3: this.normalizeSearchString(searchString3),
         created_by: user,
         updated_by: user,
-        is_encrypted: isEncrypted
+        is_encrypted: isEncrypted,
       };
 
       if (id) recordToCreateRaw.id = id;
@@ -452,13 +452,13 @@ export default class RecordModel extends Model {
       person,
       signature,
       isEncrypted,
-      allowTokens
+      allowTokens,
     }: Partial<RecordCreateRaw>,
     _addToHistory?: boolean,
     historyMeta?: {
       accessInfo?: { userId?: string; userName?: string };
     },
-    isSkipDataUpdating: boolean = false
+    isSkipDataUpdating: boolean = false,
   ): Promise<ModelUpdateResponse<RecordEntity>> {
     // Prepare RAW.
     const recordToUpdateRaw = this.removeUndefinedProperties({
@@ -472,7 +472,7 @@ export default class RecordModel extends Model {
       search_string_3: this.normalizeSearchString(searchString3),
       is_encrypted: isEncrypted,
       signature: signature,
-      allow_tokens: allowTokens
+      allow_tokens: allowTokens,
     });
 
     await global.afterhandler.validateRecord(recordToUpdateRaw, 'update');
@@ -485,7 +485,7 @@ export default class RecordModel extends Model {
     const [updatedRowsCount, [updatedRecordRaw]] = await this.model.update(recordToUpdateRaw, {
       where: { id },
       returning: true,
-      individualHooks: true
+      individualHooks: true,
     });
     const updatedRecordEntity = new RecordEntity(updatedRecordRaw);
 
@@ -501,17 +501,17 @@ export default class RecordModel extends Model {
   async updatePatch(
     id: string,
     keyId: number,
-    properties: Array<{ path: string; previousValue: any; value: any }>
+    properties: Array<{ path: string; previousValue: any; value: any }>,
   ): Promise<RecordEntity | undefined> {
     const where = isNaN(+id) ? { id } : { key_id: keyId, search_string: id.toString() };
     const record = await this.model.findOne({
-      where
+      where,
     });
     if (!record) return;
     const searchStrings = {
       search_string: record.search_string,
       search_string_2: record.search_string_2,
-      search_string_3: record.search_string_3
+      search_string_3: record.search_string_3,
     };
     for (const { path, previousValue, value } of properties) {
       // Update prop
@@ -544,7 +544,7 @@ export default class RecordModel extends Model {
       search_string: this.normalizeSearchString(record.searchString),
       search_string_2: this.normalizeSearchString(record.searchString2),
       search_string_3: this.normalizeSearchString(record.searchString3),
-      signature: record.signature
+      signature: record.signature,
     });
 
     await global.afterhandler.validateRecord(recordToUpdateRaw, 'update');
@@ -553,7 +553,7 @@ export default class RecordModel extends Model {
     const [updatedRowsCount, [updatedRecordRaw]] = await this.model.update(recordToUpdateRaw, {
       where: { key_id: keyId, register_id: registerId, data: { [dataFieldName]: dataFieldValue } },
       returning: true,
-      individualHooks: true
+      individualHooks: true,
     });
     const updatedRecordEntity = new RecordEntity(updatedRecordRaw);
 
@@ -578,8 +578,8 @@ export default class RecordModel extends Model {
       {
         where: { id },
         returning: true,
-        individualHooks: true
-      }
+        individualHooks: true,
+      },
     );
     const updatedRecordEntity = new RecordEntity(updatedRecordRaw);
 
@@ -599,7 +599,7 @@ export default class RecordModel extends Model {
     removeCounterCb: (removedRecords: number) => void,
     user = 'system',
     person = { id: null, name: null },
-    historyMeta = { accessInfo: { userId: null, userName: null } }
+    historyMeta = { accessInfo: { userId: null, userName: null } },
   ): Promise<{ removedRecords: number; nonRemovedRecords: number }> {
     // Check filters.
     if (!filters.key_id) throw new Error('Key ID is required filter for bulk delete.');
@@ -627,7 +627,7 @@ export default class RecordModel extends Model {
 
     const result = await this.model.findAll({
       where: filter,
-      order: [['id', 'asc']]
+      order: [['id', 'asc']],
     });
 
     return result;
@@ -695,7 +695,7 @@ export default class RecordModel extends Model {
       const records = await this.model.findAll({
         where: { key_id: keyId, is_encrypted: !isEncrypted },
         limit,
-        transaction
+        transaction,
       });
 
       for (const record of records) {

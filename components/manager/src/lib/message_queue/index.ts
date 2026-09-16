@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import amqp from 'amqplib/callback_api';
 
-import { runInAsyncLocalStorage } from 'back-core';
+import { runInAsyncLocalStorage } from '@liquio/back-core';
 
 // Constants.
 const RETRY_CONNECTION_TIME = 10 * 1000;
@@ -208,8 +208,8 @@ export class MessageQueue {
     const specificQueueName =
       isEvent && workflowTemplateId
         ? Object.entries(this.config.specificWritingQueuesEvent || {}).reduce((acc, [key, value]: [string, any]) => {
-          return value.includes(workflowTemplateId) ? `${defaultQueueName}-${key}` : acc;
-        }, null)
+            return value.includes(workflowTemplateId) ? `${defaultQueueName}-${key}` : acc;
+          }, null)
         : null;
 
     try {

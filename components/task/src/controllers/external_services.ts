@@ -16,8 +16,8 @@ import { UnauthorizedError } from '../lib/errors';
 import typeOf from '../lib/type_of';
 
 // Constants.
-const CANT_FIND_TASK_AND_DOCUMENT_ERROR = 'Can\'t find task and document.';
-const CANT_FIND_TASK_OR_DOCUMENT_ENTITIES_ERROR = 'Can\'t find task or document entities.';
+const CANT_FIND_TASK_AND_DOCUMENT_ERROR = "Can't find task and document.";
+const CANT_FIND_TASK_OR_DOCUMENT_ENTITIES_ERROR = "Can't find task or document entities.";
 
 /**
  * External service controller.
@@ -317,7 +317,7 @@ export class ExternalServicesController extends Controller {
     // Save files as document attachments (without signatures, just attachments).
     if (typeOf(files) === 'array' && files.length > 0) {
       try {
-        await (global.businesses.document.createAttachmentsForSystemTask as any)(files, documentId, externalServiceUser);
+        await (global.businesses.document.files.createAttachmentsForSystemTask as any)(files, documentId, externalServiceUser);
       } catch (error) {
         global.log.save('save-attachments-error', { error: error && error.message }, 'error');
         return onError(error, error.httpStatusCode, error.details);
@@ -327,7 +327,7 @@ export class ExternalServicesController extends Controller {
     // Save additional data signatures.
     if (typeOf(additionalDataSignatures) === 'array' && additionalDataSignatures.length > 0) {
       try {
-        await global.businesses.document.saveAdditionalDataSignatures(additionalDataSignatures, document, externalServiceUser);
+        await global.businesses.document.signing.saveAdditionalDataSignatures(additionalDataSignatures, document, externalServiceUser);
       } catch (error) {
         global.log.save('save-additional-data-signatures-error', { error: error && error.message }, 'error');
         return onError(error, error.httpStatusCode, error.details);
@@ -353,7 +353,7 @@ export class ExternalServicesController extends Controller {
     // Save files as document attachments (with signatures).
     if (typeOf(attachmentsSignatures) === 'array' && attachmentsSignatures.length > 0) {
       try {
-        const savedAttachments: any = await global.businesses.document.saveAttachmentsP7SSignatures(
+        const savedAttachments: any = await global.businesses.document.signing.saveAttachmentsP7SSignatures(
           attachmentsSignatures,
           document,
           externalServiceUser,
@@ -364,7 +364,7 @@ export class ExternalServicesController extends Controller {
           delete attachment.signatureInfo;
           // We need to get the updated document for correct saving attachment array.
           const documentToUpdate = await global.models.document.findById(documentId);
-          await global.businesses.document.saveAttachmentToDocumentData(
+          await global.businesses.document.files.saveAttachmentToDocumentData(
             attachment,
             `initData.attachmentsSignatures.${index}`,
             documentToUpdate,
@@ -499,7 +499,13 @@ export class ExternalServicesController extends Controller {
     }
     const reason = parsedRequest['ext:reason'] && parsedRequest['ext:reason'][0];
 
-    global.log.save('external-services|rpzm|update-application-status-info', { sourceCode, applicationNumber, applicationStatusCode, changeDate, reason });
+    global.log.save('external-services|rpzm|update-application-status-info', {
+      sourceCode,
+      applicationNumber,
+      applicationStatusCode,
+      changeDate,
+      reason,
+    });
 
     const [event] = await this.workflowModel.db.query(
       `
@@ -607,7 +613,7 @@ export class ExternalServicesController extends Controller {
       return this.responseError(res, error);
     }
     if (!taskAndDocumentEntities) {
-      return this.responseError(res, 'Can\'t find task or document entities.');
+      return this.responseError(res, "Can't find task or document entities.");
     }
     const { document } = taskAndDocumentEntities;
     const { id: documentId } = document;
@@ -658,7 +664,7 @@ export class ExternalServicesController extends Controller {
       return this.responseError(res, error);
     }
     if (!taskAndDocumentEntities) {
-      return this.responseError(res, 'Can\'t find task or document entities.');
+      return this.responseError(res, "Can't find task or document entities.");
     }
     const { task } = taskAndDocumentEntities;
     const { id: taskId } = task;
@@ -722,7 +728,7 @@ export class ExternalServicesController extends Controller {
 
     let documentWithPayment;
     try {
-      documentWithPayment = await (global.businesses.document.calculatePayment as any)(
+      documentWithPayment = await (global.businesses.document.payment.calculatePayment as any)(
         undefined,
         paymentControlPath,
         externalServiceUser,
@@ -810,4 +816,3 @@ export class ExternalServicesController extends Controller {
     return new xml2js.Builder().buildObject(soapJson);
   }
 }
-

@@ -1,6 +1,6 @@
 import { Application } from './application';
 import { loadConfig } from './config';
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 
 async function main() {
   const conf = loadConfig();

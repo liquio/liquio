@@ -1,5 +1,5 @@
 import Sequelize from 'sequelize';
-import jsoncParser from 'jsonc-parser';
+import * as jsoncParser from 'jsonc-parser';
 
 import { Model } from './model';
 import { DocumentTemplateEntity } from '../entities/document_template';
@@ -9,11 +9,34 @@ import { PgPubSub } from '../lib/pgpubsub';
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
 
+/** Raw shape of a `document_templates` row as Sequelize hands it back. */
+export interface DocumentTemplateRow {
+  id: number;
+  name?: string | null;
+  json_schema?: string | null;
+  html_template?: string | null;
+  access_json_schema: Record<string, unknown>;
+  additional_data_to_sign?: string | null;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface DocumentTemplateAccessSchemaInfo {
+  documentTemplateId: number;
+  accessJsonSchema: Record<string, unknown>;
+}
+
+interface RowChangeNotifyData {
+  id: number;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  table: string;
+}
+
 export class DocumentTemplateModel extends Model {
   private static singleton: DocumentTemplateModel;
 
   model: any;
-  cacheTtl: any;
+  cacheTtl: { findById: number; substituteJsonProps: number };
 
   constructor() {
     if (!DocumentTemplateModel.singleton) {
@@ -28,23 +51,23 @@ export class DocumentTemplateModel extends Model {
           access_json_schema: {
             type: Sequelize.JSON,
             allowNull: false,
-            defaultValue: {}
+            defaultValue: {},
           },
-          additional_data_to_sign: Sequelize.TEXT
+          additional_data_to_sign: Sequelize.TEXT,
         },
         {
           tableName: 'document_templates',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       PgPubSub.getInstance().subscribe('document_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
         findById: global.config.cache.documentTemplate?.findById || DEFAULT_CACHE_TTL,
-        substituteJsonProps: global.config.cache.documentTemplate?.substituteJsonProps || DEFAULT_CACHE_TTL
+        substituteJsonProps: global.config.cache.documentTemplate?.substituteJsonProps || DEFAULT_CACHE_TTL,
       };
 
       DocumentTemplateModel.singleton = this;
@@ -55,15 +78,14 @@ export class DocumentTemplateModel extends Model {
 
   /**
    * Get all.
-   * @returns {Promise<DocumentTemplateEntity[]>}
    */
-  async getAll() {
+  async getAll(): Promise<DocumentTemplateEntity[]> {
     const documentTemplates = await this.model.findAll({
       include: [{ model: global.models.taskTemplate.model, attributes: ['id', 'name'] }],
-      attributes: ['id', 'name']
+      attributes: ['id', 'name'],
     });
 
-    const documentTemplatesEntities = documentTemplates.map(item => {
+    const documentTemplatesEntities = documentTemplates.map((item) => {
       const documentTemplate = this.prepareEntity(item);
       const taskTemplate = global.models.taskTemplate.prepareEntity(item.taskTemplate);
       documentTemplate.taskTemplate = taskTemplate;
@@ -75,46 +97,43 @@ export class DocumentTemplateModel extends Model {
 
   /**
    * Get all access JSON schemas.
-   * @returns {Promise<{documentTemplateId, accessJsonSchema}[]>}
    */
-  async getAllAccessJsonSchemas() {
+  async getAllAccessJsonSchemas(): Promise<DocumentTemplateAccessSchemaInfo[]> {
     const documentTemplatesRaw = await this.model.findAll({
-      attributes: ['id', 'access_json_schema']
+      attributes: ['id', 'access_json_schema'],
     });
 
-    const documentTemplatesInfo = documentTemplatesRaw.map(item => ({
+    const documentTemplatesInfo = documentTemplatesRaw.map((item) => ({
       documentTemplateId: item.id,
-      accessJsonSchema: item.access_json_schema
+      accessJsonSchema: item.access_json_schema,
     }));
     return documentTemplatesInfo;
   }
 
   /**
    * Get access JSON schemas by IDs.
-   * @returns {Promise<{documentTemplateId, accessJsonSchema}[]>}
    */
-  async getAccessJsonSchemasByIds(ids) {
+  async getAccessJsonSchemasByIds(ids: number[]): Promise<DocumentTemplateAccessSchemaInfo[]> {
     const documentTemplatesRaw = await this.model.findAll({
       where: { id: ids },
-      attributes: ['id', 'access_json_schema']
+      attributes: ['id', 'access_json_schema'],
     });
 
-    return documentTemplatesRaw.map(item => ({
+    return documentTemplatesRaw.map((item) => ({
       documentTemplateId: item.id,
-      accessJsonSchema: item.access_json_schema
+      accessJsonSchema: item.access_json_schema,
     }));
   }
 
   /**
    * Find by ID.
-   * @param {number} id Document template ID.
-   * @returns {Promise<DocumentTemplateEntity>}
+   * @param id Document template ID.
    */
-  async findById(id) {
+  async findById(id: number): Promise<DocumentTemplateEntity> {
     const { data: documentTemplate } = await RedisClient.getOrSet(
       RedisClient.createKey('document_template', 'findById', id),
       () => this.model.findByPk(id),
-      this.cacheTtl.findById
+      this.cacheTtl.findById,
     );
 
     const documentTemplateEntity = this.prepareEntity(documentTemplate);
@@ -126,25 +145,26 @@ export class DocumentTemplateModel extends Model {
   /**
    * Substitute prop in jsonSchema from other template after prepareEntity!
    * @private
-   * @param {DocumentTemplateEntity} documentTemplate Document template.
-   * @returns {Promise<DocumentTemplateEntity>}
+   * @param documentTemplate Document template. `jsonSchema` and its nested `properties` are
+   * arbitrary, user-authored JSON Schema fragments - deliberately left as `any` below rather than
+   * modeled precisely.
    */
-  async substituteJsonProps(documentTemplate) {
+  async substituteJsonProps(documentTemplate: DocumentTemplateEntity): Promise<DocumentTemplateEntity> {
     const { jsonSchema } = documentTemplate || {};
     const { properties } = jsonSchema || {};
     if (!properties) return documentTemplate;
 
     // find all documentWithId in jsonSchema
-    const documentWithIds = [];
+    const documentWithIds: number[] = [];
     for (const prop in properties) {
       const importProp = properties[prop].import;
       if (!importProp) continue;
-      if (typeof importProp === 'string' && (/document.(\d+)/.test(importProp))) {
+      if (typeof importProp === 'string' && /document.(\d+)/.test(importProp)) {
         const documentTemplateId = Number(importProp.split('.')[1]);
-        documentWithIds.push(documentTemplateId) ;
+        documentWithIds.push(documentTemplateId);
       } else if (Array.isArray(importProp)) {
-        importProp.forEach(ip => {
-          if (typeof ip === 'string' && (/document.(\d+)/.test(ip))) {
+        importProp.forEach((ip) => {
+          if (typeof ip === 'string' && /document.(\d+)/.test(ip)) {
             const documentTemplateId = Number(ip.split('.')[1]);
             documentWithIds.push(documentTemplateId);
           }
@@ -152,42 +172,48 @@ export class DocumentTemplateModel extends Model {
       }
     }
 
-    const documentTemplateMap = new Map();
+    const documentTemplateMap = new Map<string, DocumentTemplateRow>();
     const templates = await this.model.findAll({ where: { id: documentWithIds } });
     for (const template of templates) {
       documentTemplateMap.set(`${template.id}`, template);
     }
 
     // find template by documentWithId and property key name. return found object or empty object
-    const getPropertiesByDocument = key => async documentWithId => {
-      if (!(typeof documentWithId === 'string' && (/document.(\d+)/.test(documentWithId)))) {
+    const getPropertiesByDocument = (key) => async (documentWithId) => {
+      if (!(typeof documentWithId === 'string' && /document.(\d+)/.test(documentWithId))) {
         throw new Error(`Passed incorrect value to import - "${documentWithId}" while importing step "${key}"`);
       }
       const documentTemplateId = documentWithId.split('.')[1];
 
       const documentTemplate = documentTemplateMap.get(documentTemplateId);
       if (!documentTemplate) {
-        throw new Error(`Cannot find document by ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`);
+        throw new Error(
+          `Cannot find document by ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`,
+        );
       }
       let jsonSchema;
       try {
         jsonSchema = jsoncParser.parse(documentTemplate.json_schema);
       } catch (error) {
         global.log.save('substitute-json-schema-parse-error', error.toString(), 'error');
-        const wrapped: any = new Error(`Cannot parse JSON schema from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`);
+        const wrapped: any = new Error(
+          `Cannot parse JSON schema from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`,
+        );
         wrapped.cause = error;
         throw wrapped;
       }
 
       if (!jsonSchema.properties?.[key]) {
-        throw new Error(`Cannot get property (properties.${key}) from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`);
+        throw new Error(
+          `Cannot get property (properties.${key}) from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`,
+        );
       }
 
       return jsonSchema.properties[key];
     };
 
     // update jsonSchema.properties[key] with imported values
-    const processProperties = async key => {
+    const processProperties = async (key) => {
       const importProp = properties[key].import;
       if (importProp === undefined || importProp === null) return;
 
@@ -195,8 +221,8 @@ export class DocumentTemplateModel extends Model {
       const concatedResult = result.reduce((acc, cur) => ({ ...cur, ...acc }), {});
 
       // if all objects in array has `properties` key, concat them
-      if (result.every(item => item.properties)) {
-        concatedResult.properties = result.map(item => item.properties).reduce((acc, cur) => ({ ...cur, ...acc }), {});
+      if (result.every((item) => item.properties)) {
+        concatedResult.properties = result.map((item) => item.properties).reduce((acc, cur) => ({ ...cur, ...acc }), {});
       }
 
       jsonSchema.properties[key] = concatedResult;
@@ -210,10 +236,9 @@ export class DocumentTemplateModel extends Model {
 
   /**
    * Prepare entity.
-   * @param {object} item Item.
-   * @returns {DocumentTemplateEntity}
+   * @param item Raw document template row.
    */
-  prepareEntity(item) {
+  prepareEntity(item: DocumentTemplateRow): DocumentTemplateEntity | null {
     if (typeof item !== 'object' || item === null) {
       return null;
     }
@@ -224,22 +249,17 @@ export class DocumentTemplateModel extends Model {
       jsonSchema: item.json_schema,
       htmlTemplate: item.html_template,
       accessJsonSchema: item.access_json_schema,
-      additionalDataToSign: item.additional_data_to_sign
+      additionalDataToSign: item.additional_data_to_sign,
     });
   }
 
   /**
    * Invalidate cache on row change.
    * @private
-   * @param {string} channel Channel.
-   * @param {NotifyData} data Data.
-   *
-   * @typedef {Object} NotifyData
-   * @property {number} id Row ID.
-   * @property {'INSERT' | 'UPDATE' | 'DELETE'} action Action.
-   * @property {string} table Table name.
+   * @param channel Channel.
+   * @param data Data.
    */
-  onRowChange(channel, { id }) {
+  onRowChange(channel: string, { id }: RowChangeNotifyData): void {
     const redis = RedisClient.getInstance();
     if (redis) {
       redis.delete(RedisClient.createKey('document_template', 'findById', id));
@@ -247,4 +267,3 @@ export class DocumentTemplateModel extends Model {
     }
   }
 }
-

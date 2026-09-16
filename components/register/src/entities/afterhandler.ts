@@ -5,7 +5,7 @@ import HistoryEntity from './history';
 const TYPES = {
   Blockchain: 'blockchain',
   Elastic: 'elastic',
-  PLink: 'plink'
+  PLink: 'plink',
 };
 
 /**

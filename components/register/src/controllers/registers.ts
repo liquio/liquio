@@ -55,11 +55,11 @@ export default class RegistersController extends Controller {
       parent_id: parentId,
       id,
       key_id: keyId,
-      name
+      name,
     } = {
       offset: 0,
       limit: 20,
-      ...matchedData(req, { locations: ['query'] })
+      ...matchedData(req, { locations: ['query'] }),
     } as any;
 
     const filter: { id?: number; parent_id?: number; ['$keys.id$']?: number; name?: string } = {};
@@ -74,7 +74,7 @@ export default class RegistersController extends Controller {
       registersModelResponse = await this.registerModel.getAll({
         offset: offset,
         limit: Math.min(limit, this.config.pagination.maxLimit),
-        filter
+        filter,
       });
     } catch (error) {
       this.log.save('get-registers-error', { error: error && error.message });
@@ -148,8 +148,8 @@ export default class RegistersController extends Controller {
         limit: null,
         filter: {
           register_id: registerId,
-          ...(keyIds ? { id: keyIds.split(',').map((keyId) => parseInt(keyId, 10)) } : {})
-        }
+          ...(keyIds ? { id: keyIds.split(',').map((keyId) => parseInt(keyId, 10)) } : {}),
+        },
       });
     } catch (error) {
       const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-keys-error', error);
@@ -173,13 +173,13 @@ export default class RegistersController extends Controller {
         const countRecordsModelResponse = await this.recordModel.countAll({
           filter: {
             register_id: registerId,
-            key_id: parseInt(key.id)
-          }
+            key_id: parseInt(key.id),
+          },
         });
         if (countRecordsModelResponse > this.config.pagination.maxExportLimit) {
           const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-max-limit-reached', null, {
             recordsCount: countRecordsModelResponse,
-            maxExportLimit: this.config.pagination.maxExportLimit
+            maxExportLimit: this.config.pagination.maxExportLimit,
           });
           return this.responseError(res, errorObject.message, errorObject.code);
         }
@@ -192,8 +192,8 @@ export default class RegistersController extends Controller {
             limit: null,
             filter: {
               register_id: registerId,
-              key_id: parseInt(key.id)
-            }
+              key_id: parseInt(key.id),
+            },
           });
         } catch (error) {
           const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-records-error', error);
@@ -253,13 +253,13 @@ export default class RegistersController extends Controller {
       rewrite_schema: doRewriteKeysSchema,
       clear_records: doClearOriginalRecords,
       add_data: doImportRecords,
-      file
+      file,
     } = matchedData(req, { locations: ['query'] });
     const { user } = req.auth;
     const backupInfo = {
       importKeys: {}, // Need for clear records
       originalKeys: {}, // Need for clear records and records import and rewrite schema
-      changes: {}
+      changes: {},
     };
 
     if (file) {
@@ -339,9 +339,9 @@ export default class RegistersController extends Controller {
           meta: {
             ...importRegister.meta,
             ...(req.accessInfo && {
-              createdByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName }
-            })
-          }
+              createdByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName },
+            }),
+          },
         });
       } else {
         // Update.
@@ -350,9 +350,9 @@ export default class RegistersController extends Controller {
           meta: {
             ...importRegister.meta,
             ...(req.accessInfo && {
-              updatedByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName }
-            })
-          }
+              updatedByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName },
+            }),
+          },
         });
       }
 
@@ -380,7 +380,7 @@ export default class RegistersController extends Controller {
     try {
       originalKeys = await this.registerBusiness.getExistingRegisterKeys(
         registerId,
-        importRegister.keys.data.map(({ id }) => id)
+        importRegister.keys.data.map(({ id }) => id),
       );
     } catch (error) {
       const errorObject = this.registerBusiness.getErrorAndLogIt('import-register-keys-error', error);
@@ -465,9 +465,9 @@ export default class RegistersController extends Controller {
               meta: {
                 ...importKey.meta,
                 ...(req.accessInfo && {
-                  updatedByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName }
-                })
-              }
+                  updatedByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName },
+                }),
+              },
             });
             backupInfo.changes = this.registerBusiness.changes(backupInfo.changes, 'updated', keyModelResponse.data.id);
           } catch (error) {
@@ -482,9 +482,9 @@ export default class RegistersController extends Controller {
               meta: {
                 ...importKey.meta,
                 ...(req.accessInfo && {
-                  createdByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName }
-                })
-              }
+                  createdByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName },
+                }),
+              },
             });
             backupInfo.changes = this.registerBusiness.changes(backupInfo.changes, 'created', keyModelResponse.data.id);
           } catch (error) {
@@ -624,8 +624,8 @@ export default class RegistersController extends Controller {
         offset: 0,
         limit: null,
         filter: {
-          register_id: registerId
-        }
+          register_id: registerId,
+        },
       });
     } catch (error) {
       const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-keys-error', error);
@@ -651,8 +651,8 @@ export default class RegistersController extends Controller {
             limit: null,
             filter: {
               register_id: registerId,
-              key_id: parseInt(id)
-            }
+              key_id: parseInt(id),
+            },
           });
         } catch (error) {
           const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-records-error', error);
@@ -677,18 +677,18 @@ export default class RegistersController extends Controller {
       created: {
         registers: [],
         keys: [],
-        records: []
+        records: [],
       },
       deleted: {
         registers: [],
         keys: [],
-        records: []
+        records: [],
       },
       updated: {
         registers: [],
         keys: [],
-        records: []
-      }
+        records: [],
+      },
     };
 
     let isRegisterStructHandled = false;
@@ -766,7 +766,7 @@ export default class RegistersController extends Controller {
                   toSearchString,
                   lock,
                   accessMode,
-                  user
+                  user,
                 });
                 changes.created.keys.push(id);
               } else {
@@ -781,7 +781,7 @@ export default class RegistersController extends Controller {
                   toSearchString,
                   lock,
                   accessMode,
-                  user
+                  user,
                 });
                 changes.updated.keys.push(id);
               }
@@ -897,7 +897,7 @@ export default class RegistersController extends Controller {
         description,
         parentId,
         meta,
-        user
+        user,
       });
     } catch (error) {
       this.log.save('update-register-error', { error: error && error.message });
@@ -976,7 +976,7 @@ export default class RegistersController extends Controller {
               searchString,
               searchString2,
               searchString3,
-              person
+              person,
             });
             createdRecords.push(id);
           } else {

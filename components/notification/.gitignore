@@ -86,8 +86,5 @@ fabric.properties
 # MacOS.
 .DS_Store
 
-# Built artifacts
-bundle/
-
 # TypeScript build output.
 dist/

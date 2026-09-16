@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -28,4 +27,3 @@ export class SignatureInfoEntity extends Entity {
     this.signature = signature;
   }
 }
-

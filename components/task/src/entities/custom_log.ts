@@ -108,4 +108,3 @@ export class CustomLogEntity extends Entity {
     return cacheKey;
   }
 }
-

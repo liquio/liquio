@@ -1,8 +1,11 @@
 import moment from 'moment';
 
+import { PluginLoader } from '@liquio/plugin-sdk';
+
 import { Db } from './lib/db';
 import { PgPubSub } from './lib/pgpubsub';
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { PaymentService } from './services/payment';
 import { MessageQueue } from './lib/message_queue';
 import { RedisClient } from './lib/redis_client';
 import { Models } from './models';
@@ -156,25 +159,45 @@ export class BpmnTaskCore {
     this.models = new Models(customModels);
     new DictionariesModel(customDictionaryModels);
 
+    // Init plugins. `paymentTransactions` is the only capability a TaskPaymentProvider plugin
+    // gets besides logging/config - it never touches `global.models`/`global.db` directly (see
+    // `TaskPaymentTransactionService`'s own JSDoc in `@liquio/plugin-sdk`).
+    const pluginsConfig = config.plugins;
+    let pluginRegistry;
+    if (pluginsConfig) {
+      const paymentTransactions = {
+        create: (data) => global.models.paymentTransactions.create(data),
+        resolve: async (id) => (await global.models.paymentTransactions.findById(id)) ?? undefined,
+      };
+      pluginRegistry = await new PluginLoader(log, undefined, { paymentTransactions }).load(pluginsConfig);
+    } else {
+      log.save('plugin-load-summary', { configured: 0, loaded: 0, plugins: [] });
+    }
+
+    // Pre-warm the PaymentService singleton with the plugin registry, so that when
+    // businesses/document.ts later constructs it (via `new PaymentService(config.payment)`,
+    // unaware of plugins), the singleton guard returns this already-plugin-aware instance.
+    new PaymentService(config.payment, pluginRegistry);
+
     // Init businesses.
     const businesses: any = new Businesses(config);
 
     // Init BPMN Task redis.
     global.redisClient = config?.redis?.isEnabled
       ? new RedisClient({
-        host: config.redis.host,
-        port: config.redis.port,
-        defaultTtl: config.redis.defaultTtl,
-      })
+          host: config.redis.host,
+          port: config.redis.port,
+          defaultTtl: config.redis.defaultTtl,
+        })
       : undefined;
 
     // Init common BPMN redis.
     global.redisClientCommonBpmn = config?.redis?.redisCommonBpmn?.isEnabled
       ? new RedisClient({
-        host: config.redis.redisCommonBpmn.host,
-        port: config.redis.redisCommonBpmn.port,
-        defaultTtl: config.redis.redisCommonBpmn.defaultTtl,
-      })
+          host: config.redis.redisCommonBpmn.host,
+          port: config.redis.redisCommonBpmn.port,
+          defaultTtl: config.redis.redisCommonBpmn.defaultTtl,
+        })
       : undefined;
 
     const taskBusiness = businesses.businesses.task;
@@ -189,7 +212,7 @@ export class BpmnTaskCore {
           config.message_queue.enabledReadingGeneratingPdfMessages === true
         ) {
           messageQueue.subscribeToConsuming(
-            documentBusiness.createPdfFromMessage.bind(documentBusiness),
+            documentBusiness.files.createPdfFromMessage.bind(documentBusiness.files),
             'readingPdf',
             'bpmn-task-incoming-generating-pdf',
           );

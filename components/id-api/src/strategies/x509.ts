@@ -1,6 +1,7 @@
 import { Strategy as PassportStrategy } from 'passport-strategy';
 
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
+
 import { Express, Request, Response } from '../types';
 import { saveSession } from '../middleware/session';
 import { SignatureInfoSigner, X509Service } from '../services/x509.service';
@@ -70,6 +71,10 @@ export class X509Strategy extends PassportStrategy {
     }
   }
 }
+
+// x509 certificate auth has no external session to tear down — kept as a stub
+// so the caller can always invoke a strategy's logout() uniformly.
+export async function logout(): Promise<void> {}
 
 export async function x509(app: Express) {
   const log = Log.getInstance();
@@ -145,12 +150,15 @@ export async function x509(app: Express) {
         log.save('x509-strategy|authenticate|user-found', { userId: existingUser.userId }, 'info');
       }
 
-      const userService = await Models.model('userServices').upsert({
-        userId: (existingUser || newUser!).userId,
-        provider: 'x509',
-        provider_id: ipn,
-        data: userInfo,
-      });
+      const userService = await Models.model('userServices').upsert(
+        {
+          userId: (existingUser || newUser!).userId,
+          provider: 'x509',
+          provider_id: ipn,
+          data: userInfo,
+        },
+        { conflictFields: ['provider', 'provider_id'] },
+      );
 
       done(null, {
         ...(existingUser || newUser!),

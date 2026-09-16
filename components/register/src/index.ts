@@ -1,4 +1,4 @@
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import Db from './lib/db';
 import Afterhandler from './lib/afterhandler';
 import ErrorWithDetails from './lib/errors';
@@ -38,7 +38,7 @@ async function main() {
   if (config.redis && config.redis.isEnabled) {
     const redisClient = new RedisClient({
       host: config.redis.host,
-      port: config.redis.port
+      port: config.redis.port,
     });
     try {
       await redisClient.connect();

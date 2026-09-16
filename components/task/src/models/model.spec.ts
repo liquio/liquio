@@ -23,7 +23,10 @@ describe('Model', () => {
 
       const sort = model.prepareSort(options);
       assert(Array.isArray(sort));
-      assert.deepEqual(sort, [['created_at', 'asc'], ['name', 'desc']]);
+      assert.deepEqual(sort, [
+        ['created_at', 'asc'],
+        ['name', 'desc'],
+      ]);
     });
 
     it('should handle nested meta object', () => {
@@ -72,14 +75,14 @@ describe('Model', () => {
       const options = {
         workflow: {
           priority: 'asc',
-          number: 'desc'
+          number: 'desc',
         },
         workflow_template: {
           name: 'desc',
         },
         tasks: {
-          created_at: 'asc'
-        }
+          created_at: 'asc',
+        },
       };
 
       const sort = model.prepareSort(options);

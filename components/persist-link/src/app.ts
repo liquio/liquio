@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import Multiconf from 'multiconf';
 
 import { setAppContext } from './lib/context';
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import Db from './lib/db';
 import Models from './models';
 import Router from './router';

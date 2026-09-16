@@ -3,7 +3,7 @@ import http from 'http';
 
 import { Config } from './config';
 import { Controllers, ControllersCollection } from './controllers';
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import {
   AuthMiddleware,
   useAppIdentHeaders,

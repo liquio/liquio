@@ -2,7 +2,7 @@ import { Strategy } from 'passport-local';
 
 import { delay } from '../lib/helpers';
 import { HttpError } from '../lib/http_error';
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesAttributes } from '../models';
@@ -10,6 +10,9 @@ import { Services } from '../services';
 import { CallbackFn, Express, Request, Response } from '../types';
 
 const GENERIC_FAIL_DESCRIPTION = 'Invalid email or password.';
+
+// No external IdP session to tear down for local (email/password) auth.
+export async function logout(): Promise<void> {}
 
 export async function local(app: Express) {
   const log = Log.getInstance();

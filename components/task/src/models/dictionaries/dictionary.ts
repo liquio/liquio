@@ -24,4 +24,3 @@ export class DictionaryModel extends Model {
     throw new Error(ERROR_OVERRIDE);
   }
 }
-

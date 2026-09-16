@@ -6,7 +6,7 @@ import { AuthMiddleware } from '../middleware/authenticate';
 import { LoginActionType, Models } from '../models';
 import { Services } from '../services';
 import { Express, NextFunction, Request, Response, Router } from '../types';
-import { Log, getTraceId } from 'back-core';
+import { Log, getTraceId } from '@liquio/back-core';
 
 const HTTP_STATUS_CODE_OK = 200;
 const HTTP_STATUS_CODE_SERVER_ERROR = 500;

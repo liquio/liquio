@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -52,7 +51,7 @@ export class AccessHistoryEntity extends Entity {
     initWorkflowId,
     initWorkflowName,
     createdAt,
-    updatedAt
+    updatedAt,
   }) {
     super();
 
@@ -72,4 +71,3 @@ export class AccessHistoryEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

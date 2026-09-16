@@ -16,6 +16,9 @@ node_modules/
 # Logs.
 *.log
 
+# Build output.
+dist/
+
 # User defined configs.
 config/*.json
 

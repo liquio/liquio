@@ -1,4 +1,4 @@
-import { AppInfo } from 'back-core';
+import { AppInfo } from '@liquio/back-core';
 
 const DEFAULT_CUSTOMER = 1;
 const DEFAULT_ENVIRONMENT = 0;

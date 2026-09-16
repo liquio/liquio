@@ -74,9 +74,7 @@ export class Worker {
     try {
       this.browser = await chromium.launch(this.launchOptions);
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to launch worker: ${error.message || error.toString()}`,
-      );
+      throw new InternalServerErrorException(`Failed to launch worker: ${error.message || error.toString()}`);
     }
   }
 
@@ -152,10 +150,7 @@ export class Worker {
 
     const fontBase64 = await this.loadFont(fontUrl);
     const fileExtension = path.extname(fontUrl).toLowerCase().split('.').pop();
-    const mainHtmlContent = html.replace(
-      `src: url(${fontUrl});`,
-      `src: url(${fontBase64}) format('${fileExtension}');`,
-    );
+    const mainHtmlContent = html.replace(`src: url(${fontUrl});`, `src: url(${fontBase64}) format('${fileExtension}');`);
 
     return mainHtmlContent;
   }
@@ -187,9 +182,7 @@ export class Worker {
       const response = await axios.get(url, { responseType: 'arraybuffer' });
 
       if (response.status !== 200) {
-        throw new InternalServerErrorException(
-          `Failed to download font. Status code: ${response.status}`,
-        );
+        throw new InternalServerErrorException(`Failed to download font. Status code: ${response.status}`);
       }
 
       const buffer = Buffer.from(response.data);
@@ -217,9 +210,7 @@ export class Worker {
       const dataUri = `data:${mimeType};base64,${base64Data}`;
       return dataUri;
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to load font: ${error.message || error.toString()}`,
-      );
+      throw new InternalServerErrorException(`Failed to load font: ${error.message || error.toString()}`);
     }
   }
 
@@ -240,9 +231,7 @@ export class Worker {
         this.browser = null;
       }
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Error closing worker: ${error.message || error.toString()}`,
-      );
+      throw new InternalServerErrorException(`Error closing worker: ${error.message || error.toString()}`);
     } finally {
       this.isClosing = false;
     }

@@ -1,4 +1,3 @@
-
 import _ from 'lodash';
 import crypto from 'node:crypto';
 import { Controller } from './controller';
@@ -36,7 +35,7 @@ export class UserController extends Controller {
    */
   async search(req, res) {
     // Define params.
-    // eslint-disable-next-line prefer-const -- unitIds is reassigned below; the rest of this destructuring isn't.
+
     let { userIds = [], unitIds = [], ids = [], codes = [], code, search } = req.body;
     if (code) {
       codes.push(code);
@@ -49,7 +48,7 @@ export class UserController extends Controller {
     let units;
     try {
       const allUnits = await this.unitModel.getAll();
-      units = allUnits.filter(v => unitIds.includes(v.id));
+      units = allUnits.filter((v) => unitIds.includes(v.id));
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -74,13 +73,13 @@ export class UserController extends Controller {
     if (search) {
       const foundUsers = await this.auth.searchUsers(search);
       if (Array.isArray(foundUsers) && foundUsers.length > 0) {
-        allNeededUsers = [...allNeededUsers, ...(foundUsers).map(v => ({ name: v.name, userId: v.userId }))];
+        allNeededUsers = [...allNeededUsers, ...foundUsers.map((v) => ({ name: v.name, userId: v.userId }))];
       }
     }
     allNeededUsers = _.uniqBy(allNeededUsers, 'userId');
 
     // Prepare users data to response.
-    const preparedUsersData = (allNeededUsers || []).map(v => ({
+    const preparedUsersData = (allNeededUsers || []).map((v) => ({
       userId: v.userId,
       name: v.name,
       companyName: v.companyName,
@@ -89,7 +88,7 @@ export class UserController extends Controller {
       isIndividualEntrepreneur: v.isIndividualEntrepreneur,
       email: v.email,
       phone: v.phone,
-      avaUrl: v.avaUrl
+      avaUrl: v.avaUrl,
     }));
 
     this.responseData(res, preparedUsersData);
@@ -125,7 +124,7 @@ export class UserController extends Controller {
       idCardIssueDate,
       idCardIssuedBy,
       idCardExpiryDate,
-      isPrivateHouse
+      isPrivateHouse,
     } = req.body;
     const updateOptions: any = {
       gender,
@@ -150,7 +149,7 @@ export class UserController extends Controller {
       idCardIssueDate,
       idCardIssuedBy,
       idCardExpiryDate,
-      isPrivateHouse
+      isPrivateHouse,
     };
     const userId = this.getRequestUserId(req);
     const accessToken = this.getRequestUserAccessToken(req);
@@ -161,7 +160,7 @@ export class UserController extends Controller {
     // Check gender.
     const allowedGenders = global.config.user?.allowedGenders || ['male', 'female'];
     if (gender && !allowedGenders.includes(gender)) {
-      return this.responseError(res, `Can't set gender ${gender}. Allowed list: ${allowedGenders.map(v => `"${v}"`).join(', ')}.`);
+      return this.responseError(res, `Can't set gender ${gender}. Allowed list: ${allowedGenders.map((v) => `"${v}"`).join(', ')}.`);
     }
 
     // Check phone.
@@ -170,7 +169,7 @@ export class UserController extends Controller {
       delete updateOptions.phone;
     } else {
       if (!this.config.user.allowSetUnconfirmedPhone && phone) {
-        return this.responseError(res, 'Can\'t set unconfirmed phone. Verify it first.');
+        return this.responseError(res, "Can't set unconfirmed phone. Verify it first.");
       }
       // Set validation indicator to `false` if phone should be changed.
       updateOptions.valid = { phone: false };
@@ -183,7 +182,7 @@ export class UserController extends Controller {
       delete updateOptions.email;
     } else {
       if (!this.config.user.allowSetUnconfirmedEmail && email) {
-        return this.responseError(res, 'Can\'t set unconfirmed email. Verify it first.');
+        return this.responseError(res, "Can't set unconfirmed email. Verify it first.");
       }
       // Set validation indicator to `false` if email should be changed.
       updateOptions.valid = { email: false };
@@ -191,15 +190,10 @@ export class UserController extends Controller {
     }
 
     // Check if legal person try to change individual entrepreneur indicator to "true".
-    const isIndividualEntrepreneurTurningOnRequested = [true, 'true', 1].includes(
-      isIndividualEntrepreneur
-    );
+    const isIndividualEntrepreneurTurningOnRequested = [true, 'true', 1].includes(isIndividualEntrepreneur);
     const isLegalRequestedUser = userInfo.isLegal;
     if (isIndividualEntrepreneurTurningOnRequested && isLegalRequestedUser) {
-      return this.responseError(
-        res,
-        'Legal person can\'t turn on individual entrepreneur indicator.'
-      );
+      return this.responseError(res, "Legal person can't turn on individual entrepreneur indicator.");
     }
 
     // Update.
@@ -210,7 +204,7 @@ export class UserController extends Controller {
       return this.responseError(res, error);
     }
     if (!isUpdated) {
-      return this.responseError(res, 'Can\'t update user info.');
+      return this.responseError(res, "Can't update user info.");
     }
 
     // Clear user info cache.
@@ -262,7 +256,7 @@ export class UserController extends Controller {
       return this.responseError(res, error);
     }
     if (!isUpdated) {
-      return this.responseError(res, 'Can\'t set two factor auth.');
+      return this.responseError(res, "Can't set two factor auth.");
     }
 
     this.responseThatAccepted(res);
@@ -297,8 +291,8 @@ export class UserController extends Controller {
     const userInfo = this.getRequestUserInfo(req);
 
     if (!userInfo || !userInfo.valid || typeof userInfo.valid.phone === 'undefined') {
-      global.log.save('userinfo-property-phone', 'Phone status does\'t exist.', 'error');
-      return this.responseError(res, 'Phone status does\'t exist.');
+      global.log.save('userinfo-property-phone', "Phone status does't exist.", 'error');
+      return this.responseError(res, "Phone status does't exist.");
     }
 
     this.responseData(res, { exists: userInfo.valid.phone });
@@ -318,7 +312,7 @@ export class UserController extends Controller {
     try {
       phoneExistingInfo = await this.auth.checkPhoneExist(phone);
     } catch {
-      return this.responseError(res, 'Can\'t check phone existing info.');
+      return this.responseError(res, "Can't check phone existing info.");
     }
 
     // Define and response phone existing info.
@@ -341,7 +335,7 @@ export class UserController extends Controller {
     // Check phone.
     if (!phone) {
       global.log.save('userinfo-property-phone', { newPhone, existingPhone }, 'error');
-      return this.responseError(res, 'Phone does\'t exist.');
+      return this.responseError(res, "Phone does't exist.");
     }
 
     // Send SMS.
@@ -349,7 +343,7 @@ export class UserController extends Controller {
       await this.auth.sendSms(phone);
     } catch (error) {
       global.log.save('can-not-send-sms', { error: error && error.message }, 'error');
-      return this.responseError(res, 'Can\'t send sms.');
+      return this.responseError(res, "Can't send sms.");
     }
 
     this.responseThatAccepted(res);
@@ -372,7 +366,7 @@ export class UserController extends Controller {
     // Check phone.
     if (!phone) {
       global.log.save('phone-verification-wrong-params', { newPhone, existingPhone }, 'error');
-      return this.responseError(res, 'Phone does\'t exist.');
+      return this.responseError(res, "Phone does't exist.");
     }
 
     // Try to verify phone.
@@ -381,7 +375,7 @@ export class UserController extends Controller {
       response = await this.auth.verifyPhoneAndSet(phone, code, accessToken);
     } catch {
       global.log.save('phone-verification-exception', { response, phone, code, accessToken }, 'error');
-      return this.responseError(res, 'Can\'t verity phone.');
+      return this.responseError(res, "Can't verity phone.");
     }
 
     // Check response.
@@ -425,7 +419,7 @@ export class UserController extends Controller {
       await this.auth.changeEmail(email);
     } catch (error) {
       global.log.save('can-not-send-email-code', { error: error && error.message }, 'error');
-      return this.responseError(res, 'Can\'t send email code.');
+      return this.responseError(res, "Can't send email code.");
     }
 
     this.responseThatAccepted(res);
@@ -447,7 +441,7 @@ export class UserController extends Controller {
       await this.auth.confirmChangeEmail(email, code, accessToken);
     } catch (error) {
       global.log.save('can-not-confirm-change-email', { error: error && error.message }, 'error');
-      return this.responseError(res, 'Can\'t confirm change email.');
+      return this.responseError(res, "Can't confirm change email.");
     }
 
     // Clear user email info cache.
@@ -479,7 +473,7 @@ export class UserController extends Controller {
       await this.auth.checkEmailConfirmationCode(email, code, accessToken);
     } catch (error) {
       global.log.save('user-controller|check-email-confirmation-code|error', { error: error && error.message }, 'error');
-      return this.responseError(res, 'Can\'t check email confirmaiton code.');
+      return this.responseError(res, "Can't check email confirmaiton code.");
     }
 
     this.responseThatAccepted(res);
@@ -500,7 +494,7 @@ export class UserController extends Controller {
       isExist = await this.auth.checkEmail(email);
     } catch (error) {
       global.log.save('can-not-define-email-existance', { error: error && error.message, email }, 'error');
-      return this.responseError(res, 'Can\'t define email existence status.');
+      return this.responseError(res, "Can't define email existence status.");
     }
 
     this.responseData(res, { isExist });
@@ -515,4 +509,3 @@ export class UserController extends Controller {
     return crypto.createHash('sha1').update(data).digest('hex');
   }
 }
-

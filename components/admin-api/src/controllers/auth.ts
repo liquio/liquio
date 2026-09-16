@@ -3,7 +3,7 @@ import _ from 'lodash';
 import { Controller } from './controller';
 import { AuthService } from '../services/auth';
 import { Token } from '../lib/token';
-import { appendTraceMeta } from 'back-core';
+import { appendTraceMeta } from '@liquio/back-core';
 import { UnitBusiness } from '../businesses/unit';
 
 // Constants.

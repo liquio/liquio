@@ -15,3 +15,6 @@ node_modules/
 
 # Build output.
 dist/
+
+# User defined configs.
+config/*.json

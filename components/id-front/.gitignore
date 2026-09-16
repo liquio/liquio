@@ -27,6 +27,3 @@ public/avs/hash.txt
 
 # After build components
 core
-
-# Built artifacts.
-bundle/

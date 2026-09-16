@@ -1,4 +1,3 @@
-
 import { Controller } from './controller';
 
 /**
@@ -37,4 +36,3 @@ export class UIFilterController extends Controller {
     this.responseData(res, uiFilters);
   }
 }
-

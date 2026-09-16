@@ -1,5 +1,5 @@
 import { initialize as initializeConfig } from './lib/config';
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import { Db } from './lib/db';
 import { Providers } from './providers';
 import { Models } from './models';

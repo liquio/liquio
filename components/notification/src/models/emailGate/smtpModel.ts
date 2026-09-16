@@ -11,7 +11,7 @@ export class SmtpModel {
     this.log = global.log;
     this.config = conf.smtpServer || {};
 
-    this.senderEmail = this.config.sender_email || '\'noreply\' <noreply@localhost>';
+    this.senderEmail = this.config.sender_email || "'noreply' <noreply@localhost>";
   }
 
   get isEnabled(): boolean {
@@ -69,8 +69,8 @@ export class SmtpModel {
 
     const attachments = body.attachments
       ? body.attachments.map((v: any) => {
-        return { filename: v.filename, content: v.content, encoding: 'base64' };
-      })
+          return { filename: v.filename, content: v.content, encoding: 'base64' };
+        })
       : [];
 
     if (body.doNotEscapeEmail) {

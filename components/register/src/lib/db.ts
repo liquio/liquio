@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize';
 
 // Import local
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 
 /**
  * DB.

@@ -1,10 +1,9 @@
-
 import PropByPath from 'prop-by-path';
 import { Filler } from './filler';
 import { EventModel } from '../../../models/event';
 
 /**
- * Workflow events filler. 
+ * Workflow events filler.
  */
 export class WorkflowEventsFiller extends Filler {
   private static singleton: WorkflowEventsFiller;
@@ -34,13 +33,16 @@ export class WorkflowEventsFiller extends Filler {
     const { workflowId, events } = options;
 
     // Check options.
-    if (!workflowId) { return objectToFill; }
+    if (!workflowId) {
+      return objectToFill;
+    }
 
     // Handle all schema object pages.
     await this.handleAllElements(schemaObject, objectToFill, async (item, itemSchema) => {
       // Check current element shoudn't be defined.
-      if (!itemSchema || typeof itemSchema.value !== 'string'
-        || !itemSchema.value.startsWith('events.')) { return; }
+      if (!itemSchema || typeof itemSchema.value !== 'string' || !itemSchema.value.startsWith('events.')) {
+        return;
+      }
 
       // Define current value.
       // Sample: "events.11.data.cancellation.text".
@@ -56,14 +58,19 @@ export class WorkflowEventsFiller extends Filler {
         // Prepare events template IDs. Sort events from old to new to get last event with the same template ID.
         // Sample: { 11: { data: { cancellation: { text: "abc" } } } }.
         const eventsByTemplateIds: any = {};
-        events.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-          .forEach(v => eventsByTemplateIds[v.eventTemplateId] = v);
+        events
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          .forEach((v) => (eventsByTemplateIds[v.eventTemplateId] = v));
 
         // Define value to set.
         // Sample: "abc".
         valueToSet = PropByPath.get(eventsByTemplateIds, eventsPropertyPath);
-        if (valueToSet === null) { valueToSet = undefined; }
-      } catch (error) { global.log.save('workflow-event-field-filling-error', error, 'warn'); }
+        if (valueToSet === null) {
+          valueToSet = undefined;
+        }
+      } catch (error) {
+        global.log.save('workflow-event-field-filling-error', error, 'warn');
+      }
 
       // Return value to set.
       return valueToSet;
@@ -73,4 +80,3 @@ export class WorkflowEventsFiller extends Filler {
     return objectToFill;
   }
 }
-

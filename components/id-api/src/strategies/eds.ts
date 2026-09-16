@@ -1,7 +1,7 @@
 import { FindOptions } from 'sequelize';
 
 import { calculateUserCode } from '../lib/calculate_user_code';
-import { Log } from 'back-core';
+import { Log } from '@liquio/back-core';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserCreationAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';

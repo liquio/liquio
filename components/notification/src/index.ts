@@ -6,7 +6,7 @@ global.conf = config.conf;
 
 import start from './app';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
-import { Log, ConsoleLogProvider } from 'back-core';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import { typeOf } from './lib/type_of';
 
 global.typeOf = typeOf;

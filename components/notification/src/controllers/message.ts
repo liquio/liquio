@@ -336,7 +336,7 @@ export class Message extends Auth {
       return res.send({ error: { code: error.errorCode, message: error.message } });
     }
     if (!usersInfo[0]) {
-      return res.send({ error: { message: 'Can\'t find user data' } });
+      return res.send({ error: { message: "Can't find user data" } });
     }
     const user = usersInfo[0];
 
@@ -563,7 +563,7 @@ export class Message extends Auth {
         usersInfo = await this.getUsers([userId]);
         userInfo = usersInfo && usersInfo[0];
         if (!userInfo) {
-          return res.send(400, { error: { message: 'Can\'t find user by ID.' } });
+          return res.send(400, { error: { message: "Can't find user by ID." } });
         }
       } catch (error) {
         return res.send(400, { error: { message: 'User definition error.', details: error && error.message } });

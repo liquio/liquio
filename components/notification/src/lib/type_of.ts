@@ -1,15 +1,4 @@
-export type TypeOfResult =
-  | 'object'
-  | 'array'
-  | 'string'
-  | 'number'
-  | 'null'
-  | 'undefined'
-  | 'bigint'
-  | 'boolean'
-  | 'set'
-  | 'map'
-  | 'symbol';
+export type TypeOfResult = 'object' | 'array' | 'string' | 'number' | 'null' | 'undefined' | 'bigint' | 'boolean' | 'set' | 'map' | 'symbol';
 
 export function typeOf(value: unknown): TypeOfResult {
   const type = Object.prototype.toString.call(value);
