@@ -1,7 +1,5 @@
-import { createClient } from 'redis';
-
 import { CustomLogEntity } from '../../entities/custom_log';
-import { Sandbox } from '@liquio/back-core';
+import { RedisClient, Sandbox } from '@liquio/back-core';
 
 /**
  * Custom logs.
@@ -32,10 +30,7 @@ export class CustomLogs {
         redis: { ttl },
       } = config;
       this.cacheEnabled = isRedisEnabled && cacheEnabled;
-      this.client = (this.cacheEnabled && createClient({ socket: { host, port } })) || null;
-      this.client?.connect().catch((error) => {
-        global.log.save('custom-logs-cache-connection-error', error, 'error');
-      });
+      this.client = this.cacheEnabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => global.log }) : null;
 
       this.ttl = ttl;
       if (this.client) {
@@ -170,7 +165,7 @@ export class CustomLogs {
     // Save data to cache.
     const cacheKey = CustomLogEntity.getCacheKey(logParams);
     const dataString = JSON.stringify(logParams);
-    await this.client.set(cacheKey, dataString, { EX: this.ttl });
+    await this.client.set(cacheKey, dataString, this.ttl);
   }
 
   /**

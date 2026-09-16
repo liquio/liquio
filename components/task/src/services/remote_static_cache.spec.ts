@@ -1,19 +1,24 @@
 import nock from 'nock';
-import * as redis from 'redis';
 
-const { RemoteStaticCache } = require('./remote_static_cache');
-
-// Mock redis client
+// Mock the back-core RedisClient this service delegates to.
+const redisConstructorSpy = jest.fn();
 const mockRedisClient = {
-  connect: jest.fn().mockResolvedValue(undefined),
   get: jest.fn(),
   set: jest.fn(),
 };
 
-// Mock redis.createClient
-jest.mock('redis', () => ({
-  createClient: jest.fn(() => mockRedisClient),
-}));
+class BackCoreRedisClientMock {
+  constructor(config: any) {
+    redisConstructorSpy(config);
+    return mockRedisClient as any;
+  }
+}
+
+jest.mock('@liquio/back-core', () => ({ RedisClient: BackCoreRedisClientMock }));
+
+// Required (rather than imported) after the mock above is registered, since this file also
+// needs to reference `redisConstructorSpy`/`mockRedisClient` from module scope.
+const { RemoteStaticCache } = require('./remote_static_cache');
 
 // Mock global log
 global.log = {
@@ -27,10 +32,9 @@ describe('RemoteStaticCache', () => {
 
     // Clear all mocks
     jest.clearAllMocks();
-    mockRedisClient.connect.mockClear();
+    redisConstructorSpy.mockClear();
     mockRedisClient.get.mockClear();
     mockRedisClient.set.mockClear();
-    (redis.createClient as any).mockClear();
     (global.log.save as any).mockClear();
 
     // Clear nock
@@ -48,7 +52,7 @@ describe('RemoteStaticCache', () => {
 
       const cache = new RemoteStaticCache(config, redisConfig);
 
-      expect(redis.createClient).toHaveBeenCalledWith({ socket: { host: 'localhost', port: 6379 } });
+      expect(redisConstructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379 }));
       expect(cache.client).toBe(mockRedisClient);
       expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-initialized', {
         useCache: true,
@@ -63,7 +67,7 @@ describe('RemoteStaticCache', () => {
 
       const cache = new RemoteStaticCache(config, redisConfig);
 
-      expect(redis.createClient).not.toHaveBeenCalled();
+      expect(redisConstructorSpy).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
       expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
         useCache: true,
@@ -76,7 +80,7 @@ describe('RemoteStaticCache', () => {
 
       const cache = new RemoteStaticCache(config, redisConfig);
 
-      expect(redis.createClient).not.toHaveBeenCalled();
+      expect(redisConstructorSpy).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
       expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
         useCache: false,
@@ -89,7 +93,7 @@ describe('RemoteStaticCache', () => {
 
       const cache = new RemoteStaticCache(config, redisConfig);
 
-      expect(redis.createClient).not.toHaveBeenCalled();
+      expect(redisConstructorSpy).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
     });
 
@@ -101,7 +105,7 @@ describe('RemoteStaticCache', () => {
       const cache2 = new RemoteStaticCache(config, redisConfig);
 
       expect(cache1).toBe(cache2);
-      expect(redis.createClient).toHaveBeenCalledTimes(1);
+      expect(redisConstructorSpy).toHaveBeenCalledTimes(1);
     });
   });
 

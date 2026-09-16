@@ -1,5 +1,5 @@
 import PropByPath from 'prop-by-path';
-import { createClient } from 'redis';
+import { RedisClient } from '@liquio/back-core';
 import { DocumentUpdateLogEntity } from '../entities/document_update_log';
 
 /**
@@ -29,10 +29,7 @@ export class DocumentUpdateLog {
         redis: { ttl },
       } = config || { redis: { ttl: 60 } };
       this.enabled = isRedisEnabled && enabled;
-      this.client = (this.enabled && createClient({ socket: { host, port } })) || null;
-      this.client?.connect().catch((error) => {
-        global.log.save('document-update-log-connection-error', error, 'error');
-      });
+      this.client = this.enabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => global.log }) : null;
       this.ttl = ttl;
       if (this.client) {
         global.log.save('document-update-log-initialized', { enabled, host, port });
@@ -90,7 +87,7 @@ export class DocumentUpdateLog {
   async getByDocumentId(documentId, fromDate) {
     // Get document update log IDs.
     const idsSearchPattern = DocumentUpdateLogEntity.getIdSearchPattern(documentId);
-    const documentUpdateLogIds = await this.client.keys(idsSearchPattern);
+    const documentUpdateLogIds = await this.client.getKeys(idsSearchPattern);
     const documentUpdateLogIdsToGet = fromDate
       ? documentUpdateLogIds.filter((v) => new Date(parseInt(v.split('.')[3])) >= new Date(fromDate))
       : documentUpdateLogIds;
@@ -136,6 +133,6 @@ export class DocumentUpdateLog {
 
     // Set data as string with TTL.
     const dataString = JSON.stringify(documentUpdateLogEntity);
-    await this.client.set(documentUpdateLogEntity.id, dataString, { EX: this.ttl });
+    await this.client.set(documentUpdateLogEntity.id, dataString, this.ttl);
   }
 }

@@ -1,4 +1,4 @@
-import { createClient } from 'redis';
+import { RedisClient } from '@liquio/back-core';
 import axios from 'axios';
 
 // Constants.
@@ -26,10 +26,7 @@ export class RemoteStaticCache {
 
       // Remote static cache config.
       const { useCache = false } = config || {};
-      this.client = isRedisEnabled && useCache ? (host && port ? createClient({ socket: { host, port } }) : undefined) : undefined;
-      this.client?.connect().catch((error) => {
-        global.log.save('remote-static-cache-connection-error', error, 'error');
-      });
+      this.client = isRedisEnabled && useCache && host && port ? new RedisClient({ host, port, getLog: () => global.log }) : undefined;
       if (this.client) {
         global.log.save('remote-static-cache-initialized', { useCache, host, port });
       } else {
