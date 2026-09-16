@@ -1,6 +1,6 @@
 {
   "name": "@liquio/back-core",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "Shared TypeScript backend source consumed by Liquio components",
   "main": "dist/index.js",
@@ -29,6 +29,7 @@
     "lodash": "^4.18.1",
     "lru-cache": "^11.5.2",
     "moment": "^2.30.1",
+    "redis": "^5.11.0",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
