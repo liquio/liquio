@@ -1,9 +1,9 @@
-declare module 'react-input-mask' {
+declare module '@kerim-keskin/react-input-mask' {
   import { ComponentType, Ref } from 'react';
 
   interface InputMaskProps {
     mask?: string;
-    maskChar?: string | null;
+    maskPlaceholder?: string | null;
     formatChars?: Record<string, string>;
     alwaysShowMask?: boolean;
     inputRef?: Ref<HTMLInputElement>;

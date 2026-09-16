@@ -72,7 +72,7 @@
     "react-draggable-bottom-sheet": "1.17.0",
     "react-dropzone": "10.2.1",
     "react-file-icon": "1.0.0",
-    "react-input-mask": "2.0.4",
+    "@kerim-keskin/react-input-mask": "1.0.7",
     "react-jss": "10.10.0",
     "react-leaflet": "4.2.1",
     "react-leaflet-fullscreen": "4.1.1",

@@ -1,6 +1,6 @@
 {
   "name": "liquio-admin-front",
-  "version": "0.1.35",
+  "version": "0.1.36",
   "engines": {
     "node": "24"
   },
@@ -59,6 +59,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fast-csv/parse": "4.3.6",
     "@iconify/react": "^4.0.1",
+    "@kerim-keskin/react-input-mask": "^1.0.7",
     "@lifayt/material-ui-chip-input": "^1.3.15",
     "@lupus-ai/mui-currency-textfield": "1.0.3",
     "@monaco-editor/react": "^4.6.0",
@@ -132,7 +133,6 @@
     "react-draggable-bottom-sheet": "1.17.0",
     "react-dropzone": "10.2.1",
     "react-file-icon": "1.0.0",
-    "react-input-mask": "2.0.4",
     "react-jss": "10.10.0",
     "react-leaflet": "4.2.1",
     "react-leaflet-fullscreen": "4.1.1",
