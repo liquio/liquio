@@ -31,7 +31,9 @@ describe('RedisClient (cabinet-api wrapper)', () => {
   it('configures the back-core client with this component prefix and getLog', () => {
     new RedisClient({ host: 'localhost', port: 6379 });
 
-    expect(constructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379, prefix: process.env.npm_package_name || 'cabinet-api' }));
+    expect(constructorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ host: 'localhost', port: 6379, prefix: process.env.npm_package_name || 'cabinet-api' }),
+    );
     const config = constructorSpy.mock.calls[0][0];
     expect(config.getLog()).toBe(global.log);
   });
