@@ -1,7 +1,6 @@
-import { createClient, type RedisClientType } from 'redis';
+import { RedisClient, Sandbox } from '@liquio/back-core';
 
 import { CustomLogEntity } from '../entities/custom_log';
-import { Sandbox } from '@liquio/back-core';
 
 /**
  * Custom logs.
@@ -11,7 +10,7 @@ export class CustomLogs {
   private static singleton: CustomLogs;
 
   public cacheEnabled: boolean;
-  public client: RedisClientType | null;
+  public client: RedisClient | null;
   public ttl: number;
   public sandbox: Sandbox;
 
@@ -25,16 +24,11 @@ export class CustomLogs {
       // Save params.
       const { cacheEnabled, redis: { host, port, ttl } = {} } = config;
       this.cacheEnabled = !!cacheEnabled;
-      this.client = (this.cacheEnabled && createClient({ socket: { host, port } })) || null;
+      this.client = this.cacheEnabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => global.log }) : null;
       this.ttl = ttl;
       this.sandbox = new Sandbox();
       if (this.client) {
         global.log.save('custom-logs-cache-initialized', { cacheEnabled, host, port });
-        this.client.connect().catch((err) => {
-          global.log.save('custom-logs-cache-connection-error', {
-            error: err && err.message,
-          });
-        });
       } else {
         global.log.save('custom-logs-cache-not-initialized', { cacheEnabled });
       }
@@ -123,7 +117,7 @@ export class CustomLogs {
     // Save data to cache.
     const cacheKey = CustomLogEntity.getCacheKey(logParams);
     const dataString = JSON.stringify(logParams);
-    await this.client.set(cacheKey, dataString, { EX: this.ttl });
+    await this.client.set(cacheKey, dataString, this.ttl);
   }
 
   /**

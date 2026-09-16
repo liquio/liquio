@@ -694,7 +694,7 @@ export class BpmnWorkflowBusiness {
     const requestId = crypto.randomBytes(16).toString('hex');
     const redisKeyName = `${workflowTemplateId}-${requestId}`;
     if (global.redis) {
-      await global.redis.set(redisKeyName, JSON.stringify(workflowTemplateWithDependenciesToSave), 'EX', 15 * 60);
+      await global.redis.set(redisKeyName, JSON.stringify(workflowTemplateWithDependenciesToSave), 15 * 60);
     }
     return { requestId, diffs, length: diffs.length };
   }
@@ -840,7 +840,7 @@ export class BpmnWorkflowBusiness {
 
       await bpmnWorkflowTransaction.commit();
       if (global.redis) {
-        await global.redis.del(redisKeyName);
+        await global.redis.delete(redisKeyName);
       }
 
       global.log.save('user-copied-bpmn-workflow', { user, fromTemplateId: workflowTemplateId, toTemplateId: newWorkflowTemplateId });
