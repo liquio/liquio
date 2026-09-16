@@ -4,10 +4,10 @@ import setComponentsId from 'helpers/setComponentsId';
 import { translate } from 'react-translate';
 import { TextField, MenuItem } from '@mui/material';
 import withStyles from '@mui/styles/withStyles';
-import InputMask from 'react-input-mask';
+import InputMask from '@kerim-keskin/react-input-mask';
 import customInputStyle from 'assets/jss/components/customInputStyle';
 
-const Masked = (props) => <InputMask {...props} maskChar="" inputRef={props.ref} />;
+const Masked = (props) => <InputMask {...props} maskPlaceholder={null} inputRef={props.ref} />;
 
 Masked.propTypes = {
   ref: PropTypes.node,

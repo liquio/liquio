@@ -40,7 +40,7 @@
     "react-app-rewired": "^2.2.1",
     "react-dom": "18.2.0",
     "react-dropzone": "^14.3.8",
-    "react-input-mask": "^2.0.4",
+    "@kerim-keskin/react-input-mask": "1.0.7",
     "react-perfect-scrollbar": "^1.5.8",
     "react-redux": "^8.1.3",
     "react-render-html": "^0.6.0",

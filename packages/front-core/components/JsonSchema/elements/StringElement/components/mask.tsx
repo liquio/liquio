@@ -1,13 +1,14 @@
 import React from 'react';
-import InputMask from 'react-input-mask';
+import InputMask from '@kerim-keskin/react-input-mask';
 
 interface MaskedProps {
-  ref?: React.Ref<HTMLInputElement>;
   [key: string]: unknown;
 }
 
-const Masked = ({ ref, ...props }: MaskedProps) => (
-  <InputMask {...props} maskChar={null} inputRef={ref} />
-);
+const Masked = React.forwardRef<HTMLInputElement, MaskedProps>((props, ref) => (
+  <InputMask {...props} maskPlaceholder={null} ref={ref} />
+));
+
+Masked.displayName = 'Masked';
 
 export default Masked;

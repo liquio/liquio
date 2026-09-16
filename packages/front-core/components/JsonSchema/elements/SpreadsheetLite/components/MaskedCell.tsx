@@ -1,7 +1,7 @@
 import { generateUUID } from 'utils/uuid';
 import React from 'react';
 import MobileDetect from 'mobile-detect';
-import InputMask from 'react-input-mask';
+import InputMask from '@kerim-keskin/react-input-mask';
 import { makeStyles } from '@mui/styles';
 import MaterialInput from '@mui/material/Input';
 
@@ -110,7 +110,7 @@ const MaskedCell = (props: MaskedCellProps) => {
       id={id}
       mask={columnData?.mask}
       value={value as string}
-      maskChar={null}
+      maskPlaceholder={null}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
     >
