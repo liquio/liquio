@@ -22,7 +22,7 @@ updates:
 
   # Admin API
   - package-ecosystem: "npm"
-    directory: "/admin-api"
+    directory: "/components/admin-api"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -38,7 +38,7 @@ updates:
 
   # Admin Frontend
   - package-ecosystem: "npm"
-    directory: "/admin-front"
+    directory: "/components/admin-front"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -53,7 +53,7 @@ updates:
 
   # Cabinet API
   - package-ecosystem: "npm"
-    directory: "/cabinet-api"
+    directory: "/components/cabinet-api"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -68,7 +68,7 @@ updates:
 
   # Cabinet Frontend
   - package-ecosystem: "npm"
-    directory: "/cabinet-front"
+    directory: "/components/cabinet-front"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -83,7 +83,7 @@ updates:
 
   # ID API
   - package-ecosystem: "npm"
-    directory: "/id-api"
+    directory: "/components/id-api"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -98,7 +98,7 @@ updates:
 
   # ID Frontend
   - package-ecosystem: "npm"
-    directory: "/id-front"
+    directory: "/components/id-front"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -113,7 +113,7 @@ updates:
 
   # Task Service
   - package-ecosystem: "npm"
-    directory: "/task"
+    directory: "/components/task"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -128,7 +128,7 @@ updates:
 
   # Gateway
   - package-ecosystem: "npm"
-    directory: "/gateway"
+    directory: "/components/gateway"
     schedule:
       interval: "weekly"
       day: "wednesday"
@@ -143,7 +143,7 @@ updates:
 
   # Manager
   - package-ecosystem: "npm"
-    directory: "/manager"
+    directory: "/components/manager"
     schedule:
       interval: "weekly"
       day: "wednesday"
@@ -158,7 +158,7 @@ updates:
 
   # Notification Service
   - package-ecosystem: "npm"
-    directory: "/notification"
+    directory: "/components/notification"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -173,7 +173,7 @@ updates:
 
   # Register Service
   - package-ecosystem: "npm"
-    directory: "/register"
+    directory: "/components/register"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -188,7 +188,7 @@ updates:
 
   # Event Service
   - package-ecosystem: "npm"
-    directory: "/event"
+    directory: "/components/event"
     schedule:
       interval: "weekly"
       day: "friday"
@@ -203,7 +203,7 @@ updates:
 
   # File Storage Service
   - package-ecosystem: "npm"
-    directory: "/filestorage"
+    directory: "/components/filestorage"
     schedule:
       interval: "weekly"
       day: "friday"
@@ -218,7 +218,7 @@ updates:
 
   # External Reader
   - package-ecosystem: "npm"
-    directory: "/external-reader"
+    directory: "/components/external-reader"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -233,7 +233,7 @@ updates:
 
   # PDF Generator
   - package-ecosystem: "npm"
-    directory: "/pdf-generator"
+    directory: "/components/pdf-generator"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -248,7 +248,7 @@ updates:
 
   # Sign Tool
   - package-ecosystem: "npm"
-    directory: "/sign-tool"
+    directory: "/components/sign-tool"
     schedule:
       interval: "weekly"
       day: "wednesday"
@@ -263,7 +263,7 @@ updates:
 
   # Front Core (shared frontend)
   - package-ecosystem: "npm"
-    directory: "/front-core"
+    directory: "/packages/front-core"
     schedule:
       interval: "weekly"
       day: "thursday"
