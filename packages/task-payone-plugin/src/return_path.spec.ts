@@ -1,4 +1,4 @@
-import { resolveReturnPath } from "./return_path";
+import { resolveFailedPaymentStep, resolveReturnPath } from "./return_path";
 
 describe("resolveReturnPath", () => {
   const base = "https://cabinet.example/tasks/{taskId}";
@@ -25,5 +25,29 @@ describe("resolveReturnPath", () => {
     expect(
       resolveReturnPath("/tasks/1", "javascript:alert(1)"),
     ).toBeUndefined();
+  });
+});
+
+describe("resolveFailedPaymentStep", () => {
+  it("preserves query and fragment when adding the payment step", () => {
+    expect(
+      resolveFailedPaymentStep(
+        "https://cabinet.example/tasks/task-1/?lang=de#payment",
+        "task-1",
+        "paymentInfo.properties.group.properties.paymentControl",
+      ),
+    ).toBe("https://cabinet.example/tasks/task-1/paymentInfo?lang=de#payment");
+  });
+
+  it.each([
+    undefined,
+    "https://cabinet.example/tasks/task-1/existingStep",
+    "https://cabinet.example/custom/task-1",
+    "https://cabinet.example/tasks/another-task",
+    "/tasks/task-1",
+  ])("preserves a custom or missing redirect: %s", (url) => {
+    expect(
+      resolveFailedPaymentStep(url, "task-1", "paymentInfo.properties.control"),
+    ).toBe(url);
   });
 });

@@ -1176,6 +1176,38 @@ describe("PayoneProvider", () => {
       frontRedirectUrl: "https://cabinet.example/tasks/{taskId}",
     };
 
+    it.each([
+      ["CANCELLED", undefined, undefined, "paymentInfo"],
+      ["PAYMENT_CREATED", "SUCCESSFUL", "U", "paymentInfo"],
+      ["PAYMENT_CREATED", "SUCCESSFUL", "Y", undefined],
+      ["IN_PROGRESS", undefined, undefined, undefined],
+    ])(
+      "restores the payment step only for a failed legacy checkout (%s, %s, %s)",
+      async (checkoutStatus, paymentStatus, authenticationStatus, step) => {
+        getCheckoutRequestMock.mockResolvedValue({
+          checkoutStatus,
+          statusOutput: { paymentStatus },
+          threeDSecureAuthenticationStatus: authenticationStatus,
+        });
+        const provider = new PayoneProvider(context, options);
+        const result = await provider.handleStatus(
+          "",
+          runtimeOptions,
+          "success",
+          {
+            documentId: "doc-1",
+            taskId: "task-1",
+            paymentControlPath: "paymentInfo.properties.paymentControl",
+            hostedCheckoutId: "checkout-return",
+          },
+          {},
+        );
+        expect(result.extraData.redirectUrl).toBe(
+          `https://cabinet.example/tasks/task-1${step ? `/${step}` : ""}`,
+        );
+      },
+    );
+
     it.each(["COMPLETED", "CANCELLED"])(
       "persists and restores the path after a %s checkout without changing the backend callback",
       async (checkoutStatus) => {

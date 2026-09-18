@@ -20,3 +20,28 @@ export function resolveReturnPath(
     return undefined;
   }
 }
+
+/** Older checkouts have no saved return path. Keep failed payments on their form step. */
+export function resolveFailedPaymentStep(
+  redirectUrl: string | undefined,
+  taskId: string | undefined,
+  paymentControlPath: string,
+): string | undefined {
+  const step = paymentControlPath.split(".properties.")[0];
+  if (!redirectUrl || !taskId || step === paymentControlPath)
+    return redirectUrl;
+  try {
+    const target = new URL(redirectUrl);
+    // Only extend the standard task-root destination; preserve custom routes and explicit steps.
+    if (
+      ["http:", "https:"].includes(target.protocol) &&
+      target.pathname.replace(/\/$/, "").endsWith(`/tasks/${taskId}`)
+    ) {
+      target.pathname = `${target.pathname.replace(/\/$/, "")}/${encodeURIComponent(step)}`;
+      return target.href;
+    }
+  } catch {
+    // Preserve existing handling of non-URL redirect templates.
+  }
+  return redirectUrl;
+}
