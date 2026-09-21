@@ -35,7 +35,7 @@ Per-service image tag versions managed in chart templates.
   "external-reader" "0.1.6"
   "filestorage" "0.1.4"
   "gateway" "0.1.5"
-  "id-api" "0.1.18"
+  "id-api" "0.1.19"
   "id-front" "0.1.5"
   "manager" "0.1.11"
   "notification" "0.1.9"

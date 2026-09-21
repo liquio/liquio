@@ -8,6 +8,28 @@ import { Models, UserAttributes } from '../models';
 import { OIDCProviderConfig } from '../config';
 import { PKCEOAuth2Strategy, generatePKCEParameters } from './passport_libs/passport-oidc/strategy';
 
+/**
+ * Set a value at a dotted path (e.g. "addressStruct.postcode") on `target`, cloning
+ * intermediate objects from `base` on first touch so sibling keys already present on
+ * the existing record aren't lost when only some nested fields are being mapped.
+ */
+function setNestedValue(target: Record<string, any>, path: string, value: any, base?: Record<string, any>): void {
+  const parts = path.split('.');
+  let cursor = target;
+  let baseCursor = base;
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    if (typeof cursor[part] !== 'object' || cursor[part] === null) {
+      cursor[part] = { ...(baseCursor?.[part] as Record<string, any> | undefined) };
+    }
+    cursor = cursor[part];
+    baseCursor = baseCursor?.[part];
+  }
+
+  cursor[parts[parts.length - 1]] = value;
+}
+
 interface OIDCMetadata {
   authorization_endpoint: string;
   token_endpoint: string;
@@ -365,12 +387,6 @@ class OidcProvider {
         middle_name: mapped.middle_name || userInfo.middle_name,
       };
 
-      for (const [key, value] of Object.entries(mapped)) {
-        if (!['email', 'phone', 'first_name', 'last_name', 'middle_name'].includes(key)) {
-          (userData as Record<string, any>)[key] = value;
-        }
-      }
-
       const providerKey = `oidc-${providerId}`;
 
       let existingUser: UserAttributes | null = null;
@@ -391,6 +407,22 @@ class OidcProvider {
             where: { email: userData.email },
           })
           .then((row) => row?.dataValues as UserAttributes);
+      }
+
+      // Mapping keys may be dotted (e.g. "addressStruct.postcode") to merge a claim into a
+      // nested JSON column field-by-field instead of overwriting the whole column. Nested
+      // targets are seeded from the existing user's current value so unrelated sibling keys
+      // (e.g. a domestic addressStruct.city set by another flow) survive the merge.
+      for (const [key, value] of Object.entries(mapped)) {
+        if (['email', 'phone', 'first_name', 'last_name', 'middle_name'].includes(key)) {
+          continue;
+        }
+
+        if (key.includes('.')) {
+          setNestedValue(userData as Record<string, any>, key, value, existingUser as unknown as Record<string, any>);
+        } else {
+          (userData as Record<string, any>)[key] = value;
+        }
       }
 
       if (!userData.ipn) {
