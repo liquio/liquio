@@ -21,12 +21,20 @@ it('settles after initializing a phone field with a restricted country list', ()
   expect(screen.getByRole('textbox', { name: 'Phone number' })).toHaveValue('+49');
 });
 
- it('settles while typing into a controlled phone field', () => {
+it('settles while typing into a controlled phone field', () => {
   const onChange = vi.fn();
   const Harness = () => {
     const [value, setValue] = React.useState('');
-    return <Phone defaultCountry="ua" name="phone" parentValue={{ phone: value }} value={value}
-      t={() => 'Phone number'} onChange={(next: string) => { onChange(next); setValue(next); }} />;
+    return (
+      <Phone
+        defaultCountry="ua"
+        name="phone"
+        parentValue={{ phone: value }}
+        value={value}
+        t={() => 'Phone number'}
+        onChange={(next: string) => { onChange(next); setValue(next); }}
+      />
+    );
   };
   render(<ThemeProvider theme={createTheme()}><StylesThemeProvider theme={createTheme()}><Harness /></StylesThemeProvider></ThemeProvider>);
   const input = screen.getByRole('textbox', { name: 'Phone number' });
