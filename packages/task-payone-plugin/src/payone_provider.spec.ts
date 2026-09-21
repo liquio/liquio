@@ -212,6 +212,9 @@ describe("PayoneProvider", () => {
       expect(createHostedCheckoutRawRequestMock).toHaveBeenCalledWith(
         expect.objectContaining({
           cardPaymentMethodSpecificInput: { authorizationMode: "SALE" },
+          hostedCheckoutSpecificInput: expect.objectContaining({
+            allowedNumberOfPaymentAttempts: 1,
+          }),
         }),
       );
     });
@@ -725,6 +728,32 @@ describe("PayoneProvider", () => {
         expect(result.status).toEqual({ isSuccess: false, isPending: false });
       });
 
+      it("allows replacement of a rejected checkout only when its single attempt is exhausted", async () => {
+        getCheckoutRequestMock.mockResolvedValue({
+          checkoutStatus: "PAYMENT_CREATED",
+          statusOutput: { paymentStatus: PayonePaymentStatusCategory.Rejected },
+        });
+        const provider = new PayoneProvider(context, options);
+        const result = await provider.handleStatus(
+          {
+            documentId: "doc-1",
+            paymentControlPath: "payment",
+            checkoutId: "checkout-1",
+            extraData: { singlePaymentAttempt: true },
+          },
+          {},
+          "",
+          {},
+          {},
+          true,
+        );
+        expect(result.status).toEqual({
+          isSuccess: false,
+          isPending: false,
+          canRetry: true,
+        });
+      });
+
       it("reports isPending: false once the consumer has cancelled the checkout", async () => {
         getCheckoutRequestMock.mockResolvedValue({
           commerceCaseId: "commerce-case-1",
@@ -741,7 +770,11 @@ describe("PayoneProvider", () => {
           {},
         );
 
-        expect(result.status).toEqual({ isSuccess: false, isPending: false });
+        expect(result.status).toEqual({
+          isSuccess: false,
+          isPending: false,
+          canRetry: true,
+        });
       });
 
       it("reports isPending: false for a successful payment", async () => {

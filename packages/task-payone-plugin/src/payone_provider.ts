@@ -138,6 +138,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       hostedCheckoutSpecificInput: {
         returnUrl,
         showResultPage: false,
+        allowedNumberOfPaymentAttempts: 1,
       },
     };
 
@@ -145,7 +146,9 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       const response = await this.client.hostedCheckout.createHostedCheckout(
         this.options.merchantId,
         request,
-        null,
+        input.paymentAttemptId
+          ? { idempotence: { key: String(input.paymentAttemptId) } }
+          : null,
       );
       if (!response.isSuccess) {
         throw this.formatSdkResponseError(response);
@@ -178,6 +181,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
         // while the legacy `payment` control reads `paymentRequestData.url` - and needs it present
         // to stop re-initiating a brand-new checkout on every poll.
         extraData: {
+          singlePaymentAttempt: true,
           user_action_required: true,
           user_action_url: redirectUrl,
         },
@@ -427,19 +431,18 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       checkout.createdPaymentOutput?.paymentStatusCategory ===
         PayonePaymentStatusCategory.Successful && authenticationStatus !== "U";
 
-    // A checkout is only safe to treat as still-open/reusable while it is in one of the three
-    // pre-payment-attempt statuses - PAYONE's own lifecycle reaches `PAYMENT_CREATED` as soon as
-    // ANY payment attempt exists (approved or declined, see the comment above `isSuccess`), and
-    // there are further terminal statuses this provider does not otherwise classify (e.g. a
-    // chargeback). Rather than enumerate every terminal/failure status (and risk treating an
-    // unrecognized one as still-open), this allowlists only the statuses that are unambiguously
-    // "no payment attempt has happened yet" - anything else (including an unknown/future status)
-    // falls back to the pre-existing behavior of minting a new checkout.
-    //
-    // `document.ts#calculatePayment` uses this (via `checkPrevTransaction`) to redirect a second
-    // concurrent request (e.g. the same payment page open in two browser tabs) back to this SAME
-    // checkout instead of creating a brand new one - creating a second live checkout for the same
-    // order is what let a customer complete (and get charged for) payment twice.
+    // A failed authorization only closes a checkout when its retry budget is exhausted.
+    // Legacy checkouts allowed multiple attempts, so never replace them on rejection alone.
+    const canRetry =
+      checkout.status === PayoneCheckoutStatus.CancelledByConsumer ||
+      (checkout.status === PayoneCheckoutStatus.PaymentCreated &&
+        checkout.createdPaymentOutput?.paymentStatusCategory ===
+          PayonePaymentStatusCategory.Rejected &&
+        (
+          parsedData?.extraData as
+            { singlePaymentAttempt?: boolean } | undefined
+        )?.singlePaymentAttempt === true);
+
     const isPending =
       !isSuccess &&
       (
@@ -492,7 +495,7 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       documentId,
       paymentControlPath,
       transactionId,
-      status: { isSuccess, isPending },
+      status: { isSuccess, isPending, ...(canRetry ? { canRetry: true } : {}) },
       extraData: {
         order_id: payment?.paymentOutput?.references?.merchantReference,
         commerceCaseId,
