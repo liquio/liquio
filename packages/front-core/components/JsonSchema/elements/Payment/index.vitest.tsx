@@ -2,28 +2,43 @@ import React from 'react';
 import { act, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { Payment } from './index';
+
 vi.mock('react-translate', () => ({ translate: () => (component: unknown) => component }));
 vi.mock('react-redux', () => ({ connect: () => (component: unknown) => component }));
 vi.mock('application/actions/task', () => ({ getPaymentInfo: vi.fn(), getPaymentStatus: vi.fn(), confirmSmsCode: vi.fn(), loadTask: vi.fn() }));
 vi.mock('components/JsonSchema/elements/Payment/layout', () => ({ default: () => null }));
 vi.mock('components/JsonSchema/elements/Payment/qrLayout', () => ({ default: () => null }));
 vi.mock('components/JsonSchema/elements/Payment/phoneLayout', () => ({ default: () => null }));
-vi.mock('components/JsonSchema/components/ElementContainer', () => ({ default: ({ children }: any) => <>{children}</> }));
+vi.mock('components/JsonSchema/components/ElementContainer', () => ({
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 vi.mock('modules/tasks/pages/Task/components/SuccessMessage', () => ({ default: () => null }));
 vi.mock('actions/error', () => ({ addMessage: vi.fn() }));
 vi.mock('services/processList', () => ({ default: { hasOrSet: vi.fn() } }));
 
-import { Payment } from './index';
-
 function setup() {
   const ref = React.createRef<Payment>();
   const actions = { getPaymentInfo: vi.fn(), getPaymentStatus: vi.fn(), confirmSmsCode: vi.fn(), loadTask: vi.fn(), addMessage: vi.fn() };
-  render(<Payment ref={ref} t={(key: string) => key} importActions={actions} rootDocument={{ id: 'doc', data: {} }}
-    paymentControlPath="payment" taskId="task" task={{}} path={['payment']} recipients={{ amount: 10 }} />);
+  render(
+    <Payment
+      ref={ref}
+      t={(key: string) => key}
+      importActions={actions}
+      rootDocument={{ id: 'doc', data: {} }}
+      paymentControlPath="payment"
+      taskId="task"
+      task={{}}
+      path={['payment']}
+      recipients={{ amount: 10 }}
+    />,
+  );
   return { component: ref.current!, actions };
 }
 
-const paymentResult = (processed: any[] = [], body = 'data=fresh&signature=sig') => ({
+type ProcessedEntry = { transactionId: string; status: { isSuccess: boolean; isPending?: boolean } };
+
+const paymentResult = (processed: ProcessedEntry[] = [], body = 'data=fresh&signature=sig') => ({
   data: { payment: { calculated: { amount: 10, paymentRequestData: { requestUrl: 'https://provider.example', requestMethod: 'POST', body } }, processed } },
 });
 
