@@ -21,8 +21,8 @@ export function resolveReturnPath(
   }
 }
 
-/** Older checkouts have no saved return path. Keep failed payments on their form step. */
-export function resolveFailedPaymentStep(
+/** Restore the payment step when a checkout return destination only identifies the task. */
+export function resolvePaymentStep(
   redirectUrl: string | undefined,
   taskId: string | undefined,
   paymentControlPath: string,
