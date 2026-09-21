@@ -1,4 +1,4 @@
-import { resolveFailedPaymentStep, resolveReturnPath } from "./return_path";
+import { resolvePaymentStep, resolveReturnPath } from "./return_path";
 
 describe("resolveReturnPath", () => {
   const base = "https://cabinet.example/tasks/{taskId}";
@@ -28,10 +28,10 @@ describe("resolveReturnPath", () => {
   });
 });
 
-describe("resolveFailedPaymentStep", () => {
+describe("resolvePaymentStep", () => {
   it("preserves query and fragment when adding the payment step", () => {
     expect(
-      resolveFailedPaymentStep(
+      resolvePaymentStep(
         "https://cabinet.example/tasks/task-1/?lang=de#payment",
         "task-1",
         "paymentInfo.properties.group.properties.paymentControl",
@@ -47,7 +47,7 @@ describe("resolveFailedPaymentStep", () => {
     "/tasks/task-1",
   ])("preserves a custom or missing redirect: %s", (url) => {
     expect(
-      resolveFailedPaymentStep(url, "task-1", "paymentInfo.properties.control"),
+      resolvePaymentStep(url, "task-1", "paymentInfo.properties.control"),
     ).toBe(url);
   });
 });

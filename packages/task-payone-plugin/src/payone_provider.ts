@@ -1,4 +1,4 @@
-import { resolveFailedPaymentStep, resolveReturnPath } from "./return_path";
+import { resolvePaymentStep, resolveReturnPath } from "./return_path";
 import {
   PluginContext,
   TaskPaymentProvider,
@@ -481,15 +481,12 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
       taskId && runtimeOptions.frontRedirectUrl
         ? runtimeOptions.frontRedirectUrl.replace(/\{taskId\}/g, taskId)
         : undefined;
-    const redirectUrl =
+    const redirectUrl = resolvePaymentStep(
       resolveReturnPath(returnPath, runtimeOptions.frontRedirectUrl) ??
-      (!isSuccess && !isPending
-        ? resolveFailedPaymentStep(
-            defaultRedirectUrl,
-            taskId,
-            paymentControlPath,
-          )
-        : defaultRedirectUrl);
+        defaultRedirectUrl,
+      taskId,
+      paymentControlPath,
+    );
 
     return {
       documentId,

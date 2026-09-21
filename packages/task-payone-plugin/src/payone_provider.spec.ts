@@ -1179,10 +1179,10 @@ describe("PayoneProvider", () => {
     it.each([
       ["CANCELLED", undefined, undefined, "paymentInfo"],
       ["PAYMENT_CREATED", "SUCCESSFUL", "U", "paymentInfo"],
-      ["PAYMENT_CREATED", "SUCCESSFUL", "Y", undefined],
-      ["IN_PROGRESS", undefined, undefined, undefined],
+      ["PAYMENT_CREATED", "SUCCESSFUL", "Y", "paymentInfo"],
+      ["IN_PROGRESS", undefined, undefined, "paymentInfo"],
     ])(
-      "restores the payment step only for a failed legacy checkout (%s, %s, %s)",
+      "restores the payment step for every legacy checkout outcome (%s, %s, %s)",
       async (checkoutStatus, paymentStatus, authenticationStatus, step) => {
         getCheckoutRequestMock.mockResolvedValue({
           checkoutStatus,
@@ -1204,6 +1204,41 @@ describe("PayoneProvider", () => {
         );
         expect(result.extraData.redirectUrl).toBe(
           `https://cabinet.example/tasks/task-1${step ? `/${step}` : ""}`,
+        );
+      },
+    );
+
+    it.each(["COMPLETED", "CANCELLED", "IN_PROGRESS"])(
+      "restores the step when a %s checkout saved only the task root",
+      async (checkoutStatus) => {
+        getCheckoutRequestMock.mockResolvedValue({ checkoutStatus });
+        const provider = new PayoneProvider(
+          {
+            ...context,
+            paymentTransactions: {
+              create: jest.fn(),
+              resolve: jest.fn().mockResolvedValue({
+                documentId: "doc-1",
+                taskId: "task-1",
+                paymentControlPath: "paymentInfo.properties.paymentControl",
+                extraData: { returnPath: "/tasks/task-1?lang=de#payment" },
+              }),
+            },
+          },
+          options,
+        );
+        const result = await provider.handleStatus(
+          "",
+          runtimeOptions,
+          "success",
+          {
+            paymentTransactionId: "return-tx",
+            hostedCheckoutId: "checkout-return",
+          },
+          {},
+        );
+        expect(result.extraData.redirectUrl).toBe(
+          "https://cabinet.example/tasks/task-1/paymentInfo?lang=de#payment",
         );
       },
     );
