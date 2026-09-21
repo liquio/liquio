@@ -21,6 +21,7 @@ import { EventTemplateModel } from './event_template';
 import { GatewayModel } from './gateway';
 import { GatewayTemplateModel } from './gateway_template';
 import { PaymentLogsModel } from './payment_logs';
+import { PaymentCheckoutsModel } from './payment_checkouts';
 import { PaymentTransactionsModel } from './payment_transactions';
 import { CustomLogTemplateModel } from './custom_log_template';
 import { CustomLogModel } from './custom_log';
@@ -59,6 +60,7 @@ const MODELS_CLASSES_LIST = {
   GatewayTemplateModel,
   PaymentLogsModel,
   PaymentTransactionsModel,
+  PaymentCheckoutsModel,
   CustomLogTemplateModel,
   CustomLogModel,
   AccessHistoryModel,
@@ -129,6 +131,7 @@ export class Models {
       gatewayTemplate: GatewayTemplateModel,
       paymentLogs: PaymentLogsModel,
       paymentTransactions: PaymentTransactionsModel,
+      paymentCheckouts: PaymentCheckoutsModel,
       customLogTemplate: CustomLogTemplateModel,
       customLog: CustomLogModel,
       accessHistory: AccessHistoryModel,

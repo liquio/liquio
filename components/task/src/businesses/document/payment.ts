@@ -178,51 +178,86 @@ export class DocumentPaymentBusiness extends Business {
     // Check if sum for test.
     const { sumForTest } = this.config.payment || {};
 
-    // Check if previous payment status is handled.
-    let documentDataObject = document.data;
-    const controlPaymentData = PropByPath.get(documentDataObject, paymentDocumentPath);
-    const calculatedData = controlPaymentData && controlPaymentData[CALCULATED_PAYMENT_PATH];
-
-    if (calculatedData && calculatedData.transactionId) {
-      const processedData = controlPaymentData && controlPaymentData[PROCESSED_PAYMENT_PATH];
-      const lastProcessedPayment = processedData && processedData[processedData.length - 1];
-      if (
-        !processedData ||
-        !processedData.length ||
-        (lastProcessedPayment && lastProcessedPayment.transactionId && lastProcessedPayment.transactionId !== calculatedData.transactionId)
-      ) {
-        let statusInfo;
-        let rewriteCalculatedData = false;
-        try {
-          statusInfo = await this.handlePaymentStatus(calculatedData, paymentCustomer, calculatedData.transactionId, undefined, undefined, true);
-        } catch {
-          rewriteCalculatedData = true;
-        }
-        if (!rewriteCalculatedData && statusInfo && statusInfo.transactionId === calculatedData.transactionId) {
-          const documentWithPrevState = await global.models.document.findById(documentId);
-          if (!documentWithPrevState) {
-            global.log.save('get-document-with-payment-status-error', { documentWithPrevState }, 'error');
-            throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
-          }
-          if (statusInfo.status && statusInfo.status.isSuccess) return documentWithPrevState;
-          // The previous checkout is still open on the provider's side (not yet paid, not
-          // failed/rejected/cancelled) - reuse it instead of creating a second live payment
-          // session for the same document. Without this, opening the payment page in two tabs
-          // (or re-polling before the first checkout resolves) hands out two independently
-          // completable checkouts for one order, and completing both charges the customer twice.
-          if (statusInfo.status && statusInfo.status.isPending) return documentWithPrevState;
-          documentDataObject = documentWithPrevState.data;
-        }
-      }
-    }
-
     // Resolve amount/description/orderId/etc. formulas against the document (either the
     // `recipients`-list array form, or the single-recipient object form).
     const resolvedPaymentAmount = this.resolvePaymentAmount(document, paymentControlPath, jsonSchema);
     const isRecipientsList = Array.isArray(resolvedPaymentAmount);
 
+    // The database owns the checkout, never a browser tab or login session. Adopt legacy
+    // calculated data on first access so deploying this guard does not invalidate open checkouts.
+    const resolvedDocumentId = document.id;
+    let documentDataObject = document.data;
+    let controlPaymentData = PropByPath.get(documentDataObject, paymentDocumentPath);
+    const checkouts = global.models.paymentCheckouts;
+    const alreadyPaid = () => controlPaymentData?.processed?.find((entry) => entry?.status?.isSuccess);
+    let checkout = await checkouts.find(resolvedDocumentId, paymentDocumentPath);
+    let reserved = false;
+    if (!checkout) {
+      const inserted = await checkouts.reserve(resolvedDocumentId, paymentDocumentPath, controlPaymentData?.calculated ?? null);
+      reserved = !!inserted && !inserted.calculated;
+      checkout = inserted ?? (await checkouts.find(resolvedDocumentId, paymentDocumentPath));
+    }
+    if (alreadyPaid() || checkout.paid) {
+      if (alreadyPaid()) await checkouts.markPaid(resolvedDocumentId, paymentDocumentPath, alreadyPaid());
+      if (!alreadyPaid() && checkout.success_status) {
+        const control = controlPaymentData || {};
+        PropByPath.set(document.data, paymentDocumentPath, {
+          ...control,
+          calculated: control.calculated || checkout.calculated,
+          processed: [...(control.processed || []), checkout.success_status],
+        });
+        await global.models.document.updateData(resolvedDocumentId, userId, document.data);
+      }
+      return document;
+    }
+
+    if (!reserved) {
+      if (!checkout.calculated) {
+        // A crashed/timed-out provider call might have created a payable checkout. Do not
+        // release this reservation on a timer; it requires provider reconciliation.
+        throw Object.assign(new Error('Payment initialization is in progress or awaiting reconciliation. Please retry later.'), {
+          httpStatusCode: 409,
+        });
+      }
+      // Recover the document projection if the process died after saving the provider result.
+      documentDataObject = await this.storeCalculatedPayment(resolvedDocumentId, paymentDocumentPath, checkout.calculated, userId);
+      controlPaymentData = PropByPath.get(documentDataObject, paymentDocumentPath);
+      // Errors and unknown results deliberately propagate instead of minting another checkout.
+      const statusInfo = await this.handlePaymentStatus(
+        checkout.calculated,
+        paymentCustomer,
+        checkout.calculated.transactionId,
+        undefined,
+        undefined,
+        true,
+      );
+      const currentDocument = await global.models.document.findById(resolvedDocumentId);
+      if (!currentDocument) throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      controlPaymentData = PropByPath.get(currentDocument.data, paymentDocumentPath);
+      if (alreadyPaid() || statusInfo?.status?.isSuccess) {
+        await checkouts.markPaid(resolvedDocumentId, paymentDocumentPath, alreadyPaid() || statusInfo);
+        return currentDocument;
+      }
+      if (statusInfo?.transactionId !== checkout.calculated.transactionId) {
+        throw new Error("Can't verify the existing payment transaction.");
+      }
+      if (statusInfo.status?.isPending) return currentDocument;
+      // Providers must explicitly guarantee that this checkout cannot accept payment anymore.
+      if (statusInfo.status?.canRetry !== true) {
+        throw Object.assign(new Error('Payment status is uncertain. Please retry the status check later.'), { httpStatusCode: 409 });
+      }
+      const replacement = await checkouts.reserve(resolvedDocumentId, paymentDocumentPath, null, checkout.attempt_id);
+      if (!replacement) {
+        // Another device won the reservation (or a success callback arrived).
+        throw Object.assign(new Error('Payment has changed. Please refresh its status.'), { httpStatusCode: 409 });
+      }
+      checkout = replacement;
+      documentDataObject = currentDocument.data;
+    }
+
     const paymentData = await this.host.paymentService.calculatePayment({
       paymentSystemParams,
+      paymentAttemptId: checkout.attempt_id,
       documentId: documentId || document.id,
       workflowId: workflowId || (document.task && document.task.workflowId),
       taskId: document.task && document.task.id,
@@ -240,23 +275,24 @@ export class DocumentPaymentBusiness extends Business {
     }
     global.log.save('get-payment-data', { paymentData });
 
-    // Update document with payment data.
-    if (!controlPaymentData) PropByPath.set(documentDataObject, paymentDocumentPath, {});
-    PropByPath.set(documentDataObject, `${paymentDocumentPath}.${CALCULATED_PAYMENT_PATH}`, paymentData);
+    // Persist the result before updating the document. A later request can recover this
+    // projection without contacting the provider to create another checkout.
+    await checkouts.saveCalculated(checkout, paymentData);
+    await this.storeCalculatedPayment(resolvedDocumentId, paymentDocumentPath, paymentData, userId);
+    return global.models.document.findById(resolvedDocumentId);
+  }
 
-    let calculatedPaymentHistory = PropByPath.get(documentDataObject, `${paymentDocumentPath}.${CALCULATED_PAYMENT_HISTORY_PATH}`);
-    if (!Array.isArray(calculatedPaymentHistory)) calculatedPaymentHistory = [];
-    calculatedPaymentHistory.push(paymentData);
-    PropByPath.set(documentDataObject, `${paymentDocumentPath}.${CALCULATED_PAYMENT_HISTORY_PATH}`, calculatedPaymentHistory);
-
-    const updatedDocument = await global.models.document.updateData(documentId || document.id, userId, documentDataObject);
-    if (!updatedDocument) {
-      throw new Error(ERROR_UPDATE_DOCUMENT);
-    }
-    global.log.save('update-document-with-payment-data', { updatedDocument });
-
-    // Return document.
-    return updatedDocument;
+  private async storeCalculatedPayment(documentId: string, path: string, calculated: any, userId?: string): Promise<any> {
+    const document = await global.models.document.findById(documentId);
+    if (!document) throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+    const control = PropByPath.get(document.data, path) || {};
+    if (control.calculated?.transactionId === calculated.transactionId) return document.data;
+    const history = Array.isArray(control.calculatedHistory) ? control.calculatedHistory : [];
+    if (!history.some((entry) => entry.transactionId === calculated.transactionId)) history.push(calculated);
+    PropByPath.set(document.data, path, { ...control, calculated, calculatedHistory: history });
+    const updated = await global.models.document.updateData(documentId, userId, document.data);
+    if (!updated) throw new Error(ERROR_UPDATE_DOCUMENT);
+    return updated.data;
   }
 
   /**
@@ -312,6 +348,15 @@ export class DocumentPaymentBusiness extends Business {
     global.log.save('get-document-to-handle-payment-status', {
       document: { ...document, data: HIDE_REPLACEMENT_TEXT, documentTemplate: HIDE_REPLACEMENT_TEXT },
     }); // Do not log large document.data and document.documentTemplate.
+
+    if (statusInfo.status?.isSuccess) {
+      await global.models.paymentCheckouts.reserve(
+        documentId,
+        paymentDocumentPath,
+        PropByPath.get(document.data, `${paymentDocumentPath}.calculated`) ?? null,
+      );
+      await global.models.paymentCheckouts.markPaid(documentId, paymentDocumentPath, statusInfo);
+    }
 
     // Append trace meta.
     this.appendTraceMeta({ workflowId: document.task?.workflowId });
@@ -485,7 +530,7 @@ export class DocumentPaymentBusiness extends Business {
 
     // Redirect or response.
     const { redirectUrl } = extraData;
-    if (statusInfo.extraData && statusInfo.extraData.checkPrevPayment) return statusInfo;
+    if (checkPrevTransaction || statusInfo.extraData?.checkPrevPayment) return statusInfo;
     return providerOptions.doRedirect
       ? { url: redirectUrl, ...statusInfo }
       : providerOptions.notifyUrlShortResponse

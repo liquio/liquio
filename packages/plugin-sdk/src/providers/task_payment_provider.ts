@@ -94,6 +94,10 @@ export interface TaskPaymentStatusInfo {
   transactionId: string;
   status: {
     isSuccess: boolean;
+    /** Checkout is still open and can be resumed from another authorized session. */
+    isPending?: boolean;
+    /** Explicit provider guarantee that this attempt can no longer charge. Unknown is false. */
+    canRetry?: boolean;
     [key: string]: unknown;
   };
   extraData: {

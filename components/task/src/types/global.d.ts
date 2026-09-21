@@ -28,6 +28,7 @@ import { EventTemplateModel } from '../models/event_template';
 import { GatewayModel } from '../models/gateway';
 import { GatewayTemplateModel } from '../models/gateway_template';
 import { PaymentLogsModel } from '../models/payment_logs';
+import { PaymentCheckoutsModel } from '../models/payment_checkouts';
 import { PaymentTransactionsModel } from '../models/payment_transactions';
 import { CustomLogTemplateModel } from '../models/custom_log_template';
 import { CustomLogModel } from '../models/custom_log';
@@ -78,6 +79,7 @@ declare global {
     gatewayTemplate: GatewayTemplateModel;
     paymentLogs: PaymentLogsModel;
     paymentTransactions: PaymentTransactionsModel;
+    paymentCheckouts: PaymentCheckoutsModel;
     customLogTemplate: CustomLogTemplateModel;
     customLog: CustomLogModel;
     accessHistory: AccessHistoryModel;

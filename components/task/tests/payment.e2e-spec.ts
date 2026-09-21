@@ -143,7 +143,9 @@ describe('Payment Controller', () => {
         documentId: DOCUMENT_ID,
         paymentControlPath: PAYMENT_CONTROL_PATH,
         extraData: { redirectUrl: FAKE_REDIRECT_URL },
-        status: { isSuccess: false },
+        // Terminal rejection, not an ambiguous/in-flight state - lets a later calc_payment call
+        // for the same document mint a fresh checkout instead of getting stuck on this one.
+        status: { isSuccess: false, canRetry: true },
       }),
       cancelOrder: async (providerOptions, orderId, transactionId, sessionId) => ({
         cancelled: true,
@@ -493,7 +495,7 @@ describe('Payment Controller', () => {
           documentId: FAILED_DOCUMENT_ID,
           paymentControlPath: FAILED_PAYMENT_CONTROL_PATH,
           extraData: {},
-          status: { isSuccess: false, isPending: false },
+          status: { isSuccess: false, isPending: false, canRetry: true },
         }),
       };
 
@@ -679,7 +681,7 @@ describe('Payment Controller', () => {
           documentId: DOCUMENT_ID,
           paymentControlPath: PAYMENT_CONTROL_PATH,
           extraData: { redirectUrl: FAKE_REDIRECT_URL },
-          status: { isSuccess: false },
+          status: { isSuccess: false, canRetry: true },
         });
 
         // Redirects to the fixture provider's returned URL.

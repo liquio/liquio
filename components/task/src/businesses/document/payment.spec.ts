@@ -53,7 +53,26 @@ describe('DocumentBusiness payment methods', () => {
       save: jest.fn(),
     } as any;
 
+    const checkouts = new Map<string, any>();
     global.models = {
+      paymentCheckouts: {
+        find: jest.fn(async (id, path) => checkouts.get(`${id}:${path}`) ?? null),
+        reserve: jest.fn(async (id, path, calculated = null, previousId) => {
+          const key = `${id}:${path}`;
+          const previous = checkouts.get(key);
+          if (previous && (previous.attempt_id !== previousId || previous.paid || !previous.calculated)) return null;
+          const checkout = { document_id: id, payment_control_path: path, attempt_id: `attempt-${Math.random()}`, calculated, paid: false };
+          checkouts.set(key, checkout);
+          return checkout;
+        }),
+        saveCalculated: jest.fn(async (checkout, calculated) => {
+          checkout.calculated = calculated;
+        }),
+        markPaid: jest.fn(async (id, path, status) => {
+          const checkout = checkouts.get(`${id}:${path}`);
+          if (checkout) Object.assign(checkout, { paid: true, success_status: status });
+        }),
+      },
       document: {
         findById: jest.fn(),
         updateData: jest.fn(),
@@ -116,6 +135,15 @@ describe('DocumentBusiness payment methods', () => {
       payerName: 'Bob',
     };
 
+    beforeEach(() => {
+      documentEntity.data = {};
+      (global.models.document.findById as jest.Mock).mockResolvedValue(documentEntity);
+      (global.models.document.updateData as jest.Mock).mockImplementation(async (_id, _user, data) => {
+        documentEntity.data = data;
+        return documentEntity;
+      });
+    });
+
     it('builds the expected data/config shape and forwards it to PaymentService.calculatePayment (happy path)', async () => {
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(documentEntity);
       (global.models.documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
@@ -167,7 +195,7 @@ describe('DocumentBusiness payment methods', () => {
         }),
       );
       expect(global.models.document.updateData).toHaveBeenCalledWith(documentId, userId, expect.any(Object));
-      expect(result).toBe(updatedDocument);
+      expect(result.data).toMatchObject(updatedDocument.data);
     });
 
     it('propagates the error when PaymentService.calculatePayment returns no data', async () => {
@@ -178,6 +206,91 @@ describe('DocumentBusiness payment methods', () => {
       await expect(
         documentBusiness.payment.calculatePayment(documentId, payload, userId, userName, userUnitIds, userContactData, undefined, undefined),
       ).rejects.toThrow("Can't get payment data.");
+    });
+
+    const initialize = () => documentBusiness.payment.calculatePayment(documentId, payload, userId, userName, userUnitIds, userContactData);
+
+    function setupCheckout() {
+      jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(documentEntity);
+      (global.models.documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
+      documentBusiness.paymentService.calculatePayment.mockResolvedValue({ transactionId: 'tx-1', amount: 100 });
+      jest.spyOn(documentBusiness.payment, 'handlePaymentStatus').mockImplementation(async (calculated: any) => ({
+        transactionId: calculated.transactionId,
+        status: { isSuccess: false, isPending: true },
+      }));
+    }
+
+    it('reserves only one checkout for simultaneous requests and resumes it from another session', async () => {
+      setupCheckout();
+      let finish: (value: any) => void;
+      documentBusiness.paymentService.calculatePayment.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const first = initialize();
+      // Wait until the first request reaches the external provider, leaving the reservation open.
+      while (!finish) await new Promise((resolve) => setImmediate(resolve));
+      await expect(initialize()).rejects.toMatchObject({ httpStatusCode: 409 });
+      finish({ transactionId: 'tx-1', amount: 100 });
+      await first;
+      await expect(initialize()).resolves.toMatchObject({ data: { payment: { calculated: { transactionId: 'tx-1' } } } });
+      expect(documentBusiness.paymentService.calculatePayment).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not replace a pending checkout if its status check fails', async () => {
+      setupCheckout();
+      await initialize();
+      documentBusiness.payment.handlePaymentStatus.mockRejectedValue(new Error('provider unavailable'));
+      await expect(initialize()).rejects.toThrow('provider unavailable');
+      expect(documentBusiness.paymentService.calculatePayment).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps an ambiguous creation reserved instead of retrying a possibly successful external request', async () => {
+      setupCheckout();
+      documentBusiness.paymentService.calculatePayment.mockRejectedValue(new Error('timeout'));
+      await expect(initialize()).rejects.toThrow('timeout');
+      await expect(initialize()).rejects.toMatchObject({ httpStatusCode: 409 });
+      expect(documentBusiness.paymentService.calculatePayment).toHaveBeenCalledTimes(1);
+    });
+
+    it('recovers the saved checkout after failure to write the document', async () => {
+      setupCheckout();
+      (global.models.document.updateData as jest.Mock).mockRejectedValueOnce(new Error('db unavailable'));
+      await expect(initialize()).rejects.toThrow('db unavailable');
+      documentEntity.data = {};
+      await initialize();
+      expect(documentBusiness.paymentService.calculatePayment).toHaveBeenCalledTimes(1);
+      expect(documentEntity.data).toMatchObject({ payment: { calculated: { transactionId: 'tx-1' } } });
+    });
+
+    it('never charges again after any successful attempt even if a later failure is present', async () => {
+      setupCheckout();
+      documentEntity.data = {
+        payment: {
+          calculated: { transactionId: 'tx-1' },
+          processed: [
+            { transactionId: 'tx-1', status: { isSuccess: true } },
+            { transactionId: 'tx-old', status: { isSuccess: false } },
+          ],
+        },
+      };
+      await initialize();
+      expect(documentBusiness.paymentService.calculatePayment).not.toHaveBeenCalled();
+      expect(documentBusiness.payment.handlePaymentStatus).not.toHaveBeenCalled();
+    });
+
+    it('requires an explicit safe-to-retry result and permits only one replacement', async () => {
+      setupCheckout();
+      await initialize();
+      documentBusiness.payment.handlePaymentStatus.mockResolvedValue({ transactionId: 'tx-1', status: { isSuccess: false } });
+      await expect(initialize()).rejects.toMatchObject({ httpStatusCode: 409 });
+      documentBusiness.payment.handlePaymentStatus.mockResolvedValue({ transactionId: 'tx-1', status: { isSuccess: false, canRetry: true } });
+      documentBusiness.paymentService.calculatePayment.mockResolvedValue({ transactionId: 'tx-2', amount: 100 });
+      const results = await Promise.allSettled([initialize(), initialize()]);
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      expect(documentBusiness.paymentService.calculatePayment).toHaveBeenCalledTimes(2);
     });
 
     it('throws NotFoundError when the document does not exist', async () => {

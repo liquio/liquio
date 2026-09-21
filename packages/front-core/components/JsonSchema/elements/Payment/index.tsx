@@ -86,7 +86,7 @@ interface PaymentState {
   failureShownForTransactionId?: string | number | null;
 }
 
-class Payment extends React.Component<PaymentProps, PaymentState> {
+export class Payment extends React.Component<PaymentProps, PaymentState> {
   static defaultProps: Partial<PaymentProps> = {
     paymentType: null,
     value: {},
@@ -119,22 +119,31 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
 
   onChangeCode = (value: string) => this.setState({ code: value });
 
-  paymentAction = () => {
-    const { path } = this.props;
-    const {
-      paymentRequestData,
-    } = this.state;
-    const { requestUrl, url } = paymentRequestData as PaymentRequestData;
+  private paymentStarting = false;
 
-    if (requestUrl) {
-      const formId = path.join('-') + '-form';
-      const form = document.getElementById(formId) as HTMLFormElement;
-      form.submit();
-      return;
-    }
-
-    if (url) {
-      window.location.href = url;
+  paymentAction = async () => {
+    if (this.paymentStarting || this.state.isSuccess) return;
+    this.paymentStarting = true;
+    this.setState({ loading: true });
+    try {
+      const { importActions, rootDocument: { id }, paymentControlPath, path } = this.props;
+      const result = await importActions.getPaymentInfo(id, {
+        paymentControlPath,
+        extraData: { returnPath: window.location.pathname + window.location.search + window.location.hash },
+      });
+      if (!result) return;
+      await this.parseResult(result as { data?: unknown });
+      if (this.state.isSuccess) return;
+      const { requestUrl, url } = this.state.paymentRequestData || {};
+      if (requestUrl) {
+        const form = document.getElementById(path.join('-') + '-form') as HTMLFormElement | null;
+        form?.submit();
+      } else if (url) {
+        window.location.href = url;
+      }
+    } finally {
+      this.paymentStarting = false;
+      this.setState({ loading: false });
     }
   };
 
@@ -199,7 +208,7 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
     const dataPath = paymentControlPath.replace(/properties./g, '');
 
     const paymentInfo = objectPath.get(result.data, dataPath) as {
-      processed?: Array<{ status: { isSuccess?: boolean }; transactionId?: string | number }>;
+      processed?: Array<{ status: { isSuccess?: boolean; isPending?: boolean }; transactionId?: string | number }>;
       calculated: { amount: number | Array<{ amount: number }>; paymentRequestData: PaymentRequestData };
     } | undefined;
 
@@ -218,11 +227,12 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
 
     const lastProcessed = hasProcessed ? processed[processed.length - 1] : undefined;
 
-    const isSuccess = (hasProcessed && !!lastProcessed?.status.isSuccess) || false;
+    const successfulPayment = processed?.find((entry) => entry.status?.isSuccess);
+    const isSuccess = this.state.isSuccess || !!successfulPayment;
 
     // A terminal (processed) attempt that did not succeed - as opposed to no attempt having
     // completed yet, which is a normal pending state, not a failure.
-    const paymentFailed = hasProcessed && !isSuccess;
+    const paymentFailed = hasProcessed && !isSuccess && !lastProcessed?.status.isPending;
 
     const alreadyPassed =
       (typeof value?.processed !== 'undefined' &&
@@ -237,7 +247,7 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
     // shown" guard by the attempt's own `transactionId` - rather than a one-shot boolean - means a
     // toast fires exactly once per distinct attempt, however many times its result is parsed, with
     // no need to manually reset the guard when a new attempt starts.
-    const lastProcessedTransactionId = lastProcessed?.transactionId ?? null;
+    const lastProcessedTransactionId = successfulPayment?.transactionId ?? lastProcessed?.transactionId ?? null;
 
     if (isSuccess) {
       this.setState((prevState) => {
@@ -255,12 +265,12 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
       });
     }
 
-    this.setState({
+    await new Promise<void>((resolve) => this.setState({
       paymentValue: paymentValue && Number(paymentValue).toFixed(2),
       paymentRequestData,
       isSuccess,
       paymentFailed,
-    });
+    }, resolve));
   };
 
   sendPhone = async () => {
@@ -358,7 +368,7 @@ class Payment extends React.Component<PaymentProps, PaymentState> {
 
     const hasInitialized =
       !!value?.calculated &&
-      !!paymentRequestData?.requestUrl &&
+      !!(paymentRequestData?.requestUrl || paymentRequestData?.url) &&
       paymentValue === this.getAmount();
 
     if (hasInitialized) return;
