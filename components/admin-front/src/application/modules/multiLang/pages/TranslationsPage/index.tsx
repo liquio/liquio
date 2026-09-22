@@ -310,9 +310,15 @@ const TranslationsPage = ({ loading: loadingProp, location, title }: Translation
 
       setEditing(true);
 
-      const result = (await dispatch(searchLocalization(row?.value as string) as never)) as LocalizationRecord[];
-
-      setOpening(false);
+      let result: LocalizationRecord[];
+      try {
+        result = (await dispatch(searchLocalization(row?.value as string) as never)) as LocalizationRecord[];
+      } catch (error) {
+        dispatch(addError(new Error((error as Error).message)) as never);
+        return;
+      } finally {
+        setOpening(false);
+      }
 
       const dataToSchema: Record<string, unknown> = {
         key: row?.value
