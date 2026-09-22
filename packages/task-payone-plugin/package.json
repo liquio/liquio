@@ -1,6 +1,6 @@
 {
   "name": "@liquio/task-payone-plugin",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "PAYONE Platform payment provider plugin for components/task, built on @liquio/plugin-sdk",
   "main": "dist/index.js",
