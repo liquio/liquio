@@ -138,6 +138,15 @@ export interface PayoneCalculatedPaymentData extends TaskCalculatedPaymentData {
   amount: number;
   /** Currency code used for the payment. */
   currency: string;
+  /**
+   * Echoed back from the resolved payment data so `handleStatus` can identify the callback when
+   * this object itself is fed back in as the "callback payload" - see
+   * `document.ts#calculatePayment`'s `checkPrevTransaction` re-entry, which has no returnUrl
+   * query string to read these from otherwise.
+   */
+  documentId?: string;
+  paymentControlPath?: string;
+  taskId?: string;
   extraData: {
     user_action_required: true;
     user_action_url: string;

@@ -275,6 +275,60 @@ describe("PayoneProvider", () => {
       expect(statusInfo.paymentControlPath).toBe("payment");
     });
 
+    it("puts documentId/paymentControlPath/taskId directly on the returned calculated data so document.ts#calculatePayment's checkPrevTransaction re-entry can identify it with no query string", async () => {
+      // Regression test: `document.ts#calculatePayment` re-checks an already-calculated,
+      // not-yet-paid checkout by calling `handlePaymentStatus` with `checkout.calculated` (this
+      // method's own previous return value) as the callback payload and NO query params at all
+      // (`checkPrevTransaction: true`). Unlike a genuine PAYONE redirect/webhook, there is no
+      // returnUrl query string here for handleStatus's pickField to read documentId/
+      // paymentControlPath from - they must be present directly on the calculated object itself,
+      // or that re-entry always throws "could not identify which document/paymentControlPath
+      // this callback belongs to".
+      createCommerceCaseRequestMock.mockResolvedValue({
+        commerceCaseId: "commerce-case-reentry",
+        checkout: {
+          checkoutId: "checkout-reentry",
+          paymentResponse: {
+            merchantAction: {
+              redirectData: {
+                redirectURL: "https://secure.payone.com/redirect/reentry",
+              },
+            },
+          },
+        },
+      });
+
+      const provider = new PayoneProvider(context, options);
+      const calculated = await provider.calculatePayment({
+        ...resolvedData,
+        documentId: "doc-1",
+        paymentControlPath: "payment",
+        taskId: "task-1",
+      } as PayoneResolvedPaymentData);
+
+      expect(calculated).toMatchObject({
+        documentId: "doc-1",
+        paymentControlPath: "payment",
+        taskId: "task-1",
+      });
+
+      getCheckoutRequestMock.mockResolvedValue({
+        checkoutStatus: StatusCheckout.COMPLETED,
+        statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
+        references: { merchantReference: resolvedData.orderId },
+      });
+      const statusInfo = await provider.handleStatus(
+        calculated,
+        {},
+        calculated.transactionId,
+        undefined,
+        undefined,
+        true,
+      );
+      expect(statusInfo.documentId).toBe("doc-1");
+      expect(statusInfo.paymentControlPath).toBe("payment");
+    });
+
     it("falls back to defaultRedirectUrl and defaultCurrency when data does not supply them", async () => {
       createCommerceCaseRequestMock.mockResolvedValue({
         commerceCaseId: "commerce-case-2",

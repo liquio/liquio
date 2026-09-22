@@ -169,6 +169,17 @@ export class PayoneProvider extends TaskPaymentProvider<PayoneOptions> {
         orderId: payload.orderId,
         amount: payload.amount,
         currency: currencyCode,
+        // Persisted verbatim into `checkout.calculated`/`calculatedHistory` (never sent to
+        // PAYONE, so `useTransactionBinding`'s "keep the returnUrl short" goal is unaffected).
+        // `document.ts#calculatePayment`'s "check previous transaction" re-entry
+        // (`checkPrevTransaction: true`) feeds this very object back into `handleStatus` as the
+        // callback payload, with no query string at all - so unlike a genuine PAYONE redirect/
+        // webhook, there's no returnUrl query string for `handleStatus`'s `pickField` to read
+        // documentId/paymentControlPath from. Without these here, that re-entry path always
+        // throws "could not identify which document/paymentControlPath this callback belongs to".
+        documentId: payload.documentId,
+        paymentControlPath: payload.paymentControlPath,
+        taskId: payload.taskId,
         // `transactionId` must be present for `document.ts#handlePaymentStatus` to match this
         // entry back up in `calculatedHistory` later - PAYONE has no separate transaction id at
         // this point (the payment doesn't exist yet), so the checkout id is used, consistent with
