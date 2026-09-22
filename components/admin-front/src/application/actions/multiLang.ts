@@ -21,14 +21,33 @@ export const exportLanguages = (body: unknown) => (dispatch: Dispatch) =>
     .post('localization-languages/export', body, 'EXPORT_LANGUAGES', dispatch)
     .catch((error) => error);
 
-export const searchLocalization = (key: string) => (dispatch: Dispatch) =>
-  api
-    .get(
-      `localization-texts?filters[key]=${key}`,
+export const searchLocalization = (key: string) => async (dispatch: Dispatch) => {
+  type LocalizationText = {
+    key: string;
+    localizationLanguageCode: string;
+    value: string;
+  };
+  type SearchResult = LocalizationText[] & { meta?: { lastPage?: number } };
+
+  const texts: LocalizationText[] = [];
+  let page = 1;
+  let lastPage = 1;
+
+  do {
+    const result = (await api.get(
+      `localization-texts?filters[key]=${encodeURIComponent(key)}&page=${page}`,
       'SEARCH_LOCALIZATION',
       dispatch,
-    )
-    .catch((error) => error);
+    )) as SearchResult;
+
+    // The API searches by substring; only the selected key belongs in the editor.
+    texts.push(...result.filter((item) => item.key === key));
+    lastPage = result.meta?.lastPage || 1;
+    page += 1;
+  } while (page <= lastPage);
+
+  return texts;
+};
 
 export const exportTexts = (body: unknown) => (dispatch: Dispatch) =>
   api
