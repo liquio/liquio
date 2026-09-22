@@ -247,6 +247,44 @@ describe('DocumentBusiness payment methods', () => {
       expect(documentBusiness.paymentService.calculatePayment).toHaveBeenCalledTimes(1);
     });
 
+    it.each(['document', 'checkout table'])('supplies routing context when rechecking a legacy payment from the %s', async (source) => {
+      setupCheckout();
+      const legacyPayment = {
+        transactionId: '10207721364',
+        checkoutId: '10207721364',
+        amount: 15,
+        paymentRequestData: { url: 'https://payment.example/checkout', method: 'GET' },
+      };
+      const paymentControlPath = 'paymentInfo.properties.paymentControl';
+      const control = { calculated: legacyPayment, calculatedHistory: [legacyPayment] };
+      (global.models.documentTemplate.findById as jest.Mock).mockResolvedValue({
+        ...documentTemplate,
+        jsonSchema: { properties: { paymentInfo: { properties: { paymentControl: jsonSchema.properties.payment } } } },
+      });
+      if (source === 'document') {
+        documentEntity.data = { paymentInfo: { paymentControl: control } };
+      } else {
+        await global.models.paymentCheckouts.reserve(documentId, 'paymentInfo.paymentControl', legacyPayment);
+      }
+      documentBusiness.payment.handlePaymentStatus.mockImplementation(async (data, _customer, _status, params) => {
+        if (!params?.documentId || !params?.paymentControlPath) throw new Error('Missing callback routing context');
+        return { transactionId: data.transactionId, status: { isSuccess: false, isPending: true } };
+      });
+
+      await documentBusiness.payment.calculatePayment(documentId, { ...payload, paymentControlPath }, userId, userName, userUnitIds, userContactData);
+
+      expect(documentBusiness.payment.handlePaymentStatus).toHaveBeenCalledWith(
+        legacyPayment,
+        'testCustomer',
+        legacyPayment.transactionId,
+        { documentId, paymentControlPath, taskId: 'task-1' },
+        undefined,
+        true,
+      );
+      expect(documentBusiness.paymentService.calculatePayment).not.toHaveBeenCalled();
+      expect(legacyPayment).not.toHaveProperty('documentId');
+    });
+
     it('keeps an ambiguous creation reserved instead of retrying a possibly successful external request', async () => {
       setupCheckout();
       documentBusiness.paymentService.calculatePayment.mockRejectedValue(new Error('timeout'));

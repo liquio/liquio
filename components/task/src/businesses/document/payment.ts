@@ -227,7 +227,10 @@ export class DocumentPaymentBusiness extends Business {
         checkout.calculated,
         paymentCustomer,
         checkout.calculated.transactionId,
-        undefined,
+        // Older saved provider results may omit callback routing fields. This internal
+        // recheck already knows the document/control; supply them without altering the
+        // provider's persisted payload (which may be signed or provider-specific).
+        { documentId: resolvedDocumentId, paymentControlPath, taskId: document.task?.id },
         undefined,
         true,
       );
