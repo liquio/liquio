@@ -22,9 +22,9 @@ export enum PayoneCheckoutStatus {
 }
 
 /**
- * `CreatedPaymentOutput.paymentStatusCategory` values - the actual outcome of the payment
- * underlying a hosted checkout. This, not {@link PayoneCheckoutStatus}, is what determines
- * success/failure.
+ * `CreatedPaymentOutput.paymentStatusCategory` values. This broad checkout category
+ * can include pending authorization/capture; inspect the nested payment status/code
+ * before treating funds as captured or permitting another payment.
  */
 export enum PayonePaymentStatusCategory {
   Successful = "SUCCESSFUL",
@@ -101,14 +101,21 @@ export interface PayoneResolvedPaymentData extends TaskPaymentData {
 export interface PayoneStatusInfo extends TaskPaymentStatusInfo {
   status: {
     isSuccess: boolean;
-    /** True while the checkout hasn't reached any terminal outcome yet (not paid, not
-     * declined/rejected, not abandoned) - i.e. still open and completable on PAYONE's hosted
-     * page. Used to avoid creating a second live checkout for an order that already has one. */
+    /** True while checkout, authorization, or capture is pending. */
     isPending: boolean;
+    /** Only set after a fresh provider response confirms a closed, unpaid attempt. */
+    canRetry?: true;
     [key: string]: unknown;
   };
   extraData: {
     order_id?: string;
+    /** Detailed monetary state, separate from the broad paymentStatus category. */
+    paymentState?: string | null;
+    paymentStatusCode?: number | null;
+    /** Authentication and risk metadata do not override the monetary state. */
+    authenticationStatus?: string | null;
+    eci?: string | null;
+    liability?: string | null;
     [key: string]: unknown;
   };
 }

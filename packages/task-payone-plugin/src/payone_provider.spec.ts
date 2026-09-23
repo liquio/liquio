@@ -48,21 +48,37 @@ jest.mock("onlinepayments-sdk-nodejs", () => ({
                   : response.checkoutStatus,
               createdPaymentOutput: {
                 paymentStatusCategory: response.statusOutput?.paymentStatus,
-                payment: {
-                  id: response.paymentExecutions?.[0]?.paymentExecutionId,
-                  paymentOutput: {
-                    references: response.references,
-                    cardPaymentMethodSpecificOutput:
-                      response.threeDSecureAuthenticationStatus
-                        ? {
-                            threeDSecureResults: {
-                              authenticationStatus:
-                                response.threeDSecureAuthenticationStatus,
-                            },
-                          }
-                        : undefined,
-                  },
-                },
+                payment:
+                  response.payment ??
+                  (response.statusOutput?.paymentStatus
+                    ? {
+                        status:
+                          response.statusOutput.paymentStatus === "SUCCESSFUL"
+                            ? "CAPTURED"
+                            : "REJECTED",
+                        statusOutput: {
+                          statusCode:
+                            response.statusOutput.paymentStatus === "SUCCESSFUL"
+                              ? 9
+                              : 2,
+                        },
+                        id: response.paymentExecutions?.[0]?.paymentExecutionId,
+                        paymentOutput: {
+                          references: response.references,
+                          cardPaymentMethodSpecificOutput:
+                            response.threeDSecureAuthenticationStatus
+                              ? {
+                                  threeDSecureResults: {
+                                    authenticationStatus:
+                                      response.threeDSecureAuthenticationStatus,
+                                  },
+                                }
+                              : undefined,
+                        },
+                      }
+                    : response.paymentExecutions?.length
+                      ? { id: response.paymentExecutions[0].paymentExecutionId }
+                      : undefined),
               },
             },
           }),
@@ -596,6 +612,8 @@ describe("PayoneProvider", () => {
           checkoutId: "checkout-1",
           checkoutStatus: PayoneCheckoutStatus.PaymentCreated,
           paymentStatus: PayonePaymentStatusCategory.Successful,
+          paymentState: "CAPTURED",
+          paymentStatusCode: 9,
           checkPrevTransaction: false,
         },
       });
@@ -632,12 +650,7 @@ describe("PayoneProvider", () => {
       );
     });
 
-    it('returns a failure shape when paymentStatusCategory is SUCCESSFUL but 3-D Secure authenticationStatus is "U" (unable to authenticate)', async () => {
-      // PAYONE's sandbox has been observed authorizing (and, with authorizationMode: "SALE",
-      // capturing) payments for cards whose 3DS authentication never actually completed
-      // ("U"), with liability shifted to the merchant, instead of exhibiting the outcome its
-      // own test-card documentation describes. Trusting paymentStatusCategory alone here would
-      // report those as successful payments.
+    it('preserves captured payment success independently of authenticationStatus "U"', async () => {
       getCheckoutRequestMock.mockResolvedValue({
         commerceCaseId: "commerce-case-1",
         checkoutId: "checkout-1",
@@ -657,7 +670,7 @@ describe("PayoneProvider", () => {
         {},
       );
 
-      expect(result.status).toEqual({ isSuccess: false, isPending: false });
+      expect(result.status).toEqual({ isSuccess: true, isPending: false });
       expect(result.extraData.paymentStatus).toBe(
         PayonePaymentStatusCategory.Successful,
       );
@@ -1104,6 +1117,79 @@ describe("PayoneProvider", () => {
     });
   });
 
+  describe("payment reconciliation before retry", () => {
+    it.each([
+      ["CAPTURED", 9, true, false, undefined],
+      ["PENDING_CAPTURE", 5, false, true, undefined],
+      ["CAPTURE_REQUESTED", 91, false, true, undefined],
+      ["REJECTED_CAPTURE", 93, false, false, undefined],
+      ["REJECTED", 2, false, false, true],
+      [undefined, undefined, false, false, undefined],
+    ])(
+      "uses fresh payment state %s, preserving authentication independently",
+      async (status, statusCode, isSuccess, isPending, canRetry) => {
+        getCheckoutRequestMock.mockResolvedValue({
+          checkoutStatus: "PAYMENT_CREATED",
+          statusOutput: { paymentStatus: "REJECTED" },
+          payment: {
+            id: "payment-1",
+            status,
+            statusOutput: { statusCode },
+            paymentOutput: {
+              cardPaymentMethodSpecificOutput: {
+                threeDSecureResults: {
+                  authenticationStatus: "U",
+                  eci: "7",
+                  liability: "merchant",
+                },
+              },
+            },
+          },
+        });
+        const provider = new PayoneProvider(context, options);
+        const result = await provider.handleStatus(
+          {
+            documentId: "doc-1",
+            paymentControlPath: "payment",
+            checkoutId: "checkout-1",
+            transactionId: "checkout-1",
+            extraData: { singlePaymentAttempt: true },
+            status: { isSuccess: false, canRetry: true },
+          },
+          {},
+          "reject",
+          {},
+          {},
+          true,
+        );
+        expect(getCheckoutRequestMock).toHaveBeenCalledWith(
+          "merchant-123",
+          "checkout-1",
+        );
+        expect(result.transactionId).toBe("checkout-1");
+        expect(result.status).toEqual({ isSuccess, isPending, canRetry });
+        expect(result.extraData).toMatchObject({
+          paymentState: status,
+          paymentStatusCode: statusCode,
+          authenticationStatus: "U",
+          eci: "7",
+          liability: "merchant",
+        });
+        const checked = await provider.checkStatus(
+          options,
+          "checkout-1",
+          "case-1",
+        );
+        expect(checked).toMatchObject({
+          isSuccess,
+          isPending,
+          authenticationStatus: "U",
+        });
+        expect(getCheckoutRequestMock).toHaveBeenCalledTimes(2);
+      },
+    );
+  });
+
   describe("checkStatus", () => {
     it("re-queries the hosted checkout and returns a success shape", async () => {
       getCheckoutRequestMock.mockResolvedValue({
@@ -1126,6 +1212,9 @@ describe("PayoneProvider", () => {
       expect(result).toEqual({
         isSuccess: true,
         checkoutId: "checkout-1",
+        isPending: false,
+        paymentState: "CAPTURED",
+        paymentStatusCode: 9,
         hostedCheckoutStatus: PayoneCheckoutStatus.PaymentCreated,
         paymentStatus: PayonePaymentStatusCategory.Successful,
         orderId: "order-42",
@@ -1145,7 +1234,7 @@ describe("PayoneProvider", () => {
       expect(result).toMatchObject({ isSuccess: false });
     });
 
-    it('returns a failure shape when paymentStatusCategory is SUCCESSFUL but 3-D Secure authenticationStatus is "U"', async () => {
+    it('returns captured payment success with authenticationStatus "U" separately', async () => {
       getCheckoutRequestMock.mockResolvedValue({
         checkoutStatus: "COMPLETED",
         statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
@@ -1161,7 +1250,7 @@ describe("PayoneProvider", () => {
       );
 
       expect(result).toMatchObject({
-        isSuccess: false,
+        isSuccess: true,
         paymentStatus: PayonePaymentStatusCategory.Successful,
         authenticationStatus: "U",
       });
