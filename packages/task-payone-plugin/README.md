@@ -12,13 +12,13 @@ Six of the ten `TaskPaymentProvider` methods are not implemented, because PAYONE
 
 Both status methods query PAYONE's hosted checkout API and inspect the nested
 `createdPaymentOutput.payment.status` and `statusOutput.statusCode`. Only
-`CAPTURED` with code `9` is reported as paid. Authorization and capture in progress
+`CAPTURED` with code `9` and authentication other than `U` is accepted as paid. Authorization and capture in progress
 remain pending, even when the checkout category is `SUCCESSFUL`.
 
 The returned metadata retains `authenticationStatus`, `eci`, and `liability`
-separately from `paymentState` and `paymentStatusCode`. Authentication `U` does not
-turn captured funds into a failed payment. These risk fields are available for
-merchant review; the plugin does not impose a separate fulfillment policy.
+separately from `paymentState` and `paymentStatusCode`. Authentication `U` fails application acceptance, even when funds were captured.
+This does not reverse the payment: captured or authorized funds must be reconciled
+before a replacement payment can be created.
 
 A replacement checkout requires a fresh response confirming rejection (code `2`)
 or completed cancellation (code `1`/`6`), plus an exhausted single-attempt checkout

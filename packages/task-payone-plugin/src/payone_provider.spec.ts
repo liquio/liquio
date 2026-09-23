@@ -650,7 +650,7 @@ describe("PayoneProvider", () => {
       );
     });
 
-    it('preserves captured payment success independently of authenticationStatus "U"', async () => {
+    it('treats authenticationStatus "U" as failed without permitting a duplicate charge', async () => {
       getCheckoutRequestMock.mockResolvedValue({
         commerceCaseId: "commerce-case-1",
         checkoutId: "checkout-1",
@@ -670,7 +670,7 @@ describe("PayoneProvider", () => {
         {},
       );
 
-      expect(result.status).toEqual({ isSuccess: true, isPending: false });
+      expect(result.status).toEqual({ isSuccess: false, isPending: false });
       expect(result.extraData.paymentStatus).toBe(
         PayonePaymentStatusCategory.Successful,
       );
@@ -1119,7 +1119,7 @@ describe("PayoneProvider", () => {
 
   describe("payment reconciliation before retry", () => {
     it.each([
-      ["CAPTURED", 9, true, false, undefined],
+      ["CAPTURED", 9, false, false, undefined],
       ["PENDING_CAPTURE", 5, false, true, undefined],
       ["CAPTURE_REQUESTED", 91, false, true, undefined],
       ["REJECTED_CAPTURE", 93, false, false, undefined],
@@ -1234,7 +1234,7 @@ describe("PayoneProvider", () => {
       expect(result).toMatchObject({ isSuccess: false });
     });
 
-    it('returns captured payment success with authenticationStatus "U" separately', async () => {
+    it('treats authenticationStatus "U" as failed without permitting a duplicate charge', async () => {
       getCheckoutRequestMock.mockResolvedValue({
         checkoutStatus: "COMPLETED",
         statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
@@ -1250,7 +1250,7 @@ describe("PayoneProvider", () => {
       );
 
       expect(result).toMatchObject({
-        isSuccess: true,
+        isSuccess: false,
         paymentStatus: PayonePaymentStatusCategory.Successful,
         authenticationStatus: "U",
       });

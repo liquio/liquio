@@ -2,7 +2,7 @@ import { paymentState } from "./payment_state";
 
 describe("PAYONE payment state", () => {
   it.each(["U", "Y", "N", undefined])(
-    "keeps captured funds separate from authentication %s",
+    "rejects authentication U without allowing a second charge (%s)",
     (authenticationStatus) => {
       const result = paymentState(
         {
@@ -27,7 +27,7 @@ describe("PAYONE payment state", () => {
         true,
       );
       expect(result).toEqual({
-        status: { isSuccess: true, isPending: false },
+        status: { isSuccess: authenticationStatus !== "U", isPending: false },
         paymentStatus: "CAPTURED",
         paymentStatusCode: 9,
         authenticationStatus,

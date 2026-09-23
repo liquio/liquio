@@ -11,7 +11,7 @@ interface PaymentState {
 }
 
 /** Interpret a fresh server-side checkout response, never browser callback fields.
- * Authentication describes risk; it does not undo an authorization or capture.
+ * Authentication U fails application acceptance, but does not undo captured funds.
  * https://developer.payone.com/en/integration/api-developer-guide/statuses
  */
 export function paymentState(
@@ -24,7 +24,10 @@ export function paymentState(
   const authentication =
     payment?.paymentOutput?.cardPaymentMethodSpecificOutput
       ?.threeDSecureResults;
-  const isSuccess = paymentStatus === "CAPTURED" && paymentStatusCode === 9;
+  const isSuccess =
+    paymentStatus === "CAPTURED" &&
+    paymentStatusCode === 9 &&
+    authentication?.authenticationStatus !== "U";
   // Require a terminal monetary outcome as well as a closed checkout. In particular,
   // a rejected capture can leave an authorization alive and must not allow a new charge.
   const isTerminalFailure =

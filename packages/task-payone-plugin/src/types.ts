@@ -112,7 +112,7 @@ export interface PayoneStatusInfo extends TaskPaymentStatusInfo {
     /** Detailed monetary state, separate from the broad paymentStatus category. */
     paymentState?: string | null;
     paymentStatusCode?: number | null;
-    /** Authentication and risk metadata do not override the monetary state. */
+    /** Authentication U fails acceptance; monetary state still controls safe retry. */
     authenticationStatus?: string | null;
     eci?: string | null;
     liability?: string | null;
