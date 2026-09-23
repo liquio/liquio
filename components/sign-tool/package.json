@@ -42,7 +42,7 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.7",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.6.2",
     "@types/qs": "^6.15.1",
     "@types/range-parser": "^1.2.7",
     "@types/send": "^1.2.1",
