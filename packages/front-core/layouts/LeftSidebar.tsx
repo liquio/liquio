@@ -150,9 +150,7 @@ const Layout = ({
   }, [actions, openSidebar]);
 
   const renderMainPane = React.useCallback(() => {
-    if (onboardingTaskId) {
-      return <div id="main-container">{children}</div>;
-    }
+    const showNavigator = !onboardingTaskId;
 
     return (
       <>
@@ -168,24 +166,26 @@ const Layout = ({
           id="main-container"
           className={classNames(classes.root, 'root-layout')}
         >
-          <Drawer
-            className={classes.sidebarWrapper}
-            variant="persistent"
-            open={openSidebar as boolean}
-            onClose={handleDrawerToggle}
-            classes={{
-              paper: classes.drawerPaper,
-            }}
-          >
-            <Navigator
-              location={location}
-              breadcrumbs={breadcrumbs}
-              actions={actions}
-            />
-          </Drawer>
+          {showNavigator ? (
+            <Drawer
+              className={classes.sidebarWrapper}
+              variant="persistent"
+              open={openSidebar as boolean}
+              onClose={handleDrawerToggle}
+              classes={{
+                paper: classes.drawerPaper,
+              }}
+            >
+              <Navigator
+                location={location}
+                breadcrumbs={breadcrumbs}
+                actions={actions}
+              />
+            </Drawer>
+          ) : null}
           <div
             className={classNames(classes.appContent, {
-              [classes.contentShift]: openSidebar,
+              [classes.contentShift]: openSidebar || !showNavigator,
               [classes.flexContent]: flexContent,
             })}
           >
