@@ -8,6 +8,26 @@ This plugin implements PAYONE's redirect / hosted-checkout payment flow only —
 
 Six of the ten `TaskPaymentProvider` methods are not implemented, because PAYONE's Commerce Platform API has no equivalent concept for them: `confirmBySmsCode`, `unHoldOrder`, `getPaymentReceiptInfo`, `getPaymentReceiptFiles`, `getWithdrawalFundsStatus`, and `sendCheckRequest`. See [Supported operations](#supported-operations) below for the specific reason behind each one.
 
+## Payment and authentication state
+
+Both status methods query PAYONE's hosted checkout API and inspect the nested
+`createdPaymentOutput.payment.status` and `statusOutput.statusCode`. Only
+`CAPTURED` with code `9` is reported as paid. Authorization and capture in progress
+remain pending, even when the checkout category is `SUCCESSFUL`.
+
+The returned metadata retains `authenticationStatus`, `eci`, and `liability`
+separately from `paymentState` and `paymentStatusCode`. Authentication `U` does not
+turn captured funds into a failed payment. These risk fields are available for
+merchant review; the plugin does not impose a separate fulfillment policy.
+
+A replacement checkout requires a fresh response confirming rejection (code `2`)
+or completed cancellation (code `1`/`6`), plus an exhausted single-attempt checkout
+or consumer cancellation. A cancelled checkout with no payment can also be
+replaced. Missing, unknown, refunded, or rejected-capture states do not grant
+retry permission. Existing multi-attempt checkouts remain protected.
+
+See [PAYONE's status reference](https://developer.payone.com/en/integration/api-developer-guide/statuses).
+
 ## Installation
 
 This plugin is installed into `components/task` via the shared plugin-installer mechanism (`@liquio/plugin-installer`), not via a direct `npm install` in a running deployment. Add an entry for it to `components/task`'s `plugins.json` (see [Configuration](#configuration) below) and run the plugin installer against that config directory to fetch and install the package.
