@@ -1,0 +1,407 @@
+{
+    "workflowTemplate": {
+        "id": 1000367,
+        "workflowTemplateCategoryId": 29,
+        "name": "calcTriggers edge cases",
+        "description": "",
+        "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\">\n  <bpmn2:process id=\"Process_1\" isExecutable=\"false\">\n    <bpmn2:startEvent id=\"start-event-1\">\n      <bpmn2:outgoing>Flow_start_1</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000367001\" name=\"1 - userInfo in calculate\">\n      <bpmn2:incoming>Flow_start_1</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_1</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_1\" sourceRef=\"start-event-1\" targetRef=\"task-1000367001\" />\n    <bpmn2:endEvent id=\"end-event-1\" name=\"end-event-1\">\n      <bpmn2:incoming>Flow_end_1</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_1\" sourceRef=\"task-1000367001\" targetRef=\"end-event-1\" />\n    <bpmn2:startEvent id=\"start-event-2\">\n      <bpmn2:outgoing>Flow_start_2</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000367002\" name=\"2 - checkReadonly\">\n      <bpmn2:incoming>Flow_start_2</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_2</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_2\" sourceRef=\"start-event-2\" targetRef=\"task-1000367002\" />\n    <bpmn2:endEvent id=\"end-event-2\" name=\"end-event-2\">\n      <bpmn2:incoming>Flow_end_2</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_2\" sourceRef=\"task-1000367002\" targetRef=\"end-event-2\" />\n    <bpmn2:startEvent id=\"start-event-3\">\n      <bpmn2:outgoing>Flow_start_3</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000367003\" name=\"3 - cleanWhenHidden target\">\n      <bpmn2:incoming>Flow_start_3</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_3</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_3\" sourceRef=\"start-event-3\" targetRef=\"task-1000367003\" />\n    <bpmn2:endEvent id=\"end-event-3\" name=\"end-event-3\">\n      <bpmn2:incoming>Flow_end_3</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_3\" sourceRef=\"task-1000367003\" targetRef=\"end-event-3\" />\n    <bpmn2:startEvent id=\"start-event-4\">\n      <bpmn2:outgoing>Flow_start_4</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000367004\" name=\"4 - readOnly object and array targets\">\n      <bpmn2:incoming>Flow_start_4</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_4</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_4\" sourceRef=\"start-event-4\" targetRef=\"task-1000367004\" />\n    <bpmn2:endEvent id=\"end-event-4\" name=\"end-event-4\">\n      <bpmn2:incoming>Flow_end_4</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_4\" sourceRef=\"task-1000367004\" targetRef=\"end-event-4\" />\n  </bpmn2:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Process_1\">\n      <bpmndi:BPMNShape id=\"start-event-1_di\" bpmnElement=\"start-event-1\">\n        <dc:Bounds x=\"412\" y=\"240\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-1000367001_di\" bpmnElement=\"task-1000367001\">\n        <dc:Bounds x=\"540\" y=\"218\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_1_di\" bpmnElement=\"Flow_start_1\">\n        <di:waypoint x=\"448\" y=\"258\" />\n        <di:waypoint x=\"540\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-1_di\" bpmnElement=\"end-event-1\">\n        <dc:Bounds x=\"722\" y=\"240\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"283\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_1_di\" bpmnElement=\"Flow_end_1\">\n        <di:waypoint x=\"640\" y=\"258\" />\n        <di:waypoint x=\"722\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-2_di\" bpmnElement=\"start-event-2\">\n        <dc:Bounds x=\"412\" y=\"380\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-1000367002_di\" bpmnElement=\"task-1000367002\">\n        <dc:Bounds x=\"540\" y=\"358\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_2_di\" bpmnElement=\"Flow_start_2\">\n        <di:waypoint x=\"448\" y=\"398\" />\n        <di:waypoint x=\"540\" y=\"398\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-2_di\" bpmnElement=\"end-event-2\">\n        <dc:Bounds x=\"722\" y=\"380\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"423\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_2_di\" bpmnElement=\"Flow_end_2\">\n        <di:waypoint x=\"640\" y=\"398\" />\n        <di:waypoint x=\"722\" y=\"398\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-3_di\" bpmnElement=\"start-event-3\">\n        <dc:Bounds x=\"412\" y=\"520\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-1000367003_di\" bpmnElement=\"task-1000367003\">\n        <dc:Bounds x=\"540\" y=\"498\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_3_di\" bpmnElement=\"Flow_start_3\">\n        <di:waypoint x=\"448\" y=\"538\" />\n        <di:waypoint x=\"540\" y=\"538\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-3_di\" bpmnElement=\"end-event-3\">\n        <dc:Bounds x=\"722\" y=\"520\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"563\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_3_di\" bpmnElement=\"Flow_end_3\">\n        <di:waypoint x=\"640\" y=\"538\" />\n        <di:waypoint x=\"722\" y=\"538\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-4_di\" bpmnElement=\"start-event-4\">\n        <dc:Bounds x=\"412\" y=\"660\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-1000367004_di\" bpmnElement=\"task-1000367004\">\n        <dc:Bounds x=\"540\" y=\"638\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_4_di\" bpmnElement=\"Flow_start_4\">\n        <di:waypoint x=\"448\" y=\"678\" />\n        <di:waypoint x=\"540\" y=\"678\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-4_di\" bpmnElement=\"end-event-4\">\n        <dc:Bounds x=\"722\" y=\"660\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"703\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_4_di\" bpmnElement=\"Flow_end_4\">\n        <di:waypoint x=\"640\" y=\"678\" />\n        <di:waypoint x=\"722\" y=\"678\" />\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
+        "data": {
+            "statuses": [],
+            "entryTaskTemplateIds": [
+                {
+                    "name": "Start",
+                    "id": "() => 1000367001;"
+                },
+                {
+                    "hidden": false,
+                    "name": "2 - checkReadonly",
+                    "id": "() => 1000367002;"
+                },
+                {
+                    "hidden": false,
+                    "name": "3 - cleanWhenHidden target",
+                    "id": "() => 1000367003;"
+                },
+                {
+                    "hidden": false,
+                    "name": "4 - readOnly object and array targets",
+                    "id": "() => 1000367004;"
+                }
+            ]
+        },
+        "isActive": true,
+        "accessUnits": [],
+        "createdAt": "2026-09-24T12:00:00.000Z",
+        "updatedAt": "2026-09-24T12:00:00.000Z",
+        "meta": {}
+    },
+    "workflowTemplateCategory": {
+        "id": 29,
+        "parentId": 0,
+        "name": "testProcess",
+        "createdAt": "2022-12-02T11:32:34.679Z",
+        "updatedAt": "2026-09-18T13:24:04.776Z"
+    },
+    "taskTemplates": [
+        {
+            "id": 1000367001,
+            "name": "1 - userInfo in calculate",
+            "documentTemplateId": 1000367001,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "createdAt": "2026-09-24T12:00:00.000Z",
+            "updatedAt": "2026-09-24T12:00:00.000Z"
+        },
+        {
+            "id": 1000367002,
+            "name": "2 - checkReadonly",
+            "documentTemplateId": 1000367002,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "createdAt": "2026-09-24T12:00:00.000Z",
+            "updatedAt": "2026-09-24T12:00:00.000Z"
+        },
+        {
+            "id": 1000367003,
+            "name": "3 - cleanWhenHidden target",
+            "documentTemplateId": 1000367003,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "createdAt": "2026-09-24T12:00:00.000Z",
+            "updatedAt": "2026-09-24T12:00:00.000Z"
+        },
+        {
+            "id": 1000367004,
+            "name": "4 - readOnly object and array targets",
+            "documentTemplateId": 1000367004,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "createdAt": "2026-09-24T12:00:00.000Z",
+            "updatedAt": "2026-09-24T12:00:00.000Z"
+        }
+    ],
+    "documentTemplates": [
+        {
+            "id": 1000367001,
+            "name": "1 - userInfo in calculate",
+            "jsonSchema": {
+                "title": "userInfo у calculate",
+                "type": "object",
+                "signRequired": false,
+                "pdfRequired": false,
+                "diiaSign": false,
+                "isP7sSign": false,
+                "forceRedirect": false,
+                "calcTriggers": [
+                    {
+                        "source": "userStep.input",
+                        "target": "userStep.userId",
+                        "calculate": "(value, step, documentData, parent, userInfo) => userInfo?.userId",
+                        "readOnly": true,
+                        "validate": true
+                    }
+                ],
+                "properties": {
+                    "userStep": {
+                        "type": "object",
+                        "description": "userInfo",
+                        "properties": {
+                            "input": {
+                                "type": "string",
+                                "description": "Джерело"
+                            },
+                            "userId": {
+                                "type": "string",
+                                "readOnly": true,
+                                "description": "ID користувача"
+                            }
+                        }
+                    },
+                    "lastStep": {
+                        "type": "object",
+                        "description": "Останній крок",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Останній крок"
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n    \"title\": \"userInfo у calculate\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"source\": \"userStep.input\",\n            \"target\": \"userStep.userId\",\n            \"calculate\": \"(value, step, documentData, parent, userInfo) => userInfo?.userId\",\n            \"readOnly\": true,\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"userStep\": {\n            \"type\": \"object\",\n            \"description\": \"userInfo\",\n            \"properties\": {\n                \"input\": {\n                    \"type\": \"string\",\n                    \"description\": \"Джерело\"\n                },\n                \"userId\": {\n                    \"type\": \"string\",\n                    \"readOnly\": true,\n                    \"description\": \"ID користувача\"\n                }\n            }\n        },\n        \"lastStep\": {\n            \"type\": \"object\",\n            \"description\": \"Останній крок\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Останній крок\"\n                }\n            }\n        }\n    }\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "mocks": [],
+            "createdAt": "2026-09-24T12:00:00.000Z",
+            "updatedAt": "2026-09-24T12:00:00.000Z"
+        },
+        {
+            "id": 1000367002,
+            "name": "2 - checkReadonly",
+            "jsonSchema": {
+                "title": "checkReadonly",
+                "type": "object",
+                "signRequired": false,
+                "pdfRequired": false,
+                "diiaSign": false,
+                "isP7sSign": false,
+                "forceRedirect": false,
+                "calcTriggers": [
+                    {
+                        "source": "lockStep.input",
+                        "target": "lockStep.lockedTarget",
+                        "calculate": "(value) => value",
+                        "readOnly": true,
+                        "validate": true
+                    }
+                ],
+                "properties": {
+                    "lockStep": {
+                        "type": "object",
+                        "description": "checkReadonly",
+                        "properties": {
+                            "input": {
+                                "type": "string",
+                                "description": "Джерело"
+                            },
+                            "locked": {
+                                "type": "string",
+                                "checkReadonly": true,
+                                "description": "Поле з checkReadonly"
+                            },
+                            "lockedTarget": {
+                                "type": "string",
+                                "checkReadonly": true,
+                                "description": "Ціль тригера з checkReadonly"
+                            }
+                        }
+                    },
+                    "lastStep": {
+                        "type": "object",
+                        "description": "Останній крок",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Останній крок"
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n    \"title\": \"checkReadonly\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"source\": \"lockStep.input\",\n            \"target\": \"lockStep.lockedTarget\",\n            \"calculate\": \"(value) => value\",\n            \"readOnly\": true,\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"lockStep\": {\n            \"type\": \"object\",\n            \"description\": \"checkReadonly\",\n            \"properties\": {\n                \"input\": {\n                    \"type\": \"string\",\n                    \"description\": \"Джерело\"\n                },\n                \"locked\": {\n                    \"type\": \"string\",\n                    \"checkReadonly\": true,\n                    \"description\": \"Поле з checkReadonly\"\n                },\n                \"lockedTarget\": {\n                    \"type\": \"string\",\n                    \"checkReadonly\": true,\n                    \"description\": \"Ціль тригера з checkReadonly\"\n                }\n            }\n        },\n        \"lastStep\": {\n            \"type\": \"object\",\n            \"description\": \"Останній крок\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Останній крок\"\n                }\n            }\n        }\n    }\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "mocks": [],
+            "createdAt": "2026-09-24T12:00:00.000Z",
+            "updatedAt": "2026-09-24T12:00:00.000Z"
+        },
+        {
+            "id": 1000367003,
+            "name": "3 - cleanWhenHidden target",
+            "jsonSchema": {
+                "title": "cleanWhenHidden",
+                "type": "object",
+                "signRequired": false,
+                "pdfRequired": false,
+                "diiaSign": false,
+                "isP7sSign": false,
+                "forceRedirect": false,
+                "calcTriggers": [
+                    {
+                        "source": "hideStep.input",
+                        "target": "hideStep.result",
+                        "calculate": "(value) => value ? `${value}!` : value",
+                        "validate": true
+                    }
+                ],
+                "properties": {
+                    "hideStep": {
+                        "type": "object",
+                        "description": "cleanWhenHidden",
+                        "properties": {
+                            "input": {
+                                "type": "string",
+                                "description": "Джерело"
+                            },
+                            "result": {
+                                "type": "string",
+                                "cleanWhenHidden": true,
+                                "checkHidden": true,
+                                "description": "Прихована ціль"
+                            }
+                        }
+                    },
+                    "lastStep": {
+                        "type": "object",
+                        "description": "Останній крок",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Останній крок"
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n    \"title\": \"cleanWhenHidden\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"source\": \"hideStep.input\",\n            \"target\": \"hideStep.result\",\n            \"calculate\": \"(value) => value ? `${value}!` : value\",\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"hideStep\": {\n            \"type\": \"object\",\n            \"description\": \"cleanWhenHidden\",\n            \"properties\": {\n                \"input\": {\n                    \"type\": \"string\",\n                    \"description\": \"Джерело\"\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"cleanWhenHidden\": true,\n                    \"checkHidden\": true,\n                    \"description\": \"Прихована ціль\"\n                }\n            }\n        },\n        \"lastStep\": {\n            \"type\": \"object\",\n            \"description\": \"Останній крок\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Останній крок\"\n                }\n            }\n        }\n    }\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "mocks": [],
+            "createdAt": "2026-09-24T12:00:00.000Z",
+            "updatedAt": "2026-09-24T12:00:00.000Z"
+        },
+        {
+            "id": 1000367004,
+            "name": "4 - readOnly object and array targets",
+            "jsonSchema": {
+                "title": "readOnly object and array targets",
+                "type": "object",
+                "signRequired": false,
+                "pdfRequired": false,
+                "diiaSign": false,
+                "isP7sSign": false,
+                "forceRedirect": false,
+                "calcTriggers": [
+                    {
+                        "source": "calc.input",
+                        "target": "calc.upper",
+                        "calculate": "(value) => value ? value.toUpperCase() : value",
+                        "readOnly": true,
+                        "validate": true
+                    },
+                    {
+                        "source": "calc.input",
+                        "target": "calc.resultObject",
+                        "calculate": "(value) => value ? { name: value, len: value.length } : value",
+                        "readOnly": true,
+                        "validate": true
+                    },
+                    {
+                        "source": "calc.input",
+                        "target": "calc.resultArray",
+                        "calculate": "(value) => value ? value.split('') : value",
+                        "readOnly": true,
+                        "validate": true
+                    }
+                ],
+                "properties": {
+                    "calc": {
+                        "type": "object",
+                        "description": "readOnly targets",
+                        "properties": {
+                            "input": {
+                                "type": "string",
+                                "description": "Джерело"
+                            },
+                            "upper": {
+                                "type": "string",
+                                "readOnly": true,
+                                "description": "Рядок"
+                            },
+                            "resultObject": {
+                                "type": "object",
+                                "readOnly": true,
+                                "description": "Об'єкт",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "len": {
+                                        "type": "number"
+                                    }
+                                }
+                            },
+                            "resultArray": {
+                                "type": "array",
+                                "readOnly": true,
+                                "description": "Масив",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "lastStep": {
+                        "type": "object",
+                        "description": "Останній крок",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Останній крок"
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n    \"title\": \"readOnly object and array targets\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"source\": \"calc.input\",\n            \"target\": \"calc.upper\",\n            \"calculate\": \"(value) => value ? value.toUpperCase() : value\",\n            \"readOnly\": true,\n            \"validate\": true\n        },\n        {\n            \"source\": \"calc.input\",\n            \"target\": \"calc.resultObject\",\n            \"calculate\": \"(value) => value ? { name: value, len: value.length } : value\",\n            \"readOnly\": true,\n            \"validate\": true\n        },\n        {\n            \"source\": \"calc.input\",\n            \"target\": \"calc.resultArray\",\n            \"calculate\": \"(value) => value ? value.split('') : value\",\n            \"readOnly\": true,\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"calc\": {\n            \"type\": \"object\",\n            \"description\": \"readOnly targets\",\n            \"properties\": {\n                \"input\": {\n                    \"type\": \"string\",\n                    \"description\": \"Джерело\"\n                },\n                \"upper\": {\n                    \"type\": \"string\",\n                    \"readOnly\": true,\n                    \"description\": \"Рядок\"\n                },\n                \"resultObject\": {\n                    \"type\": \"object\",\n                    \"readOnly\": true,\n                    \"description\": \"Об'єкт\",\n                    \"properties\": {\n                        \"name\": {\n                            \"type\": \"string\"\n                        },\n                        \"len\": {\n                            \"type\": \"number\"\n                        }\n                    }\n                },\n                \"resultArray\": {\n                    \"type\": \"array\",\n                    \"readOnly\": true,\n                    \"description\": \"Масив\",\n                    \"items\": {\n                        \"type\": \"string\"\n                    }\n                }\n            }\n        },\n        \"lastStep\": {\n            \"type\": \"object\",\n            \"description\": \"Останній крок\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Останній крок\"\n                }\n            }\n        }\n    }\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "mocks": [],
+            "createdAt": "2026-09-24T12:00:00.000Z",
+            "updatedAt": "2026-09-24T12:00:00.000Z"
+        }
+    ],
+    "gatewayTemplates": [],
+    "eventTemplates": []
+}
