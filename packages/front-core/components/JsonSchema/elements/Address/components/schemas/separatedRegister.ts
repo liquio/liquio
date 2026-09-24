@@ -11,16 +11,12 @@ interface CalcTriggersParams {
 
 const calcTriggers = ({ stepName, isArray, isPopup }: CalcTriggersParams) => {
   const isArrayOrPopup = isArray || isPopup;
+
   const commonTriggers = [
     {
-      source: `${stepName}.building.index`,
-      target: `${stepName}.apt.index`,
-      calculate: '(val) => val',
-    },
-    {
-      source: `${stepName}.apt.index`,
-      target: `${stepName}.building.index`,
-      calculate: '(val) => val',
+      source: `${stepName}.isPrivateHouse`,
+      target: [`${stepName}.apt.index`, `${stepName}.building.index`],
+      calculate: '() => undefined',
     },
   ];
 
@@ -60,6 +56,7 @@ const calcTriggers = ({ stepName, isArray, isPopup }: CalcTriggersParams) => {
     ];
   } else {
     return [
+      ...commonTriggers,
       {
         source: `${stepName}.ATU`,
         target: `${stepName}.street`,
@@ -77,6 +74,21 @@ const calcTriggers = ({ stepName, isArray, isPopup }: CalcTriggersParams) => {
       },
       {
         source: `${stepName}.region`,
+        target: `${stepName}.street`,
+        calculate: '() => undefined',
+      },
+      {
+        source: `${stepName}.district`,
+        target: `${stepName}.city`,
+        calculate: '() => undefined',
+      },
+      {
+        source: `${stepName}.district`,
+        target: `${stepName}.street`,
+        calculate: '() => undefined',
+      },
+      {
+        source: `${stepName}.city`,
         target: `${stepName}.street`,
         calculate: '() => undefined',
       },

@@ -84,6 +84,21 @@ const calcTriggersMulti = ({
         target: `${stepName}.${addressName}Street`,
         calculate: '() => undefined',
       },
+      {
+        source: `${stepName}.${addressName}District`,
+        target: `${stepName}.${addressName}City`,
+        calculate: '() => undefined',
+      },
+      {
+        source: `${stepName}.${addressName}District`,
+        target: `${stepName}.${addressName}Street`,
+        calculate: '() => undefined',
+      },
+      {
+        source: `${stepName}.${addressName}City`,
+        target: `${stepName}.${addressName}Street`,
+        calculate: '() => undefined',
+      },
     ];
   }
 };
