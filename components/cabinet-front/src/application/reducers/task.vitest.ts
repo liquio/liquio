@@ -235,4 +235,73 @@ describe('task reducer calcTriggers', () => {
     });
     expect(next.actual[1].document!.data.root).toEqual({ a: 2 });
   });
+
+  it('handles CHECK_DATA_EXTERNAL_READER_SUCCESS with a requestId as a no-op', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-1', requestId: 'req-1' }
+    });
+    expect(next).toBe(initial);
+  });
+
+  it('handles CHECK_DATA_EXTERNAL_READER_SUCCESS with a request requestId as a no-op', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-1', data: { s: { r: 1 } } },
+      request: { requestId: 'req-1' }
+    });
+    expect(next).toBe(initial);
+  });
+
+  it('writes the CHECK_DATA_EXTERNAL_READER_SUCCESS document to actual and leaves origin untouched', () => {
+    const initial = loadTask({
+      id: 1,
+      documentId: 'doc-1',
+      document: { id: 'doc-1', data: { s: { a: 1 } }, isFinal: false }
+    });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-1', data: { s: { a: 1, reader: 'r' } } }
+    });
+    expect(next.actual[1].document).toEqual({ id: 'doc-1', data: { s: { a: 1, reader: 'r' } }, isFinal: false });
+    expect(next.origin[1].document!.data).toEqual({ s: { a: 1 } });
+  });
+
+  it('accepts a CHECK_DATA_EXTERNAL_READER_SUCCESS payload wrapped in document', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { document: { documentId: 'doc-1', data: { r: 1 } } }
+    });
+    expect(next.actual[1].document!.data).toEqual({ r: 1 });
+  });
+
+  it('keeps the actual data when the CHECK_DATA_EXTERNAL_READER_SUCCESS payload has none', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: { a: 1 } } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-1', updatedAt: 'now' }
+    });
+    expect(next.actual[1].document).toEqual({ id: 'doc-1', data: { a: 1 }, updatedAt: 'now' });
+  });
+
+  it('ignores CHECK_DATA_EXTERNAL_READER_SUCCESS for an unknown document', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-2', data: { a: 1 } }
+    });
+    expect(next).toBe(initial);
+  });
+
+  it('ignores CHECK_DATA_EXTERNAL_READER_SUCCESS without a document id', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { data: { a: 1 } }
+    });
+    expect(next).toBe(initial);
+  });
 });

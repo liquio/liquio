@@ -510,20 +510,66 @@ const rootReducer = (state: TaskState = initialState, action: TaskAction): TaskS
       };
     }
     case CHECK_DATA_EXTERNAL_READER_SUCCESS: {
-      const payload = action.payload as { requestId?: unknown; id: string | number };
+      const payload = action.payload as
+        | {
+            requestId?: unknown;
+            document?: Partial<TaskDocument> & { documentId?: unknown; id?: unknown };
+            documentId?: unknown;
+            id?: unknown;
+            data?: unknown;
+          }
+        | undefined;
       const request = action.request as { requestId?: unknown } | undefined;
-      if (payload?.requestId || request?.requestId) return state;
-      const taskId = (
-        Object.values(state.actual).find(({ documentId }) => documentId === payload.id) as Task
-      ).id;
+
+      if (payload?.requestId || request?.requestId) {
+        return state;
+      }
+
+      const documentPayload = (payload?.document || payload) as
+        | (Partial<TaskDocument> & { documentId?: unknown; id?: unknown; data?: unknown })
+        | undefined;
+      const documentId = documentPayload?.documentId || documentPayload?.id;
+
+      if (!documentId) {
+        return state;
+      }
+
+      const taskEntry = Object.values(state.actual).find(
+        ({ documentId: id }) => id === documentId
+      ) as Task | undefined;
+
+      if (!taskEntry) {
+        return state;
+      }
+
+      try {
+        console.log('[Task] CHECK_DATA_EXTERNAL_READER_SUCCESS actual update', {
+          taskId: taskEntry.id,
+          documentId,
+          keys: Object.keys((documentPayload?.data as Record<string, unknown>) || {})
+        });
+      } catch (e) {
+        console.log('[Task] CHECK_DATA_EXTERNAL_READER_SUCCESS log error', e);
+      }
+
+      const currentDocument = state.actual[taskEntry.id as string]?.document as TaskDocument | undefined;
+
+      const nextDocument = {
+        ...currentDocument,
+        ...documentPayload,
+        data:
+          documentPayload?.data !== undefined
+            ? JSON.parse(JSON.stringify(documentPayload.data))
+            : currentDocument?.data
+      } as TaskDocument;
 
       return {
         ...state,
-        origin: {
-          ...state.origin,
-          [taskId]: {
-            ...state.origin[taskId],
-            document: payload as unknown as TaskDocument
+        actual: {
+          ...state.actual,
+          [taskEntry.id as string]: {
+            ...state.actual[taskEntry.id as string],
+            document: nextDocument
           }
         }
       };
