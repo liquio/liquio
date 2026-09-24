@@ -77,7 +77,7 @@ export enum SandboxIsolationLevel {
 }
 
 /** Log levels used by `Sandbox`'s own diagnostic `save()` calls. */
-export type SandboxLogLevel = 'info' | 'warn' | 'error';
+export type SandboxLogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 /**
  * Minimal structural shape for the log object each component exposes on `global.log`.
@@ -176,6 +176,22 @@ export class Sandbox {
       base64Encode,
       toBase64,
       global: {},
+      // Shadow host globals that evaluated code must not reach (they would otherwise resolve to
+      // the host realm under `Function` isolation). `console` is re-injected per eval, routed to the log.
+      console: undefined,
+      process: undefined,
+      globalThis: undefined,
+      Function: undefined,
+      queueMicrotask: undefined,
+      navigator: undefined,
+      performance: undefined,
+      setInterval: undefined,
+      setTimeout: undefined,
+      setImmediate: undefined,
+      clearInterval: undefined,
+      clearTimeout: undefined,
+      clearImmediate: undefined,
+      fetch: undefined,
     };
 
     // Create a cache for evaluated functions
@@ -215,7 +231,8 @@ export class Sandbox {
    */
   async init(models: any): Promise<void> {
     if (!models?.models?.workflowTemplate) {
-      throw new Error('Models are required to initialize the sandbox.');
+      this.log.save('sandbox-warning', { message: 'Models are required to initialize the sandbox.' }, 'warn');
+      return;
     }
 
     // Select all workflow templates that have global functions defined in their data.
@@ -330,6 +347,7 @@ export class Sandbox {
     const workflowScope: { workflow: Record<string, unknown> } = { workflow: {} };
     options.global[this.globalFunctionsObject] = workflowScope;
     options.global.log = this.getSandboxLog({ ...options.meta, hash, workflowTemplateId: options.workflowTemplateId });
+    options.global.console = this.getSandboxConsole({ ...options.meta, hash, workflowTemplateId: options.workflowTemplateId });
 
     // Add workflow template global functions to the execution context.
     const workflowTemplateId = options.workflowTemplateId || meta.workflowTemplateId;
@@ -340,6 +358,9 @@ export class Sandbox {
     const globalContext = { ...this.defaultGlobals, ...options.global };
 
     let transformedCode = Sandbox.minifyCode(code);
+    if (/\.prototype\b/.test(transformedCode)) {
+      this.log.save('sandbox-alert', { ...meta, code, workflowTemplateId, message: 'Access to .prototype detected' }, 'warn');
+    }
     if (options.isAsync) {
       const asyncFunctions = Object.entries(globalContext)
         .filter(([, value]) => isAsyncFunctionValue(value))
@@ -535,6 +556,23 @@ export class Sandbox {
   private getSandboxLog(meta: Record<string, unknown>): (data: unknown) => void {
     return (data: unknown) => {
       this.log.save('sandbox-log', { data, meta }, 'info');
+    };
+  }
+
+  /**
+   * A console-like object for evaluated code that routes output to the log instead of the
+   * host's stdout.
+   * @param {object} meta Metadata.
+   * @returns {object}
+   */
+  private getSandboxConsole(meta: Record<string, unknown>): Record<'log' | 'info' | 'warn' | 'error' | 'debug', (...args: unknown[]) => void> {
+    const save = (level: SandboxLogLevel, args: unknown[]): void => this.log.save('sandbox-console', { data: args, meta }, level);
+    return {
+      log: (...args) => save('info', args),
+      info: (...args) => save('info', args),
+      warn: (...args) => save('warn', args),
+      error: (...args) => save('error', args),
+      debug: (...args) => save('debug', args),
     };
   }
 }
