@@ -11,7 +11,8 @@ interface PaymentState {
 }
 
 /** Interpret a fresh server-side checkout response, never browser callback fields.
- * Authentication describes risk; it does not undo an authorization or capture.
+ * Explicitly unavailable authentication is rejected by application policy and allows retry.
+ * This policy does not reverse any authorization or capture reported by PAYONE.
  * https://developer.payone.com/en/integration/api-developer-guide/statuses
  */
 export function paymentState(
@@ -24,7 +25,12 @@ export function paymentState(
   const authentication =
     payment?.paymentOutput?.cardPaymentMethodSpecificOutput
       ?.threeDSecureResults;
-  const isSuccess = paymentStatus === "CAPTURED" && paymentStatusCode === 9;
+  const authenticationUnavailable =
+    authentication?.authenticationStatus === "U";
+  const isSuccess =
+    !authenticationUnavailable &&
+    paymentStatus === "CAPTURED" &&
+    paymentStatusCode === 9;
   // Require a terminal monetary outcome as well as a closed checkout. In particular,
   // a rejected capture can leave an authorization alive and must not allow a new charge.
   const isTerminalFailure =
@@ -32,6 +38,9 @@ export function paymentState(
     (paymentStatus === "CANCELLED" &&
       (paymentStatusCode === 1 || paymentStatusCode === 6));
   const canRetry =
+    // Explicit policy exception: permit a new attempt after unavailable authentication,
+    // even when PAYONE reports captured funds. No automatic refund is performed here.
+    authenticationUnavailable ||
     (checkout.status === PayoneCheckoutStatus.CancelledByConsumer &&
       (!payment || isTerminalFailure)) ||
     (checkout.status === PayoneCheckoutStatus.PaymentCreated &&

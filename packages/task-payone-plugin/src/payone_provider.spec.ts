@@ -650,7 +650,7 @@ describe("PayoneProvider", () => {
       );
     });
 
-    it('preserves captured payment success independently of authenticationStatus "U"', async () => {
+    it('allows another payment when captured payment has authenticationStatus "U"', async () => {
       getCheckoutRequestMock.mockResolvedValue({
         commerceCaseId: "commerce-case-1",
         checkoutId: "checkout-1",
@@ -670,7 +670,11 @@ describe("PayoneProvider", () => {
         {},
       );
 
-      expect(result.status).toEqual({ isSuccess: true, isPending: false });
+      expect(result.status).toEqual({
+        isSuccess: false,
+        isPending: false,
+        canRetry: true,
+      });
       expect(result.extraData.paymentStatus).toBe(
         PayonePaymentStatusCategory.Successful,
       );
@@ -1138,7 +1142,7 @@ describe("PayoneProvider", () => {
             paymentOutput: {
               cardPaymentMethodSpecificOutput: {
                 threeDSecureResults: {
-                  authenticationStatus: "U",
+                  authenticationStatus: "Y",
                   eci: "7",
                   liability: "merchant",
                 },
@@ -1171,7 +1175,7 @@ describe("PayoneProvider", () => {
         expect(result.extraData).toMatchObject({
           paymentState: status,
           paymentStatusCode: statusCode,
-          authenticationStatus: "U",
+          authenticationStatus: "Y",
           eci: "7",
           liability: "merchant",
         });
@@ -1183,7 +1187,7 @@ describe("PayoneProvider", () => {
         expect(checked).toMatchObject({
           isSuccess,
           isPending,
-          authenticationStatus: "U",
+          authenticationStatus: "Y",
         });
         expect(getCheckoutRequestMock).toHaveBeenCalledTimes(2);
       },
@@ -1234,7 +1238,7 @@ describe("PayoneProvider", () => {
       expect(result).toMatchObject({ isSuccess: false });
     });
 
-    it('returns captured payment success with authenticationStatus "U" separately', async () => {
+    it('returns a retryable unsuccessful payment with authenticationStatus "U"', async () => {
       getCheckoutRequestMock.mockResolvedValue({
         checkoutStatus: "COMPLETED",
         statusOutput: { paymentStatus: PayonePaymentStatusCategory.Successful },
@@ -1250,7 +1254,9 @@ describe("PayoneProvider", () => {
       );
 
       expect(result).toMatchObject({
-        isSuccess: true,
+        isSuccess: false,
+        isPending: false,
+        canRetry: true,
         paymentStatus: PayonePaymentStatusCategory.Successful,
         authenticationStatus: "U",
       });
