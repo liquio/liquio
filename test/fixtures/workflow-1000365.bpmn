@@ -1,0 +1,1457 @@
+{
+  "workflowTemplate": {
+    "id": 1000365,
+    "workflowTemplateCategoryId": 29,
+    "name": "calcTriggers",
+    "description": "",
+    "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\">\n  <bpmn2:process id=\"Process_1\" isExecutable=\"false\">\n    <bpmn2:startEvent id=\"StartEvent_1\">\n      <bpmn2:outgoing>Flow_084bymj</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000365001\" name=\"1.1 - source + checkStepHidden\">\n      <bpmn2:incoming>Flow_084bymj</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0cjasjk</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_084bymj\" sourceRef=\"StartEvent_1\" targetRef=\"task-1000365001\" />\n    <bpmn2:endEvent id=\"end-event-1\" name=\"end-event-1\">\n      <bpmn2:incoming>Flow_0cjasjk</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_0cjasjk\" sourceRef=\"task-1000365001\" targetRef=\"end-event-1\" />\n    <bpmn2:startEvent id=\"Event_066tuhd\">\n      <bpmn2:outgoing>Flow_03gs1bo</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000365002\" name=\"1.2 - source + stepOrders\">\n      <bpmn2:incoming>Flow_03gs1bo</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_1yn44sx</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_03gs1bo\" sourceRef=\"Event_066tuhd\" targetRef=\"task-1000365002\" />\n    <bpmn2:endEvent id=\"end-event-2\" name=\"end-event-2\">\n      <bpmn2:incoming>Flow_1yn44sx</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_1yn44sx\" sourceRef=\"task-1000365002\" targetRef=\"end-event-2\" />\n    <bpmn2:startEvent id=\"Event_0ejx7ax\">\n      <bpmn2:outgoing>Flow_0ge5kmk</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000365003\" name=\"2.1 - step + checkStepHidden\">\n      <bpmn2:incoming>Flow_0ge5kmk</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_09kux90</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_0ge5kmk\" sourceRef=\"Event_0ejx7ax\" targetRef=\"task-1000365003\" />\n    <bpmn2:endEvent id=\"end-event-3\" name=\"end-event-3\">\n      <bpmn2:incoming>Flow_09kux90</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_09kux90\" sourceRef=\"task-1000365003\" targetRef=\"end-event-3\" />\n    <bpmn2:startEvent id=\"Event_0ed2ppc\">\n      <bpmn2:outgoing>Flow_1w9a436</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000365004\" name=\"2.2 - step + stepOrders\">\n      <bpmn2:incoming>Flow_1w9a436</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0h8km88</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_1w9a436\" sourceRef=\"Event_0ed2ppc\" targetRef=\"task-1000365004\" />\n    <bpmn2:endEvent id=\"end-event-4\" name=\"end-event-4\">\n      <bpmn2:incoming>Flow_0h8km88</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_0h8km88\" sourceRef=\"task-1000365004\" targetRef=\"end-event-4\" />\n    <bpmn2:startEvent id=\"Event_15kp7lf\">\n      <bpmn2:outgoing>Flow_0jfnyj7</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000365005\" name=\"3.1 - callBeforePdf + pdfRequired: true\">\n      <bpmn2:incoming>Flow_0jfnyj7</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_122ufyz</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_0jfnyj7\" sourceRef=\"Event_15kp7lf\" targetRef=\"task-1000365005\" />\n    <bpmn2:endEvent id=\"end-event-5\" name=\"end-event-5\">\n      <bpmn2:incoming>Flow_122ufyz</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_122ufyz\" sourceRef=\"task-1000365005\" targetRef=\"end-event-5\" />\n    <bpmn2:startEvent id=\"Event_0amgbg8\">\n      <bpmn2:outgoing>Flow_0hcqlob</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000365006\" name=\"3.2 - callBeforePdf + pdfRequired функцією\">\n      <bpmn2:incoming>Flow_0hcqlob</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0yo4anb</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_0hcqlob\" sourceRef=\"Event_0amgbg8\" targetRef=\"task-1000365006\" />\n    <bpmn2:endEvent id=\"end-event-6\" name=\"end-event-6\">\n      <bpmn2:incoming>Flow_0yo4anb</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_0yo4anb\" sourceRef=\"task-1000365006\" targetRef=\"end-event-6\" />\n    <bpmn2:startEvent id=\"Event_0kygrke\">\n      <bpmn2:outgoing>Flow_0e950hf</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000365007\" name=\"4.1 - silent trigger + checkStepHidden\">\n      <bpmn2:incoming>Flow_0e950hf</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_0r62adi</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_0e950hf\" sourceRef=\"Event_0kygrke\" targetRef=\"task-1000365007\" />\n    <bpmn2:endEvent id=\"Event_07orqr3\">\n      <bpmn2:incoming>Flow_0r62adi</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_0r62adi\" sourceRef=\"task-1000365007\" targetRef=\"Event_07orqr3\" />\n    <bpmn2:startEvent id=\"Event_1tixi5m\">\n      <bpmn2:outgoing>Flow_0e2dvg8</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000365008\" name=\"4.2 - silent trigger + stepOrders\">\n      <bpmn2:incoming>Flow_0e2dvg8</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_1sd6pha</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_0e2dvg8\" sourceRef=\"Event_1tixi5m\" targetRef=\"task-1000365008\" />\n    <bpmn2:endEvent id=\"Event_06xpp73\">\n      <bpmn2:incoming>Flow_1sd6pha</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_1sd6pha\" sourceRef=\"task-1000365008\" targetRef=\"Event_06xpp73\" />\n  </bpmn2:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Process_1\">\n      <bpmndi:BPMNShape id=\"_BPMNShape_StartEvent_2\" bpmnElement=\"StartEvent_1\">\n        <dc:Bounds x=\"412\" y=\"240\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_1xoirg8_di\" bpmnElement=\"task-1000365001\">\n        <dc:Bounds x=\"540\" y=\"218\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_084bymj_di\" bpmnElement=\"Flow_084bymj\">\n        <di:waypoint x=\"448\" y=\"258\" />\n        <di:waypoint x=\"540\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_1udxxhx_di\" bpmnElement=\"end-event-1\">\n        <dc:Bounds x=\"722\" y=\"240\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"283\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0cjasjk_di\" bpmnElement=\"Flow_0cjasjk\">\n        <di:waypoint x=\"640\" y=\"258\" />\n        <di:waypoint x=\"722\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_066tuhd_di\" bpmnElement=\"Event_066tuhd\">\n        <dc:Bounds x=\"412\" y=\"382\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_0ak8el0_di\" bpmnElement=\"task-1000365002\">\n        <dc:Bounds x=\"540\" y=\"360\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_03gs1bo_di\" bpmnElement=\"Flow_03gs1bo\">\n        <di:waypoint x=\"448\" y=\"400\" />\n        <di:waypoint x=\"540\" y=\"400\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_01mduq2_di\" bpmnElement=\"end-event-2\">\n        <dc:Bounds x=\"722\" y=\"382\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"425\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_1yn44sx_di\" bpmnElement=\"Flow_1yn44sx\">\n        <di:waypoint x=\"640\" y=\"400\" />\n        <di:waypoint x=\"722\" y=\"400\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_0ejx7ax_di\" bpmnElement=\"Event_0ejx7ax\">\n        <dc:Bounds x=\"412\" y=\"512\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_0okky8y_di\" bpmnElement=\"task-1000365003\">\n        <dc:Bounds x=\"540\" y=\"490\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0ge5kmk_di\" bpmnElement=\"Flow_0ge5kmk\">\n        <di:waypoint x=\"448\" y=\"530\" />\n        <di:waypoint x=\"540\" y=\"530\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_0mqt1t9_di\" bpmnElement=\"end-event-3\">\n        <dc:Bounds x=\"722\" y=\"512\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"555\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_09kux90_di\" bpmnElement=\"Flow_09kux90\">\n        <di:waypoint x=\"640\" y=\"530\" />\n        <di:waypoint x=\"722\" y=\"530\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_0ed2ppc_di\" bpmnElement=\"Event_0ed2ppc\">\n        <dc:Bounds x=\"412\" y=\"642\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_0u1wbta_di\" bpmnElement=\"task-1000365004\">\n        <dc:Bounds x=\"540\" y=\"620\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_1w9a436_di\" bpmnElement=\"Flow_1w9a436\">\n        <di:waypoint x=\"448\" y=\"660\" />\n        <di:waypoint x=\"540\" y=\"660\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_1p4as9b_di\" bpmnElement=\"end-event-4\">\n        <dc:Bounds x=\"722\" y=\"642\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"685\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0h8km88_di\" bpmnElement=\"Flow_0h8km88\">\n        <di:waypoint x=\"640\" y=\"660\" />\n        <di:waypoint x=\"722\" y=\"660\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_15kp7lf_di\" bpmnElement=\"Event_15kp7lf\">\n        <dc:Bounds x=\"412\" y=\"772\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_18f9x3g_di\" bpmnElement=\"task-1000365005\">\n        <dc:Bounds x=\"540\" y=\"750\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0jfnyj7_di\" bpmnElement=\"Flow_0jfnyj7\">\n        <di:waypoint x=\"448\" y=\"790\" />\n        <di:waypoint x=\"540\" y=\"790\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_05yqy1n_di\" bpmnElement=\"end-event-5\">\n        <dc:Bounds x=\"722\" y=\"772\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"815\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_122ufyz_di\" bpmnElement=\"Flow_122ufyz\">\n        <di:waypoint x=\"640\" y=\"790\" />\n        <di:waypoint x=\"722\" y=\"790\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_0amgbg8_di\" bpmnElement=\"Event_0amgbg8\">\n        <dc:Bounds x=\"412\" y=\"902\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_19qplv3_di\" bpmnElement=\"task-1000365006\">\n        <dc:Bounds x=\"540\" y=\"880\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0hcqlob_di\" bpmnElement=\"Flow_0hcqlob\">\n        <di:waypoint x=\"448\" y=\"920\" />\n        <di:waypoint x=\"540\" y=\"920\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_05h42so_di\" bpmnElement=\"end-event-6\">\n        <dc:Bounds x=\"722\" y=\"902\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"945\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0yo4anb_di\" bpmnElement=\"Flow_0yo4anb\">\n        <di:waypoint x=\"640\" y=\"920\" />\n        <di:waypoint x=\"722\" y=\"920\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_0kygrke_di\" bpmnElement=\"Event_0kygrke\">\n        <dc:Bounds x=\"412\" y=\"1022\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_12y0ait_di\" bpmnElement=\"task-1000365007\">\n        <dc:Bounds x=\"540\" y=\"1000\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0e950hf_di\" bpmnElement=\"Flow_0e950hf\">\n        <di:waypoint x=\"448\" y=\"1040\" />\n        <di:waypoint x=\"540\" y=\"1040\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_07orqr3_di\" bpmnElement=\"Event_07orqr3\">\n        <dc:Bounds x=\"722\" y=\"1022\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0r62adi_di\" bpmnElement=\"Flow_0r62adi\">\n        <di:waypoint x=\"640\" y=\"1040\" />\n        <di:waypoint x=\"722\" y=\"1040\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_1tixi5m_di\" bpmnElement=\"Event_1tixi5m\">\n        <dc:Bounds x=\"412\" y=\"1152\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Activity_19ip1qk_di\" bpmnElement=\"task-1000365008\">\n        <dc:Bounds x=\"540\" y=\"1130\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_0e2dvg8_di\" bpmnElement=\"Flow_0e2dvg8\">\n        <di:waypoint x=\"448\" y=\"1170\" />\n        <di:waypoint x=\"540\" y=\"1170\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Event_06xpp73_di\" bpmnElement=\"Event_06xpp73\">\n        <dc:Bounds x=\"722\" y=\"1152\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_1sd6pha_di\" bpmnElement=\"Flow_1sd6pha\">\n        <di:waypoint x=\"640\" y=\"1170\" />\n        <di:waypoint x=\"722\" y=\"1170\" />\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
+    "data": {
+      "statuses": [],
+      "entryTaskTemplateIds": [
+        {
+          "name": "Start",
+          "id": "() => 1000365001;"
+        },
+        {
+          "hidden": false,
+          "name": "1.2 source + stepOrders",
+          "id": "() => 1000365002;"
+        },
+        {
+          "hidden": false,
+          "name": "2.1 step + checkStepHidden",
+          "id": "() => 1000365003;"
+        },
+        {
+          "hidden": false,
+          "name": "2.2 step + stepOrders",
+          "id": "() => 1000365004;"
+        },
+        {
+          "hidden": false,
+          "name": "3.1 - callBeforePdf + pdfRequired: true",
+          "id": "() => 1000365005;"
+        },
+        {
+          "hidden": false,
+          "name": "3.2 - callBeforePdf + pdfRequired функцією",
+          "id": "() => 1000365006;"
+        },
+        {
+          "hidden": false,
+          "name": "4.1 - silent trigger + checkStepHidden",
+          "id": "() => 1000365007;"
+        },
+        {
+          "hidden": false,
+          "name": "4.2 - silent trigger + stepOrders",
+          "id": "() => 1000365008;"
+        }
+      ]
+    },
+    "isActive": true,
+    "accessUnits": [],
+    "createdAt": "2026-06-01T09:13:09.867Z",
+    "updatedAt": "2026-09-23T14:21:30.362Z",
+    "meta": {}
+  },
+  "workflowTemplateCategory": {
+    "id": 29,
+    "parentId": 0,
+    "name": "testProcess",
+    "createdAt": "2022-12-02T11:32:34.679Z",
+    "updatedAt": "2026-09-18T13:24:04.776Z"
+  },
+  "taskTemplates": [
+    {
+      "id": 1000365001,
+      "name": "1.1 - source + checkStepHidden",
+      "documentTemplateId": 1000365001,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "createdAt": "2026-06-01T09:13:19.210Z",
+      "updatedAt": "2026-06-01T09:13:19.210Z"
+    },
+    {
+      "id": 1000365002,
+      "name": "1.2 - source + stepOrders",
+      "documentTemplateId": 1000365002,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "createdAt": "2026-06-01T14:02:35.151Z",
+      "updatedAt": "2026-06-01T14:02:35.151Z"
+    },
+    {
+      "id": 1000365003,
+      "name": "2.1 - step + checkStepHidden",
+      "documentTemplateId": 1000365003,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "createdAt": "2026-06-01T14:19:12.184Z",
+      "updatedAt": "2026-06-01T14:19:12.184Z"
+    },
+    {
+      "id": 1000365004,
+      "name": "2.2 - step + stepOrders",
+      "documentTemplateId": 1000365004,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "createdAt": "2026-06-01T17:15:17.215Z",
+      "updatedAt": "2026-06-01T17:15:17.215Z"
+    },
+    {
+      "id": 1000365005,
+      "name": "3.1 - callBeforePdf + pdfRequired: true",
+      "documentTemplateId": 1000365005,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "createdAt": "2026-06-01T17:26:13.706Z",
+      "updatedAt": "2026-06-01T17:26:13.706Z"
+    },
+    {
+      "id": 1000365006,
+      "name": "3.2 - callBeforePdf + pdfRequired функцією",
+      "documentTemplateId": 1000365006,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "createdAt": "2026-06-01T17:30:31.563Z",
+      "updatedAt": "2026-06-01T17:30:31.563Z"
+    },
+    {
+      "id": 1000365007,
+      "name": "Нова задача",
+      "documentTemplateId": 1000365007,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "createdAt": "2026-06-01T17:36:35.162Z",
+      "updatedAt": "2026-06-01T17:36:35.162Z"
+    },
+    {
+      "id": 1000365008,
+      "name": "4.2 - silent trigger + stepOrders",
+      "documentTemplateId": 1000365008,
+      "jsonSchema": {
+        "setPermissions": [
+          {
+            "performerUsersIsWorkflowOwner": true
+          }
+        ]
+      },
+      "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "createdAt": "2026-06-01T17:44:25.947Z",
+      "updatedAt": "2026-06-01T17:44:25.947Z"
+    }
+  ],
+  "documentTemplates": [
+    {
+      "id": 1000365001,
+      "name": "1.1 - source + checkStepHidden",
+      "jsonSchema": {
+        "title": "Назва послуги",
+        "type": "object",
+        "signRequired": false,
+        "pdfRequired": false,
+        "diiaSign": false,
+        "isP7sSign": false,
+        "forceRedirect": false,
+        "calcTriggers": [
+          {
+            "source": "stringInfo.radio",
+            "target": "stringInfo.result",
+            "calculate": "(value, step, documentData, parent) => step?.radio;",
+            "readOnly": true,
+            "validate": true
+          },
+          {
+            "source": "stringSha256Info.radio",
+            "target": "stringSha256Info.result",
+            "useSha256": true,
+            "calculate": "(value, step, documentData, parent) => step?.radio;",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultNumber",
+            "calculate": "(value, step, documentData, parent) => Number(step?.radio?.replace(/\\D/g, ''));",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultBoolean",
+            "calculate": "(value, step, documentData, parent) => Boolean(step?.radio);",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultObject",
+            "calculate": "(value, step, documentData, parent) => ({stringOne: step?.radio + '(1)',stringTwo: step?.radio + '(2)'});",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultArrayOfStrings",
+            "calculate": "(value, step, documentData, parent) => [step?.radio + '(1)', step?.radio + '(2)'];",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultArrayOfObjects",
+            "calculate": "(value, step, documentData, parent) => [{stringOne: step?.radio + '(об\\'єкт 1 елемент 1)',stringTwo: step?.radio + '(об\\'єкт 1 елемент 2)'}, {stringOne: step?.radio + '(об\\'єкт 2 елемент 1)',stringTwo: step?.radio + '(об\\'єкт 2 елемент 2)'}];",
+            "validate": true
+          },
+          {
+            "source": "stepHiddenInfo.radio",
+            "target": "stepHiddenInfo.result",
+            "calculate": "(value, step, documentData, parent) => step?.radio;",
+            "validate": true
+          },
+          {
+            "source": "hiddenFieldInfo.radio",
+            "target": "hiddenFieldInfo.result",
+            "calculate": "(value, step, documentData, parent) => step?.radio;",
+            "validate": true
+          },
+          {
+            "step": "hiddenFieldInfo",
+            "target": "indexInfo.resultArray",
+            "calculate": "(value, step, documentData, parent) => [{fullName: 'Тестовий Василь Петрович'}, {fullName: 'Тестовий Петро Васильович'}];",
+            "validate": false
+          },
+          {
+            "source": "indexInfo.resultArray.${index}.date",
+            "target": "indexInfo.resultArray.${index}.result",
+            "calculate": "(value, step, documentData, parent) => value ? `${value} р.н.` : undefined;",
+            "validate": true
+          }
+        ],
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "description": "Розрахункові дані",
+            "checkStepHidden": "() => true",
+            "properties": {}
+          },
+          "stringInfo": {
+            "description": "source string",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Натисність на радіокнопку",
+                "readOnly": true,
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => true",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "stringSha256Info": {
+            "description": "useSha256",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => true",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру з використанням хешування sha256"
+              }
+            }
+          },
+          "allStarsInfo": {
+            "description": "Крок, на якому розруховуються різні типи даних",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "resultNumber": {
+                "type": "number",
+                "description": "Поле number",
+                "checkRequired": "() => true",
+                "isDisabled": true
+              },
+              "resultBoolean": {
+                "description": "Поле boolean",
+                "type": "boolean",
+                "control": "toggle",
+                "offText": "Ще не тригернулись",
+                "onText": "Тригер пройшов успішно",
+                "defaultValue": false,
+                "checkRequired": "() => true",
+                "isDisabled": true
+              },
+              "resultObject": {
+                "type": "object",
+                "description": "Поле Object",
+                "checkRequired": "() => true",
+                "outlined": false,
+                "control": "form.group",
+                "properties": {
+                  "stringOne": {
+                    "type": "string",
+                    "description": "Результат розрахунку в об'єкті",
+                    "checkRequired": "() => true",
+                    "isDisabled": true
+                  },
+                  "stringTwo": {
+                    "type": "string",
+                    "description": "Результат розрахунку в об'єкті",
+                    "checkRequired": "() => true",
+                    "isDisabled": true
+                  }
+                }
+              },
+              "resultArrayOfStrings": {
+                "type": "array",
+                "description": "Масив рядків",
+                "allowAdd": "() => true",
+                "allowDelete": "() => true",
+                "checkRequired": "() => true",
+                "isDisabled": true,
+                "items": {
+                  "type": "string",
+                  "description": "Результат розрахунку рядка в масиві рядків",
+                  "checkRequired": "() => true",
+                  "isDisabled": true
+                }
+              },
+              "resultArrayOfObjects": {
+                "type": "array",
+                "description": "Масив об'єктів",
+                "allowAdd": "() => true",
+                "allowDelete": "() => true",
+                "checkRequired": "() => true",
+                "isDisabled": true,
+                "items": {
+                  "type": "object",
+                  "description": "Object",
+                  "checkRequired": "() => true",
+                  "outlined": false,
+                  "control": "form.group",
+                  "properties": {
+                    "stringOne": {
+                      "type": "string",
+                      "description": "Результат розрахунку в об'єкті",
+                      "checkRequired": "() => true",
+                      "isDisabled": true
+                    },
+                    "stringTwo": {
+                      "type": "string",
+                      "description": "Результат розрахунку в об'єкті",
+                      "checkRequired": "() => true",
+                      "isDisabled": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "stepHiddenInfo": {
+            "description": "Тригер всередені checkStepHidden",
+            "checkStepHidden": "() => true",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => false",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "hiddenFieldInfo": {
+            "description": "Приховане поле, на якому є тригер",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => false",
+                "checkHidden": "() => true",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "indexInfo": {
+            "description": "Індекси в таргеті та сорсі",
+            "type": "object",
+            "properties": {
+              "resultArray": {
+                "type": "array",
+                "description": "Масив об'єктів",
+                "checkRequired": "() => true",
+                "allowDelete": "() => false",
+                "allowAdd": "(value) => !value?.length > 0",
+                "isDisabled": false,
+                "items": {
+                  "type": "object",
+                  "description": "Object",
+                  "checkRequired": "() => true",
+                  "properties": {
+                    "fullName": {
+                      "type": "string",
+                      "description": "Повне ім'я",
+                      "checkRequired": "() => true",
+                      "isDisabled": true
+                    },
+                    "date": {
+                      "type": "string",
+                      "control": "date",
+                      "checkRequired": "() => true",
+                      "minDate": "(value, step, documentData) => moment('01.01.1900', 'DD.MM.YYYY');",
+                      "maxDate": "(value, step, documentData) => moment();",
+                      "description": "Вкажіть дату народження"
+                    },
+                    "result": {
+                      "type": "string",
+                      "checkRequired": "() => true",
+                      "checkHidden": "() => false",
+                      "isDisabled": true,
+                      "description": "Результат тригеру",
+                      "readOnly": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Назва послуги\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"source\": \"stringInfo.radio\",\n            \"target\": \"stringInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio;\",\n            \"readOnly\": true,\n            \"validate\": true\n        },\n        {\n            \"source\": \"stringSha256Info.radio\",\n            \"target\": \"stringSha256Info.result\",\n            \"useSha256\": true,\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio;\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultNumber\",\n            \"calculate\": \"(value, step, documentData, parent) => Number(step?.radio?.replace(/\\\\D/g, ''));\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultBoolean\",\n            \"calculate\": \"(value, step, documentData, parent) => Boolean(step?.radio);\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultObject\",\n            \"calculate\": \"(value, step, documentData, parent) => ({stringOne: step?.radio + '(1)',stringTwo: step?.radio + '(2)'});\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultArrayOfStrings\",\n            \"calculate\": \"(value, step, documentData, parent) => [step?.radio + '(1)', step?.radio + '(2)'];\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultArrayOfObjects\",\n            \"calculate\": \"(value, step, documentData, parent) => [{stringOne: step?.radio + '(об\\\\'єкт 1 елемент 1)',stringTwo: step?.radio + '(об\\\\'єкт 1 елемент 2)'}, {stringOne: step?.radio + '(об\\\\'єкт 2 елемент 1)',stringTwo: step?.radio + '(об\\\\'єкт 2 елемент 2)'}];\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"stepHiddenInfo.radio\",\n            \"target\": \"stepHiddenInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio;\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"hiddenFieldInfo.radio\",\n            \"target\": \"hiddenFieldInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio;\",\n            \"validate\": true\n        },\n        {\n            \"step\": \"hiddenFieldInfo\",\n            \"target\": \"indexInfo.resultArray\",\n            \"calculate\": \"(value, step, documentData, parent) => [{fullName: 'Тестовий Василь Петрович'}, {fullName: 'Тестовий Петро Васильович'}];\",\n            \"validate\": false\n        },\n        {\n            \"source\": \"indexInfo.resultArray.${index}.date\",\n            \"target\": \"indexInfo.resultArray.${index}.result\",\n            \"calculate\": \"(value, step, documentData, parent) => value ? `${value} р.н.` : undefined;\",\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"checkStepHidden\": \"() => true\",\n            \"properties\": {}\n        },\n        \"stringInfo\": {\n            \"description\": \"source string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"readOnly\": true,\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => true\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"stringSha256Info\": {\n            \"description\": \"useSha256\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => true\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру з використанням хешування sha256\"\n                }\n            }\n        },\n        \"allStarsInfo\": {\n            \"description\": \"Крок, на якому розруховуються різні типи даних\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"resultNumber\": {\n                    \"type\": \"number\",\n                    \"description\": \"Поле number\",\n                    \"checkRequired\": \"() => true\",\n                    \"isDisabled\": true\n                },\n                \"resultBoolean\": {\n                    \"description\": \"Поле boolean\",\n                    \"type\": \"boolean\",\n                    \"control\": \"toggle\",\n                    \"offText\": \"Ще не тригернулись\",\n                    \"onText\": \"Тригер пройшов успішно\",\n                    \"defaultValue\": false,\n                    \"checkRequired\": \"() => true\",\n                    \"isDisabled\": true\n                },\n                \"resultObject\": {\n                    \"type\": \"object\",\n                    \"description\": \"Поле Object\",\n                    \"checkRequired\": \"() => true\",\n                    \"outlined\": false,\n                    \"control\": \"form.group\",\n                    \"properties\": {\n                        \"stringOne\": {\n                            \"type\": \"string\",\n                            \"description\": \"Результат розрахунку в об'єкті\",\n                            \"checkRequired\": \"() => true\",\n                            \"isDisabled\": true\n                        },\n                        \"stringTwo\": {\n                            \"type\": \"string\",\n                            \"description\": \"Результат розрахунку в об'єкті\",\n                            \"checkRequired\": \"() => true\",\n                            \"isDisabled\": true\n                        }\n                    }\n                },\n                \"resultArrayOfStrings\": {\n                    \"type\": \"array\",\n                    \"description\": \"Масив рядків\",\n                    \"allowAdd\": \"() => true\",\n                    \"allowDelete\": \"() => true\",\n                    \"checkRequired\": \"() => true\",\n                    \"isDisabled\": true,\n                    \"items\": {\n                        \"type\": \"string\",\n                        \"description\": \"Результат розрахунку рядка в масиві рядків\",\n                        \"checkRequired\": \"() => true\",\n                        \"isDisabled\": true\n                    }\n                },\n                \"resultArrayOfObjects\": {\n                    \"type\": \"array\",\n                    \"description\": \"Масив об'єктів\",\n                    \"allowAdd\": \"() => true\",\n                    \"allowDelete\": \"() => true\",\n                    \"checkRequired\": \"() => true\",\n                    \"isDisabled\": true,\n                    \"items\": {\n                        \"type\": \"object\",\n                        \"description\": \"Object\",\n                        \"checkRequired\": \"() => true\",\n                        \"outlined\": false,\n                        \"control\": \"form.group\",\n                        \"properties\": {\n                            \"stringOne\": {\n                                \"type\": \"string\",\n                                \"description\": \"Результат розрахунку в об'єкті\",\n                                \"checkRequired\": \"() => true\",\n                                \"isDisabled\": true\n                            },\n                            \"stringTwo\": {\n                                \"type\": \"string\",\n                                \"description\": \"Результат розрахунку в об'єкті\",\n                                \"checkRequired\": \"() => true\",\n                                \"isDisabled\": true\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"stepHiddenInfo\": {\n            \"description\": \"Тригер всередені checkStepHidden\",\n            \"checkStepHidden\": \"() => true\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => false\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"hiddenFieldInfo\": {\n            \"description\": \"Приховане поле, на якому є тригер\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => true\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"indexInfo\": {\n            \"description\": \"Індекси в таргеті та сорсі\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"resultArray\": {\n                    \"type\": \"array\",\n                    \"description\": \"Масив об'єктів\",\n                    \"checkRequired\": \"() => true\",\n                    \"allowDelete\": \"() => false\",\n                    \"allowAdd\": \"(value) => !value?.length > 0\",\n                    \"isDisabled\": false,\n                    \"items\": {\n                        \"type\": \"object\",\n                        \"description\": \"Object\",\n                        \"checkRequired\": \"() => true\",\n                        \"properties\": {\n                            \"fullName\": {\n                                \"type\": \"string\",\n                                \"description\": \"Повне ім'я\",\n                                \"checkRequired\": \"() => true\",\n                                \"isDisabled\": true\n                            },\n                            \"date\": {\n                                \"type\": \"string\",\n                                \"control\": \"date\",\n                                \"checkRequired\": \"() => true\",\n                                \"minDate\": \"(value, step, documentData) => moment('01.01.1900', 'DD.MM.YYYY');\",\n                                \"maxDate\": \"(value, step, documentData) => moment();\",\n                                \"description\": \"Вкажіть дату народження\"\n                            },\n                            \"result\": {\n                                \"type\": \"string\",\n                                \"checkRequired\": \"() => true\",\n                                \"checkHidden\": \"() => false\",\n                                \"isDisabled\": true,\n                                \"description\": \"Результат тригеру\",\n                                \"readOnly\": true\n                            }\n                        }\n                    }\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "mocks": [],
+      "createdAt": "2026-06-01T09:13:19.206Z",
+      "updatedAt": "2026-06-01T09:13:19.206Z"
+    },
+    {
+      "id": 1000365002,
+      "name": "1.2 - source + stepOrders",
+      "jsonSchema": {
+        "title": "Назва послуги",
+        "type": "object",
+        "signRequired": false,
+        "pdfRequired": false,
+        "diiaSign": false,
+        "isP7sSign": false,
+        "forceRedirect": false,
+        "stepOrders": "() => ['stringInfo', 'stringSha256Info', 'allStarsInfo', 'hiddenFieldInfo', 'indexInfo'];",
+        "calcTriggers": [
+          {
+            "source": "stringInfo.radio",
+            "target": "stringInfo.result",
+            "calculate": "(value, step, documentData, parent) => step?.radio;",
+            "validate": true
+          },
+          {
+            "source": "stringSha256Info.radio",
+            "target": "stringSha256Info.result",
+            "useSha256": true,
+            "calculate": "(value, step, documentData, parent) => step?.radio;",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultNumber",
+            "calculate": "(value, step, documentData, parent) => Number(step?.radio?.replace(/\\D/g, ''));",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultBoolean",
+            "calculate": "(value, step, documentData, parent) => Boolean(step?.radio);",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultObject",
+            "calculate": "(value, step, documentData, parent) => ({stringOne: step?.radio + '(1)',stringTwo: step?.radio + '(2)'});",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultArrayOfStrings",
+            "calculate": "(value, step, documentData, parent) => [step?.radio + '(1)', step?.radio + '(2)'];",
+            "validate": true
+          },
+          {
+            "source": "allStarsInfo.radio",
+            "target": "allStarsInfo.resultArrayOfObjects",
+            "calculate": "(value, step, documentData, parent) => [{stringOne: step?.radio + '(об\\'єкт 1 елемент 1)',stringTwo: step?.radio + '(об\\'єкт 1 елемент 2)'}, {stringOne: step?.radio + '(об\\'єкт 2 елемент 1)',stringTwo: step?.radio + '(об\\'єкт 2 елемент 2)'}];",
+            "validate": true
+          },
+          {
+            "source": "stepHiddenInfo.radio",
+            "target": "stepHiddenInfo.result",
+            "calculate": "(value, step, documentData, parent) => step?.radio;",
+            "validate": true
+          },
+          {
+            "source": "hiddenFieldInfo.radio",
+            "target": "hiddenFieldInfo.result",
+            "calculate": "(value, step, documentData, parent) => step?.radio;",
+            "validate": true
+          },
+          {
+            "step": "hiddenFieldInfo",
+            "target": "indexInfo.resultArray",
+            "calculate": "(value, step, documentData, parent) => [{fullName: 'Тестовий Василь Петрович'}, {fullName: 'Тестовий Петро Васильович'}];",
+            "validate": true
+          },
+          {
+            "source": "indexInfo.resultArray.${index}.date",
+            "target": "indexInfo.resultArray.${index}.result",
+            "calculate": "(value, step, documentData, parent) => value ? `${value} р.н.` : undefined;",
+            "validate": true
+          }
+        ],
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "description": "Розрахункові дані",
+            "properties": {}
+          },
+          "stringInfo": {
+            "description": "source string",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => true",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "stringSha256Info": {
+            "description": "useSha256",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => true",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру з використанням хешування sha256"
+              }
+            }
+          },
+          "allStarsInfo": {
+            "description": "Крок, на якому розруховуються різні типи даних",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "resultNumber": {
+                "type": "number",
+                "description": "Поле number",
+                "checkRequired": "() => true",
+                "isDisabled": true
+              },
+              "resultBoolean": {
+                "description": "Поле boolean",
+                "type": "boolean",
+                "control": "toggle",
+                "offText": "Ще не тригернулись",
+                "onText": "Тригер пройшов успішно",
+                "defaultValue": false,
+                "checkRequired": "() => true",
+                "isDisabled": true
+              },
+              "resultObject": {
+                "type": "object",
+                "description": "Поле Object",
+                "checkRequired": "() => true",
+                "outlined": false,
+                "control": "form.group",
+                "properties": {
+                  "stringOne": {
+                    "type": "string",
+                    "description": "Результат розрахунку в об'єкті",
+                    "checkRequired": "() => true",
+                    "isDisabled": true
+                  },
+                  "stringTwo": {
+                    "type": "string",
+                    "description": "Результат розрахунку в об'єкті",
+                    "checkRequired": "() => true",
+                    "isDisabled": true
+                  }
+                }
+              },
+              "resultArrayOfStrings": {
+                "type": "array",
+                "description": "Масив рядків",
+                "allowAdd": "() => true",
+                "allowDelete": "() => true",
+                "checkRequired": "() => true",
+                "isDisabled": true,
+                "items": {
+                  "type": "string",
+                  "description": "Результат розрахунку рядка в масиві рядків",
+                  "checkRequired": "() => true",
+                  "isDisabled": true
+                }
+              },
+              "resultArrayOfObjects": {
+                "type": "array",
+                "description": "Масив об'єктів",
+                "allowAdd": "() => true",
+                "allowDelete": "() => true",
+                "checkRequired": "() => true",
+                "isDisabled": true,
+                "items": {
+                  "type": "object",
+                  "description": "Object",
+                  "checkRequired": "() => true",
+                  "outlined": false,
+                  "control": "form.group",
+                  "properties": {
+                    "stringOne": {
+                      "type": "string",
+                      "description": "Результат розрахунку в об'єкті",
+                      "checkRequired": "() => true",
+                      "isDisabled": true
+                    },
+                    "stringTwo": {
+                      "type": "string",
+                      "description": "Результат розрахунку в об'єкті",
+                      "checkRequired": "() => true",
+                      "isDisabled": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "stepHiddenInfo": {
+            "description": "Тригер всередені checkStepHidden",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => false",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "hiddenFieldInfo": {
+            "description": "Приховане поле, на якому є тригер",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => false",
+                "checkHidden": "() => true",
+                "description": "Натисність на радіокнопку",
+                "items": [
+                  {
+                    "id": "Радіокнопка 1",
+                    "title": "Радіокнопка 1"
+                  },
+                  {
+                    "id": "Радіокнопка 2",
+                    "title": "Радіокнопка 2"
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "indexInfo": {
+            "description": "Індекси в таргеті та сорсі",
+            "type": "object",
+            "properties": {
+              "resultArray": {
+                "type": "array",
+                "description": "Масив об'єктів",
+                "checkRequired": "() => true",
+                "allowDelete": "() => false",
+                "allowAdd": "(value) => !value?.length > 0",
+                "isDisabled": false,
+                "items": {
+                  "type": "object",
+                  "description": "Object",
+                  "checkRequired": "() => true",
+                  "properties": {
+                    "fullName": {
+                      "type": "string",
+                      "description": "Повне ім'я",
+                      "checkRequired": "() => true",
+                      "isDisabled": true
+                    },
+                    "date": {
+                      "type": "string",
+                      "control": "date",
+                      "checkRequired": "() => true",
+                      "minDate": "(value, step, documentData) => moment('01.01.1900', 'DD.MM.YYYY');",
+                      "maxDate": "(value, step, documentData) => moment();",
+                      "description": "Вкажіть дату народження"
+                    },
+                    "result": {
+                      "type": "string",
+                      "checkRequired": "() => true",
+                      "checkHidden": "() => false",
+                      "isDisabled": true,
+                      "description": "Результат тригеру"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Назва послуги\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"stepOrders\": \"() => ['stringInfo', 'stringSha256Info', 'allStarsInfo', 'hiddenFieldInfo', 'indexInfo'];\",\n    \"calcTriggers\": [\n        {\n            \"source\": \"stringInfo.radio\",\n            \"target\": \"stringInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio;\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"stringSha256Info.radio\",\n            \"target\": \"stringSha256Info.result\",\n            \"useSha256\": true,\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio;\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultNumber\",\n            \"calculate\": \"(value, step, documentData, parent) => Number(step?.radio?.replace(/\\\\D/g, ''));\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultBoolean\",\n            \"calculate\": \"(value, step, documentData, parent) => Boolean(step?.radio);\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultObject\",\n            \"calculate\": \"(value, step, documentData, parent) => ({stringOne: step?.radio + '(1)',stringTwo: step?.radio + '(2)'});\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultArrayOfStrings\",\n            \"calculate\": \"(value, step, documentData, parent) => [step?.radio + '(1)', step?.radio + '(2)'];\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"allStarsInfo.radio\",\n            \"target\": \"allStarsInfo.resultArrayOfObjects\",\n            \"calculate\": \"(value, step, documentData, parent) => [{stringOne: step?.radio + '(об\\\\'єкт 1 елемент 1)',stringTwo: step?.radio + '(об\\\\'єкт 1 елемент 2)'}, {stringOne: step?.radio + '(об\\\\'єкт 2 елемент 1)',stringTwo: step?.radio + '(об\\\\'єкт 2 елемент 2)'}];\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"stepHiddenInfo.radio\",\n            \"target\": \"stepHiddenInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio;\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"hiddenFieldInfo.radio\",\n            \"target\": \"hiddenFieldInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio;\",\n            \"validate\": true\n        },\n        {\n            \"step\": \"hiddenFieldInfo\",\n            \"target\": \"indexInfo.resultArray\",\n            \"calculate\": \"(value, step, documentData, parent) => [{fullName: 'Тестовий Василь Петрович'}, {fullName: 'Тестовий Петро Васильович'}];\",\n            \"validate\": true\n        },\n        {\n            \"source\": \"indexInfo.resultArray.${index}.date\",\n            \"target\": \"indexInfo.resultArray.${index}.result\",\n            \"calculate\": \"(value, step, documentData, parent) => value ? `${value} р.н.` : undefined;\",\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"properties\": {}\n        },\n        \"stringInfo\": {\n            \"description\": \"source string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => true\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"stringSha256Info\": {\n            \"description\": \"useSha256\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => true\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру з використанням хешування sha256\"\n                }\n            }\n        },\n        \"allStarsInfo\": {\n            \"description\": \"Крок, на якому розруховуються різні типи даних\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"resultNumber\": {\n                    \"type\": \"number\",\n                    \"description\": \"Поле number\",\n                    \"checkRequired\": \"() => true\",\n                    \"isDisabled\": true\n                },\n                \"resultBoolean\": {\n                    \"description\": \"Поле boolean\",\n                    \"type\": \"boolean\",\n                    \"control\": \"toggle\",\n                    \"offText\": \"Ще не тригернулись\",\n                    \"onText\": \"Тригер пройшов успішно\",\n                    \"defaultValue\": false,\n                    \"checkRequired\": \"() => true\",\n                    \"isDisabled\": true\n                },\n                \"resultObject\": {\n                    \"type\": \"object\",\n                    \"description\": \"Поле Object\",\n                    \"checkRequired\": \"() => true\",\n                    \"outlined\": false,\n                    \"control\": \"form.group\",\n                    \"properties\": {\n                        \"stringOne\": {\n                            \"type\": \"string\",\n                            \"description\": \"Результат розрахунку в об'єкті\",\n                            \"checkRequired\": \"() => true\",\n                            \"isDisabled\": true\n                        },\n                        \"stringTwo\": {\n                            \"type\": \"string\",\n                            \"description\": \"Результат розрахунку в об'єкті\",\n                            \"checkRequired\": \"() => true\",\n                            \"isDisabled\": true\n                        }\n                    }\n                },\n                \"resultArrayOfStrings\": {\n                    \"type\": \"array\",\n                    \"description\": \"Масив рядків\",\n                    \"allowAdd\": \"() => true\",\n                    \"allowDelete\": \"() => true\",\n                    \"checkRequired\": \"() => true\",\n                    \"isDisabled\": true,\n                    \"items\": {\n                        \"type\": \"string\",\n                        \"description\": \"Результат розрахунку рядка в масиві рядків\",\n                        \"checkRequired\": \"() => true\",\n                        \"isDisabled\": true\n                    }\n                },\n                \"resultArrayOfObjects\": {\n                    \"type\": \"array\",\n                    \"description\": \"Масив об'єктів\",\n                    \"allowAdd\": \"() => true\",\n                    \"allowDelete\": \"() => true\",\n                    \"checkRequired\": \"() => true\",\n                    \"isDisabled\": true,\n                    \"items\": {\n                        \"type\": \"object\",\n                        \"description\": \"Object\",\n                        \"checkRequired\": \"() => true\",\n                        \"outlined\": false,\n                        \"control\": \"form.group\",\n                        \"properties\": {\n                            \"stringOne\": {\n                                \"type\": \"string\",\n                                \"description\": \"Результат розрахунку в об'єкті\",\n                                \"checkRequired\": \"() => true\",\n                                \"isDisabled\": true\n                            },\n                            \"stringTwo\": {\n                                \"type\": \"string\",\n                                \"description\": \"Результат розрахунку в об'єкті\",\n                                \"checkRequired\": \"() => true\",\n                                \"isDisabled\": true\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"stepHiddenInfo\": {\n            \"description\": \"Тригер всередені checkStepHidden\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => false\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"hiddenFieldInfo\": {\n            \"description\": \"Приховане поле, на якому є тригер\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => true\",\n                    \"description\": \"Натисність на радіокнопку\",\n                    \"items\": [\n                        {\n                            \"id\": \"Радіокнопка 1\",\n                            \"title\": \"Радіокнопка 1\"\n                        },\n                        {\n                            \"id\": \"Радіокнопка 2\",\n                            \"title\": \"Радіокнопка 2\"\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"indexInfo\": {\n            \"description\": \"Індекси в таргеті та сорсі\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"resultArray\": {\n                    \"type\": \"array\",\n                    \"description\": \"Масив об'єктів\",\n                    \"checkRequired\": \"() => true\",\n                    \"allowDelete\": \"() => false\",\n                    \"allowAdd\": \"(value) => !value?.length > 0\",\n                    \"isDisabled\": false,\n                    \"items\": {\n                        \"type\": \"object\",\n                        \"description\": \"Object\",\n                        \"checkRequired\": \"() => true\",\n                        \"properties\": {\n                            \"fullName\": {\n                                \"type\": \"string\",\n                                \"description\": \"Повне ім'я\",\n                                \"checkRequired\": \"() => true\",\n                                \"isDisabled\": true\n                            },\n                            \"date\": {\n                                \"type\": \"string\",\n                                \"control\": \"date\",\n                                \"checkRequired\": \"() => true\",\n                                \"minDate\": \"(value, step, documentData) => moment('01.01.1900', 'DD.MM.YYYY');\",\n                                \"maxDate\": \"(value, step, documentData) => moment();\",\n                                \"description\": \"Вкажіть дату народження\"\n                            },\n                            \"result\": {\n                                \"type\": \"string\",\n                                \"checkRequired\": \"() => true\",\n                                \"checkHidden\": \"() => false\",\n                                \"isDisabled\": true,\n                                \"description\": \"Результат тригеру\"\n                            }\n                        }\n                    }\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "mocks": [],
+      "createdAt": "2026-06-01T14:02:35.148Z",
+      "updatedAt": "2026-06-01T14:02:35.148Z"
+    },
+    {
+      "id": 1000365003,
+      "name": "2.1 - step + checkStepHidden",
+      "jsonSchema": {
+        "title": "Назва послуги",
+        "type": "object",
+        "signRequired": false,
+        "pdfRequired": false,
+        "diiaSign": false,
+        "isP7sSign": false,
+        "forceRedirect": false,
+        "calcTriggers": [
+          {
+            "step": "stringInfo",
+            "target": "stringInfo.result",
+            "calculate": "(value, step, documentData, parent) => step?.radio",
+            "validate": true
+          },
+          {
+            "step": "hiddenStepInfo",
+            "target": "hiddenStepResultInfo.result",
+            "calculate": "(value, step, documentData, parent) => 'value'",
+            "validate": true
+          }
+        ],
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "description": "Розрахункові дані",
+            "checkStepHidden": "() => true",
+            "properties": {}
+          },
+          "stringInfo": {
+            "description": "step string",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Показати наступний крок?",
+                "items": [
+                  {
+                    "id": "Так",
+                    "title": "Так"
+                  },
+                  {
+                    "id": "Ні",
+                    "title": "Ні",
+                    "isDisabled": true
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "hiddenStepInfo": {
+            "description": "source string",
+            "checkStepHidden": "(documentData) => documentData?.stringInfo?.radio !== 'Так'",
+            "type": "object",
+            "properties": {
+              "hint": {
+                "control": "infobox",
+                "text": "Цей крок пустий та відображається за умови, якщо на першому кроці було натиснуто 'Так'"
+              }
+            }
+          },
+          "hiddenStepResultInfo": {
+            "description": "source string",
+            "checkStepHidden": "() => true",
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "(value) => !value",
+                "cleanWhenHidden": true,
+                "isDisabled": true,
+                "description": "Результат тригеру на прихованому кроці"
+              }
+            }
+          },
+          "emptyStepInfo": {
+            "description": "source string",
+            "checkStepHidden": "(documentData) => documentData?.stringInfo?.radio !== 'Так'",
+            "type": "object",
+            "properties": {
+              "hint": {
+                "control": "infobox",
+                "text": "Цей крок пустий"
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Назва послуги\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"step\": \"stringInfo\",\n            \"target\": \"stringInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio\",\n            \"validate\": true\n        },\n        {\n            \"step\": \"hiddenStepInfo\",\n            \"target\": \"hiddenStepResultInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => 'value'\",\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"checkStepHidden\": \"() => true\",\n            \"properties\": {}\n        },\n        \"stringInfo\": {\n            \"description\": \"step string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Показати наступний крок?\",\n                    \"items\": [\n                        {\n                            \"id\": \"Так\",\n                            \"title\": \"Так\"\n                        },\n                        {\n                            \"id\": \"Ні\",\n                            \"title\": \"Ні\",\n                            \"isDisabled\": true\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"hiddenStepInfo\": {\n            \"description\": \"source string\",\n            \"checkStepHidden\": \"(documentData) => documentData?.stringInfo?.radio !== 'Так'\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Цей крок пустий та відображається за умови, якщо на першому кроці було натиснуто 'Так'\"\n                }\n            }\n        },\n        \"hiddenStepResultInfo\": {\n            \"description\": \"source string\",\n            \"checkStepHidden\": \"() => true\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"(value) => !value\",\n                    \"cleanWhenHidden\": true,\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру на прихованому кроці\"\n                }\n            }\n        },\n        \"emptyStepInfo\": {\n            \"description\": \"source string\",\n            \"checkStepHidden\": \"(documentData) => documentData?.stringInfo?.radio !== 'Так'\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Цей крок пустий\"\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "mocks": [],
+      "createdAt": "2026-06-01T14:19:12.142Z",
+      "updatedAt": "2026-06-01T14:19:12.142Z"
+    },
+    {
+      "id": 1000365004,
+      "name": "2.2 - step + stepOrders",
+      "jsonSchema": {
+        "title": "Назва послуги",
+        "type": "object",
+        "signRequired": false,
+        "pdfRequired": false,
+        "diiaSign": false,
+        "isP7sSign": false,
+        "forceRedirect": false,
+        "calcTriggers": [
+          {
+            "step": "stringInfo",
+            "target": "stringInfo.result",
+            "calculate": "(value, step, documentData, parent) => step?.radio",
+            "validate": true
+          },
+          {
+            "step": "hiddenStepInfo",
+            "target": "hiddenStepResultInfo.result",
+            "calculate": "(value, step, documentData, parent) => 'value'",
+            "validate": true
+          }
+        ],
+        "stepOrders": "() => ['stringInfo', 'hiddenStepInfo', 'emptyStepInfo'];",
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "description": "Розрахункові дані",
+            "properties": {}
+          },
+          "stringInfo": {
+            "description": "step string",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Показати наступний крок?",
+                "items": [
+                  {
+                    "id": "Так",
+                    "title": "Так"
+                  },
+                  {
+                    "id": "Ні",
+                    "title": "Ні",
+                    "isDisabled": true
+                  }
+                ]
+              },
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "() => false",
+                "isDisabled": true,
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "hiddenStepInfo": {
+            "description": "source string",
+            "type": "object",
+            "properties": {
+              "hint": {
+                "control": "infobox",
+                "text": "Цей крок пустий та відображається за умови, якщо на першому кроці було натиснуто 'Так'"
+              }
+            }
+          },
+          "hiddenStepResultInfo": {
+            "description": "source string",
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "(value) => !value",
+                "cleanWhenHidden": true,
+                "isDisabled": true,
+                "description": "Результат тригеру на прихованому кроці"
+              }
+            }
+          },
+          "emptyStepInfo": {
+            "description": "source string",
+            "type": "object",
+            "properties": {
+              "hint": {
+                "control": "infobox",
+                "text": "Цей крок пустий"
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Назва послуги\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"step\": \"stringInfo\",\n            \"target\": \"stringInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => step?.radio\",\n            \"validate\": true\n        },\n        {\n            \"step\": \"hiddenStepInfo\",\n            \"target\": \"hiddenStepResultInfo.result\",\n            \"calculate\": \"(value, step, documentData, parent) => 'value'\",\n            \"validate\": true\n        }\n    ],\n    \"stepOrders\": \"() => ['stringInfo', 'hiddenStepInfo', 'emptyStepInfo'];\",\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"properties\": {}\n        },\n        \"stringInfo\": {\n            \"description\": \"step string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Показати наступний крок?\",\n                    \"items\": [\n                        {\n                            \"id\": \"Так\",\n                            \"title\": \"Так\"\n                        },\n                        {\n                            \"id\": \"Ні\",\n                            \"title\": \"Ні\",\n                            \"isDisabled\": true\n                        }\n                    ]\n                },\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => false\",\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"hiddenStepInfo\": {\n            \"description\": \"source string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Цей крок пустий та відображається за умови, якщо на першому кроці було натиснуто 'Так'\"\n                }\n            }\n        },\n        \"hiddenStepResultInfo\": {\n            \"description\": \"source string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"(value) => !value\",\n                    \"cleanWhenHidden\": true,\n                    \"isDisabled\": true,\n                    \"description\": \"Результат тригеру на прихованому кроці\"\n                }\n            }\n        },\n        \"emptyStepInfo\": {\n            \"description\": \"source string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Цей крок пустий\"\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "mocks": [],
+      "createdAt": "2026-06-01T17:15:17.212Z",
+      "updatedAt": "2026-06-01T17:15:17.212Z"
+    },
+    {
+      "id": 1000365005,
+      "name": "3.1 - callBeforePdf + pdfRequired: true",
+      "jsonSchema": {
+        "title": "Назва послуги",
+        "type": "object",
+        "signRequired": false,
+        "pdfRequired": true,
+        "diiaSign": false,
+        "isP7sSign": false,
+        "forceRedirect": false,
+        "calcTriggers": [
+          {
+            "callBeforePdf": true,
+            "target": "calculated.result",
+            "calculate": "(value, step, documentData, parent) => 'value'",
+            "validate": true
+          }
+        ],
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "checkStepHidden": true,
+            "description": "Розрахункові дані",
+            "properties": {
+              "result": {
+                "type": "string",
+                "checkRequired": "() => true",
+                "checkHidden": "() => true",
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "emptyStepInfo": {
+            "description": "source string",
+            "type": "object",
+            "properties": {
+              "hint": {
+                "control": "infobox",
+                "text": "Цей крок пустий"
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Назва послуги\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": true,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"callBeforePdf\": true,\n            \"target\": \"calculated.result\",\n            \"calculate\": \"(value, step, documentData, parent) => 'value'\",\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"checkStepHidden\": true,\n            \"description\": \"Розрахункові дані\",\n            \"properties\": {\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => true\",\n                    \"checkHidden\": \"() => true\",\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"emptyStepInfo\": {\n            \"description\": \"source string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Цей крок пустий\"\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "mocks": [],
+      "createdAt": "2026-06-01T17:26:13.695Z",
+      "updatedAt": "2026-06-01T17:26:13.695Z"
+    },
+    {
+      "id": 1000365006,
+      "name": "3.2 - callBeforePdf + pdfRequired функцією",
+      "jsonSchema": {
+        "title": "Назва послуги",
+        "type": "object",
+        "signRequired": false,
+        "pdfRequired": "(documentData) => documentData?.emptyStepInfo?.radio === 'Так'",
+        "diiaSign": false,
+        "isP7sSign": false,
+        "forceRedirect": false,
+        "calcTriggers": [
+          {
+            "callBeforePdf": true,
+            "target": "calculated.result",
+            "calculate": "(value, step, documentData, parent) => 'value'",
+            "validate": true
+          }
+        ],
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "checkStepHidden": true,
+            "description": "Розрахункові дані",
+            "properties": {
+              "result": {
+                "type": "string",
+                "checkRequired": "() => true",
+                "checkHidden": "() => true",
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "emptyStepInfo": {
+            "description": "source string",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Генерувати ПДФ?",
+                "items": [
+                  {
+                    "id": "Так",
+                    "title": "Так"
+                  },
+                  {
+                    "id": "Ні",
+                    "title": "Ні"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Назва послуги\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": \"(documentData) => documentData?.emptyStepInfo?.radio === 'Так'\",\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"callBeforePdf\": true,\n            \"target\": \"calculated.result\",\n            \"calculate\": \"(value, step, documentData, parent) => 'value'\",\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"checkStepHidden\": true,\n            \"description\": \"Розрахункові дані\",\n            \"properties\": {\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => true\",\n                    \"checkHidden\": \"() => true\",\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"emptyStepInfo\": {\n            \"description\": \"source string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Генерувати ПДФ?\",\n                    \"items\": [\n                        {\n                            \"id\": \"Так\",\n                            \"title\": \"Так\"\n                        },\n                        {\n                            \"id\": \"Ні\",\n                            \"title\": \"Ні\"\n                        }\n                    ]\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "mocks": [],
+      "createdAt": "2026-06-01T17:30:31.560Z",
+      "updatedAt": "2026-06-01T17:30:31.560Z"
+    },
+    {
+      "id": 1000365007,
+      "name": "Нова задача",
+      "jsonSchema": {
+        "title": "Назва послуги",
+        "type": "object",
+        "signRequired": false,
+        "pdfRequired": true,
+        "diiaSign": false,
+        "isP7sSign": false,
+        "forceRedirect": false,
+        "calcTriggers": [
+          {
+            "target": "calculated.result",
+            "calculate": "(value, step, documentData) => 'value'",
+            "validate": true
+          }
+        ],
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "description": "Розрахункові дані",
+            "checkStepHidden": "() => true",
+            "properties": {
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "() => true",
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "stringInfo": {
+            "description": "step string",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Показати наступний крок?",
+                "items": [
+                  {
+                    "id": "Так",
+                    "title": "Так"
+                  },
+                  {
+                    "id": "Ні",
+                    "title": "Ні"
+                  }
+                ]
+              }
+            }
+          },
+          "hiddenStepInfo": {
+            "description": "source string",
+            "checkStepHidden": "(documentData) => documentData?.stringInfo?.radio !== 'Так'",
+            "type": "object",
+            "properties": {
+              "hint": {
+                "control": "infobox",
+                "text": "Цей крок пустий та відображається за умови, якщо на першому кроці було натиснуто 'Так'"
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Назва послуги\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": true,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"target\": \"calculated.result\",\n            \"calculate\": \"(value, step, documentData) => 'value'\",\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"checkStepHidden\": \"() => true\",\n            \"properties\": {\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => true\",\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"stringInfo\": {\n            \"description\": \"step string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Показати наступний крок?\",\n                    \"items\": [\n                        {\n                            \"id\": \"Так\",\n                            \"title\": \"Так\"\n                        },\n                        {\n                            \"id\": \"Ні\",\n                            \"title\": \"Ні\"\n                        }\n                    ]\n                }\n            }\n        },\n        \"hiddenStepInfo\": {\n            \"description\": \"source string\",\n            \"checkStepHidden\": \"(documentData) => documentData?.stringInfo?.radio !== 'Так'\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Цей крок пустий та відображається за умови, якщо на першому кроці було натиснуто 'Так'\"\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "mocks": [],
+      "createdAt": "2026-06-01T17:36:35.157Z",
+      "updatedAt": "2026-06-01T17:36:35.157Z"
+    },
+    {
+      "id": 1000365008,
+      "name": "4.2 - silent trigger + stepOrders",
+      "jsonSchema": {
+        "title": "Назва послуги",
+        "type": "object",
+        "signRequired": false,
+        "pdfRequired": true,
+        "diiaSign": false,
+        "isP7sSign": false,
+        "forceRedirect": false,
+        "stepOrders": "(documentData, meta, taskActivityLog) => documentData?.stringInfo?.radio !== 'Так' ? ['stringInfo'] : ['stringInfo', 'hiddenStepInfo'];",
+        "calcTriggers": [
+          {
+            "target": "calculated.result",
+            "calculate": "(value, step, documentData) => 'value'",
+            "validate": true
+          }
+        ],
+        "properties": {
+          "calculated": {
+            "type": "object",
+            "description": "Розрахункові дані",
+            "properties": {
+              "result": {
+                "type": "string",
+                "checkRequired": "() => false",
+                "checkHidden": "() => true",
+                "description": "Результат тригеру"
+              }
+            }
+          },
+          "stringInfo": {
+            "description": "step string",
+            "type": "object",
+            "properties": {
+              "radio": {
+                "type": "string",
+                "control": "radio.group",
+                "checkRequired": "() => true",
+                "description": "Показати наступний крок?",
+                "items": [
+                  {
+                    "id": "Так",
+                    "title": "Так"
+                  },
+                  {
+                    "id": "Ні",
+                    "title": "Ні"
+                  }
+                ]
+              }
+            }
+          },
+          "hiddenStepInfo": {
+            "description": "source string",
+            "type": "object",
+            "properties": {
+              "hint": {
+                "control": "infobox",
+                "text": "Цей крок пустий та відображається за умови, якщо на першому кроці було натиснуто 'Так'"
+              }
+            }
+          }
+        }
+      },
+      "jsonSchemaRaw": "{\n    \"title\": \"Назва послуги\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": true,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"stepOrders\": \"(documentData, meta, taskActivityLog) => documentData?.stringInfo?.radio !== 'Так' ? ['stringInfo'] : ['stringInfo', 'hiddenStepInfo'];\",\n    \"calcTriggers\": [\n        {\n            \"target\": \"calculated.result\",\n            \"calculate\": \"(value, step, documentData) => 'value'\",\n            \"validate\": true\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"properties\": {\n                \"result\": {\n                    \"type\": \"string\",\n                    \"checkRequired\": \"() => false\",\n                    \"checkHidden\": \"() => true\",\n                    \"description\": \"Результат тригеру\"\n                }\n            }\n        },\n        \"stringInfo\": {\n            \"description\": \"step string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Показати наступний крок?\",\n                    \"items\": [\n                        {\n                            \"id\": \"Так\",\n                            \"title\": \"Так\"\n                        },\n                        {\n                            \"id\": \"Ні\",\n                            \"title\": \"Ні\"\n                        }\n                    ]\n                }\n            }\n        },\n        \"hiddenStepInfo\": {\n            \"description\": \"source string\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Цей крок пустий та відображається за умови, якщо на першому кроці було натиснуто 'Так'\"\n                }\n            }\n        }\n    }\n}",
+      "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+      "accessJsonSchema": {
+        "inboxes": {
+          "workflowCreator": false
+        },
+        "workflowFiles": {
+          "workflowCreator": false
+        }
+      },
+      "additionalDataToSign": null,
+      "mocks": [],
+      "createdAt": "2026-06-01T17:44:25.943Z",
+      "updatedAt": "2026-06-01T17:44:25.943Z"
+    }
+  ],
+  "gatewayTemplates": [],
+  "eventTemplates": []
+}
