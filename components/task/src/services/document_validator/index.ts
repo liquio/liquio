@@ -485,12 +485,13 @@ export class DocumentValidatorService {
    * Only triggers with `validate: true` are checked - see `CalcTriggersValidator`.
    * @param {object} objectToCheck Object to check.
    * @param {string[]} [targetPaths] When given, only recompute triggers whose `target` is one of
-   * these paths or has one of them under it - skips the rest entirely instead of computing and
-   * discarding their result.
+   * these paths - skips the rest entirely instead of computing and discarding their result.
+   * @param {string[]} [descendantPaths] Paths that also select a trigger when they are its target or
+   * a path under it.
    * @returns {Promise<{dataPath, validationParam, message}[]>} CalcTriggers errors promise.
    */
-  async checkCalcTriggers(objectToCheck, targetPaths?: string[]) {
-    return this.calcTriggersValidator.check(objectToCheck, targetPaths);
+  async checkCalcTriggers(objectToCheck, targetPaths?: string[], descendantPaths: string[] = []) {
+    return this.calcTriggersValidator.check(objectToCheck, targetPaths, descendantPaths);
   }
 
   /**

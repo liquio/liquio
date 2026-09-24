@@ -579,9 +579,9 @@ describe('CalcTriggersValidator.check with targetPaths under the target', () => 
     jest.clearAllMocks();
   });
 
-  test('checks the trigger when targetPaths has a leaf sub-path of an object target', async () => {
+  test('checks the trigger when descendantPaths has a leaf sub-path of an object target', async () => {
     const validator = new CalcTriggersValidator(objectTargetSchema(), {});
-    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'abc', len: 99 } } }, ['step1.result.len']);
+    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'abc', len: 99 } } }, ['step1.result.len'], ['step1.result.len']);
     expect(errors).toEqual([
       expect.objectContaining({ dataPath: 'step1.result', message: 'calcTrigger recalculation mismatch (source: step1.fieldA)' }),
     ]);
@@ -589,31 +589,43 @@ describe('CalcTriggersValidator.check with targetPaths under the target', () => 
 
   test('returns no error for an honest object target checked through a leaf sub-path', async () => {
     const validator = new CalcTriggersValidator(objectTargetSchema(), {});
-    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'abc', len: 3 } } }, ['step1.result.name']);
+    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'abc', len: 3 } } }, ['step1.result.name'], ['step1.result.name']);
     expect(errors).toEqual([]);
   });
 
-  test('checks the trigger when targetPaths has an item path of an array target', async () => {
+  test('checks the trigger when descendantPaths has an item path of an array target', async () => {
     const schema = objectTargetSchema();
     schema.calcTriggers[0].calculate = '(value) => [value, value]';
     const validator = new CalcTriggersValidator(schema, {});
-    const errors = await validator.check({ step1: { fieldA: 'abc', result: ['abc', 'TAMPERED'] } }, ['step1.result.1']);
+    const errors = await validator.check({ step1: { fieldA: 'abc', result: ['abc', 'TAMPERED'] } }, ['step1.result.1'], ['step1.result.1']);
+    expect(errors).toEqual([expect.objectContaining({ dataPath: 'step1.result' })]);
+  });
+
+  test('skips the trigger when a leaf sub-path of the target is only in targetPaths', async () => {
+    const validator = new CalcTriggersValidator(objectTargetSchema(), {});
+    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'abc', len: 99 } } }, ['step1.result.len']);
+    expect(errors).toEqual([]);
+  });
+
+  test('checks the trigger when targetPaths has the target itself', async () => {
+    const validator = new CalcTriggersValidator(objectTargetSchema(), {});
+    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'abc', len: 99 } } }, ['step1.result']);
     expect(errors).toEqual([expect.objectContaining({ dataPath: 'step1.result' })]);
   });
 
   test('skips the trigger when targetPaths only has a parent of the target', async () => {
     const validator = new CalcTriggersValidator(objectTargetSchema(), {});
-    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'TAMPERED' } } }, ['step1']);
+    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'TAMPERED' } } }, ['step1'], ['step1']);
     expect(errors).toEqual([]);
   });
 
   test('skips the trigger when targetPaths only has a sibling path sharing the target name as a prefix', async () => {
     const validator = new CalcTriggersValidator(objectTargetSchema(), {});
-    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'TAMPERED' } } }, ['step1.resultX']);
+    const errors = await validator.check({ step1: { fieldA: 'abc', result: { name: 'TAMPERED' } } }, ['step1.resultX'], ['step1.resultX']);
     expect(errors).toEqual([]);
   });
 
-  test('checks a `${index}`-templated trigger when targetPaths has a path under the concrete target', async () => {
+  test('checks a `${index}`-templated trigger when descendantPaths has a path under the concrete target', async () => {
     const schema = {
       calcTriggers: [
         { source: 'step1.items.${index}.value', target: 'step1.items.${index}.result', calculate: '(value) => ({ v: value })', validate: true },
@@ -621,7 +633,11 @@ describe('CalcTriggersValidator.check with targetPaths under the target', () => 
       properties: { step1: { properties: { items: { type: 'array' } } } },
     };
     const validator = new CalcTriggersValidator(schema, {});
-    const errors = await validator.check({ step1: { items: [{ value: 'a', result: { v: 'WRONG' } }] } }, ['step1.items.0.result.v']);
+    const errors = await validator.check(
+      { step1: { items: [{ value: 'a', result: { v: 'WRONG' } }] } },
+      ['step1.items.0.result.v'],
+      ['step1.items.0.result.v'],
+    );
     expect(errors).toEqual([expect.objectContaining({ dataPath: 'step1.items.0.result' })]);
   });
 });

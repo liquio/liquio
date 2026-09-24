@@ -38,12 +38,14 @@ export class CalcTriggersValidator {
    * Only triggers with `validate: true` are checked - `validate: false` or unset is skipped.
    * @param {object} objectToCheck Object to check.
    * @param {string[]} [targetPaths] When given, only recompute triggers whose `target` (accounting
-   * for `${index}` placeholders) is one of these paths or has one of them under it (e.g. the leaf
-   * sub-path `result.name` of an object target `result`) - the rest are skipped without ever
-   * running their `calculate`/visibility functions.
+   * for `${index}` placeholders) is one of these paths - the rest are skipped without ever running
+   * their `calculate`/visibility functions.
+   * @param {string[]} [descendantPaths] Paths that also select a trigger when they are its target or
+   * a path under it (e.g. the leaf sub-path `result.name` of an object target `result`). Only used
+   * together with `targetPaths`.
    * @returns {Promise<CalcTriggerError[]>}
    */
-  async check(objectToCheck, targetPaths?: string[]): Promise<CalcTriggerError[]> {
+  async check(objectToCheck, targetPaths?: string[], descendantPaths: string[] = []): Promise<CalcTriggerError[]> {
     // Errors container.
     const errors: CalcTriggerError[] = [];
 
@@ -53,7 +55,11 @@ export class CalcTriggersValidator {
         continue;
       }
 
-      if (targetPaths && !targetPaths.some((path) => Paths.matchesTemplateOrDescendant(trigger.target, path))) {
+      if (
+        targetPaths &&
+        !targetPaths.some((path) => Paths.matchesTemplate(trigger.target, path)) &&
+        !descendantPaths.some((path) => Paths.matchesTemplateOrDescendant(trigger.target, path))
+      ) {
         continue;
       }
 

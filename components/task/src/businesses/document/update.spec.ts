@@ -161,10 +161,13 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
       },
       // A writable target, so a write to its parent object reaches it.
       s1: { properties: { t: { type: 'string' } } },
+      // A writable object target, so a user can edit a field under it.
+      s2: { properties: { obj: { type: 'object' } } },
     },
     calcTriggers: [
       { source: 'calc.input', target: 'calc.result', calculate, readOnly: true, validate: true },
       { source: 'calc.input', target: 's1.t', calculate: '(value) => value', validate: true },
+      { source: 'calc.input', target: 's2.obj', calculate: '(value) => ({ v: value })', validate: true },
     ],
   });
   const scalarSchema = makeJsonSchema({ type: 'string' }, '(value) => value ? value.toUpperCase() : value');
@@ -408,6 +411,21 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
       useSchema(scalarSchema);
       document.data = { calc: { input: 'abc' }, s1: {} };
       await expect(update([{ path: 's1.t', value: 'TAMPERED' }])).rejects.toMatchObject({ message: 'CalcTrigger recalculation mismatch.' });
+    });
+
+    it('does not check a writable object target when only a field under it is written', async () => {
+      useSchema(scalarSchema);
+      document.data = { calc: { input: 'abc' }, s2: { obj: { v: 'abc' } } };
+      await update([{ path: 's2.obj.note', value: 'edited by the user' }]);
+      expect(writtenData().s2).toEqual({ obj: { v: 'abc', note: 'edited by the user' } });
+    });
+
+    it('checks a writable object target when a field under it is listed in triggerPath', async () => {
+      useSchema(scalarSchema);
+      document.data = { calc: { input: 'abc' }, s2: { obj: { v: 'abc' } } };
+      await expect(update([{ path: 's2.obj.note', value: 'edited by the user' }], ['s2.obj.note'])).rejects.toMatchObject({
+        message: 'CalcTrigger recalculation mismatch.',
+      });
     });
 
     it('does not check targets when only their source is written', async () => {

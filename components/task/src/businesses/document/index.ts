@@ -314,16 +314,20 @@ export class DocumentBusiness extends Business {
       await this.checkUpdateRegisterProperties(registerControlPaths, jsonSchema, documentDataObject);
     }
 
-    // Check that any calcTrigger targets among the properties actually being written (the target
-    // itself or a path under it, like the leaf sub-paths of an object target) were correctly
-    // recalculated, not just written through with an arbitrary client-supplied value. Scoped to
-    // paths touched by this request: untouched fields elsewhere in the document, and targets inside
-    // a written parent object, are left to `/validate` and commit.
+    // Check that any calcTrigger targets among the properties actually being written were correctly
+    // recalculated, not just written through with an arbitrary client-supplied value. A written
+    // target is checked; a path under a target (like the leaf sub-paths of an object target) only
+    // when the client listed it in `triggerPath` as a recalculated target, so other edits of
+    // sub-fields are left to `/validate` and commit. Untouched fields elsewhere in the document, and
+    // targets inside a written parent object, are left to `/validate` and commit too.
     const writtenPaths: string[] = propertiesWithoutReadonlyParams.map((property) => property.path);
     if (writtenPaths.length > 0) {
-      const calcTriggersErrors = await documentValidator.checkCalcTriggers(documentDataObject, writtenPaths);
-      const writtenPathErrors = calcTriggersErrors.filter((error) =>
-        writtenPaths.some((writtenPath) => Paths.isSameOrDescendantPath(writtenPath, error.dataPath)),
+      const recalculatedPaths = writtenPaths.filter((path) => triggerPath.includes(path));
+      const calcTriggersErrors = await documentValidator.checkCalcTriggers(documentDataObject, writtenPaths, recalculatedPaths);
+      const writtenPathErrors = calcTriggersErrors.filter(
+        (error) =>
+          writtenPaths.includes(error.dataPath) ||
+          recalculatedPaths.some((recalculatedPath) => Paths.isSameOrDescendantPath(recalculatedPath, error.dataPath)),
       );
       if (writtenPathErrors.length > 0) {
         throw new InvalidParamsError('CalcTrigger recalculation mismatch.', { cause: writtenPathErrors });
