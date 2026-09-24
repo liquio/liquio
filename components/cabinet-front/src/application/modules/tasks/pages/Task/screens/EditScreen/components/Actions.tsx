@@ -110,6 +110,8 @@ const Actions = (props: any) => {
       const { checkStepFinal } = properties[stepName];
       if (typeof checkStepFinal === 'string') {
         result = evaluate(checkStepFinal, task.document.data, info);
+      } else if (typeof checkStepFinal === 'function') {
+        result = checkStepFinal(task.document.data, info);
       } else if (typeof checkStepFinal === 'boolean') {
         result = checkStepFinal;
       }

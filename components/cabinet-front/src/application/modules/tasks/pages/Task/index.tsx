@@ -873,19 +873,20 @@ class TaskPage extends ModulePage<TaskPageProps> {
     }
   };
 
-  saveLastStepVisited = (props?: { clear?: boolean }): boolean | void => {
+  saveLastStepVisited = (props?: { clear?: boolean; stepId?: string }): boolean | void => {
     try {
       const { authInfo } = this.props;
       const { userId } = authInfo as { userId?: string };
       const { taskId, stepId } = propsToData(this.props) as TaskPageData;
       const savedUser = (JSON.parse(localStorage.getItem('lastStepEdit') || '{}') as Record<string, unknown>)[userId as string];
       const clear = props?.clear;
+      const stepIdOverride = props?.stepId;
 
       const stepsData = JSON.stringify(
         cleenDeep({
           [userId as string]: {
             ...(savedUser as Record<string, unknown>),
-            [taskId as string]: clear ? null : stepId
+            [taskId as string]: clear ? null : stepIdOverride || stepId
           }
         })
       );
@@ -1117,9 +1118,11 @@ class TaskPage extends ModulePage<TaskPageProps> {
 
   backToEdit = (): void => {
     const { steps } = propsToData(this.props) as TaskPageData;
+    const last = steps.pop();
     this.setTaskScreen(screens.EDIT);
     this.settingDefaultStep = true;
-    history.replace(this.getRootPath() + `/${steps.pop()}`);
+    history.replace(this.getRootPath() + `/${last}`);
+    this.saveLastStepVisited({ stepId: last });
   };
 
   clearCacheAction = async (): Promise<void> => {
@@ -1499,6 +1502,7 @@ class TaskPage extends ModulePage<TaskPageProps> {
               handleStore={this.handleStore}
               showStepsMenu={this.showStepsMenu()}
               saveLastStepVisited={this.saveLastStepVisited}
+              getDefaultStep={this.getDefaultStep}
             />
           ) : null}
 

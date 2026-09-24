@@ -58,6 +58,7 @@ import GreetingsPage from 'modules/tasks/pages/Task/screens/EditScreen/component
 import EditScreenLayoutRaw from 'modules/tasks/pages/Task/screens/EditScreen/components/EditScreenLayout';
 
 import propsToData from 'modules/tasks/pages/Task/helpers/propsToData';
+import { resolveStepCondition } from 'modules/tasks/pages/Task/helpers/getTemplateSteps';
 import removeHiddenStepsData from 'modules/tasks/pages/Task/screens/EditScreen/methods/removeHiddenStepsData';
 import triggerInitSignerList from 'modules/tasks/pages/Task/screens/EditScreen/methods/triggerInitSignerList';
 import handleHiddenTriggers from 'modules/tasks/pages/Task/screens/EditScreen/methods/handleHiddenTriggers';
@@ -205,10 +206,11 @@ interface EditScreenProps {
   setBusyRegister: (pendingRegisters: unknown) => void;
   title?: unknown;
   getRootPath: () => string;
-  self: { settingDefaultStep: boolean };
+  self: { settingDefaultStep: boolean; handleFinishEditing: () => unknown };
   handleFinish: () => Promise<unknown>;
   handleSilentTriggers: (props?: { finishEditing?: boolean }) => Promise<unknown>;
-  saveLastStepVisited: (props?: { clear?: boolean }) => unknown;
+  saveLastStepVisited: (props?: { clear?: boolean; stepId?: string }) => unknown;
+  getDefaultStep?: () => string | undefined;
   locked?: boolean;
   taskSteps: Record<string, number>;
   userInfo: Record<string, unknown> & { userId?: string | number; name?: string };
@@ -246,6 +248,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
   ignoreEmptyValues: boolean;
   altchaRef: React.RefObject<{ value?: unknown } | null>;
   queue: ReturnType<typeof queueFactory.get>;
+  finishingRemovedStep: boolean;
 
   removeHiddenStepsData: () => Promise<void>;
   triggerInitSignerList: (props?: { navigating?: boolean }) => string | false;
@@ -278,6 +281,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
     };
 
     this.altchaRef = React.createRef();
+    this.finishingRemovedStep = false;
 
     this.queue = queueFactory.get(taskId as string);
 
@@ -318,7 +322,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
       return null;
     }
 
-    if (taskId && taskSteps[taskId] !== undefined) {
+    if (taskId && taskSteps[taskId] !== undefined && taskSteps[taskId] !== null) {
       return taskSteps[taskId];
     }
 
@@ -326,7 +330,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
   };
 
   componentDidMount(): void {
-    const { taskSteps, getRootPath, self } = this.props;
+    const { taskSteps, getRootPath, self, getDefaultStep } = this.props;
 
     const { steps, taskId, stepId, template } = propsToData(this.props) as EditScreenData;
 
@@ -337,8 +341,10 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
     if (stepId === undefined && ((taskId && taskSteps[taskId] !== undefined) || !greetingsPage)) {
       self.settingDefaultStep = true;
 
-      this.handleSetStep(0);
-      this.setTaskStep(0);
+      const defaultStepIndex = Math.max(steps?.indexOf(getDefaultStep?.() as string) ?? -1, 0);
+
+      this.handleSetStep(defaultStepIndex);
+      this.setTaskStep(defaultStepIndex);
     }
 
     window.addEventListener('beforeunload', this.onUnload);
@@ -393,11 +399,24 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
   componentDidUpdate(prevProps: EditScreenProps): void {
     const { stepId: oldStepId } = propsToData(prevProps) as EditScreenData;
     const { stepId: newStepId, steps } = propsToData(this.props) as EditScreenData;
+    const { self } = this.props;
 
     if (oldStepId !== newStepId) {
-      this.setTaskStep(steps.indexOf(newStepId as string));
+      if (steps?.includes(newStepId as string)) {
+        this.setTaskStep(steps.indexOf(newStepId as string));
+      }
       this.scrollToTop();
     }
+
+    if (newStepId !== undefined && steps?.length && !steps.includes(newStepId)) {
+      if (!this.finishingRemovedStep) {
+        this.finishingRemovedStep = true;
+        self.handleFinishEditing();
+      }
+      return;
+    }
+
+    this.finishingRemovedStep = false;
   }
 
   updateTaskMetaActions = async (initing?: boolean): Promise<void> => {
@@ -489,6 +508,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
   validateStep = async (step?: string, props: { ignorePaymentControl?: boolean } = {}): Promise<boolean> => {
     const {
       steps,
+      stepId,
       task,
       template
     } = propsToData(this.props) as EditScreenData;
@@ -497,16 +517,19 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
 
     const properties = JSON.parse(JSON.stringify(schemaProperties)) as Record<string, Record<string, unknown>>;
 
-    const stepName = step || steps[this.getActiveStep() as number];
-    const stepData = data[step || stepName];
+    const activeStep = this.getActiveStep();
+    const stepName = step || (activeStep !== null ? steps[activeStep] : stepId);
+    const stepData = stepName ? data[stepName] : undefined;
+    const stepSchema = stepName ? properties[stepName] : undefined;
 
-    if (!stepName || !properties[step || stepName]) {
+    // A missing step schema (e.g. a stepOrders entry without a schema) is treated as valid, same as in handleSetNextStep.
+    if (!stepName || !stepSchema) {
       return true;
     }
 
-    const stepProperties = removeHiddenFields(properties[step || stepName] as never, data as never, { stepData } as never);
+    const stepProperties = removeHiddenFields(stepSchema as never, data as never, { stepData } as never);
 
-    const totalErrors = (await validateDataAsync(data[step || stepName] as never || {}, stepProperties, data as never)) as ValidationError[];
+    const totalErrors = (await validateDataAsync(data[stepName] as never || {}, stepProperties, data as never)) as ValidationError[];
 
     const validationErrors = totalErrors.slice(0, ERRORS_LIMIT).filter(({ path }) => {
       if (!props?.ignorePaymentControl) return true;
@@ -1223,7 +1246,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
 
   incrementStep = async (): Promise<void> =>
     new Promise((resolve) => {
-      const { handleStore, handleSilentTriggers, saveLastStepVisited } = this.props;
+      const { handleStore, handleSilentTriggers } = this.props;
       const {
         steps,
         task,
@@ -1255,7 +1278,6 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
 
         if (valid && userDataValid) {
           await this.handleSetNextStep(activeStep, steps);
-          saveLastStepVisited();
         }
 
         this.setState({ readOnly: false }, resolve);
@@ -1263,7 +1285,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
     });
 
   handleSetStep = async (step: number): Promise<void> => {
-    const { getRootPath } = this.props;
+    const { getRootPath, saveLastStepVisited } = this.props;
     const { steps, taskId } = propsToData(this.props) as EditScreenData;
 
     if (!steps[step]) {
@@ -1273,16 +1295,15 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
     await waiter.run(taskId as string);
 
     history.replace(getRootPath() + `/${steps[step]}`);
+    saveLastStepVisited({ stepId: steps[step] });
   };
 
   isStepHidden = (properties: Record<string, Record<string, unknown>>, task: TaskEntity, stepId: string): boolean => {
     const { checkStepHidden } = (properties[stepId] ?? {}) as { checkStepHidden?: unknown };
+    const { authInfo } = propsToData(this.props) as EditScreenData;
 
-    if (typeof checkStepHidden === 'string') {
-      return !!evaluate(checkStepHidden, task?.document?.data);
-    }
-
-    return !!checkStepHidden;
+    // Same condition resolution as getTemplateSteps: a string evaluated with (data, authInfo), or a function.
+    return !!resolveStepCondition(checkStepHidden, task, authInfo);
   };
 
   findNextVisibleStep = (currentStep: number, steps: string[], properties: Record<string, Record<string, unknown>>, task: TaskEntity): number => {
@@ -1742,6 +1763,9 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
       taskId,
       task
     } = propsToData(this.props) as EditScreenData;
+
+    if (!task) return null;
+
     const { deleted, document, finished } = task;
 
     if (deleted || locked || finished || document.isFinal) return null;
@@ -2145,6 +2169,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
   taskId: PropTypes.string.isRequired,
   showStepsMenu: PropTypes.bool,
   saveLastStepVisited: PropTypes.func,
+  getDefaultStep: PropTypes.func,
   validateErrors: PropTypes.array,
   self: PropTypes.object.isRequired,
   actual: PropTypes.object.isRequired
@@ -2159,6 +2184,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
   busy: false,
   showStepsMenu: false,
   saveLastStepVisited: () => {},
+  getDefaultStep: () => undefined,
   validateErrors: []
 };
 

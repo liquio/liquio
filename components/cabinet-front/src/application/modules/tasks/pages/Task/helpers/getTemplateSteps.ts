@@ -1,6 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import evaluate from 'helpers/evaluate';
 
+export const resolveStepCondition = (condition: unknown, task: any, authInfo: any): unknown => {
+  if (typeof condition === 'string') {
+    return evaluate(condition, task.document.data, authInfo);
+  }
+
+  if (typeof condition === 'function') {
+    return condition(task.document.data, authInfo, task?.meta, task?.activityLog);
+  }
+
+  return condition;
+};
+
 export default (task: any, template: any, authInfo: any): any[] => {
   if (!template || !task) {
     return [];
@@ -14,11 +26,7 @@ export default (task: any, template: any, authInfo: any): any[] => {
     steps = Object.keys(properties || []).filter((stepName) => {
       const { checkStepHidden } = properties[stepName];
 
-      if (typeof checkStepHidden !== 'string') {
-        return !checkStepHidden;
-      }
-
-      return !evaluate(checkStepHidden, task.document.data);
+      return !resolveStepCondition(checkStepHidden, task, authInfo);
     });
 
     let i = steps.length - 1;
@@ -26,12 +34,7 @@ export default (task: any, template: any, authInfo: any): any[] => {
     while (i >= 0) {
       const { checkStepFinal } = properties[steps[i]];
       if (checkStepFinal) {
-        let isLast: any = false;
-        if (typeof checkStepFinal === 'string') {
-          isLast = evaluate(checkStepFinal, task.document.data, authInfo);
-        } else if (typeof checkStepFinal === 'boolean') {
-          isLast = checkStepFinal;
-        }
+        const isLast = Boolean(resolveStepCondition(checkStepFinal, task, authInfo));
 
         if (isLast) {
           steps = steps.slice(0, i + 1);
