@@ -284,6 +284,7 @@ export class DocumentController extends Controller {
       const documentId = req.params.id;
       const lastUpdateLogId = req.query.last_update_log_id;
       const userId = this.getRequestUserId(req);
+      const userInfo = this.getRequestUserInfo(req);
       const path = req.body.path;
       const value = req.body.value;
       const previousValue = req.body.previousValue;
@@ -311,7 +312,7 @@ export class DocumentController extends Controller {
       }
 
       // Update document.
-      const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds);
+      const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds, userInfo);
 
       // Check reassign trigger and handle document update log.
       const [checkReassignTriggerResult, documentUpdateLogEntities] = await Promise.all([
@@ -1526,6 +1527,7 @@ export class DocumentController extends Controller {
     const propertyPath = req.body.path;
     const userId = this.getRequestUserId(req);
     const userUnitIds = this.getRequestUserUnitIds(req);
+    const userInfo = this.getRequestUserInfo(req);
     const properties = [];
 
     if (!propertyPath) {
@@ -1575,7 +1577,7 @@ export class DocumentController extends Controller {
     // Update document.
     let updatedDocument;
     try {
-      updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds);
+      updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds, userInfo);
     } catch (error) {
       global.log.save('document-calc-back-triggered-update-error', error, 'error');
       return this.responseError(res, 'Document updating error.');

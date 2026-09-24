@@ -57,6 +57,24 @@ describe('TaskBusiness.setStatusFinished', () => {
     jest.restoreAllMocks();
   });
 
+  it('passes the committing user to the document validator', async () => {
+    const user = { userId: 'user-id', ipn: '1234567890' };
+    const userUnitIds = { all: [1], head: [], member: [1] };
+
+    await expect(taskBusiness.setStatusFinished('task-id', 'user-id', userUnitIds, false, { user, units: {} })).rejects.toEqual({
+      message: 'Validation error.',
+      details: validationErrors,
+    });
+
+    expect(DocumentValidatorService).toHaveBeenCalledTimes(1);
+    expect(DocumentValidatorService).toHaveBeenCalledWith(
+      jsonSchema,
+      expect.objectContaining({ getFilteredRecordsByKeyIdArguments: { userUnitIds } }),
+      user,
+    );
+    expect(check).toHaveBeenCalledWith({ step1: { fieldA: 'a' } });
+  });
+
   it('appends the task trace meta so `$.workflow` functions resolve during the commit checks', async () => {
     await expect(
       taskBusiness.setStatusFinished('task-id', 'user-id', { all: [], head: [], member: [] }, false, { user: {}, units: {} }),

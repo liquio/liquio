@@ -513,7 +513,7 @@ export class DocumentFileBusiness extends Business {
       : [{ path: documentPath, value: attachmentInfoToSave }];
 
     // Update document.
-    await this.host.update(documentId, properties, userId, userUnitIds, isFromSystemTask, isKeepDocumentFile);
+    await this.host.update(documentId, properties, userId, userUnitIds, undefined, { isFromSystemTask, isKeepDocumentFile });
   }
 
   /**

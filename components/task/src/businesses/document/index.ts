@@ -204,8 +204,10 @@ export class DocumentBusiness extends Business {
    * @param properties Properties as [{ someKey: 'someValue' }].
    * @param userId User ID.
    * @param userUnitIds User units IDs.
-   * @param isFromSystemTask
-   * @param isKeepDocumentFile
+   * @param userInfo User info.
+   * @param options Options.
+   * @param options.isFromSystemTask
+   * @param options.isKeepDocumentFile
    * @returns Updated document entity promise.
    */
   async update(
@@ -213,8 +215,8 @@ export class DocumentBusiness extends Business {
     properties: Array<{ path: string; value?: any; previousValue?: any }>,
     userId: string,
     userUnitIds: UserUnitIds,
-    isFromSystemTask: boolean,
-    isKeepDocumentFile = false,
+    userInfo: any = undefined,
+    { isFromSystemTask = false, isKeepDocumentFile = false }: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean } = {},
   ): Promise<DocumentEntity> {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
@@ -241,9 +243,9 @@ export class DocumentBusiness extends Business {
     const jsonSchema = template.jsonSchema;
 
     // Remove readonly params.
-    const documentValidator = new (DocumentValidator as any)(jsonSchema);
+    const documentValidator = new (DocumentValidator as any)(jsonSchema, undefined, userInfo);
     const existingDocumentData = document.data;
-    const documentDataObject = existingDocumentData || EMPTY_DOCUMENT_DATA;
+    let documentDataObject = existingDocumentData || EMPTY_DOCUMENT_DATA;
     const propertiesWithoutReadonlyParams = await documentValidator.removeReadonlyParams(properties, documentDataObject, isFromSystemTask);
 
     // Check array elements added or removed.
@@ -251,6 +253,7 @@ export class DocumentBusiness extends Business {
 
     // Update.
     let arrayPaths = [];
+    documentDataObject = JSON.parse(JSON.stringify(documentDataObject));
     propertiesWithoutReadonlyParams.forEach((property) => {
       // Ensure arrays are present in the path
       this.ensureArraysInPath(documentDataObject, property.path);

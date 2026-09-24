@@ -2250,12 +2250,16 @@ export class TaskBusiness extends Business {
       }
 
       // Validate document.
-      const documentValidator = new (DocumentValidator as any)(jsonSchema, {
-        getFilteredRecordsByKeyId: (global.businesses.register.getFilteredRecordsByKeyId as any).bind(global.businesses.register),
-        getFilteredRecordsByKeyIdArguments: {
-          userUnitIds: userUnitIds,
+      const documentValidator = new (DocumentValidator as any)(
+        jsonSchema,
+        {
+          getFilteredRecordsByKeyId: (global.businesses.register.getFilteredRecordsByKeyId as any).bind(global.businesses.register),
+          getFilteredRecordsByKeyIdArguments: {
+            userUnitIds: userUnitIds,
+          },
         },
-      });
+        user,
+      );
       const validationErrors = await documentValidator.check(document.data);
       if (validationErrors.length > 0) {
         const traceMeta = this.getTraceMeta();
