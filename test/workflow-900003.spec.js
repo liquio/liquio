@@ -18,14 +18,21 @@ const {
  *                                        fill, leaf sub-paths (with the same sub-paths in `triggerPath`) on recalculation
  *
  * The cases drive the cabinet API directly as the logged-in user.
+ *
+ * Honest user in the UI (`honest user in the UI` block):
+ * readOnly calcTrigger targets saved from the cabinet UI.
+ * Template 4 of the edge-case workflow has three triggers with `readOnly: true` and `validate: true`
+ * whose targets are readOnly fields (a string, an object and an array). The server drops readOnly
+ * fields on PUT unless the front names them in `triggerPath`, so these tests check what the front
+ * really sends and that an honest user can still finish the task.
  */
 
-const WORKFLOW_TEMPLATE_ID = 1000367;
+const WORKFLOW_TEMPLATE_ID = 900003;
 const TASK_TEMPLATES = {
-  USER_INFO: 1000367001,
-  CHECK_READONLY: 1000367002,
-  CLEAN_WHEN_HIDDEN: 1000367003,
-  READONLY_OBJECT_AND_ARRAY: 1000367004,
+  USER_INFO: 900003001,
+  CHECK_READONLY: 900003002,
+  CLEAN_WHEN_HIDDEN: 900003003,
+  READONLY_OBJECT_AND_ARRAY: 900003004,
 };
 
 const TAMPERED = 'TAMPERED';
@@ -34,8 +41,16 @@ const MISMATCH_ON_PUT = 'CalcTrigger recalculation mismatch';
 const MISMATCH_ON_VALIDATE = /calcTrigger recalculation mismatch/i;
 const INVALID_TRIGGER_PATH = 'Invalid trigger path';
 
-test.describe('Workflow 1000367 (calcTriggers validation edge cases)', () => {
+const CABINET_URL = 'http://localhost:8081';
+
+const isDocumentUpdate = (request) => request.method() === 'PUT' && /\/documents\/[^/?]+(\?|$)/.test(request.url());
+
+test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
+  let context;
+  let page;
   let api;
+  let documentUpdates = [];
+  let validateResponses = [];
 
   const startTask = async (taskTemplateId) => {
     const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, taskTemplateId);
@@ -73,7 +88,7 @@ test.describe('Workflow 1000367 (calcTriggers validation edge cases)', () => {
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(240000);
 
-    log('Importing workflow 1000367 as an admin');
+    log('Importing workflow 900003 as an admin');
     const adminPage = await (await browser.newContext()).newPage();
     await setupLogging(adminPage);
     adminPage.setDefaultTimeout(15000);
@@ -81,25 +96,45 @@ test.describe('Workflow 1000367 (calcTriggers validation edge cases)', () => {
     await ensureAtLoginPage(adminPage);
     await loginWithPersonalKey(adminPage, '../config/admin.p12', 'admin');
     await expect(adminPage).toHaveURL(/^http:\/\/localhost:8082\//);
-    await importWorkflow(adminPage, './fixtures/workflow-1000367.bpmn', false, true);
-    await adminPage.goto('http://localhost:8082/workflow/1000367');
-    await expect(adminPage).toHaveTitle(/^calcTriggers/);
+    await importWorkflow(adminPage, './fixtures/workflow-900003.bpmn', false, true);
+    // The server accepts an import before it has saved it, so reload until the workflow is there.
+    await expect(async () => {
+      await adminPage.goto('http://localhost:8082/workflow/900003');
+      await expect(adminPage).toHaveTitle(/^calcTriggers/, { timeout: 3000 });
+    }).toPass({ timeout: 30000 });
     await adminPage.context().close();
-    log('✓ Workflow 1000367 imported');
+    log('✓ Workflow 900003 imported');
 
     log('Logging in to cabinet as demo user');
-    const userPage = await (await browser.newContext()).newPage();
-    await setupLogging(userPage);
-    userPage.setDefaultTimeout(15000);
-    await userPage.goto('http://localhost:8081/');
-    await userPage.waitForLoadState('networkidle');
-    if (userPage.url().includes('localhost:8080')) {
-      await ensureAtLoginPage(userPage);
-      await loginWithPersonalKey(userPage, '../config/demo.p12', 'demo');
+    context = await browser.newContext();
+    page = await context.newPage();
+    await setupLogging(page);
+    page.setDefaultTimeout(15000);
+    await page.goto(`${CABINET_URL}/`);
+    await page.waitForLoadState('networkidle');
+    // The redirect to the login page can come after the network is idle, so wait for either outcome.
+    await page.waitForFunction(() => globalThis.location.port === '8080' || !!localStorage.getItem('token'), null, { timeout: 30000 });
+    if (page.url().includes('localhost:8080')) {
+      await ensureAtLoginPage(page);
+      await loginWithPersonalKey(page, '../config/demo.p12', 'demo');
     }
-    await expect(userPage).toHaveURL(/^http:\/\/localhost:8081/);
-    api = await createCabinetApi(userPage);
-    log('✓ Cabinet API ready');
+    await expect(page).toHaveURL(/^http:\/\/localhost:8081/);
+    api = await createCabinetApi(page);
+
+    // Every document PUT with its answer, and every /validate answer the front got.
+    page.on('response', async (response) => {
+      if (isDocumentUpdate(response.request())) {
+        documentUpdates.push({ status: response.status(), body: response.request().postDataJSON() });
+      }
+      if (/\/documents\/[^/]+\/validate/.test(response.url())) {
+        validateResponses.push({ status: response.status(), body: await response.json().catch(() => null) });
+      }
+    });
+    log('✓ Cabinet ready');
+  });
+
+  test.afterAll(async () => {
+    await context?.close();
   });
 
   test.describe('1 userInfo in calculate', () => {
@@ -371,6 +406,129 @@ test.describe('Workflow 1000367 (calcTriggers validation edge cases)', () => {
       expectRejectedAsInvalidTriggerPath(await api.updateDocument(task.documentId, [
         { path: 'calc.resultObjectX', value: TAMPERED },
       ], ['calc.resultObjectX']));
+    });
+  });
+
+  test.describe('honest user in the UI', () => {
+    test.beforeEach(() => {
+      documentUpdates = [];
+      validateResponses = [];
+    });
+
+    const openTaskInCabinet = async () => {
+      await page.goto(`${CABINET_URL}/tasks/create/${WORKFLOW_TEMPLATE_ID}/${TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY}`);
+      await page.waitForURL(/\/tasks\/[a-f0-9-]+\/calc$/i);
+      return page.url().match(/\/tasks\/([a-f0-9-]+)\//i)[1];
+    };
+
+    const typeSource = async (value) => {
+      const input = page.getByRole('textbox', { name: 'Джерело' });
+      await input.fill(value);
+      await input.blur();
+    };
+
+    // Waits for the PUT that saved `value` of `calc.input` and returns its body.
+    const waitForSourceSaved = (value) => page.waitForResponse((response) => isDocumentUpdate(response.request())
+      && (response.request().postDataJSON()?.properties || [])
+        .some(({ path, value: sent }) => path === 'calc.input' && sent === value));
+
+
+    const getTask = async (taskId) => {
+      const { status, body } = await api.getTask(taskId);
+      expect(status).toBe(200);
+      return body.data;
+    };
+
+    const expectFinished = async (taskId) => {
+      const completionDialog = page.getByRole('dialog');
+      await completionDialog.waitFor({ timeout: 30000 });
+      await expect(completionDialog).toContainText(/Success|submitted|sent|Thank you/i);
+
+      expect(validateResponses.length, 'the front validated the document').toBeGreaterThan(0);
+      for (const { status, body } of validateResponses) {
+        expect((body?.error?.details || []).filter((detail) => MISMATCH_ON_VALIDATE.test(detail.message)), JSON.stringify(body)).toEqual([]);
+        expect(status, JSON.stringify(body)).toBe(200);
+      }
+
+      const task = await getTask(taskId);
+      expect(task.finished, 'task is finished').toBe(true);
+      return task;
+    };
+
+    test('sends the readOnly targets with triggerPath on the first fill and stores them', async () => {
+      const task = await getTask(await openTaskInCabinet());
+
+      const saved = waitForSourceSaved('ab');
+      await typeSource('ab');
+      const response = await saved;
+      expect(response.status()).toBe(200);
+
+      const body = response.request().postDataJSON();
+      expect(body.properties).toEqual(expect.arrayContaining([
+        { path: 'calc.input', value: 'ab' },
+        { path: 'calc.upper', value: 'AB' },
+        { path: 'calc.resultObject', value: { name: 'ab', len: 2 } },
+        { path: 'calc.resultArray', value: ['a', 'b'] },
+      ]));
+      expect([...body.triggerPath].sort()).toEqual(['calc.resultArray', 'calc.resultObject', 'calc.upper']);
+
+      expect((await getDocumentData(task.documentId)).calc).toEqual({
+        input: 'ab',
+        upper: 'AB',
+        resultObject: { name: 'ab', len: 2 },
+        resultArray: ['a', 'b'],
+      });
+    });
+
+    test('sends the changed parts of recalculated readOnly targets with triggerPath', async () => {
+      const task = await getTask(await openTaskInCabinet());
+
+      const first = waitForSourceSaved('ab');
+      await typeSource('ab');
+      expect((await first).status()).toBe(200);
+
+      const second = waitForSourceSaved('abc');
+      await typeSource('abc');
+      const response = await second;
+      expect(response.status()).toBe(200);
+
+      // The front sends only the parts that changed: leaf paths of the object, the new array item.
+      const body = response.request().postDataJSON();
+      expect(body.properties.map(({ path, value }) => ({ path, value }))).toEqual(expect.arrayContaining([
+        { path: 'calc.input', value: 'abc' },
+        { path: 'calc.upper', value: 'ABC' },
+        { path: 'calc.resultObject.name', value: 'abc' },
+        { path: 'calc.resultObject.len', value: 3 },
+        { path: 'calc.resultArray.2', value: 'c' },
+      ]));
+      expect([...body.triggerPath].sort()).toEqual([
+        'calc.resultArray.2',
+        'calc.resultObject.len',
+        'calc.resultObject.name',
+        'calc.upper',
+      ]);
+
+      expect((await getDocumentData(task.documentId)).calc).toEqual({
+        input: 'abc',
+        upper: 'ABC',
+        resultObject: { name: 'abc', len: 3 },
+        resultArray: ['a', 'b', 'c'],
+      });
+    });
+
+    test('an honest user finishes the task without a calcTrigger mismatch', async () => {
+      const taskId = await openTaskInCabinet();
+
+      const saved = waitForSourceSaved('xyz');
+      await typeSource('xyz');
+      expect((await saved).status()).toBe(200);
+
+      await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await expect(page).toHaveURL(/\/tasks\/[a-f0-9-]+\/lastStep$/);
+      await page.getByRole('button', { name: 'Finish', exact: true }).click();
+
+      await expectFinished(taskId);
+      expect(documentUpdates.every(({ status }) => status === 200), JSON.stringify(documentUpdates)).toBe(true);
     });
   });
 });

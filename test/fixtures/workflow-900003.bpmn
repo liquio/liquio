@@ -1,31 +1,31 @@
 {
     "workflowTemplate": {
-        "id": 1000367,
+        "id": 900003,
         "workflowTemplateCategoryId": 29,
         "name": "calcTriggers edge cases",
         "description": "",
-        "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\">\n  <bpmn2:process id=\"Process_1\" isExecutable=\"false\">\n    <bpmn2:startEvent id=\"start-event-1\">\n      <bpmn2:outgoing>Flow_start_1</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000367001\" name=\"1 - userInfo in calculate\">\n      <bpmn2:incoming>Flow_start_1</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_1</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_1\" sourceRef=\"start-event-1\" targetRef=\"task-1000367001\" />\n    <bpmn2:endEvent id=\"end-event-1\" name=\"end-event-1\">\n      <bpmn2:incoming>Flow_end_1</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_1\" sourceRef=\"task-1000367001\" targetRef=\"end-event-1\" />\n    <bpmn2:startEvent id=\"start-event-2\">\n      <bpmn2:outgoing>Flow_start_2</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000367002\" name=\"2 - checkReadonly\">\n      <bpmn2:incoming>Flow_start_2</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_2</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_2\" sourceRef=\"start-event-2\" targetRef=\"task-1000367002\" />\n    <bpmn2:endEvent id=\"end-event-2\" name=\"end-event-2\">\n      <bpmn2:incoming>Flow_end_2</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_2\" sourceRef=\"task-1000367002\" targetRef=\"end-event-2\" />\n    <bpmn2:startEvent id=\"start-event-3\">\n      <bpmn2:outgoing>Flow_start_3</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000367003\" name=\"3 - cleanWhenHidden target\">\n      <bpmn2:incoming>Flow_start_3</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_3</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_3\" sourceRef=\"start-event-3\" targetRef=\"task-1000367003\" />\n    <bpmn2:endEvent id=\"end-event-3\" name=\"end-event-3\">\n      <bpmn2:incoming>Flow_end_3</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_3\" sourceRef=\"task-1000367003\" targetRef=\"end-event-3\" />\n    <bpmn2:startEvent id=\"start-event-4\">\n      <bpmn2:outgoing>Flow_start_4</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-1000367004\" name=\"4 - readOnly object and array targets\">\n      <bpmn2:incoming>Flow_start_4</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_4</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_4\" sourceRef=\"start-event-4\" targetRef=\"task-1000367004\" />\n    <bpmn2:endEvent id=\"end-event-4\" name=\"end-event-4\">\n      <bpmn2:incoming>Flow_end_4</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_4\" sourceRef=\"task-1000367004\" targetRef=\"end-event-4\" />\n  </bpmn2:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Process_1\">\n      <bpmndi:BPMNShape id=\"start-event-1_di\" bpmnElement=\"start-event-1\">\n        <dc:Bounds x=\"412\" y=\"240\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-1000367001_di\" bpmnElement=\"task-1000367001\">\n        <dc:Bounds x=\"540\" y=\"218\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_1_di\" bpmnElement=\"Flow_start_1\">\n        <di:waypoint x=\"448\" y=\"258\" />\n        <di:waypoint x=\"540\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-1_di\" bpmnElement=\"end-event-1\">\n        <dc:Bounds x=\"722\" y=\"240\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"283\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_1_di\" bpmnElement=\"Flow_end_1\">\n        <di:waypoint x=\"640\" y=\"258\" />\n        <di:waypoint x=\"722\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-2_di\" bpmnElement=\"start-event-2\">\n        <dc:Bounds x=\"412\" y=\"380\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-1000367002_di\" bpmnElement=\"task-1000367002\">\n        <dc:Bounds x=\"540\" y=\"358\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_2_di\" bpmnElement=\"Flow_start_2\">\n        <di:waypoint x=\"448\" y=\"398\" />\n        <di:waypoint x=\"540\" y=\"398\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-2_di\" bpmnElement=\"end-event-2\">\n        <dc:Bounds x=\"722\" y=\"380\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"423\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_2_di\" bpmnElement=\"Flow_end_2\">\n        <di:waypoint x=\"640\" y=\"398\" />\n        <di:waypoint x=\"722\" y=\"398\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-3_di\" bpmnElement=\"start-event-3\">\n        <dc:Bounds x=\"412\" y=\"520\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-1000367003_di\" bpmnElement=\"task-1000367003\">\n        <dc:Bounds x=\"540\" y=\"498\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_3_di\" bpmnElement=\"Flow_start_3\">\n        <di:waypoint x=\"448\" y=\"538\" />\n        <di:waypoint x=\"540\" y=\"538\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-3_di\" bpmnElement=\"end-event-3\">\n        <dc:Bounds x=\"722\" y=\"520\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"563\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_3_di\" bpmnElement=\"Flow_end_3\">\n        <di:waypoint x=\"640\" y=\"538\" />\n        <di:waypoint x=\"722\" y=\"538\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-4_di\" bpmnElement=\"start-event-4\">\n        <dc:Bounds x=\"412\" y=\"660\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-1000367004_di\" bpmnElement=\"task-1000367004\">\n        <dc:Bounds x=\"540\" y=\"638\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_4_di\" bpmnElement=\"Flow_start_4\">\n        <di:waypoint x=\"448\" y=\"678\" />\n        <di:waypoint x=\"540\" y=\"678\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-4_di\" bpmnElement=\"end-event-4\">\n        <dc:Bounds x=\"722\" y=\"660\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"703\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_4_di\" bpmnElement=\"Flow_end_4\">\n        <di:waypoint x=\"640\" y=\"678\" />\n        <di:waypoint x=\"722\" y=\"678\" />\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
+        "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\">\n  <bpmn2:process id=\"Process_1\" isExecutable=\"false\">\n    <bpmn2:startEvent id=\"start-event-1\">\n      <bpmn2:outgoing>Flow_start_1</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-900003001\" name=\"1 - userInfo in calculate\">\n      <bpmn2:incoming>Flow_start_1</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_1</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_1\" sourceRef=\"start-event-1\" targetRef=\"task-900003001\" />\n    <bpmn2:endEvent id=\"end-event-1\" name=\"end-event-1\">\n      <bpmn2:incoming>Flow_end_1</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_1\" sourceRef=\"task-900003001\" targetRef=\"end-event-1\" />\n    <bpmn2:startEvent id=\"start-event-2\">\n      <bpmn2:outgoing>Flow_start_2</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-900003002\" name=\"2 - checkReadonly\">\n      <bpmn2:incoming>Flow_start_2</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_2</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_2\" sourceRef=\"start-event-2\" targetRef=\"task-900003002\" />\n    <bpmn2:endEvent id=\"end-event-2\" name=\"end-event-2\">\n      <bpmn2:incoming>Flow_end_2</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_2\" sourceRef=\"task-900003002\" targetRef=\"end-event-2\" />\n    <bpmn2:startEvent id=\"start-event-3\">\n      <bpmn2:outgoing>Flow_start_3</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-900003003\" name=\"3 - cleanWhenHidden target\">\n      <bpmn2:incoming>Flow_start_3</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_3</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_3\" sourceRef=\"start-event-3\" targetRef=\"task-900003003\" />\n    <bpmn2:endEvent id=\"end-event-3\" name=\"end-event-3\">\n      <bpmn2:incoming>Flow_end_3</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_3\" sourceRef=\"task-900003003\" targetRef=\"end-event-3\" />\n    <bpmn2:startEvent id=\"start-event-4\">\n      <bpmn2:outgoing>Flow_start_4</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-900003004\" name=\"4 - readOnly object and array targets\">\n      <bpmn2:incoming>Flow_start_4</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_4</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_4\" sourceRef=\"start-event-4\" targetRef=\"task-900003004\" />\n    <bpmn2:endEvent id=\"end-event-4\" name=\"end-event-4\">\n      <bpmn2:incoming>Flow_end_4</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_4\" sourceRef=\"task-900003004\" targetRef=\"end-event-4\" />\n  </bpmn2:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Process_1\">\n      <bpmndi:BPMNShape id=\"start-event-1_di\" bpmnElement=\"start-event-1\">\n        <dc:Bounds x=\"412\" y=\"240\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-900003001_di\" bpmnElement=\"task-900003001\">\n        <dc:Bounds x=\"540\" y=\"218\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_1_di\" bpmnElement=\"Flow_start_1\">\n        <di:waypoint x=\"448\" y=\"258\" />\n        <di:waypoint x=\"540\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-1_di\" bpmnElement=\"end-event-1\">\n        <dc:Bounds x=\"722\" y=\"240\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"283\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_1_di\" bpmnElement=\"Flow_end_1\">\n        <di:waypoint x=\"640\" y=\"258\" />\n        <di:waypoint x=\"722\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-2_di\" bpmnElement=\"start-event-2\">\n        <dc:Bounds x=\"412\" y=\"380\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-900003002_di\" bpmnElement=\"task-900003002\">\n        <dc:Bounds x=\"540\" y=\"358\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_2_di\" bpmnElement=\"Flow_start_2\">\n        <di:waypoint x=\"448\" y=\"398\" />\n        <di:waypoint x=\"540\" y=\"398\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-2_di\" bpmnElement=\"end-event-2\">\n        <dc:Bounds x=\"722\" y=\"380\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"423\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_2_di\" bpmnElement=\"Flow_end_2\">\n        <di:waypoint x=\"640\" y=\"398\" />\n        <di:waypoint x=\"722\" y=\"398\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-3_di\" bpmnElement=\"start-event-3\">\n        <dc:Bounds x=\"412\" y=\"520\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-900003003_di\" bpmnElement=\"task-900003003\">\n        <dc:Bounds x=\"540\" y=\"498\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_3_di\" bpmnElement=\"Flow_start_3\">\n        <di:waypoint x=\"448\" y=\"538\" />\n        <di:waypoint x=\"540\" y=\"538\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-3_di\" bpmnElement=\"end-event-3\">\n        <dc:Bounds x=\"722\" y=\"520\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"563\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_3_di\" bpmnElement=\"Flow_end_3\">\n        <di:waypoint x=\"640\" y=\"538\" />\n        <di:waypoint x=\"722\" y=\"538\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-4_di\" bpmnElement=\"start-event-4\">\n        <dc:Bounds x=\"412\" y=\"660\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-900003004_di\" bpmnElement=\"task-900003004\">\n        <dc:Bounds x=\"540\" y=\"638\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_4_di\" bpmnElement=\"Flow_start_4\">\n        <di:waypoint x=\"448\" y=\"678\" />\n        <di:waypoint x=\"540\" y=\"678\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-4_di\" bpmnElement=\"end-event-4\">\n        <dc:Bounds x=\"722\" y=\"660\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"703\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_4_di\" bpmnElement=\"Flow_end_4\">\n        <di:waypoint x=\"640\" y=\"678\" />\n        <di:waypoint x=\"722\" y=\"678\" />\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
         "data": {
             "statuses": [],
             "entryTaskTemplateIds": [
                 {
                     "name": "Start",
-                    "id": "() => 1000367001;"
+                    "id": "() => 900003001;"
                 },
                 {
                     "hidden": false,
                     "name": "2 - checkReadonly",
-                    "id": "() => 1000367002;"
+                    "id": "() => 900003002;"
                 },
                 {
                     "hidden": false,
                     "name": "3 - cleanWhenHidden target",
-                    "id": "() => 1000367003;"
+                    "id": "() => 900003003;"
                 },
                 {
                     "hidden": false,
                     "name": "4 - readOnly object and array targets",
-                    "id": "() => 1000367004;"
+                    "id": "() => 900003004;"
                 }
             ]
         },
@@ -44,9 +44,9 @@
     },
     "taskTemplates": [
         {
-            "id": 1000367001,
+            "id": 900003001,
             "name": "1 - userInfo in calculate",
-            "documentTemplateId": 1000367001,
+            "documentTemplateId": 900003001,
             "jsonSchema": {
                 "setPermissions": [
                     {
@@ -60,9 +60,9 @@
             "updatedAt": "2026-09-24T12:00:00.000Z"
         },
         {
-            "id": 1000367002,
+            "id": 900003002,
             "name": "2 - checkReadonly",
-            "documentTemplateId": 1000367002,
+            "documentTemplateId": 900003002,
             "jsonSchema": {
                 "setPermissions": [
                     {
@@ -76,9 +76,9 @@
             "updatedAt": "2026-09-24T12:00:00.000Z"
         },
         {
-            "id": 1000367003,
+            "id": 900003003,
             "name": "3 - cleanWhenHidden target",
-            "documentTemplateId": 1000367003,
+            "documentTemplateId": 900003003,
             "jsonSchema": {
                 "setPermissions": [
                     {
@@ -92,9 +92,9 @@
             "updatedAt": "2026-09-24T12:00:00.000Z"
         },
         {
-            "id": 1000367004,
+            "id": 900003004,
             "name": "4 - readOnly object and array targets",
-            "documentTemplateId": 1000367004,
+            "documentTemplateId": 900003004,
             "jsonSchema": {
                 "setPermissions": [
                     {
@@ -110,7 +110,7 @@
     ],
     "documentTemplates": [
         {
-            "id": 1000367001,
+            "id": 900003001,
             "name": "1 - userInfo in calculate",
             "jsonSchema": {
                 "title": "userInfo у calculate",
@@ -173,7 +173,7 @@
             "updatedAt": "2026-09-24T12:00:00.000Z"
         },
         {
-            "id": 1000367002,
+            "id": 900003002,
             "name": "2 - checkReadonly",
             "jsonSchema": {
                 "title": "checkReadonly",
@@ -241,7 +241,7 @@
             "updatedAt": "2026-09-24T12:00:00.000Z"
         },
         {
-            "id": 1000367003,
+            "id": 900003003,
             "name": "3 - cleanWhenHidden target",
             "jsonSchema": {
                 "title": "cleanWhenHidden",
@@ -304,7 +304,7 @@
             "updatedAt": "2026-09-24T12:00:00.000Z"
         },
         {
-            "id": 1000367004,
+            "id": 900003004,
             "name": "4 - readOnly object and array targets",
             "jsonSchema": {
                 "title": "readOnly object and array targets",
