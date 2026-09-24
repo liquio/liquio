@@ -9,6 +9,7 @@ import { ValidatorError } from './validator_error';
 import { Paths } from './paths';
 import { RegisterService } from '../../services/register';
 import { Sandbox } from '@liquio/back-core';
+import { CalcTriggersValidator } from './calc_triggers_validator';
 
 // Constants.
 // const CONTROL_PAYMENT_NAME = 'payment';
@@ -20,6 +21,7 @@ const INIT_DATA_PROP = 'initData'; // Data for system task.
  */
 export class DocumentValidatorService {
   ajv: any;
+  calcTriggersValidator: CalcTriggersValidator;
   externalFunctions: any;
   jsonSchema: any;
   registerService: any;
@@ -41,6 +43,7 @@ export class DocumentValidatorService {
     this.validation = this.ajv.compile(this.jsonSchema);
     this.registerService = new RegisterService();
     this.sandbox = Sandbox.getInstance();
+    this.calcTriggersValidator = new CalcTriggersValidator(jsonSchema, userInfo);
   }
 
   /**
@@ -56,6 +59,9 @@ export class DocumentValidatorService {
     // Check custom keywords.
     const keywordsErrors = await this.checkKeywords(objectToCheck);
 
+    // Check readOnly calcTriggers were not tampered with.
+    const calcTriggersErrors = await this.calcTriggersValidator.check(objectToCheck);
+
     // Check standard AJV errors.
     const ajvErrors = this.validation.errors || [];
 
@@ -63,7 +69,7 @@ export class DocumentValidatorService {
     const unexpectedErrors = includesUnexpectedErrors ? this.checkUnexpectedErrors(objectToCheck) : [];
 
     // Return all errors array.
-    const errors = [...ajvErrors.map((v) => new ValidatorError(v)), ...keywordsErrors, ...unexpectedErrors];
+    const errors = [...ajvErrors.map((v) => new ValidatorError(v)), ...keywordsErrors, ...calcTriggersErrors, ...unexpectedErrors];
 
     // Remove validation of hidden fields.
     const errorsWithoutHiddenFields = errors

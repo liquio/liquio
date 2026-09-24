@@ -419,3 +419,74 @@ describe('DocumentValidatorService.removeReadonlyParams', () => {
     expect(result).toEqual([{ path: 'step1.group', value: { fieldA: 'A', fieldB: 'old' } }]);
   });
 });
+
+describe('DocumentValidatorService.check with calcTriggers', () => {
+  const makeSchema = (resultSchema: Record<string, unknown> = {}) => ({
+    type: 'object',
+    calcTriggers: [{ source: 'step1.input', target: 'step1.result', calculate: '(value) => value + "!"', validate: true }],
+    properties: {
+      step1: {
+        type: 'object',
+        properties: {
+          input: { type: 'string', checkValid: '(value) => value !== "bad"' },
+          result: { type: 'string', ...resultSchema },
+        },
+      },
+    },
+  });
+
+  beforeEach(() => {
+    global.config = {
+      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+    };
+    new Sandbox(global.config);
+    Keywords.init();
+  });
+
+  afterEach(() => {
+    global.config = {};
+    jest.clearAllMocks();
+  });
+
+  test('returns no calcTrigger error for an honest target', async () => {
+    const service = new DocumentValidatorService(makeSchema(), {}, {});
+    const errors = await service.check({ step1: { input: 'x', result: 'x!' } }, false);
+    expect(errors).toEqual([]);
+  });
+
+  test('reports a tampered target as a calcTrigger mismatch', async () => {
+    const service = new DocumentValidatorService(makeSchema(), {}, {});
+    const errors = await service.check({ step1: { input: 'x', result: 'TAMPERED' } }, false);
+    expect(errors).toEqual([
+      { dataPath: 'step1.result', validationParam: undefined, message: 'calcTrigger recalculation mismatch (source: step1.input)' },
+    ]);
+  });
+
+  test('lists calcTrigger errors after keyword errors', async () => {
+    const service = new DocumentValidatorService(makeSchema(), {}, {});
+    const errors = await service.check({ step1: { input: 'bad', result: 'TAMPERED' } }, false);
+    expect(errors.map((error) => error.dataPath)).toEqual(['step1.input', 'step1.result']);
+  });
+
+  test('passes userInfo to calculate', async () => {
+    const schema = makeSchema();
+    schema.calcTriggers[0].calculate = '(value, step, document, parent, userInfo) => userInfo?.userId';
+    const service = new DocumentValidatorService(schema, {}, { userId: 'user-1' });
+    expect(await service.check({ step1: { input: 'x', result: 'user-1' } }, false)).toEqual([]);
+    expect(await service.check({ step1: { input: 'x', result: 'user-2' } }, false)).toEqual([expect.objectContaining({ dataPath: 'step1.result' })]);
+  });
+
+  test('keeps a calcTrigger error of a cleanWhenHidden target with checkHidden: true', async () => {
+    const service = new DocumentValidatorService(makeSchema({ cleanWhenHidden: true, checkHidden: true }), {}, {});
+    const errors = await service.check({ step1: { input: 'x', result: 'TAMPERED' } }, false);
+    expect(errors).toEqual([
+      expect.objectContaining({ dataPath: 'step1.result', message: 'calcTrigger recalculation mismatch (source: step1.input)' }),
+    ]);
+  });
+
+  test('keeps a calcTrigger error of a target with hidden: true', async () => {
+    const service = new DocumentValidatorService(makeSchema({ hidden: true }), {}, {});
+    const errors = await service.check({ step1: { input: 'x', result: 'TAMPERED' } }, false);
+    expect(errors).toEqual([expect.objectContaining({ dataPath: 'step1.result' })]);
+  });
+});
