@@ -110,3 +110,225 @@ describe('DocumentValidatorService.check with workflow template global functions
     expect(errors).toEqual([expect.objectContaining({ dataPath: 'step1.fieldA', message: 'checkValid error.' })]);
   });
 });
+
+describe('DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', () => {
+  const makeService = (schema) => {
+    new Sandbox(global.config);
+    return new DocumentValidatorService(schema, {}, {});
+  };
+
+  const makeProperty = (path, value) => ({
+    path,
+    value,
+    jsonSchemaPath: path
+      .split('.')
+      .map((p) => `properties.${p}`)
+      .join('.'),
+  });
+
+  beforeEach(() => {
+    global.config = {
+      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+    };
+    new Sandbox(global.config);
+  });
+
+  afterEach(() => {
+    global.config = {};
+    jest.clearAllMocks();
+  });
+
+  test('checkReadonly on direct field returns truthy when expression returns true', () => {
+    const schema = {
+      properties: { step1: { properties: { fieldA: { checkReadonly: '() => true' } } } },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.fieldA', 'val'), { step1: { fieldA: 'val' } });
+    expect(result).toBe(true);
+  });
+
+  test('checkReadonly takes priority over checkReadOnly when both present', () => {
+    const schema = {
+      properties: {
+        step1: {
+          properties: {
+            fieldA: { checkReadonly: '() => true', checkReadOnly: '() => false' },
+          },
+        },
+      },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.fieldA', 'val'), { step1: { fieldA: 'val' } });
+    expect(result).toBe(true);
+  });
+
+  test('checkReadonly returns false when expression returns false', () => {
+    const schema = {
+      properties: { step1: { properties: { fieldA: { checkReadonly: '() => false' } } } },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.fieldA', 'val'), { step1: { fieldA: 'val' } });
+    expect(result).toBe(false);
+  });
+
+  test('returns undefined when neither checkReadonly nor checkReadOnly is defined', () => {
+    const schema = {
+      properties: { step1: { properties: { fieldA: { type: 'string' } } } },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.fieldA', 'val'), { step1: { fieldA: 'val' } });
+    expect(result).toBeUndefined();
+  });
+
+  test('checkReadonly on parent group blocks nested field', () => {
+    const schema = {
+      properties: {
+        step1: {
+          properties: {
+            group: {
+              checkReadonly: '() => true',
+              properties: { fieldA: { type: 'string' } },
+            },
+          },
+        },
+      },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.group.fieldA', 'val'), {
+      step1: { group: { fieldA: 'val' } },
+    });
+    expect(result).toBe(true);
+  });
+
+  test('checkReadOnly boolean true on direct field returns true', () => {
+    const schema = {
+      properties: { step1: { properties: { fieldA: { checkReadOnly: true } } } },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.fieldA', 'val'), { step1: { fieldA: 'val' } });
+    expect(result).toBe(true);
+  });
+
+  test('checkReadonly boolean true on parent group blocks nested field', () => {
+    const schema = {
+      properties: {
+        step1: {
+          properties: {
+            group: {
+              checkReadonly: true,
+              properties: { fieldA: { type: 'string' } },
+            },
+          },
+        },
+      },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.group.fieldA', 'val'), {
+      step1: { group: { fieldA: 'val' } },
+    });
+    expect(result).toBe(true);
+  });
+
+  test('checkReadonly boolean true on direct field returns true', () => {
+    const schema = {
+      properties: { step1: { properties: { fieldA: { checkReadonly: true } } } },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.fieldA', 'val'), { step1: { fieldA: 'val' } });
+    expect(result).toBe(true);
+  });
+
+  test('checkReadOnly function on direct field receives (value, step, document)', () => {
+    const schema = {
+      properties: {
+        step1: { properties: { fieldA: { checkReadOnly: '(value, step, document) => value === "val" && step.lock && document.step1.lock' } } },
+      },
+    };
+    const service = makeService(schema);
+    const result = service.isCurrentOrParentControlsCheckReadonlyTrue(schema, makeProperty('step1.fieldA', 'val'), {
+      step1: { fieldA: 'old', lock: true },
+    });
+    expect(result).toBe(true);
+  });
+});
+
+describe('DocumentValidatorService.removeReadonlyParams', () => {
+  const makeService = (schema) => {
+    new Sandbox(global.config);
+    return new DocumentValidatorService(schema, {}, {});
+  };
+
+  const schema = {
+    properties: {
+      step1: {
+        properties: {
+          fieldA: { type: 'string' },
+          fieldB: { type: 'string', readOnly: true },
+        },
+      },
+    },
+    calcTriggers: [{ target: 'step1.fieldB', source: 'step1.fieldA', calculate: 'value' }],
+  };
+
+  beforeEach(() => {
+    global.config = {
+      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+    };
+    new Sandbox(global.config);
+  });
+
+  afterEach(() => {
+    global.config = {};
+    jest.clearAllMocks();
+  });
+
+  test('strips a readOnly property when its path is not in triggerPath', async () => {
+    const service = makeService(schema);
+    const result = await service.removeReadonlyParams([{ path: 'step1.fieldB', value: 'X' }], { step1: { fieldB: 'old' } }, false);
+    expect(result).toEqual([]);
+  });
+
+  test('strips a property with checkReadonly: true', async () => {
+    const checkReadonlySchema = {
+      properties: { step1: { properties: { fieldA: { type: 'string' }, fieldB: { type: 'string', checkReadonly: true } } } },
+    };
+    const service = makeService(checkReadonlySchema);
+    const result = await service.removeReadonlyParams(
+      [
+        { path: 'step1.fieldA', value: 'A' },
+        { path: 'step1.fieldB', value: 'X' },
+      ],
+      { step1: { fieldB: 'old' } },
+      false,
+    );
+    expect(result).toEqual([{ path: 'step1.fieldA', value: 'A' }]);
+  });
+
+  test('strips a property with checkReadOnly: true', async () => {
+    const checkReadOnlySchema = {
+      properties: { step1: { properties: { fieldB: { type: 'string', checkReadOnly: true } } } },
+    };
+    const service = makeService(checkReadOnlySchema);
+    const result = await service.removeReadonlyParams([{ path: 'step1.fieldB', value: 'X' }], { step1: { fieldB: 'old' } }, false);
+    expect(result).toEqual([]);
+  });
+
+  test('keeps the previous value of an inner checkReadonly: true field when its parent object is written', async () => {
+    const checkReadonlySchema = {
+      properties: {
+        step1: {
+          properties: {
+            group: { type: 'object', properties: { fieldA: { type: 'string' }, fieldB: { type: 'string', checkReadonly: true } } },
+          },
+        },
+      },
+    };
+    const service = makeService(checkReadonlySchema);
+    const result = await service.removeReadonlyParams(
+      [{ path: 'step1.group', value: { fieldA: 'A', fieldB: 'X' } }],
+      { step1: { group: { fieldB: 'old' } } },
+      false,
+    );
+    expect(result).toEqual([{ path: 'step1.group', value: { fieldA: 'A', fieldB: 'old' } }]);
+  });
+});

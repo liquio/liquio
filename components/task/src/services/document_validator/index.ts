@@ -421,11 +421,13 @@ export class DocumentValidatorService {
    */
   isCurrentOrParentControlsCheckReadonlyTrue(jsonSchema, property, documentDataObject) {
     const controlSchema = PropByPath.get(jsonSchema, property.jsonSchemaPath);
-    if (controlSchema?.checkReadonly) {
+    const controlSchemaCheckReadonly = controlSchema?.checkReadonly ?? controlSchema?.checkReadOnly;
+    if (controlSchemaCheckReadonly) {
       const propertyData = property.value;
       const [stepName] = property.path.split('.');
       const currentPageValue = PropByPath.get(documentDataObject, stepName);
-      return this.sandbox.evalWithArgs(controlSchema.checkReadonly, [propertyData, currentPageValue, documentDataObject], {
+      return this.sandbox.evalWithArgs(controlSchemaCheckReadonly, [propertyData, currentPageValue, documentDataObject], {
+        checkArrow: true,
         meta: { fn: 'DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', property },
       });
     }
@@ -436,7 +438,8 @@ export class DocumentValidatorService {
     for (const jsonSchemaPartsItem of jsonSchemaParts) {
       currentJsonSchemaPath += `.${jsonSchemaPartsItem}`;
       const currentJsonSchemaItem = PropByPath.get(jsonSchema, currentJsonSchemaPath);
-      if (!currentJsonSchemaItem?.checkReadonly) continue;
+      const currentItemCheckReadonly = currentJsonSchemaItem?.checkReadonly ?? currentJsonSchemaItem?.checkReadOnly;
+      if (!currentItemCheckReadonly) continue;
       const currentDoumentPath = currentJsonSchemaPath
         .split('.')
         .filter((e) => e !== 'properties')
@@ -444,7 +447,8 @@ export class DocumentValidatorService {
       const propertyData = PropByPath.get(documentDataObject, currentDoumentPath);
       const [, stepName] = currentDoumentPath.split('.');
       const currentPageValue = PropByPath.get(documentDataObject, stepName);
-      return this.sandbox.evalWithArgs(currentJsonSchemaItem.checkReadonly, [propertyData, currentPageValue, documentDataObject], {
+      return this.sandbox.evalWithArgs(currentItemCheckReadonly, [propertyData, currentPageValue, documentDataObject], {
+        checkArrow: true,
         meta: { fn: 'DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', property },
       });
     }
