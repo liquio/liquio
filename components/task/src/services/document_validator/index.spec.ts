@@ -111,6 +111,93 @@ describe('DocumentValidatorService.check with workflow template global functions
   });
 });
 
+describe('DocumentValidatorService.check cleanWhenHidden', () => {
+  const makeSchema = (fieldA: Record<string, unknown>, step1: Record<string, unknown> = {}) => ({
+    type: 'object',
+    properties: {
+      step1: {
+        type: 'object',
+        ...step1,
+        properties: {
+          toggle: { type: 'string' },
+          fieldA: { type: 'string', checkValid: '(value) => value === "ok"', ...fieldA },
+        },
+      },
+    },
+  });
+
+  beforeEach(() => {
+    global.config = {
+      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+    };
+    new Sandbox(global.config);
+    Keywords.init();
+  });
+
+  afterEach(() => {
+    global.config = {};
+    jest.clearAllMocks();
+  });
+
+  test('keeps a keyword error of a field without cleanWhenHidden', async () => {
+    const service = new DocumentValidatorService(makeSchema({ checkHidden: true }), {}, {});
+    const errors = await service.check({ step1: { fieldA: 'bad' } }, false);
+    expect(errors).toEqual([expect.objectContaining({ dataPath: 'step1.fieldA', message: 'checkValid error.', cleanWhenHidden: false })]);
+  });
+
+  test('keeps a keyword error of a cleanWhenHidden field that is not hidden', async () => {
+    const service = new DocumentValidatorService(makeSchema({ cleanWhenHidden: true }), {}, {});
+    const errors = await service.check({ step1: { fieldA: 'bad' } }, false);
+    expect(errors).toEqual([expect.objectContaining({ dataPath: 'step1.fieldA', message: 'checkValid error.', cleanWhenHidden: true })]);
+  });
+
+  test('drops a keyword error of a cleanWhenHidden field with checkHidden: true', async () => {
+    const service = new DocumentValidatorService(makeSchema({ cleanWhenHidden: true, checkHidden: true }), {}, {});
+    const errors = await service.check({ step1: { fieldA: 'bad' } }, false);
+    expect(errors).toEqual([]);
+  });
+
+  test('keeps a keyword error of a cleanWhenHidden field with checkHidden: false', async () => {
+    const service = new DocumentValidatorService(makeSchema({ cleanWhenHidden: true, checkHidden: false }), {}, {});
+    const errors = await service.check({ step1: { fieldA: 'bad' } }, false);
+    expect(errors).toHaveLength(1);
+  });
+
+  test('drops a keyword error when the checkHidden function returns true for (value, parentValue)', async () => {
+    const schema = makeSchema({ cleanWhenHidden: true, checkHidden: '(value, parentValue) => parentValue.toggle === "hide"' });
+    const service = new DocumentValidatorService(schema, {}, {});
+    const errors = await service.check({ step1: { toggle: 'hide', fieldA: 'bad' } }, false);
+    expect(errors).toEqual([]);
+  });
+
+  test('keeps a keyword error when the checkHidden function returns false', async () => {
+    const schema = makeSchema({ cleanWhenHidden: true, checkHidden: '(value, parentValue) => parentValue.toggle === "hide"' });
+    const service = new DocumentValidatorService(schema, {}, {});
+    const errors = await service.check({ step1: { toggle: 'show', fieldA: 'bad' } }, false);
+    expect(errors).toHaveLength(1);
+  });
+
+  test('passes userInfo as the third checkHidden argument', async () => {
+    const schema = makeSchema({ cleanWhenHidden: true, checkHidden: '(value, parentValue, userInfo) => userInfo.role === "guest"' });
+    const service = new DocumentValidatorService(schema, {}, { role: 'guest' });
+    const errors = await service.check({ step1: { fieldA: 'bad' } }, false);
+    expect(errors).toEqual([]);
+  });
+
+  test('drops a keyword error of a cleanWhenHidden field whose parent has checkHidden: true', async () => {
+    const service = new DocumentValidatorService(makeSchema({ cleanWhenHidden: true }, { checkHidden: true }), {}, {});
+    const errors = await service.check({ step1: { fieldA: 'bad' } }, false);
+    expect(errors).toEqual([]);
+  });
+
+  test('keeps an AJV error of a hidden cleanWhenHidden field (only keyword errors carry cleanWhenHidden)', async () => {
+    const schema = makeSchema({ type: 'number', checkValid: undefined, cleanWhenHidden: true, checkHidden: true });
+    const service = new DocumentValidatorService(schema, {}, {});
+    const errors = await service.check({ step1: { fieldA: 'bad' } }, false);
+    expect(errors).toEqual([expect.objectContaining({ dataPath: 'step1.fieldA', message: 'should be number' })]);
+  });
+});
+
 describe('DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', () => {
   const makeService = (schema) => {
     new Sandbox(global.config);

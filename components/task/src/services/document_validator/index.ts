@@ -68,6 +68,7 @@ export class DocumentValidatorService {
     // Remove validation of hidden fields.
     const errorsWithoutHiddenFields = errors
       .filter((v) => !this.isHiddenField(v, objectToCheck))
+      .filter((v) => !this.isCleanedWhenHiddenField(v, objectToCheck))
       .map(({ isFinalPath: _isFinalPath, ...error }) => error);
 
     // Return errors without hidden fields.
@@ -151,6 +152,74 @@ export class DocumentValidatorService {
   }
 
   /**
+   * Is cleaned hidden field.
+   * @param {ValidatorError} error Error.
+   * @returns {boolean} Is hidden field indicator.
+   */
+  isCleanedWhenHiddenField(error, objectToCheck) {
+    // Define params.
+    const { dataPath, isFinalPath, cleanWhenHidden } = error;
+    // Check needed values not defined.
+    if (!dataPath || !isFinalPath || !cleanWhenHidden) {
+      return false;
+    }
+
+    // Define value schema.
+    const valuePath = dataPath;
+
+    // Check properties hidden.
+    const pathItems = valuePath.split('.');
+
+    for (let p = 0; p < pathItems.length; p++) {
+      const propertyValuePath = p ? valuePath.split('.').slice(0, -p).join('.') : valuePath;
+
+      const propertySchemaPathTemplate = `$..${propertyValuePath
+        .replace(/\[\w+\]/g, '.')
+        .replace(/\.\./g, '.')
+        .replace(/\.$/g, '')
+        .replace(/\./g, '..')}`;
+      const [propertyValueSchema] = JSONPath({ path: propertySchemaPathTemplate, json: this.jsonSchema });
+
+      if (
+        typeof propertyValueSchema === 'object' &&
+        propertyValueSchema !== null &&
+        this.checkCleanedWhenHidden({
+          objectToCheck,
+          valuePath: propertyValuePath,
+          checkHidden: propertyValueSchema.checkHidden,
+        })
+      ) {
+        return true;
+      }
+    }
+
+    // Return `false` in other cases.
+    return false;
+  }
+
+  checkCleanedWhenHidden({ objectToCheck, valuePath, checkHidden }) {
+    if (!checkHidden) {
+      return false;
+    }
+
+    if (typeof checkHidden === 'boolean') {
+      return checkHidden;
+    }
+
+    if (typeof checkHidden === 'string') {
+      const pathItems = valuePath.split('.');
+      const parentPath = pathItems.slice(0, pathItems.length - 1).join('.');
+      const value = PropByPath.get(objectToCheck, valuePath);
+      const parentValue = PropByPath.get(objectToCheck, parentPath);
+      return this.sandbox.evalWithArgs(checkHidden, [value, parentValue, this.userInfo], {
+        meta: { fn: 'DocumentValidatorService.checkCleanedHidden', valuePath },
+      });
+    }
+
+    return false;
+  }
+
+  /**
    * Check keywords.
    * @private
    * @param {object} objectToCheck Object to check.
@@ -177,6 +246,7 @@ export class DocumentValidatorService {
           dataPath: path,
           control: currentElementDescription?.control,
           validationParam: currentElementValue,
+          cleanWhenHidden: currentElementDescription?.cleanWhenHidden || false,
           isFinalPath: true,
           message,
         }));
