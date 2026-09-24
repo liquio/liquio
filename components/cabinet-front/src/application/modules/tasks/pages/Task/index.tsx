@@ -39,6 +39,7 @@ import { getLocalizationTexts } from 'actions/localization';
 import { loadDocumentTemplate, loadTaskTemplates } from 'application/actions/documentTemplate';
 import { setOpenSidebar } from 'actions/app';
 import getDeltaProperties from 'helpers/getDeltaProperties';
+import getTriggerPaths from 'helpers/getTriggerPaths';
 import processList from 'services/processList';
 import waiter from 'helpers/waitForAction';
 import evaluate from 'helpers/evaluate';
@@ -195,7 +196,7 @@ interface TaskPageActions {
   requestUserInfo: () => Promise<unknown>;
   storeTaskDocument: (payload: {
     task: TaskEntity;
-    data: { properties: unknown[] };
+    data: { properties: unknown[]; triggerPath?: string[] };
     params?: string;
   }) => Promise<unknown>;
   handleSilentTriggers: (payload: Record<string, unknown>) => Promise<unknown>;
@@ -998,7 +999,7 @@ class TaskPage extends ModulePage<TaskPageProps> {
 
   handleStore = async (): Promise<unknown> => {
     const { actions, locked } = this.props as TaskPageProps & { locked?: boolean };
-    const { taskId } = propsToData(this.props) as TaskPageData;
+    const { taskId, template } = propsToData(this.props) as TaskPageData;
     const {
       task: { actual = {}, origin: originState = {} }
     } = store.getState() as {
@@ -1016,9 +1017,11 @@ class TaskPage extends ModulePage<TaskPageProps> {
       return null;
     }
 
+    const triggerPath = getTriggerPaths(template?.jsonSchema?.calcTriggers, properties);
+
     const result = await actions.storeTaskDocument({
       task,
-      data: { properties },
+      data: triggerPath.length ? { properties, triggerPath } : { properties },
       params: lastUpdateLogId ? `?last_update_log_id=${lastUpdateLogId}` : ''
     });
 
