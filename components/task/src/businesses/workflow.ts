@@ -67,7 +67,7 @@ export class WorkflowBusiness extends Business {
       this.xmlJsConverter = new XmlJsConverter();
       this.eds = new Eds(config.eds);
       this.storageService = new StorageService();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       WorkflowBusiness.singleton = this;
     }
     return WorkflowBusiness.singleton;

@@ -47,7 +47,7 @@ export class RegisterBusiness extends Business {
       super(config);
       this.unitAccessModel = new UnitAccessModel();
       this.registerService = new RegisterService();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       this.registers = [];
       this.keys = [];
       this.unitAccess = [];

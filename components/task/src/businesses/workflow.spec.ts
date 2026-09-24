@@ -1,6 +1,9 @@
 import nock from 'nock';
 
 import { WorkflowBusiness } from './workflow';
+import { Sandbox } from '@liquio/back-core';
+
+new Sandbox();
 
 describe('WorkflowBusiness', () => {
   global.config = {

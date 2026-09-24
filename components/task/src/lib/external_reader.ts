@@ -39,7 +39,7 @@ export class ExternalReader {
       this.timeout = timeout;
       this.storageService = new StorageService();
       this.documentAttachmentModel = new DocumentAttachmentModel();
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
 
       // External reader routes.
       this.apiRoutes = Object.freeze({

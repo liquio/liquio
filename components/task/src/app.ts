@@ -4,7 +4,7 @@ import { PluginLoader } from '@liquio/plugin-sdk';
 
 import { Db } from './lib/db';
 import { PgPubSub } from './lib/pgpubsub';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 import { PaymentService } from './services/payment';
 import { MessageQueue } from './lib/message_queue';
 import { RedisClient } from './lib/redis_client';
@@ -25,6 +25,7 @@ import { HttpClient } from './lib/http_client';
 import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses_daemon';
 import { loadConfig } from './lib/config';
 import * as JSONPath from './lib/jsonpath';
+import { Keywords } from './services/document_validator/keywords';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/task';
 
@@ -55,6 +56,7 @@ export class BpmnTaskCore {
   routerService: any;
   db: any;
   prometheus: any;
+  sandbox: Sandbox;
 
   /**
    * BPMN Task core constructor.
@@ -114,6 +116,9 @@ export class BpmnTaskCore {
     // Init config.
     const config: any = loadConfig(configPath);
 
+    this.sandbox = new Sandbox(config.sandbox || {});
+    Keywords.init();
+
     // Init global http client.
     global.httpClient = new HttpClient(global.config.http_client);
 
@@ -158,6 +163,9 @@ export class BpmnTaskCore {
     // Init models.
     this.models = new Models(customModels);
     new DictionariesModel(customDictionaryModels);
+
+    // Initialize sandbox.
+    await this.sandbox.init(this.models);
 
     // Init plugins. `paymentTransactions` is the only capability a TaskPaymentProvider plugin
     // gets besides logging/config - it never touches `global.models`/`global.db` directly (see

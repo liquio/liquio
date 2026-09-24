@@ -7,6 +7,7 @@ import { RedisClient } from '../lib/redis_client';
 // Constants.
 const SYSTEM_USER = 'system';
 const GET_ALL_BY_WORKFLOW_ID_CACHE_TTL = 600; // 10 minutes.
+const GET_TRACE_META_CACHE_TTL = 3600; // 1 hour.
 
 /**
  * Raw shape of a `documents` row as Sequelize hands it back (snake_case columns) - what
@@ -394,6 +395,50 @@ export class DocumentModel extends Model {
     );
 
     return maxTimestamp;
+  }
+
+  /**
+   * Get entity IDs related to the document for trace meta.
+   * @param documentId Document ID.
+   * @returns Trace meta.
+   */
+  async getTraceMetaByDocumentId(documentId: string): Promise<{
+    documentId: string;
+    taskId?: string;
+    workflowId?: string;
+    documentTemplateId?: number;
+    taskTemplateId?: number;
+    workflowTemplateId?: number;
+  }> {
+    const {
+      data: [row],
+    } = await RedisClient.getOrSet(
+      RedisClient.createKey('document', 'getTraceMetaByDocumentId', documentId),
+      async () =>
+        this.db.query(
+          `
+            select
+              d.id as "documentId",
+              t.id as "taskId",
+              w.id as "workflowId",
+              d.document_template_id as "documentTemplateId",
+              t.task_template_id as "taskTemplateId",
+              w.workflow_template_id as "workflowTemplateId"
+            from documents d
+            left join tasks t on t.document_id = d.id
+            left join workflows w on w.id = t.workflow_id
+            where d.id = :documentId
+            limit 1
+          `,
+          {
+            replacements: { documentId },
+            type: Sequelize.QueryTypes.SELECT,
+          },
+        ),
+      GET_TRACE_META_CACHE_TTL,
+    );
+
+    return row || { documentId };
   }
 
   /**

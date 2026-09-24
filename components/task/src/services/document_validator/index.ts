@@ -40,7 +40,7 @@ export class DocumentValidatorService {
     this.externalFunctions = externalFunctions;
     this.validation = this.ajv.compile(this.jsonSchema);
     this.registerService = new RegisterService();
-    this.sandbox = new Sandbox();
+    this.sandbox = Sandbox.getInstance();
   }
 
   /**

@@ -15,7 +15,14 @@ const MASK_VALUE_ERROR = 'Value is not matching to mask';
  * Keywords.
  */
 export class Keywords {
-  static sandbox = new Sandbox();
+  static sandbox: Sandbox;
+
+  /**
+   * Bind the shared sandbox instance. Called at startup, once the sandbox is constructed.
+   */
+  static init() {
+    Keywords.sandbox = Sandbox.getInstance();
+  }
 
   /**
    * Check.

@@ -31,7 +31,7 @@ export class Assigner {
       // Set params.
       this.taskModel = taskModel;
       this.unitModel = unitModel;
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
 
       // Init singleton.
       Assigner.singleton = this;

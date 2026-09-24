@@ -26,7 +26,7 @@ export class WorkflowTemplateBusiness extends Business {
       super(config);
       WorkflowTemplateBusiness.singleton = this;
       this.workflowTemplateModel = new WorkflowTemplateModel();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
     }
     return WorkflowTemplateBusiness.singleton;
   }

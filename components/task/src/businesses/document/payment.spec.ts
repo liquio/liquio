@@ -1,4 +1,5 @@
 import { DocumentBusiness } from './index';
+import { Sandbox } from '@liquio/back-core';
 
 // Characterization tests for the 7 payment-orchestration methods on DocumentBusiness.
 // PaymentService is mocked out (instance property override, matching the existing
@@ -6,6 +7,8 @@ import { DocumentBusiness } from './index';
 // instance, e.g. `documentBusiness.storageService = {...}`) because this file tests
 // document.ts's own orchestration logic (config lookups, argument construction, error
 // propagation) — not PaymentService/provider behavior itself, which is covered elsewhere.
+new Sandbox();
+
 describe('DocumentBusiness payment methods', () => {
   let documentBusiness: any;
 

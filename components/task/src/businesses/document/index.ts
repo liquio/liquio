@@ -111,7 +111,7 @@ export class DocumentBusiness extends Business {
       this.documentAttachmentModel = new DocumentAttachmentModel();
       this.unitModel = new UnitModel();
       this.numberGenerator = new NumberGenerator();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
 
       this.files = new DocumentFileBusiness(config, this);
       this.signing = new DocumentSigningBusiness(config, this);
@@ -137,19 +137,13 @@ export class DocumentBusiness extends Business {
     strict = false,
     doNotCheckAccess = false,
   ): Promise<DocumentEntity> {
-    const document: any = await global.models.document.findById(documentId, false, true);
+    const [document]: any[] = await Promise.all([
+      global.models.document.findById(documentId, false, true),
+      global.models.document.getTraceMetaByDocumentId(documentId).then((meta) => this.appendTraceMeta(meta)),
+    ]);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
-
-    // Append trace meta.
-    this.appendTraceMeta({
-      documentId,
-      documentTemplateId: document.documentTemplateId,
-      taskId: document.task && document.task.id,
-      taskTemplateId: document.task && document.task.taskTemplateId,
-      workflowId: document.task && document.task.workflowId,
-    });
 
     // Check access.
     const hasAccess = document.task && (await document.task.hasAccess(userId, userUnitIds, strict));

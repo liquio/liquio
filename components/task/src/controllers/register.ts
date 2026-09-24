@@ -33,7 +33,7 @@ export class RegisterController extends Controller {
     if (!RegisterController.singleton) {
       super();
       this.registerService = new RegisterService();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       RegisterController.singleton = this;
     }
     return RegisterController.singleton;

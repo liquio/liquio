@@ -16,7 +16,7 @@ export class Filler {
    * Filler.
    */
   constructor() {
-    this.sandbox = new Sandbox();
+    this.sandbox = Sandbox.getInstance();
   }
 
   /**

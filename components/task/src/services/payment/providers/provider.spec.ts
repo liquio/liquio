@@ -2,6 +2,9 @@ import debugFactory from 'debug';
 const debug = debugFactory('test:log');
 
 import { Provider } from './provider';
+import { Sandbox } from '@liquio/back-core';
+
+new Sandbox();
 
 global.log = {
   save: jest.fn().mockImplementation(debug),

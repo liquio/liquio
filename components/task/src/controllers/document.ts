@@ -80,7 +80,7 @@ export class DocumentController extends Controller {
       this.persistLink = new PersistLink(config.persist_link);
       this.notifier = new Notifier();
       this.customLogs = new CustomLogs();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       DocumentController.singleton = this;
     }
     return DocumentController.singleton;

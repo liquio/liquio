@@ -26,7 +26,7 @@ export class Provider {
   sandbox: any;
 
   constructor() {
-    this.sandbox = new Sandbox();
+    this.sandbox = Sandbox.getInstance();
   }
 
   /**

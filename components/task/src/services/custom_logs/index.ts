@@ -39,7 +39,7 @@ export class CustomLogs {
         global.log.save('custom-logs-cache-not-initialized', { cacheEnabled });
       }
 
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
 
       // Define singleton.
       CustomLogs.singleton = this;
