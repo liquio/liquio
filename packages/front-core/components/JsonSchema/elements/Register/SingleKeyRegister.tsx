@@ -107,7 +107,7 @@ interface SingleKeyRegisterProps {
   stepName?: string | null;
   name?: string;
   initCallback?: () => void;
-  template?: { jsonSchema?: { properties?: Record<string, unknown> } };
+  template?: { jsonSchema?: { properties?: Record<string, unknown>; calcTriggers?: unknown[] } };
   onImportCallback?: () => void;
   setDefined?: string | boolean;
   filters?: Array<{ value: string }> | null;
@@ -487,6 +487,7 @@ class SingleKeyRegister extends React.Component<SingleKeyRegisterProps, SingleKe
       const firstElement = options.length ? options[0] : null;
       const savedValue = multiple ? options : firstElement;
       const template = this.props.template;
+      const calcTriggers = template?.jsonSchema?.calcTriggers || [];
       const properties = template?.jsonSchema?.properties;
       const gettersControl = (paths(properties) || [])
         .filter((path) => path.endsWith('.control') && objectPath.get(properties, path) === 'getter')
@@ -498,7 +499,7 @@ class SingleKeyRegister extends React.Component<SingleKeyRegisterProps, SingleKe
         taskId,
         ([stepName] as Array<string | number | null | undefined>).concat(path),
         savedValue,
-        [],
+        calcTriggers,
         {},
         true,
         true,

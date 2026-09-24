@@ -357,9 +357,13 @@ const rootReducer = (state: TaskState = initialState, action: TaskAction): TaskS
         onlyThisValue?: boolean;
       };
       let task: Task;
+      let previousDocumentData: Record<string, unknown>;
 
       try {
         task = JSON.parse(JSON.stringify(state.actual[taskId]));
+        previousDocumentData = JSON.parse(
+          JSON.stringify((state.actual[taskId]?.document as TaskDocument | undefined)?.data || {})
+        );
       } catch {
         return state;
       }
@@ -372,12 +376,8 @@ const rootReducer = (state: TaskState = initialState, action: TaskAction): TaskS
         changesData = changesData.filter(Boolean);
       }
 
-      if (
-        !allowNull &&
-        typeof changesData !== 'boolean' &&
-        typeof changesData !== 'number' &&
-        (!changesData || (typeof changesData === 'object' && Object.keys(changesData).length === 0))
-      ) {
+      // Empty objects/arrays are kept and saved on purpose; only falsy non-boolean/non-number values are removed.
+      if (!allowNull && typeof changesData !== 'boolean' && typeof changesData !== 'number' && !changesData) {
         changesData = undefined;
       }
 
@@ -406,7 +406,8 @@ const rootReducer = (state: TaskState = initialState, action: TaskAction): TaskS
         parentData,
         info,
         taskSchema as Parameters<typeof handleTriggers>[8],
-        task?.activityLog
+        task?.activityLog,
+        previousDocumentData
       );
 
       if (!diff((state.actual[taskId].document as TaskDocument).data, data)) {
