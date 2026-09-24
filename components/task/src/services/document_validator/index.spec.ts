@@ -375,6 +375,51 @@ describe('DocumentValidatorService.removeReadonlyParams', () => {
     expect(result).toEqual([]);
   });
 
+  test('keeps a readOnly property when its path is listed in triggerPath and is a genuine calcTrigger target', async () => {
+    const service = makeService(schema);
+    const result = await service.removeReadonlyParams([{ path: 'step1.fieldB', value: 'X' }], { step1: { fieldB: 'old' } }, false, ['step1.fieldB']);
+    expect(result).toEqual([{ path: 'step1.fieldB', value: 'X' }]);
+  });
+
+  test('still strips a readOnly property listed in triggerPath when it is not a genuine calcTrigger target', async () => {
+    const schemaWithoutTrigger = {
+      properties: {
+        step1: {
+          properties: {
+            fieldB: { type: 'string', readOnly: true },
+          },
+        },
+      },
+    };
+    const service = makeService(schemaWithoutTrigger);
+    const result = await service.removeReadonlyParams([{ path: 'step1.fieldB', value: 'X' }], { step1: { fieldB: 'old' } }, false, ['step1.fieldB']);
+    expect(result).toEqual([]);
+  });
+
+  test('strips a readOnly calcTrigger target that is written but not listed in triggerPath', async () => {
+    const service = makeService(schema);
+    const result = await service.removeReadonlyParams(
+      [
+        { path: 'step1.fieldA', value: 'A' },
+        { path: 'step1.fieldB', value: 'X' },
+      ],
+      { step1: { fieldB: 'old' } },
+      false,
+      ['step1.fieldA'],
+    );
+    expect(result).toEqual([{ path: 'step1.fieldA', value: 'A' }]);
+  });
+
+  test('keeps a checkReadonly: true calcTrigger target stripped even when it is listed in triggerPath', async () => {
+    const checkReadonlyTargetSchema = {
+      properties: { step1: { properties: { fieldA: { type: 'string' }, fieldB: { type: 'string', checkReadonly: true } } } },
+      calcTriggers: [{ target: 'step1.fieldB', source: 'step1.fieldA', calculate: 'value' }],
+    };
+    const service = makeService(checkReadonlyTargetSchema);
+    const result = await service.removeReadonlyParams([{ path: 'step1.fieldB', value: 'X' }], { step1: { fieldB: 'old' } }, false, ['step1.fieldB']);
+    expect(result).toEqual([]);
+  });
+
   test('strips a property with checkReadonly: true', async () => {
     const checkReadonlySchema = {
       properties: { step1: { properties: { fieldA: { type: 'string' }, fieldB: { type: 'string', checkReadonly: true } } } },
@@ -417,6 +462,221 @@ describe('DocumentValidatorService.removeReadonlyParams', () => {
       false,
     );
     expect(result).toEqual([{ path: 'step1.group', value: { fieldA: 'A', fieldB: 'old' } }]);
+  });
+});
+
+describe('DocumentValidatorService.removeReadonlyParams with readOnly object and array calcTrigger targets', () => {
+  const makeService = (schema) => {
+    new Sandbox(global.config);
+    return new DocumentValidatorService(schema, {}, {});
+  };
+
+  const schema = {
+    properties: {
+      calc: {
+        properties: {
+          input: { type: 'string' },
+          result: { type: 'object', readOnly: true, properties: { name: { type: 'string' }, len: { type: 'number' } } },
+          list: { type: 'array', readOnly: true, items: { type: 'string' } },
+          group: {
+            type: 'object',
+            properties: { editable: { type: 'string' }, locked: { type: 'string', readOnly: true } },
+          },
+        },
+      },
+    },
+    calcTriggers: [
+      { source: 'calc.input', target: 'calc.result', calculate: '(value) => ({ name: value })', readOnly: true, validate: true },
+      { source: 'calc.input', target: 'calc.list', calculate: '(value) => [value]', readOnly: true, validate: true },
+    ],
+  };
+
+  beforeEach(() => {
+    global.config = {
+      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+    };
+    new Sandbox(global.config);
+  });
+
+  afterEach(() => {
+    global.config = {};
+    jest.clearAllMocks();
+  });
+
+  test('saves a readOnly object target listed in triggerPath as sent instead of emptying its inner fields', async () => {
+    const service = makeService(schema);
+    const result = await service.removeReadonlyParams([{ path: 'calc.result', value: { name: 'abc', len: 3 } }], { calc: {} }, false, [
+      'calc.result',
+    ]);
+    expect(result).toEqual([{ path: 'calc.result', value: { name: 'abc', len: 3 } }]);
+  });
+
+  test('keeps leaf sub-paths of a readOnly object target listed in triggerPath', async () => {
+    const service = makeService(schema);
+    const result = await service.removeReadonlyParams(
+      [
+        { path: 'calc.input', value: 'abc' },
+        { path: 'calc.result.name', value: 'abc' },
+        { path: 'calc.result.len', value: 3 },
+      ],
+      { calc: { result: { name: 'old', len: 1 } } },
+      false,
+      ['calc.result.name', 'calc.result.len'],
+    );
+    expect(result).toEqual([
+      { path: 'calc.input', value: 'abc' },
+      { path: 'calc.result.name', value: 'abc' },
+      { path: 'calc.result.len', value: 3 },
+    ]);
+  });
+
+  test('keeps an item path of a readOnly array target listed in triggerPath', async () => {
+    const service = makeService(schema);
+    const result = await service.removeReadonlyParams([{ path: 'calc.list.2', value: 'c' }], { calc: { list: ['a', 'b'] } }, false, ['calc.list.2']);
+    expect(result).toEqual([{ path: 'calc.list.2', value: 'c' }]);
+  });
+
+  test('strips a leaf sub-path of a readOnly object target that is not listed in triggerPath', async () => {
+    const service = makeService(schema);
+    const result = await service.removeReadonlyParams(
+      [
+        { path: 'calc.result.name', value: 'abc' },
+        { path: 'calc.result.len', value: 3 },
+      ],
+      { calc: { result: { name: 'old', len: 1 } } },
+      false,
+      ['calc.result.name'],
+    );
+    expect(result).toEqual([{ path: 'calc.result.name', value: 'abc' }]);
+  });
+
+  test('still keeps the previous value of an inner readOnly field of an object that is not a calcTrigger target', async () => {
+    const service = makeService(schema);
+    const result = await service.removeReadonlyParams(
+      [{ path: 'calc.group', value: { editable: 'new', locked: 'X' } }],
+      { calc: { group: { editable: 'old', locked: 'kept' } } },
+      false,
+      [],
+    );
+    expect(result).toEqual([{ path: 'calc.group', value: { editable: 'new', locked: 'kept' } }]);
+  });
+});
+
+describe('DocumentValidatorService.isCalcTriggerTargetPath', () => {
+  const makeService = (schema) => {
+    new Sandbox(global.config);
+    return new DocumentValidatorService(schema, {}, {});
+  };
+
+  beforeEach(() => {
+    global.config = {
+      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+    };
+  });
+
+  afterEach(() => {
+    global.config = {};
+  });
+
+  test('matches a plain target path', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'step1.fieldB', source: 'step1.fieldA', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('step1.fieldB')).toBe(true);
+  });
+
+  test('matches a `${index}`-templated target against a concrete array index', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'step1.items.${index}.result', source: 'step1.items.${index}.value', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('step1.items.2.result')).toBe(true);
+  });
+
+  test('does not match an unrelated path', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'step1.fieldB', source: 'step1.fieldA', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('step1.fieldC')).toBe(false);
+  });
+
+  test('does not match when there are no calcTriggers', () => {
+    const service = makeService({ properties: {} });
+    expect(service.isCalcTriggerTargetPath('step1.fieldB')).toBe(false);
+  });
+
+  test('does not match an action-based trigger (can never be recomputed/verified)', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'step1.fieldB', source: 'step1.fieldA', action: 'someAction' }],
+    });
+    expect(service.isCalcTriggerTargetPath('step1.fieldB')).toBe(false);
+  });
+
+  test('does not match a trigger without a calculate function', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'step1.fieldB', source: 'step1.fieldA' }],
+    });
+    expect(service.isCalcTriggerTargetPath('step1.fieldB')).toBe(false);
+  });
+
+  test('matches a leaf sub-path of an object target', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'calc.result', source: 'calc.input', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('calc.result.name')).toBe(true);
+  });
+
+  test('matches an item path of an array target', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'calc.result', source: 'calc.input', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('calc.result.2')).toBe(true);
+  });
+
+  test('matches a path under a `${index}`-templated target', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'step1.items.${index}.result', source: 'step1.items.${index}.value', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('step1.items.2.result.name')).toBe(true);
+  });
+
+  test('does not match a parent of the target', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'calc.result', source: 'calc.input', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('calc')).toBe(false);
+  });
+
+  test('does not match a sibling path sharing the target name as a prefix', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'calc.result', source: 'calc.input', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('calc.resultX')).toBe(false);
+  });
+
+  test('does not match a trigger whose target is not a string', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: ['calc.result'], source: 'calc.input', calculate: 'value' }],
+    });
+    expect(service.isCalcTriggerTargetPath('calc.result')).toBe(false);
+  });
+
+  test('matches the target of a trigger without validate: true', () => {
+    const service = makeService({
+      properties: {},
+      calcTriggers: [{ target: 'calc.result', source: 'calc.input', calculate: 'value', validate: false }],
+    });
+    expect(service.isCalcTriggerTargetPath('calc.result')).toBe(true);
   });
 });
 

@@ -289,6 +289,7 @@ export class DocumentController extends Controller {
       const value = req.body.value;
       const previousValue = req.body.previousValue;
       const properties = req.body.properties || [];
+      const triggerPath = req.body.triggerPath || [];
       const userUnitIds = this.getRequestUserUnitIds(req);
       if (path) {
         properties.push({ path, value, previousValue });
@@ -306,13 +307,20 @@ export class DocumentController extends Controller {
         throw new InvalidParamsError('Invalid property path.', { cause: properties });
       }
 
+      // Check trigger path.
+      if (!Array.isArray(triggerPath) || triggerPath.some(invalidPath)) {
+        throw new InvalidParamsError('Invalid trigger path.', { cause: triggerPath });
+      }
+
       // Check draft expired.
       if (await global.models.task.checkDraftExpirationByDocumentId(documentId)) {
         throw new BadRequestError(ERROR_DRAFT_EXPIRED);
       }
 
       // Update document.
-      const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds, userInfo);
+      const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds, userInfo, {
+        triggerPath,
+      });
 
       // Check reassign trigger and handle document update log.
       const [checkReassignTriggerResult, documentUpdateLogEntities] = await Promise.all([

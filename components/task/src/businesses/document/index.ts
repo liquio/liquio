@@ -11,7 +11,14 @@ import {
   ERROR_UPDATE_DOCUMENT,
 } from '../../constants/error';
 import { DocumentEntity } from '../../entities/document';
-import { BadRequestError, EvaluateSchemaFunctionError, ForbiddenError, InvalidSchemaError, NotFoundError } from '../../lib/errors';
+import {
+  BadRequestError,
+  EvaluateSchemaFunctionError,
+  ForbiddenError,
+  InvalidParamsError,
+  InvalidSchemaError,
+  NotFoundError,
+} from '../../lib/errors';
 import { DownloadToken } from '../../lib/download_token';
 import { Eds } from '../../lib/eds';
 import { ExternalReader } from '../../lib/external_reader';
@@ -208,6 +215,7 @@ export class DocumentBusiness extends Business {
    * @param options Options.
    * @param options.isFromSystemTask
    * @param options.isKeepDocumentFile
+   * @param options.triggerPath Paths of readOnly calcTrigger targets (or paths under them) legitimately recalculated and saved by this request.
    * @returns Updated document entity promise.
    */
   async update(
@@ -216,7 +224,11 @@ export class DocumentBusiness extends Business {
     userId: string,
     userUnitIds: UserUnitIds,
     userInfo: any = undefined,
-    { isFromSystemTask = false, isKeepDocumentFile = false }: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean } = {},
+    {
+      isFromSystemTask = false,
+      isKeepDocumentFile = false,
+      triggerPath = [],
+    }: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean; triggerPath?: string[] } = {},
   ): Promise<DocumentEntity> {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
@@ -244,9 +256,23 @@ export class DocumentBusiness extends Business {
 
     // Remove readonly params.
     const documentValidator = new (DocumentValidator as any)(jsonSchema, undefined, userInfo);
+
+    // Reject upfront if `triggerPath` names anything other than a genuine calcTrigger target (or a
+    // path under one) - such a path can't legitimately free a readOnly field, so treat it as a bad
+    // request rather than silently dropping it later inside `removeReadonlyParams`.
+    const invalidTriggerPaths = triggerPath.filter((path) => !documentValidator.isCalcTriggerTargetPath(path));
+    if (invalidTriggerPaths.length > 0) {
+      throw new InvalidParamsError('Invalid trigger path.', { cause: invalidTriggerPaths });
+    }
+
     const existingDocumentData = document.data;
     let documentDataObject = existingDocumentData || EMPTY_DOCUMENT_DATA;
-    const propertiesWithoutReadonlyParams = await documentValidator.removeReadonlyParams(properties, documentDataObject, isFromSystemTask);
+    const propertiesWithoutReadonlyParams = await documentValidator.removeReadonlyParams(
+      properties,
+      documentDataObject,
+      isFromSystemTask,
+      triggerPath,
+    );
 
     // Check array elements added or removed.
     this.checkArrayElements(propertiesWithoutReadonlyParams, document, jsonSchema);
@@ -286,6 +312,22 @@ export class DocumentBusiness extends Business {
     const registerControlPaths = this.getRegisterControlPath(properties, jsonSchema);
     if (registerControlPaths.length > 0) {
       await this.checkUpdateRegisterProperties(registerControlPaths, jsonSchema, documentDataObject);
+    }
+
+    // Check that any calcTrigger targets among the properties actually being written (the target
+    // itself or a path under it, like the leaf sub-paths of an object target) were correctly
+    // recalculated, not just written through with an arbitrary client-supplied value. Scoped to
+    // paths touched by this request: untouched fields elsewhere in the document, and targets inside
+    // a written parent object, are left to `/validate` and commit.
+    const writtenPaths: string[] = propertiesWithoutReadonlyParams.map((property) => property.path);
+    if (writtenPaths.length > 0) {
+      const calcTriggersErrors = await documentValidator.checkCalcTriggers(documentDataObject, writtenPaths);
+      const writtenPathErrors = calcTriggersErrors.filter((error) =>
+        writtenPaths.some((writtenPath) => Paths.isSameOrDescendantPath(writtenPath, error.dataPath)),
+      );
+      if (writtenPathErrors.length > 0) {
+        throw new InvalidParamsError('CalcTrigger recalculation mismatch.', { cause: writtenPathErrors });
+      }
     }
 
     // Update document.

@@ -279,9 +279,10 @@ export class DocumentValidatorService {
    * @param {{path, value}[]} properties Properties to check and remove readonly params.
    * @param {DocumentEntity.data} documentDataObject
    * @param {boolean} isFromSystemTask.
+   * @param {string[]} [triggerPath] Paths of readOnly calcTrigger targets (or paths under them) legitimately recalculated and saved by this request.
    * @returns {{path, value}[]} Properties without readonly params.
    */
-  async removeReadonlyParams(properties, documentDataObject, isFromSystemTask) {
+  async removeReadonlyParams(properties, documentDataObject, isFromSystemTask, triggerPath: string[] = []) {
     // Append JSON schema paths.
     const propertiesWithJsonSchemaPaths = properties.map((property) => ({
       path: property.path,
@@ -289,10 +290,21 @@ export class DocumentValidatorService {
       jsonSchemaPath: Paths.getJsonSchemaPath(property.path),
     }));
 
+    // Paths freed from the readonly check as recalculated calcTrigger targets. A path listed in
+    // `triggerPath` only bypasses the readonly check when it is an actual calcTrigger target (or a
+    // path under one) - otherwise the client could free any readOnly field by naming it.
+    const triggerTargetPaths = new Set(
+      propertiesWithJsonSchemaPaths
+        .map((property) => property.path)
+        .filter((path) => triggerPath.includes(path) && this.isCalcTriggerTargetPath(path)),
+    );
+
     // Return with removed readonly params.
     const propertiesWithoutReadonlyParams = propertiesWithJsonSchemaPaths
       // Filter changed to save every property that can be automatically defined.
-      .filter((property) => !this.isCurrentOrParentControlsReadonly(this.jsonSchema, property.jsonSchemaPath))
+      .filter(
+        (property) => triggerTargetPaths.has(property.path) || !this.isCurrentOrParentControlsReadonly(this.jsonSchema, property.jsonSchemaPath),
+      )
       .filter((property) => !this.isCurrentOrParentControlsCheckReadonlyTrue(this.jsonSchema, property, documentDataObject))
       .filter((property) => {
         const jsonSchemaParts = property.jsonSchemaPath.split('.'); // ['properties', 'payment', 'verifiedUserInfo', 'externalReaderCheck', 'properties', 'calculated', 'properties', 'price']
@@ -370,6 +382,10 @@ export class DocumentValidatorService {
       // If without inner fields, except Arrays.
       if (typeof v.value !== 'object' || v.value === null || Array.isArray(v.value)) return v;
 
+      // A recalculated calcTrigger target is saved as sent: its inner fields sit under the
+      // readOnly target itself, so merging would replace them with the previous (possibly empty) value.
+      if (triggerTargetPaths.has(v.path)) return v;
+
       // If with inner fields.
       const mergedValue = {};
       for (const innerKey in v.value) {
@@ -443,6 +459,38 @@ export class DocumentValidatorService {
 
     // Return errors.
     return errors;
+  }
+
+  /**
+   * Is path a genuine `calcTriggers[].target` of this schema, or a path under one, accounting for
+   * `${index}` array-item placeholders (e.g. target `resultArray.${index}.result` matches paths
+   * `resultArray.0.result` and `resultArray.0.result.name`). Used to keep `triggerPath` from
+   * freeing arbitrary readOnly fields.
+   * @param {string} path Document data path.
+   * @returns {boolean} Is a genuine calcTrigger target path indicator.
+   */
+  isCalcTriggerTargetPath(path: string): boolean {
+    const calcTriggers = this.jsonSchema?.calcTriggers || [];
+    // `action`-based or `calculate`-less triggers can never be recomputed/verified by
+    // `CalcTriggersValidator` (see its docstring) - granting the readOnly bypass for them would
+    // free the field with no verification possible even in principle, so they don't qualify.
+    return calcTriggers.some(
+      (trigger) =>
+        typeof trigger.target === 'string' && trigger.calculate && !trigger.action && Paths.matchesTemplateOrDescendant(trigger.target, path),
+    );
+  }
+
+  /**
+   * Check readOnly calcTriggers weren't tampered with, without running the full AJV/keywords check.
+   * Only triggers with `validate: true` are checked - see `CalcTriggersValidator`.
+   * @param {object} objectToCheck Object to check.
+   * @param {string[]} [targetPaths] When given, only recompute triggers whose `target` is one of
+   * these paths or has one of them under it - skips the rest entirely instead of computing and
+   * discarding their result.
+   * @returns {Promise<{dataPath, validationParam, message}[]>} CalcTriggers errors promise.
+   */
+  async checkCalcTriggers(objectToCheck, targetPaths?: string[]) {
+    return this.calcTriggersValidator.check(objectToCheck, targetPaths);
   }
 
   /**
