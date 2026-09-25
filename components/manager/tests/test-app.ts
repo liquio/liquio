@@ -6,6 +6,7 @@ import amqp from 'amqplib';
 import nock from 'nock';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
@@ -67,7 +68,7 @@ jest.mock('@liquio/back-core', () => {
 
 // Mock the configuration module.
 const configOverride: any = {};
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config-templates/manager';
+const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-templates/manager');
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_MANAGER';
 
 // Obtain the default configuration object.

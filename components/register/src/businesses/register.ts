@@ -79,6 +79,10 @@ const ERRORS = {
     message: 'Can`t import - maybe record exists in other key.',
     code: 400,
   },
+  'import-register-search-string-error': {
+    message: 'Can not calculate search string.',
+    code: 400,
+  },
 };
 
 /**

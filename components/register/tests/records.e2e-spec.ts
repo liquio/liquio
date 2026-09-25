@@ -400,6 +400,56 @@ describe('RecordsController', () => {
     });
   });
 
+  describe('search strings', () => {
+    it('should calculate the search string with the key toSearchString on create', async () => {
+      const createResponse = await testHarness
+        .request()
+        .post('/records')
+        .set('Authorization', validAuth)
+        .send({ registerId: 200, keyId: 2001, data: { name: 'Search String Create 001', data: 'SS_CREATE_001' } })
+        .expect(200);
+
+      const response = await testHarness
+        .request()
+        .get('/records?key_id=2001&search_equal=Search String Create 001')
+        .set('Authorization', validAuth)
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body.data.map((record) => record.id)).toEqual([createResponse.body.data.id]);
+
+      await testHarness.request().delete(`/records/${createResponse.body.data.id}`).set('Authorization', validAuth).expect(200);
+    });
+
+    it('should recalculate the search string with the key toSearchString on update', async () => {
+      const createResponse = await testHarness
+        .request()
+        .post('/records')
+        .set('Authorization', validAuth)
+        .send({ registerId: 200, keyId: 2001, data: { name: 'Search String Before 001', data: 'SS_UPDATE_001' } })
+        .expect(200);
+      const id = createResponse.body.data.id;
+
+      await testHarness
+        .request()
+        .put(`/records/${id}`)
+        .set('Authorization', validAuth)
+        .send({ registerId: 200, keyId: 2001, data: { name: 'Search String After 001', data: 'SS_UPDATE_001' } })
+        .expect(200);
+
+      const response = await testHarness
+        .request()
+        .get('/records?key_id=2001&search_equal=Search String After 001')
+        .set('Authorization', validAuth)
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body.data.map((record) => record.id)).toEqual([id]);
+
+      await testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth).expect(200);
+    });
+  });
+
   describe('DELETE /records/:id', () => {
     it('should return 401 without authentication', async () => {
       await testHarness.request().delete('/records/some-id').expect(401).expect('Content-Type', /json/);

@@ -3,8 +3,8 @@ import fs from 'node:fs';
 
 import Multiconf from 'multiconf';
 
-import { setAppContext } from './lib/context';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { getLog, setAppContext } from './lib/context';
+import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 import Db from './lib/db';
 import Models from './models';
 import Router from './router';
@@ -18,6 +18,9 @@ const config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECR
 const consoleLogProvider = new ConsoleLogProvider(config.log?.console?.name, { excludeParams: config.log?.excludeParams });
 const log = new Log([consoleLogProvider], ['console']);
 setAppContext({ config, log, typeOf });
+
+// Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
+new Sandbox({ ...config.sandbox, getLog });
 
 // Process title.
 process.title = 'persist-link';

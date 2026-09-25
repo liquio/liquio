@@ -2,7 +2,7 @@ import moment from 'moment';
 import { execSync } from 'child_process';
 import debug from 'debug';
 
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 import Db from '../../src/lib/db';
 import Afterhandler from '../../src/lib/afterhandler';
 import ErrorWithDetails from '../../src/lib/errors';
@@ -165,6 +165,9 @@ process.title = config.app?.processTitle;
 export async function startApp(config: Config) {
   // Save moment global to use in eval.
   global.moment = moment;
+
+  // Init sandbox (this harness doesn't set `global.log`, so pass the logger explicitly).
+  new Sandbox({ ...config.sandbox, getLog: () => log });
 
   // Init Redis.
   if (config.redis && config.redis.isEnabled) {

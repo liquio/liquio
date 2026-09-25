@@ -1,4 +1,4 @@
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 import Db from './lib/db';
 import Afterhandler from './lib/afterhandler';
 import ErrorWithDetails from './lib/errors';
@@ -21,6 +21,9 @@ global.config = config;
 global.log = log;
 global.ErrorWithDetails = ErrorWithDetails;
 global.typeOf = typeOf;
+
+// Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
+new Sandbox(config.sandbox || {});
 
 // Log unhandled rejections.
 process.on('unhandledRejection', (error: Error | undefined) => {

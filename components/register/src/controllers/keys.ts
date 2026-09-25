@@ -10,7 +10,7 @@ import ElasticAfterhandlerWorker from '../lib/afterhandler/workers/elastic';
 import JobQueue from '../lib/job_queue';
 import KeyEntity from '../entities/key';
 import { ModelUpdateResponse } from '../lib/interfaces';
-import Isolation from '../lib/isolation';
+import { Sandbox } from '@liquio/back-core';
 
 const REINDEX_CHUNK_SIZE = 10;
 
@@ -23,6 +23,7 @@ export default class KeysController extends Controller {
   keyModel: KeyModel;
   recordsModel: RecordsModel;
   historyModel: HistoryModel;
+  sandbox: Sandbox;
   reindexing: { [keyId: number]: boolean };
   encryption_job_queue: JobQueue;
 
@@ -37,6 +38,7 @@ export default class KeysController extends Controller {
       this.keyModel = KeyModel.getInstance();
       this.recordsModel = RecordsModel.getInstance();
       this.historyModel = HistoryModel.getInstance();
+      this.sandbox = Sandbox.getInstance();
 
       this.reindexing = {};
       this.setupEncryptionJobQueue();
@@ -315,8 +317,7 @@ export default class KeysController extends Controller {
     const toSearchString = key.toSearchString;
     let toSearchStringFunction;
     try {
-      const isolate = new Isolation();
-      toSearchStringFunction = isolate.eval(`(${toSearchString})`);
+      toSearchStringFunction = this.sandbox.eval(toSearchString);
     } catch (error) {
       this.log.save('define-to-search-string-function-error', { error: error && error.message });
       return this.responseError(res, 'Can not define search string function.', 500, error && error.message);

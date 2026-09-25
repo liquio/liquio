@@ -1,6 +1,5 @@
 const logSave = jest.fn();
 const appConfig = {
-  sandbox: { sandboxOption: true },
   link_providers: { filestorage: { serversList: [] } },
 };
 
@@ -12,8 +11,8 @@ jest.mock('../../context', () => ({
 const templateModelMock = jest.fn();
 jest.mock('../../../models/template', () => templateModelMock);
 
-const sandboxMock = jest.fn();
-jest.mock('@liquio/back-core', () => ({ Sandbox: sandboxMock }));
+const sandboxGetInstanceMock = jest.fn();
+jest.mock('@liquio/back-core', () => ({ Sandbox: { getInstance: sandboxGetInstanceMock } }));
 
 const filestorageHandlerMock = jest.fn();
 jest.mock('../filestorage/filestorage_handler', () => filestorageHandlerMock);
@@ -46,10 +45,7 @@ describe('ExternalLinkProvider', () => {
     templateModelMock.mockImplementation(function (this: any) {
       this.findByNameAndMethod = jest.fn();
     });
-    sandboxMock.mockImplementation(function (this: any, config: any) {
-      this.config = config;
-      this.evalWithArgs = jest.fn();
-    });
+    sandboxGetInstanceMock.mockReturnValue({ evalWithArgs: jest.fn() });
     filestorageHandlerMock.mockImplementation(function (this: any, config: any) {
       this.config = config;
       this.connections = {};
@@ -67,7 +63,8 @@ describe('ExternalLinkProvider', () => {
 
       expect(TemplateModel).toHaveBeenCalled();
       expect(RegisterProvider).toHaveBeenCalledWith(config.register);
-      expect(Sandbox).toHaveBeenCalledWith(appConfig.sandbox);
+      expect(Sandbox.getInstance).toHaveBeenCalledTimes(1);
+      expect(provider.sandbox).toBe(sandboxGetInstanceMock.mock.results[0].value);
       expect(FilestorageHandler).toHaveBeenCalledWith(appConfig.link_providers.filestorage);
       expect(provider.provider.register).toBeInstanceOf(RegisterProvider);
     });
@@ -78,6 +75,7 @@ describe('ExternalLinkProvider', () => {
 
       expect(second).toBe(first);
       expect(TemplateModel).toHaveBeenCalledTimes(1);
+      expect(Sandbox.getInstance).toHaveBeenCalledTimes(1);
     });
   });
 

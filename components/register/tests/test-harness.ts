@@ -18,7 +18,7 @@ import { Config } from '../src/lib/config';
 import Db from '../src/lib/db';
 import Encryption from '../src/lib/encryption';
 import ErrorWithDetails from '../src/lib/errors';
-import { Log, ConsoleLogProvider, LogProvider } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, LogProvider, Sandbox } from '@liquio/back-core';
 
 type LogLevels = 'info' | 'warning' | 'error';
 import { RedisClient } from '../src/lib/redis_client';
@@ -81,6 +81,9 @@ export class TestHarness {
     global.typeOf = typeOf;
     global.moment = moment;
     global.config = config;
+
+    // Init sandbox, mirroring src/index.ts's boot sequence.
+    new Sandbox(config.sandbox || {});
 
     // Init DB.
     const db = (global.db = await Db.getInstance(config.db));

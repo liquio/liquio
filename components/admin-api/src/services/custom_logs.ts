@@ -26,7 +26,7 @@ export class CustomLogs {
       this.cacheEnabled = !!cacheEnabled;
       this.client = this.cacheEnabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => global.log }) : null;
       this.ttl = ttl;
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
       if (this.client) {
         global.log.save('custom-logs-cache-initialized', { cacheEnabled, host, port });
       } else {

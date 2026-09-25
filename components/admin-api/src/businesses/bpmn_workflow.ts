@@ -40,7 +40,7 @@ export class BpmnWorkflowBusiness {
       this.config = config;
       this.xmlJsConverter = new XmlJsConverter();
       this.registerService = new RegisterService();
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
       BpmnWorkflowBusiness.singleton = this;
     }
 

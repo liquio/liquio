@@ -5,6 +5,7 @@ import * as pg from 'pg';
 import nock = require('nock');
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
+import { join } from 'path';
 import createDebug = require('debug');
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
@@ -13,7 +14,7 @@ import * as jsonwebtoken from 'jsonwebtoken';
 import * as Multiconf from 'multiconf';
 
 import { Db } from '../src/lib/db';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 import { RedisClient } from '../src/lib/redis_client';
 import { MessageQueue } from '../src/lib/message_queue';
 import { RouterService } from '../src/services/router';
@@ -61,7 +62,7 @@ jest.mock('@liquio/back-core', () => {
 
 // Mock the configuration module
 let configOverride = {};
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config-templates/admin-api';
+const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-templates/admin-api');
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_ADMIN_API';
 
 // Obtain the default configuration object
@@ -263,6 +264,9 @@ export class TestApp {
     const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
     const log = new Log([consoleLogProvider], ['console']);
     global.log = log;
+
+    // Init sandbox.
+    new Sandbox(config.sandbox || {});
 
     global.db = await Db.getInstance(config.db);
     this.models = new Models();

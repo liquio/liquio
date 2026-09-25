@@ -4,6 +4,7 @@ import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import { execSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { join } from 'node:path';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
@@ -61,7 +62,7 @@ jest.mock('@liquio/back-core', () => {
   return { ...original, Log: MockLog };
 });
 
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config-templates/filestorage';
+const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-templates/filestorage');
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_FILESTORAGE';
 const ENV_PREFIX = `${LIQUIO_CONFIG_PREFIX}_`;
 

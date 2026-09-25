@@ -17,7 +17,7 @@ import HistoryModel from '../models/history';
 import JsonSchema from '../lib/json_schema';
 import KeyEntity from '../entities/key';
 import typeOf from '../lib/typeOf';
-import Isolation from '../lib/isolation';
+import { Sandbox } from '@liquio/back-core';
 import { ModelItemResponse } from '../lib/interfaces';
 import RecordEntity from '../entities/record';
 
@@ -38,6 +38,7 @@ export default class RecordsController extends Controller {
   private registerModel: RegisterModel;
   private keyModel: KeyModel;
   private historyModel: HistoryModel;
+  private sandbox: Sandbox;
 
   /**
    * Records controller constructor.
@@ -55,6 +56,7 @@ export default class RecordsController extends Controller {
       this.registerModel = RegisterModel.getInstance();
       this.keyModel = KeyModel.getInstance();
       this.historyModel = HistoryModel.getInstance();
+      this.sandbox = Sandbox.getInstance();
 
       RecordsController.singleton = this;
     }
@@ -514,13 +516,6 @@ export default class RecordsController extends Controller {
     let responseOffsetCount = 0;
     let stop = false; // Set `true` if all records are fetched.
 
-    const isolate = new Isolation();
-    isolate.set('element', element).set('step', step).set('document', document).eval(`
-        const additionalFilter = ${additionalFilter};
-        element = element.copySync();
-        step = step.copySync();
-        document = document.copySync();
-      `);
     while (responseRecords.length < sqlLimit && !stop) {
       if (!additionalFilter) {
         stop = true;
@@ -583,7 +578,7 @@ export default class RecordsController extends Controller {
         // If filter is not match.
         if (additionalFilter) {
           try {
-            const filter = isolate.set('record', record).eval(`additionalFilter(record.copySync(), element, step, document)`);
+            const filter = this.sandbox.evalWithArgs(additionalFilter, [record, element, step, document]);
 
             if (!filter) {
               modelResponseMeta.count--;
@@ -769,8 +764,7 @@ export default class RecordsController extends Controller {
         data: { toSearchString = '() => { return "" }' },
       } = keyModelResponse;
       records = records.map((record) => {
-        const isolate = new Isolation();
-        const toSearchStringResult = isolate.set('data', record.data).eval(`(${toSearchString})({ data: data })`);
+        const toSearchStringResult = this.sandbox.evalWithArgs(toSearchString, [{ data: record.data }]);
         if (Array.isArray(toSearchStringResult)) {
           const [searchString, searchString2, searchString3] = toSearchStringResult;
           return { ...record, searchString, searchString2, searchString3 };
@@ -943,11 +937,7 @@ export default class RecordsController extends Controller {
     let createdRecords;
     try {
       const recordsToCreate = recordsData.map((data) => {
-        const isolate = new Isolation();
-        const toSearchString = isolate
-          .set('toSearchStringFunction', toSearchStringFunction)
-          .set('data', data)
-          .eval(`toSearchStringFunction({ data: data })`);
+        const toSearchString = this.sandbox.evalWithArgs(toSearchStringFunction, [{ data }]);
         const [searchString = null, searchString2 = null, searchString3 = null] =
           global.typeOf(toSearchString) === 'array' ? toSearchString : [toSearchString];
         return {
@@ -1134,8 +1124,7 @@ export default class RecordsController extends Controller {
     let searchString2;
     let searchString3;
     try {
-      const isolate = new Isolation();
-      const searchStrings = isolate.set('data', data).eval(`(${toSearchString})({ data: data })`);
+      const searchStrings = this.sandbox.evalWithArgs(toSearchString, [{ data }]);
       if (Array.isArray(searchStrings)) {
         searchString = searchStrings[0];
         searchString2 = searchStrings[1];
@@ -1250,8 +1239,7 @@ export default class RecordsController extends Controller {
     let searchString2;
     let searchString3;
     try {
-      const isolate = new Isolation();
-      const searchStrings = isolate.set('data', data).eval(`(${toSearchString})({ data: data })`);
+      const searchStrings = this.sandbox.evalWithArgs(toSearchString, [{ data }]);
       if (Array.isArray(searchStrings)) {
         searchString = searchStrings[0];
         searchString2 = searchStrings[1];
