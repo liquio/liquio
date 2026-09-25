@@ -12,11 +12,7 @@ jest.mock('node-cron', () => ({
   schedule: jest.fn(),
 }));
 
-jest.mock(
-  'request',
-  () => jest.fn(),
-  { virtual: true },
-);
+jest.mock('request', () => jest.fn(), { virtual: true });
 
 jest.mock('axios');
 
@@ -103,9 +99,7 @@ describe('smsQueueScheduler xmlbuilder XML generation', () => {
 
   it('builds a GETSTATUS xml document listing pending message ids', async () => {
     mockSmsQueue.count.mockResolvedValue(1);
-    mockSmsQueue.findAll
-      .mockResolvedValueOnce([{ sms_id: 42 }])
-      .mockResolvedValueOnce([]);
+    mockSmsQueue.findAll.mockResolvedValueOnce([{ sms_id: 42 }]).mockResolvedValueOnce([]);
 
     await scheduleTick();
     await scheduleCheckTick();

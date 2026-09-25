@@ -14,7 +14,7 @@ const importOrderRule = [
 export default [
   {
     files: ['**/*.ts', '**/*.js'],
-    ignores: ['tests/**', '**/*.spec.ts', '**/*.e2e-spec.ts'],
+    ignores: ['tests/**', '**/*.spec.ts', '**/*.spec.js', '**/*.e2e-spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -42,7 +42,7 @@ export default [
     },
   },
   {
-    files: ['tests/**/*.ts', '**/*.spec.ts', '**/*.e2e-spec.ts'],
+    files: ['tests/**/*.ts', '**/*.spec.ts', '**/*.spec.js', '**/*.e2e-spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
