@@ -222,7 +222,7 @@ export class HttpRequest {
    */
   static getJsonBodyParser(maxBodySize = DEFAULT_MAX_BODY_SIZE) {
     // Return body parser for content-type "application/json".
-    return bodyParser.json({ limit: maxBodySize });
+    return withEmptyBodyDefault(bodyParser.json({ limit: maxBodySize }));
   }
 
   /**
@@ -230,7 +230,7 @@ export class HttpRequest {
    */
   static getUrlencodedBodyParser() {
     // Return body parser for content-type "application/x-www-form-urlencoded".
-    return bodyParser.urlencoded({ extended: false });
+    return withEmptyBodyDefault(bodyParser.urlencoded({ extended: false }));
   }
 
   /**
@@ -266,7 +266,7 @@ export class HttpRequest {
    */
   static parseBodyJson(app, maxBodySize = DEFAULT_MAX_BODY_SIZE) {
     // Parse body for content-type "application/json".
-    app.use(bodyParser.json({ limit: maxBodySize }));
+    app.use(withEmptyBodyDefault(bodyParser.json({ limit: maxBodySize })));
   }
 
   /**
@@ -275,8 +275,26 @@ export class HttpRequest {
    */
   static parseBodyUrlencoded(app) {
     // Parse body for content-type "application/x-www-form-urlencoded".
-    app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(withEmptyBodyDefault(bodyParser.urlencoded({ extended: false })));
   }
+}
+
+/**
+ * Keep body-parser 1.x behavior: body-parser 2.x leaves `req.body` undefined when nothing was parsed,
+ * while route handlers and validators expect an object.
+ * @private
+ * @param {function} parser Body parser middleware.
+ * @returns {function}
+ */
+function withEmptyBodyDefault(parser) {
+  return (req, res, next) => {
+    parser(req, res, (error) => {
+      if (req.body === undefined) {
+        req.body = {};
+      }
+      next(error);
+    });
+  };
 }
 
 /**

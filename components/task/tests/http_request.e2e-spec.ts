@@ -1,4 +1,6 @@
+import express from 'express';
 import nock from 'nock';
+import supertest from 'supertest';
 import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from '../src/lib/http_request';
@@ -327,6 +329,92 @@ describe('HttpRequest', () => {
         const parser = HttpRequest.getXmlBodyParser();
         expect(parser).toBeDefined();
         expect(typeof parser).toBe('function');
+      });
+    });
+  });
+
+  describe('Body Parser Behavior', () => {
+    let app;
+
+    const echoBody = (req, res) => res.json({ isUndefined: req.body === undefined, body: req.body ?? null });
+
+    beforeEach(() => {
+      app = express();
+      app.all('/json', HttpRequest.getJsonBodyParser('1kb'), echoBody);
+      app.all('/urlencoded', HttpRequest.getUrlencodedBodyParser(), echoBody);
+      app.all('/raw', HttpRequest.getRawBody('1kb'), echoBody);
+      app.use((error, req, res, _next) => res.status(error.status || 500).json({ type: error.type }));
+    });
+
+    describe('getJsonBodyParser', () => {
+      it('should parse a JSON body', async () => {
+        const response = await supertest(app).post('/json').set('Content-Type', 'application/json').send('{"a":1,"b":{"c":"привіт"}}');
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ isUndefined: false, body: { a: 1, b: { c: 'привіт' } } });
+      });
+
+      it('should default body to an empty object for GET without body', async () => {
+        const response = await supertest(app).get('/json');
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ isUndefined: false, body: {} });
+      });
+
+      it('should default body to an empty object for a non-JSON content type', async () => {
+        const response = await supertest(app).post('/json').set('Content-Type', 'text/plain').send('hello');
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ isUndefined: false, body: {} });
+      });
+
+      it('should reject invalid JSON with 400', async () => {
+        const response = await supertest(app).post('/json').set('Content-Type', 'application/json').send('{a:');
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({ type: 'entity.parse.failed' });
+      });
+
+      it('should reject a body over the limit with 413', async () => {
+        const response = await supertest(app)
+          .post('/json')
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify({ big: 'x'.repeat(2000) }));
+        expect(response.status).toBe(413);
+        expect(response.body).toEqual({ type: 'entity.too.large' });
+      });
+    });
+
+    describe('getUrlencodedBodyParser', () => {
+      it('should parse a urlencoded body without nesting', async () => {
+        const response = await supertest(app)
+          .post('/urlencoded')
+          .set('Content-Type', 'application/x-www-form-urlencoded')
+          .send('a=1&a=2&b[c]=3&q=hello+world');
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ isUndefined: false, body: { a: ['1', '2'], 'b[c]': '3', q: 'hello world' } });
+      });
+
+      it('should default body to an empty object for GET without body', async () => {
+        const response = await supertest(app).get('/urlencoded');
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ isUndefined: false, body: {} });
+      });
+    });
+
+    describe('getRawBody', () => {
+      it('should read the body as a UTF-8 string', async () => {
+        const response = await supertest(app).post('/raw').set('Content-Type', 'text/xml').send('<a>привіт</a>');
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ isUndefined: false, body: '<a>привіт</a>' });
+      });
+
+      it('should read an empty string for GET without body', async () => {
+        const response = await supertest(app).get('/raw');
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ isUndefined: false, body: '' });
+      });
+
+      it('should reject a body over the limit with 413', async () => {
+        const response = await supertest(app).post('/raw').set('Content-Type', 'text/plain').send('x'.repeat(2000));
+        expect(response.status).toBe(413);
+        expect(response.body).toEqual({ type: 'entity.too.large' });
       });
     });
   });
