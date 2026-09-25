@@ -7,7 +7,7 @@ import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import RecordModel from '../models/record';
 import RegisterBusiness from '../businesses/register';
-import Isolation from '../lib/isolation';
+import { Sandbox } from '@liquio/back-core';
 
 // Constants.
 const DB_ERROR_KEYS_EXIST = 'violates foreign key constraint "keys_register_id_fkey" on table "keys"';
@@ -22,6 +22,7 @@ export default class RegistersController extends Controller {
   keyModel: KeyModel;
   recordModel: RecordModel;
   registerBusiness: RegisterBusiness;
+  sandbox: Sandbox;
   exportImportRegisterUuid: 'export_#@ec1bc454b33d11ecb909-0242ac120002&^%_import';
   exportImportRecordUuid: 'export_*&#$5782b2c7-4f234df9&!+*&?_import-';
 
@@ -38,6 +39,7 @@ export default class RegistersController extends Controller {
       this.keyModel = KeyModel.getInstance();
       this.recordModel = RecordModel.getInstance();
       this.registerBusiness = new RegisterBusiness(config);
+      this.sandbox = Sandbox.getInstance();
       RegistersController.singleton = this;
     }
 
@@ -516,8 +518,17 @@ export default class RegistersController extends Controller {
 
             // Update existing key record or create new key record.
             if (importKey.toSearchString.startsWith('(')) {
-              const isolate = new Isolation();
-              importKeyRecord.searchString = isolate.set('importKeyRecord', importKeyRecord).eval(`(${importKey.toSearchString})(importKeyRecord)`);
+              try {
+                const searchStrings = this.sandbox.evalWithArgs(importKey.toSearchString, [importKeyRecord]);
+                if (Array.isArray(searchStrings)) {
+                  [importKeyRecord.searchString, importKeyRecord.searchString2, importKeyRecord.searchString3] = searchStrings;
+                } else {
+                  importKeyRecord.searchString = searchStrings;
+                }
+              } catch (error) {
+                const errorObject = this.registerBusiness.getErrorAndLogIt('import-register-search-string-error', error);
+                return this.responseError(res, errorObject.message, errorObject.code);
+              }
             }
             const keyRecordExistInOriginals =
               importKeyRecord.id && backupInfo.originalKeys[keyModel.id] && backupInfo.originalKeys[keyModel.id].includes(importKeyRecord.id);

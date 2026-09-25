@@ -1,20 +1,22 @@
 import Ajv, { ValidateFunction } from 'ajv';
+import { Sandbox } from '@liquio/back-core';
 
 import ValidatorError from './validator_error';
 import RecordModel from '../../models/record';
-import Isolation from '../isolation';
 
 /**
  * JSON schema.
  */
 export default class JsonSchema {
   recordModel: RecordModel;
+  sandbox: Sandbox;
   ajv: Ajv;
   schema: any;
   validation: ValidateFunction<unknown>;
 
   constructor(schema: { customTypes?: Record<string, string>; [key: string]: any }) {
     this.recordModel = RecordModel.getInstance();
+    this.sandbox = Sandbox.getInstance();
 
     // Define params.
     this.ajv = new Ajv({ strictSchema: false });
@@ -23,16 +25,8 @@ export default class JsonSchema {
     if (schema.customTypes && Object.keys(schema.customTypes).length > 0) {
       Object.entries(schema.customTypes).forEach(([keyWord, func]) => {
         this.ajv.addKeyword(keyWord, {
-          compile: (currentKeyWordValueInSchema, curentFieldInSchema) => (recordFieldValue) => {
-            const isolate = new Isolation();
-            isolate
-              .set('recordFieldValue', recordFieldValue)
-              .set('currentKeyWordValueInSchema', currentKeyWordValueInSchema)
-              .set('curentFieldInSchema', curentFieldInSchema);
-            return isolate.eval(
-              `(${func as string})(recordFieldValue.copySync(), currentKeyWordValueInSchema.copySync(), curentFieldInSchema.copySync())`,
-            );
-          },
+          compile: (currentKeyWordValueInSchema, curentFieldInSchema) => (recordFieldValue) =>
+            this.sandbox.evalWithArgs(func as string, [recordFieldValue, currentKeyWordValueInSchema, curentFieldInSchema]),
         } as any);
       });
     }

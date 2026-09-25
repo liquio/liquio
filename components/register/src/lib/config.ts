@@ -1,6 +1,7 @@
 import { existsSync } from 'fs';
 
 import Multiconf from 'multiconf';
+import { SandboxConfig } from '@liquio/back-core';
 
 export const CONFIG_PATH = process.env.CONFIG_PATH || '../config/register';
 export const SECRET_PATH = process.env.SECRET_PATH;
@@ -74,6 +75,7 @@ export interface Config {
     port: number;
     defaultTtl: number;
   };
+  sandbox?: SandboxConfig;
   search: {
     [key: string]: {
       resultsCount: number;
