@@ -1,20 +1,21 @@
 // @ts-nocheck
+import { execSync } from 'child_process';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { randomBytes } from 'crypto';
+
 import supertest = require('supertest');
 import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import nock = require('nock');
-import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import createDebug = require('debug');
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
-import { randomBytes } from 'crypto';
 import * as jsonwebtoken from 'jsonwebtoken';
 import * as Multiconf from 'multiconf';
+import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 
 import { Db } from '../src/lib/db';
-import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 import { RedisClient } from '../src/lib/redis_client';
 import { MessageQueue } from '../src/lib/message_queue';
 import { RouterService } from '../src/services/router';

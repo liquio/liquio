@@ -1,5 +1,6 @@
 import moment from 'moment';
 import handlebars from 'handlebars';
+
 import { RedisClient } from './redis_client';
 import { NumberTemplateModel } from '../models/number_template';
 

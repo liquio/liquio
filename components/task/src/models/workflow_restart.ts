@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { WorkflowRestartEntity } from '../entities/workflow_restart';
 

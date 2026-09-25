@@ -1,4 +1,5 @@
 import PropByPath from 'prop-by-path';
+
 import { Filler } from './filler';
 import { TaskModel } from '../../../models/task';
 

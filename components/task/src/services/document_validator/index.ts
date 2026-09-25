@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import Ajv from 'ajv';
 import PropByPath from 'prop-by-path';
+import { Sandbox } from '@liquio/back-core';
 
 import { JSONPath } from '../../lib/jsonpath';
 import { DocumentHandler } from '../../lib/document_handler';
@@ -8,7 +9,6 @@ import { Keywords } from './keywords';
 import { ValidatorError } from './validator_error';
 import { Paths } from './paths';
 import { RegisterService } from '../../services/register';
-import { Sandbox } from '@liquio/back-core';
 import { CalcTriggersValidator } from './calc_triggers_validator';
 
 // Constants.

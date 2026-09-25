@@ -1,4 +1,5 @@
 import { matchedData } from 'express-validator';
+import { Sandbox } from '@liquio/back-core';
 
 import { Request, Response } from '../router';
 import Stream from '../lib/stream';
@@ -7,7 +8,6 @@ import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import RecordModel from '../models/record';
 import RegisterBusiness from '../businesses/register';
-import { Sandbox } from '@liquio/back-core';
 
 // Constants.
 const DB_ERROR_KEYS_EXIST = 'violates foreign key constraint "keys_register_id_fkey" on table "keys"';

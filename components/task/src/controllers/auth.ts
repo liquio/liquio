@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
+
 import type { Request } from 'express';
+
 import { Controller } from './controller';
 import { AuthService as Auth } from '../services/auth';
 import { LdapClient } from '../services/ldap';

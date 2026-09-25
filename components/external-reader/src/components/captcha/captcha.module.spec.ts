@@ -4,7 +4,6 @@ import supertest from 'supertest';
 
 import { ConfigurationModule } from '@components/configuration/configuration.module';
 import { ObservabilityModule } from '@components/observability/observability.module';
-
 import { CaptchaModule } from './captcha.module';
 
 jest.mock('../configuration/configuration.service', () => ({

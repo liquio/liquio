@@ -23,10 +23,11 @@ jest.mock('./providers/register', () => registerProviderMock);
 const pdfCreate = jest.fn();
 jest.mock('html-pdf', () => ({ create: pdfCreate }));
 
+import { Sandbox } from '@liquio/back-core';
+
 import ExternalLinkProvider from './index';
 import FilestorageHandler from '../filestorage/filestorage_handler';
 import RegisterProvider from './providers/register';
-import { Sandbox } from '@liquio/back-core';
 import TemplateModel from '../../../models/template';
 
 const createRes = () => ({

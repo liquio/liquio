@@ -1,7 +1,8 @@
 // Import.
+import { execSync } from 'node:child_process';
+
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { Sandbox } from '@liquio/back-core';
-import { execSync } from 'node:child_process';
 import portfinder from 'portfinder';
 import supertest from 'supertest';
 

@@ -1,5 +1,6 @@
-import HttpRequest from '../http_request';
 import { getTraceId } from '@liquio/back-core';
+
+import HttpRequest from '../http_request';
 
 // Constants.
 const ROUTES = {

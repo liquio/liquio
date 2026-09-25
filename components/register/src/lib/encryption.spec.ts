@@ -1,5 +1,6 @@
-import Encryption from './encryption';
 import crypto from 'crypto';
+
+import Encryption from './encryption';
 
 describe('Encryption - GCM Authentication Tag Validation', () => {
   const testKey = Buffer.alloc(32).toString('hex'); // 32-byte key for AES-256

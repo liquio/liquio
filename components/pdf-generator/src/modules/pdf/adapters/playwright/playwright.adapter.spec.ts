@@ -2,7 +2,6 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PdfGenerationOptions } from '@modules/pdf/pdf.types';
-
 import { Cluster } from './cluster/cluster';
 import { PlaywrightAdapter } from './playwright.adapter';
 

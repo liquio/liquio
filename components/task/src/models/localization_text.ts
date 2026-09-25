@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { LocalizationTextEntity } from '../entities/localization_text';
 

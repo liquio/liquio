@@ -1,4 +1,5 @@
 import _ from 'lodash';
+
 import { Decorator } from './decorator';
 import { typeOf } from '../../../../../lib/type_of';
 

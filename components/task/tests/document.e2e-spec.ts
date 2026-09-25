@@ -1,5 +1,4 @@
 import { TestApp } from './test-app';
-
 import { prepareFixtures, DOCUMENT_FIXTURES } from './fixtures';
 import { expectAuthRequired } from './helpers/auth_guard';
 

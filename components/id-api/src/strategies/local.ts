@@ -1,8 +1,8 @@
 import { Strategy } from 'passport-local';
+import { Log } from '@liquio/back-core';
 
 import { delay } from '../lib/helpers';
 import { HttpError } from '../lib/http_error';
-import { Log } from '@liquio/back-core';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesAttributes } from '../models';

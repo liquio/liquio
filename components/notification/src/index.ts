@@ -1,12 +1,15 @@
 // Init config.
 import path from 'node:path';
+
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
+
+// eslint-disable-next-line import-x/order -- global.conf must be set before ./app and the adapters load.
 import * as config from './config/config';
 
 global.conf = config.conf;
 
 import start from './app';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import { typeOf } from './lib/type_of';
 
 global.typeOf = typeOf;

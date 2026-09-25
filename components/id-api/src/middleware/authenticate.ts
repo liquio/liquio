@@ -1,6 +1,8 @@
-import OAuth2Server, { OAuthError } from '@node-oauth/oauth2-server';
 import crypto from 'crypto';
+
+import OAuth2Server, { OAuthError } from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
+import { Log, appendTraceMeta } from '@liquio/back-core';
 
 import { Config, DEFAULT_COOKIE_DOMAIN } from '../config';
 import { generatePinCode } from '../lib/helpers';
@@ -13,7 +15,6 @@ import { oidc, logout as oidcLogout } from '../strategies/oidc';
 import { wso2, logout as wso2Logout } from '../strategies/wso2';
 import { x509, logout as x509Logout } from '../strategies/x509';
 import { Express, NextFunction, Request, Response } from '../types';
-import { Log, appendTraceMeta } from '@liquio/back-core';
 import { destroySession, saveSession } from './session';
 
 type StrategyLogout = (req: Request) => Promise<{ endSessionUrl?: string } | void>;

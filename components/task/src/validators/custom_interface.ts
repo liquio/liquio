@@ -1,4 +1,5 @@
 import { checkSchema } from 'express-validator';
+
 import { Validator } from './validator';
 
 /**

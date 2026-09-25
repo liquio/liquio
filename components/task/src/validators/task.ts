@@ -1,5 +1,6 @@
 import { checkSchema, ParamSchema } from 'express-validator';
 import validatorHelper from 'validator';
+
 import { Validator } from './validator';
 const validationCheckSchemaOrderInQuery: ParamSchema = {
   in: ['query'],

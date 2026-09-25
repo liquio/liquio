@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 import SqlString from 'sequelize/lib/sql-string';
 import _ from 'lodash';
 import moment from 'moment';
+
 import { Model } from './model';
 import { Entity } from '../entities/entity';
 import { WorkflowEntity } from '../entities/workflow';

@@ -1,8 +1,8 @@
 import { NextFunction } from 'express';
+import { appendTraceMeta, Log } from '@liquio/back-core';
 
 import { Request, Response } from '../router';
 import Controller from './controller';
-import { appendTraceMeta, Log } from '@liquio/back-core';
 
 /**
  * Auth controller.

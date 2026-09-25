@@ -3,9 +3,9 @@ import bodyParser from 'body-parser';
 import compression from 'compression';
 import cors from 'cors';
 import proxy from 'express-http-proxy';
+import { AppInfo, asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-core';
 
 import AppIdentHeaders from './lib/app_ident_headers';
-import { AppInfo, asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-core';
 import AuthController from './controllers/auth';
 import TestController from './controllers/test';
 

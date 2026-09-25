@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { matchedData } from 'express-validator';
+import { Sandbox } from '@liquio/back-core';
 
 import { Request, Response } from '../router';
 import Controller from './controller';
@@ -10,7 +11,6 @@ import ElasticAfterhandlerWorker from '../lib/afterhandler/workers/elastic';
 import JobQueue from '../lib/job_queue';
 import KeyEntity from '../entities/key';
 import { ModelUpdateResponse } from '../lib/interfaces';
-import { Sandbox } from '@liquio/back-core';
 
 const REINDEX_CHUNK_SIZE = 10;
 

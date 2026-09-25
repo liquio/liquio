@@ -1,5 +1,6 @@
-import AfterhandlerModel from '../../../models/afterhandler';
 import { Log } from '@liquio/back-core';
+
+import AfterhandlerModel from '../../../models/afterhandler';
 
 export type AfterhandlerType = 'blockchain' | 'elastic' | 'plink';
 

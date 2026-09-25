@@ -1,7 +1,7 @@
 import _ from 'lodash';
+import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from '../../../lib/http_request';
-import { getTraceId } from '@liquio/back-core';
 import { UserResult } from './user_result';
 import { UnitRulesModel } from '../../../models/unit_rules';
 import { typeOf } from '../../../lib/type_of';

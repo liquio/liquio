@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+
 import { EventModel } from '../models/event';
 
 // Constants.

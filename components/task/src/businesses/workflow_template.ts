@@ -1,6 +1,7 @@
+import { Sandbox } from '@liquio/back-core';
+
 import { Business } from './business';
 import { WorkflowTemplateModel } from '../models/workflow_template';
-import { Sandbox } from '@liquio/back-core';
 
 const unitIdToTemplateCategoryIds = {
   1000770: [1000], // еРезидент => Послуги для еРезидентів

@@ -1,4 +1,5 @@
 import { matchedData } from 'express-validator';
+
 import { Controller } from './controller';
 import { UserInboxModel } from '../models/user_inbox';
 import { DownloadToken } from '../lib/download_token';

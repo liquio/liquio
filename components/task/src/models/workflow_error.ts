@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { WorkflowErrorEntity } from '../entities/workflow_error';
 

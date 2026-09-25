@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
 import type { AuthenticatedRequest } from './auth';

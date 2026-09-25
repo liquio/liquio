@@ -1,16 +1,17 @@
 // @ts-nocheck
-import supertest from 'supertest';
-import * as portfinder from 'portfinder';
-import * as pg from 'pg';
 import { execSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
+
+import supertest from 'supertest';
+import * as portfinder from 'portfinder';
+import * as pg from 'pg';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
 
 import { Db } from '../src/lib/db';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
 import { Providers } from '../src/providers';
 import { Models } from '../src/models';
 import { Router } from '../src/router';

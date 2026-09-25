@@ -1,5 +1,6 @@
-import { JSONPath as JSONPathOrigin } from 'jsonpath-plus';
 import * as crypto from 'node:crypto';
+
+import { JSONPath as JSONPathOrigin } from 'jsonpath-plus';
 
 function searchByKeyValue(obj, searchKey, sign, searchValue, { onlyInArrays = false } = {}) {
   const result = [];

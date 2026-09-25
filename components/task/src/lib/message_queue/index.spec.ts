@@ -1,5 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
+
 import amqp from 'amqplib/callback_api';
+
 import { MessageQueue } from './index';
 
 jest.mock('amqplib/callback_api', () => ({

@@ -1,5 +1,6 @@
 import { matchedData } from 'express-validator';
 import { intersection } from 'lodash';
+
 import { Controller } from './controller';
 
 const PRESERVE_FIELDS_NO_ACCESS = ['description', 'type', 'showEmptyScreen'];

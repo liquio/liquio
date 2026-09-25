@@ -1,8 +1,10 @@
-import { OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
 import crypto from 'crypto';
-import { matchedData, query } from 'express-validator';
 import { URL } from 'url';
 import { promisify } from 'util';
+
+import { OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
+import { matchedData, query } from 'express-validator';
+import { appendTraceMeta } from '@liquio/back-core';
 
 import { DEFAULT_COOKIE_DOMAIN } from '../config';
 import { getEnabledAuthProviders } from '../lib/auth_providers';
@@ -10,7 +12,6 @@ import { avatarByGender } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { ServerCrypt } from '../lib/server_crypt';
 import { AuthMiddleware } from '../middleware';
-import { appendTraceMeta } from '@liquio/back-core';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
 import { Express, NextFunction, Request, Response, Router } from '../types';

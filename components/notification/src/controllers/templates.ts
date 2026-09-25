@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import { TemplatesModel } from '../models/templates';
 import { checkAuth } from './auth';
 

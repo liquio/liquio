@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { DocumentAttachmentEntity, DocumentAttachmentEntityOptions } from '../entities/document_attachment';
 

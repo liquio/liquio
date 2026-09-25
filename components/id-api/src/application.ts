@@ -1,9 +1,10 @@
-import express from 'express';
 import http from 'http';
+
+import express from 'express';
+import { Log } from '@liquio/back-core';
 
 import { Config } from './config';
 import { Controllers, ControllersCollection } from './controllers';
-import { Log } from '@liquio/back-core';
 import {
   AuthMiddleware,
   useAppIdentHeaders,

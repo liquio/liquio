@@ -1,8 +1,8 @@
 import moment from 'moment';
-
-import { Db } from './lib/db';
 import { Log, ConsoleLogProvider, getTraceId, Sandbox } from '@liquio/back-core';
 import { PluginLoader } from '@liquio/plugin-sdk';
+
+import { Db } from './lib/db';
 import { MessageQueue } from './lib/message_queue';
 import * as Errors from './lib/errors';
 import { Models } from './models';

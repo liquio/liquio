@@ -1,6 +1,4 @@
 import { Sequelize } from 'sequelize';
-
-// Import local
 import { Log } from '@liquio/back-core';
 
 /**

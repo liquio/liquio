@@ -1,6 +1,5 @@
 import { Strategy } from 'passport-oauth2';
 import axios from 'axios';
-
 import { Log } from '@liquio/back-core';
 
 import { CallbackFn, Express } from '../types';

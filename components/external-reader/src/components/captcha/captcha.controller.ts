@@ -2,7 +2,6 @@ import { Controller, Get, Param } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 
 import { Public } from '@common/decorators';
-
 import { GetCaptchaResponse, GetProviderListResponse } from './captcha.dto';
 import { CaptchaService } from './captcha.service';
 

@@ -1,10 +1,9 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
-
 import { asyncLocalStorageMiddleware } from '@liquio/back-core';
+
 import { securityHeadersMiddleware, inputSanitizationMiddleware, corsValidationMiddleware, responseEncodingMiddleware } from './middleware/security';
 import { AppIdentHeaders } from './lib/app_ident_headers';
-
 import { Lists } from './controllers/ListsAndTransports';
 import { Message } from './controllers/message';
 import { Template } from './controllers/templates';

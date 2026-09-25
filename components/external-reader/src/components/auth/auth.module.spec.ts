@@ -7,7 +7,6 @@ import { BasicAuthGuard } from '@common/guards';
 import { ConfigurationModule } from '@components/configuration/configuration.module';
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { ObservabilityModule } from '@components/observability/observability.module';
-
 import { AuthModule } from './auth.module';
 
 const MockConfigurationService = {

@@ -1,6 +1,7 @@
+import type { Response as SupertestResponse } from 'supertest';
+
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';
-import type { Response as SupertestResponse } from 'supertest';
 
 describe('Workflow Process Controller', () => {
   let app: TestApp;

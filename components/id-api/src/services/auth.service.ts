@@ -1,5 +1,6 @@
-import OAuth2Server, { InvalidClientError, OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
 import crypto from 'crypto';
+
+import OAuth2Server, { InvalidClientError, OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import moment from 'moment';
 import { Op } from 'sequelize';

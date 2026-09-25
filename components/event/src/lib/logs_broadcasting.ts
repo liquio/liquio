@@ -1,5 +1,6 @@
-import { WebSocketServer } from 'ws';
 import { PassThrough } from 'node:stream';
+
+import { WebSocketServer } from 'ws';
 
 const DEFAULT_PORT = 5000;
 const DEFAULT_HEARTBEAT_TIMEOUT = 30000;

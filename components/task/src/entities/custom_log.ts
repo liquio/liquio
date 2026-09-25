@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+
 import { Entity } from './entity';
 
 /**

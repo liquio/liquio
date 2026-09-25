@@ -1,11 +1,9 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-
 import { PluginLoader, PluginLogger, PluginRegistry } from '@liquio/plugin-sdk';
 
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { Configuration } from '@components/configuration/configuration.types';
 import { LoggerService } from '@components/observability/logger.service';
-
 import { BaseProvider, ProviderMethod } from './base.provider';
 import { HttpProvider } from './http.provider';
 

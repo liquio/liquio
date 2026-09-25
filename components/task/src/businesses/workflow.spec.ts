@@ -1,7 +1,7 @@
 import nock from 'nock';
+import { Sandbox } from '@liquio/back-core';
 
 import { WorkflowBusiness } from './workflow';
-import { Sandbox } from '@liquio/back-core';
 
 new Sandbox();
 

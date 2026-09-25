@@ -1,9 +1,9 @@
 import CyrillicToTranslit from 'cyrillic-to-translit-js';
 import PropByPath from 'prop-by-path';
+import { getTraceId } from '@liquio/back-core';
 
 import BaseProvider from './provider';
 import HttpRequest from '../../http_request';
-import { getTraceId } from '@liquio/back-core';
 
 // Constants.
 const DEFAULT_ROUTES = {

@@ -1,5 +1,6 @@
 import NodeCache from 'node-cache';
 import { Dialect, Sequelize, Options as SequelizeOptions } from 'sequelize';
+import { Log } from '@liquio/back-core';
 
 export { WhereAttributeHash, WhereOptions } from 'sequelize';
 export { AccessTokenAttributes } from './access_token.model';
@@ -17,7 +18,6 @@ export { UserServicesAttributes, UserServicesCreationAttributes } from './user_s
 export { UserTotpSecretAttributes, UserTotpSecretCreationAttributes } from './user_totp_secret.model';
 
 import { Config } from '../config';
-import { Log } from '@liquio/back-core';
 import { AccessTokenModel } from './access_token.model';
 import { AuthCodeModel } from './auth_code.model';
 import { BaseModel } from './base_model';

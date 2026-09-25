@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import {
   AuthorizationCode,
   AuthorizationCodeModel,
@@ -10,9 +12,8 @@ import {
   RefreshToken,
   RefreshTokenModel,
 } from '@node-oauth/oauth2-server';
-import crypto from 'crypto';
-
 import { Log } from '@liquio/back-core';
+
 import { Models } from '../models';
 import { AuthCodeAttributes } from '../models/auth_code.model';
 

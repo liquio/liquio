@@ -6,7 +6,6 @@ import { ConfigurationModule } from '@components/configuration/configuration.mod
 import { ObservabilityModule } from '@components/observability/observability.module';
 import { PingModule } from '@components/ping/ping.module';
 import { ProvidersModule } from '@components/providers/providers.module';
-
 import { AppModule } from './app.module';
 
 describe('AppModule', () => {

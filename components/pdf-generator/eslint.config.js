@@ -1,6 +1,15 @@
 import tseslint from 'typescript-eslint';
 import prettierPlugin from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
+import importX from 'eslint-plugin-import-x';
+
+const importOrderRule = [
+  'error',
+  {
+    groups: ['builtin', 'external', ['internal', 'parent', 'sibling', 'index']],
+    'newlines-between': 'always',
+  },
+];
 
 export default [
   {
@@ -14,9 +23,13 @@ export default [
         sourceType: 'module',
       },
     },
+    settings: {
+      'import-x/internal-regex': '^(@common|@modules|@lib|src)/',
+    },
     plugins: {
       '@typescript-eslint': tseslint.plugin,
       prettier: prettierPlugin,
+      'import-x': importX,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -27,6 +40,7 @@ export default [
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'import-x/order': importOrderRule,
     },
   },
   {

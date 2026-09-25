@@ -1,6 +1,7 @@
+import type { Response as SupertestResponse } from 'supertest';
+
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';
-import type { Response as SupertestResponse } from 'supertest';
 
 const TEST_USER_ID = '61efddaa351d6219eee09043';
 

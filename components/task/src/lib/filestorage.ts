@@ -1,9 +1,10 @@
 import * as crypto from 'node:crypto';
 import { PassThrough } from 'node:stream';
+
 import axios from 'axios'; // Only used for streaming upload in uploadFile method
+import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from './http_request';
-import { getTraceId } from '@liquio/back-core';
 
 // Constants.
 const HIDE_REPLACEMENT_TEXT = '*****';

@@ -1,6 +1,7 @@
+import type { Response as SupertestResponse } from 'supertest';
+
 import { TestApp } from './test-app';
 import { prepareFixtures, WORKFLOW_FIXTURES, WORKFLOW_TEMPLATE_FIXTURES } from './fixtures';
-import type { Response as SupertestResponse } from 'supertest';
 
 describe('Workflow Controller', () => {
   let app: TestApp;

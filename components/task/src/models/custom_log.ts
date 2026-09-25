@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { CustomLogEntity } from '../entities/custom_log';
 import { SequelizeDbError } from '../lib/errors';

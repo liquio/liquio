@@ -1,5 +1,6 @@
-import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+
+import bcrypt from 'bcrypt';
 import { matchedData, query } from 'express-validator';
 import jwt from 'jsonwebtoken';
 import Sequelize, { Op, WhereOptions } from 'sequelize';

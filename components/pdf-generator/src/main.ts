@@ -3,7 +3,6 @@ import { NestFactory } from '@nestjs/core';
 import { json } from 'express';
 
 import { ServerConfig } from '@common/types/config.types';
-
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { asyncLocalStorageMiddleware } from './lib/async-local-storage';

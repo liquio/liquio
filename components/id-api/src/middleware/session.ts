@@ -2,10 +2,10 @@ import ConnectSessionSequelize from 'connect-session-sequelize';
 import cookieParser from 'cookie-parser';
 import session, { SessionOptions } from 'express-session';
 import { Op } from 'sequelize';
+import { Log } from '@liquio/back-core';
 
 import { DEFAULT_COOKIE_DOMAIN } from '../config';
 import { avatarByGender } from '../lib/helpers';
-import { Log } from '@liquio/back-core';
 import { Models, UserAttributes } from '../models';
 import { Express, NextFunction, Request, Response } from '../types';
 

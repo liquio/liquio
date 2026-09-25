@@ -9,22 +9,21 @@ import moment from 'moment';
 import Multiconf from 'multiconf';
 import { Sequelize } from 'sequelize';
 import supertest from 'supertest';
+import { Log, ConsoleLogProvider, LogProvider, Sandbox } from '@liquio/back-core';
 
 import { insertData } from './fixtures';
-
 import ExportBusiness from '../src/businesses/export';
 import Afterhandler from '../src/lib/afterhandler';
 import { Config } from '../src/lib/config';
 import Db from '../src/lib/db';
 import Encryption from '../src/lib/encryption';
 import ErrorWithDetails from '../src/lib/errors';
-import { Log, ConsoleLogProvider, LogProvider, Sandbox } from '@liquio/back-core';
-
-type LogLevels = 'info' | 'warning' | 'error';
 import { RedisClient } from '../src/lib/redis_client';
 import typeOf from '../src/lib/typeOf';
 import Models from '../src/models';
 import Router from '../src/router';
+
+type LogLevels = 'info' | 'warning' | 'error';
 
 const testDebug = debug('test');
 

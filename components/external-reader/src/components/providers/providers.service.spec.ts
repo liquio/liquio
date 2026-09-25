@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { LoggerService } from '@components/observability/logger.service';
-
 import { ProvidersService } from './providers.service';
 
 const registryGetMock = jest.fn();

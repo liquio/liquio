@@ -1,5 +1,6 @@
-import { PersistLink } from '../src/lib/persist_link';
 import axios from 'axios';
+
+import { PersistLink } from '../src/lib/persist_link';
 
 // Mock axios
 jest.mock('axios');

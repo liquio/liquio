@@ -1,5 +1,6 @@
 import PropByPath from 'prop-by-path';
 import { RedisClient } from '@liquio/back-core';
+
 import { DocumentUpdateLogEntity } from '../entities/document_update_log';
 
 /**

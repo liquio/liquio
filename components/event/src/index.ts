@@ -1,5 +1,7 @@
-import Multiconf from 'multiconf';
 import fs from 'node:fs';
+
+import Multiconf from 'multiconf';
+
 import { App } from './app';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/event';
