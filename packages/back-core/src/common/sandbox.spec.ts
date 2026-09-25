@@ -73,24 +73,27 @@ describe('Sandbox', () => {
     expect((fetch as any).toString()).toBe(original);
   });
 
-  // This is a known V8 sandbox escape technique that allows access to the global object via the
-  // constructor of an array filter function. We need to ensure that this is not possible in our
-  // sandbox.
+  // This is a known V8 sandbox escape technique that reaches the real `Function` constructor (and
+  // through it the host realm) via the constructor of an array method. Shadowing host globals as
+  // `undefined` parameters does not stop it, because the constructor chain walks prototypes rather
+  // than resolving an identifier. The sandbox now blocks any `.constructor` access at compile time.
   it('should prevent containment breach via [].filter.constructor', () => {
     const sandbox = new Sandbox(config);
-    expect(() => sandbox.evalWithArgs('() => { [].filter.constructor("require")() }', [])).toThrow('Sandbox error: "require is not defined"');
+    expect(() => sandbox.evalWithArgs('() => { [].filter.constructor("require")() }', [])).toThrow(
+      'Sandbox error: "Access to "constructor" is blocked"',
+    );
   });
 
-  // Known issue: prototype pollution is not blocked in the sandbox. Sandboxed code can mutate
-  // shared built-in prototypes (e.g. Array.prototype), which may affect the host process.
-  // We do not currently intercept or prevent the mutation — the assignment executes normally.
-  // Instead, we detect .prototype access at eval time and emit a 'sandbox-alert' warning to logs
-  // so that suspicious code can be flagged and investigated without breaking execution.
-  it('should emit sandbox-alert when .prototype is accessed', () => {
+  // Prototype pollution is now blocked: `.prototype` access is rejected at compile time (before the
+  // code ever runs) and a 'sandbox-alert' warning is still emitted so suspicious code is flagged.
+  it('should block and alert when .prototype is accessed', () => {
     const sandbox = new Sandbox(config);
     const originalJoin = Array.prototype.join;
     try {
-      sandbox.evalWithArgs(`() => { Array.prototype.join = () => 'pwned'; }`, []);
+      expect(() => sandbox.evalWithArgs(`() => { Array.prototype.join = () => 'pwned'; }`, [])).toThrow(
+        'Sandbox error: "Access to "prototype" is blocked"',
+      );
+      expect(Array.prototype.join).toBe(originalJoin);
     } finally {
       Array.prototype.join = originalJoin;
     }
@@ -917,6 +920,104 @@ describe('Sandbox', () => {
       const first = sandbox.eval('() => 1');
       const second = sandbox.eval('() => 1');
       expect(second).toBe(first);
+    });
+
+    it('should also block the constructor escape under isolated-vm', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(() => sandbox.eval('[].constructor.constructor("return 1")()')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should still allow legitimate dynamic indexing under isolated-vm', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.evalWithArgs('(arr, i) => arr[i]', [[10, 20, 30], 1])).toBe(20);
+    });
+  });
+
+  // Regression coverage: a controlled low-code field (draftDeleteCondition, filter,
+  // etc.) reached the real Function constructor and the host realm via the constructor/prototype
+  // chain, which shadowed `undefined` globals did not stop. Access to constructor/prototype/__proto__
+  // is now blocked at compile time, and dynamic property keys are guarded at runtime, while ordinary
+  // dynamic indexing keeps working.
+  describe('constructor / prototype escape hardening', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should block the reported RCE payload reaching process via [].constructor.constructor', () => {
+      expect(() => sandbox.evalWithArgs('(...a) => [].constructor.constructor("return process")()', [])).toThrow(
+        'Sandbox error: "Access to "constructor" is blocked"',
+      );
+    });
+
+    it('should block dot access to constructor', () => {
+      expect(() => sandbox.eval('({}).constructor')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block computed string-literal access to constructor', () => {
+      expect(() => sandbox.eval('({})["constructor"]')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block computed template-literal access to constructor', () => {
+      expect(() => sandbox.eval('({})[`constructor`]')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block string-concatenation evasion for constructor', () => {
+      expect(() => sandbox.eval('({})["con" + "structor"]')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block dot and computed access to prototype', () => {
+      expect(() => sandbox.eval('Array.prototype')).toThrow('Access to "prototype" is blocked');
+      expect(() => sandbox.eval('Array["prototype"]')).toThrow('Access to "prototype" is blocked');
+    });
+
+    it('should block dot and computed access to __proto__', () => {
+      expect(() => sandbox.eval('({}).__proto__')).toThrow('Access to "__proto__" is blocked');
+      expect(() => sandbox.eval('({})["__proto__"]')).toThrow('Access to "__proto__" is blocked');
+    });
+
+    it('should block the __proto__ setter shorthand in object literals', () => {
+      expect(() => sandbox.eval('({ __proto__: [] })')).toThrow('Access to "__proto__" is blocked');
+    });
+
+    it('should block a dynamic key that resolves to constructor at runtime', () => {
+      expect(() => sandbox.evalWithArgs('(k) => ({})[k]', ['constructor'])).toThrow('Sandbox error: "Access to "constructor" is blocked"');
+    });
+
+    it('should block a toString-coerced key evasion (TOCTOU-safe)', () => {
+      const evil = { toString: () => 'constructor' };
+      expect(() => sandbox.evalWithArgs('(o) => ({})[o]', [evil])).toThrow('Sandbox error: "Access to "constructor" is blocked"');
+    });
+
+    it('should reject low-code that references the reserved key-guard identifier', () => {
+      expect(() => sandbox.eval('(__sbKey) => __sbKey')).toThrow('reserved');
+      expect(() => sandbox.eval('() => { var __sbKey = 1; return __sbKey; }')).toThrow('reserved');
+    });
+
+    it('should still allow dynamic array and object indexing', () => {
+      expect(sandbox.evalWithArgs('(arr, i) => arr[i]', [[10, 20, 30], 2])).toBe(30);
+      expect(sandbox.evalWithArgs('(obj, k) => obj[k]', [{ name: 'liquio' }, 'name'])).toBe('liquio');
+    });
+
+    it('should still allow numeric-literal indexing', () => {
+      expect(sandbox.eval('[9, 8, 7][0]')).toBe(9);
+    });
+
+    it('should preserve `this` binding for a method called via a dynamic key', () => {
+      expect(sandbox.evalWithArgs('(s, m) => s[m]()', ['AB', 'toLowerCase'])).toBe('ab');
+    });
+
+    it('should allow assignment through a dynamic key', () => {
+      expect(sandbox.evalWithArgs('(o, k) => { o[k] = 5; return o.a; }', [{}, 'a'])).toBe(5);
+    });
+
+    it('should allow symbol keys such as Symbol.iterator', () => {
+      expect(sandbox.evalWithArgs('(arr) => (typeof arr[Symbol.iterator] === "function")', [[1, 2]])).toBe(true);
+    });
+
+    it('should allow nested dynamic keys', () => {
+      expect(sandbox.evalWithArgs('(o, a, b) => o[a][b]', [{ x: { y: 42 } }, 'x', 'y'])).toBe(42);
     });
   });
 });

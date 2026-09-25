@@ -7,118 +7,25 @@ import acorn from 'acorn';
 import { literal } from 'sequelize';
 import { LRUCache } from 'lru-cache';
 
-import { getTraceMeta } from './async_local_storage';
+import { getTraceMeta } from '../async_local_storage';
+import { EvalOptions, SandboxConfig, SandboxIsolationLevel, SandboxLog, SandboxLogLevel } from './interfaces';
+import {
+  base64Decode,
+  base64Encode,
+  getMd5Hash,
+  getSha256Hash,
+  getSha512Hash,
+  isAsyncFunctionValue,
+  isErrorLike,
+  randomUUID,
+  toBase64,
+} from './helpers';
+import { compileInIsolatedVm, guardCode, guardPropertyKey, KEY_GUARD_NAME, minifyCode, transformFunctionToAsync } from './compile';
 
-const { randomUUID } = crypto;
+export * from './interfaces';
 
 const DEFAULT_GLOBAL_FUNCTIONS_OBJECT = '$';
 const DEFAULT_LRU_MAX = 1000; // 1000 items
-
-/** Marks a host wrapper function (built by `compileInIsolatedVm` for async code) as
- * promise-returning, so nesting it as a global into another isolate — as happens when a
- * compiled workflow template function is exposed under `$.workflow` — bridges it correctly
- * even though the wrapper itself isn't declared `async`. */
-const ASYNC_BRIDGE_MARKER = Symbol('isolatedVmAsyncBridge');
-
-/** A host wrapper function produced by `compileInIsolatedVm` for async code, tagged with
- * `ASYNC_BRIDGE_MARKER` so it can be recognized as promise-returning when nested as a global
- * into another isolate. */
-interface AsyncBridgeFunction {
-  (...args: unknown[]): Promise<unknown>;
-  [ASYNC_BRIDGE_MARKER]?: true;
-}
-
-/**
- * Whether a function value is (or behaves like) an `AsyncFunction`. TypeScript targets at or
- * below ES2016 (this repo builds at ES6) downlevel `async`/`await` into a plain function
- * wrapping a generator via the `__awaiter` helper, which loses the native `AsyncFunction`
- * constructor — so a TypeScript-authored async global doesn't pass a bare `constructor.name`
- * check. Detect that shape from its source text as a fallback, alongside `ASYNC_BRIDGE_MARKER`.
- * @param {unknown} value Value to check.
- * @returns {boolean}
- */
-function isAsyncFunctionValue(value: unknown): boolean {
-  if (typeof value !== 'function') return false;
-  if (value.constructor?.name === 'AsyncFunction') return true;
-  if ((value as AsyncBridgeFunction)[ASYNC_BRIDGE_MARKER] === true) return true;
-  return /\b__awaiter\(/.test(Function.prototype.toString.call(value));
-}
-
-/** Structural shape of a thrown value that looks like an `Error` (has a string `.message`,
- * and optionally a parser-style `.loc`), without requiring `instanceof Error` — a real `Error`
- * thrown inside an `isolated-vm` isolate crosses back as an object of this shape but belongs to
- * a different V8 realm, so `instanceof` against the host's own `Error` constructor fails.
- * @param {unknown} error Value to check.
- * @returns {boolean}
- */
-function isErrorLike(error: unknown): error is { message: string; loc?: { line: number; column: number } } {
-  return typeof error === 'object' && error !== null && typeof (error as { message?: unknown }).message === 'string';
-}
-
-/** Sandbox globals that can't be safely bridged into an `isolated-vm` isolate: they are rich
- * library namespaces (native bindings, or objects whose methods return further class instances
- * that lose their prototype once copied across the isolation boundary), rather than plain
- * functions operating on cloneable data. They remain available under the default `function`
- * isolation level. */
-const ISOLATED_VM_UNSUPPORTED_GLOBALS = new Set(['_', 'iconv', 'moment', 'crypto']);
-
-/**
- * How evaluated code is isolated from the host process.
- */
-export enum SandboxIsolationLevel {
-  /** Compiled with `new Function(...)`. Fast, and gives every default global (including rich
-   * libraries like `_`/`moment`) full fidelity, but code runs in the same V8 realm as the host
-   * — it can reach and mutate the host's global object. This is the default. */
-  Function = 'function',
-  /** Compiled and run inside a real V8 isolate (via `SandboxContext`). Code cannot touch the
-   * host realm at all, but only plain functions and JSON-safe data can cross the isolation
-   * boundary, so `_`, `iconv`, `moment` and `crypto` are not available. */
-  IsolatedVm = 'isolated-vm',
-}
-
-/** Log levels used by `Sandbox`'s own diagnostic `save()` calls. */
-export type SandboxLogLevel = 'info' | 'warn' | 'error' | 'debug';
-
-/**
- * Minimal structural shape for the log object each component exposes on `global.log`.
- * Consumers may instead pass a `getLog` function in the sandbox config to avoid
- * depending on a process-wide global.
- */
-export interface SandboxLog {
-  save(event: string, data: Record<string, unknown>, level?: SandboxLogLevel): void;
-}
-
-export interface SandboxConfig {
-  /** Name of the object that exposes workflow template global functions inside evaluated code. Default: '$'. */
-  globalFunctionsObject?: string;
-  /** Max number of compiled functions to keep in the eval cache. Default: 1000. */
-  lru_max?: number;
-  /** Log every eval/evalWithArgs call (in addition to warnings/errors, which are always logged). */
-  logging?: boolean;
-  /** Returns the logger to use. Defaults to reading `global.log`. */
-  getLog?: () => SandboxLog;
-  /** How evaluated code is isolated from the host process. Default: `SandboxIsolationLevel.Function`. */
-  isolationLevel?: SandboxIsolationLevel;
-  [key: string]: unknown;
-}
-
-export interface EvalOptions {
-  /** Extra globals to expose to the evaluated code, merged over the sandbox defaults. */
-  global?: Record<string, unknown>;
-  /** Evaluate code as an async function, awaiting any async globals it calls. */
-  isAsync?: boolean;
-  /** Throw an error if code is undefined. */
-  throwOnUndefined?: boolean;
-  /** Check for arrow functions; return the raw code string if it isn't one. */
-  checkArrow?: boolean;
-  /** Workflow template ID whose global functions should be exposed as `$.workflow`. */
-  workflowTemplateId?: string | number;
-  /** Default value to return if code is empty/undefined. */
-  defaultValue?: unknown;
-  /** Meta data for logging. */
-  meta?: Record<string, unknown>;
-  [key: string]: unknown;
-}
 
 /**
  * Sandbox for evaluating user-provided (low-code) JavaScript snippets outside of a full
@@ -175,6 +82,9 @@ export class Sandbox {
       base64Decode,
       base64Encode,
       toBase64,
+      // Runtime guard injected around dynamic property keys by `guardCode`; low-code may not
+      // reference it directly (enforced at compile time).
+      [KEY_GUARD_NAME]: guardPropertyKey,
       global: {},
       // Shadow host globals that evaluated code must not reach (they would otherwise resolve to
       // the host realm under `Function` isolation). `console` is re-injected per eval, routed to the log.
@@ -319,10 +229,7 @@ export class Sandbox {
    * @returns {string} - Minified code without comments.
    */
   static minifyCode(code: string): string {
-    return code
-      .replace(/^\s*\/\/.*$/gm, '') // Remove single-line comments starting from the line beginning
-      .replace(/^\s*\/\*[\s\S]*?\*\//gm, '') // Remove multi-line comments starting from the line beginning
-      .trim();
+    return minifyCode(code);
   }
 
   /**
@@ -358,9 +265,6 @@ export class Sandbox {
     const globalContext = { ...this.defaultGlobals, ...options.global };
 
     let transformedCode = Sandbox.minifyCode(code);
-    if (/\.prototype\b/.test(transformedCode)) {
-      this.log.save('sandbox-alert', { ...meta, code, workflowTemplateId, message: 'Access to .prototype detected' }, 'warn');
-    }
     if (options.isAsync) {
       const asyncFunctions = Object.entries(globalContext)
         .filter(([, value]) => isAsyncFunctionValue(value))
@@ -369,77 +273,19 @@ export class Sandbox {
       transformedCode = transformFunctionToAsync(transformedCode, asyncFunctions);
     }
 
+    // Block escapes through the constructor/prototype chain and guard dynamic property keys.
+    transformedCode = guardCode(transformedCode, (name, guardedCode) => {
+      this.log.save('sandbox-alert', { ...meta, workflowTemplateId, code: guardedCode, message: `Access to ${name} detected` }, 'warn');
+    });
+
     // Compile the code under the configured isolation level.
     const fn =
       this.config.isolationLevel === SandboxIsolationLevel.IsolatedVm
-        ? this.compileInIsolatedVm(transformedCode, globalContext, !!options.isAsync)
+        ? compileInIsolatedVm(this.createContext(), transformedCode, globalContext, !!options.isAsync)
         : new Function(...Object.keys(globalContext), `return ${transformedCode}`)(...Object.values(globalContext));
 
     this.cache.set(hash, fn);
     return fn;
-  }
-
-  /**
-   * Compile code inside a real `isolated-vm` context so it cannot reach the host's global
-   * object or Node built-ins. Only plain functions and JSON-safe data can cross the isolation
-   * boundary: functions are bridged as callables backed by an `isolated-vm` Reference (invoked
-   * synchronously via `applySync`, or asynchronously via `apply` with `{ result: { promise:
-   * true } }` for `AsyncFunction`s), arguments/return values are copied by value, and rich
-   * library namespaces in `ISOLATED_VM_UNSUPPORTED_GLOBALS` are omitted entirely.
-   * @param {string} code Minified (and, if async, already transformed) code to execute.
-   * @param {object} globalContext Globals to expose to the evaluated code.
-   * @param {boolean} isAsync Whether the top-level code is an async function.
-   * @returns {(...args: any[]) => any} Callable compiled function.
-   */
-  private compileInIsolatedVm(code: string, globalContext: Record<string, unknown>, isAsync: boolean): (...args: any[]) => any {
-    const context = this.createContext();
-    const refs: { refName: string; value: unknown }[] = [];
-
-    const buildExpr = (value: unknown, seen: WeakSet<object>): string => {
-      if (typeof value === 'function') {
-        const refName = `__ref_${refs.length}`;
-        const isAsyncFn = isAsyncFunctionValue(value);
-        refs.push({ refName, value });
-        const applyExpr = isAsyncFn
-          ? `${refName}.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } })`
-          : `${refName}.applySync(undefined, args, { arguments: { copy: true }, result: { copy: true } })`;
-        return `function() { var args = Array.prototype.slice.call(arguments); return ${applyExpr}; }`;
-      }
-
-      if (value !== null && typeof value === 'object') {
-        // Guard against cycles in caller-supplied globals (default globals are cycle-free).
-        if (seen.has(value)) return 'undefined';
-        seen.add(value);
-        if (Array.isArray(value)) {
-          return `[${value.map((v) => buildExpr(v, seen)).join(', ')}]`;
-        }
-        const entries = Object.entries(value).map(([key, v]) => `${JSON.stringify(key)}: ${buildExpr(v, seen)}`);
-        return `{${entries.join(', ')}}`;
-      }
-
-      return JSON.stringify(value) ?? 'undefined';
-    };
-
-    const assignments = Object.entries(globalContext)
-      .filter(([name]) => !ISOLATED_VM_UNSUPPORTED_GLOBALS.has(name))
-      .map(([name, value]) => `var ${name} = ${buildExpr(value, new WeakSet())};`)
-      .join('\n');
-
-    for (const { refName, value } of refs) {
-      context.jail.setSync(refName, new vm.Reference(value));
-    }
-
-    const wrappedCode = `(function() {\n${assignments}\nreturn ${code};\n})()`;
-
-    if (isAsync) {
-      const ref = context.context.evalSync(wrappedCode, { reference: true });
-      const wrapped: AsyncBridgeFunction = (...args) =>
-        ref.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } });
-      wrapped[ASYNC_BRIDGE_MARKER] = true;
-      return wrapped;
-    }
-
-    return context.context.evalSync(wrappedCode);
   }
 
   /**
@@ -596,94 +442,4 @@ export class SandboxContext {
   eval(code: string): any {
     return this.context.evalSync(code);
   }
-}
-
-/**
- * Transform a function's source to `async`, awaiting calls to any of the given async
- * globals so a caller can pass a synchronous-looking arrow function that calls async
- * helpers without having to write `async`/`await` itself.
- * @param {string} functionString Function source code.
- * @param {string[]} allowedAsyncFunctions Names of async globals referenced by the function.
- * @returns {string} Transformed function source.
- */
-function transformFunctionToAsync(functionString: string, allowedAsyncFunctions: string[] = []): string {
-  const isFunctionStringContainsAsyncFunction = allowedAsyncFunctions.some(
-    (v) => functionString.includes(v) && !functionString.includes(`await ${v}`),
-  );
-
-  // Return as is if async function not used.
-  if (!isFunctionStringContainsAsyncFunction) {
-    return functionString;
-  }
-
-  // Transform to async.
-  let asyncFunctionString = functionString;
-  if (!asyncFunctionString.startsWith('async')) {
-    asyncFunctionString = `async ${asyncFunctionString}`;
-  }
-  for (const asyncFunctionInside of allowedAsyncFunctions) {
-    asyncFunctionString = asyncFunctionString.replace(new RegExp(`(?<!\\.)\\b${asyncFunctionInside}\\b`, 'g'), `await ${asyncFunctionInside}`);
-  }
-
-  return asyncFunctionString;
-}
-
-/**
- * Get md5 hash.
- * @param {string} data Data.
- * @returns {string}
- */
-function getMd5Hash(data: string): string {
-  return crypto.createHash('md5').update(data).digest('hex');
-}
-
-/**
- * Get sha256 hash.
- * @param {string} data Data.
- * @returns {string}
- */
-function getSha256Hash(data: string): string {
-  return crypto.createHash('sha256').update(data).digest('hex');
-}
-
-/**
- * Get sha512 hash.
- * @param {string} data Data.
- * @param {object} [options] Options.
- * @param {string} [options.hmac] HMAC secret.
- * @returns {string}
- */
-function getSha512Hash(data: string, options?: { hmac?: string }): string {
-  if (options?.hmac) {
-    return crypto.createHmac('sha512', options.hmac).update(data).digest('hex');
-  }
-  return crypto.createHash('sha512').update(data).digest('hex');
-}
-
-/**
- * Base64 decode.
- * @param {string} data Base64 string.
- * @returns {string} RAW string.
- */
-function base64Decode(data: string): string {
-  return Buffer.from(data, 'base64').toString('utf8');
-}
-
-/**
- * Base64 encode.
- * @param {string} rawString RAW string.
- * @param {BufferEncoding} [rawStringEncoding] RAW string encoding. Default value: `utf8`.
- * @returns {string} Base64 string.
- */
-function base64Encode(rawString: string = '', rawStringEncoding: BufferEncoding = 'utf8'): string {
-  return Buffer.from(rawString, rawStringEncoding).toString('base64');
-}
-
-/**
- * Convert data to base64.
- * @param {string} data Data.
- * @returns {string} Base64 string.
- */
-function toBase64(data: string): string {
-  return Buffer.from(data).toString('base64');
 }
