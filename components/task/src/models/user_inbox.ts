@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 import _ from 'lodash';
+
 import { Model } from './model';
 import { UserInboxEntity } from '../entities/user_inbox';
 

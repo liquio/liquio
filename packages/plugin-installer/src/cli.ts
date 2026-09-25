@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+
 import Multiconf from 'multiconf';
 import { ConsoleLogProvider, Log } from '@liquio/back-core';
+
 import { installPlugins } from './install';
 
 const configDir = process.env.CONFIG_PATH || '/var/www/config';

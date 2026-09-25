@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { DictionaryModel as Dictionary } from './dictionary';
 
 export class WorkflowStatusDictionaryModel extends Dictionary {

@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { CustomInterfaceEntity } from '../entities/custom_interface';
 

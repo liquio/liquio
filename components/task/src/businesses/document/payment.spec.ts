@@ -1,5 +1,6 @@
-import { DocumentBusiness } from './index';
 import { Sandbox } from '@liquio/back-core';
+
+import { DocumentBusiness } from './index';
 
 // Characterization tests for the 7 payment-orchestration methods on DocumentBusiness.
 // PaymentService is mocked out (instance property override, matching the existing

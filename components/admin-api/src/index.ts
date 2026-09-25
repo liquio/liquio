@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 
 import Multiconf from 'multiconf';
+import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 
 import { Db } from './lib/db';
 import { RedisClient } from './lib/redis_client';
-import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
 import { Models } from './models';

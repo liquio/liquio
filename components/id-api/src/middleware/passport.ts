@@ -1,9 +1,9 @@
 import axios from 'axios';
 import passport from 'passport';
 import OAuth2Strategy, { VerifyCallback } from 'passport-oauth2';
+import { Log } from '@liquio/back-core';
 
 import { calculateUserCode } from '../lib/calculate_user_code';
-import { Log } from '@liquio/back-core';
 import { Models } from '../models';
 import { Services } from '../services';
 import { Express } from '../types';

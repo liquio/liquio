@@ -1,5 +1,6 @@
-import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 import crypto from 'crypto';
+
+import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 
 /**
  * Custom OAuth2Strategy that supports PKCE

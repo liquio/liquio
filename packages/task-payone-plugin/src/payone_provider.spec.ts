@@ -1,3 +1,4 @@
+// eslint-disable-next-line import-x/order -- the onlinepayments-sdk-nodejs import must stay below jest.mock, whose factory reads initMock.
 import { PluginContext } from "@liquio/plugin-sdk";
 
 const createCommerceCaseRequestMock = jest.fn();

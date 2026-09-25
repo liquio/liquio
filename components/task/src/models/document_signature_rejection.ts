@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { DocumentSignatureRejectionEntity, DocumentSignatureRejectionEntityOptions } from '../entities/document_signature_rejection';
 

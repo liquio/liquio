@@ -1,4 +1,5 @@
 import { query } from 'express-validator';
+
 import Validator from './validator';
 
 /**

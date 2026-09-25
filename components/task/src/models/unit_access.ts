@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { UnitAccessEntity } from '../entities/unit_access';
 import { RedisClient } from '../lib/redis_client';

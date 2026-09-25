@@ -1,4 +1,5 @@
 import { check } from 'express-validator';
+
 import { Validator } from './validator';
 
 /**

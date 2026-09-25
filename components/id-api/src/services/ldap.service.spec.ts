@@ -1,4 +1,5 @@
 import * as ldapts from 'ldapts';
+
 import { LdapService, ACCOUNT_CONTROL_FLAGS } from './ldap.service';
 import { Config } from '../config';
 import { Models } from '../models';

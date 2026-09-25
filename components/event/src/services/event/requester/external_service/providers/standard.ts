@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import stream from 'node:stream';
-import axios from 'axios';
 import { randomUUID } from 'node:crypto';
+
+import axios from 'axios';
 import _ from 'lodash';
 
 import { Rmq } from '../../../../../lib/rmq';

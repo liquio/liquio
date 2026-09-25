@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
+
 import { AuthController } from '../controllers/auth';
 
 const DEFAULT_PORT = 5000;

@@ -2,8 +2,9 @@
  * Make zip file
  */
 
-const archiver = require('archiver');
 import { PassThrough } from 'node:stream';
+
+const archiver = require('archiver');
 
 /**
  * Make stream as Buffer

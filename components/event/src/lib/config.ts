@@ -1,5 +1,6 @@
-import Multiconf from 'multiconf';
 import fs from 'node:fs';
+
+import Multiconf from 'multiconf';
 
 let config: any = {};
 

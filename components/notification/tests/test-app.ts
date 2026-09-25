@@ -1,17 +1,18 @@
 // @ts-nocheck
-import supertest from 'supertest';
-import * as portfinder from 'portfinder';
-import * as pg from 'pg';
-import nock from 'nock';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
+
+import supertest from 'supertest';
+import * as portfinder from 'portfinder';
+import * as pg from 'pg';
+import nock from 'nock';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
-
 import { ConsoleLogProvider, Log } from '@liquio/back-core';
+
 import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
 
 const debug = createDebug;

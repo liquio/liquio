@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { ExternalServiceStatusEntity } from '../entities/external_service_status';
 

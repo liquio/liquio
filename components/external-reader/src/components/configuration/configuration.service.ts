@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
 import { existsSync } from 'fs';
+
+import { Injectable } from '@nestjs/common';
 import Multiconf from 'multiconf';
 
 import { Configuration } from '@components/configuration/configuration.types';

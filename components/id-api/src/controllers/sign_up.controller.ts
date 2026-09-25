@@ -1,6 +1,7 @@
+import { promisify } from 'util';
+
 import { matchedData, query } from 'express-validator';
 import Sequelize from 'sequelize';
-import { promisify } from 'util';
 
 import { validateEmail } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';

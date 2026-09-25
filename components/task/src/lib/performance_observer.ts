@@ -1,4 +1,5 @@
 import { performance, PerformanceObserver } from 'node:perf_hooks';
+
 import { getTraceId } from '@liquio/back-core';
 
 // Init new observer instance.

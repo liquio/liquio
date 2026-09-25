@@ -1,4 +1,5 @@
 import type { Domain } from "onlinepayments-sdk-nodejs";
+
 import { PayoneCheckoutStatus, PayonePaymentStatusCategory } from "./types";
 
 interface PaymentState {

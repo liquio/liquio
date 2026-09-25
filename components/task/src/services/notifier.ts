@@ -1,6 +1,7 @@
+import { getTraceId } from '@liquio/back-core';
+
 import { HttpRequest } from '../lib/http_request';
 import { DownloadToken } from '../lib/download_token';
-import { getTraceId } from '@liquio/back-core';
 
 // Constants.
 const ROUTES = {

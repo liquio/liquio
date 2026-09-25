@@ -1,7 +1,7 @@
 import PropByPath from 'prop-by-path';
+import { Sandbox } from '@liquio/back-core';
 
 import { DocumentHandler } from '../../../lib/document_handler';
-import { Sandbox } from '@liquio/back-core';
 
 // Constants.
 const ERROR_MESSAGE_METHOD_NOT_DEFINED = 'Method should be overridden in child class.';

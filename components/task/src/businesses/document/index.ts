@@ -1,7 +1,6 @@
 import flattening from 'flattening';
 import _ from 'lodash';
 import PropByPath from 'prop-by-path';
-
 import { Sandbox } from '@liquio/back-core';
 
 import {

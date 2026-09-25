@@ -1,8 +1,9 @@
 import crypto from 'node:crypto';
+
 import axios from 'axios';
+import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from './http_request';
-import { getTraceId } from '@liquio/back-core';
 import { Helpers } from './helpers';
 import { getConfig } from './config';
 

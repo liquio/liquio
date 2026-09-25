@@ -5,7 +5,6 @@ import { Config } from '@lib/config';
 import { log } from '@lib/log';
 import { PdfGenerator } from '@modules/pdf/interfaces/pdf-generator.interface';
 import { PdfGenerationOptions } from '@modules/pdf/pdf.types';
-
 import { Cluster } from './cluster/cluster';
 import { PlaywrightOptions } from './playwright.types';
 

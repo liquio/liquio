@@ -1,10 +1,11 @@
 // @ts-nocheck
-import pg from 'pg';
-import nock from 'nock';
-import debug from 'debug';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+
+import pg from 'pg';
+import nock from 'nock';
+import debug from 'debug';
 import { merge } from 'lodash';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';

@@ -1,7 +1,7 @@
 import { matchedData, query } from 'express-validator';
 import { FindOptions } from 'sequelize';
-
 import { Log } from '@liquio/back-core';
+
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';

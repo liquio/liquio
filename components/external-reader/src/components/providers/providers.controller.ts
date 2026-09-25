@@ -3,7 +3,6 @@ import { ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 
 import { LoggerService } from '@components/observability/logger.service';
-
 import { ProviderMethodArgs } from './base.provider';
 import { ProvidersService } from './providers.service';
 

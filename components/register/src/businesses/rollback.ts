@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto';
+
 import { Op } from 'sequelize';
 
 import Business from './business';

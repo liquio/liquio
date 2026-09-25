@@ -1,4 +1,3 @@
-import { resolvePaymentStep, resolveReturnPath } from "./return_path";
 import {
   PluginContext,
   TaskPaymentProvider,
@@ -6,8 +5,9 @@ import {
   TaskPaymentTransactionRecord,
 } from "@liquio/plugin-sdk";
 import { init } from "onlinepayments-sdk-nodejs";
-import { paymentState } from "./payment_state";
 
+import { resolvePaymentStep, resolveReturnPath } from "./return_path";
+import { paymentState } from "./payment_state";
 import {
   PayoneCalculatedPaymentData,
   PayoneOptions,

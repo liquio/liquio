@@ -1,6 +1,7 @@
 import nock from 'nock';
-import { HttpRequest } from '../src/lib/http_request';
 import { getTraceId } from '@liquio/back-core';
+
+import { HttpRequest } from '../src/lib/http_request';
 
 // Mock the async_local_storage module
 jest.mock('@liquio/back-core', () => ({

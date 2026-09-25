@@ -1,5 +1,6 @@
 import nock from 'nock';
 import bodyParser from 'body-parser';
+
 import { HttpRequest } from './http_request';
 
 // Mock body-parser

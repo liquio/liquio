@@ -1,9 +1,9 @@
 // Import.
 import axios from 'axios';
 import FormData from 'form-data';
+import { getTraceId } from '@liquio/back-core';
 
 import { getLog } from './context';
-import { getTraceId } from '@liquio/back-core';
 import { prepareAxiosErrorToLog } from '../lib/helpers';
 
 // Constants.

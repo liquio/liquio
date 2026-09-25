@@ -1,4 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
+
 import * as amqp from 'amqplib/callback_api';
 
 import { MessageQueue } from './index';

@@ -6,7 +6,6 @@ import moment from 'moment';
 
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { Configuration } from '@components/configuration/configuration.types';
-
 import { Challenge } from './captcha.dto';
 
 @Injectable()

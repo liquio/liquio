@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 
 import { LogLevel } from '@common/types/log.types';
-
 import { log } from './log';
 
 const PACKAGE_JSON_FILE_NAME = 'package.json';

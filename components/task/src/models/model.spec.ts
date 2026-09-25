@@ -1,4 +1,5 @@
 import { strict as assert } from 'assert';
+
 import { Model } from './model';
 
 describe('Model', () => {

@@ -1,7 +1,8 @@
-import axios from 'axios';
 import * as crypto from 'node:crypto';
 
+import axios from 'axios';
 import { getTraceId } from '@liquio/back-core';
+
 import { EdsProvider } from './eds_provider';
 
 // Constants.

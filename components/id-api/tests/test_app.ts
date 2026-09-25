@@ -1,10 +1,11 @@
-import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
-import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import crypto from 'crypto';
+
+import { GenericContainer, StartedTestContainer } from 'testcontainers';
+import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
+import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import debug from 'debug';
 import nock from 'nock';
 import pg from 'pg';

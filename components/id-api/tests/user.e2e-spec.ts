@@ -1,5 +1,6 @@
-import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+
+import bcrypt from 'bcrypt';
 
 import { UserAttributes } from '../src/models';
 import { TestApp, config } from './test_app';

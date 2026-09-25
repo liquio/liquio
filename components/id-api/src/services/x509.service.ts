@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
+import { getTraceId } from '@liquio/back-core';
 
 import { Helpers } from '../lib/helpers';
-import { getTraceId } from '@liquio/back-core';
 import { BaseService } from './base_service';
 import { typeOf } from '../lib/type_of';
 

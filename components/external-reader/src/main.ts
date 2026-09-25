@@ -1,8 +1,8 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { description, name, version } from 'package.json';
 
+import { description, name, version } from 'package.json';
 import { GlobalExceptionFilter } from '@common/filters/global-exception.filter';
 import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
 import { ConfigurationService } from '@components/configuration/configuration.service';
@@ -11,7 +11,6 @@ import { ErrorsInterceptor } from '@components/observability/errors.interceptor'
 import { LoggerService } from '@components/observability/logger.service';
 import { LoggingInterceptor } from '@components/observability/logging.interceptor';
 import { ObservabilityModule } from '@components/observability/observability.module';
-
 import { AppModule } from './app.module';
 
 function useSwagger(app: INestApplication) {

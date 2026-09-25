@@ -1,7 +1,6 @@
 import { Op } from 'sequelize';
 
 import { CliHandler } from './handler';
-
 import { FileModel } from '../../../models/file';
 import { P7sSignatureModel } from '../../../models/p7s_signature';
 

@@ -1,11 +1,11 @@
 import _ from 'lodash';
 import * as transliteration from 'transliteration';
+import { matchedData } from 'express-validator';
+import { getTraceId } from '@liquio/back-core';
 
 import { Entity } from '../entities/entity';
-import { matchedData } from 'express-validator';
 import { File } from '../types/file';
 import { Stream } from '../lib/stream';
-import { getTraceId } from '@liquio/back-core';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;

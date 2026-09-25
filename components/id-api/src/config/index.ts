@@ -1,4 +1,5 @@
 import fs from 'fs';
+
 import Multiconf from 'multiconf';
 import { StrategyOptions } from 'passport-oauth2';
 import { Dialect } from 'sequelize';

@@ -1,5 +1,6 @@
-import { ERROR_OVERRIDE } from '../../../../../constants/error';
 import { Sandbox } from '@liquio/back-core';
+
+import { ERROR_OVERRIDE } from '../../../../../constants/error';
 
 /**
  * Email provider.

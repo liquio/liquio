@@ -1,4 +1,5 @@
 import axios from 'axios';
+
 import { getConfig } from './config';
 
 const DEFAULT_CONFIG = {

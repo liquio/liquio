@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import amqp from 'amqplib/callback_api';
-
 import { runInAsyncLocalStorage } from '@liquio/back-core';
 
 // Constants.

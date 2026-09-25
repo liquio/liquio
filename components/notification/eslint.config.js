@@ -1,11 +1,20 @@
 import tseslint from 'typescript-eslint';
 import prettierPlugin from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
+import importX from 'eslint-plugin-import-x';
+
+const importOrderRule = [
+  'error',
+  {
+    groups: ['builtin', 'external', ['internal', 'parent', 'sibling', 'index']],
+    'newlines-between': 'always',
+  },
+];
 
 export default [
   {
     files: ['**/*.ts', '**/*.js'],
-    ignores: ['tests/**', '**/*.spec.ts', '**/*.e2e-spec.ts'],
+    ignores: ['tests/**', '**/*.spec.ts', '**/*.spec.js', '**/*.e2e-spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -18,6 +27,7 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint.plugin,
       prettier: prettierPlugin,
+      'import-x': importX,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -28,10 +38,11 @@ export default [
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'import-x/order': importOrderRule,
     },
   },
   {
-    files: ['tests/**/*.ts', '**/*.spec.ts', '**/*.e2e-spec.ts'],
+    files: ['tests/**/*.ts', '**/*.spec.ts', '**/*.spec.js', '**/*.e2e-spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -43,6 +54,7 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint.plugin,
       prettier: prettierPlugin,
+      'import-x': importX,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -50,6 +62,7 @@ export default [
       'prettier/prettier': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'import-x/order': importOrderRule,
       '@typescript-eslint/no-require-imports': 'off',
     },
   },

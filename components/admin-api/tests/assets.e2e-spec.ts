@@ -1,9 +1,9 @@
 import nock from 'nock';
+import type { Response as SupertestResponse } from 'supertest';
 
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';
 import { AssetsBusiness } from '../src/businesses/assets';
-import type { Response as SupertestResponse } from 'supertest';
 
 describe('Assets Controller', () => {
   let app: TestApp;

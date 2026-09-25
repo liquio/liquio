@@ -1,6 +1,7 @@
-import Multiconf from 'multiconf';
 import fs from 'node:fs';
 import path from 'node:path';
+
+import Multiconf from 'multiconf';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || path.join(process.cwd(), '../config/notification');
 const SECRET_PATH = process.env.SECRET_PATH;

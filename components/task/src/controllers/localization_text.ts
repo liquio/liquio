@@ -1,4 +1,5 @@
 import { matchedData } from 'express-validator';
+
 import { Controller } from './controller';
 import { LocalizationTextBusiness as LocalizationTextBussiness } from '../businesses/localization_text';
 

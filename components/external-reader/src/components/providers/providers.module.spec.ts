@@ -7,7 +7,6 @@ import supertest from 'supertest';
 import { ConfigurationModule } from '@components/configuration/configuration.module';
 import { LoggerService } from '@components/observability/logger.service';
 import { ObservabilityModule } from '@components/observability/observability.module';
-
 import { ProvidersModule } from './providers.module';
 
 jest.mock('../configuration/configuration.service', () => ({

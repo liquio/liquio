@@ -17,6 +17,7 @@ jest.mock('redis', () => ({
 }));
 
 import { createClient } from 'redis';
+
 import { RedisClient, RedisClientConfig, RedisClientLog } from './redis_client';
 
 describe('RedisClient', () => {

@@ -1,5 +1,6 @@
-import { BaseService } from './base_service';
 import { Op } from 'sequelize';
+
+import { BaseService } from './base_service';
 
 const CLEANUP_MINUTES_INTERVAL = 10;
 

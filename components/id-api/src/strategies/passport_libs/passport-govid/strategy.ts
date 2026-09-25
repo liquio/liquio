@@ -2,9 +2,9 @@ import { fromBER, Sequence } from 'asn1js';
 import axios from 'axios';
 import { ContentInfo } from 'pkijs';
 import { Strategy } from 'passport-strategy';
+import { Log } from '@liquio/back-core';
 
 import { Config } from '../../../config';
-import { Log } from '@liquio/back-core';
 import { Request, StrategyVerify } from '../../../types';
 
 const NAMES_NA_LIST = ['n/a', 'n\\a'];

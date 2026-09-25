@@ -4,7 +4,6 @@ import set from 'lodash/set';
 import moment from 'moment-business-days';
 import validator from 'validator';
 import PropByPath from 'prop-by-path';
-
 import { Sandbox } from '@liquio/back-core';
 
 import { SignatureInfoEntity } from '../entities/signature_info';

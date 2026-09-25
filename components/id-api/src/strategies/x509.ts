@@ -1,5 +1,4 @@
 import { Strategy as PassportStrategy } from 'passport-strategy';
-
 import { Log } from '@liquio/back-core';
 
 import { Express, Request, Response } from '../types';

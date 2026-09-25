@@ -1,5 +1,4 @@
 import { TestApp } from './test-app';
-
 import { prepareFixtures, WORKFLOW_FIXTURES } from './fixtures';
 
 describe('External Services', () => {

@@ -1,6 +1,7 @@
+import { Sandbox } from '@liquio/back-core';
+
 import { ERROR_OVERRIDE } from '../../../../../constants/error';
 import { InvalidConfigError } from '../../../../../lib/errors';
-import { Sandbox } from '@liquio/back-core';
 
 /**
  * Provider.

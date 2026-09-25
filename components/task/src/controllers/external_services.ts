@@ -4,6 +4,7 @@
 /** @var {MessageQueue} global.messageQueue */
 
 import xml2js from 'xml2js';
+
 import { Controller } from './controller';
 import { DocumentModel } from '../models/document';
 import { DocumentAttachmentModel } from '../models/document_attachment';

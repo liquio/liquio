@@ -6,7 +6,6 @@ import { Browser, chromium, LaunchOptions, Page } from 'playwright';
 
 import { timeoutExecute } from '@common/utils';
 import { log } from '@lib/log';
-
 import { Job } from './job';
 
 // Constants.

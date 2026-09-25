@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+
 import { DataTypes, QueryTypes } from 'sequelize';
+
 import { Model } from './model';
 
 export interface PaymentCheckout {

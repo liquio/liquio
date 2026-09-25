@@ -1,10 +1,10 @@
 import PropByPath from 'prop-by-path';
 import qs from 'qs';
 import axios from 'axios';
+import { getTraceId } from '@liquio/back-core';
 
 import { Provider } from './provider';
 import { HttpRequest } from '../../../../../lib/http_request';
-import { getTraceId } from '@liquio/back-core';
 import { Helpers } from '../../../../../lib/helpers';
 const { prepareAxiosErrorToLog } = Helpers;
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../../../../../constants/common';

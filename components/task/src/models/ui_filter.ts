@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { UIFilterEntity } from '../entities/ui_filter';
 

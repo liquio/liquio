@@ -1,8 +1,9 @@
 import debugFactory from 'debug';
-const debug = debugFactory('test:log');
+import { Sandbox } from '@liquio/back-core';
 
 import { Provider } from './provider';
-import { Sandbox } from '@liquio/back-core';
+
+const debug = debugFactory('test:log');
 
 new Sandbox();
 

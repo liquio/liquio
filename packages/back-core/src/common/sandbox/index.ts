@@ -1,14 +1,15 @@
+import * as crypto from 'node:crypto';
+
 import vm from 'isolated-vm';
 import iconv from 'iconv-lite';
 import moment from 'moment';
-import { guardedLodash as _ } from './lodash';
-import { guardedObject } from './object';
-import * as crypto from 'node:crypto';
 import acorn from 'acorn';
 import { literal } from 'sequelize';
 import { LRUCache } from 'lru-cache';
 
 import { getTraceMeta } from '../async_local_storage';
+import { guardedLodash as _ } from './lodash';
+import { guardedObject } from './object';
 import { EvalOptions, SandboxConfig, SandboxIsolationLevel, SandboxLog, SandboxLogLevel } from './interfaces';
 import {
   base64Decode,

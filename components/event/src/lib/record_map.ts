@@ -1,11 +1,12 @@
 import crypto from 'node:crypto';
 
-const PropByPath = require('prop-by-path');
-const { randomUUID } = crypto;
+import { Sandbox } from '@liquio/back-core';
 
 import { PersistLink } from './persist_link';
 import { FileStorage } from './filestorage';
-import { Sandbox } from '@liquio/back-core';
+
+const PropByPath = require('prop-by-path');
+const { randomUUID } = crypto;
 
 // Constants.
 const RANDOM_PART_MIN = 100000000000;

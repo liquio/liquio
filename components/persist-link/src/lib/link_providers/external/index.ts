@@ -4,12 +4,12 @@ import handlebars from 'handlebars';
 import moment from 'moment';
 import pdf from 'html-pdf';
 import qrImage from 'qr-image';
+import { Sandbox } from '@liquio/back-core';
 
 import { getConfig, getLog } from '../../context';
 import FilestorageHandler from '../filestorage/filestorage_handler';
 import LinkProvider from '../link_provider';
 import RegisterProvider from './providers/register';
-import { Sandbox } from '@liquio/back-core';
 import TemplateModel from '../../../models/template';
 
 // Constants.

@@ -1,8 +1,9 @@
 import { randomBytes } from 'crypto';
-import { ConsoleLogger, Injectable, LogLevel, Scope } from '@nestjs/common';
 import { AsyncLocalStorage } from 'async_hooks';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+
+import { ConsoleLogger, Injectable, LogLevel, Scope } from '@nestjs/common';
 
 import { AsyncLocalStorageContext } from './observability.module';
 

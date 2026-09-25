@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+
 import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';

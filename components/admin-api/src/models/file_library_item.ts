@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+
 import Sequelize from 'sequelize';
 
 import { Model } from './model';

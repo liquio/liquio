@@ -1,13 +1,14 @@
 // @ts-nocheck
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { EventEmitter } from 'node:events';
+
 import supertest from 'supertest';
 import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import amqp from 'amqplib';
 import nock from 'nock';
-import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { EventEmitter } from 'node:events';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';

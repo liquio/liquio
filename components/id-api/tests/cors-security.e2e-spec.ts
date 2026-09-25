@@ -1,6 +1,7 @@
 /// <reference types="jest" />
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
+import { Request, Response, NextFunction } from 'express';
 
 /**
  * CORS Security Tests
@@ -9,8 +10,6 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
  *
  * OWASP A01:2021 - Broken Access Control
  */
-
-import { Request, Response, NextFunction } from 'express';
 
 // Mock CORS middleware from cors.ts
 const ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001').split(',').map((origin) => origin.trim());

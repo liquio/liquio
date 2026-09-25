@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { CustomLogTemplateEntity } from '../entities/custom_log_template';
 

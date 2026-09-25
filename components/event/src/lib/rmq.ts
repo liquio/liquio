@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
+
 import amqp from 'amqplib/callback_api';
 import axios from 'axios';
-import { randomUUID } from 'node:crypto';
 
 import { Helpers } from './helpers';
 

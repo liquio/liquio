@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { DocumentSignatureEntity, DocumentSignatureEntityOptions } from '../entities/document_signature';
 
