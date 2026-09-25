@@ -112,3 +112,196 @@ describe('task reducer', () => {
     expect(result.actual.t1.errorTaskSigners).toBe(2);
   });
 });
+
+describe('task reducer calcTriggers', () => {
+  const loadTask = (task: Record<string, unknown>) =>
+    reducer(undefined, { type: 'LOAD_TASK_SUCCESS', payload: task });
+
+  const updateValues = (state: ReturnType<typeof reducer>, payload: Record<string, unknown>) =>
+    reducer(state, {
+      type: 'UPDATE_TASK_DOCUMENT_VALUES',
+      payload: { schema: { allowNull: false }, info: {}, triggers: [], ...payload }
+    });
+
+  it('handles UPDATE_TASK_DOCUMENT_VALUES with updateOrigin and onlyThisValue', () => {
+    const initial = loadTask({
+      id: 1,
+      taskTemplateId: 'tpl-1',
+      activityLog: [],
+      document: { data: { section: { value: 1 } } }
+    });
+    const next = updateValues(initial, {
+      taskId: 1,
+      path: ['section', 'value'],
+      changes: 2,
+      documentTemplate: { actual: { 'tpl-1': { schema: true } } },
+      updateOrigin: true,
+      onlyThisValue: true
+    });
+    expect(next.actual[1].document!.data.section).toEqual({ value: 2 });
+    expect(next.origin[1].document!.data.section).toEqual({ value: 2 });
+  });
+
+  it('returns the same state when UPDATE_TASK_DOCUMENT_VALUES makes no effective change', () => {
+    const initial = loadTask({ id: 1, document: { data: { section: { value: 1 } } } });
+    const next = updateValues(initial, { taskId: 1, path: ['section', 'value'], changes: 1 });
+    expect(next).toBe(initial);
+  });
+
+  it('runs a trigger whose source is the changed path', () => {
+    const initial = loadTask({ id: 1, document: { data: { s: { a: 1 } } } });
+    const next = updateValues(initial, {
+      taskId: 1,
+      path: ['s', 'a'],
+      changes: 5,
+      triggers: [{ source: 's.a', target: 's.b', calculate: '(v) => v * 2' }]
+    });
+    expect(next.actual[1].document!.data.s).toEqual({ a: 5, b: 10 });
+  });
+
+  it('runs a trigger when a whole step containing a changed source is written', () => {
+    const initial = loadTask({ id: 1, document: { data: { s: { a: 1, t: 'old' } } } });
+    const next = updateValues(initial, {
+      taskId: 1,
+      path: ['s'],
+      changes: { a: 2, t: 'old' },
+      triggers: [{ source: 's.a', target: 's.t', calculate: '(v) => "a=" + v' }]
+    });
+    expect(next.actual[1].document!.data.s).toEqual({ a: 2, t: 'a=2' });
+  });
+
+  it('skips a trigger whose source did not change when a whole step is written (previousDocumentData)', () => {
+    const initial = loadTask({ id: 1, document: { data: { s: { a: 1, other: 'x', t: 'keep' } } } });
+    const next = updateValues(initial, {
+      taskId: 1,
+      path: ['s'],
+      changes: { a: 1, other: 'y', t: 'keep' },
+      triggers: [{ source: 's.a', target: 's.t', calculate: '(v) => "a=" + v' }]
+    });
+    expect(next.actual[1].document!.data.s).toEqual({ a: 1, other: 'y', t: 'keep' });
+  });
+
+  it('recomputes every array row when a whole array is written', () => {
+    const initial = loadTask({ id: 1, document: { data: { s: { rows: [] } } } });
+    const next = updateValues(initial, {
+      taskId: 1,
+      path: ['s', 'rows'],
+      changes: [{ a: 1 }, { a: 2 }],
+      // eslint-disable-next-line no-template-curly-in-string
+      triggers: [{ source: 's.rows.${index}.a', target: 's.rows.${index}.b', calculate: '(v) => v + 10' }]
+    });
+    expect(next.actual[1].document!.data.s).toEqual({ rows: [{ a: 1, b: 11 }, { a: 2, b: 12 }] });
+  });
+
+  it('does not mutate the previous actual document data', () => {
+    const initial = loadTask({ id: 1, document: { data: { s: { a: 1 } } } });
+    updateValues(initial, {
+      taskId: 1,
+      path: ['s', 'a'],
+      changes: 5,
+      triggers: [{ source: 's.a', target: 's.b', calculate: '(v) => v * 2' }]
+    });
+    expect(initial.actual[1].document!.data.s).toEqual({ a: 1 });
+  });
+
+  it('keeps an empty object set without allowNull', () => {
+    const initial = loadTask({ id: 1, document: { data: { s: { obj: { x: 1 }, keep: 1 } } } });
+    const next = updateValues(initial, { taskId: 1, path: ['s', 'obj'], changes: {} });
+    expect(next.actual[1].document!.data.s).toEqual({ obj: {}, keep: 1 });
+  });
+
+  it('keeps an empty array set without allowNull', () => {
+    const initial = loadTask({ id: 1, document: { data: { s: { list: [1], keep: 1 } } } });
+    const next = updateValues(initial, { taskId: 1, path: ['s', 'list'], changes: [] });
+    expect(next.actual[1].document!.data.s).toEqual({ list: [], keep: 1 });
+  });
+
+  it('still deletes the path when an empty string is set without allowNull', () => {
+    const initial = loadTask({ id: 1, document: { data: { s: { str: 'x', keep: 1 } } } });
+    const next = updateValues(initial, { taskId: 1, path: ['s', 'str'], changes: '' });
+    expect(next.actual[1].document!.data.s).toEqual({ keep: 1 });
+  });
+
+  it('handles APPLY_DOCUMENT_DIFFS and writes updated data', () => {
+    const initial = loadTask({ id: 1, document: { data: { root: { a: 1 } } } });
+    const next = reducer(initial, {
+      type: 'APPLY_DOCUMENT_DIFFS',
+      payload: {
+        taskId: 1,
+        diffs: [{ kind: 'E', path: ['a'], lhs: 1, rhs: 2 }],
+        path: ['root'],
+        options: { triggers: [], info: {} }
+      }
+    });
+    expect(next.actual[1].document!.data.root).toEqual({ a: 2 });
+  });
+
+  it('handles CHECK_DATA_EXTERNAL_READER_SUCCESS with a requestId as a no-op', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-1', requestId: 'req-1' }
+    });
+    expect(next).toBe(initial);
+  });
+
+  it('handles CHECK_DATA_EXTERNAL_READER_SUCCESS with a request requestId as a no-op', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-1', data: { s: { r: 1 } } },
+      request: { requestId: 'req-1' }
+    });
+    expect(next).toBe(initial);
+  });
+
+  it('writes the CHECK_DATA_EXTERNAL_READER_SUCCESS document to actual and leaves origin untouched', () => {
+    const initial = loadTask({
+      id: 1,
+      documentId: 'doc-1',
+      document: { id: 'doc-1', data: { s: { a: 1 } }, isFinal: false }
+    });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-1', data: { s: { a: 1, reader: 'r' } } }
+    });
+    expect(next.actual[1].document).toEqual({ id: 'doc-1', data: { s: { a: 1, reader: 'r' } }, isFinal: false });
+    expect(next.origin[1].document!.data).toEqual({ s: { a: 1 } });
+  });
+
+  it('accepts a CHECK_DATA_EXTERNAL_READER_SUCCESS payload wrapped in document', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { document: { documentId: 'doc-1', data: { r: 1 } } }
+    });
+    expect(next.actual[1].document!.data).toEqual({ r: 1 });
+  });
+
+  it('keeps the actual data when the CHECK_DATA_EXTERNAL_READER_SUCCESS payload has none', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: { a: 1 } } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-1', updatedAt: 'now' }
+    });
+    expect(next.actual[1].document).toEqual({ id: 'doc-1', data: { a: 1 }, updatedAt: 'now' });
+  });
+
+  it('ignores CHECK_DATA_EXTERNAL_READER_SUCCESS for an unknown document', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { id: 'doc-2', data: { a: 1 } }
+    });
+    expect(next).toBe(initial);
+  });
+
+  it('ignores CHECK_DATA_EXTERNAL_READER_SUCCESS without a document id', () => {
+    const initial = loadTask({ id: 1, documentId: 'doc-1', document: { id: 'doc-1', data: {} } });
+    const next = reducer(initial, {
+      type: 'CHECK_DATA_EXTERNAL_READER_SUCCESS',
+      payload: { data: { a: 1 } }
+    });
+    expect(next).toBe(initial);
+  });
+});

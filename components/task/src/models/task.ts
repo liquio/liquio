@@ -10,6 +10,7 @@ import { SequelizeDbError } from '../lib/errors';
 
 // Constants.
 const GET_ALL_BY_USER_ID_CACHE_TTL = 600; // 10 minutes.
+const GET_TRACE_META_CACHE_TTL = 3600; // 1 hour.
 
 /**
  * Task Model.
@@ -1696,6 +1697,40 @@ export class TaskModel extends Model {
       attributes,
     });
     return tasks.map(this.prepareEntity);
+  }
+
+  /**
+   * Get entity IDs related to the task for trace meta.
+   * @param {string} taskId Task ID.
+   * @returns {Promise<{taskId, workflowId, taskTemplateId, workflowTemplateId}>} Trace meta.
+   */
+  async getTraceMetaByTaskId(taskId) {
+    const {
+      data: [row],
+    } = await RedisClient.getOrSet(
+      RedisClient.createKey('task', 'getTraceMetaByDocumentId', taskId),
+      async () =>
+        this.db.query(
+          `
+            select
+              t.id as "taskId",
+              w.id as "workflowId",
+              t.task_template_id as "taskTemplateId",
+              w.workflow_template_id as "workflowTemplateId"
+            from tasks t
+            left join workflows w on w.id = t.workflow_id
+            where t.id = :taskId
+            limit 1
+          `,
+          {
+            replacements: { taskId },
+            type: Sequelize.QueryTypes.SELECT,
+          },
+        ),
+      GET_TRACE_META_CACHE_TTL,
+    );
+
+    return row || { taskId };
   }
 
   /**

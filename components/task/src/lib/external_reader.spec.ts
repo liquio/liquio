@@ -15,7 +15,7 @@ jest.mock('@liquio/back-core', () => ({
     externalReaderErrors: '',
   })),
   getTraceId: jest.fn(() => 'test-trace-id'),
-  Sandbox: jest.fn(),
+  Sandbox: { getInstance: jest.fn() },
 }));
 
 // Mock global objects
@@ -69,7 +69,7 @@ describe('ExternalReader', () => {
     mockSandbox = {
       evalWithArgs: jest.fn(),
     };
-    (Sandbox as any).mockImplementation(() => mockSandbox);
+    (Sandbox.getInstance as jest.Mock).mockReturnValue(mockSandbox);
 
     // Clear nock
     nock.cleanAll();

@@ -17,7 +17,7 @@ export class UserInboxBusiness extends Business {
     // Define singleton.
     if (!UserInboxBusiness.singleton) {
       super(config);
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       UserInboxBusiness.singleton = this;
     }
     return UserInboxBusiness.singleton;

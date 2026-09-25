@@ -9,6 +9,7 @@ import { ValidatorError } from './validator_error';
 import { Paths } from './paths';
 import { RegisterService } from '../../services/register';
 import { Sandbox } from '@liquio/back-core';
+import { CalcTriggersValidator } from './calc_triggers_validator';
 
 // Constants.
 // const CONTROL_PAYMENT_NAME = 'payment';
@@ -20,6 +21,7 @@ const INIT_DATA_PROP = 'initData'; // Data for system task.
  */
 export class DocumentValidatorService {
   ajv: any;
+  calcTriggersValidator: CalcTriggersValidator;
   externalFunctions: any;
   jsonSchema: any;
   registerService: any;
@@ -40,7 +42,8 @@ export class DocumentValidatorService {
     this.externalFunctions = externalFunctions;
     this.validation = this.ajv.compile(this.jsonSchema);
     this.registerService = new RegisterService();
-    this.sandbox = new Sandbox();
+    this.sandbox = Sandbox.getInstance();
+    this.calcTriggersValidator = new CalcTriggersValidator(jsonSchema, userInfo);
   }
 
   /**
@@ -56,6 +59,9 @@ export class DocumentValidatorService {
     // Check custom keywords.
     const keywordsErrors = await this.checkKeywords(objectToCheck);
 
+    // Check readOnly calcTriggers were not tampered with.
+    const calcTriggersErrors = await this.calcTriggersValidator.check(objectToCheck);
+
     // Check standard AJV errors.
     const ajvErrors = this.validation.errors || [];
 
@@ -63,11 +69,12 @@ export class DocumentValidatorService {
     const unexpectedErrors = includesUnexpectedErrors ? this.checkUnexpectedErrors(objectToCheck) : [];
 
     // Return all errors array.
-    const errors = [...ajvErrors.map((v) => new ValidatorError(v)), ...keywordsErrors, ...unexpectedErrors];
+    const errors = [...ajvErrors.map((v) => new ValidatorError(v)), ...keywordsErrors, ...calcTriggersErrors, ...unexpectedErrors];
 
     // Remove validation of hidden fields.
     const errorsWithoutHiddenFields = errors
       .filter((v) => !this.isHiddenField(v, objectToCheck))
+      .filter((v) => !this.isCleanedWhenHiddenField(v, objectToCheck))
       .map(({ isFinalPath: _isFinalPath, ...error }) => error);
 
     // Return errors without hidden fields.
@@ -151,6 +158,74 @@ export class DocumentValidatorService {
   }
 
   /**
+   * Is cleaned hidden field.
+   * @param {ValidatorError} error Error.
+   * @returns {boolean} Is hidden field indicator.
+   */
+  isCleanedWhenHiddenField(error, objectToCheck) {
+    // Define params.
+    const { dataPath, isFinalPath, cleanWhenHidden } = error;
+    // Check needed values not defined.
+    if (!dataPath || !isFinalPath || !cleanWhenHidden) {
+      return false;
+    }
+
+    // Define value schema.
+    const valuePath = dataPath;
+
+    // Check properties hidden.
+    const pathItems = valuePath.split('.');
+
+    for (let p = 0; p < pathItems.length; p++) {
+      const propertyValuePath = p ? valuePath.split('.').slice(0, -p).join('.') : valuePath;
+
+      const propertySchemaPathTemplate = `$..${propertyValuePath
+        .replace(/\[\w+\]/g, '.')
+        .replace(/\.\./g, '.')
+        .replace(/\.$/g, '')
+        .replace(/\./g, '..')}`;
+      const [propertyValueSchema] = JSONPath({ path: propertySchemaPathTemplate, json: this.jsonSchema });
+
+      if (
+        typeof propertyValueSchema === 'object' &&
+        propertyValueSchema !== null &&
+        this.checkCleanedWhenHidden({
+          objectToCheck,
+          valuePath: propertyValuePath,
+          checkHidden: propertyValueSchema.checkHidden,
+        })
+      ) {
+        return true;
+      }
+    }
+
+    // Return `false` in other cases.
+    return false;
+  }
+
+  checkCleanedWhenHidden({ objectToCheck, valuePath, checkHidden }) {
+    if (!checkHidden) {
+      return false;
+    }
+
+    if (typeof checkHidden === 'boolean') {
+      return checkHidden;
+    }
+
+    if (typeof checkHidden === 'string') {
+      const pathItems = valuePath.split('.');
+      const parentPath = pathItems.slice(0, pathItems.length - 1).join('.');
+      const value = PropByPath.get(objectToCheck, valuePath);
+      const parentValue = PropByPath.get(objectToCheck, parentPath);
+      return this.sandbox.evalWithArgs(checkHidden, [value, parentValue, this.userInfo], {
+        meta: { fn: 'DocumentValidatorService.checkCleanedHidden', valuePath },
+      });
+    }
+
+    return false;
+  }
+
+  /**
    * Check keywords.
    * @private
    * @param {object} objectToCheck Object to check.
@@ -177,6 +252,7 @@ export class DocumentValidatorService {
           dataPath: path,
           control: currentElementDescription?.control,
           validationParam: currentElementValue,
+          cleanWhenHidden: currentElementDescription?.cleanWhenHidden || false,
           isFinalPath: true,
           message,
         }));
@@ -203,9 +279,10 @@ export class DocumentValidatorService {
    * @param {{path, value}[]} properties Properties to check and remove readonly params.
    * @param {DocumentEntity.data} documentDataObject
    * @param {boolean} isFromSystemTask.
+   * @param {string[]} [triggerPath] Paths of readOnly calcTrigger targets (or paths under them) legitimately recalculated and saved by this request.
    * @returns {{path, value}[]} Properties without readonly params.
    */
-  async removeReadonlyParams(properties, documentDataObject, isFromSystemTask) {
+  async removeReadonlyParams(properties, documentDataObject, isFromSystemTask, triggerPath: string[] = []) {
     // Append JSON schema paths.
     const propertiesWithJsonSchemaPaths = properties.map((property) => ({
       path: property.path,
@@ -213,10 +290,21 @@ export class DocumentValidatorService {
       jsonSchemaPath: Paths.getJsonSchemaPath(property.path),
     }));
 
+    // Paths freed from the readonly check as recalculated calcTrigger targets. A path listed in
+    // `triggerPath` only bypasses the readonly check when it is an actual calcTrigger target (or a
+    // path under one) - otherwise the client could free any readOnly field by naming it.
+    const triggerTargetPaths = new Set(
+      propertiesWithJsonSchemaPaths
+        .map((property) => property.path)
+        .filter((path) => triggerPath.includes(path) && this.isCalcTriggerTargetPath(path)),
+    );
+
     // Return with removed readonly params.
     const propertiesWithoutReadonlyParams = propertiesWithJsonSchemaPaths
       // Filter changed to save every property that can be automatically defined.
-      .filter((property) => !this.isCurrentOrParentControlsReadonly(this.jsonSchema, property.jsonSchemaPath))
+      .filter(
+        (property) => triggerTargetPaths.has(property.path) || !this.isCurrentOrParentControlsReadonly(this.jsonSchema, property.jsonSchemaPath),
+      )
       .filter((property) => !this.isCurrentOrParentControlsCheckReadonlyTrue(this.jsonSchema, property, documentDataObject))
       .filter((property) => {
         const jsonSchemaParts = property.jsonSchemaPath.split('.'); // ['properties', 'payment', 'verifiedUserInfo', 'externalReaderCheck', 'properties', 'calculated', 'properties', 'price']
@@ -294,6 +382,10 @@ export class DocumentValidatorService {
       // If without inner fields, except Arrays.
       if (typeof v.value !== 'object' || v.value === null || Array.isArray(v.value)) return v;
 
+      // A recalculated calcTrigger target is saved as sent: its inner fields sit under the
+      // readOnly target itself, so merging would replace them with the previous (possibly empty) value.
+      if (triggerTargetPaths.has(v.path)) return v;
+
       // If with inner fields.
       const mergedValue = {};
       for (const innerKey in v.value) {
@@ -370,6 +462,39 @@ export class DocumentValidatorService {
   }
 
   /**
+   * Is path a genuine `calcTriggers[].target` of this schema, or a path under one, accounting for
+   * `${index}` array-item placeholders (e.g. target `resultArray.${index}.result` matches paths
+   * `resultArray.0.result` and `resultArray.0.result.name`). Used to keep `triggerPath` from
+   * freeing arbitrary readOnly fields.
+   * @param {string} path Document data path.
+   * @returns {boolean} Is a genuine calcTrigger target path indicator.
+   */
+  isCalcTriggerTargetPath(path: string): boolean {
+    const calcTriggers = this.jsonSchema?.calcTriggers || [];
+    // `action`-based or `calculate`-less triggers can never be recomputed/verified by
+    // `CalcTriggersValidator` (see its docstring) - granting the readOnly bypass for them would
+    // free the field with no verification possible even in principle, so they don't qualify.
+    return calcTriggers.some(
+      (trigger) =>
+        typeof trigger.target === 'string' && trigger.calculate && !trigger.action && Paths.matchesTemplateOrDescendant(trigger.target, path),
+    );
+  }
+
+  /**
+   * Check readOnly calcTriggers weren't tampered with, without running the full AJV/keywords check.
+   * Only triggers with `validate: true` are checked - see `CalcTriggersValidator`.
+   * @param {object} objectToCheck Object to check.
+   * @param {string[]} [targetPaths] When given, only recompute triggers whose `target` is one of
+   * these paths - skips the rest entirely instead of computing and discarding their result.
+   * @param {string[]} [descendantPaths] Paths that also select a trigger when they are its target or
+   * a path under it.
+   * @returns {Promise<{dataPath, validationParam, message}[]>} CalcTriggers errors promise.
+   */
+  async checkCalcTriggers(objectToCheck, targetPaths?: string[], descendantPaths: string[] = []) {
+    return this.calcTriggersValidator.check(objectToCheck, targetPaths, descendantPaths);
+  }
+
+  /**
    * Is current or parent controls readonly.
    * @param {object} jsonSchema JSON schema.
    * @param {string} path Control path.
@@ -421,11 +546,13 @@ export class DocumentValidatorService {
    */
   isCurrentOrParentControlsCheckReadonlyTrue(jsonSchema, property, documentDataObject) {
     const controlSchema = PropByPath.get(jsonSchema, property.jsonSchemaPath);
-    if (controlSchema?.checkReadonly) {
+    const controlSchemaCheckReadonly = controlSchema?.checkReadonly ?? controlSchema?.checkReadOnly;
+    if (controlSchemaCheckReadonly) {
       const propertyData = property.value;
       const [stepName] = property.path.split('.');
       const currentPageValue = PropByPath.get(documentDataObject, stepName);
-      return this.sandbox.evalWithArgs(controlSchema.checkReadonly, [propertyData, currentPageValue, documentDataObject], {
+      return this.sandbox.evalWithArgs(controlSchemaCheckReadonly, [propertyData, currentPageValue, documentDataObject], {
+        checkArrow: true,
         meta: { fn: 'DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', property },
       });
     }
@@ -436,7 +563,8 @@ export class DocumentValidatorService {
     for (const jsonSchemaPartsItem of jsonSchemaParts) {
       currentJsonSchemaPath += `.${jsonSchemaPartsItem}`;
       const currentJsonSchemaItem = PropByPath.get(jsonSchema, currentJsonSchemaPath);
-      if (!currentJsonSchemaItem?.checkReadonly) continue;
+      const currentItemCheckReadonly = currentJsonSchemaItem?.checkReadonly ?? currentJsonSchemaItem?.checkReadOnly;
+      if (!currentItemCheckReadonly) continue;
       const currentDoumentPath = currentJsonSchemaPath
         .split('.')
         .filter((e) => e !== 'properties')
@@ -444,7 +572,8 @@ export class DocumentValidatorService {
       const propertyData = PropByPath.get(documentDataObject, currentDoumentPath);
       const [, stepName] = currentDoumentPath.split('.');
       const currentPageValue = PropByPath.get(documentDataObject, stepName);
-      return this.sandbox.evalWithArgs(currentJsonSchemaItem.checkReadonly, [propertyData, currentPageValue, documentDataObject], {
+      return this.sandbox.evalWithArgs(currentItemCheckReadonly, [propertyData, currentPageValue, documentDataObject], {
+        checkArrow: true,
         meta: { fn: 'DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', property },
       });
     }

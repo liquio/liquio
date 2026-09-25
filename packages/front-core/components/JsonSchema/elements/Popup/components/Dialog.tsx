@@ -452,7 +452,6 @@ class DialogWrapper extends React.Component<DialogWrapperProps, DialogWrapperSta
 
   handlePopupTriggers = async (props?: { opening?: boolean; onClose?: boolean; indexPath?: unknown }) => {
     const {
-      rootDocument: rootDocumentProp,
       pathIndex,
       parentValue,
       stepName,
@@ -464,12 +463,12 @@ class DialogWrapper extends React.Component<DialogWrapperProps, DialogWrapperSta
       },
     } = this.props;
 
+    const currentRD = this.state.rootDocument;
+    const newValue = objectPath.get(currentRD.data, this.getPath());
+
     const onClose = props?.onClose;
     const indexPath = props?.indexPath || path;
     const opening = props?.opening;
-    const rootDocument = rootDocumentProp as { id?: string | number; data: Record<string, unknown> };
-
-    const newValue = objectPath.get(rootDocument.data, this.getPath());
 
     if (!calcTriggers.length) return;
 
@@ -504,13 +503,14 @@ class DialogWrapper extends React.Component<DialogWrapperProps, DialogWrapperSta
     if (!popupTriggers.length) return;
 
     const newData = await (handleTriggers as unknown as (...args: unknown[]) => Record<string, unknown>)(
-      rootDocument.data,
+      currentRD.data,
       popupTriggers,
       this.getPath().join('.'),
       newValue,
-      rootDocument.data[stepName],
-      rootDocument.data,
+      currentRD.data[stepName],
+      currentRD.data,
       parentValue,
+      null,
       null,
       null,
       null,

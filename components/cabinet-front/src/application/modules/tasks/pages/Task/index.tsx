@@ -3,12 +3,13 @@ import { connect } from 'react-redux';
 import { translate } from 'react-translate';
 import { bindActionCreators, Dispatch } from 'redux';
 import MobileDetect from 'mobile-detect';
-import { history } from 'store';
+import store, { history } from 'store';
 import qs from 'qs';
 import cleenDeep from 'clean-deep';
 import moment from 'moment';
 import paths from 'deepdash/paths';
 import objectPath from 'object-path';
+import isEqual from 'lodash/isEqual';
 
 import ModulePage, { ModulePageProps } from 'components/ModulePage';
 import {
@@ -38,6 +39,7 @@ import { getLocalizationTexts } from 'actions/localization';
 import { loadDocumentTemplate, loadTaskTemplates } from 'application/actions/documentTemplate';
 import { setOpenSidebar } from 'actions/app';
 import getDeltaProperties from 'helpers/getDeltaProperties';
+import getTriggerPaths from 'helpers/getTriggerPaths';
 import processList from 'services/processList';
 import waiter from 'helpers/waitForAction';
 import evaluate from 'helpers/evaluate';
@@ -194,7 +196,7 @@ interface TaskPageActions {
   requestUserInfo: () => Promise<unknown>;
   storeTaskDocument: (payload: {
     task: TaskEntity;
-    data: { properties: unknown[] };
+    data: { properties: unknown[]; triggerPath?: string[] };
     params?: string;
   }) => Promise<unknown>;
   handleSilentTriggers: (payload: Record<string, unknown>) => Promise<unknown>;
@@ -872,19 +874,20 @@ class TaskPage extends ModulePage<TaskPageProps> {
     }
   };
 
-  saveLastStepVisited = (props?: { clear?: boolean }): boolean | void => {
+  saveLastStepVisited = (props?: { clear?: boolean; stepId?: string }): boolean | void => {
     try {
       const { authInfo } = this.props;
       const { userId } = authInfo as { userId?: string };
       const { taskId, stepId } = propsToData(this.props) as TaskPageData;
       const savedUser = (JSON.parse(localStorage.getItem('lastStepEdit') || '{}') as Record<string, unknown>)[userId as string];
       const clear = props?.clear;
+      const stepIdOverride = props?.stepId;
 
       const stepsData = JSON.stringify(
         cleenDeep({
           [userId as string]: {
             ...(savedUser as Record<string, unknown>),
-            [taskId as string]: clear ? null : stepId
+            [taskId as string]: clear ? null : stepIdOverride || stepId
           }
         })
       );
@@ -961,38 +964,49 @@ class TaskPage extends ModulePage<TaskPageProps> {
     const { actions } = this.props;
     const { template, task, stepId, taskId } = propsToData(this.props) as TaskPageData;
     const properties = template?.jsonSchema?.properties;
-    (paths(properties) as string[] | undefined)
-      ?.filter((path) => path.endsWith('.control') && objectPath.get(properties, path) === 'getter')
-      ?.map((getterPath) => ({
+
+    if (!properties) return;
+
+    const getters = ((paths(properties) as string[] | undefined) || [])
+      .filter((path) => path.endsWith('.control') && objectPath.get(properties, path) === 'getter')
+      .map((getterPath) => ({
         ...(objectPath.get(properties, getterPath?.replace('.control', '')) as Record<string, unknown>),
         prevValue: objectPath.get(
           task?.document?.data,
           getterPath.replace(/\.?(properties|control)/g, '')
         )
-      }))
-      ?.forEach(async (control: { value?: unknown; prevValue?: unknown }) => {
-        if (typeof control?.value === 'string') {
-          const result = evaluate(
-            control.value,
-            0,
-            (task?.document?.data as Record<string, unknown>)[stepId as string],
-            task?.document?.data
-          );
+      })) as Array<{ value?: unknown; prevValue?: unknown }>;
 
-          if (result instanceof Error) return false;
+    for (const control of getters) {
+      if (typeof control?.value !== 'string') continue;
 
-          if (result !== control.prevValue) {
-            await actions.loadTask(taskId as string);
-            return true;
-          }
-        }
-        return false;
-      });
+      const result = evaluate(
+        control?.value,
+        0,
+        (task?.document?.data as Record<string, unknown> | undefined)?.[stepId as string],
+        task?.document?.data
+      );
+
+      if (result instanceof Error) continue;
+
+      if (!isEqual(result, control.prevValue)) {
+        // eslint-disable-next-line no-await-in-loop
+        await actions.loadTask(taskId as string);
+        return;
+      }
+    }
   };
 
   handleStore = async (): Promise<unknown> => {
     const { actions, locked } = this.props as TaskPageProps & { locked?: boolean };
-    const { task, origin } = propsToData(this.props) as TaskPageData;
+    const { taskId, template } = propsToData(this.props) as TaskPageData;
+    const {
+      task: { actual = {}, origin: originState = {} }
+    } = store.getState() as {
+      task: { actual?: Record<string, TaskEntity>; origin?: Record<string, TaskEntity> };
+    };
+    const task = actual[taskId as string];
+    const origin = originState[taskId as string];
 
     const finished = task?.finished;
     const lastUpdateLogId = (origin as (TaskEntity & { lastUpdateLogId?: string }) | undefined)?.lastUpdateLogId;
@@ -1003,9 +1017,11 @@ class TaskPage extends ModulePage<TaskPageProps> {
       return null;
     }
 
+    const triggerPath = getTriggerPaths(template?.jsonSchema?.calcTriggers, properties);
+
     const result = await actions.storeTaskDocument({
       task,
-      data: { properties },
+      data: triggerPath.length ? { properties, triggerPath } : { properties },
       params: lastUpdateLogId ? `?last_update_log_id=${lastUpdateLogId}` : ''
     });
 
@@ -1105,9 +1121,11 @@ class TaskPage extends ModulePage<TaskPageProps> {
 
   backToEdit = (): void => {
     const { steps } = propsToData(this.props) as TaskPageData;
+    const last = steps.pop();
     this.setTaskScreen(screens.EDIT);
     this.settingDefaultStep = true;
-    history.replace(this.getRootPath() + `/${steps.pop()}`);
+    history.replace(this.getRootPath() + `/${last}`);
+    this.saveLastStepVisited({ stepId: last });
   };
 
   clearCacheAction = async (): Promise<void> => {
@@ -1487,6 +1505,7 @@ class TaskPage extends ModulePage<TaskPageProps> {
               handleStore={this.handleStore}
               showStepsMenu={this.showStepsMenu()}
               saveLastStepVisited={this.saveLastStepVisited}
+              getDefaultStep={this.getDefaultStep}
             />
           ) : null}
 

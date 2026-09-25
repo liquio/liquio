@@ -80,7 +80,7 @@ export class DocumentController extends Controller {
       this.persistLink = new PersistLink(config.persist_link);
       this.notifier = new Notifier();
       this.customLogs = new CustomLogs();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       DocumentController.singleton = this;
     }
     return DocumentController.singleton;
@@ -284,10 +284,12 @@ export class DocumentController extends Controller {
       const documentId = req.params.id;
       const lastUpdateLogId = req.query.last_update_log_id;
       const userId = this.getRequestUserId(req);
+      const userInfo = this.getRequestUserInfo(req);
       const path = req.body.path;
       const value = req.body.value;
       const previousValue = req.body.previousValue;
       const properties = req.body.properties || [];
+      const triggerPath = req.body.triggerPath || [];
       const userUnitIds = this.getRequestUserUnitIds(req);
       if (path) {
         properties.push({ path, value, previousValue });
@@ -305,13 +307,20 @@ export class DocumentController extends Controller {
         throw new InvalidParamsError('Invalid property path.', { cause: properties });
       }
 
+      // Check trigger path.
+      if (!Array.isArray(triggerPath) || triggerPath.some(invalidPath)) {
+        throw new InvalidParamsError('Invalid trigger path.', { cause: triggerPath });
+      }
+
       // Check draft expired.
       if (await global.models.task.checkDraftExpirationByDocumentId(documentId)) {
         throw new BadRequestError(ERROR_DRAFT_EXPIRED);
       }
 
       // Update document.
-      const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds);
+      const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds, userInfo, {
+        triggerPath,
+      });
 
       // Check reassign trigger and handle document update log.
       const [checkReassignTriggerResult, documentUpdateLogEntities] = await Promise.all([
@@ -1526,6 +1535,7 @@ export class DocumentController extends Controller {
     const propertyPath = req.body.path;
     const userId = this.getRequestUserId(req);
     const userUnitIds = this.getRequestUserUnitIds(req);
+    const userInfo = this.getRequestUserInfo(req);
     const properties = [];
 
     if (!propertyPath) {
@@ -1575,7 +1585,7 @@ export class DocumentController extends Controller {
     // Update document.
     let updatedDocument;
     try {
-      updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds);
+      updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds, userInfo);
     } catch (error) {
       global.log.save('document-calc-back-triggered-update-error', error, 'error');
       return this.responseError(res, 'Document updating error.');

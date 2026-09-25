@@ -44,7 +44,7 @@ interface SeparatedRegisterProps {
   template: Record<string, unknown> & {
     jsonSchema: {
       properties: Record<string, { properties: Record<string, unknown> }>;
-      calcTriggers?: Array<{ source: string; target: string; calculate: string }>;
+      calcTriggers?: Array<{ source: string; target: string | string[]; calculate: string }>;
     };
   };
   stepName: string;

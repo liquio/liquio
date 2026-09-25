@@ -80,7 +80,9 @@ export class DocumentEntity extends Entity {
   documentTemplate: DocumentTemplateEntity;
   calculatedGetters: string[];
 
-  static sandbox = new Sandbox({});
+  static get sandbox(): Sandbox {
+    return Sandbox.getInstance();
+  }
 
   constructor({
     id,

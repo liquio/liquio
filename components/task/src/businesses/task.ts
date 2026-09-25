@@ -118,7 +118,7 @@ export class TaskBusiness extends Business {
       this.unitModel = new UnitModel();
       this.mapping = config.mapping.taskBusiness;
       this.customLogs = new CustomLogs();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       this.onboarding = new OnboardingController(config);
       TaskBusiness.singleton = this;
     }
@@ -1818,6 +1818,9 @@ export class TaskBusiness extends Business {
       throw new BadRequestError('Workflow template is not active.');
     }
 
+    // Append trace meta.
+    this.appendTraceMeta(await global.models.task.getTraceMetaByTaskId(id));
+
     // Check access.
     const hasAccess = task && (await task.hasAccess(userId, userUnitIds, strict));
     if (!hasAccess) {
@@ -2045,6 +2048,8 @@ export class TaskBusiness extends Business {
     }
     const { jsonSchema: documentJsonSchema } = documentTemplate;
 
+    this.appendTraceMeta(await global.models.document.getTraceMetaByDocumentId(documentId));
+
     // Define additional requirements.
     const { isCommitAvailable: isCommitAvailableFunction } = documentJsonSchema || {};
 
@@ -2097,6 +2102,8 @@ export class TaskBusiness extends Business {
     if (!hasAccess && !doNotCheckAccess) {
       throw new ForbiddenError(ERROR_TASK_ACCESS);
     }
+
+    this.appendTraceMeta(await global.models.task.getTraceMetaByTaskId(id));
 
     const [{ workflowTemplate }, taskTemplate]: any = await Promise.all([
       global.models.workflow.findById(task.workflowId),
@@ -2243,12 +2250,16 @@ export class TaskBusiness extends Business {
       }
 
       // Validate document.
-      const documentValidator = new (DocumentValidator as any)(jsonSchema, {
-        getFilteredRecordsByKeyId: (global.businesses.register.getFilteredRecordsByKeyId as any).bind(global.businesses.register),
-        getFilteredRecordsByKeyIdArguments: {
-          userUnitIds: userUnitIds,
+      const documentValidator = new (DocumentValidator as any)(
+        jsonSchema,
+        {
+          getFilteredRecordsByKeyId: (global.businesses.register.getFilteredRecordsByKeyId as any).bind(global.businesses.register),
+          getFilteredRecordsByKeyIdArguments: {
+            userUnitIds: userUnitIds,
+          },
         },
-      });
+        user,
+      );
       const validationErrors = await documentValidator.check(document.data);
       if (validationErrors.length > 0) {
         const traceMeta = this.getTraceMeta();

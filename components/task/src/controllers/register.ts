@@ -33,7 +33,7 @@ export class RegisterController extends Controller {
     if (!RegisterController.singleton) {
       super();
       this.registerService = new RegisterService();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       RegisterController.singleton = this;
     }
     return RegisterController.singleton;
@@ -348,6 +348,7 @@ export class RegisterController extends Controller {
     // Define params.
     const { key_id: keyId } = matchedData(req, { locations: ['params'] });
     const userId = this.getRequestUserId(req);
+    const userInfo = this.getRequestUserInfo(req);
     const {
       offset = 0,
       limit = RECORDS_DEFAULT_LIMIT,
@@ -759,6 +760,7 @@ export class RegisterController extends Controller {
           ],
           userId,
           userUnitIds,
+          userInfo,
         );
         updatedData = {
           path: pathToSave,

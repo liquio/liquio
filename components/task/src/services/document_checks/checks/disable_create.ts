@@ -6,7 +6,9 @@ import { Sandbox } from '@liquio/back-core';
  * @extends Checks
  */
 export class DisableCreate extends Checks {
-  static sandbox = new Sandbox();
+  static get sandbox(): Sandbox {
+    return Sandbox.getInstance();
+  }
 
   /**
    * Disable create document check.
