@@ -20,7 +20,7 @@
     "test:e2e": "jest tests"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.2.0",
+    "@liquio/back-core": "^0.2.2",
     "amqplib": "^0.8.0",
     "axios": "^1.18.1",
     "ccolor": "^1.3.1",
