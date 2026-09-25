@@ -4,7 +4,7 @@ import Multiconf from 'multiconf';
 
 import { Db } from './lib/db';
 import { RedisClient } from './lib/redis_client';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
 import { Models } from './models';
@@ -39,6 +39,9 @@ async function main() {
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;
+
+  // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
+  new Sandbox(config.sandbox || {});
 
   global.db = await Db.getInstance(config.db);
   global.models = new Models().getModels();

@@ -47,7 +47,7 @@ export class GatewayBusiness {
     // Define singleton.
     if (!GatewayBusiness.singleton) {
       this.config = config;
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
       this.systemNotifier = new SystemNotifier();
       this.workflowErrorModel = new WorkflowErrorModel();
       this.workflowDebugModel = new WorkflowDebugModel();

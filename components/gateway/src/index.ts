@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 import moment from 'moment';
 import Multiconf from 'multiconf';
+import { Sandbox } from '@liquio/back-core';
 
 import { Db } from './lib/db';
 import { Log } from './lib/log';
@@ -32,6 +33,9 @@ module.exports = (async () => {
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;
+
+  // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
+  new Sandbox(config.sandbox || {});
 
   // Log unhandled rejections.
   process.on('unhandledRejection', (error: any) => {

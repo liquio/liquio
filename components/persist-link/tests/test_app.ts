@@ -1,5 +1,6 @@
 // Import.
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { Sandbox } from '@liquio/back-core';
 import { execSync } from 'node:child_process';
 import portfinder from 'portfinder';
 import supertest from 'supertest';
@@ -10,7 +11,7 @@ import LinkController from '../src/controllers/link';
 import MonitoringController from '../src/controllers/monitoring';
 import TestController from '../src/controllers/test';
 import Db from '../src/lib/db';
-import { setAppContext } from '../src/lib/context';
+import { getLog, setAppContext } from '../src/lib/context';
 import FileConverterService from '../src/lib/file_converter';
 import LinkGenerator from '../src/lib/link_generator';
 import LinkProviders from '../src/lib/link_providers';
@@ -106,6 +107,7 @@ export class TestApp {
   async init() {
     TestApp.resetSingletons();
     setAppContext({ config, typeOf, log: mockLog, db: null });
+    new Sandbox({ ...config.sandbox, getLog });
     const db = await Db.getInstance(config.db);
     setAppContext({ db });
 

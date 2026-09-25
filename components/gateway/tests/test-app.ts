@@ -6,12 +6,14 @@ import amqp from 'amqplib';
 import nock from 'nock';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as Multiconf from 'multiconf';
 import moment from 'moment';
+import { Sandbox } from '@liquio/back-core';
 
 import { Db } from '../src/lib/db';
 import { Log } from '../src/lib/log';
@@ -68,7 +70,7 @@ jest.mock('../src/lib/log', () => {
 
 // Mock the configuration module.
 const configOverride: any = {};
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config-templates/gateway';
+const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-templates/gateway');
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_GATEWAY';
 
 // Obtain the default configuration object.
@@ -204,6 +206,9 @@ export class TestApp {
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
     global.log = log;
+
+    // Init sandbox, mirroring src/index.ts's boot sequence.
+    new Sandbox(config.sandbox || {});
 
     // Save moment global to use in eval, mirroring src/index.ts's boot sequence.
     global.moment = moment;

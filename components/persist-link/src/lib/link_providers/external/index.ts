@@ -38,7 +38,7 @@ class ExternalLinkProvider extends LinkProvider {
         register: new RegisterProvider(config.register),
       };
       const appConfig = getConfig();
-      this.sandbox = new Sandbox(appConfig.sandbox);
+      this.sandbox = Sandbox.getInstance();
       this.filestorageHandler = new FilestorageHandler(appConfig.link_providers.filestorage);
 
       ExternalLinkProvider.singleton = this;
