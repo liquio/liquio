@@ -62,6 +62,92 @@ function isErrorLike(error: unknown): error is { message: string; loc?: { line: 
  * isolation level. */
 const ISOLATED_VM_UNSUPPORTED_GLOBALS = new Set(['_', 'iconv', 'moment', 'crypto']);
 
+/** Property names that let low-code climb the prototype/constructor chain back to the real
+ * `Function` constructor (and through it to the host realm), or mutate shared built-in prototypes.
+ * Reaching any of these from sandboxed code is treated as an escape attempt and blocked. */
+const FORBIDDEN_PROPERTIES = new Set(['constructor', '__proto__', 'prototype']);
+
+/** Name of the internal runtime helper injected around dynamic (non-statically-resolvable) property
+ * keys. Low-code is forbidden from referencing it so it can't be shadowed to defeat the guard. */
+const KEY_GUARD_NAME = '__sbKey';
+
+/**
+ * Runtime guard for a dynamically-computed property key. Coerces the key to a primitive exactly
+ * once and returns that coerced value, so the subsequent member access uses the already-checked
+ * key rather than re-coercing an attacker-controlled object (which would otherwise allow a
+ * time-of-check/time-of-use bypass via a `toString` that returns different values). Throws if the
+ * key resolves to one of the forbidden escape-chain properties.
+ * @param {unknown} key Raw computed key.
+ * @returns {string | symbol} The validated key to use for the access.
+ */
+function guardPropertyKey(key: unknown): string | symbol {
+  if (typeof key === 'symbol') {
+    return key;
+  }
+  const resolved = String(key);
+  if (FORBIDDEN_PROPERTIES.has(resolved)) {
+    throw new Error(`Access to "${resolved}" is blocked`);
+  }
+  return resolved;
+}
+
+/** Minimal structural shape of the acorn AST nodes the sandbox guard inspects. */
+interface AstNode {
+  type: string;
+  start: number;
+  end: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Resolve an AST node to a constant string when it can be determined statically (string/number/
+ * boolean/null literals, expression-free template literals, and `+` concatenations of those).
+ * Returns `null` for anything whose value is only known at runtime.
+ * @param {AstNode | undefined} node AST node in key position.
+ * @returns {string | null}
+ */
+function resolveStaticString(node: AstNode | undefined): string | null {
+  if (!node) return null;
+  if (node.type === 'Literal') {
+    const value = (node as { value?: unknown }).value;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean' || value === null) return String(value);
+    return null;
+  }
+  if (node.type === 'TemplateLiteral') {
+    const { expressions, quasis } = node as unknown as { expressions: unknown[]; quasis: { value: { cooked: string } }[] };
+    if (expressions.length === 0) return quasis.map((q) => q.value.cooked).join('');
+    return null;
+  }
+  if (node.type === 'BinaryExpression' && (node as { operator?: string }).operator === '+') {
+    const left = resolveStaticString((node as { left?: AstNode }).left);
+    const right = resolveStaticString((node as { right?: AstNode }).right);
+    if (left !== null && right !== null) return left + right;
+  }
+  return null;
+}
+
+/**
+ * Depth-first walk over an acorn AST, invoking `visit` on every node.
+ * @param {AstNode | undefined | null} node Root node.
+ * @param {(node: AstNode) => void} visit Visitor.
+ */
+function walkAst(node: AstNode | undefined | null, visit: (node: AstNode) => void): void {
+  if (!node || typeof node.type !== 'string') return;
+  visit(node);
+  for (const key of Object.keys(node)) {
+    if (key === 'type' || key === 'start' || key === 'end' || key === 'loc' || key === 'range') continue;
+    const child = (node as Record<string, unknown>)[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (item && typeof (item as AstNode).type === 'string') walkAst(item as AstNode, visit);
+      }
+    } else if (child && typeof (child as AstNode).type === 'string') {
+      walkAst(child as AstNode, visit);
+    }
+  }
+}
+
 /**
  * How evaluated code is isolated from the host process.
  */
@@ -175,6 +261,9 @@ export class Sandbox {
       base64Decode,
       base64Encode,
       toBase64,
+      // Runtime guard injected around dynamic property keys by `guardCode`; low-code may not
+      // reference it directly (enforced at compile time).
+      [KEY_GUARD_NAME]: guardPropertyKey,
       global: {},
       // Shadow host globals that evaluated code must not reach (they would otherwise resolve to
       // the host realm under `Function` isolation). `console` is re-injected per eval, routed to the log.
@@ -326,6 +415,103 @@ export class Sandbox {
   }
 
   /**
+   * Harden code against prototype/constructor-chain escapes before it is compiled. Parses the code
+   * and (1) rejects any access to `constructor`, `prototype` or `__proto__` — whether via dot
+   * notation, a statically-resolvable computed key (string/template/concatenation literal), or the
+   * `__proto__` object-literal setter — and (2) rewrites every remaining *dynamic* computed key
+   * `obj[expr]` to `obj[__sbKey(expr)]`, so a key that only resolves to a forbidden name at runtime
+   * is caught by `guardPropertyKey`. Ordinary dynamic indexing (`arr[i]`, `obj[key]`), method calls
+   * and assignments through dynamic keys keep working. Low-code referencing the reserved
+   * `__sbKey` identifier is rejected so the guard cannot be shadowed.
+   *
+   * If the code cannot be parsed (rare — it would also fail to compile), it falls back to a
+   * conservative token check so an unparseable payload still can't smuggle the forbidden names.
+   * @param {string} code Minified (and, if async, already transformed) code.
+   * @param {Record<string, unknown>} meta Logging metadata.
+   * @returns {string} The hardened code to compile.
+   */
+  private guardCode(code: string, meta: Record<string, unknown>): string {
+    const forbid = (name: string): never => {
+      this.log.save('sandbox-alert', { ...meta, code, message: `Access to ${name} detected` }, 'warn');
+      throw new Error(`Access to "${name}" is blocked`);
+    };
+
+    let ast: AstNode;
+    try {
+      ast = acorn.parse(code, {
+        ecmaVersion: 2020,
+        allowReturnOutsideFunction: true,
+        allowAwaitOutsideFunction: true,
+      }) as unknown as AstNode;
+    } catch {
+      // Unparseable: refuse if it contains any forbidden name, otherwise leave it for the compiler
+      // (which will raise the same syntax error the caller expects).
+      for (const name of FORBIDDEN_PROPERTIES) {
+        if (new RegExp(`\\b${name}\\b`).test(code)) forbid(name);
+      }
+      return code;
+    }
+
+    const dynamicKeys: { start: number; end: number }[] = [];
+
+    walkAst(ast, (node) => {
+      if (node.type === 'Identifier' && (node as { name?: string }).name === KEY_GUARD_NAME) {
+        throw new Error(`Use of reserved identifier "${KEY_GUARD_NAME}" is not allowed`);
+      }
+
+      // `{ __proto__: ... }` sets the object's prototype — block the shorthand setter.
+      if (node.type === 'Property' && !(node as { computed?: boolean }).computed) {
+        const key = (node as { key?: AstNode }).key;
+        const keyName =
+          key?.type === 'Identifier'
+            ? (key as { name?: string }).name
+            : key?.type === 'Literal'
+              ? String((key as { value?: unknown }).value)
+              : undefined;
+        if (keyName === '__proto__') forbid('__proto__');
+      }
+
+      if (node.type !== 'MemberExpression') return;
+      const property = (node as { property?: AstNode }).property;
+      if (!property) return;
+
+      if (!(node as { computed?: boolean }).computed) {
+        const propName = (property as { name?: string }).name;
+        if (property.type === 'Identifier' && propName !== undefined && FORBIDDEN_PROPERTIES.has(propName)) {
+          forbid(propName);
+        }
+        return;
+      }
+
+      const staticKey = resolveStaticString(property);
+      if (staticKey !== null) {
+        if (FORBIDDEN_PROPERTIES.has(staticKey)) forbid(staticKey);
+        return; // Safe static key — no runtime guard needed.
+      }
+
+      // Dynamic key: guard it at runtime.
+      dynamicKeys.push({ start: property.start, end: property.end });
+    });
+
+    if (dynamicKeys.length === 0) return code;
+
+    // Wrap each dynamic key `expr` as `__sbKey(expr)`, applying insertions right-to-left so earlier
+    // offsets stay valid (this also handles nested keys such as `o[a][b]`).
+    const insertions: { pos: number; text: string }[] = [];
+    for (const { start, end } of dynamicKeys) {
+      insertions.push({ pos: start, text: `${KEY_GUARD_NAME}(` });
+      insertions.push({ pos: end, text: ')' });
+    }
+    insertions.sort((a, b) => b.pos - a.pos || (a.text === ')' ? -1 : 1));
+
+    let guarded = code;
+    for (const { pos, text } of insertions) {
+      guarded = guarded.slice(0, pos) + text + guarded.slice(pos);
+    }
+    return guarded;
+  }
+
+  /**
    * Evaluate code within a sandbox.
    * @param {string} code Code to execute.
    * @param {EvalOptions} options
@@ -358,9 +544,6 @@ export class Sandbox {
     const globalContext = { ...this.defaultGlobals, ...options.global };
 
     let transformedCode = Sandbox.minifyCode(code);
-    if (/\.prototype\b/.test(transformedCode)) {
-      this.log.save('sandbox-alert', { ...meta, code, workflowTemplateId, message: 'Access to .prototype detected' }, 'warn');
-    }
     if (options.isAsync) {
       const asyncFunctions = Object.entries(globalContext)
         .filter(([, value]) => isAsyncFunctionValue(value))
@@ -368,6 +551,9 @@ export class Sandbox {
 
       transformedCode = transformFunctionToAsync(transformedCode, asyncFunctions);
     }
+
+    // Block escapes through the constructor/prototype chain and guard dynamic property keys.
+    transformedCode = this.guardCode(transformedCode, { ...meta, workflowTemplateId });
 
     // Compile the code under the configured isolation level.
     const fn =
