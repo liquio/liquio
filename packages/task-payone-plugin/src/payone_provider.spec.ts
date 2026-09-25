@@ -1,4 +1,5 @@
 import { PluginContext } from "@liquio/plugin-sdk";
+import { init } from "onlinepayments-sdk-nodejs";
 
 const createCommerceCaseRequestMock = jest.fn();
 const createHostedCheckoutRawRequestMock = jest.fn();
@@ -93,8 +94,6 @@ jest.mock("onlinepayments-sdk-nodejs", () => ({
     },
   }),
 }));
-
-import { init } from "onlinepayments-sdk-nodejs";
 
 const OrderType = { Full: "FULL" };
 const StatusCheckout = { COMPLETED: "COMPLETED", BILLED: "BILLED" };

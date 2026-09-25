@@ -1,14 +1,14 @@
 import axios from "axios";
 import * as xml2js from "xml2js";
-
-const PropByPath = require("prop-by-path");
-
 import {
   EventExternalServiceProvider,
   ExternalServiceSendResult,
   ExternalServiceSendContext,
 } from "@liquio/plugin-sdk";
+
 import { XroadOptions, XroadServiceConfig, XroadTrembitaHeader } from "./types";
+
+const PropByPath = require("prop-by-path");
 
 const MAX_LOG_LENGTH = 100e3 - 1000;
 

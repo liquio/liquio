@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as childProcess from 'node:child_process';
+
 import { installPlugins, InstallDependencies, InstallOptions } from './install';
 
 jest.mock('node:fs');

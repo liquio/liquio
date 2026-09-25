@@ -1,6 +1,6 @@
 import axios from "axios";
-
 import { PluginContext } from "@liquio/plugin-sdk";
+
 import { XroadProvider } from "./xroad_provider";
 import { XroadOptions } from "./types";
 
