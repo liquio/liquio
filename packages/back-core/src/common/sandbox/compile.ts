@@ -9,7 +9,7 @@ import { isAsyncFunctionValue } from './helpers';
  * that lose their prototype once copied across the isolation boundary), rather than plain
  * functions operating on cloneable data. They remain available under the default `function`
  * isolation level. */
-export const ISOLATED_VM_UNSUPPORTED_GLOBALS = new Set(['_', 'iconv', 'moment', 'crypto']);
+export const ISOLATED_VM_UNSUPPORTED_GLOBALS = new Set(['_', 'iconv', 'moment', 'crypto', 'Object']);
 
 /** Property names that let low-code climb the prototype/constructor chain back to the real
  * `Function` constructor (and through it to the host realm), or mutate shared built-in prototypes.
@@ -145,7 +145,9 @@ export function transformFunctionToAsync(functionString: string, allowedAsyncFun
  * `obj[expr]` to `obj[__sbKey(expr)]`, so a key that only resolves to a forbidden name at runtime
  * is caught by `guardPropertyKey`. Ordinary dynamic indexing (`arr[i]`, `obj[key]`), method calls
  * and assignments through dynamic keys keep working. Low-code referencing the reserved
- * `__sbKey` identifier is rejected so the guard cannot be shadowed.
+ * `__sbKey` identifier is rejected so the guard cannot be shadowed, `with` statements are rejected
+ * because they resolve bare identifiers as properties of an arbitrary object, and destructuring
+ * patterns are rejected when they read a forbidden property by name.
  *
  * If the code cannot be parsed (rare — it would also fail to compile), it falls back to a
  * conservative token check so an unparseable payload still can't smuggle the forbidden names.
@@ -183,6 +185,13 @@ export function guardCode(code: string, onAlert: (name: string, code: string) =>
       throw new Error(`Use of reserved identifier "${KEY_GUARD_NAME}" is not allowed`);
     }
 
+    // `with` resolves bare identifiers as properties of an arbitrary object, which reaches
+    // `constructor` without any member expression the checks below could see.
+    if (node.type === 'WithStatement') {
+      onAlert('with statement', code);
+      throw new Error('"with" statements are not allowed');
+    }
+
     // `{ __proto__: ... }` sets the object's prototype — block the shorthand setter.
     if (node.type === 'Property' && !(node as { computed?: boolean }).computed) {
       const key = (node as { key?: AstNode }).key;
@@ -193,6 +202,18 @@ export function guardCode(code: string, onAlert: (name: string, code: string) =>
             ? String((key as { value?: unknown }).value)
             : undefined;
       if (keyName === '__proto__') forbid('__proto__');
+    }
+
+    // Destructuring reads properties by name without a member expression, e.g.
+    // `const { constructor: C } = []` binds the real constructor. Block forbidden keys in patterns.
+    if (node.type === 'ObjectPattern') {
+      for (const property of (node as { properties?: AstNode[] }).properties ?? []) {
+        if (property.type !== 'Property') continue;
+        const prop = property as { computed?: boolean; key?: AstNode };
+        const keyName =
+          !prop.computed && prop.key?.type === 'Identifier' ? ((prop.key as { name?: string }).name ?? null) : resolveStaticString(prop.key);
+        if (keyName !== null && FORBIDDEN_PROPERTIES.has(keyName)) forbid(keyName);
+      }
     }
 
     if (node.type !== 'MemberExpression') return;

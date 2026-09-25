@@ -1,5 +1,5 @@
-import { Sandbox, SandboxIsolationLevel } from './sandbox';
-import { appendTraceMeta, runInAsyncLocalStorage } from './async_local_storage';
+import { Sandbox, SandboxIsolationLevel } from './index';
+import { appendTraceMeta, runInAsyncLocalStorage } from '../async_local_storage';
 
 const log = { save: jest.fn() };
 
@@ -421,6 +421,10 @@ describe('Sandbox', () => {
 
     it('should not allow access to forbidden global "Function"', () => {
       expect(sandbox.evalWithArgs('() => { return Function }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "Reflect"', () => {
+      expect(sandbox.evalWithArgs('() => { return Reflect }', [])).toBeUndefined();
     });
 
     it('should not allow access to forbidden global "setInterval"', () => {
@@ -1018,6 +1022,158 @@ describe('Sandbox', () => {
 
     it('should allow nested dynamic keys', () => {
       expect(sandbox.evalWithArgs('(o, a, b) => o[a][b]', [{ x: { y: 42 } }, 'x', 'y'])).toBe(42);
+    });
+
+    it('should block reaching the constructor through a with block', () => {
+      expect(() => sandbox.evalWithArgs('() => { with ([]) { with (constructor) { return constructor("return typeof process")(); } } }', [])).toThrow(
+        'Sandbox error: ""with" statements are not allowed"',
+      );
+    });
+
+    it('should alert when a with block is used', () => {
+      expect(() => sandbox.eval('() => { with ({ a: 1 }) { return a; } }')).toThrow('"with" statements are not allowed');
+      expect(log.save).toHaveBeenCalledWith('sandbox-alert', expect.objectContaining({ message: 'Access to with statement detected' }), 'warn');
+    });
+
+    it('should still allow "with" in strings and identifiers', () => {
+      expect(sandbox.evalWithArgs('(withdraw) => "paid with card: " + withdraw', [5])).toBe('paid with card: 5');
+    });
+  });
+
+  // The guarded lodash wrapper (`lodash.ts`) checks the path argument of every path-resolving helper
+  // and blocks `_.template`, closing the runtime string-path route to `constructor`/`prototype`.
+  describe('lodash path hardening', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should block lodash _.template, which compiles code with the real Function', () => {
+      expect(() => sandbox.evalWithArgs('() => _.template("<%= typeof process %>")()', [])).toThrow('Access to lodash.template is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.template("<% __p += typeof process %>")()', [])).toThrow('Access to lodash.template is blocked');
+    });
+
+    it('should block a forbidden segment in a string path (_.get, _.result, _.has, _.invoke)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.get([], "constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.result({ a: [] }, "a.constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.has([], "a.prototype")', [])).toThrow('Access to "prototype" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.invoke({ a: [] }, "a.constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block a forbidden segment in an array path', () => {
+      expect(() => sandbox.evalWithArgs('() => _.invoke({ a: [] }, ["a", "constructor", "constructor"])', [])).toThrow(
+        'Access to "constructor" is blocked',
+      );
+      expect(() => sandbox.evalWithArgs('() => _.get({}, ["__proto__", "polluted"])', [])).toThrow('Access to "__proto__" is blocked');
+    });
+
+    it('should block the path-to-function helpers (_.property, _.method, _.iteratee, _.matchesProperty)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.property("constructor.constructor")([])', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.method("constructor.constructor")([])', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.iteratee("constructor.constructor")([])', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.matchesProperty("constructor.constructor", 1)', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block the object-bound resolvers (_.propertyOf, _.methodOf)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.propertyOf([])("constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.methodOf([])("constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block the multi-path helpers (_.at, _.invokeMap)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.at([], ["constructor.constructor"])[0]', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.invokeMap([[]], "constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block the mutating path helpers (_.set, _.update, _.unset)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.set({}, "constructor.prototype.x", 1)', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.update({}, "__proto__.x", () => 1)', [])).toThrow('Access to "__proto__" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.unset({}, "a.prototype")', [])).toThrow('Access to "prototype" is blocked');
+    });
+
+    it('should still resolve safe string and array paths', () => {
+      expect(sandbox.evalWithArgs('() => _.get({ a: { b: 2 } }, "a.b")', [])).toBe(2);
+      expect(sandbox.evalWithArgs('() => _.get({ a: { b: 2 } }, ["a", "b"])', [])).toBe(2);
+      expect(sandbox.evalWithArgs('() => _.property("a.b")({ a: { b: 5 } })', [])).toBe(5);
+      expect(sandbox.evalWithArgs('() => _.at({ a: 1, b: 2 }, ["a", "b"])', [])).toEqual([1, 2]);
+    });
+
+    it('should still support safe _.set and lodash chaining', () => {
+      expect(sandbox.evalWithArgs('() => _.set({}, "a.b", 7).a.b', [])).toBe(7);
+      expect(sandbox.evalWithArgs('() => _([1, 2, 3]).map((n) => n * 2).value()', [])).toEqual([2, 4, 6]);
+    });
+  });
+
+  // The guarded `Object` wrapper (`object.ts`) blocks the reflection methods that reach the
+  // constructor/prototype chain via a string argument, while keeping the rest of `Object` usable.
+  describe('Object reflection hardening', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should block Object.getOwnPropertyDescriptor', () => {
+      expect(() => sandbox.evalWithArgs('() => Object.getOwnPropertyDescriptor([], "length")', [])).toThrow(
+        'Access to Object.getOwnPropertyDescriptor is blocked',
+      );
+    });
+
+    it('should block Object.getPrototypeOf', () => {
+      expect(() => sandbox.evalWithArgs('() => Object.getPrototypeOf([])', [])).toThrow('Access to Object.getPrototypeOf is blocked');
+    });
+
+    it('should block the descriptor route to the constructor', () => {
+      expect(() => sandbox.evalWithArgs('() => Object.getOwnPropertyDescriptor(Object.getPrototypeOf([]), "constructor").value', [])).toThrow(
+        'Access to Object.getPrototypeOf is blocked',
+      );
+    });
+
+    it('should still allow the safe Object statics', () => {
+      expect(sandbox.evalWithArgs('() => Object.keys({ a: 1, b: 2 })', [])).toEqual(['a', 'b']);
+      expect(sandbox.evalWithArgs('() => Object.values({ a: 1, b: 2 })', [])).toEqual([1, 2]);
+      expect(sandbox.evalWithArgs('() => Object.entries({ a: 1 })', [])).toEqual([['a', 1]]);
+      expect(sandbox.evalWithArgs('() => Object.assign({}, { a: 1 }, { b: 2 })', [])).toEqual({ a: 1, b: 2 });
+      expect(sandbox.evalWithArgs('() => Object.freeze({ a: 1 }).a', [])).toBe(1);
+      expect(sandbox.evalWithArgs('() => Object({ a: 1 }).a', [])).toBe(1);
+    });
+  });
+
+  // Destructuring reads a property by name without a member expression, so the AST guard rejects
+  // forbidden keys in object patterns.
+  describe('destructuring hardening', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should block destructuring constructor off a built-in', () => {
+      expect(() =>
+        sandbox.evalWithArgs('() => { const { constructor: C } = []; const { constructor: F } = C; return F("return typeof process")(); }', []),
+      ).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block destructuring prototype', () => {
+      expect(() => sandbox.evalWithArgs('(fn) => { const { prototype } = fn; return prototype; }', [() => 1])).toThrow(
+        'Access to "prototype" is blocked',
+      );
+    });
+
+    it('should block destructuring __proto__', () => {
+      expect(() => sandbox.evalWithArgs('(o) => { const { __proto__: p } = o; return p; }', [{}])).toThrow('Access to "__proto__" is blocked');
+    });
+
+    it('should block shorthand and computed-literal forbidden keys in patterns', () => {
+      expect(() => sandbox.evalWithArgs('() => { const { constructor } = []; return constructor; }', [])).toThrow(
+        'Access to "constructor" is blocked',
+      );
+      expect(() => sandbox.evalWithArgs('() => { const { ["constructor"]: C } = []; return C; }', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should still allow destructuring ordinary keys', () => {
+      expect(sandbox.evalWithArgs('(o) => { const { a, b } = o; return a + b; }', [{ a: 2, b: 3 }])).toBe(5);
+      expect(sandbox.evalWithArgs('(o) => { const { a: x = 9 } = o; return x; }', [{}])).toBe(9);
     });
   });
 });
