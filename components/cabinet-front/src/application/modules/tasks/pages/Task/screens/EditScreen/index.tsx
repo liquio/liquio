@@ -58,7 +58,6 @@ import GreetingsPage from 'modules/tasks/pages/Task/screens/EditScreen/component
 import EditScreenLayoutRaw from 'modules/tasks/pages/Task/screens/EditScreen/components/EditScreenLayout';
 
 import propsToData from 'modules/tasks/pages/Task/helpers/propsToData';
-import { resolveStepCondition } from 'modules/tasks/pages/Task/helpers/getTemplateSteps';
 import removeHiddenStepsData from 'modules/tasks/pages/Task/screens/EditScreen/methods/removeHiddenStepsData';
 import triggerInitSignerList from 'modules/tasks/pages/Task/screens/EditScreen/methods/triggerInitSignerList';
 import handleHiddenTriggers from 'modules/tasks/pages/Task/screens/EditScreen/methods/handleHiddenTriggers';
@@ -522,9 +521,8 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
     const stepData = stepName ? data[stepName] : undefined;
     const stepSchema = stepName ? properties[stepName] : undefined;
 
-    // A missing step schema (e.g. a stepOrders entry without a schema) is treated as valid, same as in handleSetNextStep.
     if (!stepName || !stepSchema) {
-      return true;
+      return false;
     }
 
     const stepProperties = removeHiddenFields(stepSchema as never, data as never, { stepData } as never);
@@ -1248,7 +1246,6 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
     new Promise((resolve) => {
       const { handleStore, handleSilentTriggers } = this.props;
       const {
-        steps,
         task,
         template,
         stepId
@@ -1277,7 +1274,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
         const userDataValid = await this.validateUserData();
 
         if (valid && userDataValid) {
-          await this.handleSetNextStep(activeStep, steps);
+          await this.handleSetStep(activeStep + 1);
         }
 
         this.setState({ readOnly: false }, resolve);
@@ -1296,46 +1293,6 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
 
     history.replace(getRootPath() + `/${steps[step]}`);
     saveLastStepVisited({ stepId: steps[step] });
-  };
-
-  isStepHidden = (properties: Record<string, Record<string, unknown>>, task: TaskEntity, stepId: string): boolean => {
-    const { checkStepHidden } = (properties[stepId] ?? {}) as { checkStepHidden?: unknown };
-    const { authInfo } = propsToData(this.props) as EditScreenData;
-
-    // Same condition resolution as getTemplateSteps: a string evaluated with (data, authInfo), or a function.
-    return !!resolveStepCondition(checkStepHidden, task, authInfo);
-  };
-
-  findNextVisibleStep = (currentStep: number, steps: string[], properties: Record<string, Record<string, unknown>>, task: TaskEntity): number => {
-    for (let i = currentStep + 1; i < steps.length; i++) {
-      if (!this.isStepHidden(properties, task, steps[i])) {
-        return i;
-      }
-    }
-    return steps.length;
-  };
-
-  handleSetNextStep = async (activeStep: number, previousSteps: string[]): Promise<void> => {
-    const { steps, task, template } = propsToData(this.props) as EditScreenData;
-    const properties = (template?.jsonSchema?.properties ?? {}) as Record<string, Record<string, unknown>>;
-
-    const nextStepId = previousSteps
-      .slice(activeStep + 1)
-      .find((stepId) => steps.includes(stepId) && !this.isStepHidden(properties, task, stepId));
-
-    if (nextStepId) {
-      await this.handleSetStep(steps.indexOf(nextStepId));
-      return;
-    }
-
-    const currentStepId = previousSteps[activeStep];
-    const currentStep = steps.indexOf(currentStepId);
-
-    if (currentStep > -1) {
-      const next = this.findNextVisibleStep(currentStep, steps, properties, task);
-
-      await this.handleSetStep(next);
-    }
   };
 
   isLastStep = (): boolean => {
