@@ -65,29 +65,32 @@ export class WorkflowBusiness {
     global.log.save('bpmn-schemas-initialization-started');
     const workflowTemplates = await this.workflowTemplateModel.getAll();
 
-    this.bpmnSchemes = (
-      await Promise.all(
-        workflowTemplates.map(async (workflowTemplate) => {
-          try {
-            const bpmnSchema = await this.xmlJsConverter.convertXmlToJsObject(workflowTemplate.xmlBpmnSchema.replace(/bpmn2:/g, 'bpmn:'));
-            if (
-              !bpmnSchema ||
-              !bpmnSchema['bpmn:definitions'] ||
-              !bpmnSchema['bpmn:definitions']['bpmn:process'] ||
-              !Array.isArray(bpmnSchema['bpmn:definitions']['bpmn:process']) ||
-              !bpmnSchema['bpmn:definitions']['bpmn:process'][0]
-            ) {
-              throw new Error(ERROR_INVALID_XML);
-            }
-
-            return { id: workflowTemplate.id, name: workflowTemplate.name, schema: bpmnSchema['bpmn:definitions']['bpmn:process'][0] };
-          } catch {
-            global.log.save('invalid-bpmn-schema', { workflowTemplate });
-          }
-        }),
-      )
-    ).filter((v) => !!v);
+    this.bpmnSchemes = (await Promise.all(workflowTemplates.map((workflowTemplate) => this.parseBpmnSchema(workflowTemplate)))).filter((v) => !!v);
     global.log.save('bpmn-schemas-initialization-ends');
+  }
+
+  /**
+   * Parse the BPMN schema of a workflow template.
+   * @param {object} workflowTemplate Workflow template.
+   * @returns {Promise<{id: number, name: string, schema: object}|undefined>} Parsed schema, or undefined when the XML is invalid.
+   */
+  async parseBpmnSchema(workflowTemplate) {
+    try {
+      const bpmnSchema = await this.xmlJsConverter.convertXmlToJsObject(workflowTemplate.xmlBpmnSchema.replace(/bpmn2:/g, 'bpmn:'));
+      if (
+        !bpmnSchema ||
+        !bpmnSchema['bpmn:definitions'] ||
+        !bpmnSchema['bpmn:definitions']['bpmn:process'] ||
+        !Array.isArray(bpmnSchema['bpmn:definitions']['bpmn:process']) ||
+        !bpmnSchema['bpmn:definitions']['bpmn:process'][0]
+      ) {
+        throw new Error(ERROR_INVALID_XML);
+      }
+
+      return { id: workflowTemplate.id, name: workflowTemplate.name, schema: bpmnSchema['bpmn:definitions']['bpmn:process'][0] };
+    } catch {
+      global.log.save('invalid-bpmn-schema', { workflowTemplate });
+    }
   }
 
   /**
@@ -96,7 +99,30 @@ export class WorkflowBusiness {
    * @returns {Promise<object>}
    */
   async findSchemaById(id) {
-    return this.bpmnSchemes.find((item) => id === item.id);
+    const cachedSchema = this.bpmnSchemes.find((item) => id === item.id);
+    if (cachedSchema) {
+      return cachedSchema;
+    }
+
+    // A workflow template imported after the last reload isn't cached yet: load it now instead of
+    // failing (and dropping) the queue message until the next reload.
+    let workflowTemplate;
+    try {
+      workflowTemplate = await this.workflowTemplateModel.findById(id);
+    } catch {
+      return;
+    }
+    if (!workflowTemplate?.isActive) {
+      return;
+    }
+
+    const schema = await this.parseBpmnSchema(workflowTemplate);
+    if (schema) {
+      this.bpmnSchemes = [...this.bpmnSchemes.filter((item) => item.id !== id), schema];
+      global.log.save('bpmn-schema-loaded-on-demand', { workflowTemplateId: id });
+    }
+
+    return schema;
   }
 
   /**
