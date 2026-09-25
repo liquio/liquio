@@ -1,7 +1,8 @@
 import vm from 'isolated-vm';
 import iconv from 'iconv-lite';
 import moment from 'moment';
-import _ from 'lodash';
+import { guardedLodash as _ } from './lodash';
+import { guardedObject } from './object';
 import * as crypto from 'node:crypto';
 import acorn from 'acorn';
 import { literal } from 'sequelize';
@@ -85,6 +86,9 @@ export class Sandbox {
       // Runtime guard injected around dynamic property keys by `guardCode`; low-code may not
       // reference it directly (enforced at compile time).
       [KEY_GUARD_NAME]: guardPropertyKey,
+      // Expose a guarded `Object` that blocks the reflection methods which reach the constructor
+      // chain via a string argument, while keeping keys/values/assign/etc.
+      Object: guardedObject,
       global: {},
       // Shadow host globals that evaluated code must not reach (they would otherwise resolve to
       // the host realm under `Function` isolation). `console` is re-injected per eval, routed to the log.
@@ -92,6 +96,9 @@ export class Sandbox {
       process: undefined,
       globalThis: undefined,
       Function: undefined,
+      // `Reflect.get(obj, 'constructor')` reaches the constructor chain via a string key, past the
+      // AST guard; nothing in low-code needs it, so shadow it entirely.
+      Reflect: undefined,
       queueMicrotask: undefined,
       navigator: undefined,
       performance: undefined,
