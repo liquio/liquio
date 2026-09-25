@@ -118,6 +118,48 @@ Usage: {{ include "liquio.initContainer.waitForService" (dict "name" "sign-tool"
 {{- end -}}
 
 {{/*
+Init container that runs `npm run plugin-installer` to install a component's
+configured plugins into the shared plugins volume before the main container starts.
+Usage: {{ include "liquio.initContainer.pluginInstaller" (dict "component" "task" "Values" .Values "Chart" .Chart) }}
+*/}}
+{{- define "liquio.initContainer.pluginInstaller" -}}
+- name: plugin-installer
+  image: {{ include "liquio.image" (dict "component" .component "Values" .Values "Chart" .Chart) }}
+  imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
+  command: ["npm", "run", "plugin-installer"]
+  securityContext:
+    {{- toYaml .Values.securityContext | nindent 4 }}
+  resources:
+    {{- toYaml .Values.pluginInstallerResources | nindent 4 }}
+  env:
+    - name: CONFIG_PATH
+      value: "/var/www/config"
+    - name: PLUGINS_INSTALL_DIR
+      value: "/var/www/plugins"
+    - name: SECRET_PATH
+      value: {{ .Values.secrets.secretConfigPath | quote }}
+    # npm's default cache dir is $HOME/.npm, which is not writable once
+    # readOnlyRootFilesystem is set above - redirect it into the writable tmp mount.
+    - name: npm_config_cache
+      value: "/tmp/.npm"
+    # Silence npm's own "new version available" notice, which has nothing to do
+    # with whether the plugin install itself found/installed anything.
+    - name: npm_config_update_notifier
+      value: "false"
+  volumeMounts:
+    - name: config
+      mountPath: /var/www/config
+      readOnly: true
+    - name: secret-config
+      mountPath: {{ .Values.secrets.secretConfigPath }}
+      readOnly: true
+    - name: plugins
+      mountPath: /var/www/plugins
+    - name: tmp
+      mountPath: /tmp
+{{- end -}}
+
+{{/*
 Init container to wait for a specific migration job to complete
 Usage: {{ include "liquio.initContainer.waitForMigrations" (dict "migrationJob" "id-migrations" "Context" .) }}
 */}}

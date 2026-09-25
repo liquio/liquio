@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="google" content="notranslate" />
+
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/css/style.css" />
+
+  <title>Liquio Admin</title>
+  <style>
+    #app-loader {
+      align-items: center;
+      background: #404040;
+      display: flex;
+      flex-direction: column;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      inset: 0;
+      justify-content: center;
+      position: fixed;
+      z-index: 2147483647;
+    }
+
+    #app-loader__spinner {
+      animation: app-loader-spin 800ms linear infinite;
+      border: 3px solid #4e4e4e;
+      border-radius: 50%;
+      border-top-color: #bb86fc;
+      box-sizing: border-box;
+      height: 40px;
+      width: 40px;
+    }
+
+    @keyframes app-loader-spin { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      #app-loader__spinner { animation-duration: 2s; }
+    }
+  </style>
+</head>
+
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root">
+    <div id="app-loader" role="status" aria-live="polite" aria-label="Loading application">
+      <div id="app-loader__spinner" aria-hidden="true"></div>
+    </div>
+  </div>
+  <script type="module" src="/src/index.js"></script>
+</body>
+
+</html>

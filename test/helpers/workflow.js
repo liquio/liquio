@@ -25,25 +25,34 @@ async function importWorkflow(page, filePath, isTest = false, isOverwrite = fals
 
   const fileChooser = await fileChooserPromise;
   debug('importWorkflow: File chooser opened');
+
+  // The import is only done once the server accepted it (the first request for an existing
+  // workflow is rejected until the overwrite is confirmed). Without waiting for that, a caller
+  // navigating away right after a new workflow's import aborts the upload.
+  const importAccepted = page.waitForResponse(
+    (response) => response.request().method() === 'POST'
+      && response.url().includes('/bpmn-workflows/import')
+      && response.status() < 300,
+    { timeout: 60000 },
+  );
+  importAccepted.catch(() => null);
+
   await fileChooser.setFiles(filePath);
   debug('importWorkflow: File selected');
 
-  // Wait for network to be idle before checking for dialogs
-  await page.waitForLoadState('networkidle');
-
-  // Check for success toast first
+  // Wait for the outcome: a success toast (new workflow) or the overwrite dialog (existing one).
+  // `isVisible()` doesn't wait, so wait for either of them explicitly.
   const successToast = page.locator('text="Service import completed successfully"');
-  const hasSuccessToast = await successToast.isVisible({ timeout: 1000 }).catch(() => false);
-  
-  if (hasSuccessToast) {
+  const overwriteDialog = page.locator('div[role="dialog"]:has-text("already exists")');
+  await successToast.or(overwriteDialog).first().waitFor({ timeout: 30000 });
+
+  if (await successToast.isVisible()) {
+    await importAccepted;
     debug('importWorkflow: Success toast appeared, import completed');
     return;
   }
-  // Check if overwrite dialog appears
-  const overwriteDialog = page.locator('div[role="dialog"]:has-text("already exists")');
-  const isOverwriteDialogVisible = await overwriteDialog.isVisible({ timeout: 1000 }).catch(() => false);
 
-  if (isOverwriteDialogVisible) {
+  if (await overwriteDialog.isVisible()) {
     debug('importWorkflow: Overwrite confirmation dialog appeared');
     if (isOverwrite) {
       debug('importWorkflow: Clicking "Yes" to overwrite');
@@ -53,6 +62,9 @@ async function importWorkflow(page, filePath, isTest = false, isOverwrite = fals
       throw new Error('Workflow already exists but isOverwrite is false. Add isOverwrite=true to allow overwriting.');
     }
   }
+
+  await importAccepted;
+  debug('importWorkflow: Import accepted by the server');
 
   // Wait for network to be idle to ensure import/overwrite is complete
   await page.waitForLoadState('networkidle');
