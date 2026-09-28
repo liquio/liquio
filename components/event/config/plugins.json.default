@@ -1,0 +1,16 @@
+{
+  "pluginsDir": "/var/www/plugins",
+  "plugins": [
+    {
+      "package": "@liquio/event-xroad-plugin",
+      "version": "0.1.0",
+      "isEnabled": true,
+      "name": "xroad",
+      "options": {
+        "trembitaUrl": "https://trembita.example.gov.ua/soap",
+        "timeout": 20000,
+        "debug": false
+      }
+    }
+  ]
+}

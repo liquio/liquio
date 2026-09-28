@@ -36,22 +36,22 @@ Replace `<version>` with a published chart version, e.g. `0.1.0`.
 1. Build Docker images for all components:
    ```bash
    # Build images for each service
-   docker build -t id-front:latest ./id-front
-   docker build -t id-api:latest ./id-api
-   docker build -t admin-front:latest ./admin-front
-   docker build -t admin-api:latest ./admin-api
-   docker build -t cabinet-front:latest ./cabinet-front
-   docker build -t cabinet-api:latest ./cabinet-api
-   docker build -t event:latest ./event
-   docker build -t gateway:latest ./gateway
-   docker build -t manager:latest ./manager
-   docker build -t notification:latest ./notification
-   docker build -t register:latest ./register
-   docker build -t sign-tool:latest ./sign-tool
-   docker build -t pdf-generator:latest ./pdf-generator
-   docker build -t task:latest ./task
-   docker build -t external-reader:latest ./external-reader
-   docker build -t filestorage:latest ./filestorage
+   docker build -t id-front:latest ./components/id-front
+   docker build -t id-api:latest ./components/id-api
+   docker build -t admin-front:latest ./components/admin-front
+   docker build -t admin-api:latest ./components/admin-api
+   docker build -t cabinet-front:latest ./components/cabinet-front
+   docker build -t cabinet-api:latest ./components/cabinet-api
+   docker build -t event:latest ./components/event
+   docker build -t gateway:latest ./components/gateway
+   docker build -t manager:latest ./components/manager
+   docker build -t notification:latest ./components/notification
+   docker build -t register:latest ./components/register
+   docker build -t sign-tool:latest ./components/sign-tool
+   docker build -t pdf-generator:latest ./components/pdf-generator
+   docker build -t task:latest ./components/task
+   docker build -t external-reader:latest ./components/external-reader
+   docker build -t filestorage:latest ./components/filestorage
    ```
 
 2. Install the chart:

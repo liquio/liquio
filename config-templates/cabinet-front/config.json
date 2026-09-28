@@ -15,5 +15,8 @@
   "authLink": "http://localhost:8101/redirect/auth",
   "idAuthLink": "http://localhost:8080/authorise",
   "clientId": "liquio-portal",
+  "features": {
+    "navigationTreePreloading": true
+  },
   "defaultLanguage": "en-GB"
 }

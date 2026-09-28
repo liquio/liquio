@@ -1,13 +1,17 @@
 #!/bin/bash
 
 # Monorepo test script
-# Runs tests across all services and the test directory
+# Runs tests across all services under components/
 # Usage: ./scripts/test.sh [service] [options]
+#
+# Note: the e2e test/ suite at the repo root is not covered by this script.
+# Run it directly: cd test && npm test
 
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+COMPONENTS_DIR="$PROJECT_ROOT/components"
 
 # Colors for output
 RED='\033[0;31m'
@@ -19,7 +23,7 @@ NC='\033[0m' # No Color
 # Dynamically discover services with test script in package.json
 discover_services() {
   local services=()
-  cd "$PROJECT_ROOT"
+  cd "$COMPONENTS_DIR"
   for dir in */; do
     dir=${dir%/}
     if [[ -f "$dir/package.json" ]]; then
@@ -63,7 +67,6 @@ Examples:
   $0 --coverage                   # Run all tests with coverage
   $0 id-api                       # Run tests for id-api only
   $0 --watch admin-api            # Run admin-api tests in watch mode
-  $0 --e2e test                   # Run E2E tests from test directory
   $0 --quiet                      # Run all tests with minimal output
 EOF
 }
@@ -93,19 +96,19 @@ run_service_test() {
   local options=$2
   local quiet_flag=$3
 
-  if [[ ! -d "$PROJECT_ROOT/$service" ]]; then
+  if [[ ! -d "$COMPONENTS_DIR/$service" ]]; then
     [[ -z "$quiet_flag" ]] && echo -e "${RED}❌ Service directory not found: $service${NC}" >&2
     return 1
   fi
 
-  if [[ ! -f "$PROJECT_ROOT/$service/package.json" ]]; then
+  if [[ ! -f "$COMPONENTS_DIR/$service/package.json" ]]; then
     [[ -z "$quiet_flag" ]] && echo -e "${RED}❌ No package.json found in $service${NC}" >&2
     return 1
   fi
 
   [[ -z "$quiet_flag" ]] && echo -e "${BLUE}▶ Running tests for $service...${NC}"
 
-  cd "$PROJECT_ROOT/$service"
+  cd "$COMPONENTS_DIR/$service"
 
   # Determine which test command to run
   local test_cmd="npm run test"

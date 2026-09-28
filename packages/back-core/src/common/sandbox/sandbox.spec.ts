@@ -1,0 +1,1179 @@
+import { Sandbox, SandboxIsolationLevel } from './index';
+import { appendTraceMeta, runInAsyncLocalStorage } from '../async_local_storage';
+
+const log = { save: jest.fn() };
+
+describe('Sandbox', () => {
+  const config = { getLog: () => log };
+
+  beforeEach(() => {
+    log.save.mockClear();
+  });
+
+  it('should execute a simple code', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.eval('1 + 1');
+    expect(result).toBe(2);
+  });
+
+  it('should execute a code with arguments', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.evalWithArgs('(a, b) => a + b', [1, 2]);
+    expect(result).toBe(3);
+  });
+
+  it('should return the default value if code is empty', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.eval('', { defaultValue: 42 });
+    expect(result).toBe(42);
+  });
+
+  it('should cleanup comments and trim code', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.eval('\n/* comment */\n 1 + 1 // comment');
+    expect(result).toBe(2);
+  });
+
+  it('should check for arrow functions and return raw string if not', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.evalWithArgs('1 + 1', [], { checkArrow: true });
+    expect(result).toBe('1 + 1');
+  });
+
+  it('should check for arrow functions and return evaluated code if found', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.eval(' (a, b) => a + b', { checkArrow: true });
+    expect(result).toBeInstanceOf(Function);
+    expect((result as any)(1, 2)).toBe(3);
+  });
+
+  it('should transform functions to async', async () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.evalWithArgs('(a) => test(a)', [42], {
+      isAsync: true,
+      global: { test: async (a: number) => a + 1 },
+    });
+    expect(result).toBeInstanceOf(Promise);
+    await expect(result).resolves.toBe(43);
+  });
+
+  it('should prevent access to global reference', () => {
+    (global as any).test = 'test';
+    const sandbox = new Sandbox(config);
+    const result = sandbox.eval('Object.keys(global)');
+    expect(result).toEqual([]);
+    sandbox.eval('global.test = "test2"');
+    expect((global as any).test).toBe('test');
+  });
+
+  it('should not leak assignments to shadowed host globals', () => {
+    const original = (fetch as any).toString();
+    const sandbox = new Sandbox(config);
+    sandbox.eval('fetch = function() { return "fetch" }');
+    expect((fetch as any).toString()).toBe(original);
+  });
+
+  // This is a known V8 sandbox escape technique that reaches the real `Function` constructor (and
+  // through it the host realm) via the constructor of an array method. Shadowing host globals as
+  // `undefined` parameters does not stop it, because the constructor chain walks prototypes rather
+  // than resolving an identifier. The sandbox now blocks any `.constructor` access at compile time.
+  it('should prevent containment breach via [].filter.constructor', () => {
+    const sandbox = new Sandbox(config);
+    expect(() => sandbox.evalWithArgs('() => { [].filter.constructor("require")() }', [])).toThrow(
+      'Sandbox error: "Access to "constructor" is blocked"',
+    );
+  });
+
+  // Prototype pollution is now blocked: `.prototype` access is rejected at compile time (before the
+  // code ever runs) and a 'sandbox-alert' warning is still emitted so suspicious code is flagged.
+  it('should block and alert when .prototype is accessed', () => {
+    const sandbox = new Sandbox(config);
+    const originalJoin = Array.prototype.join;
+    try {
+      expect(() => sandbox.evalWithArgs(`() => { Array.prototype.join = () => 'pwned'; }`, [])).toThrow(
+        'Sandbox error: "Access to "prototype" is blocked"',
+      );
+      expect(Array.prototype.join).toBe(originalJoin);
+    } finally {
+      Array.prototype.join = originalJoin;
+    }
+    expect(log.save).toHaveBeenCalledWith('sandbox-alert', expect.objectContaining({ code: expect.stringContaining('.prototype') }), 'warn');
+  });
+
+  it('should route console output to the log', () => {
+    const sandbox = new Sandbox(config);
+    sandbox.evalWithArgs('() => { console.log("a", 1); console.warn("b"); console.error("c"); console.debug("d"); console.info("e"); }', []);
+    expect(log.save).toHaveBeenCalledWith('sandbox-console', expect.objectContaining({ data: ['a', 1] }), 'info');
+    expect(log.save).toHaveBeenCalledWith('sandbox-console', expect.objectContaining({ data: ['b'] }), 'warn');
+    expect(log.save).toHaveBeenCalledWith('sandbox-console', expect.objectContaining({ data: ['c'] }), 'error');
+    expect(log.save).toHaveBeenCalledWith('sandbox-console', expect.objectContaining({ data: ['d'] }), 'debug');
+    expect(log.save).toHaveBeenCalledWith('sandbox-console', expect.objectContaining({ data: ['e'] }), 'info');
+  });
+
+  it('should use default globals', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.eval('getMd5Hash("test")');
+    expect(result).toBe('098f6bcd4621d373cade4e832627b4f6');
+  });
+
+  it('should expose sha256, uuid and crypto helpers as default globals', () => {
+    const sandbox = new Sandbox(config);
+    expect(sandbox.eval('getSha256Hash("test")')).toBe('9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08');
+    expect(sandbox.eval('typeof uuid()')).toBe('string');
+    expect(sandbox.eval('typeof uuidv4()')).toBe('string');
+    expect(sandbox.eval('typeof crypto.randomUUID')).toBe('function');
+  });
+
+  it('should compute a sha512 hash, with and without an hmac secret', () => {
+    const sandbox = new Sandbox(config);
+    expect(sandbox.eval('getSha512Hash("test")')).toBe(
+      'ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff',
+    );
+    expect(sandbox.eval('getSha512Hash("test", { hmac: "secret" })')).toBe(
+      'f8a4f0a209167bc192a1bffaa01ecdb09e06c57f96530d92ec9ccea0090d290e55071306d6b654f26ae0c8721f7e48a2d7130b881151f2cec8d61d941a6be88a',
+    );
+  });
+
+  it('should encode/decode base64 helpers', () => {
+    const sandbox = new Sandbox(config);
+    expect(sandbox.eval('base64Encode("hello")')).toBe('aGVsbG8=');
+    expect(sandbox.eval('base64Decode("aGVsbG8=")')).toBe('hello');
+    expect(sandbox.eval('toBase64("hello")')).toBe('aGVsbG8=');
+    expect(sandbox.eval('base64Decode(toBase64("round-trip"))')).toBe('round-trip');
+  });
+
+  it('should override globals if needed', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.eval('Object.keys(global)', {
+      global: { global: { a: 1 } },
+    });
+    expect(result).toEqual(['a']);
+  });
+
+  it('should add a custom global via addGlobal', () => {
+    const sandbox = new Sandbox(config);
+    sandbox.addGlobal('double', (n: number) => n * 2);
+    expect(sandbox.eval('double(21)')).toBe(42);
+  });
+
+  it('should throw when adding a global that already exists', () => {
+    const sandbox = new Sandbox(config);
+    expect(() => sandbox.addGlobal('_', {})).toThrow('Global "_" already exists');
+  });
+
+  it('should throw when adding a global with an invalid name', () => {
+    const sandbox = new Sandbox(config);
+    expect(() => sandbox.addGlobal('', 1)).toThrow('Global name must be a non-empty string');
+    expect(() => sandbox.addGlobal(undefined as any, 1)).toThrow('Global name must be a non-empty string');
+  });
+
+  it('should throw when adding a global with an undefined value', () => {
+    const sandbox = new Sandbox(config);
+    expect(() => sandbox.addGlobal('newGlobal', undefined)).toThrow('Global value cannot be undefined');
+  });
+
+  it('should return the sandbox instance so addGlobal calls can be chained', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.addGlobal('one', 1).addGlobal('two', 2);
+    expect(result).toBe(sandbox);
+    expect(sandbox.eval('one + two')).toBe(3);
+  });
+
+  it('should eval some real business process examples', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.evalWithArgs(
+      `(documents) => {
+        const unit = documents
+          ?.find((item => item?.documentTemplateId === 988071001))
+          ?.data
+          ?.calculated
+          ?.moderatorUnitIds;
+        return unit || []
+      };`,
+      [
+        [
+          {
+            documentTemplateId: 988071001,
+            data: {
+              calculated: {
+                moderatorUnitIds: [1, 2, 3],
+              },
+            },
+          },
+        ],
+      ],
+    );
+    expect(result).toEqual([1, 2, 3]);
+  });
+
+  it('should throw an error if code is not a string', () => {
+    const sandbox = new Sandbox(config);
+
+    expect(() => sandbox.evalWithArgs(undefined, undefined, { throwOnUndefined: true })).toThrow('Sandbox error: "Code is undefined"');
+
+    expect(() =>
+      sandbox.evalWithArgs(undefined, undefined, {
+        throwOnUndefined: true,
+        meta: { fn: 'testFn' },
+      }),
+    ).toThrow('Sandbox error: "Code is undefined" in testFn');
+
+    expect(() =>
+      sandbox.evalWithArgs(undefined, undefined, {
+        throwOnUndefined: true,
+        meta: { fn: 'testFn', caller: 'testCaller' },
+      }),
+    ).toThrow('Sandbox error: "Code is undefined" in testFn called by testCaller');
+  });
+
+  it('should not work with a plain string without checkArrow', () => {
+    const sandbox = new Sandbox(config);
+
+    expect(() => sandbox.evalWithArgs('Витяг з Єдиного державного реєстру ветеранів війни', [])).toThrow('Sandbox error: "Unexpected token (1:6)"');
+  });
+
+  it('should work with a plain string with checkArrow', () => {
+    const sandbox = new Sandbox(config);
+
+    const result = sandbox.evalWithArgs('Витяг з Єдиного державного реєстру ветеранів війни', [], { checkArrow: true });
+
+    expect(result).toBe('Витяг з Єдиного державного реєстру ветеранів війни');
+  });
+
+  it('should work with a quoted string', () => {
+    const sandbox = new Sandbox(config);
+
+    const result = sandbox.evalWithArgs('"Витяг з Єдиного державного реєстру ветеранів війни"', []);
+
+    expect(result).toBe('Витяг з Єдиного державного реєстру ветеранів війни');
+  });
+
+  it('should handle syntax errors', () => {
+    const sandbox = new Sandbox(config);
+
+    expect(() => sandbox.evalWithArgs("(documents, events) => { return 'Тестовий юніт; }", [])).toThrow(
+      'Sandbox error: "Unterminated string constant (1:32)"\n  (documents, events) => { return \'Тестовий юніт; }',
+    );
+  });
+
+  it('should automatically add "async" to functions if isAsync is true', () => {
+    const sandbox = new Sandbox(config);
+
+    const result = sandbox.evalWithArgs('(a) => await test(a)', [42], { isAsync: true, global: { test: async (a: number) => a + 1 } });
+    expect(result).toBeInstanceOf(Promise);
+
+    return expect(result).resolves.toBe(43);
+  });
+
+  it('should correctly strip comments and trim code', () => {
+    const sandbox = new Sandbox(config);
+    const result = sandbox.evalWithArgs('\n/* comment */\n() => 1 + 1 // comment', [], { checkArrow: true });
+    expect(result).toBe(2);
+  });
+
+  it('should handle faulty comments with eval', () => {
+    const sandbox = new Sandbox(config);
+
+    const fn = `() => false;
+    // This is a faulty comment
+    return true;`;
+
+    const id = sandbox.eval(fn)();
+    expect(id).toBe(false);
+  });
+
+  it('should handle faulty comments with evalWithArgs', () => {
+    const sandbox = new Sandbox(config);
+
+    const fn = `() => false;
+    // This is a faulty comment
+    return true;`;
+
+    expect(() => sandbox.evalWithArgs(fn, [])).toThrow();
+  });
+
+  it('should evaluate an arrow function with an inline comment (workflow_template workaround)', () => {
+    const sandbox = new Sandbox(config);
+
+    let fn = `(user, unitIds, units) => user.id
+      // inline comment';
+      return false; }
+    `;
+
+    expect(() => sandbox.eval(fn)({ id: 123 }, [1], {})).toThrow();
+
+    const idx = fn.indexOf('//');
+    fn = fn.substring(0, idx).trim();
+    const id = sandbox.eval(fn)({ id: 123 }, [1], {});
+    expect(id).toBe(123);
+  });
+
+  describe('globals', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should not contain symbol for "fs"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = fs; x }', [])).toThrow('fs is not defined');
+    });
+
+    it('should not contain symbol for "path"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = path; x }', [])).toThrow('path is not defined');
+    });
+
+    it('should not contain symbol for "os"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = os; x }', [])).toThrow('os is not defined');
+    });
+
+    it('should not contain symbol for "child_process"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = child_process; x }', [])).toThrow('child_process is not defined');
+    });
+
+    it('should not contain symbol for "cluster"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = cluster; x }', [])).toThrow('cluster is not defined');
+    });
+
+    it('should not contain symbol for "worker_threads"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = worker_threads; x }', [])).toThrow('worker_threads is not defined');
+    });
+
+    it('should not contain symbol for "http"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = http; x }', [])).toThrow('http is not defined');
+    });
+
+    it('should not contain symbol for "https"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = https; x }', [])).toThrow('https is not defined');
+    });
+
+    it('should not contain symbol for "net"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = net; x }', [])).toThrow('net is not defined');
+    });
+
+    it('should not contain symbol for "dgram"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = dgram; x }', [])).toThrow('dgram is not defined');
+    });
+
+    it('should not contain symbol for "dns"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = dns; x }', [])).toThrow('dns is not defined');
+    });
+
+    it('should not contain symbol for "__dirname"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = __dirname; x }', [])).toThrow('__dirname is not defined');
+    });
+
+    it('should not contain symbol for "__filename"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = __filename; x }', [])).toThrow('__filename is not defined');
+    });
+
+    it('should not contain symbol for "module"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = module; x }', [])).toThrow('module is not defined');
+    });
+
+    it('should not contain symbol for "exports"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = exports; x }', [])).toThrow('exports is not defined');
+    });
+
+    it('should not contain symbol for "require"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = require; x }', [])).toThrow('require is not defined');
+    });
+
+    it('should not contain symbol for "vm"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = vm; x }', [])).toThrow('vm is not defined');
+    });
+
+    it('should not contain symbol for "repl"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = repl; x }', [])).toThrow('repl is not defined');
+    });
+
+    it('should not contain symbol for "inspector"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = inspector; x }', [])).toThrow('inspector is not defined');
+    });
+
+    it('should not contain symbol for "async_hooks"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = async_hooks; x }', [])).toThrow('async_hooks is not defined');
+    });
+
+    it('should not contain symbol for "v8"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = v8; x }', [])).toThrow('v8 is not defined');
+    });
+
+    it('should not contain symbol for "tls"', () => {
+      expect(() => sandbox.evalWithArgs('() => { const x = tls; x }', [])).toThrow('tls is not defined');
+    });
+
+    it('should not allow access to forbidden global "queueMicrotask"', () => {
+      expect(sandbox.evalWithArgs('() => { return queueMicrotask }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "navigator"', () => {
+      expect(sandbox.evalWithArgs('() => { return navigator }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "process"', () => {
+      expect(sandbox.evalWithArgs('() => { return process }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "globalThis"', () => {
+      expect(sandbox.evalWithArgs('() => { return globalThis }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "Function"', () => {
+      expect(sandbox.evalWithArgs('() => { return Function }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "Reflect"', () => {
+      expect(sandbox.evalWithArgs('() => { return Reflect }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "setInterval"', () => {
+      expect(sandbox.evalWithArgs('() => { return setInterval }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "setTimeout"', () => {
+      expect(sandbox.evalWithArgs('() => { return setTimeout }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "setImmediate"', () => {
+      expect(sandbox.evalWithArgs('() => { return setImmediate }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "clearInterval"', () => {
+      expect(sandbox.evalWithArgs('() => { return clearInterval }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "clearTimeout"', () => {
+      expect(sandbox.evalWithArgs('() => { return clearTimeout }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "clearImmediate"', () => {
+      expect(sandbox.evalWithArgs('() => { return clearImmediate }', [])).toBeUndefined();
+    });
+
+    it('should not allow access to forbidden global "fetch"', () => {
+      expect(sandbox.evalWithArgs('() => { return fetch }', [])).toBeUndefined();
+    });
+
+    it('should allow access to allowed global "Buffer"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof Buffer }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof Buffer }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "Proxy"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof Proxy }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof Proxy }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "crypto"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof crypto }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof crypto }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "Symbol"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof Symbol }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof Symbol }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "atob"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof atob }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof atob }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "btoa"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof btoa }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof btoa }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "structuredClone"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof structuredClone }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof structuredClone }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "log"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof log }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof log }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "console"', () => {
+      expect(() => sandbox.evalWithArgs('() => { return typeof console }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof console }', [])).not.toBe('undefined');
+    });
+
+    it('should allow access to allowed global "_"', () => {
+      // lodash
+      expect(() => sandbox.evalWithArgs('() => { return typeof _ }', [])).not.toThrow();
+      expect(sandbox.evalWithArgs('() => { return typeof _ }', [])).not.toBe('undefined');
+    });
+
+    it('should keep the CE-only randomUUID and getSha256Hash globals', () => {
+      expect(sandbox.evalWithArgs('() => typeof randomUUID()', [])).toBe('string');
+      expect(sandbox.evalWithArgs('() => getSha256Hash("test")', [])).toBe('9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08');
+    });
+  });
+
+  describe('getInstance', () => {
+    it('should throw if the sandbox was never constructed', () => {
+      (Sandbox as any).singleton = undefined;
+      expect(() => Sandbox.getInstance()).toThrow('Sandbox is not initialized.');
+    });
+
+    it('should return the last constructed sandbox', () => {
+      const sandbox = new Sandbox(config);
+      expect(Sandbox.getInstance()).toBe(sandbox);
+    });
+  });
+
+  describe('globalFunctions', () => {
+    let sandbox: Sandbox;
+
+    it('should query for workflow templates', async () => {
+      sandbox = new Sandbox(config);
+
+      const models = {
+        models: {
+          workflowTemplate: {
+            model: {
+              findAll: jest.fn().mockResolvedValue([
+                { id: 1, data: { globalFunctions: 'invalid' } },
+                { id: 2, data: { globalFunctions: {} } },
+                { id: 3, data: { globalFunctions: { testFunc: '(value) => `test-${value}`' } } },
+              ]),
+            },
+          },
+        },
+      };
+
+      await sandbox.init(models);
+
+      expect(sandbox).toBeDefined();
+      expect(log.save).toHaveBeenCalledWith(
+        'sandbox-warning',
+        expect.objectContaining({ workflowTemplateId: 1, message: expect.stringContaining('must be an object') }),
+        'warn',
+      );
+      expect(log.save).toHaveBeenCalledWith('sandbox-global-function', { workflowTemplateId: 3, functionName: 'testFunc' }, 'info');
+    });
+
+    it('should use global functions from workflow templates', () => {
+      const result = sandbox.evalWithArgs('() => $.workflow.testFunc("value")', [], { workflowTemplateId: 3 });
+      expect(result).toBe('test-value');
+    });
+
+    it('should resolve the workflow template ID from trace meta when not passed in options', () => {
+      let result: any;
+      runInAsyncLocalStorage(() => {
+        appendTraceMeta({ workflowTemplateId: 3 });
+        result = sandbox.eval('() => $.workflow.testFunc("value")')();
+      });
+      expect(result).toBe('test-value');
+    });
+
+    it('should log and store a global function that fails to compile', () => {
+      sandbox.updateWorkflowTemplateFunctions(4, { brokenFunc: '(value =>' });
+      expect(log.save).toHaveBeenCalledWith(
+        'sandbox-global-function-error',
+        expect.objectContaining({ workflowTemplateId: 4, functionName: 'brokenFunc' }),
+        'warn',
+      );
+      expect(() => sandbox.evalWithArgs('() => $.workflow.brokenFunc("value")', [], { workflowTemplateId: 4 })).toThrow(
+        'Sandbox error: "$.workflow.brokenFunc is not a function"',
+      );
+    });
+
+    it('should ignore non-string and empty-string global function values', () => {
+      sandbox.updateWorkflowTemplateFunctions(5, { a: 1, b: '', c: '(value) => value' });
+      expect(sandbox.workflowTemplateFunctions[5]).toEqual({ c: expect.any(Function) });
+    });
+
+    it('should throw an error if global functions are not defined for the workflow template', () => {
+      expect(() => sandbox.evalWithArgs('() => $.workflow.testFunc("value")', [], { workflowTemplateId: 1 })).toThrow(
+        'Sandbox error: "$.workflow.testFunc is not a function"',
+      );
+    });
+
+    it('should throw an error if a particular function is not defined in global functions', () => {
+      expect(() => sandbox.evalWithArgs('() => $.workflow.nonExistentFunc("value")', [], { workflowTemplateId: 3 })).toThrow(
+        'Sandbox error: "$.workflow.nonExistentFunc is not a function"',
+      );
+    });
+
+    it('should warn and skip loading if models are not provided', async () => {
+      const sandbox = new Sandbox(config);
+      await expect(sandbox.init({})).resolves.toBeUndefined();
+      expect(log.save).toHaveBeenCalledWith('sandbox-warning', { message: 'Models are required to initialize the sandbox.' }, 'warn');
+    });
+  });
+
+  describe('minifyCode', () => {
+    it('should strip single-line and multi-line comments and trim whitespace', () => {
+      const code = `
+        // leading comment
+        /* block
+           comment */
+        const a = 1;
+      `;
+      expect(Sandbox.minifyCode(code)).toBe('const a = 1;');
+    });
+
+    it('should leave code without comments unchanged apart from trimming', () => {
+      expect(Sandbox.minifyCode('  1 + 1  ')).toBe('1 + 1');
+    });
+  });
+
+  describe('caching', () => {
+    it('should reuse the compiled function for identical code and options', () => {
+      const sandbox = new Sandbox(config);
+      const first = sandbox.eval('() => Math.random()');
+      const second = sandbox.eval('() => Math.random()');
+      expect(second).toBe(first);
+    });
+
+    it('should compile separately when options differ', () => {
+      const sandbox = new Sandbox(config);
+      const first = sandbox.eval('() => 1', { checkArrow: true });
+      const second = sandbox.eval('() => 1', { checkArrow: false });
+      expect(second).not.toBe(first);
+    });
+
+    it('should respect a configured lru_max', () => {
+      const sandbox = new Sandbox({ ...config, lru_max: 1 });
+      sandbox.eval('1 + 1');
+      sandbox.eval('2 + 2');
+      expect(sandbox.cache.size).toBe(1);
+    });
+  });
+
+  describe('eval / evalWithArgs edge cases', () => {
+    it('should return the default value for non-string code', () => {
+      const sandbox = new Sandbox(config);
+      expect(sandbox.eval(null as any, { defaultValue: 'fallback' })).toBe('fallback');
+      expect(sandbox.eval(42 as any, { defaultValue: 'fallback' })).toBe('fallback');
+    });
+
+    it('should return undefined from evalWithArgs when code is undefined and no fallback options are set', () => {
+      const sandbox = new Sandbox(config);
+      expect(sandbox.evalWithArgs(undefined, [])).toBeUndefined();
+    });
+
+    it('should return the defaultValue from evalWithArgs when code is undefined', () => {
+      const sandbox = new Sandbox(config);
+      expect(sandbox.evalWithArgs(undefined, [], { defaultValue: 'fallback' })).toBe('fallback');
+    });
+
+    it('should warn and return the raw value when the evaluated code is not a function', () => {
+      const sandbox = new Sandbox(config);
+      const result = sandbox.evalWithArgs('({ a: 1 })', []);
+      expect(result).toEqual({ a: 1 });
+      expect(log.save).toHaveBeenCalledWith('sandbox-warning', expect.objectContaining({ error: 'Function not found' }), 'warn');
+    });
+
+    it('should return the raw code and skip evaluation when checkArrow is set and the code is not an arrow function', () => {
+      const sandbox = new Sandbox(config);
+      const result = sandbox.evalWithArgs('({ a: 1 })', [], { checkArrow: true });
+      expect(result).toBe('({ a: 1 })');
+      expect(log.save).not.toHaveBeenCalledWith('sandbox-warning', expect.anything(), 'warn');
+    });
+
+    it('should slice extra arguments down to the arrow function arity', () => {
+      const sandbox = new Sandbox(config);
+      const result = sandbox.evalWithArgs('(a, b) => [a, b]', [1, 2, 3, 4]);
+      expect(result).toEqual([1, 2]);
+    });
+
+    it('should log duration and call details when config.logging is enabled', () => {
+      const sandbox = new Sandbox({ ...config, logging: true });
+      const result = sandbox.evalWithArgs('(a, b) => a + b', [1, 2]);
+      expect(result).toBe(3);
+      expect(log.save).toHaveBeenCalledWith('sandbox-eval', expect.objectContaining({ isArrowFunction: true, arrowParams: ['a', 'b'] }));
+    });
+
+    it('should not log per-call details when config.logging is not enabled', () => {
+      const sandbox = new Sandbox(config);
+      sandbox.evalWithArgs('(a, b) => a + b', [1, 2]);
+      expect(log.save).not.toHaveBeenCalledWith('sandbox-eval', expect.anything());
+    });
+  });
+
+  describe('config options', () => {
+    it('should use a custom globalFunctionsObject name', () => {
+      const sandbox = new Sandbox({ ...config, globalFunctionsObject: 'helpers' });
+      expect(sandbox.eval('typeof helpers.workflow')).toBe('object');
+      expect(sandbox.eval('typeof $')).toBe('undefined');
+    });
+
+    it('should fall back to global.log when no getLog is configured', () => {
+      const globalLog = { save: jest.fn() };
+      (global as any).log = globalLog;
+      try {
+        const sandbox = new Sandbox({});
+        sandbox.throwError(new Error('boom'), 'code', {});
+        expect(globalLog.save).toHaveBeenCalledWith('sandbox-error', expect.objectContaining({ error: 'boom' }), 'error');
+      } finally {
+        delete (global as any).log;
+      }
+    });
+  });
+
+  describe('createContext / SandboxContext', () => {
+    it('should evaluate code directly inside the isolate', () => {
+      const sandbox = new Sandbox(config);
+      const context = sandbox.createContext();
+      expect(context.eval('1 + 1')).toBe(2);
+    });
+
+    it('should expose a value set via set() as a readable Reference inside the isolate', () => {
+      const sandbox = new Sandbox(config);
+      const context = sandbox.createContext();
+      context.set('obj', { a: 42 });
+      expect(context.eval('obj.getSync("a")')).toBe(42);
+    });
+
+    it('should expose a function set via set() as a callable Reference inside the isolate', () => {
+      const sandbox = new Sandbox(config);
+      const context = sandbox.createContext();
+      context.set('double', (n: number) => n * 2);
+      expect(context.eval('double.applySync(undefined, [21])')).toBe(42);
+    });
+
+    it('should allow chaining set() calls', () => {
+      const sandbox = new Sandbox(config);
+      const context = sandbox.createContext();
+      const chained = context.set('a', 1).set('b', 2);
+      expect(chained).toBe(context);
+      expect(context.eval('typeof a')).toBe('object');
+      expect(context.eval('typeof b')).toBe('object');
+    });
+
+    it('should isolate separate contexts from the same sandbox from each other', () => {
+      const sandbox = new Sandbox(config);
+      const contextA = sandbox.createContext();
+      const contextB = sandbox.createContext();
+
+      contextA.set('a', 1);
+
+      expect(contextA.eval('typeof a')).toBe('object');
+      expect(contextB.eval('typeof a')).toBe('undefined');
+    });
+  });
+
+  describe('isolationLevel: isolated-vm', () => {
+    const vmConfig = { ...config, isolationLevel: SandboxIsolationLevel.IsolatedVm };
+
+    it('should execute a simple code', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.eval('1 + 1')).toBe(2);
+    });
+
+    it('should execute a code with arguments via evalWithArgs', () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs('(a, b) => a + b', [1, 2]);
+      expect(result).toBe(3);
+    });
+
+    it('should operate on plain object/array arguments via evalWithArgs', () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs('(items) => items.filter((i) => i.active).map((i) => i.name)', [
+        [
+          { name: 'a', active: true },
+          { name: 'b', active: false },
+          { name: 'c', active: true },
+        ],
+      ]);
+      expect(result).toEqual(['a', 'c']);
+    });
+
+    it('should eval the same real business process example as function isolation', () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs(
+        `(documents) => {
+          const unit = documents
+            ?.find((item => item?.documentTemplateId === 988071001))
+            ?.data
+            ?.calculated
+            ?.moderatorUnitIds;
+          return unit || []
+        };`,
+        [
+          [
+            {
+              documentTemplateId: 988071001,
+              data: {
+                calculated: {
+                  moderatorUnitIds: [1, 2, 3],
+                },
+              },
+            },
+          ],
+        ],
+      );
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should bridge sync default global helpers', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.evalWithArgs('() => getMd5Hash("test")', [])).toBe('098f6bcd4621d373cade4e832627b4f6');
+      expect(sandbox.evalWithArgs('() => base64Encode("hello")', [])).toBe('aGVsbG8=');
+      expect(sandbox.evalWithArgs('() => toBase64("hello")', [])).toBe('aGVsbG8=');
+      expect(sandbox.evalWithArgs('() => typeof randomUUID()', [])).toBe('string');
+    });
+
+    it('should await bridged async globals passed via evalWithArgs options', async () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs('(a) => test(a)', [42], {
+        isAsync: true,
+        global: { test: async (a: number) => a + 1 },
+      });
+      // isolated-vm's native Promise is a different realm from Jest's, so assert duck-typed
+      // thenable-ness here rather than `toBeInstanceOf(Promise)`.
+      expect(typeof result.then).toBe('function');
+      await expect(result).resolves.toBe(43);
+    });
+
+    it('should automatically add "async" to functions if isAsync is true', async () => {
+      const sandbox = new Sandbox(vmConfig);
+      const result = sandbox.evalWithArgs('(a) => await test(a)', [42], { isAsync: true, global: { test: async (a: number) => a + 1 } });
+      expect(typeof result.then).toBe('function');
+      await expect(result).resolves.toBe(43);
+    });
+
+    it('should use workflow template global functions, sync and async', async () => {
+      const sandbox = new Sandbox(vmConfig);
+
+      const models = {
+        models: {
+          workflowTemplate: {
+            model: {
+              findAll: jest.fn().mockResolvedValue([
+                { id: 1, data: { globalFunctions: { greet: '(name) => `hi ${name}`' } } },
+                { id: 2, data: { globalFunctions: { greetAsync: 'async (name) => `hi ${name}`' } } },
+              ]),
+            },
+          },
+        },
+      };
+      await sandbox.init(models);
+
+      expect(sandbox.evalWithArgs('() => $.workflow.greet("bob")', [], { workflowTemplateId: 1 })).toBe('hi bob');
+
+      // The automatic bare-identifier `await` transform only recognizes top-level global names,
+      // not nested paths like `$.workflow.greetAsync`, so the caller awaits it explicitly here —
+      // same requirement as function isolation, just more strictly enforced: crossing the
+      // isolate boundary can't structured-clone an un-awaited Promise.
+      const asyncResult = sandbox.evalWithArgs('async (name) => await $.workflow.greetAsync(name)', ['bob'], {
+        workflowTemplateId: 2,
+        isAsync: true,
+      });
+      await expect(asyncResult).resolves.toBe('hi bob');
+    });
+
+    it('should not leak assignments to predefined host globals, unlike function isolation', () => {
+      const original = (fetch as any).toString();
+      const sandbox = new Sandbox(vmConfig);
+
+      sandbox.eval('fetch = function() { return "hijacked"; }')();
+
+      expect((fetch as any).toString()).toBe(original);
+    });
+
+    it('should not expose the host global object', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.eval('typeof process')).toBe('undefined');
+      expect(sandbox.eval('typeof require')).toBe('undefined');
+    });
+
+    it('should shadow host globals such as globalThis, Function and setTimeout', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.evalWithArgs('() => typeof globalThis', [])).toBe('undefined');
+      expect(sandbox.evalWithArgs('() => typeof Function', [])).toBe('undefined');
+      expect(sandbox.evalWithArgs('() => typeof setTimeout', [])).toBe('undefined');
+    });
+
+    it('should route console output to the log', () => {
+      const sandbox = new Sandbox(vmConfig);
+      sandbox.evalWithArgs('() => { console.warn("hello", 1); }', []);
+      expect(log.save).toHaveBeenCalledWith('sandbox-console', expect.objectContaining({ data: ['hello', 1] }), 'warn');
+    });
+
+    it('should not expose rich library namespaces (_, iconv, moment, crypto)', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.eval('typeof _')).toBe('undefined');
+      expect(sandbox.eval('typeof iconv')).toBe('undefined');
+      expect(sandbox.eval('typeof moment')).toBe('undefined');
+      expect(sandbox.eval('typeof crypto')).toBe('undefined');
+    });
+
+    it('should support a custom global added via addGlobal', () => {
+      const sandbox = new Sandbox(vmConfig);
+      sandbox.addGlobal('double', (n: number) => n * 2);
+      expect(sandbox.evalWithArgs('(n) => double(n)', [21])).toBe(42);
+    });
+
+    it('should wrap syntax errors the same way as function isolation', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(() => sandbox.evalWithArgs("(documents, events) => { return 'Тестовий юніт; }", [])).toThrow(/^Sandbox error: /);
+    });
+
+    it('should wrap runtime errors the same way as function isolation', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(() => sandbox.evalWithArgs('() => { throw new Error("boom"); }', [])).toThrow('Sandbox error: "boom"');
+    });
+
+    it('should reuse the compiled function for identical code and options', () => {
+      const sandbox = new Sandbox(vmConfig);
+      const first = sandbox.eval('() => 1');
+      const second = sandbox.eval('() => 1');
+      expect(second).toBe(first);
+    });
+
+    it('should also block the constructor escape under isolated-vm', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(() => sandbox.eval('[].constructor.constructor("return 1")()')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should still allow legitimate dynamic indexing under isolated-vm', () => {
+      const sandbox = new Sandbox(vmConfig);
+      expect(sandbox.evalWithArgs('(arr, i) => arr[i]', [[10, 20, 30], 1])).toBe(20);
+    });
+  });
+
+  // Regression coverage: a controlled low-code field (draftDeleteCondition, filter,
+  // etc.) reached the real Function constructor and the host realm via the constructor/prototype
+  // chain, which shadowed `undefined` globals did not stop. Access to constructor/prototype/__proto__
+  // is now blocked at compile time, and dynamic property keys are guarded at runtime, while ordinary
+  // dynamic indexing keeps working.
+  describe('constructor / prototype escape hardening', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should block the reported RCE payload reaching process via [].constructor.constructor', () => {
+      expect(() => sandbox.evalWithArgs('(...a) => [].constructor.constructor("return process")()', [])).toThrow(
+        'Sandbox error: "Access to "constructor" is blocked"',
+      );
+    });
+
+    it('should block dot access to constructor', () => {
+      expect(() => sandbox.eval('({}).constructor')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block computed string-literal access to constructor', () => {
+      expect(() => sandbox.eval('({})["constructor"]')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block computed template-literal access to constructor', () => {
+      expect(() => sandbox.eval('({})[`constructor`]')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block string-concatenation evasion for constructor', () => {
+      expect(() => sandbox.eval('({})["con" + "structor"]')).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block dot and computed access to prototype', () => {
+      expect(() => sandbox.eval('Array.prototype')).toThrow('Access to "prototype" is blocked');
+      expect(() => sandbox.eval('Array["prototype"]')).toThrow('Access to "prototype" is blocked');
+    });
+
+    it('should block dot and computed access to __proto__', () => {
+      expect(() => sandbox.eval('({}).__proto__')).toThrow('Access to "__proto__" is blocked');
+      expect(() => sandbox.eval('({})["__proto__"]')).toThrow('Access to "__proto__" is blocked');
+    });
+
+    it('should block the __proto__ setter shorthand in object literals', () => {
+      expect(() => sandbox.eval('({ __proto__: [] })')).toThrow('Access to "__proto__" is blocked');
+    });
+
+    it('should block a dynamic key that resolves to constructor at runtime', () => {
+      expect(() => sandbox.evalWithArgs('(k) => ({})[k]', ['constructor'])).toThrow('Sandbox error: "Access to "constructor" is blocked"');
+    });
+
+    it('should block a toString-coerced key evasion (TOCTOU-safe)', () => {
+      const evil = { toString: () => 'constructor' };
+      expect(() => sandbox.evalWithArgs('(o) => ({})[o]', [evil])).toThrow('Sandbox error: "Access to "constructor" is blocked"');
+    });
+
+    it('should reject low-code that references the reserved key-guard identifier', () => {
+      expect(() => sandbox.eval('(__sbKey) => __sbKey')).toThrow('reserved');
+      expect(() => sandbox.eval('() => { var __sbKey = 1; return __sbKey; }')).toThrow('reserved');
+    });
+
+    it('should still allow dynamic array and object indexing', () => {
+      expect(sandbox.evalWithArgs('(arr, i) => arr[i]', [[10, 20, 30], 2])).toBe(30);
+      expect(sandbox.evalWithArgs('(obj, k) => obj[k]', [{ name: 'liquio' }, 'name'])).toBe('liquio');
+    });
+
+    it('should still allow numeric-literal indexing', () => {
+      expect(sandbox.eval('[9, 8, 7][0]')).toBe(9);
+    });
+
+    it('should preserve `this` binding for a method called via a dynamic key', () => {
+      expect(sandbox.evalWithArgs('(s, m) => s[m]()', ['AB', 'toLowerCase'])).toBe('ab');
+    });
+
+    it('should allow assignment through a dynamic key', () => {
+      expect(sandbox.evalWithArgs('(o, k) => { o[k] = 5; return o.a; }', [{}, 'a'])).toBe(5);
+    });
+
+    it('should allow symbol keys such as Symbol.iterator', () => {
+      expect(sandbox.evalWithArgs('(arr) => (typeof arr[Symbol.iterator] === "function")', [[1, 2]])).toBe(true);
+    });
+
+    it('should allow nested dynamic keys', () => {
+      expect(sandbox.evalWithArgs('(o, a, b) => o[a][b]', [{ x: { y: 42 } }, 'x', 'y'])).toBe(42);
+    });
+
+    it('should block reaching the constructor through a with block', () => {
+      expect(() => sandbox.evalWithArgs('() => { with ([]) { with (constructor) { return constructor("return typeof process")(); } } }', [])).toThrow(
+        'Sandbox error: ""with" statements are not allowed"',
+      );
+    });
+
+    it('should alert when a with block is used', () => {
+      expect(() => sandbox.eval('() => { with ({ a: 1 }) { return a; } }')).toThrow('"with" statements are not allowed');
+      expect(log.save).toHaveBeenCalledWith('sandbox-alert', expect.objectContaining({ message: 'Access to with statement detected' }), 'warn');
+    });
+
+    it('should still allow "with" in strings and identifiers', () => {
+      expect(sandbox.evalWithArgs('(withdraw) => "paid with card: " + withdraw', [5])).toBe('paid with card: 5');
+    });
+  });
+
+  // The guarded lodash wrapper (`lodash.ts`) checks the path argument of every path-resolving helper
+  // and blocks `_.template`, closing the runtime string-path route to `constructor`/`prototype`.
+  describe('lodash path hardening', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should block lodash _.template, which compiles code with the real Function', () => {
+      expect(() => sandbox.evalWithArgs('() => _.template("<%= typeof process %>")()', [])).toThrow('Access to lodash.template is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.template("<% __p += typeof process %>")()', [])).toThrow('Access to lodash.template is blocked');
+    });
+
+    it('should block a forbidden segment in a string path (_.get, _.result, _.has, _.invoke)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.get([], "constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.result({ a: [] }, "a.constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.has([], "a.prototype")', [])).toThrow('Access to "prototype" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.invoke({ a: [] }, "a.constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block a forbidden segment in an array path', () => {
+      expect(() => sandbox.evalWithArgs('() => _.invoke({ a: [] }, ["a", "constructor", "constructor"])', [])).toThrow(
+        'Access to "constructor" is blocked',
+      );
+      expect(() => sandbox.evalWithArgs('() => _.get({}, ["__proto__", "polluted"])', [])).toThrow('Access to "__proto__" is blocked');
+    });
+
+    it('should block the path-to-function helpers (_.property, _.method, _.iteratee, _.matchesProperty)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.property("constructor.constructor")([])', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.method("constructor.constructor")([])', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.iteratee("constructor.constructor")([])', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.matchesProperty("constructor.constructor", 1)', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block the object-bound resolvers (_.propertyOf, _.methodOf)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.propertyOf([])("constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.methodOf([])("constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block the multi-path helpers (_.at, _.invokeMap)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.at([], ["constructor.constructor"])[0]', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.invokeMap([[]], "constructor.constructor")', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block the mutating path helpers (_.set, _.update, _.unset)', () => {
+      expect(() => sandbox.evalWithArgs('() => _.set({}, "constructor.prototype.x", 1)', [])).toThrow('Access to "constructor" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.update({}, "__proto__.x", () => 1)', [])).toThrow('Access to "__proto__" is blocked');
+      expect(() => sandbox.evalWithArgs('() => _.unset({}, "a.prototype")', [])).toThrow('Access to "prototype" is blocked');
+    });
+
+    it('should still resolve safe string and array paths', () => {
+      expect(sandbox.evalWithArgs('() => _.get({ a: { b: 2 } }, "a.b")', [])).toBe(2);
+      expect(sandbox.evalWithArgs('() => _.get({ a: { b: 2 } }, ["a", "b"])', [])).toBe(2);
+      expect(sandbox.evalWithArgs('() => _.property("a.b")({ a: { b: 5 } })', [])).toBe(5);
+      expect(sandbox.evalWithArgs('() => _.at({ a: 1, b: 2 }, ["a", "b"])', [])).toEqual([1, 2]);
+    });
+
+    it('should still support safe _.set and lodash chaining', () => {
+      expect(sandbox.evalWithArgs('() => _.set({}, "a.b", 7).a.b', [])).toBe(7);
+      expect(sandbox.evalWithArgs('() => _([1, 2, 3]).map((n) => n * 2).value()', [])).toEqual([2, 4, 6]);
+    });
+  });
+
+  // The guarded `Object` wrapper (`object.ts`) blocks the reflection methods that reach the
+  // constructor/prototype chain via a string argument, while keeping the rest of `Object` usable.
+  describe('Object reflection hardening', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should block Object.getOwnPropertyDescriptor', () => {
+      expect(() => sandbox.evalWithArgs('() => Object.getOwnPropertyDescriptor([], "length")', [])).toThrow(
+        'Access to Object.getOwnPropertyDescriptor is blocked',
+      );
+    });
+
+    it('should block Object.getPrototypeOf', () => {
+      expect(() => sandbox.evalWithArgs('() => Object.getPrototypeOf([])', [])).toThrow('Access to Object.getPrototypeOf is blocked');
+    });
+
+    it('should block the descriptor route to the constructor', () => {
+      expect(() => sandbox.evalWithArgs('() => Object.getOwnPropertyDescriptor(Object.getPrototypeOf([]), "constructor").value', [])).toThrow(
+        'Access to Object.getPrototypeOf is blocked',
+      );
+    });
+
+    it('should still allow the safe Object statics', () => {
+      expect(sandbox.evalWithArgs('() => Object.keys({ a: 1, b: 2 })', [])).toEqual(['a', 'b']);
+      expect(sandbox.evalWithArgs('() => Object.values({ a: 1, b: 2 })', [])).toEqual([1, 2]);
+      expect(sandbox.evalWithArgs('() => Object.entries({ a: 1 })', [])).toEqual([['a', 1]]);
+      expect(sandbox.evalWithArgs('() => Object.assign({}, { a: 1 }, { b: 2 })', [])).toEqual({ a: 1, b: 2 });
+      expect(sandbox.evalWithArgs('() => Object.freeze({ a: 1 }).a', [])).toBe(1);
+      expect(sandbox.evalWithArgs('() => Object({ a: 1 }).a', [])).toBe(1);
+    });
+  });
+
+  // Destructuring reads a property by name without a member expression, so the AST guard rejects
+  // forbidden keys in object patterns.
+  describe('destructuring hardening', () => {
+    let sandbox: Sandbox;
+
+    beforeEach(() => {
+      sandbox = new Sandbox(config);
+    });
+
+    it('should block destructuring constructor off a built-in', () => {
+      expect(() =>
+        sandbox.evalWithArgs('() => { const { constructor: C } = []; const { constructor: F } = C; return F("return typeof process")(); }', []),
+      ).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should block destructuring prototype', () => {
+      expect(() => sandbox.evalWithArgs('(fn) => { const { prototype } = fn; return prototype; }', [() => 1])).toThrow(
+        'Access to "prototype" is blocked',
+      );
+    });
+
+    it('should block destructuring __proto__', () => {
+      expect(() => sandbox.evalWithArgs('(o) => { const { __proto__: p } = o; return p; }', [{}])).toThrow('Access to "__proto__" is blocked');
+    });
+
+    it('should block shorthand and computed-literal forbidden keys in patterns', () => {
+      expect(() => sandbox.evalWithArgs('() => { const { constructor } = []; return constructor; }', [])).toThrow(
+        'Access to "constructor" is blocked',
+      );
+      expect(() => sandbox.evalWithArgs('() => { const { ["constructor"]: C } = []; return C; }', [])).toThrow('Access to "constructor" is blocked');
+    });
+
+    it('should still allow destructuring ordinary keys', () => {
+      expect(sandbox.evalWithArgs('(o) => { const { a, b } = o; return a + b; }', [{ a: 2, b: 3 }])).toBe(5);
+      expect(sandbox.evalWithArgs('(o) => { const { a: x = 9 } = o; return x; }', [{}])).toBe(9);
+    });
+  });
+});
