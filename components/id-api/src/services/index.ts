@@ -5,6 +5,7 @@ import { Express } from '../types';
 import { AppInfoService } from './app_info.service';
 import { AuthService } from './auth.service';
 import { EdsService } from './eds.service';
+import { LdapService } from './ldap.service';
 import { NotifyService } from './notify.service';
 import { PasswordManagerService } from './password_manager.service';
 import { PingRequestService } from './ping_request.service';
@@ -22,6 +23,7 @@ export interface ServicesCollection {
   pingRequest: PingRequestService;
   redis: RedisService;
   scheduler: SchedulerService;
+  ldap: LdapService;
   notify: NotifyService;
   user: UserService;
   confirmCodeCleanup: ConfirmCodeCleanupService;
@@ -47,6 +49,7 @@ export class Services {
         pingRequest: new PingRequestService(config, models, express),
         redis: new RedisService(config, models, express),
         scheduler: new SchedulerService(config, models, express),
+        ldap: new LdapService(config, models, express),
         notify: new NotifyService(config, models, express),
         user: new UserService(config, models, express),
         confirmCodeCleanup: new ConfirmCodeCleanupService(config, models, express),

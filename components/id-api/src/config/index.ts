@@ -14,6 +14,40 @@ export interface AuthProviderDisplay {
   description?: string;
 }
 
+export interface LdapProviderConfig {
+  isEnabled?: boolean;
+  display?: AuthProviderDisplay;
+  connection?: {
+    url?: string;
+    startTLS?: boolean;
+    tlsOptions?: {
+      // PEM string or path to a PEM file.
+      ca?: string;
+      rejectUnauthorized?: boolean;
+    };
+    bindDN?: string;
+    bindPassword?: string;
+    timeout?: number;
+    connectTimeout?: number;
+  };
+  baseDN?: string;
+  // Defaults to baseDN.
+  userSearchBase?: string;
+  // Filter template, `{{username}}` is replaced with the escaped login.
+  userFilter?: string;
+  // Stable unique user attribute. Defaults to objectGUID.
+  idAttribute?: string;
+  nestedGroups?: boolean;
+  // LDAP attribute -> Liquio user field.
+  attributes?: Record<string, string>;
+  linkByEmail?: boolean;
+  accessGroups?: string[];
+  sync?: {
+    isEnabled?: boolean;
+    intervalMinutes?: number;
+  };
+}
+
 export interface OIDCProviderConfig {
   issuer?: string;
   authorizationURL?: string;
@@ -149,6 +183,7 @@ export interface Config {
       isEnabled?: boolean;
       display?: AuthProviderDisplay;
     };
+    ldap?: LdapProviderConfig;
     oauth2?: StrategyOptions & { userProfileUrl: string };
     oidc?: {
       [providerId: string]: OIDCProviderConfig;
