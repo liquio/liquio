@@ -234,6 +234,19 @@ Notes:
   - Sign-tool loads `x509.json` from the `sign-tool` secret (default: `<release>-sign-tool-secret-config`).
 - `infra-secrets` is an internal chart secret used by PostgreSQL and RabbitMQ pods only.
 
+### LDAP / Active Directory login
+
+Disabled by default. Non-secret settings go into values under `config.id.config.production.auth_providers.ldap` (see the commented example in `values.yaml`). The service-account password, and the CA if you pass it inline as PEM, go into the id secret, whose `config.json` is merged over the configmap:
+
+```bash
+kubectl patch secret liquio-id-secret-config --namespace liquio --type merge \
+  --patch "$(jq -cn --arg cfg "$(kubectl get secret liquio-id-secret-config -n liquio -o jsonpath='{.data.config\.json}' | base64 -d \
+    | jq -c --arg pw "$LDAP_BIND_PASSWORD" '.production.auth_providers.ldap.connection.bindPassword = $pw')" \
+    '{stringData: {"config.json": $cfg}}')"
+```
+
+Restart id-api after changing the secret. Requirements and behaviour (access groups, unit mapping, revocation) are described in [components/id-api/docs/ldap.md](../components/id-api/docs/ldap.md).
+
 #### Install with your values
 
 ```bash

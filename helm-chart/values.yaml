@@ -538,6 +538,29 @@ config:
       #         family_name: "last_name"
       #       userInfo:
       #         enabled: true
+      #
+      # LDAP / Active Directory login (see components/id-api/docs/ldap.md).
+      # Settings go under `production`. Keep bindPassword (and an inline CA) out of values:
+      # put them into the id secret config (`<release>-id-secret-config`, key config.json).
+      #
+      # production:
+      #   auth_providers:
+      #     ldap:
+      #       isEnabled: true
+      #       connection:
+      #         url: "ldaps://dc.domain.loc:636"
+      #         bindDN: "svc-liquio@domain.loc"
+      #       baseDN: "dc=domain,dc=loc"
+      #       nestedGroups: true
+      #       attributes:
+      #         email: "mail"
+      #         first_name: "givenName"
+      #         last_name: "sn"
+      #       accessGroups:
+      #         - "CN=LIQUIO-PROD-USERS,OU=Groups,DC=domain,DC=loc"
+      #       sync:
+      #         isEnabled: true
+      #         intervalMinutes: 15
 
 # Secret configuration
 secrets:

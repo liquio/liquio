@@ -102,6 +102,34 @@
       "local": {
         "isEnabled": true
       },
+      "ldap": {
+        "isEnabled": false,
+        "connection": {
+          "url": "ldaps://dc.domain.loc:636",
+          "tlsOptions": {
+            "ca": "/run/secrets/ldap-ca.pem"
+          },
+          "bindDN": "svc-liquio@domain.loc",
+          "bindPassword": "<REDACTED>",
+          "timeout": 5000,
+          "connectTimeout": 5000
+        },
+        "baseDN": "dc=domain,dc=loc",
+        "nestedGroups": true,
+        "attributes": {
+          "email": "mail",
+          "first_name": "givenName",
+          "last_name": "sn",
+          "phone": "telephoneNumber"
+        },
+        "accessGroups": [
+          "CN=LIQUIO-ENV-USERS,OU=Groups,DC=domain,DC=loc"
+        ],
+        "sync": {
+          "isEnabled": true,
+          "intervalMinutes": 15
+        }
+      },
       "x509": {
         "isEnabled": true
       }
