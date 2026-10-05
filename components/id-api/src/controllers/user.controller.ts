@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 import bcrypt from 'bcrypt';
 import { matchedData, query } from 'express-validator';
 import jwt from 'jsonwebtoken';
@@ -11,6 +9,7 @@ import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../l
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
+import { getTaskTokenCacheKey } from '../services/auth.service';
 import { Express, NextFunction, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -674,7 +673,7 @@ export class UserController extends BaseController {
 
     const query = Sequelize.where(Sequelize.fn('lower', Sequelize.col('email')), email);
     let isExist = false;
-    let isAllowed = true;
+    const isAllowed = true;
 
     this.log.save('check-email-get-user-request', { query }, 'info');
 
@@ -685,23 +684,11 @@ export class UserController extends BaseController {
 
       // Check if user exists in the id database.
       isExist = !!user;
-
-      if (this.service('ldap').isEnabled && this.service('ldap').isRequired) {
-        // Obtain user data from LDAP.
-        const user = await this.service('ldap')
-          .findUserByPrincipal(email)
-          .catch((error) => {
-            this.log.save('check-email-ldap-error', { query, error: error?.message }, 'error');
-          });
-
-        // Check if user exists in LDAP.
-        isAllowed = !!user;
-      }
     } catch (error: any) {
       this.log.save('check-email-get-user-error', { query, error: error?.message }, 'error');
     }
 
-    this.log.save('check-email-ldap-response', { query, isAllowed, isExist }, 'info');
+    this.log.save('check-email-response', { query, isAllowed, isExist }, 'info');
     this.responseData(res, { isExist, isAllowed });
   }
 
@@ -1321,12 +1308,7 @@ export class UserController extends BaseController {
           .findAll({ where: { userId } })
           .then((rows) => rows.map((row) => row.dataValues));
 
-        await Promise.all(
-          tokens.map(({ accessToken }) => {
-            const sha1AccessToken = crypto.createHash('sha1').update(accessToken).digest('hex');
-            return redis.delete(`token.${sha1AccessToken}`);
-          }),
-        );
+        await Promise.all(tokens.map(({ accessToken }) => redis.delete(getTaskTokenCacheKey(accessToken))));
       }
 
       await this.model('accessToken').destroy({ where: { userId: userId } });

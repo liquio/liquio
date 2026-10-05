@@ -5,6 +5,7 @@ const { importWorkflow } = require('./workflow');
 const { generateTestUser } = require('./user');
 const { getConfirmationPinFromDockerLogs, getDockerComposeLogs } = require('./docker');
 const { createCabinetApi } = require('./cabinet_api');
+const ldap = require('./ldap');
 
 module.exports = {
   // Debug helpers
@@ -32,4 +33,7 @@ module.exports = {
 
   // Cabinet API helpers
   createCabinetApi,
+
+  // LDAP helpers
+  ...ldap,
 };

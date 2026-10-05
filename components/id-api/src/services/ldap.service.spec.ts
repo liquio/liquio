@@ -1,549 +1,557 @@
-import * as ldapts from 'ldapts';
-
-import { LdapService, ACCOUNT_CONTROL_FLAGS } from './ldap.service';
-import { Config } from '../config';
-import { Models } from '../models';
-import { Express } from '../types';
-
-// Mock ldapts module
-const mockClientBind = jest.fn<ReturnType<ldapts.Client['bind']>, Parameters<ldapts.Client['bind']>>();
-const mockClientSearch = jest.fn<ReturnType<ldapts.Client['search']>, Parameters<ldapts.Client['search']>>();
-const mockLdapClient: Partial<ldapts.Client> = {
-  bind: mockClientBind,
-  search: mockClientSearch,
-  isConnected: false,
-};
+const mockClients: any[] = [];
+let mockClientFactory: () => any;
 
 jest.mock('ldapts', () => {
+  const actual = jest.requireActual('ldapts');
   return {
-    Client: jest.fn(() => mockLdapClient),
+    ...actual,
+    Client: jest.fn().mockImplementation((options: any) => {
+      const client = mockClientFactory();
+      client.options = options;
+      mockClients.push(client);
+      return client;
+    }),
   };
 });
 
-// Mock BaseService to avoid circular dependency
-jest.mock('./base_service', () => {
-  return {
-    BaseService: class {
-      protected log = { save: jest.fn() };
-      constructor(
-        protected config: any,
-        protected models: any,
-        protected express: any,
-      ) {}
-    },
-  };
+const mockLog = { save: jest.fn() };
+jest.mock('./base_service', () => ({
+  BaseService: class MockBaseService {
+    config: any;
+    log = mockLog;
+    constructor(config: any) {
+      this.config = config;
+    }
+  },
+}));
+
+import * as ldapts from 'ldapts';
+
+import { LdapService, escapeFilterValue, normalizeDn } from './ldap.service';
+
+const GUID_HEX = '0123456789abcdef0123456789abcdef';
+
+const makeClient = () => ({
+  isConnected: true,
+  bind: jest.fn().mockResolvedValue(undefined),
+  unbind: jest.fn().mockResolvedValue(undefined),
+  startTLS: jest.fn().mockResolvedValue(undefined),
+  search: jest.fn().mockResolvedValue({ searchEntries: [], searchReferences: [] }),
 });
+
+const makeConfig = (overrides: any = {}) => ({
+  auth_providers: {
+    ldap: {
+      isEnabled: true,
+      connection: { url: 'ldaps://dc.domain.loc:636', bindDN: 'svc@domain.loc', bindPassword: 'secret', timeout: 5000, connectTimeout: 3000 },
+      baseDN: 'dc=domain,dc=loc',
+      userSearchBase: 'ou=Staff,dc=domain,dc=loc',
+      attributes: { email: 'mail', first_name: 'givenName' },
+      nestedGroups: false,
+      ...overrides,
+    },
+  },
+});
+
+const createService = (overrides: any = {}) => new LdapService(makeConfig(overrides) as any, {} as any, {} as any);
 
 describe('LdapService', () => {
-  let ldapService: LdapService;
-  let mockConfig: Config;
-  let mockModels: Models;
-  let mockExpress: Express;
-
   beforeEach(() => {
-    mockConfig = {
-      ldap: {
-        isEnabled: false,
-        isRequired: false,
-        url: undefined,
-        baseDN: undefined,
-        username: undefined,
-        password: undefined,
-      },
-    } as unknown as Config;
-
-    mockModels = {} as unknown as Models;
-    mockExpress = {} as unknown as Express;
-
-    ldapService = new LdapService(mockConfig, mockModels, mockExpress);
+    jest.clearAllMocks();
+    mockClients.length = 0;
+    mockClientFactory = makeClient;
   });
 
-  describe('Basic compilation', () => {
-    it('should compile and instantiate', () => {
-      expect(ldapService).toBeDefined();
+  describe('escapeFilterValue', () => {
+    it('escapes RFC 4515 special characters', () => {
+      expect(escapeFilterValue('a*(b)\\c')).toBe('a\\2a\\28b\\29\\5cc');
     });
 
-    it('should extend BaseService', () => {
-      expect(ldapService).toHaveProperty('config');
-      expect(ldapService).toHaveProperty('models');
-      expect(ldapService).toHaveProperty('express');
+    it('escapes NUL and non-ASCII bytes', () => {
+      expect(escapeFilterValue('a\0é')).toBe('a\\00\\c3\\a9');
     });
 
-    it('should have ACCOUNT_CONTROL_FLAGS constant', () => {
-      expect(ACCOUNT_CONTROL_FLAGS).toBeDefined();
-      expect(typeof ACCOUNT_CONTROL_FLAGS).toBe('object');
+    it('escapes every byte of a Buffer', () => {
+      expect(escapeFilterValue(Buffer.from([0x01, 0x41]))).toBe('\\01A');
     });
   });
 
-  describe('isEnabled getter', () => {
-    it('should return false when ldap config is not enabled', () => {
-      expect(ldapService.isEnabled).toBe(false);
-    });
-
-    it('should return true when ldap config is enabled', () => {
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-      }
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      expect(service.isEnabled).toBe(true);
+  describe('normalizeDn', () => {
+    it('ignores case and whitespace around separators', () => {
+      expect(normalizeDn(' CN=Admins , OU=Groups,DC=Domain ')).toBe('cn=admins,ou=groups,dc=domain');
     });
   });
 
-  describe('isRequired getter', () => {
-    it('should return false when ldap config is not required', () => {
-      expect(ldapService.isRequired).toBe(false);
+  describe('when the provider is disabled', () => {
+    it('is not enabled without config', () => {
+      const service = new LdapService({ auth_providers: {} } as any, {} as any, {} as any);
+      expect(service.isEnabled).toBe(false);
     });
 
-    it('should return true when ldap config is required', () => {
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isRequired = true;
-      }
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      expect(service.isRequired).toBe(true);
-    });
-  });
-
-  describe('connect', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-      mockClientBind.mockResolvedValue(undefined);
+    it('is not enabled with isEnabled false', () => {
+      const service = createService({ isEnabled: false });
+      expect(service.isEnabled).toBe(false);
     });
 
-    it('should call client.bind with username and password', async () => {
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-        mockConfig.ldap.url = 'ldap://localhost:389';
-        mockConfig.ldap.username = 'cn=admin,dc=example,dc=com';
-        mockConfig.ldap.password = 'password123';
-      }
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      await service.connect();
-
-      expect(mockClientBind).toHaveBeenCalledWith('cn=admin,dc=example,dc=com', 'password123');
+    it('does not connect on init', async () => {
+      const service = createService({ isEnabled: false });
+      await service.init();
+      expect(ldapts.Client).not.toHaveBeenCalled();
     });
 
-    it('should throw error when bind fails', async () => {
-      const bindError = new Error('Bind failed');
-      mockClientBind.mockRejectedValueOnce(bindError);
+    it('does not read the legacy top-level ldap key', () => {
+      const service = new LdapService({ auth_providers: {}, ldap: { isEnabled: true, url: 'ldap://x' } } as any, {} as any, {} as any);
+      expect(service.isEnabled).toBe(false);
+    });
 
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-        mockConfig.ldap.url = 'ldap://localhost:389';
-        mockConfig.ldap.username = 'cn=admin,dc=example,dc=com';
-        mockConfig.ldap.password = 'password123';
-      }
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-
-      await expect(service.connect()).rejects.toThrow('Bind failed');
+    it('throws on findUser without contacting the server', async () => {
+      const service = createService({ isEnabled: false });
+      await expect(service.findUser('john')).rejects.toThrow('not enabled');
+      expect(ldapts.Client).not.toHaveBeenCalled();
     });
   });
 
-  describe('getClient', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-      mockClientBind.mockResolvedValue(undefined);
-      Object.defineProperty(mockLdapClient, 'isConnected', {
-        value: false,
-        writable: true,
-        configurable: true,
-      });
+  describe('init and connection', () => {
+    it('binds the service account with timeouts', async () => {
+      const service = createService();
+      await service.init();
+
+      expect(ldapts.Client).toHaveBeenCalledWith(expect.objectContaining({ url: 'ldaps://dc.domain.loc:636', timeout: 5000, connectTimeout: 3000 }));
+      expect(mockClients[0].bind).toHaveBeenCalledWith('svc@domain.loc', 'secret');
     });
 
-    it('should return client if already connected', async () => {
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-        mockConfig.ldap.url = 'ldap://localhost:389';
-      }
+    it('does not fail init when the directory is unreachable', async () => {
+      const service = createService();
+      mockClientFactory = () => ({ ...makeClient(), bind: jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED')) });
 
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-
-      // Mock isConnected to return true
-      Object.defineProperty(mockLdapClient, 'isConnected', {
-        value: true,
-        writable: true,
-        configurable: true,
-      });
-
-      const client = await service.getClient();
-
-      expect(client).toBeDefined();
-      expect(mockClientBind).not.toHaveBeenCalled();
+      await expect(service.init()).resolves.toBeUndefined();
+      expect(mockClients[0].unbind).toHaveBeenCalled();
     });
 
-    it('should call connect if not connected and return client', async () => {
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-        mockConfig.ldap.url = 'ldap://localhost:389';
-        mockConfig.ldap.username = 'cn=admin,dc=example,dc=com';
-        mockConfig.ldap.password = 'password123';
-      }
+    it('passes a PEM CA string as is', async () => {
+      const pem = '-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----';
+      const service = createService({ connection: { url: 'ldaps://dc:636', tlsOptions: { ca: pem, rejectUnauthorized: false } } });
+      await service.init();
 
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
+      expect(mockClients[0].options.tlsOptions).toEqual({ ca: pem, rejectUnauthorized: false });
+    });
 
-      const client = await service.getClient();
+    it('reads the CA from a file path', async () => {
+      const fs = require('fs');
+      const spy = jest.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('pem-from-file'));
+      const service = createService({ connection: { url: 'ldaps://dc:636', tlsOptions: { ca: '/etc/ssl/ad-ca.pem' } } });
+      await service.init();
 
-      expect(mockClientBind).toHaveBeenCalled();
-      expect(client).toBeDefined();
+      expect(spy).toHaveBeenCalledWith('/etc/ssl/ad-ca.pem');
+      expect(mockClients[0].options.tlsOptions.ca).toEqual(Buffer.from('pem-from-file'));
+      spy.mockRestore();
+    });
+
+    it('calls startTLS before bind on a plain ldap url', async () => {
+      const service = createService({ connection: { url: 'ldap://dc:389', startTLS: true, bindDN: 'svc', bindPassword: 'pw' } });
+      await service.init();
+
+      expect(mockClients[0].startTLS).toHaveBeenCalled();
+      expect(mockClients[0].startTLS.mock.invocationCallOrder[0]).toBeLessThan(mockClients[0].bind.mock.invocationCallOrder[0]);
+    });
+
+    it('does not call startTLS on ldaps', async () => {
+      const service = createService({ connection: { url: 'ldaps://dc:636', startTLS: true } });
+      await service.init();
+
+      expect(mockClients[0].startTLS).not.toHaveBeenCalled();
+    });
+
+    it('reconnects when the client is not connected', async () => {
+      const service = createService();
+      await service.init();
+      mockClients[0].isConnected = false;
+
+      await service.findUser('john');
+
+      expect(mockClients).toHaveLength(2);
+      expect(mockClients[1].bind).toHaveBeenCalled();
+      expect(mockClients[1].search).toHaveBeenCalled();
+    });
+
+    it('reuses a connected client', async () => {
+      const service = createService();
+      await service.findUser('john');
+      await service.findUser('jane');
+
+      expect(mockClients).toHaveLength(1);
+    });
+
+    it('retries once on a connection error', async () => {
+      const service = createService();
+      await service.init();
+      mockClients[0].search.mockRejectedValue(new Error('socket hang up'));
+
+      await service.findUser('john');
+
+      expect(mockClients).toHaveLength(2);
+      expect(mockClients[1].search).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry on an LDAP result error', async () => {
+      const service = createService();
+      await service.init();
+      mockClients[0].search.mockRejectedValue(new ldapts.InsufficientAccessError());
+
+      await expect(service.findUser('john')).rejects.toThrow();
+      expect(mockClients).toHaveLength(1);
+    });
+
+    it('unbinds the service client on stop', async () => {
+      const service = createService();
+      await service.init();
+      await service.stop();
+
+      expect(mockClients[0].unbind).toHaveBeenCalled();
     });
   });
 
-  describe('findUserByPrincipal', () => {
-    const testPrincipal = 'user@example.com';
-    const mockUserEntry: ldapts.Entry = {
-      dn: 'cn=user,dc=example,dc=com',
-      mail: 'user@example.com',
-      displayName: 'John Doe',
-    };
-
-    beforeEach(() => {
-      jest.clearAllMocks();
-      mockClientBind.mockResolvedValue(undefined);
-      mockClientSearch.mockResolvedValue({
-        searchEntries: [],
-        searchReferences: [],
-      });
-      Object.defineProperty(mockLdapClient, 'isConnected', {
-        value: true,
-        writable: true,
-        configurable: true,
-      });
-
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-        mockConfig.ldap.url = 'ldap://localhost:389';
-        mockConfig.ldap.baseDN = 'dc=example,dc=com';
-        mockConfig.ldap.username = 'cn=admin,dc=example,dc=com';
-        mockConfig.ldap.password = 'password123';
-      }
+  describe('findUser', () => {
+    it('returns null when nothing is found', async () => {
+      const service = createService();
+      await expect(service.findUser('john')).resolves.toBeNull();
     });
 
-    it('should return user when one is found', async () => {
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [mockUserEntry],
-        searchReferences: [],
-      });
+    it('returns the single entry', async () => {
+      const entry = { dn: 'cn=john,ou=Staff,dc=domain,dc=loc' };
+      const service = createService();
+      await service.init();
+      mockClients[0].search.mockResolvedValue({ searchEntries: [entry], searchReferences: [] });
 
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      const user = await service.findUserByPrincipal(testPrincipal);
-
-      expect(user).toEqual(mockUserEntry);
-      expect(mockClientSearch).toHaveBeenCalledWith('dc=example,dc=com', {
-        scope: 'sub',
-        filter: `(&(objectClass=user)(userPrincipalName=${testPrincipal}))`,
-      });
+      await expect(service.findUser('john')).resolves.toBe(entry);
     });
 
-    it('should return null when user not found', async () => {
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [],
-        searchReferences: [],
-      });
+    it('throws when many entries are found', async () => {
+      const service = createService();
+      await service.init();
+      mockClients[0].search.mockResolvedValue({ searchEntries: [{ dn: 'a' }, { dn: 'b' }], searchReferences: [] });
 
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      const user = await service.findUserByPrincipal(testPrincipal);
-
-      expect(user).toBeNull();
+      await expect(service.findUser('john')).rejects.toThrow('Many users found.');
     });
 
-    it('should throw error when multiple users found', async () => {
-      const mockUserEntry2: ldapts.Entry = {
-        dn: 'cn=user2,dc=example,dc=com',
-        mail: 'user2@example.com',
-        displayName: 'Jane Doe',
+    it('does not search for an empty username', async () => {
+      const service = createService();
+      await expect(service.findUser('  ')).resolves.toBeNull();
+      expect(ldapts.Client).not.toHaveBeenCalled();
+    });
+
+    it('searches userSearchBase with a subtree scope and the needed attributes', async () => {
+      const service = createService();
+      await service.findUser('john');
+
+      const [base, options] = mockClients[0].search.mock.calls[0];
+      expect(base).toBe('ou=Staff,dc=domain,dc=loc');
+      expect(options.scope).toBe('sub');
+      expect(options.attributes).toEqual(
+        expect.arrayContaining(['dn', 'objectGUID', 'userAccountControl', 'accountExpires', 'memberOf', 'mail', 'givenName']),
+      );
+      expect(options.explicitBufferAttributes).toEqual(['objectGUID']);
+    });
+
+    it('falls back to baseDN when userSearchBase is not set', async () => {
+      const service = createService({ userSearchBase: undefined });
+      await service.findUser('john');
+
+      expect(mockClients[0].search.mock.calls[0][0]).toBe('dc=domain,dc=loc');
+    });
+
+    it('substitutes the escaped username into the default filter', async () => {
+      const service = createService();
+      await service.findUser('john');
+
+      expect(mockClients[0].search.mock.calls[0][1].filter).toBe('(&(objectClass=user)(|(sAMAccountName=john)(userPrincipalName=john)))');
+    });
+
+    it('substitutes into a custom filter template', async () => {
+      const service = createService({ userFilter: '(&(objectClass=person)(uid={{username}}))' });
+      await service.findUser('john');
+
+      expect(mockClients[0].search.mock.calls[0][1].filter).toBe('(&(objectClass=person)(uid=john))');
+    });
+
+    it('neutralizes a filter injection attempt in the username', async () => {
+      const service = createService();
+      await service.findUser('*)(uid=*');
+
+      const filter = mockClients[0].search.mock.calls[0][1].filter;
+      expect(filter).toBe('(&(objectClass=user)(|(sAMAccountName=\\2a\\29\\28uid=\\2a)(userPrincipalName=\\2a\\29\\28uid=\\2a)))');
+      expect(() => ldapts.FilterParser.parseString(filter)).not.toThrow();
+      expect(ldapts.FilterParser.parseString(filter).toString()).toContain('\\2a\\29\\28uid=\\2a');
+    });
+  });
+
+  describe('findUserById', () => {
+    it('escapes a binary GUID as \\xx pairs', async () => {
+      const service = createService();
+      await service.findUserById(GUID_HEX);
+
+      const [base, options] = mockClients[0].search.mock.calls[0];
+      expect(base).toBe('ou=Staff,dc=domain,dc=loc');
+      expect(options.filter).toBe('(objectGUID=\\01\\23\\45\\67\\89\\ab\\cd\\ef\\01\\23\\45\\67\\89\\ab\\cd\\ef)');
+      expect(() => ldapts.FilterParser.parseString(options.filter)).not.toThrow();
+    });
+
+    it('rejects a non-hex id for a binary attribute without searching', async () => {
+      const service = createService();
+      await expect(service.findUserById('*)(objectClass=*')).resolves.toBeNull();
+      expect(ldapts.Client).not.toHaveBeenCalled();
+    });
+
+    it('returns null for a blank id without searching', async () => {
+      const service = createService();
+      await expect(service.findUserById('  ')).resolves.toBeNull();
+      expect(ldapts.Client).not.toHaveBeenCalled();
+    });
+
+    it('escapes the value for a string idAttribute', async () => {
+      const service = createService({ idAttribute: 'uid' });
+      await service.findUserById('a*b');
+
+      const [, options] = mockClients[0].search.mock.calls[0];
+      expect(options.filter).toBe('(uid=a\\2ab)');
+      expect(options.explicitBufferAttributes).toEqual([]);
+    });
+
+    it('returns null when nothing is found', async () => {
+      const service = createService();
+      await expect(service.findUserById(GUID_HEX)).resolves.toBeNull();
+    });
+
+    it('throws when many entries are found', async () => {
+      const service = createService();
+      await service.init();
+      mockClients[0].search.mockResolvedValue({ searchEntries: [{ dn: 'a' }, { dn: 'b' }], searchReferences: [] });
+
+      await expect(service.findUserById(GUID_HEX)).rejects.toThrow('Many users found.');
+    });
+  });
+
+  describe('getUserId', () => {
+    it('returns hex for a Buffer value', () => {
+      const service = createService();
+      expect(service.getUserId({ dn: 'x', objectGUID: Buffer.from(GUID_HEX, 'hex') })).toBe(GUID_HEX);
+    });
+
+    it('returns the string as is', () => {
+      const service = createService({ idAttribute: 'uid' });
+      expect(service.getUserId({ dn: 'x', uid: 'john' })).toBe('john');
+    });
+
+    it('takes the first value of an array', () => {
+      const service = createService({ idAttribute: 'uid' });
+      expect(service.getUserId({ dn: 'x', uid: ['john', 'jane'] })).toBe('john');
+    });
+
+    it('throws when the attribute is missing', () => {
+      const service = createService();
+      expect(() => service.getUserId({ dn: 'x' })).toThrow('no objectGUID');
+    });
+  });
+
+  describe('verifyPassword', () => {
+    it('returns true on a successful bind and unbinds', async () => {
+      const service = createService();
+      await expect(service.verifyPassword('cn=john,dc=domain,dc=loc', 'pw')).resolves.toBe(true);
+
+      expect(mockClients).toHaveLength(1);
+      expect(mockClients[0].bind).toHaveBeenCalledWith('cn=john,dc=domain,dc=loc', 'pw');
+      expect(mockClients[0].unbind).toHaveBeenCalled();
+    });
+
+    it('does not use the service account client', async () => {
+      const service = createService();
+      await service.init();
+      await service.verifyPassword('cn=john,dc=domain,dc=loc', 'pw');
+
+      expect(mockClients).toHaveLength(2);
+      expect(mockClients[0].bind).toHaveBeenCalledTimes(1);
+      expect(mockClients[0].bind).not.toHaveBeenCalledWith('cn=john,dc=domain,dc=loc', 'pw');
+    });
+
+    it('returns false on invalid credentials and still unbinds', async () => {
+      mockClientFactory = () => {
+        const client = makeClient();
+        client.bind.mockRejectedValue(new ldapts.InvalidCredentialsError());
+        return client;
       };
+      const service = createService();
 
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [mockUserEntry, mockUserEntry2],
-        searchReferences: [],
-      });
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-
-      await expect(service.findUserByPrincipal(testPrincipal)).rejects.toThrow('Many users found.');
+      await expect(service.verifyPassword('cn=john,dc=domain,dc=loc', 'bad')).resolves.toBe(false);
+      expect(mockClients[0].unbind).toHaveBeenCalled();
     });
 
-    it('should throw error when search fails', async () => {
-      const searchError = new Error('Search failed');
-      mockClientSearch.mockRejectedValueOnce(searchError);
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-
-      await expect(service.findUserByPrincipal(testPrincipal)).rejects.toThrow('Search failed');
-    });
-  });
-
-  describe('findUserByFullName', () => {
-    const testFullName = 'John Doe';
-    const mockUserEntry: ldapts.Entry = {
-      dn: 'cn=john.doe,dc=example,dc=com',
-      mail: 'john.doe@example.com',
-      displayName: 'John Doe',
-      description: 'John Doe',
-    };
-
-    beforeEach(() => {
-      jest.clearAllMocks();
-      mockClientBind.mockResolvedValue(undefined);
-      mockClientSearch.mockResolvedValue({
-        searchEntries: [],
-        searchReferences: [],
-      });
-      Object.defineProperty(mockLdapClient, 'isConnected', {
-        value: true,
-        writable: true,
-        configurable: true,
-      });
-
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-        mockConfig.ldap.url = 'ldap://localhost:389';
-        mockConfig.ldap.baseDN = 'dc=example,dc=com';
-        mockConfig.ldap.username = 'cn=admin,dc=example,dc=com';
-        mockConfig.ldap.password = 'password123';
-      }
-    });
-
-    it('should return user when one is found', async () => {
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [mockUserEntry],
-        searchReferences: [],
-      });
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      const user = await service.findUserByFullName(testFullName);
-
-      expect(user).toEqual(mockUserEntry);
-      expect(mockClientSearch).toHaveBeenCalledWith('dc=example,dc=com', {
-        scope: 'sub',
-        filter: `(&(objectClass=user)(description=${testFullName}))`,
-      });
-    });
-
-    it('should return null when user not found', async () => {
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [],
-        searchReferences: [],
-      });
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      const user = await service.findUserByFullName(testFullName);
-
-      expect(user).toBeNull();
-    });
-
-    it('should throw error when multiple users found', async () => {
-      const mockUserEntry2: ldapts.Entry = {
-        dn: 'cn=john.doe2,dc=example,dc=com',
-        mail: 'john.doe2@example.com',
-        displayName: 'John Doe',
-        description: 'John Doe',
+    it('rethrows other errors and still unbinds', async () => {
+      mockClientFactory = () => {
+        const client = makeClient();
+        client.bind.mockRejectedValue(new Error('connect ECONNREFUSED'));
+        return client;
       };
+      const service = createService();
 
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [mockUserEntry, mockUserEntry2],
-        searchReferences: [],
-      });
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-
-      await expect(service.findUserByFullName(testFullName)).rejects.toThrow('Many users found.');
+      await expect(service.verifyPassword('cn=john,dc=domain,dc=loc', 'pw')).rejects.toThrow('ECONNREFUSED');
+      expect(mockClients[0].unbind).toHaveBeenCalled();
     });
 
-    it('should throw error when search fails', async () => {
-      const searchError = new Error('Search failed');
-      mockClientSearch.mockRejectedValueOnce(searchError);
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-
-      await expect(service.findUserByFullName(testFullName)).rejects.toThrow('Search failed');
-    });
-  });
-
-  describe('findGroupByDN', () => {
-    const testDN = 'cn=admin-group,ou=groups,dc=example,dc=com';
-    const mockGroupEntry: ldapts.Entry = {
-      dn: testDN,
-      cn: 'admin-group',
-      objectClass: 'group',
-      member: ['cn=user1,dc=example,dc=com', 'cn=user2,dc=example,dc=com'],
-    };
-
-    beforeEach(() => {
-      jest.clearAllMocks();
-      mockClientBind.mockResolvedValue(undefined);
-      mockClientSearch.mockResolvedValue({
-        searchEntries: [],
-        searchReferences: [],
-      });
-      Object.defineProperty(mockLdapClient, 'isConnected', {
-        value: true,
-        writable: true,
-        configurable: true,
-      });
-
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-        mockConfig.ldap.url = 'ldap://localhost:389';
-        mockConfig.ldap.baseDN = 'dc=example,dc=com';
-        mockConfig.ldap.username = 'cn=admin,dc=example,dc=com';
-        mockConfig.ldap.password = 'password123';
-      }
+    it('returns false for an empty password without creating a client', async () => {
+      const service = createService();
+      await expect(service.verifyPassword('cn=john,dc=domain,dc=loc', '')).resolves.toBe(false);
+      expect(ldapts.Client).not.toHaveBeenCalled();
     });
 
-    it('should return group when one is found', async () => {
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [mockGroupEntry],
-        searchReferences: [],
-      });
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      const group = await service.findGroupByDN(testDN);
-
-      expect(group).toEqual(mockGroupEntry);
-      expect(mockClientSearch).toHaveBeenCalledWith('dc=example,dc=com', {
-        scope: 'sub',
-        filter: `(&(objectClass=group)(distinguishedName=${testDN}))`,
-      });
+    it('returns false for a whitespace-only password without creating a client', async () => {
+      const service = createService();
+      await expect(service.verifyPassword('cn=john,dc=domain,dc=loc', '   ')).resolves.toBe(false);
+      expect(ldapts.Client).not.toHaveBeenCalled();
     });
 
-    it('should return null when group not found', async () => {
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [],
-        searchReferences: [],
-      });
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      const group = await service.findGroupByDN(testDN);
-
-      expect(group).toBeNull();
+    it('returns false for an empty dn without creating a client', async () => {
+      const service = createService();
+      await expect(service.verifyPassword('', 'pw')).resolves.toBe(false);
+      expect(ldapts.Client).not.toHaveBeenCalled();
     });
 
-    it('should throw error when multiple groups found', async () => {
-      const mockGroupEntry2: ldapts.Entry = {
-        dn: 'cn=admin-group2,ou=groups,dc=example,dc=com',
-        cn: 'admin-group2',
-        objectClass: 'group',
-      };
+    it('never logs the password', async () => {
+      const service = createService();
+      await service.verifyPassword('cn=john,dc=domain,dc=loc', 'super-secret-pw');
 
-      mockClientSearch.mockResolvedValueOnce({
-        searchEntries: [mockGroupEntry, mockGroupEntry2],
-        searchReferences: [],
-      });
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-
-      await expect(service.findGroupByDN(testDN)).rejects.toThrow('Many groups found.');
-    });
-
-    it('should throw error when search fails', async () => {
-      const searchError = new Error('Search failed');
-      mockClientSearch.mockRejectedValueOnce(searchError);
-
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-
-      await expect(service.findGroupByDN(testDN)).rejects.toThrow('Search failed');
+      expect(JSON.stringify(mockLog.save.mock.calls)).not.toContain('super-secret-pw');
     });
   });
 
-  describe('unpackUserAccountControl', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-      mockClientBind.mockResolvedValue(undefined);
-      Object.defineProperty(mockLdapClient, 'isConnected', {
-        value: true,
-        writable: true,
-        configurable: true,
+  describe('getUserGroups', () => {
+    it('queries the in-chain matching rule when nestedGroups is true', async () => {
+      const service = createService({ nestedGroups: true });
+      await service.init();
+      mockClients[0].search.mockResolvedValue({ searchEntries: [{ dn: 'cn=A,dc=x' }, { dn: 'cn=B,dc=x' }], searchReferences: [] });
+
+      const groups = await service.getUserGroups({ dn: 'cn=John (IT),ou=Staff,dc=domain,dc=loc' });
+
+      expect(groups).toEqual(['cn=A,dc=x', 'cn=B,dc=x']);
+      const [base, options] = mockClients[0].search.mock.calls[0];
+      expect(base).toBe('dc=domain,dc=loc');
+      expect(options.filter).toBe('(&(objectClass=group)(member:1.2.840.113556.1.4.1941:=cn=John \\28IT\\29,ou=Staff,dc=domain,dc=loc))');
+    });
+
+    it('logs and rethrows a failed in-chain search', async () => {
+      const service = createService({ nestedGroups: true });
+      await service.init();
+      mockClients[0].search.mockRejectedValue(new ldapts.InsufficientAccessError('no access'));
+
+      await expect(service.getUserGroups({ dn: 'cn=John,dc=x' })).rejects.toThrow('no access');
+      expect(mockLog.save).toHaveBeenCalledWith('ldap-get-user-groups-fail', expect.objectContaining({ dn: 'cn=John,dc=x' }), 'error');
+    });
+
+    it('returns memberOf as an array when nestedGroups is false', async () => {
+      const service = createService({ nestedGroups: false });
+      const groups = await service.getUserGroups({ dn: 'x', memberOf: ['cn=A,dc=x', 'cn=B,dc=x'] });
+
+      expect(groups).toEqual(['cn=A,dc=x', 'cn=B,dc=x']);
+      expect(ldapts.Client).not.toHaveBeenCalled();
+    });
+
+    it('normalizes a single memberOf string to an array', async () => {
+      const service = createService({ nestedGroups: false });
+      await expect(service.getUserGroups({ dn: 'x', memberOf: 'cn=A,dc=x' })).resolves.toEqual(['cn=A,dc=x']);
+    });
+
+    it('returns an empty array when memberOf is missing', async () => {
+      const service = createService({ nestedGroups: false });
+      await expect(service.getUserGroups({ dn: 'x' })).resolves.toEqual([]);
+    });
+  });
+
+  describe('isAccountDisabled', () => {
+    const service = createService();
+
+    it('is true for the ACCOUNTDISABLE bit', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '514' })).toBe(true);
+    });
+
+    it('is true for the LOCKOUT bit', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '528' })).toBe(true);
+    });
+
+    it('is true for the LOCKOUT bit in the computed attribute', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512', 'msDS-User-Account-Control-Computed': '16' })).toBe(true);
+    });
+
+    it('is false when the computed attribute has no LOCKOUT bit', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512', 'msDS-User-Account-Control-Computed': '0' })).toBe(false);
+    });
+
+    it('is false for a normal enabled account', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512' })).toBe(false);
+    });
+
+    it('is true when accountExpires is in the past', () => {
+      // 2001-01-01T00:00:00Z
+      const filetime = ((BigInt(Date.UTC(2001, 0, 1)) + BigInt(11644473600000)) * BigInt(10000)).toString();
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512', accountExpires: filetime })).toBe(true);
+    });
+
+    it('is false when accountExpires is in the future', () => {
+      const filetime = ((BigInt(Date.now() + 86400000) + BigInt(11644473600000)) * BigInt(10000)).toString();
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512', accountExpires: filetime })).toBe(false);
+    });
+
+    it('is false when accountExpires is 0', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512', accountExpires: '0' })).toBe(false);
+    });
+
+    it('is false when accountExpires is the max int64', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512', accountExpires: '9223372036854775807' })).toBe(false);
+    });
+
+    it('is false when the attributes are missing', () => {
+      expect(service.isAccountDisabled({ dn: 'x' })).toBe(false);
+    });
+  });
+
+  describe('groupsExist', () => {
+    it('returns only the DNs that exist', async () => {
+      const service = createService();
+      await service.init();
+      mockClients[0].search.mockImplementation(async (base: string) => {
+        if (base === 'cn=gone,dc=x') {
+          throw new ldapts.NoSuchObjectError();
+        }
+        return { searchEntries: [{ dn: base }], searchReferences: [] };
       });
 
-      if (mockConfig.ldap) {
-        mockConfig.ldap.isEnabled = true;
-        mockConfig.ldap.url = 'ldap://localhost:389';
-      }
+      const result = await service.groupsExist(['cn=a,dc=x', 'cn=gone,dc=x', 'cn=b,dc=x']);
+
+      expect(result).toEqual(['cn=a,dc=x', 'cn=b,dc=x']);
+      expect(mockClients[0].search.mock.calls[0][1]).toEqual(expect.objectContaining({ scope: 'base', filter: '(objectClass=*)' }));
     });
 
-    it('should unpack flags when code is 0', () => {
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      const result = service.unpackUserAccountControl(0);
-
-      expect(result).toBeDefined();
-      expect(result.SCRIPT).toBe(false);
-      expect(result.ACCOUNTDISABLE).toBe(false);
-      expect(result.NORMAL_ACCOUNT).toBe(false);
-      expect(Object.keys(result).length).toBe(Object.keys(ACCOUNT_CONTROL_FLAGS).length);
+    it('returns an empty list for no DNs', async () => {
+      const service = createService();
+      await expect(service.groupsExist([])).resolves.toEqual([]);
     });
 
-    it('should correctly identify NORMAL_ACCOUNT flag', () => {
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      // NORMAL_ACCOUNT = 512
-      const result = service.unpackUserAccountControl(512);
+    it('rethrows unexpected errors', async () => {
+      const service = createService();
+      await service.init();
+      mockClients[0].search.mockRejectedValue(new ldapts.InsufficientAccessError());
 
-      expect(result.NORMAL_ACCOUNT).toBe(true);
-      expect(result.SCRIPT).toBe(false);
-      expect(result.ACCOUNTDISABLE).toBe(false);
+      await expect(service.groupsExist(['cn=a,dc=x'])).rejects.toThrow();
+    });
+  });
+
+  describe('isSameDn', () => {
+    it('compares DNs case-insensitively', () => {
+      const service = createService();
+      expect(service.isSameDn('CN=Admins, OU=Groups,DC=X', 'cn=admins,ou=groups,dc=x')).toBe(true);
     });
 
-    it('should correctly identify ACCOUNTDISABLE flag', () => {
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      // ACCOUNTDISABLE = 2
-      const result = service.unpackUserAccountControl(2);
-
-      expect(result.ACCOUNTDISABLE).toBe(true);
-      expect(result.SCRIPT).toBe(false);
-      expect(result.NORMAL_ACCOUNT).toBe(false);
-    });
-
-    it('should correctly identify multiple flags', () => {
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      // NORMAL_ACCOUNT (512) + ACCOUNTDISABLE (2) = 514
-      const result = service.unpackUserAccountControl(514);
-
-      expect(result.ACCOUNTDISABLE).toBe(true);
-      expect(result.NORMAL_ACCOUNT).toBe(true);
-      expect(result.SCRIPT).toBe(false);
-      expect(result.DONT_EXPIRE_PASSWORD).toBe(false);
-    });
-
-    it('should correctly identify DONT_EXPIRE_PASSWORD flag', () => {
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      // DONT_EXPIRE_PASSWORD = 65536
-      const result = service.unpackUserAccountControl(65536);
-
-      expect(result.DONT_EXPIRE_PASSWORD).toBe(true);
-      expect(result.SCRIPT).toBe(false);
-      expect(result.ACCOUNTDISABLE).toBe(false);
-    });
-
-    it('should correctly identify combined common flags', () => {
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      // NORMAL_ACCOUNT (512) + DONT_EXPIRE_PASSWORD (65536) + ACCOUNTDISABLE (2) = 66050
-      const result = service.unpackUserAccountControl(66050);
-
-      expect(result.NORMAL_ACCOUNT).toBe(true);
-      expect(result.DONT_EXPIRE_PASSWORD).toBe(true);
-      expect(result.ACCOUNTDISABLE).toBe(true);
-      expect(result.SCRIPT).toBe(false);
-      expect(result.PASSWD_NOTREQD).toBe(false);
-    });
-
-    it('should return object with all flag keys', () => {
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      const result = service.unpackUserAccountControl(0);
-
-      const expectedKeys = Object.keys(ACCOUNT_CONTROL_FLAGS);
-      const resultKeys = Object.keys(result);
-
-      expect(resultKeys.sort()).toEqual(expectedKeys.sort());
-    });
-
-    it('should handle large code values', () => {
-      const service = new LdapService(mockConfig, mockModels, mockExpress);
-      // All flags OR'd together
-      const allFlagsCode = Object.values(ACCOUNT_CONTROL_FLAGS).reduce((acc, flag) => acc | flag, 0);
-      const result = service.unpackUserAccountControl(allFlagsCode);
-
-      expect(Object.values(result).every((v) => v === true)).toBe(true);
+    it('detects different DNs', () => {
+      const service = createService();
+      expect(service.isSameDn('cn=a,dc=x', 'cn=b,dc=x')).toBe(false);
     });
   });
 });

@@ -16,6 +16,7 @@ import { Log } from '@liquio/back-core';
 
 import { Models } from '../models';
 import { AuthCodeAttributes } from '../models/auth_code.model';
+import { Services } from '../services';
 
 export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
   private readonly log = Log.getInstance();
@@ -177,6 +178,12 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
         .then((token) => token?.dataValues);
 
       if (!token) return false;
+
+      // A refresh token must not outlive the user's access in the directory.
+      if (!(await Services.service('ldapSync').isRefreshAllowed(token.userId))) {
+        this.log.save('refresh-token-denied', { userId: token.userId, reason: 'ldap-access-lost' }, 'info');
+        return false;
+      }
 
       return {
         refreshToken: token.refreshToken,

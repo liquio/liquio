@@ -6,6 +6,7 @@ import { AppInfoService } from './app_info.service';
 import { AuthService } from './auth.service';
 import { EdsService } from './eds.service';
 import { LdapService } from './ldap.service';
+import { LdapSyncService } from './ldap_sync.service';
 import { NotifyService } from './notify.service';
 import { PasswordManagerService } from './password_manager.service';
 import { PingRequestService } from './ping_request.service';
@@ -18,12 +19,13 @@ import { X509Service } from './x509.service';
 export interface ServicesCollection {
   appInfo: AppInfoService;
   eds: EdsService;
-  ldap: LdapService;
   auth: AuthService;
   passwordManager: PasswordManagerService;
   pingRequest: PingRequestService;
   redis: RedisService;
   scheduler: SchedulerService;
+  ldap: LdapService;
+  ldapSync: LdapSyncService;
   notify: NotifyService;
   user: UserService;
   confirmCodeCleanup: ConfirmCodeCleanupService;
@@ -44,12 +46,13 @@ export class Services {
       this.services = {
         appInfo: new AppInfoService(config, models, express),
         eds: new EdsService(config, models, express),
-        ldap: new LdapService(config, models, express),
         auth: new AuthService(config, models, express),
         passwordManager: new PasswordManagerService(config, models, express),
         pingRequest: new PingRequestService(config, models, express),
         redis: new RedisService(config, models, express),
         scheduler: new SchedulerService(config, models, express),
+        ldap: new LdapService(config, models, express),
+        ldapSync: new LdapSyncService(config, models, express),
         notify: new NotifyService(config, models, express),
         user: new UserService(config, models, express),
         confirmCodeCleanup: new ConfirmCodeCleanupService(config, models, express),

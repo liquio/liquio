@@ -212,8 +212,8 @@ export class UserController extends Controller {
     // Clear user info cache.
     if (global.redisClient) {
       try {
-        const sha1AccessToken = this.getSha1Hash(accessToken);
-        await global.redisClient.delete(`token.${sha1AccessToken}`);
+        const sha256AccessToken = this.getSha256Hash(accessToken);
+        await global.redisClient.delete(`token.${sha256AccessToken}`);
       } catch (error) {
         global.log.save('user-controller|update-info|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
       }
@@ -397,8 +397,8 @@ export class UserController extends Controller {
     // Clear user phone info cache.
     if (global.redisClient) {
       try {
-        const sha1AccessToken = this.getSha1Hash(accessToken);
-        await global.redisClient.delete(`token.${sha1AccessToken}`);
+        const sha256AccessToken = this.getSha256Hash(accessToken);
+        await global.redisClient.delete(`token.${sha256AccessToken}`);
       } catch (error) {
         global.log.save('user-controller|verify-phone|clear-user-phone-from-cache-error', { error: error && error.message }, 'error');
       }
@@ -449,8 +449,8 @@ export class UserController extends Controller {
     // Clear user email info cache.
     if (global.redisClient) {
       try {
-        const sha1AccessToken = this.getSha1Hash(accessToken);
-        await global.redisClient.delete(`token.${sha1AccessToken}`);
+        const sha256AccessToken = this.getSha256Hash(accessToken);
+        await global.redisClient.delete(`token.${sha256AccessToken}`);
       } catch (error) {
         global.log.save('user-controller|confirm-change-email|clear-user-email-from-cache-error', { error: error && error.message }, 'error');
       }
@@ -503,11 +503,11 @@ export class UserController extends Controller {
   }
 
   /**
-   * Generate and return sha1 hash.
+   * Generate and return sha256 hash.
    * @param {string} data.
    * @return {string}
    */
-  getSha1Hash(data) {
-    return crypto.createHash('sha1').update(data).digest('hex');
+  getSha256Hash(data) {
+    return crypto.createHash('sha256').update(data).digest('hex');
   }
 }

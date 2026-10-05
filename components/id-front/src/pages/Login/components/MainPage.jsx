@@ -135,6 +135,7 @@ const styles = (theme) => ({
 const DEFAULT_TITLES = {
   local: 'LoginAndPass',
   x509: 'keySign',
+  ldap: 'LoginLdap',
 };
 
 const MainPage = ({ classes, t, setLoginByOwnKey, setCredentialMethod }) => {
@@ -145,6 +146,9 @@ const MainPage = ({ classes, t, setLoginByOwnKey, setCredentialMethod }) => {
   const handleProviderClick = (provider) => {
     if (provider.type === 'local') {
       return chooseLoginByCredentialMethod();
+    }
+    if (provider.type === 'ldap') {
+      return chooseLoginByCredentialMethod({ method: 'ldap' });
     }
     if (provider.type === 'x509') {
       return chooseLoginByOwnKey();

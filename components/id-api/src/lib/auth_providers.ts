@@ -1,7 +1,7 @@
 import { AuthProviderDisplay, Config } from '../config';
 
 export interface AuthProviderOption {
-  type: 'local' | 'x509' | 'wso2' | 'oidc';
+  type: 'local' | 'ldap' | 'x509' | 'wso2' | 'oidc';
   id: string;
   url: string | null;
   title?: string;
@@ -31,6 +31,10 @@ export function getEnabledAuthProviders(config: Config): AuthProviderOption[] {
 
   if (authProviders.local?.isEnabled) {
     options.push(toOption('local', 'local', null, authProviders.local.display));
+  }
+
+  if (authProviders.ldap?.isEnabled) {
+    options.push(toOption('ldap', 'ldap', null, authProviders.ldap.display));
   }
 
   if (authProviders.x509?.isEnabled) {

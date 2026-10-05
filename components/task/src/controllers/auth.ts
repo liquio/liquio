@@ -4,14 +4,15 @@ import type { Request } from 'express';
 
 import { Controller } from './controller';
 import { AuthService as Auth } from '../services/auth';
-import { LdapClient } from '../services/ldap';
 import { Token } from '../lib/token';
 import { UserAccess } from '../lib/user_access';
 import { UnitModel } from '../models/unit';
+import { LdapUnitSync } from '../services/ldap_unit_sync';
 import { TaskModel } from '../models/task';
 import { WorkflowModel } from '../models/workflow';
 import { GROUPS as ROUTE_GROUPS } from '../services/router/routes';
 import { OnboardingController } from './onboarding';
+import type { LiquioIdProvider } from '../services/auth/providers/liquio_id';
 
 // Constants.
 const ROLES_SEPARATOR = ';';
@@ -20,7 +21,6 @@ const ERROR_MESSAGE_WITHOUT_NEEDED_ROLE = 'User without needed role.';
 const ERROR_MESSAGE_DEBUG_USER_NOT_ALLOWED = 'User without needed unit to debug other user.';
 const ERROR_MESSAGE_DEBUG_USER_NOT_FOUND = 'Debug user not found.';
 const ERROR_MESSAGE_RESTRICTED_UNIT = 'forbidden';
-const ERROR_MESSAGE_LDAP_UNAUTHORIZED = 'Unauthorized by LDAP';
 
 // This middleware attaches authUserInfo (and friends) to req before it reaches a controller (see
 // AuthController#middleware below); it isn't part of Express's own Request type, so any
@@ -38,21 +38,33 @@ export type AuthenticatedRequest<Params, ReqBody = any, ReqQuery = any> = Reques
   authUserInfo?: AuthUserInfo;
 };
 
+// Subset of config.access used by this controller.
+interface AccessConfig {
+  allowableUnits?: number[];
+  routeGroupsExceptions?: string[];
+}
+
+// Subset of config.auth.caching used by this controller.
+interface CachingConfig {
+  getCheckMiddleware: { ttl: number };
+}
+
 /**
  * Auth controller.
  */
 export class AuthController extends Controller {
   private static singleton: AuthController;
 
-  auth: any;
-  token: any;
-  access: any;
-  userAccess: any;
-  unitModel: any;
-  taskModel: any;
-  workflowModel: any;
-  onboardingController: any;
-  caching: any;
+  auth: LiquioIdProvider;
+  token: Token;
+  access: AccessConfig;
+  userAccess: UserAccess;
+  unitModel: UnitModel;
+  taskModel: TaskModel;
+  workflowModel: WorkflowModel;
+  onboardingController: OnboardingController;
+  ldapUnitSync: LdapUnitSync;
+  caching: CachingConfig;
 
   /**
    * Auth controller constructor.
@@ -72,6 +84,7 @@ export class AuthController extends Controller {
       this.taskModel = new TaskModel();
       this.workflowModel = new WorkflowModel();
       this.onboardingController = new OnboardingController(config);
+      this.ldapUnitSync = new LdapUnitSync({ unitModel: this.unitModel, auth: this.auth });
 
       // Caching config.
       this.caching = config.auth.caching;
@@ -125,10 +138,6 @@ export class AuthController extends Controller {
     try {
       authUserInfo = await this.auth.getUser(authTokens.accessToken);
       const userName = `${authUserInfo.last_name || ''} ${authUserInfo.first_name || ''} ${authUserInfo.middle_name || ''}`.trim();
-
-      if (this.config.auth.ldap?.isEnabled) {
-        await this._processLDAPUnits(authUserInfo);
-      }
 
       // Handle units.
       const units = await this.unitModel.getAll();
@@ -218,6 +227,9 @@ export class AuthController extends Controller {
         await this.unitModel.getAll();
       }
 
+      // Sync LDAP-managed units. Never fails the login.
+      await this.ldapUnitSync.sync(authUserInfo);
+
       // Handle tasks where the user is a performer.
       await this.taskModel.addPerformerUserByIpnOrEmail(authUserInfo.ipn, authUserInfo.email, authUserInfo.userId, userName);
 
@@ -253,8 +265,8 @@ export class AuthController extends Controller {
       if (global.redisClient) {
         const tokenData = this.token.decrypt(token);
         const authAccessToken = tokenData.authTokens.accessToken;
-        const sha1AccessToken = this.getSha1Hash(authAccessToken);
-        await global.redisClient.delete(`token.${sha1AccessToken}`);
+        const sha256AccessToken = this.getSha256Hash(authAccessToken);
+        await global.redisClient.delete(`token.${sha256AccessToken}`);
       }
     } catch (error) {
       global.log.save('auth-login-error|cannot-delete-cached-user-data', { error: error.toString() }, 'error');
@@ -332,8 +344,8 @@ export class AuthController extends Controller {
       let cachedUserData;
       try {
         if (global.redisClient && !debugUserId && !roles.includes('admin')) {
-          const sha1AccessToken = this.getSha1Hash(authAccessToken);
-          cachedUserData = await global.redisClient.get(`token.${sha1AccessToken}`);
+          const sha256AccessToken = this.getSha256Hash(authAccessToken);
+          cachedUserData = await global.redisClient.get(`token.${sha256AccessToken}`);
         }
       } catch (error) {
         return this.responseError(res, error, 500);
@@ -423,6 +435,9 @@ export class AuthController extends Controller {
         }
         req.authUserRoles = userRoles;
 
+        // Sync LDAP-managed units if the user's groups were refreshed. Never fails the request.
+        await this.ldapUnitSync.syncIfChanged(authUserInfo);
+
         // Check units.
         const authUserUnitEntities = await this.getUserUnitEntities(req.authUserId);
         req.authUserUnitEntities = authUserUnitEntities;
@@ -484,9 +499,9 @@ export class AuthController extends Controller {
         }
 
         if (global.redisClient && !authUserInfo.needOnboarding && !debugUserId) {
-          const sha1AccessToken = this.getSha1Hash(authAccessToken);
+          const sha256AccessToken = this.getSha256Hash(authAccessToken);
           await global.redisClient.set(
-            `token.${sha1AccessToken}`,
+            `token.${sha256AccessToken}`,
             {
               authUserInfo: req.authUserInfo,
               authUserId: req.authUserId,
@@ -566,13 +581,6 @@ export class AuthController extends Controller {
     const fullAvaUrl = avaUrl && `${this.config.auth.server}${avaUrl}`;
     const userInfo = { ...authUserInfo, authUserRoles, authUserUnits, fullAvaUrl };
     const normalizedUserInfo = this.auth.getMainUserInfo(userInfo, true, true);
-
-    // If LDAP authorization is enabled and required, but the user is not
-    // authorized by LDAP and has already passed the onboarding process,
-    // return an error.
-    if (LdapClient.isEnabled && LdapClient.isRequired && !normalizedUserInfo.services?.ldap && normalizedUserInfo.needOnboarding === false) {
-      return this.responseError(res, ERROR_MESSAGE_LDAP_UNAUTHORIZED, 403);
-    }
 
     // Response.
     const normalizedObject = this.convertUnderscoreKeysToCamelCase(normalizedUserInfo);
@@ -755,68 +763,11 @@ export class AuthController extends Controller {
   }
 
   /**
-   * Generate and return sha1 hash.
+   * Generate and return sha256 hash.
    * @param {string} data.
    * @return {string}
    */
-  getSha1Hash(data) {
-    return crypto.createHash('sha1').update(data).digest('hex');
-  }
-
-  /**
-   * Associate the user with LDAP-enabled units
-   * @param {*} userInfo
-   */
-  async _processLDAPUnits(userInfo) {
-    global.log.save('login-process-ldap-units');
-
-    // Extract LDAP data from user info.
-    const ldapInfo = userInfo?.services?.ldap;
-    if (!ldapInfo) {
-      global.log.save('login-process-ldap-units|not-authenticated', { services: Object.keys(userInfo.services) }, 'warn');
-      return;
-    }
-
-    // Extract the DN of the user.
-    const userDn = ldapInfo.data?.dn;
-    if (!userDn) {
-      global.log.save('login-process-ldap-units|no-dn', { ldapInfo }, 'error');
-      return;
-    }
-
-    // Extract the DN of user OU
-    const userOuDn = userDn.split(',').slice(1).join(',');
-
-    const ldapClient = LdapClient.getInstance();
-
-    let ouObject;
-    try {
-      ouObject = await ldapClient.findObjectByDn('organizationalUnit', userOuDn);
-    } catch (error) {
-      global.log.save('login-process-ldap-units|find-ou-object-by-dn-error', { userOuDn, error: error.toString() }, 'error');
-      return;
-    }
-
-    if (!ouObject) {
-      global.log.save('login-process-ldap-units|ou-object-not-found', { userOuDn }, 'error');
-      return;
-    }
-
-    const allUnits = await this.unitModel.getAll();
-    const associatedUnit = allUnits.find((unit) => unit.data?.ldap?.dn === ouObject.dn);
-
-    if (!associatedUnit) {
-      global.log.save('login-process-ldap-units|associated-unit-not-found', { ouObject }, 'warn');
-      return;
-    }
-
-    if (!associatedUnit.members.includes(userInfo.userId)) {
-      global.log.save('login-process-ldap-units|add-member', { userId: userInfo.userId, unitId: associatedUnit.id });
-      await this.unitModel.addMember(associatedUnit.id, userInfo.userId);
-    } else {
-      global.log.save('login-process-ldap-units|member-already-associated', { userId: userInfo.userId, unitId: associatedUnit.id });
-    }
-
-    // TODO: Remove the user from the previous unit if it is different from the current one?
+  getSha256Hash(data) {
+    return crypto.createHash('sha256').update(data).digest('hex');
   }
 }

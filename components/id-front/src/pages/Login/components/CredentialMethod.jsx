@@ -6,7 +6,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import StringElement from 'components/CustomInput/StringElement';
 import ProgressLine from 'components/Preloader/ProgressLine';
-import { handleLoginByPassword, handleChangePassword as handleChangePasswordApi } from 'actions/auth';
+import { handleLoginByPassword, handleLoginByLdap, handleChangePassword as handleChangePasswordApi } from 'actions/auth';
 
 const useStyles = makeStyles((theme) => ({
   button: {
@@ -56,6 +56,7 @@ const useStyles = makeStyles((theme) => ({
 
 const CredentialMethod = ({ t, onClose, busy, additionalProps }) => {
   const classes = useStyles();
+  const isLdap = additionalProps?.method === 'ldap';
   const [email, setEmail] = React.useState(additionalProps?.email || '');
   const [password, setPassword] = React.useState(additionalProps?.password || '');
   const [errors, setErrors] = React.useState([]);
@@ -142,17 +143,25 @@ const CredentialMethod = ({ t, onClose, busy, additionalProps }) => {
 
     setLoading(true);
 
+    const getErrorMessage = (status) => {
+      if (status === 401) {
+        return t(isLdap ? 'InvalidCredentialsLdap' : 'InvalidCredentials');
+      }
+      if (status === 429) {
+        return t('TooManyAttempts');
+      }
+      if (status === 503) {
+        return t('ServiceUnavailable');
+      }
+      return t('LoginError');
+    };
+
     try {
-      const result = await handleLoginByPassword({ email, password });
+      const result = isLdap
+        ? await handleLoginByLdap({ username: email.trim(), password })
+        : await handleLoginByPassword({ email, password });
       if (result instanceof Error) {
-        // Handle specific error cases
-        if (result.status === 401) {
-          setErrorMessage(t('InvalidCredentials'));
-        } else if (result.status === 429) {
-          setErrorMessage(t('TooManyAttempts'));
-        } else {
-          setErrorMessage(t('LoginError'));
-        }
+        setErrorMessage(getErrorMessage(result.status));
         setLoading(false);
         return;
       }
@@ -169,16 +178,10 @@ const CredentialMethod = ({ t, onClose, busy, additionalProps }) => {
       window.location.href = redirect;
     } catch (error) {
       // Handle network errors and other exceptions
-      if (error.response?.status === 401) {
-        setErrorMessage(t('InvalidCredentials'));
-      } else if (error.response?.status === 429) {
-        setErrorMessage(t('TooManyAttempts'));
-      } else {
-        setErrorMessage(t('LoginError'));
-      }
+      setErrorMessage(getErrorMessage(error.response?.status));
       setLoading(false);
     }
-  }, [email, password, loading, t]);
+  }, [email, password, loading, t, isLdap]);
 
   if (additionalProps?.email && additionalProps?.password) {
     return (
@@ -207,10 +210,10 @@ const CredentialMethod = ({ t, onClose, busy, additionalProps }) => {
   return (
     <Box className={classes.wrapper}>
       <Typography variant="h1" gutterBottom={true} tabIndex={0} className={classes.mainTitle}>
-        {t('LoginAndPass')}
+        {t(isLdap ? 'LoginLdap' : 'LoginAndPass')}
       </Typography>
       <StringElement
-        label={t('Email')}
+        label={t(isLdap ? 'Username' : 'Email')}
         required={true}
         fullWidth={true}
         variant={'outlined'}
@@ -219,7 +222,7 @@ const CredentialMethod = ({ t, onClose, busy, additionalProps }) => {
         onChange={({ target: { value } }) => setEmail(value)}
       />
 
-      {showChangePassword ? (
+      {showChangePassword && !isLdap ? (
         <>
           <StringElement
             label={t('OldPassword')}
@@ -311,7 +314,7 @@ const CredentialMethod = ({ t, onClose, busy, additionalProps }) => {
             }}
           />
 
-          <Button onClick={handleChangePassword}>{t('ChangePassword')}</Button>
+          {!isLdap && <Button onClick={handleChangePassword}>{t('ChangePassword')}</Button>}
 
           {errorMessage && (
             <Typography className={classes.errorMessage}>

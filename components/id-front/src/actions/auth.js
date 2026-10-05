@@ -136,6 +136,15 @@ export function handleLoginByPassword(body) {
   );
 }
 
+export function handleLoginByLdap(body) {
+  return api.post(
+    'authorise/ldap',
+    body,
+    'LOGIN_LDAP',
+    dispatch
+  );
+}
+
 export function handleChangePassword(body) {
   return api.post(
     'authorise/local/change_password',

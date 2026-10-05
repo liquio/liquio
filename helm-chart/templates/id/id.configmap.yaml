@@ -47,6 +47,7 @@ metadata:
     "showServerList" true
     "tokenURL" "https://auth.js.sign.eu.iit.com.ua/get-access-token"
   )
+  "ldap" (dict "isEnabled" false)
   "local" (dict "isEnabled" true)
   "oidc" (dict)
   "x509" (dict "isEnabled" true)

@@ -137,14 +137,6 @@
     "externalUrl": "http://sign-tool"
   },
   "enabledDeleteUser": false,
-  "ldap": {
-    "isEnabled": false,
-    "isRequired": false,
-    "url": "ldap://domain.loc",
-    "baseDN": "dc=DOMAIN,dc=LOC",
-    "username": "admin@domain.loc",
-    "password": "<removed>"
-  },
   "log": {
     "excludeParams": [
       "token",

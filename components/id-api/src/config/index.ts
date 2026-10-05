@@ -14,6 +14,40 @@ export interface AuthProviderDisplay {
   description?: string;
 }
 
+export interface LdapProviderConfig {
+  isEnabled?: boolean;
+  display?: AuthProviderDisplay;
+  connection?: {
+    url?: string;
+    startTLS?: boolean;
+    tlsOptions?: {
+      // PEM string or path to a PEM file.
+      ca?: string;
+      rejectUnauthorized?: boolean;
+    };
+    bindDN?: string;
+    bindPassword?: string;
+    timeout?: number;
+    connectTimeout?: number;
+  };
+  baseDN?: string;
+  // Defaults to baseDN.
+  userSearchBase?: string;
+  // Filter template, `{{username}}` is replaced with the escaped login.
+  userFilter?: string;
+  // Stable unique user attribute. Defaults to objectGUID.
+  idAttribute?: string;
+  nestedGroups?: boolean;
+  // LDAP attribute -> Liquio user field.
+  attributes?: Record<string, string>;
+  linkByEmail?: boolean;
+  accessGroups?: string[];
+  sync?: {
+    isEnabled?: boolean;
+    intervalMinutes?: number;
+  };
+}
+
 export interface OIDCProviderConfig {
   issuer?: string;
   authorizationURL?: string;
@@ -149,6 +183,7 @@ export interface Config {
       isEnabled?: boolean;
       display?: AuthProviderDisplay;
     };
+    ldap?: LdapProviderConfig;
     oauth2?: StrategyOptions & { userProfileUrl: string };
     oidc?: {
       [providerId: string]: OIDCProviderConfig;
@@ -186,14 +221,6 @@ export interface Config {
     timeout?: number;
   };
   enabledDeleteUser?: boolean;
-  ldap?: {
-    isEnabled?: boolean;
-    isRequired?: boolean;
-    url?: string;
-    baseDN?: string;
-    username?: string;
-    password?: string;
-  };
   log?: {
     excludeParams?: string[];
   };
@@ -285,6 +312,47 @@ function validateOIDCConfig(config: Config): void {
   }
 }
 
+/**
+ * Validates LDAP provider configuration
+ * Throws an error if the provider is enabled and required fields are missing or invalid
+ */
+export function validateLdapConfig(config: Config): void {
+  const provider = config.auth_providers?.ldap;
+  if (!provider?.isEnabled) {
+    return;
+  }
+
+  const errors: string[] = [];
+
+  const url = provider.connection?.url;
+  if (!url) {
+    errors.push('connection.url is required');
+  } else if (!/^ldaps?:\/\//i.test(url)) {
+    errors.push('connection.url must use the ldap:// or ldaps:// scheme');
+  }
+  // Without the service account the search would run as an anonymous bind.
+  if (!provider.connection?.bindDN) {
+    errors.push('connection.bindDN is required');
+  }
+  if (!provider.connection?.bindPassword) {
+    errors.push('connection.bindPassword is required');
+  }
+  if (!provider.baseDN) {
+    errors.push('baseDN is required');
+  }
+  if (!Array.isArray(provider.accessGroups) || provider.accessGroups.filter((group) => typeof group === 'string' && group.trim()).length === 0) {
+    errors.push('accessGroups must contain at least one group');
+  }
+  const intervalMinutes = provider.sync?.intervalMinutes;
+  if (intervalMinutes !== undefined && (typeof intervalMinutes !== 'number' || !Number.isFinite(intervalMinutes) || intervalMinutes <= 0)) {
+    errors.push('sync.intervalMinutes must be a number greater than 0');
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid LDAP provider config: ${errors.join('; ')}`);
+  }
+}
+
 let config: Config;
 export function loadConfig(): Config {
   if (config) {
@@ -306,6 +374,7 @@ export function loadConfig(): Config {
     }
     config = parsedEnvConfig[env] as Config;
     validateOIDCConfig(config);
+    validateLdapConfig(config);
     return config;
   }
 
@@ -326,6 +395,7 @@ export function loadConfig(): Config {
   } as Config;
 
   validateOIDCConfig(config);
+  validateLdapConfig(config);
 
   return config;
 }

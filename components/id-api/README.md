@@ -40,3 +40,7 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
 - `id-api` → `notification` (sends notifications)
 - `notification` → `id-api` (looks up users)
 - `id-api` → PostgreSQL (`id` database), Redis/Dragonfly
+
+## Authentication providers
+
+- LDAP / Active Directory login, access groups and unit mapping: [docs/ldap.md](docs/ldap.md)

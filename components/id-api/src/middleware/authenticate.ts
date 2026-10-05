@@ -10,6 +10,7 @@ import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { Models, UserAttributes } from '../models';
 import { Services } from '../services';
 import { govid, logout as govidLogout } from '../strategies/govid';
+import { ldap, logout as ldapLogout } from '../strategies/ldap';
 import { local, logout as localLogout } from '../strategies/local';
 import { oidc, logout as oidcLogout } from '../strategies/oidc';
 import { wso2, logout as wso2Logout } from '../strategies/wso2';
@@ -92,6 +93,8 @@ export class AuthMiddleware {
         return x509Logout;
       case 'local':
         return localLogout;
+      case 'ldap':
+        return ldapLogout;
       default:
         return undefined;
     }
@@ -108,6 +111,7 @@ export class AuthMiddleware {
     const promises = [];
     if (config.govid) promises.push(govid(app));
     if (config.local?.isEnabled) promises.push(local(app));
+    if (config.ldap?.isEnabled) promises.push(ldap(app));
     if (config.oidc && Object.keys(config.oidc).length > 0) promises.push(oidc(app));
     if (config.wso2?.isEnabled) promises.push(wso2(app));
     if (config.x509?.isEnabled) promises.push(x509(app));
@@ -229,21 +233,7 @@ export class AuthMiddleware {
         let { user } = passport,
           { userId, provider } = user;
 
-        const redis = this.service('redis');
-        if (redis.isEnabled && userId) {
-          const tokens = await Models.model('accessToken')
-            .findAll({ where: { userId } })
-            .then((rows) => rows.map((row) => row.dataValues));
-
-          this.log.save('delete-user-info-cache', { userId, tokens: tokens.length }, 'info');
-
-          tokens.forEach(({ accessToken }) => {
-            const sha1AccessToken = crypto.createHash('sha1').update(accessToken).digest('hex');
-            redis.delete(`token.${sha1AccessToken}`);
-          });
-        }
-
-        // Must run before the user_sessions bulk-destroy below: RP-initiated
+        // Must run before the sessions are destroyed below: RP-initiated
         // logout reads the id_token/end_session_endpoint back from this login's
         // session row, which that destroy would otherwise wipe out first.
         const strategyLogout = this.resolveStrategyLogout(provider);
@@ -256,9 +246,7 @@ export class AuthMiddleware {
           }
         }
 
-        await Models.model('accessToken').destroy({ where: { userId } });
-        await Models.model('refreshToken').destroy({ where: { userId } });
-        await Models.model('sessions').destroy({ where: { userId } });
+        await this.service('auth').revokeUserAccess(userId, { ignoreCacheErrors: true });
       }
 
       res.clearCookie('jwt', { domain: this.express.config.domain ?? DEFAULT_COOKIE_DOMAIN });
@@ -317,20 +305,6 @@ export class AuthMiddleware {
 
         res.status(403).send({ error: { message: 'User has been blocked.' } });
         return;
-      }
-
-      // If LDAP is enabled and user is identified
-      if (this.service('ldap').isEnabled && user) {
-        // Append authentication data to user session and check if it's passed
-        const isPassed = await this.service('auth').authenticateLdap(user);
-
-        // If LDAP authentication is required and the user already passed onboarding,
-        // deny access if LDAP check is failed
-        if (this.service('ldap').isRequired && !user.needOnboarding && !isPassed) {
-          this.log.save('ldap-authentication-failed', { userId }, 'warning');
-          res.status(403).send({ error: { message: 'LDAP authentication failed.' } });
-          return;
-        }
       }
 
       next();

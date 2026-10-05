@@ -47,6 +47,17 @@ npx playwright test --grep "admin authorization"
 npx playwright test --headed --grep "admin authorization"
 ```
 
+### LDAP login (`ldap.spec.js`)
+
+`ldap.spec.js` covers the LDAP login (API and UI in one file). It needs an OpenLDAP container and the `ldap` provider enabled in id-api, which the default stack does not have. Without them the whole file is skipped (it checks `GET http://localhost:8100/auth_providers`).
+
+Start the LDAP stack from the project root (the override file adds an `openldap` service and merges `fixtures/ldap/id/config.json` over the id-api config through `SECRET_PATH`):
+```bash
+docker compose -f docker-compose.yml -f test/fixtures/ldap/docker-compose.ldap.yml up -d openldap id-api
+cd test && npx playwright test ldap.spec.js
+```
+The spec loads the memberOf overlay and the users and groups from `fixtures/ldap/*.ldif` on the first run. It changes group membership with `docker compose exec openldap ldapmodify` and calls `POST /user/ldap/sync/:userId` of id-api with the Basic credentials from `config/id/config.json`. To get back to the default stack, run `docker compose up -d --force-recreate id-api`.
+
 ## Test Structure
 
 - `basic-workflow.spec.js`: End-to-end workflow tests including register/workflow imports and task completion

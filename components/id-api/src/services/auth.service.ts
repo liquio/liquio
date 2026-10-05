@@ -31,6 +31,26 @@ const DEFAULT_ACCESS_TOKEN_LIFETIME = 8 * 60 * 60; // 8 hours.
 const DEFAULT_REFRESH_TOKEN_LIFETIME = 16 * 60 * 60; // 16 hours.
 const MAX_CONFIRM_CODES_TO_KEEP = 5;
 
+/**
+ * Redis key under which task caches the user info for an access token (`token.<sha256(accessToken)>`).
+ * Keys are plain strings on both sides (no prefix is applied), and id-api and task share one redis.
+ * Keep in sync with task's `AuthController`.
+ */
+export function getTaskTokenCacheKey(accessToken: string): string {
+  return `token.${crypto.createHash('sha256').update(accessToken).digest('hex')}`;
+}
+
+export interface RevokeUserAccessResult {
+  accessTokens: number;
+  refreshTokens: number;
+  sessions: number;
+}
+
+export interface UserAccessOptions {
+  // Log redis errors and go on, instead of throwing. For callers that must always finish (logout).
+  ignoreCacheErrors?: boolean;
+}
+
 export class AuthService extends BaseService {
   public readonly accessTokenLifetime: number;
 
@@ -697,6 +717,59 @@ export class AuthService extends BaseService {
     }
   }
 
+  /**
+   * Delete task's cached user info (`token.*` redis keys) for every access token of the user, tokens stay valid.
+   * The next request of the user to task misses the cache and builds the user info (and syncs units) again.
+   * @return {Promise<number>} Number of access tokens whose cache entry was deleted.
+   **/
+  async invalidateUserTokenCache(userId: string, options: UserAccessOptions = {}): Promise<number> {
+    const redis = this.service('redis');
+    if (!redis.isEnabled || !userId) {
+      return 0;
+    }
+
+    const tokens = await this.model('accessToken')
+      .findAll({ where: { userId } })
+      .then((rows) => rows.map((row) => row.dataValues));
+
+    this.log.save('delete-user-info-cache', { userId, tokens: tokens.length }, 'info');
+
+    for (const { accessToken } of tokens) {
+      try {
+        await redis.delete(getTaskTokenCacheKey(accessToken));
+      } catch (error: any) {
+        if (!options.ignoreCacheErrors) {
+          throw error;
+        }
+        this.log.save('delete-user-info-cache-error', { userId, error: error?.message ?? `${error}` }, 'error');
+      }
+    }
+
+    return tokens.length;
+  }
+
+  /**
+   * Delete id-api's own cached user (the `getUser` cache holds `user_services`, so it goes stale when they change).
+   **/
+  async invalidateUserCache(userId: string): Promise<void> {
+    await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+  }
+
+  /**
+   * Cut the user off: delete task's cached user info, then access tokens, refresh tokens and sessions.
+   * The user itself (`isActive` too) is not touched. The cache goes first, because the keys are derived from the tokens;
+   * if it fails (and errors are not ignored) nothing is deleted, so the call can be repeated.
+   **/
+  async revokeUserAccess(userId: string, options: UserAccessOptions = {}): Promise<RevokeUserAccessResult> {
+    await this.invalidateUserTokenCache(userId, options);
+
+    const accessTokens = await this.model('accessToken').destroy({ where: { userId } });
+    const refreshTokens = await this.model('refreshToken').destroy({ where: { userId } });
+    const sessions = await this.model('sessions').destroy({ where: { userId } });
+
+    return { accessTokens, refreshTokens, sessions };
+  }
+
   removeServiceFromUser(where: WhereAttributeHash, callback: CallbackFn) {
     this.model('userServices')
       .destroy({ where })
@@ -874,75 +947,6 @@ export class AuthService extends BaseService {
     if (loginHistoryData) {
       await this.model('loginHistory').create(loginHistoryData as any);
     }
-  }
-
-  /**
-   * Try to associate user with a LDAP record
-   * @param {object} user User object
-   * @returns {Promise<boolean>} Whether user has passed LDAP authentication
-   */
-  async authenticateLdap(user: UserAttributes): Promise<boolean> {
-    // Skip for users that have no identification type yet.
-    if (!user?.userIdentificationType) {
-      return true;
-    }
-
-    if (!this.service('ldap').isEnabled) {
-      return true;
-    }
-
-    const email = user.email;
-    if (!email) {
-      return false;
-    }
-
-    // Compose ПІБ
-    const fullName = [user.last_name ?? '', user.first_name ?? '', user.middle_name ?? '']
-      .map((i) => i.trim())
-      .filter((v) => !!v)
-      .join(' ');
-
-    // Try to find user by principal name (email).
-    let ldapUser = await this.service('ldap')
-      .findUserByPrincipal(email)
-      .catch((error) => {
-        this.log.save('ldap-find-user-by-principal-error', { email, fullName, error: error.toString() }, 'warning');
-      });
-
-    // Make sure that found user has the same full name.
-    const userDescription = ldapUser?.description.toString();
-    if (!userDescription || userDescription.toUpperCase() !== fullName.toUpperCase()) {
-      ldapUser = undefined;
-      this.log.save('ldap-find-by-full-name-not-match', { email, fullName }, 'warning');
-    }
-
-    // Make sure that the account is not disabled
-    if (ldapUser?.userAccountControl) {
-      const code = Number(ldapUser.userAccountControl);
-      const flags = this.service('ldap').unpackUserAccountControl(code);
-      if (flags.ACCOUNTDISABLE) {
-        this.log.save('ldap-find-user-disabled', { email, fullName }, 'warning');
-        ldapUser = undefined;
-      }
-    }
-
-    // Save LDAP user info to session.
-    if (ldapUser) {
-      const { sAMAccountName, objectGUID, memberOf, dn, cn } = ldapUser;
-
-      this.log.save('ldap-find-user-success', { email, fullName, sAMAccountName }, 'info');
-
-      await this.model('userServices').upsert({
-        userId: user.userId,
-        data: { sAMAccountName, memberOf, dn, cn },
-        provider: 'ldap',
-        provider_id: Buffer.from(objectGUID as any).toString('hex'),
-      });
-
-      return true;
-    }
-
-    return false;
   }
 
   /**
