@@ -35,6 +35,12 @@ export function firstString(value: unknown): string | undefined {
   return result || undefined;
 }
 
+export enum LdapErrorMessage {
+  PROVIDER_DISABLED = 'LDAP provider is not enabled.',
+  DIRECTORY_UNAVAILABLE = 'Directory is temporarily unavailable.',
+  NO_LDAP_USER = 'User has no ldap record.',
+}
+
 /// More than one directory entry matched the login or id.
 export class LdapAmbiguousUserError extends Error {
   constructor() {
@@ -279,7 +285,7 @@ export class LdapService extends BaseService {
 
   private assertEnabled(): void {
     if (!this.isEnabled) {
-      throw new Error('LDAP provider is not enabled.');
+      throw new Error(LdapErrorMessage.PROVIDER_DISABLED);
     }
   }
 

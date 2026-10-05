@@ -6,12 +6,15 @@ import { Errors } from '../lib/errors';
 import { AuthMiddleware } from '../middleware/authenticate';
 import { LoginActionType, Models } from '../models';
 import { Services } from '../services';
-import { Express, NextFunction, Request, Response, Router } from '../types';
+import { Express, HttpStatusCode, NextFunction, Request, Response, Router } from '../types';
 
-const HTTP_STATUS_CODE_OK = 200;
-const HTTP_STATUS_CODE_SERVER_ERROR = 500;
 const EMPTY_DATA = {};
-const DEFAULT_ERROR_MESSAGE = 'Server error.';
+
+export enum ControllerErrorMessage {
+  SERVER_ERROR = 'Server error.',
+  INTERNAL = 'Internal error.',
+  INVALID_USER_ID = 'Invalid user ID.',
+}
 
 /**
  * Base controller class.
@@ -69,7 +72,7 @@ export class BaseController {
    * @param {object} [data] Data to response.
    * @param {number} [httpStatusCode] HTTP status code.
    */
-  responseData(res: Response, data = EMPTY_DATA, httpStatusCode = HTTP_STATUS_CODE_OK) {
+  responseData(res: Response, data = EMPTY_DATA, httpStatusCode: number = HttpStatusCode.Ok) {
     // Response.
     res.status(httpStatusCode).send(data);
   }
@@ -80,7 +83,7 @@ export class BaseController {
    * @param {string|Error} [error] Error instance or message.
    * @param {number} [httpStatusCode] HTTP status code.
    */
-  responseError(res: Response, error: any = DEFAULT_ERROR_MESSAGE, httpStatusCode = HTTP_STATUS_CODE_SERVER_ERROR) {
+  responseError(res: Response, error: any = ControllerErrorMessage.SERVER_ERROR, httpStatusCode: number = HttpStatusCode.InternalServerError) {
     // Define params.
     const message = error instanceof Error ? error.message : error;
     const errorFromList = Errors.getByMessage(message);

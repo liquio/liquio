@@ -1,21 +1,13 @@
 import { body } from 'express-validator';
 
+import { LdapErrorMessage } from '../services/ldap.service';
 import { LdapDirectoryError } from '../services/ldap_sync.service';
-import { Express, Request, Response, Router } from '../types';
-import { BaseController } from './base_controller';
+import { Express, HttpStatusCode, Request, Response, Router } from '../types';
+import { BaseController, ControllerErrorMessage } from './base_controller';
 
 // Constants.
 const MAX_GROUP_DNS = 100;
 const MAX_GROUP_DN_LENGTH = 2048;
-const HTTP_STATUS_CODE_BAD_REQUEST = 400;
-const HTTP_STATUS_CODE_NOT_FOUND = 404;
-const HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR = 500;
-const HTTP_STATUS_CODE_SERVICE_UNAVAILABLE = 503;
-const ERROR_MESSAGE_PROVIDER_DISABLED = 'LDAP provider is not enabled.';
-const ERROR_MESSAGE_INVALID_USER_ID = 'Invalid user ID.';
-const ERROR_MESSAGE_NO_LDAP_USER = 'User has no ldap record.';
-const ERROR_MESSAGE_INTERNAL = 'Internal error.';
-const ERROR_MESSAGE_DIRECTORY_UNAVAILABLE = 'Directory is temporarily unavailable.';
 
 /**
  * Ldap controller. Service-to-service endpoints (Basic auth) backed by the directory.
@@ -49,7 +41,7 @@ export class LdapController extends BaseController {
 
     const ldap = this.service('ldap');
     if (!ldap.isEnabled) {
-      return this.responseError(res, ERROR_MESSAGE_PROVIDER_DISABLED, HTTP_STATUS_CODE_NOT_FOUND);
+      return this.responseError(res, LdapErrorMessage.PROVIDER_DISABLED, HttpStatusCode.NotFound);
     }
 
     try {
@@ -57,7 +49,7 @@ export class LdapController extends BaseController {
       this.responseData(res, { existing });
     } catch (error: any) {
       this.log.save('ldap-groups-exists-error', { error: error?.message }, 'error');
-      this.responseError(res, ERROR_MESSAGE_DIRECTORY_UNAVAILABLE, HTTP_STATUS_CODE_SERVICE_UNAVAILABLE);
+      this.responseError(res, LdapErrorMessage.DIRECTORY_UNAVAILABLE, HttpStatusCode.ServiceUnavailable);
     }
   }
 
@@ -70,25 +62,25 @@ export class LdapController extends BaseController {
     const { userId } = req.params;
 
     if (!this.service('auth').isUserId(userId)) {
-      return this.responseError(res, ERROR_MESSAGE_INVALID_USER_ID, HTTP_STATUS_CODE_BAD_REQUEST);
+      return this.responseError(res, ControllerErrorMessage.INVALID_USER_ID, HttpStatusCode.BadRequest);
     }
 
     if (!this.service('ldap').isEnabled) {
-      return this.responseError(res, ERROR_MESSAGE_PROVIDER_DISABLED, HTTP_STATUS_CODE_NOT_FOUND);
+      return this.responseError(res, LdapErrorMessage.PROVIDER_DISABLED, HttpStatusCode.NotFound);
     }
 
     try {
       const outcome = await this.service('ldapSync').checkUserById(userId, { ensureRevoked: true });
       if (!outcome) {
-        return this.responseError(res, ERROR_MESSAGE_NO_LDAP_USER, HTTP_STATUS_CODE_NOT_FOUND);
+        return this.responseError(res, LdapErrorMessage.NO_LDAP_USER, HttpStatusCode.NotFound);
       }
       this.responseData(res, outcome);
     } catch (error: any) {
       this.log.save('ldap-sync-user-error', { userId, error: error?.message }, 'error');
       if (error instanceof LdapDirectoryError) {
-        return this.responseError(res, ERROR_MESSAGE_DIRECTORY_UNAVAILABLE, HTTP_STATUS_CODE_SERVICE_UNAVAILABLE);
+        return this.responseError(res, LdapErrorMessage.DIRECTORY_UNAVAILABLE, HttpStatusCode.ServiceUnavailable);
       }
-      this.responseError(res, ERROR_MESSAGE_INTERNAL, HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR);
+      this.responseError(res, ControllerErrorMessage.INTERNAL, HttpStatusCode.InternalServerError);
     }
   }
 }
