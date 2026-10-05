@@ -50,6 +50,15 @@ export class Provider {
   }
 
   /**
+   * Which of the LDAP groups exist in the directory.
+   * @param {string[]} dns Group DNs.
+   * @returns {Promise<string[]>} Existing group DNs.
+   */
+  async ldapGroupsExist(_dns: string[]): Promise<string[]> {
+    throw new Error(ERROR_OVERRIDE);
+  }
+
+  /**
    * Logout other sessions.
    * @param {string} userId User ID.
    * @param {string} accessToken Access token.

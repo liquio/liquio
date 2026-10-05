@@ -265,4 +265,58 @@ describe('AuthController - ldap', () => {
       }
     });
   });
+
+  describe('Group existence (service endpoint)', () => {
+    const basicHeader = () => ({ Authorization: `Basic ${config.oauth?.secret_key?.[0] || ''}` });
+
+    it('should require basic auth', async () => {
+      await app
+        .request()
+        .post('/ldap/groups/exists')
+        .send({ dns: [ACCESS_GROUP] })
+        .expect(401);
+    });
+
+    it('should return an existing group', async () => {
+      await app
+        .request()
+        .post('/ldap/groups/exists')
+        .set(basicHeader())
+        .send({ dns: [ACCESS_GROUP] })
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body).toEqual({ existing: [ACCESS_GROUP] });
+        });
+    });
+
+    it('should omit a missing group', async () => {
+      const missing = `cn=gone,ou=groups,${BASE_DN}`;
+
+      await app
+        .request()
+        .post('/ldap/groups/exists')
+        .set(basicHeader())
+        .send({ dns: [missing, ACCESS_GROUP] })
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body).toEqual({ existing: [ACCESS_GROUP] });
+        });
+    });
+
+    it('should reject an invalid body', async () => {
+      await app.request().post('/ldap/groups/exists').set(basicHeader()).send({ dns: 'not-an-array' }).expect(400);
+      await app
+        .request()
+        .post('/ldap/groups/exists')
+        .set(basicHeader())
+        .send({ dns: [''] })
+        .expect(400);
+    });
+
+    it('should reject more than 100 DNs', async () => {
+      const dns = Array.from({ length: 101 }, (_, i) => `cn=g${i},ou=groups,${BASE_DN}`);
+
+      await app.request().post('/ldap/groups/exists').set(basicHeader()).send({ dns }).expect(400);
+    });
+  });
 });

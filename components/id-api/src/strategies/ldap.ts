@@ -9,7 +9,7 @@ import { delay } from '../lib/helpers';
 import { HttpError } from '../lib/http_error';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { saveSession } from '../middleware/session';
-import { Models, UserAttributes } from '../models';
+import { Models, UserAttributes, UserServicesAttributes } from '../models';
 import { Services } from '../services';
 import { LdapAmbiguousUserError } from '../services/ldap.service';
 import { CallbackFn, Express, Request, Response } from '../types';
@@ -47,7 +47,7 @@ function firstString(value: unknown): string | undefined {
   return result || undefined;
 }
 
-export async function ldap(app: Express) {
+export async function ldap(app: Express): Promise<void> {
   const log = Log.getInstance();
   const cfg = app.config.auth_providers.ldap;
 
@@ -93,7 +93,7 @@ export async function ldap(app: Express) {
 
   // Map the configured directory attributes to user fields.
   function mapAttributes(entry: Entry): Partial<UserAttributes> {
-    const mapped: Record<string, any> = {};
+    const mapped: Record<string, unknown> = {};
     for (const [field, attribute] of Object.entries(cfg?.attributes ?? {})) {
       if (PROTECTED_USER_FIELDS.includes(field)) {
         continue;
@@ -112,7 +112,13 @@ export async function ldap(app: Express) {
       .then((row) => row?.dataValues as UserAttributes | undefined);
   }
 
-  async function upsertUser(username: string, entry: Entry, providerId: string, groups: string[], matched: string[]) {
+  async function upsertUser(
+    username: string,
+    entry: Entry,
+    providerId: string,
+    groups: string[],
+    matched: string[],
+  ): Promise<{ user: UserAttributes; service: UserServicesAttributes }> {
     const userData: Partial<UserAttributes> = {
       ...mapAttributes(entry),
       // The ipn is always derived from the directory id so that ldap users never carry a real RNOKPP.
@@ -184,7 +190,7 @@ export async function ldap(app: Express) {
     return { user, service: userServiceRecord.dataValues };
   }
 
-  async function verify(rawUsername: string, password: string, done: CallbackFn) {
+  async function verify(rawUsername: string, password: string, done: CallbackFn): Promise<void> {
     // Waiting for a random time to prevent timing attacks
     await delay(Math.floor(Math.random() * 400) + 100);
 
@@ -206,7 +212,7 @@ export async function ldap(app: Express) {
       return done(new HttpError(401, GENERIC_FAIL_DESCRIPTION));
     }
 
-    let directoryResult;
+    let directoryResult: Awaited<ReturnType<typeof authenticateInDirectory>>;
     try {
       directoryResult = await authenticateInDirectory(username, password);
     } catch (error: any) {

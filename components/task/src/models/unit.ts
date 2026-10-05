@@ -237,6 +237,44 @@ export class UnitModel extends Model {
   }
 
   /**
+   * Remove head.
+   * @param {number} unitId Unit ID.
+   * @param {string} userId User ID.
+   * @returns {Promise<UnitEntity>} Unit entity promise.
+   */
+  async removeHead(unitId: number, userId: string): Promise<UnitEntity | null> {
+    // Update.
+    const [, unitsRaw] = await this.model.update(
+      { heads: Sequelize.fn('array_remove', Sequelize.col('heads'), userId) },
+      { where: { id: unitId }, returning: true },
+    );
+
+    // Check.
+    if (!unitsRaw || unitsRaw.length !== 1) {
+      global.log.save('unit-remove-head|error', { unitId, userId });
+      return null;
+    }
+
+    // Define and return first updated row entity.
+    const [unitRaw] = unitsRaw;
+    const unit = this.prepareEntity(unitRaw);
+
+    global.log.save('unit-remove-head', { unitId, userId });
+
+    return unit;
+  }
+
+  /**
+   * Invalidate the units cache right away, without waiting for the row change notification.
+   */
+  async invalidateCache(): Promise<void> {
+    const redis = RedisClient.getInstance();
+    if (redis) {
+      await redis.delete(RedisClient.createKey('unit', 'getAll'));
+    }
+  }
+
+  /**
    * Remove member.
    * @param {number} unitId Unit ID.
    * @param {string} userId User ID.

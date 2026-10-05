@@ -7,10 +7,12 @@ import { AuthService as Auth } from '../services/auth';
 import { Token } from '../lib/token';
 import { UserAccess } from '../lib/user_access';
 import { UnitModel } from '../models/unit';
+import { LdapUnitSync } from '../services/ldap_unit_sync';
 import { TaskModel } from '../models/task';
 import { WorkflowModel } from '../models/workflow';
 import { GROUPS as ROUTE_GROUPS } from '../services/router/routes';
 import { OnboardingController } from './onboarding';
+import type { LiquioIdProvider } from '../services/auth/providers/liquio_id';
 
 // Constants.
 const ROLES_SEPARATOR = ';';
@@ -36,21 +38,33 @@ export type AuthenticatedRequest<Params, ReqBody = any, ReqQuery = any> = Reques
   authUserInfo?: AuthUserInfo;
 };
 
+// Subset of config.access used by this controller.
+interface AccessConfig {
+  allowableUnits?: number[];
+  routeGroupsExceptions?: string[];
+}
+
+// Subset of config.auth.caching used by this controller.
+interface CachingConfig {
+  getCheckMiddleware: { ttl: number };
+}
+
 /**
  * Auth controller.
  */
 export class AuthController extends Controller {
   private static singleton: AuthController;
 
-  auth: any;
-  token: any;
-  access: any;
-  userAccess: any;
-  unitModel: any;
-  taskModel: any;
-  workflowModel: any;
-  onboardingController: any;
-  caching: any;
+  auth: LiquioIdProvider;
+  token: Token;
+  access: AccessConfig;
+  userAccess: UserAccess;
+  unitModel: UnitModel;
+  taskModel: TaskModel;
+  workflowModel: WorkflowModel;
+  onboardingController: OnboardingController;
+  ldapUnitSync: LdapUnitSync;
+  caching: CachingConfig;
 
   /**
    * Auth controller constructor.
@@ -70,6 +84,7 @@ export class AuthController extends Controller {
       this.taskModel = new TaskModel();
       this.workflowModel = new WorkflowModel();
       this.onboardingController = new OnboardingController(config);
+      this.ldapUnitSync = new LdapUnitSync({ unitModel: this.unitModel, auth: this.auth });
 
       // Caching config.
       this.caching = config.auth.caching;
@@ -211,6 +226,9 @@ export class AuthController extends Controller {
       if (unitsUpdated) {
         await this.unitModel.getAll();
       }
+
+      // Sync LDAP-managed units. Never fails the login.
+      await this.ldapUnitSync.sync(authUserInfo);
 
       // Handle tasks where the user is a performer.
       await this.taskModel.addPerformerUserByIpnOrEmail(authUserInfo.ipn, authUserInfo.email, authUserInfo.userId, userName);
@@ -416,6 +434,9 @@ export class AuthController extends Controller {
           return this.responseError(res, ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, 401);
         }
         req.authUserRoles = userRoles;
+
+        // Sync LDAP-managed units if the user's groups were refreshed. Never fails the request.
+        await this.ldapUnitSync.syncIfChanged(authUserInfo);
 
         // Check units.
         const authUserUnitEntities = await this.getUserUnitEntities(req.authUserId);

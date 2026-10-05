@@ -31,6 +31,7 @@ const DEFAULT_ROUTES = {
   ping: '/test/ping',
   pingWithAuth: '/test/ping_with_auth',
   prepareUser: '/user/prepare',
+  ldapGroupsExist: '/ldap/groups/exists',
 };
 const USER_INFO_UPDATED_RESPONSE = 'ok';
 const SEARCH_USERS_LIMIT = 10;
@@ -480,6 +481,31 @@ export class LiquioIdProvider extends Provider {
     const isExist = !!response.isExist;
 
     return isExist;
+  }
+
+  /**
+   * Which of the LDAP groups exist in the directory.
+   * @param {string[]} dns Group DNs.
+   * @returns {Promise<string[]>} Existing group DNs.
+   */
+  async ldapGroupsExist(dns: string[]): Promise<string[]> {
+    const response = await HttpRequest.send({
+      url: `${this.server}:${this.port}${this.routes.ldapGroupsExist}`,
+      method: HttpRequest.Methods.POST,
+      headers: {
+        'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
+        'x-trace-id': getTraceId(),
+        Authorization: this.basicAuthHeader,
+      },
+      body: JSON.stringify({ dns }),
+      timeout: this.timeout,
+    });
+
+    if (!Array.isArray(response?.existing)) {
+      throw new Error(ERROR_MESSAGE_WRONG_RESPONSE_FORMAT);
+    }
+
+    return response.existing;
   }
 
   /**

@@ -75,7 +75,7 @@ export class LdapService extends BaseService {
     return this.cfg?.idAttribute || DEFAULT_ID_ATTRIBUTE;
   }
 
-  async init() {
+  async init(): Promise<void> {
     if (!this.isEnabled) {
       return;
     }
@@ -86,7 +86,7 @@ export class LdapService extends BaseService {
     });
   }
 
-  async stop() {
+  async stop(): Promise<void> {
     await this.disconnect();
   }
 
@@ -266,7 +266,7 @@ export class LdapService extends BaseService {
     return normalizeDn(a) === normalizeDn(b);
   }
 
-  private assertEnabled() {
+  private assertEnabled(): void {
     if (!this.isEnabled) {
       throw new Error('LDAP provider is not enabled.');
     }
@@ -376,7 +376,7 @@ export class LdapService extends BaseService {
     return client;
   }
 
-  private async disconnect() {
+  private async disconnect(): Promise<void> {
     const client = this.client;
     this.client = undefined;
 
@@ -400,7 +400,7 @@ export class LdapService extends BaseService {
     });
   }
 
-  private async startTlsIfNeeded(client: ldapts.Client) {
+  private async startTlsIfNeeded(client: ldapts.Client): Promise<void> {
     if (this.cfg?.connection?.startTLS && !this.cfg.connection.url?.toLowerCase().startsWith('ldaps:')) {
       await client.startTLS(this.getTlsOptions());
     }
