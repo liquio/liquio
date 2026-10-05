@@ -321,6 +321,29 @@ describe('LdapSyncService', () => {
       expect(redis.releaseLock).toHaveBeenCalledWith('ldap-sync', 'lock-token');
     });
 
+    it('still returns the summary when releasing the lock fails', async () => {
+      redis.releaseLock.mockRejectedValue(new Error('redis down'));
+
+      const summary = await service.run();
+
+      expect(summary).toMatchObject({ checked: 1, aborted: false });
+      expect(logged('ldap-sync|release-lock-error')[0][1]).toEqual({ error: 'redis down' });
+    });
+
+    it('extends the lock and goes on when it is still ours', async () => {
+      jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
+      rows = [makeRow(1), makeRow(2)];
+      ldap.findUserById.mockImplementation(async () => {
+        jest.advanceTimersByTime(200 * 1000);
+        return makeEntry();
+      });
+
+      const summary = await service.run();
+
+      expect(summary).toMatchObject({ checked: 2, aborted: false });
+      expect(redis.extendLock).toHaveBeenCalledWith('ldap-sync', 'lock-token', 300);
+    });
+
     it('does nothing when another replica holds the lock', async () => {
       redis.acquireLock.mockResolvedValue(null);
 
@@ -452,6 +475,18 @@ describe('LdapSyncService', () => {
       expect(spy).toHaveBeenCalledTimes(1);
       jest.advanceTimersByTime(5 * 60 * 1000);
       expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('logs a failed scheduled run and keeps the timer going', async () => {
+      ldapConfig.sync.intervalMinutes = 5;
+      const spy = jest.spyOn(service, 'run').mockRejectedValue(new Error('db down'));
+
+      service.schedule();
+      await jest.advanceTimersByTimeAsync(5 * 60 * 1000);
+      await jest.advanceTimersByTimeAsync(5 * 60 * 1000);
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(logged('ldap-sync|run-error')[0][1]).toEqual({ error: 'db down' });
     });
 
     it('defaults to 15 minutes', () => {

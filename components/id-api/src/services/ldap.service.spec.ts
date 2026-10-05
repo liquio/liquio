@@ -302,6 +302,12 @@ describe('LdapService', () => {
       expect(ldapts.Client).not.toHaveBeenCalled();
     });
 
+    it('returns null for a blank id without searching', async () => {
+      const service = createService();
+      await expect(service.findUserById('  ')).resolves.toBeNull();
+      expect(ldapts.Client).not.toHaveBeenCalled();
+    });
+
     it('escapes the value for a string idAttribute', async () => {
       const service = createService({ idAttribute: 'uid' });
       await service.findUserById('a*b');
@@ -429,6 +435,15 @@ describe('LdapService', () => {
       const [base, options] = mockClients[0].search.mock.calls[0];
       expect(base).toBe('dc=domain,dc=loc');
       expect(options.filter).toBe('(&(objectClass=group)(member:1.2.840.113556.1.4.1941:=cn=John \\28IT\\29,ou=Staff,dc=domain,dc=loc))');
+    });
+
+    it('logs and rethrows a failed in-chain search', async () => {
+      const service = createService({ nestedGroups: true });
+      await service.init();
+      mockClients[0].search.mockRejectedValue(new ldapts.InsufficientAccessError('no access'));
+
+      await expect(service.getUserGroups({ dn: 'cn=John,dc=x' })).rejects.toThrow('no access');
+      expect(mockLog.save).toHaveBeenCalledWith('ldap-get-user-groups-fail', expect.objectContaining({ dn: 'cn=John,dc=x' }), 'error');
     });
 
     it('returns memberOf as an array when nestedGroups is false', async () => {

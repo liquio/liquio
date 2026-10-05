@@ -1,0 +1,33 @@
+{
+  "production": {
+    "auth_providers": {
+      "ldap": {
+        "isEnabled": true,
+        "connection": {
+          "url": "ldap://openldap:1389",
+          "bindDN": "cn=admin,dc=example,dc=org",
+          "bindPassword": "adminpw",
+          "timeout": 5000,
+          "connectTimeout": 5000
+        },
+        "baseDN": "dc=example,dc=org",
+        "userFilter": "(&(objectClass=inetOrgPerson)(uid={{username}}))",
+        "idAttribute": "entryUUID",
+        "nestedGroups": false,
+        "attributes": {
+          "email": "mail",
+          "first_name": "givenName",
+          "last_name": "sn"
+        },
+        "linkByEmail": false,
+        "accessGroups": [
+          "cn=liquio,ou=groups,dc=example,dc=org"
+        ],
+        "sync": {
+          "isEnabled": true,
+          "intervalMinutes": 15
+        }
+      }
+    }
+  }
+}

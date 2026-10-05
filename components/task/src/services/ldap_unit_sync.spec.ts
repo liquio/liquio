@@ -211,6 +211,21 @@ describe('LdapUnitSync', () => {
       expect(auth.ldapGroupsExist).not.toHaveBeenCalled();
     });
 
+    it('still checks the groups when the cache cannot be read or written', async () => {
+      units = [makeUnit(1, { members: [USER_ID], data: { ldap: { memberGroups: [GROUP_MEMBERS] } } })];
+      (global.redisClient.get as jest.Mock).mockRejectedValue(new Error('redis down'));
+      (global.redisClient.set as jest.Mock).mockRejectedValue(new Error('redis down'));
+
+      const result = await sync.sync(userInfo([]));
+
+      expect(auth.ldapGroupsExist).toHaveBeenCalledTimes(1);
+      expect(units[0].members).toEqual([]);
+      expect(result.changed).toBe(true);
+      const keys = (global.log.save as jest.Mock).mock.calls.map(([key]) => key);
+      expect(keys).toContain('ldap-unit-sync|cache-read-error');
+      expect(keys).toContain('ldap-unit-sync|cache-write-error');
+    });
+
     it('removes nobody when the groups check fails', async () => {
       units = [makeUnit(1, { members: [USER_ID], heads: [USER_ID], data: { ldap: { memberGroups: [GROUP_MEMBERS], headGroups: [GROUP_HEADS] } } })];
       auth.ldapGroupsExist.mockRejectedValue(new Error('id-api down'));
@@ -401,6 +416,16 @@ describe('LdapUnitSync', () => {
 
       expect(result.changed).toBe(false);
       expect(unitModel.getAll).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the synced marker cannot be read', async () => {
+      (global.redisClient.get as jest.Mock).mockRejectedValue(new Error('redis down'));
+
+      const result = await sync.syncIfChanged(userInfo([GROUP_MEMBERS]));
+
+      expect(result).toEqual({ changed: false, complete: true });
+      expect(unitModel.getAll).not.toHaveBeenCalled();
+      expect((global.log.save as jest.Mock).mock.calls.map(([key]) => key)).toContain('ldap-unit-sync|error');
     });
 
     it('does nothing for a user without the ldap service', async () => {
