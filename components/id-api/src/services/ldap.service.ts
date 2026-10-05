@@ -25,6 +25,16 @@ const BINARY_ATTRIBUTES = ['objectguid', 'objectsid'];
 const FILETIME_NEVER = BigInt('0x7FFFFFFFFFFFFFFF');
 const FILETIME_EPOCH_DIFF_MS = 11644473600000;
 
+// Take the first string out of a directory value (string, Buffer or an array of them).
+export function firstString(value: unknown): string | undefined {
+  const first = Array.isArray(value) ? value[0] : value;
+  if (first === undefined || first === null) {
+    return undefined;
+  }
+  const result = (Buffer.isBuffer(first) ? first.toString('utf8') : String(first)).trim();
+  return result || undefined;
+}
+
 /// More than one directory entry matched the login or id.
 export class LdapAmbiguousUserError extends Error {
   constructor() {
@@ -125,7 +135,8 @@ export class LdapService extends BaseService {
       value = escapeFilterValue(id);
     }
 
-    const filter = `(&(objectClass=user)(${this.idAttribute}=${value}))`;
+    // No objectClass here: the id is unique on its own, and the object class of a user differs between directories.
+    const filter = `(${this.idAttribute}=${value})`;
 
     this.log.save('ldap-find-user-by-id', { id });
 

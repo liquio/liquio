@@ -31,6 +31,26 @@ const DEFAULT_ACCESS_TOKEN_LIFETIME = 8 * 60 * 60; // 8 hours.
 const DEFAULT_REFRESH_TOKEN_LIFETIME = 16 * 60 * 60; // 16 hours.
 const MAX_CONFIRM_CODES_TO_KEEP = 5;
 
+/**
+ * Redis key under which task caches the user info for an access token (`token.<sha256(accessToken)>`).
+ * Keys are plain strings on both sides (no prefix is applied), and id-api and task share one redis.
+ * Keep in sync with task's `AuthController`.
+ */
+export function getTaskTokenCacheKey(accessToken: string): string {
+  return `token.${crypto.createHash('sha256').update(accessToken).digest('hex')}`;
+}
+
+export interface RevokeUserAccessResult {
+  accessTokens: number;
+  refreshTokens: number;
+  sessions: number;
+}
+
+export interface UserAccessOptions {
+  // Log redis errors and go on, instead of throwing. For callers that must always finish (logout).
+  ignoreCacheErrors?: boolean;
+}
+
 export class AuthService extends BaseService {
   public readonly accessTokenLifetime: number;
 
@@ -695,6 +715,59 @@ export class AuthService extends BaseService {
       this.log.save('update-user-error', { error: error }, 'error');
       throw error;
     }
+  }
+
+  /**
+   * Delete task's cached user info (`token.*` redis keys) for every access token of the user, tokens stay valid.
+   * The next request of the user to task misses the cache and builds the user info (and syncs units) again.
+   * @return {Promise<number>} Number of access tokens whose cache entry was deleted.
+   **/
+  async invalidateUserTokenCache(userId: string, options: UserAccessOptions = {}): Promise<number> {
+    const redis = this.service('redis');
+    if (!redis.isEnabled || !userId) {
+      return 0;
+    }
+
+    const tokens = await this.model('accessToken')
+      .findAll({ where: { userId } })
+      .then((rows) => rows.map((row) => row.dataValues));
+
+    this.log.save('delete-user-info-cache', { userId, tokens: tokens.length }, 'info');
+
+    for (const { accessToken } of tokens) {
+      try {
+        await redis.delete(getTaskTokenCacheKey(accessToken));
+      } catch (error: any) {
+        if (!options.ignoreCacheErrors) {
+          throw error;
+        }
+        this.log.save('delete-user-info-cache-error', { userId, error: error?.message ?? `${error}` }, 'error');
+      }
+    }
+
+    return tokens.length;
+  }
+
+  /**
+   * Delete id-api's own cached user (the `getUser` cache holds `user_services`, so it goes stale when they change).
+   **/
+  async invalidateUserCache(userId: string): Promise<void> {
+    await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+  }
+
+  /**
+   * Cut the user off: delete task's cached user info, then access tokens, refresh tokens and sessions.
+   * The user itself (`isActive` too) is not touched. The cache goes first, because the keys are derived from the tokens;
+   * if it fails (and errors are not ignored) nothing is deleted, so the call can be repeated.
+   **/
+  async revokeUserAccess(userId: string, options: UserAccessOptions = {}): Promise<RevokeUserAccessResult> {
+    await this.invalidateUserTokenCache(userId, options);
+
+    const accessTokens = await this.model('accessToken').destroy({ where: { userId } });
+    const refreshTokens = await this.model('refreshToken').destroy({ where: { userId } });
+    const sessions = await this.model('sessions').destroy({ where: { userId } });
+
+    return { accessTokens, refreshTokens, sessions };
   }
 
   removeServiceFromUser(where: WhereAttributeHash, callback: CallbackFn) {

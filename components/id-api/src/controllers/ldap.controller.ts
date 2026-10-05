@@ -1,14 +1,20 @@
 import { body } from 'express-validator';
 
+import { LdapDirectoryError } from '../services/ldap_sync.service';
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
 // Constants.
 const MAX_GROUP_DNS = 100;
 const MAX_GROUP_DN_LENGTH = 2048;
+const HTTP_STATUS_CODE_BAD_REQUEST = 400;
 const HTTP_STATUS_CODE_NOT_FOUND = 404;
+const HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_CODE_SERVICE_UNAVAILABLE = 503;
 const ERROR_MESSAGE_PROVIDER_DISABLED = 'LDAP provider is not enabled.';
+const ERROR_MESSAGE_INVALID_USER_ID = 'Invalid user ID.';
+const ERROR_MESSAGE_NO_LDAP_USER = 'User has no ldap record.';
+const ERROR_MESSAGE_INTERNAL = 'Internal error.';
 const ERROR_MESSAGE_DIRECTORY_UNAVAILABLE = 'Directory is temporarily unavailable.';
 
 /**
@@ -30,6 +36,7 @@ export class LdapController extends BaseController {
       ],
       this.groupsExist.bind(this),
     );
+    this.router.post('/user/ldap/sync/:userId', this.auth.basic(), this.syncUser.bind(this));
   }
 
   /**
@@ -51,6 +58,37 @@ export class LdapController extends BaseController {
     } catch (error: any) {
       this.log.save('ldap-groups-exists-error', { error: error?.message }, 'error');
       this.responseError(res, ERROR_MESSAGE_DIRECTORY_UNAVAILABLE, HTTP_STATUS_CODE_SERVICE_UNAVAILABLE);
+    }
+  }
+
+  /**
+   * Check one user against the directory right now, and revoke the access if it is lost.
+   * Responds with 400 on a malformed id, 404 when the ldap provider is disabled or the user has no ldap record
+   * and with 503 when the directory cannot answer (nothing is changed then).
+   */
+  async syncUser(req: Request, res: Response): Promise<void> {
+    const { userId } = req.params;
+
+    if (!this.service('auth').isUserId(userId)) {
+      return this.responseError(res, ERROR_MESSAGE_INVALID_USER_ID, HTTP_STATUS_CODE_BAD_REQUEST);
+    }
+
+    if (!this.service('ldap').isEnabled) {
+      return this.responseError(res, ERROR_MESSAGE_PROVIDER_DISABLED, HTTP_STATUS_CODE_NOT_FOUND);
+    }
+
+    try {
+      const outcome = await this.service('ldapSync').checkUserById(userId, { ensureRevoked: true });
+      if (!outcome) {
+        return this.responseError(res, ERROR_MESSAGE_NO_LDAP_USER, HTTP_STATUS_CODE_NOT_FOUND);
+      }
+      this.responseData(res, outcome);
+    } catch (error: any) {
+      this.log.save('ldap-sync-user-error', { userId, error: error?.message }, 'error');
+      if (error instanceof LdapDirectoryError) {
+        return this.responseError(res, ERROR_MESSAGE_DIRECTORY_UNAVAILABLE, HTTP_STATUS_CODE_SERVICE_UNAVAILABLE);
+      }
+      this.responseError(res, ERROR_MESSAGE_INTERNAL, HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR);
     }
   }
 }

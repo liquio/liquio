@@ -292,7 +292,7 @@ describe('LdapService', () => {
 
       const [base, options] = mockClients[0].search.mock.calls[0];
       expect(base).toBe('ou=Staff,dc=domain,dc=loc');
-      expect(options.filter).toBe('(&(objectClass=user)(objectGUID=\\01\\23\\45\\67\\89\\ab\\cd\\ef\\01\\23\\45\\67\\89\\ab\\cd\\ef))');
+      expect(options.filter).toBe('(objectGUID=\\01\\23\\45\\67\\89\\ab\\cd\\ef\\01\\23\\45\\67\\89\\ab\\cd\\ef)');
       expect(() => ldapts.FilterParser.parseString(options.filter)).not.toThrow();
     });
 
@@ -307,7 +307,7 @@ describe('LdapService', () => {
       await service.findUserById('a*b');
 
       const [, options] = mockClients[0].search.mock.calls[0];
-      expect(options.filter).toBe('(&(objectClass=user)(uid=a\\2ab))');
+      expect(options.filter).toBe('(uid=a\\2ab)');
       expect(options.explicitBufferAttributes).toEqual([]);
     });
 

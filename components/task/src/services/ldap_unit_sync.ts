@@ -322,7 +322,7 @@ export class LdapUnitSync {
    */
   private async getExistingGroups(groups: string[]): Promise<string[]> {
     const normalized = [...new Set(groups.map(normalizeDn))].sort();
-    const key = `${GROUPS_EXIST_KEY_PREFIX}.${crypto.createHash('sha1').update(JSON.stringify(normalized)).digest('hex')}`;
+    const key = `${GROUPS_EXIST_KEY_PREFIX}.${crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex')}`;
 
     if (global.redisClient) {
       try {

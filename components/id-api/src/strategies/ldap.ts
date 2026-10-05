@@ -11,7 +11,7 @@ import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesAttributes } from '../models';
 import { Services } from '../services';
-import { LdapAmbiguousUserError } from '../services/ldap.service';
+import { LdapAmbiguousUserError, firstString } from '../services/ldap.service';
 import { CallbackFn, Express, Request, Response } from '../types';
 
 const GENERIC_FAIL_DESCRIPTION = 'Invalid login or password.';
@@ -36,16 +36,6 @@ class LdapLoginRejected extends Error {}
 
 // No external IdP session to tear down for ldap auth.
 export async function logout(): Promise<void> {}
-
-// Take the first string out of a directory value (string, Buffer or an array of them).
-function firstString(value: unknown): string | undefined {
-  const first = Array.isArray(value) ? value[0] : value;
-  if (first === undefined || first === null) {
-    return undefined;
-  }
-  const result = (Buffer.isBuffer(first) ? first.toString('utf8') : String(first)).trim();
-  return result || undefined;
-}
 
 export async function ldap(app: Express): Promise<void> {
   const log = Log.getInstance();

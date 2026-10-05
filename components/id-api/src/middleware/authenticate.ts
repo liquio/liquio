@@ -233,21 +233,7 @@ export class AuthMiddleware {
         let { user } = passport,
           { userId, provider } = user;
 
-        const redis = this.service('redis');
-        if (redis.isEnabled && userId) {
-          const tokens = await Models.model('accessToken')
-            .findAll({ where: { userId } })
-            .then((rows) => rows.map((row) => row.dataValues));
-
-          this.log.save('delete-user-info-cache', { userId, tokens: tokens.length }, 'info');
-
-          tokens.forEach(({ accessToken }) => {
-            const sha1AccessToken = crypto.createHash('sha1').update(accessToken).digest('hex');
-            redis.delete(`token.${sha1AccessToken}`);
-          });
-        }
-
-        // Must run before the user_sessions bulk-destroy below: RP-initiated
+        // Must run before the sessions are destroyed below: RP-initiated
         // logout reads the id_token/end_session_endpoint back from this login's
         // session row, which that destroy would otherwise wipe out first.
         const strategyLogout = this.resolveStrategyLogout(provider);
@@ -260,9 +246,7 @@ export class AuthMiddleware {
           }
         }
 
-        await Models.model('accessToken').destroy({ where: { userId } });
-        await Models.model('refreshToken').destroy({ where: { userId } });
-        await Models.model('sessions').destroy({ where: { userId } });
+        await this.service('auth').revokeUserAccess(userId, { ignoreCacheErrors: true });
       }
 
       res.clearCookie('jwt', { domain: this.express.config.domain ?? DEFAULT_COOKIE_DOMAIN });

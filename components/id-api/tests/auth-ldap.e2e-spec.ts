@@ -1,6 +1,8 @@
 import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
 
 import { TestApp, config } from './test_app';
+import { Services } from '../src/services';
+import { getTaskTokenCacheKey } from '../src/services/auth.service';
 
 const BASE_DN = 'dc=example,dc=org';
 const ADMIN_DN = `cn=admin,${BASE_DN}`;
@@ -8,6 +10,10 @@ const ADMIN_PASSWORD = 'adminpw';
 const CONFIG_DN = 'cn=config,cn=config';
 const CONFIG_PASSWORD = 'configpw';
 const ACCESS_GROUP = `cn=liquio,ou=groups,${BASE_DN}`;
+const UNIT_GROUP = `cn=liquio-unit,ou=groups,${BASE_DN}`;
+// groupOfNames requires a member, so a group keeps one after Alice is removed from it.
+const PLACEHOLDER_MEMBER = `cn=placeholder,${BASE_DN}`;
+const ALICE_DN = `uid=alice,ou=users,${BASE_DN}`;
 
 // Load the memberOf overlay (the image does not enable it).
 const OVERLAY_LDIF = `dn: cn=module{0},cn=config
@@ -49,6 +55,7 @@ changetype: add
 objectClass: groupOfNames
 cn: liquio
 member: uid=alice,ou=users,${BASE_DN}
+member: ${PLACEHOLDER_MEMBER}
 `;
 
 describe('AuthController - ldap', () => {
@@ -125,6 +132,7 @@ describe('AuthController - ldap', () => {
       attributes: { email: 'mail', first_name: 'givenName', last_name: 'sn' },
       linkByEmail: false,
       accessGroups: [ACCESS_GROUP],
+      sync: { isEnabled: true, intervalMinutes: 15 },
     };
     config.notify = { url: 'http://notify-service', authorization: 'bm90aWZ5Om5vdGlmeQ==' };
 
@@ -317,6 +325,248 @@ describe('AuthController - ldap', () => {
       const dns = Array.from({ length: 101 }, (_, i) => `cn=g${i},ou=groups,${BASE_DN}`);
 
       await app.request().post('/ldap/groups/exists').set(basicHeader()).send({ dns }).expect(400);
+    });
+  });
+
+  describe('Access revocation (sync)', () => {
+    const CLIENT_ID = 'ldap-sync-client';
+    const CLIENT_SECRET = 'ldap-sync-secret';
+    const basicHeader = () => ({ Authorization: `Basic ${config.oauth?.secret_key?.[0] || ''}` });
+    let userId: string;
+    let codeCounter = 0;
+
+    const removeFrom = (group: string) =>
+      ldapModify(ADMIN_DN, ADMIN_PASSWORD, `dn: ${group}\nchangetype: modify\ndelete: member\nmember: ${ALICE_DN}\n`, '/tmp/remove.ldif');
+    const addTo = (group: string) =>
+      ldapModify(ADMIN_DN, ADMIN_PASSWORD, `dn: ${group}\nchangetype: modify\nadd: member\nmember: ${ALICE_DN}\n`, '/tmp/add.ldif');
+
+    const login = () => app.request().post('/authorise/ldap').send({ username: 'alice', password: 'alicepw' });
+
+    // Issue real tokens: an authorization code is put in the database, then exchanged on the token endpoint.
+    async function issueTokens(): Promise<{ accessToken: string; refreshToken: string }> {
+      const code = `ldap-sync-code-${++codeCounter}`;
+      await app.model('authCode').create({ code, userId, clientId: CLIENT_ID, expires: new Date(Date.now() + 60000), scope: [] });
+
+      const { body } = await app
+        .request()
+        .post('/oauth/token')
+        .type('form')
+        .send({ grant_type: 'authorization_code', code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET })
+        .expect(200);
+
+      return { accessToken: body.access_token, refreshToken: body.refresh_token };
+    }
+
+    const refresh = (refreshToken: string) =>
+      app
+        .request()
+        .post('/oauth/token')
+        .type('form')
+        .send({ grant_type: 'refresh_token', refresh_token: refreshToken, client_id: CLIENT_ID, client_secret: CLIENT_SECRET });
+
+    // Put a value where task caches the user info of the access token.
+    async function seedTaskCache(accessToken: string): Promise<void> {
+      await Services.service('redis').set(getTaskTokenCacheKey(accessToken), { authUserId: userId }, 600);
+    }
+
+    const taskCache = (accessToken: string) => Services.service('redis').get(getTaskTokenCacheKey(accessToken));
+    const countRows = async (model: 'accessToken' | 'refreshToken' | 'sessions'): Promise<number> => {
+      if (model === 'accessToken') {
+        return app.model('accessToken').count({ where: { userId } });
+      }
+      if (model === 'refreshToken') {
+        return app.model('refreshToken').count({ where: { userId } });
+      }
+      return app.model('sessions').count({ where: { userId } });
+    };
+    const readData = async (): Promise<any> =>
+      app
+        .model('userServices')
+        .findOne({ where: { userId, provider: 'ldap' } })
+        .then((row) => row?.dataValues.data);
+
+    beforeAll(async () => {
+      await login().expect(200);
+      userId = (await app.model('user').findOne({ where: { email: 'alice@example.org' } }))!.dataValues.userId;
+
+      await app.model('client').create({
+        clientId: CLIENT_ID,
+        secret: CLIENT_SECRET,
+        need_secret: true,
+        redirectUri: ['http://test-client-site'],
+        grants: ['authorization_code', 'refresh_token'],
+        scope: [],
+        client_name: 'Ldap sync client',
+        need_scope_approve: false,
+      });
+      await ldapModify(
+        ADMIN_DN,
+        ADMIN_PASSWORD,
+        `dn: ${UNIT_GROUP}\nchangetype: add\nobjectClass: groupOfNames\ncn: liquio-unit\nmember: ${ALICE_DN}\nmember: ${PLACEHOLDER_MEMBER}\n`,
+        '/tmp/unit-group.ldif',
+      );
+    });
+
+    it('should leave a user who still has access untouched', async () => {
+      const { accessToken } = await issueTokens();
+      await seedTaskCache(accessToken);
+      // The unit group has just been created with Alice in it: the first run records it.
+      await Services.service('ldapSync').run();
+      const before = await readData();
+      expect(before.groups).toEqual(expect.arrayContaining([ACCESS_GROUP, UNIT_GROUP]));
+      await seedTaskCache(accessToken);
+
+      const summary = await Services.service('ldapSync').run();
+
+      expect(summary).toMatchObject({ checked: 1, revoked: 0, changed: 0, errors: 0, aborted: false });
+      expect(await readData()).toEqual(before);
+      expect(await countRows('accessToken')).toBeGreaterThan(0);
+      expect(await taskCache(accessToken)).not.toBeNull();
+    });
+
+    it('should not start a run while another replica holds the lock', async () => {
+      const redis = Services.service('redis');
+      const token = await redis.acquireLock('ldap-sync', 60);
+      expect(token).not.toBeNull();
+
+      try {
+        expect(await Services.service('ldapSync').run()).toBeUndefined();
+      } finally {
+        await redis.releaseLock('ldap-sync', token!);
+      }
+
+      expect(await Services.service('ldapSync').run()).toMatchObject({ checked: 1 });
+    });
+
+    it('should update groups and drop the task cache, but keep the tokens, when a group is removed', async () => {
+      const { accessToken } = await issueTokens();
+      await seedTaskCache(accessToken);
+      const before = await readData();
+      await removeFrom(UNIT_GROUP);
+
+      const summary = await Services.service('ldapSync').run();
+
+      expect(summary).toMatchObject({ checked: 1, revoked: 0, changed: 1 });
+      const data = await readData();
+      expect(data.groups).toEqual([ACCESS_GROUP]);
+      expect(data.accessGroups).toEqual([ACCESS_GROUP]);
+      expect(data.syncedAt).not.toBe(before.syncedAt);
+      expect(await taskCache(accessToken)).toBeNull();
+      expect(await app.model('accessToken').count({ where: { accessToken } })).toBe(1);
+      expect(await countRows('sessions')).toBeGreaterThan(0);
+    });
+
+    it('should refresh a token while the user is in the access group', async () => {
+      const { refreshToken } = await issueTokens();
+
+      const before = await countRows('accessToken');
+
+      // The endpoint answers an empty body for this grant; the effect is a new token pair and the used refresh token being spent.
+      await refresh(refreshToken).expect(200);
+
+      expect(await countRows('accessToken')).toBe(before + 1);
+      expect(await app.model('refreshToken').count({ where: { refreshToken } })).toBe(0);
+    });
+
+    it('should revoke tokens, sessions and the task cache when the user leaves the access group', async () => {
+      const { accessToken, refreshToken } = await issueTokens();
+      await seedTaskCache(accessToken);
+      await login().expect(200);
+      expect(await countRows('sessions')).toBeGreaterThan(0);
+      await removeFrom(ACCESS_GROUP);
+
+      const summary = await Services.service('ldapSync').run();
+
+      expect(summary).toMatchObject({ checked: 1, revoked: 1, errors: 0 });
+      expect(await countRows('accessToken')).toBe(0);
+      expect(await countRows('refreshToken')).toBe(0);
+      expect(await countRows('sessions')).toBe(0);
+      expect(await taskCache(accessToken)).toBeNull();
+      expect(await readData()).toMatchObject({ groups: [], accessGroups: [] });
+      expect((await app.model('user').findOne({ where: { userId } }))?.dataValues.isActive).toBe(true);
+      await refresh(refreshToken).expect(401);
+    });
+
+    it('should not touch an already revoked user again', async () => {
+      const before = await readData();
+
+      const summary = await Services.service('ldapSync').run();
+
+      expect(summary).toMatchObject({ checked: 1, revoked: 0, changed: 0 });
+      expect(await readData()).toEqual(before);
+    });
+
+    it('should refuse to log in again until the user is back in the access group', async () => {
+      await login().expect(401);
+
+      await addTo(ACCESS_GROUP);
+
+      await login().expect(200);
+      expect(await readData()).toMatchObject({ groups: [ACCESS_GROUP], accessGroups: [ACCESS_GROUP] });
+    });
+
+    it('should reject the refresh and revoke when access is lost between two syncs', async () => {
+      const { accessToken, refreshToken } = await issueTokens();
+      await seedTaskCache(accessToken);
+      await removeFrom(ACCESS_GROUP);
+
+      await refresh(refreshToken).expect(401);
+
+      expect(await countRows('accessToken')).toBe(0);
+      expect(await countRows('refreshToken')).toBe(0);
+      expect(await countRows('sessions')).toBe(0);
+      expect(await taskCache(accessToken)).toBeNull();
+      expect(await readData()).toMatchObject({ groups: [], accessGroups: [] });
+    });
+
+    it('should revoke at once through the service endpoint', async () => {
+      await addTo(ACCESS_GROUP);
+      await login().expect(200);
+      const { accessToken } = await issueTokens();
+      await seedTaskCache(accessToken);
+      await removeFrom(ACCESS_GROUP);
+
+      await app
+        .request()
+        .post(`/user/ldap/sync/${userId}`)
+        .set(basicHeader())
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body).toEqual({ userId, status: 'revoked', reason: 'not-in-access-group' });
+        });
+
+      expect(await countRows('accessToken')).toBe(0);
+      expect(await taskCache(accessToken)).toBeNull();
+    });
+
+    it('should require basic auth on the service endpoint', async () => {
+      await app.request().post(`/user/ldap/sync/${userId}`).expect(401);
+    });
+
+    it('should answer 404 on the service endpoint for a user without an ldap record', async () => {
+      await app
+        .request()
+        .post(`/user/ldap/sync/${'f'.repeat(24)}`)
+        .set(basicHeader())
+        .expect(404);
+    });
+
+    it('should revoke a user who was deleted in the directory', async () => {
+      await addTo(ACCESS_GROUP);
+      await login().expect(200);
+      await issueTokens();
+      await ldapModify(ADMIN_DN, ADMIN_PASSWORD, `dn: ${ALICE_DN}\nchangetype: delete\n`, '/tmp/delete.ldif');
+
+      await app
+        .request()
+        .post(`/user/ldap/sync/${userId}`)
+        .set(basicHeader())
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body).toMatchObject({ status: 'revoked', reason: 'deleted' });
+        });
+
+      expect(await countRows('accessToken')).toBe(0);
     });
   });
 });

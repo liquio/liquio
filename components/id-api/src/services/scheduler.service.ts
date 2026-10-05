@@ -16,6 +16,9 @@ export class SchedulerService extends BaseService {
         this.log.save(`${SchedulerService.name}|confirm-code-cleanup`, { count }, 'info');
       }),
     );
+
+    // Re-check ldap users against the directory.
+    this.service('ldapSync').schedule();
   }
 
   async stop(): Promise<void> {

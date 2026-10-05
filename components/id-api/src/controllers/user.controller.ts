@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 import bcrypt from 'bcrypt';
 import { matchedData, query } from 'express-validator';
 import jwt from 'jsonwebtoken';
@@ -11,6 +9,7 @@ import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../l
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
+import { getTaskTokenCacheKey } from '../services/auth.service';
 import { Express, NextFunction, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -1309,12 +1308,7 @@ export class UserController extends BaseController {
           .findAll({ where: { userId } })
           .then((rows) => rows.map((row) => row.dataValues));
 
-        await Promise.all(
-          tokens.map(({ accessToken }) => {
-            const sha1AccessToken = crypto.createHash('sha1').update(accessToken).digest('hex');
-            return redis.delete(`token.${sha1AccessToken}`);
-          }),
-        );
+        await Promise.all(tokens.map(({ accessToken }) => redis.delete(getTaskTokenCacheKey(accessToken))));
       }
 
       await this.model('accessToken').destroy({ where: { userId: userId } });

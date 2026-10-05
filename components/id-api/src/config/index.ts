@@ -343,6 +343,10 @@ export function validateLdapConfig(config: Config): void {
   if (!Array.isArray(provider.accessGroups) || provider.accessGroups.filter((group) => typeof group === 'string' && group.trim()).length === 0) {
     errors.push('accessGroups must contain at least one group');
   }
+  const intervalMinutes = provider.sync?.intervalMinutes;
+  if (intervalMinutes !== undefined && (typeof intervalMinutes !== 'number' || !Number.isFinite(intervalMinutes) || intervalMinutes <= 0)) {
+    errors.push('sync.intervalMinutes must be a number greater than 0');
+  }
 
   if (errors.length > 0) {
     throw new Error(`Invalid LDAP provider config: ${errors.join('; ')}`);

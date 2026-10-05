@@ -71,4 +71,30 @@ describe('validateLdapConfig', () => {
   it('reports every problem at once', () => {
     expect(() => validateLdapConfig(makeConfig({ isEnabled: true }))).toThrow(/connection\.url.*bindDN.*bindPassword.*baseDN.*accessGroups/);
   });
+
+  it('passes with a positive sync interval', () => {
+    expect(() => validateLdapConfig(makeConfig(validLdap({ sync: { isEnabled: true, intervalMinutes: 5 } })))).not.toThrow();
+  });
+
+  it('passes when the sync interval is not set', () => {
+    expect(() => validateLdapConfig(makeConfig(validLdap({ sync: { isEnabled: true } })))).not.toThrow();
+  });
+
+  it('fails for a zero sync interval', () => {
+    expect(() => validateLdapConfig(makeConfig(validLdap({ sync: { isEnabled: true, intervalMinutes: 0 } })))).toThrow(
+      'sync.intervalMinutes must be a number greater than 0',
+    );
+  });
+
+  it('fails for a negative sync interval', () => {
+    expect(() => validateLdapConfig(makeConfig(validLdap({ sync: { isEnabled: true, intervalMinutes: -1 } })))).toThrow(
+      'sync.intervalMinutes must be a number greater than 0',
+    );
+  });
+
+  it('fails for a sync interval that is not a number', () => {
+    expect(() => validateLdapConfig(makeConfig(validLdap({ sync: { isEnabled: true, intervalMinutes: '15' } })))).toThrow(
+      'sync.intervalMinutes must be a number greater than 0',
+    );
+  });
 });

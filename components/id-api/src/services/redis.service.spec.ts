@@ -195,4 +195,79 @@ describe('RedisService', () => {
       expect(await service.getOrSetWithTimestamp('key', jest.fn(), setFn)).toEqual({ data: 'fresh', isFromCache: false });
     });
   });
+
+  describe('locks', () => {
+    let service: RedisService;
+    let raw: { set: jest.Mock; eval: jest.Mock };
+
+    beforeEach(() => {
+      service = new RedisService(mockConfig, {} as any, {} as any);
+      raw = { set: jest.fn(), eval: jest.fn() };
+      (service as any).redisClient.client = raw;
+      mockMethods.createKey.mockImplementation((...args: any[]) => ['test-id', ...args].join('.'));
+    });
+
+    it('acquireLock sets a prefixed key with NX and a TTL and returns the token', async () => {
+      raw.set.mockResolvedValue('OK');
+
+      const token = await service.acquireLock('ldap-sync', 300);
+
+      expect(token).toEqual(expect.any(String));
+      expect(raw.set).toHaveBeenCalledWith('test-id.lock.ldap-sync', token, { NX: true, EX: 300 });
+    });
+
+    it('acquireLock returns null when the lock is held', async () => {
+      raw.set.mockResolvedValue(null);
+
+      expect(await service.acquireLock('ldap-sync', 300)).toBeNull();
+    });
+
+    it('acquireLock gives a different token to every holder', async () => {
+      raw.set.mockResolvedValue('OK');
+
+      expect(await service.acquireLock('ldap-sync', 300)).not.toBe(await service.acquireLock('ldap-sync', 300));
+    });
+
+    it('releaseLock deletes the key only for the matching token', async () => {
+      raw.eval.mockResolvedValue(1);
+
+      expect(await service.releaseLock('ldap-sync', 'token-1')).toBe(true);
+
+      const [script, options] = raw.eval.mock.calls[0];
+      expect(script).toContain("redis.call('get', KEYS[1]) == ARGV[1]");
+      expect(script).toContain("redis.call('del', KEYS[1])");
+      expect(options).toEqual({ keys: ['test-id.lock.ldap-sync'], arguments: ['token-1'] });
+    });
+
+    it('releaseLock returns false when the lock belongs to someone else', async () => {
+      raw.eval.mockResolvedValue(0);
+
+      expect(await service.releaseLock('ldap-sync', 'token-1')).toBe(false);
+    });
+
+    it('extendLock extends the TTL only for the matching token', async () => {
+      raw.eval.mockResolvedValue(1);
+
+      expect(await service.extendLock('ldap-sync', 'token-1', 300)).toBe(true);
+
+      const [script, options] = raw.eval.mock.calls[0];
+      expect(script).toContain("redis.call('expire', KEYS[1], ARGV[2])");
+      expect(options).toEqual({ keys: ['test-id.lock.ldap-sync'], arguments: ['token-1', '300'] });
+    });
+
+    it('extendLock returns false when the lock has expired', async () => {
+      raw.eval.mockResolvedValue(0);
+
+      expect(await service.extendLock('ldap-sync', 'token-1', 300)).toBe(false);
+    });
+
+    it('does not lock anything when redis is disabled', async () => {
+      mockConfig.redis = { isEnabled: false };
+      const disabled = new RedisService(mockConfig, {} as any, {} as any);
+
+      expect(await disabled.acquireLock('ldap-sync', 300)).toBeNull();
+      expect(await disabled.releaseLock('ldap-sync', 'token-1')).toBe(false);
+      expect(await disabled.extendLock('ldap-sync', 'token-1', 300)).toBe(false);
+    });
+  });
 });

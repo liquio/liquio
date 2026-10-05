@@ -265,8 +265,8 @@ export class AuthController extends Controller {
       if (global.redisClient) {
         const tokenData = this.token.decrypt(token);
         const authAccessToken = tokenData.authTokens.accessToken;
-        const sha1AccessToken = this.getSha1Hash(authAccessToken);
-        await global.redisClient.delete(`token.${sha1AccessToken}`);
+        const sha256AccessToken = this.getSha256Hash(authAccessToken);
+        await global.redisClient.delete(`token.${sha256AccessToken}`);
       }
     } catch (error) {
       global.log.save('auth-login-error|cannot-delete-cached-user-data', { error: error.toString() }, 'error');
@@ -344,8 +344,8 @@ export class AuthController extends Controller {
       let cachedUserData;
       try {
         if (global.redisClient && !debugUserId && !roles.includes('admin')) {
-          const sha1AccessToken = this.getSha1Hash(authAccessToken);
-          cachedUserData = await global.redisClient.get(`token.${sha1AccessToken}`);
+          const sha256AccessToken = this.getSha256Hash(authAccessToken);
+          cachedUserData = await global.redisClient.get(`token.${sha256AccessToken}`);
         }
       } catch (error) {
         return this.responseError(res, error, 500);
@@ -499,9 +499,9 @@ export class AuthController extends Controller {
         }
 
         if (global.redisClient && !authUserInfo.needOnboarding && !debugUserId) {
-          const sha1AccessToken = this.getSha1Hash(authAccessToken);
+          const sha256AccessToken = this.getSha256Hash(authAccessToken);
           await global.redisClient.set(
-            `token.${sha1AccessToken}`,
+            `token.${sha256AccessToken}`,
             {
               authUserInfo: req.authUserInfo,
               authUserId: req.authUserId,
@@ -763,11 +763,11 @@ export class AuthController extends Controller {
   }
 
   /**
-   * Generate and return sha1 hash.
+   * Generate and return sha256 hash.
    * @param {string} data.
    * @return {string}
    */
-  getSha1Hash(data) {
-    return crypto.createHash('sha1').update(data).digest('hex');
+  getSha256Hash(data) {
+    return crypto.createHash('sha256').update(data).digest('hex');
   }
 }
