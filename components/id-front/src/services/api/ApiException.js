@@ -12,36 +12,23 @@ export default async (error, url, method, body) => {
   });
 };
 
+const STATUS_MESSAGES = {
+  401: '401 Unauthorized',
+  403: '403 Forbidden',
+  404: '404 Not Found',
+  503: '503 Service Unavailable',
+  504: '504 Gateway Timeout',
+};
+
 export const checkError = (response, request = {}) => {
   const { status } = response;
-  let message =
+  const serverMessage =
     response.message && typeof response.message === 'object' && response.message.message
       ? response.message.message
       : response.message || response.statusText;
-  const serverMessage = message;
+  // Statuses with a fixed message keep the code in it: callers match on it (e.g. '503').
+  const message = STATUS_MESSAGES[status] || serverMessage;
   let myError = false;
-  switch (status) {
-    case 401:
-      message = '401 unauthorized';
-      break;
-    case 403:
-    case 404:
-      message = 'Openstack - 404 File not found';
-      break;
-    case 503:
-      message = '503 Service Temporarily Unavailable';
-      break;
-    case 504:
-      message = 'Openstack - 504 Gateway Time-out';
-      break;
-    case 500:
-      if (message && typeof message === 'string' && message.includes('Invalid URI')) {
-        message = message.includes('_preview') ? 'Openstack - Preview not formed' : 'Openstack - URL not formed';
-      }
-      break;
-    default:
-      break;
-  }
   if (message) {
     if (response instanceof Error) {
       myError = response;
@@ -68,6 +55,10 @@ export const checkError = (response, request = {}) => {
         }
       });
     });
+    // A fetch Response keeps `status` on its prototype, so the copy above misses it.
+    if (myError.status === undefined && status !== undefined) {
+      myError.status = status;
+    }
   }
   return myError;
 };
