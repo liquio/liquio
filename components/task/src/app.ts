@@ -15,7 +15,6 @@ import { Businesses } from './businesses';
 import { RouterService } from './services/router';
 import { FileGeneratorService } from './services/file_generator';
 import { StorageService } from './services/storage';
-import { LdapClient } from './services/ldap';
 import { Commands } from './commands';
 import * as Errors from './lib/errors';
 import { LogsBroadcasting } from './lib/logs_broadcasting';
@@ -259,10 +258,6 @@ export class BpmnTaskCore {
     // Init router.
     this.routerService = new RouterService(config);
     await this.routerService.init({ customValidators, customRoutes });
-
-    if (global.config?.auth?.ldap?.isEnabled) {
-      await LdapClient.initialize(global.config.auth.ldap);
-    }
 
     // Init logs broadcasting.
     if (process.env.NODE_ENV !== 'prod' && global.config?.logs_broadcasting?.isEnabled) {

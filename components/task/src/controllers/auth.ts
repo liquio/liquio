@@ -4,7 +4,6 @@ import type { Request } from 'express';
 
 import { Controller } from './controller';
 import { AuthService as Auth } from '../services/auth';
-import { LdapClient } from '../services/ldap';
 import { Token } from '../lib/token';
 import { UserAccess } from '../lib/user_access';
 import { UnitModel } from '../models/unit';
@@ -20,7 +19,6 @@ const ERROR_MESSAGE_WITHOUT_NEEDED_ROLE = 'User without needed role.';
 const ERROR_MESSAGE_DEBUG_USER_NOT_ALLOWED = 'User without needed unit to debug other user.';
 const ERROR_MESSAGE_DEBUG_USER_NOT_FOUND = 'Debug user not found.';
 const ERROR_MESSAGE_RESTRICTED_UNIT = 'forbidden';
-const ERROR_MESSAGE_LDAP_UNAUTHORIZED = 'Unauthorized by LDAP';
 
 // This middleware attaches authUserInfo (and friends) to req before it reaches a controller (see
 // AuthController#middleware below); it isn't part of Express's own Request type, so any
@@ -125,10 +123,6 @@ export class AuthController extends Controller {
     try {
       authUserInfo = await this.auth.getUser(authTokens.accessToken);
       const userName = `${authUserInfo.last_name || ''} ${authUserInfo.first_name || ''} ${authUserInfo.middle_name || ''}`.trim();
-
-      if (this.config.auth.ldap?.isEnabled) {
-        await this._processLDAPUnits(authUserInfo);
-      }
 
       // Handle units.
       const units = await this.unitModel.getAll();
@@ -567,13 +561,6 @@ export class AuthController extends Controller {
     const userInfo = { ...authUserInfo, authUserRoles, authUserUnits, fullAvaUrl };
     const normalizedUserInfo = this.auth.getMainUserInfo(userInfo, true, true);
 
-    // If LDAP authorization is enabled and required, but the user is not
-    // authorized by LDAP and has already passed the onboarding process,
-    // return an error.
-    if (LdapClient.isEnabled && LdapClient.isRequired && !normalizedUserInfo.services?.ldap && normalizedUserInfo.needOnboarding === false) {
-      return this.responseError(res, ERROR_MESSAGE_LDAP_UNAUTHORIZED, 403);
-    }
-
     // Response.
     const normalizedObject = this.convertUnderscoreKeysToCamelCase(normalizedUserInfo);
     this.responseData(res, this.transformToBase64WithHash(normalizedObject, 'md5'));
@@ -761,62 +748,5 @@ export class AuthController extends Controller {
    */
   getSha1Hash(data) {
     return crypto.createHash('sha1').update(data).digest('hex');
-  }
-
-  /**
-   * Associate the user with LDAP-enabled units
-   * @param {*} userInfo
-   */
-  async _processLDAPUnits(userInfo) {
-    global.log.save('login-process-ldap-units');
-
-    // Extract LDAP data from user info.
-    const ldapInfo = userInfo?.services?.ldap;
-    if (!ldapInfo) {
-      global.log.save('login-process-ldap-units|not-authenticated', { services: Object.keys(userInfo.services) }, 'warn');
-      return;
-    }
-
-    // Extract the DN of the user.
-    const userDn = ldapInfo.data?.dn;
-    if (!userDn) {
-      global.log.save('login-process-ldap-units|no-dn', { ldapInfo }, 'error');
-      return;
-    }
-
-    // Extract the DN of user OU
-    const userOuDn = userDn.split(',').slice(1).join(',');
-
-    const ldapClient = LdapClient.getInstance();
-
-    let ouObject;
-    try {
-      ouObject = await ldapClient.findObjectByDn('organizationalUnit', userOuDn);
-    } catch (error) {
-      global.log.save('login-process-ldap-units|find-ou-object-by-dn-error', { userOuDn, error: error.toString() }, 'error');
-      return;
-    }
-
-    if (!ouObject) {
-      global.log.save('login-process-ldap-units|ou-object-not-found', { userOuDn }, 'error');
-      return;
-    }
-
-    const allUnits = await this.unitModel.getAll();
-    const associatedUnit = allUnits.find((unit) => unit.data?.ldap?.dn === ouObject.dn);
-
-    if (!associatedUnit) {
-      global.log.save('login-process-ldap-units|associated-unit-not-found', { ouObject }, 'warn');
-      return;
-    }
-
-    if (!associatedUnit.members.includes(userInfo.userId)) {
-      global.log.save('login-process-ldap-units|add-member', { userId: userInfo.userId, unitId: associatedUnit.id });
-      await this.unitModel.addMember(associatedUnit.id, userInfo.userId);
-    } else {
-      global.log.save('login-process-ldap-units|member-already-associated', { userId: userInfo.userId, unitId: associatedUnit.id });
-    }
-
-    // TODO: Remove the user from the previous unit if it is different from the current one?
   }
 }

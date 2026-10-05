@@ -319,20 +319,6 @@ export class AuthMiddleware {
         return;
       }
 
-      // If LDAP is enabled and user is identified
-      if (this.service('ldap').isEnabled && user) {
-        // Append authentication data to user session and check if it's passed
-        const isPassed = await this.service('auth').authenticateLdap(user);
-
-        // If LDAP authentication is required and the user already passed onboarding,
-        // deny access if LDAP check is failed
-        if (this.service('ldap').isRequired && !user.needOnboarding && !isPassed) {
-          this.log.save('ldap-authentication-failed', { userId }, 'warning');
-          res.status(403).send({ error: { message: 'LDAP authentication failed.' } });
-          return;
-        }
-      }
-
       next();
     };
   }

@@ -674,7 +674,7 @@ export class UserController extends BaseController {
 
     const query = Sequelize.where(Sequelize.fn('lower', Sequelize.col('email')), email);
     let isExist = false;
-    let isAllowed = true;
+    const isAllowed = true;
 
     this.log.save('check-email-get-user-request', { query }, 'info');
 
@@ -685,23 +685,11 @@ export class UserController extends BaseController {
 
       // Check if user exists in the id database.
       isExist = !!user;
-
-      if (this.service('ldap').isEnabled && this.service('ldap').isRequired) {
-        // Obtain user data from LDAP.
-        const user = await this.service('ldap')
-          .findUserByPrincipal(email)
-          .catch((error) => {
-            this.log.save('check-email-ldap-error', { query, error: error?.message }, 'error');
-          });
-
-        // Check if user exists in LDAP.
-        isAllowed = !!user;
-      }
     } catch (error: any) {
       this.log.save('check-email-get-user-error', { query, error: error?.message }, 'error');
     }
 
-    this.log.save('check-email-ldap-response', { query, isAllowed, isExist }, 'info');
+    this.log.save('check-email-response', { query, isAllowed, isExist }, 'info');
     this.responseData(res, { isExist, isAllowed });
   }
 

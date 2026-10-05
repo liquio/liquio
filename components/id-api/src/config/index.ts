@@ -186,14 +186,6 @@ export interface Config {
     timeout?: number;
   };
   enabledDeleteUser?: boolean;
-  ldap?: {
-    isEnabled?: boolean;
-    isRequired?: boolean;
-    url?: string;
-    baseDN?: string;
-    username?: string;
-    password?: string;
-  };
   log?: {
     excludeParams?: string[];
   };

@@ -58,13 +58,6 @@ metadata:
       "ttl" 30
     )
   )
-  "ldap" (dict
-    "isEnabled" false
-    "url" "ldap://domain.loc"
-    "baseDN" "dc=DOMAIN,dc=LOC"
-    "username" "admin@domain.loc"
-    "password" "<removed>"
-  )
 -}}
 {{ $registerBase := dict
   "server" (printf "http://%s-register" (include "liquio.fullname" .))
