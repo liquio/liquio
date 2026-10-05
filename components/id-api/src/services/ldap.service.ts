@@ -25,6 +25,14 @@ const BINARY_ATTRIBUTES = ['objectguid', 'objectsid'];
 const FILETIME_NEVER = BigInt('0x7FFFFFFFFFFFFFFF');
 const FILETIME_EPOCH_DIFF_MS = 11644473600000;
 
+/// More than one directory entry matched the login or id.
+export class LdapAmbiguousUserError extends Error {
+  constructor() {
+    super('Many users found.');
+    this.name = 'LdapAmbiguousUserError';
+  }
+}
+
 type EntryValue = ldapts.Entry[string];
 
 // RFC 4515 escaping of an assertion value.
@@ -196,9 +204,17 @@ export class LdapService extends BaseService {
   }
 
   /// True if the account is disabled, locked out or expired.
+  /// Lockout is read from the computed attribute (it accounts for the lockout duration), not from lockoutTime,
+  /// which stays non-zero after the lockout has expired.
   isAccountDisabled(entry: ldapts.Entry): boolean {
+    const flags = UserAccountControl.ACCOUNTDISABLE | UserAccountControl.LOCKOUT;
     const control = Number(this.toStringArray(entry.userAccountControl)[0]);
-    if (Number.isFinite(control) && control & (UserAccountControl.ACCOUNTDISABLE | UserAccountControl.LOCKOUT)) {
+    if (Number.isFinite(control) && control & flags) {
+      return true;
+    }
+
+    const computed = Number(this.toStringArray(entry['msDS-User-Account-Control-Computed'])[0]);
+    if (Number.isFinite(computed) && computed & UserAccountControl.LOCKOUT) {
       return true;
     }
 
@@ -275,6 +291,10 @@ export class LdapService extends BaseService {
       'userAccountControl',
       'accountExpires',
       'memberOf',
+      'sAMAccountName',
+      'userPrincipalName',
+      'cn',
+      'msDS-User-Account-Control-Computed',
       ...Object.values(this.cfg?.attributes || {}),
     ]);
 
@@ -292,7 +312,7 @@ export class LdapService extends BaseService {
       }
       if (searchEntries.length > 1) {
         this.log.save(`${logKey}-many`, { ...logData, count: searchEntries.length }, 'error');
-        throw new Error('Many users found.');
+        throw new LdapAmbiguousUserError();
       }
 
       return searchEntries[0];

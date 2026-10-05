@@ -312,6 +312,43 @@ function validateOIDCConfig(config: Config): void {
   }
 }
 
+/**
+ * Validates LDAP provider configuration
+ * Throws an error if the provider is enabled and required fields are missing or invalid
+ */
+export function validateLdapConfig(config: Config): void {
+  const provider = config.auth_providers?.ldap;
+  if (!provider?.isEnabled) {
+    return;
+  }
+
+  const errors: string[] = [];
+
+  const url = provider.connection?.url;
+  if (!url) {
+    errors.push('connection.url is required');
+  } else if (!/^ldaps?:\/\//i.test(url)) {
+    errors.push('connection.url must use the ldap:// or ldaps:// scheme');
+  }
+  // Without the service account the search would run as an anonymous bind.
+  if (!provider.connection?.bindDN) {
+    errors.push('connection.bindDN is required');
+  }
+  if (!provider.connection?.bindPassword) {
+    errors.push('connection.bindPassword is required');
+  }
+  if (!provider.baseDN) {
+    errors.push('baseDN is required');
+  }
+  if (!Array.isArray(provider.accessGroups) || provider.accessGroups.filter((group) => typeof group === 'string' && group.trim()).length === 0) {
+    errors.push('accessGroups must contain at least one group');
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid LDAP provider config: ${errors.join('; ')}`);
+  }
+}
+
 let config: Config;
 export function loadConfig(): Config {
   if (config) {
@@ -333,6 +370,7 @@ export function loadConfig(): Config {
     }
     config = parsedEnvConfig[env] as Config;
     validateOIDCConfig(config);
+    validateLdapConfig(config);
     return config;
   }
 
@@ -353,6 +391,7 @@ export function loadConfig(): Config {
   } as Config;
 
   validateOIDCConfig(config);
+  validateLdapConfig(config);
 
   return config;
 }

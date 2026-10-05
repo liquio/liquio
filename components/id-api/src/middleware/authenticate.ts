@@ -10,6 +10,7 @@ import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { Models, UserAttributes } from '../models';
 import { Services } from '../services';
 import { govid, logout as govidLogout } from '../strategies/govid';
+import { ldap, logout as ldapLogout } from '../strategies/ldap';
 import { local, logout as localLogout } from '../strategies/local';
 import { oidc, logout as oidcLogout } from '../strategies/oidc';
 import { wso2, logout as wso2Logout } from '../strategies/wso2';
@@ -92,6 +93,8 @@ export class AuthMiddleware {
         return x509Logout;
       case 'local':
         return localLogout;
+      case 'ldap':
+        return ldapLogout;
       default:
         return undefined;
     }
@@ -108,6 +111,7 @@ export class AuthMiddleware {
     const promises = [];
     if (config.govid) promises.push(govid(app));
     if (config.local?.isEnabled) promises.push(local(app));
+    if (config.ldap?.isEnabled) promises.push(ldap(app));
     if (config.oidc && Object.keys(config.oidc).length > 0) promises.push(oidc(app));
     if (config.wso2?.isEnabled) promises.push(wso2(app));
     if (config.x509?.isEnabled) promises.push(x509(app));

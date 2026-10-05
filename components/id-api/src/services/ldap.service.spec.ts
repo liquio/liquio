@@ -461,6 +461,14 @@ describe('LdapService', () => {
       expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '528' })).toBe(true);
     });
 
+    it('is true for the LOCKOUT bit in the computed attribute', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512', 'msDS-User-Account-Control-Computed': '16' })).toBe(true);
+    });
+
+    it('is false when the computed attribute has no LOCKOUT bit', () => {
+      expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512', 'msDS-User-Account-Control-Computed': '0' })).toBe(false);
+    });
+
     it('is false for a normal enabled account', () => {
       expect(service.isAccountDisabled({ dn: 'x', userAccountControl: '512' })).toBe(false);
     });
