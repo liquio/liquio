@@ -1,6 +1,6 @@
 {
   "name": "@liquio/plugin-installer",
-  "version": "0.1.6",
+  "version": "1.0.0",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "Installs Liquio plugin npm packages listed in a component's plugins.json into a shared volume",
   "main": "dist/index.js",

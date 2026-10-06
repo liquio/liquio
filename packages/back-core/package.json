@@ -1,6 +1,6 @@
 {
   "name": "@liquio/back-core",
-  "version": "0.2.6",
+  "version": "1.0.0",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "Shared TypeScript backend source consumed by Liquio components",
   "main": "dist/index.js",
