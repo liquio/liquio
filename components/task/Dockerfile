@@ -20,11 +20,22 @@ RUN npm run build
 # Stage 2: runtime image
 FROM node:24-slim AS runtime
 
+# Image metadata
+LABEL tech.liquio.app="liquio" \
+      tech.liquio.tier="backend" \
+      tech.liquio.public="no" \
+      org.opencontainers.image.source="https://github.com/liquio/liquio" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.vendor="Kitsoft"
+
 # Set the configuration path
 ENV CONFIG_PATH=/var/www/config
 
+# Run in production mode
+ENV NODE_ENV=production
+
 # Install base system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     bzip2 \
     fontconfig \
     libfreetype6 \
@@ -57,3 +68,11 @@ HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
 
 # Start the application
 CMD ["npm", "run", "start:prod"]
+
+# Build metadata, declared last so per-build values don't invalidate cached layers
+ARG VERSION
+ARG REVISION
+ARG CREATED
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"

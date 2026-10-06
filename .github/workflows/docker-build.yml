@@ -157,6 +157,8 @@ jobs:
           tags: |
             type=raw,value=${{ steps.pkg.outputs.version }}
             type=raw,value=latest
+          labels: |
+            org.opencontainers.image.licenses=AGPL-3.0-only
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -166,5 +168,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.pkg.outputs.version }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}

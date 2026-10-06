@@ -17,21 +17,32 @@ COPY . .
 # Build the project
 RUN npm run build
 
+# Drop dev dependencies, keeping the compiled native modules for the runtime image
+RUN npm prune --omit=dev
+
 # Stage 2: runtime image
 FROM node:24-slim AS runtime
+
+# Image metadata
+LABEL tech.liquio.app="liquio" \
+      tech.liquio.tier="backend" \
+      tech.liquio.public="no" \
+      org.opencontainers.image.source="https://github.com/liquio/liquio" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.vendor="Kitsoft"
 
 # Set the configuration path
 ENV CONFIG_PATH=/var/www/config
 
-# Native deps need a toolchain to compile
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+# Run in production mode
+ENV NODE_ENV=production
 
 # Set the working directory
 WORKDIR /var/www/components/notification
 
-# Copy package files and install dependencies
+# Copy package files and production dependencies (native modules are compiled in the build stage)
 COPY package*.json .
-RUN npm ci --omit=dev && npm cache clean --force
+COPY --from=build /build/components/notification/node_modules ./node_modules
 
 # Copy migration tooling and admin UI assets needed at runtime
 COPY .sequelizerc migrations-config.js ./
@@ -55,3 +66,11 @@ HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
 
 # Start the application
 CMD ["npm", "run", "start:prod"]
+
+# Build metadata, declared last so per-build values don't invalidate cached layers
+ARG VERSION
+ARG REVISION
+ARG CREATED
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"

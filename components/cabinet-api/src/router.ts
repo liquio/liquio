@@ -1,3 +1,5 @@
+import http from 'node:http';
+
 import express, { type Request, type Response, type NextFunction, type Express } from 'express';
 import bodyParser from 'body-parser';
 import compression from 'compression';
@@ -13,6 +15,7 @@ import TestController from './controllers/test';
 const NULL_OBJECT_BASE64 = 'bnVsbA=='; // NULL-object string (`null`) as base64 equals `bnVsbA==`.
 const USER_DATA_HEADER = 'User-Data';
 const ALLOW_TOKENS_HEADER = 'Allow-Tokens';
+const MAX_HEADER_SIZE = 65535; // Raised from Node's 16 KiB default to fit large auth headers.
 
 /**
  * Router.
@@ -238,7 +241,7 @@ class Router {
     return new Promise((resolve) => {
       // Start server listening.
       const { hostname, port } = (global.config as any).server;
-      app.listen(port, hostname, () => {
+      http.createServer({ maxHeaderSize: MAX_HEADER_SIZE }, app).listen(port, hostname, () => {
         (global.log as any).save('api-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });

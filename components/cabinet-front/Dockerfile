@@ -31,6 +31,14 @@ RUN VERSION="$(npm pkg get version)" && \
 # Serve the built application with Nginx
 FROM nginxinc/nginx-unprivileged:1-alpine-slim
 
+# Image metadata
+LABEL tech.liquio.app="liquio" \
+      tech.liquio.tier="front" \
+      tech.liquio.public="yes" \
+      org.opencontainers.image.source="https://github.com/liquio/liquio" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.vendor="Kitsoft"
+
 USER root
 RUN apk add --no-cache curl
 
@@ -43,3 +51,11 @@ USER nginx
 
 HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
     CMD curl -f http://localhost:8080/healthz || exit 1
+
+# Build metadata, declared last so per-build values don't invalidate cached layers
+ARG VERSION
+ARG REVISION
+ARG CREATED
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"
