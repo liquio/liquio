@@ -1,6 +1,6 @@
 {
   "name": "liquio-filestorage",
-  "version": "0.1.5",
+  "version": "1.0.0",
   "engines": {
     "node": "24"
   },
@@ -24,7 +24,7 @@
     "test:e2e": "jest tests"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.2.5",
+    "@liquio/back-core": "^1.0.0",
     "adm-zip": "^0.6.1",
     "axios": "^1.19.0",
     "body-parser": "^2.3.0",

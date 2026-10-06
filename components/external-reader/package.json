@@ -1,6 +1,6 @@
 {
   "name": "liquio-external-reader",
-  "version": "0.1.7",
+  "version": "1.0.0",
   "engines": {
     "node": "24"
   },
@@ -24,8 +24,8 @@
     "test:e2e": "jest --verbose --config ./tests/jest-e2e.json"
   },
   "dependencies": {
-    "@liquio/plugin-installer": "^0.1.6",
-    "@liquio/plugin-sdk": "^0.1.7",
+    "@liquio/plugin-installer": "^1.0.0",
+    "@liquio/plugin-sdk": "^1.0.0",
     "@nestjs/cli": "^11.0.24",
     "@nestjs/common": "^11.2.7",
     "@nestjs/core": "^11.2.7",

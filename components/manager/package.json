@@ -1,6 +1,6 @@
 {
   "name": "liquio-manager",
-  "version": "0.1.14",
+  "version": "1.0.0",
   "engines": {
     "node": "24"
   },
@@ -23,7 +23,7 @@
     "test:e2e": "jest tests"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.2.5",
+    "@liquio/back-core": "^1.0.0",
     "amqplib": "^2.0.1",
     "axios": "^1.18.1",
     "express": "^5.2.1",

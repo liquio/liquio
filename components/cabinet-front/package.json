@@ -1,6 +1,6 @@
 {
   "name": "liquio-cabinet-front",
-  "version": "0.1.52",
+  "version": "1.0.0",
   "engines": {
     "node": "24"
   },

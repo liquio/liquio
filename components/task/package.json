@@ -1,6 +1,6 @@
 {
   "name": "liquio-task",
-  "version": "0.1.36",
+  "version": "1.0.0",
   "engines": {
     "node": "24"
   },
@@ -26,9 +26,9 @@
     "plugin-installer": "liquio-plugin-installer"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.2.6",
-    "@liquio/plugin-installer": "^0.1.6",
-    "@liquio/plugin-sdk": "^0.1.7",
+    "@liquio/back-core": "^1.0.0",
+    "@liquio/plugin-installer": "^1.0.0",
+    "@liquio/plugin-sdk": "^1.0.0",
     "ajv": "^6.12.6",
     "amqplib": "^0.10.9",
     "axios": "^1.13.6",

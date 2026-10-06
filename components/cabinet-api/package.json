@@ -1,6 +1,6 @@
 {
   "name": "liquio-cabinet-api",
-  "version": "0.1.7",
+  "version": "1.0.0",
   "engines": {
     "node": "24"
   },
@@ -19,7 +19,7 @@
     "test:cov": "jest --coverage"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.2.6",
+    "@liquio/back-core": "^1.0.0",
     "axios": "^1.15.2",
     "body-parser": "^1.19.0",
     "compression": "^1.7.4",
