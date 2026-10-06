@@ -1,6 +1,6 @@
 {
   "name": "@liquio/plugin-installer",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "Installs Liquio plugin npm packages listed in a component's plugins.json into a shared volume",
   "main": "dist/index.js",
@@ -27,25 +27,28 @@
     "test": "jest"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.1.0",
-    "multiconf": "^4.2.1"
+    "@liquio/back-core": "^0.2.5",
+    "multiconf": "^4.2.2"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.1.2",
-    "eslint": "^10.8.0",
+    "@types/node": "^26.6.4",
+    "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-prettier": "^5.5.6",
     "jest": "^30.5.2",
     "ts-jest": "^29.4.14",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.65.0"
+    "typescript-eslint": "^8.71.1"
   },
   "overrides": {
     "brace-expansion": "^5.0.12",
     "@istanbuljs/load-nyc-config": {
       "js-yaml": "^4.1.0"
+    },
+    "sequelize": {
+      "uuid": "^11.1.1"
     }
   }
 }
