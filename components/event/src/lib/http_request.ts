@@ -1,12 +1,10 @@
 import axios from 'axios';
-import bodyParser from 'body-parser';
 
 import { Helpers } from './helpers';
 
 const { prepareAxiosErrorToLog } = Helpers;
 
 // Constants.
-const DEFAULT_MAX_BODY_SIZE = '10mb';
 const HTTP_METHOD_GET = 'GET';
 const HTTP_METHOD_POST = 'POST';
 const HTTP_METHOD_PUT = 'PUT';
@@ -86,25 +84,6 @@ export class HttpRequest {
         throw error;
       }
     }
-  }
-
-  /**
-   * Parse body JSON.
-   * @param {object} app Express app instance.
-   * @param {string} [maxBodySize] Max body size.
-   */
-  static parseBodyJson(app: any, maxBodySize = DEFAULT_MAX_BODY_SIZE) {
-    // Parse body for content-type "application/json".
-    app.use(bodyParser.json({ limit: maxBodySize }));
-  }
-
-  /**
-   * Parse body urlencoded.
-   * @param {object} app Express app instance.
-   */
-  static parseBodyUrlencoded(app: any) {
-    // Parse body for content-type "application/x-www-form-urlencoded".
-    app.use(bodyParser.urlencoded({ extended: false }));
   }
 }
 

@@ -1,5 +1,5 @@
 import path from 'path';
-import { Server } from 'http';
+import http, { Server } from 'http';
 
 import express, { Express } from 'express';
 import { Log, asyncLocalStorageMiddleware } from '@liquio/back-core';
@@ -9,6 +9,8 @@ import AppIdentHeaders from './lib/app_ident_headers';
 import HttpRequest from './lib/http_request';
 import Controllers from './controllers';
 import Validators from './validators';
+
+const MAX_HEADER_SIZE = 65535; // Raised from Node's 16 KiB default to fit large auth headers.
 
 /**
  * Express Request with application metadata.
@@ -402,7 +404,7 @@ export default class Router {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
-      const serverInstance = app.listen(port, hostname, () => {
+      const serverInstance = http.createServer({ maxHeaderSize: MAX_HEADER_SIZE }, app).listen(port, hostname, () => {
         this.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
       });
 

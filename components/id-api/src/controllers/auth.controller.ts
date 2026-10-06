@@ -711,8 +711,9 @@ export class AuthController extends BaseController {
     if (req.body.state === '') {
       delete req.body.state;
     }
-    if (req.query.state === '') {
-      delete req.query.state;
+    // Under Express 5 `req.query` is a fresh parse on every access, so delete from the OAuth request snapshot instead.
+    if (request.query?.state === '') {
+      delete request.query.state;
     }
 
     if (req.body.response_type === 'code') {

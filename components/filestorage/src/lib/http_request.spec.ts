@@ -5,8 +5,8 @@ import { HttpRequest } from './http_request';
 
 // Mock body-parser
 jest.mock('body-parser', () => ({
-  json: jest.fn(() => 'jsonParser'),
-  urlencoded: jest.fn(() => 'urlencodedParser'),
+  json: jest.fn(() => (req, res, next) => next()),
+  urlencoded: jest.fn(() => (req, res, next) => next()),
 }));
 
 describe('HttpRequest', () => {
@@ -242,7 +242,7 @@ describe('HttpRequest', () => {
       HttpRequest.parseBodyJson(mockApp);
 
       expect(bodyParser.json).toHaveBeenCalledWith({ limit: '10mb' });
-      expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
+      expect(mockApp.use).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('should configure JSON body parser with custom max size', () => {
@@ -251,14 +251,56 @@ describe('HttpRequest', () => {
       HttpRequest.parseBodyJson(mockApp, customMaxSize);
 
       expect(bodyParser.json).toHaveBeenCalledWith({ limit: customMaxSize });
-      expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
+      expect(mockApp.use).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('should handle undefined max size parameter', () => {
       HttpRequest.parseBodyJson(mockApp, undefined);
 
       expect(bodyParser.json).toHaveBeenCalledWith({ limit: '10mb' });
-      expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
+      expect(mockApp.use).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('should default req.body to an empty object when nothing was parsed', () => {
+      HttpRequest.parseBodyJson(mockApp);
+      const middleware = mockApp.use.mock.calls[0][0];
+      const req: any = {};
+      const next = jest.fn();
+
+      middleware(req, {}, next);
+
+      expect(req.body).toEqual({});
+      expect(next).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should keep parsed req.body untouched', () => {
+      (bodyParser.json as jest.Mock).mockReturnValueOnce((req, res, next) => {
+        req.body = { a: 1 };
+        next();
+      });
+      HttpRequest.parseBodyJson(mockApp);
+      const middleware = mockApp.use.mock.calls[0][0];
+      const req: any = {};
+      const next = jest.fn();
+
+      middleware(req, {}, next);
+
+      expect(req.body).toEqual({ a: 1 });
+      expect(next).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should pass parser errors to next and still default req.body', () => {
+      const parseError = new Error('invalid json');
+      (bodyParser.json as jest.Mock).mockReturnValueOnce((req, res, next) => next(parseError));
+      HttpRequest.parseBodyJson(mockApp);
+      const middleware = mockApp.use.mock.calls[0][0];
+      const req: any = {};
+      const next = jest.fn();
+
+      middleware(req, {}, next);
+
+      expect(req.body).toEqual({});
+      expect(next).toHaveBeenCalledWith(parseError);
     });
   });
 
@@ -275,7 +317,7 @@ describe('HttpRequest', () => {
       HttpRequest.parseBodyUrlencoded(mockApp);
 
       expect(bodyParser.urlencoded).toHaveBeenCalledWith({ extended: false });
-      expect(mockApp.use).toHaveBeenCalledWith('urlencodedParser');
+      expect(mockApp.use).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 
