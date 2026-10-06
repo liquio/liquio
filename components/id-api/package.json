@@ -1,6 +1,6 @@
 {
   "name": "liquio-id-api",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "engines": {
     "node": "24"
   },

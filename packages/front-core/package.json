@@ -1,6 +1,6 @@
 {
   "name": "front-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "Shared React source (components, actions, reducers, helpers) consumed by admin-front and cabinet-front via a local file: dependency.",
