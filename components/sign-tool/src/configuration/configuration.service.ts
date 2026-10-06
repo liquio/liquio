@@ -7,7 +7,7 @@ import { LoggerService } from '../observability/logger.service';
 // Use require() instead of ES6 import for CommonJS module
 const Multiconf = require('multiconf');
 
-export const CONFIG_PATH = process.env.CONFIG_PATH || '../config/sign-tool';
+export const CONFIG_PATH = process.env.CONFIG_PATH || '../../config/sign-tool';
 export const SECRET_PATH = process.env.SECRET_PATH;
 export const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_SIGN_TOOL';
 

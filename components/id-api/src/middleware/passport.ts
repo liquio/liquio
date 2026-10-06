@@ -21,11 +21,7 @@ export function usePassport(express: Express) {
 
   passport.serializeUser(function (user: any, done) {
     if (user?.cached) {
-      Models.cache.get(user.user_id, function (err: Error, value: any) {
-        if (!err) {
-          done(null, value);
-        }
-      });
+      done(null, Models.cache.get(user.user_id));
     } else if (!user) {
       done(new Error('Attempted to serialize undefined user data'), null);
     } else {
@@ -35,14 +31,13 @@ export function usePassport(express: Express) {
 
   passport.deserializeUser(function (user: any, done) {
     if (user?.cached) {
-      Models.cache.get(user.user_id, function (err, value: any) {
-        if (!err && Boolean(value)) {
-          done(null, value);
-        } else {
-          Models.cache.set(user.user_id, user);
-          done(null, user);
-        }
-      });
+      const value = Models.cache.get<Express.User>(user.user_id);
+      if (value) {
+        done(null, value);
+      } else {
+        Models.cache.set(user.user_id, user);
+        done(null, user);
+      }
     } else if (!user) {
       done(new Error('Attempted to deserialize undefined user data'), null);
     } else {

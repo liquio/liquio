@@ -186,14 +186,15 @@ export class AuthService extends BaseService {
         if (typeof req.body !== 'object') {
           req.body = {};
         }
-        req.body.client_id = req.query.client_id = req.session.client_id ?? this.cfg!.defaults!.client_id;
-        req.body.client_secret = req.query.client_secret = req.session.client_secret ?? this.cfg!.defaults!.client_secret;
-        req.body.redirect_uri = req.query.redirect_uri = req.session.redirect_uri ?? this.cfg!.defaults!.redirect_uri?.[0];
-        req.body.state = req.query.state = req.session.state ?? '';
-        req.body.response_type = req.query.response_type = req.session.response_type ?? 'code';
+        // Express 5 re-parses `req.query` on every access, so the client params are passed via `req.body` only
+        // (@node-oauth/oauth2-server reads `request.body` before `request.query`).
+        req.body.client_id = req.session.client_id ?? this.cfg!.defaults!.client_id;
+        req.body.client_secret = req.session.client_secret ?? this.cfg!.defaults!.client_secret;
+        req.body.redirect_uri = req.session.redirect_uri ?? this.cfg!.defaults!.redirect_uri?.[0];
+        req.body.state = req.session.state ?? '';
+        req.body.response_type = req.session.response_type ?? 'code';
         req.body.need_scope_approve = 'need_scope_approve' in req.session ? req.session.need_scope_approve : this.cfg!.defaults!.need_scope_approve;
-        req.query.need_scope_approve = req.body.need_scope_approve.toString();
-        req.body.client_name = req.query.client_name = req.session.client_name ?? this.cfg!.defaults!.client_name;
+        req.body.client_name = req.session.client_name ?? this.cfg!.defaults!.client_name;
         req.body.scope = req.session.scope ?? (this.cfg!.defaults!.scope || []);
 
         this.log.save('readyClient', { body: req.body }, 'info');
