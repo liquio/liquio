@@ -1,19 +1,9 @@
 import _ from 'lodash';
-import { getTraceId } from '@liquio/back-core';
+import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 
-import { HttpRequest } from '../../../lib/http_request';
 import { UserResult } from './user_result';
 import { UnitRulesModel } from '../../../models/unit_rules';
 import { typeOf } from '../../../lib/type_of';
-
-// Constants.
-const DEFAULT_ROUTES = {
-  updateUser: '/user/info',
-  getUserInfoById: '/user/info/id',
-  searchUsers: '/user/info/search',
-  getUserByCode: '/user/info/ipn',
-  getUserByEdrpou: '/user/info/edrpou',
-};
 
 /**
  * Event user.
@@ -25,13 +15,7 @@ export class EventUser {
   static singleton: EventUser;
 
   config: any;
-  server: string;
-  port: number;
-  routes: typeof DEFAULT_ROUTES;
-  timeout: number;
-  clientId: string;
-  clientSecret: string;
-  basicAuthHeader: string;
+  idApiClient: IdApiClient;
   searchUsersLimit: number;
   unitRulesModel: UnitRulesModel;
 
@@ -45,13 +29,7 @@ export class EventUser {
       // Save params.
       this.config = config;
 
-      this.server = config.LiquioId.server;
-      this.port = config.LiquioId.port;
-      this.routes = { ...DEFAULT_ROUTES };
-      this.timeout = config.LiquioId.timeout;
-      this.clientId = config.LiquioId.clientId;
-      this.clientSecret = config.LiquioId.clientSecret;
-      this.basicAuthHeader = `Basic ${config.LiquioId.basicAuthToken}`; // Header "Authorization".
+      this.idApiClient = getIdApiClient();
       this.searchUsersLimit = config.searchUsersLimit || 10;
       this.unitRulesModel = new UnitRulesModel();
 
@@ -1337,31 +1315,16 @@ export class EventUser {
    */
   async updateUser(userId: string, userData: any, workflowId: string, eventTemplate: string): Promise<any> {
     let exceptionMessage: string | undefined;
-    let requestOptions: any;
     try {
-      requestOptions = {
-        url: `${this.server}:${this.port}${this.routes.updateUser}/${userId}`,
-        method: HttpRequest.Methods.PUT,
-        headers: {
-          'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
-          'x-trace-id': getTraceId(),
-          Authorization: this.basicAuthHeader,
-        },
-        body: userData,
-      };
-      const response = await HttpRequest.send(requestOptions);
+      const response = await this.idApiClient.updateUserById(userId, userData);
 
       // Log user's units.
       global.log.save('user-updated', { userId, response, workflowId, eventTemplate });
 
-      if (response !== 'ok') {
-        throw new Error('Invalid response.');
-      }
-
       return response;
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-update-user-error', { error: exceptionMessage, requestOptions });
+      global.log.save('event-user-update-user-error', { error: exceptionMessage, userId, userData });
       throw error;
     }
   }
@@ -1421,17 +1384,8 @@ export class EventUser {
 
     if (allNeededUsersIds.length > 0) {
       try {
-        const response = await HttpRequest.send({
-          url: `${this.server}:${this.port}${this.routes.getUserInfoById}`,
-          method: HttpRequest.Methods.POST,
-          headers: {
-            'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
-            'x-trace-id': getTraceId(),
-            Authorization: this.basicAuthHeader,
-          },
-          body: { id: allNeededUsersIds },
-        });
-        allNeededUsers = response.map((user: any) => this.filterUserFields(user));
+        const response = await this.idApiClient.getUsersByIdsRaw(allNeededUsersIds);
+        allNeededUsers = response.map((user: any) => this.idApiClient.getBriefUserInfo(user));
       } catch (error: any) {
         exceptionMessage = error && error.message;
         global.log.save('event-user-search-user-get-user-info-by-id-error', { error: exceptionMessage });
@@ -1442,18 +1396,8 @@ export class EventUser {
     // ... by codes. Attention! Code - just another name for ipn.
     for (const code of codes) {
       try {
-        const userData = await HttpRequest.send({
-          url: `${this.server}:${this.port}${this.routes.getUserByCode}`,
-          method: HttpRequest.Methods.POST,
-          headers: {
-            'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
-            'x-trace-id': getTraceId(),
-            Authorization: this.basicAuthHeader,
-          },
-          body: { ipn: code },
-        });
-        if (!userData || !Array.isArray(userData)) continue;
-        for (const user of userData) allNeededUsers.push(this.filterUserFields(user));
+        const userData = await this.idApiClient.getUsersByCodesRaw(code as string);
+        for (const user of userData) allNeededUsers.push(this.idApiClient.getBriefUserInfo(user));
       } catch (error: any) {
         exceptionMessage = error && error.message;
         global.log.save('event-user-search-user-get-user-by-code-error', { error: exceptionMessage });
@@ -1462,19 +1406,8 @@ export class EventUser {
     }
     if (edrpouArray.length) {
       try {
-        const usersData = await HttpRequest.send({
-          url: `${this.server}:${this.port}${this.routes.getUserByEdrpou}`,
-          method: HttpRequest.Methods.POST,
-          headers: {
-            'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
-            'x-trace-id': getTraceId(),
-            Authorization: this.basicAuthHeader,
-          },
-          body: { edrpou: edrpouArray },
-        });
-        if (usersData && Array.isArray(usersData)) {
-          allNeededUsers = [...allNeededUsers, ...usersData.map((user: any) => this.filterUserFields(user))];
-        }
+        const usersData = await this.idApiClient.getUsersByEdrpouRaw(edrpouArray);
+        allNeededUsers = [...allNeededUsers, ...usersData.map((user: any) => this.idApiClient.getBriefUserInfo(user))];
       } catch (error: any) {
         exceptionMessage = error && error.message;
         global.log.save('event-user-search-user-get-user-by-edrpou-error', { error: exceptionMessage });
@@ -1484,19 +1417,8 @@ export class EventUser {
 
     // ... by search string
     if (search) {
-      const foundUsers = await HttpRequest.send({
-        url: `${this.server}:${this.port}${this.routes.searchUsers}`,
-        method: HttpRequest.Methods.POST,
-        headers: {
-          'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
-          'x-trace-id': getTraceId(),
-          Authorization: this.basicAuthHeader,
-        },
-        body: { searchString: search, limit: this.searchUsersLimit },
-      });
-      if (Array.isArray(foundUsers) && foundUsers.length > 0) {
-        allNeededUsers = [...allNeededUsers, ...foundUsers.map((user: any) => this.filterUserFields(user))];
-      }
+      const foundUsers = await this.idApiClient.searchUsersRaw(search, this.searchUsersLimit);
+      allNeededUsers = [...allNeededUsers, ...foundUsers.map((user: any) => this.idApiClient.getBriefUserInfo(user))];
     }
     allNeededUsers = _.uniqBy(allNeededUsers, 'userId');
 
@@ -1767,16 +1689,7 @@ export class EventUser {
       const userIdList: any[] = [];
       for (const ipn of ipnList) {
         try {
-          const userData = await HttpRequest.send({
-            url: `${this.server}:${this.port}${this.routes.getUserByCode}`,
-            method: HttpRequest.Methods.POST,
-            headers: {
-              'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
-              'x-trace-id': getTraceId(),
-              Authorization: this.basicAuthHeader,
-            },
-            body: { ipn: ipn },
-          });
+          const userData = await this.idApiClient.getUsersByCodesRaw(ipn);
           if (userData.length > 1) {
             userResults.push(
               new UserResult({
@@ -1858,20 +1771,5 @@ export class EventUser {
     }
 
     return userResults;
-  }
-
-  filterUserFields(user: any): any {
-    return {
-      userId: user.userId,
-      name: `${user.last_name || ''} ${user.first_name || ''} ${user.middle_name || ''}`.trim(),
-      companyName: user.companyName,
-      isLegal: user.isLegal,
-      isIndividualEntrepreneur: user.isIndividualEntrepreneur,
-      email: user.email,
-      phone: user.phone,
-      ipn: user.ipn,
-      edrpou: user.edrpou,
-      avaUrl: user.avaUrl ? `${this.server}:${this.port}${user.avaUrl}` : '',
-    };
   }
 }

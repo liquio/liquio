@@ -10,6 +10,7 @@ import debug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 import jsonwebtoken from 'jsonwebtoken';
+import { resetIdApiClient } from '@liquio/back-core';
 
 import { BpmnTaskCore } from '../src/app';
 
@@ -76,6 +77,8 @@ export class TestApp extends BpmnTaskCore {
   static redisContainer;
 
   static async setup() {
+    // `init` creates the id-api client from this app's config, so drop the one of a previous app.
+    resetIdApiClient();
     const app = new TestApp();
     await app.init();
     app.listen();

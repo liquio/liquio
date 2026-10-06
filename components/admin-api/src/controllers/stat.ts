@@ -1,7 +1,7 @@
 import moment from 'moment';
+import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
-import { AuthService } from '../services/auth';
 
 /**
  * SQL Reports controller.
@@ -9,7 +9,7 @@ import { AuthService } from '../services/auth';
 export class StatController extends Controller {
   private static singleton: StatController;
 
-  private authService: AuthService;
+  private idApiClient: IdApiClient;
 
   /**
    * Constructor.
@@ -18,7 +18,7 @@ export class StatController extends Controller {
   constructor(config) {
     super(config);
 
-    this.authService = new AuthService(config.auth);
+    this.idApiClient = getIdApiClient();
 
     return StatController.singleton || (StatController.singleton = this);
   }
@@ -42,9 +42,9 @@ export class StatController extends Controller {
     try {
       const getUserStatTimestamp = Date.now();
       [userStatLast7Days, userStatYesterday, userStat] = await Promise.all([
-        this.authService.getUserStatByPeriod({ from: date7daysAgo, to: date }),
-        this.authService.getUserStatByDate({ date: yesterday }),
-        this.authService.getUserStatByDate({ date }),
+        this.idApiClient.getUserStatByPeriod({ from: date7daysAgo, to: date }),
+        this.idApiClient.getUserStatByDate({ date: yesterday }),
+        this.idApiClient.getUserStatByDate({ date }),
       ]);
       global.log.save('get-stat-by-date|get-user-stat-success', {
         date,

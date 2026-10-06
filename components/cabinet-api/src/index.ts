@@ -8,6 +8,7 @@ import Models from './models';
 import Router from './router';
 import RedisClient from './lib/redis_client';
 import typeOf from './lib/type_of';
+import { initIdApiClient } from './lib/id_api';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/cabinet-api';
 const SECRET_PATH = process.env.SECRET_PATH;
@@ -27,6 +28,8 @@ async function main(): Promise<void> {
   global.log = log;
 
   global.typeOf = typeOf;
+
+  initIdApiClient(config.auth.LiquioId);
 
   // Init DB.
   const db = await Db.getInstance(config.db);

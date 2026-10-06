@@ -4,7 +4,7 @@ import set from 'lodash/set';
 import moment from 'moment-business-days';
 import validator from 'validator';
 import PropByPath from 'prop-by-path';
-import { Sandbox } from '@liquio/back-core';
+import { getIdApiClient, IdApiClient, IdApiUserInfo, Sandbox } from '@liquio/back-core';
 
 import { SignatureInfoEntity } from '../entities/signature_info';
 import { SystemNotifier } from '../lib/system_notifier';
@@ -15,7 +15,6 @@ import { DocumentValidatorService as DocumentValidator } from '../services/docum
 import { DocumentChecks } from '../services/document_checks';
 import { Assigner } from '../lib/assigner';
 import { NumberGenerator } from '../lib/number_generator';
-import { AuthService as Auth } from '../services/auth';
 import { NotifierService as Notifier } from '../services/notifier';
 import { JSONPath } from '../lib/jsonpath';
 import { PaymentService } from '../services/payment';
@@ -85,7 +84,7 @@ export class TaskBusiness extends Business {
   storageService: any;
   assigner: any;
   numberGenerator: any;
-  auth: any;
+  idApiClient: IdApiClient;
   notifier: any;
   paymentService: any;
   notifierService: any;
@@ -110,7 +109,7 @@ export class TaskBusiness extends Business {
       this.storageService = new StorageService();
       this.assigner = new Assigner(global.models.task, global.models.unit);
       this.numberGenerator = new NumberGenerator();
-      this.auth = new Auth().provider;
+      this.idApiClient = getIdApiClient();
       this.notifier = new Notifier();
       this.paymentService = new PaymentService(config.payment);
       this.notifierService = new NotifierService();
@@ -1098,7 +1097,7 @@ export class TaskBusiness extends Business {
 
     // Set createdByIpn if need it.
     if (createdByIpn) {
-      const userDataByIpn = await this.auth.getUserByCode(createdByIpn, true);
+      const userDataByIpn = (await this.idApiClient.getUserByCode(createdByIpn, { withPrivateProps: true })) as IdApiUserInfo | null;
       if (userDataByIpn) {
         await global.models.workflow.setCreatedBy(workflowId, userDataByIpn.userId);
       }
@@ -1120,9 +1119,15 @@ export class TaskBusiness extends Business {
     let performerUsersDataByIpn;
     let performerUsersDataByEmail;
     try {
-      performerUsersData = (performerUsers || []).length > 0 ? await this.auth.getUsersByIds(performerUsers, withPrivateProps) : [];
-      performerUsersDataByIpn = (performerUsersIpn || []).length > 0 ? await this.auth.getUserByCode(performerUsersIpn, withPrivateProps) : [];
-      performerUsersDataByEmail = (performerUsersEmail || []).length > 0 ? await this.auth.getUserByEmail(performerUsersEmail, withPrivateProps) : [];
+      performerUsersData = (performerUsers || []).length > 0 ? await this.idApiClient.getUsersByIds(performerUsers, { withPrivateProps }) : [];
+      performerUsersDataByIpn =
+        (performerUsersIpn || []).length > 0
+          ? ((await this.idApiClient.getUserByCode(performerUsersIpn, { withPrivateProps })) as IdApiUserInfo[])
+          : [];
+      performerUsersDataByEmail =
+        (performerUsersEmail || []).length > 0
+          ? ((await this.idApiClient.getUserByEmail(performerUsersEmail, { withPrivateProps })) as IdApiUserInfo[])
+          : [];
     } catch (error) {
       const wrappedError = new Error(error.message || error);
       (wrappedError as any).cause = error;
@@ -2316,7 +2321,7 @@ export class TaskBusiness extends Business {
     let performerUsersData;
     try {
       performerUsersData =
-        performerUsersToSet && performerUsersToSet.length > 0 ? await this.auth.getUsersByIds(performerUsersToSet, withPrivateProps) : [];
+        performerUsersToSet && performerUsersToSet.length > 0 ? await this.idApiClient.getUsersByIds(performerUsersToSet, { withPrivateProps }) : [];
     } catch (error) {
       const wrappedError = new Error(error.message || error);
       (wrappedError as any).cause = error;
@@ -2485,7 +2490,7 @@ export class TaskBusiness extends Business {
     // Check if task is onboarding
     if (user && user.onboardingTaskId === id) {
       // Mark user onboarding done
-      // await this.auth.updateUserOnboarding(userId, { onboardingTaskId: '', needOnboarding: false });
+      // await this.idApiClient.updateUserOnboarding(userId, { onboardingTaskId: '', needOnboarding: false });
       await this.onboarding.markUserOnboardingDone(userId, task);
     }
 
@@ -2751,7 +2756,7 @@ export class TaskBusiness extends Business {
     const withPrivateProps = false;
     let performerUsersData;
     try {
-      performerUsersData = await this.auth.getUsersByIds(performerUsers, withPrivateProps);
+      performerUsersData = await this.idApiClient.getUsersByIds(performerUsers, { withPrivateProps });
     } catch (error) {
       const wrappedError = new Error(error.message || error);
       (wrappedError as any).cause = error;
@@ -2965,7 +2970,9 @@ export class TaskBusiness extends Business {
     }
 
     // Find or create signers.
-    const signersInfoPromise = signersArray.map((v) => this.auth.prepareUser(null, null, null, v.ipn, v.email));
+    const signersInfoPromise = signersArray.map((v) =>
+      this.idApiClient.prepareUser({ name: null, surname: null, middleName: null, ipn: v.ipn, email: v.email }),
+    );
     const signersInfo = await Promise.all(signersInfoPromise);
     const signers = signersInfo.filter((v) => v !== undefined);
 
@@ -3312,7 +3319,7 @@ export class TaskBusiness extends Business {
     }
 
     // Define new performer users names.
-    const newPerformerUsersData = await this.auth.getUsersByIds(newPerformerUserIds, false);
+    const newPerformerUsersData = await this.idApiClient.getUsersByIds(newPerformerUserIds);
     const newPerformerUserNames = newPerformerUsersData.map((v) => v.name);
 
     // Set performer users.
@@ -3608,7 +3615,7 @@ export class TaskBusiness extends Business {
         }
         case 'user': {
           try {
-            providerData = (await this.auth.getUsersByIds([userId], true))[0];
+            providerData = (await this.idApiClient.getUsersByIds([userId], { withPrivateProps: true }))[0];
           } catch {
             throw new InternalServerError(`extendedAccessCheck.context[${index}]. Cannot get user data by userId.`);
           }

@@ -462,7 +462,7 @@ describe('Workflow Process Controller', () => {
       app
         .nock('http://id-api:8100')
         .post('/user/info/id', (body) => body.id && Array.isArray(body.id))
-        .query({ brief_info: 'false' })
+        .query((query) => query.brief_info === undefined || query.brief_info === 'false')
         .optionally()
         .reply(200, [{ userId: '682c3749b09b9b183bf98a02', first_name: 'Test', last_name: 'User' }]);
     };

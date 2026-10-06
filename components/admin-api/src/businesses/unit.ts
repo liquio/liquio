@@ -1,8 +1,8 @@
 import _ from 'lodash';
+import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 import { Exceptions } from '../exceptions';
 import { UnitEntity } from '../entities/unit';
-import { AuthService } from '../services/auth';
 import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, SUPPORT_ADMIN_UNIT, ADMIN_UNITS } from '../constants/unit';
 
 const UNIT_PREVIOUS_DATA_MAP = {
@@ -21,7 +21,7 @@ export class UnitBusiness {
   private static singleton: UnitBusiness;
 
   public config: any;
-  public authService: AuthService;
+  public idApiClient: IdApiClient;
 
   /**
    * Constructor.
@@ -31,7 +31,7 @@ export class UnitBusiness {
     // Define singleton.
     if (!UnitBusiness.singleton) {
       this.config = config;
-      this.authService = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
       UnitBusiness.singleton = this;
     }
 
@@ -49,11 +49,8 @@ export class UnitBusiness {
     unitEntity.members = _.uniq(unitEntity.members);
     unitEntity.heads = _.uniq(unitEntity.heads);
 
-    let foundUsersFromAuthService = [];
-    foundUsersFromAuthService = await this.authService.getUsersByIdsWithCache(
-      [...unitEntity.members, ...unitEntity.heads],
-      foundUsersFromAuthService,
-    );
+    let foundUsersFromIdApi = [];
+    foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache([...unitEntity.members, ...unitEntity.heads], foundUsersFromIdApi);
 
     for (const baseUnitId of unitEntity.basedOn) {
       const baseUnit = await global.models.unit.findById(baseUnitId);
@@ -74,11 +71,11 @@ export class UnitBusiness {
       }
       heads = _.uniq(heads);
 
-      foundUsersFromAuthService = await this.authService.getUsersByIdsWithCache([...members, ...heads], foundUsersFromAuthService);
+      foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache([...members, ...heads], foundUsersFromIdApi);
 
       await global.models.unit.updateMembers(baseUnitId, members);
       for (const memberId of members) {
-        const member = foundUsersFromAuthService.find((v) => v.userId === memberId);
+        const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
         // Save to access history.
         const baseUnit = await global.models.unit.findById(baseUnitId);
@@ -95,7 +92,7 @@ export class UnitBusiness {
 
       await global.models.unit.updateHeads(baseUnitId, heads);
       for (const headId of heads) {
-        const head = foundUsersFromAuthService.find((v) => v.userId === headId);
+        const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
         // Save to access history.
         const baseUnit = await global.models.unit.findById(baseUnitId);
@@ -114,7 +111,7 @@ export class UnitBusiness {
     const createdUnit = await global.models.unit.create(unitEntity);
 
     for (const memberId of unitEntity.members) {
-      const member = foundUsersFromAuthService.find((v) => v.userId === memberId);
+      const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
       // Save to access history.
       await global.models.accessHistory.save({
@@ -139,7 +136,7 @@ export class UnitBusiness {
     }
 
     for (const headId of unitEntity.heads) {
-      const head = foundUsersFromAuthService.find((v) => v.userId === headId);
+      const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
       // Save to access history.
       await global.models.accessHistory.save({
@@ -191,10 +188,10 @@ export class UnitBusiness {
     const removedHeadsIpn = _.difference(currentUnit.headsIpn, unitEntity.headsIpn);
     const removedMembersIpn = _.difference(currentUnit.membersIpn, unitEntity.membersIpn);
 
-    let foundUsersFromAuthService = [];
-    foundUsersFromAuthService = await this.authService.getUsersByIdsWithCache(
-      [...newHeads, ...newMembers, ...removedHeads, ...removedMembers],
-      foundUsersFromAuthService,
+    let foundUsersFromIdApi = [];
+    foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache(
+      [...newHeads, ...newMembers, ...removedHeads, ...removedMembers] as string[],
+      foundUsersFromIdApi,
     );
 
     for (const baseUnitId of unitEntity.basedOn) {
@@ -216,11 +213,11 @@ export class UnitBusiness {
       }
       heads = _.uniq(heads);
 
-      foundUsersFromAuthService = await this.authService.getUsersByIdsWithCache([...members, ...heads], foundUsersFromAuthService);
+      foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache([...members, ...heads], foundUsersFromIdApi);
 
       await global.models.unit.updateMembers(baseUnitId, members);
       for (const memberId of newMembers) {
-        const member = foundUsersFromAuthService.find((v) => v.userId === memberId);
+        const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
         // Save to access history.
         const baseUnit = await global.models.unit.findById(baseUnitId);
@@ -237,7 +234,7 @@ export class UnitBusiness {
 
       await global.models.unit.updateHeads(baseUnitId, heads);
       for (const headId of newHeads) {
-        const head = foundUsersFromAuthService.find((v) => v.userId === headId);
+        const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
         // Save to access history.
         const baseUnit = await global.models.unit.findById(baseUnitId);
@@ -256,7 +253,7 @@ export class UnitBusiness {
     const updatedUnit = await global.models.unit.create(unitEntity);
 
     for (const memberId of newMembers) {
-      const member = foundUsersFromAuthService.find((v) => v.userId === memberId);
+      const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
       // Save to access history.
       await global.models.accessHistory.save({
@@ -281,7 +278,7 @@ export class UnitBusiness {
     }
 
     for (const memberId of removedMembers) {
-      const member = foundUsersFromAuthService.find((v) => v.userId === memberId);
+      const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
       // Remove performer user from tasks.
       await global.models.task.removePerformerUserFromTasks(memberId, unitEntity.id);
@@ -309,7 +306,7 @@ export class UnitBusiness {
     }
 
     for (const headId of newHeads) {
-      const head = foundUsersFromAuthService.find((v) => v.userId === headId);
+      const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
       // Save to access history.
       await global.models.accessHistory.save({
@@ -334,7 +331,7 @@ export class UnitBusiness {
     }
 
     for (const headId of removedHeads) {
-      const head = foundUsersFromAuthService.find((v) => v.userId === headId);
+      const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
       // Remove performer user from tasks.
       await global.models.task.removePerformerUserFromTasks(headId, unitEntity.id);
@@ -442,7 +439,7 @@ export class UnitBusiness {
 
     let lastUpdatedUnit;
     for (const headId of headsToAdd) {
-      const head = await this.authService.findByUserId(headId);
+      const head = await this.idApiClient.findUserById(headId);
 
       const { basedOn = [] } = unit;
       for (const baseUnitId of basedOn) {
@@ -504,7 +501,7 @@ export class UnitBusiness {
 
     let lastUpdatedUnit;
     for (const headId of headsToRemove) {
-      const head = await this.authService.findByUserId(headId);
+      const head = await this.idApiClient.findUserById(headId);
 
       lastUpdatedUnit = await global.models.unit.removeHead(id, headId);
 
@@ -571,7 +568,7 @@ export class UnitBusiness {
     for (const memberId of membersToAdd) {
       const { basedOn = [] } = unit;
 
-      const member = await this.authService.findByUserId(memberId);
+      const member = await this.idApiClient.findUserById(memberId);
 
       for (const baseUnitId of basedOn) {
         await global.models.unit.addMember(baseUnitId, memberId);
@@ -632,7 +629,7 @@ export class UnitBusiness {
 
     let lastUpdatedUnit;
     for (const memberId of membersToRemove) {
-      const member = await this.authService.findByUserId(memberId);
+      const member = await this.idApiClient.findUserById(memberId);
 
       lastUpdatedUnit = await global.models.unit.removeMember(id, memberId);
 
@@ -685,11 +682,11 @@ export class UnitBusiness {
 
     const deletedUnit = await global.models.unit.deleteById(id);
 
-    let foundUsersFromAuthService = [];
-    foundUsersFromAuthService = await this.authService.getUsersByIdsWithCache([...unit.members, ...unit.heads], foundUsersFromAuthService);
+    let foundUsersFromIdApi = [];
+    foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache([...unit.members, ...unit.heads], foundUsersFromIdApi);
 
     for (const memberId of unit.members) {
-      const member = foundUsersFromAuthService.find((v) => v.userId === memberId);
+      const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
       // Save to access history.
       await global.models.accessHistory.save({
@@ -704,7 +701,7 @@ export class UnitBusiness {
     }
 
     for (const headId of unit.heads) {
-      const head = foundUsersFromAuthService.find((v) => v.userId === headId);
+      const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
       // Save to access history.
       await global.models.accessHistory.save({

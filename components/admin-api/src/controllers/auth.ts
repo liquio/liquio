@@ -1,8 +1,7 @@
 import _ from 'lodash';
-import { appendTraceMeta } from '@liquio/back-core';
+import { IdApiClient, appendTraceMeta, getIdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
-import { AuthService } from '../services/auth';
 import { Token } from '../lib/token';
 import { UnitBusiness } from '../businesses/unit';
 
@@ -19,7 +18,7 @@ const ERROR_MESSAGE_INCORRECT_SERVER_TOKEN = 'Incorrect server (admin) token.';
 export class AuthController extends Controller {
   private static singleton: AuthController;
 
-  public authService: AuthService;
+  public idApiClient: IdApiClient;
   public token: Token;
   public unitBusiness: UnitBusiness;
   public serverToken: string;
@@ -33,7 +32,7 @@ export class AuthController extends Controller {
     // Define singleton.
     if (!AuthController.singleton) {
       super(config);
-      this.authService = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
       this.unitBusiness = new UnitBusiness(config);
       this.token = new Token(config.auth);
       this.serverToken = config.server.token;
@@ -55,7 +54,7 @@ export class AuthController extends Controller {
     // Get auth tokens.
     let authTokens;
     try {
-      authTokens = await this.authService.getTokens(code);
+      authTokens = await this.idApiClient.getTokens(code);
     } catch (err) {
       return this.responseError(res, err, 401);
     }
@@ -64,7 +63,7 @@ export class AuthController extends Controller {
     // Get user info.
     let authUserInfo;
     try {
-      authUserInfo = await this.authService.getUser(authTokens.accessToken);
+      authUserInfo = await this.idApiClient.getUser(authTokens.accessToken);
 
       await this.setupAdminUnits(authUserInfo);
 
@@ -188,7 +187,7 @@ export class AuthController extends Controller {
       // Get user info.
       let authUserInfo;
       try {
-        authUserInfo = await this.authService.getUser(authAccessToken);
+        authUserInfo = await this.idApiClient.getUser(authAccessToken);
       } catch (err) {
         return isJustTry ? next() : this.responseError(res, err, 401);
       }
@@ -198,7 +197,7 @@ export class AuthController extends Controller {
         // Try to get new auth access token by refresh token.
         let newAuthTokens;
         try {
-          newAuthTokens = await this.authService.renewTokens(authRefreshToken);
+          newAuthTokens = await this.idApiClient.renewTokens(authRefreshToken);
         } catch (err) {
           return isJustTry ? next() : this.responseError(res, err, 401);
         }
@@ -208,7 +207,7 @@ export class AuthController extends Controller {
 
         // Get user info.
         try {
-          authUserInfo = await this.authService.getUser(newAuthTokens.accessToken);
+          authUserInfo = await this.idApiClient.getUser(newAuthTokens.accessToken);
         } catch (err) {
           return isJustTry ? next() : this.responseError(res, err, 401);
         }
@@ -226,7 +225,7 @@ export class AuthController extends Controller {
       }
 
       // Append auth user info to request object.
-      req.authUserInfo = this.authService.getMainUserInfo(authUserInfo, true, true);
+      req.authUserInfo = this.idApiClient.getMainUserInfo(authUserInfo, true, true);
       req.authUserId = authUserInfo && authUserInfo.userId;
 
       // Append userId and name to response object.
@@ -340,11 +339,10 @@ export class AuthController extends Controller {
     // Define params.
     const { authUserInfo, authUserRoles, authUserUnitIds } = req;
 
-    // Append full ava URL.
-    const avaUrl = authUserInfo && authUserInfo.avaUrl;
-    const fullAvaUrl = avaUrl && `${this.config.auth.server}${avaUrl}`;
+    // The ava URL is already full (the id-api client built it).
+    const fullAvaUrl = authUserInfo && authUserInfo.avaUrl;
     const userInfo = { ...authUserInfo, authUserRoles, authUserUnitIds, fullAvaUrl };
-    const normalizedUserInfo = this.authService.getMainUserInfo(userInfo, true, true);
+    const normalizedUserInfo = this.idApiClient.getMainUserInfo(userInfo, true, true);
 
     // Response.
     this.responseData(res, this.convertUnderscoreKeysToCamelCase(normalizedUserInfo));
@@ -367,7 +365,7 @@ export class AuthController extends Controller {
 
     // Change password.
     try {
-      const result = await this.authService.changePassword(authUserInfo.email, oldPassword, newPassword);
+      const result = await this.idApiClient.changePassword(authUserInfo.email, oldPassword, newPassword);
 
       if (!result?.success) {
         return this.responseError(res, result?.error || 'Failed to change password.', 400);
@@ -413,7 +411,7 @@ export class AuthController extends Controller {
             .filter((role) => role !== 'admin')
             .concat('admin')
             .join(';');
-          await this.authService.updateByUserId(userInfo.userId, { role: preparedRoles }, userInfo.userId);
+          await this.idApiClient.updateUserById(userInfo.userId, { role: preparedRoles }, userInfo.userId);
         }
       }
     } catch (error) {

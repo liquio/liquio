@@ -1,5 +1,6 @@
 import { Sandbox } from '@liquio/back-core';
 
+import { initIdApiClient } from '../../lib/id_api';
 import { DocumentBusiness } from './index';
 
 // Characterization tests for the 7 payment-orchestration methods on DocumentBusiness.
@@ -9,6 +10,7 @@ import { DocumentBusiness } from './index';
 // document.ts's own orchestration logic (config lookups, argument construction, error
 // propagation) — not PaymentService/provider behavior itself, which is covered elsewhere.
 new Sandbox();
+initIdApiClient({});
 
 describe('DocumentBusiness payment methods', () => {
   let documentBusiness: any;

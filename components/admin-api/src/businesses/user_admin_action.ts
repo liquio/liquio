@@ -1,14 +1,14 @@
-import { AuthService } from '../services/auth';
+import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 /**
  * Delete history business.
- * @typedef {import('../services/auth')} UserAdminActionEntity
+ * @typedef {import('@liquio/back-core').IdApiUserAdminAction} UserAdminActionEntity
  */
 export class UserAdminActionBusiness {
   private static singleton: UserAdminActionBusiness;
 
   public config: object;
-  public authService: AuthService;
+  public idApiClient: IdApiClient;
 
   /**
    * Constructor.
@@ -19,7 +19,7 @@ export class UserAdminActionBusiness {
     if (!UserAdminActionBusiness.singleton) {
       // Init params.
       this.config = config;
-      this.authService = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
 
       // Define singleton.
       UserAdminActionBusiness.singleton = this;
@@ -35,6 +35,6 @@ export class UserAdminActionBusiness {
    * @returns {Promise<{data: UserAdminActionEntity[], meta: {count: number, offset: number, limit: number}}>} User admin actions.
    */
   async getList(options) {
-    return this.authService.getUserAdminActions(options);
+    return this.idApiClient.getUserAdminActions(options);
   }
 }

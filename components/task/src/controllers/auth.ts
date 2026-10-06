@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
 
 import type { Request } from 'express';
+import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
-import { AuthService as Auth } from '../services/auth';
 import { Token } from '../lib/token';
 import { UserAccess } from '../lib/user_access';
 import { UnitModel } from '../models/unit';
@@ -12,7 +12,6 @@ import { TaskModel } from '../models/task';
 import { WorkflowModel } from '../models/workflow';
 import { GROUPS as ROUTE_GROUPS } from '../services/router/routes';
 import { OnboardingController } from './onboarding';
-import type { LiquioIdProvider } from '../services/auth/providers/liquio_id';
 
 // Constants.
 const ROLES_SEPARATOR = ';';
@@ -55,7 +54,7 @@ interface CachingConfig {
 export class AuthController extends Controller {
   private static singleton: AuthController;
 
-  auth: LiquioIdProvider;
+  idApiClient: IdApiClient;
   token: Token;
   access: AccessConfig;
   userAccess: UserAccess;
@@ -76,7 +75,7 @@ export class AuthController extends Controller {
       super(config);
 
       // Auth controller config.
-      this.auth = new Auth().provider;
+      this.idApiClient = getIdApiClient();
       this.token = new Token(config.auth);
       this.access = config.access;
       this.userAccess = new UserAccess();
@@ -84,7 +83,7 @@ export class AuthController extends Controller {
       this.taskModel = new TaskModel();
       this.workflowModel = new WorkflowModel();
       this.onboardingController = new OnboardingController(config);
-      this.ldapUnitSync = new LdapUnitSync({ unitModel: this.unitModel, auth: this.auth });
+      this.ldapUnitSync = new LdapUnitSync({ unitModel: this.unitModel, idApiClient: this.idApiClient });
 
       // Caching config.
       this.caching = config.auth.caching;
@@ -117,7 +116,7 @@ export class AuthController extends Controller {
     // Get auth tokens.
     let authTokens;
     try {
-      authTokens = await this.auth.getTokens(code);
+      authTokens = await this.idApiClient.getTokens(code);
     } catch (err) {
       global.log.save(
         'auth-login-error|cannot-get-tokens',
@@ -136,7 +135,7 @@ export class AuthController extends Controller {
     // Get user info.
     let authUserInfo;
     try {
-      authUserInfo = await this.auth.getUser(authTokens.accessToken);
+      authUserInfo = await this.idApiClient.getUser(authTokens.accessToken);
       const userName = `${authUserInfo.last_name || ''} ${authUserInfo.first_name || ''} ${authUserInfo.middle_name || ''}`.trim();
 
       // Handle units.
@@ -255,7 +254,7 @@ export class AuthController extends Controller {
     const needLogoutOtherSessions = !this.config.auth.doNotLogoutOtherSessions;
     if (needLogoutOtherSessions) {
       try {
-        this.auth.logoutOtherSessions(userId, accessToken, refreshToken);
+        this.idApiClient.logoutOtherSessions(userId, accessToken, refreshToken);
       } catch (error) {
         global.log.save('logout-other-sessions-error', { error, needLogoutOtherSessions }, 'warn');
       }
@@ -373,7 +372,7 @@ export class AuthController extends Controller {
         // Get user info.
         let authUserInfo;
         try {
-          authUserInfo = await this.auth.getUser(authAccessToken);
+          authUserInfo = await this.idApiClient.getUser(authAccessToken);
         } catch (err) {
           return isJustTry ? next() : this.responseError(res, err, 401);
         }
@@ -383,7 +382,7 @@ export class AuthController extends Controller {
           // Try to get new auth access token by refresh token.
           let newAuthTokens;
           try {
-            newAuthTokens = await this.auth.renewTokens(authRefreshToken);
+            newAuthTokens = await this.idApiClient.renewTokens(authRefreshToken);
           } catch (err) {
             return isJustTry ? next() : this.responseError(res, err, 401);
           }
@@ -393,7 +392,7 @@ export class AuthController extends Controller {
 
           // Get user info.
           try {
-            authUserInfo = await this.auth.getUser(newAuthTokens.accessToken);
+            authUserInfo = await this.idApiClient.getUser(newAuthTokens.accessToken);
           } catch (err) {
             return isJustTry ? next() : this.responseError(res, err, 401);
           }
@@ -412,7 +411,7 @@ export class AuthController extends Controller {
 
         // Append auth user info to request object.
 
-        req.authUserInfo = this.auth.getMainUserInfo(authUserInfo, true, true);
+        req.authUserInfo = this.idApiClient.getMainUserInfo(authUserInfo, true, true);
         req.authUserId = authUserInfo && authUserInfo.userId;
 
         // Append userId and name to response object.
@@ -476,7 +475,7 @@ export class AuthController extends Controller {
           // Get debug user data. getUsersByIds
           let authDebugUserInfo;
           try {
-            authDebugUserInfo = (await this.auth.getUsersByIds([debugUserId], true))[0];
+            authDebugUserInfo = (await this.idApiClient.getUsersByIds([debugUserId], { withPrivateProps: true }))[0];
           } catch (error) {
             global.log.save('get-debug-user-error', { error: error && error.message }, 'error');
           }
@@ -485,7 +484,7 @@ export class AuthController extends Controller {
           }
 
           // Set other user data as current user data.
-          req.authUserInfo = this.auth.getMainUserInfo(authDebugUserInfo, true, true);
+          req.authUserInfo = this.idApiClient.getMainUserInfo(authDebugUserInfo, true, true);
           req.authUserId = authDebugUserInfo && authDebugUserInfo.userId;
           const userRoles = this.getUserRoles(req);
           const hasOneOfNeededRoles = this.hasOneOfNeededRoles(userRoles, roles);
@@ -576,11 +575,10 @@ export class AuthController extends Controller {
     const { authUserInfo, authUserRoles } = req;
     const authUserUnits = this.getRequestUserUnits(req);
 
-    // Append full ava URL.
-    const avaUrl = authUserInfo && authUserInfo.avaUrl;
-    const fullAvaUrl = avaUrl && `${this.config.auth.server}${avaUrl}`;
+    // The ava URL is already full (the id-api client built it).
+    const fullAvaUrl = authUserInfo && authUserInfo.avaUrl;
     const userInfo = { ...authUserInfo, authUserRoles, authUserUnits, fullAvaUrl };
-    const normalizedUserInfo = this.auth.getMainUserInfo(userInfo, true, true);
+    const normalizedUserInfo = this.idApiClient.getMainUserInfo(userInfo, true, true);
 
     // Response.
     const normalizedObject = this.convertUnderscoreKeysToCamelCase(normalizedUserInfo);

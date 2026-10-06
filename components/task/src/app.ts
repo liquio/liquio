@@ -10,7 +10,6 @@ import { RedisClient } from './lib/redis_client';
 import { Models } from './models';
 import { DictionaryModels as DictionariesModel } from './models/dictionaries';
 import { DocumentFillerService } from './services/document_filler';
-import { AuthService } from './services/auth';
 import { Businesses } from './businesses';
 import { RouterService } from './services/router';
 import { FileGeneratorService } from './services/file_generator';
@@ -24,6 +23,7 @@ import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses
 import { loadConfig } from './lib/config';
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
+import { initIdApiClient } from './lib/id_api';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/task';
 
@@ -34,7 +34,6 @@ const DEFAULT_OPTIONS = {
   customValidators: {},
   customRoutes: {},
   customDocumentFillers: [],
-  customAuthProvider: undefined,
   customModels: [],
   customDictionaryModels: [],
   customFileGeneratorOptions: [],
@@ -64,7 +63,6 @@ export class BpmnTaskCore {
    * @param {object} [options.customValidators] Custom validators as { someValidatorName: SomeValidatorClass, anotherValidatorName: AnotherValidatorClass }.
    * @param {object} [options.customRoutes] Custom routes as { 'GET /some_url': { middlewares: [{ name: 'someMiddleware', method: 'someMiddlewareMethod' }], controller: { name: 'someController', method: 'someControllerMethod' } } }.
    * @param {object[]} [options.customDocumentFillers] Custom document fillers.
-   * @param {object} [options.customAuthProvider] Custom auth provider.
    * @param {object[]} [options.customModels] Custom models.
    * @param {object[]} [options.customDictionaryModels] Custom dictionary models.
    * @param {object[]} [options.customFileGeneratorOptions] Custom file generator options.
@@ -82,7 +80,7 @@ export class BpmnTaskCore {
   static get CoreClasses() {
     return {
       libs: { Log },
-      services: { RouterService, DocumentFillerService, AuthService, StorageService },
+      services: { RouterService, DocumentFillerService, StorageService },
       models: { DictionaryModel: DictionariesModel.dictionaryBase },
       controllers: RouterService.ControllersList,
       businesses: Businesses.List,
@@ -101,7 +99,6 @@ export class BpmnTaskCore {
       customValidators,
       customRoutes,
       customDocumentFillers,
-      customAuthProvider,
       customModels,
       customDictionaryModels,
       customFileGeneratorOptions,
@@ -135,6 +132,9 @@ export class BpmnTaskCore {
     }
     global.log = log;
     global.typeOf = typeOf;
+
+    // Init id-api client.
+    initIdApiClient(config.auth?.LiquioId);
 
     // Log unhandled rejections.
     process.on('unhandledRejection', (error: any) => {
@@ -247,9 +247,6 @@ export class BpmnTaskCore {
       const externalServicesStatusesDaemon = new ExternalServicesStatusesDaemon(global.config.external_services.daemon);
       externalServicesStatusesDaemon.start();
     }
-
-    // Init auth.
-    new AuthService(customAuthProvider);
 
     if (disableRouter) {
       return;

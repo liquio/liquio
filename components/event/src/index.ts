@@ -15,6 +15,7 @@ async function main() {
   app.useGlobalErrors();
   app.useGlobalTypeOf();
   app.useLog();
+  app.useIdApiClient();
   app.useHttpClient();
   app.useUnhandedRejectionLogging();
   app.useMoment();

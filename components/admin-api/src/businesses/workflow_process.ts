@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import axios from 'axios';
+import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 import { Exceptions } from '../exceptions';
 import { TaskService } from '../services/task';
-import { AuthService } from '../services/auth';
 import { FileStorageService } from '../services/filestorage';
 import { Stream } from '../lib/stream';
 import { Db } from '../lib/db';
@@ -46,6 +46,15 @@ const BRIEF_WORKFLOWLIST_RESPONSE_FIELDS = ['id', 'workflow_template_id', 'has_u
 const BRIEF_INFO_LIMIT = 10000;
 
 /**
+ * Prepare short info about user.
+ * @param {object} user User.
+ * @returns {{userId: string, name: string, ipn: string}}
+ */
+function prepareUserInfoFromId(user) {
+  return { userId: user.userId, name: user.name, ipn: user.ipn };
+}
+
+/**
  * Workflow process business.
  */
 export class WorkflowProcessBusiness {
@@ -53,7 +62,7 @@ export class WorkflowProcessBusiness {
 
   public config: any;
   private taskService: TaskService;
-  private authService: AuthService;
+  private idApiClient: IdApiClient;
   private fileStorageService: FileStorageService;
 
   /**
@@ -65,7 +74,7 @@ export class WorkflowProcessBusiness {
     if (!WorkflowProcessBusiness.singleton) {
       this.config = config;
       this.taskService = new TaskService();
-      this.authService = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
       this.fileStorageService = new FileStorageService();
       WorkflowProcessBusiness.singleton = this;
     }
@@ -319,23 +328,23 @@ export class WorkflowProcessBusiness {
 
     // Prepare usernames.
     if (tasks && tasks.data) {
-      let foundUsersFromAuthService = [];
+      let foundUsersFromIdApi = [];
       for (const task of tasks.data) {
-        foundUsersFromAuthService = await this.authService.getUsersByIdsWithCache(
+        foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache(
           [task.createdBy].concat(task.performerUsers, task.signerUsers),
-          foundUsersFromAuthService,
+          foundUsersFromIdApi,
         );
 
-        const createdByUser = foundUsersFromAuthService.find((v) => v.userId === task.createdBy);
+        const createdByUser = foundUsersFromIdApi.find((v) => v.userId === task.createdBy);
         if (createdByUser) {
-          task.createdByInfo = this.authService.prepareUserInfoFromId(createdByUser);
+          task.createdByInfo = prepareUserInfoFromId(createdByUser);
         }
 
         let performerUsers = [];
         for (const userId of task.performerUsers) {
-          const performerUser = foundUsersFromAuthService.find((v) => v.userId === userId);
+          const performerUser = foundUsersFromIdApi.find((v) => v.userId === userId);
           if (performerUser) {
-            performerUsers.push(this.authService.prepareUserInfoFromId(performerUser));
+            performerUsers.push(prepareUserInfoFromId(performerUser));
           } else {
             performerUsers.push({
               userId: userId,
@@ -346,9 +355,9 @@ export class WorkflowProcessBusiness {
 
         let signerUsers = [];
         for (const userId of task.signerUsers) {
-          const signerUser = foundUsersFromAuthService.find((v) => v.userId === userId);
+          const signerUser = foundUsersFromIdApi.find((v) => v.userId === userId);
           if (signerUser) {
-            signerUsers.push(this.authService.prepareUserInfoFromId(signerUser));
+            signerUsers.push(prepareUserInfoFromId(signerUser));
           } else {
             signerUsers.push({
               userId: userId,

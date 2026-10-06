@@ -22,7 +22,7 @@
     "test:e2e": "jest tests"
   },
   "dependencies": {
-    "@liquio/back-core": "^0.2.5",
+    "@liquio/back-core": "^0.2.6",
     "axios": "^1.20.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

@@ -1104,7 +1104,7 @@ export class Message extends Auth {
           readQuantityPromise,
         ]);
       } catch (e) {
-        const statusCode = e?.statusCode || e?.response?.status || 500;
+        const statusCode = e?.statusCode || e?.status || 500;
         const error = {
           message: e?.message || 'Can not get messages.',
         };

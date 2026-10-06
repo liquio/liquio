@@ -13,7 +13,7 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 import * as jsonwebtoken from 'jsonwebtoken';
 import * as Multiconf from 'multiconf';
-import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox, resetIdApiClient } from '@liquio/back-core';
 
 import { Db } from '../src/lib/db';
 import { RedisClient } from '../src/lib/redis_client';
@@ -24,6 +24,7 @@ import { WorkflowHandlerBusiness } from '../src/businesses/workflow_handler';
 import { WorkflowBusiness } from '../src/businesses/workflow';
 import { HttpClient } from '../src/lib/http_client';
 import { typeOf } from '../src/lib/type_of';
+import { initIdApiClient } from '../src/lib/id_api';
 
 const debug = createDebug;
 
@@ -265,6 +266,10 @@ export class TestApp {
     const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
     const log = new Log([consoleLogProvider], ['console']);
     global.log = log;
+
+    // Init id-api client.
+    resetIdApiClient();
+    initIdApiClient(config.auth);
 
     // Init sandbox.
     new Sandbox(config.sandbox || {});

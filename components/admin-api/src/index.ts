@@ -14,6 +14,7 @@ import { WorkflowBusiness } from './businesses/workflow';
 import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
+import { initIdApiClient } from './lib/id_api';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
@@ -39,6 +40,9 @@ async function main() {
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;
+
+  // Init id-api client (shared by the whole process, see `getIdApiClient()`).
+  initIdApiClient(config.auth);
 
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
   new Sandbox(config.sandbox || {});

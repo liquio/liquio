@@ -28,7 +28,7 @@
     "event"
   ],
   "dependencies": {
-    "@liquio/back-core": "^0.2.5",
+    "@liquio/back-core": "^0.2.6",
     "@liquio/plugin-installer": "^0.1.6",
     "@liquio/plugin-sdk": "^0.1.7",
     "amqplib": "^0.10.9",
