@@ -1,5 +1,4 @@
 import { TestApp } from './test-app';
-import { HttpRequest } from '../src/lib/http_request';
 
 // Helper to generate unique unit IDs
 let unitIdCounter = 0;
@@ -1036,14 +1035,12 @@ describe('EventBusiness - User type events', () => {
   });
 
   describe('updateUser', () => {
-    let httpSendSpy;
-
-    beforeAll(() => {
-      httpSendSpy = jest.spyOn(HttpRequest, 'send').mockResolvedValue('ok');
-    });
-
-    afterAll(() => {
-      httpSendSpy.mockRestore();
+    beforeEach(() => {
+      app
+        .nock('https://id-dev-oe.liquio.local:443')
+        .put('/user/info/000000000000000000000001')
+        .matchHeader('authorization', /^Basic /)
+        .reply(200, 'ok');
     });
 
     it('should create and process updateUser user event', async () => {
@@ -1114,14 +1111,12 @@ describe('EventBusiness - User type events', () => {
   });
 
   describe('searchUser', () => {
-    let httpSendSpy;
-
-    beforeAll(() => {
-      httpSendSpy = jest.spyOn(HttpRequest, 'send').mockResolvedValue([]);
-    });
-
-    afterAll(() => {
-      httpSendSpy.mockRestore();
+    beforeEach(() => {
+      app
+        .nock('https://id-dev-oe.liquio.local:443')
+        .post('/user/info/search', { searchString: 'test', limit: 10 })
+        .matchHeader('authorization', /^Basic /)
+        .reply(200, []);
     });
 
     it('should create and process searchUser user event', async () => {

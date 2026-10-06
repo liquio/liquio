@@ -1,9 +1,9 @@
 import { matchedData } from 'express-validator';
 import _ from 'lodash';
+import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { MassMessagesMailingBusiness } from '../businesses/mass_messages_mailing';
-import { AuthService } from '../services/auth';
 
 /**
  * Mass messages mailing controller.
@@ -12,7 +12,7 @@ export class MassMessagesMailingController extends Controller {
   private static singleton: MassMessagesMailingController;
 
   private massMessagesMailingBusiness: MassMessagesMailingBusiness;
-  private authService: AuthService;
+  private idApiClient: IdApiClient;
 
   /**
    * Constructor.
@@ -24,7 +24,7 @@ export class MassMessagesMailingController extends Controller {
       super(config);
 
       this.massMessagesMailingBusiness = new MassMessagesMailingBusiness(config);
-      this.authService = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
       MassMessagesMailingController.singleton = this;
     }
     return MassMessagesMailingController.singleton;
@@ -79,19 +79,23 @@ export class MassMessagesMailingController extends Controller {
       return this.responseError(res, error);
     }
 
-    const responseByUserIds = await this.authService.getUsersByIds(userIdsList, false, true);
-    if (responseByUserIds.length < userIdsList.length) {
-      const existingUserIds = responseByUserIds.map(({ userId }) => userId);
-      const notExistingUserIds = userIdsList.filter((userId) => !existingUserIds.includes(userId));
-      const error = new Error(`Passed not existing userIds: ${notExistingUserIds.join(', ')}`);
+    let responseByUserIds;
+    let responseByUserEmail;
+    try {
+      responseByUserIds = await this.idApiClient.getUsersByIds(userIdsList, { withPrivateProps: false, briefInfo: true });
+      if (responseByUserIds.length < userIdsList.length) {
+        const existingUserIds = responseByUserIds.map(({ userId }) => userId);
+        const notExistingUserIds = userIdsList.filter((userId) => !existingUserIds.includes(userId));
+        const error = new Error(`Passed not existing userIds: ${notExistingUserIds.join(', ')}`);
+        return this.responseError(res, error);
+      }
+
+      responseByUserEmail = (await Promise.all(emailsList.map((email) => this.idApiClient.getUsers({ email, limit: emailsList.length, offset: 0 }))))
+        .map((users) => users[0])
+        .filter(Boolean);
+    } catch (error) {
       return this.responseError(res, error);
     }
-
-    const responseByUserEmail = (
-      await Promise.all(emailsList.map((email) => this.authService.getUsers({ email, limit: emailsList.length, offset: 0 } as any)))
-    )
-      .map(({ body }) => body[0])
-      .filter(Boolean);
     if (responseByUserEmail.length < emailsList.length) {
       const existingUserEmails = responseByUserEmail.map(({ email }) => email);
       const notExistingUserEmails = emailsList.filter((email) => !existingUserEmails.includes(email));

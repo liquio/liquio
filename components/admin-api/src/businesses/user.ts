@@ -1,9 +1,12 @@
 import _ from 'lodash';
+import { IdApiClient, IdApiError, getIdApiClient } from '@liquio/back-core';
 
-import { AuthService } from '../services/auth';
 import { NotifierService } from '../services/notifier';
 import { TestUserChecker } from '../lib/test_user_checker';
 import { ForbiddenError } from '../lib/errors';
+
+// Constants.
+const ERROR_CODE_HTTP = 'HTTP_ERROR';
 
 /**
  * User business.
@@ -12,7 +15,7 @@ export class UserBusiness {
   private static singleton: UserBusiness;
 
   public config: any;
-  public authService: AuthService;
+  public idApiClient: IdApiClient;
   public notifierService: NotifierService;
   public testUserChecker: TestUserChecker;
 
@@ -24,7 +27,7 @@ export class UserBusiness {
     // Define singleton.
     if (!UserBusiness.singleton) {
       this.config = config;
-      this.authService = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
       this.notifierService = new NotifierService();
       this.testUserChecker = new TestUserChecker();
       UserBusiness.singleton = this;
@@ -42,13 +45,13 @@ export class UserBusiness {
   async search({ search, ids, code, briefInfo }) {
     let users = [];
     if (search) {
-      users.push(...(await this.authService.searchUsers(search)));
+      users.push(...(await this.idApiClient.searchUsers(search)));
     }
     if (ids) {
-      users.push(...(await this.authService.getUsersByIds(ids, false, briefInfo)));
+      users.push(...(await this.idApiClient.getUsersByIds(ids, { withPrivateProps: false, briefInfo })));
     }
     if (code) {
-      users.push(await this.authService.findUserByCode(code));
+      users.push(await this.idApiClient.getUserByCode(code));
     }
 
     const uniqueUsers = _.uniqBy(users, 'userId');
@@ -62,7 +65,7 @@ export class UserBusiness {
    * @returns {Promise<object[]>}
    */
   async getUsers({ id, email, phone, search, ipn, role, offset, limit }) {
-    const { response, body: users } = await this.authService.getUsers({
+    const { headers, body: users } = await this.idApiClient.getUsersPage({
       id,
       email,
       phone,
@@ -90,7 +93,7 @@ export class UserBusiness {
     let data = { pagination: { total: 0 }, data: [] };
 
     if (users.length > 0) {
-      data.pagination.total = parseInt(response.headers.total);
+      data.pagination.total = parseInt(headers.total);
       data.data = users;
     }
 
@@ -103,7 +106,10 @@ export class UserBusiness {
    * @returns {Promise<object>}
    */
   async findByUserId(id) {
-    const user = await this.authService.findByUserId(id);
+    const user = await this.idApiClient.findUserById(id);
+    if (!user) {
+      return user;
+    }
 
     const units = await global.models.unit.getAll();
     const heads = units.filter((v) => v.heads.includes(user.userId));
@@ -125,9 +131,8 @@ export class UserBusiness {
    * @returns {Promise<boolean>}
    */
   async block(id, initiator) {
-    const response = await this.authService.updateByUserId(id, { isActive: false }, initiator);
-    if (response === 'ok') {
-      await this.authService.logoutByUserId(id);
+    if (await this.isUserUpdated(id, { isActive: false }, initiator)) {
+      await this.logoutByUserId(id);
       return true;
     }
 
@@ -140,9 +145,8 @@ export class UserBusiness {
    * @returns {Promise<boolean>}
    */
   async unblock(id, initiator) {
-    const response = await this.authService.updateByUserId(id, { isActive: true }, initiator);
-    if (response === 'ok') {
-      await this.authService.logoutByUserId(id);
+    if (await this.isUserUpdated(id, { isActive: true }, initiator)) {
+      await this.logoutByUserId(id);
       return true;
     }
 
@@ -160,7 +164,7 @@ export class UserBusiness {
     const { clientId } = global.config.auth;
     const roleName = isCurrentAuthClient ? `admin-${clientId}` : 'admin';
 
-    const user = await this.authService.findByUserId(id);
+    const user = await this.idApiClient.findUserById(id);
     if (!user || typeof user.role === 'undefined') {
       return false;
     }
@@ -182,9 +186,8 @@ export class UserBusiness {
     roles.push(roleName);
     const preparedRoles = roles.join(';');
 
-    const response = await this.authService.updateByUserId(id, { role: preparedRoles });
-    if (response === 'ok') {
-      await this.authService.logoutByUserId(id);
+    if (await this.isUserUpdated(id, { role: preparedRoles })) {
+      await this.logoutByUserId(id);
 
       await global.models.accessHistory.save({
         currentUser: currentUser,
@@ -209,7 +212,7 @@ export class UserBusiness {
     const { clientId } = global.config.auth;
     const roleName = isCurrentAuthClient ? `admin-${clientId}` : 'admin';
 
-    const user = await this.authService.findByUserId(id);
+    const user = await this.idApiClient.findUserById(id);
     if (!user || typeof user.role === 'undefined') {
       return false;
     }
@@ -222,9 +225,8 @@ export class UserBusiness {
     roles = _.pull(roles, roleName);
     const preparedRoles = roles.join(';');
 
-    const response = await this.authService.updateByUserId(id, { role: preparedRoles });
-    if (response === 'ok') {
-      await this.authService.logoutByUserId(id);
+    if (await this.isUserUpdated(id, { role: preparedRoles })) {
+      await this.logoutByUserId(id);
 
       await global.models.accessHistory.save({
         currentUser: currentUser,
@@ -245,13 +247,13 @@ export class UserBusiness {
    */
   async deleteUser(userId, ipn) {
     // Check the user for their IPN to make sure that the correct account is being deleted.
-    const existingUser = await this.authService.findByUserId(userId);
+    const existingUser = await this.idApiClient.findUserById(userId);
     if (existingUser?.ipn !== ipn) {
       global.log.save('delete-user-ipn-mismatch', { userId, ipn });
       return false;
     }
 
-    const response = await this.authService.deleteUser(userId);
+    const response = await this.idApiClient.deleteUser(userId);
 
     return response?.success || false;
   }
@@ -262,12 +264,47 @@ export class UserBusiness {
    * @returns {Promise<boolean>}
    */
   async updateByUserId(id, data) {
-    const response = await this.authService.updateByUserId(id, data);
-    if (response === 'ok') {
-      return true;
-    }
+    return this.isUserUpdated(id, data);
+  }
 
-    return false;
+  /**
+   * Update the user in id-api.
+   * @private
+   * @param {string} id User ID.
+   * @param {object} data Data to update.
+   * @param {object} [initiator] Update initiator.
+   * @returns {Promise<boolean>} `false` when id-api rejected the update; network failures and timeouts are thrown.
+   */
+  private async isUserUpdated(id, data, initiator?) {
+    try {
+      await this.idApiClient.updateUserById(id, data, initiator);
+      return true;
+    } catch (error) {
+      if (error instanceof IdApiError && error.code === ERROR_CODE_HTTP) {
+        global.log.save('user-update-rejected-by-id-api', { id, status: error.status, error: error.message }, 'error');
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Logout by user ID. An error response of id-api is logged and ignored (the user is already changed
+   * when this is called), network failures and timeouts are thrown.
+   * @private
+   * @param {string} id ID.
+   * @returns {Promise<object>}
+   */
+  private async logoutByUserId(id) {
+    try {
+      return await this.idApiClient.logoutByUserId(id);
+    } catch (error) {
+      if (error instanceof IdApiError && error.code === ERROR_CODE_HTTP) {
+        global.log.save('id-request-logout-by-user-id-error', { id, status: error.status, error: error.message }, 'error');
+        return error.body;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -327,7 +364,7 @@ export class UserBusiness {
    */
   async enforce2fa(userId) {
     try {
-      const user = await this.authService.findByUserId(userId);
+      const user = await this.idApiClient.findUserById(userId);
       if (!user) {
         return { error: 'User not found' };
       }
@@ -335,7 +372,7 @@ export class UserBusiness {
         return { error: '2FA is already enabled for this user' };
       }
 
-      await this.authService.updateByUserId(userId, { useTwoFactorAuth: true });
+      await this.idApiClient.updateUserById(userId, { useTwoFactorAuth: true });
 
       return { success: true };
     } catch (error) {
@@ -351,7 +388,7 @@ export class UserBusiness {
    */
   async disable2fa(userId) {
     try {
-      const user = await this.authService.findByUserId(userId);
+      const user = await this.idApiClient.findUserById(userId);
       if (!user) {
         return { error: 'User not found' };
       }
@@ -359,7 +396,7 @@ export class UserBusiness {
         return { error: '2FA is already disabled for this user' };
       }
 
-      await this.authService.updateByUserId(userId, { useTwoFactorAuth: false, twoFactorType: null });
+      await this.idApiClient.updateUserById(userId, { useTwoFactorAuth: false, twoFactorType: null });
 
       return { success: true };
     } catch (error) {
@@ -369,10 +406,10 @@ export class UserBusiness {
   }
 
   setUserPassword({ id, password }) {
-    return this.authService.setUserPassword({ id, password });
+    return this.idApiClient.setUserPassword({ id, password });
   }
 
   async createLocalUser(options) {
-    return this.authService.createLocalUser(options);
+    return this.idApiClient.createLocalUser(options);
   }
 }

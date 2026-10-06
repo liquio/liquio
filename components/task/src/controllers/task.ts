@@ -1,11 +1,11 @@
 import { matchedData } from 'express-validator';
+import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { AuthController } from './auth';
 import { TaskModel } from '../models/task';
 import { DocumentAttachmentModel } from '../models/document_attachment';
 import { UnitModel } from '../models/unit';
-import { AuthService as Auth } from '../services/auth';
 import { CustomLogs } from '../services/custom_logs';
 import { TaskActivity } from '../types/task_activity';
 import { Helpers } from '../lib/helpers';
@@ -23,7 +23,7 @@ export class TaskController extends Controller {
   taskModel: any;
   documentAttachmentModel: any;
   unitModel: any;
-  auth: any;
+  idApiClient: IdApiClient;
   customLogs: any;
   authController: any;
 
@@ -37,7 +37,7 @@ export class TaskController extends Controller {
       this.taskModel = new TaskModel();
       this.documentAttachmentModel = new DocumentAttachmentModel();
       this.unitModel = new UnitModel();
-      this.auth = new Auth().provider;
+      this.idApiClient = getIdApiClient();
       this.customLogs = new CustomLogs();
       this.authController = AuthController.getInstance();
       TaskController.singleton = this;
@@ -884,7 +884,7 @@ export class TaskController extends Controller {
     let newPerformerUserNames;
     const withPrivateProps = false;
     try {
-      const performerUsersData = await this.auth.getUsersByIds(newPerformerUsers, withPrivateProps);
+      const performerUsersData = await this.idApiClient.getUsersByIds(newPerformerUsers, { withPrivateProps });
       newPerformerUserNames = performerUsersData.map((v) => v.name);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);

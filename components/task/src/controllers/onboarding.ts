@@ -1,10 +1,11 @@
-import { AuthService } from '../services/auth';
+import { getIdApiClient, IdApiClient, IdApiError } from '@liquio/back-core';
+
 import { Controller } from './controller';
 import { RedisClient } from '../lib/redis_client';
 import { Helpers } from '../lib/helpers';
 
 export class OnboardingController extends Controller {
-  auth: any;
+  idApiClient: IdApiClient;
   redisClient: any;
 
   static instance;
@@ -12,7 +13,7 @@ export class OnboardingController extends Controller {
   constructor(config) {
     if (!OnboardingController.instance) {
       super(config);
-      this.auth = new AuthService().provider;
+      this.idApiClient = getIdApiClient();
 
       this.redisClient = config?.redis?.isEnabled
         ? new RedisClient({
@@ -60,9 +61,28 @@ export class OnboardingController extends Controller {
     }
   }
 
+  /**
+   * Update user onboarding in id-api. An id-api error response is only logged, as before: the callers
+   * (task finish) must not fail because of it. Network errors and timeouts are thrown.
+   * @param {string} userId User ID.
+   * @param {object} params Params.
+   * @param {string} params.onboardingTaskId Onboarding task ID.
+   * @param {boolean} [params.needOnboarding] Need onboarding indicator.
+   */
+  async updateUserOnboarding(userId, params: { onboardingTaskId: string; needOnboarding?: boolean }) {
+    try {
+      await this.idApiClient.updateUserOnboarding(userId, params as { onboardingTaskId: string; needOnboarding: boolean });
+    } catch (error) {
+      if (!(error instanceof IdApiError) || error.code !== 'HTTP_ERROR') {
+        throw error;
+      }
+      global.log.save('update-user-onboarding-error', { userId, status: error.status, error: error.message }, 'error');
+    }
+  }
+
   async markUserOnboardingDone(userId, task) {
     const userUnitIds = Helpers.getUserUnits(userId);
-    const [userInfo] = await this.auth.getUsersByIds([userId], true);
+    const [userInfo] = await this.idApiClient.getUsersByIds([userId], { withPrivateProps: true });
     const additionalOnboarding = this.config?.onboarding?.additionalOnboardingTemplates || [];
 
     const onboardingIndex = additionalOnboarding.findIndex(({ taskTemplateId }) => taskTemplateId === task.taskTemplateId);
@@ -104,14 +124,14 @@ export class OnboardingController extends Controller {
           global.log.save('onboarding-next-task', nextTaskData);
           const task = await global.businesses.task.create(nextTaskData);
           if (task) {
-            return this.auth.updateUserOnboarding(userId, { onboardingTaskId: task.id, needOnboarding: true });
+            return this.updateUserOnboarding(userId, { onboardingTaskId: task.id, needOnboarding: true });
           }
         }
       }
       nextOnboardingIndex++;
     }
 
-    return this.auth.updateUserOnboarding(userId, { onboardingTaskId: '', needOnboarding: false });
+    return this.updateUserOnboarding(userId, { onboardingTaskId: '', needOnboarding: false });
   }
 
   async executeOnboarding(req, res, workflowTemplateId, taskTemplateId) {
@@ -126,7 +146,7 @@ export class OnboardingController extends Controller {
 
         if (onboardingTask?.finished) {
           if ([onboardingConfig.onboardingTemplate.taskTemplateId].includes(onboardingTask.taskTemplateId)) {
-            await this.auth.updateUserOnboarding(userId, { onboardingTaskId: '' });
+            await this.updateUserOnboarding(userId, { onboardingTaskId: '' });
           }
         } else if (onboardingTask) {
           res.header('onboarding-task-id', onboardingTaskId);
@@ -137,7 +157,7 @@ export class OnboardingController extends Controller {
       if (needOnboarding || onboardingTaskId) {
         const task = await this.createOnboardingTask(req, userId, workflowTemplateId, taskTemplateId);
         if (task) {
-          await this.auth.updateUserOnboarding(userId, { onboardingTaskId: task.id, needOnboarding: true });
+          await this.updateUserOnboarding(userId, { onboardingTaskId: task.id, needOnboarding: true });
           req.authUserInfo.onboardingTaskId = task.id;
           res.header('onboarding-task-id', task.id);
         }

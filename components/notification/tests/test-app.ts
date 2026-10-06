@@ -11,7 +11,7 @@ import nock from 'nock';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
-import { ConsoleLogProvider, Log } from '@liquio/back-core';
+import { ConsoleLogProvider, Log, resetIdApiClient } from '@liquio/back-core';
 
 import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
 
@@ -198,6 +198,9 @@ export class TestApp {
     // Deferred require: src/app.ts's start() sets global.conf/env/adminStaticDir/extensions and
     // only then requires src/server.ts (and, transitively, every model's DB connection) - importing
     // it statically here would run that boot sequence before global.log/global.conf are ready.
+
+    // Each app gets an id-api client built from its own config (start() inits it).
+    resetIdApiClient();
 
     const start = require('../src/app').default;
     // Mirror src/index.ts's real adapter wiring: config's defaultMessenger ("testConsoleSmsAdapter")

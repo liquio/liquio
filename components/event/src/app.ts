@@ -14,6 +14,7 @@ import { RedisClient } from './lib/redis_client';
 import { HttpClient } from './lib/http_client';
 import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { typeOf } from './lib/type_of';
+import { initIdApiClient } from './lib/id_api';
 
 // Allow not secure connections.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -60,6 +61,11 @@ export class App {
         : 'console';
     const consoleLogProvider = new ConsoleLogProvider(consoleName, { excludeParams: this.config.log.excludeParams });
     this.log = global.log = new Log([consoleLogProvider], ['console']);
+  }
+
+  // Init id-api client.
+  useIdApiClient() {
+    initIdApiClient(this.config.user?.LiquioId);
   }
 
   // Init http client.

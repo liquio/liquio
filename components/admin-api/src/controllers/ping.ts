@@ -1,5 +1,6 @@
+import { IdApiClient, getIdApiClient } from '@liquio/back-core';
+
 import { Controller } from './controller';
-import { AuthService } from '../services/auth';
 import { RegisterService } from '../services/register';
 import { TaskService } from '../services/task';
 import { NotifierService } from '../services/notifier';
@@ -20,7 +21,7 @@ const DEFAULT_ENVIRONMENT = '0';
 export class PingController extends Controller {
   private static singleton: PingController;
 
-  private auth: AuthService;
+  private idApiClient: IdApiClient;
   private registerService: RegisterService;
   private taskService: TaskService;
   private notifyService: NotifierService;
@@ -33,7 +34,7 @@ export class PingController extends Controller {
     // Define singleton.
     if (!PingController.singleton) {
       super(config);
-      this.auth = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
       this.registerService = new RegisterService();
       this.taskService = new TaskService();
       this.notifyService = new NotifierService();
@@ -62,7 +63,7 @@ export class PingController extends Controller {
       // Check auth service.
       let authServiceResponse;
       try {
-        authServiceResponse = await this.auth.sendPingRequest();
+        authServiceResponse = await this.idApiClient.sendPingRequest();
       } catch (error) {
         global.log.save('test-ping-auth-service-error', { error: error && error.message });
       }

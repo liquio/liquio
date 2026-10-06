@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import { Sign } from '../services/sign';
 import { RegisterService } from '../services/register';
 import { TaskService } from '../services/task';
-import { AuthService } from '../services/auth';
 
 // Constants.
 const DEFAULT_CACHE_LIFE_TIME_SECONDS = 10; // Default life time for cache - 10 seconds.
@@ -19,7 +18,6 @@ export class AssetsBusiness {
   private sign: Sign;
   private register: RegisterService;
   private task: TaskService;
-  private auth: AuthService;
 
   /**
    * Constructor.
@@ -33,7 +31,6 @@ export class AssetsBusiness {
       this.sign = new Sign(config.sign);
       this.register = new RegisterService();
       this.task = new TaskService();
-      this.auth = new AuthService();
       AssetsBusiness.singleton = this;
     }
 

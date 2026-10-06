@@ -1153,7 +1153,7 @@ export class DocumentSigningBusiness extends Business {
     let signersData;
     const privateProps = true;
     try {
-      signersData = await this.host.auth.getUsersByIds(signers, privateProps);
+      signersData = await this.host.idApiClient.getUsersByIds(signers, { withPrivateProps: privateProps });
     } catch (error) {
       global.log.save('decline-multisigns-get-users-info-error', error, 'error');
       const wrappedError = new Error(error.message);
@@ -1286,7 +1286,7 @@ export class DocumentSigningBusiness extends Business {
 
     let userData;
     try {
-      [userData] = await this.host.auth.getUsersByIds([nextSignerUserId], true);
+      [userData] = await this.host.idApiClient.getUsersByIds([nextSignerUserId], { withPrivateProps: true });
     } catch (error) {
       const wrappedError = new Error(`sendLetterToNextSigner. Cannot get user data from ID. ${error?.toString()}`);
       (wrappedError as any).cause = error;
@@ -1380,7 +1380,7 @@ export class DocumentSigningBusiness extends Business {
     let signersData;
     const withPrivateProps = true;
     try {
-      signersData = await this.host.auth.getUsersByIds(signerNotPerformerIds, withPrivateProps);
+      signersData = await this.host.idApiClient.getUsersByIds(signerNotPerformerIds, { withPrivateProps });
     } catch (error) {
       global.log.save('send-letter-to-signers-error', error, 'error');
       const wrappedError = new Error(error.message);
@@ -1743,7 +1743,7 @@ export class DocumentSigningBusiness extends Business {
     const fileIds = [mainPdfFileId, ...attachmentsIds];
 
     const signersIds = document.task.signerUsers?.length ? document.task.signerUsers : document.task.performerUsers;
-    const signersRNOKPP = (await this.host.auth.getUsersByIds(signersIds, true))?.map((v) => v.ipn);
+    const signersRNOKPP = (await this.host.idApiClient.getUsersByIds(signersIds, { withPrivateProps: true }))?.map((v) => v.ipn);
 
     let totalCheckedSignaturesCount = 0;
     await Promise.all(

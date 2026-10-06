@@ -8,7 +8,7 @@ const SYNCED_AT = '2026-01-01T10:00:00.000Z';
 describe('LdapUnitSync', () => {
   let units: any[];
   let unitModel: any;
-  let auth: any;
+  let idApiClient: any;
   let redis: Map<string, string>;
   let sync: LdapUnitSync;
   let accessHistory: any;
@@ -51,7 +51,7 @@ describe('LdapUnitSync', () => {
       }),
       invalidateCache: jest.fn(),
     };
-    auth = { ldapGroupsExist: jest.fn(async (dns) => dns) };
+    idApiClient = { ldapGroupsExist: jest.fn(async (dns) => dns) };
     accessHistory = { create: jest.fn() };
     taskModel = { removePerformerUserFromTasks: jest.fn() };
     (global as any).log = { save: jest.fn() };
@@ -62,7 +62,7 @@ describe('LdapUnitSync', () => {
         redis.set(key, typeof value === 'object' ? JSON.stringify(value) : value);
       }),
     };
-    sync = new LdapUnitSync({ unitModel, auth });
+    sync = new LdapUnitSync({ unitModel, idApiClient });
   });
 
   describe('normalizeDn', () => {
@@ -150,7 +150,7 @@ describe('LdapUnitSync', () => {
       expect(units[0].heads).toEqual([USER_ID]);
       expect(units[1].members).toEqual([USER_ID]);
       expect(result.changed).toBe(false);
-      expect(auth.ldapGroupsExist).not.toHaveBeenCalled();
+      expect(idApiClient.ldapGroupsExist).not.toHaveBeenCalled();
     });
 
     it('does not manage the member list of a unit that has only head groups', async () => {
@@ -171,7 +171,7 @@ describe('LdapUnitSync', () => {
 
     it('keeps the member when the configured group no longer exists, and warns', async () => {
       units = [makeUnit(1, { members: [USER_ID], data: { ldap: { memberGroups: [GROUP_MEMBERS] } } })];
-      auth.ldapGroupsExist.mockResolvedValue([]);
+      idApiClient.ldapGroupsExist.mockResolvedValue([]);
 
       const result = await sync.sync(userInfo([]));
 
@@ -184,7 +184,7 @@ describe('LdapUnitSync', () => {
     it('keeps the member when only one of several configured groups no longer exists', async () => {
       const other = 'CN=OTHER,OU=Groups,DC=DOMAIN,DC=LOC';
       units = [makeUnit(1, { members: [USER_ID], data: { ldap: { memberGroups: [GROUP_MEMBERS, other] } } })];
-      auth.ldapGroupsExist.mockResolvedValue([GROUP_MEMBERS]);
+      idApiClient.ldapGroupsExist.mockResolvedValue([GROUP_MEMBERS]);
 
       await sync.sync(userInfo([]));
 
@@ -194,7 +194,7 @@ describe('LdapUnitSync', () => {
 
     it('keeps the head when the configured head group no longer exists', async () => {
       units = [makeUnit(1, { heads: [USER_ID], data: { ldap: { headGroups: [GROUP_HEADS] } } })];
-      auth.ldapGroupsExist.mockResolvedValue([]);
+      idApiClient.ldapGroupsExist.mockResolvedValue([]);
 
       await sync.sync(userInfo([]));
 
@@ -203,12 +203,12 @@ describe('LdapUnitSync', () => {
 
     it('still adds members when a configured group does not exist', async () => {
       units = [makeUnit(1, { data: { ldap: { memberGroups: [GROUP_MEMBERS] } } })];
-      auth.ldapGroupsExist.mockResolvedValue([]);
+      idApiClient.ldapGroupsExist.mockResolvedValue([]);
 
       await sync.sync(userInfo([GROUP_MEMBERS]));
 
       expect(units[0].members).toEqual([USER_ID]);
-      expect(auth.ldapGroupsExist).not.toHaveBeenCalled();
+      expect(idApiClient.ldapGroupsExist).not.toHaveBeenCalled();
     });
 
     it('still checks the groups when the cache cannot be read or written', async () => {
@@ -218,7 +218,7 @@ describe('LdapUnitSync', () => {
 
       const result = await sync.sync(userInfo([]));
 
-      expect(auth.ldapGroupsExist).toHaveBeenCalledTimes(1);
+      expect(idApiClient.ldapGroupsExist).toHaveBeenCalledTimes(1);
       expect(units[0].members).toEqual([]);
       expect(result.changed).toBe(true);
       const keys = (global.log.save as jest.Mock).mock.calls.map(([key]) => key);
@@ -228,7 +228,7 @@ describe('LdapUnitSync', () => {
 
     it('removes nobody when the groups check fails', async () => {
       units = [makeUnit(1, { members: [USER_ID], heads: [USER_ID], data: { ldap: { memberGroups: [GROUP_MEMBERS], headGroups: [GROUP_HEADS] } } })];
-      auth.ldapGroupsExist.mockRejectedValue(new Error('id-api down'));
+      idApiClient.ldapGroupsExist.mockRejectedValue(new Error('id-api down'));
 
       const result = await sync.sync(userInfo([]));
 
@@ -247,7 +247,7 @@ describe('LdapUnitSync', () => {
 
       await sync.sync(userInfo([]));
 
-      expect(auth.ldapGroupsExist).toHaveBeenCalledTimes(1);
+      expect(idApiClient.ldapGroupsExist).toHaveBeenCalledTimes(1);
       expect(units[0].members).toEqual([]);
       expect(units[1].members).toEqual([]);
       expect((global.redisClient.set as jest.Mock).mock.calls[0][2]).toBe(300);
@@ -392,7 +392,7 @@ describe('LdapUnitSync', () => {
     });
 
     it('retries on the next call when the previous sync was incomplete', async () => {
-      auth.ldapGroupsExist.mockRejectedValueOnce(new Error('id-api down'));
+      idApiClient.ldapGroupsExist.mockRejectedValueOnce(new Error('id-api down'));
       units[0].members = [USER_ID];
       await sync.syncIfChanged(userInfo([]));
 

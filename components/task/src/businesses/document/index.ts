@@ -1,7 +1,7 @@
 import flattening from 'flattening';
 import _ from 'lodash';
 import PropByPath from 'prop-by-path';
-import { Sandbox } from '@liquio/back-core';
+import { getIdApiClient, IdApiClient, Sandbox } from '@liquio/back-core';
 
 import {
   ERROR_DOCUMENT_ALREADY_COMMITTED,
@@ -25,7 +25,6 @@ import { NumberGenerator } from '../../lib/number_generator';
 import typeOf from '../../lib/type_of';
 import { DocumentAttachmentModel } from '../../models/document_attachment';
 import { UnitModel } from '../../models/unit';
-import { AuthService as Auth } from '../../services/auth';
 import { DocumentFillerService as DocumentFiller } from '../../services/document_filler';
 import { VerifiedUserInfoFiller } from '../../services/document_filler/fillers/verified_user_info';
 import { DocumentValidatorService as DocumentValidator } from '../../services/document_validator';
@@ -71,10 +70,7 @@ export class DocumentBusiness extends Business {
   eds: Eds;
   downloadToken: DownloadToken;
   paymentService: PaymentService;
-  /** Typed `any`: `AuthService#provider` is itself declared `any` at its source, and the concrete
-   * provider (e.g. `LiquioIdProvider`) exposes methods (`getUsersByIds`) not on the base `Provider`
-   * class, so there is no shared type to reuse here without widening that base class too. */
-  auth: any;
+  idApiClient: IdApiClient;
   notifier: Notifier;
   registerService: RegisterService;
   fileGeneratorService: FileGeneratorService;
@@ -109,7 +105,7 @@ export class DocumentBusiness extends Business {
       this.documentFiller = new DocumentFiller();
       this.verifiedUserInfoFiller = new VerifiedUserInfoFiller();
       this.paymentService = new PaymentService(config.payment);
-      this.auth = new Auth().provider;
+      this.idApiClient = getIdApiClient();
       this.notifier = new Notifier();
       this.registerService = new RegisterService();
       this.fileGeneratorService = new FileGeneratorService();

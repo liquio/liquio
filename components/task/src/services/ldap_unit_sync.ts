@@ -1,8 +1,9 @@
 import crypto from 'node:crypto';
 
+import type { IdApiClient } from '@liquio/back-core';
+
 import type { UnitEntity } from '../entities/unit';
 import type { UnitModel } from '../models/unit';
-import type { Provider as AuthProvider } from './auth/providers/provider';
 
 // Constants.
 const GROUPS_EXIST_CACHE_TTL = 300;
@@ -29,7 +30,7 @@ export interface LdapSyncResult {
   complete: boolean;
 }
 
-// Subset of the auth provider user info used by the sync.
+// Subset of the id-api user info used by the sync.
 export interface LdapUserInfo {
   userId?: string;
   first_name?: string;
@@ -71,17 +72,17 @@ interface UnitGroups {
  */
 export class LdapUnitSync {
   unitModel: UnitModel;
-  auth: AuthProvider;
+  idApiClient: Pick<IdApiClient, 'ldapGroupsExist'>;
 
   /**
    * Constructor.
    * @param {object} deps Dependencies.
    * @param {object} deps.unitModel Unit model.
-   * @param {object} deps.auth Auth provider.
+   * @param {object} deps.idApiClient Id-api client.
    */
-  constructor({ unitModel, auth }: { unitModel: UnitModel; auth: AuthProvider }) {
+  constructor({ unitModel, idApiClient }: { unitModel: UnitModel; idApiClient: Pick<IdApiClient, 'ldapGroupsExist'> }) {
     this.unitModel = unitModel;
-    this.auth = auth;
+    this.idApiClient = idApiClient;
   }
 
   /**
@@ -110,7 +111,7 @@ export class LdapUnitSync {
   /**
    * Sync the user with the LDAP-managed units, only if the user's groups were refreshed since the last sync.
    * Never throws. Without redis there is nothing to compare with, so nothing is done.
-   * @param {object} userInfo User info from the auth provider.
+   * @param {object} userInfo User info from id-api.
    * @returns {Promise<LdapSyncResult>}
    */
   async syncIfChanged(userInfo: LdapUserInfo): Promise<LdapSyncResult> {
@@ -135,7 +136,7 @@ export class LdapUnitSync {
 
   /**
    * Sync the user with the LDAP-managed units. Never throws.
-   * @param {object} userInfo User info from the auth provider.
+   * @param {object} userInfo User info from id-api.
    * @returns {Promise<LdapSyncResult>}
    */
   async sync(userInfo: LdapUserInfo): Promise<LdapSyncResult> {
@@ -335,7 +336,7 @@ export class LdapUnitSync {
       }
     }
 
-    const existing = await this.auth.ldapGroupsExist(groups);
+    const existing = await this.idApiClient.ldapGroupsExist(groups);
 
     if (global.redisClient) {
       try {

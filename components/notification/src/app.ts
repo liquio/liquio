@@ -1,5 +1,7 @@
 import path from 'node:path';
 
+import { initIdApiClient } from './lib/id_api';
+
 // Constants.
 const ADMIN_DIRECTORY = '/admin';
 
@@ -11,6 +13,7 @@ const ADMIN_DIRECTORY = '/admin';
  */
 const start = function (config: any, adminStaticDir: string = path.join(__dirname, ADMIN_DIRECTORY), adapters: any = {}): any {
   global.conf = config.conf;
+  initIdApiClient(config.conf.auth_server);
   global.env = config.env;
   (global as any).adminStaticDir = adminStaticDir;
   (global as any).extensions = { adapters };

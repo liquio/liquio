@@ -1,14 +1,14 @@
-import { AuthService } from '../services/auth';
+import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 /**
  * Login history business.
- * @typedef {import('../services/auth')} LoginHistoryEntity
+ * @typedef {import('@liquio/back-core').IdApiLoginHistoryEntry} LoginHistoryEntity
  */
 export class LoginHistoryBusiness {
   private static singleton: LoginHistoryBusiness;
 
   public config: object;
-  public authService: AuthService;
+  public idApiClient: IdApiClient;
 
   /**
    * Constructor.
@@ -19,7 +19,7 @@ export class LoginHistoryBusiness {
     if (!LoginHistoryBusiness.singleton) {
       // Init params.
       this.config = config;
-      this.authService = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
 
       // Define singleton.
       LoginHistoryBusiness.singleton = this;
@@ -35,6 +35,6 @@ export class LoginHistoryBusiness {
    * @returns {Promise<{data: LoginHistoryEntity[], meta: {count: number, offset: number, limit: number}}>} Login history.
    */
   async getList(options) {
-    return this.authService.getLoginHistory(options);
+    return this.idApiClient.getLoginHistory(options);
   }
 }

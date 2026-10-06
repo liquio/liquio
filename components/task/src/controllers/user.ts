@@ -1,16 +1,16 @@
 import crypto from 'node:crypto';
 
 import _ from 'lodash';
+import { getIdApiClient, IdApiClient, IdApiError, IdApiUserInfo } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { UnitModel } from '../models/unit';
-import { AuthService as Auth } from '../services/auth';
 
 export class UserController extends Controller {
   private static singleton: UserController;
 
   unitModel: any;
-  auth: any;
+  idApiClient: IdApiClient;
 
   /**
    * User controller constructor.
@@ -22,7 +22,7 @@ export class UserController extends Controller {
       // Set params.
       super(config);
       this.unitModel = new UnitModel();
-      this.auth = new Auth().provider;
+      this.idApiClient = getIdApiClient();
 
       // Define singleton.
       UserController.singleton = this;
@@ -64,16 +64,18 @@ export class UserController extends Controller {
 
     // Define all needed users data.
     const withPrivateProps = false;
-    let allNeededUsers = await this.auth.getUsersByIds(allNeededUsersIds, withPrivateProps);
+    let allNeededUsers: Array<Partial<IdApiUserInfo>> = await this.idApiClient.getUsersByIds(allNeededUsersIds, {
+      withPrivateProps,
+    });
 
     for (const code of codes) {
-      const user = await this.auth.getUserByCode(code);
+      const user = await this.idApiClient.getUserByCode(code);
       if (user) {
-        allNeededUsers.push(await this.auth.getUserByCode(code));
+        allNeededUsers.push((await this.idApiClient.getUserByCode(code)) as IdApiUserInfo);
       }
     }
     if (search) {
-      const foundUsers = await this.auth.searchUsers(search);
+      const foundUsers = await this.idApiClient.searchUsers(search);
       if (Array.isArray(foundUsers) && foundUsers.length > 0) {
         allNeededUsers = [...allNeededUsers, ...foundUsers.map((v) => ({ name: v.name, userId: v.userId }))];
       }
@@ -201,7 +203,7 @@ export class UserController extends Controller {
     // Update.
     let isUpdated;
     try {
-      isUpdated = await this.auth.updateUser(userId, accessToken, updateOptions);
+      isUpdated = await this.idApiClient.updateUser(userId, accessToken, updateOptions);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -244,7 +246,7 @@ export class UserController extends Controller {
     // Define params.
     const { useTwoFactorAuth, twoFactorType } = req.body;
     const updateOptions = {
-      useTwoFactorAuth: useTwoFactorAuth ? 'true' : 'false',
+      useTwoFactorAuth: !!useTwoFactorAuth,
       twoFactorType,
     };
     const userId = this.getRequestUserId(req);
@@ -253,7 +255,7 @@ export class UserController extends Controller {
     // Update.
     let isUpdated;
     try {
-      isUpdated = await this.auth.updateUser(userId, accessToken, updateOptions);
+      isUpdated = await this.idApiClient.updateUser(userId, accessToken, updateOptions);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -276,12 +278,13 @@ export class UserController extends Controller {
     // Search users.
     let users;
     try {
-      users = await this.auth.getUsersByIds(userId);
+      users = await this.idApiClient.getUsersByIds(userId);
     } catch (err) {
       return this.responseError(res, err);
     }
 
-    this.responseData(res, { user: users && users[0] });
+    // The client always returns the IPN and EDRPOU, which this public lookup never exposed.
+    this.responseData(res, { user: users && users[0] && _.omit(users[0], ['ipn', 'edrpou']) });
   }
 
   /**
@@ -312,7 +315,7 @@ export class UserController extends Controller {
     // Check phone existing info.
     let phoneExistingInfo;
     try {
-      phoneExistingInfo = await this.auth.checkPhoneExist(phone);
+      phoneExistingInfo = await this.idApiClient.checkPhoneExist(phone);
     } catch {
       return this.responseError(res, "Can't check phone existing info.");
     }
@@ -342,7 +345,7 @@ export class UserController extends Controller {
 
     // Send SMS.
     try {
-      await this.auth.sendSms(phone);
+      await this.idApiClient.sendSms(phone);
     } catch (error) {
       global.log.save('can-not-send-sms', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't send sms.");
@@ -374,9 +377,15 @@ export class UserController extends Controller {
     // Try to verify phone.
     let response;
     try {
-      response = await this.auth.verifyPhoneAndSet(phone, code, accessToken);
-    } catch {
-      global.log.save('phone-verification-exception', { response, phone, code, accessToken }, 'error');
+      response = await this.idApiClient.verifyPhoneAndSet(phone, code, accessToken);
+    } catch (error) {
+      // Id-api answers a rejected code with an error status and `{ error: { message } }`, keep sending that message.
+      const idApiErrorMessage = error instanceof IdApiError ? error.body?.error?.message : undefined;
+      if (idApiErrorMessage) {
+        global.log.save('phone-verification-error', { phone, code, error: error.body.error }, 'error');
+        return this.responseError(res, idApiErrorMessage);
+      }
+      global.log.save('phone-verification-exception', { response, phone, code }, 'error');
       return this.responseError(res, "Can't verity phone.");
     }
 
@@ -418,7 +427,7 @@ export class UserController extends Controller {
 
     // Send Email.
     try {
-      await this.auth.changeEmail(email);
+      await this.idApiClient.changeEmail(email);
     } catch (error) {
       global.log.save('can-not-send-email-code', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't send email code.");
@@ -440,7 +449,7 @@ export class UserController extends Controller {
 
     // Confirm new email.
     try {
-      await this.auth.confirmChangeEmail(email, code, accessToken);
+      await this.idApiClient.confirmChangeEmail(email, code, accessToken);
     } catch (error) {
       global.log.save('can-not-confirm-change-email', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't confirm change email.");
@@ -472,7 +481,7 @@ export class UserController extends Controller {
 
     // Confirm email confirmation code.
     try {
-      await this.auth.checkEmailConfirmationCode(email, code, accessToken);
+      await this.idApiClient.checkEmailConfirmationCode(email, code, accessToken);
     } catch (error) {
       global.log.save('user-controller|check-email-confirmation-code|error', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't check email confirmaiton code.");
@@ -493,7 +502,7 @@ export class UserController extends Controller {
     // Check existence.
     let isExist;
     try {
-      isExist = await this.auth.checkEmail(email);
+      isExist = await this.idApiClient.checkEmail(email);
     } catch (error) {
       global.log.save('can-not-define-email-existance', { error: error && error.message, email }, 'error');
       return this.responseError(res, "Can't define email existence status.");

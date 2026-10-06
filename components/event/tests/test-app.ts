@@ -7,6 +7,7 @@ import pg from 'pg';
 import nock from 'nock';
 import debug from 'debug';
 import { merge } from 'lodash';
+import { resetIdApiClient } from '@liquio/back-core';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 
@@ -362,6 +363,8 @@ class TestApp extends App {
     this.useGlobalErrors();
     this.useGlobalTypeOf();
     this.useLog();
+    resetIdApiClient();
+    this.useIdApiClient();
     this.useHttpClient();
     await this.useDb();
     this.useModels();

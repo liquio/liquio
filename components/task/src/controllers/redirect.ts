@@ -1,5 +1,7 @@
 import { Controller } from './controller';
-import { AuthService } from '../services/auth';
+
+// Constants.
+const DEFAULT_GET_CODE_ROUTE = '/authorise';
 
 /**
  * Redirect controller.
@@ -7,7 +9,7 @@ import { AuthService } from '../services/auth';
 export class RedirectController extends Controller {
   private static singleton: RedirectController;
 
-  authService: any;
+  idConfig: any;
 
   /**
    * Redirect controller constructor.
@@ -18,7 +20,7 @@ export class RedirectController extends Controller {
     if (!RedirectController.singleton) {
       // Init params.
       super(config);
-      this.authService = new AuthService();
+      this.idConfig = config.auth?.LiquioId || {};
 
       // Define singleton.
       RedirectController.singleton = this;
@@ -39,9 +41,9 @@ export class RedirectController extends Controller {
     const stateQueryParam = state ? `&state=${state}` : '';
 
     // Define params.
-    const { front, server, routes } = this.authService.provider;
-    const idAuthUrl = `${front || server}${routes.getCode}`;
-    const idAuthQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}&client_id=${this.authService.provider.clientId}${stateQueryParam}`;
+    const { front, server, routes, clientId } = this.idConfig;
+    const idAuthUrl = `${front || server}${routes?.getCode || DEFAULT_GET_CODE_ROUTE}`;
+    const idAuthQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}&client_id=${clientId}${stateQueryParam}`;
     const idAuthFullUrl = `${idAuthUrl}${idAuthQueryParams}`;
     const redirectUrl = idAuthFullUrl;
 
@@ -60,8 +62,8 @@ export class RedirectController extends Controller {
     const stateQueryParam = state ? `&state=${state}` : '';
 
     // Define params.
-    const { front, server, routes } = this.authService.provider;
-    const idLogoutUrl = `${front || server}${routes.logout}`;
+    const { front, server, routes } = this.idConfig;
+    const idLogoutUrl = `${front || server}${routes?.logout}`;
     const idLogoutQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}${stateQueryParam}`;
     const redirectUrl = `${idLogoutUrl}${idLogoutQueryParams}`;
 
