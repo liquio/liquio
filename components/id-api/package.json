@@ -30,7 +30,7 @@
     "axios": "^1.18.1",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.3.0",
-    "compression": "^1.8.0",
+    "compression": "^1.8.2",
     "connect-session-sequelize": "^8.0.6",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
