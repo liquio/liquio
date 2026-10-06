@@ -1,6 +1,0 @@
-dist/
-bundle/
-node_modules/
-coverage/
-config/*.json
-.vscode/

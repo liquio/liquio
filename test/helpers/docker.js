@@ -59,6 +59,25 @@ async function getConfirmationPinFromDockerLogs(maxRetries = 10, delayMs = 500) 
   throw new Error(`Failed to extract 6-digit PIN from docker compose logs after ${maxRetries} attempts`);
 }
 
+/**
+ * Returns docker compose logs of a single service
+ *
+ * @param {string} service - Docker compose service name (e.g. 'task')
+ * @param {Date} [since] - Only return logs written after this moment
+ * @returns {string} Service logs
+ */
+function getDockerComposeLogs(service, since) {
+  const sinceArg = since ? ` --since ${since.toISOString()}` : '';
+  debug(`getDockerComposeLogs: Reading logs of ${service}${sinceArg}`);
+
+  return execSync(`docker compose logs ${service} --no-log-prefix${sinceArg}`, {
+    stdio: 'pipe',
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+}
+
 module.exports = {
   getConfirmationPinFromDockerLogs,
+  getDockerComposeLogs,
 };

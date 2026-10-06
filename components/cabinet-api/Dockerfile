@@ -1,0 +1,66 @@
+# Stage 1: transpile TypeScript to JavaScript
+FROM node:24 AS build
+ARG NODE_MAX_OLD_SPACE_SIZE=4096
+ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
+
+WORKDIR /build/components/cabinet-api
+
+# Copy package.json and package-lock.json
+COPY package*.json .
+
+# Install all dependencies
+RUN npm ci
+
+# Copy repository files
+COPY . .
+
+# Build the project
+RUN npm run build
+
+# Stage 2: runtime image
+FROM node:24-slim AS runtime
+
+# Image metadata
+LABEL tech.liquio.app="liquio" \
+      tech.liquio.tier="backend" \
+      tech.liquio.public="yes" \
+      org.opencontainers.image.source="https://github.com/liquio/liquio" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.vendor="Kitsoft"
+
+# Set the configuration path
+ENV CONFIG_PATH=/var/www/config
+
+# Run in production mode
+ENV NODE_ENV=production
+
+# Set the working directory
+WORKDIR /var/www/components/cabinet-api
+
+# Copy package files and install dependencies
+COPY package*.json .
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy the compiled application
+COPY --from=build /build/components/cabinet-api/dist ./
+
+# Switch to the node user
+USER node
+
+# Expose the default listening port
+EXPOSE 8101
+
+# Setup the healthcheck
+HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:8101/test/ping', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
+# Start the application
+CMD ["npm", "run", "start:prod"]
+
+# Build metadata, declared last so per-build values don't invalidate cached layers
+ARG VERSION
+ARG REVISION
+ARG CREATED
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"

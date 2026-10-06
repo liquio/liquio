@@ -36,22 +36,22 @@ Replace `<version>` with a published chart version, e.g. `0.1.0`.
 1. Build Docker images for all components:
    ```bash
    # Build images for each service
-   docker build -t id-front:latest ./id-front
-   docker build -t id-api:latest ./id-api
-   docker build -t admin-front:latest ./admin-front
-   docker build -t admin-api:latest ./admin-api
-   docker build -t cabinet-front:latest ./cabinet-front
-   docker build -t cabinet-api:latest ./cabinet-api
-   docker build -t event:latest ./event
-   docker build -t gateway:latest ./gateway
-   docker build -t manager:latest ./manager
-   docker build -t notification:latest ./notification
-   docker build -t register:latest ./register
-   docker build -t sign-tool:latest ./sign-tool
-   docker build -t pdf-generator:latest ./pdf-generator
-   docker build -t task:latest ./task
-   docker build -t external-reader:latest ./external-reader
-   docker build -t filestorage:latest ./filestorage
+   docker build -t id-front:latest ./components/id-front
+   docker build -t id-api:latest ./components/id-api
+   docker build -t admin-front:latest ./components/admin-front
+   docker build -t admin-api:latest ./components/admin-api
+   docker build -t cabinet-front:latest ./components/cabinet-front
+   docker build -t cabinet-api:latest ./components/cabinet-api
+   docker build -t event:latest ./components/event
+   docker build -t gateway:latest ./components/gateway
+   docker build -t manager:latest ./components/manager
+   docker build -t notification:latest ./components/notification
+   docker build -t register:latest ./components/register
+   docker build -t sign-tool:latest ./components/sign-tool
+   docker build -t pdf-generator:latest ./components/pdf-generator
+   docker build -t task:latest ./components/task
+   docker build -t external-reader:latest ./components/external-reader
+   docker build -t filestorage:latest ./components/filestorage
    ```
 
 2. Install the chart:
@@ -233,6 +233,19 @@ Notes:
 - Backend services read credentials from JSON files mounted via `SECRET_PATH` from these per-service secrets.
   - Sign-tool loads `x509.json` from the `sign-tool` secret (default: `<release>-sign-tool-secret-config`).
 - `infra-secrets` is an internal chart secret used by PostgreSQL and RabbitMQ pods only.
+
+### LDAP / Active Directory login
+
+Disabled by default. Non-secret settings go into values under `config.id.config.production.auth_providers.ldap` (see the commented example in `values.yaml`). The service-account password, and the CA if you pass it inline as PEM, go into the id secret, whose `config.json` is merged over the configmap:
+
+```bash
+kubectl patch secret liquio-id-secret-config --namespace liquio --type merge \
+  --patch "$(jq -cn --arg cfg "$(kubectl get secret liquio-id-secret-config -n liquio -o jsonpath='{.data.config\.json}' | base64 -d \
+    | jq -c --arg pw "$LDAP_BIND_PASSWORD" '.production.auth_providers.ldap.connection.bindPassword = $pw')" \
+    '{stringData: {"config.json": $cfg}}')"
+```
+
+Restart id-api after changing the secret. Requirements and behaviour (access groups, unit mapping, revocation) are described in [components/id-api/docs/ldap.md](../components/id-api/docs/ldap.md).
 
 #### Install with your values
 

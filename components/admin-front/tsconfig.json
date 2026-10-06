@@ -1,0 +1,49 @@
+{
+  "extends": "../../packages/front-core/tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": [
+      "vite/client"
+    ],
+    "paths": {
+      "core/*": [
+        "../../packages/front-core/*"
+      ],
+      "react": [
+        "node_modules/@types/react"
+      ],
+      "react/*": [
+        "node_modules/@types/react/*"
+      ],
+      "react-dom": [
+        "node_modules/@types/react-dom"
+      ],
+      "react-dom/*": [
+        "node_modules/@types/react-dom/*"
+      ],
+      "*": [
+        "src/application/*",
+        "../../packages/front-core/*",
+        "src/*",
+        "node_modules/*",
+        "node_modules/@types/*"
+      ],
+      "chai": [
+        "node_modules/@types/chai"
+      ],
+      "react-redux": [
+        "node_modules/@types/react-redux"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "../../packages/front-core/**/*.ts",
+    "../../packages/front-core/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "src/setupTests.js"
+  ]
+}

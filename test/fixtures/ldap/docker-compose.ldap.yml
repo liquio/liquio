@@ -1,0 +1,27 @@
+# Compose override that adds an OpenLDAP directory and enables the `ldap` login provider in id-api.
+# The default stack does not use it. Start the LDAP stack from the repository root:
+#
+#   docker compose -f docker-compose.yml -f test/fixtures/ldap/docker-compose.ldap.yml up -d openldap id-api
+#
+# and run `npx playwright test ldap.spec.js` in `test/`. The spec seeds the directory itself.
+# To go back to the default stack, run `docker compose up -d --force-recreate id-api` without the override.
+services:
+  openldap:
+    image: bitnamilegacy/openldap:2.6.10
+    restart: on-failure
+    environment:
+      LDAP_ROOT: dc=example,dc=org
+      LDAP_ADMIN_USERNAME: admin
+      LDAP_ADMIN_PASSWORD: adminpw
+      LDAP_CONFIG_ADMIN_ENABLED: "yes"
+      LDAP_CONFIG_ADMIN_USERNAME: config
+      LDAP_CONFIG_ADMIN_PASSWORD: configpw
+
+  id-api:
+    environment:
+      # Merged over /var/www/config, so only the ldap provider is added to the stack config.
+      SECRET_PATH: /var/www/config-ldap
+    volumes:
+      - ./test/fixtures/ldap/id:/var/www/config-ldap:ro
+    depends_on:
+      - openldap

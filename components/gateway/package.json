@@ -1,0 +1,73 @@
+{
+  "name": "liquio-gateway",
+  "version": "1.0.0",
+  "engines": {
+    "node": "24"
+  },
+  "private": true,
+  "license": "SEE LICENSE IN ../../LICENSE.md",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:prod": "node src/index.js",
+    "start:ts": "node -r ts-node/register src/index.ts",
+    "build": "tsc",
+    "migration-up": "./node_modules/.bin/sequelize db:migrate",
+    "migration-clear": "./node_modules/.bin/sequelize db:migrate:undo:all",
+    "lint": "eslint \"**/*.{js,ts}\" && npm run test:build",
+    "lint:fix": "eslint \"**/*.{js,ts}\" --fix",
+    "test": "jest src",
+    "test:watch": "jest src --watch",
+    "test:cov": "jest src --coverage",
+    "test:e2e": "jest tests",
+    "test:build": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json"
+  },
+  "dependencies": {
+    "@liquio/back-core": "^1.0.0",
+    "amqplib": "^2.2.0",
+    "axios": "^1.20.0",
+    "express": "^5.2.1",
+    "jsonc-parser": "^3.2.0",
+    "lodash": "^4.18.1",
+    "moment": "^2.31.0",
+    "multiconf": "^4.2.2",
+    "pg": "^8.23.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.8",
+    "sequelize-cli": "^6.6.5",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testcontainers/postgresql": "^12.2.0",
+    "@testcontainers/rabbitmq": "^12.2.0",
+    "@types/amqplib": "^0.10.8",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/lodash": "^4.17.25",
+    "@types/node": "^26.6.4",
+    "@types/supertest": "^7.2.1",
+    "@types/ws": "^8.18.2",
+    "debug": "^4.4.3",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-prettier": "^5.5.6",
+    "jest": "^30.5.2",
+    "nock": "^14.0.17",
+    "portfinder": "^1.0.37",
+    "supertest": "^7.3.1",
+    "ts-jest": "^29.4.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1"
+  },
+  "overrides": {
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "^4.1.0"
+    },
+    "sequelize": {
+      "uuid": "^11.1.1"
+    }
+  }
+}
