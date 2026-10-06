@@ -145,16 +145,7 @@
       "error",
       {
         "extensions": [
-          ".js",
-          ".jsx"
-        ]
-      }
-    ],
-    "react/forbid-prop-types": [
-      1,
-      {
-        "forbid": [
-          "any"
+          ".tsx"
         ]
       }
     ],
@@ -204,5 +195,32 @@
     "jsx-a11y/no-static-element-interactions": 0,
     "jsx-a11y/click-events-have-key-events": 0,
     "jsx-a11y/no-noninteractive-element-interactions": 0
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "parser": "@typescript-eslint/parser",
+      "plugins": [
+        "@typescript-eslint"
+      ],
+      "parserOptions": {
+        "ecmaVersion": 2022,
+        "sourceType": "module"
+      },
+      "rules": {
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": [
+          "warn",
+          {
+            "argsIgnorePattern": "^_"
+          }
+        ],
+        "@typescript-eslint/no-explicit-any": "error",
+        "react/require-default-props": "off"
+      }
+    }
+  ]
 }
