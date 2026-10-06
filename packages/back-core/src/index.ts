@@ -7,3 +7,4 @@ export * from './common/app_info';
 export * from './common/async_local_storage';
 export * from './common/sandbox';
 export * from './common/redis_client';
+export * from './id-api';
