@@ -1,17 +1,3 @@
-/** Marks a host wrapper function (built by `compileInIsolatedVm` for async code) as
- * promise-returning, so nesting it as a global into another isolate — as happens when a
- * compiled workflow template function is exposed under `$.workflow` — bridges it correctly
- * even though the wrapper itself isn't declared `async`. */
-export const ASYNC_BRIDGE_MARKER = Symbol('isolatedVmAsyncBridge');
-
-/** A host wrapper function produced by `compileInIsolatedVm` for async code, tagged with
- * `ASYNC_BRIDGE_MARKER` so it can be recognized as promise-returning when nested as a global
- * into another isolate. */
-export interface AsyncBridgeFunction {
-  (...args: unknown[]): Promise<unknown>;
-  [ASYNC_BRIDGE_MARKER]?: true;
-}
-
 /** Minimal structural shape of the acorn AST nodes the sandbox guard inspects. */
 export interface AstNode {
   type: string;
@@ -26,11 +12,12 @@ export interface AstNode {
 export enum SandboxIsolationLevel {
   /** Compiled with `new Function(...)`. Fast, and gives every default global (including rich
    * libraries like `_`/`moment`) full fidelity, but code runs in the same V8 realm as the host
-   * — it can reach and mutate the host's global object. This is the default. */
+   * — it can reach and mutate the host's global object. Opt-in (`isolationLevel: "function"`). */
   Function = 'function',
-  /** Compiled and run inside a real V8 isolate (via `SandboxContext`). Code cannot touch the
-   * host realm at all, but only plain functions and JSON-safe data can cross the isolation
-   * boundary, so `_`, `iconv`, `moment` and `crypto` are not available. */
+  /** Compiled and run inside an `isolated-vm` isolate (see `./isolated.ts`). Code cannot touch the
+   * host realm at all: `_`, `moment`, `Buffer` are loaded inside the isolate, `crypto` and `iconv` are
+   * isolate shims, arguments and results are copied across the boundary. Slower and uses more memory than
+   * `Function`. This is the default. */
   IsolatedVm = 'isolated-vm',
 }
 
@@ -46,6 +33,16 @@ export interface SandboxLog {
   save(event: string, data: Record<string, unknown>, level?: SandboxLogLevel): void;
 }
 
+/** Options of the `isolated-vm` engine shared by sandboxes (`SandboxIsolationLevel.IsolatedVm`). */
+export interface IsolatedEngineOptions {
+  /** Isolate memory limit in MB. */
+  memoryLimit?: number;
+  /** Timeout in ms for each synchronous execution. */
+  timeout?: number;
+  /** Max number of kept scope contexts (least recently used are released). */
+  maxScopes?: number;
+}
+
 export interface SandboxConfig {
   /** Name of the object that exposes workflow template global functions inside evaluated code. Default: '$'. */
   globalFunctionsObject?: string;
@@ -55,8 +52,14 @@ export interface SandboxConfig {
   logging?: boolean;
   /** Returns the logger to use. Defaults to reading `global.log`. */
   getLog?: () => SandboxLog;
-  /** How evaluated code is isolated from the host process. Default: `SandboxIsolationLevel.Function`. */
+  /** How evaluated code is isolated from the host process. Default: `SandboxIsolationLevel.IsolatedVm`; any value
+   * other than `SandboxIsolationLevel.Function` selects it. */
   isolationLevel?: SandboxIsolationLevel;
+  /** Compile code of the `SandboxIsolationLevel.Function` level in strict mode, so a function called without a
+   * receiver doesn't get the host global object as `this`. Default: `true`. */
+  strictMode?: boolean;
+  /** Isolate options for `SandboxIsolationLevel.IsolatedVm`. */
+  isolated?: IsolatedEngineOptions;
   [key: string]: unknown;
 }
 

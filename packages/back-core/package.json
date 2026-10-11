@@ -1,6 +1,6 @@
 {
   "name": "@liquio/back-core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "description": "Shared TypeScript backend source consumed by Liquio components",
   "main": "dist/index.js",
@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "acorn": "^8.18.0",
+    "buffer": "^6.0.3",
     "iconv-lite": "^0.7.3",
     "isolated-vm": "^6.1.2",
     "lodash": "^4.18.1",

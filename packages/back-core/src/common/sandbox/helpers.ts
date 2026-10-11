@@ -1,7 +1,5 @@
 import * as crypto from 'node:crypto';
 
-import { ASYNC_BRIDGE_MARKER, AsyncBridgeFunction } from './interfaces';
-
 export const { randomUUID } = crypto;
 
 /**
@@ -9,14 +7,13 @@ export const { randomUUID } = crypto;
  * below ES2016 (this repo builds at ES6) downlevel `async`/`await` into a plain function
  * wrapping a generator via the `__awaiter` helper, which loses the native `AsyncFunction`
  * constructor — so a TypeScript-authored async global doesn't pass a bare `constructor.name`
- * check. Detect that shape from its source text as a fallback, alongside `ASYNC_BRIDGE_MARKER`.
+ * check. Detect that shape from its source text as a fallback.
  * @param {unknown} value Value to check.
  * @returns {boolean}
  */
 export function isAsyncFunctionValue(value: unknown): boolean {
   if (typeof value !== 'function') return false;
   if (value.constructor?.name === 'AsyncFunction') return true;
-  if ((value as AsyncBridgeFunction)[ASYNC_BRIDGE_MARKER] === true) return true;
   return /\b__awaiter\(/.test(Function.prototype.toString.call(value));
 }
 

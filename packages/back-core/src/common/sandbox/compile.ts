@@ -1,15 +1,6 @@
-import vm from 'isolated-vm';
 import acorn from 'acorn';
 
-import { ASYNC_BRIDGE_MARKER, AstNode, AsyncBridgeFunction } from './interfaces';
-import { isAsyncFunctionValue } from './helpers';
-
-/** Sandbox globals that can't be safely bridged into an `isolated-vm` isolate: they are rich
- * library namespaces (native bindings, or objects whose methods return further class instances
- * that lose their prototype once copied across the isolation boundary), rather than plain
- * functions operating on cloneable data. They remain available under the default `function`
- * isolation level. */
-export const ISOLATED_VM_UNSUPPORTED_GLOBALS = new Set(['_', 'iconv', 'moment', 'crypto', 'Object']);
+import { AstNode } from './interfaces';
 
 /** Property names that let low-code climb the prototype/constructor chain back to the real
  * `Function` constructor (and through it to the host realm), or mutate shared built-in prototypes.
@@ -20,11 +11,10 @@ export const FORBIDDEN_PROPERTIES = new Set(['constructor', '__proto__', 'protot
  * keys. Low-code is forbidden from referencing it so it can't be shadowed to defeat the guard. */
 export const KEY_GUARD_NAME = '__sbKey';
 
-/** The minimal `isolated-vm` context surface `compileInIsolatedVm` needs (satisfied by `SandboxContext`). */
-interface IsolatedVmContext {
-  context: vm.Context;
-  jail: vm.Reference;
-}
+/** Identifiers low-code must not reference. `eval` called indirectly (`(0,eval)(...)`, an alias, `[eval][0](...)`)
+ * runs code in the global realm, where the shadowed `process`/`global`/`Function` locals don't apply, and its code
+ * string is never seen by the static analysis. */
+export const FORBIDDEN_IDENTIFIERS = new Set(['eval']);
 
 /**
  * Runtime guard for a dynamically-computed property key. Coerces the key to a primitive exactly
@@ -146,11 +136,14 @@ export function transformFunctionToAsync(functionString: string, allowedAsyncFun
  * is caught by `guardPropertyKey`. Ordinary dynamic indexing (`arr[i]`, `obj[key]`), method calls
  * and assignments through dynamic keys keep working. Low-code referencing the reserved
  * `__sbKey` identifier is rejected so the guard cannot be shadowed, `with` statements are rejected
- * because they resolve bare identifiers as properties of an arbitrary object, and destructuring
- * patterns are rejected when they read a forbidden property by name.
+ * because they resolve bare identifiers as properties of an arbitrary object, destructuring
+ * patterns are rejected when they read a forbidden property by name, and references to forbidden
+ * identifiers (`eval`) and dynamic `import()` are rejected. Forbidden names used as property names
+ * (`o.eval`, `{ eval: 1 }`, `o.import`) are allowed.
  *
- * If the code cannot be parsed (rare — it would also fail to compile), it falls back to a
- * conservative token check so an unparseable payload still can't smuggle the forbidden names.
+ * Code is parsed as the latest ECMAScript, as is or as the `return <code>` expression it is compiled to. Code that
+ * can't be parsed either way is rejected: compiling it unguarded would let syntax the parser doesn't know (e.g.
+ * `??=` for an older `ecmaVersion`) switch the whole guard off.
  * @param {string} code Minified (and, if async, already transformed) code.
  * @param {(name: string, code: string) => void} onAlert Called (before throwing) when a forbidden
  *   static access is detected, so the caller can log it.
@@ -162,28 +155,43 @@ export function guardCode(code: string, onAlert: (name: string, code: string) =>
     throw new Error(`Access to "${name}" is blocked`);
   };
 
+  const parseOptions: acorn.Options = { ecmaVersion: 'latest', allowReturnOutsideFunction: true, allowAwaitOutsideFunction: true };
+  // `sandbox.eval` compiles `return <code>`, so an expression that is not a valid program on its own (e.g. an object
+  // literal `{ a: 1, b: 2 }`) is parsed in that form, with node positions shifted by the prefix length.
+  const RETURN_PREFIX = 'return ';
   let ast: AstNode;
+  let offset = 0;
   try {
-    ast = acorn.parse(code, {
-      ecmaVersion: 2020,
-      allowReturnOutsideFunction: true,
-      allowAwaitOutsideFunction: true,
-    }) as unknown as AstNode;
-  } catch {
-    // Unparseable: refuse if it contains any forbidden name, otherwise leave it for the compiler
-    // (which will raise the same syntax error the caller expects).
-    for (const name of FORBIDDEN_PROPERTIES) {
-      if (new RegExp(`\\b${name}\\b`).test(code)) forbid(name);
+    ast = acorn.parse(code, parseOptions) as unknown as AstNode;
+  } catch (error) {
+    try {
+      ast = acorn.parse(RETURN_PREFIX + code, parseOptions) as unknown as AstNode;
+      offset = RETURN_PREFIX.length;
+    } catch {
+      throw error;
     }
-    return code;
   }
 
   const dynamicKeys: { start: number; end: number }[] = [];
+  // Identifier nodes that are property names, not variable references (`o.eval`, `{ eval: 1 }`). Parents are visited
+  // before their children, so a name is collected here before its own node is visited.
+  const propertyNames = new Set<unknown>();
 
   walkAst(ast, (node) => {
     if (node.type === 'Identifier' && (node as { name?: string }).name === KEY_GUARD_NAME) {
       throw new Error(`Use of reserved identifier "${KEY_GUARD_NAME}" is not allowed`);
     }
+
+    const { computed, shorthand } = node as { computed?: boolean; shorthand?: boolean };
+    if (node.type === 'MemberExpression' && !computed) propertyNames.add(node.property);
+    if ((node.type === 'Property' || node.type === 'MethodDefinition') && !computed && !shorthand) propertyNames.add(node.key);
+    if (node.type === 'Identifier' && FORBIDDEN_IDENTIFIERS.has((node as { name?: string }).name) && !propertyNames.has(node)) {
+      forbid((node as { name?: string }).name);
+    }
+
+    // `import()` is a keyword, so it can't be shadowed like `eval`: it loads any host module (`fs`, `child_process`)
+    // on the `function` level. In the isolate it fails, but its rejection breaks the next call in the same scope.
+    if (node.type === 'ImportExpression') forbid('import()');
 
     // `with` resolves bare identifiers as properties of an arbitrary object, which reaches
     // `constructor` without any member expression the checks below could see.
@@ -235,7 +243,7 @@ export function guardCode(code: string, onAlert: (name: string, code: string) =>
     }
 
     // Dynamic key: guard it at runtime.
-    dynamicKeys.push({ start: property.start, end: property.end });
+    dynamicKeys.push({ start: property.start - offset, end: property.end - offset });
   });
 
   if (dynamicKeys.length === 0) return code;
@@ -254,72 +262,4 @@ export function guardCode(code: string, onAlert: (name: string, code: string) =>
     guarded = guarded.slice(0, pos) + text + guarded.slice(pos);
   }
   return guarded;
-}
-
-/**
- * Compile code inside a real `isolated-vm` context so it cannot reach the host's global
- * object or Node built-ins. Only plain functions and JSON-safe data can cross the isolation
- * boundary: functions are bridged as callables backed by an `isolated-vm` Reference (invoked
- * synchronously via `applySync`, or asynchronously via `apply` with `{ result: { promise:
- * true } }` for `AsyncFunction`s), arguments/return values are copied by value, and rich
- * library namespaces in `ISOLATED_VM_UNSUPPORTED_GLOBALS` are omitted entirely.
- * @param {IsolatedVmContext} context An `isolated-vm` context bound to the sandbox's isolate.
- * @param {string} code Minified (and, if async, already transformed) code to execute.
- * @param {object} globalContext Globals to expose to the evaluated code.
- * @param {boolean} isAsync Whether the top-level code is an async function.
- * @returns {(...args: any[]) => any} Callable compiled function.
- */
-export function compileInIsolatedVm(
-  context: IsolatedVmContext,
-  code: string,
-  globalContext: Record<string, unknown>,
-  isAsync: boolean,
-): (...args: any[]) => any {
-  const refs: { refName: string; value: unknown }[] = [];
-
-  const buildExpr = (value: unknown, seen: WeakSet<object>): string => {
-    if (typeof value === 'function') {
-      const refName = `__ref_${refs.length}`;
-      const isAsyncFn = isAsyncFunctionValue(value);
-      refs.push({ refName, value });
-      const applyExpr = isAsyncFn
-        ? `${refName}.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } })`
-        : `${refName}.applySync(undefined, args, { arguments: { copy: true }, result: { copy: true } })`;
-      return `function() { var args = Array.prototype.slice.call(arguments); return ${applyExpr}; }`;
-    }
-
-    if (value !== null && typeof value === 'object') {
-      // Guard against cycles in caller-supplied globals (default globals are cycle-free).
-      if (seen.has(value)) return 'undefined';
-      seen.add(value);
-      if (Array.isArray(value)) {
-        return `[${value.map((v) => buildExpr(v, seen)).join(', ')}]`;
-      }
-      const entries = Object.entries(value).map(([key, v]) => `${JSON.stringify(key)}: ${buildExpr(v, seen)}`);
-      return `{${entries.join(', ')}}`;
-    }
-
-    return JSON.stringify(value) ?? 'undefined';
-  };
-
-  const assignments = Object.entries(globalContext)
-    .filter(([name]) => !ISOLATED_VM_UNSUPPORTED_GLOBALS.has(name))
-    .map(([name, value]) => `var ${name} = ${buildExpr(value, new WeakSet())};`)
-    .join('\n');
-
-  for (const { refName, value } of refs) {
-    context.jail.setSync(refName, new vm.Reference(value));
-  }
-
-  const wrappedCode = `(function() {\n${assignments}\nreturn ${code};\n})()`;
-
-  if (isAsync) {
-    const ref = context.context.evalSync(wrappedCode, { reference: true });
-    const wrapped: AsyncBridgeFunction = (...args) =>
-      ref.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } });
-    wrapped[ASYNC_BRIDGE_MARKER] = true;
-    return wrapped;
-  }
-
-  return context.context.evalSync(wrappedCode);
 }
