@@ -60,3 +60,15 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
   redeploy filestorage and the affected caller.
 - Outbound connections to the object-storage backend can optionally use a
   custom `tls` provider config (CA / client certificates).
+
+## Upload limits
+
+`POST /files` and `POST /files/uploadArchive` read the raw body before JSON
+parsing, so `server.maxBodySize` does not apply to them. They are capped by
+`server.maxUploadSize` (bytes, default 104857600 = 100 MB; helm:
+`config.server.maxUploadSize`); larger bodies get `413`. `uploadArchive` also
+rejects archives (413) with more than `server.archive.maxEntries` entries
+(default 1000), an entry whose declared size exceeds `server.archive.maxEntrySize`
+(default `maxUploadSize`), a declared total over `server.archive.maxTotalSize`
+(default 2 x `maxUploadSize`), or a compression ratio above
+`server.archive.maxRatio` (default 100). The `archive.*` keys are optional.

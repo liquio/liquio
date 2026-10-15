@@ -105,6 +105,7 @@ export class TestApp {
     process.env[`${ENV_PREFIX}server`] = JSON.stringify({
       ...templateConfig.server,
       hostname: 'localhost',
+      maxUploadSize: 65536,
       port: await portfinder.getPortPromise({
         host: 'localhost',
         startPort: 60000 + (process.pid % 1000),

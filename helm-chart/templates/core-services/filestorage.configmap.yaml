@@ -11,6 +11,7 @@ metadata:
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
   "port" (default 8080 .Values.services.filestorage.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "maxUploadSize" (default 104857600 .Values.config.server.maxUploadSize)
 -}}
 {{ $appBase := dict
   "customer" .Release.Name

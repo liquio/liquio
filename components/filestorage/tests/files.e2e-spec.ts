@@ -1,3 +1,5 @@
+import AdmZip from 'adm-zip';
+
 import { TestApp } from './test-app';
 
 const AUTH_HEADER = 'Basic dGVzdDE6dGVzdA==';
@@ -64,6 +66,71 @@ describe('Files Controller', () => {
         .set('Content-Type', 'text/plain')
         .send('')
         .expect(400);
+    });
+  });
+
+  describe('upload limits', () => {
+    const OVER_LIMIT = 65536 + 1;
+
+    it('should reject an oversized body on POST /files with 413', async () => {
+      const response = await app
+        .request()
+        .post('/files')
+        .query({ name: 'big.bin', container_id: DEFAULT_CONTAINER_ID })
+        .set('Authorization', AUTH_HEADER)
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.alloc(OVER_LIMIT, 1))
+        .expect(413);
+      expect(response.body.error.message).toBe('Payload too large.');
+    });
+
+    it('should reject an oversized body on POST /files/uploadArchive with 413', async () => {
+      await app
+        .request()
+        .post('/files/uploadArchive')
+        .query({ container_id: DEFAULT_CONTAINER_ID })
+        .set('Authorization', AUTH_HEADER)
+        .set('Content-Type', 'application/zip')
+        .send(Buffer.alloc(OVER_LIMIT, 1))
+        .expect(413);
+    });
+
+    const uploadZip = (zip: AdmZip) =>
+      app
+        .request()
+        .post('/files/uploadArchive')
+        .query({ container_id: DEFAULT_CONTAINER_ID })
+        .set('Authorization', AUTH_HEADER)
+        .set('Content-Type', 'application/zip')
+        .send(zip.toBuffer());
+
+    it('should accept a small valid archive', async () => {
+      const zip = new AdmZip();
+      zip.addFile('a.txt', Buffer.from('hello archive, not highly compressible 1234567890'));
+      const response = await uploadZip(zip).expect(200);
+      expect(response.body.data).toHaveLength(1);
+    });
+
+    it('should reject an archive with too many entries', async () => {
+      const zip = new AdmZip();
+      for (let i = 0; i < 1001; i++) zip.addFile(`f${i}.txt`, Buffer.from('x'));
+      await uploadZip(zip).expect(413);
+    });
+
+    it('should reject an archive whose declared entry size is over the limit before decompressing', async () => {
+      const zip = new AdmZip();
+      zip.addFile('bomb.bin', Buffer.from('hello'));
+      // Forge the declared uncompressed size in the central directory header.
+      zip.getEntries()[0].header.size = 10 * 1024 * 1024;
+      await uploadZip(zip).expect(413);
+      const [, logData] = await app.log.waitForLog('archive-too-large');
+      expect(logData.size).toBe(10 * 1024 * 1024);
+    });
+
+    it('should reject an archive with a too high compression ratio', async () => {
+      const zip = new AdmZip();
+      zip.addFile('zeros.bin', Buffer.alloc(30000, 0));
+      await uploadZip(zip).expect(413);
     });
   });
 

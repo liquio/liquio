@@ -8,10 +8,14 @@ import { P7sSignatureEntity } from '../entities/p7s_signature';
 import { FileModel } from '../models/file';
 import { SignatureModel } from '../models/signature';
 import { P7sSignatureModel } from '../models/p7s_signature';
-import { Stream } from '../lib/stream';
+import { Stream, PayloadTooLargeError } from '../lib/stream';
 import { FileHash } from '../lib/file_hash';
 import { Preview } from '../lib/preview';
 import { AsicManifest } from '../lib/asicmanifest';
+
+const DEFAULT_MAX_UPLOAD_SIZE = 100 * 1024 * 1024;
+const DEFAULT_ARCHIVE_MAX_ENTRIES = 1000;
+const DEFAULT_ARCHIVE_MAX_RATIO = 100;
 
 /**
  * Files controller.
@@ -202,6 +206,48 @@ export class FilesController extends Controller {
   }
 
   /**
+   * Get max upload size in bytes.
+   * @returns {number}
+   */
+  getMaxUploadSize(): number {
+    const value = Number(this.config?.server?.maxUploadSize);
+    return Number.isFinite(value) && value > 0 ? value : DEFAULT_MAX_UPLOAD_SIZE;
+  }
+
+  /**
+   * Get archive unpacking limits.
+   * @returns {{maxEntries: number, maxEntrySize: number, maxTotalSize: number, maxRatio: number}}
+   */
+  getArchiveLimits() {
+    const maxUploadSize = this.getMaxUploadSize();
+    const { archive = {} } = this.config?.server || {};
+    const pick = (value, fallback) => (Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback);
+    return {
+      maxEntries: pick(archive.maxEntries, DEFAULT_ARCHIVE_MAX_ENTRIES),
+      maxEntrySize: pick(archive.maxEntrySize, maxUploadSize),
+      maxTotalSize: pick(archive.maxTotalSize, maxUploadSize * 2),
+      maxRatio: pick(archive.maxRatio, DEFAULT_ARCHIVE_MAX_RATIO),
+    };
+  }
+
+  /**
+   * Respond to a request body read error.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {Error} error Error.
+   */
+  responseReadError(req, res, error) {
+    if (error instanceof PayloadTooLargeError) {
+      global.log.save('upload-too-large', { limit: this.getMaxUploadSize() });
+      res.setHeader('Connection', 'close');
+      res.on('finish', () => req.destroy());
+      return this.responseError(res, 'Payload too large.', 413);
+    }
+    global.log.save('upload-read-error', { error: error && error.message });
+    return this.responseError(res, 'Can not read request body.', 400);
+  }
+
+  /**
    * Upload archive.
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
@@ -221,12 +267,11 @@ export class FilesController extends Controller {
 
     // Read from stream.
     let archiveContentBuffer;
-    const chunks: any[] = [];
-    req.on('data', (data) => chunks.push(data));
-    req.on('end', () => {
-      archiveContentBuffer = Buffer.concat(chunks);
-    });
-    await Stream.waitEndEvent(req);
+    try {
+      archiveContentBuffer = await Stream.readWithLimit(req, this.getMaxUploadSize());
+    } catch (error) {
+      return this.responseReadError(req, res, error);
+    }
 
     // Check size.
     if (archiveContentBuffer.length === 0) {
@@ -246,6 +291,29 @@ export class FilesController extends Controller {
     // Get files.
     const zipEntries = zip.getEntries();
     const files = [];
+
+    // Check archive limits using declared header sizes, before any entry is decompressed.
+    const limits = this.getArchiveLimits();
+    if (zipEntries.length > limits.maxEntries) {
+      global.log.save('archive-too-many-entries', { count: zipEntries.length });
+      return this.responseError(res, 'Archive contains too many entries.', 413);
+    }
+    let totalSize = 0;
+    for (const zipEntry of zipEntries) {
+      if (zipEntry.isDirectory) {
+        continue;
+      }
+      const { size, compressedSize } = zipEntry.header;
+      totalSize += size;
+      if (size > limits.maxEntrySize || totalSize > limits.maxTotalSize) {
+        global.log.save('archive-too-large', { name: zipEntry.entryName, size, totalSize });
+        return this.responseError(res, 'Archive content is too large.', 413);
+      }
+      if (size > 0 && size / Math.max(compressedSize, 1) > limits.maxRatio) {
+        global.log.save('archive-ratio-too-high', { name: zipEntry.entryName, size, compressedSize });
+        return this.responseError(res, 'Archive compression ratio is too high.', 413);
+      }
+    }
 
     for (const zipEntry of zipEntries) {
       if (zipEntry.isDirectory) {
@@ -328,12 +396,11 @@ export class FilesController extends Controller {
 
     // Read from stream.
     let fileContentBuffer;
-    const chunks: any[] = [];
-    req.on('data', (data) => chunks.push(data));
-    req.on('end', () => {
-      fileContentBuffer = Buffer.concat(chunks);
-    });
-    await Stream.waitEndEvent(req);
+    try {
+      fileContentBuffer = await Stream.readWithLimit(req, this.getMaxUploadSize());
+    } catch (error) {
+      return this.responseReadError(req, res, error);
+    }
 
     if (!contentLength) {
       contentLength = fileContentBuffer.length;
