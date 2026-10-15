@@ -60,7 +60,10 @@ export class LiquioProvider extends Provider {
       };
 
       // Do request to send messages.
-      global.log.save('sms-sending-request', body);
+      global.log.save('sms-sending-request', {
+        phonesCount: body.list_phone.length,
+        messageLength: typeof message === 'string' ? message.length : 0,
+      });
       const response = await HttpRequest.send({
         url: `${this.server}:${this.port}${this.routes.sendSms}`,
         method: HttpRequest.Methods.POST,

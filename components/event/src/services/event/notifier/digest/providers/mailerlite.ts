@@ -106,7 +106,7 @@ export class MailerLiteProvider extends Provider {
         'x-trace-id': getTraceId(),
       },
     };
-    global.log.save('send-add-subscribers-to-group-request-to-mailerlite', { subscribers });
+    global.log.save('send-add-subscribers-to-group-request-to-mailerlite', { subscribersCount: subscribers.length });
     const response = await HttpRequest.send(requestOptions);
 
     return response;
