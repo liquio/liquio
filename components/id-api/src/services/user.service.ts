@@ -1,11 +1,13 @@
 import { Op, WhereAttributeHash } from 'sequelize';
 
-import { Config } from '../config';
 import { Request } from '../types';
 import { BaseService } from './base_service';
 
 export class UserService extends BaseService {
   extractUpdateUserInfoParams(req: Request, fields: string[]): WhereAttributeHash<any> {
+    if ('email' in req.body) {
+      throw new Error('Email can only be changed after verification through /user/info/email/set');
+    }
     const modules = this.config.modules ?? {};
     const { denyToUpdateUserName = true, denyToUpdateUserValidParams = true } = modules;
 
@@ -28,7 +30,7 @@ export class UserService extends BaseService {
 
     this.processPhoneValidation(req, query);
     this.extractAddressStructure(query);
-    this.processEmailValidation(req, modules, query);
+    this.processEmailValidation(req, query);
 
     // Handle two factor auth.
     if ([true, 'true', 1].includes(query.useTwoFactorAuth)) {
@@ -93,17 +95,21 @@ export class UserService extends BaseService {
     }
   }
 
-  processEmailValidation(req: Request, modules: NonNullable<Config['modules']>, query: WhereAttributeHash<any>) {
-    if (!modules.denyToUpdateUserValidParams) {
-      if (query.valid?.email) {
-        query.valid.email = query.valid.email === 'true';
-      }
-      if (['true', 'false'].includes(req.body.isValidEmail)) {
-        if (typeof query.valid !== 'object') {
-          query.valid = {};
-        }
-        query.valid.email = req.body.isValidEmail === 'true';
-      }
+  /**
+   * Profile email verification is only possible through a confirmation code (see `UserController.setToNewEmail`).
+   * A caller can never mark an email as valid here.
+   */
+  processEmailValidation(req: Request, query: WhereAttributeHash<any>) {
+    const requestedValidity = query.valid?.email;
+    if (
+      req.body.isValidEmail === true ||
+      req.body.isValidEmail === 'true' ||
+      (requestedValidity !== undefined && requestedValidity !== false && requestedValidity !== 'false')
+    ) {
+      throw new Error('Email confirmation requires a valid confirmation code');
+    }
+    if (requestedValidity !== undefined || req.body.isValidEmail === false || req.body.isValidEmail === 'false') {
+      query.valid = { ...query.valid, email: false };
     }
   }
 

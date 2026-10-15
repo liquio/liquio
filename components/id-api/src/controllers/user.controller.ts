@@ -214,7 +214,6 @@ export class UserController extends BaseController {
     const fields = [
       'gender',
       'phone',
-      'email',
       'birthday',
       'useTwoFactorAuth',
       'twoFactorType',
