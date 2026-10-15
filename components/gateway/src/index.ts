@@ -11,7 +11,6 @@ import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
 import { GatewayBusiness } from './businesses/gateway';
 import { RedisClient } from './lib/redis_client';
-import { LogsBroadcasting } from './lib/logs_broadcasting';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/gateway';
@@ -66,9 +65,4 @@ module.exports = (async () => {
   // Init router.
   const routerService = new RouterService(config);
   await routerService.init();
-
-  // Init logs broadcasting.
-  if (process.env.NODE_ENV !== 'prod' && global.config?.logs_broadcasting?.isEnabled) {
-    LogsBroadcasting.start(global.config.logs_broadcasting);
-  }
 })();

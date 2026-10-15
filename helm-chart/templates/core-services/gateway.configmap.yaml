@@ -53,10 +53,6 @@ metadata:
 {{ $versionsBase := dict
   "api" "1.0.0"
 -}}
-{{ $logsBroadcastingBase := dict
-  "isEnabled" false
-  "port" 5000
--}}
 data:
   # Database configuration
   db.json: |
@@ -89,7 +85,3 @@ data:
   # Versions configuration
   versions.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "gateway" "config" "versions.json" "base" $versionsBase) | nindent 4 }}
-
-  # Logs broadcasting configuration
-  logs_broadcasting.json: |
-{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "gateway" "config" "logs_broadcasting.json" "base" $logsBroadcastingBase) | nindent 4 }}
