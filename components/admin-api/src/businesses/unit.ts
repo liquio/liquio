@@ -188,6 +188,14 @@ export class UnitBusiness {
     const removedHeadsIpn = _.difference(currentUnit.headsIpn, unitEntity.headsIpn);
     const removedMembersIpn = _.difference(currentUnit.membersIpn, unitEntity.membersIpn);
 
+    // New heads/members are propagated to every `basedOn` unit, so the user must manage each of them.
+    // Newly added ids are always checked; existing ones too when something is propagated.
+    const propagates = newHeads.length > 0 || newMembers.length > 0;
+    const basedOnToCheck = propagates ? unitEntity.basedOn || [] : _.difference(unitEntity.basedOn, currentUnit.basedOn || []);
+    for (const baseUnitId of basedOnToCheck) {
+      this.checkAccess(baseUnitId, unitIds);
+    }
+
     let foundUsersFromIdApi = [];
     foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache(
       [...newHeads, ...newMembers, ...removedHeads, ...removedMembers] as string[],
