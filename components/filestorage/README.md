@@ -87,3 +87,17 @@ IDs, require UUIDs (`400` otherwise) and accept at most `server.archive.maxZipFi
 unique IDs (default 100, `400` above). The summed size of the files put into the
 archive is capped by `server.archive.maxZipBytes` (default 2 x `maxUploadSize`);
 larger archives get `413`.
+
+## Archive entry names and signatures
+
+Every ZIP / ASiC-E / ASiC-S entry name built from a stored file name is reduced
+to its last path segment (`/` and `\` are separators, control characters are
+removed, `.`/`..`/empty become `file`), so generated archives never contain
+`..` or path separators. The same is applied to names at `POST /files` and to
+`uploadArchive` entries.
+
+`POST /files/asics` (and `/files/asice`) package the stored signature as is.
+filestorage does **not** verify it against the file or the signer; verification
+belongs to the sign-tool / task layer. `POST /files/asics` responds with
+`X-Signature-Verified: false`; do not treat the container as proof of a valid
+signature without verifying it first.

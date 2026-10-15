@@ -1,3 +1,5 @@
+import path from 'path';
+
 import _ from 'lodash';
 import { AxiosError } from 'axios';
 
@@ -142,5 +144,20 @@ export class Helpers {
       }
     }
     return [...ids];
+  }
+
+  /**
+   * Make a stored file name safe to use as a single ZIP entry name: keeps only the last path segment
+   * (both `/` and `\\` are separators), strips control characters and never returns `.`, `..` or empty.
+   * @param {any} name Raw file name.
+   * @returns {string} Safe entry name without path separators.
+   */
+  static safeEntryName(name): string {
+    const FALLBACK = 'file';
+    if (typeof name !== 'string') return FALLBACK;
+    const cleaned = name.replace(/\\/g, '/').replace(/[\u0000-\u001f\u007f]/g, '');
+    const base = path.posix.basename(cleaned).trim();
+    if (!base || /^\.+$/.test(base)) return FALLBACK;
+    return base;
   }
 }

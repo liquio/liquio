@@ -1,4 +1,5 @@
 import AdmZip from 'adm-zip';
+import JSZip from 'jszip';
 
 import { TestApp, TEST_AUTH_HEADER } from './test-app';
 
@@ -103,6 +104,16 @@ describe('Files Controller', () => {
         .set('Authorization', AUTH_HEADER)
         .set('Content-Type', 'application/zip')
         .send(zip.toBuffer());
+
+    it('should store only the base name of a path-traversal archive entry', async () => {
+      const zip = new AdmZip();
+      zip.addFile('../../x.txt', Buffer.from('hello archive, not highly compressible 1234567890'));
+      const response = await uploadZip(zip).expect(200);
+      expect(response.body.data).toHaveLength(1);
+      const { id } = response.body.data[0];
+      const info = await app.request().get(`/files/${id}/info`).set('Authorization', AUTH_HEADER).expect(200);
+      expect(info.body.data.name).toBe('x.txt');
+    });
 
     it('should accept a small valid archive', async () => {
       const zip = new AdmZip();
@@ -365,6 +376,69 @@ describe('Files Controller', () => {
         .expect(200);
       const names = new AdmZip(response.body).getEntries().map((e) => e.entryName);
       expect(names.filter((n) => n === 'doc.txt')).toHaveLength(1);
+    });
+
+    it('should not put a path-traversal name into ZIP, ASiC-E and ASiC-S entries', async () => {
+      const manifestId = await upload('manifest.xml', '<a/>');
+      const rawId = (
+        await app
+          .request()
+          .post('/files')
+          .query({ name: '../../x.txt', container_id: DEFAULT_CONTAINER_ID })
+          .set('Authorization', AUTH_HEADER)
+          .set('Content-Type', 'application/octet-stream')
+          .send('payload')
+          .expect(200)
+      ).body.data.id as string;
+      // PUT /files/:id stores names as given, so the output side must sanitize on its own.
+      await app.request().put(`/files/${rawId}`).set('Authorization', AUTH_HEADER).send({ name: '..\\..//evil/../x.txt' }).expect(200);
+      await app
+        .request()
+        .post('/signatures')
+        .set('Authorization', AUTH_HEADER)
+        .send({ fileId: rawId, signedData: 'YQ==', signature: Buffer.from('sig').toString('base64'), certificate: 'Yg==' })
+        .expect(200);
+
+      const isSafe = (n: string) => !n.includes('..') && !n.startsWith('/') && !n.replace(/\/$/, '').includes('\\');
+
+      const zipRes = await download(rawId).expect(200);
+      const zipNames = new AdmZip(zipRes.body).getEntries().map((e) => e.entryName);
+      expect(zipNames).toEqual(['1-x.txt']);
+
+      const asiceRes = await app
+        .request()
+        .post('/files/asice')
+        .set('Authorization', AUTH_HEADER)
+        .send({ manifestFileId: manifestId, filesIds: [rawId] })
+        .buffer(true)
+        .parse((res, cb) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => cb(null, Buffer.concat(chunks)));
+        })
+        .expect(200);
+      const asiceNames = new AdmZip(asiceRes.body).getEntries().map((e) => e.entryName);
+      expect(asiceNames).toContain('x.txt');
+      expect(asiceNames.every((n) => n.split('/').every((seg) => seg !== '..') && !n.startsWith('/') && !n.includes('\\'))).toBe(true);
+
+      const asicsRes = await app
+        .request()
+        .post('/files/asics')
+        .set('Authorization', AUTH_HEADER)
+        .send({ fileId: rawId })
+        .buffer(true)
+        .parse((res, cb) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => cb(null, Buffer.concat(chunks)));
+        })
+        .expect(200);
+      expect(asicsRes.headers['x-signature-verified']).toBe('false');
+      expect(asicsRes.headers['content-disposition']).not.toMatch(/\.\./);
+      const asicsZip = await JSZip.loadAsync(asicsRes.body);
+      const asicsNames = Object.keys(asicsZip.files);
+      expect(asicsNames).toContain('x.txt');
+      expect(asicsNames.every(isSafe)).toBe(true);
     });
   });
 });

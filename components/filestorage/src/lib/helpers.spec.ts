@@ -27,3 +27,26 @@ describe('Helpers.parseIds', () => {
     expect(Helpers.parseIds([A, A, A], 1)).toEqual([A]);
   });
 });
+
+describe('Helpers.safeEntryName', () => {
+  it('keeps ordinary names', () => {
+    expect(Helpers.safeEntryName('report 1.pdf')).toBe('report 1.pdf');
+  });
+
+  it('keeps only the last path segment for / and \\ separators', () => {
+    expect(Helpers.safeEntryName('../../x.txt')).toBe('x.txt');
+    expect(Helpers.safeEntryName('/etc/passwd')).toBe('passwd');
+    expect(Helpers.safeEntryName('..\\..\\win\\x.txt')).toBe('x.txt');
+    expect(Helpers.safeEntryName('a/b/')).toBe('b');
+  });
+
+  it('strips control characters', () => {
+    expect(Helpers.safeEntryName('a\u0000b\n.txt')).toBe('ab.txt');
+  });
+
+  it('falls back to "file" for empty, dot-only and non-string names', () => {
+    for (const bad of ['', '..', '.', '../..', '   ', '\u0000', undefined, null, 5]) {
+      expect(Helpers.safeEntryName(bad)).toBe('file');
+    }
+  });
+});

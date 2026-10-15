@@ -209,7 +209,7 @@ export class FilesController extends Controller {
       }
 
       // Add file to ZIP archive.
-      zip.addFile(`${iterator}-${file.name}`, Buffer.from(file.data), file.contentType);
+      zip.addFile(`${iterator}-${Helpers.safeEntryName(file.name)}`, Buffer.from(file.data), file.contentType);
       iterator++;
     }
 
@@ -337,7 +337,7 @@ export class FilesController extends Controller {
         continue;
       }
 
-      const name = zipEntry.entryName;
+      const name = Helpers.safeEntryName(zipEntry.entryName);
       const content = zipEntry.getData();
       const contentType = mime.lookup(name) || 'application/octet-stream';
       const contentLength = content.length;
@@ -406,6 +406,10 @@ export class FilesController extends Controller {
     const { 'content-type': contentType } = req.headers;
     let { 'content-length': contentLength } = req.headers;
     const { user } = req.auth;
+
+    if (typeof name === 'string' && name) {
+      name = Helpers.safeEntryName(name);
+    }
 
     if (isSetExtension === 'true') {
       name += `.${mime.extension(contentType)}`;
@@ -747,7 +751,7 @@ export class FilesController extends Controller {
     totalBytes += manifestFile.data?.length || 0;
 
     // Add manifest file to ZIP archive.
-    zip.addFile(`META-INF/${translit(manifestFile.name)}`, Buffer.from(manifestFile.data));
+    zip.addFile(`META-INF/${Helpers.safeEntryName(translit(manifestFile.name))}`, Buffer.from(manifestFile.data));
 
     // Add data from manifest as separate JSON file.
     let dataObjectBase64String;
@@ -797,7 +801,7 @@ export class FilesController extends Controller {
       }
 
       // Add file to ZIP archive.
-      zip.addFile(`${translit(file.name)}`, Buffer.from(file.data));
+      zip.addFile(Helpers.safeEntryName(translit(file.name)), Buffer.from(file.data));
 
       // Get file P7S signatures.
       let signaturesModelResponse;
@@ -810,7 +814,7 @@ export class FilesController extends Controller {
 
       // Add file signature to ZIP archive if exists.
       if (p7sSignature) {
-        zip.addFile(`${translit(file.name)}.p7s`, Buffer.from(p7sSignature.p7s));
+        zip.addFile(`${Helpers.safeEntryName(translit(file.name))}.p7s`, Buffer.from(p7sSignature.p7s));
       }
     }
 
@@ -845,7 +849,8 @@ export class FilesController extends Controller {
     }
 
     // Prepare file data.
-    const { name: fileName, data: fileBuffer } = fileInfo;
+    const { data: fileBuffer } = fileInfo;
+    const fileName = Helpers.safeEntryName(fileInfo.name);
 
     // Get signature.
     let signaturesModelResponse;
@@ -877,7 +882,8 @@ export class FilesController extends Controller {
     metaDirectory.file('signature.p7s', signatureBuffer);
     const zipReadStream = zip.generateNodeStream({ type: 'nodebuffer' });
 
-    // Response.
+    // Response. The signature is packaged as stored, it is NOT verified against the file here.
+    res.set('X-Signature-Verified', 'false');
     this.responseFile(res, zipReadStream, 'application/zip', undefined, asicsName);
   }
 
