@@ -3,6 +3,8 @@ import { AxiosError } from 'axios';
 
 import { typeOf } from './type_of';
 
+const UUID_REGEXP = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class Helpers {
   /**
    * Substring long strings in object. {str1: '12345', str2: '123456789'} => {str1: '12345', str2: '12345...'}
@@ -103,5 +105,42 @@ export class Helpers {
     };
     if (withHeaders) result.headers = error.config?.headers || {};
     return result;
+  }
+
+  /**
+   * Parse and validate a list of file IDs: trims, drops empties, dedupes, checks UUID format and count.
+   * @param {string|any[]} raw Comma separated string or array of IDs.
+   * @param {number} max Max number of unique IDs.
+   * @returns {string[]} Unique IDs.
+   * @throws {Error & {status: number}} 400 when input is malformed or exceeds `max`.
+   */
+  static parseIds(raw, max: number): string[] {
+    const fail = (message: string) => Object.assign(new Error(message), { status: 400 });
+
+    let list;
+    if (typeof raw === 'string') {
+      list = raw.split(',');
+    } else if (Array.isArray(raw)) {
+      list = raw;
+    } else {
+      throw fail('Files IDs should be an array.');
+    }
+
+    const ids = new Set<string>();
+    for (const item of list) {
+      if (typeof item !== 'string') {
+        throw fail('Invalid file ID.');
+      }
+      const id = item.trim();
+      if (!id) continue;
+      if (!UUID_REGEXP.test(id)) {
+        throw fail('Invalid file ID.');
+      }
+      ids.add(id.toLowerCase());
+      if (ids.size > max) {
+        throw fail(`Too many files. Max ${max}.`);
+      }
+    }
+    return [...ids];
   }
 }

@@ -81,3 +81,9 @@ rejects archives (413) with more than `server.archive.maxEntries` entries
 (default `maxUploadSize`), a declared total over `server.archive.maxTotalSize`
 (default 2 x `maxUploadSize`), or a compression ratio above
 `server.archive.maxRatio` (default 100). The `archive.*` keys are optional.
+
+`GET /files/:ids/zip` and `POST /files/asice` (`filesIds` array) collapse duplicate
+IDs, require UUIDs (`400` otherwise) and accept at most `server.archive.maxZipFiles`
+unique IDs (default 100, `400` above). The summed size of the files put into the
+archive is capped by `server.archive.maxZipBytes` (default 2 x `maxUploadSize`);
+larger archives get `413`.

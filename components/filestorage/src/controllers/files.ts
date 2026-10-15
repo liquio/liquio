@@ -12,10 +12,12 @@ import { Stream, PayloadTooLargeError } from '../lib/stream';
 import { FileHash } from '../lib/file_hash';
 import { Preview } from '../lib/preview';
 import { AsicManifest } from '../lib/asicmanifest';
+import { Helpers } from '../lib/helpers';
 
 const DEFAULT_MAX_UPLOAD_SIZE = 100 * 1024 * 1024;
 const DEFAULT_ARCHIVE_MAX_ENTRIES = 1000;
 const DEFAULT_ARCHIVE_MAX_RATIO = 100;
+const DEFAULT_ZIP_MAX_FILES = 100;
 
 /**
  * Files controller.
@@ -170,8 +172,14 @@ export class FilesController extends Controller {
    */
   async downloadZip(req, res) {
     // Define params.
-    const { ids } = req.params;
-    const filesIds = ids.split(',');
+    let filesIds;
+    try {
+      filesIds = Helpers.parseIds(req.params.ids, this.getArchiveLimits().maxZipFiles);
+    } catch (error) {
+      return this.responseError(res, error, error.status || 400);
+    }
+    const { maxZipBytes } = this.getArchiveLimits();
+    let totalBytes = 0;
 
     // Define ZIP.
     const zip = new AdmZip();
@@ -191,6 +199,13 @@ export class FilesController extends Controller {
       // Check.
       if (!file) {
         return this.responseError(res, 'Not found.', 404);
+      }
+
+      // Check total size.
+      totalBytes += file.data?.length || 0;
+      if (totalBytes > maxZipBytes) {
+        global.log.save('zip-too-large', { limit: maxZipBytes });
+        return this.responseError(res, 'Payload too large.', 413);
       }
 
       // Add file to ZIP archive.
@@ -216,7 +231,7 @@ export class FilesController extends Controller {
 
   /**
    * Get archive unpacking limits.
-   * @returns {{maxEntries: number, maxEntrySize: number, maxTotalSize: number, maxRatio: number}}
+   * @returns {{maxEntries: number, maxEntrySize: number, maxTotalSize: number, maxRatio: number, maxZipFiles: number, maxZipBytes: number}}
    */
   getArchiveLimits() {
     const maxUploadSize = this.getMaxUploadSize();
@@ -227,6 +242,8 @@ export class FilesController extends Controller {
       maxEntrySize: pick(archive.maxEntrySize, maxUploadSize),
       maxTotalSize: pick(archive.maxTotalSize, maxUploadSize * 2),
       maxRatio: pick(archive.maxRatio, DEFAULT_ARCHIVE_MAX_RATIO),
+      maxZipFiles: pick(archive.maxZipFiles, DEFAULT_ZIP_MAX_FILES),
+      maxZipBytes: pick(archive.maxZipBytes, maxUploadSize * 2),
     };
   }
 
@@ -693,7 +710,15 @@ export class FilesController extends Controller {
    */
   async createAsice(req, res) {
     // Define params.
-    const { manifestFileId, filesIds } = req.body;
+    const { manifestFileId } = req.body;
+    let filesIds;
+    try {
+      filesIds = Helpers.parseIds(req.body.filesIds, this.getArchiveLimits().maxZipFiles);
+    } catch (error) {
+      return this.responseError(res, error, error.status || 400);
+    }
+    const { maxZipBytes } = this.getArchiveLimits();
+    let totalBytes = 0;
 
     // Define ZIP.
     const zip = new AdmZip();
@@ -717,6 +742,8 @@ export class FilesController extends Controller {
     if (!manifestFile) {
       return this.responseError(res, 'Manifest file not found.', 404);
     }
+
+    totalBytes += manifestFile.data?.length || 0;
 
     // Add manifest file to ZIP archive.
     zip.addFile(`META-INF/${translit(manifestFile.name)}`, Buffer.from(manifestFile.data));
@@ -759,6 +786,13 @@ export class FilesController extends Controller {
       // Check.
       if (!file) {
         return this.responseError(res, 'File not found.', 404);
+      }
+
+      // Check total size.
+      totalBytes += file.data?.length || 0;
+      if (totalBytes > maxZipBytes) {
+        global.log.save('zip-too-large', { limit: maxZipBytes });
+        return this.responseError(res, 'Payload too large.', 413);
       }
 
       // Add file to ZIP archive.

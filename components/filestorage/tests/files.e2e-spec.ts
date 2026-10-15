@@ -248,4 +248,81 @@ describe('Files Controller', () => {
       expect(response.body.data).toMatchObject({ name: 'to-copy.txt' });
     });
   });
+
+  describe('ZIP and ASiC-E limits', () => {
+    const upload = async (name: string, content: Buffer | string) => {
+      const response = await app
+        .request()
+        .post('/files')
+        .query({ name, container_id: DEFAULT_CONTAINER_ID })
+        .set('Authorization', AUTH_HEADER)
+        .set('Content-Type', 'application/octet-stream')
+        .send(content)
+        .expect(200);
+      return response.body.data.id as string;
+    };
+    const download = (ids: string) =>
+      app
+        .request()
+        .get(`/files/${ids}/zip`)
+        .set('Authorization', AUTH_HEADER)
+        .buffer(true)
+        .parse((res, cb) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => cb(null, Buffer.concat(chunks)));
+        });
+
+    it('should collapse duplicate IDs in GET /files/:ids/zip', async () => {
+      const id = await upload('dup.txt', 'duplicate me');
+      const response = await download(`${id},${id}, ${id},`).expect(200);
+      expect(new AdmZip(response.body).getEntries()).toHaveLength(1);
+    });
+
+    it('should reject more than the max number of IDs with 400', async () => {
+      const ids = Array.from({ length: 101 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`).join(',');
+      await download(ids).expect(400);
+    });
+
+    it('should reject a malformed ID with 400', async () => {
+      await download('not-a-uuid').expect(400);
+    });
+
+    it('should reject a ZIP whose total size exceeds the limit with 413', async () => {
+      const ids = [];
+      for (let i = 0; i < 3; i++) ids.push(await upload(`big${i}.bin`, Buffer.alloc(60000, i + 1)));
+      await download(ids.join(',')).expect(413);
+    });
+
+    it('should reject a non-array filesIds on POST /files/asice with 400', async () => {
+      const manifestId = await upload('manifest.xml', '<a/>');
+      await app.request().post('/files/asice').set('Authorization', AUTH_HEADER).send({ manifestFileId: manifestId, filesIds: 'abc' }).expect(400);
+    });
+
+    it('should reject an ASiC-E whose total size exceeds the limit with 413', async () => {
+      const manifestId = await upload('manifest.xml', '<a/>');
+      const ids = [];
+      for (let i = 0; i < 3; i++) ids.push(await upload(`asice${i}.bin`, Buffer.alloc(60000, i + 1)));
+      await app.request().post('/files/asice').set('Authorization', AUTH_HEADER).send({ manifestFileId: manifestId, filesIds: ids }).expect(413);
+    });
+
+    it('should build an ASiC-E for a normal request, ignoring duplicate IDs', async () => {
+      const manifestId = await upload('manifest.xml', '<a/>');
+      const id = await upload('doc.txt', 'doc');
+      const response = await app
+        .request()
+        .post('/files/asice')
+        .set('Authorization', AUTH_HEADER)
+        .send({ manifestFileId: manifestId, filesIds: [id, id] })
+        .buffer(true)
+        .parse((res, cb) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => cb(null, Buffer.concat(chunks)));
+        })
+        .expect(200);
+      const names = new AdmZip(response.body).getEntries().map((e) => e.entryName);
+      expect(names.filter((n) => n === 'doc.txt')).toHaveLength(1);
+    });
+  });
 });
