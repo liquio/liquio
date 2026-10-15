@@ -684,4 +684,98 @@ describe('RecordsController', () => {
       expect(ids(response)).toEqual(expect.arrayContaining([publicId, restrictedId]));
     });
   });
+
+  describe('join_by authorization (SE-3930 RG-03/RG-04)', () => {
+    const marker = 'JOINBY_E2E_001';
+    const created: string[] = [];
+    let publicId: string;
+    let restrictedId: string;
+    let primaryPublicId: string;
+    let primaryForeignId: string;
+    let primaryHiddenId: string;
+    let savedAuth: any;
+
+    const create = async (data: object, allowTokens: string[] = []) => {
+      const response = await testHarness
+        .request()
+        .post('/records')
+        .set('Authorization', validAuth)
+        .send({ registerId: 200, keyId: 2001, data: { ...data, data: marker }, allowTokens })
+        .expect(200);
+      created.push(response.body.data.id);
+      return response.body.data.id as string;
+    };
+    const joinQuery = (extra = '') =>
+      testHarness
+        .request()
+        .get(`/records?key_id=2001&register_id=200&limit=1000&join_by=link&data[data]=${marker}${extra}`)
+        .set('Authorization', validAuth);
+    const byId = (response, id: string) => response.body.data.find((r) => r.id === id);
+
+    beforeAll(async () => {
+      publicId = await create({ name: 'Public linked' });
+      restrictedId = await create({ name: 'Restricted linked' }, ['secret-token']);
+      primaryPublicId = await create({ name: 'p1', link: publicId });
+      primaryForeignId = await create({ name: 'p2', link: restrictedId });
+      primaryHiddenId = await create({ name: 'p3', link: publicId }, ['other-token']);
+    });
+
+    beforeEach(() => {
+      savedAuth = { ...testHarness.getConfig().auth };
+    });
+
+    afterEach(() => {
+      testHarness.getConfig().auth = savedAuth;
+    });
+
+    afterAll(async () => {
+      for (const id of created) await testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth);
+    });
+
+    it('excludes token-restricted main rows from data and count for an untrusted caller', async () => {
+      testHarness.getConfig().auth.trustedCallers = [];
+      const response = await joinQuery('&allow_see_all_records=true&allow_tokens=other-token').expect(200);
+      const ids = response.body.data.map((r) => r.id);
+      expect(ids).toContain(primaryPublicId);
+      expect(ids).not.toContain(primaryHiddenId);
+      expect(ids).not.toContain(restrictedId);
+      expect(Number(response.body.meta.count)).toBe(response.body.data.length);
+    });
+
+    it('returns joined as { id, data } for a public linked row and null for a foreign-token row', async () => {
+      testHarness.getConfig().auth.trustedCallers = [];
+      const response = await joinQuery().expect(200);
+      expect(byId(response, primaryPublicId).joined).toEqual({ id: publicId, data: expect.objectContaining({ name: 'Public linked' }) });
+      expect(byId(response, primaryForeignId).joined).toBeNull();
+    });
+
+    it('reveals the restricted linked row with server-side auth.userAllowTokens', async () => {
+      testHarness.getConfig().auth.trustedCallers = [];
+      testHarness.getConfig().auth.userAllowTokens = { test: ['secret-token'] };
+      const response = await joinQuery().expect(200);
+      expect(byId(response, primaryForeignId).joined.id).toBe(restrictedId);
+    });
+
+    it('keeps the unfiltered join for a trusted caller', async () => {
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      const response = await joinQuery('&allow_see_all_records=true').expect(200);
+      expect(byId(response, primaryForeignId).joined.id).toBe(restrictedId);
+      expect(byId(response, primaryHiddenId).joined.id).toBe(publicId);
+    });
+
+    it('does not allow SQL injection through data filters or join_by', async () => {
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      const filtered = await testHarness
+        .request()
+        .get(`/records?key_id=2001&join_by=link&data[name]=${encodeURIComponent("x' or '1'='1")}`)
+        .set('Authorization', validAuth)
+        .expect(200);
+      expect(filtered.body.data).toEqual([]);
+      await testHarness
+        .request()
+        .get(`/records?key_id=2001&join_by=${encodeURIComponent("link' or 1=1 --")}`)
+        .set('Authorization', validAuth)
+        .expect(500);
+    });
+  });
 });

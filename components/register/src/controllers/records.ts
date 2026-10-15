@@ -21,6 +21,7 @@ import typeOf from '../lib/typeOf';
 import { ModelItemResponse } from '../lib/interfaces';
 import RecordEntity from '../entities/record';
 import { resolveCallerAccess, CallerAccess } from '../lib/caller_access';
+import JoinedRecordAccess from '../lib/joined_record_access';
 import { canSearchField, canSearchString } from '../lib/record_search_access';
 
 const ADDITIONAL_FILTER_RECORD_MAX_COUNT = 10000;
@@ -324,6 +325,9 @@ export default class RecordsController extends Controller {
           return this.responseError(res, 'Key records are not readable.', 403, { keyId });
         }
 
+        const joinedAccess = new JoinedRecordAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys, (error) =>
+          this.log.save('joined-record-access-error', { error: error.message }),
+        );
         for (const recordModelResponse of recordsModelResponse.data) {
           // Filter not allowed properties.
           if (!allow_see_all_records) {
@@ -339,6 +343,12 @@ export default class RecordsController extends Controller {
           if (recordModelResponse.data && paths) {
             const pathsList = Array.isArray(paths) ? paths : [paths];
             recordModelResponse.filterEntity(pathsList);
+          }
+
+          // Authorize the joined record independently of the primary one (after the primary rules; tokens come from the server, never the query).
+          if (joinBy) {
+            if (access.trusted) JoinedRecordAccess.exposeUnfiltered(recordModelResponse);
+            else await joinedAccess.protect(recordModelResponse, joinBy);
           }
         }
       }

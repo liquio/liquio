@@ -10,6 +10,8 @@ import { BasicFilter, ModelListResponse, ModelListWithMetaResponse, ModelItemRes
 const ERROR_ORDER_FIELD_VALIDATION = 'Order field path is not valid.';
 const DB_FIELD_NAME_REGEX = '[a-zA-Z0-9_-]+';
 const ENCRYPTED_FIELD_NAME = '$encrypted';
+const JOIN_FIELD_REGEX = /^[a-zA-Z0-9_-]+$/;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Record model.
@@ -208,60 +210,25 @@ export default class RecordModel extends Model {
 
     const queryOptions: FindAndCountOptions = { order, where: filter, offset, limit, attributes, replacements };
 
-    if (joinBy) {
-      // Form where query part.
-      let wherePart = '';
-      for (const opt in queryOptions.where) {
-        const optValue = queryOptions.where[opt];
-        if (typeof optValue === 'object') {
-          if (Object.keys(optValue).length === 0) continue;
-          if (wherePart !== '') {
-            wherePart += ' and ';
-          }
-          const nestedObjWherePart = this.formWhereQueryForObjects(optValue, '');
-          wherePart += nestedObjWherePart ? nestedObjWherePart : '';
-        } else {
-          if (wherePart !== '') {
-            wherePart += ' and ';
-          }
-          wherePart += `r1.${opt} = ${optValue}`;
-        }
-      }
-
-      const createdAt = queryOptions.where?.['created_at'];
-      if (createdAt) {
-        const createdAtWherePart = this.formCreateUpdateDateQuery(createdAt);
-        wherePart += createdAtWherePart;
-      }
-
-      // Select data with left join.
-      const results = await this.model.sequelize.query(
-        `
-        select r1.data as data1, r2.id idr2, r2.data as data2
-        from records r1
-        left join records r2 on r2.id::text = r1.data->>:joinBy
-        where ${wherePart} limit :limit offset :offset`,
-        { type: Sequelize.QueryTypes.SELECT, replacements: { joinBy, limit: +queryOptions.limit, offset: +queryOptions.offset } },
-      );
-
-      // Count data with left join.
-      const resultsCount = await this.model.sequelize.query(
-        `
-        select count(1)
-        from records r1
-        left join records r2 on r2.id::text = r1.data->>:joinBy
-        where ${wherePart}`,
-        { type: Sequelize.QueryTypes.SELECT, replacements: { joinBy } },
-      );
-
-      const { count } = (resultsCount && resultsCount[0]) || {};
-      const response = { data: results, meta: { count, offset, limit } };
-      return response;
-    }
-
     // DB query.
     const { count, rows: recordsRaw } = await this.model.findAndCountAll(queryOptions);
     const recordsEntities = recordsRaw.map((recordRaw) => new RecordEntity(recordRaw));
+
+    if (joinBy) {
+      // Batched read of linked records (no raw SQL): the main page keeps all Sequelize filters, incl. allow_tokens.
+      if (!JOIN_FIELD_REGEX.test(joinBy)) throw new Error('Invalid join field.');
+      const joinedIds = [
+        ...new Set(recordsEntities.map((entity) => (entity.data as any)?.[joinBy]).filter((v) => typeof v === 'string' && UUID_REGEX.test(v))),
+      ];
+      const joinedRows = joinedIds.length ? await this.model.findAll({ where: { id: { [Sequelize.Op.in]: joinedIds } } }) : [];
+      const joinedById = new Map<string, any>(joinedRows.map((row: any) => [row.id, row]));
+      for (const entity of recordsEntities) {
+        const joinedRow = joinedById.get((entity.data as any)?.[joinBy]);
+        (entity as any).joined = joinedRow ? new RecordEntity(joinedRow) : null;
+      }
+      // The count keeps the string type that the former raw SQL count returned.
+      return { data: recordsEntities, meta: { count: String(count) as any, offset, limit } };
+    }
 
     return { data: recordsEntities, meta: { count, offset, limit } };
   }
@@ -724,39 +691,6 @@ export default class RecordModel extends Model {
     }
 
     return count;
-  }
-
-  /**
-   * Form where query for object.
-   * @param {object} obj
-   * @param {string} whereQueryString
-   */
-  private formWhereQueryForObjects(obj, whereQueryString) {
-    for (const key in obj) {
-      if (typeof obj[key] === 'object') {
-        whereQueryString += Object.values(obj[key]).some((v) => typeof v === 'object') ? `r1.data->'${key}'->` : `r1.data->'${key}'->>`;
-        return this.formWhereQueryForObjects(obj[key], whereQueryString);
-      } else {
-        if (whereQueryString) {
-          whereQueryString += ' and ';
-        }
-        whereQueryString += obj[key] === 'null' ? `r1.data->>'${key}' is ${obj[key]}` : `r1.data->>'${key}' = '${obj[key]}'`;
-      }
-    }
-    return whereQueryString;
-  }
-
-  /**
-   * Form create update at date query.
-   * @param {object} dateAtClause Date clause.
-   */
-  private formCreateUpdateDateQuery(dateAtClause) {
-    const { Op } = this.model.sequelize;
-    const lessAndEqualQuery = dateAtClause[Op.lte];
-    const greateAndEqualQuery = dateAtClause[Op.gte];
-    let whereClauseQuery = lessAndEqualQuery ? ` and r1.created_at <= '${new Date(lessAndEqualQuery).toISOString()}'` : '';
-    whereClauseQuery += greateAndEqualQuery ? ` and r1.created_at >= '${new Date(greateAndEqualQuery).toISOString()}'` : '';
-    return whereClauseQuery;
   }
 }
 
