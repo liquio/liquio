@@ -25,7 +25,6 @@ export class StaticRoutes extends MessangerModel {
     this.buildAdminView('/admin', 'index.html');
     this.buildAdminView('/admin/queue', 'queue.html');
     this.buildAdminView('/admin/logs', 'logs.html');
-    this.buildAdminView('/admin/subscribe', 'subscribe.html');
     this.buildAdminView('/admin/navbar', 'navbar.html');
     router.get('/admin/login', (req: any, res: any) => res.sendFile(path.join(__dirname, '..', 'admin', 'login.html')));
     router.post('/admin/login', this.adminLogin.bind(this));

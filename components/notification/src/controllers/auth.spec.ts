@@ -80,3 +80,53 @@ describe('checkAuth', () => {
     expect(res.send).not.toHaveBeenCalled();
   });
 });
+
+describe('checkAdminCookie', () => {
+  const { checkAdminCookie, checkSameOrigin } = require('./auth');
+  const adminCookie = crypto.createHmac('sha256', 'admin-pass').update('admin-login').digest('hex');
+
+  beforeEach(() => {
+    (global as any).conf = { adminConfig: { login: 'admin-login', password: 'admin-pass' } };
+  });
+
+  it('rejects a request without the admin cookie', () => {
+    const res = makeRes();
+    const next = makeNext();
+    checkAdminCookie({ cookies: {} }, res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.send).toHaveBeenCalledWith(401, expect.any(Object));
+  });
+
+  it('rejects a wrong admin cookie', () => {
+    const res = makeRes();
+    const next = makeNext();
+    checkAdminCookie({ cookies: { myCookie: 'x'.repeat(adminCookie.length) } }, res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.send).toHaveBeenCalledWith(401, expect.any(Object));
+  });
+
+  it('rejects when admin credentials are not configured', () => {
+    (global as any).conf = { adminConfig: {} };
+    const res = makeRes();
+    const next = makeNext();
+    checkAdminCookie({ cookies: { myCookie: crypto.createHmac('sha256', '').update('').digest('hex') } }, res, next);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('accepts the valid admin cookie', () => {
+    const next = makeNext();
+    checkAdminCookie({ cookies: { myCookie: adminCookie } }, makeRes(), next);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('checkSameOrigin rejects a foreign Origin and allows same or missing Origin', () => {
+    const res = makeRes();
+    const next = makeNext();
+    checkSameOrigin({ headers: { origin: 'https://evil.example', host: 'n.local' } }, res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.send).toHaveBeenCalledWith(403, expect.any(Object));
+    checkSameOrigin({ headers: { origin: 'https://n.local', host: 'n.local' } }, makeRes(), next);
+    checkSameOrigin({ headers: { host: 'n.local' } }, makeRes(), next);
+    expect(next).toHaveBeenCalledTimes(2);
+  });
+});

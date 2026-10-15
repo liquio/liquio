@@ -63,4 +63,31 @@ describe('Admin static routes', () => {
     expect(res.status).toBe(200);
     expect(res.type).toBe('text/html');
   });
+
+  describe('cookie-protected message API used by the admin UI', () => {
+    const paths = ['/admin/api/message/phonesList', '/admin/api/message/eventId'];
+
+    it.each(paths)('POST %s rejects requests without the admin cookie', async (route) => {
+      const res = await app.request().post(route).send({});
+      expect(res.status).toBe(401);
+    });
+
+    it.each(paths)('POST %s rejects a forged admin cookie', async (route) => {
+      const res = await app.request().post(route).set('Cookie', 'myCookie=forged').send({});
+      expect(res.status).toBe(401);
+    });
+
+    it.each(paths)('POST %s rejects a foreign Origin even with the cookie', async (route) => {
+      const login = await app.request().post('/admin/login').type('form').send({ login: adminConfig.login, pass: adminConfig.password });
+      const res = await app.request().post(route).set('Cookie', login.headers['set-cookie'][0]).set('Origin', 'https://evil.example').send({});
+      expect(res.status).toBe(403);
+    });
+
+    it.each(paths)('POST %s passes authentication with the admin cookie and no Basic header', async (route) => {
+      const login = await app.request().post('/admin/login').type('form').send({ login: adminConfig.login, pass: adminConfig.password });
+      const res = await app.request().post(route).set('Cookie', login.headers['set-cookie'][0]).send({});
+      expect(res.status).not.toBe(401);
+      expect(res.status).not.toBe(403);
+    });
+  });
 });

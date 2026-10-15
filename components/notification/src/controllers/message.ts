@@ -16,10 +16,11 @@ import { IncommingMessagesModel } from '../models/incomming_messages';
 import { ImportantMessagesModel } from '../models/important_messages';
 import { UsersMessagesModel } from '../models/users_messages';
 import { MessageCryptTypesModel } from '../models/message_crypt_types';
-import { checkAuth, checkTestAuth } from './auth';
+import { checkAuth, checkTestAuth, checkAdminCookie, checkSameOrigin } from './auth';
 import { resolveUserId } from './resolve_user_id';
 
 const router = Router();
+const adminRouter = Router();
 const Subscribes = new UserSubscribesModel().UserSubscribes;
 const Communication = new CommunicationModel().Communications;
 const Settings = new SettingsModel().Settings;
@@ -91,6 +92,7 @@ export class Message extends Auth {
     super();
     this.registerRoutes();
     app.use('/message', router);
+    app.use('/admin/api/message', adminRouter);
   }
 
   /**
@@ -102,6 +104,10 @@ export class Message extends Auth {
     router.post('/test/sms', checkTestAuth, this.sendTestSMS.bind(this));
     router.post('/test/user', checkTestAuth, this.sendTestUser.bind(this));
     router.post('/test/comlex_options', checkAuth, this.sendTestMessageByComplexOptions.bind(this));
+
+    // Admin panel routes (admin cookie instead of Basic credentials in client code).
+    adminRouter.post('/phonesList', checkSameOrigin, checkAdminCookie, this.sendMessageByPhonesList.bind(this));
+    adminRouter.post('/eventId', checkSameOrigin, checkAdminCookie, this.sendMessageByEventId.bind(this));
 
     // Send messages routes.
     router.post('/usersList', checkAuth, this.sendMessageByUsersList.bind(this));

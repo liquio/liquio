@@ -56,6 +56,54 @@ const checkAuth = async function (req: any, res: any, next: any) {
   next();
 };
 
+const ADMIN_COOKIE_NAME = 'myCookie';
+
+/**
+ * Check admin panel session cookie (HMAC of admin password/login, same value staticRoutes issues on login).
+ * Lets the admin UI call service routes without any Basic credentials in client-side code.
+ * @param {object} req HTTP request.
+ * @param {object} res HTTP response.
+ * @param {object} next Next handler.
+ */
+const checkAdminCookie = function (req: any, res: any, next: any) {
+  const { login, password } = (global as any).conf?.adminConfig || {};
+  const cookie = req.cookies?.[ADMIN_COOKIE_NAME];
+  if (!login || !password || typeof cookie !== 'string') {
+    return sendAuthError(res);
+  }
+
+  const expected = Buffer.from(crypto.createHmac('sha256', password).update(login).digest('hex'));
+  const actual = Buffer.from(cookie);
+  if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
+    return sendAuthError(res);
+  }
+
+  next();
+};
+
+/**
+ * Reject browser requests sent from another origin (CSRF guard for cookie-authenticated admin API).
+ * @param {object} req HTTP request.
+ * @param {object} res HTTP response.
+ * @param {object} next Next handler.
+ */
+const checkSameOrigin = function (req: any, res: any, next: any) {
+  const { origin, host, 'x-forwarded-host': forwardedHost } = req.headers;
+  if (origin) {
+    let originHost: string | null;
+    try {
+      originHost = new URL(origin).host;
+    } catch {
+      originHost = null;
+    }
+    if (originHost !== (forwardedHost || host)) {
+      return res.send(403, { code: 'Forbidden', message: 'Origin not allowed' });
+    }
+  }
+
+  next();
+};
+
 /**
  * Check test auth.
  * @param {object} req HTTP request.
@@ -155,4 +203,4 @@ const checkConfigAuth = async function (req: any, res: any, next: any) {
   if (await login(req, res)) next();
 };
 
-export { checkAuth, checkTestAuth, checkConfigAuth };
+export { checkAuth, checkTestAuth, checkConfigAuth, checkAdminCookie, checkSameOrigin };
