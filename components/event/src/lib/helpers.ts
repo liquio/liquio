@@ -16,7 +16,52 @@ const MIME_TYPES: Record<string, number[]> = {
   'IMAGE/JPG': [0xff, 0xd8, 0xff],
 };
 
+const REDACTED = '****';
+
+const SENSITIVE_KEYS = new Set([
+  'authorization',
+  'proxy-authorization',
+  'cookie',
+  'x-api-key',
+  'token',
+  'access_token',
+  'refresh_token',
+  'client_secret',
+  'password',
+  'secret',
+]);
+
 export class Helpers {
+  /**
+   * Mask values of sensitive headers (case-insensitive) for logging.
+   * @param {object} [headers]
+   * @return {object}
+   */
+  static redactHeaders(headers: any): any {
+    if (!headers || typeof headers !== 'object' || Array.isArray(headers)) return headers;
+    const result: any = {};
+    for (const [key, value] of Object.entries(headers)) {
+      result[key] = SENSITIVE_KEYS.has(key.toLowerCase()) ? REDACTED : value;
+    }
+    return result;
+  }
+
+  /**
+   * Mask values of sensitive keys (case-insensitive) in a nested object/array for logging.
+   * Strings and other primitives are returned as is.
+   * @param {any} data
+   * @return {any}
+   */
+  static redactSensitiveData(data: any): any {
+    if (Array.isArray(data)) return data.map((v) => this.redactSensitiveData(v));
+    if (typeOf(data) !== 'object') return data;
+    const result: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      result[key] = SENSITIVE_KEYS.has(key.toLowerCase()) ? REDACTED : this.redactSensitiveData(value);
+    }
+    return result;
+  }
+
   /**
    * Substring long strings in object. {str1: '12345', str2: '123456789'} => {str1: '12345', str2: '12345...'}
    * @param {Object|String} strOrObj

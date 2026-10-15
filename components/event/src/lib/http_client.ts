@@ -55,8 +55,10 @@ export class HttpClient {
       url,
       init: {
         ...init,
+        headers: Helpers.redactHeaders(init.headers),
         agent: init.agent ? '****' : undefined,
-        body: init.body instanceof stream.Readable ? 'stream.Readable' : Helpers.cutLongStrings(init.body, MAX_LOG_LENGTH),
+        body:
+          init.body instanceof stream.Readable ? 'stream.Readable' : Helpers.redactSensitiveData(Helpers.cutLongStrings(init.body, MAX_LOG_LENGTH)),
         timeout: requestTimeout,
       },
     });
@@ -88,7 +90,14 @@ export class HttpClient {
           originalCode: error.originalCode,
           stack: error.stack,
           meta,
-          requestOptions,
+          requestOptions: {
+            ...requestOptions,
+            headers: Helpers.redactHeaders(requestOptions.headers),
+            data:
+              requestOptions.data instanceof stream.Readable
+                ? 'stream.Readable'
+                : Helpers.redactSensitiveData(Helpers.cutLongStrings(requestOptions.data, MAX_LOG_LENGTH)),
+          },
         },
         'error',
       );

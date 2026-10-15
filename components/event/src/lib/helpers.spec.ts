@@ -64,3 +64,47 @@ describe('replaceObjValues', () => {
     expect(result).toEqual({ a: 2, b: 42 });
   });
 });
+
+describe('redactHeaders', () => {
+  it('masks sensitive headers case-insensitively and keeps others', () => {
+    const headers = {
+      Authorization: 'Bearer abc',
+      COOKIE: 'sid=1',
+      'X-Api-Key': 'k',
+      Token: 't',
+      password: 'p',
+      Secret: 's',
+      'Proxy-Authorization': 'x',
+      Accept: 'json',
+    };
+    expect(Helpers.redactHeaders(headers)).toEqual({
+      Authorization: '****',
+      COOKIE: '****',
+      'X-Api-Key': '****',
+      Token: '****',
+      password: '****',
+      Secret: '****',
+      'Proxy-Authorization': '****',
+      Accept: 'json',
+    });
+    expect(headers.Authorization).toBe('Bearer abc');
+  });
+
+  it('returns non-objects as is', () => {
+    expect(Helpers.redactHeaders(undefined)).toBeUndefined();
+  });
+});
+
+describe('redactSensitiveData', () => {
+  it('masks sensitive keys in nested objects and arrays', () => {
+    expect(Helpers.redactSensitiveData({ a: 1, password: 'p', n: [{ Access_Token: 't', b: 2 }] })).toEqual({
+      a: 1,
+      password: '****',
+      n: [{ Access_Token: '****', b: 2 }],
+    });
+  });
+
+  it('returns strings as is', () => {
+    expect(Helpers.redactSensitiveData('abc')).toBe('abc');
+  });
+});
