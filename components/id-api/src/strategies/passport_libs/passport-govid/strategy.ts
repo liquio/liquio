@@ -49,11 +49,11 @@ export class GovIdStrategy extends Strategy {
     const { user } = req || {};
     const userIP = req.header('x-forwarded-for') ?? req.socket?.remoteAddress ?? 'unknownIP';
 
-    this.log.save('authenticate-govid|start', { user, userIP }, 'info');
+    this.log.save('authenticate-govid|start', { userId: user?.userId, userIP }, 'info');
 
     // Check already defined user auth type.
     if (user?.services?.govid) {
-      this.log.save('authenticate-govid|authorise-continue', { user }, 'info');
+      this.log.save('authenticate-govid|authorise-continue', { userId: user?.userId }, 'info');
       req.res!.redirect('/authorise/continue/');
       return;
     }
@@ -79,21 +79,19 @@ export class GovIdStrategy extends Strategy {
         this.log.save(
           'authenticate-govid|get-user-info-error',
           {
-            url,
-            headers: response.headers,
-            govidUserRaw: govidUserRaw.substring(0, 512),
+            endpoint: 'get-user-info',
+            status: response.status,
           },
           'error',
         );
         return this.error(new Error('Gov ID user not defined.'));
       } else if (!govidUserRaw || govidUserRaw.error) {
-        this.log.save('authenticate-govid|get-user-info-error', { govidTokens, govidUserRaw, url }, 'error');
+        this.log.save('authenticate-govid|get-user-info-error', { govidUserId: govidTokens.govidUserId }, 'error');
         return this.error(new Error('Gov ID user not defined.'));
       }
-    } catch (error: any) {
-      let message = error?.response?.data?.message ?? error?.message ?? error.toString();
-      this.log.save('authenticate-govid|govid-request-error', { error: message, url }, 'error');
-      return this.error(new Error(message));
+    } catch {
+      this.log.save('authenticate-govid|govid-request-error', { error: 'GovID request failed', endpoint: 'get-user-info' }, 'error');
+      return this.error(new Error('GovID request failed'));
     }
 
     let govidUser;
@@ -108,13 +106,13 @@ export class GovIdStrategy extends Strategy {
     }
 
     // Log.
-    this.log.save('authenticate-govid|user-info', { govidTokens, govidUser }, 'info');
+    this.log.save('authenticate-govid|user-info', { govidUserId: govidTokens.govidUserId }, 'info');
 
     // Define user info.
     const userInfo = this.prepareUserInfo(govidUser);
 
     // Log.
-    this.log.save('authenticate-govid|user-info-parsed', { userInfo }, 'info');
+    this.log.save('authenticate-govid|user-info-parsed', { govidUserId: govidTokens.govidUserId }, 'info');
     this.log.save('authenticate-govid-successful', { data: true }, 'info');
 
     try {
@@ -150,7 +148,7 @@ export class GovIdStrategy extends Strategy {
   private async handleEncryptedUserInfo(govidUserRaw: any, govidTokens: any): Promise<Record<string, any>> {
     const { encryptionServiceUrl, encryptionServiceToken } = this.options;
 
-    this.log.save('authenticate-govid|user-info-raw', { govidTokens, govidUserRaw }, 'info');
+    this.log.save('authenticate-govid|user-info-raw', { govidUserId: govidTokens.govidUserId }, 'info');
 
     let govidUser;
     let decryptedRaw;
@@ -162,13 +160,12 @@ export class GovIdStrategy extends Strategy {
       if (!decryptedRaw?.data) {
         throw new Error('Can not decrypt user data.');
       }
-    } catch (error: any) {
+    } catch {
       this.log.save(
         'authenticate-govid|user-info-decrypt-error',
         {
-          govidTokens,
-          govidUserRaw,
-          error: error?.message ?? error.toString(),
+          govidUserId: govidTokens.govidUserId,
+          error: 'GovID decryption failed',
         },
         'error',
       );
@@ -178,19 +175,15 @@ export class GovIdStrategy extends Strategy {
     await this.handleLogout(govidTokens);
 
     // Parse decrypted data.
-    let decrypted;
     try {
       const decryptedData = this.decryptPayloadData(decryptedRaw.data);
-      decrypted = decryptedData.decrypted;
       govidUser = decryptedData.govidUser;
-    } catch (error: any) {
+    } catch {
       this.log.save(
         'authenticate-govid|user-info-decrypt-parsing-error',
         {
-          govidTokens,
-          govidUserRaw,
-          decrypted,
-          error: error?.message ?? error.toString(),
+          govidUserId: govidTokens.govidUserId,
+          error: 'GovID profile parsing failed',
         },
         'error',
       );
@@ -230,14 +223,15 @@ export class GovIdStrategy extends Strategy {
         .then((res) => res.data);
 
       this.log.save('authenticate-govid|user-logout-result', {
-        logoutResult,
+        govidUserId: govidTokens.govidUserId,
+        success: Boolean(logoutResult),
       });
-    } catch (error: any) {
+    } catch {
       this.log.save(
         'authenticate-govid|user-logout',
         {
-          govidTokens,
-          error: error?.message ?? error.toString(),
+          govidUserId: govidTokens.govidUserId,
+          error: 'GovID logout failed',
         },
         'error',
       );
@@ -287,7 +281,7 @@ export class GovIdStrategy extends Strategy {
     totalAuthUrl.searchParams.set('state', state);
     totalAuthUrl.searchParams.set('redirect_uri', redirectUrl!);
 
-    this.log.save('authenticate-govid|redirect-to-auth', { totalAuthUrl: totalAuthUrl.toString(), userIP }, 'info');
+    this.log.save('authenticate-govid|redirect-to-auth', { endpoint: 'redirect-to-auth', userIP }, 'info');
 
     req.res!.redirect(totalAuthUrl.toString());
   }
@@ -308,7 +302,7 @@ export class GovIdStrategy extends Strategy {
         uri: url.toString(),
         timeout: this.timeout,
       };
-      this.log.save('authenticate-govid|get-access-token-query', queryOptions, 'info');
+      this.log.save('authenticate-govid|get-access-token-query', { endpoint: 'get-access-token', timeout: this.timeout }, 'info');
 
       govidTokens = await axios
         .get(queryOptions.uri, {
@@ -316,21 +310,20 @@ export class GovIdStrategy extends Strategy {
         })
         .then((res) => res.data);
     } catch (error: any) {
-      const message = error?.response?.data?.message ?? error?.message ?? error.toString();
       this.log.save(
         'authenticate-govid|get-access-token-error',
         {
-          error: message,
-          responseData: error?.response?.data,
+          error: 'GovID token exchange failed',
+          status: error?.response?.status,
           userIP,
         },
         'error',
       );
-      throw error;
+      throw new Error('GovID token exchange failed');
     }
     const { access_token: govidAccessToken, user_id: govidUserId } = govidTokens;
 
-    this.log.save('authenticate-govid|govid-tokens', { govidTokens }, 'info');
+    this.log.save('authenticate-govid|govid-tokens', { govidUserId }, 'info');
 
     return { govidAccessToken, govidUserId };
   }

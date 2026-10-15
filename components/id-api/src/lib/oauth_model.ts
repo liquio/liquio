@@ -173,7 +173,6 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
     return this.saveCodeRecord(query, user)
       .then(() => {
         this.log.save('authorization-code-created', {
-          codeShort: `${query.code.slice(0, 8)}****${query.code.slice(-8)}`,
           codeHash: crypto.createHash('sha256').update(query.code).digest('hex'),
           userId: query.userId,
           expiresAt: query.expires,
@@ -202,12 +201,9 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
       .then((v) => v?.dataValues as AuthCodeAttributes);
 
     if (!authCode) {
-      const codeShort =
-        typeof authorizationCode === 'string' ? `${authorizationCode.slice(0, 8)}****${authorizationCode.slice(-8)}` : String(authorizationCode);
-
       const codeHash = crypto.createHash('sha256').update(authorizationCode).digest('hex');
 
-      this.log.save('cannot-get-authorization-code', { codeShort, codeHash }, 'error');
+      this.log.save('cannot-get-authorization-code', { codeHash }, 'error');
 
       return false;
     }

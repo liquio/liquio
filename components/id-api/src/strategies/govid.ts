@@ -257,7 +257,7 @@ export async function govid(app: Express) {
     async (req, res) => {
       const user = req.session.passport?.user;
 
-      log.save('user-auth-by-govid', { user }, 'info');
+      log.save('user-auth-by-govid', { userId: user?.userId ?? user?.id }, 'info');
 
       await saveSession(req, user);
 

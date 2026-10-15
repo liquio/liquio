@@ -22,7 +22,7 @@ export function useProxy(express: Express) {
           userRes.statusCode = 400;
         } else if (proxyRes.statusCode! >= 300) {
           // Report any other non-success response.
-          log.save('eds-proxy|error', { statusCode: proxyRes.statusCode, data: proxyResData.toString(), query: userReq.query }, 'error');
+          log.save('eds-proxy|error', { statusCode: proxyRes.statusCode }, 'error');
         }
 
         return proxyResData;

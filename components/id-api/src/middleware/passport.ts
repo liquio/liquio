@@ -71,11 +71,11 @@ export function usePassport(express: Express) {
     const config = express.config.auth_providers.oauth2;
     passport.use(
       new OAuth2Strategy(config, (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
-        log.save('user-auth-by-oauth2', { accessToken, refreshToken, profile }, 'info');
+        log.save('user-auth-by-oauth2', { profileId: profile?.id }, 'info');
         axios
           .get(config.userProfileUrl + '?access_token=' + accessToken)
           .then(async (response) => {
-            log.save('user-auth-by-oauth2', { response: response.data }, 'info');
+            log.save('user-auth-by-oauth2', { status: response.status }, 'info');
             const userData = response.data;
 
             const userCode = calculateUserCode(userData.ipn, userData.edrpou);
@@ -112,7 +112,7 @@ export function usePassport(express: Express) {
                   )
                   .then((row) => row?.dataValues);
               } catch (error) {
-                log.save('user-auth-by-oauth2', { error }, 'error');
+                log.save('user-auth-by-oauth2', { error: (error as any)?.message }, 'error');
                 done(error);
                 return;
               }
@@ -121,7 +121,7 @@ export function usePassport(express: Express) {
             done(null, user as any);
           })
           .catch((error) => {
-            log.save('user-auth-by-oauth2', { error }, 'error');
+            log.save('user-auth-by-oauth2', { error: (error as any)?.message }, 'error');
             done(error);
           });
       }),
@@ -135,7 +135,7 @@ export function usePassport(express: Express) {
         keepSessionInfo: true,
       }),
       (req, res) => {
-        log.save('user-auth-by-oauth2', { user: req.session.passport?.user }, 'info');
+        log.save('user-auth-by-oauth2', { userId: (req.session.passport?.user as any)?.userId ?? (req.session.passport?.user as any)?.id }, 'info');
         req.session.save(() => setTimeout(() => res.redirect('/authorise/continue/'), 250));
       },
     );

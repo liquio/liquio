@@ -198,7 +198,11 @@ export async function eds(app: Express) {
       keepSessionInfo: true,
     }),
     async (req, res) => {
-      log.save('user-success-authorize-by-eds', { userPassportData: req.session.passport?.user }, 'info');
+      log.save(
+        'user-success-authorize-by-eds',
+        { userId: (req.session.passport?.user as any)?.userId ?? (req.session.passport?.user as any)?.id },
+        'info',
+      );
       await saveSession(req);
       if (!res.headersSent) {
         res.send({ error: null, redirect: '/authorise/continue/' });

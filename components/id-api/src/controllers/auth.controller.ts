@@ -130,13 +130,13 @@ export class AuthController extends BaseController {
    */
   async addDebugUserCode(req: Request, res: Response): Promise<void> {
     const { code, userId, serverToken } = req.body;
-    this.log.save('add-debug-user-code-request', { code, userId, serverToken }, 'info');
+    this.log.save('add-debug-user-code-request', { userId }, 'info');
     if ([code, userId, serverToken].some((v) => typeof v !== 'string')) {
-      this.log.save('add-debug-user-code-wrong-params', { code, userId }, 'error');
+      this.log.save('add-debug-user-code-wrong-params', { userId }, 'error');
       res.status(400).send({ error: { message: 'Code and user ID should be defined.' } });
       return;
     }
-    this.log.save('add-debug-user-code-params-defined', { code, userId }, 'info');
+    this.log.save('add-debug-user-code-params-defined', { userId }, 'info');
 
     // Define debug user info.
     const debugUsers = this.config.debugUsers ?? [];
@@ -149,22 +149,22 @@ export class AuthController extends BaseController {
     }));
     const debugUserInfo = decryptedDebugUsers.find((v: any) => v.code === code && v.userId === userId);
     if (!debugUserInfo) {
-      this.log.save('add-debug-user-code-auth-info-not-found', { code, userId }, 'error');
+      this.log.save('add-debug-user-code-auth-info-not-found', { userId }, 'error');
       res.status(400).send({ error: { message: 'Auth info not found.' } });
       return;
     }
     if (debugUserInfo.serverToken !== serverToken) {
-      this.log.save('add-debug-user-code-incorrect-server-token', { code, userId }, 'error');
+      this.log.save('add-debug-user-code-incorrect-server-token', { userId }, 'error');
       res.status(400).send({ error: { message: 'Incorrect server token.' } });
       return;
     }
     const { clientId, expires } = debugUserInfo;
     if ([clientId, expires].some((v) => typeof v === 'undefined')) {
-      this.log.save('add-debug-user-code-incorrect-auth-info', { code, userId }, 'error');
+      this.log.save('add-debug-user-code-incorrect-auth-info', { userId }, 'error');
       res.status(500).send({ error: { message: 'Incorrect auth info. Check config.' } });
       return;
     }
-    this.log.save('add-debug-user-code-auth-info-defined', { code, userId, clientId, expires }, 'info');
+    this.log.save('add-debug-user-code-auth-info-defined', { userId, clientId, expires }, 'info');
 
     // Define scope fields.
     const scope = this.config.oauth?.defaults?.scope_fields;
@@ -181,7 +181,7 @@ export class AuthController extends BaseController {
     try {
       await this.model('authCode').destroy({ where: { code } });
     } catch (error: any) {
-      this.log.save('add-debug-user-code-delete-previous-code-record-error', { error: error.message, stack: error.stack, code }, 'error');
+      this.log.save('add-debug-user-code-delete-previous-code-record-error', { error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         message: 'Can not delete previous auth code record.',
         details: error.message ?? error.toString(),
@@ -194,7 +194,7 @@ export class AuthController extends BaseController {
     try {
       createdAuthCode = await this.service('auth').oAuthModel.saveCodeRecord(authCodeData);
     } catch (error: any) {
-      this.log.save('add-debug-user-code-creating-error', { code, userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
+      this.log.save('add-debug-user-code-creating-error', { userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         message: 'Can not create auth code record.',
         details: error.message ?? error.toString(),
@@ -203,7 +203,7 @@ export class AuthController extends BaseController {
     }
 
     // Response.
-    this.log.save('add-debug-user-code-response', { code, userId, clientId, expires }, 'info');
+    this.log.save('add-debug-user-code-response', { userId, clientId, expires }, 'info');
     res.send({ data: createdAuthCode });
   }
 
@@ -393,7 +393,6 @@ export class AuthController extends BaseController {
       tokens = await this.service('auth').server.token(request, response);
       this.log.save('create-tokens-success', {
         userId: tokens.user.id,
-        accessTokenShort: `${tokens.accessToken.slice(0, 8)}****${tokens.accessToken.slice(-8)}`,
         accessTokenHash: crypto.createHash('sha256').update(tokens.accessToken).digest('hex'),
         accessTokenExpiresAt: tokens.accessTokenExpiresAt,
       });
@@ -460,29 +459,29 @@ export class AuthController extends BaseController {
    */
   async addTestCode(req: Request, res: Response): Promise<void> {
     const { code, userId } = req.body;
-    this.log.save('add-test-code-request', { body: req.body }, 'info');
+    this.log.save('add-test-code-request', { userId: req.body?.userId }, 'info');
     if ([code, userId].some((v) => typeof v !== 'string')) {
-      this.log.save('add-test-code-wrong-params', { body: req.body, code, userId }, 'error');
+      this.log.save('add-test-code-wrong-params', { userId }, 'error');
       res.status(400).send({ error: { message: 'Code and user ID should be defined.' } });
       return;
     }
-    this.log.save('add-test-code-params-defined', { body: req.body, code, userId }, 'info');
+    this.log.save('add-test-code-params-defined', { userId }, 'info');
 
     // Define test auth info.
     const testAuth = this.config.testAuth ?? [];
     const testAuthInfo = testAuth.find((v: any) => v.code === code && v.userId === userId);
     if (!testAuthInfo) {
-      this.log.save('add-test-code-auth-info-not-found', { code, userId, testAuth }, 'error');
+      this.log.save('add-test-code-auth-info-not-found', { userId }, 'error');
       res.status(400).send({ error: { message: 'Auth info not found.' } });
       return;
     }
     const { clientId, expires } = testAuthInfo;
     if ([clientId, expires].some((v) => typeof v === 'undefined')) {
-      this.log.save('add-test-code-incorrect-auth-info', { code, userId, testAuth }, 'error');
+      this.log.save('add-test-code-incorrect-auth-info', { userId }, 'error');
       res.status(500).send({ error: { message: 'Incorrect auth info. Check config.' } });
       return;
     }
-    this.log.save('add-test-code-auth-info-defined', { code, userId, clientId, expires }, 'info');
+    this.log.save('add-test-code-auth-info-defined', { userId, clientId, expires }, 'info');
 
     // Define scope fields.
     const scope = this.config.oauth?.defaults?.scope_fields;
@@ -499,7 +498,7 @@ export class AuthController extends BaseController {
     try {
       await this.model('authCode').destroy({ where: { code } });
     } catch (error: any) {
-      this.log.save('add-test-code-delete-previous-code-record-error', { code, error: error.message, stack: error.stack }, 'error');
+      this.log.save('add-test-code-delete-previous-code-record-error', { error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         message: 'Can not delete previous auth code record.',
         details: error.message ?? error.toString(),
@@ -512,7 +511,7 @@ export class AuthController extends BaseController {
     try {
       createdAuthCode = await this.service('auth').oAuthModel.saveCodeRecord(authCodeData);
     } catch (error: any) {
-      this.log.save('add-test-code-creating-error', { code, userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
+      this.log.save('add-test-code-creating-error', { userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         message: 'Can not create auth code record.',
         details: error.message ?? error.toString(),
@@ -521,7 +520,7 @@ export class AuthController extends BaseController {
     }
 
     // Response.
-    this.log.save('add-test-code-response', { code, userId, clientId, expires }, 'info');
+    this.log.save('add-test-code-response', { userId, clientId, expires }, 'info');
     res.send({ data: createdAuthCode });
   }
 
@@ -541,7 +540,7 @@ export class AuthController extends BaseController {
         },
       });
     } catch (error: any) {
-      this.log.save('response-type-code-error', { error: error.toString(), details: error }, 'error');
+      this.log.save('response-type-code-error', { error: error.toString() }, 'error');
       res.status(401).send(new OAuthError(error.message, error));
       return;
     }

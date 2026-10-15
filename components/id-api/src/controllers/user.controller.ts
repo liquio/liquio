@@ -746,7 +746,7 @@ export class UserController extends BaseController {
         throw new Error('Invalid email confirmation code.');
       }
     } catch (err) {
-      this.log.save('set-to-new-email-check-code-error', { email, err }, 'error');
+      this.log.save('set-to-new-email-check-code-error', { email, error: (err as any)?.message }, 'error');
       res.status(400).send({ error: 'Invalid confirmation code.' });
       return;
     }
@@ -957,7 +957,7 @@ export class UserController extends BaseController {
    */
   async prepareUser(req: Request, res: Response): Promise<void> {
     const { name, surname, middlename, ipn, email, edrpou } = req.body;
-    this.log.save('prepare-user', { body: req.body }, 'info');
+    this.log.save('prepare-user', { email, ipn, edrpou }, 'info');
 
     const userCode = calculateUserCode(ipn, edrpou);
 
@@ -1326,7 +1326,7 @@ export class UserController extends BaseController {
   async forgotPassword(req: Request, res: Response): Promise<void> {
     const config = this.config.auth_providers.local;
 
-    this.log.save('forgot-password-request', { body: req.body }, 'info');
+    this.log.save('forgot-password-request', { email: req.body?.email }, 'info');
 
     // Validate the request parameters
     const { email } = req.body;

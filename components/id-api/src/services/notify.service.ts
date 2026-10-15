@@ -46,7 +46,7 @@ export class NotifyService extends BaseService {
 
         return data;
       } catch (error) {
-        this.log.save('sended-sms-error', { error }, 'error');
+        this.log.save('sended-sms-error', { error: (error as any)?.message, status: (error as any)?.response?.status }, 'error');
         throw error;
       }
     }
@@ -70,9 +70,9 @@ export class NotifyService extends BaseService {
           'Content-Type': 'application/json',
         },
       });
-      this.log.save('email-send-success', { body }, 'info');
+      this.log.save('email-send-success', { email, title: message.title }, 'info');
     } catch (error) {
-      this.log.save('email-send-error', { error }, 'error');
+      this.log.save('email-send-error', { email, error: (error as any)?.message, status: (error as any)?.response?.status }, 'error');
       throw error;
     }
   }

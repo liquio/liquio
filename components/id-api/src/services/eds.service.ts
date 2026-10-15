@@ -53,7 +53,7 @@ export class EdsService extends BaseService {
 
     // Create JWT.
     const token = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpiresIn as number });
-    this.log.save('get-random-content-to-sign-generated', { token }, 'info');
+    this.log.save('get-random-content-to-sign-generated', { expiresIn: jwtExpiresIn }, 'info');
 
     // Response token.
     return token;
@@ -64,15 +64,15 @@ export class EdsService extends BaseService {
    */
   async checkRandomContentSign(token: string, signature: string): Promise<{ signer: any; issuer: any; serial: any; pem: any }> {
     // Log signature checking.
-    this.log.save('check-sign-started', { token, signature }, 'info');
+    this.log.save('check-sign-started', { tokenLength: token?.length, signatureLength: signature?.length }, 'info');
 
     // Check params.
     if (typeof token !== 'string') {
-      this.log.save('check-sign-token-error', { token }, 'error');
+      this.log.save('check-sign-token-error', { tokenType: typeof token }, 'error');
       throw new Error(Errors.List.TOKEN_NOT_FOUND.message);
     }
     if (typeof signature !== 'string') {
-      this.log.save('check-sign-signature-error', { signature }, 'error');
+      this.log.save('check-sign-signature-error', { signatureType: typeof signature }, 'error');
       throw new Error(Errors.List.SIGNATURE_NOT_FOUND.message);
     }
 
@@ -80,11 +80,11 @@ export class EdsService extends BaseService {
     if (encryptionEnabled) {
       try {
         signature = this.decodeSignature(signature);
-        this.log.save('check-sign-iit-decoded', { signature }, 'info');
+        this.log.save('check-sign-iit-decoded', { signatureLength: signature?.length }, 'info');
         signature = await this.service('x509').hashToInternalSignature(signature, token);
         this.log.save('check-sign-iit-converted', { signature: shortenStringWithPrefixSuffix(signature) }, 'info');
       } catch (err) {
-        this.log.save('check-sign-iit|decoding-error', { err }, 'error');
+        this.log.save('check-sign-iit|decoding-error', { error: (err as any)?.message }, 'error');
       }
     }
 

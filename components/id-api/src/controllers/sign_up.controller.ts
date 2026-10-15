@@ -249,7 +249,7 @@ export class SignUpController extends BaseController {
   async checkEmailConfirm(req: Request, res: Response): Promise<void> {
     let { email, code } = matchedData<{ email: string; code: string }>(req, { locations: ['query'] });
     email = email.toLowerCase();
-    this.log.save('check-email-confirmation-code-params', { email, code }, 'info');
+    this.log.save('check-email-confirmation-code-params', { email }, 'info');
 
     let confirm;
     try {
@@ -258,27 +258,27 @@ export class SignUpController extends BaseController {
         code,
       });
     } catch (error: any) {
-      this.log.save('check-email-confirmation-code-error', { email, code, error: error?.message }, 'error');
+      this.log.save('check-email-confirmation-code-error', { email, error: error?.message }, 'error');
       res.send('null');
       return;
     }
 
     // If wrong code.
     if (!confirm) {
-      this.log.save('check-email-confirmation-code-wrong-code', { email, code }, 'info');
+      this.log.save('check-email-confirmation-code-wrong-code', { email }, 'info');
 
       try {
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ email });
         this.log.save('confirm-email-code-counter-incremented', { email, counter }, 'warning');
       } catch (error: any) {
-        this.log.save('check-email-confirmation-code-error', { email, code, error: error?.message }, 'error');
+        this.log.save('check-email-confirmation-code-error', { email, error: error?.message }, 'error');
       }
 
       res.send('null');
       return;
     }
 
-    this.log.save('check-email-confirmation-code-correct-code', { email, code }, 'info');
+    this.log.save('check-email-confirmation-code-correct-code', { email }, 'info');
     res.send('confirm');
   }
 
@@ -344,7 +344,7 @@ export class SignUpController extends BaseController {
    */
   async checkPhoneConfirm(req: Request, res: Response): Promise<void> {
     const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['query'] });
-    this.log.save('check-phone-confirmation-code-params', { phone, code }, 'info');
+    this.log.save('check-phone-confirmation-code-params', { phone }, 'info');
 
     let confirm;
     try {
@@ -353,20 +353,20 @@ export class SignUpController extends BaseController {
         code,
       });
     } catch (error: any) {
-      this.log.save('check-phone-confirmation-code-error', { phone, code, error: error?.message }, 'error');
+      this.log.save('check-phone-confirmation-code-error', { phone, error: error?.message }, 'error');
       res.send('null');
       return;
     }
 
     if (!confirm) {
-      this.log.save('phone-confirmation-wrong-code', { phone, code }, 'warning');
+      this.log.save('phone-confirmation-wrong-code', { phone }, 'warning');
       try {
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({
           phone,
         });
         this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
       } catch (error: any) {
-        this.log.save('check-phone-confirmation-code-error', { phone, code, error: error?.message }, 'error');
+        this.log.save('check-phone-confirmation-code-error', { phone, error: error?.message }, 'error');
       }
     }
 
@@ -381,11 +381,11 @@ export class SignUpController extends BaseController {
     const userId = req.user && (req.user as any).id;
     const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['query'] });
 
-    this.log.save('phone-confirmation-request', { userId, phone, code }, 'info');
+    this.log.save('phone-confirmation-request', { userId, phone }, 'info');
 
     // Check params.
     if (!userId || !phone || !code) {
-      this.log.save('phone-confirmation-request-validation-error', { userId, phone, code }, 'error');
+      this.log.save('phone-confirmation-request-validation-error', { userId, phone }, 'error');
       res.status(400).send({
         error: {
           message: 'All needed params should be defined.',
@@ -426,7 +426,7 @@ export class SignUpController extends BaseController {
 
       // Handle not confirmed.
       if (!confirm) {
-        this.log.save('phone-confirmation-wrong-code', { userId, phone, code }, 'warning');
+        this.log.save('phone-confirmation-wrong-code', { userId, phone }, 'warning');
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone: phone });
         this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
         res.send({ data: { isConfirmed: false } });
@@ -437,7 +437,7 @@ export class SignUpController extends BaseController {
       try {
         await this.service('auth').removeConfirmCode({ phone });
       } catch (error: any) {
-        this.log.save('phone-confirmation-code-removing-error', { userId, phone, code, error: error.message }, 'error');
+        this.log.save('phone-confirmation-code-removing-error', { userId, phone, error: error.message }, 'error');
       }
 
       // Set user phone as confirmed.
@@ -448,10 +448,10 @@ export class SignUpController extends BaseController {
 
       try {
         await this.service('auth').updateUser({ userId }, updateQuery);
-        this.log.save('phone-confirmation-done', { userId, phone, code }, 'info');
+        this.log.save('phone-confirmation-done', { userId, phone }, 'info');
         res.send({ data: { isConfirmed: true, user } });
       } catch (error: any) {
-        this.log.save('phone-confirmation-user-updating-error', { userId, phone, code, error: error.message }, 'error');
+        this.log.save('phone-confirmation-user-updating-error', { userId, phone, error: error.message }, 'error');
         res.status(500).send({
           error: {
             message: error.message,
@@ -460,7 +460,7 @@ export class SignUpController extends BaseController {
         });
       }
     } catch (error: any) {
-      this.log.save('phone-confirmation-error', { userId, phone, code, error: error.message }, 'error');
+      this.log.save('phone-confirmation-error', { userId, phone, error: error.message }, 'error');
       res.status(500).send({
         error: {
           message: error.message,
@@ -562,10 +562,10 @@ export class SignUpController extends BaseController {
         phone = account.phone;
       }
 
-      this.log.save('check-phone-code', { phone, code: code }, 'info');
+      this.log.save('check-phone-code', { phone }, 'info');
 
       if (!code) {
-        this.log.save('check-phone-confirmation-code-params-not-defined', { phone, code }, 'error');
+        this.log.save('check-phone-confirmation-code-params-not-defined', { phone }, 'error');
         res.status(400).send('Phone confirmation code should be defined.');
         return;
       }
@@ -590,7 +590,7 @@ export class SignUpController extends BaseController {
       }
       res.send({ success: true });
     } catch (error: any) {
-      this.log.save('check-phone-confirmation-code-error', { phone, code, error: error.message }, 'error');
+      this.log.save('check-phone-confirmation-code-error', { phone, error: error.message }, 'error');
       res.send({ success: false, error: error.message });
     }
   }
