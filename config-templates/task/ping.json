@@ -3,7 +3,7 @@
     "url": "https://id.liquio.local/test/ping"
   },
   "event": {
-    "url": "https://event.liquio.local/test/ping"
+    "url": "https://event.liquio.local/healthz"
   },
   "manager": {
     "url": "https://manager.liquio.local/test/ping"

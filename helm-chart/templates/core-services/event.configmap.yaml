@@ -27,6 +27,7 @@ metadata:
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
   "customer" .Release.Name
   "environment" .Values.config.server.environment
+  "monitoring" (dict "isEnabled" false "token" "")
 -}}
 {{ $redisBase := dict
   "host" (include "liquio.redis.host" .)

@@ -35,10 +35,6 @@ export class PingController extends Controller {
   filestorage: Filestorage;
   servicesRepository: ServicesRepository;
   externalService: ExternalService;
-  // Not assigned anywhere in the codebase - see minjust ping handlers below.
-  minjustProvider: any;
-  minjustUsrProvider: any;
-  minjustDocProvider: any;
   token: any;
 
   /**
@@ -304,103 +300,6 @@ export class PingController extends Controller {
     const responseText = digestNotifierResponse && digestNotifierResponse.bounce_rate ? 'true' : 'false';
 
     // Response.
-    this.responseText(res, responseText);
-  }
-
-  /**
-   * Ping Minjust.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
-   */
-  async pingMinjust(req, res) {
-    const dataToSend = {
-      external_reader_edr_record: [],
-      id: 'reest_physical',
-      collalias: 'reest_physical',
-      is_edr_available: true,
-      is_user_active_fop_calculated: false,
-      reason_of_rejection: 'Інша причина',
-      reest_physical_zip: '01254',
-      reest_physical_corps: '',
-      date_for_visit_year_available: '2020',
-      is_reest_physical_vat_doc: false,
-      reest_physical_building_n: '4',
-      date_for_visit_month_available: '07',
-      reest_physical_number_unit: '',
-      reest_physical_kved: ['98.20 Діяльність домашніх господарств як виробників послуг для власного споживання'],
-      id_card_number: '123456789',
-      nationality: '30581756',
-      value: 'c0413b10-cd7c-11e9-a574-654b30581756',
-      code: '804',
-      nameEng: 'Ukraine',
-      nameLong: 'УКРАЇНА',
-      nameShort: 'Україна',
-      stringified: 'Україна',
-      label: 'Україна',
-      address: '1',
-      _a_t_u: { propertiesHasOptions: { region: true, district: false, city: false } },
-      income_ammount: 0,
-      is_user_closed_fop_this_year: false,
-      system: '3',
-      date_of_visit: null,
-      is_pdv: null,
-      date_of_transition_simplified_form_taxation: '28.05.2020 р.',
-      workflow_id: 'f8621250-a0ab-11ea-bb62-016aed8c8028',
-      document_id: 'f88be170-a0ab-11ea-bb62-016aed8c8028',
-    };
-
-    // Check minjust.
-    let minjustResponse;
-    const isTestResponse = true;
-    try {
-      minjustResponse = await this.minjustProvider.send(dataToSend, isTestResponse);
-    } catch (error) {
-      global.log.save('test-ping-minjust-service-error', { error: error && error.message });
-    }
-
-    const responseText =
-      minjustResponse && minjustResponse.reest_physical_main_doc_ecp && minjustResponse.reest_physical_main_doc_ecp.isEmpty ? 'true' : 'false';
-    this.responseText(res, responseText);
-  }
-
-  /**
-   * Ping MinjustUsr.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
-   */
-  async pingMinjustUsr(req, res) {
-    const dataToSend = {
-      code: 262520496045,
-    };
-
-    // Check minjust.
-    let minjustUsrResponse;
-    const isTestResponse = true;
-    try {
-      minjustUsrResponse = await this.minjustUsrProvider.send(dataToSend, isTestResponse);
-    } catch (error) {
-      global.log.save('test-ping-minjust-service-error', { error: error && error.message });
-    }
-
-    const responseText = minjustUsrResponse ? 'true' : 'false';
-    this.responseText(res, responseText);
-  }
-
-  /**
-   * Ping MinjustUsr.
-   * @param {object} req HTTP request.
-   * @param {object} res HTTP response.
-   */
-  async pingMinjustDoc(req, res) {
-    // Check minjust.
-    let minjustUsrResponse;
-    try {
-      minjustUsrResponse = await this.minjustDocProvider.download({ code: '() => 262520496045', isTest: true });
-    } catch (error) {
-      global.log.save('test-ping-minjust-service-error', { error: error && error.message });
-    }
-
-    const responseText = minjustUsrResponse ? 'true' : 'false';
     this.responseText(res, responseText);
   }
 
