@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import * as conf from '../../config/config';
+import { createHttpsAgent } from '../../lib/tls';
 import { SmsQueueModel } from '../sms_queue';
 
 const SmsQueue = new SmsQueueModel().SmsQueue;
@@ -8,10 +9,6 @@ const SmsQueue = new SmsQueueModel().SmsQueue;
 export class AbstractGate {
   options: any;
   adapter: any;
-
-  constructor() {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-  }
 
   get isEnabled(): boolean {
     return !(conf as any).smsServer || (conf as any).smsServer.isEnabled !== false;
@@ -24,7 +21,9 @@ export class AbstractGate {
   async sendRequest(object: any): Promise<any> {
     object.json = true;
     try {
-      const t = await axios(object);
+      // Optional per-gateway TLS options (private CA). Default agent verifies certificates.
+      const httpsAgent = createHttpsAgent((conf as any).smsServer?.tls);
+      const t = await axios(httpsAgent ? { ...object, httpsAgent } : object);
       return t;
     } catch (e) {
       console.error(e);

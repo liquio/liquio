@@ -41,9 +41,6 @@
       "host": "mail.local",
       "secure": false,
       "port": 25,
-      "tls": {
-        "rejectUnauthorized": false
-      },
       "auth": {
         "user": "username",
         "pass": "<REDACTED>"
