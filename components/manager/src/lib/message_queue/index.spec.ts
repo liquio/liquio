@@ -171,6 +171,24 @@ describe('MessageQueue', () => {
         messageString: JSON.stringify(message),
       });
     });
+
+    it('should ack a duplicate message from the redis cache without handling it and keep the key', async () => {
+      const message = { type: 'test', amqpMessageId: 'abc' };
+      const handler = jest.fn().mockReturnValue(true);
+      global.config.redis.amqpMessageCache.isEnabled = true;
+      global.redisClient = { get: jest.fn().mockResolvedValue('abc'), delete: jest.fn(), set: jest.fn() } as any;
+
+      await messageQueue.init();
+      messageQueue.subscribeToConsuming(handler);
+      const decoratedHandler = messageQueue.channels.reading.consume.mock.calls[0][1];
+
+      decoratedHandler({ content: Buffer.from(JSON.stringify(message)) });
+
+      await setTimeout(500);
+      expect(handler).not.toHaveBeenCalled();
+      expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
+      expect(global.redisClient.delete).not.toHaveBeenCalled();
+    });
   });
 
   describe('reconnect', () => {

@@ -256,7 +256,7 @@ export class MessageQueue {
                 global.log.save('message-from-queue-ack-error-from-redis', error.message, 'error');
                 return;
               }
-              await global.redisClient.delete(`${REDIS_AMQP_KEY_PREFIX}.${amqpMessageId}`);
+              // Keep the key: a further redelivery must be deduplicated too, the TTL expires it.
               return;
             }
           } catch (error) {

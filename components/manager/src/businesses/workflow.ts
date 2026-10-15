@@ -149,6 +149,7 @@ export class WorkflowBusiness {
       let workflowId;
       const currentSequences = [];
       let bpmnSchema;
+      let notFinishedReason: string | undefined;
 
       // Find current position.
       switch (true) {
@@ -165,6 +166,10 @@ export class WorkflowBusiness {
           }
           workflowId = task.workflowId;
           workflowTemplateId = task.workflowEntity.workflowTemplateId;
+          if (task.finished !== true) {
+            notFinishedReason = 'task-not-finished';
+            break;
+          }
           bpmnSchema = await this.findSchemaById(task.workflowEntity.workflowTemplateId);
           const sourceRef = bpmnSchema.schema['bpmn:sequenceFlow'].find(
             (item) => item['$']['sourceRef'].toLowerCase() === `task-${task.taskTemplateId}`,
@@ -186,6 +191,10 @@ export class WorkflowBusiness {
           const resultSequences = gateway.data.resultSequences ? gateway.data.resultSequences : [gateway.data.resultSequence];
           workflowId = gateway.workflowId;
           workflowTemplateId = gateway.workflowEntity.workflowTemplateId;
+          if (!gateway.data?.resultSequences && !gateway.data?.resultSequence) {
+            notFinishedReason = 'gateway-not-finished';
+            break;
+          }
 
           bpmnSchema = await this.findSchemaById(gateway.workflowEntity.workflowTemplateId);
 
@@ -207,6 +216,12 @@ export class WorkflowBusiness {
           }
           workflowId = event.workflowId;
           workflowTemplateId = event.workflowEntity.workflowTemplateId;
+          // An event that failed with `notFailOnError` is stored with `done: false` and an error marker in
+          // `data` (see the event component), and the flow must still advance after it.
+          if (event.done !== true && event.data?.notFailOnError !== true) {
+            notFinishedReason = 'event-not-finished';
+            break;
+          }
 
           bpmnSchema = await this.findSchemaById(event.workflowEntity.workflowTemplateId);
 
@@ -230,13 +245,29 @@ export class WorkflowBusiness {
           throw new Error(ERROR_INVALID_MESSAGE_OBJECT);
       }
 
+      // Premature message: the step is not finished yet. Ack and drop it, it must not advance the flow.
+      if (notFinishedReason) {
+        global.log.save('workflow-message-dropped', { reason: notFinishedReason, messageObject });
+        return true;
+      }
+
       let workflow = await this.workflowModel.findById(workflowId);
+
+      if (!workflow) {
+        throw new Error(ERROR_TASK_OR_WORKFLOW_NOT_FOUND);
+      }
+
+      // Finished workflow: nothing to advance and nothing to record.
+      if (workflow.isFinal !== false) {
+        global.log.save('workflow-message-dropped', { reason: 'workflow-final', messageObject });
+        return true;
+      }
 
       // Save message in workflow history.
       workflow = await this.pushMessageToWorkflow(workflow.id, 'in', messageObject, currentSequences);
 
       // Find next position.
-      if (bpmnSchema && workflowId && workflowTemplateId && workflow && workflow.isFinal === false) {
+      if (bpmnSchema && workflowId && workflowTemplateId && workflow) {
         for (let currentSequence of currentSequences) {
           // Finished gateway.
           if (currentSequence['$']['targetRef'].search(/^gateway-[0-9]+-end$/i) !== -1) {

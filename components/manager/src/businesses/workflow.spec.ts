@@ -71,3 +71,122 @@ describe('WorkflowBusiness.findSchemaById', () => {
     expect(global.log.save).toHaveBeenCalledWith('invalid-bpmn-schema', expect.anything());
   });
 });
+
+describe('WorkflowBusiness.createFromMessage', () => {
+  const sequenceFlow = (id, sourceRef, targetRef) => ({ $: { id, sourceRef, targetRef } });
+  const schema = {
+    id: 1,
+    schema: {
+      'bpmn:sequenceFlow': [sequenceFlow('Flow_1', 'task-1', 'task-2'), sequenceFlow('Flow_2', 'task-2', 'endEvent_1')],
+    },
+  };
+
+  let business: any;
+  let workflow: any;
+  let task: any;
+
+  beforeEach(() => {
+    global.log = { save: jest.fn() } as any;
+    global.messageQueue = { produce: jest.fn() } as any;
+
+    workflow = { id: 'wf', isFinal: false, data: { messages: [] } };
+    task = { id: 't1', workflowId: 'wf', taskTemplateId: 1, finished: true, workflowEntity: { workflowTemplateId: 1 } };
+
+    business = Object.create(WorkflowBusiness.prototype);
+    business.bpmnSchemes = [schema];
+    business.taskModel = { findById: jest.fn(async () => task) };
+    business.workflowModel = {
+      findById: jest.fn(async () => workflow),
+      appendMessage: jest.fn(async (_id, message) => {
+        workflow = { ...workflow, data: { messages: [...workflow.data.messages, message] } };
+        return workflow;
+      }),
+      setError: jest.fn(),
+    };
+    business.workflowErrorModel = { create: jest.fn() };
+    business.workflowTemplateModel = { findById: jest.fn() };
+    business.systemNotifier = { sendEmails: jest.fn() };
+  });
+
+  it('advances a finished task once and records history', async () => {
+    expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
+
+    expect(global.messageQueue.produce).toHaveBeenCalledTimes(1);
+    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 2 }));
+    expect(workflow.data.messages.map((m) => m.type)).toEqual(['in', 'out']);
+  });
+
+  it('processes a re-sent message of an already finished task again (admin continue)', async () => {
+    await business.createFromMessage({ workflowId: 'wf', taskId: 't1' });
+    (global.messageQueue.produce as jest.Mock).mockClear();
+
+    expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
+
+    expect(global.messageQueue.produce).toHaveBeenCalledTimes(1);
+    expect(workflow.data.messages.map((m) => m.type)).toEqual(['in', 'out', 'in', 'out']);
+  });
+
+  it('acks and drops an unfinished task without history, produce or error', async () => {
+    task.finished = false;
+
+    expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
+
+    expect(global.messageQueue.produce).not.toHaveBeenCalled();
+    expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
+    expect(business.workflowModel.setError).not.toHaveBeenCalled();
+  });
+
+  it('drops an unfinished event and an unfinished gateway', async () => {
+    business.eventModel = {
+      findById: jest.fn(async () => ({ workflowId: 'wf', eventTemplateId: 1, done: false, workflowEntity: { workflowTemplateId: 1 } })),
+    };
+    business.gatewayModel = {
+      findById: jest.fn(async () => ({ workflowId: 'wf', gatewayTemplateId: 1, data: {}, workflowEntity: { workflowTemplateId: 1 } })),
+    };
+
+    expect(await business.createFromMessage({ eventId: 'e1' })).toBe(true);
+    expect(await business.createFromMessage({ gatewayId: 'g1' })).toBe(true);
+
+    expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
+    expect(global.messageQueue.produce).not.toHaveBeenCalled();
+  });
+
+  it('does not record history for a final workflow', async () => {
+    workflow.isFinal = true;
+
+    expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
+
+    expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
+    expect(global.messageQueue.produce).not.toHaveBeenCalled();
+  });
+
+  it('advances after an event that failed with notFailOnError (done: false, error marker in data)', async () => {
+    business.eventModel = {
+      findById: jest.fn(async () => ({
+        workflowId: 'wf',
+        eventTemplateId: 5,
+        done: false,
+        data: { error: 'Error: boom', notFailOnError: true },
+        workflowEntity: { workflowTemplateId: 1 },
+      })),
+    };
+    business.gatewayModel = { findById: jest.fn() };
+    schema.schema['bpmn:sequenceFlow'].push(sequenceFlow('Flow_4', 'event-5', 'task-4'));
+
+    await business.createFromMessage({ eventId: 'e1' });
+
+    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 4 }));
+  });
+
+  it('advances a finished gateway and a done event', async () => {
+    business.eventModel = {
+      findById: jest.fn(async () => ({ workflowId: 'wf', eventTemplateId: 2, done: true, workflowEntity: { workflowTemplateId: 1 } })),
+    };
+    business.gatewayModel = { findById: jest.fn() };
+    schema.schema['bpmn:sequenceFlow'].push(sequenceFlow('Flow_3', 'event-2', 'task-3'));
+
+    await business.createFromMessage({ eventId: 'e1' });
+
+    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 3 }));
+  });
+});

@@ -32,7 +32,7 @@ describe('Workflow Business (via RabbitMQ)', () => {
 
     await global.db.query(
       `INSERT INTO tasks (id, workflow_id, task_template_id, performer_users, signer_users, performer_units, tags, data, finished, deleted, created_by, updated_by, created_at, updated_at)
-       VALUES (:taskId, :workflowId, :taskTemplateId, '{}', '{}', '{}', '{}', '{}'::json, false, false, 'system', 'system', NOW(), NOW())`,
+       VALUES (:taskId, :workflowId, :taskTemplateId, '{}', '{}', '{}', '{}', '{}'::json, true, false, 'system', 'system', NOW(), NOW())`,
       { replacements: { taskId, workflowId, taskTemplateId: TASK_TEMPLATE_ID } },
     );
   });
