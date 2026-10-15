@@ -24,6 +24,7 @@ import { GatewayTypeController } from '../controllers/gateway_type';
 import { GatewayController } from '../controllers/gateway';
 import { WorkflowCategoryController } from '../controllers/workflow_category';
 import { UnitController } from '../controllers/unit';
+import { Exceptions } from '../exceptions';
 import { UnitAccessController } from '../controllers/unit_access';
 import { NumberTemplateController } from '../controllers/number_template';
 import { CustomLogController } from '../controllers/custom_log';
@@ -63,6 +64,33 @@ import {
 
 // WebSocket subprotocol marker; the auth token follows it in Sec-WebSocket-Protocol.
 export const WS_AUTH_PROTOCOL = 'liquio-admin-ws';
+
+const SAFE_HTTP_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+const READONLY_UNITS = [READONLY_SECURITY_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT, READONLY_SUPPORT_ADMIN_UNIT];
+
+/**
+ * Get proxy guard middleware: rejects non-safe HTTP methods for callers that have only read-only units
+ * among the units allowed for the proxy item. Must be used after the auth middleware.
+ * @param {number[]} units Units allowed for the proxy item.
+ */
+export const getProxyReadOnlyGuard = (units: number[]) => {
+  const writableUnits = units.filter((unit) => !READONLY_UNITS.includes(unit));
+
+  return (req, res, next) => {
+    if (SAFE_HTTP_METHODS.includes(String(req.method).toUpperCase())) {
+      return next();
+    }
+
+    // Server token auth does not set unit ids.
+    const userUnitIds: number[] | undefined = req.authUserUnitIds?.all;
+    if (!userUnitIds || userUnitIds.some((unitId) => writableUnits.includes(unitId))) {
+      return next();
+    }
+
+    const error = new Exceptions.ACCESS(Exceptions.ACCESS.Messages.UNIT);
+    return res.status(error.httpStatusCode).send({ error: { message: error.message, code: error.httpStatusCode } });
+  };
+};
 
 /**
  * Router service.
@@ -1879,7 +1907,7 @@ export class RouterService {
     const { proxyList = [] } = this.config.proxy;
     for (const proxyItem of proxyList) {
       // Define proxy params.
-      const { proxyUrl, destinationUrl, onlyForUnits = [], headers: proxyHeaders = [], proxyOptions = {} } = proxyItem;
+      const { proxyUrl, destinationUrl, onlyForUnits = [], headers: proxyHeaders = [], proxyOptions = {}, allowMutations = false } = proxyItem;
 
       const defaultUnits = [SYSTEM_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT, WORKFLOW_SYSTEM_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SUPPORT_ADMIN_UNIT];
       const units = onlyForUnits?.length ? onlyForUnits : defaultUnits;
@@ -1888,6 +1916,7 @@ export class RouterService {
       app.use(
         proxyUrl,
         authController.getCheckMiddleware(adminRoles, units),
+        allowMutations ? (_req, _res, next) => next() : getProxyReadOnlyGuard(units),
         proxy(destinationUrl, {
           // Define request decorator.
           proxyReqOptDecorator: function (proxyReqOpts) {
