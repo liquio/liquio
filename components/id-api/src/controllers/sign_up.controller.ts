@@ -46,6 +46,7 @@ export class SignUpController extends BaseController {
     this.router.get(
       '/sign_up/confirmation/phone/send',
       [query('phone').isString(), this.handleValidation.bind(this)],
+      this.auth.authoriseOptional(),
       this.sendPhoneConfirm.bind(this),
     );
     this.router.get(
@@ -331,7 +332,7 @@ export class SignUpController extends BaseController {
     this.log.save('send-phone-confirmation-code-requested', { phone }, 'info');
 
     try {
-      const body = await this.service('auth').sendPhoneConfirmCode(phone);
+      const body = await this.service('auth').sendPhoneConfirmCode(phone, (req.user as any)?.id ?? req.session?.passport?.user?.userId);
       res.send(body);
     } catch (error: any) {
       this.log.save('send-phone-confirmation-code-error', { phone, error: error.message }, 'error');
@@ -419,51 +420,21 @@ export class SignUpController extends BaseController {
     }
 
     try {
-      const confirm = await this.service('auth').getValidConfirmCode({
-        phone,
-        code,
-      });
-
-      // Handle not confirmed.
-      if (!confirm) {
+      const updatedUser = await this.service('auth').confirmUserPhone(userId, phone, code);
+      if (!updatedUser) {
         this.log.save('phone-confirmation-wrong-code', { userId, phone }, 'warning');
-        const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone: phone });
-        this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
         res.send({ data: { isConfirmed: false } });
         return;
       }
 
-      // Remove code.
-      try {
-        await this.service('auth').removeConfirmCode({ phone });
-      } catch (error: any) {
-        this.log.save('phone-confirmation-code-removing-error', { userId, phone, error: error.message }, 'error');
-      }
-
-      // Set user phone as confirmed.
-      const updateQuery = {
-        phone,
-        valid: { ...user.valid, phone: true },
-      };
-
-      try {
-        await this.service('auth').updateUser({ userId }, updateQuery);
-        this.log.save('phone-confirmation-done', { userId, phone }, 'info');
-        res.send({ data: { isConfirmed: true, user } });
-      } catch (error: any) {
-        this.log.save('phone-confirmation-user-updating-error', { userId, phone, error: error.message }, 'error');
-        res.status(500).send({
-          error: {
-            message: error.message,
-            type: 'phone-confirmation-user-updating-error',
-          },
-        });
-      }
+      this.log.save('phone-confirmation-done', { userId, phone }, 'info');
+      if (req.session?.passport?.user?.userId === userId) await saveSession(req, updatedUser);
+      res.send({ data: { isConfirmed: true, user: updatedUser } });
     } catch (error: any) {
       this.log.save('phone-confirmation-error', { userId, phone, error: error.message }, 'error');
       res.status(500).send({
         error: {
-          message: error.message,
+          message: 'Unable to confirm phone.',
           type: 'phone-confirmation-error',
         },
       });

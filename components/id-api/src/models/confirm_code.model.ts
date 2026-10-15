@@ -2,6 +2,7 @@ import { BaseModel, DataTypes, Sequelize } from './base_model';
 
 export interface ConfirmCodeAttributes {
   id: number;
+  userId?: string | null;
   phone?: string;
   email?: string;
   code: string;
@@ -23,6 +24,10 @@ export class ConfirmCodeModel extends BaseModel<ConfirmCodeAttributes, ConfirmCo
           allowNull: false,
           primaryKey: true,
           autoIncrement: true,
+        },
+        userId: {
+          allowNull: true,
+          type: DataTypes.STRING(24),
         },
         phone: {
           allowNull: true,

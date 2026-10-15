@@ -269,55 +269,17 @@ export class AuthController extends BaseController {
   }
 
   /**
-   * @deprecated
+   * @deprecated Retired. Phone verification requires an SMS code, see `POST /user/info/phone/confirm`. Does not modify anything.
    */
-  signInRequirementsPhoneSet(req: Request, res: Response): void {
-    if (!req.isAuthenticated()) {
-      res.redirect('/sign_in');
-      return;
-    }
-
-    const user = req.session?.passport?.user;
-    res.render('sign_in_requirements_phone', {
-      user_phone: user.phone,
-      user_phone_musked: user.phone.substr(0, 3) + '*******' + user.phone.substr(-2),
-    });
+  signInRequirementsPhoneSet(_req: Request, res: Response): void {
+    res.status(410).send({ error: 'Use POST /user/info/phone/confirm with a valid SMS code.' });
   }
 
   /**
-   * @deprecated
+   * @deprecated Retired. It used to mark an arbitrary phone as verified without a code. Does not modify anything.
    */
-  async signInRequirementsPhoneSetConfirm(req: Request, res: Response) {
-    if (!req.isAuthenticated()) {
-      res.redirect('/sign_in');
-      return;
-    }
-
-    try {
-      const { phone } = req.body;
-
-      const user = await this.service('auth').getUser({ userId: req.session?.passport?.user.userId });
-      const query: any = {
-        valid: {
-          ...user.valid,
-          phone: true,
-        },
-      };
-      if (phone) {
-        query.phone = phone;
-      }
-
-      const updatedUser = await this.service('auth').updateUser({ userId: req.session?.passport?.user.userId }, query);
-      await this.service('auth').removeConfirmCode({ phone });
-      await saveSession(req, updatedUser);
-      res.send({ success: true, redirect: '/authorise/continue' });
-    } catch (error: any) {
-      this.log.save('sign-in-requirements-phone-set-confirm-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send({
-        message: 'Can not set phone.',
-        details: error.message ?? error.toString(),
-      });
-    }
+  async signInRequirementsPhoneSetConfirm(_req: Request, res: Response): Promise<void> {
+    res.status(410).send({ error: 'Use POST /user/info/phone/confirm with a valid SMS code.' });
   }
 
   async relogin(req: Request, res: Response): Promise<void> {

@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { matchedData, query } from 'express-validator';
 import jwt from 'jsonwebtoken';
-import Sequelize, { Op, WhereOptions } from 'sequelize';
+import Sequelize, { Op, WhereAttributeHash, WhereOptions } from 'sequelize';
 
 import { DEFAULT_COOKIE_DOMAIN } from '../config';
 import { calculateUserCode } from '../lib/calculate_user_code';
@@ -41,6 +41,8 @@ export class UserController extends BaseController {
       this.logOff.bind(this),
     );
     this.router.get('/user/info/setValidPhone', this.auth.authorise(), this.setValidPhone.bind(this));
+    this.router.post('/user/info/phone/send', this.auth.authorise(), this.sendPhoneConfirmation.bind(this));
+    this.router.post('/user/info/phone/confirm', this.auth.authorise(), this.confirmPhone.bind(this));
     this.router.get(
       '/removeConfirmCode',
       [query('code').exists().isString(), this.handleValidation.bind(this)],
@@ -238,7 +240,7 @@ export class UserController extends BaseController {
     ];
 
     // Define update query.
-    let query: WhereOptions;
+    let query: WhereAttributeHash<any>;
     try {
       query = this.service('user').extractUpdateUserInfoParams(req, fields);
     } catch (error: any) {
@@ -248,6 +250,10 @@ export class UserController extends BaseController {
     }
 
     try {
+      if (query.valid) {
+        const currentUser = await this.service('auth').getUser({ userId });
+        query.valid = { ...currentUser?.valid, ...query.valid };
+      }
       const user: any = await this.service('auth').updateUser({ userId }, query);
 
       const changedUser = {
@@ -537,31 +543,47 @@ export class UserController extends BaseController {
   }
 
   /**
-   * Set valid phone.
+   * Retired endpoint: phone verification requires a POST with an SMS code. Does not modify anything.
    */
-  async setValidPhone(req: Request, res: Response): Promise<void> {
+  async setValidPhone(_req: Request, res: Response): Promise<void> {
+    res.status(410).send({ error: 'Use POST /user/info/phone/confirm with a valid SMS code.' });
+  }
+
+  /**
+   * Send an SMS code bound to the authenticated user and the candidate phone.
+   */
+  async sendPhoneConfirmation(req: Request, res: Response): Promise<void> {
+    const userId = (req.user as any).id;
+    const { phone } = req.body ?? {};
+    if (typeof phone !== 'string' || !phone.trim()) {
+      res.status(400).send({ error: 'Phone is required.' });
+      return;
+    }
+
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
+      res.send(await this.service('auth').sendPhoneConfirmCode(phone, userId));
+    } catch (error: any) {
+      this.log.save('send-user-phone-confirmation-error', { userId, error: error.message }, 'error');
+      res.status(500).send({ error: 'Unable to send phone confirmation code.' });
+    }
+  }
+
+  /**
+   * Verify the phone with the SMS code issued to this user for exactly this phone.
+   */
+  async confirmPhone(req: Request, res: Response): Promise<void> {
+    const userId = (req.user as any).id;
+    try {
+      const updatedUser = await this.service('auth').confirmUserPhone(userId, req.body?.phone, req.body?.code);
+      if (!updatedUser) {
+        res.status(400).send({ error: 'Invalid phone confirmation code.' });
         return;
       }
-
-      const user = await this.service('auth').getUser({ userId: (req.user as any).id });
-
-      const updatedUser = await this.service('auth').updateUser(
-        { userId: user.userId },
-        {
-          valid: {
-            ...user.valid,
-            phone: true,
-          },
-        },
-      );
-
+      if (req.session.passport?.user?.userId === updatedUser.userId) await saveSession(req, updatedUser);
       res.send(updatedUser);
     } catch (error: any) {
-      this.log.save('set-valid-phone-error', { userId: (req.user as any).id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      this.log.save('confirm-user-phone-error', { userId, error: error.message, stack: error.stack }, 'error');
+      res.status(500).send({ error: 'Unable to confirm phone.' });
     }
   }
 

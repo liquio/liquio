@@ -180,6 +180,28 @@ export class AuthMiddleware {
     };
   }
 
+  /**
+   * Resolves `req.user` from an access token (query or Bearer) when a valid one is present.
+   * A missing or invalid token is not an error: the request just continues unauthenticated (fail closed for binding).
+   */
+  authoriseOptional() {
+    const service = this.service('auth');
+
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      const hasToken = !!req.query?.access_token || /^Bearer /i.test(req.headers.authorization ?? '');
+      if (hasToken) {
+        try {
+          const token = await service.server.authenticate(new OAuth2Server.Request(req), new OAuth2Server.Response(res));
+          const user = await service.getUser({ userId: token.user.id });
+          if (user && user.isActive !== false) req.user = token.user as any;
+        } catch {
+          // Invalid token: continue unauthenticated.
+        }
+      }
+      next();
+    };
+  }
+
   private async onLogout(req: Request, res: Response, endSessionUrl?: string) {
     const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'logout' });
 

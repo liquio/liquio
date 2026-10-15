@@ -958,7 +958,7 @@ export class AuthService extends BaseService {
     }
   }
 
-  async sendPhoneConfirmCode(phoneNumber: string) {
+  async sendPhoneConfirmCode(phoneNumber: string, userId?: string) {
     // Define test confirmation code if exist.
     const testConfirmations = this.config.testConfirmations?.codes || [];
     let testCodeObj: any;
@@ -972,13 +972,49 @@ export class AuthService extends BaseService {
     const expiresIn = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
     await this.removePreviousConfirmCodes({ phone: phoneNumber });
-    await this.saveConfirmCodeAsync({ phone: phoneNumber, code, counter: 0, expiresIn });
+    await this.saveConfirmCodeAsync({ phone: phoneNumber, userId: userId ?? null, code, counter: 0, expiresIn });
 
     if (testCodeObj) {
       return { sendBySms: { testUser: true } };
     }
 
     return this.service('notify').sendSms(phoneNumber, SMS_CODE_WORD + code);
+  }
+
+  /**
+   * Verify an SMS challenge bound to this user and phone, and apply it to the profile.
+   * The challenge is consumed and the user updated in one transaction (row locks make it single-use).
+   * Returns the updated user, or null (changing nothing) for any invalid, expired, exhausted, replayed,
+   * cross-user or cross-number code.
+   */
+  async confirmUserPhone(userId: string, phone: unknown, code: unknown): Promise<UserAttributes | null> {
+    if (typeof userId !== 'string' || !userId || typeof phone !== 'string' || !phone.trim() || typeof code !== 'string' || !code.trim()) {
+      return null;
+    }
+
+    const maxRetries = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
+    const confirmed = await Models.db.transaction(async (transaction) => {
+      const user = await this.model('user').findOne({ where: { userId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!user || user.dataValues.isActive === false) return false;
+
+      const challenge = await this.model('confirmCode').findOne({
+        where: { userId, phone, code, counter: { [Op.lte]: maxRetries }, expiresIn: { [Op.gt]: Models.db.fn('NOW') } },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!challenge) {
+        await this.model('confirmCode').increment('counter', { by: 1, where: { userId, phone }, transaction });
+        return false;
+      }
+
+      await user.update({ phone, valid: { email: false, ...user.dataValues.valid, phone: true } }, { transaction });
+      await this.model('confirmCode').destroy({ where: { userId, phone }, transaction });
+      return true;
+    });
+
+    if (!confirmed) return null;
+    await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+    return this.getUser({ userId });
   }
 
   /**

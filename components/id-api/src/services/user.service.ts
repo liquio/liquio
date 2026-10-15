@@ -1,11 +1,11 @@
-import { Op, WhereAttributeHash, WhereOptions } from 'sequelize';
+import { Op, WhereAttributeHash } from 'sequelize';
 
 import { Config } from '../config';
 import { Request } from '../types';
 import { BaseService } from './base_service';
 
 export class UserService extends BaseService {
-  extractUpdateUserInfoParams(req: Request, fields: string[]): WhereOptions {
+  extractUpdateUserInfoParams(req: Request, fields: string[]): WhereAttributeHash<any> {
     const modules = this.config.modules ?? {};
     const { denyToUpdateUserName = true, denyToUpdateUserValidParams = true } = modules;
 
@@ -17,7 +17,7 @@ export class UserService extends BaseService {
       fields.push('valid');
     }
 
-    const query: WhereOptions = {};
+    const query: WhereAttributeHash<any> = {};
     for (const field of fields.filter((f) => f in req.body)) {
       query[field] = req.body[field];
     }
@@ -26,7 +26,7 @@ export class UserService extends BaseService {
       query.foreigners_document_type = JSON.parse(decodeURIComponent(query.foreigners_document_type));
     }
 
-    this.processPhoneValidation(req, modules, query);
+    this.processPhoneValidation(req, query);
     this.extractAddressStructure(query);
     this.processEmailValidation(req, modules, query);
 
@@ -75,22 +75,21 @@ export class UserService extends BaseService {
     return query;
   }
 
-  processPhoneValidation(req: Request, modules: NonNullable<Config['modules']>, query: WhereAttributeHash<any>) {
-    if (!modules.denyToUpdateUserValidParams) {
-      if (query.valid?.phone) {
-        query.valid.phone = query.valid.phone === 'true';
-      }
-      if (['true', 'false'].includes(req.body.isValidPhone)) {
-        if (typeof query.valid !== 'object') {
-          query.valid = {};
-        }
-        query.valid.phone = req.body.isValidPhone === 'true';
-      }
+  /**
+   * Profile phone verification is only possible through an SMS challenge (see `AuthService.confirmUserPhone`).
+   * A caller can never mark a phone as valid here, and changing the phone resets its validity.
+   */
+  processPhoneValidation(req: Request, query: WhereAttributeHash<any>) {
+    const requestedValidity = query.valid?.phone;
+    if (
+      req.body.isValidPhone === 'true' ||
+      req.body.isValidPhone === true ||
+      (requestedValidity !== undefined && requestedValidity !== false && requestedValidity !== 'false')
+    ) {
+      throw new Error('Phone confirmation requires a valid SMS code');
     }
-
-    // Set new phone only as not valid.
-    if (modules.setPhoneOnlyAsNotValid && query.phone) {
-      query.valid = { phone: false };
+    if ('phone' in query || requestedValidity !== undefined || req.body.isValidPhone === 'false' || req.body.isValidPhone === false) {
+      query.valid = { ...query.valid, phone: false };
     }
   }
 
