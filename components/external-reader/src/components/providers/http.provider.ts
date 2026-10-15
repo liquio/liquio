@@ -45,7 +45,7 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
   }
 
   async get(requestBody: ProviderMethodArgs): Promise<ProviderResponse> {
-    this.logger.debug('http-provider|get', { requestBody });
+    this.logger.debug('http-provider|get', { keys: this.bodyKeys(requestBody) });
     const body = this.validateRequestBody(requestBody);
     const url = body.url || '';
     const params = body.params || {};
@@ -53,7 +53,7 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
   }
 
   async post(requestBody: ProviderMethodArgs): Promise<ProviderResponse> {
-    this.logger.debug('http-provider|post', { requestBody });
+    this.logger.debug('http-provider|post', { keys: this.bodyKeys(requestBody) });
     const body = this.validateRequestBody(requestBody);
     const url = body.url || '';
     const data = body.data || {};
@@ -62,7 +62,7 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
   }
 
   async put(requestBody: ProviderMethodArgs): Promise<ProviderResponse> {
-    this.logger.debug('http-provider|put', { requestBody });
+    this.logger.debug('http-provider|put', { keys: this.bodyKeys(requestBody) });
     const body = this.validateRequestBody(requestBody);
     const url = body.url || '';
     const data = body.data || {};
@@ -71,7 +71,7 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
   }
 
   async delete(requestBody: ProviderMethodArgs): Promise<ProviderResponse> {
-    this.logger.debug('http-provider|delete', { requestBody });
+    this.logger.debug('http-provider|delete', { keys: this.bodyKeys(requestBody) });
     const body = this.validateRequestBody(requestBody);
     const url = body.url || '';
     const params = body.params || {};
@@ -79,7 +79,7 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
   }
 
   async patch(requestBody: ProviderMethodArgs): Promise<ProviderResponse> {
-    this.logger.debug('http-provider|patch', { requestBody });
+    this.logger.debug('http-provider|patch', { keys: this.bodyKeys(requestBody) });
     const body = this.validateRequestBody(requestBody);
     const url = body.url || '';
     const data = body.data || {};
@@ -87,10 +87,12 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
     return await this.request('PATCH', url, data, params);
   }
 
-  private validateRequestBody(requestBody: ProviderMethodArgs): RequestBody {
-    // Log the full request body for debugging
-    this.logger.debug('http-provider|validate-request-body', { requestBody });
+  // Only keys are logged: request bodies carry personal data (ipn, edrpou, filters).
+  private bodyKeys(body: unknown): string[] {
+    return body && typeof body === 'object' ? Object.keys(body) : [];
+  }
 
+  private validateRequestBody(requestBody: ProviderMethodArgs): RequestBody {
     // If extraParams exists, use it; otherwise use the body directly
     const targetBody = requestBody.extraParams || requestBody;
 
@@ -102,7 +104,7 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
       this.logger.error('http-provider|validate-failed', {
         hasUrl: 'url' in targetBody,
         urlType: typeof (targetBody as Record<string, unknown>).url,
-        targetBody,
+        keys: this.bodyKeys(targetBody),
       });
       throw new BadRequestException('Invalid requestBody: missing or invalid "url"');
     }

@@ -220,26 +220,42 @@ export class ExternalReader {
       token,
       customTimeout,
     );
-    let dataToLog = '';
-    const ending = '<...cut>';
-    try {
-      if (typeof data === 'object') {
-        const stringifiedData = JSON.stringify(data);
-        dataToLog = stringifiedData.length > MAX_LOG_LENGTH ? stringifiedData.substring(0, MAX_LOG_LENGTH - ending.length) + ending : stringifiedData;
-      } else if (typeof data === 'string') {
-        dataToLog = data.length > MAX_LOG_LENGTH ? data.substring(0, MAX_LOG_LENGTH - ending.length) + ending : data;
-      }
-    } catch (error) {
-      global.log.save('external-reader-cannot-cut-data-to-log', { error, service, method });
-      dataToLog = data;
-    }
-    global.log.save('external-reader-raw-data-response', {
+    const logResponses = !!global.config?.external_reader?.logResponses;
+    const logPayload: any = {
       service,
       method,
-      userFilter: { ...userFilter, userServices: HIDE_REPLACEMENT_TEXT },
-      nonUserFilter,
-      data: dataToLog,
-    });
+      userFilter: HIDE_REPLACEMENT_TEXT,
+      nonUserFilter: HIDE_REPLACEMENT_TEXT,
+    };
+    if (logResponses) {
+      // Opt-in only: provider responses may contain personal data.
+      const ending = '<...cut>';
+      let dataToLog = '';
+      try {
+        if (typeof data === 'object') {
+          const stringifiedData = JSON.stringify(data);
+          dataToLog =
+            stringifiedData.length > MAX_LOG_LENGTH ? stringifiedData.substring(0, MAX_LOG_LENGTH - ending.length) + ending : stringifiedData;
+        } else if (typeof data === 'string') {
+          dataToLog = data.length > MAX_LOG_LENGTH ? data.substring(0, MAX_LOG_LENGTH - ending.length) + ending : data;
+        }
+      } catch (error) {
+        global.log.save('external-reader-cannot-cut-data-to-log', { error, service, method });
+        dataToLog = data;
+      }
+      logPayload.data = dataToLog;
+    } else {
+      let size = 0;
+      try {
+        size = typeof data === 'string' ? data.length : JSON.stringify(data)?.length || 0;
+      } catch {
+        size = -1;
+      }
+      logPayload.responseType = typeOf(data);
+      logPayload.responseKeys = data && typeof data === 'object' ? Object.keys(data) : [];
+      logPayload.responseSize = size;
+    }
+    global.log.save('external-reader-raw-data-response', logPayload);
 
     // Check for attachments saving.
     if (

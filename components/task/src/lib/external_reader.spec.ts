@@ -382,37 +382,57 @@ describe('ExternalReader', () => {
       });
     });
 
-    it('should log response data', async () => {
-      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
+    it('should not log response body, filters or ipn/edrpou by default', async () => {
+      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, { secret: 'nonUserValue' });
 
-      expect(global.log.save).toHaveBeenCalledWith(
-        'external-reader-raw-data-response',
-        expect.objectContaining({
-          service,
-          method,
-          userFilter: expect.objectContaining({
-            ipn: user.ipn,
-            edrpou: user.edrpou,
-            userServices: '*****', // Should be hidden
-          }),
-          nonUserFilter: {},
-          data: expect.any(String),
-        }),
-      );
+      const call = (global.log.save as jest.Mock).mock.calls.find(([name]) => name === 'external-reader-raw-data-response');
+      expect(call).toBeDefined();
+      const payload = call[1];
+      expect(payload).toEqual(expect.objectContaining({ service, method, userFilter: '*****', nonUserFilter: '*****' }));
+      expect(payload.data).toBeUndefined();
+      expect(payload.responseKeys).toEqual(expect.arrayContaining(['data']));
+      const serialized = JSON.stringify(payload);
+      expect(serialized).not.toContain('item1');
+      expect(serialized).not.toContain('nonUserValue');
+      expect(serialized).not.toContain(String(user.ipn));
     });
 
-    it('should truncate long response data in logs', async () => {
-      const longData = { data: 'x'.repeat(200000) }; // Very long data
-      externalReader.getData.mockResolvedValue(longData);
+    describe('external_reader.logResponses enabled', () => {
+      beforeEach(() => {
+        global.config.external_reader.logResponses = true;
+      });
+      afterEach(() => {
+        delete global.config.external_reader.logResponses;
+      });
 
-      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
+      it('should log response data with filters redacted', async () => {
+        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
 
-      expect(global.log.save).toHaveBeenCalledWith(
-        'external-reader-raw-data-response',
-        expect.objectContaining({
-          data: expect.stringContaining('<...cut>'),
-        }),
-      );
+        expect(global.log.save).toHaveBeenCalledWith(
+          'external-reader-raw-data-response',
+          expect.objectContaining({
+            service,
+            method,
+            userFilter: '*****',
+            nonUserFilter: '*****',
+            data: expect.any(String),
+          }),
+        );
+      });
+
+      it('should truncate long response data in logs', async () => {
+        const longData = { data: 'x'.repeat(200000) }; // Very long data
+        externalReader.getData.mockResolvedValue(longData);
+
+        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
+
+        expect(global.log.save).toHaveBeenCalledWith(
+          'external-reader-raw-data-response',
+          expect.objectContaining({
+            data: expect.stringContaining('<...cut>'),
+          }),
+        );
+      });
     });
 
     describe('attachment handling', () => {

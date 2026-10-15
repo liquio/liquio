@@ -163,6 +163,8 @@ metadata:
     "_token="
     "client_id="
     "client_secret="
+    "ipn"
+    "edrpou"
   )
 -}}
 {{ $accessBase := dict

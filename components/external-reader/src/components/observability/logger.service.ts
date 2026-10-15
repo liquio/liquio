@@ -9,7 +9,7 @@ import { sensitiveReplace } from './helpers';
 import { AsyncLocalStorageContext } from './observability.module';
 
 // Constants.
-const EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oauth-token'];
+const EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oauth-token', 'ipn', 'edrpou'];
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class LoggerService extends ConsoleLogger {
@@ -17,6 +17,11 @@ export class LoggerService extends ConsoleLogger {
 
   constructor(private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>) {
     super();
+
+    // Debug logs are opt-in (LOG_LEVEL=debug) to keep request details out of default logs.
+    if (process.env.LOG_LEVEL !== 'debug') {
+      this.setLogLevels(['log', 'warn', 'error', 'fatal']);
+    }
 
     this.prepareAppInfo();
   }
