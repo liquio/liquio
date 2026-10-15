@@ -5,6 +5,7 @@ import { MonitorController } from '../controllers/monitor';
 import { AppIdentHeaders } from '../lib/app_ident_headers';
 import { Cors } from '../lib/cors';
 import { asyncLocalStorageMiddleware } from '../lib/async_local_storage';
+import { monitoringGuard } from '../lib/monitoring_guard';
 
 /**
  * Router service.
@@ -64,9 +65,13 @@ export class RouterService {
     const pingController = new PingController(this.config);
     const monitorController = new MonitorController(this.config);
 
-    app.get('/test/ping', pingController.ping.bind(pingController));
+    // Diagnostic routes expose system info and run DB checks: closed unless explicitly enabled and token provided.
+    const guard = monitoringGuard(this.config);
+    app.get('/test/ping', guard, pingController.ping.bind(pingController));
+    app.get('/monitors/system', guard, monitorController.system.bind(monitorController));
+
+    // Healthz controller.
     app.get('/healthz', pingController.healthz.bind(pingController));
-    app.get('/monitors/system', monitorController.system.bind(monitorController));
 
     return {
       ping: pingController,

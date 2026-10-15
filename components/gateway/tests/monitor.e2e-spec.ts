@@ -23,11 +23,18 @@ describe('Monitor Controller', () => {
     await TestApp.beforeEach();
   });
 
+  describe('GET /monitors/system without token', () => {
+    it('should return 403', async () => {
+      await app.request().get('/monitors/system').expect(403);
+    });
+  });
+
   describe('GET /monitors/system', () => {
     it('should return system info', async () => {
       await app
         .request()
         .get('/monitors/system')
+        .set('x-monitoring-token', TestApp.MONITORING_TOKEN)
         .expect(200)
         .expect((response: SupertestResponse) => {
           expect(response.body.data).toHaveProperty('hostname');

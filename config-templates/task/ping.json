@@ -10,7 +10,8 @@
     "monitoringToken": ""
   },
   "gateway": {
-    "url": "https://gw.liquio.local/test/ping"
+    "url": "https://gw.liquio.local/test/ping",
+    "monitoringToken": ""
   },
   "workflow": {
     "url": "https://workflow.liquio.local/test/ping"

@@ -106,12 +106,15 @@ export class TestApp {
     return app;
   }
 
+  static readonly MONITORING_TOKEN = 'test-monitoring-token';
+
   // Run this before all tests.
   static async beforeAll() {
     nock.restore();
 
     configOverride.server = {
       ...defaultConfig.server,
+      monitoring: { isEnabled: true, token: TestApp.MONITORING_TOKEN },
       hostname: 'localhost',
       port: await portfinder.getPortPromise({
         host: 'localhost',
