@@ -255,21 +255,47 @@ export class AuthMiddleware {
     };
   }
 
-  checkUserAccess() {
+  /**
+   * Enforce the account policy (identification type, EDRPOU/RNOKPP allowlists, blocked flag).
+   * The policy is evaluated against the current persisted user, never against stale session fields.
+   * With `requireUser` a missing session user, an unknown user or a failed lookup stops the request (fail closed).
+   */
+  checkUserAccess({ requireUser = false }: { requireUser?: boolean } = {}) {
     return async (req: Request, res: Response, next: NextFunction) => {
       let user = req.session?.passport?.user;
-      const userId = user?.userId;
+      const userId = user?.userId ?? user?.user_id;
 
-      // Local auth session initially stores a slim profile without isActive.
-      // Refresh user from DB so blocked checks are always based on current state.
-      if (userId && typeof user?.isActive === 'undefined') {
-        const actualUser = await this.service('auth').getUser({ userId });
-        if (actualUser) {
+      // No authenticated session: keep the unauthenticated user on the sign in page, never continue.
+      if (requireUser && !userId) {
+        res.redirect('/');
+        return;
+      }
+
+      if (userId) {
+        try {
+          const actualUser = await this.service('auth').getUser({ userId });
+          if (!actualUser) {
+            throw new Error('user not found');
+          }
+          // Local auth session initially stores a slim profile without isActive: complete it from the DB.
+          if (typeof user?.isActive === 'undefined') {
+            const passport = req.session.passport ?? ({} as any);
+            passport.user = actualUser as any;
+            req.session.passport = passport;
+            await saveSession(req);
+          }
           user = actualUser as any;
-          const passport = req.session.passport ?? ({} as any);
-          passport.user = actualUser as any;
-          req.session.passport = passport;
-          await saveSession(req);
+        } catch (error: any) {
+          if (error?.message === 'user not found') {
+            if (requireUser) {
+              res.status(401).send({ error: { message: 'Unauthorized' } });
+              return;
+            }
+          } else {
+            this.log.save('user-access-policy-load-error', { userId, error: error?.message }, 'error');
+            res.status(503).send({ error: { message: 'Unable to verify user access.' } });
+            return;
+          }
         }
       }
 
@@ -287,8 +313,8 @@ export class AuthMiddleware {
         return;
       }
 
-      // If EDRPOU and/or RNOKPP whitelists are enabled, make sure that the user matches at least one of the criteria
-      if (!this.checkEdrpouWhitelist(user) && !this.checkRnokppWhitelist(user)) {
+      // Every configured EDRPOU/RNOKPP whitelist must accept the user; an unset whitelist takes no part in the decision.
+      if (!this.checkEdrpouWhitelist(user) || !this.checkRnokppWhitelist(user)) {
         this.log.save('get-auth|user-edrpou-or-rnokpp-not-allowed', { userId, edrpou: user.edrpou, rnokpp: user.ipn }, 'warning');
 
         if (loginHistoryData) {

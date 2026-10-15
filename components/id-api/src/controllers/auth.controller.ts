@@ -56,13 +56,21 @@ export class AuthController extends BaseController {
     this.router.get(
       '/authorise/continue',
       [query('redirect_uri').optional().isString(), this.handleValidation.bind(this)],
+      this.service('auth').ensureClientContext(),
       this.service('auth').readyClient(),
+      authMiddleware.checkUserAccess({ requireUser: true }),
       this.checkUserClientScope.bind(this),
       this.checkTwoFactorAuth.bind(this),
       this.authorizeContinue.bind(this),
     );
 
-    this.router.post('/authorise/continue', this.service('auth').readyClient(), this.saveUserClientScope.bind(this));
+    this.router.post(
+      '/authorise/continue',
+      this.service('auth').ensureClientContext(),
+      this.service('auth').readyClient(),
+      authMiddleware.checkUserAccess({ requireUser: true }),
+      this.saveUserClientScope.bind(this),
+    );
   }
 
   defaultRoute(req: Request, res: Response) {

@@ -210,6 +210,53 @@ export class AuthService extends BaseService {
     ];
   }
 
+  /**
+   * Authorization continuation needs a client prepared by `/authorise` (`prepareClient`).
+   * Without it only the configured default client is used, and it is resolved and validated explicitly here
+   * (it must exist and have the default redirect URI registered) instead of silently falling back to defaults.
+   */
+  ensureClientContext() {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      if (req.session.client_id) {
+        return next();
+      }
+
+      try {
+        const defaults = this.cfg!.defaults!;
+        const found = defaults.client_id ? await this.oAuth2Model.getClient(defaults.client_id, null) : undefined;
+        const client = found || undefined;
+        const registeredRedirectUris = [client?.redirectUris ?? []].flat();
+        const redirectUri = defaults.redirect_uri?.[0];
+
+        if (!client || !redirectUri || !registeredRedirectUris.includes(redirectUri)) {
+          this.log.save('ensureClientContextRejected', { clientId: defaults.client_id }, 'error');
+          res.status(400).send({ message: 'Authorization request is not prepared' });
+          return;
+        }
+
+        const session = req.session;
+        session.client_id = client.clientId;
+        session.redirect_uri = redirectUri;
+        session.client_requirements = client.requirements;
+        session.scope = client.scope;
+        session.response_type = 'code';
+        session.client_name = client.client_name;
+        session.need_scope_approve = client.need_scope_approve;
+        session.client = {
+          clientId: client.clientId,
+          client_name: client.client_name,
+          requirements: client.requirements,
+          redirectUri: registeredRedirectUris,
+        };
+        await saveSession(req);
+        next();
+      } catch (error: any) {
+        this.log.save('ensureClientContextError', { error: error?.message }, 'error');
+        res.status(500).send({ message: 'Unable to resolve the authorization client' });
+      }
+    };
+  }
+
   readyClient() {
     return [
       query('redirect_uri').optional().isString(),

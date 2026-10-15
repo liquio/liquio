@@ -394,4 +394,70 @@ describe('AuthService OAuth client preparation', () => {
       expect(JSON.stringify(mockLog.save.mock.calls)).not.toContain('topsecret');
     });
   });
+
+  describe('ensureClientContext', () => {
+    const DEFAULT_URI = 'http://default-site';
+    const defaultClient = {
+      clientId: 'default',
+      client_name: 'Default',
+      requirements: [],
+      scope: ['email'],
+      need_scope_approve: true,
+      redirectUris: [DEFAULT_URI],
+    };
+
+    it('keeps the client prepared by /authorise without resolving anything', async () => {
+      const req = createReq({}, { client_id: 'client', redirect_uri: REGISTERED });
+
+      expect(await runChain([auth.ensureClientContext()], req, createRes())).toBe(true);
+
+      expect(getClient).not.toHaveBeenCalled();
+      expect(req.session.client_id).toBe('client');
+    });
+
+    it('explicitly resolves and stores the default client when the session has none', async () => {
+      getClient.mockResolvedValue(defaultClient);
+      const req = createReq({}, {});
+
+      expect(await runChain([auth.ensureClientContext()], req, createRes())).toBe(true);
+
+      expect(getClient).toHaveBeenCalledWith('default', null);
+      expect(req.session).toMatchObject({
+        client_id: 'default',
+        redirect_uri: DEFAULT_URI,
+        client: { clientId: 'default', redirectUri: [DEFAULT_URI] },
+      });
+    });
+
+    it('fails closed when the default client does not exist', async () => {
+      getClient.mockResolvedValue(false);
+      const req = createReq({}, {});
+      const res = createRes();
+
+      expect(await runChain([auth.ensureClientContext()], req, res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(req.session.client_id).toBeUndefined();
+    });
+
+    it('fails closed when the default redirect URI is not registered for the default client', async () => {
+      getClient.mockResolvedValue({ ...defaultClient, redirectUris: ['https://other.example/'] });
+      const req = createReq({}, {});
+      const res = createRes();
+
+      expect(await runChain([auth.ensureClientContext()], req, res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(req.session.client_id).toBeUndefined();
+    });
+
+    it('fails closed when the client lookup fails', async () => {
+      getClient.mockRejectedValue(new Error('db down'));
+      const res = createRes();
+
+      expect(await runChain([auth.ensureClientContext()], createReq({}, {}), res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
 });
