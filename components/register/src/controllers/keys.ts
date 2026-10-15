@@ -11,6 +11,8 @@ import ElasticAfterhandlerWorker from '../lib/afterhandler/workers/elastic';
 import JobQueue from '../lib/job_queue';
 import KeyEntity from '../entities/key';
 import { ModelUpdateResponse } from '../lib/interfaces';
+import { resolveCallerAccess } from '../lib/caller_access';
+import HistoryAccess, { HistoryKeyForbiddenError, canSearchHistoryData } from '../lib/history_access';
 
 const REINDEX_CHUNK_SIZE = 10;
 
@@ -130,8 +132,30 @@ export default class KeysController extends Controller {
       record_data_like: recordDataLike,
     } = { offset: 0, limit: 20, ...matchedData(req, { locations: ['query'] }) } as any;
 
+    let access;
+    try {
+      access = resolveCallerAccess(req, this.config);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+
     if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
       return this.responseError(res, 'Key records are not readable', 403);
+    }
+
+    // Untrusted callers get snapshots projected through the key rules; `record_data_like` must not probe hidden fields.
+    const historyAccess = access.trusted ? undefined : new HistoryAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys);
+    if (historyAccess) {
+      try {
+        const key = await historyAccess.assertKeyReadable(keyId);
+        if (recordDataLike && !canSearchHistoryData(key, recordDataLike, access.allowTokens)) {
+          return this.responseError(res, 'Search by the requested record data fields is not allowed.', 403);
+        }
+      } catch (error) {
+        if (error instanceof HistoryKeyForbiddenError) return this.responseError(res, 'Key records are not readable', 403);
+        this.log.save('get-history-by-key-id-access-error', { error: error && error.message });
+        return this.responseError(res, 'Unable to authorize history.', 500);
+      }
     }
 
     // Get history.
@@ -148,8 +172,19 @@ export default class KeysController extends Controller {
       return this.responseError(res, 'Not found.', 404);
     }
 
+    let visibleHistory = historyList;
+    if (historyAccess) {
+      try {
+        visibleHistory = await historyAccess.project(historyList);
+      } catch (error) {
+        if (error instanceof HistoryKeyForbiddenError) return this.responseError(res, 'Key records are not readable', 403);
+        this.log.save('get-history-by-key-id-access-error', { error: error && error.message });
+        return this.responseError(res, 'Unable to authorize history.', 500);
+      }
+    }
+
     // Response.
-    this.responseData(res, historyList, meta);
+    this.responseData(res, visibleHistory, meta);
   }
 
   /**

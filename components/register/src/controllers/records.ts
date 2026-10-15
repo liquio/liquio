@@ -23,6 +23,7 @@ import RecordEntity from '../entities/record';
 import { resolveCallerAccess, CallerAccess } from '../lib/caller_access';
 import JoinedRecordAccess from '../lib/joined_record_access';
 import { canSearchField, canSearchString } from '../lib/record_search_access';
+import HistoryAccess, { HistoryKeyForbiddenError } from '../lib/history_access';
 
 const ADDITIONAL_FILTER_RECORD_MAX_COUNT = 10000;
 const DB_CONSTRAINT_ERROR_CODE = 'DB_CONSTRAINT_ERROR';
@@ -80,6 +81,13 @@ export default class RecordsController extends Controller {
       this.log.save('ignored-untrusted-security-flags', { user: req.auth?.user, flags: access.ignoredFlags });
     }
     return access;
+  }
+
+  /** Load a record's key once per request. A missing key stays `undefined` (the caller must deny). */
+  private async getRecordKey(keys: Map<number, KeyEntity | undefined>, keyId: number, options?: Parameters<KeyModel['findById']>[1]) {
+    if (!keyId) return undefined;
+    if (!keys.has(keyId)) keys.set(keyId, (await this.keyModel.findById(keyId, options))?.data);
+    return keys.get(keyId);
   }
 
   // Get all records.
@@ -317,21 +325,20 @@ export default class RecordsController extends Controller {
       });
 
       if (recordsModelResponse && recordsModelResponse.data) {
-        const recordsKeyId = recordsModelResponse.data[0] && recordsModelResponse.data[0].keyId;
-        const { data: key } = (recordsKeyId && (await this.keyModel.findById(recordsKeyId))) || {};
-
-        // Safeguard for a potential case when getAll is called without keyId (this shouldn't happen)
-        if (key instanceof KeyEntity && !this.keyModel.checkRecordsReadable(key)) {
-          return this.responseError(res, 'Key records are not readable.', 403, { keyId });
-        }
+        // Each record is checked and projected with its own key (a page may mix keys).
+        const keys = new Map<number, KeyEntity | undefined>();
 
         const joinedAccess = new JoinedRecordAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys, (error) =>
           this.log.save('joined-record-access-error', { error: error.message }),
         );
         for (const recordModelResponse of recordsModelResponse.data) {
+          const key = await this.getRecordKey(keys, recordModelResponse.keyId);
+          if (!key || !this.keyModel.checkRecordsReadable(key)) {
+            return this.responseError(res, 'Key records are not readable.', 403, { keyId: recordModelResponse.keyId });
+          }
+
           // Filter not allowed properties.
           if (!allow_see_all_records) {
-            recordModelResponse.applyColumnLevelSecurity(key, allowTokens);
             recordModelResponse.applyColumnLevelSecurity(key, allowTokens);
           }
 
@@ -575,15 +582,14 @@ export default class RecordsController extends Controller {
         });
 
         if (recordsModelResponse && recordsModelResponse.data) {
-          const recordsKeyId = recordsModelResponse.data[0] && recordsModelResponse.data[0].keyId;
-          const { data: key } = (recordsKeyId && (await this.keyModel.findById(recordsKeyId, { cacheTime: 1 }))) || {};
-
-          // Safeguard for a potential case when getAll is called without keyId (this shouldn't happen)
-          if (key instanceof KeyEntity && !this.keyModel.checkRecordsReadable(key)) {
-            return this.responseError(res, 'Key records are not readable.', 403, { keyId });
-          }
-
+          // Each record is checked and projected with its own key (a page may mix keys).
+          const keys = new Map<number, KeyEntity | undefined>();
           for (const recordModelResponse of recordsModelResponse.data) {
+            const key = await this.getRecordKey(keys, recordModelResponse.keyId, { cacheTime: 1 });
+            if (!key || !this.keyModel.checkRecordsReadable(key)) {
+              return this.responseError(res, 'Key records are not readable.', 403, { keyId: recordModelResponse.keyId });
+            }
+
             // Filter not allowed properties.
             if (!allow_see_all_records) {
               recordModelResponse.applyColumnLevelSecurity(key, allowTokens);
@@ -1125,15 +1131,36 @@ export default class RecordsController extends Controller {
       return this.responseError(res, 'Not found.', 404);
     }
 
-    if (historyList.length > 0 && historyList[0].keyId) {
-      const keyId = historyList[0].keyId;
-      if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
-        return this.responseError(res, 'Key records are not readable.', 403, { keyId });
+    let access: CallerAccess;
+    try {
+      access = this.getCallerAccess(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+
+    let visibleHistory = historyList;
+    if (access.trusted) {
+      if (historyList.length > 0 && historyList[0].keyId) {
+        const keyId = historyList[0].keyId;
+        if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
+          return this.responseError(res, 'Key records are not readable.', 403, { keyId });
+        }
+      }
+    } else {
+      // Snapshots are raw rows: apply the key, row and field rules of live records to every one. Fail closed.
+      try {
+        visibleHistory = await new HistoryAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys).project(historyList);
+      } catch (error) {
+        if (error instanceof HistoryKeyForbiddenError) {
+          return this.responseError(res, 'Key records are not readable.', 403, { keyId: error.keyId });
+        }
+        this.log.save('get-history-by-record-id-access-error', { error: error && error.message });
+        return this.responseError(res, 'Unable to authorize history.', 500);
       }
     }
 
     // Response.
-    const historyToReturn = splitByFields ? this.historyBusiness.splitByFields(historyList, splitByFieldsOrder) : historyList;
+    const historyToReturn = splitByFields ? this.historyBusiness.splitByFields(visibleHistory, splitByFieldsOrder) : visibleHistory;
     this.responseData(res, historyToReturn, meta);
   }
 

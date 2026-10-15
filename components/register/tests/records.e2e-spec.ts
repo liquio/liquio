@@ -778,4 +778,88 @@ describe('RecordsController', () => {
         .expect(500);
     });
   });
+
+  describe('history snapshots and mixed-key pages (SE-3930 RG-08/RG-09)', () => {
+    const marker = 'HISTORY_E2E_001';
+    const created: string[] = [];
+    let recordId: string;
+    let savedAuth: any;
+    let originalSchema: any;
+
+    const setKey = async (id: number, set: string, replacements: object) => {
+      await testHarness.getDb().query(`UPDATE keys SET ${set} WHERE id = :id`, { replacements: { id, ...replacements } });
+      await testHarness.clearRedisCache();
+    };
+    const create = async (keyId: number, data: object) => {
+      const response = await testHarness
+        .request()
+        .post('/records')
+        .set('Authorization', validAuth)
+        .send({ registerId: 200, keyId, data })
+        .expect(200);
+      created.push(response.body.data.id);
+      return response.body.data.id as string;
+    };
+
+    beforeAll(async () => {
+      const [[row]]: any = await testHarness.getDb().query('SELECT schema FROM keys WHERE id = 2001');
+      originalSchema = typeof row.schema === 'string' ? row.schema : JSON.stringify(row.schema);
+      recordId = await create(2001, { name: 'History', data: marker, secret: 'HIDDEN_VALUE' });
+      await create(2002, { field1: 'mixed-key record' });
+      // The key rules are tightened after the snapshot has been written.
+      const schema = { ...JSON.parse(originalSchema), responseFields: ['name', 'data'] };
+      await setKey(2001, 'schema = :schema', { schema: JSON.stringify(schema) });
+    });
+
+    beforeEach(() => {
+      savedAuth = { ...testHarness.getConfig().auth };
+      testHarness.getConfig().auth.trustedCallers = [];
+    });
+
+    afterEach(() => {
+      testHarness.getConfig().auth = savedAuth;
+    });
+
+    afterAll(async () => {
+      await setKey(2001, 'schema = :schema', { schema: originalSchema });
+      await setKey(2002, 'access_mode = :mode', { mode: 'full' });
+      for (const id of created) await testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth);
+    });
+
+    it('hides fields excluded by responseFields in record history for an untrusted caller', async () => {
+      const response = await testHarness.request().get(`/records/${recordId}/history`).set('Authorization', validAuth).expect(200);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(JSON.stringify(response.body.data)).not.toContain('HIDDEN_VALUE');
+      expect(response.body.data[0].data.data).toEqual({ name: 'History', data: marker });
+    });
+
+    it('hides the same fields in key history and rejects probing them with record_data_like', async () => {
+      const history = await testHarness
+        .request()
+        .get(`/keys/2001/history?record_data_like=${encodeURIComponent(JSON.stringify({ data: marker }))}`)
+        .set('Authorization', validAuth)
+        .expect(200);
+      expect(history.body.data.length).toBeGreaterThan(0);
+      expect(JSON.stringify(history.body.data)).not.toContain('HIDDEN_VALUE');
+      await testHarness
+        .request()
+        .get(`/keys/2001/history?record_data_like=${encodeURIComponent(JSON.stringify({ secret: 'HIDDEN' }))}`)
+        .set('Authorization', validAuth)
+        .expect(403);
+    });
+
+    it('keeps full snapshots for a trusted caller', async () => {
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      const response = await testHarness.request().get(`/records/${recordId}/history`).set('Authorization', validAuth).expect(200);
+      expect(response.body.data[0].data.data.secret).toBe('HIDDEN_VALUE');
+    });
+
+    it('returns 403 for a page that mixes a readable key with a write_only key', async () => {
+      await setKey(2002, 'access_mode = :mode', { mode: 'write_only' });
+      const response = await testHarness.request().get('/records?register_id=200&limit=1000').set('Authorization', validAuth).expect(403);
+      expect(response.body.data).toBeUndefined();
+      await setKey(2002, 'access_mode = :mode', { mode: 'full' });
+      await testHarness.request().get('/records?register_id=200&limit=1000').set('Authorization', validAuth).expect(200);
+    });
+  });
 });
