@@ -873,6 +873,14 @@ export class AuthService extends BaseService {
     }
   }
 
+  /**
+   * All redirect URIs registered by OAuth clients.
+   */
+  async getRegisteredRedirectUris(): Promise<string[]> {
+    const clients = await this.model('client').findAll();
+    return clients.flatMap((client) => client.dataValues.redirectUri ?? []);
+  }
+
   async getClientByRedirectUri(redirectUri: string, callback?: CallbackFn<ClientAttributes | null>) {
     if (callback) {
       this.model('client')

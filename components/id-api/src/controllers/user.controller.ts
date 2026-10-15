@@ -8,6 +8,7 @@ import { calculateUserCode } from '../lib/calculate_user_code';
 import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { publicServices } from '../lib/public_services';
+import { resolveSafeRedirect } from '../lib/safe_redirect';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
 import { getTaskTokenCacheKey } from '../services/auth.service';
@@ -526,7 +527,9 @@ export class UserController extends BaseController {
         userId: userSession.userId,
       });
 
-      res.redirect(forward);
+      // Only local paths or exact registered client redirect URIs are allowed; anything else goes to `/`.
+      const registeredRedirectUris = await this.service('auth').getRegisteredRedirectUris();
+      res.redirect(resolveSafeRedirect(forward, registeredRedirectUris));
     } catch (error: any) {
       this.log.save(
         'log-off-error',

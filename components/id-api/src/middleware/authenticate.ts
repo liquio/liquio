@@ -7,6 +7,7 @@ import { Log, appendTraceMeta } from '@liquio/back-core';
 import { Config, DEFAULT_COOKIE_DOMAIN } from '../config';
 import { generatePinCode } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import { resolveSafeRedirect } from '../lib/safe_redirect';
 import { Models, UserAttributes } from '../models';
 import { Services } from '../services';
 import { govid, logout as govidLogout } from '../strategies/govid';
@@ -223,9 +224,9 @@ export class AuthMiddleware {
       const clients = await Models.model('client')
         .findAll()
         .then((rows) => rows.map((row) => row.dataValues));
-      const clientsRedirectUri: string[] = clients.map((v) => v.redirectUri).reduce((t, v) => [...t, ...v], []);
+      const clientsRedirectUri: string[] = clients.map((v) => v.redirectUri).reduce((t, v) => [...t, ...(v ?? [])], []);
 
-      finalRedirect = clientsRedirectUri.some((v) => redirectUri.startsWith(v)) ? redirectUri : '/';
+      finalRedirect = resolveSafeRedirect(redirectUri, clientsRedirectUri);
     }
 
     // No IdP session to terminate (or it's not an OIDC provider) — redirect as usual.

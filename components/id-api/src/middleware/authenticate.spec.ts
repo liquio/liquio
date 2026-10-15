@@ -1,4 +1,9 @@
 const mockOidcLogout = jest.fn();
+const mockMatchedData = jest.fn();
+jest.mock('express-validator', () => ({
+  ...jest.requireActual('express-validator'),
+  matchedData: (...args: unknown[]) => mockMatchedData(...args),
+}));
 
 jest.mock('../strategies/govid', () => ({ govid: jest.fn(), logout: jest.fn() }));
 jest.mock('../strategies/ldap', () => ({ ldap: jest.fn(), logout: jest.fn() }));
@@ -15,6 +20,7 @@ jest.mock('@liquio/back-core', () => {
   return { Log: { getInstance: () => instance }, appendTraceMeta: jest.fn() };
 });
 
+import { Models } from '../models';
 import { Services } from '../services';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { AuthMiddleware } from './authenticate';
@@ -85,6 +91,64 @@ describe('AuthMiddleware logout', () => {
 
     expect(auth.revokeUserAccess).not.toHaveBeenCalled();
     expect(req.logout).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AuthMiddleware logout redirect', () => {
+  const REGISTERED = 'https://app.example/auth';
+  let res: any;
+
+  const logoutWith = async (redirectUri: string | undefined, endSessionUrl?: string) => {
+    const express: any = { config: { oauth: { secret_key: [Buffer.from('user:pass').toString('base64')] } }, get: jest.fn() };
+    new AuthMiddleware(express);
+    const handler = express.get.mock.calls[0][2];
+    mockMatchedData.mockReturnValue({ redirect_uri: redirectUri });
+    mockOidcLogout.mockResolvedValue({ endSessionUrl });
+    const req: any = {
+      session: { passport: { user: { userId: USER_ID, provider: endSessionUrl ? 'oidc-dex' : 'local' } } },
+      query: redirectUri === undefined ? {} : { redirect_uri: redirectUri },
+      protocol: 'https',
+      get: () => 'id.example',
+      logout: (cb: () => void) => cb(),
+    };
+    await handler(req, res);
+    // onLogout runs inside the logout callback and is not awaited by the handler.
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete (AuthMiddleware as any).singleton;
+    (Services.service as jest.Mock).mockReturnValue({ revokeUserAccess: jest.fn() });
+    (Models.model as jest.Mock).mockReturnValue({
+      findAll: jest.fn(async () => [{ dataValues: { redirectUri: [REGISTERED] } }]),
+    });
+    res = { clearCookie: jest.fn(), redirect: jest.fn() };
+  });
+
+  it.each([
+    ['an exact registered redirect URI', REGISTERED, REGISTERED],
+    ['a local path', '/profile?tab=1', '/profile?tab=1'],
+    ['an absent redirect', undefined, '/'],
+    ['an attacker origin', 'https://evil.example/', '/'],
+    ['a prefix lookalike host', `${REGISTERED}.evil.example`, '/'],
+    ['a registered URI used as a prefix', `${REGISTERED}/../x`, '/'],
+    ['a userinfo lookalike', 'https://app.example@evil.example/auth', '/'],
+    ['a protocol-relative URL', '//evil.example', '/'],
+    ['a backslash protocol-relative URL', '/\\evil.example', '/'],
+    ['an encoded protocol-relative URL', '%2F%2Fevil.example', '/'],
+    ['a javascript URL', 'javascript:alert(1)', '/'],
+  ])('redirects %s', async (_name, input, expected) => {
+    await logoutWith(input as string | undefined);
+
+    expect(res.redirect).toHaveBeenCalledWith(expected);
+  });
+
+  it('passes only a validated redirect to the IdP end_session_endpoint', async () => {
+    await logoutWith('https://evil.example/', 'https://idp.example/logout');
+
+    const url = new URL(res.redirect.mock.calls[0][0]);
+    expect(url.searchParams.get('post_logout_redirect_uri')).toBe('https://id.example/');
   });
 });
 
