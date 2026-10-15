@@ -25,6 +25,31 @@ npm run test:watch
 npm run test:cov
 ```
 
+## Custom API proxies
+
+`discovery.customApis` (empty by default) exposes extra upstreams under `/custom/<apiName>`.
+Entries fail closed:
+
+- Cabinet authentication is required by default (`sendUserData: true`); set `sendUserData: false`
+  explicitly for a public API (`isCheckJwtOnly: true` checks the JWT without sending user data).
+- `allowedPaths` is required. An entry without it is skipped and `custom-api-invalid-config` is logged.
+- A `:param` segment in a path matches exactly one path segment; other paths match exactly.
+  Requests containing `%2f`, `%5c`, `%00`, a backslash or a `..` segment are rejected.
+
+```json
+{
+  "customApis": [
+    {
+      "apiName": "example",
+      "proxyTo": "https://<service-url>",
+      "authHeader": "Basic <token>",
+      "sendUserData": false,
+      "allowedPaths": [{ "method": "GET", "path": "/items/:id" }]
+    }
+  ]
+}
+```
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

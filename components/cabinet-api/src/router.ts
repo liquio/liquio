@@ -10,6 +10,7 @@ import { AppInfo, asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-c
 import AppIdentHeaders from './lib/app_ident_headers';
 import AuthController from './controllers/auth';
 import TestController from './controllers/test';
+import { compilePathMatcher, isSuspiciousPath } from './lib/custom_api_path_matcher';
 
 // Constants.
 const NULL_OBJECT_BASE64 = 'bnVsbA=='; // NULL-object string (`null`) as base64 equals `bnVsbA==`.
@@ -100,13 +101,26 @@ class Router {
         apiName,
         proxyTo,
         authHeader,
-        sendUserData = false,
+        sendUserData = true, // Authenticated by default; set explicitly to false for public custom APIs.
         isCheckJwtOnly = false, // Check user JWT without sending user auth data (from ID) to custom API. TTL - 24h.
         headers,
         allowedUnits = [],
-        allowedPaths,
+        allowedPaths = [],
       } = customApi;
       const route = `/custom/${apiName}`;
+      const isAuthenticated = sendUserData || isCheckJwtOnly;
+
+      // Fail closed per route: skip a custom API without an explicit allow-list, keep the app running.
+      if (!Array.isArray(allowedPaths) || allowedPaths.length === 0) {
+        (global.log as any).save('custom-api-invalid-config', { apiName, error: '"allowedPaths" allowlist is missing or empty' });
+        continue;
+      }
+
+      // Compile path matchers once per API.
+      const compiledAllowedPaths = allowedPaths.map((allowedPath: { method: string; path: string; authorizationHeader?: string }) => ({
+        ...allowedPath,
+        matches: compilePathMatcher(allowedPath.path),
+      }));
 
       // Init proxy.
       app.use(
@@ -115,31 +129,32 @@ class Router {
           (global.log as any).save('proxy-to', { proxyTo, route });
           next();
         },
-        sendUserData || isCheckJwtOnly
-          ? authController.getAuthMiddleware({ isCheckJwtOnly })
-          : (req: Request, _res: Response, next: NextFunction) => next(),
+        isAuthenticated ? authController.getAuthMiddleware({ isCheckJwtOnly }) : (req: Request, _res: Response, next: NextFunction) => next(),
         authController.getCheckUserInOneOfUnits(allowedUnits),
         proxy(proxyTo, {
           // Define request decorator.
           proxyReqOptDecorator: function (proxyReqOpts: any, req: Request) {
             return new Promise(function (resolve, reject) {
-              // Check allowed paths.
-              if (allowedPaths && allowedPaths.length > 0) {
-                // Define params.
-                const {
-                  method: reqMethod,
-                  path: reqPath,
-                  headers: { authorization: reqAuthorizationHeader },
-                } = proxyReqOpts;
+              // Define params.
+              const {
+                method: reqMethod,
+                headers: { authorization: reqAuthorizationHeader },
+              } = proxyReqOpts;
+              const reqPath = (req.url || '').split('?')[0];
 
-                // Check access.
-                if (
-                  !allowedPaths.find(({ method, path, authorizationHeader }: { method: string; path: string; authorizationHeader: string }) => {
-                    return reqMethod === method && reqPath === path && reqAuthorizationHeader === authorizationHeader;
-                  })
-                ) {
-                  return reject('Not allowed');
-                }
+              // Reject encoded separators/null bytes before any pattern matching.
+              if (isSuspiciousPath(reqPath)) {
+                return reject('Not allowed');
+              }
+
+              // Check allowed paths.
+              if (
+                !compiledAllowedPaths.find(
+                  ({ method, matches, authorizationHeader }) =>
+                    reqMethod === method && matches(reqPath) && reqAuthorizationHeader === authorizationHeader,
+                )
+              ) {
+                return reject('Not allowed');
               }
 
               // Set header.
