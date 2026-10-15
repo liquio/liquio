@@ -267,6 +267,28 @@ describe('Files Controller', () => {
       expect(response.body.data.id).not.toBe(id);
       expect(response.body.data).toMatchObject({ name: 'to-copy.txt' });
     });
+
+    it('should record the authenticated caller as creator of the copy', async () => {
+      const {
+        body: { data: original },
+      } = await app
+        .request()
+        .post('/files')
+        .query({ name: 'audit-copy.txt', container_id: DEFAULT_CONTAINER_ID })
+        .set('Authorization', AUTH_HEADER)
+        .set('Content-Type', 'text/plain')
+        .send('audit')
+        .expect(200);
+
+      // Simulate a different original author directly in the DB.
+      await app.models.models.file.model.update({ created_by: 'someone-else' }, { where: { id: original.id } });
+
+      const response = await app.request().post(`/files/${original.id}/copy`).set('Authorization', AUTH_HEADER).expect(200);
+
+      expect(response.body.data.createdBy).toBe('e2e');
+      expect(response.body.data.updatedBy).toBe('e2e');
+      expect(response.body.data.meta.copiedFrom).toEqual({ id: original.id, createdBy: 'someone-else' });
+    });
   });
 
   describe('ZIP and ASiC-E limits', () => {

@@ -308,16 +308,18 @@ export class FileModel extends Model {
   /**
    * Copy.
    * @param {string} id Original file ID.
+   * @param {string} [user] Authenticated caller to record as creator of the copy. Defaults to the original author (CLI use).
    * @returns {Promise<{data: FileEntity}>} Data with new file entity promise.
    */
-  async copy(id) {
+  async copy(id, user?: string) {
     // DB query to get original file.
     const originalFileModelResponse = await this.findById(id);
     const { data: originalFileEntity } = originalFileModelResponse;
 
     // Save as new file.
-    const user = originalFileEntity.createdBy;
-    const copyFileModelResponse = await this.create({ ...originalFileEntity, user });
+    const copyUser = user ?? originalFileEntity.createdBy;
+    const meta = { ...(originalFileEntity.meta || {}), copiedFrom: { id: originalFileEntity.id, createdBy: originalFileEntity.createdBy } };
+    const copyFileModelResponse = await this.create({ ...originalFileEntity, meta, user: copyUser });
 
     // Return model response.
     return copyFileModelResponse;

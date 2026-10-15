@@ -537,11 +537,12 @@ export class FilesController extends Controller {
   async copy(req, res) {
     // Define params.
     const { id } = req.params;
+    const { user } = req.auth;
 
     // Copy file.
     let fileCopyModelResponse;
     try {
-      fileCopyModelResponse = await this.fileModel.copy(id);
+      fileCopyModelResponse = await this.fileModel.copy(id, user);
     } catch (error) {
       global.log.save('copy-file-error', { error: error && error.message });
     }
