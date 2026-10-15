@@ -3,10 +3,10 @@ import crypto from 'node:crypto';
 import _ from 'lodash';
 import jp from 'jsonpath';
 import moment from 'moment';
-import { Sandbox } from '@liquio/back-core';
 
 import { Exceptions } from '../exceptions';
 import { XmlJsConverter } from '../lib/xml_js_converter';
+import { isFunctionString } from '../lib/function_string';
 import { RegisterService } from '../services/register';
 import { WorkflowTemplateEntity } from '../entities/workflow_template';
 import { WorkflowTemplateCategoryEntity } from '../entities/workflow_template_category';
@@ -28,7 +28,6 @@ export class BpmnWorkflowBusiness {
   public config: any;
   private xmlJsConverter: XmlJsConverter;
   private registerService: RegisterService;
-  private sandbox: Sandbox;
 
   /**
    * Constructor.
@@ -40,7 +39,6 @@ export class BpmnWorkflowBusiness {
       this.config = config;
       this.xmlJsConverter = new XmlJsConverter();
       this.registerService = new RegisterService();
-      this.sandbox = Sandbox.getInstance();
       BpmnWorkflowBusiness.singleton = this;
     }
 
@@ -166,13 +164,7 @@ export class BpmnWorkflowBusiness {
         const registerControlsWithWhiteListInSchema = _.flattenDeep(jp.query(documentTemplate.jsonSchema, '$..[?(@.keyId && @.whiteList)]'));
         for (const { keyId = '', whiteList = [] } of registerControlsWithWhiteListInSchema) {
           const whiteListNumeric = whiteList.map((el) => parseInt(el));
-          let isKeyIdFunction = false;
-          try {
-            const keyIdEvalResult = this.sandbox.eval(keyId);
-            isKeyIdFunction = typeof keyIdEvalResult === 'function';
-          } catch {
-            // keyId is not a function
-          }
+          const isKeyIdFunction = isFunctionString(keyId);
 
           // keyId is a function string - "() => 123" AND register control has whiteList option
           if (isKeyIdFunction && whiteListNumeric.length > 0) {
