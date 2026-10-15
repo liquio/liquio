@@ -5,6 +5,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../../../constants/common';
 import { ERROR_WRONG_METHOD } from '../../../constants/error';
+import { Helpers } from '../../../lib/helpers';
 
 /**
  * Event file.
@@ -76,7 +77,13 @@ export class EventFile {
   async generateCsv(data: any[], { workflowId, eventTemplateId, filestorage, documentModel, eventModel }: any): Promise<any> {
     let fileBuffer;
     try {
-      const csv = data.map((row) => Object.values(row).join(',')).join('\n');
+      const csv = data
+        .map((row) =>
+          Object.values(row)
+            .map((value) => Helpers.escapeCsvCell(value))
+            .join(','),
+        )
+        .join('\n');
       fileBuffer = Buffer.from(csv);
     } catch (error: any) {
       global.log.save('file-csv-generate|exception', {

@@ -108,3 +108,58 @@ describe('redactSensitiveData', () => {
     expect(Helpers.redactSensitiveData('abc')).toBe('abc');
   });
 });
+
+describe('escapeCsvCell', () => {
+  it.each(['=1+1', '+1', '-1+2', '@SUM(A1)', '\tx', '\rx'])('prefixes formula-like string %j', (value) => {
+    const result = Helpers.escapeCsvCell(value);
+    expect(result.replace(/^"/, '').startsWith("'")).toBe(true);
+  });
+
+  it('prefixes and quotes a cell starting with CR', () => {
+    expect(Helpers.escapeCsvCell('\rx')).toBe('"\'\rx"');
+  });
+
+  it('prefixes a tab-leading cell without quoting', () => {
+    expect(Helpers.escapeCsvCell('\tx')).toBe("'\tx");
+  });
+
+  it('prefixes =, + and @ cells', () => {
+    expect(Helpers.escapeCsvCell('=1+1')).toBe("'=1+1");
+    expect(Helpers.escapeCsvCell('+1')).toBe("'+1");
+    expect(Helpers.escapeCsvCell('@x')).toBe("'@x");
+    expect(Helpers.escapeCsvCell('-cmd')).toBe("'-cmd");
+  });
+
+  it('keeps real numbers unprefixed, including negative ones', () => {
+    expect(Helpers.escapeCsvCell(-5)).toBe('-5');
+    expect(Helpers.escapeCsvCell(-1.5)).toBe('-1.5');
+    expect(Helpers.escapeCsvCell(0)).toBe('0');
+    expect(Helpers.escapeCsvCell(BigInt(-7))).toBe('-7');
+  });
+
+  it('treats numeric-looking strings as text and prefixes them', () => {
+    expect(Helpers.escapeCsvCell('-5')).toBe("'-5");
+  });
+
+  it('leaves plain values untouched', () => {
+    expect(Helpers.escapeCsvCell('abc')).toBe('abc');
+    expect(Helpers.escapeCsvCell('a-b=c')).toBe('a-b=c');
+    expect(Helpers.escapeCsvCell(true)).toBe('true');
+  });
+
+  it('returns empty string for null and undefined', () => {
+    expect(Helpers.escapeCsvCell(null)).toBe('');
+    expect(Helpers.escapeCsvCell(undefined)).toBe('');
+  });
+
+  it('quotes cells with commas, quotes and line breaks', () => {
+    expect(Helpers.escapeCsvCell('a,b')).toBe('"a,b"');
+    expect(Helpers.escapeCsvCell('say "hi"')).toBe('"say ""hi"""');
+    expect(Helpers.escapeCsvCell('a\nb')).toBe('"a\nb"');
+    expect(Helpers.escapeCsvCell('a\r\nb')).toBe('"a\r\nb"');
+  });
+
+  it('prefixes before quoting when both apply', () => {
+    expect(Helpers.escapeCsvCell('=A1,B1')).toBe('"\'=A1,B1"');
+  });
+});

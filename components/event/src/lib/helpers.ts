@@ -356,4 +356,27 @@ export class Helpers {
     // Return transformed function.
     return asyncFunctionString;
   }
+
+  /**
+   * Escape a value for safe use as a CSV cell.
+   * Prevents formula injection (leading `=`, `+`, `-`, `@`, tab, CR get a `'` prefix) and quotes cells
+   * containing commas, double quotes or line breaks (RFC 4180). Real numbers are never prefixed,
+   * so negative numbers stay numeric; numeric-looking strings such as "-5" are treated as text and prefixed.
+   * @param {*} value Cell value.
+   * @returns {string} Escaped cell.
+   */
+  static escapeCsvCell(value: any): string {
+    let cell = String(value ?? '');
+
+    const isNumber = typeof value === 'number' || typeof value === 'bigint';
+    if (!isNumber && /^[=+\-@\t\r]/.test(cell)) {
+      cell = `'${cell}`;
+    }
+
+    if (/[,"\n\r]/.test(cell)) {
+      cell = `"${cell.replace(/"/g, '""')}"`;
+    }
+
+    return cell;
+  }
 }
