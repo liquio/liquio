@@ -1,14 +1,24 @@
 import path from 'node:path';
-import crypto from 'node:crypto';
 
 import { Router } from 'express';
 
 import { MessangerModel } from '../models/smsGate/messangerModel';
+import {
+  ADMIN_COOKIE_NAME,
+  ADMIN_SESSION_TTL_MS,
+  adminCookieOptions,
+  createAdminSession,
+  destroyAdminSession,
+  isLoginBlocked,
+  recordLoginFailure,
+  resetLoginFailures,
+  verifyAdminCredentials,
+  verifyAdminSession,
+} from './adminSession';
 
-const { conf, adminStaticDir } = global as any;
+const { adminStaticDir } = global as any;
 
 const router = Router();
-const hmac = crypto.createHmac('sha256', conf.adminConfig.password).update(conf.adminConfig.login).digest('hex');
 
 export class StaticRoutes extends MessangerModel {
   constructor(app: any) {
@@ -38,29 +48,33 @@ export class StaticRoutes extends MessangerModel {
   }
 
   getAdminView(req: any, res: any, next: any) {
-    const { cookies } = req;
-    if ('myCookie' in cookies && cookies.myCookie == hmac) return next();
-    else res.redirect('/admin/login');
+    if (verifyAdminSession(req)) return next();
+    res.redirect('/admin/login');
   }
 
   adminLogin(req: any, res: any) {
-    const bodyHmac = crypto.createHmac('sha256', req.body.pass).update(req.body.login).digest('hex');
-
-    if (bodyHmac == hmac) {
-      // restify's res.setCookie maxAge is in seconds; express's res.cookie maxAge is in milliseconds.
-      res.cookie('myCookie', hmac, {
-        path: '/admin',
-        maxAge: 24 * 60 * 60 * 1000,
-        httpOnly: true,
-      });
-      res.redirect('/admin');
-    } else {
-      res.send(400, { error: 'login or pass not valid' });
+    const ip = String(req.ip || req.socket?.remoteAddress || '');
+    if (isLoginBlocked(ip)) {
+      return res.send(429, { error: 'too many login attempts' });
     }
+
+    const { login, pass } = req.body || {};
+    if (!verifyAdminCredentials(login, pass)) {
+      recordLoginFailure(ip);
+      return res.send(400, { error: 'login or pass not valid' });
+    }
+
+    resetLoginFailures(ip);
+    // Drop any session presented with the login request, then issue a fresh id.
+    destroyAdminSession(req);
+    // restify's res.setCookie maxAge is in seconds; express's res.cookie maxAge is in milliseconds.
+    res.cookie(ADMIN_COOKIE_NAME, createAdminSession(), { ...adminCookieOptions(req), maxAge: ADMIN_SESSION_TTL_MS });
+    res.redirect('/admin');
   }
 
   adminLogout(req: any, res: any) {
-    res.clearCookie('myCookie');
+    destroyAdminSession(req);
+    res.clearCookie(ADMIN_COOKIE_NAME, adminCookieOptions(req));
     res.redirect('/admin');
   }
 

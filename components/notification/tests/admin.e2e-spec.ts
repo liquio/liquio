@@ -1,6 +1,8 @@
+import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { clearAdminSessionsForTests } from '../src/controllers/adminSession';
 import { TestApp } from './test-app';
 
 const adminConfig = JSON.parse(readFileSync(path.join(__dirname, '../../../config-templates/notification/config.json'), 'utf8')).production
@@ -50,9 +52,51 @@ describe('Admin static routes', () => {
     expect(res.status).toBe(302);
     expect(res.headers.location).toBe('/admin');
     const cookie = res.headers['set-cookie'][0];
-    expect(cookie).toMatch(/^myCookie=/);
-    expect(cookie).toMatch(/Max-Age=86400/);
+    expect(cookie).toMatch(/^adminSid=[0-9a-f]{64};/);
+    expect(cookie).toMatch(/Max-Age=28800/);
     expect(cookie).toMatch(/HttpOnly/);
+    expect(cookie).toMatch(/SameSite=Strict/);
+    expect(cookie).toMatch(/Path=\/admin/);
+    expect(cookie).not.toMatch(/Secure/);
+  });
+
+  it('marks the session cookie Secure behind https and issues a new id per login', async () => {
+    const creds = { login: adminConfig.login, pass: adminConfig.password };
+    const first = await app.request().post('/admin/login').set('X-Forwarded-Proto', 'https').type('form').send(creds);
+    const second = await app.request().post('/admin/login').type('form').send(creds);
+    expect(first.headers['set-cookie'][0]).toMatch(/Secure/);
+    expect(first.headers['set-cookie'][0].split(';')[0]).not.toBe(second.headers['set-cookie'][0].split(';')[0]);
+  });
+
+  it('invalidates the session server-side on logout (a copied cookie stops working)', async () => {
+    const login = await app.request().post('/admin/login').type('form').send({ login: adminConfig.login, pass: adminConfig.password });
+    const cookie = login.headers['set-cookie'][0];
+    expect((await app.request().get('/admin').set('Cookie', cookie)).status).toBe(200);
+
+    const logout = await app.request().get('/admin/logout').set('Cookie', cookie);
+    expect(logout.status).toBe(302);
+
+    const after = await app.request().get('/admin').set('Cookie', cookie);
+    expect(after.status).toBe(302);
+    expect(after.headers.location).toBe('/admin/login');
+    const api = await app.request().post('/admin/api/message/phonesList').set('Cookie', cookie).send({});
+    expect(api.status).toBe(401);
+  });
+
+  it('rejects the old static HMAC cookie on the admin view', async () => {
+    const hmac = crypto.createHmac('sha256', adminConfig.password).update(adminConfig.login).digest('hex');
+    const res = await app.request().get('/admin').set('Cookie', `myCookie=${hmac}`);
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/admin/login');
+  });
+
+  it('rate limits repeated failed logins', async () => {
+    let status = 0;
+    for (let i = 0; i < 12; i++) {
+      status = (await app.request().post('/admin/login').type('form').send({ login: 'x', pass: 'y' })).status;
+    }
+    expect(status).toBe(429);
+    clearAdminSessionsForTests();
   });
 
   it('grants access to the admin view once the session cookie is set', async () => {
@@ -73,7 +117,7 @@ describe('Admin static routes', () => {
     });
 
     it.each(paths)('POST %s rejects a forged admin cookie', async (route) => {
-      const res = await app.request().post(route).set('Cookie', 'myCookie=forged').send({});
+      const res = await app.request().post(route).set('Cookie', 'adminSid=forged').send({});
       expect(res.status).toBe(401);
     });
 

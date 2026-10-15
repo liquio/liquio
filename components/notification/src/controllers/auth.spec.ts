@@ -83,7 +83,7 @@ describe('checkAuth', () => {
 
 describe('checkAdminCookie', () => {
   const { checkAdminCookie, checkSameOrigin } = require('./auth');
-  const adminCookie = crypto.createHmac('sha256', 'admin-pass').update('admin-login').digest('hex');
+  const { createAdminSession, destroyAdminSession, ADMIN_COOKIE_NAME } = require('./adminSession');
 
   beforeEach(() => {
     (global as any).conf = { adminConfig: { login: 'admin-login', password: 'admin-pass' } };
@@ -97,26 +97,26 @@ describe('checkAdminCookie', () => {
     expect(res.send).toHaveBeenCalledWith(401, expect.any(Object));
   });
 
-  it('rejects a wrong admin cookie', () => {
+  it('rejects the old static HMAC cookie derived from the credentials', () => {
+    const hmac = crypto.createHmac('sha256', 'admin-pass').update('admin-login').digest('hex');
     const res = makeRes();
     const next = makeNext();
-    checkAdminCookie({ cookies: { myCookie: 'x'.repeat(adminCookie.length) } }, res, next);
+    checkAdminCookie({ cookies: { [ADMIN_COOKIE_NAME]: hmac, myCookie: hmac } }, res, next);
     expect(next).not.toHaveBeenCalled();
     expect(res.send).toHaveBeenCalledWith(401, expect.any(Object));
   });
 
-  it('rejects when admin credentials are not configured', () => {
-    (global as any).conf = { adminConfig: {} };
-    const res = makeRes();
+  it('accepts a live session and rejects it after logout', () => {
+    const req = { cookies: { [ADMIN_COOKIE_NAME]: createAdminSession() } };
     const next = makeNext();
-    checkAdminCookie({ cookies: { myCookie: crypto.createHmac('sha256', '').update('').digest('hex') } }, res, next);
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  it('accepts the valid admin cookie', () => {
-    const next = makeNext();
-    checkAdminCookie({ cookies: { myCookie: adminCookie } }, makeRes(), next);
+    checkAdminCookie(req, makeRes(), next);
     expect(next).toHaveBeenCalledTimes(1);
+
+    destroyAdminSession(req);
+    const res = makeRes();
+    checkAdminCookie(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.send).toHaveBeenCalledWith(401, expect.any(Object));
   });
 
   it('checkSameOrigin rejects a foreign Origin and allows same or missing Origin', () => {

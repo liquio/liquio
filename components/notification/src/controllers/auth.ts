@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { appendTraceMeta } from '@liquio/back-core';
 
 import { AuthorizeModel } from '../models/authorize';
+import { verifyAdminSession } from './adminSession';
 
 const Authorize = new AuthorizeModel().Authorize;
 
@@ -56,25 +57,15 @@ const checkAuth = async function (req: any, res: any, next: any) {
   next();
 };
 
-const ADMIN_COOKIE_NAME = 'myCookie';
-
 /**
- * Check admin panel session cookie (HMAC of admin password/login, same value staticRoutes issues on login).
+ * Check admin panel session cookie (same server-side session staticRoutes issues on login, revoked on logout).
  * Lets the admin UI call service routes without any Basic credentials in client-side code.
  * @param {object} req HTTP request.
  * @param {object} res HTTP response.
  * @param {object} next Next handler.
  */
 const checkAdminCookie = function (req: any, res: any, next: any) {
-  const { login, password } = (global as any).conf?.adminConfig || {};
-  const cookie = req.cookies?.[ADMIN_COOKIE_NAME];
-  if (!login || !password || typeof cookie !== 'string') {
-    return sendAuthError(res);
-  }
-
-  const expected = Buffer.from(crypto.createHmac('sha256', password).update(login).digest('hex'));
-  const actual = Buffer.from(cookie);
-  if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
+  if (!verifyAdminSession(req)) {
     return sendAuthError(res);
   }
 
