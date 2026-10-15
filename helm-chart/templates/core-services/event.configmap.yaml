@@ -19,6 +19,7 @@ metadata:
   "downloadFileTimeout" 60000
   "getSetSignatureTimeout" 40000
   "createAsicTimeout" 60000
+  "allowInsecureTls" false
 -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
@@ -171,6 +172,7 @@ metadata:
 -}}
 {{ $httpClientBase := dict
   "requestTimeout" 60000
+  "tls" (list)
 -}}
 {{ $logsBroadcastingBase := dict
   "isEnabled" false

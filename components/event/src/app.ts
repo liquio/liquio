@@ -15,9 +15,7 @@ import { HttpClient } from './lib/http_client';
 import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
-
-// Allow not secure connections.
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+import { installTlsOverrides } from './lib/tls';
 
 export class App {
   config: any;
@@ -70,6 +68,12 @@ export class App {
 
   // Init http client.
   useHttpClient() {
+    // TLS verification stays on by default. Exceptions (self-signed endpoints) are opt-in per endpoint.
+    const { filestorage, http_client: httpClientConfig } = this.config;
+    installTlsOverrides(
+      [{ url: filestorage?.apiHost, allowInsecureTls: filestorage?.allowInsecureTls, ca: filestorage?.ca }, ...(httpClientConfig?.tls || [])],
+      (message: string) => this.log.save('tls-warning', { message }, 'warn'),
+    );
     this.httpClient = new HttpClient(this.config.http_client, this.log.save.bind(this.log), getTraceId);
   }
 
