@@ -44,6 +44,6 @@ export class WorkflowErrorModel extends Model {
    * @param {object} data Data object.
    */
   async create(data) {
-    await this.model.create({ workflow_id: data.queueMessage && data.queueMessage.workflowId, service_name: 'manager', data });
+    await this.model.create({ workflow_id: data.workflowId, service_name: 'manager', data });
   }
 }

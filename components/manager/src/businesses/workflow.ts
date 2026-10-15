@@ -145,8 +145,9 @@ export class WorkflowBusiness {
    */
   async createFromMessage(messageObject) {
     let workflowTemplateId;
+    // Derived from the DB entity only (never from the message): the error path below relies on it.
+    let workflowId: string | undefined;
     try {
-      let workflowId;
       const currentSequences = [];
       let bpmnSchema;
       let notFinishedReason: string | undefined;
@@ -414,15 +415,19 @@ export class WorkflowBusiness {
       });
 
       try {
-        await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject });
-        await this.workflowModel.setError(messageObject.workflowId);
+        // `workflowId` is trusted only when it was resolved from the task/event/gateway entity. The message value
+        // is attacker-controllable and must never be used to mark a workflow as failed.
+        await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject, workflowId });
+        if (workflowId) {
+          await this.workflowModel.setError(workflowId);
+        }
       } catch (error) {
         global.log.save('workflow-id-not-found-error', { messageObject, error: error.message });
       }
 
       try {
         const workflowTemplate = await this.workflowTemplateModel.findById(workflowTemplateId);
-        await this.systemNotifier.sendEmails(messageObject.workflowId, workflowTemplate && workflowTemplate.name, error?.message);
+        await this.systemNotifier.sendEmails(workflowId, workflowTemplate && workflowTemplate.name, error?.message);
       } catch (error) {
         global.log.save('system-notifier-error', error.message);
       }

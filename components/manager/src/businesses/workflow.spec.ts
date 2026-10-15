@@ -189,4 +189,32 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
     expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 3 }));
   });
+
+  it('does not mark a forged workflowId as failed when the task is missing', async () => {
+    task = undefined;
+
+    expect(await business.createFromMessage({ taskId: 'missing', workflowId: 'victim' })).toBe(true);
+
+    expect(business.workflowModel.setError).not.toHaveBeenCalled();
+    expect(business.workflowErrorModel.create).toHaveBeenCalledWith(expect.objectContaining({ workflowId: undefined }));
+  });
+
+  it('does not mark a forged workflowId as failed for an invalid message object', async () => {
+    expect(await business.createFromMessage({ workflowId: 'victim' })).toBe(true);
+
+    expect(business.workflowModel.setError).not.toHaveBeenCalled();
+  });
+
+  it('marks the DB-derived workflow as failed, ignoring the forged message workflowId', async () => {
+    business.workflowModel.appendMessage = jest.fn(async () => {
+      throw new Error('boom');
+    });
+
+    expect(await business.createFromMessage({ taskId: 't1', workflowId: 'victim' })).toBe(true);
+
+    expect(business.workflowModel.setError).toHaveBeenCalledTimes(1);
+    expect(business.workflowModel.setError).toHaveBeenCalledWith('wf');
+    expect(business.workflowErrorModel.create).toHaveBeenCalledWith(expect.objectContaining({ workflowId: 'wf' }));
+    expect(business.systemNotifier.sendEmails).toHaveBeenCalledWith('wf', undefined, 'boom');
+  });
 });
