@@ -51,7 +51,7 @@ metadata:
 -}}
 {{ $logBase := dict
   "console" (list)
-  "excludeParams" (list "token" "authorization")
+  "excludeParams" (list "token" "authorization" "accessToken" "refreshToken" "access_token" "refresh_token" "id_token" "password")
 -}}
 {{ $elasticBase := dict
   "headers" (dict)

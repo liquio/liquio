@@ -59,8 +59,6 @@ export class AuthController extends Controller {
     } catch (err) {
       return this.responseError(res, err, 401);
     }
-    global.log.save('login-tokens', authTokens);
-
     // Get user info.
     let authUserInfo;
     try {
@@ -124,7 +122,7 @@ export class AuthController extends Controller {
     } catch (err) {
       return this.responseError(res, err, 401);
     }
-    global.log.save('login-user-info', authUserInfo);
+    global.log.save('login-user-info', { userId: authUserInfo?.userId });
 
     // Get token.
     let token;
@@ -240,7 +238,7 @@ export class AuthController extends Controller {
 
       const hasOneOfNeededRoles = this.hasOneOfNeededRoles(userRoles, roles);
       if (roles && !hasOneOfNeededRoles) {
-        global.log.save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles });
+        global.log.save('user-without-needed-roles', { userId, userRoles, neededRoles: roles });
         return this.responseError(res, ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, 403);
       }
       req.authUserRoles = userRoles;
@@ -438,7 +436,7 @@ export class AuthController extends Controller {
     try {
       // Refer to `admin` configuration block to check for setup requirements.
       if (this.config.user.shouldSetupAdmin && this.config.user.adminUnitId) {
-        global.log.save('setup-admin-units', { userInfo });
+        global.log.save('setup-admin-units', { userId: userInfo?.userId });
 
         const { adminUnitId } = this.config.user;
 

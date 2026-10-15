@@ -83,3 +83,38 @@ describe('AuthController.authenticateToken', () => {
     expect((await controller.authenticateToken('x', ['admin'], [1])).status).toBe(200);
   });
 });
+
+describe('AuthController.login logging', () => {
+  const idApi: any = { getTokens: jest.fn(), getUser: jest.fn(), getMainUserInfo: jest.fn((v) => v) };
+  const save = jest.fn();
+  let controller: AuthController;
+  let responseData: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (global as any).log = { save };
+    (global as any).models = { unit: { getAll: jest.fn().mockResolvedValue([]) } };
+    (global as any).config = { auth: { authRedirectUrl: 'http://admin.local/auth' } };
+    (AuthController as any).singleton = undefined;
+    (getIdApiClient as jest.Mock).mockReturnValue(idApi);
+    controller = new AuthController({ auth: {}, server: { token: 'srv' }, access: {}, user: {} });
+    controller.token = { generate: jest.fn().mockReturnValue('jwt') } as any;
+    responseData = jest.spyOn(controller, 'responseData').mockImplementation(() => undefined);
+    jest.spyOn(controller, 'setupAdminUnits').mockResolvedValue(undefined as any);
+  });
+
+  it('should not write tokens or user PII to logs on login', async () => {
+    idApi.getTokens.mockResolvedValue({ accessToken: 'ACCESS-SECRET', refreshToken: 'REFRESH-SECRET' });
+    idApi.getUser.mockResolvedValue({ userId: 'u1', email: 'pii@example.com', ipn: '1234567890', phone: '380000000000' });
+
+    await controller.login({ body: { code: 'c' } }, {});
+
+    expect(responseData).toHaveBeenCalledWith({}, { token: 'jwt' });
+    const logged = JSON.stringify(save.mock.calls);
+    expect(logged).not.toContain('ACCESS-SECRET');
+    expect(logged).not.toContain('REFRESH-SECRET');
+    expect(logged).not.toContain('pii@example.com');
+    expect(logged).not.toContain('1234567890');
+    expect(logged).not.toContain('380000000000');
+  });
+});
