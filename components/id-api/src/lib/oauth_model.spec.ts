@@ -329,3 +329,48 @@ describe('OAuthModel authorization version', () => {
     for (const [row] of tokenModel.create.mock.calls) expect(row.authorizationVersion).toBe(2);
   });
 });
+
+describe('OAuthModel.revokeToken', () => {
+  let model: OAuthModel;
+  let refreshTokenModel: any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    refreshTokenModel = { destroy: jest.fn().mockResolvedValue(1) };
+    (Models.model as jest.Mock).mockReturnValue(refreshTokenModel);
+    model = new OAuthModel();
+  });
+
+  it('reports success only when exactly one row was deleted', async () => {
+    expect(await model.revokeToken({ refreshToken: 'rt' } as any)).toBe(true);
+    expect(refreshTokenModel.destroy).toHaveBeenCalledWith({ where: { refreshToken: 'rt' } });
+  });
+
+  it('reports failure when no row was deleted', async () => {
+    refreshTokenModel.destroy.mockResolvedValue(0);
+    expect(await model.revokeToken({ refreshToken: 'rt' } as any)).toBe(false);
+  });
+
+  it('reports failure when the delete fails', async () => {
+    refreshTokenModel.destroy.mockRejectedValue(new Error('db down'));
+    expect(await model.revokeToken({ refreshToken: 'rt' } as any)).toBe(false);
+  });
+
+  it.each([
+    ['refresh token', (m: OAuthModel) => m.revokeToken({ refreshToken: 'x' } as any)],
+    ['authorization code', (m: OAuthModel) => m.revokeAuthorizationCode({ authorizationCode: 'x' } as any)],
+  ])('lets only one of concurrent redemptions of a %s win', async (_name, revoke) => {
+    let rows = 1;
+    const destroy = jest.fn().mockImplementation(async () => {
+      await Promise.resolve();
+      const deleted = rows;
+      rows = 0;
+      return deleted;
+    });
+    (Models.model as jest.Mock).mockReturnValue({ destroy });
+
+    const results = await Promise.all([revoke(model), revoke(model), revoke(model)]);
+
+    expect(results.filter(Boolean)).toHaveLength(1);
+  });
+});

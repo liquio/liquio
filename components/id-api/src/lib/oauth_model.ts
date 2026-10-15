@@ -252,7 +252,7 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
   async revokeAuthorizationCode(code: AuthorizationCode): Promise<boolean> {
     this.log.save('revoke-authorization-code', { codeHash: crypto.createHash('sha256').update(code.authorizationCode).digest('hex') }, 'info');
     const deletedCount = await Models.model('authCode').destroy({ where: { code: code.authorizationCode } });
-    return deletedCount > 0;
+    return deletedCount === 1;
   }
 
   async getRefreshToken(refreshToken: string): Promise<RefreshToken | Falsey> {
@@ -286,9 +286,13 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
   }
 
   async revokeToken(token: RefreshToken): Promise<boolean> {
-    return Models.model('refreshToken')
-      .destroy({ where: { refreshToken: token.refreshToken } })
-      .then(() => true)
-      .catch(() => false);
+    try {
+      // The delete is the single-winner step: only the request that actually removed the row may issue replacement tokens.
+      const deletedCount = await Models.model('refreshToken').destroy({ where: { refreshToken: token.refreshToken } });
+      return deletedCount === 1;
+    } catch (error) {
+      this.log.save('revoke-refresh-token-error', { error }, 'error');
+      return false;
+    }
   }
 }
