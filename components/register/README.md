@@ -30,6 +30,10 @@ npm run migration-clear
 npm run migration-generate --name <name>
 ```
 
+## Record security flags
+
+`allow_see_all_records`, `disable_fields_rules` and `allow_tokens` (query/body of `GET /records`, `POST /records-by-post`, `POST /records/filter`) are honoured only for Basic users listed in `auth.trustedCallers`. For every other caller they are ignored (logged as `ignored-untrusted-security-flags`) and the effective tokens come from `auth.userAllowTokens[user]` (default `[]`). `GET /records/:id` and `GET /records/search` also use only the server-side tokens for untrusted callers. An empty or missing `trustedCallers` ignores all flags; a malformed `userAllowTokens`/`trustedCallers` fails the request with 500. Set `trustedCallers` (e.g. the task service Basic user) before deploying.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

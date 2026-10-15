@@ -20,6 +20,7 @@ import KeyEntity from '../entities/key';
 import typeOf from '../lib/typeOf';
 import { ModelItemResponse } from '../lib/interfaces';
 import RecordEntity from '../entities/record';
+import { resolveCallerAccess, CallerAccess } from '../lib/caller_access';
 
 const ADDITIONAL_FILTER_RECORD_MAX_COUNT = 10000;
 const DB_CONSTRAINT_ERROR_CODE = 'DB_CONSTRAINT_ERROR';
@@ -63,6 +64,22 @@ export default class RecordsController extends Controller {
     return RecordsController.singleton;
   }
 
+  /**
+   * Resolve effective security flags for the caller and log ignored client-supplied flags.
+   * @throws On malformed `auth.trustedCallers` / `auth.userAllowTokens` config.
+   */
+  private getCallerAccess(req: Request, allowSeeAll?: unknown, disableFieldsRules?: unknown, allowTokens?: unknown): CallerAccess {
+    const access = resolveCallerAccess(req, this.config, {
+      allow_see_all_records: allowSeeAll,
+      disable_fields_rules: disableFieldsRules,
+      allow_tokens: allowTokens,
+    });
+    if (access.ignoredFlags.length > 0) {
+      this.log.save('ignored-untrusted-security-flags', { user: req.auth?.user, flags: access.ignoredFlags });
+    }
+    return access;
+  }
+
   // Get all records.
   async getAll(req: Request, res: Response) {
     const matchedQueryData = matchedData(req, { locations: ['query'] });
@@ -75,9 +92,9 @@ export default class RecordsController extends Controller {
       register_id: registerId,
       key_id: keyId,
       record_id: recordId,
-      allow_see_all_records,
-      disable_fields_rules,
-      allow_tokens: allowTokens,
+      allow_see_all_records: requestedSeeAll,
+      disable_fields_rules: requestedDisableFieldsRules,
+      allow_tokens: requestedAllowTokens,
       data,
       data_nested: dataNested,
       exclude,
@@ -106,6 +123,14 @@ export default class RecordsController extends Controller {
       no_limit: noLimit,
     } = { offset: 0, limit: 20, ...matchedQueryData, ...matchedBodyData } as any;
 
+    let access: CallerAccess;
+    try {
+      access = this.getCallerAccess(req, requestedSeeAll, requestedDisableFieldsRules, requestedAllowTokens);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    const { allowSeeAll: allow_see_all_records, disableFieldsRules: disable_fields_rules, allowTokens } = access;
+
     let recordIdsList;
 
     // Convert record_ids_list into JS array if passed via query.
@@ -126,7 +151,7 @@ export default class RecordsController extends Controller {
     let filter: RecordsGetAllFilter = {};
     let dataLike = {};
     if (!allow_see_all_records) {
-      filter.allow_tokens = allowTokens && Array.isArray(allowTokens) ? allowTokens.map((v) => decodeURIComponent(v)) : [];
+      filter.allow_tokens = allowTokens;
     }
     if (registerId) {
       filter.register_id = registerId;
@@ -382,9 +407,9 @@ export default class RecordsController extends Controller {
       register_id: registerId,
       key_id: keyId,
       id: recordId,
-      allow_see_all_records,
-      disable_fields_rules,
-      allow_tokens: allowTokens,
+      allow_see_all_records: requestedSeeAll,
+      disable_fields_rules: requestedDisableFieldsRules,
+      allow_tokens: requestedAllowTokens,
       data,
       data_like,
       search,
@@ -409,6 +434,14 @@ export default class RecordsController extends Controller {
     } = { ...matchedQueryData, ...matchedBodyData } as any;
     const { additionalFilter: bodyAdditionalFilter, additional_filter: bodyAdditionalFilterLegacy, additionalFilterData } = matchedBodyData as any;
 
+    let access: CallerAccess;
+    try {
+      access = this.getCallerAccess(req, requestedSeeAll, requestedDisableFieldsRules, requestedAllowTokens);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    const { allowSeeAll: allow_see_all_records, disableFieldsRules: disable_fields_rules, allowTokens } = access;
+
     const additionalFilter = queryAdditionalFilter
       ? Buffer.from(decodeURIComponent(queryAdditionalFilter), 'base64').toString('utf8')
       : bodyAdditionalFilter || bodyAdditionalFilterLegacy;
@@ -425,7 +458,7 @@ export default class RecordsController extends Controller {
     const filter: RecordsGetAllFilteredFilter = {};
     let dataLike = {};
     if (!allow_see_all_records) {
-      filter.allow_tokens = allowTokens && Array.isArray(allowTokens) ? allowTokens.map((v) => decodeURIComponent(v)) : [];
+      filter.allow_tokens = allowTokens;
     }
     if (registerId) filter.register_id = registerId;
     if (keyId) {
@@ -664,7 +697,16 @@ export default class RecordsController extends Controller {
   async findById(req: Request, res: Response) {
     // Define params.
     const { id } = matchedData(req, { locations: ['params'] });
-    const { paths, allow_tokens: allowTokens } = matchedData(req, { locations: ['query'] });
+    const { paths } = matchedData(req, { locations: ['query'] });
+    let allowTokens: string[] | undefined;
+    try {
+      // Server-side tokens only; the client-supplied `allow_tokens` is never honoured here.
+      // Trusted callers (e.g. task) keep the unrestricted behaviour.
+      const access = this.getCallerAccess(req);
+      allowTokens = access.trusted ? undefined : access.allowTokens;
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
 
     // Get record.
     let recordModelResponse;
@@ -1325,7 +1367,16 @@ export default class RecordsController extends Controller {
    */
   async search(req, res) {
     // Define params.
-    const { key_id: keyId, text, search_key: searchKey, allow_tokens: allowTokens, limit, offset = 0 } = matchedData(req, { locations: ['query'] });
+    const { key_id: keyId, text, search_key: searchKey, limit, offset = 0 } = matchedData(req, { locations: ['query'] });
+    let allowTokens: string[] | undefined;
+    try {
+      // Server-side tokens only; the client-supplied `allow_tokens` is never honoured here.
+      // Trusted callers (e.g. task) keep the unrestricted behaviour.
+      const access = this.getCallerAccess(req);
+      allowTokens = access.trusted ? undefined : access.allowTokens;
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
     const { main: mainSearchConfig, [keyId]: specificSearchConfig } = this.config.search;
 
     if (!(await this.keyModel.checkRecordsReadableById(keyId))) {

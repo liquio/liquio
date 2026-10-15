@@ -24,6 +24,10 @@ export interface Config {
   auth: {
     tokens: string[];
     allowRawSequelizeParamsUsers: string[];
+    /** Basic users allowed to send `allow_see_all_records`, `disable_fields_rules` and `allow_tokens`. Empty/missing: all ignored. */
+    trustedCallers?: string[];
+    /** Server-side allow tokens per verified Basic user (used for callers that are not trusted). */
+    userAllowTokens?: Record<string, string[]>;
     limitedAccess: Array<{ user: string; keys: string[] }>;
   };
   db: {

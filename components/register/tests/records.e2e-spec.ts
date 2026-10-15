@@ -506,4 +506,96 @@ describe('RecordsController', () => {
       await testHarness.request().get(`/records/${createdId}`).set('Authorization', validAuth).expect(404).expect('Content-Type', /json/);
     });
   });
+
+  describe('client-supplied security flags (SE-3930 RG-01/RG-05)', () => {
+    const marker = 'SECFLAGS_E2E_001';
+    let restrictedId: string;
+    let savedAuth: any;
+
+    const queryByPost = (body: object) =>
+      testHarness
+        .request()
+        .post('/records-by-post')
+        .set('Authorization', validAuth)
+        .send({ key_id: 2001, register_id: 200, data: { data: marker }, ...body });
+    const queryFiltered = (body: object) =>
+      testHarness
+        .request()
+        .post('/records/filter')
+        .set('Authorization', validAuth)
+        .send({ key_id: 2001, register_id: 200, data: { data: marker }, ...body });
+    const ids = (response) => response.body.data.map((r) => r.id);
+
+    beforeAll(async () => {
+      const response = await testHarness
+        .request()
+        .post('/records')
+        .set('Authorization', validAuth)
+        .send({ registerId: 200, keyId: 2001, data: { name: 'Restricted', data: marker }, allowTokens: ['secret-token'] })
+        .expect(200);
+      restrictedId = response.body.data.id;
+    });
+
+    beforeEach(() => {
+      savedAuth = { ...testHarness.getConfig().auth };
+    });
+
+    afterEach(() => {
+      testHarness.getConfig().auth = savedAuth;
+    });
+
+    afterAll(async () => {
+      await testHarness.request().delete(`/records/${restrictedId}`).set('Authorization', validAuth);
+    });
+
+    it('ignores allow_see_all_records from an untrusted caller', async () => {
+      testHarness.getConfig().auth.trustedCallers = [];
+      for (const send of [queryByPost, queryFiltered]) {
+        const response = await send({ allow_see_all_records: true }).expect(200);
+        expect(ids(response)).not.toContain(restrictedId);
+      }
+    });
+
+    it('ignores a client-supplied foreign allow_tokens from an untrusted caller', async () => {
+      testHarness.getConfig().auth.trustedCallers = [];
+      for (const send of [queryByPost, queryFiltered]) {
+        const response = await send({ allow_tokens: ['secret-token'], disable_fields_rules: true }).expect(200);
+        expect(ids(response)).not.toContain(restrictedId);
+      }
+    });
+
+    it('ignores the flags on GET /records (query) for an untrusted caller', async () => {
+      testHarness.getConfig().auth.trustedCallers = [];
+      const response = await testHarness
+        .request()
+        .get(`/records?key_id=2001&register_id=200&limit=1000&allow_see_all_records=true&allow_tokens=secret-token`)
+        .set('Authorization', validAuth)
+        .expect(200);
+      expect(ids(response)).not.toContain(restrictedId);
+    });
+
+    it('uses server-side auth.userAllowTokens for an untrusted caller', async () => {
+      testHarness.getConfig().auth.trustedCallers = [];
+      testHarness.getConfig().auth.userAllowTokens = { test: ['secret-token'] };
+      const response = await queryFiltered({}).expect(200);
+      expect(ids(response)).toContain(restrictedId);
+    });
+
+    it('honours the flags for a caller listed in auth.trustedCallers', async () => {
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      for (const send of [queryByPost, queryFiltered]) {
+        const response = await send({ allow_see_all_records: true }).expect(200);
+        expect(ids(response)).toContain(restrictedId);
+      }
+      const byTokens = await queryFiltered({ allow_tokens: ['secret-token'] }).expect(200);
+      expect(ids(byTokens)).toContain(restrictedId);
+    });
+
+    it('fails the request without data when auth.userAllowTokens is malformed', async () => {
+      testHarness.getConfig().auth.trustedCallers = [];
+      testHarness.getConfig().auth.userAllowTokens = { test: 'secret-token' } as any;
+      const response = await queryFiltered({}).expect(500);
+      expect(response.body.data).toBeUndefined();
+    });
+  });
 });
