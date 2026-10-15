@@ -11,6 +11,7 @@ import { getEnabledAuthProviders } from '../lib/auth_providers';
 import { avatarByGender } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { ServerCrypt } from '../lib/server_crypt';
+import { getSessionUserId, isTwoFactorCompleted } from '../lib/two_factor';
 import { AuthMiddleware } from '../middleware';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
@@ -577,29 +578,66 @@ export class AuthController extends BaseController {
     res.redirect(url.toString());
   }
 
+  /**
+   * Allows the authorization to continue only when the account has no 2FA configured
+   * or the configured factor was completed in this login session.
+   * The 2FA settings come from the database, never from the session user.
+   */
   async checkTwoFactorAuth(req: Request, res: Response, next: NextFunction) {
-    const user = req.session.passport?.user ?? req.session.passport;
-    const { useTwoFactorAuth, phone, phoneChecked, twoFactorType, totpChecked } = user;
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      res.redirect('/');
+      return;
+    }
+
+    let account;
+    try {
+      account = await this.model('user')
+        .findOne({ where: { userId }, attributes: ['userId', 'phone', 'useTwoFactorAuth', 'twoFactorType'] })
+        .then((row) => row?.dataValues);
+    } catch (error: any) {
+      this.log.save('check-two-factor-auth-error', { userId, error: error.message }, 'error');
+      res.status(500).send({ error: { message: 'Two-factor authentication check failed.' } });
+      return;
+    }
+
+    // Unknown (e.g. deleted) user: do not continue.
+    if (!account) {
+      this.log.save('check-two-factor-auth-user-not-found', { userId }, 'warning');
+      res.redirect('/');
+      return;
+    }
+
+    const { useTwoFactorAuth, twoFactorType, phone } = account;
 
     // If useTwoFactorAuth is enabled, but the type of 2FA is not set, let the user in to set it.
-    if (!useTwoFactorAuth || (useTwoFactorAuth && !twoFactorType)) {
+    if (!useTwoFactorAuth || !twoFactorType) {
+      return next();
+    }
+
+    // Only the proof bound to this user and the currently configured factor lets the user in.
+    if (isTwoFactorCompleted(req, userId, twoFactorType)) {
       return next();
     }
 
     // Control for phone-based 2FA.
-    if (twoFactorType === 'phone' && !phoneChecked) {
-      this.service('auth').sendPhoneConfirmCode(phone);
+    if (twoFactorType === 'phone') {
+      this.service('auth')
+        .sendPhoneConfirmCode(phone as string)
+        .catch((error: any) => this.log.save('check-two-factor-auth-send-code-error', { userId, error: error.message }, 'error'));
       res.redirect('/');
       return;
     }
 
     // Control for TOTP-based 2FA.
-    if (twoFactorType === 'totp' && !totpChecked) {
+    if (twoFactorType === 'totp') {
       res.redirect('/totp');
       return;
     }
 
-    return next();
+    // Unsupported factor type: fail closed.
+    this.log.save('check-two-factor-auth-unsupported-type', { userId, twoFactorType }, 'error');
+    res.redirect('/');
   }
 
   async checkUserClientScope(req: Request, res: Response, next: NextFunction) {

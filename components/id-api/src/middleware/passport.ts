@@ -6,7 +6,8 @@ import { Log } from '@liquio/back-core';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { Models } from '../models';
 import { Services } from '../services';
-import { Express } from '../types';
+import { clearTwoFactorState } from '../lib/two_factor';
+import { Express, NextFunction, Request, Response } from '../types';
 
 export function usePassport(express: Express) {
   const log = Log.getInstance();
@@ -18,6 +19,19 @@ export function usePassport(express: Express) {
 
   express.use(passport.initialize());
   express.use(passport.session());
+
+  // Every new primary authentication (any strategy) goes through `req.logIn`.
+  // Reset the second factor state there, so a completion proof of a previous login can never be reused.
+  express.use((req: Request, res: Response, next: NextFunction) => {
+    const logIn = req.logIn;
+    const resetAndLogIn = function (this: Request, ...args: any[]) {
+      clearTwoFactorState(this);
+      return (logIn as any).apply(this, args);
+    };
+    req.logIn = resetAndLogIn as any;
+    req.login = resetAndLogIn as any;
+    next();
+  });
 
   passport.serializeUser(function (user: any, done) {
     if (user?.cached) {

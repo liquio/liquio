@@ -5,6 +5,7 @@ import Sequelize from 'sequelize';
 
 import { validateEmail } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import { getSessionUserId, markTwoFactorCompleted } from '../lib/two_factor';
 import { saveSession } from '../middleware/session';
 import { UserAttributes, UserServicesAttributes } from '../models';
 import { Express, Request, Response, Router } from '../types';
@@ -538,32 +539,58 @@ export class SignUpController extends BaseController {
   async checkPhoneCode(req: Request, res: Response): Promise<void> {
     const code = req.body.code;
     const user = req.session.passport?.user;
-    this.log.save('check-phone-code', { phone: user.phone, code: code }, 'info');
-
-    if (!code) {
-      this.log.save('check-phone-confirmation-code-params-not-defined', { phone: user.phone, code }, 'error');
-      res.status(400).send('Phone confirmation code should be defined.');
+    const userId = getSessionUserId(req);
+    if (!user || !userId) {
+      res.status(401).send({ success: false, error: 'Unauthorized' });
       return;
     }
 
+    let phone = user.phone;
+
     try {
+      // The persisted account decides which phone and factor are in use; the session user may be a slim profile.
+      const account = await this.model('user')
+        .findOne({ where: { userId }, attributes: ['userId', 'phone', 'useTwoFactorAuth', 'twoFactorType'] })
+        .then((row) => row?.dataValues);
+      if (!account) {
+        res.status(401).send({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const isPhoneTwoFactor = !!account.useTwoFactorAuth && account.twoFactorType === 'phone';
+      if (isPhoneTwoFactor) {
+        phone = account.phone;
+      }
+
+      this.log.save('check-phone-code', { phone, code: code }, 'info');
+
+      if (!code) {
+        this.log.save('check-phone-confirmation-code-params-not-defined', { phone, code }, 'error');
+        res.status(400).send('Phone confirmation code should be defined.');
+        return;
+      }
+
       const confirm = await this.service('auth').getValidConfirmCode({
-        phone: user.phone,
+        phone,
         code,
       });
 
       if (!confirm) {
-        const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone: user.phone });
-        this.log.save('confirm-phone-code-counter-incremented', { phone: user.phone, counter }, 'warning');
+        const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone });
+        this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
         res.send({ success: false, error: 'code not valid' });
         return;
       }
 
-      await this.service('auth').removeConfirmCode({ phone: user.phone });
-      await saveSession(req, { ...req.session.passport?.user, phoneChecked: true });
+      await this.service('auth').removeConfirmCode({ phone });
+      if (isPhoneTwoFactor) {
+        await markTwoFactorCompleted(req, userId, 'phone');
+      } else {
+        await saveSession(req, { ...req.session.passport?.user, phoneChecked: true });
+      }
       res.send({ success: true });
     } catch (error: any) {
-      this.log.save('check-phone-confirmation-code-error', { phone: user.phone, code, error: error.message }, 'error');
+      this.log.save('check-phone-confirmation-code-error', { phone, code, error: error.message }, 'error');
       res.send({ success: false, error: error.message });
     }
   }

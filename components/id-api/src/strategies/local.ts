@@ -4,6 +4,7 @@ import { Log } from '@liquio/back-core';
 import { delay } from '../lib/helpers';
 import { HttpError } from '../lib/http_error';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import { clearTwoFactorState } from '../lib/two_factor';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesAttributes } from '../models';
 import { Services } from '../services';
@@ -105,6 +106,9 @@ export async function local(app: Express) {
   }
 
   async function authorise(req: Request, res: Response): Promise<void> {
+    // A fresh password login never inherits a second factor completion of a previous login.
+    clearTwoFactorState(req);
+
     const user = req.session.passport?.user;
 
     await saveSession(req, user);

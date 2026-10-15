@@ -26,6 +26,7 @@ declare module 'express-session' {
     client?: { clientId?: string; client_name?: string; requirements: any[]; redirectUri?: string[] };
     passport?: PassportStatic & { user?: any };
     preparedUser?: any;
+    twoFactorCompleted?: { userId: string; factor: 'phone' | 'totp' };
     authInfo?: any;
     user?: any;
     forward?: string;

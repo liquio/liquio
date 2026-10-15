@@ -1,8 +1,8 @@
 import { matchedData, query } from 'express-validator';
 
 import { TOTP } from '../lib/totp';
+import { getSessionUserId, markTwoFactorCompleted } from '../lib/two_factor';
 import { AuthMiddleware } from '../middleware/authenticate';
-import { saveSession } from '../middleware/session';
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -39,8 +39,9 @@ export class TotpController extends BaseController {
    * A method to verify TOTP code for a user.
    */
   async verifyTotp(req: Request, res: Response): Promise<void> {
-    const user = req.session?.authInfo;
-    if (!user) {
+    // The session user is the authority; the local login does not fill `authInfo`.
+    const userId = getSessionUserId(req) ?? req.session?.authInfo?.userId;
+    if (!userId) {
       res.status(401).send({ error: 'Unauthorized' });
       return;
     }
@@ -52,8 +53,18 @@ export class TotpController extends BaseController {
     }
 
     try {
+      // TOTP can complete only the factor that is currently configured for the account.
+      const account = await this.model('user')
+        .findOne({ where: { userId }, attributes: ['userId', 'useTwoFactorAuth', 'twoFactorType'] })
+        .then((row) => row?.dataValues);
+
+      if (!account?.useTwoFactorAuth || account.twoFactorType !== 'totp') {
+        res.status(401).send({ error: 'TOTP is not enabled.' });
+        return;
+      }
+
       const secret = await this.model('userTotpSecret')
-        .findOne({ where: { userId: user.userId } })
+        .findOne({ where: { userId } })
         .then((row) => row?.dataValues);
 
       if (!secret) {
@@ -69,7 +80,7 @@ export class TotpController extends BaseController {
         return;
       }
 
-      await saveSession(req, { ...req.session.passport?.user, totpChecked: true });
+      await markTwoFactorCompleted(req, userId, 'totp');
 
       res.status(200).send({ success: true, redirect: '/authorise/continue' });
     } catch (error: any) {
