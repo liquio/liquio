@@ -2,6 +2,7 @@
   "console": [],
   "excludeParams": [
     "token",
+    "meta=",
     "authorization",
     "Authorization",
     "tenantToken",

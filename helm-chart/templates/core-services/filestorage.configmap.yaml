@@ -25,6 +25,7 @@ metadata:
   "level" "info"
   "excludeParams" (list
     "token"
+    "meta="
     "authorization"
     "Authorization"
     "oauth-token"

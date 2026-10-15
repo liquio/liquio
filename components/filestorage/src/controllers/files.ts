@@ -752,8 +752,8 @@ export class FilesController extends Controller {
     let dataObjectBase64String;
     try {
       dataObjectBase64String = await AsicManifest.getDataObjectValue(manifestFile.data);
-    } catch {
-      global.log.save('get-data-object-from-asic-manifest-error', { manifestFileId, manifestFile: manifestFile.data });
+    } catch (error) {
+      global.log.save('get-data-object-from-asic-manifest-error', { manifestFileId, error: error && error.message });
     }
     const dataObjectJsonString = Buffer.from(dataObjectBase64String || '', 'base64').toString('utf8');
     zip.addFile('data.json', Buffer.from(dataObjectJsonString));
