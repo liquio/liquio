@@ -238,56 +238,86 @@ export class MessageQueue {
       runInAsyncLocalStorage(async () => {
         // Convert message.
         const messageString = message.content.toString();
-        global.log.save('message-from-queue-to-handle', { messageString });
-        const messageObject = JSON.parse(messageString);
-        const { amqpMessageId } = messageObject;
 
-        // Try to get amqp message id.
-        if (global.redisClient && global.config?.redis?.amqpMessageCache?.isEnabled && amqpMessageId) {
-          try {
-            const amqpMessageIdFromRedis = await global.redisClient.get(`${REDIS_AMQP_KEY_PREFIX}.${amqpMessageId}`);
-            if (amqpMessageIdFromRedis) {
-              try {
-                // Inform that handled.
-                global.log.save('message-from-queue-handled-from-redis', { messageString });
-                this.channels.reading.ack(message);
-                global.log.save('message-from-queue-ack-from-redis', { messageString });
-              } catch (error) {
-                global.log.save('message-from-queue-ack-error-from-redis', error.message, 'error');
-                return;
-              }
-              // Keep the key: a further redelivery must be deduplicated too, the TTL expires it.
-              return;
-            }
-          } catch (error) {
-            global.log.save('message-from-queue-id-get-redis-error', error.message, 'error');
-          }
-        }
-
-        // Handle.
-        const isHandled = await handler(messageObject);
-
-        // Check handling status.
-        if (!isHandled) {
-          // Inform that not handled and exit.
-          global.log.save('message-from-queue-not-handled', { messageString });
-          this.channels.reading.nack(message);
+        // Parse message. A malformed message must never crash the process or be redelivered forever.
+        let messageObject;
+        try {
+          messageObject = JSON.parse(messageString);
+        } catch (error) {
+          global.log.save(
+            'message-parse-error',
+            { error: error?.message, length: messageString.length, prefix: messageString.slice(0, 50) },
+            'error',
+          );
+          this.discardMessage(message, true);
           return;
         }
 
-        // Inform that handled.
-        global.log.save('message-from-queue-handled', { messageString });
-        this.channels.reading.ack(message);
-        global.log.save('message-from-queue-ack', { messageString });
+        // Only plain objects are valid messages.
+        if (messageObject === null || typeof messageObject !== 'object' || Array.isArray(messageObject)) {
+          global.log.save(
+            'message-parse-error',
+            { error: 'Message is not an object', length: messageString.length, prefix: messageString.slice(0, 50) },
+            'error',
+          );
+          this.discardMessage(message, true);
+          return;
+        }
 
-        // Try to set amqp message id.
-        if (global.redisClient && global.config?.redis?.amqpMessageCache?.isEnabled && amqpMessageId) {
-          try {
-            const ttl = global.config?.redis?.amqpMessageCache?.ttl || DEFAULT_REDIS_TTL;
-            await global.redisClient.set(`${REDIS_AMQP_KEY_PREFIX}.${amqpMessageId}`, amqpMessageId, ttl);
-          } catch (error) {
-            global.log.save('message-from-queue-id-set-redis-error', error.message, 'error');
+        global.log.save('message-from-queue-to-handle', { messageString });
+        const { amqpMessageId } = messageObject;
+
+        try {
+          // Try to get amqp message id.
+          if (global.redisClient && global.config?.redis?.amqpMessageCache?.isEnabled && amqpMessageId) {
+            try {
+              const amqpMessageIdFromRedis = await global.redisClient.get(`${REDIS_AMQP_KEY_PREFIX}.${amqpMessageId}`);
+              if (amqpMessageIdFromRedis) {
+                try {
+                  // Inform that handled.
+                  global.log.save('message-from-queue-handled-from-redis', { messageString });
+                  this.channels.reading.ack(message);
+                  global.log.save('message-from-queue-ack-from-redis', { messageString });
+                } catch (error) {
+                  global.log.save('message-from-queue-ack-error-from-redis', error.message, 'error');
+                  return;
+                }
+                // Keep the key: a further redelivery must be deduplicated too, the TTL expires it.
+                return;
+              }
+            } catch (error) {
+              global.log.save('message-from-queue-id-get-redis-error', error.message, 'error');
+            }
           }
+
+          // Handle.
+          const isHandled = await handler(messageObject);
+
+          // Check handling status.
+          if (!isHandled) {
+            // Inform that not handled and exit.
+            global.log.save('message-from-queue-not-handled', { messageString });
+            this.channels.reading.nack(message);
+            return;
+          }
+
+          // Inform that handled.
+          global.log.save('message-from-queue-handled', { messageString });
+          this.channels.reading.ack(message);
+          global.log.save('message-from-queue-ack', { messageString });
+
+          // Try to set amqp message id.
+          if (global.redisClient && global.config?.redis?.amqpMessageCache?.isEnabled && amqpMessageId) {
+            try {
+              const ttl = global.config?.redis?.amqpMessageCache?.ttl || DEFAULT_REDIS_TTL;
+              await global.redisClient.set(`${REDIS_AMQP_KEY_PREFIX}.${amqpMessageId}`, amqpMessageId, ttl);
+            } catch (error) {
+              global.log.save('message-from-queue-id-set-redis-error', error.message, 'error');
+            }
+          }
+        } catch (error) {
+          global.log.save('message-from-queue-handler-error', error?.message, 'error');
+          this.discardMessage(message, false);
         }
       });
     };
@@ -298,6 +328,24 @@ export class MessageQueue {
     } catch (error) {
       global.log.save('amqp-send-message-error', error?.message, 'error');
       this.checkErrorAndExitIfNeedIt(error);
+    }
+  }
+
+  /**
+   * Remove a message from the queue without requeue so a bad message cannot loop.
+   * @private
+   * @param {object} message AMQP message.
+   * @param {boolean} [useAck] Ack instead of nack.
+   */
+  discardMessage(message, useAck = false) {
+    try {
+      if (useAck) {
+        this.channels.reading.ack(message);
+      } else {
+        this.channels.reading.nack(message, false, false);
+      }
+    } catch (error) {
+      global.log.save('message-from-queue-discard-error', error?.message, 'error');
     }
   }
 

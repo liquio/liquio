@@ -191,6 +191,48 @@ describe('MessageQueue', () => {
     });
   });
 
+  describe('subscribeToConsuming poison messages', () => {
+    const consume = async (handler, content) => {
+      await messageQueue.init();
+      messageQueue.subscribeToConsuming(handler);
+      const decoratedHandler = messageQueue.channels.reading.consume.mock.calls[0][1];
+      decoratedHandler({ content: Buffer.from(content) });
+      await setTimeout(200);
+    };
+
+    it.each(['not json', 'null', '"str"', '[]', '42'])('should ack payload %s without calling the handler', async (payload) => {
+      const handler = jest.fn().mockReturnValue(true);
+
+      await consume(handler, payload);
+
+      expect(handler).not.toHaveBeenCalled();
+      expect(messageQueue.channels.reading.ack).toHaveBeenCalledTimes(1);
+      expect(global.log.save).toHaveBeenCalledWith('message-parse-error', expect.anything(), 'error');
+    });
+
+    it('should not log the full payload on parse failure', async () => {
+      const payload = 'x'.repeat(500);
+
+      await consume(jest.fn(), payload);
+
+      const call = (global.log.save as jest.Mock).mock.calls.find(([name]) => name === 'message-parse-error');
+      expect(JSON.stringify(call)).not.toContain(payload);
+    });
+
+    it('should nack without requeue and not reject when the handler throws', async () => {
+      const handler = jest.fn().mockRejectedValue(new Error('boom'));
+      const onUnhandled = jest.fn();
+      process.on('unhandledRejection', onUnhandled);
+
+      await consume(handler, JSON.stringify({ type: 'test' }));
+      process.off('unhandledRejection', onUnhandled);
+
+      expect(onUnhandled).not.toHaveBeenCalled();
+      expect(messageQueue.channels.reading.nack).toHaveBeenCalledWith(expect.anything(), false, false);
+      expect(messageQueue.channels.reading.ack).not.toHaveBeenCalled();
+    });
+  });
+
   describe('reconnect', () => {
     it('should reconnect after timeout if connection closes', async () => {
       jest.useFakeTimers();
