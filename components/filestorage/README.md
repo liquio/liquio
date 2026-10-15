@@ -42,3 +42,21 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
   provider is enabled)
 - `filestorage` → PostgreSQL (`filestorage` database; default storage
   backend, and always for metadata)
+
+## Trust model and security
+
+- **Internal only.** filestorage must never be exposed publicly. The helm chart
+  has no ingress for it and a `backendInternal` network policy keeps it
+  reachable only from in-cluster services. In `docker-compose.yml` the port is
+  published on loopback only (`127.0.0.1:${SVC_FILESTORAGE_PORT}:8105`);
+  other services reach it over the compose network (`http://filestorage:8105`).
+- **No object-level authorization.** Authentication (Basic / token, see the
+  `tokens` list in the auth config) only identifies the caller. Any valid
+  token gives full read, update, delete, copy and zip access to every file,
+  signature and container by ID.
+- **One token per calling service.** Issue a distinct token (and `user`) to
+  each client so access can be revoked and attributed individually.
+- **Rotate on compromise.** If a token leaks, replace it in the config and
+  redeploy filestorage and the affected caller.
+- Outbound connections to the object-storage backend can optionally use a
+  custom `tls` provider config (CA / client certificates).

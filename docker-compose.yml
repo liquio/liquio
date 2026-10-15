@@ -272,7 +272,7 @@ services:
       context: ./components/filestorage
     restart: on-failure
     ports:
-      - "${SVC_FILESTORAGE_PORT}:8105"
+      - "127.0.0.1:${SVC_FILESTORAGE_PORT}:8105"
     volumes:
       - ./config/filestorage:/var/www/config:ro
     depends_on:
