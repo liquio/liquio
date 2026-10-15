@@ -10,6 +10,8 @@ const EMPTY_DATA = null;
 const CONTENT_TYPE_HEADER = 'Content-Type';
 const CONTENT_LENGTH_HEADER = 'Content-Length';
 const CONTENT_DISPOSITION_HEADER = 'Content-Disposition';
+const CONTENT_TYPE_OPTIONS_HEADER = 'X-Content-Type-Options';
+const DEFAULT_FILE_NAME = 'file';
 const DEFAULT_ERROR_MESSAGE = 'Server error.';
 const RESPONSE_REPLACEMENT_TEXT = '*****';
 
@@ -47,6 +49,26 @@ export class Controller {
   }
 
   /**
+   * Build safe attachment Content-Disposition value.
+   * @param {string} [fileName] File name.
+   * @returns {string} Header value.
+   */
+  static buildContentDisposition(fileName?: any): string {
+    const cleanName = String(fileName ?? '')
+      .replace(/[\r\n"\\]/g, '')
+      .trim();
+    if (!cleanName) {
+      return `attachment; filename="${DEFAULT_FILE_NAME}"`;
+    }
+    const asciiName =
+      _.toLower(transliterate(cleanName))
+        .replace(/\s+/g, '_')
+        .replace(/(?![a-zA-Z0-9._-]+)\S/g, '_') || DEFAULT_FILE_NAME;
+    const encodedName = encodeURIComponent(cleanName).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+    return `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}`;
+  }
+
+  /**
    * Response file.
    * @param {object} res HTTP response.
    * @param {Buffer} file File content as buffer.
@@ -62,12 +84,9 @@ export class Controller {
     if (contentLength) {
       res.set(CONTENT_LENGTH_HEADER, contentLength);
     }
-    if (fileName) {
-      const convertedFileName = _.toLower(transliterate(fileName))
-        .replace(/\s+/g, '_')
-        .replace(/(?![a-zA-Z0-9._-]+)\S/g, '_');
-      res.set(CONTENT_DISPOSITION_HEADER, `attachment; filename="${convertedFileName}"`);
-    }
+    // Never serve stored content inline.
+    res.set(CONTENT_DISPOSITION_HEADER, Controller.buildContentDisposition(fileName));
+    res.set(CONTENT_TYPE_OPTIONS_HEADER, 'nosniff');
     if (file instanceof stream.Readable || file._read || file._readableState) {
       file.pipe(res);
     } else {

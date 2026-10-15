@@ -154,6 +154,26 @@ describe('Files Controller', () => {
       expect(response.text).toBe('downloadable content');
     });
 
+    it('should force attachment and nosniff for an empty name with text/html', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await app
+        .request()
+        .post('/files')
+        .query({ name: '', container_id: DEFAULT_CONTAINER_ID })
+        .set('Authorization', AUTH_HEADER)
+        .set('Content-Type', 'text/html')
+        .send('<script>alert(1)</script>')
+        .expect(200);
+
+      const response = await app.request().get(`/files/${id}`).set('Authorization', AUTH_HEADER).expect(200);
+
+      expect(response.headers['content-disposition']).toMatch(/^attachment; filename="file"/);
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+    });
+
     it('should return 404 for an unknown id', async () => {
       await app.request().get('/files/00000000-0000-0000-0000-000000000000').set('Authorization', AUTH_HEADER).expect(404);
     });
