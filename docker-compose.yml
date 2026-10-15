@@ -249,7 +249,8 @@ services:
       context: ./components/external-reader
     restart: on-failure
     ports:
-      - "${SVC_EXTERNAL_READER_PORT}:8104"
+      # Internal-only service (trusts the caller-asserted userFilter): publish on loopback only.
+      - "127.0.0.1:${SVC_EXTERNAL_READER_PORT}:8104"
     volumes:
       - ./config/external-reader:/var/www/config:ro
       - external-reader-plugins:/var/www/plugins:ro

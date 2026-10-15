@@ -338,6 +338,23 @@ describe('ExternalReader', () => {
       });
     });
 
+    it('should derive userFilter only from the user object, ignoring caller-supplied userFilter', async () => {
+      const spoofedUser = { ipn: '1111111111', edrpou: '22222222', services: ['s'], userFilter: { ipn: '9999999999' } };
+      const spoofedExtra = { userFilter: { ipn: '9999999999' } };
+      const spoofedNonUser = { userFilter: { ipn: '9999999999' } };
+
+      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, spoofedUser, spoofedNonUser, spoofedExtra, userUnits);
+
+      const passedUserFilter = (externalReader.getData as jest.Mock).mock.calls[0][4];
+      expect(passedUserFilter).toEqual({
+        ipn: '1111111111',
+        edrpou: '22222222',
+        userUnits,
+        userServices: ['s'],
+      });
+      expect(Object.keys(passedUserFilter).sort()).toEqual(['edrpou', 'ipn', 'userServices', 'userUnits']);
+    });
+
     it('should get data by user successfully', async () => {
       const result = await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParams, userUnits);
 

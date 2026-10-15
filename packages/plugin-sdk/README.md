@@ -91,7 +91,9 @@ responsible for applying their gateway's aggregation rules.
 
 ### `ExternalReaderProvider`
 
-A registry pattern rather than a fixed method set — register whichever read methods your plugin exposes:
+A registry pattern rather than a fixed method set — register whichever read methods your plugin exposes.
+
+> **`userFilter` is caller-asserted.** external-reader has no user authentication of its own: the task service builds `userFilter` from the authenticated user, but anyone holding the external-reader Basic token can send any value. Don't use it as the only authorization for cross-user data, and keep external-reader reachable only from task.
 
 ```ts
 export type ProviderMethod = (args: ProviderMethodArgs) => Promise<unknown>;
