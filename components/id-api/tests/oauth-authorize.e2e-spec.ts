@@ -103,13 +103,22 @@ describe('AuthController - OAuth authorization', () => {
     await authorise(agent, { client_id: 'unknown-client' }).redirects(0).expect(400);
   });
 
+  const countAccessTokens = () => app.model('accessToken').count();
+
+  // The access token must never be delivered through the query or the fragment of a redirect.
+  const expectNoAccessTokenInLocation = (location?: string) => {
+    expect(location ?? '').not.toContain('access_token');
+  };
+
   it('should reject response_type=token', async () => {
     const agent = await loggedInAgent();
+    const before = await countAccessTokens();
 
     const response = await authorise(agent, { response_type: 'token' }).redirects(0).expect(400);
 
     expect(response.headers.location).toBeUndefined();
     expect(JSON.stringify(response.body)).not.toContain('access_token');
+    expect(await countAccessTokens()).toBe(before);
   });
 
   it('should reject an unregistered redirect_uri', async () => {
@@ -148,11 +157,25 @@ describe('AuthController - OAuth authorization', () => {
 
   it('should not issue an access token for a forged continue request without an authorization session', async () => {
     const agent = await loggedInAgent();
+    const before = await countAccessTokens();
 
     const response = await agent.get('/authorise/continue').query({ redirect_uri: ATTACKER_URI, response_type: 'token' }).redirects(0);
 
     expect(response.headers.location ?? '').not.toContain('attacker');
-    expect(response.headers.location ?? '').not.toContain('access_token');
+    expectNoAccessTokenInLocation(response.headers.location);
+    expect(await countAccessTokens()).toBe(before);
+  });
+
+  it('should not issue an access token for a forged response_type=token continue request after a code authorise', async () => {
+    const agent = await loggedInAgent();
+    await authorise(agent, { response_type: 'code' }).redirects(0).expect(302);
+    const before = await countAccessTokens();
+
+    const response = await agent.get('/authorise/continue').query({ redirect_uri: ATTACKER_URI, response_type: 'token' }).redirects(0);
+
+    expect(response.headers.location ?? '').not.toContain('attacker');
+    expectNoAccessTokenInLocation(response.headers.location);
+    expect(await countAccessTokens()).toBe(before);
   });
 
   describe('authorization endpoint response types', () => {
@@ -169,12 +192,14 @@ describe('AuthController - OAuth authorization', () => {
       'should reject unsupported response_type=%s without redirecting',
       async (responseType) => {
         const agent = await loggedInAgent();
+        const before = await countAccessTokens();
 
         const response = await authorise(agent, { response_type: responseType }).redirects(0).expect(400);
 
         expect(response.body.error).toBe('unsupported_response_type');
         expect(response.headers.location).toBeUndefined();
         expect(JSON.stringify(response.body)).not.toContain('access_token');
+        expect(await countAccessTokens()).toBe(before);
       },
     );
 
