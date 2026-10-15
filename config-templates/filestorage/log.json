@@ -3,6 +3,10 @@
   "excludeParams": [
     "token",
     "authorization",
-    "Authorization"
+    "Authorization",
+    "tenantToken",
+    "X-Auth-Token",
+    "x-auth-token",
+    "x-subject-token"
   ]
 }

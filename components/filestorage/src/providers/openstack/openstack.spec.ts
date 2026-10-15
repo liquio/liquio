@@ -1228,4 +1228,89 @@ describe('OpenStack Provider', () => {
       await expect(openstack.getMetadata()).rejects.toThrow('Unauthorized');
     });
   });
+
+  describe('token logging', () => {
+    const SECRET = 'SECRET-TOKEN-VALUE-9f8e7d';
+    const allLogged = () => JSON.stringify((global.log.save as jest.Mock).mock.calls);
+
+    beforeEach(() => {
+      jest.restoreAllMocks();
+      nock.cleanAll();
+      (global.log.save as jest.Mock).mockClear();
+    });
+
+    const makeProvider = (authVersion: number) => {
+      OpenStack.singleton = null;
+      return new OpenStack({
+        server: 'http://keystone.example.com',
+        tenantName: 'tenant',
+        authVersion,
+        routes: { getTokens: '/tokens' },
+        account: { login: 'u', password: 'p' },
+      } as any);
+    };
+
+    it('should not log tenant token for auth v3', async () => {
+      nock('http://keystone.example.com')
+        .post('/tokens')
+        .reply(
+          201,
+          { token: { catalog: [{ name: 'swift', endpoints: [{ interface: 'public', id: 'tid', url: 'http://swift.example.com/v1/AUTH_tid' }] }] } },
+          { 'X-Subject-Token': SECRET },
+        );
+
+      const info = await makeProvider(3).auth.getTenantAuthInfo();
+
+      expect(info.tenantToken).toBe(SECRET);
+      expect((global.log.save as jest.Mock).mock.calls.length).toBeGreaterThan(0);
+      expect(allLogged()).not.toContain(SECRET);
+    });
+
+    it('should not log tenant token for auth v2', async () => {
+      nock('http://keystone.example.com')
+        .post('/tokens')
+        .reply(200, { access: { token: { id: 'first-token-abc' } } })
+        .post('/tokens')
+        .reply(200, {
+          access: {
+            token: { id: SECRET, tenant: { id: 'tid' } },
+            serviceCatalog: [{ endpoints: [{ publicURL: 'http://swift.example.com/v1/AUTH_tid' }] }],
+          },
+        });
+
+      const info = await makeProvider(2).auth.getTenantAuthInfo();
+
+      expect(info.tenantToken).toBe(SECRET);
+      expect(allLogged()).not.toContain(SECRET);
+      expect(allLogged()).not.toContain('first-token-abc');
+    });
+
+    it('should not log token from failed v2 response', async () => {
+      nock('http://keystone.example.com')
+        .post('/tokens')
+        .reply(200, { access: { token: { id: 'first-token-abc' } } });
+      nock('http://keystone.example.com')
+        .post('/tokens')
+        .reply(200, { access: { token: { id: SECRET } } });
+
+      await expect(makeProvider(2).auth.getTenantAuthInfo()).rejects.toThrow();
+      expect(allLogged()).not.toContain(SECRET);
+    });
+
+    it('should not log X-Auth-Token in download and upload request options', async () => {
+      const provider = makeProvider(3);
+      jest.spyOn(provider.auth, 'getTenantAuthInfo').mockResolvedValue({
+        tenantToken: SECRET,
+        tenantId: 'tid',
+        tenantPublicUrl: 'http://swift.example.com/v1/AUTH_tid',
+      });
+      nock('http://swift.example.com').put(/.*/).reply(201, '', { etag: 'abc' });
+
+      const download = await provider.downloadFileRequestOptions('a/b.txt');
+      expect(download.headers['X-Auth-Token']).toBe(SECRET);
+      await provider.uploadFile('a/b.txt', 'text/plain', 'content');
+
+      expect(allLogged()).not.toContain(SECRET);
+    });
+  });
 });

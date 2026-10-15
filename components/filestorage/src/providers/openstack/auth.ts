@@ -47,7 +47,7 @@ export class Auth {
     // const token = PropByPath.get(response, 'access.token.id');
     const token = _.get(response, 'access.token.id');
     if (!token) {
-      global.log.save('login-error-openstack-response-without-token', response);
+      global.log.save('login-error-openstack-response-without-token', { hasResponse: !!response });
       throw new Error('Token not responsed from OpenStack server.');
     }
 
@@ -125,7 +125,7 @@ export class Auth {
     const tenantToken = _.get(response, 'access.token.id');
     const tenantId = _.get(response, 'access.token.tenant.id');
     if (!tenantId) {
-      global.log.save('login-error-openstack-response-without-tenant-token', response);
+      global.log.save('login-error-openstack-response-without-tenant-token', { hasResponse: !!response });
       throw new Error('Tenant token not responsed from OpenStack server.');
     }
     const serviceCatalog = _.get(response, 'access.serviceCatalog');
@@ -137,7 +137,7 @@ export class Auth {
 
     // Return auth info.
     const tenantAuthInfo = { tenantId, tenantToken, tenantPublicUrl };
-    global.log.save('open-stack-auth', { tenantAuthInfo, handlingInfo });
+    global.log.save('open-stack-auth', { tenantId, tenantPublicUrl, handlingInfo });
     return tenantAuthInfo;
   }
 
@@ -200,7 +200,12 @@ export class Auth {
 
     // Return auth info.
     const tenantAuthInfo = { tenantId, tenantToken, tenantPublicUrl };
-    global.log.save('open-stack-auth', { tenantAuthInfo, handlingInfo, raw: detailedResponse });
+    global.log.save('open-stack-auth', {
+      tenantId,
+      tenantPublicUrl,
+      handlingInfo,
+      status: detailedResponse && detailedResponse.rawResponse && detailedResponse.rawResponse.status,
+    });
     return tenantAuthInfo;
   }
 }

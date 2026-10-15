@@ -121,7 +121,6 @@ export class OpenStack extends Provider {
     // Get and return request options.
     global.log.save('openstack-file-downloading|request-options', {
       url,
-      headers,
       method: Request.Methods.GET,
       timeout: this.timeout,
     });
@@ -206,7 +205,6 @@ export class OpenStack extends Provider {
     // Get and return request options.
     global.log.save('openstack-file-uploading|request-options', {
       url,
-      headers,
       method: Request.Methods.PUT,
       body: '***',
       timeout: this.timeout,
@@ -245,7 +243,7 @@ export class OpenStack extends Provider {
       });
 
       // Check response and log
-      const requestOptionsToLog = { ...requestOptions, body: '***' };
+      const requestOptionsToLog = { url: requestOptions.url, method: requestOptions.method, timeout: requestOptions.timeout, body: '***' };
       global.log.save('openstack-uploading-file-response', {
         requestOptions: requestOptionsToLog,
         filePath,
