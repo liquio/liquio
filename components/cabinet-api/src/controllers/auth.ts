@@ -66,17 +66,19 @@ class AuthController extends Controller {
       }
 
       // Get auth access and refresh tokens.
+      let tokenData: any;
       let authAccessToken: string;
       let authRefreshToken: string;
       try {
-        const tokenData = this.token.decrypt(token as string);
+        tokenData = this.token.decrypt(token as string);
         authAccessToken = tokenData.authTokens.accessToken;
         authRefreshToken = tokenData.authTokens.refreshToken;
       } catch (error) {
         return this.responseError(res, error as Error, 401);
       }
 
-      if (isCheckJwtOnly) {
+      // Trust JWT signature only while token is fresh. Stale token falls through to full session check in ID.
+      if (isCheckJwtOnly && this.token.isFresh(tokenData)) {
         return next();
       }
 
@@ -120,6 +122,15 @@ class AuthController extends Controller {
         }
 
         // Add new token to response headers.
+        res.header('new_token', newToken);
+      } else if (!this.token.isFresh(tokenData)) {
+        // Session confirmed by ID - reissue token to restart JWT-only freshness window.
+        let newToken: string;
+        try {
+          newToken = this.token.generate({ authTokens: tokenData.authTokens, authUserInfo });
+        } catch (error) {
+          return this.responseError(res, error as Error, 401);
+        }
         res.header('new_token', newToken);
       }
 

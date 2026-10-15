@@ -103,7 +103,7 @@ class Router {
         proxyTo,
         authHeader,
         sendUserData = true, // Authenticated by default; set explicitly to false for public custom APIs.
-        isCheckJwtOnly = false, // Check user JWT without sending user auth data (from ID) to custom API. TTL - 24h.
+        isCheckJwtOnly = false, // Check user JWT without sending user auth data (from ID) to custom API. Fresh JWT only (auth.jwtOnlyFreshnessSeconds, 15 min by default), otherwise full ID session check.
         headers,
         allowedUnits = [],
         allowedPaths = [],
