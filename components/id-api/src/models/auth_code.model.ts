@@ -5,6 +5,7 @@ export interface AuthCodeAttributes {
   clientId: string;
   expires: Date;
   userId: string;
+  authorizationVersion?: number;
   scope: string[];
   redirectUri?: string | null;
   codeChallenge?: string | null;
@@ -21,6 +22,7 @@ export class AuthCodeModel extends BaseModel<AuthCodeAttributes> {
     this.entity = this.sequelize.define(
       'auth_codes',
       {
+        authorizationVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         code: {
           type: DataTypes.STRING,
           primaryKey: true,

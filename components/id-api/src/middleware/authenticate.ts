@@ -169,6 +169,7 @@ export class AuthMiddleware {
           return;
         }
         req.session.passport = passport;
+        req.session.authorizationVersion ??= token.user.authorizationVersion;
         appendTraceMeta({ auth: 'authorise', userId: user.userId });
         await saveSession(req, user);
         return next();

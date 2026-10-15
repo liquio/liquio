@@ -15,6 +15,7 @@ export interface Request extends express.Request {
 
 declare module 'express-session' {
   interface SessionData {
+    authorizationVersion?: number;
     client_id?: string;
     redirect_uri?: string;
     code_challenge?: string;

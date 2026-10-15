@@ -4,6 +4,7 @@ import {
   AuthorizationCode,
   AuthorizationCodeModel,
   Falsey,
+  InvalidGrantError,
   InvalidRequestError,
   InvalidTokenError,
   Client as OAuthClient,
@@ -38,11 +39,20 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
       where: { accessToken: token },
     });
     if (!accessToken) throw new InvalidTokenError('Missing access token');
+
+    // A password mutation bumps the user's authorization version and revokes every older token.
+    const user = await Models.model('user')
+      .findOne({ where: { userId: accessToken.userId }, attributes: ['authorizationVersion'] })
+      .then((v) => v?.dataValues);
+    if (!user || (accessToken.authorizationVersion ?? 0) !== (user.authorizationVersion ?? 0)) {
+      throw new InvalidTokenError('Authorization has been revoked');
+    }
+
     return {
       accessToken: accessToken.accessToken,
       accessTokenExpiresAt: accessToken.expires,
       client: { id: accessToken.clientId, grants: accessToken.grants },
-      user: { id: accessToken.userId },
+      user: { id: accessToken.userId, authorizationVersion: accessToken.authorizationVersion ?? 0 },
       scope: accessToken.scope,
     };
   }
@@ -73,36 +83,60 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
     }
   }
 
+  /**
+   * Run `fn` in a transaction holding a row lock on the user, so that a concurrent password mutation
+   * cannot interleave with issuing a credential. Fails when the user's credentials were changed
+   * after the authorization that is being exchanged (`user.authorizationVersion`) was granted.
+   */
+  private async withAuthorizationUser<T>(user: OAuthUser, fn: (transaction: any, version: number) => Promise<T>): Promise<T> {
+    const userId = user.userId ?? user.id ?? user;
+    return Models.db.transaction(async (transaction) => {
+      const account = await Models.model('user').findOne({ where: { userId }, transaction, lock: transaction.LOCK.UPDATE });
+      const currentVersion = account?.dataValues.authorizationVersion ?? 0;
+      if (!account || (user.authorizationVersion !== undefined && user.authorizationVersion !== currentVersion)) {
+        throw new InvalidGrantError('Authorization has been revoked');
+      }
+      return fn(transaction, currentVersion);
+    });
+  }
+
   async saveToken(token: OAuthToken, client: OAuthClient, user: OAuthUser) {
-    let promises: Array<Promise<any>> = [];
-
-    promises.push(
-      Models.model('accessToken').create({
-        accessToken: token.accessToken,
-        userId: user.userId ?? user.id ?? user,
-        clientId: client.clientId,
-        expires: token.accessTokenExpiresAt!,
-        scope: token.scope!,
-      }),
-    );
-
-    if (token.refreshToken) {
-      promises.push(
-        Models.model('refreshToken').create({
-          refreshToken: token.refreshToken,
-          userId: user.userId ?? user.id ?? user,
+    return this.withAuthorizationUser(user, async (transaction, authorizationVersion) => {
+      const userId = user.userId ?? user.id ?? user;
+      await Models.model('accessToken').create(
+        {
+          accessToken: token.accessToken,
+          userId,
           clientId: client.clientId,
-          expires: token.refreshTokenExpiresAt!,
-        }),
+          expires: token.accessTokenExpiresAt!,
+          scope: token.scope!,
+          authorizationVersion,
+        },
+        { transaction },
       );
-    }
+      if (token.refreshToken) {
+        await Models.model('refreshToken').create(
+          {
+            refreshToken: token.refreshToken,
+            userId,
+            clientId: client.clientId,
+            expires: token.refreshTokenExpiresAt!,
+            authorizationVersion,
+          },
+          { transaction },
+        );
+      }
+      return { ...token, client: { id: client.clientId, grants: client.grants }, user: { ...user, id: userId, authorizationVersion } };
+    });
+  }
 
-    return Promise.all(promises).then(() => {
-      return {
-        ...token,
-        client: { id: client.clientId, grants: client.grants },
-        user,
-      };
+  /**
+   * Persist an authorization code stamped with the current authorization version of its user.
+   */
+  async saveCodeRecord(query: AuthCodeAttributes, user: OAuthUser = { id: query.userId }): Promise<any> {
+    return this.withAuthorizationUser(user, async (transaction, authorizationVersion) => {
+      query.authorizationVersion = authorizationVersion;
+      return Models.model('authCode').create(query, { transaction });
     });
   }
 
@@ -136,8 +170,7 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
       codeChallenge: authCode.codeChallenge,
       codeChallengeMethod: authCode.codeChallengeMethod,
     };
-    return Models.model('authCode')
-      .create(query)
+    return this.saveCodeRecord(query, user)
       .then(() => {
         this.log.save('authorization-code-created', {
           codeShort: `${query.code.slice(0, 8)}****${query.code.slice(-8)}`,
@@ -200,6 +233,14 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
       return false;
     }
 
+    const account = await Models.model('user')
+      .findOne({ where: { userId: authCode.userId }, attributes: ['authorizationVersion'] })
+      .then((v) => v?.dataValues);
+    if (!account || (authCode.authorizationVersion ?? 0) !== (account.authorizationVersion ?? 0)) {
+      this.log.save('authorization-code-revoked', { codeHash: crypto.createHash('sha256').update(authorizationCode).digest('hex') }, 'info');
+      return false;
+    }
+
     return {
       authorizationCode: authCode.code,
       redirectUri: authCode.redirectUri,
@@ -207,7 +248,7 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
       codeChallengeMethod: authCode.codeChallengeMethod ?? undefined,
       expiresAt: authCode.expires,
       client: { id: authCode.clientId } as OAuthClient,
-      user: { id: authCode.userId },
+      user: { id: authCode.userId, authorizationVersion: authCode.authorizationVersion ?? 0 },
       scope: authCode.scope,
     };
   }
@@ -226,6 +267,11 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
 
       if (!token) return false;
 
+      const account = await Models.model('user')
+        .findOne({ where: { userId: token.userId }, attributes: ['authorizationVersion'] })
+        .then((v) => v?.dataValues);
+      if (!account || (token.authorizationVersion ?? 0) !== (account.authorizationVersion ?? 0)) return false;
+
       // A refresh token must not outlive the user's access in the directory.
       if (!(await Services.service('ldapSync').isRefreshAllowed(token.userId))) {
         this.log.save('refresh-token-denied', { userId: token.userId, reason: 'ldap-access-lost' }, 'info');
@@ -236,7 +282,7 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
         refreshToken: token.refreshToken,
         refreshTokenExpiresAt: token.expires,
         client: { id: token.clientId } as any,
-        user: { id: token.userId },
+        user: { id: token.userId, authorizationVersion: token.authorizationVersion ?? 0 },
       };
     } catch {
       return false;

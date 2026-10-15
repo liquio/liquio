@@ -502,6 +502,8 @@ export class AuthService extends BaseService {
 
       user._id = user.userId;
       delete user.user_services;
+      // Internal credential version; never exposed to API consumers.
+      delete user.authorizationVersion;
 
       return user;
     } catch (error: any) {
@@ -942,6 +944,53 @@ export class AuthService extends BaseService {
       return /^[0-9a-fA-F]{24}$/.test(userId);
     }
     return false;
+  }
+
+  /**
+   * Update local credentials and revoke all preceding authorization in one transaction.
+   * The user's authorization version is incremented, and sessions, codes and tokens are deleted.
+   * Returns false, changing nothing, when the expectations do not hold (e.g. a reset token that
+   * is unknown, already consumed or expired, or a password hash that changed concurrently).
+   */
+  async updateLocalPassword(
+    userId: string,
+    data: Record<string, any>,
+    expected: { passwordHash?: string; resetToken?: string; providerId?: string; email?: string } = {},
+  ): Promise<boolean> {
+    const changed = await Models.db.transaction(async (transaction) => {
+      const user = await this.model('user').findOne({ where: { userId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!user) return false;
+      const local = await this.model('userServices').findOne({ where: { userId, provider: 'local' }, transaction, lock: transaction.LOCK.UPDATE });
+      const current = local?.dataValues.data as any;
+      if (expected.passwordHash !== undefined && current?.password !== expected.passwordHash) return false;
+      if (
+        expected.resetToken !== undefined &&
+        (typeof expected.resetToken !== 'string' ||
+          !expected.resetToken ||
+          current?.resetPasswordToken !== expected.resetToken ||
+          typeof current?.resetPasswordTokenExpireAt !== 'number' ||
+          !Number.isFinite(current.resetPasswordTokenExpireAt) ||
+          current.resetPasswordTokenExpireAt < Date.now())
+      ) {
+        return false;
+      }
+
+      if (local) await local.update({ data }, { transaction });
+      else if (expected.providerId)
+        await this.model('userServices').create({ userId, provider: 'local', provider_id: expected.providerId, data }, { transaction });
+      else return false;
+
+      if (expected.email) await user.update({ email: expected.email }, { transaction });
+      await user.increment('authorizationVersion', { transaction });
+      await this.model('accessToken').destroy({ where: { userId }, transaction });
+      await this.model('refreshToken').destroy({ where: { userId }, transaction });
+      await this.model('authCode').destroy({ where: { userId }, transaction });
+      await this.model('sessions').destroy({ where: { userId }, transaction });
+      return true;
+    });
+
+    if (changed) await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+    return changed;
   }
 
   /**

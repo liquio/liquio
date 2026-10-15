@@ -5,7 +5,7 @@ import { delay } from '../lib/helpers';
 import { HttpError } from '../lib/http_error';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { clearTwoFactorState } from '../lib/two_factor';
-import { saveSession } from '../middleware/session';
+import { destroySession, saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesAttributes } from '../models';
 import { Services } from '../services';
 import { CallbackFn, Express, Request, Response } from '../types';
@@ -85,6 +85,7 @@ export async function local(app: Express) {
 
       const session = {
         userId: user.userId,
+        authorizationVersion: user.authorizationVersion ?? 0,
         email: user.email,
         services: { local: sanitizedLocalServiceInfo },
         provider: 'local',
@@ -111,6 +112,7 @@ export async function local(app: Express) {
 
     const user = req.session.passport?.user;
 
+    req.session.authorizationVersion = user.authorizationVersion ?? 0;
     await saveSession(req, user);
 
     const { userId, email } = req.session.passport?.user ?? {};
@@ -205,16 +207,20 @@ export async function local(app: Express) {
       oldPasswords.splice(passwordManager.rememberLastPassword, oldPasswords.length);
 
       // Update service record with new data
-      await Models.model('userServices').update(
-        { data: { password: passwordHash, oldPasswords, isChangeRequired: false } },
-        { where: { id: localServiceInfo.id } },
+      // The password hash is compared inside the transaction, so a concurrent change cannot be overwritten.
+      const changed = await Services.service('auth').updateLocalPassword(
+        user.userId,
+        { password: passwordHash, oldPasswords, isChangeRequired: false },
+        { passwordHash: currentPasswordHash },
       );
+      if (!changed) {
+        log.save('user-change-password|conflict', { email }, 'info');
+        res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
+        return;
+      }
 
       // Reset the attempt counter
       await Services.service('redis').delete(counterKey);
-
-      // Invalidate the Redis user cache so the next /user/info call reads fresh DB data
-      await Services.service('redis').delete(['oauthmodel', 'getUser', { userId: user.userId }]);
 
       // Create login history record
       {
@@ -222,6 +228,9 @@ export async function local(app: Express) {
         const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'change_password' });
         await Models.model('loginHistory').create(loginHistoryData);
       }
+
+      // The change revoked every session of the user; drop the cookie session of this request as well.
+      await destroySession(req).catch(() => undefined);
 
       log.save('user-change-password|success', { email }, 'info');
 

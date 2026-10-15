@@ -85,6 +85,24 @@ export function useSession(express: Express) {
   express.use(cookieParser());
   express.use(session(sessionParams));
 
+  // A concurrent request can resave a session deleted by a password mutation. Such a session keeps a stale
+  // authorization version and must never regain authenticated access.
+  express.use(async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.session?.passport?.user?.userId;
+    if (!userId || req.session.authorizationVersion === undefined) return next();
+    try {
+      const account = await Models.model('user').findOne({ where: { userId }, attributes: ['authorizationVersion'] });
+      if (!account || req.session.authorizationVersion !== (account.dataValues.authorizationVersion ?? 0)) {
+        await destroySession(req);
+        res.status(401).send({ error: 'Authorization has been revoked' });
+        return;
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Flash implementation based on 'connect-flash' package
   express.use((req: Request, res: Response, next: NextFunction) => {
     res.locals.flash = req.session.flash || {};
@@ -180,6 +198,18 @@ export async function destroySession(req: Request) {
  * Adds passed user to the session and saves it.
  */
 export async function saveSession(req: Request, user?: UserAttributes | null): Promise<void> {
+  const sessionUser = user ?? req.session?.passport?.user;
+  if (sessionUser?.userId) {
+    const account = await Models.model('user').findOne({ where: { userId: sessionUser.userId }, attributes: ['authorizationVersion'] });
+    const currentVersion = account?.dataValues.authorizationVersion ?? 0;
+    // A session is stamped with the authorization version it was authenticated under; a stale one cannot be saved.
+    const version = req.session.authorizationVersion ?? currentVersion;
+    if (!account || version !== currentVersion) {
+      throw Object.assign(new Error('Authorization has been revoked'), { statusCode: 401 });
+    }
+    req.session.authorizationVersion = version;
+  }
+
   return new Promise((resolve, reject) => {
     if (user && req.session?.passport) {
       req.session.passport.user = user;

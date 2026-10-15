@@ -192,7 +192,7 @@ export class AuthController extends BaseController {
     // Create auth code.
     let createdAuthCode;
     try {
-      createdAuthCode = await this.model('authCode').create(authCodeData);
+      createdAuthCode = await this.service('auth').oAuthModel.saveCodeRecord(authCodeData);
     } catch (error: any) {
       this.log.save('add-debug-user-code-creating-error', { code, userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
@@ -359,6 +359,7 @@ export class AuthController extends BaseController {
 
     try {
       const user = await this.service('auth').getUser({ userId: tokens.user.id });
+      req.session.authorizationVersion ??= tokens.user.authorizationVersion;
       await saveSession(req, user);
 
       let jwtObj = {
@@ -404,6 +405,7 @@ export class AuthController extends BaseController {
 
     try {
       const user = await this.service('auth').getUser({ userId: tokens.user.id });
+      req.session.authorizationVersion ??= tokens.user.authorizationVersion;
       await saveSession(req, user);
 
       res.cookie(
@@ -508,7 +510,7 @@ export class AuthController extends BaseController {
     // Create auth code.
     let createdAuthCode;
     try {
-      createdAuthCode = await this.model('authCode').create(authCodeData);
+      createdAuthCode = await this.service('auth').oAuthModel.saveCodeRecord(authCodeData);
     } catch (error: any) {
       this.log.save('add-test-code-creating-error', { code, userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
@@ -534,7 +536,7 @@ export class AuthController extends BaseController {
       code = await this.service('auth').server.authorize(request, response, {
         authenticateHandler: {
           handle: () => {
-            return userId;
+            return { id: userId, authorizationVersion: req.session.authorizationVersion };
           },
         },
       });

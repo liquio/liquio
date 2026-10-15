@@ -1102,36 +1102,17 @@ export class UserController extends BaseController {
         })
         .then((row) => row?.dataValues);
 
-      if (!service) {
-        // Create a new one.
-        await this.model('userServices').create({
-          userId,
-          provider_id: email ?? user.email,
-          provider: 'local',
-          data: {
-            password: passwordHash,
-            oldPasswords: [],
-            isChangeRequired: true, // raise the flag for the user to change the password on login
-          },
-        });
-
-        // Overwrite the email if it's different.
-        if (email && email !== user.email) {
-          await this.model('user').update({ email }, { where: { userId } });
-        }
-      } else {
-        // Update the existing one.
-        await this.model('userServices').update(
-          {
-            data: {
-              password: passwordHash,
-              isChangeRequired: true, // raise the flag for the user to change the password on login
-              oldPasswords: (service.data as any).oldPasswords ?? [],
-            },
-          },
-          { where: { userId, provider: 'local' } },
-        );
-      }
+      // Store the credentials and revoke every session, code and token issued before, in one transaction.
+      const changed = await this.service('auth').updateLocalPassword(
+        userId,
+        {
+          password: passwordHash,
+          isChangeRequired: true, // raise the flag for the user to change the password on login
+          oldPasswords: (service?.data as any)?.oldPasswords ?? [],
+        },
+        { providerId: email ?? user.email, email: email && email !== user.email ? email : undefined },
+      );
+      if (!changed) throw new Error('Unable to update local credentials');
 
       this.log.save('set-password-success', { userId, email });
       res.send({ success: true });
@@ -1469,7 +1450,13 @@ export class UserController extends BaseController {
       }
 
       // Report user error if the token is invalid or expired
-      if ((localService.data as any).resetPasswordToken !== token || Date.now() > (localService.data as any).resetPasswordTokenExpireAt) {
+      const { resetPasswordToken, resetPasswordTokenExpireAt } = localService.data as any;
+      if (
+        !resetPasswordToken ||
+        resetPasswordToken !== token ||
+        typeof resetPasswordTokenExpireAt !== 'number' ||
+        Date.now() > resetPasswordTokenExpireAt
+      ) {
         res.status(400).send({ error: 'invalid-token', message: 'Invalid token.' });
         return;
       }
@@ -1494,10 +1481,16 @@ export class UserController extends BaseController {
       oldPasswords.splice(this.service('passwordManager').rememberLastPassword, oldPasswords.length);
       (localService.data as any).oldPasswords = oldPasswords;
 
-      // Cleanup the token and expiration date
+      // Consume the token together with its expiration date; the token is checked again under the row lock,
+      // so it can be used at most once even for concurrent requests.
+      delete (localService.data as any).resetPasswordToken;
       delete (localService.data as any).resetPasswordTokenExpireAt;
 
-      await this.model('userServices').update({ data: localService.data }, { where: { id: localService.id } });
+      const changed = await this.service('auth').updateLocalPassword(localService.userId, localService.data as any, { resetToken: token });
+      if (!changed) {
+        res.status(400).send({ error: 'invalid-token', message: 'Invalid token.' });
+        return;
+      }
       this.log.save('password-reset-success', { email, userId: localService.userId }, 'info');
 
       res.status(200).send({ success: true });

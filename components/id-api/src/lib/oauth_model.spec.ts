@@ -2,7 +2,9 @@ import { Models } from '../models';
 import { Services } from '../services';
 import { OAuthModel } from './oauth_model';
 
-jest.mock('../models', () => ({ Models: { model: jest.fn() } }));
+jest.mock('../models', () => ({
+  Models: { model: jest.fn(), db: { transaction: jest.fn((fn: any) => fn({ LOCK: { UPDATE: 'UPDATE' } })) } },
+}));
 jest.mock('../services', () => ({ Services: { service: jest.fn() } }));
 jest.mock('@liquio/back-core', () => {
   const instance = { save: jest.fn() };
@@ -174,6 +176,7 @@ describe('OAuthModel authorization code binding', () => {
 
     expect(authCodeModel.create).toHaveBeenCalledWith(
       expect.objectContaining({ redirectUri: REDIRECT, codeChallenge: CHALLENGE, codeChallengeMethod: 'S256' }),
+      expect.anything(),
     );
     expect(saved).toMatchObject({ redirectUri: REDIRECT, codeChallenge: CHALLENGE, codeChallengeMethod: 'S256' });
   });
@@ -181,7 +184,10 @@ describe('OAuthModel authorization code binding', () => {
   it('saves a code without PKCE', async () => {
     await save();
 
-    expect(authCodeModel.create).toHaveBeenCalledWith(expect.objectContaining({ redirectUri: REDIRECT, codeChallenge: undefined }));
+    expect(authCodeModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({ redirectUri: REDIRECT, codeChallenge: undefined }),
+      expect.anything(),
+    );
   });
 
   it.each([undefined, ''])('refuses to save a code without a redirect URI %p', async (redirectUri) => {
@@ -239,5 +245,87 @@ describe('OAuthModel authorization code binding', () => {
 
     authCodeModel.destroy.mockResolvedValue(0);
     expect(await model.revokeAuthorizationCode({ authorizationCode: 'code' } as any)).toBe(false);
+  });
+});
+
+describe('OAuthModel authorization version', () => {
+  let model: OAuthModel;
+  let userModel: any;
+  let tokenModel: any;
+
+  const future = new Date(Date.now() + 60000);
+  const tokenRow = (authorizationVersion: number) => ({
+    dataValues: {
+      accessToken: 'at',
+      refreshToken: 'rt',
+      code: 'code',
+      userId: USER_ID,
+      clientId: 'client',
+      expires: future,
+      redirectUri: 'https://a/cb',
+      authorizationVersion,
+    },
+    ...{ accessToken: 'at', userId: USER_ID, clientId: 'client', expires: future, authorizationVersion },
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    userModel = { findOne: jest.fn().mockResolvedValue({ dataValues: { authorizationVersion: 2, isActive: true } }) };
+    tokenModel = { findOne: jest.fn(), create: jest.fn().mockResolvedValue({}) };
+    (Models.model as jest.Mock).mockImplementation((name: string) => (name === 'user' ? userModel : tokenModel));
+    (Services.service as jest.Mock).mockReturnValue({ isRefreshAllowed: jest.fn().mockResolvedValue(true) });
+    model = new OAuthModel();
+  });
+
+  it('accepts an access token of the current authorization version', async () => {
+    tokenModel.findOne.mockResolvedValue(tokenRow(2));
+
+    expect(await model.getAccessToken('at')).toMatchObject({ user: { id: USER_ID, authorizationVersion: 2 } });
+  });
+
+  it('rejects an access token issued before a password change', async () => {
+    tokenModel.findOne.mockResolvedValue(tokenRow(1));
+
+    await expect(model.getAccessToken('at')).rejects.toThrow('revoked');
+  });
+
+  it('rejects a refresh token issued before a password change', async () => {
+    tokenModel.findOne.mockResolvedValue(tokenRow(1));
+
+    expect(await model.getRefreshToken('rt')).toBe(false);
+  });
+
+  it('accepts a refresh token of the current authorization version', async () => {
+    tokenModel.findOne.mockResolvedValue(tokenRow(2));
+
+    expect(await model.getRefreshToken('rt')).toMatchObject({ user: { id: USER_ID, authorizationVersion: 2 } });
+  });
+
+  it('rejects an authorization code issued before a password change', async () => {
+    tokenModel.findOne.mockResolvedValue(tokenRow(1));
+
+    expect(await model.getAuthorizationCode('code')).toBe(false);
+  });
+
+  it('refuses to issue tokens for an authorization granted before a password change', async () => {
+    await expect(
+      model.saveToken(
+        { accessToken: 'at2', refreshToken: 'rt2' } as any,
+        { clientId: 'client' } as any,
+        { id: USER_ID, authorizationVersion: 1 } as any,
+      ),
+    ).rejects.toThrow('revoked');
+    expect(tokenModel.create).not.toHaveBeenCalled();
+  });
+
+  it('stamps issued tokens with the current authorization version', async () => {
+    await model.saveToken(
+      { accessToken: 'at2', refreshToken: 'rt2' } as any,
+      { clientId: 'client' } as any,
+      { id: USER_ID, authorizationVersion: 2 } as any,
+    );
+
+    expect(tokenModel.create).toHaveBeenCalledTimes(2);
+    for (const [row] of tokenModel.create.mock.calls) expect(row.authorizationVersion).toBe(2);
   });
 });
