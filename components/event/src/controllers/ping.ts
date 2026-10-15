@@ -170,7 +170,7 @@ export class PingController extends Controller {
       // Check manager.
       let managerServiceResponse;
       try {
-        managerServiceResponse = await this.sendPingRequest(global.config.ping.manager.url);
+        managerServiceResponse = await this.sendPingRequest(global.config.ping.manager.url, true, global.config.ping.manager.monitoringToken);
       } catch (error) {
         global.log.save('test-ping-manager-service-error', { error: error && error.message }, 'warn');
       }
@@ -405,9 +405,10 @@ export class PingController extends Controller {
    * @private
    * @param {string} url URL.
    * @param {boolean} [withHeaders] With headers indicator.
+   * @param {string} [monitoringToken] Token for target's guarded diagnostic routes (x-monitoring-token header). Sent only if set.
    * @returns {Promise<{object}>}
    */
-  async sendPingRequest(url, withHeaders = true) {
+  async sendPingRequest(url, withHeaders = true, monitoringToken?: string) {
     try {
       const requestParams: any = {
         url: url,
@@ -418,6 +419,9 @@ export class PingController extends Controller {
           'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
           token: this.token,
         };
+        if (monitoringToken) {
+          requestParams.headers['x-monitoring-token'] = monitoringToken;
+        }
       }
       const { fullResponse: response, body } = await HttpRequest.send(requestParams, true);
 

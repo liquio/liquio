@@ -1,6 +1,7 @@
 {
   "manager": {
-    "url": "https://manager.liquio.local/test/ping"
+    "url": "https://manager.liquio.local/test/ping",
+    "monitoringToken": ""
   },
   "healthz": {
     "db": {

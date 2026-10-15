@@ -6,7 +6,8 @@
     "url": "https://event.liquio.local/healthz"
   },
   "manager": {
-    "url": "https://manager.liquio.local/test/ping"
+    "url": "https://manager.liquio.local/test/ping",
+    "monitoringToken": ""
   },
   "gateway": {
     "url": "https://gw.liquio.local/test/ping"

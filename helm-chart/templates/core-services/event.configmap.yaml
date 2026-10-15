@@ -64,6 +64,7 @@ metadata:
 {{ $pingBase := dict
   "manager" (dict
     "url" (printf "http://%s-manager/test/ping" (include "liquio.fullname" .))
+    "monitoringToken" ""
   )
   "healthz" (dict
     "db" (dict
