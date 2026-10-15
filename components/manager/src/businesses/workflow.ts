@@ -21,6 +21,51 @@ const ERROR_EVENT_OR_WORKFLOW_NOT_FOUND = 'Event or workflow not found.';
 const ERROR_INVALID_MESSAGE_OBJECT = 'Invalid message object.';
 const ERROR_INVALID_ENTITY = 'Invalid entity';
 
+// Fields of a `forwardToTask` message the task service reads (see task `createFromMessage` and `getRetryInfo`).
+const isIdLike = (v) => (typeof v === 'string' && v.length > 0) || (typeof v === 'number' && Number.isFinite(v));
+const isPlainObject = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isStringArray = (v) => Array.isArray(v) && v.every((i) => typeof i === 'string');
+const FORWARD_TO_TASK_FIELDS: Record<string, (v) => boolean> = {
+  workflowId: isIdLike,
+  workflowTemplateId: isIdLike,
+  taskTemplateId: isIdLike,
+  createWorkflowId: isIdLike,
+  workflowParentId: isIdLike,
+  userId: (v) => typeof v === 'string',
+  initData: isPlainObject,
+  unitIds: (v) => isPlainObject(v) || Array.isArray(v),
+  performerUnits: Array.isArray,
+  requiredPerformerUnits: Array.isArray,
+  performerUsers: isStringArray,
+  performerUsersIpn: isStringArray,
+  performerUsersEmail: isStringArray,
+  retryIterator: Number.isInteger,
+  onlyExecute: (v) => typeof v === 'boolean',
+};
+
+/**
+ * Pick the whitelisted fields of a `forwardToTask` message.
+ * @param {object} messageObject AMQP message object.
+ * @returns {object|undefined} Message to forward or undefined if the required `taskTemplateId` is missing or a field has a wrong type.
+ */
+function pickForwardToTaskMessage(messageObject: any): Record<string, unknown> | undefined {
+  if (!isIdLike(messageObject?.taskTemplateId)) {
+    return;
+  }
+  const result: Record<string, unknown> = { forwardToTask: true };
+  for (const [field, isValid] of Object.entries(FORWARD_TO_TASK_FIELDS)) {
+    const value = messageObject[field];
+    if (value === undefined || value === null) {
+      continue;
+    }
+    if (!isValid(value)) {
+      return;
+    }
+    result[field] = value;
+  }
+  return result;
+}
+
 /**
  * Workflow business.
  * @typedef {import('../entities/workflow')} WorkflowEntity
@@ -157,7 +202,12 @@ export class WorkflowBusiness {
       switch (true) {
         // Only forward message to the task queue.
         case Object.prototype.hasOwnProperty.call(messageObject, 'forwardToTask'): {
-          await global.messageQueue.produce('writingQueueTask', messageObject);
+          const forwardedMessage = pickForwardToTaskMessage(messageObject);
+          if (!forwardedMessage) {
+            global.log.save('forward-to-task-message-rejected', pickMessageMeta(messageObject));
+            return true;
+          }
+          await global.messageQueue.produce('writingQueueTask', forwardedMessage);
           return true;
         }
         case Object.prototype.hasOwnProperty.call(messageObject, 'taskId'): {

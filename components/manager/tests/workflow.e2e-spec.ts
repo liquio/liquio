@@ -42,9 +42,9 @@ describe('Workflow Business (via RabbitMQ)', () => {
     await TestApp.afterAll();
   });
 
-  it('forwards a forwardToTask message straight to the task queue', async () => {
-    const message = { forwardToTask: true, taskTemplateId: TASK_TEMPLATE_ID, foo: 'bar' };
-    await app.publishToReadingQueue(message);
+  it('forwards only whitelisted fields of a forwardToTask message to the task queue', async () => {
+    const message = { forwardToTask: true, taskTemplateId: TASK_TEMPLATE_ID, userId: 'system' };
+    await app.publishToReadingQueue({ ...message, foo: 'bar' });
 
     const taskMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueTask);
 

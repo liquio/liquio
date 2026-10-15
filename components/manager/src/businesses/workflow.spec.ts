@@ -108,6 +108,43 @@ describe('WorkflowBusiness.createFromMessage', () => {
     business.systemNotifier = { sendEmails: jest.fn() };
   });
 
+  it('forwards only whitelisted fields of a forwardToTask message to the task queue', async () => {
+    const message = {
+      forwardToTask: true,
+      taskTemplateId: 5,
+      workflowTemplateId: 1,
+      createWorkflowId: 'new-wf',
+      workflowParentId: 'parent',
+      userId: 'system',
+      initData: { a: 1 },
+      isCreateByOtherSystem: true,
+      taskId: 'x',
+      foo: 'bar',
+    };
+
+    expect(await business.createFromMessage(message)).toBe(true);
+
+    expect(global.messageQueue.produce).toHaveBeenCalledTimes(1);
+    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', {
+      forwardToTask: true,
+      taskTemplateId: 5,
+      workflowTemplateId: 1,
+      createWorkflowId: 'new-wf',
+      workflowParentId: 'parent',
+      userId: 'system',
+      initData: { a: 1 },
+    });
+  });
+
+  it('acks and drops a forwardToTask message without taskTemplateId or with a wrongly typed field', async () => {
+    expect(await business.createFromMessage({ forwardToTask: true, foo: 'bar' })).toBe(true);
+    expect(await business.createFromMessage({ forwardToTask: true, taskTemplateId: 5, initData: 'x' })).toBe(true);
+    expect(await business.createFromMessage({ forwardToTask: true, taskTemplateId: { $ne: 1 } })).toBe(true);
+
+    expect(global.messageQueue.produce).not.toHaveBeenCalled();
+    expect(global.log.save).toHaveBeenCalledWith('forward-to-task-message-rejected', expect.any(Object));
+  });
+
   it('advances a finished task once and records history', async () => {
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
