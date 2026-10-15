@@ -110,7 +110,8 @@ export class GatewayBusiness {
       const { condition, isDefault } = formula;
       let conditionResult;
       try {
-        conditionResult = this.sandbox.evalWithArgs(condition, [documents, events]);
+        // Await the result: an async formula returns a Promise, which is always truthy if not awaited.
+        conditionResult = await this.sandbox.evalWithArgs(condition, [documents, events], { isAsync: true });
       } catch (error: any) {
         global.log.save('condition-calculation-error', {
           workflowId: logMeta.workflowId,
@@ -147,6 +148,30 @@ export class GatewayBusiness {
   }
 
   /**
+   * Check that the gateway template is a part of the BPMN schema of the workflow's template.
+   * @param {number} gatewayTemplateId Gateway template ID.
+   * @param {string} workflowId Workflow ID.
+   * @returns {Promise<boolean>} True if the gateway belongs to the workflow template.
+   */
+  async isGatewayTemplateInWorkflow(gatewayTemplateId: number, workflowId: string): Promise<boolean> {
+    if (!Number.isInteger(Number(gatewayTemplateId))) {
+      return false;
+    }
+    const workflow = await this.workflowModel.findById(workflowId);
+    if (!workflow || !workflow.workflowTemplateId) {
+      return false;
+    }
+    const workflowTemplate = await this.workflowTemplateModel.findById(workflow.workflowTemplateId);
+    const xmlBpmnSchema = workflowTemplate && workflowTemplate.xmlBpmnSchema;
+    if (typeof xmlBpmnSchema !== 'string') {
+      return false;
+    }
+
+    // Gateways are identified as `Gateway-<id>` in BPMN (see manager's writingQueueGateway producer).
+    return new RegExp(`\\bid\\s*=\\s*["']gateway-${Number(gatewayTemplateId)}["']`, 'i').test(xmlBpmnSchema);
+  }
+
+  /**
    * Create from message.
    * @param {object} messageObject AMQP message object.
    * @param {string} messageObject.workflowId Workflow ID.
@@ -168,6 +193,13 @@ export class GatewayBusiness {
 
       // Define gateway options.
       const gatewayTemplate = await this.gatewayTemplateModel.findById(gatewayTemplateId);
+
+      // The gateway template must belong to the template of the workflow. Ack and drop forged/mismatched messages
+      // without recording a workflow error (that would let a forged message mark a foreign workflow as errored).
+      if (!(await this.isGatewayTemplateInWorkflow(gatewayTemplateId, workflowId))) {
+        global.log.save('gateway-handling|template-workflow-mismatch', pickMessageMeta(messageObject));
+        return true;
+      }
       const gatewayTypeId = gatewayTemplate.gatewayTypeId;
       const name = gatewayTemplate.name;
       const jsonSchema = gatewayTemplate.jsonSchema;

@@ -47,6 +47,22 @@ describe('Gateway Business (via RabbitMQ)', () => {
        ON CONFLICT (id) DO NOTHING`,
       { replacements: { id: INCLUSIVE_GATEWAY_TEMPLATE_ID } },
     );
+
+    // Seed workflow templates (same ids as the gateway templates) whose BPMN contains the gateway, as the
+    // handler requires the gateway template to belong to the workflow's template.
+    for (const id of [PARALLEL_GATEWAY_TEMPLATE_ID, INCLUSIVE_GATEWAY_TEMPLATE_ID]) {
+      await global.db.query(
+        `INSERT INTO workflow_templates (id, "name", description, xml_bpmn_schema, "data", is_active, created_at, updated_at)
+         VALUES (:id, 'Gateway test workflow', '', :xml, '{}'::json, true, NOW(), NOW())
+         ON CONFLICT (id) DO NOTHING`,
+        {
+          replacements: {
+            id,
+            xml: `<bpmn2:definitions><bpmn2:process><bpmn2:parallelGateway id="gateway-${id}" /></bpmn2:process></bpmn2:definitions>`,
+          },
+        },
+      );
+    }
   });
 
   afterAll(async () => {
@@ -175,6 +191,12 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const debugId = randomBytes(16).toString('hex');
     const sequenceIds = ['Flow_debug_a'];
 
+    await global.db.query(
+      `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
+       VALUES (:workflowId, :workflowTemplateId, false, '{}'::jsonb, 'system', 'system', NOW(), NOW())`,
+      { replacements: { workflowId, workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID } },
+    );
+
     await app.publishToReadingQueue({
       workflowId,
       gatewayTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID,
@@ -192,6 +214,30 @@ describe('Gateway Business (via RabbitMQ)', () => {
     );
     expect(debugRow).toMatchObject({ workflow_id: workflowId, service_name: 'gateway' });
     expect(debugRow.data.result).toEqual({ resultSequences: sequenceIds });
+  });
+
+  it('acks and does not create a gateway when the gateway template is not part of the workflow template', async () => {
+    const workflowId = randomUUID();
+
+    await global.db.query(
+      `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
+       VALUES (:workflowId, :workflowTemplateId, false, '{}'::jsonb, 'system', 'system', NOW(), NOW())`,
+      { replacements: { workflowId, workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID } },
+    );
+
+    // Valid gateway template, but it belongs to another workflow template.
+    await app.publishToReadingQueue({
+      workflowId,
+      gatewayTemplateId: INCLUSIVE_GATEWAY_TEMPLATE_ID,
+      workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID,
+      sequenceIds: ['Flow_forged'],
+    });
+
+    const [, logData] = await app.log.waitForLog('gateway-handling|template-workflow-mismatch');
+    expect(logData).toMatchObject({ workflowId, gatewayTemplateId: INCLUSIVE_GATEWAY_TEMPLATE_ID });
+
+    const rows = await global.db.query('SELECT id FROM gateways WHERE workflow_id = :workflowId', { replacements: { workflowId }, type: 'SELECT' });
+    expect(rows).toHaveLength(0);
   });
 
   it('logs and swallows a gateway-template-not-found error instead of crashing the consumer', async () => {

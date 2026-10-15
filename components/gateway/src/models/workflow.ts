@@ -47,6 +47,17 @@ export class WorkflowModel extends Model {
   }
 
   /**
+   * Find by ID.
+   * @param {string} id Workflow ID.
+   * @returns {Promise<WorkflowEntity | undefined>} Workflow or undefined if not found.
+   */
+  async findById(id: string): Promise<WorkflowEntity | undefined> {
+    const workflow = await this.model.findByPk(id);
+
+    return workflow ? this.prepareEntity(workflow) : undefined;
+  }
+
+  /**
    * Set error.
    * @param {number} id Workflow ID.
    */
