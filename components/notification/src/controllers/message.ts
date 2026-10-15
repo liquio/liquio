@@ -17,6 +17,7 @@ import { ImportantMessagesModel } from '../models/important_messages';
 import { UsersMessagesModel } from '../models/users_messages';
 import { MessageCryptTypesModel } from '../models/message_crypt_types';
 import { checkAuth, checkTestAuth } from './auth';
+import { resolveUserId } from './resolve_user_id';
 
 const router = Router();
 const Subscribes = new UserSubscribesModel().UserSubscribes;
@@ -117,12 +118,20 @@ export class Message extends Auth {
     router.get('/', checkAuth, this.getMessages.bind(this));
     router.get('/senderErrorCallback', this.senderErrorCallack.bind(this));
     router.post('/sms/callback/', this.gmsuCallback.bind(this));
-    router.put('/is_read', this.setIsReadProperty.bind(this));
-    router.get('/unread', this.getUnreadUserMessagesCount.bind(this));
+    router.put('/is_read', checkAuth, this.setIsReadProperty.bind(this));
+    router.get('/unread', checkAuth, this.getUnreadUserMessagesCount.bind(this));
     router.get('/important', checkAuth, this.getImportantMessages.bind(this));
     router.put('/important/:id/set-unimportant', checkAuth, this.setUnimportantMessage.bind(this));
-    router.get('/:id', this.getMessageById.bind(this));
+    router.get('/:id', checkAuth, this.getMessageById.bind(this));
     router.put('/:id/decrypt', checkAuth, this.decryptMessage.bind(this));
+  }
+
+  /**
+   * Resolve user ID from query: validated access token first, `user_id` only without a token (Basic service auth is required by routes).
+   * @param {object} query Request query.
+   */
+  resolveUserId(query: any) {
+    return resolveUserId(query, (token) => this.checkToken(token));
   }
 
   /**
@@ -1516,19 +1525,11 @@ export class Message extends Auth {
     }
 
     let countUpdatedRows;
-    if (req.query.access_token || req.query.user_id) {
-      // Update message data.
-      try {
-        countUpdatedRows = await this.setIsReadByMessageId(req.query, messageIdsArray);
-      } catch (e) {
-        console.error(e);
-        return res.send(e.statusCode, e.error);
-      }
-    } else {
-      const error = {
-        message: 'Access token and user id should be defined.',
-      };
-      return res.send(error);
+    try {
+      countUpdatedRows = await this.setIsReadByMessageId(req.query, messageIdsArray);
+    } catch (e) {
+      console.error(e);
+      return res.send(e.statusCode || 500, e.error || { error: e.message });
     }
     const isSet = countUpdatedRows && countUpdatedRows[0] && countUpdatedRows[0] === messageIdsArray.length ? true : false;
 
@@ -1542,19 +1543,7 @@ export class Message extends Auth {
    */
   async setIsReadByMessageId(queryParams, messageIds) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Define params.
     const userMessagesFilterObject = {
@@ -1576,25 +1565,14 @@ export class Message extends Auth {
 
   async getUnreadUserMessagesCount(req: any, res: any) {
     let total;
-    if (req.query.access_token || req.query.user_id) {
-      // Update message data.
-      try {
-        let userId;
-        if (req.query.access_token) {
-          userId = (await this.checkToken(req.query.access_token))._id;
-        }
-        const queryParams = { ...req.query, user_id: req.query.user_id || userId };
-        delete queryParams.access_token;
-        total = await this.countUnreadMessages(queryParams);
-      } catch (e) {
-        console.error(e);
-        return res.send(e.statusCode, e.error);
-      }
-    } else {
-      const error = {
-        message: 'Access token and user id should be defined.',
-      };
-      return res.send(error);
+    try {
+      const userId = await this.resolveUserId(req.query);
+      const queryParams = { ...req.query, user_id: userId };
+      delete queryParams.access_token;
+      total = await this.countUnreadMessages(queryParams);
+    } catch (e) {
+      console.error(e);
+      return res.send(e.statusCode || 500, e.error || { error: e.message });
     }
 
     // Response result.
@@ -1603,19 +1581,7 @@ export class Message extends Auth {
 
   async countUnreadMessages(queryParams) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Try to get event ID filter.
     const { event_id } = queryParams;
@@ -1704,22 +1670,17 @@ export class Message extends Auth {
     }
 
     let message;
-    if (req.query.access_token || req.query.user_id) {
-      // Get message data.
-      try {
-        message = await this.getById(messageId, req.query);
-        if (!message) {
-          return res.send(404, { error: 'Message not found.' });
-        }
-      } catch (error) {
-        global.log.save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
-        return res.send(500, { error: (error && error.message) || error });
+    try {
+      message = await this.getById(messageId, req.query);
+      if (!message) {
+        return res.send(404, { error: 'Message not found.' });
       }
-    } else {
-      const error = {
-        message: 'Access token or user id should be defined.',
-      };
-      return res.send(400, error);
+    } catch (error) {
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
+      global.log.save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
+      return res.send(500, { error: (error && error.message) || error });
     }
 
     // Response result.
@@ -1728,21 +1689,7 @@ export class Message extends Auth {
 
   async getById(messageId, queryParams) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    } else {
-      throw new Error('Should be defined in query access_token or user_id.');
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Define messages info.
     const userMessagesFilterObject = { user_id, message_id: messageId };
@@ -2354,18 +2301,7 @@ export class Message extends Auth {
         return res.send(400, { error: 'Message ID must be defined as number' });
       }
 
-      // Check access token defined.
-      if (!req.query.access_token && !req.query.user_id) {
-        const error = { error: 'Access token or user_id should be defined.' };
-        return res.send(400, error);
-      }
-
-      let userId;
-      if (req.query.access_token) {
-        userId = (await this.checkToken(req.query.access_token))._id;
-      } else {
-        userId = req.query.user_id;
-      }
+      const userId = await this.resolveUserId(req.query);
 
       // Update important message.
       let updatedImportantMessage;
@@ -2402,6 +2338,9 @@ export class Message extends Auth {
       // Response result.
       return res.send({ data: updatedImportantMessage });
     } catch (error) {
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
       global.log.save('set-unimportant-message-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }

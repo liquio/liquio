@@ -85,4 +85,37 @@ describe('Message Controller', () => {
         });
     });
   });
+
+  describe('user-scoped routes (NT-02)', () => {
+    const routes: [string, string, string][] = [
+      ['PUT', '/message/is_read', 'messages=1&user_id=1'],
+      ['GET', '/message/unread', 'user_id=1'],
+      ['GET', '/message/1', 'user_id=1'],
+    ];
+
+    it.each(routes)('%s %s rejects user_id access without Basic auth', async (method, path, query) => {
+      const req = method === 'PUT' ? app.request().put(`${path}?${query}`) : app.request().get(`${path}?${query}`);
+      await req.expect(401);
+    });
+
+    it('GET /message/unread returns a count with Basic auth and user_id', async () => {
+      await app
+        .request()
+        .get('/message/unread')
+        .query({ user_id: 1 })
+        .set('Authorization', TEST_AUTH_HEADER)
+        .expect(200)
+        .expect((response: SupertestResponse) => {
+          expect(response.body).toEqual({ total: 0 });
+        });
+    });
+
+    it('GET /message/unread answers 400 when neither access_token nor user_id is given', async () => {
+      await app.request().get('/message/unread').set('Authorization', TEST_AUTH_HEADER).expect(400);
+    });
+
+    it('GET /message/:id answers 404 for a message the user does not have', async () => {
+      await app.request().get('/message/1').query({ user_id: 1 }).set('Authorization', TEST_AUTH_HEADER).expect(404);
+    });
+  });
 });
