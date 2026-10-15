@@ -1,6 +1,7 @@
 import { parse as parseJsonc } from 'jsonc-parser';
 import { Sandbox } from '@liquio/back-core';
 
+import { pickMessageMeta } from '../lib/message_queue';
 import { SystemNotifier } from '../lib/system_notifier';
 import { GatewayTypeEntity } from '../entities/gateway_type';
 import { WorkflowErrorModel } from '../models/workflow_error';
@@ -87,9 +88,16 @@ export class GatewayBusiness {
    * @param {string[]} sequenceIds Sequence ID list.
    * @param {DocumentEntity[]} documents Documents.
    * @param {EventEntity[]} events Events.
+   * @param {{workflowId?: string, gatewayTemplateId?: number}} [logMeta] Ids to log on condition error.
    * @returns {Promise<{resultSequence: string, sequenceIds: string[], condition: string, isDefault: boolean, handledAsDefault: boolean}>} Gateway data promise.
    */
-  async calcExclusiveGatewayData(jsonSchemaObject: any, sequenceIds: string[], documents: any[], events: any[]): Promise<any> {
+  async calcExclusiveGatewayData(
+    jsonSchemaObject: any,
+    sequenceIds: string[],
+    documents: any[],
+    events: any[],
+    logMeta: { workflowId?: string; gatewayTemplateId?: number } = {},
+  ): Promise<any> {
     // Check.
     const formulas = jsonSchemaObject.formulas;
     if (!Array.isArray(formulas)) {
@@ -104,7 +112,12 @@ export class GatewayBusiness {
       try {
         conditionResult = this.sandbox.evalWithArgs(condition, [documents, events]);
       } catch (error: any) {
-        global.log.save('condition-calculation-error', { error: error && error.message, condition, isDefault, documents, events });
+        global.log.save('condition-calculation-error', {
+          workflowId: logMeta.workflowId,
+          gatewayTemplateId: logMeta.gatewayTemplateId,
+          condition,
+          error: error && error.message,
+        });
         throw error;
       }
       if (conditionResult) {
@@ -175,7 +188,7 @@ export class GatewayBusiness {
           data = await this.calcParallelGatewayData(jsonSchemaObject, sequenceIds);
           break;
         case GatewayTypeEntity.Types.Exclusive:
-          data = await this.calcExclusiveGatewayData(jsonSchemaObject, sequenceIds, documents, events);
+          data = await this.calcExclusiveGatewayData(jsonSchemaObject, sequenceIds, documents, events, { workflowId, gatewayTemplateId });
           break;
         case GatewayTypeEntity.Types.Inclusive:
           data = await this.calcInclusiveGatewayData(jsonSchemaObject, sequenceIds);
@@ -222,7 +235,7 @@ export class GatewayBusiness {
 
       // Inform about handling status.
     } catch (error: any) {
-      global.log.save('document-creating-by-message-from-queue-error', { messageObject });
+      global.log.save('document-creating-by-message-from-queue-error', { ...pickMessageMeta(messageObject), error: error && error.message });
 
       // If enabled debug model.
       if (typeof messageObject.debugId !== 'undefined' && messageObject && messageObject.workflowId) {
@@ -237,7 +250,7 @@ export class GatewayBusiness {
           await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject });
           await this.workflowModel.setError(messageObject.workflowId);
         } catch (error: any) {
-          global.log.save('workflow-id-not-found-error', { messageObject, error: error.message });
+          global.log.save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
         }
 
         try {

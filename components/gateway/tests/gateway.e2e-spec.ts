@@ -204,7 +204,8 @@ describe('Gateway Business (via RabbitMQ)', () => {
     });
 
     const [, logData] = await app.log.waitForLog('document-creating-by-message-from-queue-error');
-    expect(logData.messageObject).toMatchObject({ workflowId, gatewayTemplateId: 999999999 });
+    expect(logData).toMatchObject({ workflowId, gatewayTemplateId: 999999999 });
+    expect(logData.messageObject).toBeUndefined();
 
     // The system notifier attempts a real HTTP call to a non-listening test host and fails,
     // which is itself logged rather than crashing the consumer.
