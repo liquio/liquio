@@ -235,6 +235,18 @@ describe('UserController', () => {
     });
   });
 
+  describe('sendSmsForPhoneVerification token binding', () => {
+    it('should pass the user access token to id-api so the code is bound to the user', async () => {
+      jest.spyOn(controller, 'getRequestUserInfo').mockReturnValue({} as any);
+      jest.spyOn(controller, 'getRequestUserAccessToken').mockReturnValue('tok');
+      client.sendSms.mockResolvedValue('sent');
+
+      await controller.sendSmsForPhoneVerification({ body: { phone: '+380501112233' } }, {});
+
+      expect(client.sendSms).toHaveBeenCalledWith('+380501112233', 'tok');
+    });
+  });
+
   describe('changeEmail', () => {
     it('should respond that the email code is sent', async () => {
       client.changeEmail.mockResolvedValue('ok');

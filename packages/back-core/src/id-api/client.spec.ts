@@ -1043,6 +1043,14 @@ describe('IdApiClient', () => {
       expect(call.headers.Authorization).toBeUndefined();
     });
 
+    it('adds the access token to the query when given', async () => {
+      mockResponse(200, { sendBySms: 'sent' });
+
+      await client.sendSms('380501234567', 'tok');
+
+      expect(lastCall().url).toBe('http://id.test:8100/sign_up/confirmation/phone/send?phone=380501234567&access_token=tok');
+    });
+
     it('throws when sendBySms is missing', async () => {
       mockResponse(200, {});
       await expect(client.sendSms('1')).rejects.toThrow('Phone verification not responsed from auth server.');

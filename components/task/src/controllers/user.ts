@@ -336,6 +336,7 @@ export class UserController extends Controller {
     const userInfo = this.getRequestUserInfo(req);
     const existingPhone = userInfo.phone;
     const phone = newPhone || existingPhone;
+    const accessToken = this.getRequestUserAccessToken(req);
 
     // Check phone.
     if (!phone) {
@@ -343,9 +344,9 @@ export class UserController extends Controller {
       return this.responseError(res, "Phone does't exist.");
     }
 
-    // Send SMS.
+    // Send SMS. The code is bound to the user by the access token, so it can be verified by the same user only.
     try {
-      await this.idApiClient.sendSms(phone);
+      await this.idApiClient.sendSms(phone, accessToken);
     } catch (error) {
       global.log.save('can-not-send-sms', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't send sms.");

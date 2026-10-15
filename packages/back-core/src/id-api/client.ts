@@ -707,10 +707,12 @@ export class IdApiClient {
   /**
    * Send an SMS for the phone verification. `GET /sign_up/confirmation/phone/send?phone=` (no basic auth).
    * @param {string | number} phone Phone.
+   * @param {string} [accessToken] User access token; binds the code to that user (required for `verifyPhoneAndSet`).
    * @returns {Promise<string>} `sendBySms` value.
    */
-  async sendSms(phone: string | number): Promise<string> {
-    const { body } = await this.request({ method: 'GET', route: this.routes.sendSms, query: { phone } });
+  async sendSms(phone: string | number, accessToken?: string): Promise<string> {
+    const query: Record<string, any> = accessToken ? { phone, access_token: accessToken } : { phone };
+    const { body } = await this.request({ method: 'GET', route: this.routes.sendSms, query });
 
     if (!body?.sendBySms) {
       throw new Error(IdApiErrorMessage.UserSmsNotResponsed);
