@@ -116,11 +116,22 @@ class Router {
         continue;
       }
 
+      // forwardClientToken + cabinet auth would re-leak the cabinet JWT (ID access/refresh tokens) as `token`.
+      if (isAuthenticated && allowedPaths.some((allowedPath: { forwardClientToken?: boolean }) => allowedPath && allowedPath.forwardClientToken)) {
+        (global.log as any).save('custom-api-invalid-config', {
+          apiName,
+          error: '"forwardClientToken" cannot be combined with sendUserData/isCheckJwtOnly',
+        });
+        continue;
+      }
+
       // Compile path matchers once per API.
-      const compiledAllowedPaths = allowedPaths.map((allowedPath: { method: string; path: string; authorizationHeader?: string }) => ({
-        ...allowedPath,
-        matches: compilePathMatcher(allowedPath.path),
-      }));
+      const compiledAllowedPaths = allowedPaths.map(
+        (allowedPath: { method: string; path: string; authorizationHeader?: string; forwardClientToken?: boolean }) => ({
+          ...allowedPath,
+          matches: compilePathMatcher(allowedPath.path),
+        }),
+      );
 
       // Init proxy.
       app.use(
@@ -136,10 +147,8 @@ class Router {
           proxyReqOptDecorator: function (proxyReqOpts: any, req: Request) {
             return new Promise(function (resolve, reject) {
               // Define params.
-              const {
-                method: reqMethod,
-                headers: { authorization: reqAuthorizationHeader },
-              } = proxyReqOpts;
+              const { method: reqMethod } = proxyReqOpts;
+              const reqAuthorizationHeader = req.headers['authorization'];
               const reqPath = (req.url || '').split('?')[0];
 
               // Reject encoded separators/null bytes before any pattern matching.
@@ -148,13 +157,25 @@ class Router {
               }
 
               // Check allowed paths.
-              if (
-                !compiledAllowedPaths.find(
-                  ({ method, matches, authorizationHeader }) =>
-                    reqMethod === method && matches(reqPath) && reqAuthorizationHeader === authorizationHeader,
-                )
-              ) {
+              const matchedPath = compiledAllowedPaths.find(
+                ({ method, matches, authorizationHeader }) =>
+                  reqMethod === method && matches(reqPath) && reqAuthorizationHeader === authorizationHeader,
+              );
+              if (!matchedPath) {
                 return reject('Not allowed');
+              }
+
+              // Strip client credentials: the proxy forwards all incoming headers, including the cabinet JWT and cookies.
+              // `forwardClientToken` opts a path out for non-authenticated APIs that use `token` for their own value.
+              if (!matchedPath.forwardClientToken) {
+                delete proxyReqOpts.headers['token'];
+              }
+              delete proxyReqOpts.headers['cookie'];
+              delete proxyReqOpts.headers['authorization'];
+
+              // Re-apply the matched path's own authorization header, if any.
+              if (matchedPath.authorizationHeader) {
+                proxyReqOpts.headers['Authorization'] = matchedPath.authorizationHeader;
               }
 
               // Set header.

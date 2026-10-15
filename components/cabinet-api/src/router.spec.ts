@@ -27,12 +27,14 @@ describe('Router custom APIs', () => {
   let upstream: http.Server;
   let server: http.Server;
   let received: string[];
+  let receivedHeaders: http.IncomingHttpHeaders[];
   let base: string;
   let logSave: jest.Mock;
 
   beforeAll(async () => {
     upstream = http.createServer((req, res) => {
       received.push(req.url as string);
+      receivedHeaders.push(req.headers);
       res.end('ok');
     });
     await new Promise<void>((resolve) => upstream.listen(0, resolve));
@@ -46,6 +48,10 @@ describe('Router custom APIs', () => {
         customApis: [
           { apiName: 'secured', proxyTo, allowedPaths: [{ method: 'GET', path: '/items/:id' }] },
           { apiName: 'public', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/listed' }] },
+          { apiName: 'authed', proxyTo, sendUserData: false, authHeader: 'Bearer configured', allowedPaths: [{ method: 'GET', path: '/x' }] },
+          { apiName: 'bearer', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/x', authorizationHeader: 'Bearer own' }] },
+          { apiName: 'fwd', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/x', forwardClientToken: true }] },
+          { apiName: 'fwd-bad', proxyTo, allowedPaths: [{ method: 'GET', path: '/x', forwardClientToken: true }] },
           { apiName: 'broken', proxyTo, sendUserData: false },
           { apiName: 'broken-empty', proxyTo, sendUserData: false, allowedPaths: [] },
         ],
@@ -65,6 +71,7 @@ describe('Router custom APIs', () => {
 
   beforeEach(() => {
     received = [];
+    receivedHeaders = [];
   });
 
   it('does not register an API without allowedPaths and logs the invalid config', async () => {
@@ -96,5 +103,37 @@ describe('Router custom APIs', () => {
       expect(res.status).not.toBe(200);
     }
     expect(received).toEqual([]);
+  });
+
+  it('strips client token, cookie and authorization and applies the configured authHeader', async () => {
+    const headers = { token: 'cabinet-jwt', cookie: 'sid=1', authorization: 'Bearer client' };
+    expect((await fetch(`${base}/custom/authed/x`, { headers })).status).not.toBe(200);
+    expect((await fetch(`${base}/custom/public/listed`, { headers })).status).not.toBe(200);
+    expect(received).toEqual([]);
+
+    expect((await fetch(`${base}/custom/authed/x`, { headers: { token: 'cabinet-jwt', cookie: 'sid=1' } })).status).toBe(200);
+    expect(receivedHeaders[0].token).toBeUndefined();
+    expect(receivedHeaders[0].cookie).toBeUndefined();
+    expect(receivedHeaders[0].authorization).toBe('Bearer configured');
+  });
+
+  it('strips token/cookie on an unconfigured public API and re-applies the path authorizationHeader', async () => {
+    expect((await fetch(`${base}/custom/public/listed`, { headers: { token: 'cabinet-jwt', cookie: 'sid=1' } })).status).toBe(200);
+    expect(receivedHeaders[0].token).toBeUndefined();
+    expect(receivedHeaders[0].cookie).toBeUndefined();
+    expect(receivedHeaders[0].authorization).toBeUndefined();
+
+    expect((await fetch(`${base}/custom/bearer/x`, { headers: { token: 't', authorization: 'Bearer own' } })).status).toBe(200);
+    expect(receivedHeaders[1].token).toBeUndefined();
+    expect(receivedHeaders[1].authorization).toBe('Bearer own');
+  });
+
+  it('forwards token only for a public path with forwardClientToken, and rejects it for authenticated APIs', async () => {
+    expect((await fetch(`${base}/custom/fwd/x`, { headers: { token: 'own-value', cookie: 'sid=1' } })).status).toBe(200);
+    expect(receivedHeaders[0].token).toBe('own-value');
+    expect(receivedHeaders[0].cookie).toBeUndefined();
+
+    expect((await fetch(`${base}/custom/fwd-bad/x`, { headers: { 'x-auth': '1' } })).status).toBe(404);
+    expect(logSave).toHaveBeenCalledWith('custom-api-invalid-config', expect.objectContaining({ apiName: 'fwd-bad' }));
   });
 });
