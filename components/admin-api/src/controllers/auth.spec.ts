@@ -35,3 +35,51 @@ describe('AuthController.me', () => {
     expect(data.avaUrl).toBe('');
   });
 });
+
+describe('AuthController.authenticateToken', () => {
+  let controller: AuthController;
+  const idApi: any = { getUser: jest.fn(), renewTokens: jest.fn(), getMainUserInfo: jest.fn((v) => v) };
+  const decrypt = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (AuthController as any).singleton = undefined;
+    (getIdApiClient as jest.Mock).mockReturnValue(idApi);
+    controller = new AuthController({ auth: {}, server: { token: 'srv' }, access: {} });
+    controller.token = { decrypt } as any;
+    controller.getUserUnitIds = jest.fn().mockResolvedValue({ all: [1] }) as any;
+  });
+
+  it('should reject missing token', async () => {
+    expect((await controller.authenticateToken(undefined, ['admin'])).status).toBe(401);
+  });
+
+  it('should reject undecryptable token', async () => {
+    decrypt.mockImplementation(() => {
+      throw new Error('bad');
+    });
+    expect((await controller.authenticateToken('x', ['admin'])).status).toBe(401);
+  });
+
+  it('should accept server token', async () => {
+    expect((await controller.authenticateToken('srv', ['admin'])).status).toBe(200);
+  });
+
+  it('should reject user without needed role', async () => {
+    decrypt.mockReturnValue({ authTokens: { accessToken: 'a', refreshToken: 'r' } });
+    idApi.getUser.mockResolvedValue({ userId: 'u', role: 'user' });
+    expect((await controller.authenticateToken('x', ['admin'], [1])).status).toBe(403);
+  });
+
+  it('should reject user without needed unit', async () => {
+    decrypt.mockReturnValue({ authTokens: { accessToken: 'a', refreshToken: 'r' } });
+    idApi.getUser.mockResolvedValue({ userId: 'u', role: 'admin' });
+    expect((await controller.authenticateToken('x', ['admin'], [2])).status).toBe(403);
+  });
+
+  it('should accept admin in needed unit', async () => {
+    decrypt.mockReturnValue({ authTokens: { accessToken: 'a', refreshToken: 'r' } });
+    idApi.getUser.mockResolvedValue({ userId: 'u', role: 'admin' });
+    expect((await controller.authenticateToken('x', ['admin'], [1])).status).toBe(200);
+  });
+});

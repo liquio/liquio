@@ -1,6 +1,6 @@
 import express from 'express';
 import proxy from 'express-http-proxy';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import compression from 'compression';
 import { asyncLocalStorageMiddleware } from '@liquio/back-core';
@@ -60,6 +60,9 @@ import {
   SNIPPETS_ADMIN_UNIT,
   TAG_ADMIN_UNIT,
 } from '../constants/unit';
+
+// WebSocket subprotocol marker; the auth token follows it in Sec-WebSocket-Protocol.
+export const WS_AUTH_PROTOCOL = 'liquio-admin-ws';
 
 /**
  * Router service.
@@ -132,33 +135,44 @@ export class RouterService {
     // Start listening.
     await this.listen(app);
 
-    this.wss = new WebSocketServer({ server: this.server });
+    this.initWebSocket();
+  }
+
+  /**
+   * Init WebSocket server. Only authenticated system/support admins can connect.
+   * Token is passed in the "Sec-WebSocket-Protocol" header: "<WS_AUTH_PROTOCOL>, <token>".
+   * The server only pushes server-originated packets, client messages are ignored.
+   * @private
+   */
+  initWebSocket() {
+    const authController = new AuthController(this.config);
+    const { clientId } = this.config.auth;
+    const adminRoles = ['admin', `admin-${clientId}`];
+    const allowedOrigins: string[] = this.config.server.allowedOrigins || [];
+
+    this.wss = new WebSocketServer({
+      server: this.server,
+      handleProtocols: (protocols) => (protocols.has(WS_AUTH_PROTOCOL) ? WS_AUTH_PROTOCOL : false),
+      verifyClient: (info, done) => {
+        const origin = info.req.headers.origin;
+        if (allowedOrigins.length && origin && !allowedOrigins.includes(origin)) {
+          return done(false, 403, 'Origin not allowed.');
+        }
+
+        const protocols = String(info.req.headers['sec-websocket-protocol'] || '')
+          .split(',')
+          .map((v) => v.trim());
+        const token = protocols.includes(WS_AUTH_PROTOCOL) ? protocols.find((v) => v && v !== WS_AUTH_PROTOCOL) : undefined;
+
+        authController
+          .authenticateToken(token, adminRoles, [SYSTEM_ADMIN_UNIT, SUPPORT_ADMIN_UNIT])
+          .then((result) => (result.status === 200 ? done(true) : done(false, result.status, result.error)))
+          .catch(() => done(false, 401, 'Unauthorized.'));
+      },
+    });
 
     this.wss.on('connection', (ws: any) => {
-      ws.data = {};
-
       ws.send('user connected');
-
-      ws.on('message', (message) => {
-        try {
-          message = JSON.parse(message);
-        } catch (error) {
-          global.log.save('websocket-parse-message-error', error.message);
-        }
-        try {
-          this.wss.clients.forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-              client.send(typeof message === 'object' ? JSON.stringify(message) : message);
-            }
-          });
-
-          ws.message = message;
-
-          global.log.save('websocket-message', ws.message);
-        } catch (error) {
-          global.log.save('websocket-error', error.message);
-        }
-      });
     });
   }
 

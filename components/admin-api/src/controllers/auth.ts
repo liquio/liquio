@@ -260,6 +260,57 @@ export class AuthController extends Controller {
   }
 
   /**
+   * Authenticate token outside of HTTP middleware flow (e.g. WebSocket upgrade).
+   * @param {string} token Token.
+   * @param {string[]} roles Roles that has access (check by "or").
+   * @param {number[]} units Access for units (check by "or"). Empty - any unit.
+   * @returns {Promise<{ status: number, error?: string, authUserInfo?: object }>} Result.
+   */
+  async authenticateToken(token, roles: string[] = [], units: number[] = []): Promise<{ status: number; error?: string; authUserInfo?: any }> {
+    if (!token || typeof token !== 'string') {
+      return { status: 401, error: ERROR_MESSAGE_TOKEN_NOT_DEFINED };
+    }
+
+    if (token === this.serverToken) {
+      return { status: 200 };
+    }
+
+    let authUserInfo;
+    try {
+      const tokenData = this.token.decrypt(token);
+      const { accessToken, refreshToken } = tokenData.authTokens;
+
+      authUserInfo = await this.idApiClient.getUser(accessToken);
+      if (!authUserInfo || !authUserInfo.userId) {
+        const newAuthTokens = await this.idApiClient.renewTokens(refreshToken);
+        authUserInfo = await this.idApiClient.getUser(newAuthTokens.accessToken);
+      }
+    } catch (err) {
+      return { status: 401, error: err?.message || 'Unauthorized.' };
+    }
+    if (!authUserInfo || !authUserInfo.userId) {
+      return { status: 401, error: 'Unauthorized.' };
+    }
+
+    const mainUserInfo = this.idApiClient.getMainUserInfo(authUserInfo, true, true);
+    const userRoles = this.getUserRoles({ authUserInfo: mainUserInfo });
+    if (!this.hasOneOfNeededRoles(userRoles, roles)) {
+      return { status: 403, error: ERROR_MESSAGE_WITHOUT_NEEDED_ROLE };
+    }
+
+    const authUserUnitIds = await this.getUserUnitIds(authUserInfo.userId);
+    const allowableUnits = this.access?.allowableUnits || [];
+    if (Array.isArray(allowableUnits) && allowableUnits.length && !allowableUnits.some((v) => authUserUnitIds.all.includes(v))) {
+      return { status: 403, error: ERROR_MESSAGE_USER_WITHOUT_ALLOWABLE_UNITS };
+    }
+    if (units.length > 0 && !units.some((v) => authUserUnitIds.all.includes(v))) {
+      return { status: 403, error: 'Access denied.' };
+    }
+
+    return { status: 200, authUserInfo: mainUserInfo };
+  }
+
+  /**
    * Check unit access.
    */
   checkUnitAccess(req, res, next, units) {
