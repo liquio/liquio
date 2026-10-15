@@ -47,8 +47,20 @@ export class TotpController extends BaseController {
     }
 
     const { code } = req.body;
-    if (!code) {
+    if (!code || typeof code !== 'string') {
       res.status(400).send({ error: 'Code should be defined.' });
+      return;
+    }
+
+    // Count the attempt before the verification, so parallel requests cannot exceed the limit (the increment is atomic in redis).
+    // It is counted per user, so a new first factor session does not reset it, and it also guards a valid code during the lock.
+    const passwordManager = this.service('passwordManager');
+    const redis = this.service('redis');
+    const attemptsKey = redis.createKey('auth-totp', userId);
+    const attemptCounter = await redis.increment(attemptsKey, 1, passwordManager.maxAttemptDelay);
+    if (attemptCounter > passwordManager.maxAttempts) {
+      this.log.save('totp-verification|bruteforce-alert', { userId, attemptCounter }, 'warning');
+      res.status(429).send({ error: 'Too many attempts. Please try again later.' });
       return;
     }
 
@@ -81,6 +93,11 @@ export class TotpController extends BaseController {
       }
 
       await markTwoFactorCompleted(req, userId, 'totp');
+
+      // The factor is already verified, so a failed reset must not fail the response.
+      await redis
+        .delete(attemptsKey)
+        .catch((error: any) => this.log.save('totp-verification|reset-attempts-error', { userId, error: error.message }, 'warn'));
 
       res.status(200).send({ success: true, redirect: '/authorise/continue' });
     } catch (error: any) {

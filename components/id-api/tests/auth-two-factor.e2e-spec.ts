@@ -13,11 +13,12 @@ describe('AuthController - two-factor authentication on local login', () => {
   let app: TestApp;
   let totpSecret: string;
 
-  const users: Record<'plain' | 'phone' | 'otherPhone' | 'totp' | 'noType', { email: string; userId: string }> = {
+  const users: Record<'plain' | 'phone' | 'otherPhone' | 'totp' | 'totpLock' | 'noType', { email: string; userId: string }> = {
     plain: { email: 'plain-2fa@email', userId: '' },
     phone: { email: 'phone-2fa@email', userId: '' },
     otherPhone: { email: 'other-phone-2fa@email', userId: '' },
     totp: { email: 'totp-2fa@email', userId: '' },
+    totpLock: { email: 'totp-lock-2fa@email', userId: '' },
     noType: { email: 'notype-2fa@email', userId: '' },
   };
 
@@ -95,10 +96,12 @@ describe('AuthController - two-factor authentication on local login', () => {
     await createUser('phone', '#2000000002', { phone: PHONE, useTwoFactorAuth: true, twoFactorType: 'phone' });
     await createUser('otherPhone', '#2000000003', { phone: OTHER_PHONE, useTwoFactorAuth: true, twoFactorType: 'phone' });
     await createUser('totp', '#2000000004', { useTwoFactorAuth: true, twoFactorType: 'totp' });
+    await createUser('totpLock', '#2000000006', { useTwoFactorAuth: true, twoFactorType: 'totp' });
     await createUser('noType', '#2000000005', { useTwoFactorAuth: true });
 
     totpSecret = TOTP.createSecret();
     await app.model('userTotpSecret').create({ userId: users.totp.userId, secret: totpSecret });
+    await app.model('userTotpSecret').create({ userId: users.totpLock.userId, secret: totpSecret });
   });
 
   afterAll(async () => {
@@ -187,6 +190,32 @@ describe('AuthController - two-factor authentication on local login', () => {
       await completeTotp(agent).expect(401);
 
       expectNoCode(await goOn(agent), '/');
+    });
+  });
+
+  describe('TOTP brute-force protection', () => {
+    it('should lock the user after the limit of failed attempts, even for a valid code and a new session', async () => {
+      const agent = await startFlow('totpLock');
+      for (let i = 0; i < 5; i++) {
+        await agent.post('/authorise/totp').send({ code: '000000' }).expect(401);
+      }
+
+      await agent.post('/authorise/totp').send({ code: '000000' }).expect(429);
+      await completeTotp(agent).expect(429);
+      expectNoCode(await goOn(agent), '/totp');
+
+      const otherSession = await startFlow('totpLock');
+      await completeTotp(otherSession).expect(429);
+      expectNoCode(await goOn(otherSession), '/totp');
+    });
+
+    it('should not let concurrent guesses exceed the limit', async () => {
+      const agent = await startFlow('totp');
+
+      const responses = await Promise.all(Array.from({ length: 12 }, () => agent.post('/authorise/totp').send({ code: '000000' })));
+
+      expect(responses.filter((r) => r.status === 401)).toHaveLength(5);
+      expect(responses.filter((r) => r.status === 429)).toHaveLength(7);
     });
   });
 
