@@ -565,53 +565,8 @@ export class AuthController extends BaseController {
       return;
     }
 
-    const url = new URL(req.session.forward ?? req.body.redirect_uri ?? '/');
+    const url = new URL(req.body.redirect_uri);
     url.searchParams.set('code', code.authorizationCode);
-    if (req.session.state) {
-      url.searchParams.set('state', req.session.state);
-    }
-    const [flash] = req.flash!('services_error');
-    if (flash) {
-      url.searchParams.set('services_error', flash);
-    }
-    res.redirect(url.toString());
-  }
-
-  async responseTypeToken(req: Request, res: Response, userId: string, request: OAuthRequest, response: OAuthResponse): Promise<void> {
-    let token;
-    try {
-      token = await this.service('auth').responseTypeToken(request, response, userId);
-    } catch (error: any) {
-      this.log.save('response-type-token-error', { error: error }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
-      return;
-    }
-
-    if (
-      req.session.client_requirements &&
-      req.session.client_requirements.length > 0 &&
-      req.session.passport?.user &&
-      !req.session.client_requirements.includes(req.session.passport.user.provider) &&
-      req.session.client_requirements.includes('require_phone') &&
-      !req.session.passport.user.valid.phone
-    ) {
-      res.redirect('/sign_in/requirements_phone_set');
-      return;
-    } else if (
-      req.session.client_requirements &&
-      req.session.client_requirements.length > 0 &&
-      req.session.passport?.user &&
-      !req.session.client_requirements.includes(req.session.passport.user.provider) &&
-      !req.session.client_requirements.includes('require_phone') &&
-      !req.session.passport.user.valid.phone
-    ) {
-      res.redirect('/sign_in/requirements');
-      return;
-    }
-
-    const { redirect_uri: redirectUri } = matchedData(req, { locations: ['query'] });
-    const url = new URL(redirectUri);
-    url.searchParams.set('access_token', token.accessToken);
     if (req.session.state) {
       url.searchParams.set('state', req.session.state);
     }
@@ -716,10 +671,11 @@ export class AuthController extends BaseController {
       delete request.query.state;
     }
 
-    if (req.body.response_type === 'code') {
-      this.responseTypeCode(req, res, userId, request, response);
-    } else {
-      this.responseTypeToken(req, res, userId, request, response);
+    if (req.body.response_type !== 'code') {
+      res.status(400).send({ error: 'unsupported_response_type', message: 'Only response_type=code is supported' });
+      return;
     }
+
+    await this.responseTypeCode(req, res, userId, request, response);
   }
 }

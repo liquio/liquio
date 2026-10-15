@@ -18,6 +18,15 @@ import { Models } from '../models';
 import { AuthCodeAttributes } from '../models/auth_code.model';
 import { Services } from '../services';
 
+function isSecretValid(expected: unknown, candidate: unknown): boolean {
+  if (typeof expected !== 'string' || !expected || typeof candidate !== 'string' || !candidate) return false;
+
+  const expectedBuffer = Buffer.from(expected);
+  const candidateBuffer = Buffer.from(candidate);
+
+  return expectedBuffer.length === candidateBuffer.length && crypto.timingSafeEqual(expectedBuffer, candidateBuffer);
+}
+
 export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
   private readonly log = Log.getInstance();
 
@@ -35,25 +44,20 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
     };
   }
 
-  async getClient(clientId: string, clientSecret: string): Promise<OAuthClient | Falsey> {
+  // `clientSecret === null` is the authorization endpoint lookup of @node-oauth/oauth2-server, where the client is not authenticated.
+  async getClient(clientId: string, clientSecret?: string | null): Promise<OAuthClient | Falsey> {
     try {
+      if (typeof clientId !== 'string' || !clientId) return false;
+
       let client: OAuthClient = await Models.model('client')
         .findOne({ where: { clientId } })
         .then((row) => row?.dataValues as unknown as OAuthClient);
 
-      if (!client)
-        return {
-          clientId: '',
-          redirectUri: [''],
-          requirements: [],
-          scope: [],
-          grants: [],
-          id: '',
-        };
+      if (!client) return false;
       client.requirements ??= [];
       client.redirectUris = client.redirectUri;
       client.id = client.clientId;
-      if (clientSecret && client.need_secret && client.secret !== clientSecret) {
+      if (clientSecret !== null && client.need_secret && !isSecretValid(client.secret, clientSecret)) {
         throw new OAuthError('Client secret key is not valid', {
           code: 401,
           errorCode: 401,

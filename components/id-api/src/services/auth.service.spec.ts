@@ -175,3 +175,173 @@ describe('AuthService access revocation', () => {
     });
   });
 });
+
+describe('AuthService OAuth client preparation', () => {
+  const REGISTERED = 'https://app.example/cb';
+  let auth: AuthService;
+  let getClient: jest.Mock;
+
+  const createRes = () => {
+    const res: any = {};
+    res.status = jest.fn().mockReturnValue(res);
+    res.send = jest.fn().mockReturnValue(res);
+    return res;
+  };
+
+  // Runs the validators and the handler of a middleware chain; resolves to whether `next` was reached.
+  async function runChain(chain: any[], req: any, res: any): Promise<boolean> {
+    for (const middleware of chain) {
+      let proceeded = false;
+      await middleware(req, res, () => {
+        proceeded = true;
+      });
+      if (!proceeded) return false;
+    }
+    return true;
+  }
+
+  const createReq = (query: Record<string, any>, session: Record<string, any> = {}, body: any = {}) => ({ query, body, session }) as any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    getClient = jest.fn().mockResolvedValue({
+      clientId: 'client',
+      client_name: 'Client',
+      secret: 'topsecret',
+      need_secret: true,
+      requirements: [],
+      scope: [],
+      redirectUris: [REGISTERED],
+    });
+    auth = new AuthService({ oauth: { defaults: { client_id: 'default', redirect_uri: ['http://default-site'] } } } as any, {} as any, {} as any);
+    (auth as any).oAuth2Model = { getClient };
+  });
+
+  describe('prepareClient', () => {
+    const query = { client_id: 'client', response_type: 'code', state: 'st', redirect_uri: REGISTERED };
+
+    it('stores the client in the session without its secret', async () => {
+      const req = createReq({ ...query, client_secret: 'topsecret' });
+      const res = createRes();
+
+      expect(await runChain(auth.prepareClient(), req, res)).toBe(true);
+
+      expect(getClient).toHaveBeenCalledWith('client', null);
+      expect(req.session).toMatchObject({ client_id: 'client', redirect_uri: REGISTERED, response_type: 'code', state: 'st' });
+      expect(JSON.stringify(req.session)).not.toContain('topsecret');
+      expect(JSON.stringify(mockLog.save.mock.calls)).not.toContain('topsecret');
+    });
+
+    it('rejects an unknown client', async () => {
+      getClient.mockResolvedValue(false);
+      const req = createReq(query);
+      const res = createRes();
+
+      expect(await runChain(auth.prepareClient(), req, res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(req.session.client_id).toBeUndefined();
+    });
+
+    it.each(['token', 'id_token', 'code token'])('rejects response_type=%p', async (responseType) => {
+      const req = createReq({ ...query, response_type: responseType });
+      const res = createRes();
+
+      expect(await runChain(auth.prepareClient(), req, res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ error: 'unsupported_response_type' }));
+      expect(getClient).not.toHaveBeenCalled();
+    });
+
+    it('defaults response_type to code', async () => {
+      const req = createReq({ client_id: 'client', state: 'st', redirect_uri: REGISTERED });
+
+      expect(await runChain(auth.prepareClient(), req, createRes())).toBe(true);
+      expect(req.session.response_type).toBe('code');
+    });
+
+    it.each([
+      'https://attacker.example/cb',
+      'https://app.example/cb/',
+      'https://app.example/cb?x=1',
+      'https://app.example/CB',
+      'https://app.example.attacker.example/cb',
+    ])('rejects the unregistered redirect_uri %p', async (redirectUri) => {
+      const req = createReq({ ...query, redirect_uri: redirectUri });
+      const res = createRes();
+
+      expect(await runChain(auth.prepareClient(), req, res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(req.session.redirect_uri).toBeUndefined();
+    });
+
+    it('rejects a client that has no registered redirect URIs', async () => {
+      getClient.mockResolvedValue({ clientId: 'client', redirectUris: [], requirements: [] });
+      const req = createReq({ client_id: 'client', state: 'st', redirect_uri: REGISTERED });
+      const res = createRes();
+
+      expect(await runChain(auth.prepareClient(), req, res)).toBe(false);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+  });
+
+  describe('readyClient', () => {
+    it('takes the destination from the session and ignores the request query', async () => {
+      const req = createReq(
+        { redirect_uri: 'https://attacker.example/' },
+        { client_id: 'client', redirect_uri: REGISTERED, client: { clientId: 'client', requirements: [], redirectUri: [REGISTERED] } },
+        { redirect_uri: 'https://attacker.example/' },
+      );
+
+      expect(await runChain(auth.readyClient(), req, createRes())).toBe(true);
+
+      expect(req.body.redirect_uri).toBe(REGISTERED);
+      expect(req.body.client_secret).toBeUndefined();
+    });
+
+    it('uses the configured defaults when there is no client session', async () => {
+      const req = createReq({ redirect_uri: 'https://attacker.example/' });
+
+      expect(await runChain(auth.readyClient(), req, createRes())).toBe(true);
+
+      expect(req.body).toMatchObject({ client_id: 'default', redirect_uri: 'http://default-site' });
+    });
+
+    it('fails closed when the session redirect_uri is not registered for the session client', async () => {
+      const req = createReq(
+        {},
+        {
+          client_id: 'client',
+          redirect_uri: 'https://attacker.example/',
+          client: { clientId: 'client', requirements: [], redirectUri: [REGISTERED] },
+        },
+      );
+      const res = createRes();
+
+      expect(await runChain(auth.readyClient(), req, res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('fails closed when no redirect_uri can be resolved', async () => {
+      auth = new AuthService({ oauth: { defaults: { client_id: 'default', redirect_uri: [] } } } as any, {} as any, {} as any);
+      const req = createReq({ redirect_uri: 'https://attacker.example/' });
+      const res = createRes();
+
+      expect(await runChain(auth.readyClient(), req, res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('does not log secrets', async () => {
+      const req = createReq({}, { client_id: 'client' }, { client_secret: 'topsecret' });
+
+      await runChain(auth.readyClient(), req, createRes());
+
+      expect(JSON.stringify(mockLog.save.mock.calls)).not.toContain('topsecret');
+    });
+  });
+});

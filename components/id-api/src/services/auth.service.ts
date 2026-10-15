@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-import OAuth2Server, { InvalidClientError, OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
+import OAuth2Server, { OAuthError } from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import moment from 'moment';
 import { Op } from 'sequelize';
@@ -137,24 +137,36 @@ export class AuthService extends BaseService {
   prepareClient() {
     return [
       query('client_id').isString(),
-      query('client_secret').isString(),
       query('response_type').optional().default('code').isString(),
       query('state').isString(),
       query('redirect_uri').isString(),
       async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-        let { client_id, client_secret, response_type, state, redirect_uri } = matchedData(req, { locations: ['query'] });
+        let { client_id, response_type = 'code', state, redirect_uri } = matchedData(req, { locations: ['query'] });
+
+        if (response_type !== 'code') {
+          res.status(400).send({ error: 'unsupported_response_type', message: 'Only response_type=code is supported' });
+          return;
+        }
 
         try {
-          const client = await this.oAuth2Model.getClient(client_id, client_secret);
+          // The client secret is not accepted here: confidential clients are authenticated at /oauth/token.
+          const client = await this.oAuth2Model.getClient(client_id, null);
 
           if (!client) {
             res.status(400).send({ message: 'Client not found' });
             return;
           }
 
+          const registeredRedirectUris = [client.redirectUris ?? []].flat();
+          redirect_uri ??= registeredRedirectUris[0];
+          if (!redirect_uri || !registeredRedirectUris.includes(redirect_uri)) {
+            this.log.save('prepareClientRedirectUriRejected', { clientId: client_id }, 'error');
+            res.status(400).send({ message: 'Redirect URI is not registered for the client' });
+            return;
+          }
+
           const session = req.session;
           session.client_id = client_id;
-          session.client_secret = client.secret;
           session.redirect_uri = redirect_uri;
           session.state = state;
           session.client_requirements = client.requirements;
@@ -162,10 +174,15 @@ export class AuthService extends BaseService {
           session.response_type = response_type;
           session.client_name = client.client_name;
           session.need_scope_approve = client.need_scope_approve;
-          session.client = client;
+          session.client = {
+            clientId: client.clientId,
+            client_name: client.client_name,
+            requirements: client.requirements,
+            redirectUri: registeredRedirectUris,
+          };
           await saveSession(req);
 
-          this.log.save('preparedClient', { session }, 'info');
+          this.log.save('preparedClient', { clientId: client_id, redirectUri: redirect_uri, responseType: response_type }, 'info');
           next();
         } catch (error: any) {
           if (!error.statusCode) {
@@ -189,51 +206,26 @@ export class AuthService extends BaseService {
         // Express 5 re-parses `req.query` on every access, so the client params are passed via `req.body` only
         // (@node-oauth/oauth2-server reads `request.body` before `request.query`).
         req.body.client_id = req.session.client_id ?? this.cfg!.defaults!.client_id;
-        req.body.client_secret = req.session.client_secret ?? this.cfg!.defaults!.client_secret;
-        req.body.redirect_uri = req.session.redirect_uri ?? this.cfg!.defaults!.redirect_uri?.[0];
         req.body.state = req.session.state ?? '';
         req.body.response_type = req.session.response_type ?? 'code';
         req.body.need_scope_approve = 'need_scope_approve' in req.session ? req.session.need_scope_approve : this.cfg!.defaults!.need_scope_approve;
         req.body.client_name = req.session.client_name ?? this.cfg!.defaults!.client_name;
         req.body.scope = req.session.scope ?? (this.cfg!.defaults!.scope || []);
 
-        this.log.save('readyClient', { body: req.body }, 'info');
+        // The destination comes only from the session (validated in `prepareClient`) or the config, never from the request query.
+        const redirectUri = req.session.redirect_uri ?? this.cfg!.defaults!.redirect_uri?.[0];
+        const registeredRedirectUris = req.session.client?.redirectUri;
+        if (!redirectUri || (registeredRedirectUris && !registeredRedirectUris.includes(redirectUri))) {
+          this.log.save('readyClientRedirectUriRejected', { clientId: req.body.client_id }, 'error');
+          res.status(400).send({ message: 'Redirect URI is not registered for the client' });
+          return;
+        }
+        req.body.redirect_uri = redirectUri;
+
+        this.log.save('readyClient', { clientId: req.body.client_id, redirectUri, responseType: req.body.response_type }, 'info');
         next();
       },
     ];
-  }
-
-  private getAccessTokenExpiresAt() {
-    let expires = new Date();
-
-    expires.setSeconds(expires.getSeconds() + this.accessTokenLifetime);
-
-    return expires;
-  }
-
-  async responseTypeToken(req: OAuthRequest, res: OAuthResponse, userId: string) {
-    let { client_id, client_secret } = req.body;
-    if (!client_id || !client_secret) {
-      throw new InvalidClientError('Missing client_id or client_secret');
-    }
-
-    let client = await this.oAuthModel.getClient(client_id, client_secret);
-    if (!client) throw new InvalidClientError('Client not found');
-
-    const buffer = crypto.randomBytes(256);
-    let accessToken = crypto.createHash('sha1').update(buffer).digest('hex');
-    let savedToken = await this.oAuthModel.saveToken(
-      {
-        accessToken,
-        accessTokenExpiresAt: this.getAccessTokenExpiresAt(),
-        scope: client.scope,
-        client,
-        user: { userId } as any,
-      },
-      client,
-      { userId },
-    );
-    return savedToken;
   }
 
   getConfirmCode(params: Record<string, any>, callback: CallbackFn<ConfirmCodeAttributes | null>) {

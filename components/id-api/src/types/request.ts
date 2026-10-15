@@ -1,4 +1,3 @@
-import { Client as OAuthClient } from '@node-oauth/oauth2-server';
 import express from 'express';
 import { PassportStatic } from 'passport';
 
@@ -17,7 +16,6 @@ export interface Request extends express.Request {
 declare module 'express-session' {
   interface SessionData {
     client_id?: string;
-    client_secret?: string;
     redirect_uri?: string;
     state?: string;
     scope?: string;
@@ -25,7 +23,7 @@ declare module 'express-session' {
     client_requirements?: string[];
     client_name?: string;
     need_scope_approve?: boolean;
-    client?: OAuthClient & { clientId?: string; client_name?: string };
+    client?: { clientId?: string; client_name?: string; requirements: any[]; redirectUri?: string[] };
     passport?: PassportStatic & { user?: any };
     preparedUser?: any;
     authInfo?: any;
