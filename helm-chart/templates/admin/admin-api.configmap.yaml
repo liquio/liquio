@@ -45,7 +45,7 @@ metadata:
   "customer" .Release.Name
   "environment" .Values.config.server.environment
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
-  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "maxBodySize" (default "20mb" .Values.config.server.maxBodySize)
   "port" (default 8080 .Values.services.adminApi.containerPort)
   "swagger" false
 -}}

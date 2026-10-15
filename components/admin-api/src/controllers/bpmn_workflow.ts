@@ -1,9 +1,11 @@
 import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
-import { Stream } from '../lib/stream';
 import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { WorkflowBusiness } from '../businesses/workflow';
+
+// Default max size of BPMN import body (50mb).
+const DEFAULT_IMPORT_MAX_BYTES = 50 * 1024 * 1024;
 
 /**
  * BPMN workflow controller.
@@ -60,16 +62,42 @@ export class BpmnWorkflowController extends Controller {
     const queryData = matchedData(req, { locations: ['query'] });
     const { type = 'minor', name = 'Front does not exist.', description = 'Front does not exist.' } = matchedData(req, { locations: ['body'] });
     const force = queryData.force || false;
-    try {
-      let fileContentBuffer;
-      let chunks = [];
-      req.on('data', (data) => chunks.push(data));
-      req.on('end', () => {
-        fileContentBuffer = Buffer.concat(chunks);
-      });
-      await Stream.waitEndEvent(req);
+    const maxBytes = this.config?.bpmnImport?.maxBytes || DEFAULT_IMPORT_MAX_BYTES;
 
-      let data = fileContentBuffer.toString();
+    try {
+      const declaredLength = Number(req.headers?.['content-length']);
+      if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+        return this.rejectOversizedImport(req, res, maxBytes);
+      }
+
+      const chunks: Buffer[] = [];
+      let received = 0;
+      let oversized = false;
+      await new Promise<void>((resolve, reject) => {
+        req.on('data', (chunk) => {
+          if (oversized) return;
+          received += chunk.length;
+          if (received > maxBytes) {
+            oversized = true;
+            chunks.length = 0;
+            return resolve();
+          }
+          chunks.push(chunk);
+        });
+        req.on('end', resolve);
+        req.on('error', reject);
+      });
+
+      if (oversized) {
+        return this.rejectOversizedImport(req, res, maxBytes);
+      }
+
+      let data;
+      try {
+        data = JSON.parse(Buffer.concat(chunks).toString());
+      } catch {
+        return this.responseError(res, 'Invalid JSON in import file.', 400);
+      }
 
       const user = {
         ...this.getRequestUserBaseInfo(req),
@@ -77,12 +105,29 @@ export class BpmnWorkflowController extends Controller {
         xForwardedFor: req.headers['x-forwarded-for'] || null,
         userAgent: req.headers['user-agent'] || null,
       };
-      await this.bpmnWorkflowBusiness.import(data, force, { type, name, description, user });
+      await this.bpmnWorkflowBusiness.import(data, force, { type, name, description, user }, false);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
 
     this.responseThatAccepted(res);
+  }
+
+  /**
+   * Reject oversized import: respond 413 and stop reading the request.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {number} maxBytes Max bytes.
+   */
+  private rejectOversizedImport(req, res, maxBytes: number) {
+    req.pause?.();
+    res.setHeader?.('Connection', 'close');
+    this.responseError(res, `Import file is too large. Max ${maxBytes} bytes.`, 413);
+    if (typeof res.once === 'function') {
+      res.once('finish', () => req.destroy());
+    } else {
+      req.destroy();
+    }
   }
 
   /**

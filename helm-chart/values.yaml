@@ -501,9 +501,7 @@ config:
   #     isSwaggerEnabled: true
 
   # Services that handle large file uploads retain a higher maxBodySize default.
-  adminApi:
-    server:
-      maxBodySize: "500mb"
+  # admin-api is not one of them: its file-library upload bypasses `express.json`, and BPMN import has its own cap.
   manager:
     server:
       maxBodySize: "500mb"
