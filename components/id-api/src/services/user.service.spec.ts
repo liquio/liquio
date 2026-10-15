@@ -30,3 +30,32 @@ describe('UserService.extractUpdateUserInfoParams (email, ID-08)', () => {
     expect(query.valid).toBeUndefined();
   });
 });
+
+describe('UserService.extractUpdateUserInfoParams (2FA, ID-09)', () => {
+  const extract = (body: Record<string, any>) =>
+    new UserService({ modules: {} } as any, {} as any, {} as any).extractUpdateUserInfoParams({ body } as any, [
+      'gender',
+      'useTwoFactorAuth',
+      'twoFactorType',
+    ]);
+
+  it('does not touch 2FA settings when the fields are omitted', () => {
+    const query = extract({ gender: 'male' });
+    expect(query).not.toHaveProperty('useTwoFactorAuth');
+    expect(query).not.toHaveProperty('twoFactorType');
+  });
+
+  it.each([
+    [
+      { useTwoFactorAuth: 'true', twoFactorType: 'totp' },
+      { useTwoFactorAuth: true, twoFactorType: 'totp' },
+    ],
+    [{ useTwoFactorAuth: 'false' }, { useTwoFactorAuth: false }],
+    [
+      { useTwoFactorAuth: true, twoFactorType: 'sms' },
+      { useTwoFactorAuth: true, twoFactorType: null },
+    ],
+  ])('applies explicitly submitted 2FA fields %j', (body, expected) => {
+    expect(extract({ gender: 'male', ...body })).toMatchObject(expected);
+  });
+});

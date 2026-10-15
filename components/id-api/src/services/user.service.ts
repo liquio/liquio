@@ -32,11 +32,10 @@ export class UserService extends BaseService {
     this.extractAddressStructure(query);
     this.processEmailValidation(req, query);
 
-    // Handle two factor auth.
-    if ([true, 'true', 1].includes(query.useTwoFactorAuth)) {
-      query.useTwoFactorAuth = true;
+    // Handle two factor auth. Omitted fields must never change the persisted 2FA state.
+    if ('useTwoFactorAuth' in query) {
+      query.useTwoFactorAuth = [true, 'true', 1].includes(query.useTwoFactorAuth as any);
     }
-    query.useTwoFactorAuth = query.useTwoFactorAuth ?? false;
     if ('twoFactorType' in query && query.twoFactorType != undefined && query.twoFactorType !== 'phone' && query.twoFactorType !== 'totp') {
       query.twoFactorType = null;
     }
