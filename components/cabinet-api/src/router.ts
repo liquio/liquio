@@ -11,12 +11,14 @@ import AppIdentHeaders from './lib/app_ident_headers';
 import AuthController from './controllers/auth';
 import TestController from './controllers/test';
 import { compilePathMatcher, isSuspiciousPath } from './lib/custom_api_path_matcher';
+import { sanitizeProxyHeaders } from './lib/proxy_headers';
 import { redactHeaders, redactUrl, urlPath } from './lib/redact';
 
 // Constants.
 const NULL_OBJECT_BASE64 = 'bnVsbA=='; // NULL-object string (`null`) as base64 equals `bnVsbA==`.
 const USER_DATA_HEADER = 'User-Data';
 const ALLOW_TOKENS_HEADER = 'Allow-Tokens';
+const CLIENT_FORBIDDEN_HEADERS = [USER_DATA_HEADER, ALLOW_TOKENS_HEADER]; // Set by cabinet-api only, never taken from the client.
 const MAX_HEADER_SIZE = 65535; // Raised from Node's 16 KiB default to fit large auth headers.
 
 /**
@@ -173,6 +175,8 @@ class Router {
               }
               delete proxyReqOpts.headers['cookie'];
               delete proxyReqOpts.headers['authorization'];
+              // Drop client-supplied User-Data/Allow-Tokens (any case) before configured headers are applied.
+              sanitizeProxyHeaders(proxyReqOpts.headers, CLIENT_FORBIDDEN_HEADERS);
 
               // Re-apply the matched path's own authorization header, if any.
               if (matchedPath.authorizationHeader) {
@@ -243,6 +247,7 @@ class Router {
             return true;
           },
           proxyReqOptDecorator: function (proxyReqOpts: any) {
+            sanitizeProxyHeaders(proxyReqOpts.headers, CLIENT_FORBIDDEN_HEADERS);
             proxyReqOpts.headers['x-trace-id'] = getTraceId();
             proxyReqOpts.headers['x-trace-service'] = appInfo.name;
             return proxyReqOpts;

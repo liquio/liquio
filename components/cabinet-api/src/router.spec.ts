@@ -18,7 +18,16 @@ jest.mock('./controllers/auth', () =>
   jest.fn().mockImplementation(() => ({
     initRoutes: jest.fn(),
     // Authenticated routes require the `x-auth` header.
-    getAuthMiddleware: () => (req: any, res: any, next: any) => (req.headers['x-auth'] ? next() : res.status(401).end()),
+    getAuthMiddleware: () => (req: any, res: any, next: any) => {
+      if (!req.headers['x-auth']) {
+        return res.status(401).end();
+      }
+      req.authUserInfo = { userId: 'u1' };
+      req.authUserUnits = [1];
+      req.separatedAuthUserUnits = { head: [], member: [1] };
+      req.authUserUnitEntities = { all: [{ allowTokens: ['t1'] }] };
+      next();
+    },
     getCheckUserInOneOfUnits: () => (_req: any, _res: any, next: any) => next(),
   })),
 );
@@ -52,6 +61,7 @@ describe('Router custom APIs', () => {
           { apiName: 'bearer', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/x', authorizationHeader: 'Bearer own' }] },
           { apiName: 'fwd', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/x', forwardClientToken: true }] },
           { apiName: 'fwd-bad', proxyTo, allowedPaths: [{ method: 'GET', path: '/x', forwardClientToken: true }] },
+          { apiName: 'cfg', proxyTo, sendUserData: false, headers: { 'Allow-Tokens': 'configured' }, allowedPaths: [{ method: 'GET', path: '/x' }] },
           { apiName: 'broken', proxyTo, sendUserData: false },
           { apiName: 'broken-empty', proxyTo, sendUserData: false, allowedPaths: [] },
         ],
@@ -135,5 +145,46 @@ describe('Router custom APIs', () => {
 
     expect((await fetch(`${base}/custom/fwd-bad/x`, { headers: { 'x-auth': '1' } })).status).toBe(404);
     expect(logSave).toHaveBeenCalledWith('custom-api-invalid-config', expect.objectContaining({ apiName: 'fwd-bad' }));
+  });
+
+  const b64 = (value: any) => Buffer.from(JSON.stringify(value), 'utf8').toString('base64');
+  const forged = { 'User-Data': b64({ userId: 'evil' }), 'Allow-Tokens': b64(['evil']) };
+
+  it('drops client User-Data/Allow-Tokens on a public custom API (User-Data reset to null)', async () => {
+    expect((await fetch(`${base}/custom/public/listed`, { headers: forged })).status).toBe(200);
+    expect(receivedHeaders[0]['user-data']).toBe('bnVsbA==');
+    expect(receivedHeaders[0]['allow-tokens']).toBeUndefined();
+  });
+
+  it('sends cabinet-generated User-Data/Allow-Tokens, not the client ones, on an authenticated custom API', async () => {
+    expect((await fetch(`${base}/custom/secured/items/1`, { headers: { 'x-auth': '1', ...forged } })).status).toBe(200);
+    const userData = JSON.parse(Buffer.from(receivedHeaders[0]['user-data'] as string, 'base64').toString());
+    expect(userData.userId).toBe('u1');
+    expect(JSON.parse(Buffer.from(receivedHeaders[0]['allow-tokens'] as string, 'base64').toString())).toEqual(['t1']);
+  });
+
+  it('keeps a server-configured Allow-Tokens header, not the client one', async () => {
+    expect((await fetch(`${base}/custom/cfg/x`, { headers: forged })).status).toBe(200);
+    expect(receivedHeaders[0]['allow-tokens']).toBe('configured');
+  });
+
+  it('drops client User-Data/Allow-Tokens on the main proxy', async () => {
+    const config = (global as any).config.discovery;
+    config.mainProxy = `http://localhost:${(upstream.address() as AddressInfo).port}`;
+    const mainApp = express();
+    new Router().initRoutes(mainApp);
+    delete config.mainProxy;
+    const mainServer = http.createServer(mainApp);
+    await new Promise<void>((resolve) => mainServer.listen(0, resolve));
+    const mainBase = `http://localhost:${(mainServer.address() as AddressInfo).port}`;
+    try {
+      expect((await fetch(`${mainBase}/some/path`, { headers: { ...forged, accept: 'text/plain' } })).status).toBe(200);
+    } finally {
+      await new Promise((resolve) => mainServer.close(resolve));
+    }
+    expect(received).toEqual(['/some/path']);
+    expect(receivedHeaders[0]['user-data']).toBeUndefined();
+    expect(receivedHeaders[0]['allow-tokens']).toBeUndefined();
+    expect(receivedHeaders[0].accept).toBe('text/plain');
   });
 });
