@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { pickMessageMeta } from '../lib/message_queue';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { SystemNotifier } from '../lib/system_notifier';
 import { WorkflowErrorModel } from '../models/workflow_error';
@@ -248,7 +249,7 @@ export class WorkflowBusiness {
 
       // Premature message: the step is not finished yet. Ack and drop it, it must not advance the flow.
       if (notFinishedReason) {
-        global.log.save('workflow-message-dropped', { reason: notFinishedReason, messageObject });
+        global.log.save('workflow-message-dropped', { reason: notFinishedReason, ...pickMessageMeta(messageObject) });
         return true;
       }
 
@@ -260,7 +261,7 @@ export class WorkflowBusiness {
 
       // Finished workflow: nothing to advance and nothing to record.
       if (workflow.isFinal !== false) {
-        global.log.save('workflow-message-dropped', { reason: 'workflow-final', messageObject });
+        global.log.save('workflow-message-dropped', { reason: 'workflow-final', ...pickMessageMeta(messageObject) });
         return true;
       }
 
@@ -413,7 +414,7 @@ export class WorkflowBusiness {
       }
     } catch (error) {
       global.log.save('workflow-processing-by-message-from-queue-error', {
-        messageObject,
+        ...pickMessageMeta(messageObject),
         error: { message: error && error.message, stack: error.stack },
       });
 
@@ -425,7 +426,7 @@ export class WorkflowBusiness {
           await this.workflowModel.setError(workflowId);
         }
       } catch (error) {
-        global.log.save('workflow-id-not-found-error', { messageObject, error: error.message });
+        global.log.save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
       }
 
       try {

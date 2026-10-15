@@ -8,6 +8,27 @@ const ERRORS_TO_RESTART = ['Error: socket hang up'];
 const REDIS_AMQP_KEY_PREFIX = 'amqp-message-id';
 const DEFAULT_REDIS_TTL = 60 * 60 * 2;
 
+const MESSAGE_META_KEYS = ['workflowId', 'taskId', 'eventId', 'gatewayId', 'amqpMessageId', 'type'];
+
+/**
+ * Pick only identifying fields of a queue message, safe to log (no body data).
+ * @param {object} messageObject Message object.
+ * @returns {object} Meta with the keys that exist and hold a string or number.
+ */
+export const pickMessageMeta = (messageObject: any): Record<string, string | number> => {
+  const meta: Record<string, string | number> = {};
+  if (!messageObject || typeof messageObject !== 'object') {
+    return meta;
+  }
+  for (const key of MESSAGE_META_KEYS) {
+    const value = messageObject[key];
+    if (typeof value === 'string' || typeof value === 'number') {
+      meta[key] = value;
+    }
+  }
+  return meta;
+};
+
 /**
  * Message queue.
  */
@@ -220,7 +241,11 @@ export class MessageQueue {
       this.channels.writing.sendToQueue(specificQueueName || defaultQueueName, preparedMessage, {
         persistent: true,
       });
-      global.log.save('amqp-message-sent', { messageString });
+      global.log.save('amqp-message-sent', {
+        ...pickMessageMeta(message),
+        queue: specificQueueName || defaultQueueName,
+        length: messageString.length,
+      });
       return true;
     } catch (error) {
       this.checkErrorAndExitIfNeedIt(error);
@@ -244,28 +269,21 @@ export class MessageQueue {
         try {
           messageObject = JSON.parse(messageString);
         } catch (error) {
-          global.log.save(
-            'message-parse-error',
-            { error: error?.message, length: messageString.length, prefix: messageString.slice(0, 50) },
-            'error',
-          );
+          global.log.save('message-parse-error', { error: error?.message, length: messageString.length }, 'error');
           this.discardMessage(message, true);
           return;
         }
 
         // Only plain objects are valid messages.
         if (messageObject === null || typeof messageObject !== 'object' || Array.isArray(messageObject)) {
-          global.log.save(
-            'message-parse-error',
-            { error: 'Message is not an object', length: messageString.length, prefix: messageString.slice(0, 50) },
-            'error',
-          );
+          global.log.save('message-parse-error', { error: 'Message is not an object', length: messageString.length }, 'error');
           this.discardMessage(message, true);
           return;
         }
 
-        global.log.save('message-from-queue-to-handle', { messageString });
         const { amqpMessageId } = messageObject;
+        const messageMeta = pickMessageMeta(messageObject);
+        global.log.save('message-from-queue-to-handle', messageMeta);
 
         try {
           // Try to get amqp message id.
@@ -275,9 +293,9 @@ export class MessageQueue {
               if (amqpMessageIdFromRedis) {
                 try {
                   // Inform that handled.
-                  global.log.save('message-from-queue-handled-from-redis', { messageString });
+                  global.log.save('message-from-queue-handled-from-redis', messageMeta);
                   this.channels.reading.ack(message);
-                  global.log.save('message-from-queue-ack-from-redis', { messageString });
+                  global.log.save('message-from-queue-ack-from-redis', messageMeta);
                 } catch (error) {
                   global.log.save('message-from-queue-ack-error-from-redis', error.message, 'error');
                   return;
@@ -296,15 +314,15 @@ export class MessageQueue {
           // Check handling status.
           if (!isHandled) {
             // Inform that not handled and exit.
-            global.log.save('message-from-queue-not-handled', { messageString });
+            global.log.save('message-from-queue-not-handled', messageMeta);
             this.channels.reading.nack(message);
             return;
           }
 
           // Inform that handled.
-          global.log.save('message-from-queue-handled', { messageString });
+          global.log.save('message-from-queue-handled', messageMeta);
           this.channels.reading.ack(message);
-          global.log.save('message-from-queue-ack', { messageString });
+          global.log.save('message-from-queue-ack', messageMeta);
 
           // Try to set amqp message id.
           if (global.redisClient && global.config?.redis?.amqpMessageCache?.isEnabled && amqpMessageId) {
