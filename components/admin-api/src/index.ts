@@ -15,6 +15,7 @@ import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
+import { assertNoPlaceholderSecrets } from './lib/config_check';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
@@ -30,6 +31,7 @@ async function main() {
   if (config.server.token === '') {
     throw new Error("Token must'n be empty.");
   }
+  const placeholderSecrets = assertNoPlaceholderSecrets(config);
   global.config = config;
 
   // Init http client.
@@ -40,6 +42,9 @@ async function main() {
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;
+  if (placeholderSecrets.length > 0) {
+    global.log.save('config-placeholder-secrets-in-dev', { paths: placeholderSecrets });
+  }
 
   // Init id-api client (shared by the whole process, see `getIdApiClient()`).
   initIdApiClient(config.auth);
