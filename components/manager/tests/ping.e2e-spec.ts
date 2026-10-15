@@ -28,12 +28,20 @@ describe('Ping Controller', () => {
       await app
         .request()
         .get('/test/ping')
+        .set('x-monitoring-token', TestApp.MONITORING_TOKEN)
         .expect(200)
         .expect((response: SupertestResponse) => {
           expect(response.body.data).toHaveProperty('message', 'pong');
           expect(response.body.data).toHaveProperty('processPid');
           expect(typeof response.body.data.processPid).toBe('number');
         });
+    });
+  });
+
+  describe('GET /test/ping without token', () => {
+    it('should return 403', async () => {
+      await app.request().get('/test/ping').expect(403);
+      await app.request().get('/test/ping').set('x-monitoring-token', 'wrong').expect(403);
     });
   });
 
