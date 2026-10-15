@@ -78,15 +78,14 @@ export class WorkflowModel extends Model {
    * @returns {Promise<WorkflowEntity>}
    */
   async appendMessage(id, message) {
-    const [, workflows] = await this.model.update(
-      {
-        data: Sequelize.literal(
-          `jsonb_set(data::jsonb, array['messages'], case when (data->'messages')::jsonb is null then '[]'::jsonb else (data->'messages')::jsonb end || '${JSON.stringify(
-            message,
-          )}'::jsonb)`,
-        ),
-      },
-      { where: { id }, returning: true },
+    // Message is passed as a bind parameter to avoid SQL injection.
+    const workflows = await this.db.query(
+      `UPDATE workflows
+       SET data = jsonb_set(coalesce(data, '{}'::jsonb), array['messages'], coalesce(data->'messages', '[]'::jsonb) || jsonb_build_array($1::jsonb)),
+           updated_at = now()
+       WHERE id = $2
+       RETURNING *`,
+      { bind: [JSON.stringify(message), id], type: Sequelize.QueryTypes.SELECT },
     );
 
     if (!workflows || workflows.length !== 1) {
