@@ -156,7 +156,7 @@ export class WorkflowBusiness {
       switch (true) {
         // Only forward message to the task queue.
         case Object.prototype.hasOwnProperty.call(messageObject, 'forwardToTask'): {
-          global.messageQueue.produce('writingQueueTask', messageObject);
+          await global.messageQueue.produce('writingQueueTask', messageObject);
           return true;
         }
         case Object.prototype.hasOwnProperty.call(messageObject, 'taskId'): {
@@ -323,8 +323,9 @@ export class WorkflowBusiness {
             // Save message in workflow history.
             workflow = await this.pushMessageToWorkflow(workflow.id, 'out', preparedMessageForQueue, currentSequences);
 
-            // Send to queue.
-            global.messageQueue.produce('writingQueueTask', preparedMessageForQueue);
+            // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
+            // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
+            await global.messageQueue.produce('writingQueueTask', preparedMessageForQueue);
           } else if (currentSequence['$']['targetRef'].search(/^gateway-[0-9]+$/i) !== -1) {
             const nextGatewayId = parseInt(currentSequence['$']['targetRef'].replace(/gateway-/i, ''));
             if (!nextGatewayId) {
@@ -377,8 +378,9 @@ export class WorkflowBusiness {
             // Save message in workflow history.
             workflow = await this.pushMessageToWorkflow(workflow.id, 'out', preparedMessageForQueue, currentSequences);
 
-            // Send to queue.
-            global.messageQueue.produce('writingQueueGateway', preparedMessageForQueue);
+            // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
+            // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
+            await global.messageQueue.produce('writingQueueGateway', preparedMessageForQueue);
           } else if (currentSequence['$']['targetRef'].search(/^event-[0-9]+$/i) !== -1) {
             const nextEventId = parseInt(currentSequence['$']['targetRef'].replace(/event-/i, ''));
             if (!nextEventId) {
@@ -403,8 +405,9 @@ export class WorkflowBusiness {
             // Save message in workflow history.
             workflow = await this.pushMessageToWorkflow(workflow.id, 'out', preparedMessageForQueue, currentSequences);
 
-            // Send to queue.
-            global.messageQueue.produce('writingQueueEvent', preparedMessageForQueue);
+            // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
+            // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
+            await global.messageQueue.produce('writingQueueEvent', preparedMessageForQueue);
           }
         }
       }

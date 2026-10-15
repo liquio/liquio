@@ -190,6 +190,31 @@ describe('WorkflowBusiness.createFromMessage', () => {
     expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 3 }));
   });
 
+  it('marks the workflow as errored (no unhandled rejection) when publishing the next step fails', async () => {
+    (global.messageQueue.produce as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
+
+    expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
+
+    expect(business.workflowErrorModel.create).toHaveBeenCalledWith(expect.objectContaining({ error: 'Channel closed', workflowId: 'wf' }));
+    expect(business.workflowModel.setError).toHaveBeenCalledWith('wf');
+  });
+
+  it('marks the workflow as errored when publishing to the gateway queue fails', async () => {
+    const flows = schema.schema['bpmn:sequenceFlow'];
+    const original = [...flows];
+    flows.splice(0, flows.length, sequenceFlow('Flow_5', 'task-1', 'gateway-7'));
+    (global.messageQueue.produce as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
+
+    try {
+      await business.createFromMessage({ workflowId: 'wf', taskId: 't1' });
+    } finally {
+      flows.splice(0, flows.length, ...original);
+    }
+
+    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueGateway', expect.anything());
+    expect(business.workflowModel.setError).toHaveBeenCalledWith('wf');
+  });
+
   it('does not mark a forged workflowId as failed when the task is missing', async () => {
     task = undefined;
 

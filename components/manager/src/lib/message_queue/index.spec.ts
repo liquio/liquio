@@ -90,6 +90,15 @@ describe('MessageQueue', () => {
       });
     });
 
+    it('should reject (not fail silently) when the channel throws on publish', async () => {
+      await messageQueue.init();
+      messageQueue.channels.writing.sendToQueue.mockImplementationOnce(() => {
+        throw new Error('Channel closed');
+      });
+
+      await expect(messageQueue.produce('writingQueueTask', { type: 'test' })).rejects.toThrow('Channel closed');
+    });
+
     it('should send message to specific queue when workflowTemplateId matches', async () => {
       const config = {
         amqpConnection: 'amqp://localhost',
