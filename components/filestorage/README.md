@@ -67,6 +67,22 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
   via `config.filestorage.auth`) and restart filestorage.
 - **Rotate on compromise.** If a token leaks, replace it in the config and
   redeploy filestorage and the affected caller.
+- **Transport (no in-process TLS).** The HTTP listener (`server.hostname`
+  `0.0.0.0` inside the container/pod, port `server.port`) is plain HTTP by
+  design and is not meant to cross hosts. docker-compose publishes it on
+  loopback only; helm keeps it cluster-internal behind the `backendInternal`
+  network policy. If a caller must reach it across hosts or untrusted
+  networks, terminate TLS in front of it (ingress, service mesh or reverse
+  proxy) and keep the listener itself unreachable from outside.
+- **Preview service.** Files are POSTed to `preview.server` for thumbnails.
+  It is disabled by default (`"server": ""` in the template and in helm):
+  no preview is generated, uploads still succeed and the health check reports
+  the preview service as not OK. To enable it set `preview.server`
+  (helm: `config.filestorage.preview.server`), preferably an `https://` URL
+  (certificates are verified; see `preview.tls`) or an internal address.
+  Startup logs `preview-server-insecure-http` for `http://` to a
+  non-internal host (not loopback, a single-label/compose name, `.svc`,
+  `.local`, `.internal`).
 - Outbound connections to the object-storage backend can optionally use a
   custom `tls` provider config (CA / client certificates).
 

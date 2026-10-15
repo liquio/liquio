@@ -80,8 +80,9 @@ metadata:
   )
 -}}
 {{ $modulesSettingsBase := dict }}
+{{- /* Preview is disabled unless config.filestorage.preview.server is set (prefer an in-cluster https:// URL). */ -}}
 {{ $previewBase := dict
-  "server" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "preview")))
+  "server" ""
   "routes" (dict
     "generatePreview" "/preview"
     "ping" "/test/ping"
