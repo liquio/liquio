@@ -14,6 +14,7 @@ const DEFAULT_CONFIG = {
 };
 const PREVIEW_CONTENT_TYPE = 'image/gif';
 const PREVIEW_EXTENSION = 'gif';
+const SAFE_FILE_EXTENSION_REGEXP = /^[a-z0-9]{1,10}$/i;
 
 /**
  * Preview.
@@ -70,13 +71,16 @@ export class Preview {
    */
   async getPreview(fileData: any, fileName: string) {
     // Define request options.
-    const fileExtension = (fileName || '').split('.').pop();
+    // Only a short alphanumeric extension is passed on; anything else is sent as empty.
+    const rawExtension = (fileName || '').split('.').pop();
+    const fileExtension = SAFE_FILE_EXTENSION_REGEXP.test(rawExtension) ? rawExtension : '';
 
     try {
       // Use axios to get preview
       const response = await axios({
         method: 'POST',
-        url: `${this.generatePreviewUrl}?file_extension=${fileExtension}`,
+        url: this.generatePreviewUrl,
+        params: { file_extension: fileExtension },
         data: fileData,
         timeout: this.timeout,
         httpsAgent: this.httpsAgent,

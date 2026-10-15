@@ -191,6 +191,24 @@ describe('Preview', () => {
       }
     });
 
+    it.each([['a.pdf&x=1'], ['a.pdf#frag'], ['a.p df'], ['a.pdf=1'], ['a.pdf%26x%3D1'], ['a.waytoolongextension']])(
+      'should not let file name %j alter query parameters',
+      async (fileName) => {
+        let requestedUrl = '';
+        const scope = nock('http://localhost:3345')
+          .post(/\/preview/)
+          .reply(200, function (uri) {
+            requestedUrl = uri;
+            return 'preview';
+          });
+
+        await preview.getPreview('content', fileName);
+
+        expect(scope.isDone()).toBe(true);
+        expect(requestedUrl).toBe('/preview?file_extension=');
+      },
+    );
+
     it('should handle file data as Buffer', async () => {
       const fileData = Buffer.from([0x89, 0x50, 0x4e, 0x47]); // PNG header
       const fileName = 'image.png';
@@ -234,7 +252,7 @@ describe('Preview', () => {
       const fileData = 'content';
       const fileName = 'filename_without_extension';
 
-      nock('http://localhost:3345').post('/preview?file_extension=filename_without_extension').reply(200, 'preview');
+      nock('http://localhost:3345').post('/preview?file_extension=').reply(200, 'preview');
 
       const result = await preview.getPreview(fileData, fileName);
       expect(Buffer.isBuffer(result)).toBe(true);

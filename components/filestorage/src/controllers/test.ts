@@ -7,6 +7,8 @@ const DEFAULT_VERSION = '0.0.0';
 const DEFAULT_CUSTOMER = 1;
 const DEFAULT_ENVIRONMENT = 0;
 const PWGEN_SERVICE_INFO = 'pwgen';
+const OPENSTACK_PROVIDER_NAME = 'openstack';
+const HTTP_STATUS_CODE_NOT_FOUND = 404;
 
 /**
  * Test controller.
@@ -135,14 +137,18 @@ export class TestController extends Controller {
     const { query } = req;
     const { count_object: countObject } = query;
     const { openstack: openstackConfig } = (this.providersConfig && this.providersConfig.list) || {};
+    const activeProviderName = this.providersConfig && this.providersConfig.activeProvider;
+    if (!openstackConfig || activeProviderName !== OPENSTACK_PROVIDER_NAME) {
+      return this.responseError(res, 'Not found', HTTP_STATUS_CODE_NOT_FOUND);
+    }
     const containerName = openstackConfig && openstackConfig.container;
     const openstack = new Openstack(openstackConfig);
     let response;
     try {
       response = await openstack.getMetadata(containerName, countObject);
     } catch (error) {
-      global.log.save('check-openstack-metadata-error', { error });
-      return this.responseError(res, `get-openstack-metadata-error: ${error && error.message}`);
+      global.log.save('check-openstack-metadata-error', { error: error && error.message });
+      return this.responseError(res, 'File provider check failed');
     }
 
     // Return response.

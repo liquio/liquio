@@ -68,4 +68,21 @@ describe('Test Controller', () => {
         });
     });
   });
+
+  describe('GET /test/file_provider', () => {
+    it('should require a valid basic auth token', async () => {
+      await app.request().get('/test/file_provider').expect(401);
+    });
+
+    it('should return 404 without leaking details when OpenStack is not the active provider', async () => {
+      await app
+        .request()
+        .get('/test/file_provider')
+        .set('Authorization', TEST_AUTH_HEADER)
+        .expect(404)
+        .expect((response: SupertestResponse) => {
+          expect(response.body.error.message).toBe('Not found');
+        });
+    });
+  });
 });
