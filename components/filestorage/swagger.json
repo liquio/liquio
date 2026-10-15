@@ -1686,7 +1686,7 @@
       "required": true,
       "schema": {
         "type": "string",
-        "example": "Basic dGVzdDE6dGVzdA=="
+        "example": "Basic <base64(user:password)>"
       }
     },
     "contentTypeHeader": {

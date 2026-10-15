@@ -1,8 +1,8 @@
 import AdmZip from 'adm-zip';
 
-import { TestApp } from './test-app';
+import { TestApp, TEST_AUTH_HEADER } from './test-app';
 
-const AUTH_HEADER = 'Basic dGVzdDE6dGVzdA==';
+const AUTH_HEADER = TEST_AUTH_HEADER;
 const DEFAULT_CONTAINER_ID = 1;
 
 describe('Files Controller', () => {

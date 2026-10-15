@@ -56,6 +56,15 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
   signature and container by ID.
 - **One token per calling service.** Issue a distinct token (and `user`) to
   each client so access can be revoked and attributed individually.
+- **No default tokens.** The shipped `auth.json` has an empty `tokens` list and
+  the service exits at startup (`config-validation-error`) if `tokens` is
+  empty, malformed (must be `Basic base64(user:password)`) or one of the
+  publicly known tokens previously committed to the repository. Generate
+  tokens with `scripts/init.sh` (docker-compose) or the helm `init-secrets`
+  job. Helm upgrade note: releases created before this change hold a
+  `filestorage` secret with `auth.json = {"token": ...}`, which the service
+  ignores; delete that secret and re-run the init job (or set `tokens`
+  via `config.filestorage.auth`) and restart filestorage.
 - **Rotate on compromise.** If a token leaks, replace it in the config and
   redeploy filestorage and the affected caller.
 - Outbound connections to the object-storage backend can optionally use a

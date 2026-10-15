@@ -5,6 +5,7 @@ import { Db } from './lib/db';
 import { Providers } from './providers';
 import { Models } from './models';
 import { Router } from './router';
+import { validateAuthConfig } from './lib/config_validation';
 
 // Init config.
 const config = initializeConfig();
@@ -18,6 +19,13 @@ const log = new Log([consoleLogProvider], activeProviders);
 
 // Globals.
 global.log = log;
+
+// Do not start with missing or publicly known auth tokens.
+const authConfigProblems = validateAuthConfig(config);
+if (authConfigProblems.length) {
+  log.save('config-validation-error', { problems: authConfigProblems }, 'error');
+  process.exit(1);
+}
 
 // Set process title.
 process.title = config.app.processTitle;

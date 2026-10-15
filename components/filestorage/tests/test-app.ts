@@ -2,6 +2,7 @@
 import { execSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 import supertest from 'supertest';
 import * as portfinder from 'portfinder';
@@ -15,6 +16,7 @@ import { Db } from '../src/lib/db';
 import { Providers } from '../src/providers';
 import { Models } from '../src/models';
 import { Router } from '../src/router';
+import { validateAuthConfig } from '../src/lib/config_validation';
 
 const debug = createDebug;
 
@@ -67,6 +69,9 @@ const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_FILESTORAGE';
 const ENV_PREFIX = `${LIQUIO_CONFIG_PREFIX}_`;
 
+// Auth token generated per test run: config templates ship no usable tokens.
+export const TEST_AUTH_HEADER = `Basic ${Buffer.from(`e2e:${randomBytes(24).toString('hex')}`).toString('base64')}`;
+
 export class TestApp {
   static pgContainer;
 
@@ -110,6 +115,12 @@ export class TestApp {
         host: 'localhost',
         startPort: 60000 + (process.pid % 1000),
       }),
+    });
+
+    // Templates ship an empty token list, so inject the generated test token.
+    process.env[`${ENV_PREFIX}auth`] = JSON.stringify({
+      ...templateConfig.auth,
+      tokens: [TEST_AUTH_HEADER],
     });
 
     // No external file storage provider is exercised by the controllers under test.
@@ -193,6 +204,12 @@ export class TestApp {
     const { initialize: initializeConfig } = await import('../src/lib/config');
     const config = initializeConfig();
     this.config = config;
+
+    // Same startup validation as src/app.ts.
+    const authProblems = validateAuthConfig(config);
+    if (authProblems.length) {
+      throw new Error(`Invalid auth config: ${authProblems.join('; ')}`);
+    }
 
     // Init log.
     const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });

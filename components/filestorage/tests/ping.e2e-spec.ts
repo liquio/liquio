@@ -1,6 +1,6 @@
 import type { Response as SupertestResponse } from 'supertest';
 
-import { TestApp } from './test-app';
+import { TestApp, TEST_AUTH_HEADER } from './test-app';
 
 describe('Test Controller', () => {
   let app: TestApp;
@@ -61,7 +61,7 @@ describe('Test Controller', () => {
       await app
         .request()
         .get('/test/ping_with_auth')
-        .set('Authorization', 'Basic dGVzdDE6dGVzdA==')
+        .set('Authorization', TEST_AUTH_HEADER)
         .expect(200)
         .expect((response: SupertestResponse) => {
           expect(response.body.data).toHaveProperty('message', 'pong');
