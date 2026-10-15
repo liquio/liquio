@@ -116,7 +116,8 @@ export class AuthController extends Controller {
     // Get auth tokens.
     let authTokens;
     try {
-      authTokens = await this.idApiClient.getTokens(code);
+      // id-api binds the code to the redirect URI of the authorization request.
+      authTokens = await this.idApiClient.getTokens(code, { redirectUri: this.config.auth.authRedirectUrl });
     } catch (err) {
       global.log.save(
         'auth-login-error|cannot-get-tokens',

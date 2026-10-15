@@ -146,13 +146,24 @@ export class IdApiClient {
   /**
    * Get tokens by the authorization code. `POST /oauth/token/` (form).
    * @param {string} code Auth code.
+   * @param {object} [options] Code binding.
+   * @param {string} [options.redirectUri] Redirect URI used in the authorization request; id-api requires the same value here.
+   * @param {string} [options.codeVerifier] PKCE code verifier, when the authorization request had a code challenge.
    * @returns {Promise<IdApiTokens>}
    */
-  async getTokens(code: string): Promise<IdApiTokens> {
+  async getTokens(code: string, options: { redirectUri?: string; codeVerifier?: string } = {}): Promise<IdApiTokens> {
+    const { redirectUri, codeVerifier } = options;
     const { body } = await this.request({
       method: 'POST',
       route: this.routes.getToken,
-      form: { grant_type: 'authorization_code', code, client_id: this.clientId, client_secret: this.clientSecret },
+      form: {
+        grant_type: 'authorization_code',
+        code,
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+        ...(redirectUri && { redirect_uri: redirectUri }),
+        ...(codeVerifier && { code_verifier: codeVerifier }),
+      },
     });
 
     if (!body?.access_token || !body?.refresh_token) {

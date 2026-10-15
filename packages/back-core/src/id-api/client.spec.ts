@@ -202,6 +202,18 @@ describe('IdApiClient', () => {
       expect(new URLSearchParams(call.body).get('code')).toBe('code 1');
       expect(new URLSearchParams(call.body).get('client_id')).toBe('client-1');
       expect(new URLSearchParams(call.body).get('client_secret')).toBe('secret-1');
+      expect(new URLSearchParams(call.body).has('redirect_uri')).toBe(false);
+      expect(new URLSearchParams(call.body).has('code_verifier')).toBe(false);
+    });
+
+    it('sends the redirect URI and the PKCE code verifier the code is bound to', async () => {
+      mockResponse(200, { access_token: 'a', refresh_token: 'r' });
+
+      await client.getTokens('c', { redirectUri: 'https://app.example/cb?x=1', codeVerifier: 'v'.repeat(43) });
+
+      const params = new URLSearchParams(lastCall().body);
+      expect(params.get('redirect_uri')).toBe('https://app.example/cb?x=1');
+      expect(params.get('code_verifier')).toBe('v'.repeat(43));
     });
 
     it('throws when tokens are missing', async () => {
