@@ -135,3 +135,109 @@ describe('OAuthModel.getRefreshToken', () => {
     expect(ldapSync.isRefreshAllowed).not.toHaveBeenCalled();
   });
 });
+
+describe('OAuthModel authorization code binding', () => {
+  const CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
+  const REDIRECT = 'https://app.example/cb';
+  let model: OAuthModel;
+  let authCodeModel: any;
+
+  const row = (overrides: Record<string, any> = {}) => ({
+    dataValues: {
+      code: 'code',
+      userId: USER_ID,
+      clientId: 'client',
+      expires: new Date(Date.now() + 60000),
+      scope: ['a'],
+      redirectUri: REDIRECT,
+      codeChallenge: null,
+      codeChallengeMethod: null,
+      ...overrides,
+    },
+  });
+  const save = (overrides: Record<string, any> = {}) =>
+    model.saveAuthorizationCode(
+      { authorizationCode: 'code', expiresAt: new Date(), scope: ['a'], redirectUri: REDIRECT, ...overrides } as any,
+      { clientId: 'client', redirectUri: ['https://other.example/cb'] } as any,
+      { id: USER_ID } as any,
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    authCodeModel = { create: jest.fn().mockResolvedValue({}), findOne: jest.fn().mockResolvedValue(row()), destroy: jest.fn().mockResolvedValue(1) };
+    (Models.model as jest.Mock).mockReturnValue(authCodeModel);
+    model = new OAuthModel();
+  });
+
+  it('persists the request redirect URI and PKCE challenge and returns them, not the client defaults', async () => {
+    const saved = await save({ codeChallenge: CHALLENGE, codeChallengeMethod: 'S256' });
+
+    expect(authCodeModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({ redirectUri: REDIRECT, codeChallenge: CHALLENGE, codeChallengeMethod: 'S256' }),
+    );
+    expect(saved).toMatchObject({ redirectUri: REDIRECT, codeChallenge: CHALLENGE, codeChallengeMethod: 'S256' });
+  });
+
+  it('saves a code without PKCE', async () => {
+    await save();
+
+    expect(authCodeModel.create).toHaveBeenCalledWith(expect.objectContaining({ redirectUri: REDIRECT, codeChallenge: undefined }));
+  });
+
+  it.each([undefined, ''])('refuses to save a code without a redirect URI %p', async (redirectUri) => {
+    await expect(save({ redirectUri })).rejects.toThrow('redirect URI');
+    expect(authCodeModel.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { codeChallenge: CHALLENGE },
+    { codeChallengeMethod: 'S256' },
+    { codeChallenge: CHALLENGE, codeChallengeMethod: 'plain' },
+    { codeChallenge: 'short', codeChallengeMethod: 'S256' },
+  ])('refuses to save invalid PKCE parameters %p', async (overrides) => {
+    await expect(save(overrides)).rejects.toThrow('PKCE');
+    expect(authCodeModel.create).not.toHaveBeenCalled();
+  });
+
+  it('loads the persisted bindings', async () => {
+    authCodeModel.findOne.mockResolvedValue(row({ codeChallenge: CHALLENGE, codeChallengeMethod: 'S256' }));
+
+    expect(await model.getAuthorizationCode('code')).toMatchObject({
+      authorizationCode: 'code',
+      redirectUri: REDIRECT,
+      codeChallenge: CHALLENGE,
+      codeChallengeMethod: 'S256',
+      client: { id: 'client' },
+      user: { id: USER_ID },
+    });
+  });
+
+  it('loads a code without PKCE', async () => {
+    expect(await model.getAuthorizationCode('code')).toMatchObject({ redirectUri: REDIRECT, codeChallenge: undefined });
+  });
+
+  it.each([null, ''])('fails closed for a legacy code without a redirect URI %p', async (redirectUri) => {
+    authCodeModel.findOne.mockResolvedValue(row({ redirectUri }));
+
+    expect(await model.getAuthorizationCode('code')).toBe(false);
+  });
+
+  it.each([
+    { codeChallenge: CHALLENGE, codeChallengeMethod: null },
+    { codeChallenge: null, codeChallengeMethod: 'S256' },
+    { codeChallenge: CHALLENGE, codeChallengeMethod: 'plain' },
+    { codeChallenge: 'short', codeChallengeMethod: 'S256' },
+  ])('fails closed for a malformed PKCE binding %p', async (overrides) => {
+    authCodeModel.findOne.mockResolvedValue(row(overrides));
+
+    expect(await model.getAuthorizationCode('code')).toBe(false);
+  });
+
+  it('revokes by authorization code and reports whether a row was deleted', async () => {
+    expect(await model.revokeAuthorizationCode({ authorizationCode: 'code' } as any)).toBe(true);
+    expect(authCodeModel.destroy).toHaveBeenCalledWith({ where: { code: 'code' } });
+
+    authCodeModel.destroy.mockResolvedValue(0);
+    expect(await model.revokeAuthorizationCode({ authorizationCode: 'code' } as any)).toBe(false);
+  });
+});

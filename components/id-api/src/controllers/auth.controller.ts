@@ -175,7 +175,7 @@ export class AuthController extends BaseController {
     }
 
     // Prepare auth code data to add.
-    const authCodeData = { code, userId, clientId, expires, scope };
+    const authCodeData = { code, userId, clientId, expires, scope, redirectUri: this.config.oauth?.defaults?.redirect_uri?.[0] };
 
     // Delete existing auth code.
     try {
@@ -491,7 +491,7 @@ export class AuthController extends BaseController {
     }
 
     // Prepare auth code data to add.
-    const authCodeData = { code, userId, clientId, expires, scope };
+    const authCodeData = { code, userId, clientId, expires, scope, redirectUri: this.config.oauth?.defaults?.redirect_uri?.[0] };
 
     // Delete existing auth code.
     try {
@@ -707,6 +707,11 @@ export class AuthController extends BaseController {
     // Under Express 5 `req.query` is a fresh parse on every access, so delete from the OAuth request snapshot instead.
     if (request.query?.state === '') {
       delete request.query.state;
+    }
+    // The PKCE binding comes only from the authorization session (`readyClient`), never from the continue request.
+    if (request.query) {
+      delete request.query.code_challenge;
+      delete request.query.code_challenge_method;
     }
 
     if (req.body.response_type !== 'code') {

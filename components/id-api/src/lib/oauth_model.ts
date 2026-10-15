@@ -4,6 +4,7 @@ import {
   AuthorizationCode,
   AuthorizationCodeModel,
   Falsey,
+  InvalidRequestError,
   InvalidTokenError,
   Client as OAuthClient,
   OAuthError,
@@ -17,6 +18,8 @@ import { Log } from '@liquio/back-core';
 import { Models } from '../models';
 import { AuthCodeAttributes } from '../models/auth_code.model';
 import { Services } from '../services';
+
+const PKCE_CHALLENGE_REGEXP = /^[A-Za-z0-9_-]{43}$/;
 
 function isSecretValid(expected: unknown, candidate: unknown): boolean {
   if (typeof expected !== 'string' || !expected || typeof candidate !== 'string' || !candidate) return false;
@@ -114,12 +117,24 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
         errorCode: 400,
       });
     }
+    if (typeof authCode.redirectUri !== 'string' || !authCode.redirectUri.length) {
+      throw new InvalidRequestError('Missing authorization code redirect URI');
+    }
+    if (
+      (authCode.codeChallenge !== undefined || authCode.codeChallengeMethod !== undefined) &&
+      (typeof authCode.codeChallenge !== 'string' || !PKCE_CHALLENGE_REGEXP.test(authCode.codeChallenge) || authCode.codeChallengeMethod !== 'S256')
+    ) {
+      throw new InvalidRequestError('Invalid PKCE parameters; use S256');
+    }
     const query: AuthCodeAttributes = {
       code: authCode.authorizationCode,
       userId: user.userId ?? user.id ?? user,
       clientId: client.clientId,
       expires: authCode.expiresAt,
       scope: authCode.scope!,
+      redirectUri: authCode.redirectUri,
+      codeChallenge: authCode.codeChallenge,
+      codeChallengeMethod: authCode.codeChallengeMethod,
     };
     return Models.model('authCode')
       .create(query)
@@ -134,7 +149,10 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
         return {
           authorizationCode: authCode.authorizationCode,
           expiresAt: authCode.expiresAt,
-          redirectUri: client.redirectUri,
+          redirectUri: authCode.redirectUri,
+          scope: authCode.scope,
+          codeChallenge: authCode.codeChallenge,
+          codeChallengeMethod: authCode.codeChallengeMethod,
           user,
           client,
         };
@@ -159,20 +177,45 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
       this.log.save('cannot-get-authorization-code', { codeShort, codeHash }, 'error');
 
       return false;
-    } else {
-      return {
-        code: authCode.code,
-        expiresAt: authCode.expires,
-        client: { id: authCode.clientId },
-        user: { id: authCode.userId },
-        scope: authCode.scope,
-      } as unknown as AuthorizationCode;
     }
+
+    // Fail closed: a code without the redirect URI binding (legacy row) or with a malformed PKCE binding cannot be validated.
+    if (!authCode.redirectUri) {
+      this.log.save(
+        'authorization-code-without-redirect-binding',
+        { codeHash: crypto.createHash('sha256').update(authorizationCode).digest('hex') },
+        'error',
+      );
+      return false;
+    }
+    if (
+      (authCode.codeChallenge || authCode.codeChallengeMethod) &&
+      (!authCode.codeChallenge || !PKCE_CHALLENGE_REGEXP.test(authCode.codeChallenge) || authCode.codeChallengeMethod !== 'S256')
+    ) {
+      this.log.save(
+        'authorization-code-invalid-pkce-binding',
+        { codeHash: crypto.createHash('sha256').update(authorizationCode).digest('hex') },
+        'error',
+      );
+      return false;
+    }
+
+    return {
+      authorizationCode: authCode.code,
+      redirectUri: authCode.redirectUri,
+      codeChallenge: authCode.codeChallenge ?? undefined,
+      codeChallengeMethod: authCode.codeChallengeMethod ?? undefined,
+      expiresAt: authCode.expires,
+      client: { id: authCode.clientId } as OAuthClient,
+      user: { id: authCode.userId },
+      scope: authCode.scope,
+    };
   }
 
   async revokeAuthorizationCode(code: AuthorizationCode): Promise<boolean> {
-    this.log.save('revoke-authorization-code', { code }, 'info');
-    return Boolean(Models.model('authCode').destroy({ where: { code: code.code } }));
+    this.log.save('revoke-authorization-code', { codeHash: crypto.createHash('sha256').update(code.authorizationCode).digest('hex') }, 'info');
+    const deletedCount = await Models.model('authCode').destroy({ where: { code: code.authorizationCode } });
+    return deletedCount > 0;
   }
 
   async getRefreshToken(refreshToken: string): Promise<RefreshToken | Falsey> {

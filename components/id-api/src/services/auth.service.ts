@@ -142,9 +142,19 @@ export class AuthService extends BaseService {
       query('redirect_uri').isString(),
       async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         let { client_id, response_type = 'code', state, redirect_uri } = matchedData(req, { locations: ['query'] });
+        const { code_challenge, code_challenge_method } = req.query;
 
         if (response_type !== 'code') {
           res.status(400).send({ error: 'unsupported_response_type', message: 'Only response_type=code is supported' });
+          return;
+        }
+
+        // PKCE is optional, but a request that uses it must carry both parameters, and only S256 is supported.
+        if (
+          (code_challenge !== undefined || code_challenge_method !== undefined) &&
+          (typeof code_challenge !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(code_challenge) || code_challenge_method !== 'S256')
+        ) {
+          res.status(400).send({ error: 'invalid_request', message: 'Invalid PKCE parameters; use S256' });
           return;
         }
 
@@ -168,6 +178,9 @@ export class AuthService extends BaseService {
           const session = req.session;
           session.client_id = client_id;
           session.redirect_uri = redirect_uri;
+          // Always overwrite so that a previous authorization's PKCE binding cannot leak into this one.
+          session.code_challenge = code_challenge;
+          session.code_challenge_method = code_challenge_method;
           session.state = state;
           session.client_requirements = client.requirements;
           session.scope = client.scope;
@@ -206,6 +219,8 @@ export class AuthService extends BaseService {
         // Express 5 re-parses `req.query` on every access, so the client params are passed via `req.body` only
         // (@node-oauth/oauth2-server reads `request.body` before `request.query`).
         req.body.client_id = req.session.client_id ?? this.cfg!.defaults!.client_id;
+        req.body.code_challenge = req.session.code_challenge;
+        req.body.code_challenge_method = req.session.code_challenge_method;
         req.body.state = req.session.state ?? '';
         req.body.response_type = req.session.response_type ?? 'code';
         req.body.need_scope_approve = 'need_scope_approve' in req.session ? req.session.need_scope_approve : this.cfg!.defaults!.need_scope_approve;
@@ -404,11 +419,12 @@ export class AuthService extends BaseService {
     return generatePinCode(length);
   }
 
-  async generateCustomAuthorizationCode(user: any, clientId: any, scope: any, expiresIn = 60) {
+  async generateCustomAuthorizationCode(user: any, clientId: any, scope: any, expiresIn = 60, redirectUri = this.cfg?.defaults?.redirect_uri?.[0]) {
     const code = {
       authorizationCode: crypto.randomBytes(20).toString('hex'),
       expiresAt: Models.db.literal(`NOW() + INTERVAL '${expiresIn} SECOND'`),
       scope,
+      redirectUri,
     };
 
     await this.oAuth2Model.saveAuthorizationCode(code as any, { clientId } as any, user);

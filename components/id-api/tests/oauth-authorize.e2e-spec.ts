@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import bcrypt from 'bcrypt';
 import supertest from 'supertest';
 
@@ -12,7 +14,7 @@ describe('AuthController - OAuth authorization', () => {
   const CREDENTIALS_CLIENT = { id: 'credentials-client', secret: 'credentials-client-s3cret' };
   let app: TestApp;
 
-  const authorise = (agent: supertest.Agent, params: Record<string, string>) =>
+  const authorise = (agent: supertest.Agent, params: Record<string, unknown>) =>
     agent.get('/authorise').query({ client_id: 'liquio-portal', state: 'st', redirect_uri: REGISTERED_URI, ...params });
 
   async function loggedInAgent(): Promise<supertest.Agent> {
@@ -22,7 +24,7 @@ describe('AuthController - OAuth authorization', () => {
   }
 
   // Runs the browser part of the authorization code flow and returns the issued code.
-  async function issueCode(params: Record<string, string> = {}): Promise<string> {
+  async function issueCode(params: Record<string, unknown> = {}): Promise<string> {
     const agent = await loggedInAgent();
     await authorise(agent, { response_type: 'code', ...params })
       .redirects(0)
@@ -41,6 +43,7 @@ describe('AuthController - OAuth authorization', () => {
       grant_type: 'authorization_code',
       code,
       client_id: client.id,
+      redirect_uri: REGISTERED_URI,
       ...(client.secret && { client_secret: client.secret }),
       ...extra,
     });
@@ -301,12 +304,120 @@ describe('AuthController - OAuth authorization', () => {
         .expect(401);
     });
 
-    it('should not support PKCE: a code verifier is rejected', async () => {
-      const code = await issueCode({ code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', code_challenge_method: 'S256' });
+    describe('redirect_uri binding', () => {
+      it('should reject a mismatched redirect_uri and consume the code', async () => {
+        const code = await issueCode();
+        const before = await countAccessTokens();
 
-      const response = await exchangeCode(code, undefined, { code_verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk' }).expect(401);
+        const response = await exchangeCode(code, undefined, { redirect_uri: ATTACKER_URI }).expect(401);
 
-      expect(response.body.access_token).toBeUndefined();
+        expect(response.body.access_token).toBeUndefined();
+        expect(await countAccessTokens()).toBe(before);
+        expect(await app.model('authCode').count({ where: { code } })).toBe(0);
+      });
+
+      it('should reject a missing redirect_uri', async () => {
+        const code = await issueCode();
+
+        const response = await exchangeCode(code, undefined, { redirect_uri: '' }).expect(401);
+
+        expect(response.body.access_token).toBeUndefined();
+      });
+
+      it('should persist the redirect_uri used at authorization', async () => {
+        const code = await issueCode();
+
+        expect((await app.model('authCode').findOne({ where: { code } }))?.dataValues).toMatchObject({
+          redirectUri: REGISTERED_URI,
+          codeChallenge: null,
+          codeChallengeMethod: null,
+        });
+      });
+
+      it('should reject a legacy code without a redirect binding', async () => {
+        const code = await issueCode();
+        await app.model('authCode').update({ redirectUri: null }, { where: { code } });
+
+        const response = await exchangeCode(code).expect(401);
+
+        expect(response.body.access_token).toBeUndefined();
+      });
+    });
+
+    describe('PKCE', () => {
+      const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+      const pkce = { code_challenge: challenge, code_challenge_method: 'S256' };
+
+      it('should exchange a code with the matching code_verifier and persist the challenge', async () => {
+        const code = await issueCode(pkce);
+        expect((await app.model('authCode').findOne({ where: { code } }))?.dataValues).toMatchObject({
+          redirectUri: REGISTERED_URI,
+          codeChallenge: challenge,
+          codeChallengeMethod: 'S256',
+        });
+
+        const { body } = await exchangeCode(code, undefined, { code_verifier: verifier }).expect(200);
+
+        expect(body.access_token).toEqual(expect.any(String));
+      });
+
+      it('should reject a wrong code_verifier and consume the code', async () => {
+        const code = await issueCode(pkce);
+
+        const response = await exchangeCode(code, undefined, { code_verifier: 'x'.repeat(43) }).expect(401);
+
+        expect(response.body.access_token).toBeUndefined();
+        expect(await app.model('authCode').count({ where: { code } })).toBe(0);
+      });
+
+      it('should reject a missing code_verifier', async () => {
+        const code = await issueCode(pkce);
+
+        const response = await exchangeCode(code).expect(401);
+
+        expect(response.body.access_token).toBeUndefined();
+      });
+
+      it('should reject a code_verifier for a code issued without PKCE', async () => {
+        const code = await issueCode();
+
+        const response = await exchangeCode(code, undefined, { code_verifier: verifier }).expect(401);
+
+        expect(response.body.access_token).toBeUndefined();
+      });
+
+      it('should still require the client secret of a confidential client', async () => {
+        const code = await issueCode({ client_id: SECRET_CLIENT.id, ...pkce });
+
+        await exchangeCode(code, { id: SECRET_CLIENT.id }, { code_verifier: verifier }).expect(401);
+      });
+
+      it('should ignore PKCE parameters replaced on the continue request', async () => {
+        const agent = await loggedInAgent();
+        await authorise(agent, { response_type: 'code', ...pkce })
+          .redirects(0)
+          .expect(302);
+        const response = await agent
+          .get('/authorise/continue')
+          .query({ code_challenge: 'a'.repeat(43), code_challenge_method: 'S256' })
+          .redirects(0)
+          .expect(302);
+        const code = new URL(response.headers.location).searchParams.get('code')!;
+
+        expect((await app.model('authCode').findOne({ where: { code } }))?.dataValues.codeChallenge).toBe(challenge);
+      });
+
+      it.each([
+        { code_challenge: 'a'.repeat(43) },
+        { code_challenge_method: 'S256' },
+        { code_challenge: 'a'.repeat(43), code_challenge_method: 'plain' },
+        { code_challenge: 'short', code_challenge_method: 'S256' },
+      ])('should reject incomplete or unsupported PKCE parameters %p at authorization', async (params) => {
+        const agent = await loggedInAgent();
+
+        await authorise(agent, params).redirects(0).expect(400);
+      });
     });
   });
 
@@ -329,7 +440,7 @@ describe('AuthController - OAuth authorization', () => {
         .post('/oauth/token')
         .auth(SECRET_CLIENT.id, SECRET_CLIENT.secret)
         .type('form')
-        .send({ grant_type: 'authorization_code', code })
+        .send({ grant_type: 'authorization_code', code, redirect_uri: REGISTERED_URI })
         .expect(200);
 
       expect(body.access_token).toEqual(expect.any(String));

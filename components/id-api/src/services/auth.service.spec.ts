@@ -278,6 +278,38 @@ describe('AuthService OAuth client preparation', () => {
       expect(req.session.redirect_uri).toBeUndefined();
     });
 
+    it('stores the PKCE challenge in the session', async () => {
+      const req = createReq({ ...query, code_challenge: 'a'.repeat(43), code_challenge_method: 'S256' });
+
+      expect(await runChain(auth.prepareClient(), req, createRes())).toBe(true);
+      expect(req.session).toMatchObject({ code_challenge: 'a'.repeat(43), code_challenge_method: 'S256' });
+    });
+
+    it('clears a previous PKCE binding when the new authorization has none', async () => {
+      const req = createReq(query, { code_challenge: 'b'.repeat(43), code_challenge_method: 'S256' });
+
+      expect(await runChain(auth.prepareClient(), req, createRes())).toBe(true);
+      expect(req.session.code_challenge).toBeUndefined();
+      expect(req.session.code_challenge_method).toBeUndefined();
+    });
+
+    it.each([
+      { code_challenge: 'a'.repeat(43) },
+      { code_challenge_method: 'S256' },
+      { code_challenge: 'a'.repeat(43), code_challenge_method: 'plain' },
+      { code_challenge: 'short', code_challenge_method: 'S256' },
+      { code_challenge: ['a', 'b'], code_challenge_method: 'S256' },
+    ])('rejects incomplete or unsupported PKCE parameters %p', async (extra) => {
+      const req = createReq({ ...query, ...extra });
+      const res = createRes();
+
+      expect(await runChain(auth.prepareClient(), req, res)).toBe(false);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(getClient).not.toHaveBeenCalled();
+      expect(req.session.code_challenge).toBeUndefined();
+    });
+
     it('rejects a client that has no registered redirect URIs', async () => {
       getClient.mockResolvedValue({ clientId: 'client', redirectUris: [], requirements: [] });
       const req = createReq({ client_id: 'client', state: 'st', redirect_uri: REGISTERED });
@@ -289,6 +321,24 @@ describe('AuthService OAuth client preparation', () => {
   });
 
   describe('readyClient', () => {
+    it('passes the session PKCE binding and ignores PKCE parameters of the request', async () => {
+      const session = { client_id: 'client', redirect_uri: REGISTERED, code_challenge: 'a'.repeat(43), code_challenge_method: 'S256' };
+      const req = createReq({}, session, { code_challenge: 'b'.repeat(43), code_challenge_method: 'plain' });
+
+      expect(await runChain(auth.readyClient(), req, createRes())).toBe(true);
+
+      expect(req.body).toMatchObject({ code_challenge: 'a'.repeat(43), code_challenge_method: 'S256' });
+    });
+
+    it('does not pass PKCE parameters of the request when the session has none', async () => {
+      const req = createReq({}, { client_id: 'client', redirect_uri: REGISTERED }, { code_challenge: 'b'.repeat(43), code_challenge_method: 'S256' });
+
+      expect(await runChain(auth.readyClient(), req, createRes())).toBe(true);
+
+      expect(req.body.code_challenge).toBeUndefined();
+      expect(req.body.code_challenge_method).toBeUndefined();
+    });
+
     it('takes the destination from the session and ignores the request query', async () => {
       const req = createReq(
         { redirect_uri: 'https://attacker.example/' },
