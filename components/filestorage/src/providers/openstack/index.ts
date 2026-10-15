@@ -1,7 +1,10 @@
+import type https from 'node:https';
+
 import axios from 'axios';
 
 import { Provider } from '../provider';
 import { Auth } from './auth';
+import { createHttpsAgent } from '../../lib/tls';
 import { HttpRequest as Request } from '../../lib/http_request';
 
 const EXTERNAL_SERVICE_NAME = 'openstack';
@@ -32,6 +35,7 @@ export class OpenStack extends Provider {
   container: string;
   authCacheTtl: number;
   auth: Auth;
+  httpsAgent?: https.Agent;
 
   /**
    * OpenStack constructor.
@@ -46,6 +50,7 @@ export class OpenStack extends Provider {
       this.authVersion = openStackConfig.authVersion || DEFAULT_AUTH_VERSION;
       this.routes = { ...DEFAULT_ROUTES, ...openStackConfig.routes };
       this.timeout = openStackConfig.timeout;
+      this.httpsAgent = createHttpsAgent(openStackConfig.tls);
       this.tenantName = openStackConfig.tenantName;
       this.account = openStackConfig.account;
       this.container = openStackConfig.container || DEFAULT_CONTAINER;
@@ -142,6 +147,7 @@ export class OpenStack extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
+      httpsAgent: this.httpsAgent,
       responseType: 'stream',
     });
 
@@ -166,6 +172,7 @@ export class OpenStack extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
+      httpsAgent: this.httpsAgent,
       responseType: 'arraybuffer',
     });
 
@@ -233,6 +240,7 @@ export class OpenStack extends Provider {
         headers: requestOptions.headers,
         data: requestOptions.body,
         timeout: requestOptions.timeout,
+        httpsAgent: this.httpsAgent,
         validateStatus: () => true, // Don't throw on any status code
       });
 
@@ -276,7 +284,7 @@ export class OpenStack extends Provider {
     const { url, headers } = infoToHandleFile;
 
     // Delete file.
-    const deletingResult = await Request.send({ url, headers, method: Request.Methods.DELETE, timeout: this.timeout });
+    const deletingResult = await Request.send({ url, headers, method: Request.Methods.DELETE, timeout: this.timeout, httpsAgent: this.httpsAgent });
     global.log.save('openstack-file-deleting-result', deletingResult);
 
     // Save metrics.
@@ -312,6 +320,7 @@ export class OpenStack extends Provider {
       headers,
       method: Request.Methods.HEAD,
       timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
     });
     global.log.save('container-metadata', { containerMetadata });
     const containerMetadataHeaders = containerMetadata.headers;

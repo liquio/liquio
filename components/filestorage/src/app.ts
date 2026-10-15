@@ -22,9 +22,6 @@ global.log = log;
 // Set process title.
 process.title = config.app.processTitle;
 
-// Set TLS options.
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 // Start async thread.
 (async () => {
   // Init DB.

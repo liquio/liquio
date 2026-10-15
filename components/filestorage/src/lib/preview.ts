@@ -1,6 +1,9 @@
+import type https from 'node:https';
+
 import axios from 'axios';
 
 import { getConfig } from './config';
+import { createHttpsAgent } from './tls';
 
 const DEFAULT_CONFIG = {
   server: 'http://0.0.0.0:3345',
@@ -22,6 +25,7 @@ export class Preview {
   generatePreviewUrl: string;
   sendTestPingUrl: string;
   timeout: number;
+  httpsAgent?: https.Agent;
 
   /**
    * Preview constructor.
@@ -36,6 +40,7 @@ export class Preview {
       this.generatePreviewUrl = `${this.config.server}${this.config.routes.generatePreview}`;
       this.sendTestPingUrl = `${this.config.server}${this.config.routes.ping}`;
       this.timeout = this.config.timeout || 5000;
+      this.httpsAgent = createHttpsAgent(this.config.tls);
       Preview.singleton = this;
     }
     return Preview.singleton;
@@ -74,6 +79,7 @@ export class Preview {
         url: `${this.generatePreviewUrl}?file_extension=${fileExtension}`,
         data: fileData,
         timeout: this.timeout,
+        httpsAgent: this.httpsAgent,
         responseType: 'arraybuffer',
         validateStatus: function (_status) {
           // Don't throw for HTTP error status codes - return them as buffers
@@ -112,6 +118,7 @@ export class Preview {
         method: 'GET',
         url: this.sendTestPingUrl,
         timeout: this.timeout || 5000,
+        httpsAgent: this.httpsAgent,
         validateStatus: function (status) {
           // Don't throw for HTTP error status codes - let us handle them
           return status >= 200 && status < 600;

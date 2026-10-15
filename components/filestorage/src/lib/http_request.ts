@@ -76,6 +76,7 @@ export class HttpRequest {
    * @param {object} [requestOptions.headers] Headers in format {"key": "value"}.
    * @param {string} [requestOptions.body] Body string.
    * @param {number} [requestOptions.timeout] Connection timeout.
+   * @param {https.Agent} [requestOptions.httpsAgent] Custom HTTPS agent (CA / TLS options).
    * @returns {Promise<object>}
    */
   static async send(requestOptions) {
@@ -85,6 +86,7 @@ export class HttpRequest {
         method: requestOptions.method,
         headers: requestOptions.headers,
         timeout: requestOptions.timeout,
+        ...(requestOptions.httpsAgent ? { httpsAgent: requestOptions.httpsAgent } : {}),
         validateStatus: () => true, // Don't throw on any status code
       };
 
@@ -132,6 +134,7 @@ export class HttpRequest {
    * @param {object} [requestOptions.headers] Headers in format {"key": "value"}.
    * @param {string} [requestOptions.body] Body string.
    * @param {number} [requestOptions.timeout] Connection timeout.
+   * @param {https.Agent} [requestOptions.httpsAgent] Custom HTTPS agent (CA / TLS options).
    * @return {Promise<{body: object, headers: object, rawResponse: object}>} Response body and headers promise.
    */
   static async sendDetailed(requestOptions) {
@@ -141,6 +144,7 @@ export class HttpRequest {
         method: requestOptions.method,
         headers: requestOptions.headers,
         timeout: requestOptions.timeout,
+        ...(requestOptions.httpsAgent ? { httpsAgent: requestOptions.httpsAgent } : {}),
         validateStatus: () => true, // Don't throw on any status code
       };
 

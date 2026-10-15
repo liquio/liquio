@@ -40,6 +40,7 @@ export class Auth {
       method: HttpRequest.Methods.POST,
       headers: { 'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON },
       body: JSON.stringify(bodyObject),
+      httpsAgent: this.moduleContext.httpsAgent,
     });
 
     // Check response.
@@ -112,6 +113,7 @@ export class Auth {
       method: HttpRequest.Methods.POST,
       headers: { 'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON },
       body: JSON.stringify(bodyObject),
+      httpsAgent: this.moduleContext.httpsAgent,
     });
 
     // Save handling end timestamp.
@@ -178,6 +180,7 @@ export class Auth {
       method: HttpRequest.Methods.POST,
       headers: { 'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON },
       body: JSON.stringify(bodyObject),
+      httpsAgent: this.moduleContext.httpsAgent,
     });
 
     // Save handling end timestamp.
