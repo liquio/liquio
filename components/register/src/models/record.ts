@@ -267,14 +267,25 @@ export default class RecordModel extends Model {
   }
 
   // Search records.
-  async search(keyId: string, searchKey: string, textList: string[], limit = 10, offset = 0): Promise<ModelListWithMetaResponse<RecordEntity>> {
+  async search(
+    keyId: string,
+    searchKey: string,
+    textList: string[],
+    limit = 10,
+    offset = 0,
+    allowTokens?: string[],
+  ): Promise<ModelListWithMetaResponse<RecordEntity>> {
     // Prepare DB query.
     const order = [[searchKey, 'asc']];
     const likeOperator = searchKey === 'search_string' ? Sequelize.Op.like : Sequelize.Op.iLike;
-    const where = {
+    const where: any = {
       key_id: keyId,
       [Sequelize.Op.and]: textList.map((v) => ({ [searchKey]: { [likeOperator]: `%${v}%` } })),
     };
+    // Row-level security: when tokens are given, count and paging only see public rows or rows sharing a token.
+    if (allowTokens) {
+      where[Sequelize.Op.or] = [{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: allowTokens } }];
+    }
     const queryOptions = { order, where, limit, offset };
 
     // DB query.

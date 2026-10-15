@@ -34,6 +34,8 @@ npm run migration-generate --name <name>
 
 `allow_see_all_records`, `disable_fields_rules` and `allow_tokens` (query/body of `GET /records`, `POST /records-by-post`, `POST /records/filter`) are honoured only for Basic users listed in `auth.trustedCallers`. For every other caller they are ignored (logged as `ignored-untrusted-security-flags`) and the effective tokens come from `auth.userAllowTokens[user]` (default `[]`). `GET /records/:id` and `GET /records/search` also use only the server-side tokens for untrusted callers. An empty or missing `trustedCallers` ignores all flags; a malformed `userAllowTokens`/`trustedCallers` fails the request with 500. Set `trustedCallers` (e.g. the task service Basic user) before deploying.
 
+For untrusted callers `GET /records/:id` also enforces key readability (`accessMode`), `auth.limitedAccess` keys, the row `allow_tokens` (403 on no overlap), then column `allowTokens` and `responseFields`; the signature is verified on the original data first and any policy error returns 500 without data. Responses of `PUT`/`PATCH /records/:id` are projected the same way. `GET /records/search` filters rows by the caller tokens before count/paging, hides fields, and returns 403 `Search field is not readable.` when the searched field (or, without `search_key`, the derived `search_string`) is hidden or partly projected; `search.<keyId>.defaultSearchKey` supplies a safe data path when the caller omits `search_key`. Trusted callers keep the previous unrestricted behaviour.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

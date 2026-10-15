@@ -598,4 +598,90 @@ describe('RecordsController', () => {
       expect(response.body.data).toBeUndefined();
     });
   });
+
+  describe('row access for GET /records/:id and /records/search (SE-3930 RG-02/RG-07)', () => {
+    const marker = 'ROWACCESS_E2E_001';
+    let publicId: string;
+    let restrictedId: string;
+    let savedAuth: any;
+
+    const getById = (id: string, query = '') => testHarness.request().get(`/records/${id}${query}`).set('Authorization', validAuth);
+    const search = () => testHarness.request().get(`/records/search?key_id=2001&search_key=data&text=${marker}`).set('Authorization', validAuth);
+    // `search` wraps the model result: body.data = { data, meta }.
+    const ids = (response) => response.body.data.data.map((r) => r.id);
+
+    beforeAll(async () => {
+      const create = (allowTokens: string[]) =>
+        testHarness
+          .request()
+          .post('/records')
+          .set('Authorization', validAuth)
+          .send({ registerId: 200, keyId: 2001, data: { name: 'Row access', data: marker }, allowTokens })
+          .expect(200);
+      publicId = (await create([])).body.data.id;
+      restrictedId = (await create(['secret-token'])).body.data.id;
+    });
+
+    beforeEach(() => {
+      savedAuth = { ...testHarness.getConfig().auth };
+      testHarness.getConfig().auth.trustedCallers = [];
+    });
+
+    afterEach(() => {
+      testHarness.getConfig().auth = savedAuth;
+    });
+
+    afterAll(async () => {
+      for (const id of [publicId, restrictedId]) {
+        await testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth);
+      }
+    });
+
+    it('GET /records/:id returns a public row and 403 for a foreign-token row to an untrusted caller', async () => {
+      await getById(publicId).expect(200);
+      const response = await getById(restrictedId).expect(403);
+      expect(response.body.data).toBeUndefined();
+      // Client-supplied tokens are not honoured.
+      await getById(restrictedId, '?allow_tokens=secret-token').expect(403);
+    });
+
+    it('GET /records/:id honours server-side userAllowTokens and trusted callers', async () => {
+      testHarness.getConfig().auth.userAllowTokens = { test: ['secret-token'] };
+      await getById(restrictedId).expect(200);
+      testHarness.getConfig().auth.userAllowTokens = undefined;
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      await getById(restrictedId).expect(200);
+    });
+
+    it('GET /records/:id fails closed on malformed userAllowTokens', async () => {
+      testHarness.getConfig().auth.userAllowTokens = { test: 'secret-token' } as any;
+      const response = await getById(publicId).expect(500);
+      expect(response.body.data).toBeUndefined();
+    });
+
+    it('search filters rows by server-side tokens and ignores client tokens', async () => {
+      const untrusted = await search().expect(200);
+      expect(ids(untrusted)).toContain(publicId);
+      expect(ids(untrusted)).not.toContain(restrictedId);
+      expect(untrusted.body.data.meta.count).toBe(1);
+
+      const clientTokens = await testHarness
+        .request()
+        .get(`/records/search?key_id=2001&search_key=data&text=${marker}&allow_tokens=secret-token`)
+        .set('Authorization', validAuth)
+        .expect(200);
+      expect(ids(clientTokens)).not.toContain(restrictedId);
+
+      testHarness.getConfig().auth.userAllowTokens = { test: ['secret-token'] };
+      const withTokens = await search().expect(200);
+      expect(ids(withTokens)).toEqual(expect.arrayContaining([publicId, restrictedId]));
+      expect(withTokens.body.data.meta.count).toBe(2);
+    });
+
+    it('search keeps trusted callers unrestricted', async () => {
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      const response = await search().expect(200);
+      expect(ids(response)).toEqual(expect.arrayContaining([publicId, restrictedId]));
+    });
+  });
 });

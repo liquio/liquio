@@ -82,6 +82,8 @@ export interface Config {
   sandbox?: SandboxConfig;
   search: {
     [key: string]: {
+      /** Data path used when the request has no `search_key` (instead of the derived `search_string`). */
+      defaultSearchKey?: string;
       resultsCount: number;
       doNotSearchThisWords: string[];
       replaceWords: Array<{ from: string; to: string }>;

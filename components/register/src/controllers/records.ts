@@ -21,6 +21,7 @@ import typeOf from '../lib/typeOf';
 import { ModelItemResponse } from '../lib/interfaces';
 import RecordEntity from '../entities/record';
 import { resolveCallerAccess, CallerAccess } from '../lib/caller_access';
+import { canSearchField, canSearchString } from '../lib/record_search_access';
 
 const ADDITIONAL_FILTER_RECORD_MAX_COUNT = 10000;
 const DB_CONSTRAINT_ERROR_CODE = 'DB_CONSTRAINT_ERROR';
@@ -698,57 +699,88 @@ export default class RecordsController extends Controller {
     // Define params.
     const { id } = matchedData(req, { locations: ['params'] });
     const { paths } = matchedData(req, { locations: ['query'] });
-    let allowTokens: string[] | undefined;
+    let access: CallerAccess;
     try {
       // Server-side tokens only; the client-supplied `allow_tokens` is never honoured here.
       // Trusted callers (e.g. task) keep the unrestricted behaviour.
-      const access = this.getCallerAccess(req);
-      allowTokens = access.trusted ? undefined : access.allowTokens;
+      access = this.getCallerAccess(req);
     } catch {
       return this.responseError(res, 'Invalid register access configuration.', 500);
     }
 
     // Get record.
-    let recordModelResponse;
+    let record: RecordEntity | undefined;
     try {
-      recordModelResponse = await this.recordModel.findById(id);
-
-      // Column-level security.
-      const recordKeyId = recordModelResponse && recordModelResponse.data && recordModelResponse.data.keyId;
-      if (recordKeyId && allowTokens) {
-        const { data: key } = (recordKeyId && (await this.keyModel.findById(recordKeyId))) || {};
-
-        if (!this.keyModel.checkRecordsReadable(key)) {
-          return this.responseError(res, 'Key records are not readable.', 403, { keyId: key.id });
-        }
-
-        recordModelResponse.data.applyColumnLevelSecurity(key, allowTokens).applyResponseFieldsRules(key);
-      }
-
-      // Response paths filter.
-      if (recordModelResponse && recordModelResponse.data && paths) {
-        recordModelResponse.data.filterEntity(paths);
-      }
+      record = (await this.recordModel.findById(id))?.data;
     } catch (error) {
       this.log.save('get-record-by-id-error', { error: error && error.message });
     }
-    const { data: record } = recordModelResponse || {};
 
     // Check.
     if (!record) {
       return this.responseError(res, 'Not found.', 404);
     }
+
+    // Authorize, verify the signature on the original data, then project. Fail closed on any error.
+    try {
+      let key: KeyEntity | undefined;
+      if (!access.trusted) {
+        key = (record.keyId && (await this.keyModel.findById(record.keyId))?.data) || undefined;
+        const limitedKeys = req.auth?.userLimitedAccessKeys;
+        if (!key || !this.keyModel.checkRecordsReadable(key) || (limitedKeys && !limitedKeys.map(String).includes(String(record.keyId)))) {
+          return this.responseError(res, 'Key records are not readable.', 403, { keyId: record.keyId });
+        }
+        if (!this.isRecordReadableByTokens(record, access.allowTokens)) {
+          return this.responseError(res, 'Record is not readable.', 403);
+        }
+      }
+
+      // Signatures cover the original data, including fields that the response hides.
+      try {
+        await this.checkValidationIdentity('GET', record.keyId, [record]);
+      } catch (error) {
+        this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
+        return this.responseError(res, error.message, 500);
+      }
+
+      if (key) {
+        record.applyColumnLevelSecurity(key, access.allowTokens).applyResponseFieldsRules(key);
+      }
+      if (paths) {
+        record.filterEntity(paths);
+      }
+    } catch (error) {
+      this.log.save('get-record-by-id-access-error', { error: error && error.message });
+      return this.responseError(res, 'Unable to authorize record.', 500);
+    }
     this.accessLogBusiness.saveIfNeedIt([record], req.accessInfo);
 
-    // Check validation identity
-    try {
-      await this.checkValidationIdentity('GET', record.keyId, [record]);
-    } catch (error) {
-      this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
-    }
-
     this.responseData(res, record);
+  }
+
+  /**
+   * Check that the row `allow_tokens` (empty = public) overlap the caller tokens.
+   */
+  private isRecordReadableByTokens(record: RecordEntity, allowTokens: string[]): boolean {
+    const rowTokens = record.allowTokens;
+    if (!Array.isArray(rowTokens) || rowTokens.some((token) => typeof token !== 'string')) {
+      return false;
+    }
+    return rowTokens.length === 0 || rowTokens.some((token) => allowTokens.includes(token));
+  }
+
+  /**
+   * Hide columns and fields of a write-response record for callers that are not trusted.
+   * Fails closed: throws when the key is not found or policies are malformed.
+   */
+  private async projectWriteResponse(req: Request, record: RecordEntity): Promise<void> {
+    const access = this.getCallerAccess(req);
+    if (access.trusted) return;
+    const key = (await this.keyModel.findById(record.keyId))?.data;
+    if (!key) {
+      throw new Error('Key not found.');
+    }
+    record.applyColumnLevelSecurity(key, access.allowTokens).applyResponseFieldsRules(key);
   }
 
   // Bulk import of records.
@@ -1323,6 +1355,13 @@ export default class RecordsController extends Controller {
       return this.responseError(res, 'Can not update.', 500);
     }
 
+    try {
+      await this.projectWriteResponse(req, record);
+    } catch (error) {
+      this.log.save('update-record-response-error', { error: error && error.message });
+      return this.responseError(res, 'Unable to authorize record.', 500);
+    }
+
     // Response.
     this.responseData(res, record);
   }
@@ -1354,6 +1393,7 @@ export default class RecordsController extends Controller {
         return this.responseError(res, 'Cannot update.', 500);
       }
 
+      await this.projectWriteResponse(req, recordModelResponse);
       this.responseData(res, recordModelResponse);
     } catch (error) {
       this.log.save('update-record-status-error', { error: error?.message, properties });
@@ -1368,29 +1408,48 @@ export default class RecordsController extends Controller {
   async search(req, res) {
     // Define params.
     const { key_id: keyId, text, search_key: searchKey, limit, offset = 0 } = matchedData(req, { locations: ['query'] });
-    let allowTokens: string[] | undefined;
+    let access: CallerAccess;
     try {
       // Server-side tokens only; the client-supplied `allow_tokens` is never honoured here.
       // Trusted callers (e.g. task) keep the unrestricted behaviour.
-      const access = this.getCallerAccess(req);
-      allowTokens = access.trusted ? undefined : access.allowTokens;
+      access = this.getCallerAccess(req);
     } catch {
       return this.responseError(res, 'Invalid register access configuration.', 500);
     }
+    const allowTokens: string[] | undefined = access.trusted ? undefined : access.allowTokens;
     const { main: mainSearchConfig, [keyId]: specificSearchConfig } = this.config.search;
 
-    if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
+    let key: KeyEntity | undefined;
+    try {
+      key = (await this.keyModel.findById(keyId))?.data;
+    } catch (error) {
+      this.log.save('search-record-error', { error: error && error.message });
+      return this.responseError(res, 'Searching error.', 500);
+    }
+    const limitedKeys = req.auth?.userLimitedAccessKeys;
+    if (!key || !this.keyModel.checkRecordsReadable(key) || (limitedKeys && !limitedKeys.map(String).includes(String(keyId)))) {
       return this.responseError(res, 'Key records are not readable.', 403, { keyId });
     }
-    const keyModelResponse = await this.keyModel.findById(keyId);
-    if (keyModelResponse.data.isEncrypted) {
+    if (key.isEncrypted) {
       return this.responseError(res, 'Search is not allowed for encrypted keys.', 400);
     }
 
-    // Define search params.
+    // Define search params. A per-key server default lets existing callers avoid an unsafe derived index.
     const searchConfig = specificSearchConfig || mainSearchConfig;
     const { resultsCount = 10 } = searchConfig;
-    const recordSearchKey = searchKey ? `data.${searchKey}` : 'search_string';
+    const effectiveSearchKey = allowTokens ? searchKey || specificSearchConfig?.defaultSearchKey : searchKey;
+    if (allowTokens) {
+      try {
+        const readable = effectiveSearchKey ? canSearchField(key, effectiveSearchKey, allowTokens) : canSearchString(key, allowTokens);
+        if (!readable) {
+          return this.responseError(res, 'Search field is not readable.', 403);
+        }
+      } catch (error) {
+        this.log.save('search-record-error', { error: error && error.message });
+        return this.responseError(res, 'Searching error.', 500);
+      }
+    }
+    const recordSearchKey = effectiveSearchKey ? `data.${effectiveSearchKey}` : 'search_string';
     let textList;
     try {
       textList = this.searchBusiness.getTextList(text, searchConfig);
@@ -1402,34 +1461,42 @@ export default class RecordsController extends Controller {
     // Find records.
     let records;
     try {
-      records = await this.recordModel.search(keyId, recordSearchKey, textList, limit || resultsCount, offset);
+      records = await this.recordModel.search(keyId, recordSearchKey, textList, limit || resultsCount, offset, allowTokens);
 
-      // Column-level security.
-      const recordsKeyId = records.data && records.data[0] && records.data[0].keyId;
-      if (recordsKeyId && allowTokens) {
-        const { data: key } = (recordsKeyId && (await this.keyModel.findById(recordsKeyId))) || {};
-        for (const recordModelResponse of records.data) {
-          recordModelResponse.applyColumnLevelSecurity(key, allowTokens).applyResponseFieldsRules(key);
+      if (allowTokens) {
+        // Defend against unexpected model results before any response or audit.
+        for (const record of records.data) {
+          if (record.keyId !== key.id || record.isEncrypted || !this.isRecordReadableByTokens(record, allowTokens)) {
+            throw new Error('Search returned an unreadable record.');
+          }
         }
       }
     } catch (error) {
-      this.log.save('search-record-error', { error: error && error.message, stack: error && error.stack });
-    }
-
-    // Check.
-    if (!records) {
+      this.log.save('search-record-error', { error: error && error.message });
       return this.responseError(res, 'Searching error.', 500);
     }
 
-    this.accessLogBusiness.saveIfNeedIt(records && records.data, req.accessInfo);
-
-    // Check validation identity
+    // Check validation identity on the original data, before hiding fields.
     try {
       await this.checkValidationIdentity('GET', keyId, records.data);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
       return this.responseError(res, error.message, 500);
     }
+
+    // Column-level security.
+    if (allowTokens) {
+      try {
+        for (const record of records.data) {
+          record.applyColumnLevelSecurity(key, allowTokens).applyResponseFieldsRules(key);
+        }
+      } catch (error) {
+        this.log.save('search-record-error', { error: error && error.message });
+        return this.responseError(res, 'Searching error.', 500);
+      }
+    }
+
+    this.accessLogBusiness.saveIfNeedIt(records.data, req.accessInfo);
 
     // Response.
     this.responseData(res, records);
