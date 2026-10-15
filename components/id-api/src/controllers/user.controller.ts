@@ -7,6 +7,7 @@ import { DEFAULT_COOKIE_DOMAIN } from '../config';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import { publicServices } from '../lib/public_services';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
 import { getTaskTokenCacheKey } from '../services/auth.service';
@@ -194,6 +195,9 @@ export class UserController extends BaseController {
     const responseUser: Record<string, any> = scope.reduce((acc, key: keyof UserAttributes) => Object.assign(acc, { [key]: user[key] }), {});
     if (scope.includes('password')) {
       responseUser.password = !!user.password;
+    }
+    if (scope.includes('services') && responseUser.services) {
+      responseUser.services = publicServices(responseUser.services);
     }
 
     res.send(responseUser);

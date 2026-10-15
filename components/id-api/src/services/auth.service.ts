@@ -9,6 +9,7 @@ import { Config, DEFAULT_CODE_RETRIES, DEFAULT_CODE_LENGTH } from '../config';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { generatePinCode } from '../lib/helpers';
 import { OAuthModel } from '../lib/oauth_model';
+import { publicService } from '../lib/public_services';
 import { saveSession } from '../middleware/session';
 import {
   ClientAttributes,
@@ -492,11 +493,8 @@ export class AuthService extends BaseService {
 
       user.services = {};
       for (const service of user.user_services) {
-        // Do not disclose sensitive data.
-        delete service.data?.password;
-        delete service.data?.oldPasswords;
-
-        user.services[service.provider] = service;
+        // Allowlist only public service fields; never return stored credentials.
+        user.services[service.provider] = publicService(service);
         user.provider ??= service.provider;
       }
 
@@ -534,7 +532,7 @@ export class AuthService extends BaseService {
           const services: Record<string, any> = {};
           if (user.user_services) {
             for (let service of user.user_services) {
-              services[service.provider!] = service;
+              services[service.provider!] = publicService(service);
             }
           }
 

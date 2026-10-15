@@ -5,6 +5,7 @@ import { Strategy } from 'passport-strategy';
 import { Log } from '@liquio/back-core';
 
 import { Config } from '../../../config';
+import { sanitizeProviderProfile } from '../../../lib/public_services';
 import { Request, StrategyVerify } from '../../../types';
 
 const NAMES_NA_LIST = ['n/a', 'n\\a'];
@@ -110,7 +111,7 @@ export class GovIdStrategy extends Strategy {
     this.log.save('authenticate-govid|user-info', { govidTokens, govidUser }, 'info');
 
     // Define user info.
-    const userInfo = this.prepareUserInfo(govidUser, govidTokens);
+    const userInfo = this.prepareUserInfo(govidUser);
 
     // Log.
     this.log.save('authenticate-govid|user-info-parsed', { userInfo }, 'info');
@@ -243,7 +244,7 @@ export class GovIdStrategy extends Strategy {
     }
   }
 
-  private prepareUserInfo(govidUser: any, govidTokens: any) {
+  private prepareUserInfo(govidUser: any) {
     const normalizedLastName = this.normalizeName(govidUser.lastname);
     const normalizedFirstName = this.normalizeName(govidUser.givenname);
     const normalizedMiddleName = this.normalizeName(govidUser.middlename);
@@ -266,10 +267,7 @@ export class GovIdStrategy extends Strategy {
         DRFO: govidUser.drfocode,
         EDRPOU: govidUser.edrpoucode,
       }),
-      raw: {
-        ...govidUser,
-        ...govidTokens,
-      },
+      raw: sanitizeProviderProfile(govidUser),
     };
   }
 
