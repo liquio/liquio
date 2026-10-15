@@ -282,8 +282,22 @@ export class OpenStack extends Provider {
     const { url, headers } = infoToHandleFile;
 
     // Delete file.
-    const deletingResult = await Request.send({ url, headers, method: Request.Methods.DELETE, timeout: this.timeout, httpsAgent: this.httpsAgent });
+    const { body: deletingResult, rawResponse } = await Request.sendDetailed({
+      url,
+      headers,
+      method: Request.Methods.DELETE,
+      timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
+    });
     global.log.save('openstack-file-deleting-result', deletingResult);
+
+    // 404 means object is already absent - not an error. Other error statuses must not be silent.
+    const status = rawResponse?.status;
+    if (status >= 400 && status !== 404) {
+      const error: any = new Error(`OpenStack file deleting failed with status ${status}.`);
+      error.statusCode = status;
+      throw error;
+    }
 
     // Save metrics.
     this.externalServiceMetric('deleteFile', timer);

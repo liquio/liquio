@@ -5,6 +5,22 @@ import { FileEntity } from '../entities/file';
 import { FileHash } from '../lib/file_hash';
 
 const FOLDER_NAME = 'files';
+const NOT_FOUND_STATUS = 404;
+const NOT_FOUND_CODES = ['NoSuchKey', 'NotFound', 'ENOENT'];
+const NOT_FOUND_MESSAGE_REGEXP = /NoSuchKey|\b404\b|not found/i;
+
+/**
+ * Is provider "object not found" error (OpenStack 404, MinIO NoSuchKey/404).
+ * @param {any} error Error.
+ * @returns {boolean}
+ */
+function isProviderNotFoundError(error: any): boolean {
+  if (!error) return false;
+  const status = error.statusCode ?? error.status ?? error.response?.status;
+  if (status === NOT_FOUND_STATUS) return true;
+  if (NOT_FOUND_CODES.includes(error.code)) return true;
+  return NOT_FOUND_MESSAGE_REGEXP.test(String(error.message || ''));
+}
 
 /**
  * File model.
@@ -151,6 +167,9 @@ export class FileModel extends Model {
     if (fileEntity.data?.length === 0) {
       // If file data does not stored in DB - download data from provider.
       fileEntity.data = await this.downloadFileDataFromProvider(fileEntity);
+
+      // Verify downloaded bytes against stored hash.
+      this.verifyIntegrity(fileEntity, fileEntity.data);
     }
 
     // Actualize some file properties in DB.
@@ -293,12 +312,20 @@ export class FileModel extends Model {
     const fileRaw: any = await this.model.findByPk(id);
     const folder = fileRaw?.folder || FOLDER_NAME;
 
-    const deletedRowsCount = await this.model.destroy({ where: { id } });
-
-    // Use provider if need it.
+    // Use provider if need it. Delete the object first: if it fails the DB row stays and delete can be retried.
     if (this.provider) {
-      await this.provider.deleteFile(`${folder}/${id}`);
+      try {
+        await this.provider.deleteFile(`${folder}/${id}`);
+      } catch (error: any) {
+        // Object already absent is the desired state.
+        if (!isProviderNotFoundError(error)) {
+          global.log.save('file-provider-delete-error', { id, error: error && error.message });
+          throw error;
+        }
+      }
     }
+
+    const deletedRowsCount = await this.model.destroy({ where: { id } });
 
     // Define and return model response.
     const modelResponse = { data: deletedRowsCount };
@@ -323,6 +350,25 @@ export class FileModel extends Model {
 
     // Return model response.
     return copyFileModelResponse;
+  }
+
+  /**
+   * Verify bytes returned by provider against stored sha256. Legacy rows without hash are skipped.
+   * @private
+   * @param {FileEntity} fileEntity File.
+   * @param {Buffer} fileData Data downloaded from provider.
+   */
+  verifyIntegrity(fileEntity, fileData) {
+    if (this.config?.app?.verifyIntegrity === false) return;
+
+    const storedSha256 = fileEntity.hash?.sha256;
+    if (!storedSha256) return;
+
+    const { sha256 } = new FileHash(fileData).calc();
+    if (sha256 !== storedSha256) {
+      global.log.save('file-integrity-error', { id: fileEntity.id });
+      throw new Error('FileModel.verifyIntegrity. File integrity check failed.');
+    }
   }
 
   /**

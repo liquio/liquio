@@ -793,7 +793,9 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send
-      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      const mockSend = jest
+        .spyOn(HttpRequest, 'sendDetailed')
+        .mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       const result = await openstack.deleteFile(filePath);
 
@@ -813,7 +815,7 @@ describe('OpenStack Provider', () => {
       const spy = jest.spyOn(openstack, 'getInfoToHandleFile');
 
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      jest.spyOn(HttpRequest, 'sendDetailed').mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       await openstack.deleteFile(filePath);
 
@@ -827,7 +829,7 @@ describe('OpenStack Provider', () => {
       const spy = jest.spyOn(openstack, 'getInfoToHandleFile');
 
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      jest.spyOn(HttpRequest, 'sendDetailed').mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       await openstack.deleteFile(filePath);
 
@@ -842,7 +844,7 @@ describe('OpenStack Provider', () => {
       const spy = jest.spyOn(openstack, 'getInfoToHandleFile');
 
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      jest.spyOn(HttpRequest, 'sendDetailed').mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       await openstack.deleteFile(filePath, containerName);
 
@@ -853,7 +855,9 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to verify headers
-      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      const mockSend = jest
+        .spyOn(HttpRequest, 'sendDetailed')
+        .mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       await openstack.deleteFile(filePath);
 
@@ -865,7 +869,9 @@ describe('OpenStack Provider', () => {
       const testCases = ['simple.txt', 'folder/file.txt', 'deep/nested/folder/file.txt'];
 
       // Mock Request.send
-      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      const mockSend = jest
+        .spyOn(HttpRequest, 'sendDetailed')
+        .mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       for (const filePath of testCases) {
         await openstack.deleteFile(filePath);
@@ -879,7 +885,7 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send').mockResolvedValue({});
+      jest.spyOn(HttpRequest, 'sendDetailed').mockResolvedValue({ body: {}, headers: {}, rawResponse: { status: 200 } } as any);
 
       const result = await openstack.deleteFile(filePath);
       expect(result).toEqual({});
@@ -890,7 +896,7 @@ describe('OpenStack Provider', () => {
       const responseBody = { message: 'File deleted successfully' };
 
       // Mock Request.send
-      jest.spyOn(HttpRequest, 'send').mockResolvedValue(responseBody);
+      jest.spyOn(HttpRequest, 'sendDetailed').mockResolvedValue({ body: responseBody, headers: {}, rawResponse: { status: 200 } } as any);
 
       const result = await openstack.deleteFile(filePath);
       expect(result).toEqual(responseBody);
@@ -900,7 +906,9 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to verify timeout is passed
-      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      const mockSend = jest
+        .spyOn(HttpRequest, 'sendDetailed')
+        .mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       await openstack.deleteFile(filePath);
 
@@ -912,7 +920,7 @@ describe('OpenStack Provider', () => {
       const filePath = 'nonexistent.txt';
 
       // Mock Request.send to throw 404 error
-      jest.spyOn(HttpRequest, 'send').mockRejectedValue(new Error('Not Found'));
+      jest.spyOn(HttpRequest, 'sendDetailed').mockRejectedValue(new Error('Not Found'));
 
       await expect(openstack.deleteFile(filePath)).rejects.toThrow('Not Found');
     });
@@ -921,7 +929,7 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to throw 403 error
-      jest.spyOn(HttpRequest, 'send').mockRejectedValue(new Error('Forbidden'));
+      jest.spyOn(HttpRequest, 'sendDetailed').mockRejectedValue(new Error('Forbidden'));
 
       await expect(openstack.deleteFile(filePath)).rejects.toThrow('Forbidden');
     });
@@ -930,23 +938,37 @@ describe('OpenStack Provider', () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to throw 500 error
-      jest.spyOn(HttpRequest, 'send').mockRejectedValue(new Error('Internal Server Error'));
+      jest.spyOn(HttpRequest, 'sendDetailed').mockRejectedValue(new Error('Internal Server Error'));
 
       await expect(openstack.deleteFile(filePath)).rejects.toThrow('Internal Server Error');
+    });
+
+    it('should treat HTTP 404 as success (object already absent)', async () => {
+      jest.spyOn(HttpRequest, 'sendDetailed').mockResolvedValue({ body: 'Not Found', headers: {}, rawResponse: { status: 404 } } as any);
+
+      await expect(openstack.deleteFile('test/gone.txt')).resolves.toBe('Not Found');
+    });
+
+    it.each([403, 500])('should throw with statusCode on HTTP %s', async (status) => {
+      jest.spyOn(HttpRequest, 'sendDetailed').mockResolvedValue({ body: 'err', headers: {}, rawResponse: { status } } as any);
+
+      await expect(openstack.deleteFile('test/file.txt')).rejects.toMatchObject({ statusCode: status });
     });
 
     it('should handle network errors', async () => {
       const filePath = 'test/file.txt';
 
       // Mock Request.send to throw network error
-      jest.spyOn(HttpRequest, 'send').mockRejectedValue(new Error('Network error'));
+      jest.spyOn(HttpRequest, 'sendDetailed').mockRejectedValue(new Error('Network error'));
 
       await expect(openstack.deleteFile(filePath)).rejects.toThrow('Network error');
     });
 
     it('should handle undefined file path', async () => {
       // Mock Request.send
-      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      const mockSend = jest
+        .spyOn(HttpRequest, 'sendDetailed')
+        .mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       await openstack.deleteFile(undefined);
 
@@ -958,7 +980,9 @@ describe('OpenStack Provider', () => {
       const filePath = 'very/deep/nested/folder/structure/with/many/levels/file.txt';
 
       // Mock Request.send
-      const mockSend = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      const mockSend = jest
+        .spyOn(HttpRequest, 'sendDetailed')
+        .mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       await openstack.deleteFile(filePath);
 

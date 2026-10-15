@@ -251,7 +251,7 @@ export class Minio extends Provider {
     const { url, headers } = infoToHandleFile;
 
     // Delete file.
-    const deletingResult = await HttpRequest.send({
+    const { body: deletingResult, rawResponse } = await HttpRequest.sendDetailed({
       url,
       headers,
       method: HttpRequest.Methods.DELETE,
@@ -259,6 +259,14 @@ export class Minio extends Provider {
       httpsAgent: this.httpsAgent,
     });
     !global.silentUpload && global.log.save('minio-file-deleting-result', deletingResult);
+
+    // 404 means object is already absent - not an error. Other error statuses must not be silent.
+    const status = rawResponse?.status;
+    if (status >= 400 && status !== 404) {
+      const error: any = new Error(`MinIO file deleting failed with status ${status}.`);
+      error.statusCode = status;
+      throw error;
+    }
 
     return deletingResult;
   }
