@@ -11,6 +11,7 @@ import AppIdentHeaders from './lib/app_ident_headers';
 import AuthController from './controllers/auth';
 import TestController from './controllers/test';
 import { compilePathMatcher, isSuspiciousPath } from './lib/custom_api_path_matcher';
+import { redactHeaders, redactUrl, urlPath } from './lib/redact';
 
 // Constants.
 const NULL_OBJECT_BASE64 = 'bnVsbA=='; // NULL-object string (`null`) as base64 equals `bnVsbA==`.
@@ -238,7 +239,7 @@ class Router {
         proxy((global.config as any).discovery.mainProxy, {
           limit: (global.config as any).server.maxBodySize,
           filter: async (req: Request) => {
-            (global.log as any).save('proxy-to', { route: req.originalUrl, method: req.method });
+            (global.log as any).save('proxy-to', { route: urlPath(req.originalUrl), method: req.method });
             return true;
           },
           proxyReqOptDecorator: function (proxyReqOpts: any) {
@@ -249,7 +250,7 @@ class Router {
           proxyErrorHandler: (err: Error, res: any, next: NextFunction) => {
             (global.log as any).save(
               'proxy-error',
-              { error: { message: err.message, stack: err.stack }, route: res.req.originalUrl, method: res.req.method },
+              { error: { message: err.message, stack: err.stack }, route: urlPath(res.req.originalUrl), method: res.req.method },
               'error',
             );
             res.status(500).json({ error: { message: 'Proxy error' } });
@@ -293,8 +294,8 @@ class Router {
   private async logRouter(req: Request, res: Response, next: NextFunction): Promise<void> {
     // Define params.
     const method = req && req.method;
-    const headers = req && req.headers;
-    const url = req && req.url;
+    const headers = redactHeaders(req && req.headers);
+    const url = redactUrl(req && req.url);
     const remoteAddress = (req.connection as any).remoteAddress;
     const xForwardedFor = req.headers['x-forwarded-for'] || null;
     const userIp = { remoteAddress, xForwardedFor };
@@ -347,7 +348,7 @@ class Router {
         (global.log as any).save('http-response', {
           requestId: (req as any).requestId,
           method: req.method,
-          url: req.url,
+          url: redactUrl(req.url),
           statusCode: res.statusCode,
           responseSize: body ? body.length : 0,
           responseTime: Date.now() - time,
