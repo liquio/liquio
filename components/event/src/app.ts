@@ -12,7 +12,6 @@ import { ExternalServiceRequester } from './services/event/requester/external_se
 import { EventBusiness } from './businesses/event';
 import { RedisClient } from './lib/redis_client';
 import { HttpClient } from './lib/http_client';
-import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
 import { installTlsOverrides } from './lib/tls';
@@ -180,12 +179,5 @@ export class App {
     await routerService.init();
 
     this.routerService = routerService;
-  }
-
-  // Init logs broadcasting.
-  useLogsBroadcasting() {
-    if (process.env.NODE_ENV !== 'prod' && this.config?.logs_broadcasting?.isEnabled) {
-      LogsBroadcasting.start(this.config.logs_broadcasting);
-    }
   }
 }

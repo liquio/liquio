@@ -27,7 +27,6 @@ async function main() {
   app.useEventBusiness();
   await app.useMessageQueue();
   await app.useRouter();
-  app.useLogsBroadcasting();
 }
 
 main();

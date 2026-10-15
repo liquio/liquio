@@ -177,10 +177,6 @@ metadata:
   "requestTimeout" 60000
   "tls" (list)
 -}}
-{{ $logsBroadcastingBase := dict
-  "isEnabled" false
-  "port" 5000
--}}
 {{ $persistLinkBase := dict
   "server" (printf "http://%s-persist-link" (include "liquio.fullname" .))
   "port" 80
@@ -370,9 +366,6 @@ data:
 
   http_client.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "http_client.json" "base" $httpClientBase) | nindent 4 }}
-
-  logs_broadcasting.json: |
-{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "logs_broadcasting.json" "base" $logsBroadcastingBase) | nindent 4 }}
 
   persist_link.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "persist_link.json" "base" $persistLinkBase) | nindent 4 }}
