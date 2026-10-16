@@ -9,6 +9,23 @@ import { Services } from '../services';
 import { clearTwoFactorState } from '../lib/two_factor';
 import { Express, NextFunction, Request, Response } from '../types';
 
+/**
+ * Requests the upstream OAuth2 user profile.
+ * The access token is sent in the `Authorization: Bearer` header, so it never lands in URLs (access logs, proxies).
+ * `tokenInQuery` is a legacy opt-in for upstreams which accept only `?access_token=`.
+ */
+export function fetchOAuth2Profile(config: { userProfileUrl: string; tokenInQuery?: boolean }, accessToken: string, log?: Log) {
+  if (config.tokenInQuery) {
+    log?.save(
+      'user-auth-by-oauth2-token-in-query',
+      { warning: 'auth_providers.oauth2.tokenInQuery is enabled: access token is sent in the URL query' },
+      'warn',
+    );
+    return axios.get(config.userProfileUrl, { params: { access_token: accessToken } });
+  }
+  return axios.get(config.userProfileUrl, { headers: { Authorization: 'Bearer ' + accessToken } });
+}
+
 export function usePassport(express: Express) {
   const log = Log.getInstance();
 
@@ -72,8 +89,7 @@ export function usePassport(express: Express) {
     passport.use(
       new OAuth2Strategy(config, (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
         log.save('user-auth-by-oauth2', { profileId: profile?.id }, 'info');
-        axios
-          .get(config.userProfileUrl + '?access_token=' + accessToken)
+        fetchOAuth2Profile(config, accessToken, log)
           .then(async (response) => {
             log.save('user-auth-by-oauth2', { status: response.status }, 'info');
             const userData = response.data;

@@ -197,7 +197,11 @@ export interface Config {
       requireChallenge?: boolean;
     };
     ldap?: LdapProviderConfig;
-    oauth2?: StrategyOptions & { userProfileUrl: string };
+    oauth2?: StrategyOptions & {
+      userProfileUrl: string;
+      /** Legacy, default false: send the access token as `?access_token=` instead of the `Authorization: Bearer` header. Leaks the token into URLs/logs; a warning is logged when on. */
+      tokenInQuery?: boolean;
+    };
     oidc?: {
       [providerId: string]: OIDCProviderConfig;
     };
