@@ -1,6 +1,6 @@
 import { promisify } from 'util';
 
-import { matchedData, query } from 'express-validator';
+import { body, matchedData, query } from 'express-validator';
 
 import { validateEmail } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
@@ -25,7 +25,14 @@ export class SignUpController extends BaseController {
     }
 
     this.router.get('/sign_up/confirmation', this.service('auth').prepareUser('approve'), this.signUpConfirmationGet.bind(this));
-    this.router.post('/sign_up/confirmation', this.signUpConfirmationPost.bind(this));
+    this.router.post(
+      '/sign_up/confirmation',
+      [
+        ...['email', 'phone', 'code_email', 'code_phone'].map((field) => body(field).optional({ values: 'null' }).isString()),
+        this.handleValidation.bind(this),
+      ],
+      this.signUpConfirmationPost.bind(this),
+    );
     this.router.get(
       '/sign_up/confirmation/email/exist',
       [query('email').isString(), this.handleValidation.bind(this)],
@@ -64,7 +71,11 @@ export class SignUpController extends BaseController {
       this.checkPhoneConfirmAndSetAsConfirmed.bind(this),
     );
     this.router.post('/sign_up/confirmation/phone/set', this.auth.basic(), this.setPhone.bind(this));
-    this.router.post('/sign_up/confirmation/phone/check', this.checkPhoneCode.bind(this));
+    this.router.post(
+      '/sign_up/confirmation/phone/check',
+      [body('code').isString().notEmpty(), this.handleValidation.bind(this)],
+      this.checkPhoneCode.bind(this),
+    );
   }
 
   /**

@@ -318,6 +318,11 @@ export class AuthService extends BaseService {
   }
 
   async getValidConfirmCode(params: Record<string, any>) {
+    // An array would be compiled into `IN (...)` and match any of the candidate codes.
+    if (typeof params?.code !== 'string' || !params.code || !hasOnlyStringValues(params)) {
+      return undefined;
+    }
+
     const queryParams = {
       ...params,
       counter: { [Op.lte]: this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES },
@@ -423,6 +428,9 @@ export class AuthService extends BaseService {
     const { email, phone } = params ?? {};
     if (!email && !phone) {
       throw new Error('Email or phone should be defined.');
+    }
+    if (!hasOnlyStringValues(params)) {
+      throw new Error('Email and phone should be strings.');
     }
 
     const column = email ? 'email' : 'phone';
@@ -1260,4 +1268,9 @@ export class AuthService extends BaseService {
 
     return userToSave;
   }
+}
+
+/** Confirm code lookups compare values for equality, so arrays and objects are not allowed. */
+function hasOnlyStringValues(params: Record<string, unknown>): boolean {
+  return Object.values(params).every((v) => v === undefined || typeof v === 'string');
 }

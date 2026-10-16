@@ -27,6 +27,7 @@ jest.mock('@node-oauth/oauth2-server', () => {
 
 import { createHash } from 'crypto';
 
+import { Models } from '../models';
 import { AuthService, getTaskTokenCacheKey } from './auth.service';
 
 const USER_ID = 'a'.repeat(24);
@@ -459,5 +460,39 @@ describe('AuthService OAuth client preparation', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
     });
+  });
+});
+
+describe('AuthService confirmation code input types (KS-22)', () => {
+  let auth: AuthService;
+  let confirmCode: any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    confirmCode = { findOne: jest.fn().mockResolvedValue({ dataValues: { code: '123456' } }) };
+    mockModels.confirmCode = confirmCode;
+    (Models as any).db = { fn: jest.fn() };
+    auth = new AuthService({} as any, {} as any, {} as any);
+  });
+
+  it.each([
+    ['array code', { email: 'a@b.c', code: ['1', '123456'] }],
+    ['object code', { email: 'a@b.c', code: { a: 1 } }],
+    ['empty code', { email: 'a@b.c', code: '' }],
+    ['missing code', { email: 'a@b.c' }],
+    ['array email', { email: ['a@b.c', 'x@y.z'], code: '123456' }],
+    ['null phone', { phone: null, code: '123456' }],
+  ])('getValidConfirmCode returns undefined without a query for %s', async (_name, params) => {
+    await expect(auth.getValidConfirmCode(params)).resolves.toBeUndefined();
+    expect(confirmCode.findOne).not.toHaveBeenCalled();
+  });
+
+  it('getValidConfirmCode still looks up string params', async () => {
+    await expect(auth.getValidConfirmCode({ email: 'a@b.c', code: '123456' })).resolves.toEqual({ code: '123456' });
+    expect(confirmCode.findOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('incrementConfirmCodeCounterAsync rejects non-string recipients before querying', async () => {
+    await expect(auth.incrementConfirmCodeCounterAsync({ email: ['a@b.c'] })).rejects.toThrow('strings');
   });
 });
