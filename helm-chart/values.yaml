@@ -316,6 +316,86 @@ ingress:
   configurationSnippet: |
     proxy_hide_header Content-Security-Policy;
     add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com; worker-src blob: 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' blob: http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-src 'self' blob: https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self';" always;
+  # Public allow-list for the id-api host (KS-24i). id-api exposes service-to-service routes (basic auth:
+  # /user/info/{id,ipn,edrpou,search,phone,onboarding,:id}, GET /user, /user/:id, /user/password/set, /totp/generate|enable|disable,
+  # /login_history, /user_admin_actions, /stat, /ldap, /sign_up/confirmation/phone/set, /oauth/token/test_code, ...) and /proxy/*.
+  # In-cluster callers (task, admin-api, cabinet-api, event, notification) use the id-api Service and are unaffected.
+  # enabled (default): hosts that route to id-api are served by a second Ingress "<fullname>-id-api-public" that lists
+  # only `paths` and `extraPaths`, and the id-front nginx fallback proxies only the same paths to id-api; everything else
+  # is 404 from outside. Set enabled: false to restore the old catch-all "/" routing (NOT recommended: exposes the
+  # service-to-service routes). Add deployment-specific browser routes (for example /proxy/authorise/eds when the
+  # EDS sign proxy is used by browsers) to `extraPaths`. A new public id-api route must be added here.
+  # Exact entries do not match a trailing slash.
+  idApiPublicAllowlist:
+    enabled: true
+    paths:
+      - path: /test/ping
+        pathType: Exact
+      - path: /auth
+        pathType: Exact
+      - path: /auth_providers
+        pathType: Exact
+      - path: /sign_in
+        pathType: Prefix
+      - path: /relogin
+        pathType: Exact
+      - path: /authorise
+        pathType: Prefix
+      - path: /oauth/token
+        pathType: Exact
+      - path: /logout
+        pathType: Exact
+      - path: /logoff
+        pathType: Prefix
+      - path: /subscribe
+        pathType: Exact
+      - path: /removeConfirmCode
+        pathType: Exact
+      - path: /user/info
+        pathType: Exact
+      - path: /user/jwt
+        pathType: Exact
+      - path: /user/logout_other_sessions
+        pathType: Exact
+      - path: /user/password/forgot
+        pathType: Exact
+      - path: /user/password/reset
+        pathType: Exact
+      - path: /user/info/email/send
+        pathType: Exact
+      - path: /user/info/email/set
+        pathType: Exact
+      - path: /user/info/email/check_email_confirmation_code
+        pathType: Exact
+      - path: /user/info/setValidPhone
+        pathType: Exact
+      - path: /user/info/phone/send
+        pathType: Exact
+      - path: /user/info/phone/confirm
+        pathType: Exact
+      - path: /user/info/phone/check_phone_confirmation_code
+        pathType: Exact
+      - path: /sign_up
+        pathType: Exact
+      - path: /sign_up/confirmation
+        pathType: Exact
+      - path: /sign_up/confirmation/email/exist
+        pathType: Exact
+      - path: /sign_up/confirmation/email/send
+        pathType: Exact
+      - path: /sign_up/confirmation/email/verify
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/exist
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/send
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/verify
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/check_code
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/check
+        pathType: Exact
+    extraPaths: []
   # Self-signed TLS certificate for local/dev deployments.
   # When enabled, a kubernetes.io/tls Secret is generated at helm render time
   # using Helm's built-in genSelfSignedCert function. The cert covers all hosts
