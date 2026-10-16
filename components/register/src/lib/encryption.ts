@@ -8,6 +8,25 @@ export interface EncryptionConfig {
   iv_size?: number;
 }
 
+const HEX_KEY_RE = /^[0-9a-fA-F]{64}$/;
+const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * Parse the configured key into 32 raw bytes (AES-256).
+ * Accepted: 64 hex characters, or base64 that decodes to exactly 32 bytes (e.g. `openssl rand -base64 32`).
+ * The formats cannot collide: 64 hex characters decode from base64 to 48 bytes.
+ */
+export function parseEncryptionKey(key: unknown): Buffer {
+  if (typeof key === 'string') {
+    if (HEX_KEY_RE.test(key)) return Buffer.from(key, 'hex');
+    if (key.length % 4 === 0 && BASE64_RE.test(key)) {
+      const decoded = Buffer.from(key, 'base64');
+      if (decoded.length === 32) return decoded;
+    }
+  }
+  throw new Error('invalid encryption key');
+}
+
 export default class Encryption {
   static singleton: Encryption;
 
@@ -38,7 +57,7 @@ export default class Encryption {
 
       // Using AES-256-GCM encryption algorithm.
       // https://en.wikipedia.org/wiki/Galois/Counter_Mode
-      const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(this.key, 'hex'), iv);
+      const cipher = crypto.createCipheriv('aes-256-gcm', parseEncryptionKey(this.key), iv);
 
       // Encrypt the data.
       let encrypted = cipher.update(data, 'utf8', 'base64');
@@ -65,7 +84,7 @@ export default class Encryption {
       }
 
       // Using AES-256-GCM decryption algorithm.
-      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.key, 'hex'), iv);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', parseEncryptionKey(this.key), iv);
 
       // Set the authentication tag.
       decipher.setAuthTag(authTag);

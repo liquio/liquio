@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-import Encryption from './encryption';
+import Encryption, { parseEncryptionKey } from './encryption';
 
 describe('Encryption - GCM Authentication Tag Validation', () => {
   const testKey = Buffer.alloc(32).toString('hex'); // 32-byte key for AES-256
@@ -219,4 +219,38 @@ describe('Encryption - GCM Authentication Tag Validation', () => {
       }).toThrow('Invalid authentication tag length. Expected 16 bytes.');
     });
   });
+});
+
+describe('parseEncryptionKey / key formats', () => {
+  const fresh = (key: string) => {
+    (Encryption as any).singleton = undefined;
+    return new Encryption({ key });
+  };
+
+  it('base64-32 key round-trips', () => {
+    const enc = fresh(crypto.randomBytes(32).toString('base64'));
+    expect(enc.decrypt(enc.encrypt('{"a":1}'))).toBe('{"a":1}');
+  });
+
+  it('hex key decrypts ciphertext produced the pre-existing way', () => {
+    const hex = '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
+    const iv = Buffer.alloc(12, 1);
+    const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(hex, 'hex'), iv);
+    const body = cipher.update('legacy', 'utf8', 'base64') + cipher.final('base64');
+    const packed = `${iv.toString('base64')}:${cipher.getAuthTag().toString('base64')}:${body}`;
+    expect(fresh(hex).decrypt(packed)).toBe('legacy');
+  });
+
+  it('never treats 64 hex characters as base64', () => {
+    const hex = 'ab'.repeat(32);
+    expect(parseEncryptionKey(hex).equals(Buffer.from(hex, 'hex'))).toBe(true);
+    expect(Buffer.from(hex, 'base64').length).toBe(48);
+  });
+
+  it.each(['', 'abcd', Buffer.alloc(16).toString('base64'), Buffer.alloc(48, 0x80).toString('base64'), 'ab'.repeat(31), undefined])(
+    'rejects invalid key %j',
+    (key) => {
+      expect(() => parseEncryptionKey(key)).toThrow('invalid encryption key');
+    },
+  );
 });

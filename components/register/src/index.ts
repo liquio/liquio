@@ -8,6 +8,7 @@ import Models from './models';
 import Router from './router';
 import Encryption from './lib/encryption';
 import { config } from './lib/config';
+import { assertSafeConfig, assertEncryptionConfig } from './lib/config_guard';
 import { RedisClient } from './lib/redis_client';
 import { PgPubSub } from './lib/pgpubsub';
 
@@ -22,6 +23,14 @@ global.config = config;
 global.log = log;
 global.ErrorWithDetails = ErrorWithDetails;
 global.typeOf = typeOf;
+
+// Refuse to start with placeholder/empty credentials (messages name settings only, never values).
+try {
+  assertSafeConfig(config);
+} catch (error) {
+  log.save('config-guard-error', { error: error?.message }, 'error');
+  process.exit(1);
+}
 
 // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
 new Sandbox(config.sandbox || {});
@@ -67,6 +76,15 @@ async function main() {
   const afterhandler = new Afterhandler(config.afterhandler, models.models.afterhandler as any, models.models.record as any);
   afterhandler.init();
   global.afterhandler = afterhandler;
+
+  // Never generate or replace a key: only refuse an unusable one when encrypted keys exist.
+  try {
+    const [encrypted] = await global.db.query('SELECT 1 FROM keys WHERE is_encrypted = true LIMIT 1', { type: 'SELECT' });
+    assertEncryptionConfig(config, !!encrypted);
+  } catch (error) {
+    log.save('config-guard-error', { error: error?.message }, 'error');
+    process.exit(1);
+  }
 
   global.encryption = new Encryption(config.encryption);
 
