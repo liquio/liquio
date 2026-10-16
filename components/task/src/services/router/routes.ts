@@ -43,6 +43,32 @@ export const routes = {
       methodHandler: 'ping',
     },
   },
+  'GET /test/ping_with_auth': {
+    groups: [GROUPS.MONITORING],
+    middlewares: [],
+    validator: {
+      name: 'test',
+      method: 'ping',
+    },
+    controller: {
+      name: 'ping',
+      methodHandler: 'pingWithAuth',
+    },
+    basicAuth: true,
+  },
+  'POST /test/ping_with_auth': {
+    groups: [GROUPS.MONITORING],
+    middlewares: [],
+    validator: {
+      name: 'test',
+      method: 'ping',
+    },
+    controller: {
+      name: 'ping',
+      methodHandler: 'pingWithAuth',
+    },
+    basicAuth: true,
+  },
   'GET /test/ping/services': {
     groups: [GROUPS.PUBLIC, GROUPS.MONITORING, GROUPS.ADMIN_API],
     middlewares: [],

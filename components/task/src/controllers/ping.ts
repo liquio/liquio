@@ -54,10 +54,17 @@ export class PingController extends Controller {
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
+   */
+  async ping() {
+    return { message: MESSAGE_PONG };
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
    * @param {query} query HTTP query.
    */
-  async ping({ query }) {
+  async pingWithAuth({ query }) {
     const { health_check: healthCheck, payment, sign } = query || {};
     return this.selfPing(healthCheck, payment, sign);
   }

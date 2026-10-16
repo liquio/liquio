@@ -30,17 +30,35 @@ describe('TestController', () => {
     await expect(app.init()).resolves.not.toThrow();
   });
 
-  it('should check /test/ping with success', async () => {
+  it('should check /test/ping with success and reveal only pong', async () => {
     app = await TestApp.setup();
 
     const response = await app.request().get('/test/ping').expect(200);
-    expect(response.body).toEqual({ processPid: expect.any(Number), message: 'pong' });
+    expect(response.body).toEqual({ message: 'pong' });
   });
 
-  it('should check /test/ping with health_check with success', async () => {
+  it('should ignore health_check on /test/ping without auth and not reveal internal status', async () => {
     app = await TestApp.setup();
 
     const response = await app.request().get('/test/ping?health_check=true').expect(200);
+    expect(response.body).toEqual({ message: 'pong' });
+  });
+
+  it('should require auth on /test/ping_with_auth with health_check', async () => {
+    app = await TestApp.setup();
+
+    await app.request().get('/test/ping_with_auth?health_check=true').expect(401);
+  });
+
+  it('should check /test/ping_with_auth with health_check with success', async () => {
+    app = await TestApp.setup();
+
+    const login = 'admin';
+    const password = 'admin';
+
+    config.oauth!.secret_key = [Buffer.from(`${login}:${password}`).toString('base64')];
+
+    const response = await app.request().get('/test/ping_with_auth?health_check=true').auth(login, password).expect(200);
     expect(response.body).toEqual({
       processPid: expect.any(Number),
       message: 'pong',

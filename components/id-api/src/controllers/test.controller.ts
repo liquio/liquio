@@ -21,9 +21,16 @@ export class TestController extends BaseController {
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
    */
   async ping(req: Request, res: Response): Promise<void> {
+    this.responseData(res, { message: MESSAGE_PONG });
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
+   */
+  async pingWithAuth(req: Request, res: Response): Promise<void> {
     const healthCheck = req.query.health_check;
 
     const processPid = process.pid;
@@ -72,18 +79,6 @@ export class TestController extends BaseController {
         responseData.edsMeta = edsWideCheck.meta;
       }
     }
-
-    this.responseData(res, responseData);
-  }
-
-  /**
-   * Ping with auth.
-   */
-  async pingWithAuth(req: Request, res: Response): Promise<void> {
-    const responseData = {
-      processPid: process.pid,
-      message: MESSAGE_PONG,
-    };
 
     this.responseData(res, responseData);
   }

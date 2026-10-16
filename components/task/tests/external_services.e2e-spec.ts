@@ -29,7 +29,7 @@ describe('External Services', () => {
       .get('/test/ping')
       .expect(200)
       .expect((response) => {
-        expect(response.body).toEqual({ data: { message: 'pong', processPid: expect.any(Number) } });
+        expect(response.body).toEqual({ data: { message: 'pong' } });
       });
   });
 
