@@ -45,7 +45,8 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
 
 ## Secrets in config
 
-Secrets (`notifier.password`, `server.token`, `server.crypto.password`, `server.crypto.iv`) must not be left as the `<REDACTED>` placeholder from `config-templates/admin-api` or empty. Outside `server.environment: dev` the service refuses to start. Provide them via the secret config (`<release>-admin-api-secret-config`, `notifier.json` / `server.json`); the Helm chart generates random values when `secrets.createSecrets: true`.
+Secrets (`notifier.password`, `server.token`, `server.crypto.password`, `server.crypto.iv`, `db.password`, `auth.jwtSecret`, `auth.basicAuthToken`) must not be left as the `<REDACTED>` placeholder from `config-templates/admin-api` or empty. Outside `server.environment: dev` the service refuses to start. Provide them via the secret config (`<release>-admin-api-secret-config`, `notifier.json` / `server.json` / `db.json` / `auth.json`); the Helm chart generates random values when `secrets.createSecrets: true`.
+`auth.clientSecret` and `sign.token` only log the warning `config-placeholder-secrets-warning` when left as a placeholder.
 
 ## TLS to internal services
 

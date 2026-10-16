@@ -3,7 +3,20 @@ import crypto from 'node:crypto';
 const PLACEHOLDER = '<REDACTED>';
 const DEV_ENVIRONMENT = 'dev';
 
-const CHECKED_SECRET_PATHS = ['notifier.password', 'server.token', 'server.crypto.password', 'server.crypto.iv'];
+// Always supplied by Helm (admin-api Secret) and scripts/init.sh, and always used at runtime: fail closed outside of `dev`.
+const CHECKED_SECRET_PATHS = [
+  'notifier.password',
+  'server.token',
+  'server.crypto.password',
+  'server.crypto.iv',
+  'db.password',
+  'auth.jwtSecret',
+  'auth.basicAuthToken',
+];
+
+// Supplied by Helm but not by scripts/init.sh, and used only on some flows (id-api code/refresh exchange, `sign` encryption
+// of assets): a correct install may leave the placeholder, so these only produce a warning.
+const WARNED_SECRET_PATHS = ['auth.clientSecret', 'sign.token'];
 
 /**
  * Get nested value by dotted path.
@@ -21,7 +34,26 @@ function getByPath(config: Record<string, any>, path: string): any {
  * @returns {string[]} Config paths with missing secrets.
  */
 export function findPlaceholderSecrets(config: Record<string, any>): string[] {
-  return CHECKED_SECRET_PATHS.filter((path) => {
+  return filterPlaceholders(config, CHECKED_SECRET_PATHS);
+}
+
+/**
+ * Find warn-only secrets that are empty or still equal to the `<REDACTED>` placeholder. Never fatal.
+ * @param {Record<string, any>} config Config.
+ * @returns {string[]} Config paths with placeholder secrets.
+ */
+export function findPlaceholderSecretWarnings(config: Record<string, any>): string[] {
+  return filterPlaceholders(config, WARNED_SECRET_PATHS);
+}
+
+/**
+ * Filter config paths whose value is missing, empty or the placeholder.
+ * @param {Record<string, any>} config Config.
+ * @param {string[]} paths Dotted paths.
+ * @returns {string[]} Offending paths.
+ */
+function filterPlaceholders(config: Record<string, any>, paths: string[]): string[] {
+  return paths.filter((path) => {
     const value = getByPath(config, path);
     return value === undefined || value === null || (typeof value === 'string' && (value.trim() === '' || value.trim() === PLACEHOLDER));
   });

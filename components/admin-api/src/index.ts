@@ -15,7 +15,7 @@ import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
 import { warnPlainHttpInternalUrls } from './lib/internal_transport';
-import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault } from './lib/config_check';
+import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault, findPlaceholderSecretWarnings } from './lib/config_check';
 import { buildSandboxConfig } from './lib/sandbox_config';
 
 // Constants.
@@ -33,6 +33,7 @@ async function main() {
     throw new Error("Token must'n be empty.");
   }
   const placeholderSecrets = assertNoPlaceholderSecrets(config);
+  const placeholderSecretWarnings = findPlaceholderSecretWarnings(config);
   assertTaskTokenIsNotDefault(config);
   global.config = config;
 
@@ -47,6 +48,9 @@ async function main() {
   warnPlainHttpInternalUrls(config);
   if (placeholderSecrets.length > 0) {
     global.log.save('config-placeholder-secrets-in-dev', { paths: placeholderSecrets });
+  }
+  if (placeholderSecretWarnings.length > 0) {
+    global.log.save('config-placeholder-secrets-warning', { paths: placeholderSecretWarnings });
   }
 
   // Init id-api client (shared by the whole process, see `getIdApiClient()`).

@@ -1,8 +1,11 @@
-import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault, findPlaceholderSecrets } from './config_check';
+import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault, findPlaceholderSecrets, findPlaceholderSecretWarnings } from './config_check';
 
 const buildConfig = (environment: string, overrides: Record<string, any> = {}) => ({
   server: { environment, token: 'tok', crypto: { password: 'pwd', iv: 'iv' } },
   notifier: { password: 'secret' },
+  db: { password: 'dbpass' },
+  auth: { jwtSecret: 'jwt', basicAuthToken: 'basic', clientSecret: 'client' },
+  sign: { token: 'signtok' },
   ...overrides,
 });
 
@@ -31,6 +34,31 @@ describe('config_check', () => {
   it('allows placeholders in dev and reports them', () => {
     const config = buildConfig('dev', { notifier: { password: '<REDACTED>' } });
     expect(assertNoPlaceholderSecrets(config)).toEqual(['notifier.password']);
+  });
+});
+
+describe('config_check: db, auth and sign secrets', () => {
+  it.each([
+    ['db.password', { db: { password: '<REDACTED>' } }],
+    ['auth.jwtSecret', { auth: { jwtSecret: '<REDACTED>', basicAuthToken: 'b' } }],
+    ['auth.basicAuthToken', { auth: { jwtSecret: 'j', basicAuthToken: '' } }],
+  ])('throws outside dev for placeholder or empty %s', (path, overrides) => {
+    expect(() => assertNoPlaceholderSecrets(buildConfig('production', overrides))).toThrow(path);
+  });
+
+  it('allows these placeholders in dev and reports them', () => {
+    const config = buildConfig('dev', { db: { password: '<REDACTED>' }, auth: { jwtSecret: '<REDACTED>', basicAuthToken: '<REDACTED>' } });
+    expect(assertNoPlaceholderSecrets(config)).toEqual(['db.password', 'auth.jwtSecret', 'auth.basicAuthToken']);
+  });
+
+  it('only warns, never throws, for auth.clientSecret and sign.token', () => {
+    const config = buildConfig('production', {
+      auth: { jwtSecret: 'j', basicAuthToken: 'b', clientSecret: '<REDACTED>' },
+      sign: { token: '<REDACTED>' },
+    });
+    expect(() => assertNoPlaceholderSecrets(config)).not.toThrow();
+    expect(findPlaceholderSecretWarnings(config)).toEqual(['auth.clientSecret', 'sign.token']);
+    expect(findPlaceholderSecretWarnings(buildConfig('production'))).toEqual([]);
   });
 });
 
