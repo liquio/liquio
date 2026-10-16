@@ -29,12 +29,14 @@ describe('anonymous account-existence oracles are closed (ID-25, GI-14, KS-34)',
       consumeSendQuota: jest.fn().mockResolvedValue(true),
       getUser: jest.fn(),
       removeConfirmCode: jest.fn(),
+      getValidConfirmCode: jest.fn(),
+      incrementConfirmCodeCounterAsync: jest.fn().mockResolvedValue(1),
       saveConfirmCodeAsync: jest.fn(),
       generatePinCode: jest.fn().mockReturnValue('123456'),
       getClientByRedirectUri: jest.fn().mockResolvedValue({ clientId: 'c1' }),
     };
     notify = { sendMail: jest.fn() };
-    userModel = { findOne: jest.fn(), create: jest.fn() };
+    userModel = { findOne: jest.fn(), create: jest.fn(), destroy: jest.fn().mockResolvedValue(1) };
     (Services.service as jest.Mock).mockImplementation((name: string) =>
       name === 'auth' ? auth : name === 'passwordManager' ? { isStrongPassword: () => ({ strong: true }) } : notify,
     );
@@ -99,12 +101,28 @@ describe('anonymous account-existence oracles are closed (ID-25, GI-14, KS-34)',
     expect(res.send).toHaveBeenNthCalledWith(2, false);
   });
 
-  it('POST /sign_up answers 201 with the same body for an existing email and creates nothing', async () => {
+  it('POST /sign_up answers 201 with the same body for an existing email (valid code) and creates nothing', async () => {
+    auth.getValidConfirmCode.mockResolvedValue({ id: 1 });
     userModel.findOne.mockResolvedValue({ userId: 'u1' });
-    await signUp().signUpUser({ body: { email: 'a@b.com', password: 'Str0ng!pass' } } as any, res);
+    await signUp().signUpUser({ body: { email: 'a@b.com', password: 'Str0ng!pass', code: '123456' } } as any, res);
 
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({ message: 'User registered successfully' });
+    expect(userModel.create).not.toHaveBeenCalled();
+  });
+
+  it('POST /sign_up without a code gives an existing and an unknown email the identical 400', async () => {
+    const answer = async (email: string, existing: boolean) => {
+      const r: any = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      userModel.findOne.mockResolvedValue(existing ? { userId: 'u1' } : null);
+      await signUp().signUpUser({ body: { email, password: 'Str0ng!pass' } } as any, r);
+      return [r.status.mock.calls, r.json.mock.calls];
+    };
+    const registered = await answer('a@b.com', true);
+    const unknown = await answer('c@d.com', false);
+
+    expect(registered).toEqual(unknown);
+    expect(registered[0]).toEqual([[400]]);
     expect(userModel.create).not.toHaveBeenCalled();
   });
 

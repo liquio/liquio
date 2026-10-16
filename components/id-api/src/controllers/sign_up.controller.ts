@@ -71,16 +71,17 @@ export class SignUpController extends BaseController {
    * A method to sign up a new user.
    */
   async signUpUser(req: Request, res: Response): Promise<void> {
-    const { email, password } = req.body;
+    const { password, code } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : req.body.email;
 
     this.log.save('registration|request', { email }, 'info');
 
-    // Email and password are required
-    if (!email || !password) {
-      this.log.save('registration|user-error', { email, error: 'Email and password are required.' }, 'warning');
+    // Email, password and the email confirmation code are required
+    if (!email || !password || !code || typeof code !== 'string') {
+      this.log.save('registration|user-error', { email, error: 'Email, password and confirmation code are required.' }, 'warning');
       res.status(400).json({
         error: 'missing-params',
-        description: 'Email and password are required.',
+        description: 'Email, password and confirmation code are required.',
       });
       return;
     }
@@ -98,6 +99,28 @@ export class SignUpController extends BaseController {
       res.status(400).send({ error: 'weak-password', description: reason });
       return;
     }
+
+    // The account is created only for an email whose owner proved control of it with the code sent to that exact address.
+    // The answer for a wrong, expired, used or missing code does not depend on whether the email is registered.
+    const validCode = await this.service('auth')
+      .getValidConfirmCode({ email, code })
+      .catch(() => undefined);
+    if (!validCode) {
+      this.log.save('registration|user-error', { email, error: 'Invalid confirmation code.' }, 'warning');
+      await this.service('auth')
+        .incrementConfirmCodeCounterAsync({ email })
+        .catch(() => undefined);
+      res.status(400).json({ error: 'invalid-code', description: 'Invalid or expired confirmation code.' });
+      return;
+    }
+
+    // Single use: only the request that actually deletes the code may continue (parallel replays delete nothing).
+    const consumed = await this.model('confirmCode').destroy({ where: { id: validCode.id } });
+    if (!consumed) {
+      res.status(400).json({ error: 'invalid-code', description: 'Invalid or expired confirmation code.' });
+      return;
+    }
+    await this.service('auth').removeConfirmCode({ email });
 
     // An already registered email gets the same public answer as a new one (no account-existence oracle) and nothing is created.
     const existingUser = await this.model('user').findOne({ where: { email } });
@@ -120,6 +143,7 @@ export class SignUpController extends BaseController {
           {
             ipn,
             email,
+            valid: { email: true, phone: false },
             provider: 'local',
             userIdentificationType: 'email',
             needOnboarding: !!needOnboarding,
