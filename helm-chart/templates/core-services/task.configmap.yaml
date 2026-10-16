@@ -123,6 +123,7 @@ metadata:
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
   "port" (default 8080 .Values.services.task.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "trustProxy" 1
   "serverName" (printf "http://%s-task:80" (include "liquio.fullname" .))
   "customer" .Release.Name
   "environment" .Values.config.server.environment

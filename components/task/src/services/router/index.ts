@@ -61,6 +61,13 @@ export class RouterService {
     // Use extended query parser.
     app.set('query parser', 'extended');
 
+    // Trust proxy: hop count, or IP/CIDR/preset list of known proxies. Unset trusts nothing, so `req.ip` is the socket address.
+    // Behind ingress and cabinet-api (which forwards the ingress-set `X-Forwarded-For` untouched) use `1`.
+    const { trustProxy } = this.config.server || {};
+    if (trustProxy !== undefined) {
+      app.set('trust proxy', trustProxy);
+    }
+
     // Tracing.
     app.use(asyncLocalStorageMiddleware);
 
