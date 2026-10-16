@@ -188,14 +188,17 @@ export class AuthMiddleware {
     };
   }
 
-  authorise() {
+  /**
+   * OAuth access token auth. With `options.scope` the token must carry every listed scope (403 otherwise).
+   */
+  authorise(options: { scope?: string | string[] } = {}) {
     const service = this.service('auth');
 
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
       try {
         const request = new OAuth2Server.Request(req);
         const response = new OAuth2Server.Response(res);
-        const token = await service.server.authenticate(request, response);
+        const token = await service.server.authenticate(request, response, options.scope ? { scope: [options.scope].flat() } : undefined);
         req.user = token.user as any;
         res.locals.oauth = { token };
         const passport = req.session.passport ?? ({} as any);

@@ -3,8 +3,38 @@ import { Op, WhereAttributeHash } from 'sequelize';
 import { Request } from '../types';
 import { BaseService } from './base_service';
 
+/** Aggregate write scope: lets a token write every profile field `POST /user/info` accepts. */
+export const PROFILE_WRITE_SCOPE = 'profile:write';
+
+/**
+ * Writable profile fields that have no scope of their own in `oauth.defaults.scope_fields`;
+ * they are covered by the scope of the field they belong to.
+ */
+const WRITE_SCOPE_ALIASES: Record<string, string> = {
+  twoFactorType: 'useTwoFactorAuth',
+  legalEntityDateRegistration: 'isIndividualEntrepreneur',
+  foreigners_document_series: 'passport_series',
+  foreigners_document_number: 'passport_number',
+  foreigners_document_issue_date: 'passport_issue_date',
+  foreigners_document_expire_date: 'passport_issue_date',
+  foreigners_document_issued_by: 'passport_issued_by',
+  foreigners_document_type: 'passport_series',
+};
+
+/** The token does not cover a profile field present in the request. */
+export class ProfileScopeError extends Error {
+  readonly statusCode = 403;
+  constructor(readonly fields: string[]) {
+    super('Insufficient scope');
+  }
+}
+
 export class UserService extends BaseService {
-  extractUpdateUserInfoParams(req: Request, fields: string[]): WhereAttributeHash<any> {
+  /**
+   * `scope`, when given, is the token's scope: only fields it covers (by name, alias or `profile:write`) may be present in the body.
+   * Throws `ProfileScopeError` for the rest, so nothing is written partially.
+   */
+  extractUpdateUserInfoParams(req: Request, fields: string[], scope?: string[]): WhereAttributeHash<any> {
     if ('email' in req.body) {
       throw new Error('Email can only be changed after verification through /user/info/email/set');
     }
@@ -17,6 +47,13 @@ export class UserService extends BaseService {
     }
     if (!denyToUpdateUserValidParams) {
       fields.push('valid');
+    }
+
+    if (scope) {
+      const denied = fields.filter((f) => f in req.body && !scope.includes(PROFILE_WRITE_SCOPE) && !scope.includes(WRITE_SCOPE_ALIASES[f] ?? f));
+      if (denied.length) {
+        throw new ProfileScopeError(denied);
+      }
     }
 
     const query: WhereAttributeHash<any> = {};

@@ -57,6 +57,12 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
     };
   }
 
+  // Route-level minimum scope (`authorise({ scope })`): the token must carry every required scope.
+  async verifyScope(token: OAuthToken, requiredScopes: string[]): Promise<boolean> {
+    if (!Array.isArray(token.scope)) return false;
+    return requiredScopes.every((required) => (token.scope as string[]).includes(required));
+  }
+
   // `clientSecret === null` is the authorization endpoint lookup of @node-oauth/oauth2-server, where the client is not authenticated.
   async getClient(clientId: string, clientSecret?: string | null): Promise<OAuthClient | Falsey> {
     try {

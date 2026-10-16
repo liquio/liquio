@@ -30,7 +30,7 @@ describe('Profile phone verification (ID-07)', () => {
       clientId: client.clientId,
       expires: new Date(Date.now() + 60 * 60 * 1000),
       userId: user.userId,
-      scope: ['userId', 'email', 'isActive'],
+      scope: ['userId', 'email', 'isActive', 'profile:write'],
     } as any);
     return { userId: user.userId, token };
   }

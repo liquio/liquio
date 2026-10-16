@@ -374,3 +374,22 @@ describe('OAuthModel.revokeToken', () => {
     expect(results.filter(Boolean)).toHaveLength(1);
   });
 });
+
+describe('OAuthModel.verifyScope (GI-20)', () => {
+  const model = new OAuthModel();
+
+  it('accepts a token carrying every required scope', async () => {
+    await expect(model.verifyScope({ scope: ['a', 'b'] } as any, ['a'])).resolves.toBe(true);
+    await expect(model.verifyScope({ scope: ['a', 'b'] } as any, ['a', 'b'])).resolves.toBe(true);
+  });
+
+  it('rejects a token missing a required scope', async () => {
+    await expect(model.verifyScope({ scope: ['a'] } as any, ['a', 'b'])).resolves.toBe(false);
+    await expect(model.verifyScope({ scope: [] } as any, ['a'])).resolves.toBe(false);
+  });
+
+  it('rejects a token whose scope is not an array', async () => {
+    await expect(model.verifyScope({ scope: 'a' } as any, ['a'])).resolves.toBe(false);
+    await expect(model.verifyScope({} as any, ['a'])).resolves.toBe(false);
+  });
+});

@@ -42,7 +42,7 @@ describe('Confirmation codes travel in the POST body, GET is deprecated (SE-3930
       clientId: client.clientId,
       expires: new Date(Date.now() + 60 * 60 * 1000),
       userId: created.userId,
-      scope: ['userId', 'email', 'isActive'],
+      scope: ['userId', 'email', 'isActive', 'profile:write'],
     } as any);
     user = { userId: created.userId, token, email: 'if05-owner@email.test' };
   });

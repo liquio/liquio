@@ -15,6 +15,7 @@ import { clampLimit, getUsersReadPolicy, hasFullRead, minimiseUser, toNonNegativ
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
 import { getTaskTokenCacheKey } from '../services/auth.service';
+import { ProfileScopeError } from '../services/user.service';
 import { Express, NextFunction, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -283,11 +284,23 @@ export class UserController extends BaseController {
       'is_private_house',
     ];
 
+    // The token's scope bounds what it may write (same vocabulary as the fields `getUserInfo` returns).
+    const { scope = [] } = res.locals.oauth?.token ?? {};
+    if (!Array.isArray(scope)) {
+      res.status(400).send('Invalid scope');
+      return;
+    }
+
     // Define update query.
     let query: WhereAttributeHash<any>;
     try {
-      query = this.service('user').extractUpdateUserInfoParams(req, fields);
+      query = this.service('user').extractUpdateUserInfoParams(req, fields, scope);
     } catch (error: any) {
+      if (error instanceof ProfileScopeError) {
+        this.log.save('update-user-info-scope-denied', { userId, fields: error.fields }, 'warn');
+        res.status(403).send('Insufficient scope');
+        return;
+      }
       this.log.save('update-user-info-error', { userId, error: error.message, stack: error.stack }, 'error');
       res.status(400).send(error.message);
       return;

@@ -26,7 +26,7 @@ describe('Profile email verification (ID-08)', () => {
       clientId: client.clientId,
       expires: new Date(Date.now() + 60 * 60 * 1000),
       userId: user.userId,
-      scope: ['userId', 'email', 'isActive'],
+      scope: ['userId', 'email', 'isActive', 'profile:write'],
     } as any);
     return { userId: user.userId, token, email };
   }
