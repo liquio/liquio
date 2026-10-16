@@ -10,6 +10,7 @@ metadata:
   "production" (dict
     "processTitle" "notify"
     "port" ((default 8080 .Values.services.notification.containerPort) | toString)
+    "trustProxy" 1
     "username" .Values.config.database.username
     "database" "notify"
     "host" (include "liquio.postgresql.host" .)

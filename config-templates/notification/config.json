@@ -3,6 +3,7 @@
   "production": {
     "processTitle": "notify",
     "port": "3003",
+    "trustProxy": 1,
     "tls": {
       "enabled": false
     },
