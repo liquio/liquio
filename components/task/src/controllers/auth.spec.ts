@@ -250,6 +250,7 @@ describe('AuthController', () => {
         ['PUT', '/unit-access/:id'],
         ['DELETE', '/unit-access/:id'],
         ['DELETE', '/register/cache'],
+        ['GET', '/test/ping/services'],
       ],
       event: [
         ['POST', '/tasks/by-other-system'],

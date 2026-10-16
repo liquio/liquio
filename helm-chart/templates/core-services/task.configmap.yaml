@@ -213,6 +213,11 @@ metadata:
       "basicAuthUsers" (list "admin-api")
     )
     (dict
+      "route" "/test/ping/services"
+      "method" "GET"
+      "basicAuthUsers" (list "admin-api")
+    )
+    (dict
       "route" "/tasks/by-other-system"
       "method" "POST"
       "basicAuthUsers" (list "event")

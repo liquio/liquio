@@ -1,6 +1,6 @@
 import type { Response as SupertestResponse } from 'supertest';
 
-import { TestApp } from './test-app';
+import { TestApp, TASK_TOKEN } from './test-app';
 import { prepareFixtures } from './fixtures';
 
 const TEST_USER_ID = '61efddaa351d6219eee09043';
@@ -115,6 +115,7 @@ describe('Ping Controller', () => {
         .nock('http://task:3000')
         .get('/test/ping/services')
         .query(true)
+        .matchHeader('authorization', TASK_TOKEN)
         .reply(200, { data: { services: 'ok' } });
 
       await app.request().get('/test/ping/services').set('token', jwt).expect(200);

@@ -286,7 +286,7 @@ export class TaskService {
       let response = await HttpRequest.send({
         url: `${this.server}:${this.port}${ROUTES.pingServices}`,
         method: HttpRequest.Methods.GET,
-        headers: { ...this.headers },
+        headers: { ...this.headers, Authorization: this.token },
       });
       global.log.save('task-request-send-ping-services', response);
 

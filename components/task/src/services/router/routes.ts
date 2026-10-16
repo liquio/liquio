@@ -80,6 +80,7 @@ export const routes = {
       name: 'ping',
       method: 'pingServices',
     },
+    basicAuth: true,
   },
   'GET /test/ping/committed-documents/:document_template_id': {
     groups: [GROUPS.PUBLIC, GROUPS.MONITORING],
@@ -88,6 +89,7 @@ export const routes = {
       name: 'ping',
       method: 'pingCommittedDocumentsCount',
     },
+    basicAuth: true,
   },
   'GET /healthz': {
     groups: [GROUPS.PUBLIC, GROUPS.MONITORING],

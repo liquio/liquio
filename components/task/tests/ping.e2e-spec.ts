@@ -112,10 +112,18 @@ describe('Ping Controller', () => {
   });
 
   describe('GET /test/ping/services', () => {
-    it('returns an aggregated ping response', async () => {
+    it('requires basic auth credentials', async () => {
+      await app.request().get('/test/ping/services').expect(401);
+      await app.request().get('/test/ping/services').set('Authorization', 'Basic d3Jvbmc6d3Jvbmc=').expect(401);
+    });
+
+    it('returns an aggregated ping response when authenticated', async () => {
+      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+
       await app
         .request()
         .get('/test/ping/services')
+        .set('Authorization', BASIC_AUTH_TOKEN)
         .expect(200)
         .expect((response) => {
           expect(response.body.data).toHaveProperty('taskResponse');
@@ -124,11 +132,18 @@ describe('Ping Controller', () => {
   });
 
   describe('GET /test/ping/committed-documents/:document_template_id', () => {
-    it('is routed to a real handler', async () => {
+    it('requires basic auth credentials', async () => {
+      await app.request().get('/test/ping/committed-documents/placeholder').expect(401);
+    });
+
+    it('is routed to a real handler when authenticated', async () => {
+      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+
       // No `ping_documents` config template exists in this environment, so the
       // handler can't do anything useful here beyond proving it's wired up.
-      const response = await app.request().get('/test/ping/committed-documents/placeholder');
+      const response = await app.request().get('/test/ping/committed-documents/placeholder').set('Authorization', BASIC_AUTH_TOKEN);
       expect(response.status).not.toBe(404);
+      expect(response.status).not.toBe(401);
     });
   });
 

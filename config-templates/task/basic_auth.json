@@ -27,6 +27,11 @@
       "basicAuthUsers": ["admin-api"]
     },
     {
+      "route": "/test/ping/services",
+      "method": "GET",
+      "basicAuthUsers": ["admin-api"]
+    },
+    {
       "route": "/tasks/by-other-system",
       "method": "POST",
       "basicAuthUsers": ["event"]
