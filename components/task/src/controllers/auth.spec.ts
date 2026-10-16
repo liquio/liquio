@@ -1,5 +1,7 @@
 import { AuthController } from './auth';
 import { Token } from '../lib/token';
+import { routes } from '../services/router/routes';
+import shippedBasicAuth from '../../../../config-templates/task/basic_auth.json';
 
 jest.mock('../models/unit', () => ({ UnitModel: jest.fn() }));
 
@@ -233,6 +235,85 @@ describe('AuthController', () => {
       const nextAllowed = jest.fn();
       await controller.checkScopedBasicAuth(makeReq('/units/:id', 'GET', 'admin-api', '/units/1'), {}, nextAllowed);
       expect(nextAllowed).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('shipped config-templates/task/basic_auth.json with scopedRoutes on', () => {
+    let responseError: jest.SpyInstance;
+    const ruleFor = (route) => shippedBasicAuth.protectedRoutes.filter((rule) => rule.route === route);
+    const callerRoutes = {
+      'admin-api': [
+        ['GET', '/workflows/elastic-filtered'],
+        ['GET', '/unit-access'],
+        ['POST', '/unit-access'],
+        ['GET', '/unit-access/:id'],
+        ['PUT', '/unit-access/:id'],
+        ['DELETE', '/unit-access/:id'],
+        ['DELETE', '/register/cache'],
+      ],
+      event: [
+        ['POST', '/tasks/by-other-system'],
+        ['PUT', '/external_services/workflow/:workflow_id/task_template/:task_template_id'],
+      ],
+    };
+    const check = async (user, method, path) => {
+      const next = jest.fn();
+      await controller.checkScopedBasicAuth({ route: { path }, method, basicAuthUser: user } as any, {}, next);
+      return next.mock.calls.length === 1;
+    };
+
+    beforeEach(() => {
+      (controller as any).config = { basic_auth: { ...shippedBasicAuth, scopedRoutes: true } };
+      responseError = jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
+    });
+
+    it('should ship with scopedRoutes off', () => {
+      expect(shippedBasicAuth.scopedRoutes).toBe(false);
+    });
+
+    it('should only name real basicAuth routes and methods of routes.ts', () => {
+      for (const rule of shippedBasicAuth.protectedRoutes.filter((r) => r.route !== '/some/protected-route')) {
+        const methods = [].concat((rule as any).methods || (rule as any).method);
+        expect(methods.length).toBeGreaterThan(0);
+        for (const method of methods) {
+          expect(routes[`${method} ${rule.route}`]).toBeDefined();
+          expect(routes[`${method} ${rule.route}`].basicAuth).toBe(true);
+        }
+      }
+    });
+
+    it('should allow admin-api and event on their routes', async () => {
+      for (const [user, list] of Object.entries(callerRoutes)) {
+        for (const [method, path] of list) {
+          expect(await check(user, method, path)).toBe(true);
+        }
+      }
+      expect(responseError).not.toHaveBeenCalled();
+    });
+
+    it('should deny admin-api and event on each other routes, and on any other basicAuth route', async () => {
+      expect(await check('admin-api', 'POST', '/tasks/by-other-system')).toBe(false);
+      expect(await check('event', 'DELETE', '/register/cache')).toBe(false);
+      expect(await check('event', 'GET', '/unit-access')).toBe(false);
+      const covered = new Set(
+        Object.values(callerRoutes)
+          .flat()
+          .map(([method, path]) => `${method} ${path}`),
+      );
+      for (const [key, route] of Object.entries(routes) as [string, any][]) {
+        if (!route.basicAuth || covered.has(key)) {
+          continue;
+        }
+        const [method, path] = key.split(' ');
+        for (const user of Object.keys(callerRoutes)) {
+          expect(await check(user, method, path)).toBe(false);
+        }
+      }
+    });
+
+    it('should deny a user without a rule on a ruled route', async () => {
+      expect(ruleFor('/tasks/by-other-system')).toHaveLength(1);
+      expect(await check('some-external-system', 'POST', '/tasks/by-other-system')).toBe(false);
     });
   });
 

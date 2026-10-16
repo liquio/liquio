@@ -654,6 +654,13 @@ config:
       #         isEnabled: true
       #         intervalMinutes: 15
 
+  # Task per-integration Basic route scoping (off by default). When true, every Basic-auth route of task needs a rule
+  # naming the caller, else 403. The chart ships rules for `admin-api` and `event` (see task.configmap.yaml). Callers
+  # outside the chart (other external_bpmn systems, /auth/bearer users) have no rule, so check them first.
+  # task:
+  #   basic_auth:
+  #     scopedRoutes: true
+
 # Secret configuration
 secrets:
   # Whether Helm should generate all required secrets on install.

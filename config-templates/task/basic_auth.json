@@ -5,6 +5,36 @@
     {
       "route": "/some/protected-route",
       "basicAuthUsers": ["external-reader"]
+    },
+    {
+      "route": "/workflows/elastic-filtered",
+      "method": "GET",
+      "basicAuthUsers": ["admin-api"]
+    },
+    {
+      "route": "/unit-access",
+      "methods": ["GET", "POST"],
+      "basicAuthUsers": ["admin-api"]
+    },
+    {
+      "route": "/unit-access/:id",
+      "methods": ["GET", "PUT", "DELETE"],
+      "basicAuthUsers": ["admin-api"]
+    },
+    {
+      "route": "/register/cache",
+      "method": "DELETE",
+      "basicAuthUsers": ["admin-api"]
+    },
+    {
+      "route": "/tasks/by-other-system",
+      "method": "POST",
+      "basicAuthUsers": ["event"]
+    },
+    {
+      "route": "/external_services/workflow/:workflow_id/task_template/:task_template_id",
+      "method": "PUT",
+      "basicAuthUsers": ["event"]
     }
   ]
 }

@@ -422,10 +422,19 @@ jq --arg key "$(generate_secret)" \
   password=$(generate_secret 48)
   token="Basic $(printf '%s:%s' "$login" "$password" | base64 -w0)"
 
+  # Event calls task as its own Basic user `event` (external_bpmn.test), so basic_auth.scopedRoutes can name it.
+  event_token="Basic $(printf '%s:%s' "event" "$(generate_secret 48)" | base64 -w0)"
+
   file="config/task/basic_auth.json"
   echo "$file"
-  jq --arg token "$token" \
-    '.tokens = [$token]' \
+  jq --arg token "$token" --arg eventToken "$event_token" \
+    '.tokens = [$token, $eventToken]' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/event/external_bpmn.json"
+  echo "$file"
+  jq --arg token "$event_token" \
+    '.test.token = $token' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/admin-api/task.json"
