@@ -164,9 +164,9 @@ service/router source. Synchronous HTTP unless noted.
 - RabbitMQ (async, BPMN bus): `admin-api`, `manager`, `task`, `event`,
   `gateway` all publish/consume `bpmn-*-incoming` queues, with `manager` as
   the central router
-- `admin-api` → `admin-front`: an optional, dev-only WebSocket debug-log
-  stream (`components/admin-api/src/lib/logs_broadcasting.ts`, gated by
-  admin auth and disabled by default) — not a general-purpose push channel
+- `admin-api` → `admin-front`: an authenticated WebSocket debug-log
+  stream (`/ws/ws` in `components/admin-api/src/services/router.ts`) — not a
+  general-purpose push channel
 
 ## C4 container diagram
 

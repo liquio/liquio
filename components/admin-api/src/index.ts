@@ -11,7 +11,6 @@ import { Models } from './models';
 import { WorkflowHandlerBusiness } from './businesses/workflow_handler';
 import { ElasticBusiness } from './businesses/elastic';
 import { WorkflowBusiness } from './businesses/workflow';
-import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
@@ -89,11 +88,6 @@ async function main() {
   // Init router.
   const routerService = new RouterService(config);
   await routerService.init();
-
-  if (process.env.NODE_ENV !== 'prod' && global.config.logs_broadcasting?.isEnabled) {
-    const logsBroadcasting = new LogsBroadcasting(global.config);
-    logsBroadcasting.start();
-  }
 
   global.businesses = {
     workflow: new WorkflowBusiness(),

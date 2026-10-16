@@ -16,7 +16,6 @@ import { FileGeneratorService } from './services/file_generator';
 import { StorageService } from './services/storage';
 import { Commands } from './commands';
 import * as Errors from './lib/errors';
-import { LogsBroadcasting } from './lib/logs_broadcasting';
 import typeOf from './lib/type_of';
 import { HttpClient } from './lib/http_client';
 import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses_daemon';
@@ -265,11 +264,6 @@ export class BpmnTaskCore {
     // Init router.
     this.routerService = new RouterService(config);
     await this.routerService.init({ customValidators, customRoutes });
-
-    // Init logs broadcasting.
-    if (process.env.NODE_ENV !== 'prod' && global.config?.logs_broadcasting?.isEnabled) {
-      LogsBroadcasting.start(global.config.logs_broadcasting);
-    }
   }
 
   async listen() {
