@@ -243,6 +243,49 @@ export class AuthMiddleware {
     };
   }
 
+  /**
+   * Binds a service (basic auth) request to the end user by the user access token in `?access_token=`.
+   * The basic `Authorization` header stays for the service identity, so the token is read from the query only.
+   * A valid token sets `req.user` (no session is created). An invalid token is always 401. A missing one is 401 when
+   * `required()` is true; otherwise the request goes on without a bound user (legacy service-only mode).
+   */
+  userToken(required: () => boolean = () => false) {
+    const service = this.service('auth');
+
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      const accessToken = req.query?.access_token;
+      if (accessToken === undefined || accessToken === '') {
+        if (required()) {
+          res.status(401).send({ error: 'User access token is required.' });
+          return;
+        }
+        return next();
+      }
+
+      try {
+        if (typeof accessToken !== 'string') {
+          throw new Error('Invalid access token.');
+        }
+        const request = new OAuth2Server.Request({ headers: {}, method: 'GET', query: { access_token: accessToken } });
+        const token = await service.server.authenticate(request, new OAuth2Server.Response({ headers: {} }));
+        const user = await service.getUser({ userId: token.user.id });
+        if (!user) {
+          throw new Error('User not found.');
+        }
+        if (user.isActive === false) {
+          res.status(403).send({ error: { message: 'User has been blocked.' } });
+          return;
+        }
+        req.user = token.user as any;
+        appendTraceMeta({ userId: user.userId });
+        return next();
+      } catch (error: any) {
+        this.log.save('totp-user-token-error', { error: error.message }, 'warn');
+        res.status(401).send({ error: 'Invalid user access token.' });
+      }
+    };
+  }
+
   private async onLogout(req: Request, res: Response, endSessionUrl?: string) {
     const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'logout' });
 

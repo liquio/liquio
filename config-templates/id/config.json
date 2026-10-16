@@ -103,6 +103,9 @@
       }
     },
     "auth_providers": {
+      "totp": {
+        "requireUserToken": true
+      },
       "eds": {
         "isEnabled": false,
         "authorizationURL": "https://auth.js.sign.eu.iit.com.ua/",

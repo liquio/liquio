@@ -1206,6 +1206,14 @@ describe('IdApiClient', () => {
       expect(call.headers.Authorization).toBe(`Basic ${BASIC_TOKEN}`);
     });
 
+    it('sends the user access token in the query next to basic auth', async () => {
+      mockResponse(200, { secret: 'S', uri: 'otpauth://S' });
+      await client.generateUserTotp('u1', 'user-tok');
+      const call = lastCall();
+      expect(call.url).toBe('http://id.test:8100/totp/generate?userId=u1&access_token=user-tok');
+      expect(call.headers.Authorization).toBe(`Basic ${BASIC_TOKEN}`);
+    });
+
     it('returns failure when id-api answers with an error', async () => {
       mockResponse(200, { error: { message: 'no' } });
       await expect(client.generateUserTotp('u1')).resolves.toEqual({ success: false });
@@ -1237,6 +1245,15 @@ describe('IdApiClient', () => {
       expect(JSON.parse(call.body as string)).toEqual({ userId: 'u1', secret: 'S', code: '123456' });
     });
 
+    it('sends the user access token in the query, not in the body', async () => {
+      mockResponse(200, { success: true });
+      await client.enableUserTotpSecret('u1', 'S', '123456', 'user-tok');
+      const call = lastCall();
+      expect(call.url).toBe('http://id.test:8100/totp/enable?access_token=user-tok');
+      expect(call.headers.Authorization).toBe(`Basic ${BASIC_TOKEN}`);
+      expect(JSON.parse(call.body as string)).toEqual({ userId: 'u1', secret: 'S', code: '123456' });
+    });
+
     it('returns failure when id-api answers with an error', async () => {
       mockResponse(200, { error: 'bad code' });
       await expect(client.enableUserTotpSecret('u1', 'S', '1')).resolves.toEqual({ success: false });
@@ -1259,6 +1276,14 @@ describe('IdApiClient', () => {
       expect(call.url).toBe('http://id.test:8100/totp/disable');
       expect(call.method).toBe('POST');
       expect(call.headers.Authorization).toBe(`Basic ${BASIC_TOKEN}`);
+      expect(JSON.parse(call.body as string)).toEqual({ userId: 'u1', code: '123456' });
+    });
+
+    it('sends the user access token in the query, not in the body', async () => {
+      mockResponse(200, { success: true });
+      await client.disableUserTotpSecret('u1', '123456', 'user-tok');
+      const call = lastCall();
+      expect(call.url).toBe('http://id.test:8100/totp/disable?access_token=user-tok');
       expect(JSON.parse(call.body as string)).toEqual({ userId: 'u1', code: '123456' });
     });
 

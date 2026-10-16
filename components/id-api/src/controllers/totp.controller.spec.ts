@@ -136,3 +136,80 @@ describe('TotpController.verifyTotp brute-force protection', () => {
     expect(redis.increment).not.toHaveBeenCalled();
   });
 });
+
+describe('TotpController user binding (KS-31b)', () => {
+  const secret = TOTP.createSecret();
+  let controller: TotpController;
+  let router: { get: jest.Mock; post: jest.Mock };
+  let userToken: jest.Mock;
+  let config: any;
+
+  const newRes = () => ({ status: jest.fn().mockReturnThis(), send: jest.fn() }) as any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    userToken = jest.fn().mockReturnValue('user-token-middleware');
+    const { AuthMiddleware } = jest.requireMock('../middleware/authenticate');
+    AuthMiddleware.get.mockReturnValue({ basic: jest.fn().mockReturnValue('basic'), userToken });
+    router = { get: jest.fn(), post: jest.fn() };
+    config = { auth_providers: {} };
+    const redis = {
+      createKey: jest.fn((...args: string[]) => args.join('.')),
+      get: jest.fn().mockResolvedValue(secret),
+      set: jest.fn().mockResolvedValue(true),
+      increment: jest.fn().mockResolvedValue(1),
+      delete: jest.fn().mockResolvedValue(1),
+    };
+    (Services.service as jest.Mock).mockImplementation((name: string) => (name === 'redis' ? redis : { maxAttempts: 5, maxAttemptDelay: 60 }));
+    (Models.model as jest.Mock).mockReturnValue({
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+    });
+    controller = new TotpController(router as any, { config } as any);
+    (controller as any).registerRoutes();
+  });
+
+  it('wires the user token middleware after basic auth on all three routes', () => {
+    expect(router.get.mock.calls[0].slice(1)).toEqual([expect.anything(), 'basic', 'user-token-middleware', expect.any(Function)]);
+    expect(router.post.mock.calls.filter(([path]) => /^\/totp\//.test(path)).map((c) => c.slice(1, 3))).toEqual([
+      ['basic', 'user-token-middleware'],
+      ['basic', 'user-token-middleware'],
+    ]);
+  });
+
+  it('requires the token only when auth_providers.totp.requireUserToken is true', () => {
+    const required = userToken.mock.calls[0][0] as () => boolean;
+    expect(required()).toBe(false);
+    config.auth_providers.totp = { requireUserToken: true };
+    expect(required()).toBe(true);
+  });
+
+  it.each([
+    ['enable', (req: any, res: any) => controller.enableTotpSecret(req, res), { body: { userId: 'victim', code: '123456' } }],
+    ['disable', (req: any, res: any) => controller.disableTotpSecret(req, res), { body: { userId: 'victim', code: '123456' } }],
+  ])('%s answers 403 when the body userId differs from the token user', async (_name, call, req) => {
+    const res = newRes();
+    await call({ ...req, user: { id: 'me' } }, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(Models.model).not.toHaveBeenCalled();
+  });
+
+  it('takes the userId from the token when the body has none', async () => {
+    const findOne = jest.fn().mockResolvedValue(null);
+    (Models.model as jest.Mock).mockReturnValue({ findOne });
+    const res = newRes();
+    await controller.enableTotpSecret({ body: { code: '123456' }, user: { id: 'me' } } as any, res);
+    expect(findOne).toHaveBeenCalledWith({ where: { userId: 'me' } });
+  });
+
+  it('keeps the legacy body userId when no token is bound, and 400 when there is none', async () => {
+    const findOne = jest.fn().mockResolvedValue(null);
+    (Models.model as jest.Mock).mockReturnValue({ findOne });
+    await controller.enableTotpSecret({ body: { userId: 'legacy', code: '123456' } } as any, newRes());
+    expect(findOne).toHaveBeenCalledWith({ where: { userId: 'legacy' } });
+
+    const res = newRes();
+    await controller.disableTotpSecret({ body: { code: '123456' } } as any, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+});

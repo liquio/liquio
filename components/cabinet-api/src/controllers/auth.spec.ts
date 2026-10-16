@@ -71,26 +71,26 @@ describe('AuthController', () => {
     it('should generate the secret for the user', async () => {
       client.generateUserTotp.mockResolvedValue({ success: true, secret: 's' });
 
-      await controller.generateUserTotp({ authUserId: 'u1' } as any, {} as any);
+      await controller.generateUserTotp({ authUserId: 'u1', authAccessToken: 'at' } as any, {} as any);
 
-      expect(client.generateUserTotp).toHaveBeenCalledWith('u1');
+      expect(client.generateUserTotp).toHaveBeenCalledWith('u1', 'at');
       expect(responseData).toHaveBeenCalledWith({}, { success: true, secret: 's' });
     });
 
     it('should enable the secret', async () => {
       client.enableUserTotpSecret.mockResolvedValue({ success: true });
 
-      await controller.enableUserTotpSecret({ authUserId: 'u1', body: { secret: 's', code: 'c' } } as any, {} as any);
+      await controller.enableUserTotpSecret({ authUserId: 'u1', authAccessToken: 'at', body: { secret: 's', code: 'c' } } as any, {} as any);
 
-      expect(client.enableUserTotpSecret).toHaveBeenCalledWith('u1', 's', 'c');
+      expect(client.enableUserTotpSecret).toHaveBeenCalledWith('u1', 's', 'c', 'at');
     });
 
     it('should disable the secret', async () => {
       client.disableUserTotpSecret.mockResolvedValue({ success: true });
 
-      await controller.disableUserTotpSecret({ authUserId: 'u1', body: { code: 'c' } } as any, {} as any);
+      await controller.disableUserTotpSecret({ authUserId: 'u1', authAccessToken: 'at', body: { code: 'c' } } as any, {} as any);
 
-      expect(client.disableUserTotpSecret).toHaveBeenCalledWith('u1', 'c');
+      expect(client.disableUserTotpSecret).toHaveBeenCalledWith('u1', 'c', 'at');
     });
   });
 

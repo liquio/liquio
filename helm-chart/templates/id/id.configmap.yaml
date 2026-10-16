@@ -50,6 +50,7 @@ metadata:
   "ldap" (dict "isEnabled" false)
   "local" (dict "isEnabled" true)
   "oidc" (dict)
+  "totp" (dict "requireUserToken" true)
   "x509" (dict "isEnabled" true "requireChallenge" true)
 -}}
 {{ $x509Base := dict

@@ -292,9 +292,9 @@ class AuthController extends Controller {
 
   async generateUserTotp(req: Request, res: Response): Promise<void> {
     try {
-      const { authUserId } = req as any;
+      const { authUserId, authAccessToken } = req as any;
 
-      const data = await this.idApiClient.generateUserTotp(authUserId);
+      const data = await this.idApiClient.generateUserTotp(authUserId, authAccessToken);
 
       this.responseData(res, data);
     } catch (error) {
@@ -304,10 +304,10 @@ class AuthController extends Controller {
 
   async enableUserTotpSecret(req: Request, res: Response): Promise<void> {
     try {
-      const { authUserId } = req as any;
+      const { authUserId, authAccessToken } = req as any;
       const { secret, code } = req.body as any;
 
-      const data = await this.idApiClient.enableUserTotpSecret(authUserId, secret, code);
+      const data = await this.idApiClient.enableUserTotpSecret(authUserId, secret, code, authAccessToken);
 
       this.responseData(res, data);
     } catch (error) {
@@ -317,10 +317,10 @@ class AuthController extends Controller {
 
   async disableUserTotpSecret(req: Request, res: Response): Promise<void> {
     try {
-      const { authUserId } = req as any;
+      const { authUserId, authAccessToken } = req as any;
       const { code } = req.body as any;
 
-      const data = await this.idApiClient.disableUserTotpSecret(authUserId, code);
+      const data = await this.idApiClient.disableUserTotpSecret(authUserId, code, authAccessToken);
 
       this.responseData(res, data);
     } catch (error) {

@@ -151,4 +151,72 @@ describe('TOTP enable/generate authorization (KS-31)', () => {
     await disable({ userId: user.userId, code: new TOTP(generated.body.secret).generate() }).expect(201);
     expect((await reload(user.userId)).useTwoFactorAuth).toBe(false);
   });
+
+  describe('user token binding (KS-31b)', () => {
+    const withToken = (req: any, token: string) => req.query({ access_token: token });
+
+    beforeAll(() => {
+      config.auth_providers = { ...config.auth_providers, totp: { requireUserToken: true } } as any;
+    });
+    afterAll(() => {
+      delete (config.auth_providers as any).totp;
+    });
+
+    it('requires a user token on generate, enable and disable', async () => {
+      const user = await newUser();
+      await generate(user.userId).expect(401);
+      await enable({ userId: user.userId, code: '123456' }).expect(401);
+      await disable({ userId: user.userId, code: '123456' }).expect(401);
+    });
+
+    it('rejects an invalid user token', async () => {
+      const user = await newUser();
+      await withToken(generate(user.userId), crypto.randomUUID()).expect(401);
+      await withToken(generate(user.userId), 'garbage').expect(401);
+    });
+
+    it('answers 403 when the userId differs from the token user, and changes nothing', async () => {
+      const attacker = await newUser();
+      const victim = await newUser();
+      const token = await makeToken(attacker.userId);
+
+      await withToken(generate(victim.userId), token).expect(403);
+      await withToken(enable({ userId: victim.userId, code: '123456' }), token).expect(403);
+      await withToken(disable({ userId: victim.userId, code: '123456' }), token).expect(403);
+
+      const redis = Services.service('redis');
+      expect(await redis.get(redis.createKey('totp-pending', victim.userId))).toBeFalsy();
+      expect((await reload(victim.userId)).useTwoFactorAuth).toBeFalsy();
+    });
+
+    it('still needs the totp scope next to the token', async () => {
+      const user = await newUser();
+      const token = await makeToken(user.userId);
+      await withToken(generate(user.userId, NO_SCOPE), token).expect(403);
+    });
+
+    it('takes userId from the token: generate, enable (token only) and disable need the right codes', async () => {
+      const user = await newUser();
+      const token = await makeToken(user.userId);
+
+      const generated = await withToken(app.request().get('/totp/generate').set('Authorization', LEGACY), token).expect(201);
+      // Enable without a body userId; a wrong code is refused (re-authentication by the pending secret code).
+      await withToken(enable({ code: '000000' }), token).expect(401);
+      await withToken(enable({ userId: user.userId, code: new TOTP(generated.body.secret).generate() }), token).expect(201);
+      expect((await reload(user.userId)).useTwoFactorAuth).toBe(true);
+
+      await withToken(disable({ code: '000000' }), token).expect(401);
+      expect((await reload(user.userId)).useTwoFactorAuth).toBe(true);
+      await withToken(disable({ code: new TOTP(generated.body.secret).generate() }), token).expect(201);
+      expect((await reload(user.userId)).useTwoFactorAuth).toBe(false);
+    });
+  });
+
+  describe('legacy mode (requireUserToken is off)', () => {
+    it('keeps working without a token but still rejects a bad one', async () => {
+      const user = await newUser();
+      await generate(user.userId).expect(201);
+      await generate(user.userId).query({ access_token: 'garbage' }).expect(401);
+    });
+  });
 });

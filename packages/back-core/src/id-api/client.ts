@@ -825,13 +825,19 @@ export class IdApiClient {
   // ---------------------------------------------------------------------------
 
   /**
-   * Generate a user TOTP secret. `GET /totp/generate?userId=` (basic auth). Never throws.
+   * Generate a user TOTP secret. `GET /totp/generate?userId=&access_token=` (basic auth plus the user token). Never throws.
    * @param {string} userId User ID.
+   * @param {string} [accessToken] User access token; id-api binds the operation to that user (required when `auth_providers.totp.requireUserToken` is on).
    * @returns {Promise<{success: boolean, secret?: string, uri?: string}>}
    */
-  async generateUserTotp(userId: string): Promise<{ success: boolean; secret?: string; uri?: string }> {
+  async generateUserTotp(userId: string, accessToken?: string): Promise<{ success: boolean; secret?: string; uri?: string }> {
     try {
-      const { body } = await this.request({ method: 'GET', route: this.routes.generateUserTotp, query: { userId }, basicAuth: true });
+      const { body } = await this.request({
+        method: 'GET',
+        route: this.routes.generateUserTotp,
+        query: this.totpQuery({ userId }, accessToken),
+        basicAuth: true,
+      });
       const { secret, uri, error } = body || {};
 
       if (error) {
@@ -847,24 +853,26 @@ export class IdApiClient {
   }
 
   /**
-   * Enable the user TOTP secret. `POST /totp/enable` (basic auth). Never throws.
+   * Enable the user TOTP secret. `POST /totp/enable?access_token=` (basic auth plus the user token). Never throws.
    * @param {string} userId User ID.
    * @param {string} secret TOTP secret.
    * @param {string} code TOTP code.
+   * @param {string} [accessToken] User access token (required when `auth_providers.totp.requireUserToken` is on).
    * @returns {Promise<{success: boolean}>}
    */
-  async enableUserTotpSecret(userId: string, secret: string, code: string): Promise<{ success: boolean }> {
-    return this.postTotp('enable-user-totp', this.routes.enableUserTotpSecret, { userId, secret, code });
+  async enableUserTotpSecret(userId: string, secret: string, code: string, accessToken?: string): Promise<{ success: boolean }> {
+    return this.postTotp('enable-user-totp', this.routes.enableUserTotpSecret, { userId, secret, code }, accessToken);
   }
 
   /**
-   * Disable the user TOTP secret. `POST /totp/disable` (basic auth). Never throws.
+   * Disable the user TOTP secret. `POST /totp/disable?access_token=` (basic auth plus the user token). Never throws.
    * @param {string} userId User ID.
-   * @param {string} code TOTP code.
+   * @param {string} code TOTP code (current code of the user, re-authenticates the change).
+   * @param {string} [accessToken] User access token (required when `auth_providers.totp.requireUserToken` is on).
    * @returns {Promise<{success: boolean}>}
    */
-  async disableUserTotpSecret(userId: string, code: string): Promise<{ success: boolean }> {
-    return this.postTotp('disable-user-totp', this.routes.disableUserTotpSecret, { userId, code });
+  async disableUserTotpSecret(userId: string, code: string, accessToken?: string): Promise<{ success: boolean }> {
+    return this.postTotp('disable-user-totp', this.routes.disableUserTotpSecret, { userId, code }, accessToken);
   }
 
   // ---------------------------------------------------------------------------
@@ -1166,10 +1174,14 @@ export class IdApiClient {
   // Internals.
   // ---------------------------------------------------------------------------
 
-  private async postTotp(logPrefix: string, route: string, json: Record<string, unknown>): Promise<{ success: boolean }> {
+  private totpQuery(query: Record<string, QueryValue>, accessToken?: string): Record<string, QueryValue> {
+    return accessToken ? { ...query, access_token: accessToken } : query;
+  }
+
+  private async postTotp(logPrefix: string, route: string, json: Record<string, unknown>, accessToken?: string): Promise<{ success: boolean }> {
     try {
       this.log(`${logPrefix}-request`, { userId: json.userId });
-      const { body } = await this.request({ method: 'POST', route, json, basicAuth: true });
+      const { body } = await this.request({ method: 'POST', route, query: this.totpQuery({}, accessToken), json, basicAuth: true });
 
       if (body?.error) {
         this.log(`${logPrefix}-error`, { error: body.error }, 'error');

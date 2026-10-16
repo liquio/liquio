@@ -176,6 +176,10 @@ export interface Config {
     from?: string;
   };
   auth_providers: {
+    totp?: {
+      // Require the end user access token (`?access_token=`) on `/totp/generate|enable|disable` and take `userId` from it.
+      requireUserToken?: boolean;
+    };
     govid?: {
       timeout?: number;
       authorizationUrl?: string;
