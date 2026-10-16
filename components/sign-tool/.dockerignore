@@ -3,3 +3,18 @@ node_modules
 config/*.json
 .git
 coverage
+
+# Local config and secrets must never enter the build context.
+config
+config*
+.env*
+**/.env*
+*.pem
+*.key
+*.log
+.npmrc
+**/secrets*
+
+# Not needed by the build.
+Dockerfile
+*.md
