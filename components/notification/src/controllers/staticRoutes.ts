@@ -15,10 +15,16 @@ import {
   verifyAdminCredentials,
   verifyAdminSession,
 } from './adminSession';
+import { checkAdminCookie, checkSameOrigin } from './auth';
 
 const { adminStaticDir } = global as any;
 
 const router = Router();
+
+const parseSmsId = (value: unknown): number | null => {
+  const id = /^[1-9]\d{0,9}$/.test(String(value)) ? Number(value) : NaN;
+  return Number.isSafeInteger(id) && id <= 2147483647 ? id : null;
+};
 
 export class StaticRoutes extends MessangerModel {
   constructor(app: any) {
@@ -40,9 +46,12 @@ export class StaticRoutes extends MessangerModel {
     router.post('/admin/login', this.adminLogin.bind(this));
     router.get('/admin/logout', this.adminLogout.bind(this));
     router.get('/admin/api/queue', this.getAdminView.bind(this), this.SMSQueue.bind(this));
-    router.get('/admin/api/queue/clear/:sms_id', this.getAdminView.bind(this), this.SMSQueueClear.bind(this));
-    router.get('/admin/api/queue/resend', this.getAdminView.bind(this), this.resendSMS.bind(this));
-    router.get('/admin/api/queue/resend/:sms_id', this.getAdminView.bind(this), this.resendSMS.bind(this));
+    // State-changing queue actions: POST only, same-origin and a live admin session (SameSite=Strict cookie).
+    const guard = [checkSameOrigin, checkAdminCookie];
+    router.post('/admin/api/queue/clear-all', ...guard, this.SMSQueueClearAll.bind(this));
+    router.post('/admin/api/queue/clear/:sms_id', ...guard, this.SMSQueueClear.bind(this));
+    router.post('/admin/api/queue/resend-all', ...guard, this.resendAllSMS.bind(this));
+    router.post('/admin/api/queue/resend/:sms_id', ...guard, this.resendSMS.bind(this));
     router.get('/admin/api/queue/count', this.getAdminView.bind(this), this.SMSQueueCounter.bind(this));
     router.get('/admin/api/log', this.getAdminView.bind(this), this.SMSLog.bind(this));
   }
@@ -84,14 +93,38 @@ export class StaticRoutes extends MessangerModel {
   }
 
   async SMSQueueClear(req: any, res: any, _next: any) {
-    const t = await this.removeFromQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
-    res.send(t);
+    const smsId = parseSmsId(req.params.sms_id);
+    if (!smsId) return res.send(400, { code: 'BadRequest', message: 'sms_id must be a positive integer' });
+    try {
+      res.send(await this.removeFromQueue(smsId));
+    } catch (e) {
+      return res.send(500, e);
+    }
+  }
+
+  async SMSQueueClearAll(req: any, res: any, _next: any) {
+    if (req.body?.confirm !== true) return res.send(400, { code: 'BadRequest', message: 'confirm: true is required' });
+    try {
+      res.send(await this.removeAllFromQueue());
+    } catch (e) {
+      return res.send(500, e);
+    }
   }
 
   async resendSMS(req: any, res: any, _next: any) {
+    const smsId = parseSmsId(req.params.sms_id);
+    if (!smsId) return res.send(400, { code: 'BadRequest', message: 'sms_id must be a positive integer' });
     try {
-      const t = await this.retrySendInQueue(req.params.sms_id != 'undefined' ? req.params.sms_id : false);
-      res.send(t);
+      res.send(await this.retrySendInQueue(smsId));
+    } catch (e) {
+      return res.send(500, e);
+    }
+  }
+
+  async resendAllSMS(req: any, res: any, _next: any) {
+    if (req.body?.confirm !== true) return res.send(400, { code: 'BadRequest', message: 'confirm: true is required' });
+    try {
+      res.send(await this.retrySendAllInQueue());
     } catch (e) {
       return res.send(500, e);
     }

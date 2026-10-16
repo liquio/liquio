@@ -178,38 +178,36 @@ export class AbstractGate {
     }
   }
 
-  async removeFromQueue(sms_id?: string): Promise<any> {
-    try {
-      let query: any = { truncate: true };
-      if (sms_id) {
-        query = {
-          where: {
-            sms_id,
-          },
-        };
-      }
-      await SmsQueue.destroy(query);
-
-      return {
-        ...(await this.getSMSQueueCounter()),
-        queue: await this.getSMSQueue(),
-      };
-    } catch (e) {
-      console.error(e);
-      throw e;
+  /**
+   * Remove one message from the queue. A missing id never falls back to truncating the table.
+   */
+  async removeFromQueue(sms_id?: string | number): Promise<any> {
+    if (!sms_id) {
+      throw new Error('sms_id is required, use removeAllFromQueue to clear the whole queue');
     }
+    return this.destroyQueue({ where: { sms_id } });
   }
 
-  async retrySendInQueue(sms_id?: string): Promise<any> {
+  /**
+   * Explicitly remove every message from the queue.
+   */
+  async removeAllFromQueue(): Promise<any> {
+    return this.destroyQueue({ truncate: true });
+  }
+
+  async retrySendInQueue(sms_id?: string | number): Promise<any> {
+    if (!sms_id) {
+      throw new Error('sms_id is required, use retrySendAllInQueue to resend the whole queue');
+    }
+    return this.destroyQueue({ where: { sms_id } });
+  }
+
+  async retrySendAllInQueue(): Promise<any> {
+    return this.destroyQueue({ truncate: true });
+  }
+
+  private async destroyQueue(query: any): Promise<any> {
     try {
-      let query: any = { truncate: true };
-      if (sms_id) {
-        query = {
-          where: {
-            sms_id,
-          },
-        };
-      }
       await SmsQueue.destroy(query);
 
       return {

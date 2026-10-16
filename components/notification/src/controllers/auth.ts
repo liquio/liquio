@@ -119,79 +119,131 @@ const checkTestAuth = async function (req: any, res: any, next: any) {
   next();
 };
 
-//3.
-const credentials: any = {
-  realm: 'Digest Authenticatoin',
-};
+const DIGEST_REALM = 'Digest Authenticatoin';
+const NONCE_TTL_MS = 5 * 60 * 1000;
+const DIGEST_FIELDS = ['username', 'nonce', 'nc', 'cnonce', 'qop', 'uri', 'response'];
 
-//4.
+// Fallback signing key for nonces when no admin password is configured (nonces then are valid per process only).
+const processNonceKey = crypto.randomBytes(32).toString('hex');
+// Last accepted "nc" per nonce (replay protection, per process).
+const nonceCounters = new Map<string, { count: number; expires: number }>();
 
-function cryptoUsingMD5(data: any) {
+function cryptoUsingMD5(data: string): string {
   return crypto.createHash('md5').update(data).digest('hex');
 }
 
-//5.
-const hash: any = cryptoUsingMD5(credentials.realm);
+function safeEqual(a: unknown, b: unknown): boolean {
+  const left = crypto.createHash('sha256').update(String(a)).digest();
+  const right = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(left, right);
+}
 
-//7.
-function parseAuthenticationInfo(authData: any): any {
-  const authenticationObj: any = {};
-  authData.split(', ').forEach(function (d: any) {
-    d = d.split('=');
+function signNonce(value: string): string {
+  const key = String((global as any).conf?.adminConfig?.password || processNonceKey);
+  return crypto.createHmac('sha256', key).update(value).digest('hex');
+}
 
-    authenticationObj[d[0]] = d[1].replace(/"/g, '');
-  });
+// Stateless nonce: timestamp.random.signature (the signature proves the server issued it, the timestamp bounds its life).
+function generateNonce(): string {
+  const value = `${Date.now().toString(16)}.${crypto.randomBytes(16).toString('hex')}`;
+  return `${value}.${signNonce(value)}`;
+}
+
+function isNonceValid(nonce: string): boolean {
+  const [timestamp, random, signature] = String(nonce).split('.');
+  if (!timestamp || !random || !signature || !safeEqual(signature, signNonce(`${timestamp}.${random}`))) {
+    return false;
+  }
+  const age = Date.now() - parseInt(timestamp, 16);
+  return age >= 0 && age <= NONCE_TTL_MS;
+}
+
+function registerNonceCount(nonce: string, nc: string): boolean {
+  const now = Date.now();
+  for (const [key, { expires }] of nonceCounters) if (expires < now) nonceCounters.delete(key);
+
+  if (!/^[0-9a-f]{1,8}$/i.test(nc)) return false;
+  const count = parseInt(nc, 16);
+  const { count: lastCount = 0 } = nonceCounters.get(nonce) || {};
+  if (count <= lastCount) return false;
+
+  nonceCounters.set(nonce, { count, expires: now + NONCE_TTL_MS });
+  return true;
+}
+
+function normalizeUri(uri: string): string {
+  const [path, ...query] = String(uri).split('?');
+  return `${path.replace(/\/+/g, '/').replace(/(.)\/$/, '$1')}?${query.join('?')}`;
+}
+
+function parseAuthenticationInfo(authData: string): Record<string, string> {
+  const authenticationObj: Record<string, string> = {};
+  for (const [, key, quotedValue, value] of authData.matchAll(/(\w+)=(?:"([^"]*)"|([^,\s]*))/g)) {
+    authenticationObj[key] = quotedValue !== undefined ? quotedValue : value;
+  }
   return authenticationObj;
 }
 
-//8.
-async function login(request: any, res: any) {
-  let authInfo;
-  const digestAuthObject: any = {};
+function sendDigestChallenge(res: any, message?: string): void {
+  const opaque = cryptoUsingMD5(DIGEST_REALM);
+  res.header('WWW-Authenticate', `Digest realm="${DIGEST_REALM}",qop="auth",nonce="${generateNonce()}",opaque="${opaque}"`);
+  return sendAuthError(res, undefined, message);
+}
 
-  //9.
-  if (!request.headers.authorization) {
-    res.header('WWW-Authenticate', 'Digest realm="' + credentials.realm + '",qop="auth",nonce="' + Math.random() + '",opaque="' + hash + '"');
-    return sendAuthError(res);
+async function login(request: any, res: any): Promise<boolean> {
+  const { authorization } = request.headers;
+  if (!authorization || !/^Digest /i.test(authorization)) {
+    sendDigestChallenge(res);
+    return false;
   }
 
-  //10.
-  authInfo = request.headers.authorization.replace(/^Digest /, '');
-  authInfo = parseAuthenticationInfo(authInfo);
+  const authInfo = parseAuthenticationInfo(authorization.replace(/^Digest /i, ''));
+  if (DIGEST_FIELDS.some((field) => !authInfo[field]) || authInfo.qop !== 'auth') {
+    sendDigestChallenge(res, 'Not valid authorization params');
+    return false;
+  }
+  const { username, nonce, nc, cnonce, qop, uri, response } = authInfo;
 
-  //11.
-  const client = await Authorize.findOne({ where: { login: authInfo.username } });
+  if (!isNonceValid(nonce)) {
+    sendDigestChallenge(res, 'Nonce not valid or expired');
+    return false;
+  }
+  // The signed uri must be the one actually requested, not any value the client chooses.
+  if (normalizeUri(uri) !== normalizeUri(request.originalUrl || request.url)) {
+    sendDigestChallenge(res, 'Not valid uri');
+    return false;
+  }
+
+  const client = await Authorize.findOne({ where: { login: username } });
   if (!client) {
-    res.header('WWW-Authenticate', 'Digest realm="' + credentials.realm + '",qop="auth",nonce="' + Math.random() + '",opaque="' + hash + '"');
-    return sendAuthError(res, undefined, 'Not valid login');
-  } else {
-    credentials.userName = client.login;
-
-    credentials.password = client.password;
+    sendDigestChallenge(res, 'Not valid login');
+    return false;
   }
 
-  //12.
-  digestAuthObject.ha1 = cryptoUsingMD5(authInfo.username + ':' + credentials.realm + ':' + credentials.password);
-
-  //13.
-  digestAuthObject.ha2 = cryptoUsingMD5(request.method + ':' + authInfo.uri);
-
-  //14.
-  const resp = cryptoUsingMD5([digestAuthObject.ha1, authInfo.nonce, authInfo.nc, authInfo.cnonce, authInfo.qop, digestAuthObject.ha2].join(':'));
-
-  digestAuthObject.response = resp;
-
-  //15.
-  if (authInfo.response !== digestAuthObject.response) {
-    res.header('WWW-Authenticate', 'Digest realm="' + credentials.realm + '",qop="auth",nonce="' + Math.random() + '",opaque="' + hash + '"');
-    return sendAuthError(res, undefined, 'Not valid password');
+  const ha1 = cryptoUsingMD5(`${username}:${DIGEST_REALM}:${client.password}`);
+  const ha2 = cryptoUsingMD5(`${request.method}:${uri}`);
+  const expected = cryptoUsingMD5([ha1, nonce, nc, cnonce, qop, ha2].join(':'));
+  if (!safeEqual(response, expected)) {
+    sendDigestChallenge(res, 'Not valid password');
+    return false;
   }
 
-  appendTraceMeta({ login });
+  // Count only a correctly signed request, so a forged header cannot burn a legitimate nonce counter.
+  if (!registerNonceCount(nonce, nc)) {
+    sendDigestChallenge(res, 'Nonce count not valid');
+    return false;
+  }
+
+  appendTraceMeta({ login: username });
   return true;
 }
+
+function clearDigestNoncesForTests(): void {
+  nonceCounters.clear();
+}
+
 const checkConfigAuth = async function (req: any, res: any, next: any) {
   if (await login(req, res)) next();
 };
 
-export { checkAuth, checkTestAuth, checkConfigAuth, checkAdminCookie, checkSameOrigin };
+export { checkAuth, checkTestAuth, checkConfigAuth, checkAdminCookie, checkSameOrigin, clearDigestNoncesForTests };

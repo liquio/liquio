@@ -5,7 +5,7 @@ jest.mock('../models/authorize', () => ({
 }));
 
 import { AuthorizeModel } from '../models/authorize';
-import { checkAuth } from './auth';
+import { checkAuth, checkConfigAuth, clearDigestNoncesForTests } from './auth';
 
 const makeRes = () => ({ send: jest.fn() });
 const makeNext = () => jest.fn();
@@ -128,5 +128,111 @@ describe('checkAdminCookie', () => {
     checkSameOrigin({ headers: { origin: 'https://n.local', host: 'n.local' } }, makeRes(), next);
     checkSameOrigin({ headers: { host: 'n.local' } }, makeRes(), next);
     expect(next).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('checkConfigAuth (Digest, NT-05)', () => {
+  const md5 = (v: string) => crypto.createHash('md5').update(v).digest('hex');
+  const realm = 'Digest Authenticatoin';
+  const password = 'client-pass';
+
+  const challenge = async (url = '/configs') => {
+    const res: any = { send: jest.fn(), header: jest.fn() };
+    await checkConfigAuth({ headers: {}, method: 'GET', originalUrl: url }, res, jest.fn());
+    const header: string = res.header.mock.calls[0][1];
+    return { res, nonce: /nonce="([^"]+)"/.exec(header)![1] };
+  };
+
+  const sign = (nonce: string, nc: string, { uri = '/configs', method = 'GET', pass = password, user = 'client' } = {}) => {
+    const cnonce = 'abc';
+    const response = md5([md5(`${user}:${realm}:${pass}`), nonce, nc, cnonce, 'auth', md5(`${method}:${uri}`)].join(':'));
+    return `Digest username="${user}", realm="${realm}", nonce="${nonce}", uri="${uri}", qop=auth, nc=${nc}, cnonce="${cnonce}", response="${response}"`;
+  };
+
+  const attempt = async (authorization: string, url = '/configs') => {
+    const res: any = { send: jest.fn(), header: jest.fn() };
+    const next = jest.fn();
+    await checkConfigAuth({ headers: { authorization }, method: 'GET', originalUrl: url }, res, next);
+    return { res, next };
+  };
+
+  beforeEach(() => {
+    (global as any).conf = { adminConfig: { login: 'a', password: 'admin-pass' } };
+    getFindOneMock()
+      .mockReset()
+      .mockImplementation(async ({ where }: any) => (where.login === 'client' ? { login: 'client', password } : null));
+    clearDigestNoncesForTests();
+  });
+
+  it('issues unpredictable signed nonces', async () => {
+    const a = await challenge();
+    const b = await challenge();
+    expect(a.nonce).toMatch(/^[0-9a-f]+\.[0-9a-f]{32}\.[0-9a-f]{64}$/);
+    expect(a.nonce).not.toBe(b.nonce);
+  });
+
+  it('accepts a valid response for a server-issued nonce', async () => {
+    const { nonce } = await challenge();
+    const { next } = await attempt(sign(nonce, '00000001'));
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a nonce the server never issued', async () => {
+    const { next, res } = await attempt(sign('0.0.0', '00000001'));
+    expect(next).not.toHaveBeenCalled();
+    expect(res.send).toHaveBeenCalledWith(401, expect.objectContaining({ message: 'Nonce not valid or expired' }));
+  });
+
+  it('rejects an expired nonce', async () => {
+    const { nonce } = await challenge();
+    const realNow = Date.now;
+    Date.now = () => realNow() + 6 * 60 * 1000;
+    try {
+      const { next } = await attempt(sign(nonce, '00000001'));
+      expect(next).not.toHaveBeenCalled();
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
+  it('rejects a replayed header (same nonce and nc) but accepts an increased nc', async () => {
+    const { nonce } = await challenge();
+    expect((await attempt(sign(nonce, '00000001'))).next).toHaveBeenCalledTimes(1);
+    const replay = await attempt(sign(nonce, '00000001'));
+    expect(replay.next).not.toHaveBeenCalled();
+    expect(replay.res.send).toHaveBeenCalledWith(401, expect.objectContaining({ message: 'Nonce count not valid' }));
+    expect((await attempt(sign(nonce, '00000002'))).next).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a header signed for another uri than the requested one', async () => {
+    const { nonce } = await challenge();
+    const { next, res } = await attempt(sign(nonce, '00000001', { uri: '/configs/1', method: 'GET' }), '/configs');
+    expect(next).not.toHaveBeenCalled();
+    expect(res.send).toHaveBeenCalledWith(401, expect.objectContaining({ message: 'Not valid uri' }));
+  });
+
+  it('rejects a wrong password and does not burn the nonce counter', async () => {
+    const { nonce } = await challenge();
+    expect((await attempt(sign(nonce, '00000001', { pass: 'bad' }))).next).not.toHaveBeenCalled();
+    expect((await attempt(sign(nonce, '00000001'))).next).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers malformed headers with a challenge instead of throwing', async () => {
+    for (const header of ['Digest garbage', 'Digest username=', 'Digest =,=', 'Basic abc']) {
+      const { next, res } = await attempt(header);
+      expect(next).not.toHaveBeenCalled();
+      expect(res.send).toHaveBeenCalledWith(401, expect.any(Object));
+    }
+  });
+
+  it('keeps credentials per request (concurrent logins of different users do not cross)', async () => {
+    getFindOneMock().mockImplementation(async ({ where }: any) => ({ login: where.login, password: `pw-${where.login}` }));
+    const [n1, n2] = [(await challenge()).nonce, (await challenge()).nonce];
+    const results = await Promise.all([
+      attempt(sign(n1, '00000001', { user: 'u1', pass: 'pw-u1' })),
+      attempt(sign(n2, '00000001', { user: 'u2', pass: 'pw-u1' })),
+    ]);
+    expect(results[0].next).toHaveBeenCalledTimes(1);
+    expect(results[1].next).not.toHaveBeenCalled();
   });
 });

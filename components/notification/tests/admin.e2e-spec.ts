@@ -134,4 +134,29 @@ describe('Admin static routes', () => {
       expect(res.status).not.toBe(403);
     });
   });
+
+  describe('queue actions are POST-only and protected (NT-06)', () => {
+    const login = async () => {
+      const res = await app.request().post('/admin/login').type('form').send({ login: adminConfig.login, pass: adminConfig.password });
+      return res.headers['set-cookie'][0];
+    };
+
+    it.each(['/admin/api/queue/clear/undefined', '/admin/api/queue/clear/1', '/admin/api/queue/resend/1'])('GET %s is not routed', async (route) => {
+      const res = await app
+        .request()
+        .get(route)
+        .set('Cookie', await login());
+      expect(res.status).toBe(404);
+    });
+
+    it('POST clear without a session is 401, with a foreign Origin 403, with an undefined id 400', async () => {
+      expect((await app.request().post('/admin/api/queue/clear/1').send({})).status).toBe(401);
+      const cookie = await login();
+      expect((await app.request().post('/admin/api/queue/clear/1').set('Cookie', cookie).set('Origin', 'https://evil.example').send({})).status).toBe(
+        403,
+      );
+      expect((await app.request().post('/admin/api/queue/clear/undefined').set('Cookie', cookie).send({})).status).toBe(400);
+      expect((await app.request().post('/admin/api/queue/clear-all').set('Cookie', cookie).send({})).status).toBe(400);
+    });
+  });
 });
