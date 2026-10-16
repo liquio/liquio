@@ -32,7 +32,7 @@
     },
     "adminConfig": {
       "login": "adminConfigLogin",
-      "password": "secretPassword"
+      "password": ""
     },
     "corezoidConfig": {
       "apiLogin": "",

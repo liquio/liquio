@@ -1,4 +1,4 @@
-import { maskPhone, maskPhones, redactMessage } from '../../lib/mask';
+import { maskPhone, maskPhones, redactMessage, summarizeError } from '../../lib/mask';
 import { AbstractGate } from './abstractSmsGate';
 
 /**
@@ -48,7 +48,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext(phones, text, msgid);
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.
@@ -90,7 +90,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext(phone, text, msgid);
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.
@@ -124,7 +124,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext(clear);
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.
@@ -156,7 +156,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext();
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.
@@ -189,7 +189,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext(phone);
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.

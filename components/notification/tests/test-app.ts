@@ -89,7 +89,10 @@ const versionsConfText = readFileSync(path.join(__dirname, '../src/config/versio
 const versionsConf = JSON.parse(versionsConfText || '{}');
 const defaultConf = { ...rawConfig[defaultEnv], ...versionsConf };
 
-const confOverride: any = {};
+// The config template ships no admin password (NT-21), so the harness sets a test one.
+export const TEST_ADMIN = { login: 'e2e-admin', password: 'e2e-admin-pass' };
+
+const confOverride: any = { adminConfig: { ...TEST_ADMIN } };
 
 // Credentials for the two auth middlewares (auth.ts's checkAuth/checkTestAuth), injected via
 // config rather than seeded DB rows - checkAuth accepts a plain config.authorization.list match

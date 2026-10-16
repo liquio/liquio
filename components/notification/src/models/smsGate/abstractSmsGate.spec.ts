@@ -4,6 +4,9 @@ jest.mock('../sms_queue', () => ({
   SmsQueueModel: jest.fn().mockImplementation(() => ({ SmsQueue: { destroy: (...args: any[]) => mockDestroy(...args) } })),
 }));
 jest.mock('../../config/config', () => ({}));
+jest.mock('axios', () => jest.fn());
+
+import axios from 'axios';
 
 import { AbstractGate } from './abstractSmsGate';
 
@@ -46,5 +49,35 @@ describe('AbstractGate logging (NT-10)', () => {
     expect(save).toHaveBeenCalledTimes(2);
     expect(dump).not.toContain('SECRET-OTP');
     expect(dump).not.toContain('380501234567');
+  });
+});
+
+describe('AbstractGate error logging (NT-10b)', () => {
+  it('logs a redacted summary, not the whole axios error', async () => {
+    const axiosError: any = Object.assign(new Error('Request failed with status code 502'), {
+      code: 'ERR_BAD_GATEWAY',
+      response: { status: 502 },
+      config: {
+        method: 'post',
+        url: 'https://sms.example.com/Subscribe/SendSmsQ.php?key=SECRET-KEY',
+        headers: { Authorization: 'Bearer SECRET-TOKEN' },
+        form: { tel: '380501234567', text: 'SECRET-OTP' },
+      },
+    });
+    const gate = new AbstractGate();
+    gate.options = {};
+    jest.spyOn(gate, 'isEnabled', 'get').mockReturnValue(true);
+    (global as any).crypto = require('node:crypto');
+    (axios as unknown as jest.Mock).mockRejectedValue(axiosError);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(gate.sendOneSms('380501234567', 'SECRET-OTP')).rejects.toBe(axiosError);
+    await expect(gate.sendSms(['380501234567'], 'SECRET-OTP')).rejects.toBe(axiosError);
+
+    const dump = JSON.stringify(errorSpy.mock.calls);
+    errorSpy.mockRestore();
+    expect(dump).toContain('502');
+    expect(dump).toContain('https://sms.example.com/Subscribe/SendSmsQ.php');
+    for (const secret of ['SECRET', '380501234567', 'Bearer']) expect(dump).not.toContain(secret);
   });
 });

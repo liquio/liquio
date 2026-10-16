@@ -41,7 +41,6 @@ metadata:
     )
     "adminConfig" (dict
       "login" "adminConfigLogin"
-      "password" "secretPassword"
     )
     "corezoidConfig" (dict
       "apiLogin" ""

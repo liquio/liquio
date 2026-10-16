@@ -205,9 +205,21 @@ A separate `pre-upgrade` hook only adds what older releases lack, and never over
 
 - the shipped default register and filestorage Basic tokens (SE-3930 KS-09b). A token is replaced only when its SHA-256 equals a known shipped default: a default in the register Secret's `auth.json` `tokens`, or in a caller (`register.json` `token` in the admin-api and task Secrets, `requester.json` `registers.token` in the event Secret). The hook adds a new generated token to the callee, moves the callers that held a default, and then removes the default from the callee, so both sides change together; the same for filestorage (`auth.json` `tokens`; callers: `filestorage.json` in admin-api, task and event, `storage.json` `FileStorage.token` in task). Operator-set tokens are never touched. The hook also fills filestorage `tokens` from the token the callers already use when a release only has the old `token` key, because filestorage refuses to start with no tokens. register, filestorage, admin-api, task and event are restarted only when something changed. Re-running changes nothing. With `createSecrets: false`, check that none of your tokens equals the old shipped defaults (`register:OaUiZ70kuHLj`, `test1:test`, `test2:...`);
 
+- the notification admin password (SE-3930 NT-21). Releases from before it moved to the Secret have the shipped default in the notification ConfigMap and no `production.adminConfig.password` in the Secret. The hook copies that default into the Secret, only when it equals the shipped default by SHA-256, so the operator's admin login keeps working: it is **not rotated**. notification logs the warning `admin-default-password-warning` at every start while the default is in use (it never refuses to start). Set a new password as described under [Notification admin password](#notification-admin-password) and restart notification. Re-running changes nothing;
+
 - a monitoring token for manager, gateway and event (see [Monitoring](#monitoring)): `server.json` (`monitoring.isEnabled`, `monitoring.token`) in each Secret, manager's token as `ping.json` `manager.monitoringToken` in the event Secret, and manager's and gateway's tokens in the task Secret's `ping.json`. Only where no token is set; an existing token or `isEnabled` is never changed. The hook also creates or completes the `<release>-monitoring-tokens` Secret. The Deployments concerned (including task) are restarted when something was added. Re-running changes nothing.
 
 With `secrets.existingSecrets` the hook works on the Secrets you named. With `createSecrets: false` it is not rendered, so add the id-api clients and the caller tokens yourself (see Mode B).
+
+#### Notification admin password
+
+The notification admin panel (`/admin`, login `adminConfigLogin`) uses `production.adminConfig.password`, which also signs the admin Digest nonces. The ConfigMap does not carry it any more. With `createSecrets: true` the install hook generates a random one into the notification Secret (`<release>-notification-secret-config`, key `config.json`, path `production.adminConfig.password`). Read it with:
+
+```bash
+kubectl get secret <release>-notification-secret-config -o jsonpath='{.data.config\.json}' | base64 -d | jq -r .production.adminConfig.password
+```
+
+To set your own, edit that key in the Secret (or in the Secret you name in `secrets.existingSecrets.notification`) and restart the notification Deployment. With `createSecrets: false`, add `{"production": {"adminConfig": {"password": "<your password>"}}}` to that Secret's `config.json` yourself; with no password the admin login is disabled. You can also set `config.notification.config.production.adminConfig.password` in values, but a Secret is preferred because values end up in a ConfigMap.
 
 #### Mode B: Bring your own (`createSecrets: false`)
 

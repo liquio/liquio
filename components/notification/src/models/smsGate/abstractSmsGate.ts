@@ -2,7 +2,7 @@ import axios from 'axios';
 
 import * as conf from '../../config/config';
 import { createHttpsAgent } from '../../lib/tls';
-import { maskPhone, maskPhones, redactMessage } from '../../lib/mask';
+import { maskPhone, maskPhones, redactMessage, summarizeError } from '../../lib/mask';
 import { SmsQueueModel } from '../sms_queue';
 
 const SmsQueue = new SmsQueueModel().SmsQueue;
@@ -27,7 +27,7 @@ export class AbstractGate {
       const t = await axios(httpsAgent ? { ...object, httpsAgent } : object);
       return t;
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }
@@ -60,7 +60,7 @@ export class AbstractGate {
         const t = await this.sendRequest(this.options);
         return t;
       } catch (e) {
-        console.error(e);
+        console.error('SMS gateway error:', summarizeError(e));
         throw e;
       }
     } else {
@@ -94,7 +94,7 @@ export class AbstractGate {
           const t = await this.sendRequest(this.options);
           return t;
         } catch (e) {
-          console.error(e);
+          console.error('SMS gateway error:', summarizeError(e));
           throw e;
         }
       });
@@ -138,7 +138,7 @@ export class AbstractGate {
       const t = await this.sendRequest(this.options);
       return t;
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }
@@ -155,7 +155,7 @@ export class AbstractGate {
       const t = await this.sendRequest(this.options);
       return t;
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }
@@ -173,7 +173,7 @@ export class AbstractGate {
       const t = await this.sendRequest(this.options);
       return t;
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }
@@ -215,7 +215,7 @@ export class AbstractGate {
         queue: await this.getSMSQueue(),
       };
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }

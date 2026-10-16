@@ -1118,8 +1118,8 @@ export class Message extends Auth {
     let result, resultCount, unreadQuantity, readQuantity;
     if (req.query.access_token || req.query.user_id) {
       try {
-        const userId = req.query.user_id || (await this.checkToken(req.query.access_token))._id;
-        const queryParams = { ...req.query, user_id: req.query.user_id || userId };
+        const userId = await this.resolveUserId(req.query);
+        const queryParams = { ...req.query, user_id: userId };
         delete queryParams.access_token;
         const resultPromise = showAll && req.query.access_token ? this.getAllUserMessages(queryParams) : this.getUserMessages(queryParams);
         const resultCountPromise =

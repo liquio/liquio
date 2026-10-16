@@ -1,12 +1,9 @@
 import crypto from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 
 import { clearAdminSessionsForTests } from '../src/controllers/adminSession';
-import { TestApp } from './test-app';
+import { TestApp, TEST_ADMIN } from './test-app';
 
-const adminConfig = JSON.parse(readFileSync(path.join(__dirname, '../../../config-templates/notification/config.json'), 'utf8')).production
-  .adminConfig;
+const adminConfig = TEST_ADMIN;
 
 describe('Admin static routes', () => {
   let app: TestApp;

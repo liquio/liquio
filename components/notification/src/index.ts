@@ -12,6 +12,7 @@ import start from './app';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
 import { typeOf } from './lib/type_of';
 import { createServer } from './lib/tls_server';
+import { warnOnDefaultAdminPassword } from './lib/default_admin_password';
 
 global.typeOf = typeOf;
 // Constants.
@@ -44,6 +45,9 @@ process.on('uncaughtException', (error: any) => {
   log.save('unhandled-rejection', { stack, message }, 'error');
   process.exit(1);
 });
+
+// Warn when the admin password is still the shipped default (does not refuse to start, see the helper).
+warnOnDefaultAdminPassword(config.conf, log);
 
 // Define adapters to use.
 if (!config.conf.defaultMessenger) {

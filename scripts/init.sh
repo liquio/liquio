@@ -554,7 +554,8 @@ jq --arg key "$(generate_secret)" \
   jq --arg login "$login" \
     --arg password "$password" \
       --arg authToken "Basic $(id_client_token notification "$NOTIFICATION_ID_SECRET")" \
-      '.production.authorization.list = [{ user: $login, password: $password }] | .production.auth_server.basicAuthToken = $authToken' \
+      --arg adminPassword "$(generate_secret)" \
+      '.production.authorization.list = [{ user: $login, password: $password }] | .production.auth_server.basicAuthToken = $authToken | .production.adminConfig.password = $adminPassword' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/admin-api/notifier.json"
