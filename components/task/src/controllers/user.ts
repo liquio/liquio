@@ -244,13 +244,51 @@ export class UserController extends Controller {
    */
   async setTwoFactorAuth(req, res) {
     // Define params.
-    const { useTwoFactorAuth, twoFactorType } = req.body;
-    const updateOptions = {
-      useTwoFactorAuth: !!useTwoFactorAuth,
-      twoFactorType,
-    };
+    const { useTwoFactorAuth, twoFactorType, code } = req.body;
+    const enable = !!useTwoFactorAuth;
     const userId = this.getRequestUserId(req);
     const accessToken = this.getRequestUserAccessToken(req);
+    const userInfo = this.getRequestUserInfo(req) || {};
+    const currentType = userInfo.twoFactorType;
+    const currentEnabled = !!userInfo.useTwoFactorAuth;
+    const auditBase = { userId, enable, previousEnabled: currentEnabled, previousType: currentType, requestedType: twoFactorType };
+    const reject = (reason: string, message: string) => {
+      global.log.save('user-controller|two-factor-auth|rejected', { ...auditBase, reason }, 'warn');
+      return this.responseError(res, message);
+    };
+
+    // TOTP is managed by its own endpoints that ask for a current code; this route manages phone 2FA only.
+    if (twoFactorType !== undefined && twoFactorType !== null && twoFactorType !== 'phone') {
+      return reject('unsupported-type', 'Only phone two factor auth can be set here.');
+    }
+    if (currentEnabled && currentType === 'totp') {
+      return reject('totp-active', 'Two factor auth by TOTP can be changed only with TOTP code.');
+    }
+
+    if (enable) {
+      // Phone 2FA can be turned on only for a verified phone.
+      if (!userInfo.phone || !userInfo.valid || userInfo.valid.phone !== true) {
+        return reject('phone-not-verified', 'Verify phone first.');
+      }
+    } else if (currentEnabled && !this.config.user?.allowTwoFactorDisableWithoutProof) {
+      // Turning phone 2FA off requires a fresh SMS code sent to the current phone.
+      if (!code) {
+        return reject('proof-missing', 'Confirmation code is required to disable two factor auth.');
+      }
+      try {
+        const response = await this.idApiClient.verifyPhoneAndSet(userInfo.phone, code, accessToken);
+        if (!response || response.error || !response.data || !response.data.isConfirmed) {
+          return reject('proof-invalid', 'Confirmation code is invalid.');
+        }
+      } catch {
+        return reject('proof-invalid', 'Confirmation code is invalid.');
+      }
+    }
+
+    const updateOptions = {
+      useTwoFactorAuth: enable,
+      twoFactorType,
+    };
 
     // Update.
     let isUpdated;
@@ -262,6 +300,9 @@ export class UserController extends Controller {
     if (!isUpdated) {
       return this.responseError(res, "Can't set two factor auth.");
     }
+
+    // Audit. No codes or secrets here.
+    global.log.save('user-controller|two-factor-auth|changed', { ...auditBase, nextType: twoFactorType ?? currentType });
 
     this.responseThatAccepted(res);
   }

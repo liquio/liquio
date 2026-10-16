@@ -105,6 +105,13 @@ describe('UserController', () => {
   });
 
   describe('setTwoFactorAuth', () => {
+    const phoneInfo = { phone: '380500000000', valid: { phone: true }, useTwoFactorAuth: true, twoFactorType: 'phone' };
+    const call = (body: any, userInfo: any = phoneInfo) => {
+      jest.spyOn(controller, 'getRequestUserInfo').mockReturnValue(userInfo);
+      return controller.setTwoFactorAuth({ body }, {});
+    };
+    const auditCalls = (name: string) => (global as any).log.save.mock.calls.filter((c) => c[0] === `user-controller|two-factor-auth|${name}`);
+
     beforeEach(() => {
       jest.spyOn(controller, 'getRequestUserId').mockReturnValue(USER_ID);
       jest.spyOn(controller, 'getRequestUserAccessToken').mockReturnValue('access-token');
@@ -114,7 +121,7 @@ describe('UserController', () => {
       const error = httpError('Forbidden.', 403);
       client.updateUser.mockRejectedValue(error);
 
-      await controller.setTwoFactorAuth({ body: { useTwoFactorAuth: true, twoFactorType: 'phone' } }, {});
+      await call({ useTwoFactorAuth: true, twoFactorType: 'phone' });
 
       expect(client.updateUser).toHaveBeenCalledWith(USER_ID, 'access-token', { useTwoFactorAuth: true, twoFactorType: 'phone' });
       expect(responseError).toHaveBeenCalledWith({}, error);
@@ -123,9 +130,74 @@ describe('UserController', () => {
     it('should respond that the two factor auth is not set when id-api does not confirm it', async () => {
       client.updateUser.mockResolvedValue(false);
 
-      await controller.setTwoFactorAuth({ body: { useTwoFactorAuth: false } }, {});
+      await call({ useTwoFactorAuth: true });
 
       expect(responseError).toHaveBeenCalledWith({}, "Can't set two factor auth.");
+    });
+
+    it('should enable for a verified phone and write an audit entry without secrets', async () => {
+      client.updateUser.mockResolvedValue(true);
+
+      await call({ useTwoFactorAuth: true }, { phone: '380500000000', valid: { phone: true } });
+
+      expect(responseThatAccepted).toHaveBeenCalled();
+      const [entry] = auditCalls('changed');
+      expect(entry[1]).toMatchObject({ userId: USER_ID, enable: true, previousEnabled: false });
+      expect(JSON.stringify(entry[1])).not.toContain('access-token');
+    });
+
+    it('should refuse to enable for an unverified phone', async () => {
+      await call({ useTwoFactorAuth: true }, { phone: '380500000000', valid: { phone: false } });
+
+      expect(responseError).toHaveBeenCalledWith({}, 'Verify phone first.');
+      expect(client.updateUser).not.toHaveBeenCalled();
+      expect(auditCalls('rejected')).toHaveLength(1);
+    });
+
+    it('should refuse the totp type and changing active totp', async () => {
+      await call({ useTwoFactorAuth: true, twoFactorType: 'totp' });
+      expect(responseError).toHaveBeenLastCalledWith({}, 'Only phone two factor auth can be set here.');
+
+      await call({ useTwoFactorAuth: false, code: '1' }, { ...phoneInfo, twoFactorType: 'totp' });
+      expect(responseError).toHaveBeenLastCalledWith({}, 'Two factor auth by TOTP can be changed only with TOTP code.');
+      expect(client.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('should refuse to disable without a code', async () => {
+      await call({ useTwoFactorAuth: false });
+
+      expect(responseError).toHaveBeenCalledWith({}, 'Confirmation code is required to disable two factor auth.');
+      expect(client.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('should refuse to disable with a wrong code', async () => {
+      client.verifyPhoneAndSet.mockRejectedValue(httpError('bad', 400));
+
+      await call({ useTwoFactorAuth: false, code: '000000' });
+
+      expect(responseError).toHaveBeenCalledWith({}, 'Confirmation code is invalid.');
+      expect(client.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('should disable with a valid code', async () => {
+      client.verifyPhoneAndSet.mockResolvedValue({ data: { isConfirmed: true } });
+      client.updateUser.mockResolvedValue(true);
+
+      await call({ useTwoFactorAuth: false, code: '123456' });
+
+      expect(client.verifyPhoneAndSet).toHaveBeenCalledWith('380500000000', '123456', 'access-token');
+      expect(client.updateUser).toHaveBeenCalledWith(USER_ID, 'access-token', { useTwoFactorAuth: false, twoFactorType: undefined });
+      expect(auditCalls('changed')).toHaveLength(1);
+    });
+
+    it('should disable without a code only when allowTwoFactorDisableWithoutProof is on', async () => {
+      (controller as any).config = { user: { allowTwoFactorDisableWithoutProof: true } };
+      client.updateUser.mockResolvedValue(true);
+
+      await call({ useTwoFactorAuth: false });
+
+      expect(client.verifyPhoneAndSet).not.toHaveBeenCalled();
+      expect(responseThatAccepted).toHaveBeenCalled();
     });
   });
 

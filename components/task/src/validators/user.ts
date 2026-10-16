@@ -33,7 +33,11 @@ export class UserValidator extends Validator {
    * POST - set two factor auth.
    */
   setTwoFactorAuth() {
-    return check('useTwoFactorAuth').isBoolean().withMessage('Use two factor auth indicator should be defined as boolean.');
+    return [
+      check('useTwoFactorAuth').isBoolean().withMessage('Use two factor auth indicator should be defined as boolean.'),
+      check('twoFactorType').optional({ nullable: true }).isIn(['phone']).withMessage('Two factor type should be phone.'),
+      check('code').optional({ nullable: true }).isString().withMessage('Code should be a string.'),
+    ];
   }
 
   /**
