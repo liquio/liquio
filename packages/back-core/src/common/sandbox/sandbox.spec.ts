@@ -1508,6 +1508,48 @@ describe('Sandbox config defaults', () => {
     expect(new Sandbox({ getLog, isolationLevel: SandboxIsolationLevel.Function }).isIsolated).toBe(false);
   });
 
+  describe('function level in production', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const save = jest.fn();
+    const functionConfig = { getLog: () => ({ save }), isolationLevel: SandboxIsolationLevel.Function };
+
+    beforeEach(() => save.mockClear());
+    afterEach(() => {
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it.each(['production', 'prod', 'Production'])('should refuse it with an error log when NODE_ENV is %s', (env) => {
+      process.env.NODE_ENV = env;
+      const sandbox = new Sandbox(functionConfig);
+      expect(sandbox.isIsolated).toBe(true);
+      expect(save).toHaveBeenCalledWith('sandbox-unsafe-function-level', expect.objectContaining({ isProduction: true }), 'error');
+    });
+
+    it('should allow it in production with allowUnsafeFunctionIsolation: true (with a warning)', () => {
+      process.env.NODE_ENV = 'production';
+      const sandbox = new Sandbox({ ...functionConfig, allowUnsafeFunctionIsolation: true });
+      expect(sandbox.isIsolated).toBe(false);
+      expect(save).toHaveBeenCalledWith('sandbox-unsafe-function-level', expect.anything(), 'warn');
+    });
+
+    it('should not allow it in production with a truthy non-true allowUnsafeFunctionIsolation', () => {
+      process.env.NODE_ENV = 'production';
+      expect(new Sandbox({ ...functionConfig, allowUnsafeFunctionIsolation: 'true' as any }).isIsolated).toBe(true);
+    });
+
+    it('should only warn outside production', () => {
+      process.env.NODE_ENV = 'development';
+      expect(new Sandbox(functionConfig).isIsolated).toBe(false);
+      expect(save).toHaveBeenCalledWith('sandbox-unsafe-function-level', expect.anything(), 'warn');
+    });
+
+    it('should not log for the isolated-vm level', () => {
+      process.env.NODE_ENV = 'production';
+      new Sandbox({ getLog: () => ({ save }) });
+      expect(save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('strictMode (function level)', () => {
     const config = { getLog, isolationLevel: SandboxIsolationLevel.Function };
 

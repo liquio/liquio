@@ -55,6 +55,9 @@ export interface SandboxConfig {
   /** How evaluated code is isolated from the host process. Default: `SandboxIsolationLevel.IsolatedVm`; any value
    * other than `SandboxIsolationLevel.Function` selects it. */
   isolationLevel?: SandboxIsolationLevel;
+  /** Allow `isolationLevel: "function"` when NODE_ENV is `production`/`prod`. Default: `false`, i.e. the level is refused
+   * there (an error is logged and the isolate is used). Outside production the level only logs a warning. */
+  allowUnsafeFunctionIsolation?: boolean;
   /** Compile code of the `SandboxIsolationLevel.Function` level in strict mode, so a function called without a
    * receiver doesn't get the host global object as `this`. Default: `true`. */
   strictMode?: boolean;

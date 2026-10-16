@@ -132,7 +132,8 @@ export class Sandbox {
     // - `function` - `new Function` in the host realm, NOT an isolation barrier. Opt-in only
     //   (`sandbox.isolationLevel = "function"`): it is faster and uses less memory.
     // Any other value (or none) selects the isolate, so a typo in config doesn't drop the isolation.
-    this.isIsolated = this.config.isolationLevel !== SandboxIsolationLevel.Function;
+    // In production the `function` level is refused (falls back to the isolate) unless `allowUnsafeFunctionIsolation: true`.
+    this.isIsolated = this.resolveIsIsolated();
     // Strict mode of the `function` level, see `evalFunction`.
     this.strictMode = this.config.strictMode !== false;
     if (this.isIsolated) {
@@ -594,6 +595,33 @@ export class Sandbox {
     }
 
     return new Error(errorMessage);
+  }
+
+  /**
+   * Decide whether to use the isolate. `function` level is host-realm execution: in production (NODE_ENV `production`
+   * or `prod`) it is refused with an error log unless `allowUnsafeFunctionIsolation` is `true`; elsewhere it only warns.
+   * @returns {boolean} True if the isolate is used.
+   */
+  private resolveIsIsolated(): boolean {
+    if (this.config.isolationLevel !== SandboxIsolationLevel.Function) {
+      return true;
+    }
+    const isProduction = ['production', 'prod'].includes(
+      String(process.env.NODE_ENV ?? '')
+        .trim()
+        .toLowerCase(),
+    );
+    const allowed = this.config.allowUnsafeFunctionIsolation === true;
+    const refuse = isProduction && !allowed;
+    const message = refuse
+      ? 'sandbox.isolationLevel "function" runs code in the host realm and is refused in production, using "isolated-vm"'
+      : 'sandbox.isolationLevel "function" runs code in the host realm and is not an isolation barrier';
+    try {
+      this.log.save('sandbox-unsafe-function-level', { message, isProduction, allowUnsafeFunctionIsolation: allowed }, refuse ? 'error' : 'warn');
+    } catch {
+      // The logger may not be set up yet; never fail sandbox creation because of it.
+    }
+    return refuse;
   }
 
   /**
