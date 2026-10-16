@@ -257,7 +257,13 @@ export class GatewayBusiness {
         }
 
         // Log.
-        global.log.save('gateway-handling|db-instance-created', { createdGateway });
+        global.log.save('gateway-handling|db-instance-created', {
+          workflowId,
+          gatewayTemplateId,
+          gatewayId: createdGateway.id,
+          gatewayTypeId: createdGateway.gatewayTypeId,
+          version: createdGateway.version,
+        });
 
         // Send message to RabbitMQ.
         const outMessage = { workflowId, gatewayId: createdGateway.id };
@@ -314,7 +320,7 @@ export class GatewayBusiness {
       gatewayTemplateId,
       workflowId,
       sequenceIds,
-      latestGatewayInWorkflow,
+      latestGatewayId: latestGatewayInWorkflow?.id,
     });
 
     return sequenceIds;

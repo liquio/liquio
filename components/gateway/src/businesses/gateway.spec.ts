@@ -77,6 +77,17 @@ describe('GatewayBusiness', () => {
       expect((global as any).messageQueue.produce).toHaveBeenCalledWith({ workflowId: WORKFLOW_ID, gatewayId: 99 });
     });
 
+    it('logs only identifiers of the created gateway (GW-06b)', async () => {
+      setup({ workflowTemplateId: 7 }, bpmn(5));
+      business.gatewayModel = {
+        create: jest.fn().mockResolvedValue({ id: 99, gatewayTypeId: 1, version: 3, data: { secretPayload: 'S' }, name: 'n' }),
+      } as any;
+      await business.createFromMessage(message);
+      const call = (global as any).log.save.mock.calls.find(([type]) => type === 'gateway-handling|db-instance-created');
+      expect(call[1]).toEqual({ workflowId: WORKFLOW_ID, gatewayTemplateId: 5, gatewayId: 99, gatewayTypeId: 1, version: 3 });
+      expect(JSON.stringify(call)).not.toContain('secretPayload');
+    });
+
     it.each([
       ['gateway is not in the workflow template', { workflowTemplateId: 7 }, bpmn(15)],
       ['workflow is missing', undefined, bpmn(5)],
@@ -90,6 +101,18 @@ describe('GatewayBusiness', () => {
       expect(business.workflowModel.setError).not.toHaveBeenCalled();
       const logged = JSON.stringify((global as any).log.save.mock.calls);
       expect(logged).toContain('template-workflow-mismatch');
+    });
+  });
+
+  describe('getSequenceIdsFromLatestGatewayInWorkflow', () => {
+    it('returns sequence ids and logs only the gateway id (GW-06b)', async () => {
+      business.gatewayModel = {
+        getLatestGatewayInWorkflow: jest.fn().mockResolvedValue({ id: 7, data: { sequenceIds: ['s1'], secretPayload: 'S' } }),
+      } as any;
+      await expect(business.getSequenceIdsFromLatestGatewayInWorkflow(5, WORKFLOW_ID)).resolves.toEqual(['s1']);
+      const call = (global as any).log.save.mock.calls.find(([type]) => type === 'get-sequence-ids-from-latest-gateway');
+      expect(call[1]).toEqual({ gatewayTemplateId: 5, workflowId: WORKFLOW_ID, sequenceIds: ['s1'], latestGatewayId: 7 });
+      expect(JSON.stringify(call)).not.toContain('secretPayload');
     });
   });
 });
