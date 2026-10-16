@@ -794,6 +794,46 @@ describe('RecordsController', () => {
       const response = await search().expect(200);
       expect(ids(response)).toEqual(expect.arrayContaining([publicId, restrictedId]));
     });
+
+    const patch = (id: string) =>
+      testHarness
+        .request()
+        .patch(`/records/${id}`)
+        .set('Authorization', validAuth)
+        .send({ keyId: 2001, properties: [{ path: 'search_string', previousValue: 'a', value: 'patched' }] });
+
+    it('PATCH /records/:id keeps legacy behaviour unless auth.strict is on', async () => {
+      await patch(restrictedId).expect(200);
+    });
+
+    it('PATCH /records/:id with auth.strict rejects a foreign-token row for an untrusted caller', async () => {
+      testHarness.getConfig().auth.strict = true;
+      await patch(publicId).expect(200);
+      const response = await patch(restrictedId).expect(403);
+      expect(response.body.data).toBeUndefined();
+      testHarness.getConfig().auth.userAllowTokens = { test: ['secret-token'] };
+      await patch(restrictedId).expect(200);
+      testHarness.getConfig().auth.userAllowTokens = undefined;
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      await patch(restrictedId).expect(200);
+    });
+
+    it('POST /records responses are not projected for a trusted caller and follow key rules otherwise', async () => {
+      const create = () =>
+        testHarness
+          .request()
+          .post('/records')
+          .set('Authorization', validAuth)
+          .send({ registerId: 200, keyId: 2001, data: { name: 'Create projection', data: marker }, allowTokens: [] });
+      const untrusted = await create().expect(200);
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      const trusted = await create().expect(200);
+      expect(trusted.body.data.data.data).toBe(marker);
+      expect(untrusted.body.data.id).toBeDefined();
+      for (const r of [untrusted, trusted]) {
+        await testHarness.request().delete(`/records/${r.body.data.id}`).set('Authorization', validAuth);
+      }
+    });
   });
 
   describe('join_by authorization (SE-3930 RG-03/RG-04)', () => {

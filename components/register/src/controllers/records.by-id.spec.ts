@@ -5,6 +5,11 @@ jest.mock('express-validator', () => ({
   matchedData: (req, options) => Object.assign({}, ...options.locations.map((location) => req[location] || {})),
 }));
 
+jest.mock('../lib/json_schema', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({ check: jest.fn().mockResolvedValue([]) })),
+}));
+
 const setup = () => {
   const record = new RecordEntity({
     id: 'record-id',
@@ -144,5 +149,86 @@ describe('RG-02: UUID read authorization', () => {
     const { controller, record, req } = setup();
     controller.keyModel.findById.mockResolvedValue(undefined);
     await expect(controller['projectWriteResponse'](req, record)).rejects.toThrow();
+  });
+
+  describe('write routes', () => {
+    const body = { keyId: 2, registerId: 1, data: { public: 'visible', secret: 'private', internal: 'hidden' } };
+    const setupCreate = () => {
+      const ctx = setup();
+      Object.assign(ctx.controller, {
+        sandbox: { evalWithArgs: jest.fn().mockReturnValue('s') },
+        checkXss: jest.fn(),
+        recordModel: { create: jest.fn().mockResolvedValue({ data: ctx.record }) },
+      });
+      Object.assign(ctx.key, { schema: { ...ctx.key.schema } });
+      ctx.controller.keyModel.checkRecordsWritable = jest.fn().mockReturnValue(true);
+      ctx.req.body = body;
+      return ctx;
+    };
+    it('projects the POST /records response for an untrusted caller', async () => {
+      const { controller, record, req } = setupCreate();
+      await controller.create(req, {});
+      expect(record.data).toEqual({ public: 'visible' });
+      expect(controller.responseData).toHaveBeenCalledWith({}, record);
+    });
+    it('keeps the full POST /records response for a trusted caller', async () => {
+      const { controller, record, req } = setupCreate();
+      req.auth.user = 'task';
+      await controller.create(req, {});
+      expect(record.data).toEqual({ public: 'visible', secret: 'private', internal: 'hidden' });
+    });
+    it('fails closed on POST /records when the response cannot be projected', async () => {
+      const { controller, key, req } = setupCreate();
+      key.schema.responseFields = 'public' as any;
+      await controller.create(req, {});
+      expect(controller.responseError.mock.calls[0][2]).toBe(500);
+      expect(controller.responseData).not.toHaveBeenCalled();
+    });
+
+    describe('PATCH /records/:id token enforcement (auth.strict)', () => {
+      const setupPatch = (strict?: boolean) => {
+        const ctx = setup();
+        Object.assign(ctx.controller, {
+          recordModel: { updatePatch: jest.fn().mockResolvedValue(ctx.record) },
+        });
+        ctx.controller.keyModel.checkRecordsWritableById = jest.fn().mockResolvedValue(true);
+        ctx.controller.config.auth.strict = strict;
+        ctx.req.params = { id: ctx.record.id };
+        ctx.req.body = { keyId: 2, properties: [] };
+        return ctx;
+      };
+      it('does not restrict by tokens when strict is off', async () => {
+        const { controller, req } = setupPatch();
+        await controller.updatePatch(req, {});
+        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], undefined);
+        expect(controller.responseData).toHaveBeenCalled();
+      });
+      it('passes the server tokens of an untrusted caller when strict is on', async () => {
+        const { controller, req } = setupPatch(true);
+        controller.config.auth.userAllowTokens = { reader: ['private'] };
+        await controller.updatePatch(req, {});
+        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], ['private']);
+      });
+      it('returns 403 without data for a foreign or missing row when strict is on', async () => {
+        const { controller, req } = setupPatch(true);
+        controller.recordModel.updatePatch.mockResolvedValue(undefined);
+        await controller.updatePatch(req, {});
+        expect(controller.responseError.mock.calls[0][2]).toBe(403);
+        expect(controller.responseData).not.toHaveBeenCalled();
+      });
+      it('does not restrict trusted callers when strict is on', async () => {
+        const { controller, req } = setupPatch(true);
+        req.auth.user = 'task';
+        await controller.updatePatch(req, {});
+        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], undefined);
+      });
+      it('responds 500 instead of hanging when the response cannot be projected', async () => {
+        const { controller, key, req } = setupPatch();
+        key.schema.responseFields = 'public' as any;
+        await controller.updatePatch(req, {});
+        expect(controller.responseError.mock.calls[0][2]).toBe(500);
+        expect(controller.responseData).not.toHaveBeenCalled();
+      });
+    });
   });
 });

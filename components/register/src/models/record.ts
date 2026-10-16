@@ -483,8 +483,13 @@ export default class RecordModel extends Model {
     id: string,
     keyId: number,
     properties: Array<{ path: string; previousValue: any; value: any }>,
+    allowTokens?: string[],
   ): Promise<RecordEntity | undefined> {
-    const where = isNaN(+id) ? { id } : { key_id: keyId, search_string: id.toString() };
+    const where: any = isNaN(+id) ? { id } : { key_id: keyId, search_string: id.toString() };
+    // Only rows that are public (`allow_tokens = []`) or share a token with the caller can be patched.
+    if (allowTokens) {
+      where[Sequelize.Op.or] = [{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: allowTokens } }];
+    }
     const record = await this.model.findOne({
       where,
     });

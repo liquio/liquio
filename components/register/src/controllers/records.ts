@@ -1399,6 +1399,14 @@ export default class RecordsController extends Controller {
       return this.responseError(res, 'Can not create.', 500);
     }
 
+    // Hide columns and fields the caller cannot read (same rules as reads). Fail closed.
+    try {
+      await this.projectWriteResponse(req, record);
+    } catch (error) {
+      this.log.save('create-record-response-error', { error: error && error.message });
+      return this.responseError(res, 'Unable to authorize record.', 500);
+    }
+
     // Response.
     this.responseData(res, record);
   }
@@ -1540,16 +1548,28 @@ export default class RecordsController extends Controller {
       return this.responseError(res, 'Key records are not writable.', 403);
     }
 
+    // Opt-in (`auth.strict`): an untrusted caller may patch only public rows or rows that share a token with it.
+    let writeTokens: string[] | undefined;
     try {
-      const recordModelResponse = await this.recordModel.updatePatch(id, keyId, properties);
+      const access = this.getCallerAccess(req);
+      if (this.config.auth?.strict === true && !access.trusted) writeTokens = access.allowTokens;
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+
+    try {
+      const recordModelResponse = await this.recordModel.updatePatch(id, keyId, properties, writeTokens);
       if (!recordModelResponse) {
-        return this.responseError(res, 'Cannot update.', 500);
+        // With token enforcement a missing and a foreign row look the same, so existence is not disclosed.
+        return writeTokens ? this.responseError(res, 'Record is not writable.', 403) : this.responseError(res, 'Cannot update.', 500);
       }
 
       await this.projectWriteResponse(req, recordModelResponse);
       this.responseData(res, recordModelResponse);
     } catch (error) {
       this.log.save('update-record-status-error', { error: error?.message, properties });
+      // Fail closed: never leave the request hanging or return an unprojected record.
+      return this.responseError(res, 'Cannot update.', 500);
     }
   }
 
