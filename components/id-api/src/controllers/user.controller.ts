@@ -1105,7 +1105,24 @@ export class UserController extends BaseController {
 
   async setPassword(req: Request, res: Response): Promise<void> {
     const userId = req.body.userId;
-    const email = req.body.email;
+    const serviceName = req.serviceClient?.name ?? 'unknown';
+    const allowAdminSet = this.config.passwordManager?.allowAdminSet !== false;
+
+    // The route never creates or re-enables a local login when the local provider is off.
+    if (!this.config.auth_providers?.local?.isEnabled) {
+      res.status(404).send({ error: 'Local authentication is disabled' });
+      return;
+    }
+
+    // The email is never taken from the request: it must already be a verified property of the user.
+    if (req.body.email !== undefined) {
+      res.status(400).send({ error: '`email` is not accepted' });
+      return;
+    }
+    if (typeof userId !== 'string' || !userId) {
+      res.status(400).send({ error: '`userId` is required' });
+      return;
+    }
 
     try {
       // Make sure that the user exists.
@@ -1113,56 +1130,99 @@ export class UserController extends BaseController {
         .findOne({ where: { userId } })
         .then((row) => row?.dataValues);
       if (!user) {
-        this.log.save('set-password-error|user-not-found', { userId, email });
+        this.log.save('set-password-error|user-not-found', { userId, service: serviceName });
         res.status(404).send({ error: 'User not found' });
         return;
       }
-
-      // Validate email.
-      if (!email && !user.email) {
-        res.status(400).send({ error: "`email` is required if user doesn't have one" });
+      if (!user.email) {
+        res.status(400).send({ error: 'User has no email' });
         return;
       }
 
-      // Validate password.
-      const password = req.body.password;
-      if (!password) {
-        this.log.save('set-password-error|password-required', { userId, email });
-        res.status(400).send({ error: '`password` is required' });
-        return;
-      }
-
-      // Make sure that the password is strong enough
-      const { strong, reason } = this.service('passwordManager').isStrongPassword(password);
-      if (!strong) {
-        this.log.save('set-password-error|weak-password', { userId, email, reason });
-        res.status(400).send({ error: reason });
-        return;
-      }
-
-      // Create a password hash.
-      const passwordHash = await bcrypt.hash(password, HASHING_SALT_ROUNDS);
-
-      // Try to find existing service record.
       const service = await this.model('userServices')
-        .findOne({
-          where: { userId, provider: 'local' },
-        })
+        .findOne({ where: { userId, provider: 'local' } })
         .then((row) => row?.dataValues);
+      const passwordManager = this.service('passwordManager');
+      const { password: _oldHash, ...currentData } = (service?.data ?? {}) as any;
+      // Keep the other keys, drop any outstanding reset token.
+      delete currentData.resetPasswordToken;
+      delete currentData.resetPasswordTokenHash;
+      delete currentData.resetPasswordTokenExpireAt;
+      const oldPasswords = currentData.oldPasswords ?? [];
+
+      let mode: 'password' | 'reset-email';
+      let newData: Record<string, any>;
+      let token: string | undefined;
+
+      if (allowAdminSet) {
+        // Validate password.
+        const password = req.body.password;
+        if (!password) {
+          this.log.save('set-password-error|password-required', { userId, service: serviceName });
+          res.status(400).send({ error: '`password` is required' });
+          return;
+        }
+        const { strong, reason } = passwordManager.isStrongPassword(password);
+        if (!strong) {
+          this.log.save('set-password-error|weak-password', { userId, service: serviceName, reason });
+          res.status(400).send({ error: reason });
+          return;
+        }
+        mode = 'password';
+        newData = {
+          ...currentData,
+          password: await bcrypt.hash(password, HASHING_SALT_ROUNDS),
+          isChangeRequired: true, // raise the flag for the user to change the password on login
+          oldPasswords,
+        };
+      } else {
+        // A caller-chosen password is not accepted: issue a single-use reset token, delivered to the user's email only.
+        if (req.body.password !== undefined) {
+          res.status(400).send({ error: '`password` is not accepted' });
+          return;
+        }
+        if (!service) {
+          res.status(409).send({ error: 'User has no local login' });
+          return;
+        }
+        const { isForgotPasswordEnabled, resetPasswordUrl } = this.config.auth_providers.local;
+        if (!isForgotPasswordEnabled || !resetPasswordUrl) {
+          res.status(409).send({ error: 'Password reset is not configured' });
+          return;
+        }
+        const { resetPasswordTokenExpiration = 3600 } = this.config.auth_providers.local;
+        mode = 'reset-email';
+        token = passwordManager.generateSecureToken();
+        newData = {
+          ...currentData,
+          ...(_oldHash ? { password: _oldHash } : {}),
+          resetPasswordTokenHash: passwordManager.hashToken(token),
+          resetPasswordTokenExpireAt: Date.now() + resetPasswordTokenExpiration * 1000,
+        };
+      }
 
       // Store the credentials and revoke every session, code and token issued before, in one transaction.
-      const changed = await this.service('auth').updateLocalPassword(
-        userId,
-        {
-          password: passwordHash,
-          isChangeRequired: true, // raise the flag for the user to change the password on login
-          oldPasswords: (service?.data as any)?.oldPasswords ?? [],
-        },
-        { providerId: email ?? user.email, email: email && email !== user.email ? email : undefined },
-      );
+      const changed = await this.service('auth').updateLocalPassword(userId, newData, { providerId: user.email });
       if (!changed) throw new Error('Unable to update local credentials');
 
-      this.log.save('set-password-success', { userId, email });
+      await this.model('userAdminAction').create({
+        user_id: userId,
+        data: { action: 'password-set', mode } as any,
+        created_by: { service: serviceName } as any,
+        action_type: 'update',
+      });
+
+      if (token) {
+        const {
+          resetPasswordSubject = 'Запит на скидання паролю',
+          resetPasswordBody = 'Перейдіть за посиланням для скидання паролю: {{link}}',
+          resetPasswordUrl,
+        } = this.config.auth_providers.local;
+        const link = `${resetPasswordUrl}?${new URLSearchParams({ token, email: user.email }).toString()}`;
+        await this.service('notify').sendMail(user.email, resetPasswordBody.replace('{{link}}', link), resetPasswordSubject);
+      }
+
+      this.log.save('set-password-success', { userId, service: serviceName, mode });
       res.send({ success: true });
     } catch (error: any) {
       this.log.save('set-password-error', { userId, error: error.message, stack: error.stack }, 'error');

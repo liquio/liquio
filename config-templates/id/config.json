@@ -155,7 +155,8 @@
       "maxAttempts": 5,
       "maxAttemptDelay": 3600,
       "hashingSaltRounds": 10,
-      "rememberLastPasswords": 5
+      "rememberLastPasswords": 5,
+      "allowAdminSet": true
     },
     "pingRoutes": {
       "notify": "http://localhost:3002/test/ping"

@@ -95,6 +95,7 @@ metadata:
     "maxAttemptDelay" 3600
     "minPasswordLength" 8
     "rememberLastPasswords" 5
+    "allowAdminSet" true
   )
   "pingRoutes" (dict
     "notify" (printf "http://%s-notification:80/test/ping" (include "liquio.fullname" .))

@@ -196,6 +196,10 @@ export interface Config {
     local?: {
       isEnabled?: boolean;
       isForgotPasswordEnabled?: boolean;
+      resetPasswordUrl?: string;
+      resetPasswordSubject?: string;
+      resetPasswordBody?: string;
+      resetPasswordTokenExpiration?: number;
       display?: AuthProviderDisplay;
     };
     wso2?: {
@@ -225,6 +229,8 @@ export interface Config {
     maxAttemptDelay?: number;
     hashingSaltRounds?: number;
     rememberLastPasswords?: number;
+    // Let `POST /user/password/set` take a caller-chosen password. When false, it emails the user a single-use reset link instead. Default true.
+    allowAdminSet?: boolean;
   };
   pingRoutes?: {
     notify?: string;
