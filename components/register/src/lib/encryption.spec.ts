@@ -12,6 +12,14 @@ describe('Encryption - GCM Authentication Tag Validation', () => {
     encryption = new Encryption({ key: testKey });
   });
 
+  describe('RG-13: invalid key', () => {
+    it.each(['', 'abcd'])('encrypt throws for key %j instead of returning plaintext', (key) => {
+      (Encryption as any).singleton = undefined;
+      const enc = new Encryption({ key });
+      expect(() => enc.encrypt('secret')).toThrow('Error while encrypting data');
+    });
+  });
+
   describe('basic functionality', () => {
     it('should encrypt and decrypt data', () => {
       const key = Buffer.alloc(32).toString('hex'); // 32-byte key for AES-256

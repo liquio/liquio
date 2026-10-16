@@ -1041,9 +1041,14 @@ export default class RecordsController extends Controller {
           searchString2: searchString2,
           searchString3: searchString3,
           signature: null,
+          isEncrypted: !!keyModelResponse.data.isEncrypted,
         };
       });
-      createdRecords = await this.recordModel.bulkCreate(recordsToCreate, true, isDisableHooks);
+      // Hooks perform encryption, so isDisableHooks is ignored for encrypted keys.
+      if (isDisableHooks && keyModelResponse.data.isEncrypted) {
+        this.log.save('bulk-create-records-by-person-disable-hooks-ignored', { keyId });
+      }
+      createdRecords = await this.recordModel.bulkCreate(recordsToCreate, true, isDisableHooks && !keyModelResponse.data.isEncrypted);
     } catch (error) {
       this.log.save('bulk-create-records-by-person-error', { error: error && error.message });
       if (error.name === SEQUELIZE_EXCLUSION_CONSTRAINT_ERROR) {

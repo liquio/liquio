@@ -327,6 +327,14 @@ export default class ImportBusiness extends Business {
     }
     const historyMeta = { accessInfo };
     const person = { id: accessInfo?.userId, name: accessInfo?.userName };
+
+    // Encryption state comes from the target key, never from the imported file (export drops it).
+    const { data: targetKey } = (await this.keyModel.findById(record.keyId)) || {};
+    if (!targetKey) {
+      throw new Error('Key of the record to import does not exist.');
+    }
+    record = { ...record, isEncrypted: !!targetKey.isEncrypted };
+
     if (existingRecord) {
       await this.recordModel.update(record.id, { ...record, user, person }, true, historyMeta);
       this.toImport[importId].details.updatedRecordsCount++;

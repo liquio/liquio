@@ -110,12 +110,10 @@ export default class RecordModel extends Model {
           hooks: {
             beforeSave: (record: any) => {
               if (record.is_encrypted && record.data && !record.data[ENCRYPTED_FIELD_NAME]) {
-                try {
-                  const encryptedData = global.encryption.encrypt(JSON.stringify(record.data));
-                  record.data = { [ENCRYPTED_FIELD_NAME]: encryptedData };
-                } catch {
-                  // Do nothing to prevent saving record with invalid data
-                }
+                // Let encryption error fail saving: otherwise record of encrypted key is stored as plain text
+                // (e.g. when encryption key is not configured).
+                const encryptedData = global.encryption.encrypt(JSON.stringify(record.data));
+                record.data = { [ENCRYPTED_FIELD_NAME]: encryptedData };
               }
             },
           },
@@ -408,7 +406,9 @@ export default class RecordModel extends Model {
     });
 
     // DB query.
-    const bulkCreateRecords = await this.model.bulkCreate(recordsToCreateRaw, { individualHooks: !isDisableHooks });
+    // Hooks perform encryption, so they can be skipped only when no record is encrypted.
+    const hasEncryptedRecords = recordsToCreateRaw.some((record) => record.is_encrypted);
+    const bulkCreateRecords = await this.model.bulkCreate(recordsToCreateRaw, { individualHooks: hasEncryptedRecords || !isDisableHooks });
     const bulkCreateRecordsCount = (Array.isArray(bulkCreateRecords) && bulkCreateRecords.length) || 0;
 
     // Return records count.

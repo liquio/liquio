@@ -55,6 +55,9 @@ export class TestHarness {
     // Use unused ports to allow parallel test execution
     config.server.port = await this.getUnusedPort();
 
+    // Encryption now fails closed on an invalid key, so tests need a valid 32-byte hex key (template holds a placeholder).
+    config.encryption = { ...config.encryption, key: '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff' };
+
     // Override auth tokens for testing
     if (!config.auth) {
       config.auth = {

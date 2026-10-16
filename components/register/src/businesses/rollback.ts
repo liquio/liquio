@@ -268,9 +268,7 @@ export default class RollbackBusiness extends Business {
       this.toRollback[rollbackId].details.isRestoredRecords = true;
       return;
     }
-    const {
-      data: { registerId },
-    } = await this.keyModel.findById(keyId);
+    const { registerId, isEncrypted } = await this.getKeyOrFail(keyId);
 
     this.toRollback[rollbackId].details.restoredRecordsCount = 0;
     this.toRollback[rollbackId].details.isRestoredRecords = false;
@@ -322,6 +320,7 @@ export default class RollbackBusiness extends Business {
             searchString3: search_string_3 || searchString3,
             person,
             signature,
+            isEncrypted,
           },
           true,
           historyMeta,
@@ -342,6 +341,7 @@ export default class RollbackBusiness extends Business {
             searchString3: search_string_3 || searchString3,
             person,
             signature,
+            isEncrypted,
           },
           true,
           historyMeta,
@@ -377,9 +377,7 @@ export default class RollbackBusiness extends Business {
     if (!user || !accessInfo) throw new Error('All accessOptions options are required');
     const { data: historyRow } = await this.historyModel.findById(historyId);
     if (historyRow.recordId !== recordId || historyRow.keyId !== keyId) throw new Error("Params historyId, recordId, keyId don't match");
-    const {
-      data: { registerId },
-    } = await this.keyModel.findById(keyId);
+    const { registerId, isEncrypted } = await this.getKeyOrFail(keyId);
     const {
       data: {
         id,
@@ -432,6 +430,7 @@ export default class RollbackBusiness extends Business {
           searchString3: search_string_3 || searchString3,
           person,
           signature,
+          isEncrypted,
         },
         true,
         historyMeta,
@@ -453,6 +452,7 @@ export default class RollbackBusiness extends Business {
           searchString3: search_string_3 || searchString3,
           person,
           signature,
+          isEncrypted,
         },
         true,
         historyMeta,
@@ -460,5 +460,20 @@ export default class RollbackBusiness extends Business {
       rollbackedRecord = recordModelResponse.data;
     }
     return rollbackedRecord;
+  }
+
+  /**
+   * Get key or fail: encryption state of restored records must come from the key.
+   * @private
+   * @param {number} keyId Key ID.
+   * @returns {Promise<{registerId, isEncrypted}>} Key params.
+   * @throws {Error} Error if key does not exist.
+   */
+  async getKeyOrFail(keyId) {
+    const { data: key } = (await this.keyModel.findById(keyId)) || {};
+    if (!key) {
+      throw new Error('Key of the records to rollback does not exist.');
+    }
+    return { registerId: key.registerId, isEncrypted: !!key.isEncrypted };
   }
 }

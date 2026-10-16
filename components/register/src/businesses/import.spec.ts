@@ -69,6 +69,49 @@ describe('ImportBusiness', () => {
     importBusiness = new ImportBusiness({});
   });
 
+  describe('importRecord encryption state (RG-12)', () => {
+    const importId = 'imp';
+    const setup = (isEncrypted: boolean | undefined, existing: boolean) => {
+      const recordModel: any = recordModelMock.getInstance();
+      const keyModel: any = keyModelMock.getInstance();
+      keyModel.findById.mockResolvedValue(isEncrypted === undefined ? null : { data: { id: 5, isEncrypted } });
+      if (existing) recordModel.findById.mockResolvedValue({ data: { id: 'r1' } });
+      else recordModel.findById.mockRejectedValue(new Error('nf'));
+      (importBusiness as any).recordModel = recordModel;
+      (importBusiness as any).keyModel = keyModel;
+      (importBusiness as any).toImport = { [importId]: { details: { insertedRecordsCount: 0, updatedRecordsCount: 0 } } };
+      (importBusiness as any).updateToImportState = jest.fn();
+      return recordModel;
+    };
+
+    it('sets isEncrypted from the target key when the file omits it', async () => {
+      const recordModel = setup(true, false);
+      await importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: { a: 1 } });
+      expect(recordModel.create.mock.calls[0][0].isEncrypted).toBe(true);
+    });
+
+    it('overrides isEncrypted=false from the file for an encrypted key (create and update)', async () => {
+      let recordModel = setup(true, false);
+      await importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: {}, isEncrypted: false });
+      expect(recordModel.create.mock.calls[0][0].isEncrypted).toBe(true);
+      recordModel = setup(true, true);
+      await importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: {}, isEncrypted: false });
+      expect(recordModel.update.mock.calls[0][1].isEncrypted).toBe(true);
+    });
+
+    it('does not encrypt for an unencrypted key even if the file says so', async () => {
+      const recordModel = setup(false, false);
+      await importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: {}, isEncrypted: true });
+      expect(recordModel.create.mock.calls[0][0].isEncrypted).toBe(false);
+    });
+
+    it('fails closed when the key does not exist', async () => {
+      const recordModel = setup(undefined, false);
+      await expect(importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: {} })).rejects.toThrow('Key of the record');
+      expect(recordModel.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('checkExistingRecordsByJsonSchema', () => {
     const keyId = 123;
     const simpleSchema = {
