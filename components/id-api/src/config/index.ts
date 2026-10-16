@@ -251,6 +251,13 @@ export interface Config {
   eds?: {
     onlyLegalEntityAllow?: boolean;
     sign_proxy_url?: string;
+    sign_proxy_allowed_paths?: string[];
+    sign_proxy_allowed_methods?: string[];
+    ics_proxy?: {
+      enabled?: boolean;
+      allowed_paths?: string[];
+      timeout?: number;
+    };
     unavailableMessage?: string;
     limit?: number;
     timeout?: number;
