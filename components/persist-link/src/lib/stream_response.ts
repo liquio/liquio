@@ -1,6 +1,28 @@
 // Constants.
 const HOP_BY_HOP_HEADERS = ['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'proxy-authenticate'];
 
+export const CONTENT_SECURITY_POLICY = "sandbox; default-src 'none'";
+
+/**
+ * Add the headers every streamed user file must carry (no MIME sniffing, sandboxed if opened).
+ * @param {object} headers Headers map (mutated) or HTTP response.
+ * @returns {object} The same headers map.
+ */
+export function applyFileSafetyHeaders(headers: Record<string, any>) {
+  headers['X-Content-Type-Options'] = 'nosniff';
+  headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY;
+  return headers;
+}
+
+/**
+ * Same as applyFileSafetyHeaders, for an HTTP response that is not piped from an upstream.
+ * @param {object} res HTTP response.
+ */
+export function setFileSafetyHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+}
+
 /**
  * Pipe upstream response stream to HTTP response with upstream status code and headers.
  * @param {import('http').IncomingMessage} upstream Upstream response stream.

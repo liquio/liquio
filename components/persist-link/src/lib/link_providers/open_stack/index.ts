@@ -1,5 +1,5 @@
 // Import.
-import { pipeUpstreamResponse } from '../../stream_response';
+import { applyFileSafetyHeaders, pipeUpstreamResponse } from '../../stream_response';
 import LinkProvider from '../link_provider';
 import OpenStackHandler from './open_stack_handler';
 
@@ -86,7 +86,14 @@ class OpenStackLinkProvider extends LinkProvider {
     } catch {
       return res.status(RESPONSE_BAD_GATEWAY_CODE).send({ error: { message: 'Bad gateway.' } });
     }
-    pipeUpstreamResponse(downloadReadableStream, res);
+    pipeUpstreamResponse(downloadReadableStream, res, (headers) => {
+      // Our attachment disposition must win over whatever the upstream sent.
+      if (addContentDispositionHeader) {
+        delete headers['content-disposition'];
+        delete headers['Content-Disposition'];
+      }
+      applyFileSafetyHeaders(headers);
+    });
   }
 }
 

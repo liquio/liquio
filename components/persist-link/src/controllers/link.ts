@@ -23,6 +23,7 @@ export function isValidJsonMap(jsonMap) {
 // Import.
 import { getLog } from '../lib/context';
 import { describeOptions } from '../lib/log_redact';
+import { setFileSafetyHeaders } from '../lib/stream_response';
 import Controller from './controller';
 import FileConverterService from '../lib/file_converter';
 import LinkGenerator from '../lib/link_generator';
@@ -374,6 +375,7 @@ class LinkController extends Controller {
       };
 
       // Set headers.
+      setFileSafetyHeaders(res);
       if (showInBrowser) {
         res.setHeader('Content-Disposition', 'inline');
       }

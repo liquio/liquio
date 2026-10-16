@@ -62,6 +62,25 @@ describe('LinkController', () => {
     });
   });
 
+  describe('open with convert', () => {
+    it.each([false, true])('should send nosniff and sandbox CSP on the converted stream (showInBrowser=%s)', async (show) => {
+      const pipe = jest.fn().mockReturnValue({ on: jest.fn() });
+      const converted = { on: jest.fn().mockReturnValue({ pipe }) };
+      controller.fileConverter = { convertByStream: jest.fn().mockResolvedValue(converted) };
+      provider.getFileStream = jest.fn().mockResolvedValue({});
+      const res = createRes();
+
+      await controller.open(
+        { params: { hash: 'h' }, query: { convert: 'true', source_format: 'docx', target_format: 'pdf', show_in_browser: String(show) } },
+        res,
+      );
+
+      expect(res.setHeader).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', "sandbox; default-src 'none'");
+      expect(pipe).toHaveBeenCalledWith(res);
+    });
+  });
+
   describe('getTemplate', () => {
     it('should answer with a handled 500 when provider getTemplate rejects', async () => {
       provider.getTemplate.mockRejectedValueOnce(new Error('boom'));

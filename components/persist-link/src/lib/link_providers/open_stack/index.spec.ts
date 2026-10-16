@@ -87,8 +87,44 @@ describe('OpenStackLinkProvider', () => {
 
       await provider.open({ serverName: 'main', fileName: 'a.txt' }, res);
 
-      expect(res.setHeader).not.toHaveBeenCalled();
+      expect(res.setHeader).not.toHaveBeenCalledWith('Content-Disposition', expect.anything());
       expect(pipe).toHaveBeenCalledWith(res);
+    });
+
+    it('should always send nosniff and the sandbox CSP', async () => {
+      const downloadFile = jest.fn().mockResolvedValue(createStream({ 'content-type': 'text/html' }));
+      const provider = new OpenStackLinkProvider({});
+      provider.openStackHandler.connections.main = { downloadFile };
+      const res = createRes();
+
+      await provider.open({ serverName: 'main', fileName: 'a.html' }, res);
+
+      expect(res.setHeader).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', "sandbox; default-src 'none'");
+    });
+
+    it('should send the safety headers even when the content-disposition header is disabled', async () => {
+      const downloadFile = jest.fn().mockResolvedValue(createStream());
+      const provider = new OpenStackLinkProvider({ addContentDispositionHeader: false });
+      provider.openStackHandler.connections.main = { downloadFile };
+      const res = createRes();
+
+      await provider.open({ serverName: 'main', fileName: 'a.html' }, res);
+
+      expect(res.setHeader).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', "sandbox; default-src 'none'");
+    });
+
+    it('should not let an upstream inline disposition override the attachment one', async () => {
+      const downloadFile = jest.fn().mockResolvedValue(createStream({ 'content-disposition': 'inline' }));
+      const provider = new OpenStackLinkProvider({});
+      provider.openStackHandler.connections.main = { downloadFile };
+      const res = createRes();
+
+      await provider.open({ serverName: 'main', fileName: 'a.html' }, res);
+
+      expect(res.setHeader).not.toHaveBeenCalledWith('content-disposition', 'inline');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename=a.html');
     });
 
     it('should copy upstream status and headers and pipe the file', async () => {

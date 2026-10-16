@@ -234,6 +234,7 @@ describe('ExternalLinkProvider', () => {
       await provider.open(options, res, 'pdf');
 
       expect(res.set).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(res.set).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
       expect(pdfCreate).toHaveBeenCalledWith('<p>Alice</p>', expect.objectContaining({ orientation: 'portrait' }));
       expect(pipe).toHaveBeenCalledWith(res);
     });

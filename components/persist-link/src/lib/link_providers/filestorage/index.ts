@@ -1,7 +1,7 @@
 // Import.
 import { getLog } from '../../context';
 import { describeOptions } from '../../log_redact';
-import { pipeUpstreamResponse } from '../../stream_response';
+import { applyFileSafetyHeaders, pipeUpstreamResponse } from '../../stream_response';
 import FilestorageHandler from './filestorage_handler';
 import LinkProvider from '../link_provider';
 
@@ -19,7 +19,6 @@ const RESPONSE_BAD_GATEWAY_OBJECT = {
   },
 };
 const DEFAULT_INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-const CONTENT_SECURITY_POLICY = "sandbox; default-src 'none'";
 
 /**
  * Filestorage link provider.
@@ -146,8 +145,7 @@ class FilestorageLinkProvider extends LinkProvider {
           : disposition;
       }
 
-      headers['X-Content-Type-Options'] = 'nosniff';
-      headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY;
+      applyFileSafetyHeaders(headers);
       headers['Accept-Ranges'] = 'bytes';
     }).on('error', handleStreamError);
   }

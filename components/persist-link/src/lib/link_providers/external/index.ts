@@ -257,6 +257,7 @@ class ExternalLinkProvider extends LinkProvider {
       }
 
       res.set(CONTENT_TYPE_HEADER, 'application/pdf');
+      res.set('X-Content-Type-Options', 'nosniff');
       pdf.create(html, pdfOptions).toStream((err, stream) => {
         if (err) {
           getLog().save('external-provider-error', { error: err && err.message });
