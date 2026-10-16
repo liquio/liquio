@@ -10,6 +10,12 @@ import { EDSStrategy } from './passport_libs/passport-eds/strategy';
 
 export async function eds(app: Express) {
   const log = Log.getInstance();
+
+  if (!app.config.auth_providers?.eds?.isEnabled) {
+    log.save('eds-strategy', { status: 'disabled' }, 'info');
+    return;
+  }
+
   const passport = app.passport;
 
   passport.mapping['eds'] = {

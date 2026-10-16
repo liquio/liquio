@@ -170,6 +170,7 @@ export interface Config {
       passReqToCallback?: string;
     };
     eds?: {
+      isEnabled?: boolean;
       authorizationURL?: string;
       tokenURL?: string;
       customerURL?: string;
@@ -345,6 +346,33 @@ function validateOIDCConfig(config: Config): void {
   }
 }
 
+const EDS_PLACEHOLDER_PATTERN = /^\s*(<[^>]*>|\$\{[^}]*\}|\{\{[^}]*\}\}|REDACTED|CHANGE_?ME|TODO|XXX+)\s*$/i;
+
+/**
+ * Validates EDS provider configuration
+ * Throws an error if the provider is enabled and required fields are missing or placeholders
+ */
+export function validateEdsConfig(config: Config): void {
+  const provider = config.auth_providers?.eds;
+  if (!provider?.isEnabled) {
+    return;
+  }
+
+  const errors: string[] = [];
+  for (const field of ['clientID', 'clientSecret', 'callbackURL'] as const) {
+    const value = provider[field];
+    if (typeof value !== 'string' || !value.trim()) {
+      errors.push(`${field} is required`);
+    } else if (EDS_PLACEHOLDER_PATTERN.test(value)) {
+      errors.push(`${field} must not be a placeholder`);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid EDS provider config: ${errors.join('; ')}`);
+  }
+}
+
 /**
  * Validates LDAP provider configuration
  * Throws an error if the provider is enabled and required fields are missing or invalid
@@ -408,6 +436,7 @@ export function loadConfig(): Config {
     config = parsedEnvConfig[env] as Config;
     validateOIDCConfig(config);
     validateLdapConfig(config);
+    validateEdsConfig(config);
     return config;
   }
 
@@ -429,6 +458,7 @@ export function loadConfig(): Config {
 
   validateOIDCConfig(config);
   validateLdapConfig(config);
+  validateEdsConfig(config);
 
   return config;
 }
