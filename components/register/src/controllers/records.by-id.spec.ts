@@ -446,7 +446,26 @@ describe('RG-02d: row tokens a restricted caller may assign (auth.strict)', () =
       expect(ctx.controller.responseError.mock.calls[0][2]).toBe(400);
       expect(ctx.controller.recordModel.updatePatch).not.toHaveBeenCalled();
     });
-    it.each(['data', 'data.name', 'data.a.b'])('allows the data path %s', async (path) => {
+    it.each([
+      ['a string', 'b'],
+      ['a number', 5],
+      ['null', null],
+      ['an array', [1]],
+    ])('rejects a bare data path with %s value (RG-02f)', async (_name, value) => {
+      const ctx = setupTokens(true);
+      ctx.req.body = { keyId: 2, properties: [{ path: 'data', previousValue: 'a', value }] };
+      await ctx.controller.updatePatch(ctx.req, {});
+      expect(ctx.controller.responseError.mock.calls[0][2]).toBe(400);
+      expect(ctx.controller.recordModel.updatePatch).not.toHaveBeenCalled();
+    });
+    it('allows a bare data path with a plain object value (RG-02f)', async () => {
+      const ctx = setupTokens(true);
+      ctx.req.body = { keyId: 2, properties: [{ path: 'data', previousValue: 'a', value: { name: 'x' } }] };
+      await ctx.controller.updatePatch(ctx.req, {});
+      expect(ctx.controller.recordModel.updatePatch).toHaveBeenCalled();
+      expect(ctx.controller.responseError).not.toHaveBeenCalled();
+    });
+    it.each(['data.name', 'data.a.b'])('allows the data path %s', async (path) => {
       const { controller } = await patch(true, path);
       expect(controller.recordModel.updatePatch).toHaveBeenCalled();
       expect(controller.responseError).not.toHaveBeenCalled();

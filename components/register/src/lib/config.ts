@@ -35,6 +35,8 @@ export interface Config {
     servicePermissions?: Record<string, { routes?: string[]; keys?: Array<number | string> }>;
     /** Opt-in: destructive routes (rollback, deletes) require `trustedCallers`. Default off. */
     strict?: boolean;
+    /** Opt-out: allow the publicly known shipped default Basic token in production. Default off. */
+    allowKnownDefaultToken?: boolean;
   };
   db: {
     database: string;

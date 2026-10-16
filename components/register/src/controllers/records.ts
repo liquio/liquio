@@ -1620,6 +1620,12 @@ export default class RecordsController extends Controller {
       return this.responseError(res, 'Only `data` properties can be patched.', 400);
     }
 
+    // A bare `data` path replaces the whole row data (and skips the key schema check), so it must be a plain object.
+    // Sub-paths (`data.x`) are unaffected.
+    if ((properties || []).some(({ path, value }) => path === 'data' && (value === null || typeof value !== 'object' || Array.isArray(value)))) {
+      return this.responseError(res, 'Patching `data` requires an object value.', 400);
+    }
+
     // Check validation identity
     try {
       await this.checkValidationIdentity('BLOCK', keyId);

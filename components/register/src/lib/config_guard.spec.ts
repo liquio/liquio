@@ -31,6 +31,31 @@ describe('config_guard', () => {
       expect(checkAuthConfig({ auth: { tokens: [basic('nopassword')] } } as any)).toHaveLength(1);
     });
 
+    describe('known default token (KS-09c)', () => {
+      const DEFAULT = basic(['register', 'OaUiZ70kuHLj'].join(':'));
+
+      it('refuses it in production, raw or without the Basic prefix, without printing it', () => {
+        const problems = checkAuthConfig({ auth: { tokens: [DEFAULT] } } as any, 'production');
+        expect(problems).toHaveLength(1);
+        expect(problems[0]).toContain('publicly known');
+        expect(problems.join(' ')).not.toContain(DEFAULT.slice(6));
+        expect(checkAuthConfig({ auth: { tokens: [GOOD_TOKEN, DEFAULT] } } as any, 'prod')).toHaveLength(1);
+      });
+
+      it('allows it outside production', () => {
+        expect(checkAuthConfig({ auth: { tokens: [DEFAULT] } } as any, 'development')).toEqual([]);
+        expect(checkAuthConfig({ auth: { tokens: [DEFAULT] } } as any, undefined)).toEqual([]);
+      });
+
+      it('allows it in production with auth.allowKnownDefaultToken', () => {
+        expect(checkAuthConfig({ auth: { tokens: [DEFAULT], allowKnownDefaultToken: true } } as any, 'production')).toEqual([]);
+      });
+
+      it('assertSafeConfig refuses it in production', () => {
+        expect(() => assertSafeConfig(cfg({ tokens: [DEFAULT] }, { key: GOOD_KEY }), 'production')).toThrow(/publicly known/);
+      });
+    });
+
     it('accepts a strong token', () => {
       expect(checkAuthConfig({ auth: { tokens: [GOOD_TOKEN] } } as any)).toEqual([]);
     });

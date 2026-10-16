@@ -373,6 +373,12 @@ describe('RecordsController', () => {
         }
       });
 
+      it.each(['replaced', 5])('rejects a bare data path with the scalar %p and changes nothing (RG-02f)', async (value) => {
+        const before = await read();
+        await patch([{ path: 'data', previousValue: 'x', value }]).expect(400);
+        expect(await read()).toEqual(before);
+      });
+
       it('still patches data paths', async () => {
         await patch([{ path: 'data.name', previousValue: 'before', value: 'after' }]).expect(200);
         expect((await read()).data.name).toBe('after');
