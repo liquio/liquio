@@ -538,6 +538,19 @@ config:
       #       userInfo:
       #         enabled: true
       #
+      # EDS (IIT) login is disabled by default and no credentials are shipped in the chart.
+      # To enable it, put auth_providers.eds with isEnabled: true, clientID and clientSecret
+      # into the id secret config (`<release>-id-secret-config`, key config.json), not into values.
+      # The secret is mounted read-only into id-api at `secrets.secretConfigPath` (SECRET_PATH),
+      # and its config.json is deep-merged over the configmap config.json, so the keys live under
+      # the environment section (`production` by default). Only the changed keys are needed:
+      #
+      #   {"production": {"auth_providers": {"eds": {
+      #     "isEnabled": true, "clientID": "<IIT client id>", "clientSecret": "<IIT client secret>"}}}}
+      #
+      # id-api refuses to start when EDS is enabled with a missing or placeholder clientID,
+      # clientSecret or callbackURL. Restart id-api after changing the secret.
+      #
       # LDAP / Active Directory login (see components/id-api/docs/ldap.md).
       # Settings go under `production`. Keep bindPassword (and an inline CA) out of values:
       # put them into the id secret config (`<release>-id-secret-config`, key config.json).

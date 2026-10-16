@@ -27,6 +27,22 @@ check_no_default_tokens() {
   return 0
 }
 
+# Fail if the Task/Cabinet test auth or test sign bypass flags are enabled in configs or charts.
+check_no_test_auth_flags() {
+  local failed=0
+  if grep -rInE --exclude-dir=node_modules '"allowedTest(Auth|Sign)"[[:space:]]*:[[:space:]]*true' "$PROJECT_ROOT/config-templates"; then
+    failed=1
+  fi
+  if grep -rInE --exclude-dir=node_modules '"allowedTest(Auth|Sign)"[[:space:]]+true' "$PROJECT_ROOT/helm-chart/templates"; then
+    failed=1
+  fi
+  if [[ $failed -ne 0 ]]; then
+    echo -e "${RED}allowedTestAuth/allowedTestSign enabled in the files above, set them to false${NC}" >&2
+    return 1
+  fi
+  return 0
+}
+
 # Show usage information
 show_usage() {
   cat <<EOF
@@ -160,6 +176,9 @@ main() {
 
     commands+=("check_no_default_tokens")
     descriptions+=("Default credentials")
+
+    commands+=("check_no_test_auth_flags")
+    descriptions+=("Test auth bypass flags")
   fi
 
   if [[ "$run_test" == true ]]; then
