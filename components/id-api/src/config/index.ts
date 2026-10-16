@@ -128,6 +128,8 @@ export interface Config {
     accessTokenLifetimeInSeconds?: number;
     refreshTokenLifetimeInSeconds?: number;
     secret_key?: string[];
+    // Enforce the explicit consent step for clients with `need_scope_approve` (needs a consent page in id-front). Default false.
+    enforceScopeConsent?: boolean;
     defaults?: {
       client_id?: string;
       client_secret?: string;

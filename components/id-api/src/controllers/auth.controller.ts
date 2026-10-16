@@ -64,6 +64,25 @@ export class AuthController extends BaseController {
       this.authorizeContinue.bind(this),
     );
 
+    // Explicit consent step for clients with `need_scope_approve`: the decision is bound to the pending authorization request.
+    this.router.get(
+      '/authorise/consent',
+      this.requireScopeConsent.bind(this),
+      this.service('auth').ensureClientContext(),
+      this.service('auth').readyClient(),
+      authMiddleware.checkUserAccess({ requireUser: true }),
+      this.getConsent.bind(this),
+    );
+
+    this.router.post(
+      '/authorise/consent',
+      this.requireScopeConsent.bind(this),
+      this.service('auth').ensureClientContext(),
+      this.service('auth').readyClient(),
+      authMiddleware.checkUserAccess({ requireUser: true }),
+      this.saveConsent.bind(this),
+    );
+
     this.router.post(
       '/authorise/continue',
       this.service('auth').ensureClientContext(),
@@ -617,6 +636,18 @@ export class AuthController extends BaseController {
 
     if (!userId) {
       return res.redirect('/');
+    }
+
+    // A client that needs approval never gets consent recorded by a GET: continue only with a stored consent covering the scope.
+    if (this.config.oauth.enforceScopeConsent && body.need_scope_approve) {
+      try {
+        const stored = await this.service('auth').getUserScopeByClient(userId, body.client_id);
+        const approved = new Set(stored?.scope ?? []);
+        if (stored && (body.scope as string[]).every((item) => approved.has(item))) return next();
+        return res.redirect('/authorise/consent');
+      } catch {
+        return res.redirect('/');
+      }
     } else {
       try {
         await this.service('auth').upsertUserByClient({
@@ -643,6 +674,9 @@ export class AuthController extends BaseController {
 
     if (!userId) {
       res.send({ success: false, redirect: '/' });
+    } else if (this.config.oauth.enforceScopeConsent && body.need_scope_approve) {
+      // Consent for such a client is recorded only by an explicit decision on POST /authorise/consent.
+      res.status(403).send({ success: false, error: 'consent_required', redirect: '/authorise/consent' });
     } else {
       await this.service('auth').upsertUserByClient({
         userId,
@@ -652,6 +686,92 @@ export class AuthController extends BaseController {
       req.session.save(() => {
         res.send({ success: true, redirect: '/authorise/continue' });
       });
+    }
+  }
+
+  /** The consent endpoints exist only when `oauth.enforceScopeConsent` is on. */
+  requireScopeConsent(req: Request, res: Response, next: NextFunction) {
+    if (!this.config.oauth.enforceScopeConsent) {
+      res.sendStatus(404);
+      return;
+    }
+    next();
+  }
+
+  private consentScope(body: Request['body']): string[] {
+    const scope = Array.isArray(body.scope) ? body.scope : [];
+    return scope.length === 0 ? [...this.config.oauth.defaults.scope_fields] : scope;
+  }
+
+  /** Returns the pending authorization request for the user to decide on, with a one-time token for the decision. */
+  async getConsent(req: Request, res: Response) {
+    const { body } = req;
+    if (!body.need_scope_approve) {
+      res.redirect('/authorise/continue');
+      return;
+    }
+    const scope = this.consentScope(body);
+    const csrfToken = crypto.randomBytes(32).toString('hex');
+    req.session.consent = { csrfToken, clientId: body.client_id, redirectUri: body.redirect_uri, state: req.session.state, scope };
+    await saveSession(req);
+    res.set('Cache-Control', 'no-store');
+    res.send({
+      client_id: body.client_id,
+      client_name: body.client_name,
+      scope,
+      csrf_token: csrfToken,
+      approve_url: '/authorise/consent',
+    });
+  }
+
+  /** Approves (stores the session's requested scope) or denies (stores nothing) the pending authorization request. */
+  async saveConsent(req: Request, res: Response) {
+    const { body } = req;
+    const userId = getSessionUserId(req);
+    const pending = req.session.consent;
+    delete req.session.consent; // One-time: every outcome needs a fresh token.
+
+    if (!userId) {
+      res.send({ success: false, redirect: '/' });
+      return;
+    }
+    if (!body.need_scope_approve) {
+      res.status(400).send({ success: false, error: 'consent_not_required' });
+      return;
+    }
+
+    const scope = this.consentScope(body);
+    const supplied = String(req.get('x-csrf-token') ?? req.body?.csrf_token ?? '');
+    const expected = Buffer.from(pending?.csrfToken ?? '');
+    const given = Buffer.from(supplied);
+    const tokenValid = expected.length > 0 && expected.length === given.length && crypto.timingSafeEqual(expected, given);
+    const sameRequest =
+      !!pending &&
+      pending.clientId === body.client_id &&
+      pending.redirectUri === body.redirect_uri &&
+      pending.state === req.session.state &&
+      pending.scope.length === scope.length &&
+      pending.scope.every((item, index) => item === scope[index]);
+    if (!tokenValid || !sameRequest) {
+      await saveSession(req);
+      res.status(403).send({ success: false, error: 'invalid_consent_request', redirect: '/authorise/consent' });
+      return;
+    }
+
+    // The decision applies to the session's own authorization request; scope, client and redirect are never taken from the POST.
+    if (req.body?.decision === 'approve') {
+      await this.service('auth').upsertUserByClient({ userId, clientId: body.client_id, scope });
+      await saveSession(req);
+      res.send({ success: true, redirect: '/authorise/continue' });
+    } else if (req.body?.decision === 'deny') {
+      await saveSession(req);
+      const url = new URL(body.redirect_uri);
+      url.searchParams.set('error', 'access_denied');
+      if (req.session.state) url.searchParams.set('state', req.session.state);
+      res.send({ success: false, error: 'access_denied', redirect: url.toString() });
+    } else {
+      await saveSession(req);
+      res.status(400).send({ success: false, error: 'invalid_decision', redirect: '/authorise/consent' });
     }
   }
 

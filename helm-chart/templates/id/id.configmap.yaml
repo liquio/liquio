@@ -13,6 +13,7 @@ metadata:
   "accessTokenLifetimeInSeconds" 28800
   "refreshTokenLifetimeInSeconds" 57600
   "secret_key" (list)
+  "enforceScopeConsent" false
   "defaults" (dict
     "client_id" "liquio-portal"
     "client_name" "Liquio Portal"

@@ -26,6 +26,7 @@ declare module 'express-session' {
     client_requirements?: string[];
     client_name?: string;
     need_scope_approve?: boolean;
+    consent?: { csrfToken: string; clientId: string; redirectUri: string; state?: string; scope: string[] };
     client?: { clientId?: string; client_name?: string; requirements: any[]; redirectUri?: string[] };
     passport?: PassportStatic & { user?: any };
     preparedUser?: any;

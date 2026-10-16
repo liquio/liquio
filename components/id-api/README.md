@@ -30,6 +30,12 @@ npm run migration-create --name <name>
 npm run migration-down
 ```
 
+## OAuth scope consent
+
+`oauth.enforceScopeConsent` (default `false`) enables the explicit consent step for clients with `need_scope_approve`. When off, `/authorise/continue` records consent automatically as before and `/authorise/consent` returns 404. When on, `GET /authorise/continue` records nothing and redirects to `/authorise/consent` until the user approves.
+
+id-front contract (needed before enabling the flag): `GET /authorise/consent` returns `{client_id, client_name, scope, csrf_token}`; the page then sends `POST /authorise/consent` with JSON `{decision: "approve" | "deny", csrf_token}` and follows the returned `redirect`.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

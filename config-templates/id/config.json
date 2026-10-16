@@ -35,6 +35,7 @@
       "expiresIn": 60
     },
     "oauth": {
+      "enforceScopeConsent": false,
       "accessTokenLifetimeInSeconds": 28800,
       "refreshTokenLifetimeInSeconds": 57600,
       "secret_key": [
