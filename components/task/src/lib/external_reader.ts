@@ -188,6 +188,7 @@ export class ExternalReader {
    * @param {string} enabledMocksHeader Header with enabled mocks.
    * @param {string} token Access token.
    * @param {number} customTimeout Custom timeout.
+   * @param {boolean} trustedExtraParams True only for server-side callers whose extraParams come from template config, never from a request body.
    * @returns {object} Data.
    */
   async getDataByUser(
@@ -202,6 +203,7 @@ export class ExternalReader {
     enabledMocksHeader?,
     token?,
     customTimeout?,
+    trustedExtraParams = false,
   ) {
     // Define user filter.
     const { ipn, edrpou } = user;
@@ -258,8 +260,11 @@ export class ExternalReader {
     global.log.save('external-reader-raw-data-response', logPayload);
 
     // Check for attachments saving.
+    // Attachment saving is driven by server-side config only: untrusted extraParams never reach it.
     if (
+      trustedExtraParams === true &&
       extraParams.isSaveAttachments &&
+      typeof extraParams.documentId === 'string' &&
       extraParams.documentId &&
       typeOf(data.data?.attachments) === 'array' &&
       data.data.attachments.length &&

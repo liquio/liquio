@@ -472,7 +472,20 @@ describe('ExternalReader', () => {
           documentId: 'doc-123',
         };
 
-        const result = await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave);
+        const result = await externalReader.getDataByUser(
+          service,
+          method,
+          captchaPayload,
+          oauthToken,
+          user,
+          nonUserFilter,
+          extraParamsWithSave,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
 
         expect(mockStorageService.provider.uploadFileFromStream).toHaveBeenCalledTimes(2);
         expect(mockDocumentAttachmentModel.create).toHaveBeenCalledTimes(2);
@@ -482,6 +495,46 @@ describe('ExternalReader', () => {
         expect(result.data.attachments[1].data).toBe('****');
       });
 
+      describe('untrusted extraParams', () => {
+        const maliciousExtraParams = {
+          isSaveAttachments: true,
+          documentId: 'victim-doc',
+          deleteOldAttachmentsBeforeSave: true,
+          isRewriteAttachmentsOnEachRequest: true,
+          prepareAttachments: '(a) => a',
+        };
+
+        it('should not save, delete or evaluate anything without the trusted flag', async () => {
+          const result = await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, maliciousExtraParams);
+
+          expect(result).toBe(attachmentsData);
+          expect(mockDocumentAttachmentModel.deleteByDocumentId).not.toHaveBeenCalled();
+          expect(mockDocumentAttachmentModel.getByDocumentIdAndMeta).not.toHaveBeenCalled();
+          expect(mockDocumentAttachmentModel.create).not.toHaveBeenCalled();
+          expect(mockStorageService.provider.uploadFileFromStream).not.toHaveBeenCalled();
+          expect(mockSandbox.evalWithArgs).not.toHaveBeenCalled();
+        });
+
+        it('should not save attachments when the trusted documentId is not a string', async () => {
+          await externalReader.getDataByUser(
+            service,
+            method,
+            captchaPayload,
+            oauthToken,
+            user,
+            nonUserFilter,
+            { isSaveAttachments: true, documentId: { $ne: null } },
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            true,
+          );
+
+          expect(mockDocumentAttachmentModel.create).not.toHaveBeenCalled();
+        });
+      });
+
       it('should delete old attachments when deleteOldAttachmentsBeforeSave is enabled', async () => {
         const extraParamsWithDelete = {
           isSaveAttachments: true,
@@ -489,7 +542,20 @@ describe('ExternalReader', () => {
           deleteOldAttachmentsBeforeSave: true,
         };
 
-        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithDelete);
+        await externalReader.getDataByUser(
+          service,
+          method,
+          captchaPayload,
+          oauthToken,
+          user,
+          nonUserFilter,
+          extraParamsWithDelete,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
 
         expect(mockDocumentAttachmentModel.deleteByDocumentId).toHaveBeenCalledWith('doc-123');
       });
@@ -510,7 +576,20 @@ describe('ExternalReader', () => {
           isRewriteAttachmentsOnEachRequest: true,
         };
 
-        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithRewrite);
+        await externalReader.getDataByUser(
+          service,
+          method,
+          captchaPayload,
+          oauthToken,
+          user,
+          nonUserFilter,
+          extraParamsWithRewrite,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
 
         expect(mockDocumentAttachmentModel.getByDocumentIdAndMeta).toHaveBeenCalledWith('doc-123', { fromExternalReader: `${service}.${method}` });
         expect(mockStorageService.provider.deleteFile).toHaveBeenCalledTimes(2);
@@ -526,7 +605,20 @@ describe('ExternalReader', () => {
           prepareAttachments: '(args) => { return args.attachments; }',
         };
 
-        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithPrepare);
+        await externalReader.getDataByUser(
+          service,
+          method,
+          captchaPayload,
+          oauthToken,
+          user,
+          nonUserFilter,
+          extraParamsWithPrepare,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
 
         expect(mockSandbox.evalWithArgs).toHaveBeenCalledWith(
           extraParamsWithPrepare.prepareAttachments,
@@ -549,7 +641,20 @@ describe('ExternalReader', () => {
         };
 
         await expect(
-          externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave),
+          externalReader.getDataByUser(
+            service,
+            method,
+            captchaPayload,
+            oauthToken,
+            user,
+            nonUserFilter,
+            extraParamsWithSave,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            true,
+          ),
         ).rejects.toThrow('ExternalReader.getDataByUser. Cannot upload attachment to file storage. Error: Upload failed');
       });
 
@@ -562,7 +667,20 @@ describe('ExternalReader', () => {
         };
 
         await expect(
-          externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave),
+          externalReader.getDataByUser(
+            service,
+            method,
+            captchaPayload,
+            oauthToken,
+            user,
+            nonUserFilter,
+            extraParamsWithSave,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            true,
+          ),
         ).rejects.toThrow('ExternalReader.getDataByUser. Cannot insert attachment to DB. Error: DB insert failed');
       });
     });

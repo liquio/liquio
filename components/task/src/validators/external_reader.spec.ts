@@ -37,3 +37,27 @@ describe('ExternalReaderValidator.getCaptchaChallenge', () => {
     expect(await run({ method: 'x' })).toBe(false);
   });
 });
+
+describe('ExternalReaderValidator extraParams', () => {
+  const runBody = async (method: 'getData' | 'getDataAsync', body: Record<string, any>) => {
+    const validator: any = new ExternalReaderValidator({})[method]();
+    const req: any = { params: {}, body, query: {}, headers: {} };
+    for (const chain of validator) {
+      await chain.run(req);
+    }
+    const { validationResult } = require('express-validator');
+    return validationResult(req).isEmpty();
+  };
+  const base = { service: 's', method: 'm', filters: {} };
+
+  it.each(['getData', 'getDataAsync'] as const)('%s accepts missing or object extraParams', async (name) => {
+    expect(await runBody(name, base)).toBe(true);
+    expect(await runBody(name, { ...base, extraParams: { a: 1 } })).toBe(true);
+  });
+
+  it.each(['getData', 'getDataAsync'] as const)('%s rejects non-object extraParams', async (name) => {
+    for (const extraParams of ['str', 5, true, ['a'], null]) {
+      expect(await runBody(name, { ...base, extraParams })).toBe(false);
+    }
+  });
+});

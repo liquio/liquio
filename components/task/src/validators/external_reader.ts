@@ -61,6 +61,13 @@ export class ExternalReaderValidator extends Validator {
         isString: true,
         optional: true,
       },
+      ['extraParams']: {
+        in: ['body'],
+        optional: true,
+        custom: {
+          options: (value) => !!value && typeof value === 'object' && !Array.isArray(value),
+        },
+      },
       ['filters']: {
         in: ['body'],
         custom: {
@@ -106,6 +113,13 @@ export class ExternalReaderValidator extends Validator {
         in: ['body'],
         isString: true,
         optional: true,
+      },
+      ['extraParams']: {
+        in: ['body'],
+        optional: true,
+        custom: {
+          options: (value) => !!value && typeof value === 'object' && !Array.isArray(value),
+        },
       },
       ['requestId']: {
         in: ['body'],
