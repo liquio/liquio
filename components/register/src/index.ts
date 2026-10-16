@@ -12,8 +12,6 @@ import { assertSafeConfig, assertEncryptionConfig } from './lib/config_guard';
 import { RedisClient } from './lib/redis_client';
 import { PgPubSub } from './lib/pgpubsub';
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 // Init.
 const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });
 const log = new Log([consoleLogProvider as any], ['console']);

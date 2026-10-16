@@ -142,7 +142,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     // Do request.
     let elasticData;
     try {
-      elasticData = await HttpRequest.send(requestOptions);
+      elasticData = await HttpRequest.send({ ...requestOptions, tls: this.config.options?.tls });
       this.log.save('elastic-get-index-count-response', { response: elasticData });
     } catch (error) {
       this.log.save('elastic-get-index-count-error', { error: error && error.message, keyId });
@@ -225,7 +225,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     // Do request.
     let elasticData;
     try {
-      elasticData = await HttpRequest.send(requestOptions);
+      elasticData = await HttpRequest.send({ ...requestOptions, tls: this.config.options?.tls });
       this.log.save('elastic-create-or-update-data-response', { id, response: elasticData });
       if (elasticData && elasticData.error) {
         const errorMessage = (elasticData && elasticData.error && elasticData.error.reason) || 'Elastic request error.';
@@ -269,7 +269,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     // Do request.
     let elasticData;
     try {
-      elasticData = await HttpRequest.send(requestOptions);
+      elasticData = await HttpRequest.send({ ...requestOptions, tls: this.config.options?.tls });
       this.log.save('elastic-delete-data-response', { id, response: elasticData });
     } catch (error) {
       if (error.message === 'Request failed with status code 404') {
@@ -300,7 +300,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     let elasticData;
     try {
       this.log.save('elastic-drop-index-request', { requestOptions });
-      elasticData = await HttpRequest.send(requestOptions);
+      elasticData = await HttpRequest.send({ ...requestOptions, tls: this.config.options?.tls });
       this.log.save('elastic-drop-index-response', { response: elasticData });
     } catch (error) {
       this.log.save('elastic-drop-index-error', { error: error && error.message, keyId });
@@ -390,7 +390,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     let elasticData;
     try {
       this.log.save('elastic-create-index-request', { requestOptions });
-      elasticData = await HttpRequest.send(requestOptions);
+      elasticData = await HttpRequest.send({ ...requestOptions, tls: this.config.options?.tls });
       this.log.save('elastic-create-index-response', { response: elasticData });
     } catch (error) {
       this.log.save('elastic-drop-index-error', { error: error && error.message, keyId });

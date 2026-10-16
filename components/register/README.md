@@ -60,3 +60,13 @@ a request reaches `register` — `register` has no visibility into the
 requesting user or the BPMN workflow context on its own, so it relies on
 `task` to attach that access decision to every call. See
 [ARCHITECTURE.md § `admin-api` / `cabinet-api` as proxies to `task`](../../ARCHITECTURE.md#admin-api--cabinet-api-as-proxies-to-task).
+
+## TLS to external services
+
+Certificate verification is always on (the process no longer sets `NODE_TLS_REJECT_UNAUTHORIZED`). Defaults in `config-templates/register`
+and the Helm chart point at in-cluster plain `http://` (sign tool); use `https://` for any external target.
+
+For a private CA, either set `NODE_EXTRA_CA_CERTS=/path/to/ca.pem` for the process (all outgoing TLS), or set a per-target option
+`tls = { "ca": "<PEM or path to PEM file>", "rejectUnauthorized": true }` in: `sign.json` (`tls`), the `plink` afterhandler config (`tls`),
+the `elastic` afterhandler config (`options.tls`) and the blockchain provider params (`providerParams.tls`).
+`rejectUnauthorized: false` is an explicit opt-out that is logged (`tls-verification-disabled`); do not use it in production.
