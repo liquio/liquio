@@ -48,7 +48,7 @@ export class LoggerService extends ConsoleLogger {
       createdAt: new Date().toISOString(),
     });
 
-    const dataToSave = sensitiveReplace(output, EXCLUDE_PARAMS);
+    const dataToSave = sensitiveReplace(output, EXCLUDE_PARAMS, undefined, { disableDefaults: process.env.LOG_DISABLE_DEFAULT_REDACTION === 'true' });
 
     if (writeStreamType === 'stderr') {
       process.stderr.write(dataToSave + '\n');

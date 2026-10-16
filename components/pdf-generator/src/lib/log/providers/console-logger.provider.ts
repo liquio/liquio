@@ -28,7 +28,9 @@ export class ConsoleLogger implements Logger {
       createdAt: new Date(timestamp).toISOString(),
     };
 
-    const dataToSave = sensitiveReplace(JSON.stringify(logData), EXCLUDE_PARAMS);
+    const dataToSave = sensitiveReplace(JSON.stringify(logData), EXCLUDE_PARAMS, undefined, {
+      disableDefaults: process.env.LOG_DISABLE_DEFAULT_REDACTION === 'true',
+    });
 
     switch (level) {
       case LogLevel.WARNING:
