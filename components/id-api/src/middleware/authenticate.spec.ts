@@ -410,3 +410,55 @@ describe('AuthMiddleware logout CSRF guards (ID-19)', () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('AuthMiddleware basic() (KS-24)', () => {
+  const header = (value: string) => `Basic ${Buffer.from(value).toString('base64')}`;
+
+  const run = (authorization: string | undefined, scope?: any, basicAuth?: any) => {
+    delete (AuthMiddleware as any).singleton;
+    const express: any = {
+      config: { oauth: { secret_key: [Buffer.from('user:pass').toString('base64')] }, basic_auth: basicAuth },
+      get: jest.fn(),
+      post: jest.fn(),
+    };
+    const middleware = new AuthMiddleware(express).basic(scope);
+    const res: any = { status: jest.fn().mockReturnThis(), send: jest.fn() };
+    const next = jest.fn();
+    const req: any = { headers: { authorization }, path: '/x' };
+    middleware(req, res, next);
+    return { req, res, next };
+  };
+
+  const clients = { clients: [{ name: 'svc', secret: 'svc-secret', scopes: ['user:write'] }] };
+
+  it('rejects a missing, wrong or short secret with 401', () => {
+    for (const authorization of [undefined, header('user:pas'), header('user:'), header('svc:svc-secre'), header('nobody:svc-secret')]) {
+      const { res, next } = run(authorization, undefined, clients);
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(next).not.toHaveBeenCalled();
+    }
+  });
+
+  it('keeps the legacy shared secret with all scopes by default', () => {
+    const { req, next } = run(header('user:pass'), 'user:admin');
+    expect(next).toHaveBeenCalled();
+    expect(req.serviceClient).toMatchObject({ legacy: true });
+    expect(req.serviceClient.scopes).toContain('user:admin');
+  });
+
+  it('refuses the legacy secret when allowLegacySharedSecret is false', () => {
+    const { res, next } = run(header('user:pass'), undefined, { allowLegacySharedSecret: false });
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('sets the named identity and enforces the route scope with 403', () => {
+    const allowed = run(header('svc:svc-secret'), 'user:write', clients);
+    expect(allowed.next).toHaveBeenCalled();
+    expect(allowed.req.serviceClient).toEqual({ name: 'svc', scopes: ['user:write'], legacy: false });
+
+    const denied = run(header('svc:svc-secret'), 'user:admin', clients);
+    expect(denied.res.status).toHaveBeenCalledWith(403);
+    expect(denied.next).not.toHaveBeenCalled();
+  });
+});

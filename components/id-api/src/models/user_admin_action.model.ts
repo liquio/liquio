@@ -5,7 +5,7 @@ export interface UserAdminActionAttributes {
   user_id: string;
   data: string;
   created_by: string;
-  action_type: 'delete' | 'block' | 'unblock';
+  action_type: 'delete' | 'block' | 'unblock' | 'update';
 }
 
 export type UserAdminActionCreationAttributes = Omit<UserAdminActionAttributes, 'id' | 'created_at' | 'updated_at'>;
@@ -41,7 +41,7 @@ export class UserAdminActionModel extends BaseModel<UserAdminActionAttributes, U
         action_type: {
           allowNull: false,
           type: DataTypes.ENUM,
-          values: ['delete', 'block', 'unblock'],
+          values: ['delete', 'block', 'unblock', 'update'],
           defaultValue: 'delete',
         },
       },

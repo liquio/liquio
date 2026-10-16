@@ -7,6 +7,7 @@ import { profileCookieOptions } from '../lib/cookie_options';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import { changedPrivilegedFields, checkNamedClientUpdate } from '../lib/privileged_user_update';
 import { publicServices } from '../lib/public_services';
 import { resolveSafeRedirect } from '../lib/safe_redirect';
 import { saveSession } from '../middleware/session';
@@ -82,7 +83,7 @@ export class UserController extends BaseController {
     this.router.get(
       '/user/info/email/check',
       [query('email').isString(), this.handleValidation.bind(this)],
-      this.auth.basic(),
+      this.auth.basic('user:read'),
       this.checkEmail.bind(this),
     );
     this.router.get(
@@ -98,25 +99,25 @@ export class UserController extends BaseController {
         query('search').optional().isString(),
         this.handleValidation.bind(this),
       ],
-      this.auth.basic(),
+      this.auth.basic('user:read'),
       this.getUsers.bind(this),
     );
-    this.router.post('/user/create_local', this.auth.basic(), this.createUserLocal.bind(this));
-    this.router.get('/user/:id', this.auth.basic(), this.findUserById.bind(this));
-    this.router.delete('/user/:id', this.auth.basic(), this.deleteUser.bind(this));
-    this.router.post('/user/:id/logout', this.auth.basic(), this.logoutByUserId.bind(this));
-    this.router.get('/user/info/phone', this.auth.basic(), this.getUserInfoByPhone.bind(this));
-    this.router.post('/user/info/id', this.auth.basic(), this.getUsersInfoById.bind(this));
-    this.router.post('/user/info/ipn', this.auth.basic(), this.getUsersInfoByIpn.bind(this));
-    this.router.post('/user/info/edrpou', this.auth.basic(), this.getUsersInfoByEdrpou.bind(this));
-    this.router.post('/user/info/search', this.auth.basic(), this.searchUsers.bind(this));
-    this.router.delete('/user', this.auth.basic(), this.deleteUser.bind(this));
-    this.router.put('/user/info/onboarding', this.auth.basic(), this.updateUserOnboarding.bind(this));
-    this.router.put('/user/info/:id', this.auth.basic(), this.updateUserInfoById.bind(this));
-    this.router.post('/user/prepare', this.auth.basic(), this.prepareUser.bind(this));
+    this.router.post('/user/create_local', this.auth.basic('user:write'), this.createUserLocal.bind(this));
+    this.router.get('/user/:id', this.auth.basic('user:read'), this.findUserById.bind(this));
+    this.router.delete('/user/:id', this.auth.basic('user:admin'), this.deleteUser.bind(this));
+    this.router.post('/user/:id/logout', this.auth.basic('user:write'), this.logoutByUserId.bind(this));
+    this.router.get('/user/info/phone', this.auth.basic('user:read'), this.getUserInfoByPhone.bind(this));
+    this.router.post('/user/info/id', this.auth.basic('user:read'), this.getUsersInfoById.bind(this));
+    this.router.post('/user/info/ipn', this.auth.basic('user:read'), this.getUsersInfoByIpn.bind(this));
+    this.router.post('/user/info/edrpou', this.auth.basic('user:read'), this.getUsersInfoByEdrpou.bind(this));
+    this.router.post('/user/info/search', this.auth.basic('user:read'), this.searchUsers.bind(this));
+    this.router.delete('/user', this.auth.basic('user:admin'), this.deleteUser.bind(this));
+    this.router.put('/user/info/onboarding', this.auth.basic('user:write'), this.updateUserOnboarding.bind(this));
+    this.router.put('/user/info/:id', this.auth.basic('user:write'), this.updateUserInfoById.bind(this));
+    this.router.post('/user/prepare', this.auth.basic('user:write'), this.prepareUser.bind(this));
 
     // Password management methods
-    this.router.post('/user/password/set', this.auth.basic(), this.setPassword.bind(this));
+    this.router.post('/user/password/set', this.auth.basic('password:set'), this.setPassword.bind(this));
     this.router.post('/user/password/forgot', this.checkForgotPasswordConfig.bind(this), this.forgotPassword.bind(this));
     this.router.post('/user/password/reset', this.checkForgotPasswordConfig.bind(this), this.passwordReset.bind(this));
   }
@@ -920,6 +921,17 @@ export class UserController extends BaseController {
       twoFactorType: 'twoFactorType',
     };
 
+    // Named service clients are gated (KS-24). The legacy shared secret keeps its behaviour while it is allowed.
+    const namedClient = req.serviceClient && !req.serviceClient.legacy ? req.serviceClient : undefined;
+    if (namedClient) {
+      const rejection = checkNamedClientUpdate(req.body, namedClient, this.config.roles);
+      if (rejection) {
+        this.log.save('update-user-info-rejected', { userId, client: namedClient.name, reason: rejection.message }, 'warn');
+        res.status(rejection.status).send(rejection.message);
+        return;
+      }
+    }
+
     const data: Partial<UserAttributes> = {};
     for (const [key, value] of Object.entries(fieldMap).filter(([key]) => typeof req.body[key] !== 'undefined')) {
       data[value] = req.body[key];
@@ -948,25 +960,35 @@ export class UserController extends BaseController {
       const updatedUser: any = await this.service('auth').updateUser({ userId }, data);
 
       // Save in history blocking/unblocking of user.
+      const createdBy = namedClient ? { service: namedClient.name } : req.body.updateInitiator;
       if (updatedUser.isActive !== user.isActive) {
         await this.model('userAdminAction').create({
           user_id: userId,
           data: updatedUser,
-          created_by: req.body.updateInitiator,
+          created_by: createdBy,
           action_type: user.isActive ? 'block' : 'unblock',
         });
       }
 
-      const changedUser = {
-        _id: updatedUser._id,
-        first_name: updatedUser.first_name,
-        last_name: updatedUser.last_name,
-        avaUrl: updatedUser.avaUrl ?? avatarByGender(updatedUser.gender),
-      };
+      if (namedClient) {
+        // Audit the other privileged changes and cut the target user off. The caller session is never touched.
+        const changedFields = changedPrivilegedFields(req.body).filter((field) => field !== 'isActive');
+        if (changedFields.length) {
+          await this.model('userAdminAction').create({
+            user_id: userId,
+            data: {
+              changes: Object.fromEntries(changedFields.map((field) => [field, req.body[field]])),
+              previous: Object.fromEntries(changedFields.map((field) => [field, (user as any)[field]])),
+            } as any,
+            created_by: createdBy,
+            action_type: 'update',
+          });
+        }
+        if (changedFields.length || (updatedUser.isActive === false && user.isActive !== false)) {
+          await this.service('auth').revokeUserAccess(userId, { ignoreCacheErrors: true });
+        }
+      }
 
-      await saveSession(req, updatedUser);
-
-      res.cookie('jwt', JSON.stringify(changedUser), profileCookieOptions(req, this.config));
       res.send('ok');
     } catch (error: any) {
       this.log.save('update-user-info-update-user-error', { userId, error: error.message, stack: error.stack }, 'error');

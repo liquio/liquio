@@ -11,6 +11,8 @@ export interface Request extends express.Request {
   prepared?: { user: any };
   traceMeta?: Record<string, any>;
   flash?: FlashFunction;
+  // Identity resolved by `AuthMiddleware.basic()`.
+  serviceClient?: { name: string; scopes: string[]; legacy: boolean };
 }
 
 declare module 'express-session' {

@@ -1,0 +1,56 @@
+// Fields of `PUT /user/info/:id` that change who the user is or how they authenticate (KS-24).
+export const PRIVILEGED_USER_FIELDS = ['role', 'isActive', 'useTwoFactorAuth', 'twoFactorType'] as const;
+
+// Fields that must go through the verified flows (ID-08 email, ID-07 phone), never the generic update.
+export const VERIFIED_FLOW_FIELDS = ['email', 'phone'] as const;
+
+export interface UpdateServiceClient {
+  name: string;
+  scopes: string[];
+  legacy: boolean;
+}
+
+export interface UpdateRejection {
+  status: number;
+  message: string;
+}
+
+const isDefined = (value: unknown) => typeof value !== 'undefined';
+
+export function changedPrivilegedFields(body: Record<string, any>): string[] {
+  return PRIVILEGED_USER_FIELDS.filter((field) => isDefined(body[field]));
+}
+
+/**
+ * Check a generic user update coming from a named service client.
+ * The legacy shared secret is not checked here, it keeps today's behaviour until it is removed.
+ */
+export function checkNamedClientUpdate(
+  body: Record<string, any>,
+  client: UpdateServiceClient,
+  allowedRoles: string[] = [],
+): UpdateRejection | undefined {
+  if (VERIFIED_FLOW_FIELDS.some((field) => isDefined(body[field]))) {
+    return { status: 400, message: 'Email and phone can only be changed through the verified flows' };
+  }
+
+  const privileged = changedPrivilegedFields(body);
+  if (!privileged.length) return undefined;
+
+  if (!client.scopes.includes('user:admin')) {
+    return { status: 403, message: `Fields ${privileged.join(', ')} require the user:admin scope` };
+  }
+
+  if (body.useTwoFactorAuth === false || body.useTwoFactorAuth === 'false' || body.twoFactorType === null) {
+    return { status: 400, message: 'Two-factor authentication cannot be disabled here' };
+  }
+
+  if (isDefined(body.role)) {
+    const roles = typeof body.role === 'string' ? body.role.split(';').map((role) => role.trim()) : [];
+    if (!roles.length || roles.some((role) => !role || !allowedRoles.includes(role))) {
+      return { status: 400, message: 'Role is not allowed' };
+    }
+  }
+
+  return undefined;
+}

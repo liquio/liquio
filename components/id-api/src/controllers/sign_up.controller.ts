@@ -70,7 +70,7 @@ export class SignUpController extends BaseController {
       this.auth.authorise(),
       this.checkPhoneConfirmAndSetAsConfirmed.bind(this),
     );
-    this.router.post('/sign_up/confirmation/phone/set', this.auth.basic(), this.setPhone.bind(this));
+    this.router.post('/sign_up/confirmation/phone/set', this.auth.basic('user:write'), this.setPhone.bind(this));
     this.router.post(
       '/sign_up/confirmation/phone/check',
       [body('code').isString().notEmpty(), this.handleValidation.bind(this)],

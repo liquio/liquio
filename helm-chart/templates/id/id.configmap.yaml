@@ -84,6 +84,10 @@ metadata:
   "notify" (dict
     "url" (printf "http://%s-notification:80" (include "liquio.fullname" .))
   )
+  "basic_auth" (dict
+    "allowLegacySharedSecret" true
+    "clients" (list)
+  )
   "oauth" $oauthBase
   "passwordManager" (dict
     "hashingSaltRounds" 10

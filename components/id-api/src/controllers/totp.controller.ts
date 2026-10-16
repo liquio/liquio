@@ -22,17 +22,17 @@ export class TotpController extends BaseController {
     this.router.get(
       '/totp/generate',
       [query('userId').exists().isString(), this.handleValidation.bind(this)],
-      authMiddleware.basic(),
+      authMiddleware.basic('totp'),
       this.generateTotp.bind(this),
     );
 
     // Enable TOTP secret.
     // Note: Should be called from Cabinet API.
-    this.router.post('/totp/enable', authMiddleware.basic(), this.enableTotpSecret.bind(this));
+    this.router.post('/totp/enable', authMiddleware.basic('totp'), this.enableTotpSecret.bind(this));
 
     // Disable TOTP secret.
     // Note: Should be called from Cabinet API.
-    this.router.post('/totp/disable', authMiddleware.basic(), this.disableTotpSecret.bind(this));
+    this.router.post('/totp/disable', authMiddleware.basic('totp'), this.disableTotpSecret.bind(this));
   }
 
   /**

@@ -21,7 +21,7 @@ export class UserAdminActionController extends BaseController {
         query('filter').optional().isObject(),
         this.handleValidation.bind(this),
       ],
-      this.auth.basic(),
+      this.auth.basic('user:read'),
       this.getList.bind(this),
     );
   }

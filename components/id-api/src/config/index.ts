@@ -124,6 +124,18 @@ export interface Config {
     secret?: string;
     expiresIn?: number | string | null | object | any[];
   };
+  // Named identities for `basic()` routes (service-to-service). The legacy shared secret keeps all scopes while allowed.
+  basic_auth?: {
+    allowLegacySharedSecret?: boolean;
+    clients?: {
+      name: string;
+      secret?: string;
+      secret_hash?: string;
+      scopes?: ('user:read' | 'user:write' | 'user:admin' | 'password:set' | 'totp' | 'login_history')[];
+    }[];
+  };
+  // Roles named clients may assign through `PUT /user/info/:id` (`;`-separated values are checked one by one).
+  roles?: string[];
   oauth?: {
     accessTokenLifetimeInSeconds?: number;
     refreshTokenLifetimeInSeconds?: number;

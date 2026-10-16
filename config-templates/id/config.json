@@ -37,6 +37,11 @@
       "secret": "<REDACTED>",
       "expiresIn": 60
     },
+    "basic_auth": {
+      "allowLegacySharedSecret": true,
+      "clients": []
+    },
+    "roles": [],
     "oauth": {
       "enforceScopeConsent": false,
       "accessTokenLifetimeInSeconds": 28800,

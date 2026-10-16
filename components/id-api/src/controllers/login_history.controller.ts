@@ -58,7 +58,7 @@ export class LoginHistoryController extends BaseController {
           }),
         this.handleValidation.bind(this),
       ],
-      this.auth.basic(),
+      this.auth.basic('login_history'),
       this.getList.bind(this),
     );
   }

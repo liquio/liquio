@@ -27,6 +27,7 @@ import { wso2, logout as wso2Logout } from '../strategies/wso2';
 import { x509, logout as x509Logout } from '../strategies/x509';
 import { Express, NextFunction, Request, Response } from '../types';
 import { destroySession, saveSession } from './session';
+import { SERVICE_SCOPES, ServiceClientRegistry } from './service_clients';
 
 type StrategyLogout = (req: Request) => Promise<{ endSessionUrl?: string } | void>;
 
@@ -42,6 +43,8 @@ export class AuthMiddleware {
     realmHash: string;
   };
   private readonly config: Config;
+  private readonly serviceClients: ServiceClientRegistry;
+  private legacyWarned = false;
   private readonly service = Services.service.bind(Services);
 
   constructor(private readonly express: Express) {
@@ -56,6 +59,10 @@ export class AuthMiddleware {
       throw new Error('No secret key provided for OAuth authentication');
     }
     this.secretKey = secretKey![0];
+
+    // Named service identities plus the legacy shared secret pool (`oauth.secret_key[]`, all scopes while allowed).
+    const legacySecrets = (Array.isArray(secretKey) ? secretKey : [secretKey]).map((v) => Buffer.from(v, 'base64').toString().trim());
+    this.serviceClients = new ServiceClientRegistry(this.config.basic_auth, legacySecrets);
 
     const [username, password] = Buffer.from(this.secretKey, 'base64').toString().trim().split(':');
 
@@ -130,12 +137,11 @@ export class AuthMiddleware {
     await Promise.all(promises);
   }
 
-  basic() {
-    // Define inner secrets.
-    const hashedInnerSecret = this.secretKey;
-    const hashedInnerSecrets = Array.isArray(hashedInnerSecret) ? hashedInnerSecret : [hashedInnerSecret];
-    const innerSecrets = hashedInnerSecrets.map((v) => Buffer.from(v, 'base64').toString().trim());
-
+  /**
+   * HTTP Basic auth for service-to-service routes.
+   * Identifies the caller (`req.serviceClient`) and, when `scope` is given, requires it (403 otherwise).
+   */
+  basic(scope?: (typeof SERVICE_SCOPES)[number]) {
     return (req: Request, res: Response, next: NextFunction): void => {
       // Define params.
       const authorization = req.headers.authorization ?? '';
@@ -154,7 +160,25 @@ export class AuthMiddleware {
         }
 
         // Check incoming secret.
-        if (innerSecrets.includes(incomingSecret)) {
+        const client = this.serviceClients.authenticate(incomingSecret);
+        if (client) {
+          if (client.legacy && !this.legacyWarned) {
+            this.legacyWarned = true;
+            this.log.save(
+              'basic-auth-legacy-shared-secret-used',
+              { deprecated: true, hint: 'Configure basic_auth.clients and set basic_auth.allowLegacySharedSecret=false' },
+              'warn',
+            );
+          }
+
+          if (scope && !client.scopes.includes(scope)) {
+            this.log.save('basic-auth-scope-denied', { client: client.name, scope, path: req.path }, 'warn');
+            res.status(403).send('forbidden');
+            return;
+          }
+
+          req.serviceClient = { name: client.name, scopes: client.scopes, legacy: client.legacy };
+          appendTraceMeta({ serviceClient: client.name });
           return next();
         }
       }
