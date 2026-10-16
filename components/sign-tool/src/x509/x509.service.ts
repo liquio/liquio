@@ -54,6 +54,8 @@ export interface SignatureInfo {
   pem?: string;
 }
 
+const TEST_CA_COMMON_NAME = 'Liquio Test CA';
+
 @Injectable()
 export class X509Service {
   private caCerts: pkijs.Certificate[] = [];
@@ -74,8 +76,16 @@ export class X509Service {
       const cert = new pkijs.Certificate({ schema: asn1.result });
       const caCN = cert.subject.typesAndValues.find((tv) => tv.type === OID_COMMON_NAME)?.value.valueBlock.value;
       this.logger.log(`Loaded CA cert: ${caCN}`);
+      if (caCN === TEST_CA_COMMON_NAME) {
+        this.logger.warn(
+          `Trusting the publicly known "${TEST_CA_COMMON_NAME}": anyone can mint certificates accepted by this deployment. Use only in dev/test.`,
+        );
+      }
       return cert;
     });
+    if (this.caCerts.length === 0) {
+      this.logger.warn('No trusted CA certificates configured (x509.caCerts is empty): all x509 signature verification will be rejected.');
+    }
 
     const webcrypto = new Crypto();
     const engine = new pkijs.CryptoEngine({

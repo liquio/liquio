@@ -369,7 +369,10 @@ describe('X509Service', () => {
 
   describe('toPem', () => {
     it('should convert base64 to PEM format', () => {
-      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {} } as any);
+      const service = new X509Service(
+        { get: () => ({ caCerts: [] }) } as any,
+        { setContext: () => {}, error: () => {}, log: () => {}, warn: () => {} } as any,
+      );
       const base64 = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7';
       const expectedPem = '-----BEGIN CERTIFICATE-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7\n-----END CERTIFICATE-----';
       expect(service.toPem(base64)).toBe(expectedPem);
@@ -469,6 +472,23 @@ describe('X509Service signature verification', () => {
     const { cert, key } = await issueCert({ caKey: ca1Key, keyUsageByte: 0x80 }); // digitalSignature
     const cms = await buildCms({ cert, key, content: nonce });
     await expect(service.getSignatureInfo(cms)).resolves.toBeDefined();
+  });
+
+  it('warns when no trusted CA is configured', () => {
+    const warn = jest.fn();
+    new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {}, warn } as any);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('No trusted CA certificates configured'));
+  });
+
+  it('warns when the publicly known Liquio Test CA is trusted', () => {
+    const warn = jest.fn();
+    new X509Service({ get: () => ({ caCerts: [ca1CertPem] }) } as any, { setContext: () => {}, error: () => {}, log: () => {}, warn } as any);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Liquio Test CA'));
+  });
+
+  it('ships config templates without any trusted CA', () => {
+    const tpl = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../../config-templates/sign-tool/x509.json'), 'utf8'));
+    expect(tpl.caCerts).toEqual([]);
   });
 
   it('fails closed when no trusted CA is configured', async () => {
