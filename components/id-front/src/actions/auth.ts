@@ -1,7 +1,6 @@
 import * as api from 'services/api';
 import store from 'store';
 
-import { urlParams } from 'helpers/getUrlParams';
 import type { AppDispatch } from '../store/types';
 
 // `store` does not import `actions` or `services/api`, so reading it here at module level is not circular.
@@ -82,40 +81,45 @@ export function verifyEmailCode(email: string, code: string) {
 }
 
 export function checkPhoneExists(phone: string) {
-  return api.get(
-    'sign_up/confirmation/phone/exist?' + urlParams({ phone }),
+  return api.post(
+    'sign_up/confirmation/phone/exist',
+    { phone },
     CHECK_PHONE_EXISTS,
     dispatch
   );
 }
 
 export function sendActivationCodeSMS(phone: string) {
-  return api.get(
-    'sign_up/confirmation/phone/send?' + urlParams({ phone }),
+  return api.post(
+    'sign_up/confirmation/phone/send',
+    { phone },
     SEND_ACTIVATION_CODE_SMS,
     dispatch
   );
 }
 
 export function verifyActivationCodeSMS(phone: string, code: string) {
-  return api.get(
-    'sign_up/confirmation/phone/verify?' + urlParams({ phone, code }),
+  return api.post(
+    'sign_up/confirmation/phone/check_code',
+    { phone, code },
     VERIFY_ACTIVATION_CODE_SMS,
     dispatch
   );
 }
 
 export function sendActivationCodeEmail(email: string) {
-  return api.get(
-    'sign_up/confirmation/email/send?' + urlParams({ email }),
+  return api.post(
+    'sign_up/confirmation/email/send',
+    { email },
     SEND_ACTIVATION_CODE_EMAIL,
     dispatch
   );
 }
 
 export function verifyActivationCodeEmail(email: string, code: string) {
-  return api.get(
-    'sign_up/confirmation/email/verify?' + urlParams({ email, code }),
+  return api.post(
+    'sign_up/confirmation/email/verify',
+    { email, code },
     VERIFY_ACTIVATION_CODE_EMAIL,
     dispatch
   );

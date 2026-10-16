@@ -1,11 +1,12 @@
 import bcrypt from 'bcrypt';
-import { matchedData, query } from 'express-validator';
+import { body, matchedData, query } from 'express-validator';
 import jwt from 'jsonwebtoken';
 import Sequelize, { Op, WhereAttributeHash, WhereOptions } from 'sequelize';
 
 import { profileCookieOptions } from '../lib/cookie_options';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../lib/helpers';
+import { legacyConfirmationQueryGuard } from '../lib/legacy_get_confirmation';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { changedPrivilegedFields, checkNamedClientUpdate } from '../lib/privileged_user_update';
 import { publicServices } from '../lib/public_services';
@@ -33,8 +34,16 @@ export class UserController extends BaseController {
       [query('email').optional().isString(), query('phone').optional().isString(), this.handleValidation.bind(this)],
       this.promoSubscribe.bind(this),
     );
-    this.router.get('/user/info/email/send', [query('email').isString(), this.handleValidation.bind(this)], this.sendToNewEmailCode.bind(this));
-
+    // Confirmation codes and recipients must not travel in URLs (logs, history, Referer): POST with a body is the supported form (SE-3930 IF-05).
+    // The GET variants stay for one release behind `legacyGetConfirmation` (default true) and log a deprecation without the query.
+    const legacyGet = legacyConfirmationQueryGuard(this.log, this.config);
+    this.router.get(
+      '/user/info/email/send',
+      legacyGet,
+      [query('email').isString(), this.handleValidation.bind(this)],
+      this.sendToNewEmailCode.bind(this),
+    );
+    this.router.post('/user/info/email/send', [body('email').isString(), this.handleValidation.bind(this)], this.sendToNewEmailCode.bind(this));
     // User methods
     this.router.get(
       '/logoff/:service',
@@ -47,12 +56,20 @@ export class UserController extends BaseController {
     this.router.post('/user/info/phone/confirm', this.auth.authorise(), this.confirmPhone.bind(this));
     this.router.get(
       '/removeConfirmCode',
+      legacyGet,
       [query('code').exists().isString(), this.handleValidation.bind(this)],
+      this.auth.authorise(),
+      this.clearConfCode.bind(this),
+    );
+    this.router.post(
+      '/removeConfirmCode',
+      [body('code').exists().isString(), this.handleValidation.bind(this)],
       this.auth.authorise(),
       this.clearConfCode.bind(this),
     );
     this.router.get(
       '/user/info/email/set',
+      legacyGet,
       [
         query('email').exists().isString(),
         query('code_email').exists().isString(),
@@ -62,9 +79,27 @@ export class UserController extends BaseController {
       this.auth.authorise(),
       this.setToNewEmail.bind(this),
     );
+    this.router.post(
+      '/user/info/email/set',
+      [
+        body('email').exists().isString(),
+        body('code_email').exists().isString(),
+        body('code_phone').optional().isString(),
+        this.handleValidation.bind(this),
+      ],
+      this.auth.authorise(),
+      this.setToNewEmail.bind(this),
+    );
     this.router.get(
       '/user/info/email/check_email_confirmation_code',
+      legacyGet,
       [query('email').exists().isString(), query('code_email').exists().isString(), this.handleValidation.bind(this)],
+      this.auth.authorise(),
+      this.checkEmailConfirmationCode.bind(this),
+    );
+    this.router.post(
+      '/user/info/email/check_email_confirmation_code',
+      [body('email').exists().isString(), body('code_email').exists().isString(), this.handleValidation.bind(this)],
       this.auth.authorise(),
       this.checkEmailConfirmationCode.bind(this),
     );
@@ -73,7 +108,14 @@ export class UserController extends BaseController {
     this.router.get('/user/jwt', this.auth.authorise(), this.getUserJwt.bind(this));
     this.router.get(
       '/user/info/phone/check_phone_confirmation_code',
+      legacyGet,
       [query('phone').exists().isString(), query('code_phone').exists().isString(), this.handleValidation.bind(this)],
+      this.auth.authorise(),
+      this.checkPhoneConfirmationCode.bind(this),
+    );
+    this.router.post(
+      '/user/info/phone/check_phone_confirmation_code',
+      [body('phone').exists().isString(), body('code_phone').exists().isString(), this.handleValidation.bind(this)],
       this.auth.authorise(),
       this.checkPhoneConfirmationCode.bind(this),
     );
@@ -635,7 +677,7 @@ export class UserController extends BaseController {
    */
   async clearConfCode(req: Request, res: Response): Promise<void> {
     try {
-      const { code } = matchedData(req, { locations: ['query'] });
+      const { code } = matchedData(req, { locations: ['body', 'query'] });
       await this.service('auth').removeConfirmCode({ code });
       res.send('');
     } catch (error: any) {
@@ -650,7 +692,7 @@ export class UserController extends BaseController {
   async sendToNewEmailCode(req: Request, res: Response): Promise<void> {
     try {
       let { email } = matchedData(req, {
-        locations: ['query'],
+        locations: ['body', 'query'],
       });
       email = email.toLowerCase();
 
@@ -727,7 +769,7 @@ export class UserController extends BaseController {
    * Set new email.
    */
   async setToNewEmail(req: Request, res: Response): Promise<void> {
-    let { email, code_email: emailCode, code_phone: phoneCode } = matchedData(req, { locations: ['query'] });
+    let { email, code_email: emailCode, code_phone: phoneCode } = matchedData(req, { locations: ['body', 'query'] });
     email = email.toLowerCase();
 
     let user;
@@ -798,7 +840,7 @@ export class UserController extends BaseController {
    * Check phone confirmation code.
    */
   async checkPhoneConfirmationCode(req: Request, res: Response): Promise<void> {
-    const { phone, code_phone: code } = matchedData(req, { locations: ['query'] });
+    const { phone, code_phone: code } = matchedData(req, { locations: ['body', 'query'] });
 
     try {
       const codeEntity: any = await this.service('auth').getValidConfirmCode({
@@ -823,7 +865,7 @@ export class UserController extends BaseController {
    * Check email confirmation code.
    */
   async checkEmailConfirmationCode(req: Request, res: Response): Promise<void> {
-    const { email, code_email: code } = matchedData(req, { locations: ['query'] });
+    const { email, code_email: code } = matchedData(req, { locations: ['body', 'query'] });
 
     try {
       const codeEntity: any = await this.service('auth').getValidConfirmCode({ email, code });

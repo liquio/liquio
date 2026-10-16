@@ -1,8 +1,9 @@
 import { promisify } from 'util';
 
-import { body, matchedData, query } from 'express-validator';
+import { body, check, matchedData, query } from 'express-validator';
 
 import { validateEmail } from '../lib/helpers';
+import { legacyConfirmationQueryGuard } from '../lib/legacy_get_confirmation';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { getSessionUserId, markTwoFactorCompleted } from '../lib/two_factor';
 import { saveSession } from '../middleware/session';
@@ -33,40 +34,50 @@ export class SignUpController extends BaseController {
       ],
       this.signUpConfirmationPost.bind(this),
     );
-    this.router.get(
-      '/sign_up/confirmation/email/exist',
-      [query('email').isString(), this.handleValidation.bind(this)],
-      this.checkEmailExist.bind(this),
-    );
-    this.router.get(
-      '/sign_up/confirmation/email/send',
-      [query('email').isString(), this.handleValidation.bind(this)],
-      this.sendEmailConfirm.bind(this),
-    );
-    this.router.get(
+    // Confirmation codes and recipients must not travel in URLs (logs, history, Referer): POST with a body is the supported form (SE-3930 IF-05).
+    // The GET variants stay for one release behind `legacyGetConfirmation` (default true) and log a deprecation without the query.
+    const legacyGet = legacyConfirmationQueryGuard(this.log, this.config);
+    const legacyQuery = legacyConfirmationQueryGuard(this.log, this.config, ['phone', 'code']);
+    const emailExist = [query('email').isString(), this.handleValidation.bind(this)];
+    const emailSend = [query('email').isString(), this.handleValidation.bind(this)];
+    const emailVerify = [query('email').notEmpty().toLowerCase(), query('code').isString(), this.handleValidation.bind(this)];
+    const phoneExist = [query('phone').isString(), this.handleValidation.bind(this)];
+    const phoneSend = [query('phone').isString(), this.handleValidation.bind(this)];
+    const phoneVerify = [query('phone').isString(), query('code').isString(), this.handleValidation.bind(this)];
+    const bodyEmail = body('email').isString();
+    const bodyPhone = body('phone').isString();
+    const bodyCode = body('code').isString();
+
+    this.router.get('/sign_up/confirmation/email/exist', legacyGet, emailExist, this.checkEmailExist.bind(this));
+    this.router.post('/sign_up/confirmation/email/exist', [bodyEmail, this.handleValidation.bind(this)], this.checkEmailExist.bind(this));
+    this.router.get('/sign_up/confirmation/email/send', legacyGet, emailSend, this.sendEmailConfirm.bind(this));
+    this.router.post('/sign_up/confirmation/email/send', [bodyEmail, this.handleValidation.bind(this)], this.sendEmailConfirm.bind(this));
+    this.router.get('/sign_up/confirmation/email/verify', legacyGet, emailVerify, this.checkEmailConfirm.bind(this));
+    this.router.post(
       '/sign_up/confirmation/email/verify',
-      [query('email').notEmpty().toLowerCase(), query('code').isString(), this.handleValidation.bind(this)],
+      [body('email').notEmpty().toLowerCase(), bodyCode, this.handleValidation.bind(this)],
       this.checkEmailConfirm.bind(this),
     );
-    this.router.get(
-      '/sign_up/confirmation/phone/exist',
-      [query('phone').isString(), this.handleValidation.bind(this)],
-      this.checkPhoneExist.bind(this),
-    );
-    this.router.get(
+    this.router.get('/sign_up/confirmation/phone/exist', legacyGet, phoneExist, this.checkPhoneExist.bind(this));
+    this.router.post('/sign_up/confirmation/phone/exist', [bodyPhone, this.handleValidation.bind(this)], this.checkPhoneExist.bind(this));
+    this.router.get('/sign_up/confirmation/phone/send', legacyGet, phoneSend, this.auth.authoriseOptional(), this.sendPhoneConfirm.bind(this));
+    this.router.post(
       '/sign_up/confirmation/phone/send',
-      [query('phone').isString(), this.handleValidation.bind(this)],
+      [bodyPhone, this.handleValidation.bind(this)],
       this.auth.authoriseOptional(),
       this.sendPhoneConfirm.bind(this),
     );
-    this.router.get(
-      '/sign_up/confirmation/phone/verify',
-      [query('phone').isString(), query('code').isString(), this.handleValidation.bind(this)],
+    this.router.get('/sign_up/confirmation/phone/verify', legacyGet, phoneVerify, this.checkPhoneConfirm.bind(this));
+    // POST /phone/verify is the authorised "confirm my phone" action; the anonymous check-only POST is `/phone/check_code`.
+    this.router.post(
+      '/sign_up/confirmation/phone/check_code',
+      [bodyPhone, bodyCode, this.handleValidation.bind(this)],
       this.checkPhoneConfirm.bind(this),
     );
     this.router.post(
       '/sign_up/confirmation/phone/verify',
-      [query('phone').isString(), query('code').isString(), this.handleValidation.bind(this)],
+      legacyQuery,
+      [check('phone', ['body', 'query']).isString(), check('code', ['body', 'query']).isString(), this.handleValidation.bind(this)],
       this.auth.authorise(),
       this.checkPhoneConfirmAndSetAsConfirmed.bind(this),
     );
@@ -209,7 +220,7 @@ export class SignUpController extends BaseController {
    * so the answer is always 'null' and no lookup is made. Duplicates are rejected after the code proves control of the address.
    */
   async checkEmailExist(req: Request, res: Response): Promise<void> {
-    const { email } = matchedData<{ email: string }>(req, { locations: ['query'] });
+    const { email } = matchedData<{ email: string }>(req, { locations: ['body', 'query'] });
     this.log.save('check-email-exist-request', { email: email.toLowerCase() }, 'info');
     res.send('null');
   }
@@ -218,7 +229,7 @@ export class SignUpController extends BaseController {
    * Sends the email confirmation code.
    */
   async sendEmailConfirm(req: Request, res: Response): Promise<void> {
-    let { email } = matchedData<{ email: string }>(req, { locations: ['query'] });
+    let { email } = matchedData<{ email: string }>(req, { locations: ['body', 'query'] });
     email = email.toLowerCase();
     this.log.save('send-email-confirmation-code-params', { email }, 'info');
 
@@ -282,7 +293,7 @@ export class SignUpController extends BaseController {
    * Checks the email confirmation code.
    */
   async checkEmailConfirm(req: Request, res: Response): Promise<void> {
-    let { email, code } = matchedData<{ email: string; code: string }>(req, { locations: ['query'] });
+    let { email, code } = matchedData<{ email: string; code: string }>(req, { locations: ['body', 'query'] });
     email = email.toLowerCase();
     this.log.save('check-email-confirmation-code-params', { email }, 'info');
 
@@ -322,7 +333,7 @@ export class SignUpController extends BaseController {
    * so the answer is always `false` and no lookup is made. Duplicates are rejected after the code proves control of the number.
    */
   async checkPhoneExist(req: Request, res: Response): Promise<void> {
-    const { phone } = matchedData<{ phone: string }>(req, { locations: ['query'] });
+    const { phone } = matchedData<{ phone: string }>(req, { locations: ['body', 'query'] });
     this.log.save('check-phone-get-user-request', { phone }, 'info');
     res.send(false);
   }
@@ -342,7 +353,7 @@ export class SignUpController extends BaseController {
    * Sends the phone confirmation code.
    */
   async sendPhoneConfirm(req: Request, res: Response): Promise<void> {
-    const { phone } = matchedData<{ phone: string }>(req, { locations: ['query'] });
+    const { phone } = matchedData<{ phone: string }>(req, { locations: ['body', 'query'] });
 
     this.log.save('send-phone-confirmation-code-requested', { phone }, 'info');
 
@@ -364,7 +375,7 @@ export class SignUpController extends BaseController {
    * Checks the phone confirmation code.
    */
   async checkPhoneConfirm(req: Request, res: Response): Promise<void> {
-    const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['query'] });
+    const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['body', 'query'] });
     this.log.save('check-phone-confirmation-code-params', { phone }, 'info');
 
     let confirm;
@@ -400,7 +411,7 @@ export class SignUpController extends BaseController {
   async checkPhoneConfirmAndSetAsConfirmed(req: Request, res: Response): Promise<void> {
     // Define params.
     const userId = req.user && (req.user as any).id;
-    const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['query'] });
+    const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['body', 'query'] });
 
     this.log.save('phone-confirmation-request', { userId, phone }, 'info');
 
