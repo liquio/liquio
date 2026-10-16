@@ -78,12 +78,20 @@ export class TaskValidator extends Validator {
       ['filters.assigned_to']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['me', 'unit']] },
+        // Plain string only: `isIn` alone is applied per array element, so `filters[assigned_to][]=me` would pass.
+        custom: {
+          options: (value) => typeof value === 'string' && ['me', 'unit'].includes(value),
+          errorMessage: 'filters.assigned_to must be one of: me, unit.',
+        },
       },
       ['filters.closed_by']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['me', 'unit']] },
+        // Plain string only: `isIn` alone is applied per array element, so `filters[closed_by][]=me` would pass.
+        custom: {
+          options: (value) => typeof value === 'string' && ['me', 'unit'].includes(value),
+          errorMessage: 'filters.closed_by must be one of: me, unit.',
+        },
       },
       ['filters.search']: {
         in: ['query'],
@@ -276,12 +284,20 @@ export class TaskValidator extends Validator {
       ['filters.assigned_to']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['me', 'unit']] },
+        // Plain string only: `isIn` alone is applied per array element, so `filters[assigned_to][]=me` would pass.
+        custom: {
+          options: (value) => typeof value === 'string' && ['me', 'unit'].includes(value),
+          errorMessage: 'filters.assigned_to must be one of: me, unit.',
+        },
       },
       ['filters.closed_by']: {
         in: ['query'],
         optional: true,
-        isIn: { options: [['me', 'unit']] },
+        // Plain string only: `isIn` alone is applied per array element, so `filters[closed_by][]=me` would pass.
+        custom: {
+          options: (value) => typeof value === 'string' && ['me', 'unit'].includes(value),
+          errorMessage: 'filters.closed_by must be one of: me, unit.',
+        },
       },
     });
   }
