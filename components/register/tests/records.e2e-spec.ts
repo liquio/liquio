@@ -834,6 +834,93 @@ describe('RecordsController', () => {
         await testHarness.request().delete(`/records/${r.body.data.id}`).set('Authorization', validAuth);
       }
     });
+
+    describe('PUT and bulk import of existing rows (RG-02c)', () => {
+      const missingId = '00000000-0000-4000-8000-000000000000';
+      const created: string[] = [];
+      const make = async (allowTokens: string[]) => {
+        const response = await testHarness
+          .request()
+          .post('/records')
+          .set('Authorization', validAuth)
+          .send({ registerId: 200, keyId: 2001, data: { name: 'RG-02c', data: marker }, allowTokens })
+          .expect(200);
+        created.push(response.body.data.id);
+        return response.body.data.id as string;
+      };
+      const put = (id: string, name = 'changed') =>
+        testHarness
+          .request()
+          .put(`/records/${id}`)
+          .set('Authorization', validAuth)
+          .send({ registerId: 200, keyId: 2001, data: { name, data: marker } });
+      const del = (id: string) => testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth);
+      const bulk = (id: string, name: string) =>
+        testHarness
+          .request()
+          .post('/records/bulk')
+          .set('Authorization', validAuth)
+          .send({ registerId: 200, keyId: 2001, records: [{ id, data: { name, data: marker } }] });
+      const getName = async (id: string) => {
+        testHarness.getConfig().auth.trustedCallers = ['test'];
+        const response = await getById(id).expect(200);
+        testHarness.getConfig().auth.trustedCallers = [];
+        return response.body.data.data.name;
+      };
+
+      afterAll(async () => {
+        testHarness.getConfig().auth.trustedCallers = ['test'];
+        for (const id of created) await del(id);
+      });
+
+      it('keeps legacy behaviour unless auth.strict is on', async () => {
+        const id = await make(['secret-token']);
+        await put(id, 'legacy').expect(200);
+        expect(await getName(id)).toBe('legacy');
+        await del(id).expect(200);
+      });
+
+      it('with auth.strict, PUT returns 403 for foreign and missing rows and leaves the row unchanged', async () => {
+        const foreign = await make(['secret-token']);
+        const publicRow = await make([]);
+        testHarness.getConfig().auth.strict = true;
+        const denied = await put(foreign).expect(403);
+        expect(denied.body.data).toBeUndefined();
+        await put(missingId).expect(403);
+        expect(await getName(foreign)).toBe('RG-02c');
+        await put(publicRow, 'public-ok').expect(200);
+        testHarness.getConfig().auth.userAllowTokens = { test: ['secret-token'] };
+        await put(foreign, 'token-ok').expect(200);
+        expect(await getName(foreign)).toBe('token-ok');
+      });
+
+      it('with auth.strict, DELETE is denied to an untrusted caller by the destructive-route gate and keeps the row', async () => {
+        const foreign = await make([]);
+        testHarness.getConfig().auth.strict = true;
+        await del(foreign).expect(403);
+        await del(missingId).expect(403);
+        expect(await getName(foreign)).toBe('RG-02c');
+      });
+
+      it('with auth.strict, trusted callers are not restricted', async () => {
+        const foreign = await make(['secret-token']);
+        testHarness.getConfig().auth.strict = true;
+        testHarness.getConfig().auth.trustedCallers = ['test'];
+        await put(foreign, 'trusted').expect(200);
+        await del(foreign).expect(200);
+      });
+
+      it('with auth.strict, POST /records/bulk updates only rows the caller may write', async () => {
+        const foreign = await make(['secret-token']);
+        testHarness.getConfig().auth.strict = true;
+        const response = await bulk(foreign, 'bulk').expect(200);
+        expect(response.body.data.updatedRecords).toBe(0);
+        expect(await getName(foreign)).toBe('RG-02c');
+        testHarness.getConfig().auth.userAllowTokens = { test: ['secret-token'] };
+        expect((await bulk(foreign, 'bulk').expect(200)).body.data.updatedRecords).toBe(1);
+        expect(await getName(foreign)).toBe('bulk');
+      });
+    });
   });
 
   describe('join_by authorization (SE-3930 RG-03/RG-04)', () => {

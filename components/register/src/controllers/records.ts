@@ -91,6 +91,16 @@ export default class RecordsController extends Controller {
     return access;
   }
 
+  /**
+   * Row tokens to enforce on writes of existing rows. Only with `auth.strict` and for callers not in `auth.trustedCallers`;
+   * otherwise `undefined` (no restriction).
+   * @throws On malformed `auth.trustedCallers` / `auth.userAllowTokens` config.
+   */
+  private getWriteTokens(req: Request): string[] | undefined {
+    const access = this.getCallerAccess(req);
+    return this.config.auth?.strict === true && !access.trusted ? access.allowTokens : undefined;
+  }
+
   /** Load a record's key once per request. A missing key stays `undefined` (the caller must deny). */
   private async getRecordKey(keys: Map<number, KeyEntity | undefined>, keyId: number, options?: Parameters<KeyModel['findById']>[1]) {
     if (!keyId) return undefined;
@@ -924,6 +934,15 @@ export default class RecordsController extends Controller {
     } = matchedData(req, { locations: ['body'] });
     const { user } = req.auth;
 
+    // Opt-in (`auth.strict`): an untrusted caller updates only public rows or rows that share a token with it.
+    // Other rows are skipped and not counted as updated, so a foreign and a missing row look the same.
+    let writeTokens: string[] | undefined;
+    try {
+      writeTokens = this.getWriteTokens(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+
     // Check records.
     if (!Array.isArray(records) || !records.every((v) => typeof v === 'object' && v !== null && typeof v.data === 'object')) {
       return this.responseError(res, 'Can not import. All records should be defined as objects.', 500);
@@ -1054,7 +1073,8 @@ export default class RecordsController extends Controller {
     for (const recordToUpdate of recordsToUpdate) {
       const { id } = recordToUpdate;
       try {
-        await this.recordModel.update(id, recordToUpdate);
+        const { data: updatedRecord } = await this.recordModel.update(id, recordToUpdate, undefined, undefined, false, writeTokens);
+        if (writeTokens && !updatedRecord) continue;
         updatedRecords++;
       } catch (error) {
         this.log.save('update-record-error', { error: error && error.message, recordToUpdate });
@@ -1065,13 +1085,17 @@ export default class RecordsController extends Controller {
     let updatedRecordsByDataField = 0;
     for (const recordToUpdateByDataField of recordsToUpdateByDataField) {
       try {
-        await this.recordModel.updateByDataField({
-          keyId,
-          registerId,
-          record: recordToUpdateByDataField,
-          dataFieldName: updateByDataField,
-          dataFieldValue: recordToUpdateByDataField.data[updateByDataField],
-        });
+        const { data: updatedRecord } = await this.recordModel.updateByDataField(
+          {
+            keyId,
+            registerId,
+            record: recordToUpdateByDataField,
+            dataFieldName: updateByDataField,
+            dataFieldValue: recordToUpdateByDataField.data[updateByDataField],
+          },
+          writeTokens,
+        );
+        if (writeTokens && !updatedRecord) continue;
         updatedRecordsByDataField++;
       } catch (error) {
         this.log.save('update-record-error', { error: error && error.message, recordToUpdateByDataField });
@@ -1432,6 +1456,25 @@ export default class RecordsController extends Controller {
     const { user } = req.auth;
     let modelResponse: Awaited<ReturnType<typeof KeyModel.prototype.findById>>;
 
+    // Opt-in (`auth.strict`): an untrusted caller may update only public rows or rows that share a token with it.
+    // A foreign and a missing row are indistinguishable (403). The model repeats the check in the write itself.
+    let writeTokens: string[] | undefined;
+    try {
+      writeTokens = this.getWriteTokens(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    if (writeTokens) {
+      try {
+        if (!(await this.recordModel.isWritableById(id, writeTokens))) {
+          return this.responseError(res, 'Record is not writable.', 403);
+        }
+      } catch (error) {
+        this.log.save('update-record-error', { error: error && error.message });
+        return this.responseError(res, 'Can not update.', 500);
+      }
+    }
+
     // Validate.
     try {
       modelResponse = await this.keyModel.findById(keyId);
@@ -1504,15 +1547,19 @@ export default class RecordsController extends Controller {
       allowTokens: allowTokensFiltered,
     };
     let recordModelResponse;
+    let isUpdateFailed = false;
     try {
-      recordModelResponse = await this.recordModel.update(id, recordToUpdate, true, historyMeta);
+      recordModelResponse = await this.recordModel.update(id, recordToUpdate, true, historyMeta, false, writeTokens);
     } catch (error) {
+      isUpdateFailed = true;
       this.log.save('update-record-error', { error: error && error.message, recordToUpdate });
     }
     const { data: record } = recordModelResponse || {};
 
     // Check.
     if (!record) {
+      // The row was taken or removed since the check above (nothing was written).
+      if (writeTokens && !isUpdateFailed) return this.responseError(res, 'Record is not writable.', 403);
       return this.responseError(res, 'Can not update.', 500);
     }
 
@@ -1551,8 +1598,7 @@ export default class RecordsController extends Controller {
     // Opt-in (`auth.strict`): an untrusted caller may patch only public rows or rows that share a token with it.
     let writeTokens: string[] | undefined;
     try {
-      const access = this.getCallerAccess(req);
-      if (this.config.auth?.strict === true && !access.trusted) writeTokens = access.allowTokens;
+      writeTokens = this.getWriteTokens(req);
     } catch {
       return this.responseError(res, 'Invalid register access configuration.', 500);
     }
@@ -1689,6 +1735,7 @@ export default class RecordsController extends Controller {
 
     // Delete record.
     const historyMeta = { accessInfo: req.accessInfo || {} };
+
     let deletedRowsCountModelResponse;
     try {
       const record = await this.recordModel.findById(id);

@@ -232,3 +232,99 @@ describe('RG-02: UUID read authorization', () => {
     });
   });
 });
+
+describe('RG-02c: PUT/bulk-import token enforcement (auth.strict)', () => {
+  beforeAll(() => {
+    (global as any).typeOf = (value) => typeof value;
+  });
+  afterAll(() => {
+    delete (global as any).typeOf;
+  });
+
+  const setupWrite = (strict?: boolean) => {
+    const ctx = setup();
+    Object.assign(ctx.controller, {
+      sandbox: { evalWithArgs: jest.fn().mockReturnValue('s') },
+      checkXss: jest.fn(),
+      registerModel: { findById: jest.fn().mockResolvedValue({ data: { id: 1 } }) },
+      recordModel: {
+        update: jest.fn().mockResolvedValue({ data: ctx.record }),
+        updateByDataField: jest.fn().mockResolvedValue({ data: ctx.record }),
+        isWritableById: jest.fn().mockResolvedValue(true),
+        findById: jest.fn().mockResolvedValue({ data: ctx.record }),
+      },
+    });
+    ctx.controller.keyModel.checkRecordsWritable = jest.fn().mockReturnValue(true);
+    ctx.controller.config.auth.strict = strict;
+    ctx.controller.config.auth.userAllowTokens = { reader: ['private'] };
+    ctx.req.params = { id: ctx.record.id };
+    ctx.req.body = { keyId: 2, registerId: 1, data: { public: 'visible' }, skipRecordIds: ['x'], records: [{ id: 'record-id', data: { a: 1 } }] };
+    return ctx;
+  };
+
+  describe('PUT /records/:id', () => {
+    it('does not restrict by tokens when strict is off', async () => {
+      const { controller, req } = setupWrite();
+      await controller.update(req, {});
+      expect(controller.recordModel.isWritableById).not.toHaveBeenCalled();
+      expect(controller.recordModel.update.mock.calls[0].slice(2)).toEqual([true, { accessInfo: {} }, false, undefined]);
+      expect(controller.responseData).toHaveBeenCalled();
+    });
+    it('passes the server tokens of an untrusted caller when strict is on', async () => {
+      const { controller, req } = setupWrite(true);
+      await controller.update(req, {});
+      expect(controller.recordModel.isWritableById).toHaveBeenCalledWith('record-id', ['private']);
+      expect(controller.recordModel.update.mock.calls[0][5]).toEqual(['private']);
+      expect(controller.responseData).toHaveBeenCalled();
+    });
+    it('returns 403 without writing for a foreign or missing row', async () => {
+      const { controller, req } = setupWrite(true);
+      controller.recordModel.isWritableById.mockResolvedValue(false);
+      await controller.update(req, {});
+      expect(controller.responseError.mock.calls[0][2]).toBe(403);
+      expect(controller.recordModel.update).not.toHaveBeenCalled();
+      expect(controller.responseData).not.toHaveBeenCalled();
+    });
+    it('returns 403 when the atomic write matched no row', async () => {
+      const { controller, req } = setupWrite(true);
+      controller.recordModel.update.mockResolvedValue({ data: undefined });
+      await controller.update(req, {});
+      expect(controller.responseError.mock.calls[0][2]).toBe(403);
+    });
+    it('returns 500, not 403, when the write throws', async () => {
+      const { controller, req } = setupWrite(true);
+      controller.recordModel.update.mockRejectedValue(new Error('db'));
+      await controller.update(req, {});
+      expect(controller.responseError.mock.calls[0][2]).toBe(500);
+    });
+    it('does not restrict trusted callers when strict is on', async () => {
+      const { controller, req } = setupWrite(true);
+      req.auth.user = 'task';
+      await controller.update(req, {});
+      expect(controller.recordModel.isWritableById).not.toHaveBeenCalled();
+      expect(controller.recordModel.update.mock.calls[0][5]).toBeUndefined();
+    });
+  });
+
+  describe('POST /records/bulk (updates by id and by data field)', () => {
+    it.each([
+      [undefined, 'reader', undefined],
+      [true, 'reader', ['private']],
+      [true, 'task', undefined],
+    ])('strict=%s caller=%s passes tokens %j', async (strict, user, tokens) => {
+      const { controller, req } = setupWrite(strict);
+      req.auth.user = user;
+      await controller.bulkImport(req, {});
+      expect(controller.recordModel.update.mock.calls[0][5]).toEqual(tokens);
+      req.body.updateByDataField = 'a';
+      await controller.bulkImport(req, {});
+      expect(controller.recordModel.updateByDataField.mock.calls[0][1]).toEqual(tokens);
+    });
+    it('does not count rows the caller may not write', async () => {
+      const { controller, req } = setupWrite(true);
+      controller.recordModel.update.mockResolvedValue({ data: undefined });
+      await controller.bulkImport(req, {});
+      expect(controller.responseData.mock.calls[0][1]).toMatchObject({ updatedRecords: 0 });
+    });
+  });
+});

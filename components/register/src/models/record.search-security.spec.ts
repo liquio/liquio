@@ -31,3 +31,51 @@ describe('RG-02b: updatePatch token filter', () => {
     expect((await run(tokens))[Sequelize.Op.or]).toEqual([{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: tokens } }]);
   });
 });
+
+describe('RG-02c: row-token guard on writes', () => {
+  const tokens = ['private'];
+  const orWhere = [{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: tokens } }];
+  const build = (overrides: any = {}) => {
+    const model: any = Object.create(RecordModel.prototype);
+    model.model = {
+      findOne: jest.fn().mockResolvedValue({ id: 'r' }),
+      findAll: jest.fn().mockResolvedValue([{ id: 'r' }]),
+      update: jest.fn().mockResolvedValue([0, []]),
+      destroy: jest.fn().mockResolvedValue(0),
+      ...overrides,
+    };
+    model.historyModel = { createAfterhandlers: jest.fn() };
+    model.findById = jest.fn().mockResolvedValue({ data: { id: 'r', keyId: 1, meta: {} } });
+    (global as any).afterhandler = { validateRecord: jest.fn() };
+    return model;
+  };
+
+  it('update filters the write itself and creates no afterhandlers when nothing matched', async () => {
+    const model = build();
+    const result = await model.update('r', { keyId: 1 }, true, undefined, false, tokens);
+    expect(model.model.update.mock.calls[0][1].where).toEqual({ id: 'r', [Sequelize.Op.or]: orWhere });
+    expect(result.data).toBeUndefined();
+    expect(model.historyModel.createAfterhandlers).not.toHaveBeenCalled();
+  });
+  it('update keeps the plain where without tokens', async () => {
+    const model = build({ update: jest.fn().mockResolvedValue([1, [{ id: 'r' }]]) });
+    await model.update('r', { keyId: 1 });
+    expect(model.model.update.mock.calls[0][1].where).toEqual({ id: 'r' });
+    expect(model.historyModel.createAfterhandlers).toHaveBeenCalled();
+  });
+  it('updateByDataField filters the write and skips afterhandlers when nothing matched', async () => {
+    const model = build();
+    const result = await model.updateByDataField(
+      { keyId: 1, registerId: 1, record: { data: {}, meta: {} }, dataFieldName: 'a', dataFieldValue: 1 },
+      tokens,
+    );
+    expect(model.model.update.mock.calls[0][1].where[Sequelize.Op.or]).toEqual(orWhere);
+    expect(result.data).toBeUndefined();
+    expect(model.historyModel.createAfterhandlers).not.toHaveBeenCalled();
+  });
+  it('isWritableById filters by tokens', async () => {
+    const model = build();
+    expect(await model.isWritableById('r', tokens)).toBe(true);
+    expect(model.model.findOne.mock.calls[0][0].where).toEqual({ id: 'r', [Sequelize.Op.or]: orWhere });
+  });
+});

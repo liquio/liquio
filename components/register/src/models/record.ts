@@ -418,6 +418,21 @@ export default class RecordModel extends Model {
     return isReturnCreatedRecords ? bulkCreateRecords.map((recordRaw) => new RecordEntity(recordRaw)) : bulkCreateRecordsCount;
   }
 
+  /**
+   * Row-token condition for writes. Rows that are public (`allow_tokens = []`) or share a token with the caller match.
+   * Empty condition when `allowTokens` is not given, so the behaviour is unchanged.
+   */
+  private allowTokensWhere(allowTokens?: string[]): { [Sequelize.Op.or]?: any[] } {
+    if (!allowTokens) return {};
+    return { [Sequelize.Op.or]: [{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: allowTokens } }] };
+  }
+
+  // Check that a row exists and the caller's tokens allow writing it.
+  async isWritableById(id: string, allowTokens: string[]): Promise<boolean> {
+    const record = await this.model.findOne({ where: { id, ...this.allowTokensWhere(allowTokens) }, attributes: ['id'] });
+    return !!record;
+  }
+
   // Update a record
   async update(
     id: string,
@@ -440,6 +455,7 @@ export default class RecordModel extends Model {
       accessInfo?: { userId?: string; userName?: string };
     },
     isSkipDataUpdating: boolean = false,
+    writeAllowTokens?: string[],
   ): Promise<ModelUpdateResponse<RecordEntity>> {
     // Prepare RAW.
     const recordToUpdateRaw = this.removeUndefinedProperties({
@@ -463,11 +479,14 @@ export default class RecordModel extends Model {
     }
 
     // DB query.
+    // With `writeAllowTokens` the row check is part of the write itself, so a foreign or missing row changes nothing.
     const [updatedRowsCount, [updatedRecordRaw]] = await this.model.update(recordToUpdateRaw, {
-      where: { id },
+      where: { id, ...this.allowTokensWhere(writeAllowTokens) },
       returning: true,
       individualHooks: true,
     });
+    // Nothing was written: no history row exists, so do not create afterhandlers.
+    if (writeAllowTokens && !updatedRecordRaw) return { data: undefined, updating: { rowsCount: 0 } };
     const updatedRecordEntity = new RecordEntity(updatedRecordRaw);
 
     // Saving to history occurs through a SQL trigger.
@@ -485,11 +504,7 @@ export default class RecordModel extends Model {
     properties: Array<{ path: string; previousValue: any; value: any }>,
     allowTokens?: string[],
   ): Promise<RecordEntity | undefined> {
-    const where: any = isNaN(+id) ? { id } : { key_id: keyId, search_string: id.toString() };
-    // Only rows that are public (`allow_tokens = []`) or share a token with the caller can be patched.
-    if (allowTokens) {
-      where[Sequelize.Op.or] = [{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: allowTokens } }];
-    }
+    const where: any = { ...(isNaN(+id) ? { id } : { key_id: keyId, search_string: id.toString() }), ...this.allowTokensWhere(allowTokens) };
     const record = await this.model.findOne({
       where,
     });
@@ -519,7 +534,10 @@ export default class RecordModel extends Model {
   }
 
   // Update a record data field.
-  async updateByDataField({ keyId, registerId, record, dataFieldName, dataFieldValue }): Promise<ModelUpdateResponse<RecordEntity>> {
+  async updateByDataField(
+    { keyId, registerId, record, dataFieldName, dataFieldValue },
+    writeAllowTokens?: string[],
+  ): Promise<ModelUpdateResponse<RecordEntity>> {
     // Prepare RAW.
     const recordToUpdateRaw = this.removeUndefinedProperties({
       register_id: registerId,
@@ -537,10 +555,11 @@ export default class RecordModel extends Model {
 
     // DB query.
     const [updatedRowsCount, [updatedRecordRaw]] = await this.model.update(recordToUpdateRaw, {
-      where: { key_id: keyId, register_id: registerId, data: { [dataFieldName]: dataFieldValue } },
+      where: { key_id: keyId, register_id: registerId, data: { [dataFieldName]: dataFieldValue }, ...this.allowTokensWhere(writeAllowTokens) },
       returning: true,
       individualHooks: true,
     });
+    if (writeAllowTokens && !updatedRecordRaw) return { data: undefined, updating: { rowsCount: 0 } };
     const updatedRecordEntity = new RecordEntity(updatedRecordRaw);
 
     // Create afterhandlers.
