@@ -1,7 +1,9 @@
+import { log } from '@lib/log';
 import { Cluster, QueueFullException } from './cluster';
 import { Worker } from './worker';
 
 jest.mock('./worker');
+jest.mock('@lib/log', () => ({ log: { save: jest.fn() } }));
 
 function makeCluster(maxQueueSize: number) {
   let release: Array<() => void> = [];
@@ -52,5 +54,29 @@ describe('Cluster queue limit', () => {
     const third = job();
     await drain();
     await expect(third).resolves.toEqual(Buffer.from('pdf'));
+  });
+});
+
+describe('Cluster noSandbox', () => {
+  beforeEach(() => {
+    (Worker as unknown as jest.Mock).mockClear();
+    (log.save as jest.Mock).mockClear();
+  });
+
+  it('does not pass noSandbox or warn by default', async () => {
+    const { cluster } = makeCluster(1);
+    await cluster.init();
+
+    expect((Worker as unknown as jest.Mock).mock.calls[0][0].noSandbox).toBeUndefined();
+    expect(log.save).not.toHaveBeenCalledWith('pdf-generator|chromium-sandbox-disabled', expect.anything());
+  });
+
+  it('passes noSandbox to workers and logs a startup warning', async () => {
+    makeCluster(1);
+    const cluster = new Cluster({ maxWorkers: 1, noSandbox: true });
+    await cluster.init();
+
+    expect((Worker as unknown as jest.Mock).mock.calls[0][0].noSandbox).toBe(true);
+    expect(log.save).toHaveBeenCalledWith('pdf-generator|chromium-sandbox-disabled', expect.anything());
   });
 });

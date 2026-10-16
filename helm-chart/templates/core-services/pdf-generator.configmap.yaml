@@ -10,12 +10,15 @@ metadata:
   "bodyLimit" "50mb"
   "defaultBodyLimit" "100kb"
 }}
+{{- /* noSandbox true: the pod uses RuntimeDefault seccomp, which blocks the user namespaces Chromium's sandbox needs. */ -}}
+{{- /* Override with config.pdfGenerator.playwright.noSandbox=false once the pod allows them (see components/pdf-generator/README.md). */ -}}
 {{ $playwrightBase := dict
   "workerTimeout" 30000
   "maxWorkers" 5
   "maxConcurrentJobs" 200
   "maxQueueSize" 100
   "allowedHosts" (list)
+  "noSandbox" true
 }}
 data:
   # Server configuration

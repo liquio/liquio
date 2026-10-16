@@ -16,8 +16,6 @@ import { checkUrl, HostLookup, ResolvedAddress } from './url-guard';
 const DEFAULT_LAUNCH_OPTIONS = {
   headless: true,
   args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
     '--font-render-hinting=none',
     '--disable-gpu',
     '--disable-dev-shm-usage',
@@ -56,6 +54,9 @@ const DEFAULT_LAUNCH_OPTIONS = {
   ],
 };
 
+// Only added when `noSandbox` is explicitly configured (container cannot provide user namespaces).
+const NO_SANDBOX_ARGS = ['--no-sandbox', '--disable-setuid-sandbox'];
+
 const FONT_DOWNLOAD_TIMEOUT = 10_000;
 const FONT_MAX_SIZE = 5 * 1024 * 1024;
 const FONT_FORMATS: Record<string, { mimeType: string; format: string }> = {
@@ -82,6 +83,8 @@ export type WorkerOptions = {
   consoleLogLevels?: string[];
   // Max page console messages logged per job, the rest is only counted.
   consoleLogMaxMessages?: number;
+  // Disables the Chromium sandbox. Default false (sandbox on). Opt-out only for environments without user namespaces.
+  noSandbox?: boolean;
 };
 
 export class Worker {
@@ -99,10 +102,13 @@ export class Worker {
 
   launchOptions: LaunchOptions = {};
 
-  constructor({ allowedHosts = [], lookup, consoleLogLevels, consoleLogMaxMessages }: WorkerOptions = {}) {
+  constructor({ allowedHosts = [], lookup, consoleLogLevels, consoleLogMaxMessages, noSandbox = false }: WorkerOptions = {}) {
     this.consoleLogLevels = consoleLogLevels ?? DEFAULT_CONSOLE_LOG_LEVELS;
     this.consoleLogMaxMessages = consoleLogMaxMessages ?? DEFAULT_CONSOLE_LOG_MAX_MESSAGES;
-    this.launchOptions = DEFAULT_LAUNCH_OPTIONS;
+    this.launchOptions = {
+      ...DEFAULT_LAUNCH_OPTIONS,
+      args: noSandbox ? [...NO_SANDBOX_ARGS, ...DEFAULT_LAUNCH_OPTIONS.args] : [...DEFAULT_LAUNCH_OPTIONS.args],
+    };
     this.allowedHosts = allowedHosts;
     this.lookup = lookup;
   }

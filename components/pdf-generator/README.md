@@ -47,4 +47,13 @@ Provide tokens in `config/auth.json` (`{ "basicAuthTokens": ["Basic <base64>"] }
 - `config/server.json` `defaultBodyLimit` (default `100kb`) applies to every other route and to unauthenticated requests; larger bodies get `413`.
 - `config/playwright.json` `maxQueueSize` (default `100`) is the number of jobs that may wait for a worker. When it is full, `POST /pdf` answers `429` with `Retry-After: 5` immediately. Worst-case memory held by the queue is roughly `maxQueueSize` times the typical HTML size.
 
+### Chromium sandbox
+
+Chromium runs with its sandbox by default (`--no-sandbox` is not passed). The sandbox needs unprivileged user namespaces, which the container runtime's default seccomp profile (Docker/containerd `RuntimeDefault`) usually blocks, and the container runs as the non-root `node` user. If Chromium fails to start with the sandbox (for example `No usable sandbox`, `clone: Operation not permitted`), either:
+
+- allow user namespaces for the pod (a `Localhost` seccomp profile such as Playwright's `seccomp_profile.json`, and a cluster that permits `kernel.unprivileged_userns_clone`/`user.max_user_namespaces`) and keep the sandbox on, or
+- set `"noSandbox": true` in `config/playwright.json` and accept that a renderer exploit is only contained by the pod (non-root, `allowPrivilegeEscalation: false`, dropped capabilities, seccomp, read-only root filesystem, egress NetworkPolicy). A `pdf-generator|chromium-sandbox-disabled` warning is logged at startup.
+
+The Helm chart sets `noSandbox: true` (override: `config.pdfGenerator.playwright.noSandbox` in values) by default because it uses `RuntimeDefault` seccomp. Set it to `false` (together with a seccomp profile that allows user namespaces) to enable the sandbox.
+
 The rendering browser may only load `data:`/`blob:`/`about:` URLs by default. All http(s) requests (images, fonts, stylesheets, redirects, iframes, popups) are blocked unless the host is listed in `allowedHosts` of `config/playwright.json` (`{ "allowedHosts": ["fonts.example.com"] }`) and resolves only to public addresses. Loopback, private, link-local (cloud metadata), CGNAT addresses and non-http(s) schemes such as `file:` are always blocked. Remote fonts used by header/footer templates are inlined server-side under the same rules.

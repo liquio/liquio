@@ -16,6 +16,8 @@ export interface PlaywrightConfig {
   consoleLogLevels?: string[];
   /** Max page console messages logged per job. Default: 20. */
   consoleLogMaxMessages?: number;
+  /** Run Chromium without its sandbox. Default: false (sandbox on). Set only where user namespaces are unavailable. */
+  noSandbox?: boolean;
 }
 
 export interface AuthConfig {

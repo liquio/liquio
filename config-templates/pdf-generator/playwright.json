@@ -2,5 +2,6 @@
   "workerTimeout": 30000,
   "maxWorkers": 5,
   "maxConcurrentJobs": 200,
-  "maxQueueSize": 100
+  "maxQueueSize": 100,
+  "noSandbox": true
 }

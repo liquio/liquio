@@ -18,6 +18,31 @@ function makeJob(html: string): Job {
 }
 
 describe('Worker', () => {
+  describe('chromium sandbox', () => {
+    it('keeps the sandbox on by default', () => {
+      const { args } = new Worker().launchOptions;
+      expect(args).not.toContain('--no-sandbox');
+      expect(args).not.toContain('--disable-setuid-sandbox');
+    });
+
+    it('adds --no-sandbox only when noSandbox is set', () => {
+      const { args } = new Worker({ noSandbox: true }).launchOptions;
+      expect(args).toContain('--no-sandbox');
+      expect(args).toContain('--disable-setuid-sandbox');
+      expect(new Worker().launchOptions.args).not.toContain('--no-sandbox');
+    });
+
+    it('launches a real sandboxed browser and renders a pdf', async () => {
+      const worker = new Worker();
+      try {
+        const pdf = await worker.handle(makeJob('<p>sandbox</p>'), 20_000);
+        expect(pdf.subarray(0, 4).toString()).toBe('%PDF');
+      } finally {
+        await worker.close();
+      }
+    }, 30_000);
+  });
+
   describe('browser request filtering', () => {
     let server: http.Server;
     let port: number;

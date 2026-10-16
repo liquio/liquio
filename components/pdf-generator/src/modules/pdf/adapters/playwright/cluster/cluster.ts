@@ -2,6 +2,7 @@ import EventEmitter from 'events';
 
 import { HttpException, HttpStatus, InternalServerErrorException } from '@nestjs/common';
 
+import { log } from '@lib/log';
 import { Job, JobData } from './job';
 import { Worker } from './worker';
 
@@ -54,12 +55,19 @@ export class Cluster extends EventEmitter {
    * Initializes the cluster.
    */
   async init() {
+    if (this.options.noSandbox) {
+      log.save('pdf-generator|chromium-sandbox-disabled', {
+        warning: 'playwright.noSandbox is true: Chromium runs WITHOUT its sandbox, rely on pod-level isolation',
+      });
+    }
+
     for (let i = 0; i < this.options.maxWorkers; i++) {
       try {
         const worker = new Worker({
           allowedHosts: this.options.allowedHosts,
           consoleLogLevels: this.options.consoleLogLevels,
           consoleLogMaxMessages: this.options.consoleLogMaxMessages,
+          noSandbox: this.options.noSandbox,
         });
         await worker.launch();
 
@@ -195,6 +203,8 @@ type ClusterOptions = {
   consoleLogLevels?: string[];
   /** Max page console messages logged per job. Default: 20. */
   consoleLogMaxMessages?: number;
+  /** Run Chromium without its sandbox. Default: false. */
+  noSandbox?: boolean;
 };
 
 export enum ClusterEvents {
