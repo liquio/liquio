@@ -3,5 +3,7 @@
   "maxWorkers": 5,
   "maxConcurrentJobs": 200,
   "maxQueueSize": 100,
-  "allowedHosts": []
+  "allowedHosts": [],
+  "consoleLogLevels": ["warning", "error"],
+  "consoleLogMaxMessages": 20
 }

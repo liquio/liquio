@@ -6,6 +6,7 @@ import { Browser, BrowserContext, chromium, LaunchOptions, Page, Route } from 'p
 
 import { timeoutExecute } from '@common/utils';
 import { log } from '@lib/log';
+import { sanitizeUrl, sanitizeUrlsInText } from '@lib/log/helpers';
 import { Job } from './job';
 import { checkUrl, HostLookup, ResolvedAddress } from './url-guard';
 
@@ -67,11 +68,20 @@ const FONT_CONTENT_TYPE = /^(font\/|application\/(x-)?font|application\/octet-st
 
 const LOG_PREFIX = 'pdf-generator';
 
+// Page-controlled console output is bounded per job: only these types, this many messages, this long.
+const DEFAULT_CONSOLE_LOG_LEVELS = ['warning', 'error'];
+const DEFAULT_CONSOLE_LOG_MAX_MESSAGES = 20;
+const CONSOLE_LOG_MAX_TEXT_LENGTH = 500;
+
 export type WorkerOptions = {
   // Hostnames http(s) resources may be loaded from. Empty list blocks all remote resources.
   allowedHosts?: string[];
   // Custom DNS lookup (for tests).
   lookup?: HostLookup;
+  // Page console message types that are logged (Playwright types: log, debug, info, error, warning...).
+  consoleLogLevels?: string[];
+  // Max page console messages logged per job, the rest is only counted.
+  consoleLogMaxMessages?: number;
 };
 
 export class Worker {
@@ -83,9 +93,15 @@ export class Worker {
 
   private lookup?: HostLookup;
 
+  private consoleLogLevels: string[];
+
+  private consoleLogMaxMessages: number;
+
   launchOptions: LaunchOptions = {};
 
-  constructor({ allowedHosts = [], lookup }: WorkerOptions = {}) {
+  constructor({ allowedHosts = [], lookup, consoleLogLevels, consoleLogMaxMessages }: WorkerOptions = {}) {
+    this.consoleLogLevels = consoleLogLevels ?? DEFAULT_CONSOLE_LOG_LEVELS;
+    this.consoleLogMaxMessages = consoleLogMaxMessages ?? DEFAULT_CONSOLE_LOG_MAX_MESSAGES;
     this.launchOptions = DEFAULT_LAUNCH_OPTIONS;
     this.allowedHosts = allowedHosts;
     this.lookup = lookup;
@@ -111,6 +127,7 @@ export class Worker {
 
     let context: BrowserContext | null = null;
     let page: Page | null = null;
+    let consoleDropped = 0;
     try {
       const { html, options } = job.data;
 
@@ -121,13 +138,25 @@ export class Worker {
 
       page = await context.newPage();
 
-      page.on('console', (msg) =>
+      let consoleLogged = 0;
+      page.on('console', (msg) => {
+        const type = msg.type();
+        if (!this.consoleLogLevels.includes(type)) {
+          return;
+        }
+
+        if (consoleLogged >= this.consoleLogMaxMessages) {
+          consoleDropped++;
+          return;
+        }
+
+        consoleLogged++;
         log.save(`${LOG_PREFIX}|page-console`, {
-          text: msg.text(),
-          url: msg.location()?.url,
-          type: msg.type(),
-        }),
-      );
+          text: msg.text().slice(0, CONSOLE_LOG_MAX_TEXT_LENGTH),
+          url: sanitizeUrl(msg.location()?.url),
+          type,
+        });
+      });
 
       const hasFooter = html.includes('pageFooter');
       const hasHeader = html.includes('pageHeader');
@@ -166,6 +195,10 @@ export class Worker {
         page.removeAllListeners('console');
       }
 
+      if (consoleDropped > 0) {
+        log.save(`${LOG_PREFIX}|page-console-summary`, { dropped: consoleDropped });
+      }
+
       if (context) {
         await context.close();
       }
@@ -179,7 +212,7 @@ export class Worker {
     const result = await checkUrl(url, { allowedHosts: this.allowedHosts, lookup: this.lookup });
     if (!result.allowed) {
       log.save(`${LOG_PREFIX}|request-blocked`, {
-        url: url.slice(0, 200),
+        url: sanitizeUrl(url),
         reason: result.reason,
         resourceType: request.resourceType(),
       });
@@ -205,7 +238,7 @@ export class Worker {
 
       await route.fulfill({ response, headers });
     } catch (error) {
-      log.save(`${LOG_PREFIX}|request-error`, { url: url.slice(0, 200), error: error.message || error.toString() });
+      log.save(`${LOG_PREFIX}|request-error`, { url: sanitizeUrl(url), error: sanitizeUrlsInText(error.message || error.toString()) });
       await route.abort('failed');
     }
   }
@@ -266,7 +299,7 @@ export class Worker {
   private async loadFont(fontUrl: string): Promise<{ dataUri: string; format: string } | null> {
     const check = await checkUrl(fontUrl, { allowedHosts: this.allowedHosts, lookup: this.lookup, remoteOnly: true });
     if (!check.allowed || !check.url || !check.addresses) {
-      log.save(`${LOG_PREFIX}|font-blocked`, { url: fontUrl.slice(0, 200), reason: check.reason });
+      log.save(`${LOG_PREFIX}|font-blocked`, { url: sanitizeUrl(fontUrl), reason: check.reason });
       return null;
     }
 
@@ -274,7 +307,7 @@ export class Worker {
     const fileExtension = path.extname(check.url.pathname).toLowerCase();
     const font = FONT_FORMATS[fileExtension];
     if (!font) {
-      log.save(`${LOG_PREFIX}|font-blocked`, { url: fontUrl.slice(0, 200), reason: 'unsupported-format' });
+      log.save(`${LOG_PREFIX}|font-blocked`, { url: sanitizeUrl(fontUrl), reason: 'unsupported-format' });
       return null;
     }
 

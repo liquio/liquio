@@ -3,6 +3,7 @@ import { AddressInfo } from 'net';
 
 import axios from 'axios';
 
+import { log } from '@lib/log';
 import { Job } from './job';
 import { Worker } from './worker';
 
@@ -102,6 +103,46 @@ describe('Worker', () => {
       const html = '<html><body><img src="data:image/png;base64,iVBORw0KGgo="><p>text</p></body></html>';
       const pdf = await worker.handle(makeJob(html), 30_000);
       expect(pdf.subarray(0, 4).toString()).toBe('%PDF');
+    });
+  });
+
+  describe('page console logging', () => {
+    let worker: Worker;
+    const saved = () => (log.save as jest.Mock).mock.calls;
+    const consoleEntries = () => saved().filter(([type]) => type === 'pdf-generator|page-console');
+
+    beforeEach(() => (log.save as jest.Mock).mockClear());
+
+    afterEach(async () => {
+      await worker?.close();
+    });
+
+    it('logs at most N console messages per job plus one summary', async () => {
+      worker = new Worker({ consoleLogLevels: ['log', 'error'], consoleLogMaxMessages: 5 });
+      await worker.handle(makeJob('<html><body><script>for (let i = 0; i < 1000; i++) console.log("m" + i);</script></body></html>'), 30_000);
+
+      expect(consoleEntries()).toHaveLength(5);
+      const summary = saved().filter(([type]) => type === 'pdf-generator|page-console-summary');
+      expect(summary).toHaveLength(1);
+      expect(summary[0][1]).toEqual({ dropped: 995 });
+    });
+
+    it('logs only warning and error by default', async () => {
+      worker = new Worker();
+      await worker.handle(
+        makeJob('<html><body><script>console.log("a"); console.info("b"); console.warn("c"); console.error("d");</script></body></html>'),
+        30_000,
+      );
+
+      expect(consoleEntries().map(([, data]) => data.type)).toEqual(['warning', 'error']);
+    });
+
+    it('truncates long text', async () => {
+      worker = new Worker({ consoleLogLevels: ['error'] });
+      await worker.handle(makeJob('<html><body><script>console.error("x".repeat(100000));</script></body></html>'), 30_000);
+
+      const [[, data]] = consoleEntries();
+      expect(data.text).toHaveLength(500);
     });
   });
 

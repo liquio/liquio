@@ -56,7 +56,11 @@ export class Cluster extends EventEmitter {
   async init() {
     for (let i = 0; i < this.options.maxWorkers; i++) {
       try {
-        const worker = new Worker({ allowedHosts: this.options.allowedHosts });
+        const worker = new Worker({
+          allowedHosts: this.options.allowedHosts,
+          consoleLogLevels: this.options.consoleLogLevels,
+          consoleLogMaxMessages: this.options.consoleLogMaxMessages,
+        });
         await worker.launch();
 
         this.workers.push(worker);
@@ -187,6 +191,10 @@ type ClusterOptions = {
   /** Max jobs waiting for a worker. Further requests are rejected with 429. */
   maxQueueSize: number;
   allowedHosts?: string[];
+  /** Page console message types to log. Default: warning, error. */
+  consoleLogLevels?: string[];
+  /** Max page console messages logged per job. Default: 20. */
+  consoleLogMaxMessages?: number;
 };
 
 export enum ClusterEvents {

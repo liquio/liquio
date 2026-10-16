@@ -12,6 +12,10 @@ export interface PlaywrightConfig {
   maxConcurrentJobs: number;
   maxQueueSize?: number;
   allowedHosts?: string[];
+  /** Page console message types to log (log, debug, info, error, warning...). Default: warning, error. */
+  consoleLogLevels?: string[];
+  /** Max page console messages logged per job. Default: 20. */
+  consoleLogMaxMessages?: number;
 }
 
 export interface AuthConfig {
