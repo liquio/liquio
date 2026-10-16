@@ -26,13 +26,15 @@ class Controller {
    * @param {object} res HTTP response.
    * @param {object} [data] Data to response.
    * @param {number} [httpStatusCode] HTTP status code.
+   * @param {object} [options] Options.
+   * @param {boolean} [options.skipLog] Do not log the response data (e.g. it carries a link hash).
    */
-  responseData(res, data = EMPTY_DATA, httpStatusCode = HTTP_STATUS_CODE_OK) {
+  responseData(res, data = EMPTY_DATA, httpStatusCode = HTTP_STATUS_CODE_OK, { skipLog = false } = {}) {
     // Define response object.
     const responseObject = { data };
 
     // Log.
-    getLog().save('http-response', responseObject);
+    getLog().save('http-response', skipLog ? { data: '[REDACTED]' } : responseObject);
 
     // Response.
     res.status(httpStatusCode).send(responseObject);

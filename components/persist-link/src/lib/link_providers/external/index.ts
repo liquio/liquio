@@ -7,6 +7,7 @@ import qrImage from 'qr-image';
 import { Sandbox } from '@liquio/back-core';
 
 import { getConfig, getLog } from '../../context';
+import { describeOptions } from '../../log_redact';
 import FilestorageHandler from '../filestorage/filestorage_handler';
 import LinkProvider from '../link_provider';
 import RegisterProvider from './providers/register';
@@ -88,7 +89,7 @@ class ExternalLinkProvider extends LinkProvider {
       const { templateName, filter } = options;
       let { templateMethod } = options;
 
-      getLog().save('external-link-provider-options', options);
+      getLog().save('external-link-provider-options', describeOptions(options));
 
       const template = await this.templateModel.findByNameAndMethod(templateName, templateMethod);
       if (!template) {
@@ -300,7 +301,7 @@ class ExternalLinkProvider extends LinkProvider {
       // Define params.
       const { templateName, templateMethod } = options;
 
-      getLog().save('external-link-provider-options', options);
+      getLog().save('external-link-provider-options', describeOptions(options));
 
       const template = await this.templateModel.findByNameAndMethod(templateName, templateMethod);
       if (!template) {

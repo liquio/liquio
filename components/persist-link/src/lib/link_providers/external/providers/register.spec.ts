@@ -60,5 +60,20 @@ describe('RegisterProvider', () => {
         error: 'Network error',
       });
     });
+
+    it('should not log the token or the register response body', async () => {
+      gotMock.mockResolvedValue({ data: { id: '1', secretField: 'REGISTER-DATA' } });
+      const provider = new RegisterProvider({ url: 'https://register.example.com', token: 'abc-secret-token' });
+
+      await provider.getRecord({ recordId: '1' });
+
+      const logged = JSON.stringify(logSave.mock.calls);
+      expect(logSave).toHaveBeenCalledWith('external-register-request', {
+        url: 'https://register.example.com/records/1',
+        recordId: '1',
+      });
+      expect(logged).not.toContain('abc-secret-token');
+      expect(logged).not.toContain('REGISTER-DATA');
+    });
   });
 });

@@ -50,7 +50,7 @@ class Auth {
     // Check response.
     const token = PropByPath.get(response, 'access.token.id');
     if (!token) {
-      getLog().save('login-error-openstack-response-without-token', response);
+      getLog().save('login-error-openstack-response-without-token', { keys: Object.keys(response || {}) });
       throw new Error(ERROR_MESSAGE_TOKEN_NOT_RESPONSED);
     }
 
@@ -90,7 +90,7 @@ class Auth {
     const tenantToken = PropByPath.get(response, 'access.token.id');
     const tenantId = PropByPath.get(response, 'access.token.tenant.id');
     if (!tenantId) {
-      getLog().save('login-error-openstack-response-without-tenant-token', response);
+      getLog().save('login-error-openstack-response-without-tenant-token', { keys: Object.keys(response || {}) });
       throw new Error(ERROR_MESSAGE_TENANT_TOKEN_NOT_RESPONSED);
     }
     const serviceCatalog = PropByPath.get(response, 'access.serviceCatalog');
@@ -102,7 +102,7 @@ class Auth {
 
     // Return token.
     const tenantAuthInfo = { tenantId, tenantToken, tenantPublicUrl };
-    getLog().save('open-stack-auth', tenantAuthInfo);
+    getLog().save('open-stack-auth', { tenantId, tenantPublicUrl });
     return tenantAuthInfo;
   }
 }

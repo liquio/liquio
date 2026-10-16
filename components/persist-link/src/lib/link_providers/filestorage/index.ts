@@ -1,5 +1,6 @@
 // Import.
 import { getLog } from '../../context';
+import { describeOptions } from '../../log_redact';
 import FilestorageHandler from './filestorage_handler';
 import LinkProvider from '../link_provider';
 
@@ -82,7 +83,7 @@ class FilestorageLinkProvider extends LinkProvider {
     if (!isValidData) {
       getLog().save('filestorage-invalid-options', {
         isValidData,
-        options,
+        options: describeOptions(options),
       });
       res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
     }
@@ -95,8 +96,8 @@ class FilestorageLinkProvider extends LinkProvider {
     if (!filestorageConnection) {
       getLog().save('filestorage-invalid-connection', {
         isValidData,
-        filestorageConnection,
-        options,
+        hasConnection: !!filestorageConnection,
+        options: describeOptions(options),
       });
       return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
     }
@@ -105,7 +106,7 @@ class FilestorageLinkProvider extends LinkProvider {
     const handleStreamError = (error) => {
       getLog().save('filestorage-download-stream-error', {
         error: error && error.message,
-        options,
+        options: describeOptions(options),
       });
     };
     const downloadReadableStream = await filestorageConnection.downloadFile(fileId, { isP7s });
@@ -156,7 +157,7 @@ class FilestorageLinkProvider extends LinkProvider {
     if (!isValidData) {
       getLog().save('filestorage-invalid-options-get-stream', {
         isValidData,
-        options,
+        options: describeOptions(options),
       });
       throw new Error('Invalid options.');
     }
@@ -169,8 +170,8 @@ class FilestorageLinkProvider extends LinkProvider {
     if (!filestorageConnection) {
       getLog().save('filestorage-invalid-connection-get-stream', {
         isValidData,
-        filestorageConnection,
-        options,
+        hasConnection: !!filestorageConnection,
+        options: describeOptions(options),
       });
       throw new Error('Connection not found.');
     }

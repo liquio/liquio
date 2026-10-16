@@ -3,6 +3,7 @@ import express from 'express';
 import { asyncLocalStorageMiddleware } from '@liquio/back-core';
 
 import { getLog } from './lib/context';
+import { redactUrl } from './lib/log_redact';
 import AppIdentHeaders from './lib/app_ident_headers';
 import Controllers from './controllers';
 import Cors from './lib/cors';
@@ -39,7 +40,16 @@ class Router {
     app.use(asyncLocalStorageMiddleware);
 
     // Save request info to log.
-    app.use(logger.logRouter.bind(logger));
+    // Link hashes are bearer secrets, so the logger gets a request view with a redacted URL.
+    app.use((req, res, next) => {
+      const logReq = Object.create(req, { url: { value: redactUrl(req.url), writable: true } });
+      return logger.logRouter(logReq, res, () => {
+        req.requestMeta = logReq.requestMeta;
+        req.traceId = logReq.traceId;
+        req.traceMeta = logReq.traceMeta;
+        next();
+      });
+    });
 
     // App info in headers.
     AppIdentHeaders.add(app, this.config);
