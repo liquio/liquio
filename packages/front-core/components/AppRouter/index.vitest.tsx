@@ -1,38 +1,40 @@
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { createStore } from 'redux';
 
+import AppRouter from 'core/components/AppRouter';
+
 // AppRouter renders its computed route list inside a real react-router <Switch>, which only
 // renders the child matching the current location — so these tests navigate to a specific
 // path and check what (if anything) renders there, rather than asserting on the full list.
-const mockHistory = (pathname: string) => ({ history: { listen: () => () => undefined, location: { pathname, search: '', hash: '' } } });
+// The component is imported once (statically): re-importing its whole MUI/redux tree per test
+// via vi.resetModules() took seconds under load and made the tests time out in the full suite.
+const state = vi.hoisted(() => ({ pathname: '/' }));
 
+vi.mock('store', () => ({
+  history: {
+    listen: () => () => undefined,
+    get location() {
+      return { pathname: state.pathname, search: '', hash: '' };
+    }
+  }
+}));
 vi.mock('components/PrivateRoute', () => ({
   default: (props: { path?: string }) => <div>route:{props.path}</div>
 }));
 vi.mock('core/plugins', () => ({ default: [] }));
-
-afterEach(() => {
-  vi.doUnmock('modules/index');
-  vi.doUnmock('store');
-  vi.resetModules();
-});
-
-const mockModules = () =>
-  vi.doMock('modules/index', () => ({
-    default: () => [
-      { routes: [{ path: '/a', isOnboarding: false }, { path: '/onboarding', isOnboarding: true }] },
-      { routes: [{ path: '/b', isOnboarding: false }] }
-    ]
-  }));
+vi.mock('modules/index', () => ({
+  default: () => [
+    { routes: [{ path: '/a', isOnboarding: false }, { path: '/onboarding', isOnboarding: true }] },
+    { routes: [{ path: '/b', isOnboarding: false }] }
+  ]
+}));
 
 describe('AppRouter', () => {
-  it('renders a non-onboarding route when no onboarding task is active', async () => {
-    vi.doMock('store', () => mockHistory('/a'));
-    mockModules();
-    const { default: AppRouter } = await import('core/components/AppRouter');
+  it('renders a non-onboarding route when no onboarding task is active', () => {
+    state.pathname = '/a';
     render(
       <Provider store={createStore(() => ({ auth: { info: { onboardingTaskId: null } } }))}>
         <AppRouter />
@@ -41,10 +43,8 @@ describe('AppRouter', () => {
     expect(screen.getByText('route:/a')).toBeTruthy();
   });
 
-  it('excludes the onboarding route when no onboarding task is active', async () => {
-    vi.doMock('store', () => mockHistory('/onboarding'));
-    mockModules();
-    const { default: AppRouter } = await import('core/components/AppRouter');
+  it('excludes the onboarding route when no onboarding task is active', () => {
+    state.pathname = '/onboarding';
     render(
       <Provider store={createStore(() => ({ auth: { info: { onboardingTaskId: null } } }))}>
         <AppRouter />
@@ -53,10 +53,8 @@ describe('AppRouter', () => {
     expect(screen.queryByText('route:/onboarding')).toBeNull();
   });
 
-  it('renders the onboarding route, and excludes non-onboarding routes, while a task is active', async () => {
-    vi.doMock('store', () => mockHistory('/onboarding'));
-    mockModules();
-    const { default: AppRouter } = await import('core/components/AppRouter');
+  it('renders the onboarding route, and excludes non-onboarding routes, while a task is active', () => {
+    state.pathname = '/onboarding';
     render(
       <Provider store={createStore(() => ({ auth: { info: { onboardingTaskId: 'task-1' } } }))}>
         <AppRouter />
