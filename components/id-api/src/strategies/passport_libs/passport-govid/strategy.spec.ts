@@ -144,3 +144,29 @@ describe('GovID profile credentials', () => {
     });
   });
 });
+
+describe('GovID client IP', () => {
+  const run = async (reqExtra: any) => {
+    mockSave.mockClear();
+    const strategy = new GovIdStrategy({ authorizationUrl: 'https://govid.example', clientId: 'test', clientSecret: 'test' } as any, jest.fn());
+    const res = { redirect: jest.fn() };
+    await strategy.authenticateAsync({
+      body: {},
+      session: {},
+      header: () => '6.6.6.6',
+      socket: { remoteAddress: '10.0.0.1' },
+      res,
+      ...reqExtra,
+    } as any);
+    return mockSave.mock.calls.find(([name]) => name === 'authenticate-govid|start')![1].userIP;
+  };
+
+  it('logs req.ip and ignores the raw X-Forwarded-For header', async () => {
+    expect(await run({ ip: '203.0.113.7' })).toBe('203.0.113.7');
+  });
+
+  it('falls back to the socket address, then to unknownIP', async () => {
+    expect(await run({ ip: undefined })).toBe('10.0.0.1');
+    expect(await run({ ip: undefined, socket: {} })).toBe('unknownIP');
+  });
+});

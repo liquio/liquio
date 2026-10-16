@@ -82,7 +82,7 @@ export class GovIdStrategy extends Strategy {
 
     // Get already defined user.
     const { user } = req || {};
-    const userIP = req.header('x-forwarded-for') ?? req.socket?.remoteAddress ?? 'unknownIP';
+    const userIP = req.ip ?? req.socket?.remoteAddress ?? 'unknownIP';
 
     this.log.save('authenticate-govid|start', { userId: user?.userId, userIP }, 'info');
 

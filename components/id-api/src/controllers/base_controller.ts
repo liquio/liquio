@@ -101,7 +101,8 @@ export class BaseController {
    * Prepare login history data.
    */
   prepareLoginHistoryData(req: Request, { actionType = 'login' }: { actionType?: LoginActionType }) {
-    const ip = [req.headers['x-forwarded-for'] || req.socket?.remoteAddress];
+    // `req.ip` honours `x-forwarded-for` only for hops allowed by `config.trustProxy`.
+    const ip = [req.ip ?? req.socket?.remoteAddress];
     const userAgent = req.headers['user-agent'] ?? null;
     const { userId, first_name: firstName, middle_name: middleName, last_name: lastName, isActive: isUserActive = true } = req.user || {};
     const userName = [lastName, firstName, middleName].filter((v) => !!v).join(' ');
