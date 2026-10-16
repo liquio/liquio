@@ -707,6 +707,7 @@ export class ExternalServicesController extends Controller {
         userId: externalServiceUser,
         copyFrom,
         originalDocument,
+        isCreateByOtherSystem: true,
       });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
