@@ -1532,6 +1532,7 @@ export const routes = {
   },
   'GET /external_reader/captcha/:service/:method': {
     middlewares: [],
+    validator: { name: 'externalReader', method: 'getCaptchaChallenge' },
     controller: { name: 'externalReader', method: 'getCaptchaChallenge' },
   },
   'POST /external_reader': {

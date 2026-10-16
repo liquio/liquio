@@ -132,6 +132,14 @@ describe('ExternalReader', () => {
       expect(result).toEqual(mockResponse);
     });
 
+    it('should encode service and method so they stay inside one path segment', async () => {
+      const scope = nock('https://external-reader.example.com').get('/captcha/..%2Fadmin/x%3Fa%3Db').reply(200, { challenge: 'c' });
+
+      await externalReader.getCaptchaChallenge('../admin', 'x?a=b');
+
+      expect(scope.isDone()).toBe(true);
+    });
+
     it('should handle captcha challenge errors', async () => {
       nock('https://external-reader.example.com')
         .get('/captcha/test-service/test-method')

@@ -66,7 +66,7 @@ export class ExternalReader {
    */
   async getCaptchaChallenge(service, method) {
     const response = await axios({
-      url: `${this.url}${this.apiRoutes.getCaptchaChallenge}/${service}/${method}`,
+      url: `${this.url}${this.apiRoutes.getCaptchaChallenge}/${encodeURIComponent(service)}/${encodeURIComponent(method)}`,
       method: 'GET',
       headers: {
         Authorization: this.basicAuthToken,
