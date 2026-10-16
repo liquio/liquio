@@ -16,6 +16,9 @@ const CHECKED_SECRET_PATHS = [
 
 // Supplied by Helm but not by scripts/init.sh, and used only on some flows (id-api code/refresh exchange, `sign` encryption
 // of assets): a correct install may leave the placeholder, so these only produce a warning.
+// Checked only when the optional `db.slave` read replica is configured (index.ts connects to it only in that case).
+const SLAVE_DB_SECRET_PATHS = ['db.slave.password'];
+
 const WARNED_SECRET_PATHS = ['auth.clientSecret', 'sign.token'];
 
 /**
@@ -34,7 +37,8 @@ function getByPath(config: Record<string, any>, path: string): any {
  * @returns {string[]} Config paths with missing secrets.
  */
 export function findPlaceholderSecrets(config: Record<string, any>): string[] {
-  return filterPlaceholders(config, CHECKED_SECRET_PATHS);
+  const paths = config?.db?.slave ? [...CHECKED_SECRET_PATHS, ...SLAVE_DB_SECRET_PATHS] : CHECKED_SECRET_PATHS;
+  return filterPlaceholders(config, paths);
 }
 
 /**

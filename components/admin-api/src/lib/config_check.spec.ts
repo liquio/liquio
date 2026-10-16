@@ -62,6 +62,29 @@ describe('config_check: db, auth and sign secrets', () => {
   });
 });
 
+describe('config_check: db.slave.password', () => {
+  it.each(['<REDACTED>', '', '  ', undefined])('throws outside dev for slave password %p when db.slave is configured', (password) => {
+    const config = buildConfig('production', { db: { password: 'dbpass', slave: { host: 'replica', password } } });
+    expect(() => assertNoPlaceholderSecrets(config)).toThrow(/db\.slave\.password/);
+  });
+
+  it('passes with a real slave password', () => {
+    const config = buildConfig('production', { db: { password: 'dbpass', slave: { host: 'replica', password: 'real' } } });
+    expect(() => assertNoPlaceholderSecrets(config)).not.toThrow();
+  });
+
+  it('reports a placeholder slave password in dev without failing', () => {
+    const config = buildConfig('dev', { db: { password: 'dbpass', slave: { host: 'replica', password: '<REDACTED>' } } });
+    expect(assertNoPlaceholderSecrets(config)).toEqual(['db.slave.password']);
+  });
+
+  it('ignores db.slave.password when db.slave is not configured', () => {
+    expect(findPlaceholderSecrets(buildConfig('production'))).toEqual([]);
+    expect(findPlaceholderSecrets(buildConfig('production', { db: { password: 'dbpass', slave: null } }))).toEqual([]);
+    expect(() => assertNoPlaceholderSecrets(buildConfig('production', { db: { password: 'dbpass', slave: undefined } }))).not.toThrow();
+  });
+});
+
 describe('assertTaskTokenIsNotDefault', () => {
   // The token that used to be committed to config-templates, built here to keep the literal out of the sources.
   const OLD_DEFAULT_TOKEN = `Basic ${Buffer.from(['task', 'task'].join(':')).toString('base64')}`;
