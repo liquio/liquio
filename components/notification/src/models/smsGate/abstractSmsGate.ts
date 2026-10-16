@@ -2,6 +2,7 @@ import axios from 'axios';
 
 import * as conf from '../../config/config';
 import { createHttpsAgent } from '../../lib/tls';
+import { maskPhone, maskPhones, redactMessage } from '../../lib/mask';
 import { SmsQueueModel } from '../sms_queue';
 
 const SmsQueue = new SmsQueueModel().SmsQueue;
@@ -36,7 +37,7 @@ export class AbstractGate {
 
     if (!this.isEnabled) {
       const result = phones.map((phone) => this.getDisabledResult(phone));
-      global.log.save('send-sms-skipped', { phones, text, reason: 'SMS is disabled in config.' }, 'info');
+      global.log.save('send-sms-skipped', { phones: maskPhones(phones), text: redactMessage(text), reason: 'SMS is disabled in config.' }, 'info');
       return result;
     }
 
@@ -56,7 +57,6 @@ export class AbstractGate {
             .update(`${text}SaLt${phones.join(',')}`)
             .digest('hex'),
         };
-        console.log(this.options);
         const t = await this.sendRequest(this.options);
         return t;
       } catch (e) {
@@ -107,7 +107,7 @@ export class AbstractGate {
 
     if (!this.isEnabled) {
       const result = this.getDisabledResult(phone);
-      global.log.save('send-one-sms-skipped', { phone, text, reason: result.reason }, 'info');
+      global.log.save('send-one-sms-skipped', { phone: maskPhone(phone), text: redactMessage(text), reason: result.reason }, 'info');
       return result;
     }
 

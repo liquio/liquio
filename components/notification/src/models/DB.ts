@@ -10,7 +10,9 @@ const connection = new Sequelize(conf.db.database, conf.db.username, conf.db.pas
     min: 0,
     idle: 10000,
   },
-  logging: conf.db.logging == false ? false : console.log,
+  // Never log bind values; SQL logging is opt-in (`db.logging === true`).
+  logging: conf.db.logging === true ? (sql: string) => console.log(String(sql).slice(0, 500)) : false,
+  logQueryParameters: false,
   ...(typeof conf.db.ssl !== 'undefined' && { ssl: conf.db.ssl }),
   ...(typeof conf.db.dialectOptions !== 'undefined' && { dialectOptions: conf.db.dialectOptions }),
   operatorsAliases: {

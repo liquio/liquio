@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 
+import { maskEmail, maskEmails } from '../../lib/mask';
+
 const { conf } = global as any;
 
 export class SmtpModel {
@@ -27,7 +29,7 @@ export class SmtpModel {
 
     if (!this.isEnabled) {
       const result = this.getDisabledResult();
-      this.log.save('send-email-skipped', { users, subject, reason: result.reason }, 'info');
+      this.log.save('send-email-skipped', { users: maskEmails(users), subjectLength: String(subject ?? '').length, reason: result.reason }, 'info');
       return { result: Array.isArray(users) ? users.map(() => result) : [] };
     }
 
@@ -56,7 +58,11 @@ export class SmtpModel {
 
     if (!this.isEnabled) {
       const result = this.getDisabledResult();
-      this.log.save('send-one-email-skipped', { email: body.email, subject: body.subject, reason: result.reason }, 'info');
+      this.log.save(
+        'send-one-email-skipped',
+        { email: maskEmail(body.email), subjectLength: String(body.subject ?? '').length, reason: result.reason },
+        'info',
+      );
       return { result };
     }
 
@@ -64,7 +70,7 @@ export class SmtpModel {
     try {
       transport = nodemailer.createTransport(this.config);
     } catch (error: any) {
-      this.log.save('send-one-email-transport-error', { error: error?.message, body }, 'error');
+      this.log.save('send-one-email-transport-error', { error: error?.message, to: maskEmail(body.email) }, 'error');
     }
 
     const attachments = body.attachments
@@ -74,7 +80,7 @@ export class SmtpModel {
       : [];
 
     if (body.doNotEscapeEmail) {
-      this.log.save('do-not-escape-email', { body }, 'info');
+      this.log.save('do-not-escape-email', { to: maskEmail(body.email), subjectLength: String(body.subject ?? '').length }, 'info');
     }
     const mailOptions = {
       from: sendBy || this.senderEmail,
@@ -89,10 +95,25 @@ export class SmtpModel {
     let result;
     try {
       result = await transport!.sendMail(mailOptions);
-      this.log.save('send-one-email-result', { result, mailOptions }, 'info');
+      this.log.save(
+        'send-one-email-result',
+        {
+          messageId: result?.messageId,
+          accepted: maskEmails(result?.accepted ?? []),
+          rejected: maskEmails(result?.rejected ?? []),
+          response: result?.response,
+          to: maskEmail(mailOptions.to),
+          subjectLength: String(mailOptions.subject ?? '').length,
+        },
+        'info',
+      );
       return { result };
     } catch (error: any) {
-      this.log.save('send-one-email-error', { error: error?.message, mailOptions }, 'error');
+      this.log.save(
+        'send-one-email-error',
+        { error: error?.message, to: maskEmail(mailOptions.to), subjectLength: String(mailOptions.subject ?? '').length },
+        'error',
+      );
       throw error;
     }
   }

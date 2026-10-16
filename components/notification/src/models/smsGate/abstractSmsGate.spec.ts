@@ -33,3 +33,18 @@ describe('AbstractGate queue removal (NT-06)', () => {
     expect(mockDestroy).toHaveBeenCalledWith({ truncate: true });
   });
 });
+
+describe('AbstractGate logging (NT-10)', () => {
+  it('disabled gate logs masked phones and no text', async () => {
+    const save = jest.fn();
+    (global as any).log = { save };
+    const gate = new AbstractGate();
+    jest.spyOn(gate, 'isEnabled', 'get').mockReturnValue(false);
+    await gate.sendSms(['380501234567'], 'SECRET-OTP');
+    await gate.sendOneSms('380501234567', 'SECRET-OTP');
+    const dump = JSON.stringify(save.mock.calls);
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(dump).not.toContain('SECRET-OTP');
+    expect(dump).not.toContain('380501234567');
+  });
+});

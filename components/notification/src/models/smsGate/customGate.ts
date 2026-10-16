@@ -1,3 +1,4 @@
+import { maskPhone, maskPhones, redactMessage } from '../../lib/mask';
 import { AbstractGate } from './abstractSmsGate';
 
 /**
@@ -24,7 +25,7 @@ export class CustomGate extends AbstractGate {
 
     if (!this.isEnabled) {
       const result = (phones || []).map((phone) => this.getDisabledResult(phone));
-      global.log.save('send-sms-skipped', { phones, text, reason: 'SMS is disabled in config.' }, 'info');
+      global.log.save('send-sms-skipped', { phones: maskPhones(phones), text: redactMessage(text), reason: 'SMS is disabled in config.' }, 'info');
       return result;
     }
 
@@ -66,7 +67,7 @@ export class CustomGate extends AbstractGate {
 
     if (!this.isEnabled) {
       const result = this.getDisabledResult(phone);
-      global.log.save('send-one-sms-skipped', { phone, text, reason: result.reason }, 'info');
+      global.log.save('send-one-sms-skipped', { phone: maskPhone(phone), text: redactMessage(text), reason: result.reason }, 'info');
       return result;
     }
 
