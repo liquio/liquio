@@ -12,6 +12,7 @@ import AuthController from './controllers/auth';
 import TestController from './controllers/test';
 import { compilePathMatcher, isSuspiciousPath } from './lib/custom_api_path_matcher';
 import { sanitizeProxyHeaders } from './lib/proxy_headers';
+import { isMainProxyPathAllowed } from './lib/proxy_filter';
 import { redactHeaders, redactUrl, urlPath } from './lib/redact';
 
 // Constants.
@@ -239,10 +240,17 @@ class Router {
 
     // Proxy other requests to main proxy.
     if ((global.config as any).discovery.mainProxy) {
+      const { mainProxyDenyPaths, mainProxyAllowPaths } = (global.config as any).discovery;
+      const proxyFilterConfig = { mainProxyDenyPaths, mainProxyAllowPaths };
       app.use(
         proxy((global.config as any).discovery.mainProxy, {
           limit: (global.config as any).server.maxBodySize,
           filter: async (req: Request) => {
+            // Internal task routes (and, in allow-list mode, everything not listed) are not reachable from outside.
+            if (!isMainProxyPathAllowed(req.method, req.path, proxyFilterConfig)) {
+              (global.log as any).save('proxy-denied', { route: urlPath(req.originalUrl), method: req.method });
+              return false;
+            }
             (global.log as any).save('proxy-to', { route: urlPath(req.originalUrl), method: req.method });
             return true;
           },
@@ -263,6 +271,11 @@ class Router {
           },
         }),
       );
+
+      // Requests rejected by the proxy filter end here.
+      app.use((_req: Request, res: Response) => {
+        res.status(404).json({ error: { message: 'Not found' } });
+      });
     }
 
     // Handle errors.

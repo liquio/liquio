@@ -187,4 +187,68 @@ describe('Router custom APIs', () => {
     expect(receivedHeaders[0]['allow-tokens']).toBeUndefined();
     expect(receivedHeaders[0].accept).toBe('text/plain');
   });
+  describe('main proxy path filter', () => {
+    const startMain = async (extra: Record<string, unknown> = {}) => {
+      const config = (global as any).config.discovery;
+      Object.assign(config, { mainProxy: `http://localhost:${(upstream.address() as AddressInfo).port}`, ...extra });
+      const mainApp = express();
+      new Router().initRoutes(mainApp);
+      for (const key of ['mainProxy', ...Object.keys(extra)]) {
+        delete config[key];
+      }
+      const server = http.createServer(mainApp);
+      await new Promise<void>((resolve) => server.listen(0, resolve));
+      return { server, base: `http://localhost:${(server.address() as AddressInfo).port}` };
+    };
+    const stop = (server: http.Server) => new Promise((resolve) => server.close(resolve));
+
+    it('returns 404 and never reaches the upstream for internal task routes', async () => {
+      const { server, base } = await startMain();
+      received.length = 0;
+      try {
+        const paths = [
+          '/external_services/workflow-logs/workflows',
+          '/External-Services/x',
+          '//test/ping/services',
+          '/test/ping/committed-documents/1',
+          '/test/ping/../auth/bearer',
+          '/auth/bearer/',
+          '/external_services%2fx',
+          '/external_reader/mocks-keys-by-user',
+        ];
+        for (const path of paths) {
+          expect((await fetch(`${base}${path}`)).status).toBe(404);
+        }
+        expect((await fetch(`${base}/auth/bearer`, { method: 'POST', body: '{}' })).status).toBe(404);
+      } finally {
+        await stop(server);
+      }
+      expect(received).toEqual([]);
+    });
+
+    it('keeps cabinet front routes (including external_reader and captcha) reachable', async () => {
+      const { server, base } = await startMain();
+      received.length = 0;
+      try {
+        for (const path of ['/tasks', '/payment/x/y', '/external_reader/captcha/a/b', '/external_reader/captcha/providers/list']) {
+          expect((await fetch(`${base}${path}`)).status).toBe(200);
+        }
+      } finally {
+        await stop(server);
+      }
+      expect(received).toEqual(['/tasks', '/payment/x/y', '/external_reader/captcha/a/b', '/external_reader/captcha/providers/list']);
+    });
+
+    it('proxies only listed paths when mainProxyAllowPaths is set', async () => {
+      const { server, base } = await startMain({ mainProxyAllowPaths: ['/tasks'] });
+      received.length = 0;
+      try {
+        expect((await fetch(`${base}/tasks/1`)).status).toBe(200);
+        expect((await fetch(`${base}/workflows`)).status).toBe(404);
+      } finally {
+        await stop(server);
+      }
+      expect(received).toEqual(['/tasks/1']);
+    });
+  });
 });

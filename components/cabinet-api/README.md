@@ -56,6 +56,9 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
 
 - `cabinet-front` → `cabinet-api` (calls, HTTPS/REST)
 - `cabinet-api` → `id-api` (verifies auth)
-- `cabinet-api` → `task` (proxies wholesale, `discovery.mainProxy`)
+- `cabinet-api` → `task` (proxies everything not served locally via `discovery.mainProxy`, except a built-in deny-list of
+  internal paths that return 404: `/external_services`, `/external-services`, `/test`, `/auth/bearer`,
+  `/external_reader/mocks-keys-by-user`; extend it with `discovery.mainProxyDenyPaths`, or restrict the proxy to
+  listed prefixes with the optional `discovery.mainProxyAllowPaths`, where `:param` segments match any one segment)
 - `cabinet-api` → PostgreSQL (`bpmn` database, shared with `admin-api`,
   `task`, `manager`, `gateway`, `event`), Redis/Dragonfly
