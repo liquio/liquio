@@ -81,9 +81,6 @@ class Router {
     app.get('/test/ping', this.controllers.getHandler('test', 'ping'));
     app.get('/test/ping_with_auth', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('test', 'ping'));
 
-    // Monitoring controller.
-    app.get('/monitoring/system', this.controllers.getHandler('monitoring', 'system'));
-
     app.get('/templates', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'getTemplates'));
     app.get('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'findTemplateById'));
     app.post('/templates', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'createTemplate'));
