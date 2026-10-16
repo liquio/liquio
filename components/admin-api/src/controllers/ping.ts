@@ -44,11 +44,20 @@ export class PingController extends Controller {
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
   async ping(req, res) {
+    this.responseData(res, { message: MESSAGE_PONG });
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async pingWithAuth(req, res) {
     // Define query params.
     const healthCheck = req.query.health_check;
 

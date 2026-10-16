@@ -20,15 +20,13 @@ describe('Test Controller', () => {
   });
 
   describe('GET /test/ping', () => {
-    it('should return pong', async () => {
+    it('should return only pong', async () => {
       await app
         .request()
         .get('/test/ping')
         .expect(200)
         .expect((response: SupertestResponse) => {
-          expect(response.body.data).toHaveProperty('message', 'pong');
-          expect(response.body.data).toHaveProperty('processPid');
-          expect(typeof response.body.data.processPid).toBe('number');
+          expect(response.body.data).toEqual({ message: 'pong' });
         });
     });
 
@@ -36,19 +34,15 @@ describe('Test Controller', () => {
       await app.request().get('/test/ping').expect(200);
     });
 
-    it('should tolerate the preview service being unreachable when health_check is requested', async () => {
+    it('should ignore health_check without auth and not reveal internal status', async () => {
       await app
         .request()
         .get('/test/ping')
         .query({ health_check: 'true' })
         .expect(200)
         .expect((response: SupertestResponse) => {
-          expect(response.body.data).toHaveProperty('message', 'pong');
-          expect(response.body.data.previewServiceResponse).toBe(false);
+          expect(response.body.data).toEqual({ message: 'pong' });
         });
-
-      const [, logData] = await app.log.waitForLog('test-ping-preview-service-error');
-      expect(logData.error).toBeDefined();
     });
   });
 
@@ -65,7 +59,28 @@ describe('Test Controller', () => {
         .expect(200)
         .expect((response: SupertestResponse) => {
           expect(response.body.data).toHaveProperty('message', 'pong');
+          expect(typeof response.body.data.processPid).toBe('number');
         });
+    });
+
+    it('should return 401 for health_check without auth', async () => {
+      await app.request().get('/test/ping_with_auth').query({ health_check: 'true' }).expect(401);
+    });
+
+    it('should tolerate the preview service being unreachable when health_check is requested with auth', async () => {
+      await app
+        .request()
+        .get('/test/ping_with_auth')
+        .query({ health_check: 'true' })
+        .set('Authorization', TEST_AUTH_HEADER)
+        .expect(200)
+        .expect((response: SupertestResponse) => {
+          expect(response.body.data).toHaveProperty('message', 'pong');
+          expect(response.body.data.previewServiceResponse).toBe(false);
+        });
+
+      const [, logData] = await app.log.waitForLog('test-ping-preview-service-error');
+      expect(logData.error).toBeDefined();
     });
   });
 
