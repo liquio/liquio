@@ -9,6 +9,7 @@ import RegisterEntity from '../entities/register';
 import RecordEntity from '../entities/record';
 import { Config } from '../lib/config';
 import { RedisClient } from '../lib/redis_client';
+import { ExportAccess, ExportKeyForbiddenError, RESTRICTED_EXPORT_ACCESS, isKeyExportable, projectRecordsForExport } from '../lib/export_access';
 
 // Constants.
 const AUTO_CLEAR_INTERVAL = 1000 * 60 * 60 * 24; // 1 day.
@@ -78,6 +79,7 @@ export default class ExportBusiness extends Business {
   async getKeyAndRegisterAndRecords(
     keyId: number,
     options: { onlySchema?: boolean } = {},
+    access: ExportAccess = RESTRICTED_EXPORT_ACCESS,
   ): Promise<{
     key: KeyEntity;
     register: RegisterEntity;
@@ -92,9 +94,16 @@ export default class ExportBusiness extends Business {
     // Return key and register if only schema.
     if (onlySchema) return { key, register };
 
+    // Non-full export never reads a key the caller cannot read.
+    if (!access.full && !isKeyExportable(key)) {
+      this.log.save('export-key-not-readable', { keyId });
+      throw new ExportKeyForbiddenError(keyId);
+    }
+
     // Get records.
     const recordModelResponse = await this.recordModel.getByKeyId(keyId, true);
-    const { data: records } = recordModelResponse || {};
+    let { data: records } = recordModelResponse || {};
+    if (!access.full) records = projectRecordsForExport(records, key, access.tokens);
 
     // Remove isEncrypted on export
     records.forEach((record) => {
@@ -124,9 +133,20 @@ export default class ExportBusiness extends Business {
    * @example
    * const exportId = await exportBusiness.prepareToExport(1);
    */
-  async startPreparingToExport(keyId: number, options = {}): Promise<string> {
+  async startPreparingToExport(
+    keyId: number,
+    options: { onlySchema?: boolean } = {},
+    access: ExportAccess = RESTRICTED_EXPORT_ACCESS,
+  ): Promise<string> {
+    // Reject an unreadable key up front (explicit key export answers 403 instead of a failed job).
+    const { key } = await this.getKeyAndRegister(keyId);
+    if (!options?.onlySchema && !access.full && !isKeyExportable(key)) {
+      this.log.save('export-key-not-readable', { keyId });
+      throw new ExportKeyForbiddenError(keyId);
+    }
+
     const exportId = this.generateExportId();
-    this.prepareToExport(exportId, keyId, options);
+    this.prepareToExport(exportId, keyId, options, access);
     setTimeout(() => this.clearToExport(exportId), AUTO_CLEAR_INTERVAL); // Clear "to export" after 1 day.
     return exportId;
   }
@@ -142,7 +162,7 @@ export default class ExportBusiness extends Business {
    * @example
    * await exportBusiness.prepareToExport('exportId', 1);
    */
-  async prepareToExport(exportId: string, keyId: number, options = {}) {
+  async prepareToExport(exportId: string, keyId: number, options: { onlySchema?: boolean } = {}, access: ExportAccess = RESTRICTED_EXPORT_ACCESS) {
     // Preset "to export".
     this.toExport[exportId] = {
       keyId,
@@ -154,7 +174,7 @@ export default class ExportBusiness extends Business {
 
     // Try to set data to export.
     try {
-      const exportData = await this.getKeyAndRegisterAndRecords(keyId, options);
+      const exportData = await this.getKeyAndRegisterAndRecords(keyId, options, access);
       this.toExport[exportId].data = exportData;
       this.toExport[exportId].status = ExportBusiness.Statuses.Prepared;
 

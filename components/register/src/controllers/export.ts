@@ -4,6 +4,7 @@ import { Log } from '@liquio/back-core';
 import { Request, Response } from '../router';
 import Controller from './controller';
 import ExportBusiness from '../businesses/export';
+import { ExportKeyForbiddenError, resolveExportAccess } from '../lib/export_access';
 
 /**
  * Export controller.
@@ -39,8 +40,11 @@ export default class ExportController extends Controller {
     // Start preparing to export.
     let exportId;
     try {
-      exportId = await this.exportBusiness.startPreparingToExport(keyId, options);
+      exportId = await this.exportBusiness.startPreparingToExport(keyId, options, resolveExportAccess(req, this.config));
     } catch (error) {
+      if (error instanceof ExportKeyForbiddenError) {
+        return this.responseError(res, 'Key records are not readable.', 403, { keyId });
+      }
       this.log.save('start-preparing-to-export-error', { keyId, error: error?.message });
       return this.responseError(res, 'Can not start preparing to export.');
     }
