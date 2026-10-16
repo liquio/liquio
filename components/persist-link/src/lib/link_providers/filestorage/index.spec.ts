@@ -160,7 +160,7 @@ describe('FilestorageLinkProvider', () => {
       return headers;
     };
 
-    it.each(['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'application/pdf; charset=binary'])(
+    it.each(['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf; charset=binary'])(
       'should show %s inline when showInBrowser is true',
       async (type) => {
         expect((await run(type, true))['Content-Disposition']).toBe('inline');

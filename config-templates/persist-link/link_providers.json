@@ -3,6 +3,6 @@
   "filestorage": {
     "serversList": [],
     "addContentDispositionHeader": true,
-    "inlineContentTypes": ["application/pdf", "image/png", "image/jpeg", "image/gif"]
+    "inlineContentTypes": ["application/pdf", "image/png", "image/jpeg", "image/gif", "image/webp"]
   }
 }

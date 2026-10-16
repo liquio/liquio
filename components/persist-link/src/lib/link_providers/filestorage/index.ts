@@ -18,7 +18,7 @@ const RESPONSE_BAD_GATEWAY_OBJECT = {
     message: 'Bad gateway.',
   },
 };
-const DEFAULT_INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif'];
+const DEFAULT_INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 const CONTENT_SECURITY_POLICY = "sandbox; default-src 'none'";
 
 /**

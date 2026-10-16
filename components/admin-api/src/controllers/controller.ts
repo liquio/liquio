@@ -15,6 +15,8 @@ const EMPTY_DATA = {};
 const DEFAULT_ERROR_MESSAGE = 'Server error.';
 const CONTENT_TYPE_HEADER = 'Content-Type';
 const CONTENT_DISPOSITION_HEADER = 'Content-Disposition';
+const CONTENT_TYPE_OPTIONS_HEADER = 'X-Content-Type-Options';
+const INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
 /**
  * Controller.
@@ -151,9 +153,15 @@ export class Controller {
   responseFile(res, file, contentType, fileName) {
     // Response.
     res.set(CONTENT_TYPE_HEADER, contentType);
+    res.set(CONTENT_TYPE_OPTIONS_HEADER, 'nosniff');
     if (fileName) {
-      const convertedFileName = _.toLower(transliteration.transliterate(fileName)).replace(/\s+/g, '_');
+      const convertedFileName = _.toLower(transliteration.transliterate(fileName))
+        .replace(/\s+/g, '_')
+        .replace(/["\\\r\n]/g, '');
       res.set(CONTENT_DISPOSITION_HEADER, `attachment; filename="${convertedFileName}"`);
+    } else if (!INLINE_CONTENT_TYPES.includes(String(contentType).split(';')[0].trim().toLowerCase())) {
+      // Only safe types may be rendered inline; everything else is a download.
+      res.set(CONTENT_DISPOSITION_HEADER, 'attachment');
     }
     res.send(file);
   }
