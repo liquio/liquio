@@ -4,6 +4,11 @@ import { matchedData, query } from 'express-validator';
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
+const DEFAULT_MAX_LIMIT = 100;
+const DEFAULT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+// Filters that narrow the result to a subject, so a scoped client can't page through everyone's history.
+const NARROWING_FILTER_KEYS = ['user_id', 'user_name', 'ip', 'client_id', 'client_name', 'created_at_from'];
+
 const ALLOWED_FILTER_KEYS = [
   'created_at_from',
   'created_at_to',
@@ -34,6 +39,10 @@ function parseFilter(value: unknown): Record<string, string> {
   return parsed;
 }
 
+function omit(row: Record<string, unknown>, keys: string[]): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(row).filter(([key]) => !keys.includes(key)));
+}
+
 /**
  * Login history controller.
  */
@@ -48,8 +57,8 @@ export class LoginHistoryController extends BaseController {
       [
         // .default() doesn't work
         // https://github.com/express-validator/express-validator/issues/1057
-        query('offset').optional().isNumeric(),
-        query('limit').optional().isNumeric(),
+        query('offset').optional().isInt({ min: 0 }),
+        query('limit').optional().isInt({ min: 1 }),
         query('filter')
           .optional()
           .custom((value) => {
@@ -81,12 +90,25 @@ export class LoginHistoryController extends BaseController {
       action_type: actionType,
     } = queryFilter ? parseFilter(queryFilter) : {};
 
+    // Named clients without `login_history:all` must narrow the query and get a default time window.
+    // The legacy shared secret holds every scope, so its unfiltered listing keeps working.
+    const scopes = req.serviceClient?.scopes ?? [];
+    const canListAll = scopes.includes('login_history:all');
+    const canSeePii = scopes.includes('login_history:pii');
+    const parsedFilter: Record<string, string> = queryFilter ? parseFilter(queryFilter) : {};
+    if (!canListAll && !NARROWING_FILTER_KEYS.some((key) => parsedFilter[key])) {
+      res.status(400).send({ error: `Narrowing filter required: one of ${NARROWING_FILTER_KEYS.join(', ')}` });
+      return;
+    }
+
     const clientIdAsOneRecord = typeof clientId === 'string' && !clientId.includes(',') ? clientId : undefined;
     const clientIdAsRecordsArray = typeof clientId === 'string' && clientId.includes(',') ? clientId.split(',').filter((v) => !!v) : undefined;
 
     const conditions: any[] = [];
     if (createdAtFrom) {
       conditions.push({ created_at: { [Op.gte]: createdAtFrom } });
+    } else if (!canListAll) {
+      conditions.push({ created_at: { [Op.gte]: new Date(Date.now() - DEFAULT_WINDOW_MS) } });
     }
     if (createdAtTo) {
       conditions.push({ created_at: { [Op.lte]: createdAtTo } });
@@ -130,8 +152,9 @@ export class LoginHistoryController extends BaseController {
 
     // Prepare DB query pagination.
     const queryOffset = parseInt(offset.toString());
-    const requestedLimit = parseInt(limit.toString());
-    const queryLimit = Math.min(requestedLimit, 100);
+    const requestedLimit = parseInt(limit.toString()) || 10;
+    const maxLimit = req.serviceClient?.maxLimit ?? DEFAULT_MAX_LIMIT;
+    const queryLimit = Math.min(Math.max(requestedLimit, 1), maxLimit);
 
     // Define DB query.
     const queryOptions = { where: filter, order, offset: queryOffset, limit: queryLimit } as QueryOptions;
@@ -142,7 +165,7 @@ export class LoginHistoryController extends BaseController {
 
     const accessTokenLifetimeInMilliseconds = this.service('auth').accessTokenLifetime * 1000;
     const rowsWithExpiresAt = rows.map((el: any) => ({
-      ...el.dataValues,
+      ...(canSeePii ? el.dataValues : omit(el.dataValues, ['user_agent', 'user_name'])),
       expires_at: el.action_type === 'login' ? new Date(Number(el.created_at) + accessTokenLifetimeInMilliseconds) : null,
     }));
 

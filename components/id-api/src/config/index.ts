@@ -131,7 +131,9 @@ export interface Config {
       name: string;
       secret?: string;
       secret_hash?: string;
-      scopes?: ('user:read' | 'user:write' | 'user:admin' | 'password:set' | 'totp' | 'login_history')[];
+      scopes?: ('user:read' | 'user:write' | 'user:admin' | 'password:set' | 'totp' | 'login_history' | 'login_history:all' | 'login_history:pii')[];
+      // Page size cap for `/login_history` (default 100).
+      maxLimit?: number;
     }[];
   };
   // Roles named clients may assign through `PUT /user/info/:id` (`;`-separated values are checked one by one).

@@ -12,7 +12,7 @@ export interface Request extends express.Request {
   traceMeta?: Record<string, any>;
   flash?: FlashFunction;
   // Identity resolved by `AuthMiddleware.basic()`.
-  serviceClient?: { name: string; scopes: string[]; legacy: boolean };
+  serviceClient?: { name: string; scopes: string[]; legacy: boolean; maxLimit?: number };
 }
 
 declare module 'express-session' {

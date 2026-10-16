@@ -3,7 +3,16 @@ import crypto from 'crypto';
 /**
  * Scopes a `basic()` route can require. The legacy shared secret holds all of them.
  */
-export const SERVICE_SCOPES = ['user:read', 'user:write', 'user:admin', 'password:set', 'totp', 'login_history'] as const;
+export const SERVICE_SCOPES = [
+  'user:read',
+  'user:write',
+  'user:admin',
+  'password:set',
+  'totp',
+  'login_history',
+  'login_history:all',
+  'login_history:pii',
+] as const;
 
 export type ServiceScope = (typeof SERVICE_SCOPES)[number];
 
@@ -14,6 +23,8 @@ export interface ServiceClient {
   scopes: string[];
   // True for the identity built from `oauth.secret_key[]` (the shared pool secret).
   legacy: boolean;
+  // Optional per-client page size cap (e.g. for `/login_history`).
+  maxLimit?: number;
 }
 
 export interface BasicAuthClientConfig {
@@ -22,6 +33,7 @@ export interface BasicAuthClientConfig {
   secret?: string;
   secret_hash?: string;
   scopes?: string[];
+  maxLimit?: number;
 }
 
 export interface BasicAuthConfig {
@@ -39,7 +51,7 @@ const equal = (a: Buffer, b: Buffer): boolean => crypto.timingSafeEqual(a, b);
  * Registry of the identities allowed to call `basic()` routes.
  */
 export class ServiceClientRegistry {
-  private readonly clients: { name: string; nameDigest: Buffer; secretDigest: Buffer; scopes: string[] }[];
+  private readonly clients: { name: string; nameDigest: Buffer; secretDigest: Buffer; scopes: string[]; maxLimit?: number }[];
   private readonly legacyDigests: Buffer[];
   readonly allowLegacy: boolean;
 
@@ -75,7 +87,11 @@ export class ServiceClientRegistry {
         throw new Error(`basic_auth.clients: client "${client.name}" has unknown scopes ${unknown.join(', ')}`);
       }
 
-      return { name: client.name, nameDigest: digest(client.name), secretDigest, scopes: [...scopes] };
+      if (client.maxLimit !== undefined && (!Number.isInteger(client.maxLimit) || client.maxLimit < 1)) {
+        throw new Error(`basic_auth.clients: client "${client.name}" maxLimit must be a positive integer`);
+      }
+
+      return { name: client.name, nameDigest: digest(client.name), secretDigest, scopes: [...scopes], maxLimit: client.maxLimit };
     });
   }
 
@@ -93,7 +109,7 @@ export class ServiceClientRegistry {
     let found: ServiceClient | undefined;
     for (const client of this.clients) {
       const matches = equal(usernameDigest, client.nameDigest) && equal(secretDigest, client.secretDigest);
-      if (matches) found = { name: client.name, scopes: client.scopes, legacy: false };
+      if (matches) found = { name: client.name, scopes: client.scopes, legacy: false, maxLimit: client.maxLimit };
     }
 
     let legacyMatch = false;

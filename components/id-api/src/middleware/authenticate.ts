@@ -177,7 +177,7 @@ export class AuthMiddleware {
             return;
           }
 
-          req.serviceClient = { name: client.name, scopes: client.scopes, legacy: client.legacy };
+          req.serviceClient = { name: client.name, scopes: client.scopes, legacy: client.legacy, maxLimit: client.maxLimit };
           appendTraceMeta({ serviceClient: client.name });
           return next();
         }

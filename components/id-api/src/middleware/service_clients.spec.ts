@@ -48,3 +48,11 @@ describe('ServiceClientRegistry', () => {
     expect(() => new ServiceClientRegistry({ clients: clients as any }, [])).toThrow();
   });
 });
+
+describe('ServiceClientRegistry maxLimit (KS-33)', () => {
+  it('passes a per-client maxLimit and rejects an invalid one', () => {
+    const registry = new ServiceClientRegistry({ clients: [{ name: 'a', secret: 's', scopes: ['login_history'], maxLimit: 5 }] }, []);
+    expect(registry.authenticate('a:s')?.maxLimit).toBe(5);
+    expect(() => new ServiceClientRegistry({ clients: [{ name: 'a', secret: 's', maxLimit: 0 }] }, [])).toThrow(/maxLimit/);
+  });
+});
