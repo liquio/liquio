@@ -605,8 +605,6 @@ export class UserController extends BaseController {
         return;
       }
 
-      const user: any = await this.service('auth').getUser(email ? { email: email.toLowerCase() } : { phone });
-
       let redirectUri = this.config.oauth.defaults.redirect_uri;
       if (Array.isArray(redirectUri)) {
         redirectUri = redirectUri[0];
@@ -618,16 +616,13 @@ export class UserController extends BaseController {
         return;
       }
 
-      if (user || (user.status && user.status != 'import')) {
-        let query = `client_id=${client.clientId}&redirect_uri=${redirectUri}&state=subscriptions`;
-        if (email) {
-          query += `&user[email]=${email}`;
-        }
-        res.redirect(`/authorise?${query}`);
-      } else {
-        req.session.user = { email, phone };
-        req.session.save(() => res.redirect('/promo'));
+      // Same redirect for registered and unknown addresses, so the endpoint is not an account-existence oracle.
+      // The authorise flow itself decides between sign-in and sign-up.
+      let query = `client_id=${encodeURIComponent(client.clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=subscriptions`;
+      if (email) {
+        query += `&user[email]=${encodeURIComponent(email)}`;
       }
+      res.redirect(`/authorise?${query}`);
     } catch (error: any) {
       this.log.save('promo-subscribe-error', { error: error.message, stack: error.stack }, 'error');
       res.status(500).send(error.message);

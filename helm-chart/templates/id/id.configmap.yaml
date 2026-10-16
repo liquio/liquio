@@ -60,6 +60,8 @@ metadata:
   "auth_providers" $authProvidersBase
   "confirmCodeEmailChangeHeader" "Email Confirmation"
   "confirmCodeEmailHeader" "Registration Confirmation"
+  "accountExistsEmailHeader" "Account already exists"
+  "accountExistsEmailText" "An account already exists for this email address. Log in, or reset your password if you have forgotten it."
   "confirmCodeEmailTemplate" (include "liquio.id-confirmCodeEmailTemplate" (dict "ctx" .))
   "confirmCodeRetries" 10
   "customer" .Release.Name

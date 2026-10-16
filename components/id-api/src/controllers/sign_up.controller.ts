@@ -1,13 +1,12 @@
 import { promisify } from 'util';
 
 import { matchedData, query } from 'express-validator';
-import Sequelize from 'sequelize';
 
 import { validateEmail } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { getSessionUserId, markTwoFactorCompleted } from '../lib/two_factor';
 import { saveSession } from '../middleware/session';
-import { UserAttributes, UserServicesAttributes } from '../models';
+import { UserAttributes } from '../models';
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -42,7 +41,11 @@ export class SignUpController extends BaseController {
       [query('email').notEmpty().toLowerCase(), query('code').isString(), this.handleValidation.bind(this)],
       this.checkEmailConfirm.bind(this),
     );
-    this.router.get('/sign_up/confirmation/phone/exist', this.checkPhoneExist.bind(this));
+    this.router.get(
+      '/sign_up/confirmation/phone/exist',
+      [query('phone').isString(), this.handleValidation.bind(this)],
+      this.checkPhoneExist.bind(this),
+    );
     this.router.get(
       '/sign_up/confirmation/phone/send',
       [query('phone').isString(), this.handleValidation.bind(this)],
@@ -88,19 +91,19 @@ export class SignUpController extends BaseController {
       return;
     }
 
-    // Make sure that there's no user with the same email
-    const existingUser = await this.model('user').findOne({ where: { email } });
-    if (existingUser) {
-      this.log.save('registration|user-error', { email, error: 'User already exists.' }, 'warning');
-      res.status(400).json({ error: 'email-exists', description: 'User already exists.' });
-      return;
-    }
-
     // Make sure that the password is strong enough
     const { strong, reason } = this.service('passwordManager').isStrongPassword(password);
     if (!strong) {
       this.log.save('registration|user-error', { email, error: reason }, 'warning');
       res.status(400).send({ error: 'weak-password', description: reason });
+      return;
+    }
+
+    // An already registered email gets the same public answer as a new one (no account-existence oracle) and nothing is created.
+    const existingUser = await this.model('user').findOne({ where: { email } });
+    if (existingUser) {
+      this.log.save('registration|user-error', { email, error: 'User already exists.' }, 'warning');
+      res.status(201).json({ message: 'User registered successfully' });
       return;
     }
 
@@ -140,10 +143,7 @@ export class SignUpController extends BaseController {
       });
 
       this.log.save('registration|success', { userId: user.userId, email }, 'info');
-      res.status(201).json({
-        message: 'User registered successfully',
-        userId: user.userId,
-      });
+      res.status(201).json({ message: 'User registered successfully' });
     } catch (error: any) {
       this.log.save('registration|server-error', { email, error: error.message, stack: error.stack }, 'error');
       res.status(500).json({ error: 'server-error', description: 'Internal server error' });
@@ -170,33 +170,13 @@ export class SignUpController extends BaseController {
   }
 
   /**
-   * A method to check if the email exists.
+   * Legacy email existence check. Anonymous callers must not learn whether an account exists,
+   * so the answer is always 'null' and no lookup is made. Duplicates are rejected after the code proves control of the address.
    */
   async checkEmailExist(req: Request, res: Response): Promise<void> {
-    let { email } = matchedData<{ email: string }>(req, { locations: ['query'] });
-    email = email.toLowerCase();
-    this.log.save('check-email-exist-request', { email }, 'info');
-
-    // Only proceed if email has a valid format.
-    if (!validateEmail(email)) {
-      this.log.save('check-email-exist-error', { email, error: 'Invalid email format.' }, 'warning');
-      res.send('null');
-      return;
-    }
-
-    try {
-      const query = Sequelize.where(Sequelize.fn('lower', Sequelize.col('email')), email.toLowerCase());
-
-      const user = await this.service('auth').getUser(query);
-      if (user) {
-        res.send(user.password ? 'exist' : 'existWithout');
-      } else {
-        res.send('null');
-      }
-    } catch (err) {
-      this.log.save('check-email-exist-error', { error: err }, 'error');
-      res.send('null');
-    }
+    const { email } = matchedData<{ email: string }>(req, { locations: ['query'] });
+    this.log.save('check-email-exist-request', { email: email.toLowerCase() }, 'info');
+    res.send('null');
   }
 
   /**
@@ -224,6 +204,7 @@ export class SignUpController extends BaseController {
       this.log.save('send-email-confirmation-code-error', { error: error.message, stack: error.stack }, 'error');
     }
 
+    // A registered account gets the same public answer as an unknown one, but no code is stored or sent.
     if (!user || user?.status === 'import') {
       let randomCode = testCodeObj ? testCodeObj.confirmationCode : this.service('auth').generatePinCode();
       let { confirmCodeEmailTemplate = '{{code}}', confirmCodeEmailHeader = 'Підтвердження реєстрації' } = this.config;
@@ -246,7 +227,19 @@ export class SignUpController extends BaseController {
       res.send('null');
     } else {
       this.log.save('send-email-confirmation-code-email-already-exist', { email, userId: user?.userId }, 'info');
-      res.send('exist');
+
+      // Tell the owner of the address, out of band, that the account exists (no code). Same rate limit as a code send.
+      const {
+        accountExistsEmailHeader = 'Обліковий запис уже існує',
+        accountExistsEmailText = 'Для цієї електронної пошти вже існує обліковий запис. Увійдіть або, якщо ви забули пароль, скористайтеся відновленням пароля.',
+      } = this.config;
+      try {
+        await this.service('notify').sendMail(email, accountExistsEmailText, accountExistsEmailHeader);
+      } catch (error: any) {
+        this.log.save('send-email-account-exists-notice-error', { email, error: error.message }, 'error');
+      }
+
+      res.send('null');
     }
   }
 
@@ -290,32 +283,13 @@ export class SignUpController extends BaseController {
   }
 
   /**
-   * Checks if the phone number exists.
+   * Legacy phone existence check. Anonymous callers must not learn whether an account exists,
+   * so the answer is always `false` and no lookup is made. Duplicates are rejected after the code proves control of the number.
    */
   async checkPhoneExist(req: Request, res: Response): Promise<void> {
-    let phone = req.query.phone;
-
-    // Log request.
+    const { phone } = matchedData<{ phone: string }>(req, { locations: ['query'] });
     this.log.save('check-phone-get-user-request', { phone }, 'info');
-
-    let user: (UserAttributes & { services?: UserServicesAttributes[] }) | null;
-    try {
-      user = await this.service('auth').getUser({ phone });
-    } catch (error: any) {
-      this.log.save('check-phone-get-user-error', { phone, error: error.message }, 'error');
-      res.send(false);
-      return;
-    }
-
-    // Log response.
-    this.log.save('check-phone-get-user-response', { phone }, 'info');
-
-    // Check phone.
-    if (user && user.services && Object.entries(user.services).length !== 0) {
-      res.send(true);
-    } else {
-      res.send(false);
-    }
+    res.send(false);
   }
 
   /**

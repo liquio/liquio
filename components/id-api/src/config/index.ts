@@ -220,6 +220,8 @@ export interface Config {
   confirmCodeRetries?: number;
   confirmCodeEmailTemplate?: string;
   confirmCodeEmailHeader?: string;
+  accountExistsEmailHeader?: string;
+  accountExistsEmailText?: string;
   confirmCodeEmailChangeHeader?: string;
   swagger?: boolean;
   customer?: string;
