@@ -1084,6 +1084,31 @@ export class AuthService extends BaseService {
   }
 
   /**
+   * Consume an SMS challenge issued to this user for exactly this phone, without changing the profile.
+   * Used as proof for sensitive changes (e.g. turning phone 2FA off). Single-use; wrong codes count against the retry limit.
+   */
+  async consumePhoneChallenge(userId: string, phone: unknown, code: unknown): Promise<boolean> {
+    if (typeof userId !== 'string' || !userId || typeof phone !== 'string' || !phone.trim() || typeof code !== 'string' || !code.trim()) {
+      return false;
+    }
+
+    const maxRetries = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
+    return Models.db.transaction(async (transaction) => {
+      const challenge = await this.model('confirmCode').findOne({
+        where: { userId, phone, code, counter: { [Op.lte]: maxRetries }, expiresIn: { [Op.gt]: Models.db.fn('NOW') } },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!challenge) {
+        await this.model('confirmCode').increment('counter', { by: 1, where: { userId, phone }, transaction });
+        return false;
+      }
+      await this.model('confirmCode').destroy({ where: { userId, phone }, transaction });
+      return true;
+    });
+  }
+
+  /**
    * Check if the string is a valid internal user ID.
    */
   isUserId(userId: string): boolean {

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-import { TestApp } from './test_app';
+import { TestApp, config } from './test_app';
 
 describe('Profile 2FA settings (ID-09)', () => {
   let app: TestApp;
@@ -58,14 +58,28 @@ describe('Profile 2FA settings (ID-09)', () => {
     expect(user.twoFactorType).toBe('totp');
   });
 
-  it('applies explicitly submitted 2FA fields', async () => {
-    await updateInfo({ gender: 'female', useTwoFactorAuth: 'true', twoFactorType: 'phone' }).expect(200);
-    let user = await getUser(victim.userId);
+  it('refuses 2FA fields on /user/info by default and changes nothing (ID-09d)', async () => {
+    await updateInfo({ gender: 'female', useTwoFactorAuth: 'false' }).expect(400);
+    await updateInfo({ twoFactorType: 'phone' }).expect(400);
+    const user = await getUser(victim.userId);
     expect(user.useTwoFactorAuth).toBe(true);
-    expect(user.twoFactorType).toBe('phone');
+    expect(user.twoFactorType).toBe('totp');
+    expect(user.gender).not.toBe('female');
+  });
 
-    await updateInfo({ useTwoFactorAuth: 'false' }).expect(200);
-    user = await getUser(victim.userId);
-    expect(user.useTwoFactorAuth).toBe(false);
+  it('applies explicitly submitted 2FA fields only with user_info.allowTwoFactorFields', async () => {
+    (config as any).user_info = { allowTwoFactorFields: true };
+    try {
+      await updateInfo({ gender: 'female', useTwoFactorAuth: 'true', twoFactorType: 'phone' }).expect(200);
+      let user = await getUser(victim.userId);
+      expect(user.useTwoFactorAuth).toBe(true);
+      expect(user.twoFactorType).toBe('phone');
+
+      await updateInfo({ useTwoFactorAuth: 'false' }).expect(200);
+      user = await getUser(victim.userId);
+      expect(user.useTwoFactorAuth).toBe(false);
+    } finally {
+      delete (config as any).user_info;
+    }
   });
 });

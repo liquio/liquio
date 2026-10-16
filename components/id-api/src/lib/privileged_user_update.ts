@@ -41,10 +41,6 @@ export function checkNamedClientUpdate(
     return { status: 403, message: `Fields ${privileged.join(', ')} require the user:admin scope` };
   }
 
-  if (body.useTwoFactorAuth === false || body.useTwoFactorAuth === 'false' || body.twoFactorType === null) {
-    return { status: 400, message: 'Two-factor authentication cannot be disabled here' };
-  }
-
   if (isDefined(body.role)) {
     const roles = typeof body.role === 'string' ? body.role.split(';').map((role) => role.trim()) : [];
     if (!roles.length || roles.some((role) => !role || !allowedRoles.includes(role))) {

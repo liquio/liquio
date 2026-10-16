@@ -42,6 +42,9 @@
       "secret": "<REDACTED>",
       "expiresIn": 60
     },
+    "user_info": {
+      "allowTwoFactorFields": false
+    },
     "basic_auth": {
       "allowLegacySharedSecret": true,
       "clients": []

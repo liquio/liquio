@@ -108,6 +108,7 @@ export class UserController extends BaseController {
     );
     this.router.get('/user/info', this.auth.authorise(), this.getUserInfo.bind(this));
     this.router.post('/user/info', this.auth.authorise(), this.updateUserInfo.bind(this));
+    this.router.post('/user/two_factor_auth', this.auth.authorise(), this.setTwoFactorAuth.bind(this));
     this.router.get('/user/jwt', this.auth.authorise(), this.getUserJwt.bind(this));
     this.router.get(
       '/user/info/phone/check_phone_confirmation_code',
@@ -330,6 +331,90 @@ export class UserController extends BaseController {
       res.send('ok');
     } catch (error: any) {
       this.log.save('update-user-error', { userId, error: error.message, stack: error.stack }, 'error');
+      res.status(500).send(publicError(error));
+    }
+  }
+
+  /**
+   * Turn phone two factor auth on or off with the user token (ID-09d).
+   * Enabling needs a verified phone. Disabling active phone 2FA needs a fresh SMS code sent to the current phone.
+   * TOTP is managed by the `/totp/*` routes only.
+   */
+  async setTwoFactorAuth(req: Request, res: Response): Promise<void> {
+    const userId = (req.user as any).id;
+    const { useTwoFactorAuth, twoFactorType, code } = req.body ?? {};
+
+    const { scope = [] } = res.locals.oauth?.token ?? {};
+    if (!Array.isArray(scope) || !(scope.includes('profile:write') || scope.includes('useTwoFactorAuth'))) {
+      this.log.save('two-factor-auth-scope-denied', { userId }, 'warn');
+      res.status(403).send('Insufficient scope');
+      return;
+    }
+
+    const enable = [true, 'true', 1].includes(useTwoFactorAuth);
+    const isBoolean = [true, 'true', 1, false, 'false', 0].includes(useTwoFactorAuth);
+    const reject = (status: number, reason: string, message: string, user?: any) => {
+      this.log.save(
+        'two-factor-auth-rejected',
+        { userId, enable, previousEnabled: !!user?.useTwoFactorAuth, previousType: user?.twoFactorType, reason },
+        'warn',
+      );
+      res.status(status).send({ error: message });
+    };
+
+    if (!isBoolean) {
+      return reject(400, 'invalid-flag', '`useTwoFactorAuth` should be a boolean.');
+    }
+    if (twoFactorType !== undefined && twoFactorType !== null && twoFactorType !== 'phone') {
+      return reject(400, 'unsupported-type', 'Only phone two factor auth can be set here.');
+    }
+    if (code !== undefined && typeof code !== 'string') {
+      return reject(400, 'invalid-code', '`code` should be a string.');
+    }
+
+    try {
+      const user: any = await this.service('auth').getUser({ userId });
+      if (!user) {
+        return reject(404, 'user-not-found', 'User not found.');
+      }
+      const previousEnabled = !!user.useTwoFactorAuth;
+      if (previousEnabled && user.twoFactorType === 'totp') {
+        return reject(400, 'totp-active', 'Two factor auth by TOTP can be changed only with TOTP code.', user);
+      }
+
+      if (enable) {
+        if (!user.phone || user.valid?.phone !== true) {
+          return reject(400, 'phone-not-verified', 'Verify phone first.', user);
+        }
+      } else if (previousEnabled) {
+        if (!code) {
+          return reject(400, 'proof-missing', 'Confirmation code is required to disable two factor auth.', user);
+        }
+        if (!(await this.service('auth').consumePhoneChallenge(userId, user.phone, code))) {
+          return reject(400, 'proof-invalid', 'Confirmation code is invalid.', user);
+        }
+      }
+
+      const updated: any = await this.service('auth').updateUser(
+        { userId },
+        { useTwoFactorAuth: enable, twoFactorType: enable ? 'phone' : user.twoFactorType },
+      );
+      if (req.session.passport?.user && updated) {
+        await saveSession(req, updated);
+      }
+      await this.model('userAdminAction').create({
+        user_id: userId,
+        data: {
+          changes: { twoFactor: enable ? 'phone enabled' : 'phone disabled' },
+          previous: { useTwoFactorAuth: previousEnabled, twoFactorType: user.twoFactorType },
+        } as any,
+        created_by: { userId } as any,
+        action_type: 'update',
+      });
+      this.log.save('two-factor-auth-changed', { userId, enable, previousEnabled, previousType: user.twoFactorType }, 'info');
+      res.send('ok');
+    } catch (error: any) {
+      this.log.save('two-factor-auth-error', { userId, error: error.message, stack: error.stack }, 'error');
       res.status(500).send(publicError(error));
     }
   }

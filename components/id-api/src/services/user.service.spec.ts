@@ -32,8 +32,8 @@ describe('UserService.extractUpdateUserInfoParams (email, ID-08)', () => {
 });
 
 describe('UserService.extractUpdateUserInfoParams (2FA, ID-09)', () => {
-  const extract = (body: Record<string, any>) =>
-    new UserService({ modules: {} } as any, {} as any, {} as any).extractUpdateUserInfoParams({ body } as any, [
+  const extract = (body: Record<string, any>, userInfo: Record<string, any> = { allowTwoFactorFields: true }) =>
+    new UserService({ modules: {}, user_info: userInfo } as any, {} as any, {} as any).extractUpdateUserInfoParams({ body } as any, [
       'gender',
       'useTwoFactorAuth',
       'twoFactorType',
@@ -60,10 +60,40 @@ describe('UserService.extractUpdateUserInfoParams (2FA, ID-09)', () => {
   });
 });
 
+describe('UserService.extractUpdateUserInfoParams (2FA fields refused, ID-09d)', () => {
+  it.each([{ useTwoFactorAuth: 'false' }, { useTwoFactorAuth: false }, { twoFactorType: 'phone' }, { twoFactorType: null }])(
+    'refuses %j by default',
+    (body) => {
+      const refuse = (userInfo?: Record<string, any>) => () => {
+        const config = { modules: {}, ...(userInfo ? { user_info: userInfo } : {}) };
+        new UserService(config as any, {} as any, {} as any).extractUpdateUserInfoParams({ body: { gender: 'male', ...body } } as any, [
+          'gender',
+          'useTwoFactorAuth',
+          'twoFactorType',
+        ]);
+      };
+      expect(refuse()).toThrow('/user/two_factor_auth');
+      expect(refuse({ allowTwoFactorFields: false })).toThrow('/user/two_factor_auth');
+      expect(refuse({ allowTwoFactorFields: true })).not.toThrow();
+    },
+  );
+
+  it('still accepts profile updates without 2FA fields', () => {
+    const query = new UserService({ modules: {} } as any, {} as any, {} as any).extractUpdateUserInfoParams({ body: { gender: 'male' } } as any, [
+      'gender',
+    ]);
+    expect(query.gender).toBe('male');
+  });
+});
+
 describe('UserService.extractUpdateUserInfoParams (token scope, GI-20)', () => {
   const FIELDS = () => ['gender', 'phone', 'birthday', 'twoFactorType', 'useTwoFactorAuth', 'foreigners_document_series'];
   const extract = (body: Record<string, any>, scope?: string[], modules: Record<string, any> = {}) =>
-    new UserService({ modules } as any, {} as any, {} as any).extractUpdateUserInfoParams({ body } as any, FIELDS(), scope);
+    new UserService({ modules, user_info: { allowTwoFactorFields: true } } as any, {} as any, {} as any).extractUpdateUserInfoParams(
+      { body } as any,
+      FIELDS(),
+      scope,
+    );
 
   it('rejects a field the scope does not cover', () => {
     expect(() => extract({ birthday: '2000-01-01', phone: '+380000000000' }, ['birthday'])).toThrow('Insufficient scope');

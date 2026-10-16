@@ -261,48 +261,30 @@ export class UserController extends Controller {
     if (twoFactorType !== undefined && twoFactorType !== null && twoFactorType !== 'phone') {
       return reject('unsupported-type', 'Only phone two factor auth can be set here.');
     }
-    if (currentEnabled && currentType === 'totp') {
-      return reject('totp-active', 'Two factor auth by TOTP can be changed only with TOTP code.');
-    }
 
-    if (enable) {
-      // Phone 2FA can be turned on only for a verified phone.
-      if (!userInfo.phone || !userInfo.valid || userInfo.valid.phone !== true) {
-        return reject('phone-not-verified', 'Verify phone first.');
-      }
-    } else if (currentEnabled && !this.config.user?.allowTwoFactorDisableWithoutProof) {
-      // Turning phone 2FA off requires a fresh SMS code sent to the current phone.
-      if (!code) {
-        return reject('proof-missing', 'Confirmation code is required to disable two factor auth.');
-      }
-      try {
-        const response = await this.idApiClient.verifyPhoneAndSet(userInfo.phone, code, accessToken);
-        if (!response || response.error || !response.data || !response.data.isConfirmed) {
-          return reject('proof-invalid', 'Confirmation code is invalid.');
-        }
-      } catch {
-        return reject('proof-invalid', 'Confirmation code is invalid.');
-      }
-    }
-
-    const updateOptions = {
-      useTwoFactorAuth: enable,
-      twoFactorType,
-    };
-
-    // Update.
-    let isUpdated;
+    // Id-api decides: a verified phone to enable, a fresh SMS code to disable, no change while TOTP is active.
+    // It consumes the code, so it must not be verified here beforehand.
+    let result;
     try {
-      isUpdated = await this.idApiClient.updateUser(userId, accessToken, updateOptions);
+      result = await this.idApiClient.setTwoFactorAuth(accessToken, { useTwoFactorAuth: enable, code });
     } catch (error) {
       return this.responseError(res, error);
     }
-    if (!isUpdated) {
-      return this.responseError(res, "Can't set two factor auth.");
+    if (!result.success) {
+      return reject('refused-by-id-api', result.error || "Can't set two factor auth.");
     }
 
     // Audit. No codes or secrets here.
-    global.log.save('user-controller|two-factor-auth|changed', { ...auditBase, nextType: twoFactorType ?? currentType });
+    global.log.save('user-controller|two-factor-auth|changed', { ...auditBase, nextType: enable ? 'phone' : currentType });
+
+    // Clear user info cache, so the next read shows the new state.
+    if (global.redisClient) {
+      try {
+        await global.redisClient.delete(`token.${this.getSha256Hash(accessToken)}`);
+      } catch (error) {
+        global.log.save('user-controller|two-factor-auth|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
+      }
+    }
 
     this.responseThatAccepted(res);
   }

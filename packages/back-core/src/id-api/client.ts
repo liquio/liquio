@@ -16,6 +16,8 @@ import {
   IdApiRoutes,
   IdApiSuccessResult,
   IdApiTokens,
+  IdApiSetTwoFactorAuthOptions,
+  IdApiSetTwoFactorAuthResult,
   IdApiUpdateUserOptions,
   IdApiUser,
   IdApiUserAdminAction,
@@ -53,6 +55,7 @@ export const ID_API_DEFAULT_ROUTES: IdApiRoutes = {
   updateUserInfo: '/user/info',
   updateUserById: '/user/info',
   updateUserOnboarding: '/user/info/onboarding',
+  setTwoFactorAuth: '/user/two_factor_auth',
   deleteUser: '/user',
   logoutByUserId: '/user/:id/logout',
   logoutOtherSessions: '/user/logout_other_sessions',
@@ -503,6 +506,34 @@ export class IdApiClient {
     this.log('user-info-updating-response', { userId, response: body });
 
     return body === USER_INFO_UPDATED_RESPONSE;
+  }
+
+  /**
+   * Turn phone two factor auth on or off with the user token. `POST /user/two_factor_auth` (form, access token in the query).
+   * Id-api enables only for a verified phone and disables active phone 2FA only with a fresh SMS code. Refusals (4xx) are returned, not thrown.
+   * @param {string} accessToken User access token.
+   * @param {IdApiSetTwoFactorAuthOptions} options `useTwoFactorAuth` and, to disable, the SMS `code`.
+   * @returns {Promise<IdApiSetTwoFactorAuthResult>} `success` is `true` when id-api answered `ok`.
+   * @throws {IdApiError} On network errors, timeouts and 5xx answers.
+   */
+  async setTwoFactorAuth(accessToken: string, options: IdApiSetTwoFactorAuthOptions): Promise<IdApiSetTwoFactorAuthResult> {
+    const form: Record<string, string | undefined> = {
+      useTwoFactorAuth: options.useTwoFactorAuth === true || options.useTwoFactorAuth === 'true' ? 'true' : 'false',
+      code: options.code === undefined || options.code === null ? undefined : String(options.code),
+    };
+
+    try {
+      const { body } = await this.request({ method: 'POST', route: this.routes.setTwoFactorAuth, query: { access_token: accessToken }, form });
+      this.log('user-two-factor-auth-response', { enable: form.useTwoFactorAuth, response: body });
+      return { success: body === USER_INFO_UPDATED_RESPONSE };
+    } catch (error: any) {
+      if (error instanceof IdApiError && error.status && error.status < 500) {
+        const message = error.body?.error ?? error.message;
+        this.log('user-two-factor-auth-refused', { status: error.status, error: message }, 'warn');
+        return { success: false, status: error.status, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      }
+      throw error;
+    }
   }
 
   /**

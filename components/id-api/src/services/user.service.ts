@@ -22,6 +22,9 @@ const WRITE_SCOPE_ALIASES: Record<string, string> = {
   foreigners_document_type: 'passport_series',
 };
 
+/** Profile fields that change the second factor; see `UserController.setTwoFactorAuth`. */
+const TWO_FACTOR_FIELDS = ['useTwoFactorAuth', 'twoFactorType'];
+
 /** The token does not cover a profile field present in the request. */
 export class ProfileScopeError extends HttpError {
   readonly statusCode = 403;
@@ -38,6 +41,10 @@ export class UserService extends BaseService {
   extractUpdateUserInfoParams(req: Request, fields: string[], scope?: string[]): WhereAttributeHash<any> {
     if ('email' in req.body) {
       throw new HttpError(400, 'Email can only be changed after verification through /user/info/email/set');
+    }
+    // Two factor auth is changed through `POST /user/two_factor_auth`, which checks the factor (ID-09d).
+    if (!this.config.user_info?.allowTwoFactorFields && TWO_FACTOR_FIELDS.some((field) => field in req.body)) {
+      throw new HttpError(400, 'Two factor auth can only be changed through /user/two_factor_auth');
     }
     const modules = this.config.modules ?? {};
     const { denyToUpdateUserName = true, denyToUpdateUserValidParams = true } = modules;

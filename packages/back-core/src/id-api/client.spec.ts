@@ -1109,6 +1109,53 @@ describe('IdApiClient', () => {
     });
   });
 
+  describe('setTwoFactorAuth', () => {
+    it('posts a form to /user/two_factor_auth with the access token in the query', async () => {
+      mockResponse(200, 'ok');
+
+      await expect(client.setTwoFactorAuth('tok', { useTwoFactorAuth: false, code: 123456 })).resolves.toEqual({ success: true });
+
+      const call = lastCall();
+      const params = new URLSearchParams(call.body);
+      expect(call.url).toBe('http://id.test:8100/user/two_factor_auth?access_token=tok');
+      expect(call.method).toBe('POST');
+      expect(call.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+      expect(call.headers.Authorization).toBeUndefined();
+      expect(params.get('useTwoFactorAuth')).toBe('false');
+      expect(params.get('code')).toBe('123456');
+    });
+
+    it('sends the enable flag without a code', async () => {
+      mockResponse(200, 'ok');
+      await client.setTwoFactorAuth('tok', { useTwoFactorAuth: 'true' });
+      const params = new URLSearchParams(lastCall().body);
+      expect(params.get('useTwoFactorAuth')).toBe('true');
+      expect(params.has('code')).toBe(false);
+    });
+
+    it('returns the refusal of id-api instead of throwing', async () => {
+      mockResponse(400, { error: 'Confirmation code is invalid.' });
+      await expect(client.setTwoFactorAuth('tok', { useTwoFactorAuth: false, code: '1' })).resolves.toEqual({
+        success: false,
+        status: 400,
+        error: 'Confirmation code is invalid.',
+      });
+    });
+
+    it('does not log the access token or the code', async () => {
+      mockResponse(200, 'ok');
+      await client.setTwoFactorAuth('tok-secret', { useTwoFactorAuth: false, code: 'code-secret' });
+      const logged = JSON.stringify(log.save.mock.calls);
+      expect(logged).not.toContain('tok-secret');
+      expect(logged).not.toContain('code-secret');
+    });
+
+    it('throws IdApiError on a 5xx response', async () => {
+      mockResponse(500, 'boom');
+      await expect(client.setTwoFactorAuth('tok', { useTwoFactorAuth: true })).rejects.toBeInstanceOf(IdApiError);
+    });
+  });
+
   describe('checkPhoneExist', () => {
     it('reports an existing confirmed phone', async () => {
       mockResponse(200, { text: 'user', valid: { phone: true } });

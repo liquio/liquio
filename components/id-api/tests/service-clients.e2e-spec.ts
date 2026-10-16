@@ -106,15 +106,23 @@ describe('Named service clients on basic() routes (KS-24)', () => {
     expect(await app.model('sessions').count({ where: { userId: user.userId } })).toBe(0);
   });
 
-  it('rejects roles outside the allowlist and 2FA disabling for named clients', async () => {
+  it('rejects roles outside the allowlist for named clients', async () => {
     const user = await newUser({ useTwoFactorAuth: true, twoFactorType: 'totp' });
     await update(user.userId, ADMIN, { role: 'superuser' }).expect(400);
     await update(user.userId, ADMIN, { role: 'individual;superuser' }).expect(400);
-    await update(user.userId, ADMIN, { useTwoFactorAuth: false }).expect(400);
-    await update(user.userId, ADMIN, { twoFactorType: null }).expect(400);
     const stored = await reload(user.userId);
     expect(stored.role).toBe('individual');
     expect(stored.useTwoFactorAuth).toBe(true);
+  });
+
+  it('lets a user:admin named client disable 2FA, audited with the service name (ID-09d)', async () => {
+    const user = await newUser({ useTwoFactorAuth: true, twoFactorType: 'totp' });
+    await update(user.userId, ADMIN, { useTwoFactorAuth: false }).expect(200);
+    expect((await reload(user.userId)).useTwoFactorAuth).toBe(false);
+    const rows = await actions(user.userId);
+    expect(rows.some((row) => (row.data as any).changes?.useTwoFactorAuth === false && (row.created_by as any)?.service === 'admin-service')).toBe(
+      true,
+    );
   });
 
   it('audits blocking by a named client with the service name', async () => {

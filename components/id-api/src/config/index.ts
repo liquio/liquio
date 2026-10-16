@@ -140,6 +140,12 @@ export interface Config {
     secret?: string;
     expiresIn?: number | string | null | object | any[];
   };
+  // `POST /user/info` options.
+  user_info?: {
+    // Let a user token set `useTwoFactorAuth` and `twoFactorType` through `POST /user/info` without a proof of the factor (default false).
+    // The supported way is `POST /user/two_factor_auth`.
+    allowTwoFactorFields?: boolean;
+  };
   // Named identities for `basic()` routes (service-to-service). The legacy shared secret keeps all scopes while allowed.
   basic_auth?: {
     allowLegacySharedSecret?: boolean;

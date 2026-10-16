@@ -26,10 +26,11 @@ describe('checkNamedClientUpdate (KS-24)', () => {
     expect(checkNamedClientUpdate({ role: 'admin;' }, client('user:admin'), ['admin'])?.status).toBe(400);
   });
 
-  it('refuses disabling 2FA', () => {
-    expect(checkNamedClientUpdate({ useTwoFactorAuth: false }, client('user:admin'))?.status).toBe(400);
-    expect(checkNamedClientUpdate({ useTwoFactorAuth: 'false' }, client('user:admin'))?.status).toBe(400);
-    expect(checkNamedClientUpdate({ twoFactorType: null }, client('user:admin'))?.status).toBe(400);
+  it('lets user:admin disable 2FA (KS-24 residual, ID-09d) but not other clients', () => {
+    expect(checkNamedClientUpdate({ useTwoFactorAuth: false }, client('user:admin'))).toBeUndefined();
+    expect(checkNamedClientUpdate({ useTwoFactorAuth: 'false' }, client('user:admin'))).toBeUndefined();
+    expect(checkNamedClientUpdate({ twoFactorType: null }, client('user:admin'))).toBeUndefined();
+    expect(checkNamedClientUpdate({ useTwoFactorAuth: false }, client('user:write'))?.status).toBe(403);
     expect(checkNamedClientUpdate({ useTwoFactorAuth: true, twoFactorType: 'totp' }, client('user:admin'))).toBeUndefined();
   });
 

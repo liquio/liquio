@@ -1,6 +1,5 @@
 {
   "allowedGenders": ["male", "female"],
   "allowSetUnconfirmedPhone": true,
-  "allowSetUnconfirmedEmail": false,
-  "allowTwoFactorDisableWithoutProof": false
+  "allowSetUnconfirmedEmail": false
 }
