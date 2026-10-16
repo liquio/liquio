@@ -120,6 +120,7 @@ metadata:
   "swagger" false
   "trustProxy" 1
   "legacyGetConfirmation" true
+  "users" (dict "maxLimit" 100 "maxBatch" 1000 "fullReadClients" (list))
   "x509" $x509Base
 -}}
 {{ $idConfigBase := dict

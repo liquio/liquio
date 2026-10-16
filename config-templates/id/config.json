@@ -166,6 +166,11 @@
     "pingRoutes": {
       "notify": "http://localhost:3002/test/ping"
     },
+    "users": {
+      "maxLimit": 100,
+      "maxBatch": 1000,
+      "fullReadClients": []
+    },
     "redis": {
       "isEnabled": true,
       "host": "redis",

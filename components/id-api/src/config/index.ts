@@ -254,6 +254,15 @@ export interface Config {
     notify?: string;
     eds?: string;
   };
+  // Limits for the `basic()` user read routes (KS-25), see lib/user_read_policy.ts.
+  users?: {
+    // Page size cap for `GET /user` and `POST /user/info/search`. Default 100.
+    maxLimit?: number;
+    // Batch cap for `POST /user/info/{id,ipn,edrpou}`. Default 1000.
+    maxBatch?: number;
+    // Named basic_auth clients that may receive `services` and run unfiltered lists. The legacy shared secret always may.
+    fullReadClients?: string[];
+  };
   redis: {
     isEnabled?: boolean;
     host?: string;
