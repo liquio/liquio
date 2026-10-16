@@ -2318,17 +2318,15 @@ export class Message extends Auth {
           return res.send(404, { error: 'Not found message for this user_id.' });
         }
 
-        // Check strict allow_hide.
-        if (typeof req.query.strict_allow_hide !== 'undefined' && req.query.strict_allow_hide === 'true') {
-          const importantMessage = await ImportantMessages.findOne({ where: { message_id: messageId, user_message_id: message.userMessageId } });
-          if (importantMessage && importantMessage.allow_hide === false) {
-            const error = { error: 'Param allow_hide set false.' };
-            return res.send(400, error);
-          }
+        // Check allow_hide (always, regardless of client params).
+        const importantMessage = await ImportantMessages.findOne({ where: { message_id: messageId, user_message_id: message.userMessageId } });
+        if (importantMessage && importantMessage.allow_hide === false) {
+          const error = { error: 'Param allow_hide set false.' };
+          return res.send(400, error);
         }
 
         const [, importantMessages] = await ImportantMessages.update(
-          { is_active: false, allow_hide: true },
+          { is_active: false },
           {
             where: { user_message_id: message.userMessageId },
             returning: true,

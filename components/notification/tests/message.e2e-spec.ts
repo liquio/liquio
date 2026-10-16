@@ -118,4 +118,52 @@ describe('Message Controller', () => {
       await app.request().get('/message/1').query({ user_id: 1 }).set('Authorization', TEST_AUTH_HEADER).expect(404);
     });
   });
+  describe('PUT /message/important/:id/set-unimportant (NT-07)', () => {
+    // Seed an important message for the user through the app's own models.
+    const seed = async (userId: string, allowHide: boolean) => {
+      const { IncommingMessagesModel } = require('../src/models/incomming_messages');
+      const { UsersMessagesModel } = require('../src/models/users_messages');
+      const { ImportantMessagesModel } = require('../src/models/important_messages');
+      const message = await new IncommingMessagesModel().IncommingMessages.create({ title_message: 'nt07' });
+      const userMessage = await new UsersMessagesModel().UsersMessages.create({ user_id: userId, message_id: message.message_id });
+      const important = await new ImportantMessagesModel().ImportantMessages.create({
+        user_message_id: userMessage.user_message_id,
+        message_id: message.message_id,
+        is_active: true,
+        allow_hide: allowHide,
+      });
+      return { messageId: message.message_id, userMessageId: userMessage.user_message_id, important };
+    };
+    const reload = async (userMessageId: number) => {
+      const { ImportantMessagesModel } = require('../src/models/important_messages');
+      return new ImportantMessagesModel().ImportantMessages.findOne({ where: { user_message_id: userMessageId } });
+    };
+    const put = (id: number, query: Record<string, any>) =>
+      app.request().put(`/message/important/${id}/set-unimportant`).query(query).set('Authorization', TEST_AUTH_HEADER);
+
+    it.each([[{}], [{ strict_allow_hide: 'true' }], [{ strict_allow_hide: 'false' }]])(
+      'refuses a message with allow_hide=false and keeps it active (query %j)',
+      async (extra) => {
+        const { messageId, userMessageId } = await seed('nt07-user', false);
+        await put(messageId, { user_id: 'nt07-user', ...extra }).expect(400);
+        const row = await reload(userMessageId);
+        expect(row.is_active).toBe(true);
+        expect(row.allow_hide).toBe(false);
+      },
+    );
+
+    it('deactivates a message with allow_hide=true without modifying allow_hide', async () => {
+      const { messageId, userMessageId } = await seed('nt07-user', true);
+      await put(messageId, { user_id: 'nt07-user' }).expect(200);
+      const row = await reload(userMessageId);
+      expect(row.is_active).toBe(false);
+      expect(row.allow_hide).toBe(true);
+    });
+
+    it("answers 404 for another user's message and leaves it active", async () => {
+      const { messageId, userMessageId } = await seed('nt07-owner', true);
+      await put(messageId, { user_id: 'nt07-other' }).expect(404);
+      expect((await reload(userMessageId)).is_active).toBe(true);
+    });
+  });
 });
