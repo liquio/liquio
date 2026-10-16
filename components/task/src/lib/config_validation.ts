@@ -124,3 +124,75 @@ export function assertDownloadTokenConfig(config: Record<string, any>): void {
     throw new Error(`Invalid download_token config: ${problem}`);
   }
 }
+
+export const TEST_AUTH_PRODUCTION_OVERRIDE_ENV = 'ALLOW_TEST_AUTH_IN_PRODUCTION';
+export const MIN_TEST_USER_TOKEN_LENGTH = 16;
+const TEST_AUTH_FLAGS = ['allowedTestAuth', 'allowedTestSign', 'allowedTestPem'];
+
+/**
+ * Validate the test-user bypass (auth.allowedTestAuth / allowedTestSign / allowedTestPem + test_users.list).
+ * Each flag lets a request with a `test_users` token skip real authentication, signing or PEM checks, so in production
+ * it is refused unless ALLOW_TEST_AUTH_IN_PRODUCTION=true. allowedTestPem is true in the templates but inert while
+ * test_users is empty, so it is refused only together with a non-empty list. Test tokens must be long and non-placeholder.
+ * @param {Record<string, any>} config Config object.
+ * @param {string} [env] Node environment.
+ * @param {string} [override] Value of ALLOW_TEST_AUTH_IN_PRODUCTION.
+ * @returns {{ problems: string[], warnings: string[] }} Problems (fatal) and warnings.
+ */
+export function validateTestAuthConfig(
+  config: Record<string, any>,
+  env: string | undefined = process.env.NODE_ENV,
+  override: string | undefined = process.env[TEST_AUTH_PRODUCTION_OVERRIDE_ENV],
+): { problems: string[]; warnings: string[] } {
+  const problems: string[] = [];
+  const warnings: string[] = [];
+  const list = config?.test_users?.list;
+  const users: any[] = Array.isArray(list) ? list : [];
+  const enabled = TEST_AUTH_FLAGS.filter((flag) => config?.auth?.[flag] === true && (flag !== 'allowedTestPem' || users.length > 0));
+
+  if (!enabled.length) {
+    return { problems, warnings };
+  }
+
+  const isProduction = env === PRODUCTION_ENV;
+  if (isProduction && override !== 'true') {
+    problems.push(
+      `auth.${enabled.join(', auth.')} enabled in production: test_users tokens would bypass authentication. ` +
+        `Disable it, or set ${TEST_AUTH_PRODUCTION_OVERRIDE_ENV}=true to override explicitly`,
+    );
+  } else if (isProduction) {
+    warnings.push(`test-auth-in-production: auth.${enabled.join(', auth.')} enabled via ${TEST_AUTH_PRODUCTION_OVERRIDE_ENV}`);
+  }
+
+  users.forEach((user, index) => {
+    const token = user?.token;
+    const label = `test_users.list[${index}].token`;
+    if (typeof token !== 'string' || token.trim().length < MIN_TEST_USER_TOKEN_LENGTH) {
+      problems.push(`${label} is missing or shorter than ${MIN_TEST_USER_TOKEN_LENGTH} characters`);
+    } else if (/^<.*>$/.test(token.trim().toLowerCase()) || PLACEHOLDER_SECRETS.includes(token.trim().toLowerCase())) {
+      problems.push(`${label} is a placeholder`);
+    }
+  });
+
+  return { problems, warnings };
+}
+
+/**
+ * Throw when the test-user bypass is enabled unsafely; log a warning when it is explicitly allowed in production.
+ * @param {Record<string, any>} config Config object.
+ * @param {string} [env] Node environment.
+ * @param {string} [override] Value of ALLOW_TEST_AUTH_IN_PRODUCTION.
+ * @param {(message: string) => void} [warn] Warning writer.
+ */
+export function assertTestAuthConfig(
+  config: Record<string, any>,
+  env: string | undefined = process.env.NODE_ENV,
+  override: string | undefined = process.env[TEST_AUTH_PRODUCTION_OVERRIDE_ENV],
+  warn: (message: string) => void = (message) => console.warn(message),
+): void {
+  const { problems, warnings } = validateTestAuthConfig(config, env, override);
+  warnings.forEach(warn);
+  if (problems.length) {
+    throw new Error(`Invalid test auth config: ${problems.join('; ')}`);
+  }
+}

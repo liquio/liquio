@@ -1,4 +1,10 @@
-import { assertBasicAuthConfig, buildSandboxConfig, validateBasicAuthConfig } from './config_validation';
+import {
+  assertTestAuthConfig,
+  validateTestAuthConfig,
+  assertBasicAuthConfig,
+  buildSandboxConfig,
+  validateBasicAuthConfig,
+} from './config_validation';
 
 const basic = (credentials: string) => `Basic ${Buffer.from(credentials).toString('base64')}`;
 // The token that used to be committed to config-templates, built here to keep the literal out of the sources.
@@ -82,5 +88,49 @@ describe('assertDownloadTokenConfig', () => {
 
   it('should refuse a missing section', () => {
     expect(() => assertDownloadTokenConfig({})).toThrow('Invalid download_token config');
+  });
+});
+
+describe('test auth bypass config', () => {
+  const token = 'test-user-token-0123456789';
+  const users = { list: [{ token, user: { userId: '1' } }] };
+
+  it('should refuse allowedTestAuth in production without override', () => {
+    const config = { auth: { allowedTestAuth: true }, test_users: users };
+    expect(() => assertTestAuthConfig(config, 'production', undefined)).toThrow('allowedTestAuth');
+    expect(() => assertTestAuthConfig({ auth: { allowedTestAuth: true } }, 'production', undefined)).toThrow();
+  });
+
+  it('should refuse allowedTestSign and allowedTestPem with test users in production', () => {
+    expect(() => assertTestAuthConfig({ auth: { allowedTestSign: true }, test_users: users }, 'production', undefined)).toThrow();
+    expect(() => assertTestAuthConfig({ auth: { allowedTestPem: true }, test_users: users }, 'production', undefined)).toThrow();
+  });
+
+  it('should accept the template defaults in production (allowedTestPem without test users is inert)', () => {
+    const config = { auth: { allowedTestAuth: false, allowedTestSign: false, allowedTestPem: true } };
+    expect(() => assertTestAuthConfig(config, 'production', undefined)).not.toThrow();
+  });
+
+  it('should allow production with an explicit override and warn', () => {
+    const warn = jest.fn();
+    assertTestAuthConfig({ auth: { allowedTestAuth: true }, test_users: users }, 'production', 'true', warn);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('should allow mock auth outside production', () => {
+    expect(() => assertTestAuthConfig({ auth: { allowedTestAuth: true }, test_users: users }, 'test', undefined)).not.toThrow();
+  });
+
+  it('should refuse short and placeholder test tokens when enabled', () => {
+    const bad = (t: any) => ({ auth: { allowedTestAuth: true }, test_users: { list: [{ token: t }] } });
+    expect(validateTestAuthConfig(bad('short'), 'test', undefined).problems).toHaveLength(1);
+    expect(validateTestAuthConfig(bad('<REDACTED-REDACTED>'), 'test', undefined).problems).toHaveLength(1);
+    expect(validateTestAuthConfig(bad(undefined), 'test', undefined).problems).toHaveLength(1);
+  });
+
+  it('should not check tokens when no flag is enabled', () => {
+    expect(
+      validateTestAuthConfig({ auth: { allowedTestAuth: false }, test_users: { list: [{ token: 'x' }] } }, 'production', undefined).problems,
+    ).toEqual([]);
   });
 });
