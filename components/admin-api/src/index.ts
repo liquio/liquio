@@ -15,6 +15,7 @@ import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
+import { warnPlainHttpInternalUrls } from './lib/internal_transport';
 import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault } from './lib/config_check';
 import { buildSandboxConfig } from './lib/sandbox_config';
 
@@ -44,6 +45,7 @@ async function main() {
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;
+  warnPlainHttpInternalUrls(config);
   if (placeholderSecrets.length > 0) {
     global.log.save('config-placeholder-secrets-in-dev', { paths: placeholderSecrets });
   }

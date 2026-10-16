@@ -3,6 +3,7 @@ import querystring from 'querystring';
 import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from '../lib/http_request';
+import { getInternalHttpsAgent } from '../lib/internal_transport';
 
 /**
  * Notifier service.
@@ -53,6 +54,7 @@ export class NotifierService {
     };
 
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.toAll}`,
       method: HttpRequest.Methods.POST,
       headers: this.getHeadersWithTraceId(),
@@ -72,6 +74,7 @@ export class NotifierService {
    */
   async getMessagesForAllUsers(start, count) {
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.toAll}?start=${start}&count=${count}`,
       method: HttpRequest.Methods.GET,
       headers: this.getHeadersWithTraceId(),
@@ -88,6 +91,7 @@ export class NotifierService {
    */
   async deleteMessagesForAllUsers(messageId) {
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.toAll}/${messageId}`,
       method: HttpRequest.Methods.DELETE,
       headers: this.getHeadersWithTraceId(),
@@ -108,6 +112,7 @@ export class NotifierService {
     try {
       let responseData = await HttpRequest.send(
         {
+          httpsAgent: getInternalHttpsAgent(),
           url: `${this.server}:${this.port}${this.routes.ping}_with_auth`,
           method: HttpRequest.Methods.GET,
           headers: this.getHeadersWithTraceId(),
@@ -131,6 +136,7 @@ export class NotifierService {
   async getMessageTemplates(params?) {
     const query = params ? this.queryParamsToString(params) : '';
     return HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}/template?${query}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
@@ -139,6 +145,7 @@ export class NotifierService {
 
   async createMessageTemplate(dto) {
     return HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}/template`,
       method: HttpRequest.Methods.POST,
       body: JSON.stringify(dto),
@@ -148,6 +155,7 @@ export class NotifierService {
 
   async updateMessageTemplate(id, dto) {
     return HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}/template/${id}`,
       method: HttpRequest.Methods.PUT,
       body: JSON.stringify(dto),
@@ -158,6 +166,7 @@ export class NotifierService {
   async deleteMessageTemplate(id) {
     try {
       await HttpRequest.send({
+        httpsAgent: getInternalHttpsAgent(),
         url: `${this.server}:${this.port}/template/${id}`,
         method: HttpRequest.Methods.DELETE,
         headers: this.getHeadersWithTraceId(),
@@ -176,6 +185,7 @@ export class NotifierService {
     };
 
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.sendToUserEmails}`,
       method: HttpRequest.Methods.POST,
       headers: this.getHeadersWithTraceId(),
@@ -196,6 +206,7 @@ export class NotifierService {
     };
 
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.sendToUserList}`,
       method: HttpRequest.Methods.POST,
       headers: this.getHeadersWithTraceId(),
@@ -210,6 +221,7 @@ export class NotifierService {
 
   async importMessageTemplates({ dataToImport, rewriteTemplateIds }) {
     return HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}/import/template`,
       method: HttpRequest.Methods.POST,
       body: JSON.stringify({ dataToImport, rewriteTemplateIds }),

@@ -3,6 +3,8 @@ import { existsSync } from 'fs';
 import Multiconf from 'multiconf';
 import { SandboxConfig } from '@liquio/back-core';
 
+import type { TlsConfig } from './tls';
+
 export const CONFIG_PATH = process.env.CONFIG_PATH || '../config/register';
 export const SECRET_PATH = process.env.SECRET_PATH;
 export const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_REGISTER';
@@ -111,5 +113,7 @@ export interface Config {
     timeout: number;
     url: string;
     token: string;
+    tls?: TlsConfig;
+    allowPlainHttp?: boolean;
   };
 }

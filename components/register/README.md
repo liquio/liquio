@@ -70,3 +70,6 @@ For a private CA, either set `NODE_EXTRA_CA_CERTS=/path/to/ca.pem` for the proce
 `tls = { "ca": "<PEM or path to PEM file>", "rejectUnauthorized": true }` in: `sign.json` (`tls`), the `plink` afterhandler config (`tls`),
 the `elastic` afterhandler config (`options.tls`) and the blockchain provider params (`providerParams.tls`).
 `rejectUnauthorized: false` is an explicit opt-out that is logged (`tls-verification-disabled`); do not use it in production.
+
+Sign tool: `sign.json` also accepts `tls.cert` + `tls.key` (PEM or path) as a client certificate for mTLS. In production a plain `http://`
+`sign.url` logs the warning `sign-plain-http`; set `sign.allowPlainHttp: true` to acknowledge it (NetworkPolicy/mesh-protected traffic).

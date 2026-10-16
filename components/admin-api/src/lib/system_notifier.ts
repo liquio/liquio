@@ -1,6 +1,7 @@
 import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from './http_request';
+import { getInternalHttpsAgent } from './internal_transport';
 
 /**
  * System Notifier.
@@ -64,6 +65,7 @@ export class SystemNotifier {
       global.log.save('system-notifier-email-sending-request', { url, body });
       const response = await HttpRequest.send({
         url,
+        httpsAgent: getInternalHttpsAgent(),
         method: HttpRequest.Methods.POST,
         headers: {
           ...this.headers,

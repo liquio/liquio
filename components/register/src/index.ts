@@ -9,7 +9,7 @@ import Router from './router';
 import Encryption from './lib/encryption';
 import { config } from './lib/config';
 import { listUnrestrictedUsers } from './lib/service_permissions';
-import { assertSafeConfig, assertEncryptionConfig } from './lib/config_guard';
+import { assertSafeConfig, assertEncryptionConfig, warnPlainHttpSign } from './lib/config_guard';
 import { RedisClient } from './lib/redis_client';
 import { PgPubSub } from './lib/pgpubsub';
 import { buildSandboxConfig } from './lib/sandbox_config';
@@ -31,6 +31,8 @@ try {
   log.save('config-guard-error', { error: error?.message }, 'error');
   process.exit(1);
 }
+
+warnPlainHttpSign(config);
 
 // Basic users without a permission entry have full access (opt-in hardening, `auth.servicePermissions`).
 const unrestrictedUsers = listUnrestrictedUsers(config.auth);

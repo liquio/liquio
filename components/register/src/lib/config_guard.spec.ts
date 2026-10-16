@@ -1,4 +1,4 @@
-import { assertEncryptionConfig, assertSafeConfig, checkAuthConfig, checkEncryptionConfig } from './config_guard';
+import { assertEncryptionConfig, assertSafeConfig, checkAuthConfig, checkEncryptionConfig, warnPlainHttpSign } from './config_guard';
 import { Config } from './config';
 
 const basic = (pair: string) => `Basic ${Buffer.from(pair).toString('base64')}`;
@@ -86,5 +86,28 @@ describe('config_guard', () => {
     it('passes for valid config', () => {
       expect(() => assertSafeConfig(cfg({ tokens: [GOOD_TOKEN] }, { key: GOOD_KEY }))).not.toThrow();
     });
+  });
+});
+
+describe('warnPlainHttpSign', () => {
+  const sign = (extra = {}) => ({ sign: { url: 'http://sign', token: 't', timeout: 1, ...extra } }) as any;
+  let save: jest.Mock;
+
+  beforeEach(() => {
+    save = jest.fn();
+    (global as any).log = { save };
+  });
+
+  it('warns about http in production', () => {
+    expect(warnPlainHttpSign(sign(), 'production')).toBe(true);
+    expect(warnPlainHttpSign(sign(), 'prod')).toBe(true);
+    expect(save).toHaveBeenCalledWith('sign-plain-http', expect.objectContaining({ key: 'sign.url' }), 'warn');
+  });
+
+  it('does not warn for https, with opt-in, or outside production', () => {
+    expect(warnPlainHttpSign(sign({ url: 'https://sign' }), 'production')).toBe(false);
+    expect(warnPlainHttpSign(sign({ allowPlainHttp: true }), 'production')).toBe(false);
+    expect(warnPlainHttpSign(sign(), 'development')).toBe(false);
+    expect(save).not.toHaveBeenCalled();
   });
 });

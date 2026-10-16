@@ -54,6 +54,7 @@ export class HttpRequest {
    * @param {object} [requestOptions.headers] Headers in format {"key": "value"}.
    * @param {string} [requestOptions.body] Body string.
    * @param {number} [requestOptions.timeout] Connection timeout.
+   * @param {https.Agent} [requestOptions.httpsAgent] Optional HTTPS agent (internal CA / client certificate).
    * @param {boolean} [withFullResponse] Whether to return full response or only body.
    * @returns {Promise<object>}
    */
@@ -66,6 +67,9 @@ export class HttpRequest {
         timeout: requestOptions.timeout,
         validateStatus: () => true, // Don't throw on any status code
       };
+      if (requestOptions.httpsAgent) {
+        axiosConfig.httpsAgent = requestOptions.httpsAgent;
+      }
 
       // Add data for POST, PUT requests
       if (requestOptions.body) {

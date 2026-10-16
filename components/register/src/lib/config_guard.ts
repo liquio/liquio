@@ -86,3 +86,20 @@ export function assertSafeConfig(config: Config): void {
 export function assertEncryptionConfig(config: Config, encryptedKeysExist: boolean): void {
   fail(checkEncryptionConfig(config, encryptedKeysExist));
 }
+
+/**
+ * Warn about a plain `http://` sign-tool URL in production unless `sign.allowPlainHttp` is set.
+ * Does not refuse to start: shipped Helm values still use http for the in-cluster call (protected by NetworkPolicies).
+ * @returns {boolean} true when a warning was logged.
+ */
+export function warnPlainHttpSign(config: Config, env: string | undefined = process.env.NODE_ENV): boolean {
+  const sign = config?.sign;
+  if (!env || !['production', 'prod'].includes(env) || sign?.allowPlainHttp === true) return false;
+  if (typeof sign?.url !== 'string' || !/^http:\/\//i.test(sign.url.trim())) return false;
+  global.log?.save(
+    'sign-plain-http',
+    { key: 'sign.url', hint: 'Use https:// with sign.tls.ca, or set sign.allowPlainHttp=true when NetworkPolicy/mesh mTLS protects the traffic.' },
+    'warn',
+  );
+  return true;
+}

@@ -1,5 +1,6 @@
 {
   "timeout": 10000,
   "url": "http://sign",
-  "token": ""
+  "token": "",
+  "allowPlainHttp": true
 }

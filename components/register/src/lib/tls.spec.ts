@@ -48,6 +48,20 @@ describe('createHttpsAgent', () => {
   });
 });
 
+describe('createHttpsAgent mTLS', () => {
+  it('presents a client certificate when cert and key are set, keeping verification on', () => {
+    const KEY = '-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----';
+    const agent: any = createHttpsAgent({ cert: PEM, key: KEY });
+    expect(agent.options.cert).toBe(PEM);
+    expect(agent.options.key).toBe(KEY);
+    expect(agent.options.rejectUnauthorized).toBe(true);
+  });
+
+  it('ignores a cert without a key', () => {
+    expect(createHttpsAgent({ cert: PEM })).toBeUndefined();
+  });
+});
+
 describe('register TLS wiring', () => {
   const axios: any = require('axios');
 
