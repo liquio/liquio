@@ -300,7 +300,7 @@ class ExternalLinkProvider extends LinkProvider {
       // Check.
       const isValidData = this.isValidOptions(options);
       if (!isValidData) {
-        res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+        return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
       }
 
       // Define params.

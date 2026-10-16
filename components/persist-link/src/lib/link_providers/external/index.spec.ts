@@ -298,6 +298,18 @@ describe('ExternalLinkProvider', () => {
       expect(res.status).toHaveBeenCalledWith(404);
     });
 
+    it('should respond with exactly one 404 and not query templates when options are invalid', async () => {
+      const provider = createProvider();
+      const res = createRes();
+
+      await provider.getTemplate({ templateName: 'unknown' }, res);
+
+      expect(res.status).toHaveBeenCalledTimes(1);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.send).toHaveBeenCalledTimes(1);
+      expect(provider.templateModel.findByNameAndMethod).not.toHaveBeenCalled();
+    });
+
     it('should respond with the template data', async () => {
       const provider = createProvider();
       provider.templateModel.findByNameAndMethod.mockResolvedValue({

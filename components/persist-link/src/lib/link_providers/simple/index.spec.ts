@@ -67,6 +67,20 @@ describe('SimpleLinkProvider', () => {
       expect(logSave).toHaveBeenCalledWith('simple-invalid-options', expect.anything());
     });
 
+    it.each([null, undefined, {}, { url: 'file:///etc/passwd' }])(
+      'should respond exactly once and make no upstream request for options %p',
+      async (options) => {
+        const res = createRes();
+        await new SimpleLinkProvider({}).open(options, res);
+        expect(res.status).toHaveBeenCalledTimes(1);
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.send).toHaveBeenCalledTimes(1);
+        expect(res.redirect).not.toHaveBeenCalled();
+        expect(httpMock.stream).not.toHaveBeenCalled();
+        expect(httpMock.send).not.toHaveBeenCalled();
+      },
+    );
+
     it('should respond with 404 when options are invalid', async () => {
       const res = createRes();
       await new SimpleLinkProvider({}).open(null, res);
