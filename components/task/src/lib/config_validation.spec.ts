@@ -68,3 +68,19 @@ describe('buildSandboxConfig', () => {
     expect(result).toEqual(['undefined', 'undefined', 'undefined']);
   });
 });
+
+describe('assertDownloadTokenConfig', () => {
+  const { assertDownloadTokenConfig } = require('./config_validation');
+
+  it('should accept a random secret', () => {
+    expect(() => assertDownloadTokenConfig({ download_token: { jwtSecret: 'Zk3p9QwLm2Xv8RtYh5Nc7Bd1' } })).not.toThrow();
+  });
+
+  it.each([undefined, '', '<removed>', '<REDACTED>', 'REDACTED', 'changeme', 'short'])('should refuse %p', (jwtSecret) => {
+    expect(() => assertDownloadTokenConfig({ download_token: { jwtSecret } })).toThrow('Invalid download_token config');
+  });
+
+  it('should refuse a missing section', () => {
+    expect(() => assertDownloadTokenConfig({})).toThrow('Invalid download_token config');
+  });
+});

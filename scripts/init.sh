@@ -308,6 +308,15 @@ jq --arg secret "$JWT_SECRET" \
     $file > $file.tmp && mv $file.tmp $file
 }
 
+{
+  echo "==> Generate a dedicated random secret for Task download tokens"
+  file="config/task/download_token.json"
+  echo "$file"
+  jq --arg secret "$(generate_secret 48)" \
+    '.jwtSecret = $secret' \
+    $file > $file.tmp && mv $file.tmp $file
+}
+
 echo "==> Generate an encryption key for Register service"
 file="config/register/encryption.json"
 jq --arg key "$(generate_secret)" \

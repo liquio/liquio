@@ -88,3 +88,39 @@ export function buildSandboxConfig(
 
   return { ...sandboxConfig, isolationLevel: 'isolated-vm' };
 }
+
+// Placeholder secrets committed to config templates or commonly left as defaults.
+const PLACEHOLDER_SECRETS = ['<removed>', 'redacted', 'changeme', 'secret'];
+export const MIN_DOWNLOAD_TOKEN_SECRET_LENGTH = 16;
+
+/**
+ * Check a download token signing secret. Refuses empty, placeholder (`<...>`, REDACTED, changeme, ...) and short values.
+ * @param {any} secret Secret from config.
+ * @returns {string|null} Problem description or null.
+ */
+export function checkDownloadTokenSecret(secret: any): string | null {
+  if (typeof secret !== 'string' || !secret.trim()) {
+    return 'download_token.jwtSecret is empty: provide download_token.json with a random secret';
+  }
+
+  const normalized = secret.trim().toLowerCase();
+  if (/^<.*>$/.test(normalized) || PLACEHOLDER_SECRETS.includes(normalized)) {
+    return 'download_token.jwtSecret is a placeholder, generate a random secret (scripts/init.sh does it)';
+  }
+  if (secret.length < MIN_DOWNLOAD_TOKEN_SECRET_LENGTH) {
+    return `download_token.jwtSecret is too short, use at least ${MIN_DOWNLOAD_TOKEN_SECRET_LENGTH} characters`;
+  }
+
+  return null;
+}
+
+/**
+ * Throw when download_token config has no usable signing secret.
+ * @param {Record<string, any>} config Config object.
+ */
+export function assertDownloadTokenConfig(config: Record<string, any>): void {
+  const problem = checkDownloadTokenSecret(config?.download_token?.jwtSecret);
+  if (problem) {
+    throw new Error(`Invalid download_token config: ${problem}`);
+  }
+}
