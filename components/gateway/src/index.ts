@@ -6,6 +6,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { Db } from './lib/db';
 import { Log } from './lib/log';
+import { buildSandboxConfig } from './lib/sandbox_config';
 import { ConsoleLogProvider } from './lib/log/providers/console';
 import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
@@ -34,7 +35,7 @@ module.exports = (async () => {
   global.log = log;
 
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
-  new Sandbox(config.sandbox || {});
+  new Sandbox(buildSandboxConfig(config.sandbox) as any);
 
   // Log unhandled rejections.
   process.on('unhandledRejection', (error: any) => {
