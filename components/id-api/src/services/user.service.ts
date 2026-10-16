@@ -1,5 +1,6 @@
 import { Op, WhereAttributeHash } from 'sequelize';
 
+import { HttpError } from '../lib/http_error';
 import { Request } from '../types';
 import { BaseService } from './base_service';
 
@@ -22,10 +23,10 @@ const WRITE_SCOPE_ALIASES: Record<string, string> = {
 };
 
 /** The token does not cover a profile field present in the request. */
-export class ProfileScopeError extends Error {
+export class ProfileScopeError extends HttpError {
   readonly statusCode = 403;
   constructor(readonly fields: string[]) {
-    super('Insufficient scope');
+    super(403, 'Insufficient scope');
   }
 }
 
@@ -36,7 +37,7 @@ export class UserService extends BaseService {
    */
   extractUpdateUserInfoParams(req: Request, fields: string[], scope?: string[]): WhereAttributeHash<any> {
     if ('email' in req.body) {
-      throw new Error('Email can only be changed after verification through /user/info/email/set');
+      throw new HttpError(400, 'Email can only be changed after verification through /user/info/email/set');
     }
     const modules = this.config.modules ?? {};
     const { denyToUpdateUserName = true, denyToUpdateUserValidParams = true } = modules;
@@ -124,7 +125,7 @@ export class UserService extends BaseService {
       req.body.isValidPhone === true ||
       (requestedValidity !== undefined && requestedValidity !== false && requestedValidity !== 'false')
     ) {
-      throw new Error('Phone confirmation requires a valid SMS code');
+      throw new HttpError(400, 'Phone confirmation requires a valid SMS code');
     }
     if ('phone' in query || requestedValidity !== undefined || req.body.isValidPhone === 'false' || req.body.isValidPhone === false) {
       query.valid = { ...query.valid, phone: false };
@@ -142,7 +143,7 @@ export class UserService extends BaseService {
       req.body.isValidEmail === 'true' ||
       (requestedValidity !== undefined && requestedValidity !== false && requestedValidity !== 'false')
     ) {
-      throw new Error('Email confirmation requires a valid confirmation code');
+      throw new HttpError(400, 'Email confirmation requires a valid confirmation code');
     }
     if (requestedValidity !== undefined || req.body.isValidEmail === false || req.body.isValidEmail === 'false') {
       query.valid = { ...query.valid, email: false };
@@ -155,7 +156,7 @@ export class UserService extends BaseService {
     } else if (query.addressStruct) {
       const validationError = this.validateAddressStruct(query);
       if (validationError) {
-        throw new Error(validationError);
+        throw new HttpError(400, validationError);
       }
     }
   }

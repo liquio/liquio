@@ -2,6 +2,7 @@ import debug from 'debug';
 import { validationResult } from 'express-validator';
 import { Log, getTraceId } from '@liquio/back-core';
 
+import { publicError } from '../lib/http_error';
 import { Errors } from '../lib/errors';
 import { AuthMiddleware } from '../middleware/authenticate';
 import { LoginActionType, Models } from '../models';
@@ -85,7 +86,7 @@ export class BaseController {
    */
   responseError(res: Response, error: any = ControllerErrorMessage.SERVER_ERROR, httpStatusCode: number = HttpStatusCode.InternalServerError) {
     // Define params.
-    const message = error instanceof Error ? error.message : error;
+    const message = error instanceof Error ? publicError(error, ControllerErrorMessage.SERVER_ERROR) : error;
     const errorFromList = Errors.getByMessage(message);
     const errorFromListCode = errorFromList?.code;
 

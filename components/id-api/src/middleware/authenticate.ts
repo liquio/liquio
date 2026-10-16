@@ -1,12 +1,13 @@
 import crypto from 'crypto';
 
-import OAuth2Server, { OAuthError } from '@node-oauth/oauth2-server';
+import OAuth2Server from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import { Log, appendTraceMeta } from '@liquio/back-core';
 
 import { Config } from '../config';
 import { profileCookieOptions } from '../lib/cookie_options';
 import { generatePinCode } from '../lib/helpers';
+import { oauthErrorBody } from '../lib/http_error';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import {
   LOGOUT_CSRF_FIELD,
@@ -214,7 +215,8 @@ export class AuthMiddleware {
         return next();
       } catch (error: any) {
         this.log.save('oauth-authenticate', { error: error.message, stack: error.stack }, 'error');
-        res.status(error.statusCode).send(new OAuthError(error.message, error));
+        const body = oauthErrorBody(error);
+        res.status(body.statusCode).send(body);
       }
     };
   }

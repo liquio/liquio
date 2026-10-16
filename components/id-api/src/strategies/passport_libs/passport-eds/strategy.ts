@@ -1,5 +1,6 @@
 import { Log } from '@liquio/back-core';
 
+import { isPublicError, publicError } from '../../../lib/http_error';
 import { Services } from '../../../services';
 import { Request, Strategy, StrategyVerify } from '../../../types';
 
@@ -41,8 +42,8 @@ export class EDSStrategy extends Strategy {
     } catch (error: any) {
       this.log.save('authenticate-eds|checkRandomContentSign-error', { error: error.message, stack: error.stack }, 'error');
       req.res!.status(500).send({
-        error: error.message,
-        ...(error.details && { details: error.details }),
+        error: publicError(error),
+        ...(isPublicError(error) && (error as any).details && { details: (error as any).details }),
       });
       return;
     }
@@ -67,8 +68,8 @@ export class EDSStrategy extends Strategy {
     } catch (error: any) {
       this.log.save('authenticate-eds|verify-error', { error: error.message }, 'error');
       req.res!.status(500).send({
-        error: error.message,
-        ...(error.details && { details: error.details }),
+        error: publicError(error),
+        ...(isPublicError(error) && (error as any).details && { details: (error as any).details }),
       });
       return;
     }

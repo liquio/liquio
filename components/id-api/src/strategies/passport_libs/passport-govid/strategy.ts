@@ -7,6 +7,7 @@ import { Strategy } from 'passport-strategy';
 import { Log } from '@liquio/back-core';
 
 import { Config } from '../../../config';
+import { isPublicError, publicError } from '../../../lib/http_error';
 import { sanitizeProviderProfile } from '../../../lib/public_services';
 import { Request, StrategyVerify } from '../../../types';
 
@@ -165,8 +166,8 @@ export class GovIdStrategy extends Strategy {
     } catch (error: any) {
       this.log.save('authenticate-govid|verify-error', { error: error.message }, 'error');
       req.res!.status(401).send({
-        error: error.message,
-        ...(error.details && { details: error.details }),
+        error: publicError(error),
+        ...(isPublicError(error) && (error as any).details && { details: (error as any).details }),
       });
     }
   }

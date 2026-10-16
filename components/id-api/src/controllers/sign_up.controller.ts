@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import { body, check, matchedData, query } from 'express-validator';
 
 import { validateEmail } from '../lib/helpers';
+import { isPublicError, publicError } from '../lib/http_error';
 import { legacyConfirmationQueryGuard } from '../lib/legacy_get_confirmation';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { getSessionUserId, markTwoFactorCompleted } from '../lib/two_factor';
@@ -367,7 +368,7 @@ export class SignUpController extends BaseController {
       res.send(body);
     } catch (error: any) {
       this.log.save('send-phone-confirmation-code-error', { phone, error: error.message }, 'error');
-      res.status(error.statusCode ?? 500).send(error);
+      res.status(isPublicError(error) ? (error.statusCode ?? error.status ?? 400) : 500).send({ error: publicError(error) });
     }
   }
 
@@ -443,7 +444,7 @@ export class SignUpController extends BaseController {
       this.log.save('user-get-error', { userId, error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         error: {
-          message: error.message,
+          message: publicError(error),
           type: 'user-get-error',
         },
       });
@@ -508,7 +509,7 @@ export class SignUpController extends BaseController {
       this.log.save('phone-set-user-get-error', { userId, error: error.message }, 'error');
       res.status(500).send({
         error: {
-          message: error.message,
+          message: publicError(error),
           type: 'phone-set-user-get-error',
         },
       });
@@ -528,7 +529,7 @@ export class SignUpController extends BaseController {
       this.log.save('phone-set-user-updating-error', { userId, phone, error: error.message }, 'error');
       res.status(500).send({
         error: {
-          message: error.message,
+          message: publicError(error),
           type: 'phone-set-user-updating-error',
         },
       });
@@ -593,7 +594,7 @@ export class SignUpController extends BaseController {
       res.send({ success: true });
     } catch (error: any) {
       this.log.save('check-phone-confirmation-code-error', { phone, error: error.message }, 'error');
-      res.send({ success: false, error: error.message });
+      res.send({ success: false, error: publicError(error) });
     }
   }
 
@@ -654,8 +655,9 @@ export class SignUpController extends BaseController {
         }
       } catch (error: any) {
         this.log.save('save-user-with-services-error', { error: error.message }, 'error');
-        res.status(400).send({
-          error: (Array.isArray(error.errors) ? error.errors[0] : error).message,
+        const isSequelizeValidation = Array.isArray(error.errors) && error.errors[0]?.message && /^Sequelize(Unique|Validation)/.test(error.name);
+        res.status(isSequelizeValidation || isPublicError(error) ? 400 : 500).send({
+          error: isSequelizeValidation ? error.errors[0].message : publicError(error),
         });
         return;
       }
@@ -685,7 +687,8 @@ export class SignUpController extends BaseController {
       return;
     } catch (error: any) {
       this.log.save('sign-up-confirmation-error', { error: error.message, stack: error.stack }, 'error');
-      res.send({ err: error.message ?? error.toString() });
+      if (!isPublicError(error)) res.status(500);
+      res.send({ err: publicError(error) });
     }
   }
 }

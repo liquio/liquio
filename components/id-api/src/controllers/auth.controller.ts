@@ -2,13 +2,14 @@ import crypto from 'crypto';
 import { URL } from 'url';
 import { promisify } from 'util';
 
-import { OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
+import { Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import { appendTraceMeta } from '@liquio/back-core';
 
 import { profileCookieOptions } from '../lib/cookie_options';
 import { getEnabledAuthProviders } from '../lib/auth_providers';
 import { avatarByGender } from '../lib/helpers';
+import { oauthErrorBody } from '../lib/http_error';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { ServerCrypt } from '../lib/server_crypt';
 import { getSessionUserId, isTwoFactorCompleted } from '../lib/two_factor';
@@ -340,7 +341,8 @@ export class AuthController extends BaseController {
     try {
       tokens = await this.service('auth').server.authenticate(request, response);
     } catch (error: any) {
-      res.status(error.status).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error);
+      res.status(body.statusCode).send(body);
       return;
     }
 
@@ -363,7 +365,8 @@ export class AuthController extends BaseController {
       });
     } catch (error: any) {
       this.log.save('check-token-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error, 'Unauthorized', 401);
+      res.status(401).send(body);
     }
   }
 
@@ -382,7 +385,8 @@ export class AuthController extends BaseController {
       });
     } catch (error: any) {
       this.log.save('create-tokens-error', { error: error.message, stack: error.stack, description: error.toString() }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error, 'Unauthorized', 401);
+      res.status(401).send(body);
       return;
     }
 
@@ -431,7 +435,8 @@ export class AuthController extends BaseController {
       res.send(response_object);
     } catch (error: any) {
       this.log.save('create-tokens-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error, 'Unauthorized', 401);
+      res.status(401).send(body);
     }
   }
 
@@ -522,7 +527,8 @@ export class AuthController extends BaseController {
       });
     } catch (error: any) {
       this.log.save('response-type-code-error', { error: error.toString() }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error, 'Unauthorized', 401);
+      res.status(401).send(body);
       return;
     }
 

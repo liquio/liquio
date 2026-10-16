@@ -6,6 +6,7 @@ import Sequelize, { Op, WhereAttributeHash, WhereOptions } from 'sequelize';
 import { profileCookieOptions } from '../lib/cookie_options';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../lib/helpers';
+import { HttpError, isPublicError, publicError } from '../lib/http_error';
 import { legacyConfirmationQueryGuard } from '../lib/legacy_get_confirmation';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { changedPrivilegedFields, checkNamedClientUpdate } from '../lib/privileged_user_update';
@@ -302,7 +303,7 @@ export class UserController extends BaseController {
         return;
       }
       this.log.save('update-user-info-error', { userId, error: error.message, stack: error.stack }, 'error');
-      res.status(400).send(error.message);
+      res.status(400).send(publicError(error, 'Invalid request.'));
       return;
     }
 
@@ -329,7 +330,7 @@ export class UserController extends BaseController {
       res.send('ok');
     } catch (error: any) {
       this.log.save('update-user-error', { userId, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error?.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -363,8 +364,9 @@ export class UserController extends BaseController {
 
       const user = await this.service('auth').getUser({ phone });
       res.status(!user ? 404 : 200).send(user && this.minimiseForClient(req, user));
-    } catch (err) {
-      res.status(400).send(err);
+    } catch (error: any) {
+      this.log.save('get-user-info-by-phone-error', { error: error?.message, stack: error?.stack }, 'error');
+      res.status(400).send(publicError(error, 'Bad request.'));
     }
   }
 
@@ -386,7 +388,7 @@ export class UserController extends BaseController {
       res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-id-error', { userId: req.body.id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -417,7 +419,7 @@ export class UserController extends BaseController {
       res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-ipn-error', { ipn: req.body.ipn, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -441,7 +443,7 @@ export class UserController extends BaseController {
       res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-edrpou-error', { edrpou: req.body.edrpou, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -481,7 +483,7 @@ export class UserController extends BaseController {
       this.responseData(res, this.minimiseListForClient(req, result.users));
     } catch (error: any) {
       this.log.save('search-users-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -541,7 +543,7 @@ export class UserController extends BaseController {
       this.responseData(res, this.minimiseListForClient(req, result.users));
     } catch (error: any) {
       this.log.save('get-users-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -587,7 +589,7 @@ export class UserController extends BaseController {
       res.status(201).send({ data: { accepted: true } });
     } catch (error: any) {
       this.log.save('logout-by-user-id-error', { userId: req.params.id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -633,7 +635,7 @@ export class UserController extends BaseController {
         },
         'error',
       );
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -720,7 +722,7 @@ export class UserController extends BaseController {
       res.redirect(`/authorise?${query}`);
     } catch (error: any) {
       this.log.save('promo-subscribe-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -734,7 +736,7 @@ export class UserController extends BaseController {
       res.send('');
     } catch (error: any) {
       this.log.save('clear-conf-code-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -785,7 +787,7 @@ export class UserController extends BaseController {
       res.send();
     } catch (error: any) {
       this.log.save('send-to-new-email-code-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -829,7 +831,7 @@ export class UserController extends BaseController {
       user = await this.service('auth').getUser({ userId: (req.user as any).id });
     } catch (error: any) {
       this.log.save('set-to-new-email-get-user-error', { userId: (req.user as any).id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
       return;
     }
 
@@ -852,7 +854,7 @@ export class UserController extends BaseController {
           await this.service('auth').incrementConfirmCodeCounterAsync({
             phone: user.phone,
           });
-          throw new Error('Invalid phone confirmation code.');
+          throw new HttpError(400, 'Invalid phone confirmation code.');
         }
       }
 
@@ -864,7 +866,7 @@ export class UserController extends BaseController {
         await this.service('auth').removeConfirmCode({ email });
       } else {
         await this.service('auth').incrementConfirmCodeCounterAsync({ email });
-        throw new Error('Invalid email confirmation code.');
+        throw new HttpError(400, 'Invalid email confirmation code.');
       }
     } catch (err) {
       this.log.save('set-to-new-email-check-code-error', { email, error: (err as any)?.message }, 'error');
@@ -884,7 +886,7 @@ export class UserController extends BaseController {
       res.send(updatedUser);
     } catch (error: any) {
       this.log.save('set-to-new-email-update-user-error', { userId: (req.user as any).id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -902,14 +904,14 @@ export class UserController extends BaseController {
 
       if (!codeEntity?.code) {
         await this.service('auth').incrementConfirmCodeCounterAsync({ phone });
-        throw new Error('Invalid phone confirmation code.');
+        throw new HttpError(400, 'Invalid phone confirmation code.');
       }
       await this.service('auth').removeConfirmCode({ phone: phone! });
 
       res.status(200).send({ isCodeConfirmed: true });
     } catch (error: any) {
       this.log.save('user-controller|check-phone-confirmation-code|error', error.message, 'error');
-      res.status(400).send({ isCodeConfirmed: false, error: error.message });
+      res.status(isPublicError(error) ? 400 : 500).send({ isCodeConfirmed: false, error: publicError(error) });
     }
   }
 
@@ -926,14 +928,14 @@ export class UserController extends BaseController {
         const { code } = codeEntity ?? {};
         if (!code) {
           await this.service('auth').incrementConfirmCodeCounterAsync({ email });
-          throw new Error('Invalid email confirmation code.');
+          throw new HttpError(400, 'Invalid email confirmation code.');
         }
 
         await this.service('auth').removeConfirmCode({ email });
       }
     } catch (error: any) {
       this.log.save('user-controller|check-email-confirmation-code|error', error.message, 'error');
-      res.status(400).send({ isCodeConfirmed: false, error: error.message });
+      res.status(isPublicError(error) ? 400 : 500).send({ isCodeConfirmed: false, error: publicError(error) });
       return;
     }
 
@@ -955,7 +957,7 @@ export class UserController extends BaseController {
       user = await this.service('auth').updateUser({ userId }, { onboardingTaskId, needOnboarding });
     } catch (error: any) {
       this.log.save('update-user-onboarding-get-user-error', { userId, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
       return;
     }
 
@@ -1086,7 +1088,7 @@ export class UserController extends BaseController {
       res.send('ok');
     } catch (error: any) {
       this.log.save('update-user-info-update-user-error', { userId, error: error.message, stack: error.stack }, 'error');
-      res.status(400).send(error.message);
+      res.status(isPublicError(error) ? 400 : 500).send(publicError(error));
     }
   }
 
@@ -1133,10 +1135,9 @@ export class UserController extends BaseController {
           last_name: surname,
           middle_name: middlename,
         });
-      } catch (error) {
-        return this.responseError(res, {
-          error: "Can't create new user in User table: " + error,
-        });
+      } catch (error: any) {
+        this.log.save('prepare-user-create-user-error', { error: error?.message, stack: error?.stack }, 'error');
+        return this.responseError(res, "Can't create new user in User table.");
       }
       if (!newUser?.userId) {
         return this.responseError(res, 'Error creating new user.');
@@ -1153,10 +1154,9 @@ export class UserController extends BaseController {
           provider_id: newUserIpn,
           data: {},
         });
-      } catch (error) {
-        return this.responseError(res, {
-          error: "Can't create new user services: " + error,
-        });
+      } catch (error: any) {
+        this.log.save('prepare-user-create-user-services-error', { error: error?.message, stack: error?.stack }, 'error');
+        return this.responseError(res, "Can't create new user services.");
       }
       if (!newUserServices?.userId) {
         return this.responseError(res, 'Error creating new user.');

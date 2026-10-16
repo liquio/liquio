@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-import OAuth2Server, { OAuthError } from '@node-oauth/oauth2-server';
+import OAuth2Server from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import moment from 'moment';
 import { Op } from 'sequelize';
@@ -8,6 +8,7 @@ import { Op } from 'sequelize';
 import { Config, DEFAULT_CODE_RETRIES, DEFAULT_CODE_LENGTH } from '../config';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { generatePinCode } from '../lib/helpers';
+import { HttpError, oauthErrorBody } from '../lib/http_error';
 import { OAuthModel } from '../lib/oauth_model';
 import { publicService } from '../lib/public_services';
 import { saveSession } from '../middleware/session';
@@ -209,7 +210,8 @@ export class AuthService extends BaseService {
             this.log.save('prepareClientError', { error }, 'error');
             error.statusCode = 500;
           }
-          res.status(error.statusCode).send(new OAuthError(error.message, error));
+          const body = oauthErrorBody(error);
+          res.status(body.statusCode).send(body);
           return;
         }
       },
@@ -822,7 +824,7 @@ export class AuthService extends BaseService {
       if (error.name === 'SequelizeUniqueConstraintError') {
         const [uniqueFieldError] = error.errors ?? [];
         const message = uniqueFieldError.message.charAt(0).toUpperCase() + uniqueFieldError.message.slice(1);
-        throw new Error(`Can not update user. ${message}`);
+        throw new HttpError(400, `Can not update user. ${message}`);
       }
       this.log.save('update-user-error', { error: error }, 'error');
       throw error;
@@ -1171,7 +1173,7 @@ export class AuthService extends BaseService {
         } catch (error: any) {
           this.log.save('check-email-confirmation-code-error', { email, code: req.body.code_email, error: error.message }, 'error');
         }
-        throw new Error("Email confirmation code doesn't match");
+        throw new HttpError(400, "Email confirmation code doesn't match");
       }
     } else {
       req.prepared!.user.valid = {
@@ -1211,7 +1213,7 @@ export class AuthService extends BaseService {
             'error',
           );
         }
-        throw new Error("Phone confirmation code doesn't match");
+        throw new HttpError(400, "Phone confirmation code doesn't match");
       }
 
       req.prepared!.user.valid = { phone: true };
@@ -1233,7 +1235,7 @@ export class AuthService extends BaseService {
         .catch(() => null);
 
       if (user) {
-        throw new Error('Phone is already taken');
+        throw new HttpError(400, 'Phone is already taken');
       }
     }
   }
@@ -1242,7 +1244,7 @@ export class AuthService extends BaseService {
     const preparedUser = req.session?.preparedUser;
     const authInfo = req.session?.authInfo;
     if (!preparedUser || !authInfo) {
-      throw new Error('User session should be defined.');
+      throw new HttpError(400, 'User session should be defined.');
     }
     let userToSave = {
       ...(req.prepared!.user ?? {}),

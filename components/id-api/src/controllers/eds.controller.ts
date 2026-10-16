@@ -1,5 +1,6 @@
 import { body, matchedData } from 'express-validator';
 
+import { publicError } from '../lib/http_error';
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -32,7 +33,8 @@ export class EdsController extends BaseController {
       const token = await this.service('eds').getRandomContentToSign();
       res.send({ token });
     } catch (error: any) {
-      res.status(500).send({ error: error.message });
+      this.log.save('get-token-error', { error: error?.message, stack: error?.stack }, 'error');
+      res.status(500).send({ error: publicError(error) });
     }
   }
 
