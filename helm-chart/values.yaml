@@ -659,6 +659,9 @@ secrets:
   # Whether Helm should generate all required secrets on install.
   # Set to false when you manage secrets externally (secrets manager, manual setup, CI pipeline).
   # When false, all secrets must exist in the namespace before running helm install.
+  # When true, a pre-upgrade hook also adds the missing named id-api clients (task, cabinet-api, event, notification)
+  # and the caller tokens to existing releases, never overwriting present values, then restarts the affected pods.
+  # When false, no hook runs: add production.basic_auth.clients to the id secret and the tokens to the caller secrets.
   createSecrets: true
 
   # Override default secret names. Optional.

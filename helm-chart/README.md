@@ -197,6 +197,13 @@ On install, a pre-install hook Job creates all required secrets:
 
 The hook runs on `pre-install` only. Upgrades do not rotate or recreate secrets.
 
+A separate `pre-upgrade` hook only adds what older releases lack, and never overwrites existing values:
+
+- the task Basic token (`basic_auth.json` in the task Secret and `task.json` in the admin-api Secret);
+- the named id-api clients `task`, `cabinet-api`, `event` and `notification`. A client is added only when `production.basic_auth.clients` in the id Secret has no entry with that name. The hook generates its secret, writes the caller's token (`LiquioId.basicAuthToken` in the task and cabinet-api `auth.json` and in the event `user.json`, `production.auth_server.basicAuthToken` in the notification `config.json`), then adds the hash to the id Secret. If anything was added, it restarts id-api (and waits for it) and then the four callers, because they read secrets at startup. Re-running changes nothing.
+
+With `secrets.existingSecrets` the hook works on the Secrets you named. With `createSecrets: false` it is not rendered, so add the id-api clients and the caller tokens yourself (see Mode B).
+
 #### Mode B: Bring your own (`createSecrets: false`)
 
 Helm does not create any secrets. You must pre-create all required secrets in the namespace before install.
