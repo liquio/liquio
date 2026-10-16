@@ -266,16 +266,52 @@ jq --arg secret "$OAUTH_SECRET" \
     '.basicAuthToken = $secret' \
     $file > $file.tmp && mv $file.tmp $file
 
-  file="config/cabinet-api/auth.json"
+}
+
+{
+  echo "==> Generate named id-api clients (basic_auth.clients) for task, cabinet-api, event and notification (notification token is written in its own block below)"
+  echo "    admin-api keeps the legacy shared OAuth secret (it disables 2FA and sets roles through id-api)."
+  id_client_hash() {
+    printf '%s' "$1" | openssl dgst -sha256 | awk '{print $NF}'
+  }
+  id_client_token() {
+    printf '%s:%s' "$1" "$2" | base64 | tr -d '\n'
+  }
+  TASK_ID_SECRET=$(generate_secret)
+  CABINET_ID_SECRET=$(generate_secret)
+  EVENT_ID_SECRET=$(generate_secret)
+  NOTIFICATION_ID_SECRET=$(generate_secret)
+
+  file="config/id/config.json"
   echo "$file"
-  jq --arg secret "$OAUTH_SECRET" \
-    '.LiquioId.basicAuthToken = $secret' \
+  jq --arg task "$(id_client_hash "$TASK_ID_SECRET")" \
+    --arg cabinet "$(id_client_hash "$CABINET_ID_SECRET")" \
+    --arg event "$(id_client_hash "$EVENT_ID_SECRET")" \
+    --arg notification "$(id_client_hash "$NOTIFICATION_ID_SECRET")" \
+    '.production.basic_auth.clients = [
+      {name: "task", secret_hash: $task, scopes: ["user:read", "user:write"]},
+      {name: "cabinet-api", secret_hash: $cabinet, scopes: ["totp"]},
+      {name: "event", secret_hash: $event, scopes: ["user:read", "user:write"]},
+      {name: "notification", secret_hash: $notification, scopes: ["user:read"]}
+    ]' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/task/auth.json"
   echo "$file"
-  jq --arg secret "$OAUTH_SECRET" \
-    '.LiquioId.basicAuthToken = $secret' \
+  jq --arg token "$(id_client_token task "$TASK_ID_SECRET")" \
+    '.LiquioId.basicAuthToken = $token' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/cabinet-api/auth.json"
+  echo "$file"
+  jq --arg token "$(id_client_token cabinet-api "$CABINET_ID_SECRET")" \
+    '.LiquioId.basicAuthToken = $token' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/event/user.json"
+  echo "$file"
+  jq --arg token "$(id_client_token event "$EVENT_ID_SECRET")" \
+    '.LiquioId.basicAuthToken = $token' \
     $file > $file.tmp && mv $file.tmp $file
 }
 
@@ -480,7 +516,7 @@ jq --arg key "$(generate_secret)" \
   echo "$file"
   jq --arg login "$login" \
     --arg password "$password" \
-      --arg authToken "Basic $OAUTH_SECRET" \
+      --arg authToken "Basic $(id_client_token notification "$NOTIFICATION_ID_SECRET")" \
       '.production.authorization.list = [{ user: $login, password: $password }] | .production.auth_server.basicAuthToken = $authToken' \
     $file > $file.tmp && mv $file.tmp $file
 
