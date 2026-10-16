@@ -5,3 +5,18 @@ coverage/
 config/*.json
 .vscode/
 .git
+
+# Local config and secrets must never enter the build context.
+config
+config*
+.env*
+**/.env*
+*.pem
+*.key
+*.log
+.npmrc
+**/secrets*
+
+# Not needed by the build.
+Dockerfile
+*.md
