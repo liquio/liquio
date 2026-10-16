@@ -62,6 +62,9 @@ metadata:
     "environment" .Values.config.server.environment
   )
  }}
+{{- if include "liquio.internalTls.enabled" . }}
+{{- $_ := set (index $configBase "production") "tls" (include "liquio.internalTls.serverConfig" . | fromJson) }}
+{{- end }}
 {{ $versionsBase := dict
   "versions" (dict
     "services" (list

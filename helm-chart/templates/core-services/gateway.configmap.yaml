@@ -36,7 +36,7 @@ metadata:
 {{ $systemNotifierBase := dict
   "adminUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "email" (dict
-    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
     "port" 80
     "routes" (dict
       "sendEmail" "/message/emailsList"

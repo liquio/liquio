@@ -311,6 +311,45 @@ networkPolicy:
   enabled: false
 ```
 
+### Internal TLS for notification and sign-tool (opt-in)
+
+By default notification and sign-tool serve plain HTTP inside the cluster; the only control is the NetworkPolicy
+(`networkPolicy.enabled`). Set `internalTls.enabled=true` to run both on HTTPS and make the in-chart callers verify it.
+Off by default: with `internalTls.enabled=false` the rendered manifests are unchanged, except that the register `sign.json` and
+the admin-api `internal_transport.json` now carry `allowPlainHttp: true` (id-api already did), which acknowledges the
+production `http://` warnings.
+
+| Value | Default | Meaning |
+|-------|---------|---------|
+| `internalTls.enabled` | `false` | Switch the feature on |
+| `internalTls.secretName` | `""` | Existing Secret with `ca.crt`, `tls.crt`, `tls.key` (required when enabled; the render fails without it) |
+| `internalTls.mtls` | `false` | Require client certificates (see the limit below) |
+
+The Secret is yours to create, for example with cert-manager (a `Certificate` whose `secretName` is the value above and whose
+`dnsNames` cover `<release>-notification`, `<release>-sign-tool` and their `.<namespace>.svc` forms). It is independent of
+`secrets.createSecrets`, so it works the same with `true` and `false`.
+
+What changes when enabled:
+
+- notification (`config.json` `production.tls`) and sign-tool (`server.json` `tls`) get `{enabled, certPath, keyPath}` from the
+  mounted Secret (`/var/www/internal-tls`), and their liveness and readiness probes use `scheme: HTTPS` on `/test/ping`.
+- Every in-chart URL to them becomes `https://` (id, register, admin-api, task, event, manager and gateway configmaps).
+  Service ports stay 80, so URLs keep an explicit port where the plain URL relied on the default.
+- id-api (`internalTransport.ca`, `allowPlainHttp: false`), register (`sign.tls.ca`, `sign.allowPlainHttp: false`) and admin-api
+  (`internal_transport.json` `ca`, `allowPlainHttp: false`) mount `ca.crt` and trust it. Verification is never disabled.
+- task, event, manager and gateway have no CA option in their config. They get `NODE_EXTRA_CA_CERTS=/var/www/internal-tls/ca.crt`, which
+  Node reads natively, so they verify the same CA. Only `ca.crt` is mounted in them.
+- Each pod mounts only the keys it needs. Only the notification and sign-tool pods get `tls.key` (and register and admin-api when mTLS is on).
+- No Ingress routes to notification or sign-tool (the NetworkPolicy also blocks the ingress controller), so no backend-protocol
+  annotation is needed. If you add your own Ingress path to them, add `nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"`.
+
+mTLS limit: with `internalTls.mtls=true` notification and sign-tool require a client certificate signed by the CA (except `/test/ping`
+for the probes). Only register and admin-api can present one (the same Secret's `tls.crt` and `tls.key`). id-api, task, event, manager and
+gateway cannot, so their calls get 401. Use `mtls` only when those callers are disabled or sit behind a mesh sidecar that adds the certificate.
+
+Not covered: `x509.externalUrl` in id-api keeps its existing port (`:3004`) and only changes scheme; sign-tool's Service listens on 80.
+Check that value for your deployment. Certificate rotation needs a pod restart, since certificates are read at startup.
+
 ### PodDisruptionBudget
 
 A `PodDisruptionBudget` is created for each service that has `replicaCount >= 2`. This prevents voluntary disruptions (node drain, rolling upgrades) from taking down all replicas simultaneously.

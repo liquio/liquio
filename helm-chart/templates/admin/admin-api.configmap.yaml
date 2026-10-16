@@ -64,7 +64,7 @@ metadata:
   "enabled" false
 -}}
 {{ $notifierBase := dict
-  "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+  "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "port" 80
   "timeout" 30000
   "routes" (dict
@@ -96,8 +96,13 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 30000
-  "url" (printf "http://%s-sign-tool" (include "liquio.fullname" .))
+  "url" (printf "%s://%s-sign-tool%s" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .) (ternary ":80" "" (eq (include "liquio.internalTls.enabled" .) "true")))
 -}}
+{{- /* https has no implicit port 80, so the sign-tool Service port is explicit when TLS is on. */ -}}
+{{- $internalTransportBase := dict "allowPlainHttp" true }}
+{{- if include "liquio.internalTls.enabled" . }}
+{{- $internalTransportBase = mergeOverwrite (include "liquio.internalTls.clientConfig" (dict "ctx" . "clientCert" true) | fromJson) (dict "allowPlainHttp" false) }}
+{{- end -}}
 {{ $workflowEditorBase := dict
   "disabled" false
   "debugMode" (dict
@@ -157,6 +162,10 @@ data:
   # User configuration
   user.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "user.json" "base" $userBase) | nindent 4 }}
+
+  # Internal transport (TLS to notification and sign-tool; allowPlainHttp acknowledges http:// URLs)
+  internal_transport.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "internal_transport.json" "base" $internalTransportBase) | nindent 4 }}
 
   # Sign configuration
   sign.json: |

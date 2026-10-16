@@ -53,15 +53,19 @@ metadata:
   "x509" (dict "isEnabled" true "requireChallenge" true)
 -}}
 {{ $x509Base := dict
-  "externalUrl" (printf "http://%s-sign-tool:3004" (include "liquio.fullname" .))
+  "externalUrl" (printf "%s://%s-sign-tool:3004" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
 -}}
+{{- $internalTransport := dict "allowPlainHttp" true }}
+{{- if include "liquio.internalTls.enabled" . }}
+{{- $internalTransport = mergeOverwrite (include "liquio.internalTls.clientConfig" (dict "ctx" . "clientCert" false) | fromJson) (dict "allowPlainHttp" false) }}
+{{- end }}
 {{- /*
-  internalTransport.allowPlainHttp: explicit, documented exception. notification and sign-tool serve plain HTTP only,
-  so notify.url, pingRoutes.notify and x509.externalUrl below are http://. id-api refuses to start in production with
-  http:// internal URLs unless this flag is true. Compensating control: the chart NetworkPolicies
+  internalTransport.allowPlainHttp: explicit, documented exception. By default notification and sign-tool serve plain
+  HTTP, so notify.url, pingRoutes.notify and x509.externalUrl below are http://. id-api refuses to start in production
+  with http:// internal URLs unless this flag is true. Compensating control: the chart NetworkPolicies
   (shared/networkpolicies.yaml, liquio.networkPolicy.backendInternal) allow these services only from Liquio pods in
-  the namespace. To use TLS instead, override the URLs with https:// (e.g. via the id secret config), set
-  internalTransport.ca to the trusted CA (PEM or file path) and set allowPlainHttp to false. Verification is never disabled.
+  the namespace. With internalTls.enabled=true the URLs become https://, internalTransport.ca points at the mounted CA
+  and allowPlainHttp is false. Verification is never disabled.
 */ -}}
 {{ $idProductionBase := dict
   "auth_providers" $authProvidersBase
@@ -78,7 +82,7 @@ metadata:
   "enabledDeleteUser" false
   "environment" .Values.config.server.environment
   "jwt" (dict "expiresIn" 60)
-  "internalTransport" (dict "allowPlainHttp" true)
+  "internalTransport" $internalTransport
   "log" (dict
     "excludeParams" (list
       "token" "authorization" "Authorization" "oauth-token"
@@ -91,7 +95,7 @@ metadata:
     "setPhoneOnlyAsNotValid" true
   )
   "notify" (dict
-    "url" (printf "http://%s-notification:80" (include "liquio.fullname" .))
+    "url" (printf "%s://%s-notification:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   )
   "basic_auth" (dict
     "allowLegacySharedSecret" true
@@ -107,7 +111,7 @@ metadata:
     "allowAdminSet" true
   )
   "pingRoutes" (dict
-    "notify" (printf "http://%s-notification:80/test/ping" (include "liquio.fullname" .))
+    "notify" (printf "%s://%s-notification:80/test/ping" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   )
   "port" (toString (default 8080 .Values.services.idApi.containerPort))
   "redis" (dict

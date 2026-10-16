@@ -58,6 +58,9 @@ spec:
               value: "/var/www/config"
             - name: SECRET_PATH
               value: {{ .Values.secrets.secretConfigPath | quote }}
+            {{- if include "liquio.internalTls.enabled" . }}
+            {{- include "liquio.internalTls.extraCaEnv" . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             - name: config
               mountPath: /var/www/config
@@ -67,6 +70,9 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            {{- if include "liquio.internalTls.enabled" . }}
+            {{- include "liquio.internalTls.volumeMount" . | nindent 12 }}
+            {{- end }}
             - name: plugins
               mountPath: /var/www/plugins
               readOnly: true
@@ -93,6 +99,9 @@ spec:
             secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "event") }}
         - name: tmp
           emptyDir: {}
+        {{- if include "liquio.internalTls.enabled" . }}
+        {{- include "liquio.internalTls.volume" (dict "ctx" . "keys" (include "liquio.internalTls.clientKeys" (dict "ctx" . "clientCert" false) | fromJsonArray)) | nindent 8 }}
+        {{- end }}
         - name: plugins
           emptyDir: {}
       {{- with .Values.nodeSelector }}

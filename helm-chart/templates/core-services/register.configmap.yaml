@@ -112,9 +112,14 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:80" (include "liquio.fullname" .))
+  "url" (printf "%s://%s-sign-tool:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "token" ""
+  "allowPlainHttp" true
 -}}
+{{- if include "liquio.internalTls.enabled" . }}
+{{- $_ := set $signBase "allowPlainHttp" false }}
+{{- $_ := set $signBase "tls" (include "liquio.internalTls.clientConfig" (dict "ctx" . "clientCert" true) | fromJson) }}
+{{- end -}}
 data:
   # Database configuration
   db.json: |

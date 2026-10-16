@@ -661,6 +661,34 @@ config:
   #   basic_auth:
   #     scopedRoutes: true
 
+# Opt-in TLS between Liquio services and the notification / sign-tool backends (SE-3930, ID-27c). Off by default:
+# the rendered manifests are then unchanged and notification and sign-tool serve plain HTTP, protected only by the
+# NetworkPolicies (networkPolicy.enabled).
+#
+# When enabled:
+#   - notification and sign-tool serve HTTPS (conf.tls / server.tls) from the cert and key in the Secret, and their
+#     liveness and readiness probes use scheme HTTPS (/test/ping).
+#   - every in-chart URL to them becomes https:// (id, register, admin-api, task, event, manager, gateway configmaps).
+#   - id-api (internalTransport.ca, allowPlainHttp=false), register (sign.tls, allowPlainHttp=false) and admin-api
+#     (internal_transport.json) get the CA mounted and configured; verification is always on.
+#   - task, event, manager and gateway have no CA option, so they get NODE_EXTRA_CA_CERTS pointing at the mounted CA.
+#   - no Ingress routes to these two services (they are internal-only), so no backend-protocol annotation is needed.
+#     If you add your own Ingress path to them, add nginx.ingress.kubernetes.io/backend-protocol: "HTTPS".
+internalTls:
+  enabled: false
+  # Existing Secret (created outside this chart, independent of secrets.createSecrets) with the keys
+  #   ca.crt   CA that signed tls.crt
+  #   tls.crt  server certificate, SANs must cover <release>-notification and <release>-sign-tool
+  #            (short and .<namespace>.svc names) and also serve as the client certificate when mtls is on
+  #   tls.key  private key
+  # This is the layout cert-manager writes for a Certificate with issuer ca.crt. Required when enabled.
+  secretName: ""
+  # Require client certificates on notification and sign-tool (sets caPath, so requests without a certificate signed
+  # by the CA get 401, except /test/ping for the probes). Only register and admin-api can present a client certificate.
+  # id-api, task, event, manager and gateway cannot, so with mtls=true their calls to notification and sign-tool are
+  # rejected. Enable it only when those callers are disabled or go through a mesh/sidecar that adds the certificate.
+  mtls: false
+
 # Secret configuration
 secrets:
   # Whether Helm should generate all required secrets on install.

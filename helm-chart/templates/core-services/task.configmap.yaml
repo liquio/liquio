@@ -271,7 +271,7 @@ metadata:
   "providerName" "pkcs7"
   "pkcs7" (dict
     "timeout" 30000
-    "signToolUrl" (printf "http://%s-sign-tool:80" (include "liquio.fullname" .))
+    "signToolUrl" (printf "%s://%s-sign-tool:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   )
   "timeout" 30000
 -}}
@@ -318,7 +318,7 @@ metadata:
   "externalReader" (dict)
 -}}
 {{ $notifierBase := dict
-  "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+  "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "port" 80
   "timeout" 30000
   "clientId" ""
@@ -349,13 +349,13 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:80" (include "liquio.fullname" .))
+  "url" (printf "%s://%s-sign-tool:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "token" ""
 -}}
 {{ $systemNotifierBase := dict
   "adminUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "email" (dict
-    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
     "port" 80
     "routes" (dict
       "sendEmail" "/message/emailsList"
