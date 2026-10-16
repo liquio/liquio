@@ -30,6 +30,13 @@ const ADDITIONAL_FILTER_RECORD_MAX_COUNT = 10000;
 const DB_CONSTRAINT_ERROR_CODE = 'DB_CONSTRAINT_ERROR';
 const SEQUELIZE_EXCLUSION_CONSTRAINT_ERROR = 'SequelizeExclusionConstraintError';
 
+/** Thrown while paging when a record's key does not allow reading records. */
+class KeyNotReadableError extends Error {
+  constructor(public readonly keyId: number) {
+    super('Key records are not readable.');
+  }
+}
+
 /**
  * Records controller.
  */
@@ -89,6 +96,84 @@ export default class RecordsController extends Controller {
     if (!keyId) return undefined;
     if (!keys.has(keyId)) keys.set(keyId, (await this.keyModel.findById(keyId, options))?.data);
     return keys.get(keyId);
+  }
+
+  /**
+   * Stream a `no_limit` CSV export page by page. Memory is bounded by the page size; the export is refused
+   * with 413 when the matching record count exceeds `pagination.maxCsvExportRecords` (default `pagination.maxExportLimit`).
+   */
+  private async streamCsvExport(
+    req: Request,
+    res: Response,
+    params: {
+      csvMap: string;
+      firstPage: { data?: RecordEntity[]; meta?: { count?: number | string } };
+      offset: number;
+      pageSize: number;
+      loadPage: (offset: number, limit: number) => Promise<{ data?: RecordEntity[]; meta?: { count?: number | string } }>;
+      validateIdentity: (records: RecordEntity[]) => Promise<void>;
+    },
+  ) {
+    const { csvMap, firstPage, offset, pageSize, loadPage, validateIdentity } = params;
+    const { pagination } = this.config;
+    const ceiling = pagination.maxCsvExportRecords ?? pagination.maxExportLimit;
+    const total = Math.max(Number(firstPage?.meta?.count) - offset, 0) || 0;
+    if (total > ceiling) {
+      return this.responseError(res, 'Too many records to export as CSV. Narrow the filters.', 413, { count: total, maxCsvExportRecords: ceiling });
+    }
+
+    let csvMapParsed;
+    try {
+      csvMapParsed = JSON.parse(csvMap);
+    } catch (error) {
+      this.log.save('csv-map-parse-error', { error: error?.message });
+      res.header('Content-Disposition', 'attachment; filename=records.csv');
+      res.header('Content-Type', 'text/csv');
+      res.write('Invalid csvMap parameter.');
+      return res.end();
+    }
+    const csvEntries = Object.entries(csvMapParsed);
+
+    let page = firstPage;
+    try {
+      await validateIdentity(page?.data || []);
+    } catch (error) {
+      this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
+      return this.responseError(res, error.message, 500);
+    }
+
+    res.header('Content-Disposition', 'attachment; filename=records.csv');
+    res.header('Content-Type', 'text/csv');
+    res.write('');
+
+    const asyncParser = new AsyncParser({ quote: '', fields: Object.keys(csvMapParsed) });
+    asyncParser.processor
+      .on('end', () => {
+        res.end();
+      })
+      .pipe(res);
+
+    try {
+      let pageOffset = offset;
+      for (;;) {
+        const records = page?.data || [];
+        this.accessLogBusiness.saveIfNeedIt(records, req.accessInfo);
+        for (const record of records) {
+          const row = csvEntries.reduce((t, [key, value]) => ({ ...t, [key]: escapeCsvCell(_.get(record, value as string) || '') }), {});
+          asyncParser.input.push(JSON.stringify(row));
+        }
+
+        pageOffset += pageSize;
+        if (records.length < pageSize || pageOffset >= offset + total) break;
+        page = await loadPage(pageOffset, pageSize);
+        await validateIdentity(page?.data || []);
+      }
+      asyncParser.input.push(null);
+    } catch (error) {
+      // Headers are already sent: abort the connection so the client does not take a truncated CSV for a complete one.
+      this.log.save('get-records-error', { error: error && error.message });
+      res.destroy(error);
+    }
   }
 
   // Get all records.
@@ -303,7 +388,11 @@ export default class RecordsController extends Controller {
       dataDateTo,
     });
 
-    if (csvMap) {
+    // `no_limit` CSV export is read page by page (bounded memory) instead of loading every row at once.
+    const streamCsv = Boolean(csvMap && noLimit);
+    const pageSize = this.config.pagination.maxLimit;
+
+    if (csvMap && !streamCsv) {
       res.header('Content-Disposition', 'attachment; filename=records.csv');
       res.header('Content-Type', 'text/csv');
       res.write('');
@@ -314,28 +403,27 @@ export default class RecordsController extends Controller {
       filter = this.prepareRawSequelizeParams(rawSequelizeParams);
     }
 
-    // Get records.
-    let recordsModelResponse;
-    try {
-      recordsModelResponse = await this.recordModel.getAll({
-        offset: offset,
-        limit: csvMap && noLimit ? undefined : Math.min(limit, this.config.pagination.maxLimit),
-        filter,
+    // Load one page and apply the per-record access rules and projection.
+    const keys = new Map<number, KeyEntity | undefined>();
+    const joinedAccess = new JoinedRecordAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys, (error) =>
+      this.log.save('joined-record-access-error', { error: error.message }),
+    );
+    const loadPage = async (pageOffset: number, pageLimit: number) => {
+      const pageResponse = await this.recordModel.getAll({
+        offset: pageOffset,
+        limit: pageLimit,
+        filter: streamCsv ? _.cloneDeep(filter) : filter,
         sort,
         joinBy,
+        stableOrder: streamCsv,
       });
 
-      if (recordsModelResponse && recordsModelResponse.data) {
+      if (pageResponse && pageResponse.data) {
         // Each record is checked and projected with its own key (a page may mix keys).
-        const keys = new Map<number, KeyEntity | undefined>();
-
-        const joinedAccess = new JoinedRecordAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys, (error) =>
-          this.log.save('joined-record-access-error', { error: error.message }),
-        );
-        for (const recordModelResponse of recordsModelResponse.data) {
+        for (const recordModelResponse of pageResponse.data) {
           const key = await this.getRecordKey(keys, recordModelResponse.keyId);
           if (!key || !this.keyModel.checkRecordsReadable(key)) {
-            return this.responseError(res, 'Key records are not readable.', 403, { keyId: recordModelResponse.keyId });
+            throw new KeyNotReadableError(recordModelResponse.keyId);
           }
 
           // Filter not allowed properties.
@@ -360,10 +448,32 @@ export default class RecordsController extends Controller {
           }
         }
       }
+      return pageResponse;
+    };
+
+    // Get records.
+    let recordsModelResponse;
+    try {
+      recordsModelResponse = await loadPage(offset, streamCsv ? pageSize : Math.min(limit, this.config.pagination.maxLimit));
     } catch (error) {
+      if (error instanceof KeyNotReadableError) {
+        return this.responseError(res, 'Key records are not readable.', 403, { keyId: error.keyId });
+      }
       this.log.save('get-records-error', { error: error && error.message });
       return this.responseError(res, error.message, 500);
     }
+
+    if (streamCsv) {
+      return this.streamCsvExport(req, res, {
+        csvMap,
+        firstPage: recordsModelResponse,
+        offset,
+        pageSize,
+        loadPage,
+        validateIdentity: (pageRecords) => this.checkValidationIdentity('GET', keyId, pageRecords),
+      });
+    }
+
     const { data: records, meta: modelResponseMeta } = recordsModelResponse || {};
     this.accessLogBusiness.saveIfNeedIt(records, req.accessInfo);
 

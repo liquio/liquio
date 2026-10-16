@@ -130,9 +130,11 @@ export default class RecordModel extends Model {
   }
 
   // Get all records.
-  async getAll(options: BasicFilter & { changedFrom?: string; changedTo?: string } = {}): Promise<ModelListWithMetaResponse<RecordEntity>> {
+  async getAll(
+    options: BasicFilter & { changedFrom?: string; changedTo?: string; stableOrder?: boolean } = {},
+  ): Promise<ModelListWithMetaResponse<RecordEntity>> {
     // Handle options.
-    const { filter = {}, offset, limit, sort = {}, joinBy, changedFrom, changedTo } = { offset: 0, limit: 2, ...options } as any;
+    const { filter = {}, offset, limit, sort = {}, joinBy, changedFrom, changedTo, stableOrder } = { offset: 0, limit: 2, ...options } as any;
     if (typeof filter.allow_tokens !== 'undefined') {
       if (filter.filters_type === 'or') {
         // OR filters type.
@@ -203,7 +205,8 @@ export default class RecordModel extends Model {
       order = [['last_changed_at', 'asc']];
     }
 
-    const additionalOrder = limit <= 100 && sort !== 'null' ? [['id', 'asc']] : [];
+    // `stableOrder` adds the id tiebreaker for large pages too, so offset paging over a sort with ties is deterministic.
+    const additionalOrder = (limit <= 100 || stableOrder) && sort !== 'null' ? [['id', 'asc']] : [];
     order = order ?? [...(await this.getSortEntriesAsArray(sort)), ...additionalOrder];
 
     const queryOptions: FindAndCountOptions = { order, where: filter, offset, limit, attributes, replacements };

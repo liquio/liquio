@@ -495,6 +495,72 @@ describe('RecordsController', () => {
     });
   });
 
+  describe('no_limit csv_map export is paged and bounded (SE-3930 RG-24)', () => {
+    const csvMap = JSON.stringify({ n: 'data.name' });
+    const createdIds: string[] = [];
+    const names = ['a', 'b', 'c', 'd', 'e'].map((v) => `RG24_${v}`);
+    let originalPagination: any;
+
+    beforeAll(async () => {
+      for (const name of names) {
+        const response = await testHarness
+          .request()
+          .post('/records')
+          .set('Authorization', validAuth)
+          .send({ registerId: 200, keyId: 2001, data: { name, data: 'RG24_MARK' } })
+          .expect(200);
+        createdIds.push(response.body.data.id);
+      }
+      originalPagination = { ...testHarness.getConfig().pagination };
+    });
+
+    afterEach(() => {
+      Object.assign(testHarness.getConfig().pagination, originalPagination);
+    });
+
+    afterAll(async () => {
+      await Promise.all(createdIds.map((id) => testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth)));
+    });
+
+    const exportAll = () =>
+      testHarness
+        .request()
+        .get('/records')
+        .query({ key_id: 2001, register_id: 200, csv_map: csvMap, no_limit: true, sort: { 'data.name': 'asc' }, data: { data: 'RG24_MARK' } })
+        .set('Authorization', validAuth);
+
+    it('returns every row in order across several pages when under the ceiling', async () => {
+      Object.assign(testHarness.getConfig().pagination, { maxLimit: 2, maxCsvExportRecords: 10 });
+      const response = await exportAll().expect(200);
+      const lines = response.text.trim().split('\n').slice(1);
+      expect(lines.map((line) => line.replace(/"/g, ''))).toEqual(names);
+    });
+
+    it('rejects with 413 when the matching rows exceed the ceiling', async () => {
+      Object.assign(testHarness.getConfig().pagination, { maxLimit: 2, maxCsvExportRecords: 3 });
+      const response = await exportAll().expect(413);
+      expect(response.body.error.message).toMatch(/Too many records/);
+    });
+  });
+
+  describe('request body limits (SE-3930 RG-25)', () => {
+    const big = { data: 'x'.repeat(11 * 1024 * 1024) };
+
+    it('rejects an oversized unauthenticated bulk request with 401 before parsing', async () => {
+      await testHarness.request().post('/records/bulk').send(big).expect(401);
+    });
+
+    it('rejects an oversized body on an ordinary route with 413', async () => {
+      await testHarness.request().post('/records').set('Authorization', validAuth).send(big).expect(413);
+    });
+
+    it('accepts a body above the default limit on an authenticated bulk route', async () => {
+      const response = await testHarness.request().post('/records/bulk').set('Authorization', validAuth).send(big);
+      expect(response.status).not.toBe(413);
+      expect(response.status).not.toBe(401);
+    });
+  });
+
   describe('DELETE /records/:id', () => {
     it('should return 401 without authentication', async () => {
       await testHarness.request().delete('/records/some-id').expect(401).expect('Content-Type', /json/);

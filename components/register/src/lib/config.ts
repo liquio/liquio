@@ -71,6 +71,8 @@ export interface Config {
   pagination: {
     maxLimit: number;
     maxExportLimit: number;
+    /** Ceiling for `no_limit` CSV exports; defaults to `maxExportLimit`. */
+    maxCsvExportRecords?: number;
     packetLimit: number;
   };
   redis: {
@@ -92,7 +94,12 @@ export interface Config {
   server: {
     hostname: string;
     port: number;
+    /** JSON body limit for ordinary routes. */
     maxBodySize: string;
+    /** JSON body limit for authenticated bulk/import routes; defaults to `maxBodySize`. */
+    maxBulkBodySize?: string;
+    requestTimeout?: number;
+    headersTimeout?: number;
     customer: string;
     environment: string;
   };

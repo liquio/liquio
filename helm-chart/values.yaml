@@ -507,7 +507,8 @@ config:
       maxBodySize: "500mb"
   register:
     server:
-      maxBodySize: "500mb"
+      # Ordinary routes use maxBodySize (10mb); only authenticated bulk/import routes use maxBulkBodySize.
+      maxBulkBodySize: "500mb"
 
   # Identity API configuration
   # Configuration for authentication providers and OIDC integration

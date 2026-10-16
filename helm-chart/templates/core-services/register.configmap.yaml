@@ -21,7 +21,8 @@ metadata:
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
   "port" (default 8080 .Values.services.register.containerPort)
-  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "maxBodySize" "10mb"
+  "maxBulkBodySize" "500mb"
   "customer" .Release.Name
   "environment" .Values.config.server.environment
 -}}
@@ -92,6 +93,7 @@ metadata:
 {{ $paginationBase := dict
   "maxLimit" 100000
   "maxExportLimit" 1000000
+  "maxCsvExportRecords" 1000000
   "packetLimit" 1000
 -}}
 {{ $searchBase := dict

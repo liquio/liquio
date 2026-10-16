@@ -6,7 +6,7 @@ import { Log, asyncLocalStorageMiddleware } from '@liquio/back-core';
 
 import Cors from './lib/cors';
 import AppIdentHeaders from './lib/app_ident_headers';
-import HttpRequest from './lib/http_request';
+import { createBodyParserMiddleware } from './lib/body_parser';
 import Controllers from './controllers';
 import Validators from './validators';
 
@@ -89,8 +89,14 @@ export default class Router {
     Cors.allow(app);
 
     // Parse body.
-    const maxBodySize = this.config.server.maxBodySize;
-    HttpRequest.parseBodyJson(app, maxBodySize);
+    // Large bodies are accepted only on authenticated bulk routes (`server.maxBulkBodySize`); the rest use `server.maxBodySize`.
+    app.use(
+      createBodyParserMiddleware({
+        defaultLimit: this.config.server.maxBodySize,
+        bulkLimit: this.config.server.maxBulkBodySize,
+        tokens: this.config.auth?.tokens,
+      }),
+    );
 
     // Body parser broke local storage context. Init storage again if need it.
     app.use(asyncLocalStorageMiddleware);
@@ -404,7 +410,12 @@ export default class Router {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
-      const serverInstance = http.createServer({ maxHeaderSize: MAX_HEADER_SIZE }, app).listen(port, hostname, () => {
+      const serverInstance = http.createServer({ maxHeaderSize: MAX_HEADER_SIZE }, app);
+      // Optional slow-client bounds (Node defaults apply when not configured).
+      const { requestTimeout, headersTimeout } = this.config.server;
+      if (typeof requestTimeout === 'number') serverInstance.requestTimeout = requestTimeout;
+      if (typeof headersTimeout === 'number') serverInstance.headersTimeout = headersTimeout;
+      serverInstance.listen(port, hostname, () => {
         this.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
       });
 
