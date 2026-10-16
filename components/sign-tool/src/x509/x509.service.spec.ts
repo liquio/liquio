@@ -11,14 +11,7 @@ import debug from 'debug';
 import { X509Service } from './x509.service';
 import { ConfigurationService } from '../configuration/configuration.service';
 import { LoggerService } from '../observability/logger.service';
-import {
-  OID_COMMON_NAME,
-  OID_ORGANIZATION_NAME,
-  OID_COUNTRY_NAME,
-  OID_BASIC_CONSTRAINTS,
-  OID_PKCS7_SIGNED_DATA,
-  OID_RSA_ENCRYPTION,
-} from './x509.constants';
+import { OID_COMMON_NAME, OID_ORGANIZATION_NAME, OID_COUNTRY_NAME, OID_BASIC_CONSTRAINTS, OID_PKCS7_SIGNED_DATA } from './x509.constants';
 
 let ca1CertPem: string;
 let sample1P7sDer: Buffer;
@@ -69,10 +62,34 @@ beforeAll(() => {
   }
 });
 
+// Fixture certificates (test-person-*) expired on 2026-07-21, so tests pin the clock inside their validity period.
+const FIXTURE_NOW = new Date('2026-01-01T00:00:00Z');
+const fakeNow = (now: Date) =>
+  jest.useFakeTimers({
+    now,
+    doNotFake: [
+      'nextTick',
+      'setImmediate',
+      'clearImmediate',
+      'setTimeout',
+      'clearTimeout',
+      'setInterval',
+      'clearInterval',
+      'queueMicrotask',
+      'performance',
+      'hrtime',
+    ],
+  });
+
 describe('X509Service', () => {
   let service: X509Service;
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(async () => {
+    fakeNow(FIXTURE_NOW);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         X509Service,
@@ -105,7 +122,7 @@ describe('X509Service', () => {
         },
         {} as Record<string, string>,
       );
-      expect(subject[OID_COMMON_NAME]).toBe('Test Person');
+      expect(subject[OID_COMMON_NAME]).toBe('Anna Kowalski');
       expect(subject[OID_ORGANIZATION_NAME]).toBe('Liquio Test');
       expect(subject[OID_COUNTRY_NAME]).toBe('UA');
       const issuer = cert.issuer.typesAndValues.reduce(
@@ -119,7 +136,7 @@ describe('X509Service', () => {
       expect(issuer[OID_ORGANIZATION_NAME]).toBe('Liquio Test CA');
       expect(issuer[OID_COUNTRY_NAME]).toBe('UA');
       const serialHex = Buffer.from(cert.serialNumber.valueBlock.toBER()).toString('hex').toUpperCase();
-      expect(serialHex).toBe('1C07D16DDAE3ECF9A031DC7F5257AD25EE541683');
+      expect(serialHex).toBe('1DD5E3F086BA70CFE146B5B76F56BA03730FBECC');
       expect(signedData.signerInfos.length).toBeGreaterThan(0);
     });
 
@@ -153,7 +170,7 @@ describe('X509Service', () => {
   });
 
   describe('getSignatureInfo', () => {
-    it.only('should extract signature info', async () => {
+    it('should extract signature info', async () => {
       const info = await service.getSignatureInfo(sample1P7sB64);
       expect(info.subject.commonName).toBe('Anna Kowalski');
       expect(info.subject.organizationName).toBe('Liquio Test');
@@ -213,37 +230,7 @@ describe('X509Service', () => {
       const certPath = path.join(__dirname, '__mocks__', 'test-person-2.cert.pem');
       const pem = fs.readFileSync(certPath, 'utf8');
       const pemB64 = Buffer.from(pem).toString('base64');
-      await expect(service.getSignatureInfo(pemB64)).rejects.toThrow(
-        "Failed to parse or extract signature info: Failed to parse signature: Object's schema was not verified against input data for ContentInfo",
-      );
-    });
-
-    it('should fallback to subject CN if no basicConstraints extension', async () => {
-      // Create a PKCS#7 with a cert that has no basicConstraints but has CN 'Test Person'
-      const cert = createMinimalCertificate('Test Person', 'Liquio Test CA');
-      const signerInfo = new pkijs.SignerInfo({
-        sid: new pkijs.IssuerAndSerialNumber({
-          issuer: cert.issuer,
-          serialNumber: cert.serialNumber,
-        }),
-        digestAlgorithm: new pkijs.AlgorithmIdentifier({
-          algorithmId: OID_PKCS7_SIGNED_DATA,
-        }),
-      });
-      const signedData = new pkijs.SignedData({
-        certificates: [cert],
-        signerInfos: [signerInfo],
-        encapContentInfo: new pkijs.EncapsulatedContentInfo({
-          eContentType: OID_PKCS7_SIGNED_DATA,
-        }),
-      });
-      const contentInfo = new pkijs.ContentInfo({
-        contentType: OID_PKCS7_SIGNED_DATA,
-        content: signedData.toSchema(),
-      });
-      const der = contentInfo.toSchema().toBER(false);
-      const b64 = Buffer.from(der).toString('base64');
-      await expect(service.getSignatureInfo(b64)).resolves.toBeDefined();
+      await expect(service.getSignatureInfo(pemB64)).rejects.toThrow('Failed to parse or extract signature info: Failed to parse signature');
     });
 
     it('should throw if no signer certificate found in signature', async () => {
@@ -268,18 +255,16 @@ describe('X509Service', () => {
       });
       const contentInfo = new pkijs.ContentInfo({
         contentType: OID_PKCS7_SIGNED_DATA,
-        content: signedData.toSchema(),
+        content: signedData.toSchema(true),
       });
       const der = contentInfo.toSchema().toBER(false);
       const b64 = Buffer.from(der).toString('base64');
-      await expect(service.getSignatureInfo(b64)).rejects.toThrow(
-        'Failed to parse or extract signature info: No signer certificate found in signature',
-      );
+      await expect(service.getSignatureInfo(b64)).rejects.toThrow('Failed to parse or extract signature info');
     });
 
     it('should throw if no signerInfo found in signature', async () => {
       // PKCS#7 with cert but no signerInfos
-      const cert = createMinimalCertificate('Test Person', 'Liquio Test CA');
+      const cert = pemToCert(testPersonCrtPem);
       const signedData = new pkijs.SignedData({
         certificates: [cert],
         signerInfos: [],
@@ -289,7 +274,7 @@ describe('X509Service', () => {
       });
       const contentInfo = new pkijs.ContentInfo({
         contentType: OID_PKCS7_SIGNED_DATA,
-        content: signedData.toSchema(),
+        content: signedData.toSchema(true),
       });
       const der = contentInfo.toSchema().toBER(false);
       const b64 = Buffer.from(der).toString('base64');
@@ -300,7 +285,7 @@ describe('X509Service', () => {
   describe('verifyHash', () => {
     it('should return true for a valid signature and matching hash', async () => {
       const signedData = await service.parseSignature(sample1P7sB64);
-      const contentBuffer = Buffer.from(signedData.encapContentInfo.eContent.valueBlock.valueHex);
+      const contentBuffer = Buffer.from(signedData.encapContentInfo.eContent.valueBlock.valueHexView);
       const expectedHash = crypto.createHash('sha256').update(contentBuffer).digest('base64');
       const result = await service.verifyHash(expectedHash, sample1P7sB64);
       expect(result).toBe(true);
@@ -378,9 +363,7 @@ describe('X509Service', () => {
       const sigPath = path.join(__dirname, '__mocks__', 'sample-2.json.p7s');
       const sigDer = fs.readFileSync(sigPath);
       const sigB64 = sigDer.toString('base64');
-      await expect(service.getSignatureInfo(sigB64)).rejects.toThrow(
-        'Failed to parse or extract signature info: Certificate is not signed by a trusted CA',
-      );
+      await expect(service.getSignatureInfo(sigB64)).rejects.toThrow('Failed to parse or extract signature info: Signature verification failed');
     });
   });
 
@@ -392,83 +375,222 @@ describe('X509Service', () => {
       expect(service.toPem(base64)).toBe(expectedPem);
     });
   });
+});
 
-  describe('isCertSignedByCA', () => {
-    it('should return false if caCerts is empty', async () => {
-      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {} } as any);
-      const cert = { verify: jest.fn() } as any;
-      (service as any).caCerts = [];
-      expect(await (service as any).isCertSignedByCA(cert)).toBe(false);
+describe('X509Service signature verification', () => {
+  let service: X509Service;
+  let ca1Key: CryptoKey;
+  let person1Key: CryptoKey;
+  let person2Key: CryptoKey;
+  let person1Cert: pkijs.Certificate;
+  let person2Cert: pkijs.Certificate;
+  const nonce = 'server-issued-nonce';
+
+  beforeAll(async () => {
+    const dir = path.join(__dirname, '__mocks__');
+    ca1Key = await importKey(fs.readFileSync(path.join(dir, 'ca-1.key.pem'), 'utf8'));
+    person1Key = await importKey(fs.readFileSync(path.join(dir, 'test-person-1.key.pem'), 'utf8'));
+    person2Key = await importKey(fs.readFileSync(path.join(dir, 'test-person-2.key.pem'), 'utf8'));
+    person1Cert = pemToCert(testPersonCrtPem);
+    person2Cert = pemToCert(fs.readFileSync(path.join(dir, 'test-person-2.cert.pem'), 'utf8'));
+  });
+
+  beforeEach(async () => {
+    fakeNow(FIXTURE_NOW);
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        X509Service,
+        { provide: ConfigurationService, useClass: MockConfigurationService },
+        { provide: LoggerService, useClass: MockLoggerService },
+      ],
+    }).compile();
+    service = module.get<X509Service>(X509Service);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('accepts a genuine signature made with the signer private key over the nonce', async () => {
+    const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce });
+    const info = await service.getSignatureInfo(cms);
+    expect(Buffer.from(info.content!, 'base64').toString()).toBe(nonce);
+    expect(info.subject.commonName).toBe('Anna Kowalski');
+    await expect(service.verifyHash(sha256b64(nonce), cms)).resolves.toBe(true);
+  });
+
+  it('rejects a genuine trusted certificate with a signature made by another key (forged CMS)', async () => {
+    const cms = await buildCms({ cert: person1Cert, key: person2Key, content: nonce });
+    await expect(service.getSignatureInfo(cms)).rejects.toThrow('Signature verification failed');
+    await expect(service.verifyHash(sha256b64(nonce), cms)).resolves.toBe(false);
+  });
+
+  it('rejects a CMS whose embedded content was tampered after signing', async () => {
+    const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, tamperContent: 'other-nonce' });
+    await expect(service.getSignatureInfo(cms)).rejects.toThrow('Signature verification failed');
+    await expect(service.verifyHash(sha256b64('other-nonce'), cms)).resolves.toBe(false);
+  });
+
+  it('rejects a CMS with a garbage signature value', async () => {
+    const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, garbageSignature: true });
+    await expect(service.getSignatureInfo(cms)).rejects.toThrow('Signature verification failed');
+  });
+
+  it('rejects a CMS whose signerInfo does not match any embedded certificate', async () => {
+    const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, embedCerts: [person2Cert] });
+    await expect(service.getSignatureInfo(cms)).rejects.toThrow('Signature verification failed');
+  });
+
+  it('rejects a valid signature of a self-signed (untrusted) certificate', async () => {
+    const cms = await buildCms({ cert: person2Cert, key: person2Key, content: nonce });
+    await expect(service.getSignatureInfo(cms)).rejects.toThrow('Signature verification failed');
+  });
+
+  it('rejects an expired signer certificate', async () => {
+    const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce });
+    jest.setSystemTime(new Date('2027-01-01T00:00:00Z'));
+    await expect(service.getSignatureInfo(cms)).rejects.toThrow('Signature verification failed');
+    await expect(service.verifyHash(sha256b64(nonce), cms)).resolves.toBe(false);
+  });
+
+  it('rejects a not-yet-valid signer certificate', async () => {
+    const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce });
+    jest.setSystemTime(new Date('2025-01-01T00:00:00Z'));
+    await expect(service.getSignatureInfo(cms)).rejects.toThrow('Signature verification failed');
+  });
+
+  it('rejects a CA-issued certificate whose key usage does not allow signing', async () => {
+    const { cert, key } = await issueCert({ caKey: ca1Key, keyUsageByte: 0x04 }); // keyCertSign only
+    const cms = await buildCms({ cert, key, content: nonce });
+    await expect(service.getSignatureInfo(cms)).rejects.toThrow('key usage');
+  });
+
+  it('accepts a CA-issued certificate with signing key usage', async () => {
+    const { cert, key } = await issueCert({ caKey: ca1Key, keyUsageByte: 0x80 }); // digitalSignature
+    const cms = await buildCms({ cert, key, content: nonce });
+    await expect(service.getSignatureInfo(cms)).resolves.toBeDefined();
+  });
+
+  it('fails closed when no trusted CA is configured', async () => {
+    const empty = new X509Service(
+      { get: () => ({ caCerts: [] }) } as any,
+      { setContext: () => {}, error: () => {}, log: () => {}, warn: () => {} } as any,
+    );
+    const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce });
+    await expect(empty.getSignatureInfo(cms)).rejects.toThrow('No trusted CA certificates configured');
+  });
+
+  describe('detached content', () => {
+    it('verifies a detached signature against the supplied content', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, detached: true });
+      const info = await service.getSignatureInfo(cms, Buffer.from(nonce).toString('base64'));
+      expect(Buffer.from(info.content!, 'base64').toString()).toBe(nonce);
     });
 
-    it('should return true if cert is signed by a CA', async () => {
-      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {} } as any);
-      const ca = {
-        subject: {
-          typesAndValues: [{ type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } }],
-        },
-      };
-      const cert = { verify: jest.fn().mockResolvedValueOnce(true) } as any;
-      (service as any).caCerts = [ca];
-      expect(await (service as any).isCertSignedByCA(cert)).toBe(true);
+    it('rejects a detached signature with different content', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, detached: true });
+      await expect(service.getSignatureInfo(cms, Buffer.from('another').toString('base64'))).rejects.toThrow('Signature verification failed');
     });
 
-    it('should return false if cert is not signed by any CA', async () => {
-      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, { setContext: () => {}, error: () => {}, log: () => {} } as any);
-      const ca = {
-        subject: {
-          typesAndValues: [{ type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } }],
-        },
-      };
-      const cert = { verify: jest.fn().mockResolvedValue(false) } as any;
-      (service as any).caCerts = [ca];
-      expect(await (service as any).isCertSignedByCA(cert)).toBe(false);
-    });
-
-    it('should return false and log error if verify throws', async () => {
-      const logger = { setContext: () => {}, error: jest.fn(), log: () => {} };
-      const service = new X509Service({ get: () => ({ caCerts: [] }) } as any, logger as any);
-      const ca = {
-        subject: {
-          typesAndValues: [{ type: OID_COMMON_NAME, value: { valueBlock: { value: 'CA' } } }],
-        },
-      };
-      const cert = {
-        verify: jest.fn().mockRejectedValue(new Error('fail')),
-      } as any;
-      (service as any).caCerts = [ca];
-      expect(await (service as any).isCertSignedByCA(cert)).toBe(false);
-      expect(logger.error).toHaveBeenCalledWith('isCertSignedByCA error', expect.any(Error));
+    it('rejects a detached signature when no content is supplied', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, detached: true });
+      await expect(service.getSignatureInfo(cms)).rejects.toThrow('No signed content to verify');
     });
   });
 });
 
-// Helper to generate a minimal valid pkijs Certificate
-function createMinimalCertificate(subjectCN: string, issuerCN: string) {
+function sha256b64(data: string) {
+  return crypto.createHash('sha256').update(data).digest('base64');
+}
+
+function pemToCert(pem: string): pkijs.Certificate {
+  const der = Buffer.from(pem.replace(/-----[^-]+-----|\s+/g, ''), 'base64');
+  return new pkijs.Certificate({ schema: asn1js.fromBER(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength)).result });
+}
+
+async function importKey(pem: string): Promise<CryptoKey> {
+  const der = Buffer.from(pem.replace(/-----[^-]+-----|\s+/g, ''), 'base64');
+  return pkijs.getCrypto(true).importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, true, ['sign']);
+}
+
+/**
+ * Build a CMS SignedData signed with `key`, embedding `cert` (and optionally other certs).
+ */
+async function buildCms(opts: {
+  cert: pkijs.Certificate;
+  key: CryptoKey;
+  content: string;
+  detached?: boolean;
+  tamperContent?: string;
+  garbageSignature?: boolean;
+  embedCerts?: pkijs.Certificate[];
+}): Promise<string> {
+  const contentBuf = Buffer.from(opts.content);
+  const contentAb = contentBuf.buffer.slice(contentBuf.byteOffset, contentBuf.byteOffset + contentBuf.byteLength);
+  const digest = crypto.createHash('sha256').update(contentBuf).digest();
+  const signedAttrs = new pkijs.SignedAndUnsignedAttributes({
+    type: 0,
+    attributes: [
+      new pkijs.Attribute({ type: '1.2.840.113549.1.9.3', values: [new asn1js.ObjectIdentifier({ value: '1.2.840.113549.1.7.1' })] }),
+      new pkijs.Attribute({ type: '1.2.840.113549.1.9.5', values: [new asn1js.UTCTime({ valueDate: new Date() })] }),
+      new pkijs.Attribute({
+        type: '1.2.840.113549.1.9.4',
+        values: [new asn1js.OctetString({ valueHex: digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength) })],
+      }),
+    ],
+  });
+  const signedData = new pkijs.SignedData({
+    version: 1,
+    encapContentInfo: new pkijs.EncapsulatedContentInfo({
+      eContentType: '1.2.840.113549.1.7.1',
+      ...(opts.detached ? {} : { eContent: new asn1js.OctetString({ valueHex: contentAb }) }),
+    }),
+    signerInfos: [
+      new pkijs.SignerInfo({
+        version: 1,
+        sid: new pkijs.IssuerAndSerialNumber({ issuer: opts.cert.issuer, serialNumber: opts.cert.serialNumber }),
+        signedAttrs,
+      }),
+    ],
+    certificates: opts.embedCerts ?? [opts.cert],
+  });
+  await signedData.sign(opts.key, 0, 'SHA-256', contentAb);
+
+  if (opts.garbageSignature) {
+    signedData.signerInfos[0].signature = new asn1js.OctetString({ valueHex: crypto.randomBytes(256) });
+  }
+  if (opts.tamperContent) {
+    const t = Buffer.from(opts.tamperContent);
+    signedData.encapContentInfo.eContent = new asn1js.OctetString({ valueHex: t.buffer.slice(t.byteOffset, t.byteOffset + t.byteLength) });
+  }
+
+  const contentInfo = new pkijs.ContentInfo({ contentType: OID_PKCS7_SIGNED_DATA, content: signedData.toSchema(true) });
+  return Buffer.from(contentInfo.toSchema().toBER(false)).toString('base64');
+}
+
+/**
+ * Issue a certificate signed by the test CA with a fresh key and the given keyUsage first byte.
+ */
+async function issueCert(opts: { caKey: CryptoKey; keyUsageByte: number }): Promise<{ cert: pkijs.Certificate; key: CryptoKey }> {
+  const subtle = pkijs.getCrypto(true);
+  const keyPair = (await subtle.generateKey(
+    { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+    true,
+    ['sign', 'verify'],
+  )) as CryptoKeyPair;
+  const caCert = pemToCert(ca1CertPem);
   const cert = new pkijs.Certificate();
-  cert.subject.typesAndValues.push(
-    new pkijs.AttributeTypeAndValue({
-      type: OID_COMMON_NAME,
-      value: new asn1js.PrintableString({ value: subjectCN }),
-    }),
-  );
-  cert.issuer.typesAndValues.push(
-    new pkijs.AttributeTypeAndValue({
-      type: OID_COMMON_NAME,
-      value: new asn1js.PrintableString({ value: issuerCN }),
-    }),
-  );
-  cert.serialNumber = new asn1js.Integer({
-    valueHex: Buffer.from('01', 'hex'),
-  });
-  cert.subjectPublicKeyInfo = new pkijs.PublicKeyInfo({
-    algorithm: new pkijs.AlgorithmIdentifier({
-      algorithmId: OID_RSA_ENCRYPTION,
-    }),
-    subjectPublicKey: new asn1js.BitString({ valueHex: new ArrayBuffer(1) }),
-  });
   cert.version = 2;
-  cert.notBefore.value = new Date();
-  cert.notAfter.value = new Date(Date.now() + 1000 * 60 * 60 * 24); // +1 day
-  return cert;
+  cert.serialNumber = new asn1js.Integer({ value: Date.now() });
+  cert.issuer = caCert.subject;
+  cert.subject.typesAndValues.push(
+    new pkijs.AttributeTypeAndValue({ type: OID_COMMON_NAME, value: new asn1js.Utf8String({ value: 'Generated Person' }) }),
+  );
+  cert.notBefore.value = new Date('2025-12-01T00:00:00Z');
+  cert.notAfter.value = new Date('2026-12-01T00:00:00Z');
+  await cert.subjectPublicKeyInfo.importKey(keyPair.publicKey);
+  const ku = new asn1js.BitString({ valueHex: new Uint8Array([opts.keyUsageByte]).buffer, unusedBits: 0 });
+  cert.extensions = [new pkijs.Extension({ extnID: '2.5.29.15', critical: true, extnValue: ku.toBER(false), parsedValue: ku })];
+  await cert.sign(opts.caKey, 'SHA-256');
+  return { cert, key: keyPair.privateKey };
 }

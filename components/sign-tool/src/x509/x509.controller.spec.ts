@@ -38,6 +38,7 @@ class MockLoggerService {
   setContext = jest.fn();
   error = jest.fn();
   log = jest.fn();
+  warn = jest.fn();
 }
 
 describe('X509Controller', () => {
@@ -60,6 +61,22 @@ describe('X509Controller', () => {
   });
 
   beforeEach(async () => {
+    // Fixture certificates expired on 2026-07-21; pin the clock (Date only) inside their validity period.
+    jest.useFakeTimers({
+      now: new Date('2026-01-01T00:00:00Z'),
+      doNotFake: [
+        'nextTick',
+        'setImmediate',
+        'clearImmediate',
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'queueMicrotask',
+        'performance',
+        'hrtime',
+      ],
+    });
     const module: TestingModule = await Test.createTestingModule({
       controllers: [X509Controller],
       providers: [
@@ -75,6 +92,7 @@ describe('X509Controller', () => {
   });
 
   afterEach(async () => {
+    jest.useRealTimers();
     await app.close();
   });
 
@@ -126,7 +144,7 @@ describe('X509Controller', () => {
       // Check if content is embedded or we need to use the original JSON file
       let contentBuffer: Buffer;
       if (signedData.encapContentInfo.eContent && signedData.encapContentInfo.eContent.valueBlock) {
-        contentBuffer = Buffer.from(signedData.encapContentInfo.eContent.valueBlock.valueHex);
+        contentBuffer = Buffer.from((signedData.encapContentInfo.eContent as asn1js.OctetString).getValue());
       } else {
         // Use the original JSON content
         contentBuffer = sampleJson;
