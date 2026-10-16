@@ -103,3 +103,26 @@ export function warnPlainHttpSign(config: Config, env: string | undefined = proc
   );
   return true;
 }
+
+/**
+ * Warn about an empty or placeholder `sign.token` in production unless `sign.allowEmptyToken` is set.
+ * Warning only: sign-tool does not check the `token` header at all (no auth in components/sign-tool),
+ * and the shipped config/Helm values use an empty token, so a refusal would break every install.
+ * @returns {boolean} true when a warning was logged.
+ */
+export function warnEmptySignToken(config: Config, env: string | undefined = process.env.NODE_ENV): boolean {
+  const sign = config?.sign;
+  if (!env || !['production', 'prod'].includes(env) || sign?.allowEmptyToken === true) return false;
+  const token = sign?.token;
+  const unusable = typeof token !== 'string' || token.trim() === '' || isPlaceholder(token);
+  if (!unusable) return false;
+  global.log?.save(
+    'sign-empty-token',
+    {
+      key: 'sign.token',
+      hint: 'sign-tool does not verify this token today. Set sign.token if the sign service requires one, or sign.allowEmptyToken=true to silence this warning.',
+    },
+    'warn',
+  );
+  return true;
+}

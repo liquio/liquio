@@ -114,6 +114,7 @@ metadata:
   "timeout" 10000
   "url" (printf "%s://%s-sign-tool:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "token" ""
+  "allowEmptyToken" true
   "allowPlainHttp" true
 -}}
 {{- if include "liquio.internalTls.enabled" . }}

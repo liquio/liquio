@@ -115,5 +115,6 @@ export interface Config {
     token: string;
     tls?: TlsConfig;
     allowPlainHttp?: boolean;
+    allowEmptyToken?: boolean;
   };
 }

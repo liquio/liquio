@@ -2,5 +2,6 @@
   "timeout": 10000,
   "url": "http://sign",
   "token": "",
-  "allowPlainHttp": true
+  "allowPlainHttp": true,
+  "allowEmptyToken": true
 }

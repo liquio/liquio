@@ -1,4 +1,11 @@
-import { assertEncryptionConfig, assertSafeConfig, checkAuthConfig, checkEncryptionConfig, warnPlainHttpSign } from './config_guard';
+import {
+  assertEncryptionConfig,
+  assertSafeConfig,
+  checkAuthConfig,
+  checkEncryptionConfig,
+  warnPlainHttpSign,
+  warnEmptySignToken,
+} from './config_guard';
 import { Config } from './config';
 
 const basic = (pair: string) => `Basic ${Buffer.from(pair).toString('base64')}`;
@@ -109,5 +116,35 @@ describe('warnPlainHttpSign', () => {
     expect(warnPlainHttpSign(sign({ allowPlainHttp: true }), 'production')).toBe(false);
     expect(warnPlainHttpSign(sign(), 'development')).toBe(false);
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe('warnEmptySignToken', () => {
+  const sign = (extra = {}) => ({ sign: { url: 'http://sign', token: '', timeout: 1, ...extra } }) as any;
+  let save: jest.Mock;
+
+  beforeEach(() => {
+    save = jest.fn();
+    (global as any).log = { save };
+  });
+
+  it('warns about an empty, missing or placeholder token in production without echoing it', () => {
+    expect(warnEmptySignToken(sign(), 'production')).toBe(true);
+    expect(warnEmptySignToken(sign({ token: undefined }), 'prod')).toBe(true);
+    expect(warnEmptySignToken(sign({ token: '<REDACTED>' }), 'production')).toBe(true);
+    expect(save).toHaveBeenCalledWith('sign-empty-token', expect.objectContaining({ key: 'sign.token' }), 'warn');
+    expect(JSON.stringify(save.mock.calls)).not.toContain('REDACTED');
+  });
+
+  it('does not warn for a real token, with opt-out, or outside production', () => {
+    expect(warnEmptySignToken(sign({ token: 'real-token-value' }), 'production')).toBe(false);
+    expect(warnEmptySignToken(sign({ allowEmptyToken: true }), 'production')).toBe(false);
+    expect(warnEmptySignToken(sign(), 'development')).toBe(false);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('never throws, so the shipped template starts', () => {
+    expect(() => warnEmptySignToken({} as any, 'production')).not.toThrow();
+    expect(() => assertSafeConfig(cfg({ tokens: [GOOD_TOKEN] }, { key: GOOD_KEY }))).not.toThrow();
   });
 });
