@@ -435,6 +435,21 @@ metadata:
   "pluginsDir" "/var/www/plugins"
   "plugins" (list)
 -}}
+{{- /*
+  Cross-service ping (GET /test/ping/services). In-chart URLs only; entries without a URL are skipped. The manager and gateway
+  monitoring tokens are added through the task Secret's ping.json. Services the chart does not run (workflow, fronts) are omitted.
+*/ -}}
+{{ $pingBase := dict
+  "id" (dict "url" (printf "http://%s-id-api/test/ping" (include "liquio.fullname" .)))
+  "event" (dict "url" (printf "http://%s-event/healthz" (include "liquio.fullname" .)))
+  "manager" (dict "url" (printf "http://%s-manager/test/ping" (include "liquio.fullname" .)) "monitoringToken" "")
+  "gateway" (dict "url" (printf "http://%s-gateway/test/ping" (include "liquio.fullname" .)) "monitoringToken" "")
+  "register" (dict "url" (printf "http://%s-register/test/ping" (include "liquio.fullname" .)))
+  "filestorage" (dict "url" (printf "http://%s-filestorage/test/ping" (include "liquio.fullname" .)))
+  "externalReader" (dict "url" (printf "http://%s-external-reader/test/ping" (include "liquio.fullname" .)))
+  "notification" (dict "url" (printf "http://%s-notification/test/ping" (include "liquio.fullname" .)))
+  "signTool" (dict "url" (printf "%s://%s-sign-tool/test/ping" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .)))
+-}}
 {{ $versionsBase := dict
   "services" (list
     (dict "name" "id" "minVersion" "0.7.7")
@@ -580,3 +595,7 @@ data:
   # and the task app's runtime PluginLoader)
   plugins.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "plugins.json" "base" $pluginsBase) | nindent 4 }}
+
+  # Cross-service ping configuration
+  ping.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "task" "config" "ping.json" "base" $pingBase) | nindent 4 }}

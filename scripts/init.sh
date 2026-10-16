@@ -702,7 +702,15 @@ jq --arg key "$(generate_secret)" \
      .filestorage.url = "http://filestorage:" + $filestorage_port + "/test/ping" |
      .externalReader.url = "http://external-reader:" + $external_reader_port + "/test/ping" |
      .notification.url = "http://notification:" + $notification_port + "/test/ping" |
+     .signTool.url = "http://sign-tool:" + $sign_tool_port + "/test/ping" |
      .front.url = "http://cabinet-front:" + $cabinet_front_port + "/version.json" |
      .frontAdmin.url = "http://admin-front:" + $admin_front_port + "/version.json"' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  # Event pings Manager (the template points at https://manager.liquio.local).
+  file="config/event/ping.json"
+  echo "$file"
+  jq --arg manager_port "$SVC_MANAGER_PORT" \
+    '.manager.url = "http://manager:" + $manager_port + "/test/ping"' \
     $file > $file.tmp && mv $file.tmp $file
 }
