@@ -53,7 +53,7 @@ metadata:
   "x509" (dict "isEnabled" true "requireChallenge" true)
 -}}
 {{ $x509Base := dict
-  "externalUrl" (printf "%s://%s-sign-tool:3004" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
+  "externalUrl" (printf "%s://%s-sign-tool:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
 -}}
 {{- $internalTransport := dict "allowPlainHttp" true }}
 {{- if include "liquio.internalTls.enabled" . }}
