@@ -86,6 +86,8 @@ const HEADER_TOTAL_COUNT = 'X-Total';
 const UNREAD_MESSAGE_VALUE = 0;
 const READ_MESSAGE_VALUE = 1;
 const SMS_CHANNEL = '2';
+const MAX_DECRYPTED_BASE64_LENGTH = 64 * 1024;
+const BASE64_REGEXP = /^[A-Za-z0-9+/]+={0,2}$/;
 
 export class Message extends Auth {
   constructor(app: any) {
@@ -152,8 +154,8 @@ export class Message extends Auth {
       return res.send({ error: 'Message ID must be defined as number' });
     }
     const { decryptedBase64 } = req.body;
-    if (typeof decryptedBase64 !== 'string') {
-      return res.send({ error: 'Decrypted base64 should be defined as number.' });
+    if (typeof decryptedBase64 !== 'string' || decryptedBase64.length > MAX_DECRYPTED_BASE64_LENGTH || !BASE64_REGEXP.test(decryptedBase64)) {
+      return res.send(400, { error: 'Decrypted base64 should be a non-empty base64 string of allowed length.' });
     }
 
     // Check access token defined.
@@ -174,11 +176,19 @@ export class Message extends Auth {
       return res.send({ error: 'Can not get message.' });
     }
 
+    // Broadcast messages share one row between all recipients: nobody may rewrite it. Decrypted content is write-once.
+    if (message.showToAll || !message.isEncrypted) {
+      return res.send(403, { error: 'Message can not be decrypted.' });
+    }
+
     // Update message.
     let updatedMessage;
     try {
       updatedMessage = await this.setDecrypted(messageId, decryptedBase64, req.query.access_token);
     } catch (error) {
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
       global.log.save('decrypt-message-error', { messageId, error: (error && error.message) || error }, 'error');
       return res.send({ message: 'Can not decrypt message.' });
     }
@@ -196,15 +206,18 @@ export class Message extends Auth {
    */
   async setDecrypted(messageId, decryptedBase64, accessToken) {
     try {
-      await IncommingMessages.update(
+      const [affectedCount] = await IncommingMessages.update(
         {
           is_encrypted: false,
           decrypted_base64: decryptedBase64,
         },
         {
-          where: { message_id: messageId },
+          where: { message_id: messageId, is_encrypted: true },
         },
       );
+      if (!affectedCount) {
+        throw Object.assign(new Error('Message is already decrypted.'), { statusCode: 409, error: { message: 'Message is already decrypted.' } });
+      }
       const updatedMessage = await this.getById(messageId, { access_token: accessToken });
       return updatedMessage;
     } catch (error) {
@@ -1738,6 +1751,7 @@ export class Message extends Auth {
       isRead: message.is_read,
       userMessageId: message.user_message_id,
       userId: message.user_id,
+      showToAll: message.show_to_all,
     };
 
     // Check if decrypted.

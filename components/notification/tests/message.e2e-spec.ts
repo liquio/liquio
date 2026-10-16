@@ -201,4 +201,77 @@ describe('Message Controller', () => {
       await del('abc').expect(400);
     });
   });
+
+  describe('PUT /message/:id/decrypt (NT-09)', () => {
+    const { Auth } = require('../src/models/authServer');
+    const models = () => ({
+      incoming: new (require('../src/models/incomming_messages').IncommingMessagesModel)().IncommingMessages,
+      users: new (require('../src/models/users_messages').UsersMessagesModel)().UsersMessages,
+    });
+    const seed = async (opts: { showToAll?: boolean; isEncrypted?: boolean; decrypted?: string }) => {
+      const { incoming, users } = models();
+      const cryptType = await new (require('../src/models/message_crypt_types').MessageCryptTypesModel)().messageCryptTypes.create({
+        name: 'nt09',
+      });
+      const message = await incoming.create({
+        message_crypt_type_id: cryptType.id,
+        title_message: 'nt09',
+        is_encrypted: opts.isEncrypted ?? true,
+        decrypted_base64: opts.decrypted ?? null,
+      });
+      await users.create({ user_id: 'nt09-user', message_id: message.message_id, show_to_all: !!opts.showToAll });
+      return message.message_id as number;
+    };
+    const stored = async (id: number) => (await models().incoming.findOne({ where: { message_id: id } })).get({ plain: true });
+    const decrypt = (id: number, body: any) =>
+      app.request().put(`/message/${id}/decrypt`).query({ access_token: 'tok' }).set('Authorization', TEST_AUTH_HEADER).send(body);
+
+    beforeEach(() => {
+      jest.spyOn(Auth.prototype, 'checkToken').mockResolvedValue({ _id: 'nt09-user' });
+    });
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('decrypts an encrypted personal message once', async () => {
+      const id = await seed({});
+      await decrypt(id, { decryptedBase64: 'aGVsbG8=' }).expect(200);
+      const row = await stored(id);
+      expect(row.is_encrypted).toBe(false);
+      expect(row.decrypted_base64).toBe('aGVsbG8=');
+    });
+
+    it('rejects decrypting a broadcast message and keeps it unchanged', async () => {
+      const id = await seed({ showToAll: true });
+      await decrypt(id, { decryptedBase64: 'aGVsbG8=' }).expect(403);
+      const row = await stored(id);
+      expect(row.is_encrypted).toBe(true);
+      expect(row.decrypted_base64).toBeNull();
+    });
+
+    it('rejects a second decrypt and keeps the first content', async () => {
+      const id = await seed({ isEncrypted: false, decrypted: 'Zmlyc3Q=' });
+      await decrypt(id, { decryptedBase64: 'aGVsbG8=' }).expect(403);
+      expect((await stored(id)).decrypted_base64).toBe('Zmlyc3Q=');
+    });
+
+    it('answers 409 when the message gets decrypted between the check and the update', async () => {
+      const id = await seed({});
+      const { Message } = require('../src/controllers/message');
+      const original = Message.prototype.getById;
+      jest.spyOn(Message.prototype, 'getById').mockImplementationOnce(async function (this: any, ...args: any[]) {
+        const result = await original.apply(this, args);
+        await models().incoming.update({ is_encrypted: false, decrypted_base64: 'Zmlyc3Q=' }, { where: { message_id: id } });
+        return result;
+      });
+      await decrypt(id, { decryptedBase64: 'aGVsbG8=' }).expect(409);
+      expect((await stored(id)).decrypted_base64).toBe('Zmlyc3Q=');
+    });
+
+    it.each([['not base64!'], ['<script>'], [''], ['A'.repeat(64 * 1024 + 4)]])('answers 400 for invalid decryptedBase64 (%#)', async (value) => {
+      const id = await seed({});
+      await decrypt(id, { decryptedBase64: value }).expect(400);
+      expect((await stored(id)).is_encrypted).toBe(true);
+    });
+  });
 });
