@@ -16,6 +16,7 @@ import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
 import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault } from './lib/config_check';
+import { buildSandboxConfig } from './lib/sandbox_config';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
@@ -51,7 +52,7 @@ async function main() {
   initIdApiClient(config.auth);
 
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
-  new Sandbox(config.sandbox || {});
+  new Sandbox(buildSandboxConfig(config.sandbox) as any);
 
   global.db = await Db.getInstance(config.db);
   global.models = new Models().getModels();
