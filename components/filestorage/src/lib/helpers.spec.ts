@@ -50,3 +50,24 @@ describe('Helpers.safeEntryName', () => {
     }
   });
 });
+
+describe('Helpers.sanitizeFileName', () => {
+  it('keeps ordinary names', () => {
+    expect(Helpers.sanitizeFileName('report 1.pdf')).toBe('report 1.pdf');
+  });
+
+  it('strips path segments, control characters, CR/LF and quotes', () => {
+    expect(Helpers.sanitizeFileName('../../a\r\nb".txt')).toBe('ab.txt');
+    expect(Helpers.sanitizeFileName("x'y`z\u0000.txt")).toBe('xyz.txt');
+  });
+
+  it('limits the length keeping the extension', () => {
+    const result = Helpers.sanitizeFileName(`${'a'.repeat(400)}.pdf`);
+    expect(result).toHaveLength(255);
+    expect(result.endsWith('.pdf')).toBe(true);
+  });
+
+  it('falls back to "file"', () => {
+    for (const bad of ['', '..', '""', undefined, 5]) expect(Helpers.sanitizeFileName(bad)).toBe('file');
+  });
+});

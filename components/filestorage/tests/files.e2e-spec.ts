@@ -213,6 +213,27 @@ describe('Files Controller', () => {
   });
 
   describe('PUT /files/:id', () => {
+    it('should sanitize the name on update', async () => {
+      const id = (
+        await app
+          .request()
+          .post('/files')
+          .query({ name: 'orig.txt', container_id: DEFAULT_CONTAINER_ID })
+          .set('Authorization', AUTH_HEADER)
+          .set('Content-Type', 'application/octet-stream')
+          .send('payload')
+          .expect(200)
+      ).body.data.id as string;
+      const long = `${'a'.repeat(400)}.txt`;
+      const put = (name: unknown) => app.request().put(`/files/${id}`).set('Authorization', AUTH_HEADER).send({ name });
+
+      expect((await put('..\\..//evil/"a"\r\nb\u0000.txt').expect(200)).body.data.name).toBe('ab.txt');
+      const longName = (await put(long).expect(200)).body.data.name as string;
+      expect(longName).toHaveLength(255);
+      expect(longName.endsWith('.txt')).toBe(true);
+      await put({ a: 1 }).expect(400);
+    });
+
     it('should update file metadata', async () => {
       const {
         body: {
@@ -390,8 +411,8 @@ describe('Files Controller', () => {
           .send('payload')
           .expect(200)
       ).body.data.id as string;
-      // PUT /files/:id stores names as given, so the output side must sanitize on its own.
-      await app.request().put(`/files/${rawId}`).set('Authorization', AUTH_HEADER).send({ name: '..\\..//evil/../x.txt' }).expect(200);
+      // Write the raw name straight to the DB (PUT /files/:id sanitizes it), so the output side is tested on its own.
+      await app.models.models.file.model.update({ name: '..\\..//evil/../x.txt' }, { where: { id: rawId } });
       await app
         .request()
         .post('/signatures')

@@ -160,4 +160,20 @@ export class Helpers {
     if (!base || /^\.+$/.test(base)) return FALLBACK;
     return base;
   }
+
+  /**
+   * Sanitise a user supplied file name for storing: `safeEntryName` (last path segment, control characters and CR/LF
+   * stripped) plus quotes removed and the length limited, keeping the extension.
+   * @param {any} name Raw file name.
+   * @returns {string} Safe file name, never empty.
+   */
+  static sanitizeFileName(name): string {
+    const MAX_LENGTH = 255;
+    const base = Helpers.safeEntryName(name).replace(/["'`]/g, '').trim();
+    if (!base || /^\.+$/.test(base)) return 'file';
+    if (base.length <= MAX_LENGTH) return base;
+    const ext = path.posix.extname(base);
+    const keepExt = ext.length > 0 && ext.length < 32 ? ext : '';
+    return base.slice(0, MAX_LENGTH - keepExt.length) + keepExt;
+  }
 }

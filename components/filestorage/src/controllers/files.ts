@@ -485,8 +485,15 @@ export class FilesController extends Controller {
   async update(req, res) {
     // Define params.
     const { id } = req.params;
-    const { name, description, containerId, meta } = req.body;
+    const { description, containerId, meta } = req.body;
+    let { name } = req.body;
     const { user } = req.auth;
+
+    // Sanitize the name the same way as on create (silent cleaning).
+    if (typeof name !== 'undefined') {
+      if (typeof name !== 'string') return this.responseError(res, 'Name should be a string.', 400);
+      name = Helpers.sanitizeFileName(name);
+    }
 
     // Update file.
     let fileModelResponse;
