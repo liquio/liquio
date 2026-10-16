@@ -250,7 +250,6 @@ describe('AuthController', () => {
             passport_issued_by: null,
             passport_number: null,
             passport_series: null,
-            password: null,
             status: null,
             twoFactorType: null,
             useTwoFactorAuth: false,

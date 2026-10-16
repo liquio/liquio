@@ -11,6 +11,7 @@ import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { changedPrivilegedFields, checkNamedClientUpdate } from '../lib/privileged_user_update';
 import { publicServices } from '../lib/public_services';
 import { resolveSafeRedirect } from '../lib/safe_redirect';
+import { clampLimit, getUsersReadPolicy, hasFullRead, minimiseUser, toNonNegativeInt } from '../lib/user_read_policy';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
 import { getTaskTokenCacheKey } from '../services/auth.service';
@@ -131,8 +132,8 @@ export class UserController extends BaseController {
     this.router.get(
       '/user',
       [
-        query('offset').isNumeric().default(0),
-        query('limit').isNumeric().default(20),
+        query('offset').optional().isInt({ min: 0 }).toInt(),
+        query('limit').optional().isInt({ min: 0 }).toInt(),
         query('id').optional().isString(),
         query('email').optional().isString(),
         query('phone').optional().isString(),
@@ -319,6 +320,22 @@ export class UserController extends BaseController {
     }
   }
 
+  private minimiseForClient(req: Request, user: any) {
+    return minimiseUser(user, hasFullRead(req.serviceClient, getUsersReadPolicy(this.config)));
+  }
+
+  private minimiseListForClient(req: Request, users: any) {
+    return Array.isArray(users) ? users.map((user) => this.minimiseForClient(req, user)) : users;
+  }
+
+  // Answers 400 and returns true when a lookup batch is bigger than the cap.
+  private isBatchTooLarge(res: Response, values: unknown[]): boolean {
+    const { maxBatch } = getUsersReadPolicy(this.config);
+    if (values.length <= maxBatch) return false;
+    res.status(400).send(`At most ${maxBatch} values are allowed per request`);
+    return true;
+  }
+
   /**
    * Get user info by phone.
    */
@@ -332,7 +349,7 @@ export class UserController extends BaseController {
       }
 
       const user = await this.service('auth').getUser({ phone });
-      res.status(!user ? 404 : 200).send(user);
+      res.status(!user ? 404 : 200).send(user && this.minimiseForClient(req, user));
     } catch (err) {
       res.status(400).send(err);
     }
@@ -345,6 +362,7 @@ export class UserController extends BaseController {
     try {
       let userIds = Array.isArray(req.body.id) ? req.body.id : [req.body.id];
       userIds = userIds.filter((v: any) => this.service('auth').isUserId(v));
+      if (this.isBatchTooLarge(res, userIds)) return;
 
       const params: any = {};
       if (req.query.brief_info === 'true') {
@@ -352,7 +370,7 @@ export class UserController extends BaseController {
       }
 
       const users = await this.service('auth').getUsersAsync({ userId: { [Op.in]: userIds } }, params);
-      res.status(200).send(users);
+      res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-id-error', { userId: req.body.id, error: error.message, stack: error.stack }, 'error');
       res.status(500).send(error.message);
@@ -371,6 +389,7 @@ export class UserController extends BaseController {
       res.status(400).send([]);
       return;
     }
+    if (this.isBatchTooLarge(res, ipnCollection)) return;
 
     try {
       const query = {
@@ -382,7 +401,7 @@ export class UserController extends BaseController {
       };
 
       const users = await this.service('auth').getUsersAsync(query);
-      res.status(200).send(users);
+      res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-ipn-error', { ipn: req.body.ipn, error: error.message, stack: error.stack }, 'error');
       res.status(500).send(error.message);
@@ -401,11 +420,12 @@ export class UserController extends BaseController {
       res.status(400).send([]);
       return;
     }
+    if (this.isBatchTooLarge(res, edrpouCollection)) return;
 
     try {
       const query = { edrpou: { [Op.in]: edrpouCollection } };
       const users = await this.service('auth').getUsersAsync(query);
-      res.status(200).send(users);
+      res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-edrpou-error', { edrpou: req.body.edrpou, error: error.message, stack: error.stack }, 'error');
       res.status(500).send(error.message);
@@ -419,6 +439,10 @@ export class UserController extends BaseController {
     try {
       // Define params.
       const searchString = req.body.searchString;
+      if (typeof searchString !== 'string' || searchString.trim() === '') {
+        res.status(400).send('searchString is required');
+        return;
+      }
       const [lastName, firstName, middleName] = searchString.split(' ');
       let query: WhereOptions;
       if (typeof lastName !== 'undefined' && typeof firstName !== 'undefined') {
@@ -434,13 +458,14 @@ export class UserController extends BaseController {
           last_name: { [Op.iLike]: `${lastName}%` },
         };
       }
-      const limit = req.body.limit ?? DEFAULT_LIMIT;
-      const offset = req.body.offset ?? 0;
+      const limit = clampLimit(req.body.limit, DEFAULT_LIMIT, getUsersReadPolicy(this.config).maxLimit);
+      const offset = toNonNegativeInt(req.body.offset, 0);
 
       const params = { offset, limit };
       const result = (await this.service('auth').getUsersWithCountAsync(query, params)) as { count: number; users: any };
+      this.log.save('search-users', { client: req.serviceClient?.name, limit, offset, count: result.users.length }, 'info');
       res.header('total', result.count.toString());
-      this.responseData(res, result.users);
+      this.responseData(res, this.minimiseListForClient(req, result.users));
     } catch (error: any) {
       this.log.save('search-users-error', { error: error.message, stack: error.stack }, 'error');
       res.status(500).send(error.message);
@@ -460,11 +485,24 @@ export class UserController extends BaseController {
         ipn,
         role,
         search,
-        offset = 0,
-        limit = 20,
+        offset: rawOffset,
+        limit: rawLimit,
       } = matchedData(req, {
         locations: ['query'],
       });
+      const policy = getUsersReadPolicy(this.config);
+      const limit = clampLimit(rawLimit, 20, policy.maxLimit);
+      const offset = toNonNegativeInt(rawOffset, 0);
+      const filterKeys = Object.entries({ id, email, phone, ipn, role, search })
+        .filter(([, value]) => typeof value === 'string' && value.trim() !== '')
+        .map(([key]) => key);
+
+      // A named client without full read access can't page the whole table.
+      if (!filterKeys.length && !hasFullRead(req.serviceClient, policy)) {
+        this.log.save('get-users-unfiltered-rejected', { client: req.serviceClient?.name }, 'warn');
+        res.status(403).send('A filter is required');
+        return;
+      }
       const query: WhereOptions<UserAttributes> = {};
 
       if (id) {
@@ -485,8 +523,9 @@ export class UserController extends BaseController {
 
       const params = { offset, limit, order: [['createdAt', 'desc']] };
       const result: any = await this.service('auth').getUsersWithCountAsync(query, params);
+      this.log.save('get-users', { client: req.serviceClient?.name, filterKeys, limit, offset, count: result.users.length }, 'info');
       res.header('total', result.count);
-      this.responseData(res, result.users);
+      this.responseData(res, this.minimiseListForClient(req, result.users));
     } catch (error: any) {
       this.log.save('get-users-error', { error: error.message, stack: error.stack }, 'error');
       res.status(500).send(error.message);
@@ -499,7 +538,7 @@ export class UserController extends BaseController {
   async findUserById(req: Request, res: Response): Promise<void> {
     try {
       const user = await this.service('auth').getUser({ userId: req.params.id });
-      res.status(200).send(user);
+      res.status(200).send(this.minimiseForClient(req, user));
     } catch (error: any) {
       this.log.save('find-user-by-id-error', { userId: req.params.id, error: error.message, stack: error.stack }, 'error');
       res.status(404).send('User not found');
