@@ -258,6 +258,13 @@ export interface Config {
   };
   confirmCode?: {
     ttlMinutes: number;
+    // Limits for sending confirmation codes (defaults: DEFAULT_SEND_LIMIT).
+    sendLimit?: {
+      recipientMax?: number;
+      recipientWindowSeconds?: number;
+      sourceMax?: number;
+      sourceWindowSeconds?: number;
+    };
   };
 }
 

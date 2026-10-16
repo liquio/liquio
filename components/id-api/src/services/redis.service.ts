@@ -13,6 +13,9 @@ const RELEASE_LOCK_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then retur
 // Compare-and-expire: only the holder of the lock may extend it.
 const EXTEND_LOCK_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) else return 0 end";
 
+// Fixed window counter: INCR, and set the expiry only when the key is created, so the window does not slide.
+const INCREMENT_WINDOW_SCRIPT = "local v = redis.call('incr', KEYS[1]) if v == 1 then redis.call('expire', KEYS[1], ARGV[1]) end return v";
+
 // The part of the underlying `redis` client that the lock commands need. back-core keeps the client private.
 interface RawRedisClient {
   set(key: string, value: string, options: { NX: true; EX: number }): Promise<string | null>;
@@ -112,6 +115,19 @@ export class RedisService extends BaseService {
       return 0;
     }
     return this.redisClient.increment(key, increment, ttl);
+  }
+
+  /**
+   * Atomically increment a fixed-window counter: the TTL is set only when the counter is created.
+   * @return {Promise<number | null>} New value, or null if redis is disabled.
+   **/
+  async incrementWindow(key: string | any[], windowSeconds: number): Promise<number | null> {
+    const raw = this.rawClient();
+    if (!raw) {
+      return null;
+    }
+    const resolvedKey = Array.isArray(key) ? this.createKey(...key) : key;
+    return Number(await raw.eval(INCREMENT_WINDOW_SCRIPT, { keys: [resolvedKey], arguments: [String(windowSeconds)] }));
   }
 
   /**

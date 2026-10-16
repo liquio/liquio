@@ -563,6 +563,10 @@ export class UserController extends BaseController {
     }
 
     try {
+      if (!(await this.service('auth').consumeSendQuota('phone', phone, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
       res.send(await this.service('auth').sendPhoneConfirmCode(phone, userId));
     } catch (error: any) {
       this.log.save('send-user-phone-confirmation-error', { userId, error: error.message }, 'error');
@@ -655,6 +659,11 @@ export class UserController extends BaseController {
         locations: ['query'],
       });
       email = email.toLowerCase();
+
+      if (!(await this.service('auth').consumeSendQuota('email', email, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
 
       // Delete old confirmation code.
       await this.service('auth').removeConfirmCode({ email });

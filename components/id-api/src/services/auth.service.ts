@@ -31,6 +31,12 @@ const DEFAULT_CACHE_TTL = 600; // 10 minutes.
 const DEFAULT_ACCESS_TOKEN_LIFETIME = 8 * 60 * 60; // 8 hours.
 const DEFAULT_REFRESH_TOKEN_LIFETIME = 16 * 60 * 60; // 16 hours.
 const MAX_CONFIRM_CODES_TO_KEEP = 5;
+export const DEFAULT_SEND_LIMIT = {
+  recipientMax: 10, // Codes per recipient and channel per window.
+  recipientWindowSeconds: 3600,
+  sourceMax: 100, // Codes per source IP per window (shared NAT friendly).
+  sourceWindowSeconds: 3600,
+};
 
 /**
  * Redis key under which task caches the user info for an access token (`token.<sha256(accessToken)>`).
@@ -407,55 +413,97 @@ export class AuthService extends BaseService {
     });
   }
 
-  incrementConfirmCodeCounter(params: any, callback: CallbackFn<number | null>) {
-    // Check input params.
+  /**
+   * Count a failed attempt against the active confirmation codes of the email or phone.
+   * One atomic UPDATE ... RETURNING, so parallel failures never lose an increment. Expired codes are not touched.
+   * Codes that exceeded the retries limit are deleted (awaited).
+   * Resolves to the new counter, or null if there is no active code.
+   */
+  async incrementConfirmCodeCounterAsync(params: Record<string, any>): Promise<number | null> {
     const { email, phone } = params ?? {};
     if (!email && !phone) {
-      return callback(new Error('Email or phone should be defined.'), null);
+      throw new Error('Email or phone should be defined.');
     }
 
-    // Handle.
-    this.model('confirmCode')
-      .findOne({ where: params })
-      .then((confirmCode: any) => {
-        // Check if confirm code not exists.
-        if (!confirmCode) {
-          return callback(null, null);
-        }
+    const column = email ? 'email' : 'phone';
+    const recipient = email ?? phone;
+    const maxCounter = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
 
-        // Increment counter and return.
-        const { counter } = confirmCode;
-        const nextCounter = counter + 1;
+    const [rows] = (await Models.db.query(
+      `UPDATE confirmation_codes SET counter = counter + 1
+       WHERE "${column}" = :recipient AND "expiresIn" > NOW()
+       RETURNING counter`,
+      { replacements: { recipient } },
+    )) as [{ counter: number }[], unknown];
 
-        if (nextCounter > (this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES)) {
-          let paramsToDestroy = {} as { email?: string; phone?: string };
-          if (email) paramsToDestroy.email = email;
-          if (phone) paramsToDestroy.phone = phone;
-          this.model('confirmCode').destroy({ where: paramsToDestroy });
-          this.log.save(
-            'confirm-code-counter-max-value|deleted',
-            {
-              paramsToDestroy,
-              nextCounter,
-              maxCounter: this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES,
-            },
-            'warning',
-          );
-        } else {
-          this.model('confirmCode').update({ counter: nextCounter }, { where: params });
-        }
+    if (!rows?.length) {
+      return null;
+    }
 
-        callback(null, nextCounter);
-      });
+    const nextCounter = Math.max(...rows.map((row) => Number(row.counter)));
+    if (nextCounter > maxCounter) {
+      await this.model('confirmCode').destroy({ where: { [column]: recipient, counter: { [Op.gt]: maxCounter } } });
+      this.log.save('confirm-code-counter-max-value|deleted', { [column]: recipient, nextCounter, maxCounter }, 'warning');
+    }
+
+    return nextCounter;
   }
 
-  async incrementConfirmCodeCounterAsync(params: Record<string, any>) {
-    return new Promise((resolve, reject) => {
-      this.incrementConfirmCodeCounter(params, (err, counter) => {
-        if (err) return reject(err);
-        resolve(counter);
-      });
-    });
+  /**
+   * Count one confirmation-code send for the recipient (per channel) and for the source.
+   * Fixed windows, atomic in redis (shared by all instances); with redis disabled the counters are per instance.
+   * Returns false when a limit is exceeded: the caller must not send the code.
+   */
+  async consumeSendQuota(channel: 'phone' | 'email', recipient: string, source?: string): Promise<boolean> {
+    const configured: Partial<typeof DEFAULT_SEND_LIMIT> = this.config.confirmCode?.sendLimit ?? {};
+    const limit = (name: keyof typeof DEFAULT_SEND_LIMIT) => {
+      const value = Number(configured[name]);
+      return Number.isFinite(value) && value > 0 ? value : DEFAULT_SEND_LIMIT[name];
+    };
+    const limits = {
+      recipientMax: limit('recipientMax'),
+      recipientWindowSeconds: limit('recipientWindowSeconds'),
+      sourceMax: limit('sourceMax'),
+      sourceWindowSeconds: limit('sourceWindowSeconds'),
+    };
+    const normalized = channel === 'email' ? recipient.trim().toLowerCase() : recipient.replace(/\D/g, '');
+    const digest = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
+
+    const checks: [string, number, number][] = [
+      [`confirm-send.${channel}.${digest(normalized)}`, limits.recipientWindowSeconds, limits.recipientMax],
+    ];
+    if (source) {
+      checks.push([`confirm-send-source.${digest(source)}`, limits.sourceWindowSeconds, limits.sourceMax]);
+    }
+
+    let allowed = true;
+    for (const [key, windowSeconds, max] of checks) {
+      const count = await this.incrementSendWindow(key, windowSeconds);
+      if (count > max) allowed = false;
+    }
+    if (!allowed) {
+      this.log.save('confirm-code-send|rate-limited', { channel, hasSource: !!source }, 'warning');
+    }
+    return allowed;
+  }
+
+  private sendWindows = new Map<string, { count: number; resetAt: number }>();
+
+  private async incrementSendWindow(key: string, windowSeconds: number): Promise<number> {
+    const shared = await this.service('redis').incrementWindow([key], windowSeconds);
+    if (shared !== null && shared !== undefined) return shared;
+
+    // Redis is disabled: per-instance fixed window.
+    const now = Date.now();
+    if (this.sendWindows.size > 10000) {
+      for (const [k, v] of this.sendWindows) if (v.resetAt <= now) this.sendWindows.delete(k);
+    }
+    const current = this.sendWindows.get(key);
+    if (!current || current.resetAt <= now) {
+      this.sendWindows.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
+      return 1;
+    }
+    return ++current.count;
   }
 
   /**

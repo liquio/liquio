@@ -207,6 +207,16 @@ describe('RedisService', () => {
       mockMethods.createKey.mockImplementation((...args: any[]) => ['test-id', ...args].join('.'));
     });
 
+    it('incrementWindow runs one atomic script that sets the expiry only on creation', async () => {
+      raw.eval.mockResolvedValue(3);
+
+      expect(await service.incrementWindow(['confirm-send', 'x'], 3600)).toBe(3);
+      const [script, options] = raw.eval.mock.calls[0];
+      expect(script).toContain("redis.call('incr', KEYS[1])");
+      expect(script).toContain('if v == 1 then');
+      expect(options).toEqual({ keys: ['test-id.confirm-send.x'], arguments: ['3600'] });
+    });
+
     it('acquireLock sets a prefixed key with NX and a TTL and returns the token', async () => {
       raw.set.mockResolvedValue('OK');
 

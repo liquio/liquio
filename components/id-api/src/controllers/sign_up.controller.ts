@@ -207,6 +207,12 @@ export class SignUpController extends BaseController {
     email = email.toLowerCase();
     this.log.save('send-email-confirmation-code-params', { email }, 'info');
 
+    // Rate limit before any lookup, so the answer does not depend on whether the email is registered.
+    if (!(await this.service('auth').consumeSendQuota('email', email, req.ip ?? req.socket?.remoteAddress))) {
+      res.status(429).send({ error: 'Too many requests. Please try again later.' });
+      return;
+    }
+
     // Define test confirmation code if exist.
     const testEmails = this.config.testConfirmations?.codes ?? [];
     const testCodeObj = testEmails.find((v: any) => v.emails.includes(email));
@@ -332,6 +338,11 @@ export class SignUpController extends BaseController {
     this.log.save('send-phone-confirmation-code-requested', { phone }, 'info');
 
     try {
+      if (!(await this.service('auth').consumeSendQuota('phone', phone, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
+
       const body = await this.service('auth').sendPhoneConfirmCode(phone, (req.user as any)?.id ?? req.session?.passport?.user?.userId);
       res.send(body);
     } catch (error: any) {
