@@ -195,7 +195,9 @@ export class RouterService {
       const checkProtectedBasicAuth =
         basicAuthDescription && protectedBasicAuth
           ? this.controllers.auth.checkProtectedBasicAuth.bind(this.controllers.auth)
-          : (res, req, next) => next();
+          : basicAuthDescription
+            ? this.controllers.auth.checkScopedBasicAuth.bind(this.controllers.auth) // No-op unless `basic_auth.scopedRoutes` is enabled.
+            : (res, req, next) => next();
 
       const externalIdHeaderAuth =
         typeOf(externalIdHeaderAuthName) === 'string'

@@ -181,6 +181,7 @@ metadata:
 -}}
 {{ $basicAuthBase := dict
   "tokens" (list)
+  "scopedRoutes" false
   "protectedRoutes" (list
     (dict
       "route" "/some/protected-route"

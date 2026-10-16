@@ -1,5 +1,6 @@
 {
   "tokens": [],
+  "scopedRoutes": false,
   "protectedRoutes": [
     {
       "route": "/some/protected-route",

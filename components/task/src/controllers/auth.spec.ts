@@ -166,6 +166,76 @@ describe('AuthController', () => {
     });
   });
 
+  describe('checkProtectedBasicAuth / checkScopedBasicAuth', () => {
+    let responseError: jest.SpyInstance;
+    const protectedRoutes = [
+      { route: '/units/:id', method: 'GET', basicAuthUsers: ['admin-api'] },
+      { route: '/unit-access', methods: ['GET', 'POST'], basicAuthUsers: ['admin-api'] },
+      { route: '/tasks/by-other-system', basicAuthUsers: ['event'] },
+    ];
+    const makeReq = (path, method, user, originalUrl = path): any => ({ route: { path }, method, basicAuthUser: user, originalUrl });
+
+    beforeEach(() => {
+      (controller as any).config = { basic_auth: { tokens: [], protectedRoutes } };
+      responseError = jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
+    });
+
+    it('should match by route pattern, ignoring path params and query string', async () => {
+      const next = jest.fn();
+      await controller.checkProtectedBasicAuth(makeReq('/units/:id', 'GET', 'admin-api', '/units/42?with=members'), {}, next);
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(responseError).not.toHaveBeenCalled();
+    });
+
+    it('should allow the user listed for the route and deny another user with 403', async () => {
+      const next = jest.fn();
+      await controller.checkProtectedBasicAuth(makeReq('/tasks/by-other-system', 'POST', 'event'), {}, next);
+      expect(next).toHaveBeenCalledTimes(1);
+
+      const nextDenied = jest.fn();
+      await controller.checkProtectedBasicAuth(makeReq('/tasks/by-other-system', 'POST', 'admin-api'), {}, nextDenied);
+      expect(nextDenied).not.toHaveBeenCalled();
+      expect(responseError).toHaveBeenCalledWith({}, 'Protected route. Not allowed for this user.', 403);
+    });
+
+    it('should deny a route without a rule with 403', async () => {
+      const next = jest.fn();
+      await controller.checkProtectedBasicAuth(makeReq('/external_services/workflow', 'POST', 'admin-api'), {}, next);
+      expect(next).not.toHaveBeenCalled();
+      expect(responseError).toHaveBeenCalledWith({}, 'Protected route. Must define access rule in config.', 403);
+    });
+
+    it('should honour the method limit of a rule', async () => {
+      const next = jest.fn();
+      await controller.checkProtectedBasicAuth(makeReq('/unit-access', 'POST', 'admin-api'), {}, next);
+      expect(next).toHaveBeenCalledTimes(1);
+
+      const nextDenied = jest.fn();
+      await controller.checkProtectedBasicAuth(makeReq('/unit-access', 'DELETE', 'admin-api'), {}, nextDenied);
+      expect(nextDenied).not.toHaveBeenCalled();
+      expect(responseError).toHaveBeenCalledWith({}, 'Protected route. Must define access rule in config.', 403);
+    });
+
+    it('should not scope routes when scopedRoutes is off (default)', async () => {
+      const next = jest.fn();
+      await controller.checkScopedBasicAuth(makeReq('/external_services/workflow', 'POST', 'anyone'), {}, next);
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(responseError).not.toHaveBeenCalled();
+    });
+
+    it('should enforce the rules on every basicAuth route when scopedRoutes is on', async () => {
+      (controller as any).config = { basic_auth: { tokens: [], scopedRoutes: true, protectedRoutes } };
+      const next = jest.fn();
+      await controller.checkScopedBasicAuth(makeReq('/external_services/workflow', 'POST', 'admin-api'), {}, next);
+      expect(next).not.toHaveBeenCalled();
+      expect(responseError).toHaveBeenCalledWith({}, 'Protected route. Must define access rule in config.', 403);
+
+      const nextAllowed = jest.fn();
+      await controller.checkScopedBasicAuth(makeReq('/units/:id', 'GET', 'admin-api', '/units/1'), {}, nextAllowed);
+      expect(nextAllowed).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('getCheckMiddleware with cached user data', () => {
     const cachedUserData = {
       authUserInfo: { userId: 'user-1', role: 'individual' },

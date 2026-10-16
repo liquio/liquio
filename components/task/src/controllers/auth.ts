@@ -827,18 +827,47 @@ export class AuthController extends Controller {
     this.responseData(res, { token_type: 'bearer', access_token: bearerToken });
   }
 
+  /**
+   * Check per-integration access rule for a basicAuth route.
+   * Rules are matched by route pattern (`req.route.path`, e.g. `/units/:id`) and HTTP method, not by the request URL,
+   * so query string and path params do not affect matching. A rule may limit methods with `method` (string) or `methods`
+   * (array); without them it applies to every method. A route without a matching rule is denied.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {object} next Next request handler.
+   */
   async checkProtectedBasicAuth(req, res, next) {
-    const { originalUrl } = req;
-    const protectedRoute = this.config.basic_auth.protectedRoutes?.find((item) => item.route === originalUrl);
-    if (!protectedRoute) {
+    const routePattern = req.route?.path;
+    const method = String(req.method || '').toUpperCase();
+    const protectedRoutes = this.config.basic_auth.protectedRoutes || [];
+    const matchedRules = protectedRoutes.filter((item) => {
+      if (item.route !== routePattern) {
+        return false;
+      }
+      const methods = [].concat(item.methods || item.method || []).map((m) => String(m).toUpperCase());
+      return methods.length === 0 || methods.includes(method);
+    });
+    if (matchedRules.length === 0) {
       return this.responseError(res, 'Protected route. Must define access rule in config.', 403);
     }
-    const { basicAuthUsers = [] } = protectedRoute;
-    const isAllowed = basicAuthUsers.includes(req.basicAuthUser);
+    const isAllowed = matchedRules.some(({ basicAuthUsers = [] }) => basicAuthUsers.includes(req.basicAuthUser));
     if (!isAllowed) {
       return this.responseError(res, 'Protected route. Not allowed for this user.', 403);
     }
     next();
+  }
+
+  /**
+   * Per-integration scoping for every basicAuth route. Opt-in via `basic_auth.scopedRoutes: true`; when it is off this is a no-op.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {object} next Next request handler.
+   */
+  async checkScopedBasicAuth(req, res, next) {
+    if (this.config.basic_auth?.scopedRoutes !== true) {
+      return next();
+    }
+    return this.checkProtectedBasicAuth(req, res, next);
   }
 
   /**
