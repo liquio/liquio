@@ -361,7 +361,7 @@ jq --arg key "$(generate_secret)" \
 
 {
   echo "==> Generate access tokens for Register service"
-  token="Basic $(echo register:${generate_secret} | base64 | tr -d '\n')"
+  token="Basic $(printf '%s:%s' "register" "$(generate_secret)" | base64 -w0)"
 
   file="config/register/auth.json"
   echo "$file"

@@ -17,14 +17,17 @@ BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
-# Fail if the publicly known default task Basic token (task:task) is committed to configs or charts.
+# Fail if a publicly known default service Basic token is committed to configs or charts: task (task:task), register
+# (admin-api register.json) and filestorage (auth.json test1:test).
 check_no_default_tokens() {
-  local default_token="dGFzazp0YXNr"
-  if grep -rIl --exclude-dir=node_modules -e "$default_token" "$PROJECT_ROOT/config-templates" "$PROJECT_ROOT/helm-chart"; then
-    echo -e "${RED}Default task Basic token found in the files above, remove it${NC}" >&2
-    return 1
-  fi
-  return 0
+  local default_token failed=0
+  for default_token in "dGFzazp0YXNr" "cmVnaXN0ZXI6T2FVaVo3MGt1SExq" "dGVzdDE6dGVzdA=="; do
+    if grep -rIl --exclude-dir=node_modules -e "$default_token" "$PROJECT_ROOT/config-templates" "$PROJECT_ROOT/helm-chart"; then
+      echo -e "${RED}Default Basic token $default_token found in the files above, remove it${NC}" >&2
+      failed=1
+    fi
+  done
+  return $failed
 }
 
 # Fail if the Task/Cabinet test auth or test sign bypass flags are enabled in configs or charts.
