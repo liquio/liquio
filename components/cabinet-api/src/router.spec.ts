@@ -253,20 +253,81 @@ describe('Router custom APIs', () => {
     });
 
     describe('built-in allow-list (mainProxyAllowPaths: "default")', () => {
-      const concrete = (entry: string) => entry.replace(/\$$/, '').replace(/:\w+/g, '1');
+      const concrete = (path: string) => path.replace(/\$$/, '').replace(/:\w+/g, '1');
+      // One request per audited method and path of the built-in list.
+      const audited = CABINET_FRONT_PROXY_PATHS.flatMap((entry) => {
+        const rule = typeof entry === 'string' ? { path: entry, methods: ['GET'] } : entry;
+        return (rule.methods ?? ['GET']).map((method): [string, string] => [method, concrete(rule.path)]);
+      });
+      const send = (base: string, method: string, path: string) =>
+        fetch(`${base}${path}`, { method, ...(['GET', 'DELETE'].includes(method) ? {} : { body: '{}' }) });
 
-      it('proxies every audited cabinet front route', async () => {
+      it('proxies every audited method and path of the cabinet front', async () => {
         const { server, base } = await startMain({ mainProxyAllowPaths: 'default' });
         received.length = 0;
-        const paths = [...CABINET_FRONT_PROXY_PATHS.map(concrete), '/external_reader/captcha/a/b', '/tasks/1/commit'];
         try {
-          for (const path of paths) {
-            expect([path, (await fetch(`${base}${path}`)).status]).toEqual([path, 200]);
+          expect(audited.length).toBeGreaterThan(100);
+          for (const [method, path] of audited) {
+            expect([method, path, (await send(base, method, path)).status]).toEqual([method, path, 200]);
           }
         } finally {
           await stop(server);
         }
-        expect(received).toEqual(paths);
+        expect(received).toEqual(audited.map(([, path]) => path));
+      });
+
+      it('returns 404 for an audited path with a method the front does not use', async () => {
+        const { server, base } = await startMain({ mainProxyAllowPaths: 'default' });
+        received.length = 0;
+        try {
+          for (const [method, path] of [
+            ['DELETE', '/documents/1/pdf'],
+            ['POST', '/tasks/unread/count'],
+            ['GET', '/tasks/1/commit'],
+            ['DELETE', '/files/token'],
+            ['PUT', '/registers/keys'],
+          ]) {
+            expect([method, path, (await send(base, method, path)).status]).toEqual([method, path, 404]);
+          }
+        } finally {
+          await stop(server);
+        }
+        expect(received).toEqual([]);
+      });
+
+      it('returns 404 for the task sub-routes the front never uses', async () => {
+        const { server, base } = await startMain({ mainProxyAllowPaths: 'default' });
+        received.length = 0;
+        try {
+          for (const [method, path] of [
+            ['POST', '/tasks/statistics/get-by-unit-id'],
+            ['POST', '/tasks/list/get-by-unit-id'],
+            ['POST', '/tasks/by-other-system'],
+            ['DELETE', '/tasks/expired-drafts'],
+            ['POST', '/tasks/get-user-performer-tasks'],
+            ['GET', '/registers/specifics/addresses'],
+            ['GET', '/documents/1/attachments/zip'],
+          ]) {
+            expect([method, path, (await send(base, method, path)).status]).toEqual([method, path, 404]);
+          }
+        } finally {
+          await stop(server);
+        }
+        expect(received).toEqual([]);
+      });
+
+      // In production the `cors` middleware of Router.init answers every preflight with 204 before the proxy, so the filter
+      // only sees OPTIONS if that middleware is bypassed; it then behaves like the path-only rule it had before.
+      it('lets OPTIONS through on listed paths only', async () => {
+        const { server, base } = await startMain({ mainProxyAllowPaths: 'default' });
+        received.length = 0;
+        try {
+          expect((await send(base, 'OPTIONS', '/tasks/1/commit')).status).toBe(200);
+          expect((await send(base, 'OPTIONS', '/tasks/statistics/get-by-unit-id')).status).toBe(404);
+        } finally {
+          await stop(server);
+        }
+        expect(received).toEqual(['/tasks/1/commit']);
       });
 
       it('returns 404 for internal and unaudited task routes without reaching the upstream', async () => {
@@ -281,6 +342,19 @@ describe('Router custom APIs', () => {
           await stop(server);
         }
         expect(received).toEqual([]);
+      });
+
+      it('lets plain string entries from config proxy every method', async () => {
+        const { server, base } = await startMain({ mainProxyAllowPaths: ['/tasks'] });
+        received.length = 0;
+        try {
+          for (const method of ['GET', 'POST', 'PUT', 'DELETE']) {
+            expect([method, (await send(base, method, '/tasks/1/commit')).status]).toEqual([method, 200]);
+          }
+        } finally {
+          await stop(server);
+        }
+        expect(received).toHaveLength(4);
       });
 
       it('lets an explicit array override the built-in list', async () => {

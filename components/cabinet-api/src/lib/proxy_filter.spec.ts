@@ -108,6 +108,7 @@ describe('isMainProxyPathAllowed', () => {
       ['GET', '/document-templates'],
       ['GET', '/document-templates/1'],
       ['GET', '/tasks?page=1'],
+      ['POST', '/tasks'],
       ['GET', '/tasks/1'],
       ['DELETE', '/tasks/1'],
       ['DELETE', '/tasks/1/permanent'],
@@ -180,6 +181,7 @@ describe('isMainProxyPathAllowed', () => {
       ['GET', '/messages/count-unread'],
       ['PUT', '/messages/state'],
       ['PUT', '/messages/1/decrypt'],
+      ['GET', '/important-messages'],
       ['PUT', '/important-messages/1/hide'],
       ['GET', '/user-inboxes'],
       ['GET', '/user-inboxes/unread/count'],
@@ -208,6 +210,8 @@ describe('isMainProxyPathAllowed', () => {
       ['POST', '/payment/ebabyEasyPaySms/confirm_code'],
       ['GET', '/payment/receipt?order_id=1'],
       ['GET', '/payment/liqpay/success'],
+      ['POST', '/payment/liqpay/success'],
+      ['POST', '/payment/liqpay'],
       ['POST', '/validate_apple_pay_session'],
       ['GET', '/healthz'],
     ];
@@ -229,6 +233,17 @@ describe('isMainProxyPathAllowed', () => {
       '/auth/bearer',
       '/external_reader/mocks-keys-by-user',
       '/external_reader/async',
+      '/tasks/statistics/get-by-unit-id',
+      '/tasks/list/get-by-unit-id',
+      '/tasks/expired-drafts',
+      '/tasks/1/commit/x',
+      '/documents/1/attachments/zip',
+      '/files/a/b',
+      '/registers/specifics/addresses',
+      '/registers/keys/1/viewing_history',
+      '/workflows',
+      '/workflows/elastic-filtered/x',
+      '/documents/1/pdf/x',
       '/unit-access',
       '/favorites/workflow/1',
       '/modules',
@@ -246,6 +261,77 @@ describe('isMainProxyPathAllowed', () => {
       expect(allowed(path, cfg)).toBe(false);
     });
 
+    // Methods sent by the front for a path, taken from the audited rows above.
+    const methodsOf = (path: string) => frontRoutes.filter(([, p]) => normalizeProxyPath(p) === normalizeProxyPath(path)).map(([m]) => m);
+
+    it('denies every audited path with a method the front does not use', () => {
+      const wrong = frontRoutes.flatMap(([, path]) =>
+        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+          .filter((method) => !methodsOf(path).includes(method))
+          .map((method): [string, string] => [method, path]),
+      );
+      // `/payment/*` is the provider callback prefix, open to GET and POST by design.
+      const strict = wrong.filter(([, path]) => !path.startsWith('/payment/'));
+      expect(strict.length).toBeGreaterThan(100);
+      expect(strict.filter(([method, path]) => isMainProxyPathAllowed(method, path, cfg))).toEqual([]);
+    });
+
+    it.each([
+      ['DELETE', '/documents/1/pdf'],
+      ['POST', '/tasks/unread/count'],
+      ['GET', '/tasks/1/commit'],
+      ['DELETE', '/tasks/expired-drafts'],
+      ['POST', '/tasks/statistics/get-by-unit-id'],
+      ['POST', '/tasks/list/get-by-unit-id'],
+      ['POST', '/tasks/by-other-system'],
+      ['PUT', '/registers/keys/1/records/filter'],
+      ['DELETE', '/registers/keys/1/records/filter'],
+      ['DELETE', '/files/token'],
+      ['GET', '/files'],
+      ['PUT', '/registers/keys'],
+      ['POST', '/registers'],
+      ['PATCH', '/payment/liqpay/success'],
+      ['DELETE', '/payment/liqpay/success'],
+      ['POST', '/healthz'],
+    ])('denies %s %s', (method, path) => {
+      expect(isMainProxyPathAllowed(method, path, cfg)).toBe(false);
+    });
+
+    it('treats HEAD as GET', () => {
+      expect(isMainProxyPathAllowed('HEAD', '/tasks/1', cfg)).toBe(true);
+      expect(isMainProxyPathAllowed('head', '/files/token', cfg)).toBe(true);
+      expect(isMainProxyPathAllowed('HEAD', '/tasks/1/commit', cfg)).toBe(false);
+    });
+
+    it('allows OPTIONS (CORS preflight) only on listed paths', () => {
+      expect(isMainProxyPathAllowed('OPTIONS', '/tasks/1/commit', cfg)).toBe(true);
+      expect(isMainProxyPathAllowed('OPTIONS', '/documents/1/pdf', cfg)).toBe(true);
+      expect(isMainProxyPathAllowed('OPTIONS', '/tasks/statistics/get-by-unit-id', cfg)).toBe(false);
+      expect(isMainProxyPathAllowed('OPTIONS', '/external_services/x', cfg)).toBe(false);
+    });
+
+    it('keeps the method list when a path is reached with a different case or trailing slash', () => {
+      expect(isMainProxyPathAllowed('POST', '/Tasks/1/Commit/', cfg)).toBe(true);
+      expect(isMainProxyPathAllowed('GET', '/Tasks/1/Commit/', cfg)).toBe(false);
+    });
+
+    it('lets plain string entries from config match any method', () => {
+      const plain = { mainProxyAllowPaths: ['/tasks', '/files/:token$'] };
+      for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']) {
+        expect(isMainProxyPathAllowed(method, '/tasks/1/commit', plain)).toBe(true);
+        expect(isMainProxyPathAllowed(method, '/files/x', plain)).toBe(true);
+      }
+      expect(isMainProxyPathAllowed('GET', '/workflows', plain)).toBe(false);
+    });
+
+    it('accepts rule objects in operator config next to strings', () => {
+      const mixed = { mainProxyAllowPaths: ['/a', { path: '/b/:id$', methods: ['post'], except: ['/b/x$'] }] };
+      expect(isMainProxyPathAllowed('DELETE', '/a/1', mixed)).toBe(true);
+      expect(isMainProxyPathAllowed('POST', '/b/1', mixed)).toBe(true);
+      expect(isMainProxyPathAllowed('GET', '/b/1', mixed)).toBe(false);
+      expect(isMainProxyPathAllowed('POST', '/b/x', mixed)).toBe(false);
+    });
+
     it('is off unless configured', () => {
       expect(allowed('/something-new')).toBe(true);
       expect(allowed('/something-new', { mainProxyAllowPaths: [] })).toBe(true);
@@ -260,12 +346,12 @@ describe('isMainProxyPathAllowed', () => {
 
     it('still applies mainProxyDenyPaths', () => {
       expect(allowed('/tasks/1', { ...cfg, mainProxyDenyPaths: ['/tasks/:id/commit'] })).toBe(true);
-      expect(allowed('/tasks/1/commit', { ...cfg, mainProxyDenyPaths: ['/tasks/:id/commit'] })).toBe(false);
+      expect(isMainProxyPathAllowed('POST', '/tasks/1/commit', { ...cfg, mainProxyDenyPaths: ['/tasks/:id/commit'] })).toBe(false);
     });
 
     it('treats "$" as an exact path match', () => {
-      expect(allowed('/external_reader', cfg)).toBe(true);
-      expect(allowed('/external_reader/async', cfg)).toBe(false);
+      expect(allowed('/external_reader', cfg, 'POST')).toBe(true);
+      expect(allowed('/external_reader/async', cfg, 'POST')).toBe(false);
       expect(allowed('/units/1', cfg)).toBe(false);
       expect(allowed('/units/1', { mainProxyAllowPaths: ['/units$'] })).toBe(false);
     });
