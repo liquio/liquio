@@ -7,6 +7,7 @@ export interface PlaywrightConfig {
   timeout: number;
   maxWorkers: number;
   maxConcurrentJobs: number;
+  allowedHosts?: string[];
 }
 
 export interface AuthConfig {

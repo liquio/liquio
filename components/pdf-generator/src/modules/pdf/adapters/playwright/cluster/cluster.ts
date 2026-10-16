@@ -42,7 +42,7 @@ export class Cluster extends EventEmitter {
   async init() {
     for (let i = 0; i < this.options.maxWorkers; i++) {
       try {
-        const worker = new Worker();
+        const worker = new Worker({ allowedHosts: this.options.allowedHosts });
         await worker.launch();
 
         this.workers.push(worker);
@@ -164,6 +164,7 @@ type ClusterOptions = {
   workerTimeout: number;
   maxWorkers: number;
   maxConcurrentJobs: number;
+  allowedHosts?: string[];
 };
 
 export enum ClusterEvents {

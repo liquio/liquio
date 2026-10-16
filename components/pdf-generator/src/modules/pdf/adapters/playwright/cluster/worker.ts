@@ -1,26 +1,26 @@
 import path from 'path';
 
-import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { InternalServerErrorException } from '@nestjs/common';
 import axios from 'axios';
-import { Browser, chromium, LaunchOptions, Page } from 'playwright';
+import { Browser, BrowserContext, chromium, LaunchOptions, Page, Route } from 'playwright';
 
 import { timeoutExecute } from '@common/utils';
 import { log } from '@lib/log';
 import { Job } from './job';
+import { checkUrl, HostLookup, ResolvedAddress } from './url-guard';
 
 // Constants.
+// Do not add flags that weaken isolation (--disable-web-security, --disable-features=IsolateOrigins,
+// --disable-site-isolation-trials, --disable-popup-blocking): templates are user-supplied HTML.
 const DEFAULT_LAUNCH_OPTIONS = {
   headless: true,
   args: [
     '--no-sandbox',
     '--disable-setuid-sandbox',
-    '--disable-web-security',
     '--font-render-hinting=none',
     '--disable-gpu',
     '--disable-dev-shm-usage',
     '--export-tagged-pdf',
-    '--disable-features=IsolateOrigins',
-    '--disable-site-isolation-trials',
     '--autoplay-policy=user-gesture-required',
     '--disable-background-networking',
     '--disable-background-timer-throttling',
@@ -36,7 +36,6 @@ const DEFAULT_LAUNCH_OPTIONS = {
     '--disable-ipc-flooding-protection',
     '--disable-notifications',
     '--disable-offer-store-unmasked-wallet-cards',
-    '--disable-popup-blocking',
     '--disable-print-preview',
     '--disable-prompt-on-repost',
     '--disable-renderer-backgrounding',
@@ -56,17 +55,40 @@ const DEFAULT_LAUNCH_OPTIONS = {
   ],
 };
 
+const FONT_DOWNLOAD_TIMEOUT = 10_000;
+const FONT_MAX_SIZE = 5 * 1024 * 1024;
+const FONT_FORMATS: Record<string, { mimeType: string; format: string }> = {
+  '.woff': { mimeType: 'application/font-woff', format: 'woff' },
+  '.woff2': { mimeType: 'application/font-woff2', format: 'woff2' },
+  '.ttf': { mimeType: 'application/font-ttf', format: 'truetype' },
+  '.otf': { mimeType: 'application/font-otf', format: 'opentype' },
+};
+const FONT_CONTENT_TYPE = /^(font\/|application\/(x-)?font|application\/octet-stream|binary\/octet-stream)/i;
+
 const LOG_PREFIX = 'pdf-generator';
+
+export type WorkerOptions = {
+  // Hostnames http(s) resources may be loaded from. Empty list blocks all remote resources.
+  allowedHosts?: string[];
+  // Custom DNS lookup (for tests).
+  lookup?: HostLookup;
+};
 
 export class Worker {
   private browser: Browser | null = null;
 
   private isClosing: boolean = false;
 
+  private allowedHosts: string[];
+
+  private lookup?: HostLookup;
+
   launchOptions: LaunchOptions = {};
 
-  constructor() {
+  constructor({ allowedHosts = [], lookup }: WorkerOptions = {}) {
     this.launchOptions = DEFAULT_LAUNCH_OPTIONS;
+    this.allowedHosts = allowedHosts;
+    this.lookup = lookup;
   }
 
   async launch() {
@@ -87,11 +109,17 @@ export class Worker {
       throw new InternalServerErrorException('Browser is not defined');
     }
 
+    let context: BrowserContext | null = null;
     let page: Page | null = null;
     try {
       const { html, options } = job.data;
 
-      page = await browser.newPage();
+      context = await browser.newContext({ acceptDownloads: false });
+
+      // Rules on the context apply to every page, iframe, popup and redirect hop.
+      await context.route('**/*', (route) => this.handleRoute(route));
+
+      page = await context.newPage();
 
       page.on('console', (msg) =>
         log.save(`${LOG_PREFIX}|page-console`, {
@@ -136,22 +164,81 @@ export class Worker {
     } finally {
       if (page) {
         page.removeAllListeners('console');
-        await page.close();
+      }
+
+      if (context) {
+        await context.close();
       }
     }
   }
 
+  async handleRoute(route: Route) {
+    const request = route.request();
+    const url = request.url();
+
+    const result = await checkUrl(url, { allowedHosts: this.allowedHosts, lookup: this.lookup });
+    if (!result.allowed) {
+      log.save(`${LOG_PREFIX}|request-blocked`, {
+        url: url.slice(0, 200),
+        reason: result.reason,
+        resourceType: request.resourceType(),
+      });
+      await route.abort('blockedbyclient');
+      return;
+    }
+
+    if (!/^https?:/i.test(url)) {
+      await route.continue();
+      return;
+    }
+
+    // Chromium does not route redirect hops of a continued request, so remote requests are made here without
+    // following redirects: a 3xx response goes back to the browser, which requests the target again through
+    // this handler, so every hop is checked.
+    try {
+      const response = await route.fetch({ maxRedirects: 0 });
+      const headers = { ...response.headers() };
+      if (request.resourceType() === 'font') {
+        // Cross-origin fonts require CORS, the page origin is opaque.
+        headers['access-control-allow-origin'] = '*';
+      }
+
+      await route.fulfill({ response, headers });
+    } catch (error) {
+      log.save(`${LOG_PREFIX}|request-error`, { url: url.slice(0, 200), error: error.message || error.toString() });
+      await route.abort('failed');
+    }
+  }
+
+  /**
+   * Inlines remote fonts of @font-face rules as data URIs (header/footer templates can't load remote fonts).
+   * Fonts that are not allowed are left untouched, the browser blocks them.
+   */
   private async processBase64Font(html: string): Promise<string> {
-    const fontUrl: string | undefined = html.match(/src: url\((.*?)\);/)?.[1];
-    if (!fontUrl) {
+    const fontFaceRegex = /@font-face\s*\{[^}]*\}/gi;
+    const urlRegex = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)'"\s]*))\s*\)(\s*format\([^)]*\))?/gi;
+
+    const replacements = new Map<string, string>();
+    const blocks = html.match(fontFaceRegex) || [];
+    for (const block of blocks) {
+      for (const match of block.matchAll(urlRegex)) {
+        const fontUrl = (match[1] ?? match[2] ?? match[3] ?? '').trim();
+        if (!/^https?:/i.test(fontUrl) || replacements.has(match[0])) {
+          continue;
+        }
+
+        const inlined = await this.loadFont(fontUrl);
+        if (inlined) {
+          replacements.set(match[0], match[4] ? `url(${inlined.dataUri})${match[4]}` : `url(${inlined.dataUri}) format('${inlined.format}')`);
+        }
+      }
+    }
+
+    if (replacements.size === 0) {
       return html;
     }
 
-    const fontBase64 = await this.loadFont(fontUrl);
-    const fileExtension = path.extname(fontUrl).toLowerCase().split('.').pop();
-    const mainHtmlContent = html.replace(`src: url(${fontUrl});`, `src: url(${fontBase64}) format('${fileExtension}');`);
-
-    return mainHtmlContent;
+    return html.replace(fontFaceRegex, (block) => block.replace(urlRegex, (whole) => replacements.get(whole) ?? whole));
   }
 
   private extractTemplate(page: Page, elementId: string, styles: string): Promise<string> {
@@ -176,38 +263,50 @@ export class Worker {
     );
   }
 
-  private async loadFont(url: string) {
+  private async loadFont(fontUrl: string): Promise<{ dataUri: string; format: string } | null> {
+    const check = await checkUrl(fontUrl, { allowedHosts: this.allowedHosts, lookup: this.lookup, remoteOnly: true });
+    if (!check.allowed || !check.url || !check.addresses) {
+      log.save(`${LOG_PREFIX}|font-blocked`, { url: fontUrl.slice(0, 200), reason: check.reason });
+      return null;
+    }
+
+    // Extension is checked on the path, not on the raw string (fragment/query must not count).
+    const fileExtension = path.extname(check.url.pathname).toLowerCase();
+    const font = FONT_FORMATS[fileExtension];
+    if (!font) {
+      log.save(`${LOG_PREFIX}|font-blocked`, { url: fontUrl.slice(0, 200), reason: 'unsupported-format' });
+      return null;
+    }
+
     try {
-      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      // Connect to the address that was validated, not to a freshly resolved one.
+      const [{ address, family }] = check.addresses;
+      const response = await axios.get(check.url.href, {
+        responseType: 'arraybuffer',
+        timeout: FONT_DOWNLOAD_TIMEOUT,
+        maxContentLength: FONT_MAX_SIZE,
+        maxRedirects: 0,
+        lookup: ((_host: string, opts: unknown, callback: (...args: unknown[]) => void) => {
+          const resolved: ResolvedAddress = { address, family };
+          if (typeof opts === 'object' && opts !== null && (opts as { all?: boolean }).all) {
+            callback(null, [resolved]);
+          } else {
+            callback(null, resolved.address, resolved.family);
+          }
+        }) as never,
+      });
 
       if (response.status !== 200) {
-        throw new InternalServerErrorException(`Failed to download font. Status code: ${response.status}`);
+        throw new Error(`Status code: ${response.status}`);
       }
 
-      const buffer = Buffer.from(response.data);
-      const base64Data = buffer.toString('base64');
-
-      const fileExtension = path.extname(url).toLowerCase();
-      let mimeType: string;
-      switch (fileExtension) {
-        case '.woff':
-          mimeType = 'application/font-woff';
-          break;
-        case '.woff2':
-          mimeType = 'application/font-woff2';
-          break;
-        case '.ttf':
-          mimeType = 'application/font-ttf';
-          break;
-        case '.otf':
-          mimeType = 'application/font-otf';
-          break;
-        default:
-          throw new BadRequestException(`Unsupported font format: ${fileExtension}`);
+      const contentType = String(response.headers?.['content-type'] ?? '');
+      if (!FONT_CONTENT_TYPE.test(contentType)) {
+        throw new Error(`Unexpected content type: ${contentType.slice(0, 100)}`);
       }
 
-      const dataUri = `data:${mimeType};base64,${base64Data}`;
-      return dataUri;
+      const dataUri = `data:${font.mimeType};base64,${Buffer.from(response.data).toString('base64')}`;
+      return { dataUri, format: font.format };
     } catch (error) {
       throw new InternalServerErrorException(`Failed to load font: ${error.message || error.toString()}`);
     }

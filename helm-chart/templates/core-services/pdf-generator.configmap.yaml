@@ -13,6 +13,7 @@ metadata:
   "workerTimeout" 30000
   "maxWorkers" 5
   "maxConcurrentJobs" 200
+  "allowedHosts" (list)
 }}
 data:
   # Server configuration
