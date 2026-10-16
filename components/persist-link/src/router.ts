@@ -83,9 +83,13 @@ class Router {
 
     app.get('/templates', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'getTemplates'));
     app.get('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'findTemplateById'));
-    app.post('/templates', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'createTemplate'));
-    app.put('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'updateTemplate'));
-    app.delete('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'deleteTemplate'));
+
+    // Template write routes exist only when the external provider (the only template consumer) is configured.
+    if (this.config.link_providers?.external) {
+      app.post('/templates', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'createTemplate'));
+      app.put('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'updateTemplate'));
+      app.delete('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'deleteTemplate'));
+    }
 
     // Link controller.
     app.get('/:hash', this.controllers.getHandler('link', 'open'));

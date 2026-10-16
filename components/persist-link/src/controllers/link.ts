@@ -1,3 +1,25 @@
+// Constants.
+const MAX_JSON_MAP_ENTRIES = 100;
+const MAX_JSON_MAP_VALUE_LENGTH = 10000;
+
+/**
+ * Is valid template jsonMap: plain object of strings (paths or arrow function sources) with bounded size.
+ * @param {*} jsonMap JSON map.
+ * @returns {boolean}
+ */
+export function isValidJsonMap(jsonMap) {
+  if (jsonMap === undefined || jsonMap === null) {
+    return true;
+  }
+  if (typeof jsonMap !== 'object' || Array.isArray(jsonMap)) {
+    return false;
+  }
+  const entries = Object.entries(jsonMap);
+  return (
+    entries.length <= MAX_JSON_MAP_ENTRIES && entries.every(([, value]) => typeof value === 'string' && value.length <= MAX_JSON_MAP_VALUE_LENGTH)
+  );
+}
+
 // Import.
 import { getLog } from '../lib/context';
 import { describeOptions } from '../lib/log_redact';
@@ -129,10 +151,12 @@ class LinkController extends Controller {
 
     // Open.
     try {
-      linkProvider.open(options, res, responseType, { showInBrowser });
+      await linkProvider.open(options, res, responseType, { showInBrowser });
     } catch (error) {
       getLog().save('open-link-error', { type, options: describeOptions(options), message: error.message });
-      return this.responseError(res, 'Provider error.');
+      if (!res.headersSent) {
+        return this.responseError(res, 'Provider error.');
+      }
     }
   }
 
@@ -163,10 +187,12 @@ class LinkController extends Controller {
 
     // Open.
     try {
-      linkProvider.getTemplate(options, res, responseType);
+      await linkProvider.getTemplate(options, res, responseType);
     } catch (error) {
       getLog().save('open-link-template-error', { type, options: describeOptions(options), message: error.message });
-      return this.responseError(res, 'Provider error.');
+      if (!res.headersSent) {
+        return this.responseError(res, 'Provider error.');
+      }
     }
   }
 
@@ -212,6 +238,11 @@ class LinkController extends Controller {
    * @param {object} res HTTP response.
    */
   async createTemplate(req, res) {
+    // Check.
+    if (!isValidJsonMap(req.body?.jsonMap)) {
+      return this.responseError(res, 'Invalid jsonMap.', 400);
+    }
+
     // Create template.
     try {
       const template = await this.templateModel.create(req.body);
@@ -230,6 +261,11 @@ class LinkController extends Controller {
    * @param {object} res HTTP response.
    */
   async updateTemplate(req, res) {
+    // Check.
+    if (!isValidJsonMap(req.body?.jsonMap)) {
+      return this.responseError(res, 'Invalid jsonMap.', 400);
+    }
+
     // Update template.
     try {
       const template = await this.templateModel.update(req.params.id, req.body);

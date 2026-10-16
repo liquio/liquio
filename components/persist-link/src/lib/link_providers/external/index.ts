@@ -39,7 +39,12 @@ class ExternalLinkProvider extends LinkProvider {
         register: new RegisterProvider(config.register),
       };
       const appConfig = getConfig();
-      this.sandbox = Sandbox.getInstance();
+      // jsonMap code is DB-stored, so it always runs in isolated-vm whatever `sandbox.isolationLevel` is configured.
+      this.sandbox = new Sandbox({
+        ...appConfig.sandbox,
+        isolationLevel: 'isolated-vm' as any,
+        getLog,
+      });
       this.filestorageHandler = new FilestorageHandler(appConfig.link_providers.filestorage);
 
       ExternalLinkProvider.singleton = this;
@@ -82,7 +87,7 @@ class ExternalLinkProvider extends LinkProvider {
       // Check.
       const isValidData = this.isValidOptions(options);
       if (!isValidData) {
-        res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+        return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
       }
 
       // Define params.

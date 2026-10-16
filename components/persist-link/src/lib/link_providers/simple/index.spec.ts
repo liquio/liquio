@@ -1,8 +1,8 @@
-const pipe = jest.fn();
-const upstream = { pipe, on: jest.fn(), headers: { 'content-type': 'text/plain' }, statusCode: 200 };
-const requestMock = jest.fn(async (..._args: any[]) => upstream);
+const logSave = jest.fn();
+jest.mock('../../context', () => ({ getLog: () => ({ save: logSave }) }));
 
-jest.mock('../../http_request', () => ({ __esModule: true, default: { stream: requestMock } }));
+const httpMock = { stream: jest.fn(), send: jest.fn() };
+jest.mock('../../http_request', () => ({ __esModule: true, default: httpMock }));
 
 import SimpleLinkProvider from './index';
 
@@ -10,9 +10,9 @@ const createRes = () => ({
   status: jest.fn().mockReturnThis(),
   send: jest.fn().mockReturnThis(),
   redirect: jest.fn().mockReturnThis(),
-  setHeader: jest.fn().mockReturnThis(),
-  destroy: jest.fn(),
 });
+
+const BAD_URLS = ['file:///etc/passwd', 'ftp://example.com/x', 'javascript:alert(1)', 'gopher://127.0.0.1:70/', 'not a url', '/relative', ''];
 
 describe('SimpleLinkProvider', () => {
   beforeEach(() => {
@@ -21,91 +21,57 @@ describe('SimpleLinkProvider', () => {
   });
 
   describe('isValidOptions', () => {
-    it.each([undefined, 'string', 42, []])('should return false when options is %p', (options) => {
+    it.each([undefined, null, 'string', 42])('should return false when options is %p', (options) => {
       const provider = new SimpleLinkProvider({});
       expect(provider.isValidOptions(options as any)).toBe(false);
     });
 
-    it('should throw when options is null (typeof null === "object")', () => {
-      const provider = new SimpleLinkProvider({});
-      expect(() => provider.isValidOptions(null as any)).toThrow();
-    });
-
-    it('should return false when url is missing', () => {
+    it('should return false when url is missing or not a string', () => {
       const provider = new SimpleLinkProvider({});
       expect(provider.isValidOptions({})).toBe(false);
-    });
-
-    it('should return false when url is not a string', () => {
-      const provider = new SimpleLinkProvider({});
       expect(provider.isValidOptions({ url: 123 })).toBe(false);
     });
 
-    it('should return true when url is a string', () => {
+    it.each(BAD_URLS)('should return false for url %p', (url) => {
       const provider = new SimpleLinkProvider({});
-      expect(provider.isValidOptions({ url: 'https://example.com' })).toBe(true);
+      expect(provider.isValidOptions({ url })).toBe(false);
+    });
+
+    it.each(['http://example.com', 'https://example.com/path?a=1'])('should return true for %p', (url) => {
+      const provider = new SimpleLinkProvider({});
+      expect(provider.isValidOptions({ url })).toBe(true);
     });
   });
 
   describe('open', () => {
-    it('should redirect when redirect option is true', async () => {
-      const provider = new SimpleLinkProvider({});
+    it.each(['http://example.com/a', 'https://example.com/b'])('should redirect to %p', async (url) => {
       const res = createRes();
-
-      await provider.open({ url: 'https://example.com', redirect: true }, res);
-
-      expect(res.redirect).toHaveBeenCalledWith('https://example.com');
-      expect(requestMock).not.toHaveBeenCalled();
+      await new SimpleLinkProvider({}).open({ url, redirect: true }, res);
+      expect(res.redirect).toHaveBeenCalledWith(url);
     });
 
-    it('should request and pipe the response by default', async () => {
-      const provider = new SimpleLinkProvider({});
+    it.each([{ redirect: false }, { method: 'POST' }, {}])('should still only redirect with legacy options %p', async (legacy) => {
       const res = createRes();
-
-      await provider.open({ url: 'https://example.com' }, res);
-
-      expect(requestMock).toHaveBeenCalledWith({ url: 'https://example.com', method: 'GET' });
-      expect(pipe).toHaveBeenCalledWith(res);
+      await new SimpleLinkProvider({}).open({ url: 'http://127.0.0.1:1/', ...legacy }, res);
+      expect(res.redirect).toHaveBeenCalledWith('http://127.0.0.1:1/');
+      expect(httpMock.stream).not.toHaveBeenCalled();
+      expect(httpMock.send).not.toHaveBeenCalled();
     });
 
-    it('should copy upstream status and headers to the response', async () => {
-      const provider = new SimpleLinkProvider({});
+    it.each(BAD_URLS)('should respond with 404 and not redirect for %p', async (url) => {
       const res = createRes();
-
-      await provider.open({ url: 'https://example.com' }, res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.setHeader).toHaveBeenCalledWith('content-type', 'text/plain');
-    });
-
-    it('should respond with 502 when the request fails', async () => {
-      requestMock.mockRejectedValueOnce(new Error('ECONNRESET'));
-      const provider = new SimpleLinkProvider({});
-      const res = createRes();
-
-      await provider.open({ url: 'https://example.com' }, res);
-
-      expect(res.status).toHaveBeenCalledWith(502);
-      expect(pipe).not.toHaveBeenCalled();
-    });
-
-    it('should use a custom method when provided', async () => {
-      const provider = new SimpleLinkProvider({});
-      const res = createRes();
-
-      await provider.open({ url: 'https://example.com', method: 'POST' }, res);
-
-      expect(requestMock).toHaveBeenCalledWith({ url: 'https://example.com', method: 'POST' });
+      await new SimpleLinkProvider({}).open({ url }, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.send).toHaveBeenCalledWith({ error: { message: 'Not found.' } });
+      expect(res.redirect).not.toHaveBeenCalled();
+      expect(logSave).toHaveBeenCalledWith('simple-invalid-options', expect.anything());
     });
 
     it('should respond with 404 when options are invalid', async () => {
-      const provider = new SimpleLinkProvider({});
       const res = createRes();
-
-      await provider.open({}, res);
-
+      await new SimpleLinkProvider({}).open(null, res);
       expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.send).toHaveBeenCalledWith({ error: { message: 'Not found.' } });
+      expect(res.redirect).not.toHaveBeenCalled();
     });
   });
 

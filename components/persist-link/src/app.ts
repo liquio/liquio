@@ -20,7 +20,8 @@ const log = new Log([consoleLogProvider], ['console']);
 setAppContext({ config, log, typeOf });
 
 // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
-new Sandbox({ ...config.sandbox, getLog });
+// Template jsonMap code must never run outside isolated-vm, so the isolation level is not configurable.
+new Sandbox({ ...config.sandbox, isolationLevel: 'isolated-vm' as any, getLog });
 
 // Process title.
 process.title = 'persist-link';

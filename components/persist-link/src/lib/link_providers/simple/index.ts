@@ -1,12 +1,10 @@
 // Import.
-import HttpRequest from '../../http_request';
-import { pipeUpstreamResponse } from '../../stream_response';
+import { getLog } from '../../context';
 import LinkProvider from '../link_provider';
 
 // Constants.
-const REQUEST_METHOD_GET = 'GET';
+const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 const RESPONSE_NOT_FOUND_CODE = 404;
-const RESPONSE_BAD_GATEWAY_CODE = 502;
 const RESPONSE_NOT_FOUND_OBJECT = {
   error: {
     message: 'Not found.',
@@ -34,56 +32,35 @@ class SimpleLinkProvider extends LinkProvider {
   /**
    * Is valid data.
    * @param {object} options Options.
-   * @param {string} options.url URL.
-   * @param {boolean} [options.redirect] Redirect indicator.
-   * @param {string} [options.method] Request method. GET by default.
+   * @param {string} options.url Absolute http(s) URL.
    * @returns {boolean} Is valid options indicator.
    */
   isValidOptions(options) {
-    // Check if not valid.
-    if (typeof options !== 'object') {
-      return false;
-    }
-    if (typeof options.url !== 'string') {
+    if (!options || typeof options !== 'object' || typeof options.url !== 'string') {
       return false;
     }
 
-    // Rerturn as valid in other cases.
-    return true;
+    try {
+      return ALLOWED_PROTOCOLS.has(new URL(options.url).protocol);
+    } catch {
+      return false;
+    }
   }
 
   /**
-   * Open.
+   * Open. Always redirects to the http(s) URL; the service never requests the URL itself.
+   * Legacy `method` and `redirect` options are ignored (the old proxy mode was an SSRF vector).
    * @param {object} options Options.
-   * @param {string} options.url URL.
-   * @param {boolean} [options.redirect] Redirect indicator.
-   * @param {string} [options.method] Request method. GET by default.
+   * @param {string} options.url Absolute http(s) URL.
    * @param {object} res HTTP response.
    */
   async open(options, res) {
-    // Check.
-    const isValidData = this.isValidOptions(options);
-    if (!isValidData) {
-      res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+    if (!this.isValidOptions(options)) {
+      getLog().save('simple-invalid-options', { hasUrl: typeof options?.url === 'string' });
+      return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
     }
 
-    // Define params.
-    const { url, method, redirect } = options;
-
-    // Redirect if need it.
-    if (redirect) {
-      return res.redirect(url);
-    }
-
-    // Do request and pipe response in other cases.
-    const requestOptions = { url, method: method || REQUEST_METHOD_GET };
-    let upstream;
-    try {
-      upstream = await HttpRequest.stream(requestOptions);
-    } catch {
-      return res.status(RESPONSE_BAD_GATEWAY_CODE).send({ error: { message: 'Bad gateway.' } });
-    }
-    pipeUpstreamResponse(upstream, res);
+    return res.redirect(options.url);
   }
 }
 

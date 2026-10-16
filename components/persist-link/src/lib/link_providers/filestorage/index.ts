@@ -92,7 +92,7 @@ class FilestorageLinkProvider extends LinkProvider {
         isValidData,
         options: describeOptions(options),
       });
-      res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+      return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
     }
 
     // Define params.
