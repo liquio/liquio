@@ -26,6 +26,7 @@
       "profileHttpOnly": false
     },
     "trustProxy": 1,
+    "legacyGetConfirmation": true,
     "cors": {
       "allowedOrigins": []
     },

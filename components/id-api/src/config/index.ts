@@ -111,6 +111,8 @@ export interface Config {
   };
   // Express `trust proxy` value: hop count, or IP/CIDR/preset list of known ingress proxies. Unset trusts nothing.
   trustProxy?: number | string | string[];
+  // Keep the deprecated GET (query string) variants of the confirmation code routes (IF-05). Default true; false answers 410.
+  legacyGetConfirmation?: boolean;
   notify?: {
     url?: string;
     authorization?: string;

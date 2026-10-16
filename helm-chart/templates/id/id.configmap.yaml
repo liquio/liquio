@@ -110,6 +110,7 @@ metadata:
   "session" (dict)
   "swagger" false
   "trustProxy" 1
+  "legacyGetConfirmation" true
   "x509" $x509Base
 -}}
 {{ $idConfigBase := dict
