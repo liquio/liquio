@@ -1,4 +1,4 @@
-import { assertBasicAuthConfig, validateBasicAuthConfig } from './config_validation';
+import { assertBasicAuthConfig, buildSandboxConfig, validateBasicAuthConfig } from './config_validation';
 
 const basic = (credentials: string) => `Basic ${Buffer.from(credentials).toString('base64')}`;
 // The token that used to be committed to config-templates, built here to keep the literal out of the sources.
@@ -43,5 +43,28 @@ describe('assertBasicAuthConfig', () => {
 
   it('should not throw on a valid config', () => {
     expect(() => assertBasicAuthConfig({ basic_auth: { tokens: [basic('admin-api:Zk3p9QwLm2Xv8Rt')] } }, 'production')).not.toThrow();
+  });
+});
+
+describe('buildSandboxConfig', () => {
+  it('should default to isolated-vm without a warning', () => {
+    const warn = jest.fn();
+    expect(buildSandboxConfig(undefined, warn)).toEqual({ isolationLevel: 'isolated-vm' });
+    expect(buildSandboxConfig({ isolationLevel: 'isolated-vm', x: 1 }, warn)).toEqual({ isolationLevel: 'isolated-vm', x: 1 });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('should override the function isolation level and log a warning', () => {
+    const warn = jest.fn();
+    expect(buildSandboxConfig({ isolationLevel: 'function', other: 1 }, warn)).toEqual({ isolationLevel: 'isolated-vm', other: 1 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('sandbox-unsafe-function-level'));
+  });
+
+  it('should make a Sandbox built from it unable to reach host globals', () => {
+    const { Sandbox } = require('@liquio/back-core');
+    const getLog = () => ({ save: jest.fn() });
+    const sandbox = new Sandbox({ ...buildSandboxConfig({ isolationLevel: 'function' }, jest.fn()), getLog });
+    const result = sandbox.evalWithArgs('() => [typeof process, typeof require, typeof Buffer]', [], { checkArrow: true });
+    expect(result).toEqual(['undefined', 'undefined', 'undefined']);
   });
 });

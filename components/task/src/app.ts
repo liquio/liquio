@@ -21,7 +21,7 @@ import typeOf from './lib/type_of';
 import { HttpClient } from './lib/http_client';
 import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses_daemon';
 import { loadConfig } from './lib/config';
-import { assertBasicAuthConfig } from './lib/config_validation';
+import { assertBasicAuthConfig, buildSandboxConfig } from './lib/config_validation';
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
 import { initIdApiClient } from './lib/id_api';
@@ -115,7 +115,7 @@ export class BpmnTaskCore {
     // Do not start with a publicly known default Basic token (or none in production).
     assertBasicAuthConfig(config);
 
-    this.sandbox = new Sandbox(config.sandbox || {});
+    this.sandbox = new Sandbox(buildSandboxConfig(config.sandbox) as any);
     Keywords.init();
 
     // Init global http client.
