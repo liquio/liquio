@@ -20,6 +20,13 @@ const OPERATIONS = {
   DELETE: 'delete',
 };
 
+/** Thrown when a rollback targets a key whose records are not writable (accessMode `read_only`). */
+export class RollbackKeyForbiddenError extends Error {
+  constructor(public keyId: unknown) {
+    super('Key records are not writable.');
+  }
+}
+
 /**
  * Rollback business.
  */
@@ -99,6 +106,7 @@ export default class RollbackBusiness extends Business {
     if (!timeRegExp.test(timePoint)) throw new Error('Invalide timePoint format');
     const maxTimeRollback = 1000 * 60 * 60 * 24 * 7 + 10 * 1000; // 1 week + 10 seconds;
     if (Date.now() - new Date(timePoint).getTime() > maxTimeRollback) throw new Error("timePoint mustn't be earlier than 1 week");
+    await this.assertKeyWritable(keyId);
   }
 
   checkPreviousRollbackProceed(keyId) {
@@ -377,6 +385,7 @@ export default class RollbackBusiness extends Business {
     if (!user || !accessInfo) throw new Error('All accessOptions options are required');
     const { data: historyRow } = await this.historyModel.findById(historyId);
     if (historyRow.recordId !== recordId || historyRow.keyId !== keyId) throw new Error("Params historyId, recordId, keyId don't match");
+    await this.assertKeyWritable(keyId);
     const { registerId, isEncrypted } = await this.getKeyOrFail(keyId);
     const {
       data: {
@@ -460,6 +469,19 @@ export default class RollbackBusiness extends Business {
       rollbackedRecord = recordModelResponse.data;
     }
     return rollbackedRecord;
+  }
+
+  /**
+   * Rollback writes records, so it follows the same `accessMode` rule as the other write paths.
+   * @private
+   * @param {number} keyId Key ID.
+   * @throws {RollbackKeyForbiddenError} If the key records are not writable.
+   * @throws {Error} If the key does not exist.
+   */
+  async assertKeyWritable(keyId) {
+    const { data: key } = (await this.keyModel.findById(keyId)) || {};
+    if (!key) throw new Error('Key of the records to rollback does not exist.');
+    if (!this.keyModel.checkRecordsWritable(key)) throw new RollbackKeyForbiddenError(keyId);
   }
 
   /**

@@ -2,7 +2,9 @@ import { matchedData } from 'express-validator';
 
 import { Request, Response } from '../router';
 import Controller from './controller';
-import RollbackBusiness from '../businesses/rollback';
+import { resolveCallerAccess } from '../lib/caller_access';
+import KeyModel from '../models/key';
+import RollbackBusiness, { RollbackKeyForbiddenError } from '../businesses/rollback';
 
 /**
  * Rollback controller.
@@ -11,6 +13,7 @@ export default class RollbackController extends Controller {
   static singleton: RollbackController;
 
   rollbackBusiness: RollbackBusiness;
+  keyModel: KeyModel;
 
   /**
    * Rollback controller constructor.
@@ -21,6 +24,7 @@ export default class RollbackController extends Controller {
     if (!RollbackController.singleton) {
       super(config);
       this.rollbackBusiness = new RollbackBusiness(config);
+      this.keyModel = KeyModel.getInstance();
       RollbackController.singleton = this;
     }
     return RollbackController.singleton;
@@ -39,6 +43,7 @@ export default class RollbackController extends Controller {
       rollbackId = await this.rollbackBusiness.startRollback({ keyId, timePoint }, { user, accessInfo });
     } catch (error) {
       this.log.save('start-rollback-error', { keyId, timePoint, error: error?.message });
+      if (error instanceof RollbackKeyForbiddenError) return this.responseError(res, 'Key records are not writable', 403);
       return this.responseError(res, 'Can not start rollback.', 500, { error: error?.message });
     }
 
@@ -57,6 +62,14 @@ export default class RollbackController extends Controller {
     let statusWithDetails;
     try {
       statusWithDetails = await this.rollbackBusiness.checkRollbackStatusWithDetails(rollbackId);
+      // Trusted callers (admin-api) keep polling; others must be able to read the rolled back key.
+      if (
+        statusWithDetails &&
+        !resolveCallerAccess(req, this.config).trusted &&
+        !(await this.keyModel.checkRecordsReadableById(statusWithDetails.keyId))
+      ) {
+        return this.responseError(res, 'Key records are not readable', 403);
+      }
     } catch (error) {
       this.log.save('get-rollback-status-error', { rollbackId, error: error?.message });
       return this.responseError(res, 'Can not get rollback status.');
@@ -80,6 +93,7 @@ export default class RollbackController extends Controller {
       rollbackedRecord = await this.rollbackBusiness.rollbackRecord({ historyId, recordId, keyId }, { user, accessInfo });
     } catch (error) {
       this.log.save('rollback-record-error', { historyId, recordId, keyId, error: error?.message });
+      if (error instanceof RollbackKeyForbiddenError) return this.responseError(res, 'Key records are not writable', 403);
       return this.responseError(res, 'Can not rollback record.', 500, { error: error?.message });
     }
 
