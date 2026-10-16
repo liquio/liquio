@@ -1,10 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { INestApplication } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as bodyParser from 'body-parser';
 
 import { AppModule } from './app.module';
 import { Configuration, ConfigurationService } from './configuration/configuration.service';
+import { applyBodyLimit } from './common/body-limit';
 import { LoggingInterceptor } from './observability/logging.interceptor';
 import { LoggerService } from './observability/logger.service';
 import { ObservabilityModule } from './observability/observability.module';
@@ -34,11 +34,8 @@ async function bootstrap() {
     useSwagger(app);
   }
 
-  // Set the payload size limit
-  if (config.acceptedBodySize) {
-    app.use(bodyParser.json({ limit: config.acceptedBodySize }));
-    app.use(bodyParser.urlencoded({ limit: config.acceptedBodySize, extended: true }));
-  }
+  // Set the payload size limit (falls back to a safe default when not configured)
+  applyBodyLimit(app, config.acceptedBodySize);
 
   app.useGlobalInterceptors(new LoggingInterceptor(logger));
   app.useGlobalInterceptors(new ErrorsInterceptor(logger));
