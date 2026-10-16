@@ -50,7 +50,7 @@ metadata:
   "ldap" (dict "isEnabled" false)
   "local" (dict "isEnabled" true)
   "oidc" (dict)
-  "x509" (dict "isEnabled" true)
+  "x509" (dict "isEnabled" true "requireChallenge" true)
 -}}
 {{ $x509Base := dict
   "externalUrl" (printf "http://%s-sign-tool:3004" (include "liquio.fullname" .))

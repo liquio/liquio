@@ -152,7 +152,8 @@
         }
       },
       "x509": {
-        "isEnabled": true
+        "isEnabled": true,
+        "requireChallenge": true
       }
     },
     "passwordManager": {
