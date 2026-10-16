@@ -176,7 +176,12 @@ class ExternalLinkProvider extends LinkProvider {
       if (responseFormat !== 'pdf') {
         const handlebarsTemplate = handlebars.compile(template.html);
         const html = handlebarsTemplate(preparedData);
-        return res.set(CONTENT_TYPE_HEADER, 'text/html; charset=utf-8').status(200).send(html);
+        return res
+          .set(CONTENT_TYPE_HEADER, 'text/html; charset=utf-8')
+          .set('X-Content-Type-Options', 'nosniff')
+          .set('Content-Security-Policy', 'sandbox')
+          .status(200)
+          .send(html);
       }
 
       const handlebarsTemplate = handlebars.compile(template.pdf);

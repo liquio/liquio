@@ -165,6 +165,8 @@ describe('ExternalLinkProvider', () => {
       await provider.open(options, res);
 
       expect(res.set).toHaveBeenCalledWith('Content-Type', 'text/html; charset=utf-8');
+      expect(res.set).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
+      expect(res.set).toHaveBeenCalledWith('Content-Security-Policy', 'sandbox');
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith('<p>Alice</p>');
     });

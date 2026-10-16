@@ -10,6 +10,8 @@ const RESPONSE_NOT_FOUND_OBJECT = {
     message: 'Not found.',
   },
 };
+const DEFAULT_INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif'];
+const CONTENT_SECURITY_POLICY = "sandbox; default-src 'none'";
 
 /**
  * Filestorage link provider.
@@ -51,6 +53,17 @@ class FilestorageLinkProvider extends LinkProvider {
 
     // Rerturn as valid in other cases.
     return true;
+  }
+
+  /**
+   * Get content types allowed to be displayed inline.
+   * @returns {string[]} Lower-cased content types.
+   */
+  getInlineContentTypes() {
+    const { inlineContentTypes = DEFAULT_INLINE_CONTENT_TYPES } = this.config || {};
+    return (Array.isArray(inlineContentTypes) ? inlineContentTypes : DEFAULT_INLINE_CONTENT_TYPES)
+      .map((type) => String(type).trim().toLowerCase())
+      .filter((type) => type !== 'text/html' && type !== 'image/svg+xml');
   }
 
   /**
@@ -98,8 +111,31 @@ class FilestorageLinkProvider extends LinkProvider {
     const downloadReadableStream = await filestorageConnection.downloadFile(fileId, { isP7s });
     downloadReadableStream
       .on('response', (res) => {
-        if (showInBrowser) res.headers['Content-Disposition'] = 'inline';
-        res.headers['Accept-Ranges'] = 'bytes';
+        const headers = res.headers;
+        const contentType = String(headers['content-type'] || headers['Content-Type'] || '')
+          .split(';')[0]
+          .trim()
+          .toLowerCase();
+        const isInlineAllowed = this.getInlineContentTypes().includes(contentType);
+        const currentDisposition = headers['content-disposition'] || headers['Content-Disposition'];
+
+        // Never render non-allowlisted types inline, even if upstream asked for it.
+        let disposition: string | undefined;
+        if (!isInlineAllowed) {
+          disposition = 'attachment';
+        } else if (showInBrowser) {
+          disposition = 'inline';
+        }
+        if (disposition) {
+          delete headers['content-disposition'];
+          headers['Content-Disposition'] = /^\s*(inline|attachment)/i.test(currentDisposition || '')
+            ? currentDisposition.replace(/^\s*(inline|attachment)/i, disposition)
+            : disposition;
+        }
+
+        headers['X-Content-Type-Options'] = 'nosniff';
+        headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY;
+        headers['Accept-Ranges'] = 'bytes';
       })
       .on('error', handleStreamError)
       .pipe(res)

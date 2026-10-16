@@ -2,6 +2,7 @@
   "simple": {},
   "filestorage": {
     "serversList": [],
-    "addContentDispositionHeader": true
+    "addContentDispositionHeader": true,
+    "inlineContentTypes": ["application/pdf", "image/png", "image/jpeg", "image/gif"]
   }
 }
