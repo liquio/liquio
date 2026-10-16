@@ -8,11 +8,13 @@ metadata:
 {{ $serverBase := dict
   "port" (default 8080 .Values.services.pdfGenerator.containerPort)
   "bodyLimit" "50mb"
+  "defaultBodyLimit" "100kb"
 }}
 {{ $playwrightBase := dict
   "workerTimeout" 30000
   "maxWorkers" 5
   "maxConcurrentJobs" 200
+  "maxQueueSize" 100
   "allowedHosts" (list)
 }}
 data:

@@ -5,7 +5,7 @@ import { Config } from '@lib/config';
 import { log } from '@lib/log';
 import { PdfGenerator } from '@modules/pdf/interfaces/pdf-generator.interface';
 import { PdfGenerationOptions } from '@modules/pdf/pdf.types';
-import { Cluster } from './cluster/cluster';
+import { Cluster, QueueFullException } from './cluster/cluster';
 import { PlaywrightOptions } from './playwright.types';
 
 // Constants.
@@ -70,6 +70,11 @@ export class PlaywrightAdapter implements PdfGenerator, OnModuleInit, OnModuleDe
       const result = await this.cluster.execute({ html, options: playwrightOptions });
       return result;
     } catch (error) {
+      if (error instanceof QueueFullException) {
+        log.save(`${LOG_PREFIX}|queue-full`, { error: error.message });
+        throw error;
+      }
+
       log.save(`${LOG_PREFIX}|generate-from-template-error`, {
         name: error.name,
         error: error.message || error.toString(),
