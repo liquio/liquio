@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import { fromBER, Sequence } from 'asn1js';
 import axios from 'axios';
 import { ContentInfo } from 'pkijs';
@@ -9,6 +11,39 @@ import { sanitizeProviderProfile } from '../../../lib/public_services';
 import { Request, StrategyVerify } from '../../../types';
 
 const NAMES_NA_LIST = ['n/a', 'n\\a'];
+const STATE_TTL_MS = 10 * 60 * 1000;
+
+type GovIdSessionState = { state: string; createdAt: number };
+
+/**
+ * Generate a random OAuth state and bind it to the browser session.
+ * Any client-supplied state is ignored.
+ */
+export function issueGovIdState(req: Request): string {
+  const state = crypto.randomBytes(32).toString('base64url');
+  (req.session as any).govid = { state, createdAt: Date.now() } satisfies GovIdSessionState;
+  return state;
+}
+
+/**
+ * Validate the callback state against the session. The stored state is single use: it is removed on every attempt.
+ */
+export function consumeGovIdState(req: Request, received: unknown): boolean {
+  const session = req.session as any;
+  const stored: GovIdSessionState | undefined = session?.govid;
+  if (session) {
+    delete session.govid;
+  }
+  if (!stored || typeof stored.state !== 'string' || typeof received !== 'string' || !received) {
+    return false;
+  }
+  if (!(Date.now() - stored.createdAt <= STATE_TTL_MS)) {
+    return false;
+  }
+  const a = Buffer.from(stored.state);
+  const b = Buffer.from(received);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 /**
  * Gov ID strategy.
@@ -32,7 +67,7 @@ export class GovIdStrategy extends Strategy {
    * Define authentication method.
    */
   authenticate(req: Request, _options?: any): void {
-    this.authenticateAsync(req);
+    this.authenticateAsync(req).catch((error) => this.error(error));
   }
 
   /**
@@ -62,6 +97,13 @@ export class GovIdStrategy extends Strategy {
     const { code } = req.body;
     if (!code) {
       return this.handleMissingCode(req, userIP);
+    }
+
+    // Bind the callback to the session that started the login (login CSRF protection).
+    if (!consumeGovIdState(req, req.body.state)) {
+      this.log.save('authenticate-govid|invalid-state', { userIP }, 'error');
+      req.res!.status(400).send({ error: 'Invalid or expired state.' });
+      return;
     }
 
     const govidTokens = await this.obtainGovidTokens(userIP, code);
@@ -272,7 +314,7 @@ export class GovIdStrategy extends Strategy {
     if (Array.isArray(authType)) {
       authTypeString = authType.join(',');
     }
-    const state = typeof req.query.state === 'string' ? req.query.state : 'null';
+    const state = issueGovIdState(req);
 
     const totalAuthUrl = new URL(authorizationUrl!);
     totalAuthUrl.searchParams.set('response_type', 'code');

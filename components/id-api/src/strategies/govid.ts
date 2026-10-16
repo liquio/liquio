@@ -1,4 +1,3 @@
-import { matchedData, query } from 'express-validator';
 import { FindOptions } from 'sequelize';
 import { Log } from '@liquio/back-core';
 
@@ -6,7 +5,7 @@ import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';
 import { CallbackFn, Express, Request, Response } from '../types';
-import { GovIdStrategy } from './passport_libs/passport-govid/strategy';
+import { GovIdStrategy, issueGovIdState } from './passport_libs/passport-govid/strategy';
 
 // Constants.
 const EDRPOU_TYPE = 'edrpou';
@@ -267,10 +266,10 @@ export async function govid(app: Express) {
 
   // Route to get Gov ID auth info.
   app.get('/authorise/govid/info', [
-    query('state').optional().isString(),
     async (req: Request, res: Response) => {
       const { authorizationUrl, clientId, redirectUrl, authType } = govidConfig as any;
-      const { state = 'null' } = matchedData(req, { locations: ['query'] });
+      // The state is generated server-side and bound to the session; a client-supplied one is ignored.
+      const state = issueGovIdState(req);
 
       let authTypeString = 'dig_sign,bank_id,mobile_id,diia_id';
       if (Array.isArray(authType)) {
