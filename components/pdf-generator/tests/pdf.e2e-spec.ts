@@ -4,6 +4,7 @@ import request from 'supertest';
 
 import { AppModule } from 'src/app.module';
 import { PDF_GENERATOR_TOKEN } from 'src/modules/pdf/interfaces/pdf-generator.interface';
+import { TEST_AUTH_PASSWORD, TEST_AUTH_USERNAME } from './setup-env';
 
 describe('PdfController (e2e)', () => {
   let app: INestApplication;
@@ -51,7 +52,7 @@ describe('PdfController (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/pdf')
-        .auth('username', 'password')
+        .auth(TEST_AUTH_USERNAME, TEST_AUTH_PASSWORD)
         .send(requestBody)
         .expect(201)
         .expect('Content-Type', 'application/pdf')
@@ -70,7 +71,7 @@ describe('PdfController (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/pdf')
-        .auth('username', 'password')
+        .auth(TEST_AUTH_USERNAME, TEST_AUTH_PASSWORD)
         .send(invalidRequestBody)
         .expect(400)
         .expect((res) => {
@@ -88,7 +89,7 @@ describe('PdfController (e2e)', () => {
 
       return request(app.getHttpServer())
         .post('/pdf')
-        .auth('username', 'password')
+        .auth(TEST_AUTH_USERNAME, TEST_AUTH_PASSWORD)
         .send(requestBody)
         .expect(201)
         .expect((res) => {
@@ -107,7 +108,7 @@ describe('PdfController (e2e)', () => {
         },
       };
 
-      await request(app.getHttpServer()).post('/pdf').auth('username', 'password').send(invalidRequestBody).expect(400);
+      await request(app.getHttpServer()).post('/pdf').auth(TEST_AUTH_USERNAME, TEST_AUTH_PASSWORD).send(invalidRequestBody).expect(400);
     });
   });
 });

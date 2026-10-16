@@ -12,5 +12,6 @@
     "^@common/(.*)": "<rootDir>/../src/common/$1",
     "^@modules/(.*)": "<rootDir>/../src/modules/$1",
     "^@lib/(.*)": "<rootDir>/../src/lib/$1"
-  }
+  },
+  "setupFiles": ["<rootDir>/setup-env.ts"]
 }

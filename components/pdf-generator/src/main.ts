@@ -26,4 +26,5 @@ async function bootstrap() {
 
 bootstrap().catch((error) => {
   log.save('unhandled-error', { error });
+  process.exit(1);
 });
