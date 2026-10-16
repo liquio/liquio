@@ -346,7 +346,7 @@ export class TestApp {
       },
     };
     return {
-      jwt: jsonwebtoken.sign(JSON.stringify(payload), global.config.auth.jwtSecret),
+      jwt: jsonwebtoken.sign(payload, global.config.auth.jwtSecret),
       payload,
     };
   }

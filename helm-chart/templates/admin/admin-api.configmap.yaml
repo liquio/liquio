@@ -8,6 +8,7 @@ metadata:
 {{ $authBase := dict
   "authRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "clientId" "liquio-portal"
+  "jwtExpiresIn" "12h"
   "logoutRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "serverPublicUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "port" 80

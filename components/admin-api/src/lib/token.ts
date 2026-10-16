@@ -1,5 +1,9 @@
 import jwt from 'jsonwebtoken';
 
+// Default session JWT lifetime. Override with `auth.jwtExpiresIn` (seconds or a vercel/ms string, e.g. "12h").
+const DEFAULT_JWT_EXPIRES_IN = '12h';
+const JWT_ALGORITHM = 'HS256';
+
 /**
  * Token.
  */
@@ -8,6 +12,7 @@ export class Token {
 
   public config: any;
   public jwtSecret: string;
+  public jwtExpiresIn: string | number;
 
   /**
    * Token constructor.
@@ -18,6 +23,7 @@ export class Token {
     if (!Token.singleton) {
       this.config = authConfig;
       this.jwtSecret = authConfig.jwtSecret;
+      this.jwtExpiresIn = authConfig.jwtExpiresIn || DEFAULT_JWT_EXPIRES_IN;
       Token.singleton = this;
     }
     return Token.singleton;
@@ -36,7 +42,7 @@ export class Token {
     };
 
     // Return token.
-    const token = jwt.sign(tokenData, this.jwtSecret);
+    const token = jwt.sign(tokenData, this.jwtSecret, { expiresIn: this.jwtExpiresIn as any, algorithm: JWT_ALGORITHM });
     return token;
   }
 
@@ -47,7 +53,11 @@ export class Token {
    */
   decrypt(token) {
     // Get token data.
-    const tokenData = jwt.verify(token, this.jwtSecret);
+    const tokenData = jwt.verify(token, this.jwtSecret, {
+      algorithms: [JWT_ALGORITHM],
+      // Also bounds legacy tokens issued without `exp` (they carry `iat`) to the new lifetime.
+      maxAge: this.jwtExpiresIn as any,
+    });
     return tokenData;
   }
 }
