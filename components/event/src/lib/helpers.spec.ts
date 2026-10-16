@@ -1,3 +1,5 @@
+import { AxiosError } from 'axios';
+
 import { Helpers } from './helpers';
 
 describe('replaceObjValues', () => {
@@ -161,5 +163,78 @@ describe('escapeCsvCell', () => {
 
   it('prefixes before quoting when both apply', () => {
     expect(Helpers.escapeCsvCell('=A1,B1')).toBe('"\'=A1,B1"');
+  });
+});
+
+describe('prepareAxiosErrorToLog (EV-05b)', () => {
+  const makeError = (data: any, headers: any = { token: 'hdr-secret', Authorization: 'Basic abc', 'x-trace-id': 't1' }) =>
+    new AxiosError('Request failed', 'ERR_BAD_REQUEST', { url: '/x', method: 'get', headers } as any, {}, {
+      status: 500,
+      statusText: 'ERR',
+      data,
+      headers: {},
+      config: {} as any,
+    } as any);
+
+  it('masks secret keys in the response body', () => {
+    const result = Helpers.prepareAxiosErrorToLog(
+      makeError({ error: 'bad', access_token: 'tok-1', nested: { password: 'p', clientSecret: 's', ok: 1 } }),
+    );
+    expect(result.responseData).toEqual({ error: 'bad', access_token: '****', nested: { password: '****', clientSecret: '****', ok: 1 } });
+    expect(JSON.stringify(result)).not.toMatch(/tok-1|"p"/);
+  });
+
+  it('truncates long response bodies', () => {
+    const result = Helpers.prepareAxiosErrorToLog(makeError('x'.repeat(100000)));
+    expect(result.responseData.length).toBeLessThanOrEqual(2000);
+    const objResult = Helpers.prepareAxiosErrorToLog(makeError({ html: 'y'.repeat(100000) }));
+    expect(objResult.responseData.html.length).toBeLessThanOrEqual(2000);
+  });
+
+  it('keeps empty bodies as {} and drops buffers', () => {
+    expect(Helpers.prepareAxiosErrorToLog(makeError(undefined)).responseData).toEqual({});
+    expect(Helpers.prepareAxiosErrorToLog(makeError(Buffer.from('secret bytes'))).responseData).toBe('binary');
+  });
+
+  it('masks sensitive headers when withHeaders is set and does not leak them otherwise', () => {
+    const withHeaders = Helpers.prepareAxiosErrorToLog(makeError({}), { withHeaders: true });
+    expect(withHeaders.headers).toEqual({ token: '****', Authorization: '****', 'x-trace-id': 't1' });
+    expect(JSON.stringify(Helpers.prepareAxiosErrorToLog(makeError({})))).not.toMatch(/hdr-secret|Basic abc/);
+  });
+});
+
+describe('sensitive name matching and redactRequestOptions (EV-05b)', () => {
+  it('masks token, api-key, signature, cookie, secret and password names', () => {
+    const out = Helpers.redactHeaders({
+      'X-Service-Token': 'a',
+      'api-key': 'b',
+      'X-Signature': 'c',
+      'Set-Cookie': 'd',
+      'x-secret': 'e',
+      Accept: 'json',
+    });
+    expect(out).toEqual({
+      'X-Service-Token': '****',
+      'api-key': '****',
+      'X-Signature': '****',
+      'Set-Cookie': '****',
+      'x-secret': '****',
+      Accept: 'json',
+    });
+  });
+
+  it('masks headers and body keys, cuts long bodies and drops agents and streams', () => {
+    const out = Helpers.redactRequestOptions({
+      url: 'http://x',
+      headers: { token: 'secret-token' },
+      httpsAgent: {},
+      data: { password: 'p', big: 'z'.repeat(5000) },
+    });
+    expect(out.headers.token).toBe('****');
+    expect(out.httpsAgent).toBeUndefined();
+    expect(out.data.password).toBe('****');
+    expect(out.data.big.length).toBeLessThanOrEqual(2000);
+    expect(Helpers.redactRequestOptions({ data: Buffer.from('a') }).data).toBe('binary');
+    expect(JSON.stringify(out)).not.toContain('secret-token');
   });
 });

@@ -68,6 +68,14 @@ describe('FileStorage', () => {
     });
   });
 
+  it('does not log the filestorage token in request options (EV-05b)', async () => {
+    (global.log.save as jest.Mock).mockClear();
+    await fileStorage.downloadFileRequestOptions('file-id');
+    const logged = JSON.stringify((global.log.save as jest.Mock).mock.calls);
+    expect(logged).not.toContain('mock-token');
+    expect(logged).toContain('file-id');
+  });
+
   it('should form download file request options', async () => {
     const result = await fileStorage.downloadFileRequestOptions('file-id');
     expect(result).toEqual({
