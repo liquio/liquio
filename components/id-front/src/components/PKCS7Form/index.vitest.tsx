@@ -4,6 +4,7 @@ import renderWithTranslations from '../../testHelpers/renderWithTranslations';
 import PKCS7Form from 'components/PKCS7Form';
 
 vi.mock('actions/auth', () => ({ handlePKCS7Auth: vi.fn() }));
+vi.mock('actions/eds', () => ({ requestSignData: vi.fn() }));
 
 describe('PKCS7Form', () => {
   it('renders the sign form', () => {

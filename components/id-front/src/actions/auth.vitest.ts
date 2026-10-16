@@ -146,4 +146,9 @@ describe('actions/auth', () => {
     actions.handlePKCS7Auth('sig');
     expect(api.post).toHaveBeenCalledWith('authorise/x509', { pkcs7: 'sig' }, 'PKCS7_AUTH', dispatch);
   });
+
+  it('handlePKCS7Auth posts the signature with the signed challenge token', () => {
+    actions.handlePKCS7Auth('sig', 'tok');
+    expect(api.post).toHaveBeenCalledWith('authorise/x509', { pkcs7: 'sig', token: 'tok' }, 'PKCS7_AUTH', dispatch);
+  });
 });

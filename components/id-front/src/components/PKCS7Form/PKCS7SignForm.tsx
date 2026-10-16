@@ -20,6 +20,7 @@ import type { DropzoneOptions } from 'react-dropzone';
 
 import FileInputField from 'components/CustomInput/FileInputField';
 import { handlePKCS7Auth } from 'actions/auth';
+import { requestSignData } from 'actions/eds';
 
 export interface PKCS7SignFormProps {
   t: Translate;
@@ -173,6 +174,19 @@ class PKCS7SignForm extends React.Component<PKCS7SignFormProps, PKCS7SignFormSta
     return t('SigningDataError');
   };
 
+  // Fetches the single-use challenge to sign. Resolves with `null` when the sign route is unavailable.
+  requestChallenge = async (): Promise<string | null> => {
+    try {
+      const { token } = ((await requestSignData()) || {}) as { token?: unknown };
+      if (typeof token === 'string' && token) {
+        return token;
+      }
+    } catch (error) {
+      console.warn('PKCS7 auth: failed to request the sign challenge', error);
+    }
+    return null;
+  };
+
   handleSign = async () => {
     const { keyFile, password, signaturePayload } = this.state;
     const { t } = this.props;
@@ -197,12 +211,17 @@ class PKCS7SignForm extends React.Component<PKCS7SignFormProps, PKCS7SignFormSta
       // Load P12 file
       const p12Data = await this.loadP12File(keyFile as File);
 
-      // Create PKCS7 signature
-      const pkcs7Signature = await this.signWithP12(p12Data, password, signaturePayload);
+      // Sign the server-issued challenge exactly. Without the sign route fall back to the legacy client-made
+      // payload (rejected by id-api when `auth_providers.x509.requireChallenge` is on).
+      const token = await this.requestChallenge();
+      if (token === null) {
+        console.warn('PKCS7 auth: GET authorise/eds/sign is unavailable, using the legacy client-made payload');
+      }
+      const pkcs7Signature = await this.signWithP12(p12Data, password, token ?? signaturePayload);
 
       // Send to API
       // `handlePKCS7Auth` resolves with the response body, or with the `ApiError` when the request failed.
-      const result = (await handlePKCS7Auth(pkcs7Signature)) as { error?: unknown; redirect?: string };
+      const result = (await handlePKCS7Auth(pkcs7Signature, token ?? undefined)) as { error?: unknown; redirect?: string };
 
       if (!result.error) {
         if (result.redirect) {

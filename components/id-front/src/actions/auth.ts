@@ -188,10 +188,10 @@ export function handleSendCode(body: unknown) {
   )
 }
 
-export function handlePKCS7Auth(pkcs7: unknown) {
+export function handlePKCS7Auth(pkcs7: unknown, token?: string) {
   return api.post(
     'authorise/x509',
-    { pkcs7 },
+    token === undefined ? { pkcs7 } : { pkcs7, token },
     'PKCS7_AUTH',
     dispatch
   );
