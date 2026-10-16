@@ -1,5 +1,7 @@
 import { AxiosError } from 'axios';
 
+import { redactHeaders } from './redact_headers';
+
 /**
  * @param {error} error. AxiosError.
  * @param {object} options. Options.
@@ -18,6 +20,6 @@ export default function prepareAxiosErrorToLog(error: any, { withHeaders = false
     url: `${error.config?.baseURL ? error.config.baseURL : ''}${error.config?.url}`, // "https://api.example.com/files/12345"
     method: (error.config?.method || '').toUpperCase(), // GET || POST
   };
-  if (withHeaders) result.headers = error.config?.headers || {};
+  if (withHeaders) result.headers = redactHeaders(error.config?.headers) || {};
   return result;
 }

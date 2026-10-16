@@ -1,5 +1,6 @@
 import AfterhandlerWorker from '../worker';
 import HttpRequest from '../../../http_request';
+import { redactRequestOptions } from '../../../redact_headers';
 import KeyModel from '../../../../models/key';
 import KeyEntity from '../../../../entities/key';
 
@@ -299,7 +300,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     // Do request.
     let elasticData;
     try {
-      this.log.save('elastic-drop-index-request', { requestOptions });
+      this.log.save('elastic-drop-index-request', { requestOptions: redactRequestOptions(requestOptions) });
       elasticData = await HttpRequest.send({ ...requestOptions, tls: this.config.options?.tls });
       this.log.save('elastic-drop-index-response', { response: elasticData });
     } catch (error) {
@@ -389,7 +390,7 @@ export default class ElasticAfterhandlerWorker extends AfterhandlerWorker {
     // Do request.
     let elasticData;
     try {
-      this.log.save('elastic-create-index-request', { requestOptions });
+      this.log.save('elastic-create-index-request', { requestOptions: redactRequestOptions(requestOptions) });
       elasticData = await HttpRequest.send({ ...requestOptions, tls: this.config.options?.tls });
       this.log.save('elastic-create-index-response', { response: elasticData });
     } catch (error) {

@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 
 import prepareAxiosErrorToLog from './prepareAxiosErrorToLog';
 import { TlsConfig, createHttpsAgent } from './tls';
+import { redactRequestOptions } from './redact_headers';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -84,7 +85,7 @@ export default class HttpRequest {
     } catch (error) {
       // Log and rethrow error
       global.log?.save('http-request-send-error', {
-        requestOptions: { ...axiosOptions, httpsAgent: undefined },
+        requestOptions: redactRequestOptions(axiosOptions),
         ...prepareAxiosErrorToLog(error),
       });
       throw error;
