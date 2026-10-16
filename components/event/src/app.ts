@@ -15,6 +15,7 @@ import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
 import { installTlsOverrides } from './lib/tls';
+import { buildSandboxConfig } from './lib/sandbox_config';
 
 export class App {
   config: any;
@@ -33,7 +34,7 @@ export class App {
 
   constructor(config: any) {
     this.config = config;
-    this.sandbox = new Sandbox(config.sandbox);
+    this.sandbox = new Sandbox(buildSandboxConfig(config.sandbox) as any);
     // Set global config for models and other legacy code that still uses it
     global.config = config;
   }
