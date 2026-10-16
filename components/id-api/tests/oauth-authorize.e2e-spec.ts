@@ -146,6 +146,17 @@ describe('AuthController - OAuth authorization', () => {
     expect(url.searchParams.has('access_token')).toBe(false);
   });
 
+  it('should not carry a client_secret supplied in the authorise query into the redirect', async () => {
+    const agent = await loggedInAgent();
+
+    const authoriseResponse = await authorise(agent, { client_id: SECRET_CLIENT.id, client_secret: SECRET_CLIENT.secret }).redirects(0).expect(302);
+    const response = await agent.get('/authorise/continue').redirects(0).expect(302);
+
+    expect(authoriseResponse.headers.location ?? '').not.toContain(SECRET_CLIENT.secret);
+    expect(response.headers.location).not.toContain(SECRET_CLIENT.secret);
+    expect(new URL(response.headers.location).searchParams.has('client_secret')).toBe(false);
+  });
+
   it('should ignore a forged redirect_uri on the continue request', async () => {
     const agent = await loggedInAgent();
 
@@ -453,6 +464,20 @@ describe('AuthController - OAuth authorization', () => {
 
       expect(response.body.access_token).toBeUndefined();
       await exchangeCode(code, SECRET_CLIENT).expect(200);
+    });
+
+    it('should reject a client secret that is only sent in the query string', async () => {
+      const code = await issueCode({ client_id: SECRET_CLIENT.id });
+
+      const response = await app
+        .request()
+        .post('/oauth/token')
+        .query({ client_secret: SECRET_CLIENT.secret })
+        .type('form')
+        .send({ grant_type: 'authorization_code', code, client_id: SECRET_CLIENT.id, redirect_uri: REGISTERED_URI })
+        .expect(401);
+
+      expect(response.body.access_token).toBeUndefined();
     });
 
     it('should reject a missing client secret', async () => {
