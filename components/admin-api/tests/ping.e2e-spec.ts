@@ -98,4 +98,26 @@ describe('Ping Controller', () => {
         });
     });
   });
+  describe('GET /test/ping/services', () => {
+    it('should require authentication', async () => {
+      await app.request().get('/test/ping/services').expect(401);
+    });
+
+    it('should return the services statuses for an admin', async () => {
+      const { jwt, payload } = app.generateUserToken(TEST_USER_ID);
+      app
+        .nock('http://id-api:8100')
+        .get('/user/info')
+        .query({ access_token: payload.authTokens.accessToken })
+        .once()
+        .reply(200, { userId: TEST_USER_ID, role: 'admin', services: { eds: { data: { pem: 'PEM' } } } });
+      app
+        .nock('http://task:3000')
+        .get('/test/ping/services')
+        .query(true)
+        .reply(200, { data: { services: 'ok' } });
+
+      await app.request().get('/test/ping/services').set('token', jwt).expect(200);
+    });
+  });
 });

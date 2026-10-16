@@ -261,7 +261,7 @@ export class RouterService {
     // Init routes.
     app.get('/test/ping', pingController.ping.bind(pingController));
     app.get('/test/ping_with_auth', authController.getCheckMiddleware(adminRoles), pingController.pingWithAuth.bind(pingController));
-    app.get('/test/ping/services', pingController.pingServices.bind(pingController));
+    app.get('/test/ping/services', authController.getCheckMiddleware(adminRoles), pingController.pingServices.bind(pingController));
 
     app.post('/auth/login', authController.login.bind(authController));
     app.get('/auth/me', authController.getCheckMiddleware(adminRoles), authController.me.bind(authController));
