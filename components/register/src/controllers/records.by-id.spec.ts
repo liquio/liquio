@@ -328,3 +328,135 @@ describe('RG-02c: PUT/bulk-import token enforcement (auth.strict)', () => {
     });
   });
 });
+
+describe('RG-02d: row tokens a restricted caller may assign (auth.strict)', () => {
+  beforeAll(() => {
+    (global as any).typeOf = (value) => typeof value;
+  });
+  afterAll(() => {
+    delete (global as any).typeOf;
+  });
+
+  const setupTokens = (strict?: boolean) => {
+    const ctx = setup();
+    Object.assign(ctx.controller, {
+      sandbox: { evalWithArgs: jest.fn().mockReturnValue('s') },
+      checkXss: jest.fn(),
+      registerModel: { findById: jest.fn().mockResolvedValue({ data: { id: 1 } }) },
+      recordModel: {
+        create: jest.fn().mockResolvedValue({ data: ctx.record }),
+        update: jest.fn().mockResolvedValue({ data: ctx.record }),
+        updatePatch: jest.fn().mockResolvedValue(ctx.record),
+        updateByDataField: jest.fn().mockResolvedValue({ data: ctx.record }),
+        bulkCreate: jest.fn().mockResolvedValue(0),
+        isWritableById: jest.fn().mockResolvedValue(true),
+      },
+    });
+    ctx.controller.keyModel.checkRecordsWritable = jest.fn().mockReturnValue(true);
+    ctx.controller.keyModel.checkRecordsWritableById = jest.fn().mockResolvedValue(true);
+    ctx.controller.config.auth.strict = strict;
+    ctx.controller.config.auth.userAllowTokens = { reader: ['mine'] };
+    ctx.req.params = { id: ctx.record.id };
+    return ctx;
+  };
+  const body = (allowTokens?: any) => ({ keyId: 2, registerId: 1, data: { public: 'visible' }, allowTokens });
+
+  describe.each([
+    ['POST /records', 'create', 'create'],
+    ['PUT /records/:id', 'update', 'update'],
+  ])('%s', (_name, method, modelMethod) => {
+    const call = async (strict: boolean | undefined, tokens: any, user = 'reader') => {
+      const ctx = setupTokens(strict);
+      ctx.req.auth.user = user;
+      ctx.req.body = body(tokens);
+      await ctx.controller[method](ctx.req, {});
+      return ctx;
+    };
+    it.each([[['mine']], [[]], [undefined]])('allows %j for an untrusted caller', async (tokens) => {
+      const { controller } = await call(true, tokens);
+      expect(controller.recordModel[modelMethod]).toHaveBeenCalled();
+      expect(controller.responseError).not.toHaveBeenCalled();
+    });
+    it.each([[['other']], [['mine', 'other']]])('refuses %j with 403 and writes nothing', async (tokens) => {
+      const { controller } = await call(true, tokens);
+      expect(controller.responseError.mock.calls[0][2]).toBe(403);
+      expect(controller.recordModel[modelMethod]).not.toHaveBeenCalled();
+    });
+    it('does not restrict when strict is off', async () => {
+      const { controller } = await call(undefined, ['other']);
+      expect(controller.recordModel[modelMethod]).toHaveBeenCalled();
+    });
+    it('does not restrict a trusted caller', async () => {
+      const { controller } = await call(true, ['other'], 'task');
+      expect(controller.recordModel[modelMethod]).toHaveBeenCalled();
+    });
+  });
+
+  it('PUT forwards the new tokens to the model so it can refuse dropping row tokens', async () => {
+    const { controller, req } = setupTokens(true);
+    req.body = body(['mine']);
+    await controller.update(req, {});
+    expect(controller.recordModel.update.mock.calls[0][1].allowTokens).toEqual(['mine']);
+    expect(controller.recordModel.update.mock.calls[0][5]).toEqual(['mine']);
+  });
+
+  describe('PATCH /records/:id', () => {
+    const patch = async (strict: boolean | undefined, path: string, user = 'reader') => {
+      const ctx = setupTokens(strict);
+      ctx.req.auth.user = user;
+      ctx.req.body = { keyId: 2, properties: [{ path, previousValue: 'a', value: 'b' }] };
+      await ctx.controller.updatePatch(ctx.req, {});
+      return ctx;
+    };
+    it.each(['allow_tokens', 'allowTokens', 'allow_tokens.0'])('refuses the row-token path %s when strict', async (path) => {
+      const { controller } = await patch(true, path);
+      expect(controller.responseError.mock.calls[0][2]).toBe(403);
+      expect(controller.recordModel.updatePatch).not.toHaveBeenCalled();
+    });
+    it('allows ordinary paths, and any path when strict is off or the caller is trusted', async () => {
+      expect((await patch(true, 'data.name')).controller.recordModel.updatePatch).toHaveBeenCalled();
+      expect((await patch(undefined, 'allow_tokens')).controller.recordModel.updatePatch).toHaveBeenCalled();
+      expect((await patch(true, 'allow_tokens', 'task')).controller.recordModel.updatePatch).toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /records/bulk', () => {
+    const run = async (strict: boolean | undefined, records: any[], user = 'reader') => {
+      const ctx = setupTokens(strict);
+      ctx.req.auth.user = user;
+      ctx.req.body = { registerId: 1, keyId: 2, records };
+      await ctx.controller.bulkImport(ctx.req, {});
+      return ctx;
+    };
+    it('refuses the whole request when one record carries foreign tokens', async () => {
+      const { controller } = await run(true, [
+        { data: {}, allowTokens: ['mine'] },
+        { id: 'record-id', data: {}, allowTokens: ['other'] },
+      ]);
+      expect(controller.responseError.mock.calls[0][2]).toBe(403);
+      expect(controller.recordModel.bulkCreate).not.toHaveBeenCalled();
+      expect(controller.recordModel.update).not.toHaveBeenCalled();
+    });
+    it('accepts own tokens', async () => {
+      const { controller } = await run(true, [{ data: {}, allowTokens: ['mine'] }]);
+      expect(controller.recordModel.bulkCreate).toHaveBeenCalled();
+    });
+    it('leaves the tokens of updated rows unchanged when none are sent, only for a restricted caller', async () => {
+      const restricted = await run(true, [{ id: 'record-id', data: {} }]);
+      expect(restricted.controller.recordModel.update.mock.calls[0][1].allowTokens).toBeUndefined();
+      const legacy = await run(undefined, [{ id: 'record-id', data: {} }]);
+      expect(legacy.controller.recordModel.update.mock.calls[0][1].allowTokens).toEqual([]);
+      const trusted = await run(true, [{ id: 'record-id', data: {} }], 'task');
+      expect(trusted.controller.recordModel.update.mock.calls[0][1].allowTokens).toEqual([]);
+    });
+    it('does not restrict when strict is off or the caller is trusted', async () => {
+      for (const [strict, user] of [
+        [undefined, 'reader'],
+        [true, 'task'],
+      ] as const) {
+        const { controller } = await run(strict, [{ data: {}, allowTokens: ['other'] }], user);
+        expect(controller.recordModel.bulkCreate).toHaveBeenCalled();
+      }
+    });
+  });
+});

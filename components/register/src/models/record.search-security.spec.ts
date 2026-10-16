@@ -57,6 +57,22 @@ describe('RG-02c: row-token guard on writes', () => {
     expect(result.data).toBeUndefined();
     expect(model.historyModel.createAfterhandlers).not.toHaveBeenCalled();
   });
+  it('update refuses dropping row tokens in the write itself when restricted', async () => {
+    const model = build();
+    await model.update('r', { keyId: 1, allowTokens: ['private', 'extra'] }, true, undefined, false, tokens);
+    expect(model.model.update.mock.calls[0][1].where).toEqual({
+      id: 'r',
+      allow_tokens: { [Sequelize.Op.contained]: ['private', 'extra'] },
+      [Sequelize.Op.or]: orWhere,
+    });
+  });
+  it('update does not add the contained condition without new tokens or when not restricted', async () => {
+    const model = build({ update: jest.fn().mockResolvedValue([1, [{ id: 'r' }]]) });
+    await model.update('r', { keyId: 1 }, true, undefined, false, tokens);
+    expect(model.model.update.mock.calls[0][1].where).toEqual({ id: 'r', [Sequelize.Op.or]: orWhere });
+    await model.update('r', { keyId: 1, allowTokens: [] });
+    expect(model.model.update.mock.calls[1][1].where).toEqual({ id: 'r' });
+  });
   it('update keeps the plain where without tokens', async () => {
     const model = build({ update: jest.fn().mockResolvedValue([1, [{ id: 'r' }]]) });
     await model.update('r', { keyId: 1 });

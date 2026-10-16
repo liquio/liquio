@@ -839,12 +839,16 @@ describe('RecordsController', () => {
       const missingId = '00000000-0000-4000-8000-000000000000';
       const created: string[] = [];
       const make = async (allowTokens: string[]) => {
+        // Rows are seeded as a trusted caller, so the seed is not subject to the checks under test.
+        const savedTrusted = testHarness.getConfig().auth.trustedCallers;
+        testHarness.getConfig().auth.trustedCallers = ['test'];
         const response = await testHarness
           .request()
           .post('/records')
           .set('Authorization', validAuth)
           .send({ registerId: 200, keyId: 2001, data: { name: 'RG-02c', data: marker }, allowTokens })
           .expect(200);
+        testHarness.getConfig().auth.trustedCallers = savedTrusted;
         created.push(response.body.data.id);
         return response.body.data.id as string;
       };
@@ -900,6 +904,104 @@ describe('RecordsController', () => {
         await del(foreign).expect(403);
         await del(missingId).expect(403);
         expect(await getName(foreign)).toBe('RG-02c');
+      });
+
+      describe('row tokens a restricted caller may assign (RG-02d)', () => {
+        const putTokens = (id: string, allowTokens: string[]) =>
+          testHarness
+            .request()
+            .put(`/records/${id}`)
+            .set('Authorization', validAuth)
+            .send({ registerId: 200, keyId: 2001, data: { name: 'RG-02d', data: marker }, allowTokens });
+        const postTokens = (allowTokens: string[]) =>
+          testHarness
+            .request()
+            .post('/records')
+            .set('Authorization', validAuth)
+            .send({ registerId: 200, keyId: 2001, data: { name: 'RG-02d', data: marker }, allowTokens });
+        const tokensOf = async (id: string) => {
+          testHarness.getConfig().auth.trustedCallers = ['test'];
+          const response = await getById(id).expect(200);
+          testHarness.getConfig().auth.trustedCallers = [];
+          return response.body.data.allowTokens ?? response.body.data.allow_tokens;
+        };
+
+        beforeEach(() => {
+          testHarness.getConfig().auth.strict = true;
+          testHarness.getConfig().auth.userAllowTokens = { test: ['secret-token'] };
+        });
+
+        it('legacy: strict off lets any caller set any tokens', async () => {
+          testHarness.getConfig().auth.strict = false;
+          const id = (await postTokens(['foreign-token']).expect(200)).body.data.id;
+          created.push(id);
+        });
+
+        it('POST /records refuses tokens the caller does not hold and accepts its own', async () => {
+          const denied = await postTokens(['foreign-token']).expect(403);
+          expect(denied.body.data).toBeUndefined();
+          await postTokens(['secret-token', 'foreign-token']).expect(403);
+          created.push((await postTokens(['secret-token']).expect(200)).body.data.id);
+        });
+
+        it('PUT /records/:id refuses foreign tokens and refuses dropping the tokens the row carries', async () => {
+          const id = await make(['secret-token']);
+          await putTokens(id, ['foreign-token']).expect(403);
+          // Making the row public drops its token.
+          await putTokens(id, []).expect(403);
+          expect(await tokensOf(id)).toEqual(['secret-token']);
+          // Re-sending the same tokens, or omitting them, is fine.
+          await putTokens(id, ['secret-token']).expect(200);
+          await put(id, 'omitted').expect(200);
+          expect(await tokensOf(id)).toEqual(['secret-token']);
+        });
+
+        it('PUT /records/:id can restrict a public row to a token the caller holds', async () => {
+          const id = await make([]);
+          await putTokens(id, ['secret-token']).expect(200);
+          expect(await tokensOf(id)).toEqual(['secret-token']);
+        });
+
+        it('PUT /records/:id cannot drop a token the caller does not hold', async () => {
+          const id = await make(['secret-token', 'other-token']);
+          await putTokens(id, ['secret-token']).expect(403);
+          expect(await tokensOf(id)).toEqual(['secret-token', 'other-token']);
+        });
+
+        it('PATCH /records/:id refuses the row-token path', async () => {
+          const id = await make(['secret-token']);
+          const response = await testHarness
+            .request()
+            .patch(`/records/${id}`)
+            .set('Authorization', validAuth)
+            .send({ keyId: 2001, properties: [{ path: 'allow_tokens', previousValue: 'secret-token', value: 'x' }] })
+            .expect(403);
+          expect(response.body.data).toBeUndefined();
+          expect(await tokensOf(id)).toEqual(['secret-token']);
+        });
+
+        it('POST /records/bulk refuses foreign tokens and keeps the tokens of updated rows', async () => {
+          const id = await make(['secret-token']);
+          const send = (record: object) =>
+            testHarness
+              .request()
+              .post('/records/bulk')
+              .set('Authorization', validAuth)
+              .send({ registerId: 200, keyId: 2001, records: [record] });
+          await send({ id, data: { name: 'bulk', data: marker }, allowTokens: ['foreign-token'] }).expect(403);
+          await send({ id, data: { name: 'bulk', data: marker }, allowTokens: [] }).expect(200);
+          expect(await tokensOf(id)).toEqual(['secret-token']);
+          const response = await send({ id, data: { name: 'bulk2', data: marker } }).expect(200);
+          expect(response.body.data.updatedRecords).toBe(1);
+          expect(await tokensOf(id)).toEqual(['secret-token']);
+        });
+
+        it('trusted callers are not restricted', async () => {
+          testHarness.getConfig().auth.trustedCallers = ['test'];
+          const id = await make(['secret-token']);
+          await putTokens(id, []).expect(200);
+          expect(await tokensOf(id)).toEqual([]);
+        });
       });
 
       it('with auth.strict, trusted callers are not restricted', async () => {

@@ -101,6 +101,14 @@ export default class RecordsController extends Controller {
     return this.config.auth?.strict === true && !access.trusted ? access.allowTokens : undefined;
   }
 
+  /**
+   * Whether tokens requested for a row are allowed for a caller restricted by `auth.strict`: every one must be held by the caller.
+   * Anything but an array of strings is refused.
+   */
+  private canAssignTokens(requested: unknown, writeTokens: string[]): boolean {
+    return Array.isArray(requested) && requested.every((token) => typeof token === 'string' && writeTokens.includes(token));
+  }
+
   /** Load a record's key once per request. A missing key stays `undefined` (the caller must deny). */
   private async getRecordKey(keys: Map<number, KeyEntity | undefined>, keyId: number, options?: Parameters<KeyModel['findById']>[1]) {
     if (!keyId) return undefined;
@@ -942,6 +950,13 @@ export default class RecordsController extends Controller {
     } catch {
       return this.responseError(res, 'Invalid register access configuration.', 500);
     }
+    // The caller may set only tokens it holds, on any record of the request (checked before anything is written).
+    if (writeTokens && Array.isArray(records)) {
+      const isDenied = records.some(
+        (v) => v && typeof v === 'object' && v.allowTokens !== undefined && !this.canAssignTokens(v.allowTokens, writeTokens),
+      );
+      if (isDenied) return this.responseError(res, 'Row tokens are not allowed.', 403);
+    }
 
     // Check records.
     if (!Array.isArray(records) || !records.every((v) => typeof v === 'object' && v !== null && typeof v.data === 'object')) {
@@ -1021,7 +1036,8 @@ export default class RecordsController extends Controller {
               .filter((v) => v.id)
               .map((v) => ({
                 meta: {},
-                allowTokens: [],
+                // A restricted caller leaves the row tokens unchanged unless it sends some.
+                allowTokens: writeTokens ? undefined : [],
                 ...v,
                 registerId,
                 keyId,
@@ -1321,6 +1337,18 @@ export default class RecordsController extends Controller {
 
     const { user } = req.auth;
 
+    // Opt-in (`auth.strict`): an untrusted caller may only put tokens it holds on a new row.
+    if (allowTokensFiltered) {
+      try {
+        const writeTokens = this.getWriteTokens(req);
+        if (writeTokens && !this.canAssignTokens(allowTokensFiltered, writeTokens)) {
+          return this.responseError(res, 'Row tokens are not allowed.', 403);
+        }
+      } catch {
+        return this.responseError(res, 'Invalid register access configuration.', 500);
+      }
+    }
+
     // Get key.
     let keyModelResponse: Awaited<ReturnType<typeof KeyModel.prototype.findById>>;
     {
@@ -1464,6 +1492,10 @@ export default class RecordsController extends Controller {
     } catch {
       return this.responseError(res, 'Invalid register access configuration.', 500);
     }
+    // The caller may set only tokens it holds. Dropping tokens the row carries is refused by the model in the write itself.
+    if (writeTokens && allowTokensFiltered && !this.canAssignTokens(allowTokensFiltered, writeTokens)) {
+      return this.responseError(res, 'Row tokens are not allowed.', 403);
+    }
     if (writeTokens) {
       try {
         if (!(await this.recordModel.isWritableById(id, writeTokens))) {
@@ -1601,6 +1633,10 @@ export default class RecordsController extends Controller {
       writeTokens = this.getWriteTokens(req);
     } catch {
       return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    // The row tokens cannot be patched by a restricted caller.
+    if (writeTokens && (properties || []).some(({ path }) => /^allow_?tokens$/i.test(String(path).split('.')[0]))) {
+      return this.responseError(res, 'Row tokens are not allowed.', 403);
     }
 
     try {

@@ -480,8 +480,10 @@ export default class RecordModel extends Model {
 
     // DB query.
     // With `writeAllowTokens` the row check is part of the write itself, so a foreign or missing row changes nothing.
+    // New row tokens must keep every token the row carries (they cannot be dropped by a restricted caller).
+    const keepTokensWhere = writeAllowTokens && allowTokens ? { allow_tokens: { [Sequelize.Op.contained]: allowTokens } } : {};
     const [updatedRowsCount, [updatedRecordRaw]] = await this.model.update(recordToUpdateRaw, {
-      where: { id, ...this.allowTokensWhere(writeAllowTokens) },
+      where: { id, ...keepTokensWhere, ...this.allowTokensWhere(writeAllowTokens) },
       returning: true,
       individualHooks: true,
     });
