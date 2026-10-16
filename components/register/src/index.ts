@@ -12,6 +12,7 @@ import { listUnrestrictedUsers } from './lib/service_permissions';
 import { assertSafeConfig, assertEncryptionConfig } from './lib/config_guard';
 import { RedisClient } from './lib/redis_client';
 import { PgPubSub } from './lib/pgpubsub';
+import { buildSandboxConfig } from './lib/sandbox_config';
 
 // Init.
 const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });
@@ -38,7 +39,7 @@ if (unrestrictedUsers.length > 0) {
 }
 
 // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
-new Sandbox(config.sandbox || {});
+new Sandbox(buildSandboxConfig(config.sandbox) as any);
 
 // Log unhandled rejections.
 process.on('unhandledRejection', (error: Error | undefined) => {
