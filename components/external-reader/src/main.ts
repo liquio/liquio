@@ -1,8 +1,6 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-import { description, name, version } from 'package.json';
 import { GlobalExceptionFilter } from '@common/filters/global-exception.filter';
 import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
 import { ConfigurationService } from '@components/configuration/configuration.service';
@@ -12,12 +10,7 @@ import { LoggerService } from '@components/observability/logger.service';
 import { LoggingInterceptor } from '@components/observability/logging.interceptor';
 import { ObservabilityModule } from '@components/observability/observability.module';
 import { AppModule } from './app.module';
-
-function useSwagger(app: INestApplication) {
-  const config = new DocumentBuilder().setTitle(name).setDescription(description).setVersion(version).build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-}
+import { useSwagger } from './swagger';
 
 async function bootstrap() {
   const als = ObservabilityModule.getAlsInstance();
@@ -34,7 +27,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ErrorsInterceptor(logger));
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  useSwagger(app);
+  useSwagger(app, appConfig.isSwaggerEnabled);
 
   const { port } = appConfig;
 

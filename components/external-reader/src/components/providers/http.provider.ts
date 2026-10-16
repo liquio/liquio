@@ -7,7 +7,19 @@ interface ProviderOptions {
   baseUrl: string;
   timeout?: number;
   headers?: { [key: string]: string };
+  /** Cap for the upstream response body in bytes. Default 10 MiB. */
+  maxContentLength?: number;
+  /**
+   * Optional allowlist of request paths. An entry ending with "/" matches that prefix, any other entry matches the path exactly
+   * (query string ignored). When set, a request "url" outside the list is rejected.
+   */
+  allowedPaths?: string[];
 }
+
+const DEFAULT_MAX_CONTENT_LENGTH = 10 * 1024 * 1024;
+// URL scheme ("http:", "file:", "javascript:" ...).
+const SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:/i;
+const CONTROL_CHARS_PATTERN = /[\u0000-\u001f\u007f]/;
 
 interface RequestBody {
   url: string;
@@ -35,6 +47,11 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
       baseURL: this.options?.baseUrl || 'http://localhost',
       timeout: this.options?.timeout || 5000,
       headers: this.options?.headers || { 'Content-Type': 'application/json' },
+      // The request "url" comes from the end user: it must never replace the configured host, and the configured
+      // headers (credentials) must never follow a redirect to another host.
+      allowAbsoluteUrls: false,
+      maxRedirects: 0,
+      maxContentLength: this.options?.maxContentLength || DEFAULT_MAX_CONTENT_LENGTH,
     });
 
     this.registerMethod('get', this.get.bind(this));
@@ -109,7 +126,50 @@ export class HttpProvider extends BaseProvider<ProviderOptions> {
       throw new BadRequestException('Invalid requestBody: missing or invalid "url"');
     }
 
+    this.assertAllowedUrl(targetBody.url);
+
     return targetBody as unknown as RequestBody;
+  }
+
+  /**
+   * Allows only a path relative to the configured baseUrl, so the caller cannot steer the request to another host.
+   * @param {string} url - Request url from the caller.
+   */
+  private assertAllowedUrl(url: string): void {
+    const fail = () => {
+      this.logger.warn('http-provider|url-rejected', { urlLength: url.length });
+      throw new BadRequestException('Invalid requestBody: "url" must be a relative path');
+    };
+
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(url);
+    } catch {
+      return fail();
+    }
+
+    for (const value of [url, decoded]) {
+      const path = value.split(/[?#]/)[0];
+      if (
+        SCHEME_PATTERN.test(value) ||
+        value.startsWith('//') ||
+        value.includes('\\') ||
+        value.includes('@') ||
+        CONTROL_CHARS_PATTERN.test(value) ||
+        path.split('/').includes('..')
+      ) {
+        return fail();
+      }
+    }
+
+    const allowedPaths = this.options?.allowedPaths;
+    if (allowedPaths?.length) {
+      const path = '/' + url.split(/[?#]/)[0].replace(/^\/+/, '');
+      const isAllowed = allowedPaths.some((entry) => (entry.endsWith('/') ? path.startsWith(entry) : path === entry));
+      if (!isAllowed) {
+        return fail();
+      }
+    }
   }
 
   private async request(method: string, url: string, data?: unknown, params?: unknown): Promise<ProviderResponse> {
