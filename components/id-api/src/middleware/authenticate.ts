@@ -8,6 +8,14 @@ import { Config } from '../config';
 import { profileCookieOptions } from '../lib/cookie_options';
 import { generatePinCode } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import {
+  LOGOUT_CSRF_FIELD,
+  collectTrustedHosts,
+  getLogoutCsrfToken,
+  isSameSiteRequest,
+  isValidLogoutCsrfToken,
+  renderLogoutConfirmation,
+} from '../lib/logout_csrf';
 import { resolveSafeRedirect } from '../lib/safe_redirect';
 import { Models, UserAttributes } from '../models';
 import { Services } from '../services';
@@ -59,8 +67,10 @@ export class AuthMiddleware {
       realmHash: cryptoUsingMD5(realm),
     };
 
-    // Logout user.
-    express.get('/logout', query('redirect_uri').optional().default('/').isString(), this.logout());
+    // Logout user. GET revokes only for same-site navigations (front-ends redirect the browser here), any other GET
+    // gets a confirmation page. POST is protected by a session-bound CSRF token or a same-site check (ID-19).
+    express.get('/logout', this.logoutConfirmationGuard(), query('redirect_uri').optional().default('/').isString(), this.logout());
+    express.post('/logout', this.logoutPostGuard(), query('redirect_uri').optional().default('/').isString(), this.logout());
 
     AuthMiddleware.singleton = this;
   }
@@ -246,6 +256,72 @@ export class AuthMiddleware {
     logoutUrl.searchParams.set('post_logout_redirect_uri', absoluteRedirect);
 
     res.redirect(logoutUrl.toString());
+  }
+
+  /**
+   * Whether the request comes from this server or the configured front-ends. `Sec-Fetch-Site` decides when present,
+   * otherwise Origin/Referer is checked against the own host, the cookie domain, CORS origins and registered redirect URIs.
+   */
+  private async isSameSiteLogout(req: Request): Promise<boolean> {
+    if (req.get('sec-fetch-site')) {
+      return isSameSiteRequest(req, []);
+    }
+
+    const clients = await Models.model('client')
+      .findAll()
+      .then((rows) => rows.map((row) => row.dataValues));
+    const trustedHosts = collectTrustedHosts(req.get('host'), {
+      domain: this.config.domain,
+      origins: this.config.cors?.allowedOrigins,
+      redirectUris: clients.flatMap((client) => client.redirectUri ?? []),
+    });
+
+    return isSameSiteRequest(req, trustedHosts);
+  }
+
+  /** GET /logout from a cross-site or unverifiable source does not revoke: it shows a confirmation form. */
+  private logoutConfirmationGuard() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (await this.isSameSiteLogout(req)) {
+          return next();
+        }
+      } catch (error: any) {
+        this.log.save('logout-source-check-error', { error: error?.message ?? error.toString() }, 'error');
+      }
+
+      const redirectUri = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri : undefined;
+      res.set({ 'Cache-Control': 'no-store', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "frame-ancestors 'none'" });
+      res
+        .status(200)
+        .type('html')
+        .send(renderLogoutConfirmation(getLogoutCsrfToken(req.session as any), redirectUri));
+    };
+  }
+
+  /** POST /logout needs the session-bound CSRF token; without a token only a verified same-site request passes. */
+  private logoutPostGuard() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      const token = req.body?.[LOGOUT_CSRF_FIELD];
+
+      let allowed = false;
+      if (token !== undefined) {
+        allowed = isValidLogoutCsrfToken(req.session as any, token);
+      } else {
+        try {
+          allowed = await this.isSameSiteLogout(req);
+        } catch (error: any) {
+          this.log.save('logout-source-check-error', { error: error?.message ?? error.toString() }, 'error');
+        }
+      }
+
+      if (!allowed) {
+        res.status(403).json({ error: 'Forbidden', message: 'Invalid or missing CSRF proof.' });
+        return;
+      }
+
+      next();
+    };
   }
 
   logout(): (req: Request, res: Response, next: NextFunction) => Promise<void> | void {

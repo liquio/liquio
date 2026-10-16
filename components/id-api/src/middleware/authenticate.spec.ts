@@ -27,6 +27,9 @@ import { AuthMiddleware } from './authenticate';
 
 const USER_ID = 'a'.repeat(24);
 
+// The logout route is registered as (path, ...guards, handler): pick the handler.
+const lastArg = (route: jest.Mock) => route.mock.calls[0][route.mock.calls[0].length - 1];
+
 describe('AuthMiddleware logout', () => {
   let calls: string[];
   let auth: any;
@@ -36,9 +39,10 @@ describe('AuthMiddleware logout', () => {
     const express: any = {
       config: { oauth: { secret_key: [Buffer.from('user:pass').toString('base64')] }, domain: '.liquio.local' },
       get: jest.fn(),
+      post: jest.fn(),
     };
     new AuthMiddleware(express);
-    return express.get.mock.calls[0][2] as (req: any, res: any) => Promise<void>;
+    return lastArg(express.get) as (req: any, res: any) => Promise<void>;
   };
 
   beforeEach(() => {
@@ -99,9 +103,9 @@ describe('AuthMiddleware logout redirect', () => {
   let res: any;
 
   const logoutWith = async (redirectUri: string | undefined, endSessionUrl?: string) => {
-    const express: any = { config: { oauth: { secret_key: [Buffer.from('user:pass').toString('base64')] } }, get: jest.fn() };
+    const express: any = { config: { oauth: { secret_key: [Buffer.from('user:pass').toString('base64')] } }, get: jest.fn(), post: jest.fn() };
     new AuthMiddleware(express);
-    const handler = express.get.mock.calls[0][2];
+    const handler = lastArg(express.get);
     mockMatchedData.mockReturnValue({ redirect_uri: redirectUri });
     mockOidcLogout.mockResolvedValue({ endSessionUrl });
     const req: any = {
@@ -163,6 +167,7 @@ describe('AuthMiddleware checkUserAccess', () => {
     const express: any = {
       config: { oauth: { secret_key: [Buffer.from('user:pass').toString('base64')] }, ...config },
       get: jest.fn(),
+      post: jest.fn(),
     };
     return new AuthMiddleware(express);
   };
@@ -297,5 +302,111 @@ describe('AuthMiddleware checkUserAccess', () => {
 
       expect(next).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('AuthMiddleware logout CSRF guards (ID-19)', () => {
+  const REGISTERED = 'https://app.example/auth';
+  let getGuard: any;
+  let postGuard: any;
+  let auth: any;
+  let res: any;
+  let next: jest.Mock;
+
+  const request = (headers: Record<string, string>, extra: Record<string, any> = {}) =>
+    ({
+      session: {} as Record<string, any>,
+      query: {},
+      body: {},
+      get: (name: string) => headers[name.toLowerCase()],
+      ...extra,
+    }) as any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete (AuthMiddleware as any).singleton;
+    auth = { revokeUserAccess: jest.fn() };
+    (Services.service as jest.Mock).mockReturnValue(auth);
+    (Models.model as jest.Mock).mockReturnValue({ findAll: jest.fn(async () => [{ dataValues: { redirectUri: [REGISTERED] } }]) });
+    const express: any = {
+      config: { oauth: { secret_key: [Buffer.from('user:pass').toString('base64')] }, domain: '.liquio.local' },
+      get: jest.fn(),
+      post: jest.fn(),
+    };
+    new AuthMiddleware(express);
+    getGuard = express.get.mock.calls[0][1];
+    postGuard = express.post.mock.calls[0][1];
+    res = { set: jest.fn(), status: jest.fn().mockReturnThis(), type: jest.fn().mockReturnThis(), send: jest.fn(), json: jest.fn() };
+    next = jest.fn();
+  });
+
+  it.each(['same-origin', 'same-site', 'none'])('lets a GET with Sec-Fetch-Site %s through to the revoking handler', async (site) => {
+    await getGuard(request({ host: 'id.liquio.local', 'sec-fetch-site': site }), res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.send).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['cross-site Sec-Fetch-Site', { 'sec-fetch-site': 'cross-site' }],
+    ['a foreign Origin without Sec-Fetch-Site', { origin: 'https://evil.example' }],
+    ['a foreign Referer without Sec-Fetch-Site', { referer: 'https://evil.example/page' }],
+    ['a null Origin', { origin: 'null' }],
+    ['no proof at all', {}],
+  ])('does not revoke on a GET with %s, renders a confirmation with a CSRF token', async (_name, headers) => {
+    const req = request({ host: 'id.liquio.local', ...headers }, { query: { redirect_uri: 'https://a/?x="<' } });
+
+    await getGuard(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(auth.revokeUserAccess).not.toHaveBeenCalled();
+    const html = res.send.mock.calls[0][0] as string;
+    expect(html).toContain(`value="${req.session.logoutCsrfToken}"`);
+    expect(html).toContain('method="post"');
+    expect(html).not.toContain('<"');
+    expect(res.set).toHaveBeenCalledWith(expect.objectContaining({ 'X-Frame-Options': 'DENY' }));
+  });
+
+  it.each([
+    ['the Origin of a registered redirect URI', { origin: 'https://app.example' }],
+    ['the Referer of a registered redirect URI', { referer: 'https://app.example/page' }],
+    ['a subdomain of the configured domain', { origin: 'https://cabinet.liquio.local' }],
+    ['the own host', { origin: 'https://id.liquio.local' }],
+  ])('lets a GET through by %s when Sec-Fetch-Site is absent', async (_name, headers) => {
+    await getGuard(request({ host: 'id.liquio.local', ...headers }), res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a lookalike host of the configured domain', async () => {
+    await getGuard(request({ host: 'id.liquio.local', origin: 'https://liquio.local.evil.example' }), res, next);
+
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('accepts a POST with the session CSRF token', async () => {
+    const req = request({ 'sec-fetch-site': 'cross-site' }, { session: { logoutCsrfToken: 'tok-123' }, body: { _csrf: 'tok-123' } });
+
+    await postGuard(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['an invalid token', { 'sec-fetch-site': 'same-origin' }, { _csrf: 'wrong' }, { logoutCsrfToken: 'tok-123' }],
+    ['a token with no session token', { 'sec-fetch-site': 'same-origin' }, { _csrf: 'tok-123' }, {}],
+    ['no token from a cross-site request', { 'sec-fetch-site': 'cross-site' }, {}, { logoutCsrfToken: 'tok-123' }],
+    ['no token and no proof', {}, {}, {}],
+  ])('rejects a POST with %s', async (_name, headers, body, session) => {
+    await postGuard(request(headers, { body, session }), res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('accepts a tokenless POST from a verified same-site request', async () => {
+    await postGuard(request({ 'sec-fetch-site': 'same-origin' }), res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
   });
 });
