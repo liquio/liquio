@@ -1,7 +1,7 @@
 import nock from 'nock';
 import type { Response as SupertestResponse } from 'supertest';
 
-import { TestApp } from './test-app';
+import { TestApp, TASK_TOKEN } from './test-app';
 import { prepareFixtures } from './fixtures';
 import { AssetsBusiness } from '../src/businesses/assets';
 
@@ -93,7 +93,7 @@ describe('Assets Controller', () => {
       app
         .nock('http://task:3000')
         .get('/unit-access?type=register')
-        .matchHeader('authorization', 'Basic dGFzazp0YXNr')
+        .matchHeader('authorization', TASK_TOKEN)
         .matchHeader('x-trace-service', 'liquio-admin-api')
         .once()
         .reply(200, {
@@ -140,7 +140,7 @@ describe('Assets Controller', () => {
       app
         .nock('http://task:3000')
         .get('/unit-access?type=register')
-        .matchHeader('authorization', 'Basic dGFzazp0YXNr')
+        .matchHeader('authorization', TASK_TOKEN)
         .matchHeader('x-trace-service', 'liquio-admin-api')
         .once()
         .reply(200, {

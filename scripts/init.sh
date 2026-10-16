@@ -372,6 +372,25 @@ jq --arg key "$(generate_secret)" \
 }
 
 {
+  echo "==> Generate access token for Admin API to Task calls"
+  login="admin-api"
+  password=$(generate_secret 48)
+  token="Basic $(printf '%s:%s' "$login" "$password" | base64 -w0)"
+
+  file="config/task/basic_auth.json"
+  echo "$file"
+  jq --arg token "$token" \
+    '.tokens = [$token]' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/admin-api/task.json"
+  echo "$file"
+  jq --arg token "$token" \
+    '.token = $token' \
+    $file > $file.tmp && mv $file.tmp $file
+}
+
+{
   echo "==> Configure PDF Generator service"
   login="pdf-generator"
   password=$(generate_secret)

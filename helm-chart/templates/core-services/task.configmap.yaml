@@ -179,7 +179,7 @@ metadata:
   "adminUnitId" (list 1000001 1000000041)
 -}}
 {{ $basicAuthBase := dict
-  "tokens" (list "Basic dGFzazp0YXNr")
+  "tokens" (list)
   "protectedRoutes" (list
     (dict
       "route" "/some/protected-route"

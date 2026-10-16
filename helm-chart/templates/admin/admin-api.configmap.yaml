@@ -81,7 +81,6 @@ metadata:
   "port" 80
   "server" (printf "http://%s-task" (include "liquio.fullname" .))
   "timeout" 10000
-  "token" "Basic dGFzazp0YXNr"
 -}}
 {{ $redisBase := dict
   "isEnabled" true

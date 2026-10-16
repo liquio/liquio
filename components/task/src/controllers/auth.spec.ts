@@ -43,4 +43,36 @@ describe('AuthController', () => {
       expect(data.avaUrl).toBe('');
     });
   });
+
+  describe('handleBasicAuthToken', () => {
+    // The token that used to be committed to config-templates, built here to keep the literal out of the sources.
+    const oldDefaultToken = `Basic ${Buffer.from(['task', 'task'].join(':')).toString('base64')}`;
+    const issuedToken = `Basic ${Buffer.from('admin-api:Zk3p9QwLm2Xv8Rt').toString('base64')}`;
+
+    beforeEach(() => {
+      (controller as any).config = { basic_auth: { tokens: [issuedToken] } };
+      jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
+      jest.spyOn(controller as any, 'appendTraceMeta').mockImplementation(() => undefined);
+      (global as any).log = { save: jest.fn() };
+    });
+
+    it('should reject the old default token', () => {
+      const next = jest.fn();
+
+      controller.handleBasicAuthToken(oldDefaultToken.slice(6), {}, {}, next);
+
+      expect(controller.responseError).toHaveBeenCalledWith({}, 'Unknown basic auth token.', 401);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should accept the configured token', () => {
+      const next = jest.fn();
+      const req: any = {};
+
+      controller.handleBasicAuthToken(issuedToken.slice(6), req, {}, next);
+
+      expect(req.basicAuthUser).toBe('admin-api');
+      expect(next).toHaveBeenCalled();
+    });
+  });
 });

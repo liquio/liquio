@@ -15,7 +15,7 @@ import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
-import { assertNoPlaceholderSecrets } from './lib/config_check';
+import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault } from './lib/config_check';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
@@ -32,6 +32,7 @@ async function main() {
     throw new Error("Token must'n be empty.");
   }
   const placeholderSecrets = assertNoPlaceholderSecrets(config);
+  assertTaskTokenIsNotDefault(config);
   global.config = config;
 
   // Init http client.

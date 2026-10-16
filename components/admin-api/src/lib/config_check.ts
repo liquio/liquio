@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 const PLACEHOLDER = '<REDACTED>';
 const DEV_ENVIRONMENT = 'dev';
 
@@ -39,4 +41,31 @@ export function assertNoPlaceholderSecrets(config: Record<string, any>): string[
     );
   }
   return offending;
+}
+
+// SHA-256 hashes of task Basic tokens that were committed to the repository (config-templates/admin-api/task.json,
+// helm-chart admin-api.configmap.yaml). They are public, so they must never be sent to or accepted from the task service.
+export const KNOWN_DEFAULT_TASK_TOKEN_HASHES: string[] = ['352a5ebad68451c31cf4b273767b05d5c9c55216cf9459a2215edf2b1f9784fc'];
+
+/**
+ * Fail fast when the token for the task service is a publicly known default,
+ * or is empty outside of the `dev` environment.
+ * @param {Record<string, any>} config Config.
+ * @throws {Error} When the task token is a known default, or empty outside of `dev`.
+ */
+export function assertTaskTokenIsNotDefault(config: Record<string, any>): void {
+  const token = config?.task?.token;
+
+  if (typeof token !== 'string' || token.trim() === '') {
+    if (config?.server?.environment !== DEV_ENVIRONMENT) {
+      throw new Error(`Config "task.token" must be set outside of "${DEV_ENVIRONMENT}" environment.`);
+    }
+    return;
+  }
+
+  const normalizedToken = token.trim().startsWith('Basic ') ? token.trim() : `Basic ${token.trim()}`;
+  const hash = crypto.createHash('sha256').update(normalizedToken).digest('hex');
+  if (KNOWN_DEFAULT_TASK_TOKEN_HASHES.includes(hash)) {
+    throw new Error('Config "task.token" is a publicly known default token from the repository, rotate it.');
+  }
 }

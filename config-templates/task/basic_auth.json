@@ -1,7 +1,5 @@
 {
-  "tokens": [
-    "Basic dGFzazp0YXNr"
-  ],
+  "tokens": [],
   "protectedRoutes": [
     {
       "route": "/some/protected-route",

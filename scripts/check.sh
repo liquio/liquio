@@ -17,6 +17,16 @@ BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
+# Fail if the publicly known default task Basic token (task:task) is committed to configs or charts.
+check_no_default_tokens() {
+  local default_token="dGFzazp0YXNr"
+  if grep -rIl --exclude-dir=node_modules -e "$default_token" "$PROJECT_ROOT/config-templates" "$PROJECT_ROOT/helm-chart"; then
+    echo -e "${RED}Default task Basic token found in the files above, remove it${NC}" >&2
+    return 1
+  fi
+  return 0
+}
+
 # Show usage information
 show_usage() {
   cat <<EOF
@@ -147,6 +157,9 @@ main() {
     [[ -n "$quiet_flag" ]] && lint_cmd="$lint_cmd $quiet_flag"
     commands+=("$lint_cmd")
     descriptions+=("Linting")
+
+    commands+=("check_no_default_tokens")
+    descriptions+=("Default credentials")
   fi
 
   if [[ "$run_test" == true ]]; then

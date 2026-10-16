@@ -1,4 +1,4 @@
-import { assertNoPlaceholderSecrets, findPlaceholderSecrets } from './config_check';
+import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault, findPlaceholderSecrets } from './config_check';
 
 const buildConfig = (environment: string, overrides: Record<string, any> = {}) => ({
   server: { environment, token: 'tok', crypto: { password: 'pwd', iv: 'iv' } },
@@ -31,5 +31,28 @@ describe('config_check', () => {
   it('allows placeholders in dev and reports them', () => {
     const config = buildConfig('dev', { notifier: { password: '<REDACTED>' } });
     expect(assertNoPlaceholderSecrets(config)).toEqual(['notifier.password']);
+  });
+});
+
+describe('assertTaskTokenIsNotDefault', () => {
+  // The token that used to be committed to config-templates, built here to keep the literal out of the sources.
+  const OLD_DEFAULT_TOKEN = `Basic ${Buffer.from(['task', 'task'].join(':')).toString('base64')}`;
+  const randomToken = `Basic ${Buffer.from('admin-api:Zk3p9QwLm2Xv8Rt').toString('base64')}`;
+
+  it('accepts a random token', () => {
+    expect(() => assertTaskTokenIsNotDefault({ server: { environment: 'production' }, task: { token: randomToken } })).not.toThrow();
+  });
+
+  it('throws on the old default token, even in dev', () => {
+    expect(() => assertTaskTokenIsNotDefault({ server: { environment: 'dev' }, task: { token: OLD_DEFAULT_TOKEN } })).toThrow(/publicly known/);
+    expect(() => assertTaskTokenIsNotDefault({ server: { environment: 'dev' }, task: { token: OLD_DEFAULT_TOKEN.slice(6) } })).toThrow(
+      /publicly known/,
+    );
+  });
+
+  it('throws on an empty or missing token outside dev, allows it in dev', () => {
+    expect(() => assertTaskTokenIsNotDefault({ server: { environment: 'production' }, task: { token: '' } })).toThrow(/task\.token/);
+    expect(() => assertTaskTokenIsNotDefault({ server: { environment: 'production' } })).toThrow(/task\.token/);
+    expect(() => assertTaskTokenIsNotDefault({ server: { environment: 'dev' }, task: { token: '' } })).not.toThrow();
   });
 });

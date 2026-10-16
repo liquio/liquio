@@ -26,6 +26,9 @@ import { HttpClient } from '../src/lib/http_client';
 import { typeOf } from '../src/lib/type_of';
 import { initIdApiClient } from '../src/lib/id_api';
 
+// Token admin-api sends to task in tests (not a real credential).
+export const TASK_TOKEN = `Basic ${Buffer.from('admin-api:test-task-secret').toString('base64')}`;
+
 const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout
@@ -132,7 +135,7 @@ export class TestApp {
       ...defaultConfig.task,
       server: 'http://task',
       port: 3000,
-      token: 'Basic dGFzazp0YXNr',
+      token: TASK_TOKEN,
     };
 
     configOverride.register = {
