@@ -1380,7 +1380,7 @@ export class RouterService {
     );
     app.post(
       '/bpmn-workflows/:id/copy',
-      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT, WORKFLOW_SYSTEM_ADMIN_UNIT]),
+      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT, WORKFLOW_SYSTEM_ADMIN_UNIT]),
       validators.getHandler('bpmnWorkflow', 'copy'),
       validators.getValidationResultHandler(),
       bpmnWorkflowController.copy.bind(bpmnWorkflowController),
