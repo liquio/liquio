@@ -1,11 +1,12 @@
 // Import.
-import request from 'request';
-
+import HttpRequest from '../../http_request';
+import { pipeUpstreamResponse } from '../../stream_response';
 import LinkProvider from '../link_provider';
 
 // Constants.
 const REQUEST_METHOD_GET = 'GET';
 const RESPONSE_NOT_FOUND_CODE = 404;
+const RESPONSE_BAD_GATEWAY_CODE = 502;
 const RESPONSE_NOT_FOUND_OBJECT = {
   error: {
     message: 'Not found.',
@@ -76,7 +77,13 @@ class SimpleLinkProvider extends LinkProvider {
 
     // Do request and pipe response in other cases.
     const requestOptions = { url, method: method || REQUEST_METHOD_GET };
-    request(requestOptions).pipe(res);
+    let upstream;
+    try {
+      upstream = await HttpRequest.stream(requestOptions);
+    } catch {
+      return res.status(RESPONSE_BAD_GATEWAY_CODE).send({ error: { message: 'Bad gateway.' } });
+    }
+    pipeUpstreamResponse(upstream, res);
   }
 }
 

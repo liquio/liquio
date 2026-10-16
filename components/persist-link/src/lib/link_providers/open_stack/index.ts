@@ -1,9 +1,11 @@
 // Import.
+import { pipeUpstreamResponse } from '../../stream_response';
 import LinkProvider from '../link_provider';
 import OpenStackHandler from './open_stack_handler';
 
 // Constants.
 const RESPONSE_NOT_FOUND_CODE = 404;
+const RESPONSE_BAD_GATEWAY_CODE = 502;
 const RESPONSE_NOT_FOUND_OBJECT = {
   error: {
     message: 'Not found.',
@@ -78,8 +80,13 @@ class OpenStackLinkProvider extends LinkProvider {
     // Do request and pipe response in other cases.
     const { addContentDispositionHeader = true } = this.config;
     if (addContentDispositionHeader) res.setHeader('Content-Disposition', 'attachment; filename=' + fileName);
-    const downloadReadableStream = await openStackConnection.downloadFile(fileName);
-    downloadReadableStream.pipe(res);
+    let downloadReadableStream;
+    try {
+      downloadReadableStream = await openStackConnection.downloadFile(fileName);
+    } catch {
+      return res.status(RESPONSE_BAD_GATEWAY_CODE).send({ error: { message: 'Bad gateway.' } });
+    }
+    pipeUpstreamResponse(downloadReadableStream, res);
   }
 }
 

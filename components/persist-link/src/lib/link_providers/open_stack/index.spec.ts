@@ -7,7 +7,10 @@ const createRes = () => ({
   status: jest.fn().mockReturnThis(),
   send: jest.fn().mockReturnThis(),
   setHeader: jest.fn().mockReturnThis(),
+  destroy: jest.fn(),
 });
+
+const createStream = (headers: any = {}, statusCode = 200) => ({ pipe: jest.fn(), on: jest.fn(), headers, statusCode });
 
 describe('OpenStackLinkProvider', () => {
   beforeEach(() => {
@@ -60,8 +63,9 @@ describe('OpenStackLinkProvider', () => {
     });
 
     it('should set the content-disposition header and pipe the file by default', async () => {
-      const pipe = jest.fn();
-      const downloadFile = jest.fn().mockResolvedValue({ pipe });
+      const stream = createStream();
+      const pipe = stream.pipe;
+      const downloadFile = jest.fn().mockResolvedValue(stream);
       const provider = new OpenStackLinkProvider({});
       provider.openStackHandler.connections.main = { downloadFile };
       const res = createRes();
@@ -74,8 +78,9 @@ describe('OpenStackLinkProvider', () => {
     });
 
     it('should skip the content-disposition header when disabled in config', async () => {
-      const pipe = jest.fn();
-      const downloadFile = jest.fn().mockResolvedValue({ pipe });
+      const stream = createStream();
+      const pipe = stream.pipe;
+      const downloadFile = jest.fn().mockResolvedValue(stream);
       const provider = new OpenStackLinkProvider({ addContentDispositionHeader: false });
       provider.openStackHandler.connections.main = { downloadFile };
       const res = createRes();
@@ -84,6 +89,31 @@ describe('OpenStackLinkProvider', () => {
 
       expect(res.setHeader).not.toHaveBeenCalled();
       expect(pipe).toHaveBeenCalledWith(res);
+    });
+
+    it('should copy upstream status and headers and pipe the file', async () => {
+      const stream = createStream({ 'content-type': 'image/png', connection: 'keep-alive' }, 206);
+      const downloadFile = jest.fn().mockResolvedValue(stream);
+      const provider = new OpenStackLinkProvider({});
+      provider.openStackHandler.connections.main = { downloadFile };
+      const res = createRes();
+
+      await provider.open({ serverName: 'main', fileName: 'a.txt' }, res);
+
+      expect(res.status).toHaveBeenCalledWith(206);
+      expect(res.setHeader).toHaveBeenCalledWith('content-type', 'image/png');
+      expect(res.setHeader).not.toHaveBeenCalledWith('connection', expect.anything());
+    });
+
+    it('should respond with 502 when the download request fails', async () => {
+      const downloadFile = jest.fn().mockRejectedValue(new Error('timeout'));
+      const provider = new OpenStackLinkProvider({});
+      provider.openStackHandler.connections.main = { downloadFile };
+      const res = createRes();
+
+      await provider.open({ serverName: 'main', fileName: 'a.txt' }, res);
+
+      expect(res.status).toHaveBeenCalledWith(502);
     });
   });
 });

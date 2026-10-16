@@ -1,6 +1,7 @@
 // Import.
 import { getLog } from '../../context';
 import { describeOptions } from '../../log_redact';
+import { pipeUpstreamResponse } from '../../stream_response';
 import FilestorageHandler from './filestorage_handler';
 import LinkProvider from '../link_provider';
 
@@ -9,6 +10,12 @@ const RESPONSE_NOT_FOUND_CODE = 404;
 const RESPONSE_NOT_FOUND_OBJECT = {
   error: {
     message: 'Not found.',
+  },
+};
+const RESPONSE_BAD_GATEWAY_CODE = 502;
+const RESPONSE_BAD_GATEWAY_OBJECT = {
+  error: {
+    message: 'Bad gateway.',
   },
 };
 const DEFAULT_INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif'];
@@ -109,38 +116,40 @@ class FilestorageLinkProvider extends LinkProvider {
         options: describeOptions(options),
       });
     };
-    const downloadReadableStream = await filestorageConnection.downloadFile(fileId, { isP7s });
-    downloadReadableStream
-      .on('response', (res) => {
-        const headers = res.headers;
-        const contentType = String(headers['content-type'] || headers['Content-Type'] || '')
-          .split(';')[0]
-          .trim()
-          .toLowerCase();
-        const isInlineAllowed = this.getInlineContentTypes().includes(contentType);
-        const currentDisposition = headers['content-disposition'] || headers['Content-Disposition'];
+    let downloadReadableStream;
+    try {
+      downloadReadableStream = await filestorageConnection.downloadFile(fileId, { isP7s });
+    } catch (error) {
+      handleStreamError(error);
+      return res.status(RESPONSE_BAD_GATEWAY_CODE).send(RESPONSE_BAD_GATEWAY_OBJECT);
+    }
+    downloadReadableStream.on('error', handleStreamError);
+    pipeUpstreamResponse(downloadReadableStream, res, (headers) => {
+      const contentType = String(headers['content-type'] || headers['Content-Type'] || '')
+        .split(';')[0]
+        .trim()
+        .toLowerCase();
+      const isInlineAllowed = this.getInlineContentTypes().includes(contentType);
+      const currentDisposition = headers['content-disposition'] || headers['Content-Disposition'];
 
-        // Never render non-allowlisted types inline, even if upstream asked for it.
-        let disposition: string | undefined;
-        if (!isInlineAllowed) {
-          disposition = 'attachment';
-        } else if (showInBrowser) {
-          disposition = 'inline';
-        }
-        if (disposition) {
-          delete headers['content-disposition'];
-          headers['Content-Disposition'] = /^\s*(inline|attachment)/i.test(currentDisposition || '')
-            ? currentDisposition.replace(/^\s*(inline|attachment)/i, disposition)
-            : disposition;
-        }
+      // Never render non-allowlisted types inline, even if upstream asked for it.
+      let disposition: string | undefined;
+      if (!isInlineAllowed) {
+        disposition = 'attachment';
+      } else if (showInBrowser) {
+        disposition = 'inline';
+      }
+      if (disposition) {
+        delete headers['content-disposition'];
+        headers['Content-Disposition'] = /^\s*(inline|attachment)/i.test(currentDisposition || '')
+          ? currentDisposition.replace(/^\s*(inline|attachment)/i, disposition)
+          : disposition;
+      }
 
-        headers['X-Content-Type-Options'] = 'nosniff';
-        headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY;
-        headers['Accept-Ranges'] = 'bytes';
-      })
-      .on('error', handleStreamError)
-      .pipe(res)
-      .on('error', handleStreamError);
+      headers['X-Content-Type-Options'] = 'nosniff';
+      headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY;
+      headers['Accept-Ranges'] = 'bytes';
+    }).on('error', handleStreamError);
   }
 
   /**

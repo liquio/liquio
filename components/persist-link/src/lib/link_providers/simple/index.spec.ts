@@ -1,7 +1,8 @@
 const pipe = jest.fn();
-const requestMock = jest.fn(() => ({ pipe }));
+const upstream = { pipe, on: jest.fn(), headers: { 'content-type': 'text/plain' }, statusCode: 200 };
+const requestMock = jest.fn(async (..._args: any[]) => upstream);
 
-jest.mock('request', () => requestMock);
+jest.mock('../../http_request', () => ({ __esModule: true, default: { stream: requestMock } }));
 
 import SimpleLinkProvider from './index';
 
@@ -9,6 +10,8 @@ const createRes = () => ({
   status: jest.fn().mockReturnThis(),
   send: jest.fn().mockReturnThis(),
   redirect: jest.fn().mockReturnThis(),
+  setHeader: jest.fn().mockReturnThis(),
+  destroy: jest.fn(),
 });
 
 describe('SimpleLinkProvider', () => {
@@ -63,6 +66,27 @@ describe('SimpleLinkProvider', () => {
 
       expect(requestMock).toHaveBeenCalledWith({ url: 'https://example.com', method: 'GET' });
       expect(pipe).toHaveBeenCalledWith(res);
+    });
+
+    it('should copy upstream status and headers to the response', async () => {
+      const provider = new SimpleLinkProvider({});
+      const res = createRes();
+
+      await provider.open({ url: 'https://example.com' }, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.setHeader).toHaveBeenCalledWith('content-type', 'text/plain');
+    });
+
+    it('should respond with 502 when the request fails', async () => {
+      requestMock.mockRejectedValueOnce(new Error('ECONNRESET'));
+      const provider = new SimpleLinkProvider({});
+      const res = createRes();
+
+      await provider.open({ url: 'https://example.com' }, res);
+
+      expect(res.status).toHaveBeenCalledWith(502);
+      expect(pipe).not.toHaveBeenCalled();
     });
 
     it('should use a custom method when provided', async () => {

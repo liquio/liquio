@@ -12,12 +12,16 @@ import FilestorageLinkProvider from './index';
 const createRes = () => ({
   status: jest.fn().mockReturnThis(),
   send: jest.fn().mockReturnThis(),
+  setHeader: jest.fn().mockReturnThis(),
+  destroy: jest.fn(),
 });
 
 const createStream = () => {
   const stream: any = {
     on: jest.fn().mockReturnThis(),
     pipe: jest.fn(),
+    headers: {},
+    statusCode: 200,
   };
   stream.pipe.mockReturnValue(stream);
   return stream;
@@ -106,14 +110,37 @@ describe('FilestorageLinkProvider', () => {
       provider.filestorageHandler.connections.main = { downloadFile };
       const res = createRes();
 
+      stream.headers = { 'content-type': 'application/pdf' };
+
       await provider.open({ serverName: 'main', fileId: '1' }, res, null, { showInBrowser: true });
 
-      const onResponse = stream.on.mock.calls.find(([event]: [string]) => event === 'response')[1];
-      const fakeResponse = { headers: { 'content-type': 'application/pdf' } };
-      onResponse(fakeResponse);
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'inline');
+      expect(res.setHeader).toHaveBeenCalledWith('Accept-Ranges', 'bytes');
+    });
+  });
 
-      expect(fakeResponse.headers['Content-Disposition']).toBe('inline');
-      expect(fakeResponse.headers['Accept-Ranges']).toBe('bytes');
+  describe('open upstream handling', () => {
+    it('should copy upstream status code to the response', async () => {
+      const stream = createStream();
+      stream.statusCode = 404;
+      const provider = new FilestorageLinkProvider({});
+      provider.filestorageHandler.connections.main = { downloadFile: jest.fn().mockResolvedValue(stream) };
+      const res = createRes();
+
+      await provider.open({ serverName: 'main', fileId: '1' }, res, null, {});
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should respond with 502 when the download request fails', async () => {
+      const provider = new FilestorageLinkProvider({});
+      provider.filestorageHandler.connections.main = { downloadFile: jest.fn().mockRejectedValue(new Error('timeout')) };
+      const res = createRes();
+
+      await provider.open({ serverName: 'main', fileId: '1' }, res, null, {});
+
+      expect(res.status).toHaveBeenCalledWith(502);
+      expect(logSave).toHaveBeenCalledWith('filestorage-download-stream-error', expect.any(Object));
     });
   });
 
@@ -123,11 +150,14 @@ describe('FilestorageLinkProvider', () => {
       const downloadFile = jest.fn().mockResolvedValue(stream);
       const provider = new FilestorageLinkProvider(config);
       provider.filestorageHandler.connections.main = { downloadFile };
-      await provider.open({ serverName: 'main', fileId: '1' }, createRes(), null, { showInBrowser });
-      const onResponse = stream.on.mock.calls.find(([event]: [string]) => event === 'response')[1];
-      const fakeResponse = { headers: contentType ? { 'content-type': contentType, ...extra } : { ...extra } };
-      onResponse(fakeResponse);
-      return fakeResponse.headers as any;
+      stream.headers = contentType ? { 'content-type': contentType, ...extra } : { ...extra };
+      const res = createRes();
+      await provider.open({ serverName: 'main', fileId: '1' }, res, null, { showInBrowser });
+      const headers: any = {};
+      res.setHeader.mock.calls.forEach(([name, value]: [string, string]) => {
+        headers[name] = value;
+      });
+      return headers;
     };
 
     it.each(['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'application/pdf; charset=binary'])(

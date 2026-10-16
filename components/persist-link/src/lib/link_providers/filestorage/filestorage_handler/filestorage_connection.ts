@@ -1,8 +1,8 @@
 // Import.
 import crypto from 'node:crypto';
+import { PassThrough } from 'node:stream';
 
 import axios from 'axios';
-import request from 'request';
 
 import { getLog } from '../../../context';
 import { prepareAxiosErrorToLog } from '../../../helpers';
@@ -115,12 +115,12 @@ class FileStorageConnection {
    * @param {string} fileId File ID.
    * @param {object} additionalOptions Additional options.
    * @param {boolean} additionalOptions.isP7s Must we return link to p7s of file.
-   * @returns {Promise<ReadableStream>} Promise of readable stream to download file.
+   * @returns {Promise<import('http').IncomingMessage>} Promise of readable stream to download file (with upstream status code and headers).
    */
   async downloadFile(fileId, { isP7s = false }) {
     // Get options to handle file.
     const requestOptions = await this.downloadFileRequestOptions(fileId, { isP7s });
-    return request(requestOptions);
+    return HttpRequest.stream(requestOptions);
   }
 
   /**
@@ -187,7 +187,7 @@ class FileStorageConnection {
   async downloadFilePreview(fileId) {
     // Get options to handle file.
     const requestOptions = await this.downloadFilePreviewRequestOptions(fileId);
-    return request(requestOptions);
+    return HttpRequest.stream(requestOptions);
   }
 
   /**
@@ -222,7 +222,7 @@ class FileStorageConnection {
   async downloadZip(filesIds) {
     // Get options to handle file.
     const requestOptions = await this.downloadZipRequestOptions(filesIds);
-    return request(requestOptions);
+    return HttpRequest.stream(requestOptions);
   }
 
   /**
@@ -276,7 +276,9 @@ class FileStorageConnection {
   async uploadFile(name, description, contentType, contentLength) {
     // Get options to handle file.
     const requestOptions = await this.uploadFileRequestOptions(name, description, contentType, contentLength);
-    return request(requestOptions);
+    const uploadStream = new PassThrough();
+    HttpRequest.upload(requestOptions, uploadStream).catch((error) => uploadStream.destroy(error));
+    return uploadStream;
   }
 
   /**
@@ -289,30 +291,15 @@ class FileStorageConnection {
    * @returns {Promise<{id, name, contentType, contentLength, description, containerId, hash: {md5, sha1}, meta, createdBy, updatedBy, createdAt, updatedAt}>} Promise of file info.
    */
   async uploadFileFromStream(readableStream, name, description, contentType, contentLength) {
-    return new Promise(async (resolve, reject) => {
-      // Get options to handle file.
-      const requestOptions = await this.uploadFileRequestOptions(name, description, contentType, contentLength);
-      readableStream.pipe(
-        request(requestOptions, (error, response, body) => {
-          // Check error.
-          if (error) {
-            return reject(error);
-          }
+    // Get options to handle file.
+    const requestOptions = await this.uploadFileRequestOptions(name, description, contentType, contentLength);
+    const body = await HttpRequest.upload(requestOptions, readableStream);
 
-          // Parse body.
-          let fileInfo;
-          try {
-            const { error, data } = JSON.parse(body);
-            if (error) throw new Error(error.message || error);
-            fileInfo = data;
-          } catch (error) {
-            return reject(error);
-          }
-          saveLog('filestorage-upload-from-stream-result', { name, fileInfo });
-          resolve(fileInfo);
-        }),
-      );
-    });
+    // Parse body.
+    const { error, data: fileInfo } = JSON.parse(body);
+    if (error) throw new Error(error.message || error);
+    saveLog('filestorage-upload-from-stream-result', { name, fileInfo });
+    return fileInfo;
   }
 
   /**
@@ -396,7 +383,7 @@ class FileStorageConnection {
 
     // Do request and return P7S file readable stream if need it.
     if (asFile) {
-      return request(requestOptions);
+      return HttpRequest.stream(requestOptions);
     }
 
     // Do request and return BASE64 result in other case.
