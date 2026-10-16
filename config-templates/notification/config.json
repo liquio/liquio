@@ -3,6 +3,9 @@
   "production": {
     "processTitle": "notify",
     "port": "3003",
+    "tls": {
+      "enabled": false
+    },
     "username": "postgres",
     "password": "<REDACTED>",
     "database": "notify",

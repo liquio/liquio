@@ -11,6 +11,7 @@ global.conf = config.conf;
 import start from './app';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
 import { typeOf } from './lib/type_of';
+import { createServer } from './lib/tls_server';
 
 global.typeOf = typeOf;
 // Constants.
@@ -60,15 +61,18 @@ if (!adapters.sms) {
 }
 
 // Start Notify Core.
-const server = start(config, path.join(__dirname, ADMIN_DIRECTORY), adapters as any);
+const app = start(config, path.join(__dirname, ADMIN_DIRECTORY), adapters as any);
 
 // Start server listening.
 (async () => {
   await (async () => {
     return new Promise((resolve) => {
       const port = config.conf.port || process.env.port || 8080;
+      // Plain HTTP unless conf.tls.enabled is set; throws (fails fast) on unreadable cert/key/ca files.
+      const server = createServer(app, config.conf.tls);
+      const scheme = config.conf.tls?.enabled ? 'https' : 'http';
       server.listen(port, function () {
-        log.save('server-started', { url: `http://localhost:${port}`, port }, 'info');
+        log.save('server-started', { url: `${scheme}://localhost:${port}`, port }, 'info');
         resolve(undefined);
       });
     });

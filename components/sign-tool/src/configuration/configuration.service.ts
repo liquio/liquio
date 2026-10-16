@@ -20,6 +20,12 @@ export interface Configuration {
     port: number;
     isSwaggerEnabled: boolean;
     acceptedBodySize: string;
+    tls?: {
+      enabled?: boolean;
+      certPath?: string;
+      keyPath?: string;
+      caPath?: string;
+    };
   };
 }
 

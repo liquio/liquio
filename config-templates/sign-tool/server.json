@@ -2,5 +2,8 @@
   "host": "0.0.0.0",
   "port": 3004,
   "acceptedBodySize": "10mb",
-  "isSwaggerEnabled": false
+  "isSwaggerEnabled": false,
+  "tls": {
+    "enabled": false
+  }
 }
