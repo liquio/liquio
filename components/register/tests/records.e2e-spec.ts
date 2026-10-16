@@ -450,6 +450,51 @@ describe('RecordsController', () => {
     });
   });
 
+  describe('csv_map export formula injection (SE-3930 RG-23)', () => {
+    const csvMap = JSON.stringify({ n: 'data.name', d: 'data.data' });
+    const createdIds: string[] = [];
+
+    beforeAll(async () => {
+      const response = await testHarness
+        .request()
+        .post('/records')
+        .set('Authorization', validAuth)
+        .send({ registerId: 200, keyId: 2001, data: { name: '=cmd|"/c calc"!A1', data: 'CSV_RG23_MARK' } })
+        .expect(200);
+      createdIds.push(response.body.data.id);
+    });
+
+    afterAll(async () => {
+      await Promise.all(createdIds.map((id) => testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth)));
+    });
+
+    const expectSafe = (text: string) => {
+      expect(text).toContain(`"'=cmd|""/c calc""!A1"`);
+      expect(text).not.toMatch(/(^|,)"=/m);
+      expect(text).not.toContain('\\"');
+    };
+
+    it('neutralises formulas in GET /records', async () => {
+      const response = await testHarness
+        .request()
+        .get('/records')
+        .query({ key_id: 2001, register_id: 200, csv_map: csvMap, data: { data: 'CSV_RG23_MARK' } })
+        .set('Authorization', validAuth)
+        .expect(200);
+      expectSafe(response.text);
+    });
+
+    it('neutralises formulas in POST /records/filter', async () => {
+      const response = await testHarness
+        .request()
+        .post('/records/filter')
+        .set('Authorization', validAuth)
+        .send({ key_id: 2001, register_id: 200, csv_map: csvMap, data: { data: 'CSV_RG23_MARK' } })
+        .expect(200);
+      expectSafe(response.text);
+    });
+  });
+
   describe('DELETE /records/:id', () => {
     it('should return 401 without authentication', async () => {
       await testHarness.request().delete('/records/some-id').expect(401).expect('Content-Type', /json/);

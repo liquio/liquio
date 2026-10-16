@@ -22,6 +22,7 @@ import { ModelItemResponse } from '../lib/interfaces';
 import RecordEntity from '../entities/record';
 import { resolveCallerAccess, CallerAccess } from '../lib/caller_access';
 import JoinedRecordAccess from '../lib/joined_record_access';
+import { escapeCsvCell } from '../lib/csv';
 import { canSearchField, canSearchString } from '../lib/record_search_access';
 import HistoryAccess, { HistoryKeyForbiddenError } from '../lib/history_access';
 
@@ -402,7 +403,7 @@ export default class RecordsController extends Controller {
         const row = csvEntries.reduce(
           (t, [key, value]) => ({
             ...t,
-            [key]: `"${`${_.get(record, value as string) || ''}`.replace(/"/g, '\\"')}"`,
+            [key]: escapeCsvCell(_.get(record, value as string) || ''),
           }),
           {},
         );
@@ -697,7 +698,7 @@ export default class RecordsController extends Controller {
         const row = csvEntries.reduce(
           (t, [key, value]) => ({
             ...t,
-            [key]: `"${`${_.get(record, value as string) || ''}`.replace(/"/g, '\\"')}"`,
+            [key]: escapeCsvCell(_.get(record, value as string) || ''),
           }),
           {},
         );
