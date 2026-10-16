@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import express from 'express';
 
 import Router from './router';
+import { CABINET_FRONT_PROXY_PATHS } from './lib/proxy_filter';
 
 jest.mock('@liquio/back-core', () => ({
   AppInfo: class {
@@ -249,6 +250,50 @@ describe('Router custom APIs', () => {
         await stop(server);
       }
       expect(received).toEqual(['/tasks/1']);
+    });
+
+    describe('built-in allow-list (mainProxyAllowPaths: "default")', () => {
+      const concrete = (entry: string) => entry.replace(/\$$/, '').replace(/:\w+/g, '1');
+
+      it('proxies every audited cabinet front route', async () => {
+        const { server, base } = await startMain({ mainProxyAllowPaths: 'default' });
+        received.length = 0;
+        const paths = [...CABINET_FRONT_PROXY_PATHS.map(concrete), '/external_reader/captcha/a/b', '/tasks/1/commit'];
+        try {
+          for (const path of paths) {
+            expect([path, (await fetch(`${base}${path}`)).status]).toEqual([path, 200]);
+          }
+        } finally {
+          await stop(server);
+        }
+        expect(received).toEqual(paths);
+      });
+
+      it('returns 404 for internal and unaudited task routes without reaching the upstream', async () => {
+        const { server, base } = await startMain({ mainProxyAllowPaths: 'default' });
+        received.length = 0;
+        try {
+          for (const path of ['/external_services/x', '/test/ping/services', '/external_reader/async', '/unit-access', '/something-new']) {
+            expect([path, (await fetch(`${base}${path}`)).status]).toEqual([path, 404]);
+          }
+          expect((await fetch(`${base}/auth/bearer`, { method: 'POST', body: '{}' })).status).toBe(404);
+        } finally {
+          await stop(server);
+        }
+        expect(received).toEqual([]);
+      });
+
+      it('lets an explicit array override the built-in list', async () => {
+        const { server, base } = await startMain({ mainProxyAllowPaths: ['/something-new'] });
+        received.length = 0;
+        try {
+          expect((await fetch(`${base}/something-new`)).status).toBe(200);
+          expect((await fetch(`${base}/tasks/1`)).status).toBe(404);
+        } finally {
+          await stop(server);
+        }
+        expect(received).toEqual(['/something-new']);
+      });
     });
   });
 });

@@ -50,6 +50,24 @@ Entries fail closed:
 }
 ```
 
+## Main proxy allow-list
+
+Off by default (only the deny-list applies). `discovery.mainProxyAllowPaths` turns it on, and everything not listed then
+returns 404. The deny-list still applies.
+
+- `"default"` selects the built-in `CABINET_FRONT_PROXY_PATHS` (`src/lib/proxy_filter.ts`), the routes used by
+  `cabinet-front` and `front-core`, plus `/healthz` and the `/payment` provider callbacks. Example `discovery.json`:
+  `{ "mainProxy": "http://task:3000", "mainProxyAllowPaths": "default" }`. With Helm, set
+  `config.cabinetApi.discovery.mainProxyAllowPaths: default` in the values.
+- An array replaces the built-in list (it is not merged with it), for example `["/tasks", "/auth/me"]`.
+- An empty array or no value keeps the mode off.
+- Entries match on a path-segment boundary, case-insensitively. A `:param` segment matches any one segment. A trailing
+  `$` means exactly that path (`/external_reader$` allows `/external_reader` but not `/external_reader/async`).
+
+Enable it only when the deployed front is the stock `cabinet-front`: a customised front, payment providers calling back
+through the cabinet host, or other task routes need extra entries (use an explicit array that starts from the built-in
+list). `/custom/*` routes of configured `customApis` and `/test/ping` are served by cabinet-api itself and need none.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
@@ -59,6 +77,6 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
 - `cabinet-api` → `task` (proxies everything not served locally via `discovery.mainProxy`, except a built-in deny-list of
   internal paths that return 404: `/external_services`, `/external-services`, `/test`, `/auth/bearer`,
   `/external_reader/mocks-keys-by-user`; extend it with `discovery.mainProxyDenyPaths`, or restrict the proxy to
-  listed prefixes with the optional `discovery.mainProxyAllowPaths`, where `:param` segments match any one segment)
+  listed prefixes with the optional `discovery.mainProxyAllowPaths`, see below)
 - `cabinet-api` → PostgreSQL (`bpmn` database, shared with `admin-api`,
   `task`, `manager`, `gateway`, `event`), Redis/Dragonfly
