@@ -18,6 +18,7 @@ import { UsersMessagesModel } from '../models/users_messages';
 import { MessageCryptTypesModel } from '../models/message_crypt_types';
 import { checkAuth, checkTestAuth, checkAdminCookie, checkSameOrigin } from './auth';
 import { resolveUserId } from './resolve_user_id';
+import { renderDecrypted } from '../lib/rule_to_show';
 
 const router = Router();
 const adminRouter = Router();
@@ -1448,7 +1449,7 @@ export class Message extends Auth {
     for (const message of messages) {
       if (message.ruleToShow) {
         try {
-          message.decryptedToShow = eval(message.ruleToShow)(message.decryptedBase64);
+          message.decryptedToShow = renderDecrypted(message.ruleToShow, message.decryptedBase64);
         } catch (error) {
           message.decryptionToShowError = (error && error.message) || error;
         }
@@ -1759,7 +1760,7 @@ export class Message extends Auth {
       const messageCryptType = await MessageCryptTypes.findOne({ where: { id: currentMessage.messageCryptTypeId } });
       const { rule_to_show: ruleToShow } = messageCryptType;
       try {
-        currentMessage.decryptedToShow = eval(ruleToShow)(currentMessage.decryptedBase64);
+        currentMessage.decryptedToShow = renderDecrypted(ruleToShow, currentMessage.decryptedBase64);
       } catch (error) {
         currentMessage.decryptionToShowError = (error && error.message) || error;
       }
