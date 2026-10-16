@@ -61,8 +61,11 @@ describe('AuthController.authenticateToken', () => {
     expect((await controller.authenticateToken('x', ['admin'])).status).toBe(401);
   });
 
-  it('should accept server token', async () => {
-    expect((await controller.authenticateToken('srv', ['admin'])).status).toBe(200);
+  it('should not accept server token as a user token (no role bypass)', async () => {
+    decrypt.mockImplementation(() => {
+      throw new Error('bad');
+    });
+    expect((await controller.authenticateToken('srv', ['admin'])).status).toBe(401);
   });
 
   it('should reject user without needed role', async () => {
@@ -116,5 +119,64 @@ describe('AuthController.login logging', () => {
     expect(logged).not.toContain('pii@example.com');
     expect(logged).not.toContain('1234567890');
     expect(logged).not.toContain('380000000000');
+  });
+});
+
+describe('AuthController.getCheckMiddleware server token', () => {
+  let controller: AuthController;
+  const decrypt = jest.fn();
+
+  const build = (serverToken: any) => {
+    (AuthController as any).singleton = undefined;
+    (getIdApiClient as jest.Mock).mockReturnValue({ getUser: jest.fn(), renewTokens: jest.fn(), getMainUserInfo: jest.fn((v) => v) });
+    controller = new AuthController({ auth: {}, server: { token: serverToken }, access: {} });
+    controller.token = { decrypt } as any;
+    jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
+  };
+
+  const run = async (middleware: any, token?: string) => {
+    const next = jest.fn();
+    await middleware({ method: 'GET', headers: token === undefined ? {} : { token } }, {}, next);
+    return next;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    decrypt.mockImplementation(() => {
+      throw new Error('not decryptable');
+    });
+    build('srv-secret');
+  });
+
+  it('should reject server token on a role-protected non-service route', async () => {
+    const next = await run(controller.getCheckMiddleware(['admin'], [1]), 'srv-secret');
+    expect(next).not.toHaveBeenCalled();
+    expect(controller.responseError).toHaveBeenCalledWith(expect.anything(), expect.anything(), 401);
+  });
+
+  it('should accept server token on a service-only route', async () => {
+    const next = await run(controller.getCheckMiddleware(['admin'], [], true), 'srv-secret');
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('should reject wrong token on a service-only route', async () => {
+    const next = await run(controller.getCheckMiddleware(['admin'], [], true), 'srv-secreX');
+    expect(next).not.toHaveBeenCalled();
+    expect(controller.responseError).toHaveBeenCalledWith(expect.anything(), 'Incorrect server (admin) token.', 401);
+  });
+
+  it.each(['', undefined])('should never match when server token is %p', async (serverToken) => {
+    build(serverToken);
+    expect(controller.isServerToken('')).toBe(false);
+    expect(controller.isServerToken('x')).toBe(false);
+    const next = await run(controller.getCheckMiddleware(['admin'], [], true), 'x');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('should compare with different length and non-string tokens safely', () => {
+    expect(controller.isServerToken('srv')).toBe(false);
+    expect(controller.isServerToken('srv-secret-longer')).toBe(false);
+    expect(controller.isServerToken(['srv-secret'])).toBe(false);
+    expect(controller.isServerToken('srv-secret')).toBe(true);
   });
 });

@@ -384,11 +384,14 @@ export class TestApp {
     if (global.slaveDb) {
       await global.slaveDb.close();
     }
-    if (this.routerService && this.routerService.httpServer) {
-      this.routerService.httpServer.close();
+    const { wss, server } = this.routerService || {};
+    if (wss) {
+      wss.clients.forEach((client) => client.terminate());
+      await new Promise((resolve) => wss.close(resolve));
     }
-    if (this.ws) {
-      this.ws.close();
+    if (server) {
+      server.closeAllConnections?.();
+      await new Promise((resolve) => server.close(resolve));
     }
   }
 }

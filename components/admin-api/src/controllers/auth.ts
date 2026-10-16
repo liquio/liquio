@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+
 import _ from 'lodash';
 import { IdApiClient, appendTraceMeta, getIdApiClient } from '@liquio/back-core';
 
@@ -139,6 +141,20 @@ export class AuthController extends Controller {
   }
 
   /**
+   * Check that token is the shared server (service) token. Constant time, never matches when server token is not set.
+   * @param {unknown} token Token from request.
+   * @returns {boolean} Is server token.
+   */
+  isServerToken(token: unknown): boolean {
+    if (typeof token !== 'string' || typeof this.serverToken !== 'string' || this.serverToken === '') {
+      return false;
+    }
+    const a = createHash('sha256').update(token).digest();
+    const b = createHash('sha256').update(this.serverToken).digest();
+    return timingSafeEqual(a, b);
+  }
+
+  /**
    * Get check middleware.
    * @param {string[]} [roles] Roles that has access (check by "or"). Noone has access for empty array. Everyone has access for undefined (just try to auth).
    * @param {number[]} units Access for units.
@@ -159,14 +175,10 @@ export class AuthController extends Controller {
         return isJustTry ? next() : this.responseError(res, ERROR_MESSAGE_TOKEN_NOT_DEFINED, 401);
       }
 
-      // Check server token.
-      if (token === this.serverToken) {
-        return next();
-      }
-
-      // Check case auth from another service.
+      // Check case auth from another service. The server token is accepted only on routes declared as service only.
       if (isServiceOnly) {
-        if (token !== this.serverToken) return this.responseError(res, ERROR_MESSAGE_INCORRECT_SERVER_TOKEN, 401);
+        if (!this.isServerToken(token)) return this.responseError(res, ERROR_MESSAGE_INCORRECT_SERVER_TOKEN, 401);
+        return next();
       }
 
       // Get auth access and refresh tokens.
@@ -268,10 +280,6 @@ export class AuthController extends Controller {
   async authenticateToken(token, roles: string[] = [], units: number[] = []): Promise<{ status: number; error?: string; authUserInfo?: any }> {
     if (!token || typeof token !== 'string') {
       return { status: 401, error: ERROR_MESSAGE_TOKEN_NOT_DEFINED };
-    }
-
-    if (token === this.serverToken) {
-      return { status: 200 };
     }
 
     let authUserInfo;
