@@ -29,3 +29,25 @@ describe('validators/workflow_process file ids', () => {
     );
   });
 });
+
+describe('validators/workflow_process filters.user_data', () => {
+  const validator = new WorkflowProcessValidator({});
+
+  const validate = async (query: object) => {
+    const req: any = { params: {}, query, body: {} };
+    for (const chain of validator.getAll()) {
+      await chain.run(req);
+    }
+    return validationResult(req);
+  };
+
+  const hasUserDataError = (result: any) => result.array().some((error: any) => (error.param ?? error.path) === 'filters.user_data');
+
+  it('accepts a plain string', async () => {
+    expect(hasUserDataError(await validate({ filters: { user_data: '61efddaa351d6219eee09043' } }))).toBe(false);
+  });
+
+  it.each([[['a']], [{ a: 'b' }], ['x'.repeat(65)]])('rejects %p', async (value) => {
+    expect(hasUserDataError(await validate({ filters: { user_data: value } }))).toBe(true);
+  });
+});

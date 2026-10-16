@@ -133,6 +133,8 @@ export class WorkflowProcessValidator extends Validator {
       ['filters.user_data']: {
         in: ['query'],
         optional: true,
+        isString: true,
+        isLength: { options: { max: 64 } },
       },
       ['filters.workflow_template']: {
         in: ['query'],
