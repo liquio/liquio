@@ -716,6 +716,8 @@ secrets:
   #   sign-tool:        liquio-sign-tool-secret-config
   #   pdf-generator:    liquio-pdf-generator-secret-config
   #   task:             liquio-task-secret-config
+  #   monitoring:       liquio-monitoring-tokens   (plain x-monitoring-token values of manager, gateway, event; keys
+  #                                                manager, gateway, event; read it to configure your scraper)
   existingSecrets: {}
 
   # Mount path for per-service config volume (SECRET_PATH env var). Default: /var/www/secret

@@ -203,6 +203,8 @@ A separate `pre-upgrade` hook only adds what older releases lack, and never over
 - the Basic token of user `event` (added to `tokens` in the task `basic_auth.json`, and written as `test.token` in the event `external_bpmn.json`), so `event` has its own task user next to `admin-api`. Skipped when the event Secret already has an `external_bpmn.json`; task and event are restarted when it is added. To scope task Basic routes per caller, set `config.task.basic_auth.scopedRoutes: true`. The chart ships rules for `admin-api` and `event`; a caller without a rule gets 403, so first check out-of-chart `external_bpmn` systems and any other Basic caller;
 - the named id-api clients `task`, `cabinet-api`, `event` and `notification`. A client is added only when `production.basic_auth.clients` in the id Secret has no entry with that name. The hook generates its secret, writes the caller's token (`LiquioId.basicAuthToken` in the task and cabinet-api `auth.json` and in the event `user.json`, `production.auth_server.basicAuthToken` in the notification `config.json`), then adds the hash to the id Secret. If anything was added, it restarts id-api (and waits for it) and then the four callers, because they read secrets at startup. Re-running changes nothing.
 
+- a monitoring token for manager, gateway and event (see [Monitoring](#monitoring)): `server.json` (`monitoring.isEnabled`, `monitoring.token`) in each Secret, and manager's token as `ping.json` `manager.monitoringToken` in the event Secret. Only where no token is set; an existing token or `isEnabled` is never changed. The hook also creates or completes the `<release>-monitoring-tokens` Secret. The three Deployments are restarted when something was added. Re-running changes nothing.
+
 With `secrets.existingSecrets` the hook works on the Secrets you named. With `createSecrets: false` it is not rendered, so add the id-api clients and the caller tokens yourself (see Mode B).
 
 #### Mode B: Bring your own (`createSecrets: false`)
@@ -442,6 +444,27 @@ The chart no longer stores application credential values in `values.yaml`.
 ## Monitoring
 
 Health checks are configured for all services with appropriate liveness and readiness probes.
+
+Probes use the open `/healthz` route. The diagnostic routes `/test/ping` and `/monitors/system` of **manager**, **gateway** and **event** are closed (403) unless `server.monitoring.isEnabled` is `true` and the request sends the header `x-monitoring-token` with the value of `server.monitoring.token`. With an empty token they stay closed. The chart has no Prometheus scrape config or ServiceMonitor, so nothing in it calls these routes except event's own ping to manager.
+
+With `secrets.createSecrets: true` the install hook generates one random token per component, writes it to the component's secret config (`server.json`), and stores the plain values in the Secret `<release>-monitoring-tokens` (keys `manager`, `gateway`, `event`; rename with `secrets.existingSecrets.monitoring`). Give them to your scraper, for example:
+
+```bash
+kubectl get secret liquio-monitoring-tokens -n liquio -o jsonpath='{.data.manager}' | base64 -d
+curl -H "x-monitoring-token: $TOKEN" http://liquio-manager/test/ping
+```
+
+The chart does not configure a Prometheus scrape job. Add the header to yours from that Secret, and set `networkPolicy.ingress.prometheus.enabled` so Prometheus can reach the pods.
+
+To use a token of your own (or with `createSecrets: false`), put it in the component's secret config. The hook never overwrites a token that is already set:
+
+```json
+{ "monitoring": { "isEnabled": true, "token": "<random 32+ characters>" } }
+```
+
+Event's ping to manager reads `ping.manager.monitoringToken`; the hook sets it in the event Secret's `ping.json`, so set it to manager's token yourself in Mode B. Task's cross-service ping (`ping.manager.monitoringToken`, `ping.gateway.monitoringToken`) is not rendered by the chart; set the tokens there if you provide task's `ping.json`. Restart the Deployments after changing a secret.
+
+With docker-compose, `scripts/init.sh` generates the tokens into `config/{manager,gateway,event}/server.json`, event's `ping.json` and task's `ping.json`.
 
 ## Troubleshooting
 

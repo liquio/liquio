@@ -417,6 +417,34 @@ jq --arg key "$(generate_secret)" \
 }
 
 {
+  echo "==> Generate monitoring tokens for Manager, Gateway and Event diagnostic routes"
+  # /test/ping and /monitors/system need the header x-monitoring-token. Callers that ping them send the same token.
+  manager_monitoring_token=$(generate_secret 32)
+  gateway_monitoring_token=$(generate_secret 32)
+  event_monitoring_token=$(generate_secret 32)
+
+  for pair in "manager:$manager_monitoring_token" "gateway:$gateway_monitoring_token" "event:$event_monitoring_token"; do
+    file="config/${pair%%:*}/server.json"
+    echo "$file"
+    jq --arg token "${pair#*:}" \
+      '.monitoring.isEnabled = true | .monitoring.token = $token' \
+      $file > $file.tmp && mv $file.tmp $file
+  done
+
+  file="config/event/ping.json"
+  echo "$file"
+  jq --arg token "$manager_monitoring_token" \
+    '.manager.monitoringToken = $token' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/task/ping.json"
+  echo "$file"
+  jq --arg manager "$manager_monitoring_token" --arg gateway "$gateway_monitoring_token" \
+    '.manager.monitoringToken = $manager | .gateway.monitoringToken = $gateway' \
+    $file > $file.tmp && mv $file.tmp $file
+}
+
+{
   echo "==> Generate access token for Admin API to Task calls"
   login="admin-api"
   password=$(generate_secret 48)
