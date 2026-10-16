@@ -2163,31 +2163,28 @@ export class Message extends Auth {
   }
 
   async deleteMessagetoAll(req: any, res: any) {
-    const { params } = req;
-    const { id } = params;
+    const id = /^\d+$/.test(String(req.params.id)) ? parseInt(req.params.id, 10) : NaN;
+    if (Number.isNaN(id)) {
+      return res.send(400, { error: 'Message id should be a number.' });
+    }
 
-    let deletedFromIncomming;
     try {
-      deletedFromIncomming = await IncommingMessages.destroy({ where: { message_id: id } });
+      // Only broadcast messages can be deleted through this route.
+      const broadcast = await UsersMessages.findOne({ where: { message_id: id, show_to_all: true } });
+      if (!broadcast) {
+        return res.send(404, { error: 'Message not found.' });
+      }
+
+      await UsersMessages.sequelize.transaction(async (transaction: any) => {
+        await UsersMessages.destroy({ where: { message_id: id, show_to_all: true }, transaction });
+        await IncommingMessages.destroy({ where: { message_id: id }, transaction });
+      });
     } catch (error) {
-      global.log.save('delete-msg-to-all-delete-incomming-message-error', { error }, 'error');
+      global.log.save('delete-msg-to-all-error', { error }, 'error');
       return res.send(500, error);
     }
 
-    let deletedFromMsg;
-    if (deletedFromIncomming) {
-      try {
-        deletedFromMsg = await UsersMessages.destroy({
-          where: { message_id: id },
-        });
-      } catch (error) {
-        global.log.save('delete-msg-to-all-delete-user-message-error', { error }, 'error');
-        return res.send(500, error);
-      }
-    }
-
-    const isDeleted = deletedFromMsg || deletedFromMsg === 0 ? true : false;
-    return res.send({ isDeleted });
+    return res.send({ isDeleted: true });
   }
 
   async senderErrorCallack(req: any, res: any, _next: any) {

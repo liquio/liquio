@@ -166,4 +166,39 @@ describe('Message Controller', () => {
       expect((await reload(userMessageId)).is_active).toBe(true);
     });
   });
+
+  describe('DELETE /message/toAll/:id (NT-08)', () => {
+    const models = () => ({
+      incoming: new (require('../src/models/incomming_messages').IncommingMessagesModel)().IncommingMessages,
+      users: new (require('../src/models/users_messages').UsersMessagesModel)().UsersMessages,
+    });
+    const seed = async (showToAll: boolean) => {
+      const { incoming, users } = models();
+      const message = await incoming.create({ title_message: 'nt08' });
+      await users.create({ user_id: 'nt08-user', message_id: message.message_id, show_to_all: showToAll });
+      return message.message_id as number;
+    };
+    const counts = async (id: number) => {
+      const { incoming, users } = models();
+      return [await incoming.count({ where: { message_id: id } }), await users.count({ where: { message_id: id } })];
+    };
+    const del = (id: number | string) => app.request().delete(`/message/toAll/${id}`).set('Authorization', TEST_AUTH_HEADER);
+
+    it('answers 404 for a normal message and keeps its rows', async () => {
+      const id = await seed(false);
+      await del(id).expect(404);
+      expect(await counts(id)).toEqual([1, 1]);
+    });
+
+    it('deletes a broadcast message with both rows', async () => {
+      const id = await seed(true);
+      const res = await del(id).expect(200);
+      expect(res.body).toEqual({ isDeleted: true });
+      expect(await counts(id)).toEqual([0, 0]);
+    });
+
+    it('answers 400 for a non-numeric id', async () => {
+      await del('abc').expect(400);
+    });
+  });
 });
