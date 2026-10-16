@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import supertest from 'supertest';
 
 import { TestApp, config } from './test_app';
+import { Services } from '../src/services';
 
 describe('Password mutation revokes access and reset tokens', () => {
   const REDIRECT = 'http://test-client-site';
@@ -188,7 +189,7 @@ describe('Password mutation revokes access and reset tokens', () => {
         {
           data: {
             ...({ password: bcrypt.hashSync(OLD_PASSWORD, 1), oldPasswords: [], isChangeRequired: false } as any),
-            resetPasswordToken: token,
+            resetPasswordTokenHash: Services.service('passwordManager').hashToken(token),
             resetPasswordTokenExpireAt: Date.now() + expiresIn,
           },
         },
@@ -204,7 +205,7 @@ describe('Password mutation revokes access and reset tokens', () => {
 
       const data = await localData(user.userId);
       expect(bcrypt.compareSync(NEW_PASSWORD, data.password)).toBe(true);
-      expect(data.resetPasswordToken).toBeUndefined();
+      expect(data.resetPasswordTokenHash).toBeUndefined();
       expect(data.resetPasswordTokenExpireAt).toBeUndefined();
       await userInfo(accessToken).expect(401);
       await refresh(refreshToken).expect((res) => expect(res.status).toBeGreaterThanOrEqual(400));
@@ -252,7 +253,64 @@ describe('Password mutation revokes access and reset tokens', () => {
       await resetPassword(user.email, 'reset-token-1', OLD_PASSWORD).expect(200);
 
       const data = await localData(user.userId);
+      expect(data.resetPasswordTokenHash).toBeUndefined();
+    });
+
+    it('does not accept a legacy plaintext token or the stored digest as the token', async () => {
+      const user = await newUser();
+      await seedToken(user.userId);
+      const data = await localData(user.userId);
+      const digest = data.resetPasswordTokenHash;
+      expect(digest).not.toContain('reset-token-1');
+
+      await resetPassword(user.email, digest).expect(400);
+      await app
+        .model('userServices')
+        .update(
+          { data: { ...data, resetPasswordToken: 'legacy-token', resetPasswordTokenHash: undefined } },
+          { where: { userId: user.userId, provider: 'local' } },
+        );
+      await resetPassword(user.email, 'legacy-token').expect(400);
+
+      expect(bcrypt.compareSync(OLD_PASSWORD, (await localData(user.userId)).password)).toBe(true);
+    });
+
+    it('issues a hashed token by email link, replaces an outstanding one and resets with the emailed token', async () => {
+      const user = await newUser();
+      const sendMail = jest.spyOn(Services.service('notify'), 'sendMail').mockResolvedValue({} as any);
+      const emailedToken = async () => {
+        await app.request().post('/user/password/forgot').send({ email: user.email }).expect(200);
+        const body: string = sendMail.mock.calls[sendMail.mock.calls.length - 1][1];
+        const params = new URL(`http://x/${body.slice(body.indexOf('?'))}`).searchParams;
+        expect(params.get('email')).toBe(user.email);
+        return params.get('token') as string;
+      };
+      (config.auth_providers.local as any).resetPasswordUrl = 'http://front/reset';
+
+      const first = await emailedToken();
+      const second = await emailedToken();
+      const data = await localData(user.userId);
+      expect(first).not.toBe(second);
+      expect(second).toMatch(/^[A-Za-z0-9]{32}$/);
       expect(data.resetPasswordToken).toBeUndefined();
+      expect(data.resetPasswordTokenHash).toBe(Services.service('passwordManager').hashToken(second));
+      expect(JSON.stringify(data)).not.toContain(second);
+
+      await resetPassword(user.email, first).expect(400);
+      await resetPassword(user.email, second).expect(200);
+      await resetPassword(user.email, second, 'An0ther!Passw0rd').expect(400);
+      sendMail.mockRestore();
+    });
+
+    it('rate-limits reset mails per address', async () => {
+      const user = await newUser();
+      const sendMail = jest.spyOn(Services.service('notify'), 'sendMail').mockResolvedValue({} as any);
+      (config.auth_providers.local as any).resetPasswordUrl = 'http://front/reset';
+      const max = config.confirmCode?.sendLimit?.recipientMax ?? 10;
+      for (let i = 0; i < max; i++) await app.request().post('/user/password/forgot').send({ email: user.email }).expect(200);
+      await app.request().post('/user/password/forgot').send({ email: user.email }).expect(429);
+      expect(sendMail).toHaveBeenCalledTimes(max);
+      sendMail.mockRestore();
     });
 
     it('lets only one of concurrent resets succeed', async () => {

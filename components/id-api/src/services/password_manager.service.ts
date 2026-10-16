@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import bcrypt from 'bcrypt';
 
 import { Config } from '../config';
@@ -8,6 +10,7 @@ export const MAX_ATTEMPTS = 5;
 export const MAX_ATTEMPT_DELAY = 60 * 60; // 1 hour in seconds
 export const HASHING_SALT_ROUNDS = 10;
 export const REMEMBER_LAST_PASSWORDS = 5;
+export const MIN_SECURE_TOKEN_LENGTH = 16;
 
 export class PasswordManagerService extends BaseService {
   private readonly cfg: Config['passwordManager'];
@@ -69,15 +72,35 @@ export class PasswordManagerService extends BaseService {
   }
 
   /**
-   * Generate a secure random token.
-   * @param {number} [length] Length of the token to generate (default is 32)
+   * Generate a secure random token from a CSPRNG (uniform over the alphabet, no modulo bias).
+   * @param {number} [length] Length of the token to generate (default is 32, minimum is 16)
    * @returns {string} The generated token.
    */
   generateSecureToken(length: number = 32): string {
+    if (!Number.isInteger(length) || length < MIN_SECURE_TOKEN_LENGTH) {
+      throw new RangeError(`Token length must be an integer of at least ${MIN_SECURE_TOKEN_LENGTH}.`);
+    }
     let token = '';
     for (let i = 0; i < length; i++) {
-      token += this.characters.charAt(Math.floor(Math.random() * this.characters.length));
+      token += this.characters.charAt(crypto.randomInt(this.characters.length));
     }
     return token;
+  }
+
+  /**
+   * SHA-256 hex digest of a token; only this digest is stored server-side.
+   */
+  hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Compare a presented token with a stored digest in constant time.
+   */
+  verifyToken(token: unknown, storedHash: unknown): boolean {
+    if (typeof token !== 'string' || !token || typeof storedHash !== 'string' || !storedHash) return false;
+    const actual = Buffer.from(this.hashToken(token), 'hex');
+    const expected = Buffer.from(storedHash, 'hex');
+    return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
   }
 }

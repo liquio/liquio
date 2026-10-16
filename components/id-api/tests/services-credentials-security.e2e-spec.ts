@@ -6,6 +6,7 @@ describe('Provider credentials stay private', () => {
   let userId: string;
   const email = 'services-security@example.test';
   let resetToken: string;
+  let resetHash: string;
   let resetExpires: number;
   const govidToken = 'own-test-govid-upstream-token';
   const bearer = 'own-test-services-bearer';
@@ -41,10 +42,11 @@ describe('Provider credentials stay private', () => {
         raw: { govidAccessToken: govidToken, govidUserId: 'own-test-govid-id', nested: [{ access_token: 'test-access', label: 'public' }] },
       },
     });
-    jest.spyOn(Services.service('notify'), 'sendMail').mockResolvedValue({} as any);
+    const sendMail = jest.spyOn(Services.service('notify'), 'sendMail').mockResolvedValue({} as any);
     await app.request().post('/user/password/forgot').send({ email }).expect(200);
     const local = await app.model('userServices').findOne({ where: { userId, provider: 'local' } });
-    resetToken = (local!.dataValues.data as any).resetPasswordToken;
+    resetToken = new URL(sendMail.mock.calls[0][1].match(/https?:\/\/\S+|\?\S+/)![0].replace(/^\?/, 'http://x/?')).searchParams.get('token')!;
+    resetHash = (local!.dataValues.data as any).resetPasswordTokenHash;
     resetExpires = (local!.dataValues.data as any).resetPasswordTokenExpireAt;
     expect(typeof resetToken).toBe('string');
     await app.model('accessToken').create({
@@ -94,7 +96,7 @@ describe('Provider credentials stay private', () => {
 
   it('retains the original credentials in storage and allows a legitimate reset', async () => {
     const local = await app.model('userServices').findOne({ where: { userId, provider: 'local' } });
-    expect((local!.dataValues.data as any).resetPasswordToken).toBe(resetToken);
+    expect((local!.dataValues.data as any).resetPasswordTokenHash).toBe(resetHash);
     expect((local!.dataValues.data as any).resetPasswordTokenExpireAt).toBe(resetExpires);
     expect((local!.dataValues.data as any).oldPasswords).toEqual(['test-old-hash']);
     expect(await Services.service('passwordManager').verifyPassword('V4l!dPassW0rd', (local!.dataValues.data as any).password)).toBe(true);

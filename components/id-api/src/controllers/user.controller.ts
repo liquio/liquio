@@ -1362,6 +1362,12 @@ export class UserController extends BaseController {
     }
 
     try {
+      // Limit reset mails per address and per source, whether or not the account exists (no enumeration signal).
+      if (!(await this.service('auth').consumeSendQuota('email', email, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
+
       const localService = await this.model('userServices')
         .findOne({
           where: { provider: 'local', provider_id: email },
@@ -1376,9 +1382,10 @@ export class UserController extends BaseController {
           resetPasswordTokenExpiration = 3600,
         } = config;
 
-        // Update the service record
+        // Update the service record: store only the token digest; a new request replaces (invalidates) any outstanding token.
         const token = this.service('passwordManager').generateSecureToken();
-        (localService.data as any).resetPasswordToken = token;
+        delete (localService.data as any).resetPasswordToken; // Legacy plaintext token.
+        (localService.data as any).resetPasswordTokenHash = this.service('passwordManager').hashToken(token);
         (localService.data as any).resetPasswordTokenExpireAt = Date.now() + resetPasswordTokenExpiration * 1000;
         await this.model('userServices').update({ data: localService.data }, { where: { id: localService.id } });
 
@@ -1476,10 +1483,9 @@ export class UserController extends BaseController {
       }
 
       // Report user error if the token is invalid or expired
-      const { resetPasswordToken, resetPasswordTokenExpireAt } = localService.data as any;
+      const { resetPasswordTokenHash, resetPasswordTokenExpireAt } = localService.data as any;
       if (
-        !resetPasswordToken ||
-        resetPasswordToken !== token ||
+        !this.service('passwordManager').verifyToken(token, resetPasswordTokenHash) ||
         typeof resetPasswordTokenExpireAt !== 'number' ||
         Date.now() > resetPasswordTokenExpireAt
       ) {
@@ -1510,6 +1516,7 @@ export class UserController extends BaseController {
       // Consume the token together with its expiration date; the token is checked again under the row lock,
       // so it can be used at most once even for concurrent requests.
       delete (localService.data as any).resetPasswordToken;
+      delete (localService.data as any).resetPasswordTokenHash;
       delete (localService.data as any).resetPasswordTokenExpireAt;
 
       const changed = await this.service('auth').updateLocalPassword(localService.userId, localService.data as any, { resetToken: token });

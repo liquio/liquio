@@ -1104,7 +1104,7 @@ export class AuthService extends BaseService {
         expected.resetToken !== undefined &&
         (typeof expected.resetToken !== 'string' ||
           !expected.resetToken ||
-          current?.resetPasswordToken !== expected.resetToken ||
+          !this.service('passwordManager').verifyToken(expected.resetToken, current?.resetPasswordTokenHash) ||
           typeof current?.resetPasswordTokenExpireAt !== 'number' ||
           !Number.isFinite(current.resetPasswordTokenExpireAt) ||
           current.resetPasswordTokenExpireAt < Date.now())
