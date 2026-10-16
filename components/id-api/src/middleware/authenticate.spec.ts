@@ -61,7 +61,7 @@ describe('AuthMiddleware logout', () => {
     await createHandler()(req, res);
 
     expect(auth.revokeUserAccess).toHaveBeenCalledWith(USER_ID, { ignoreCacheErrors: true });
-    expect(res.clearCookie).toHaveBeenCalledWith('jwt', { domain: '.liquio.local' });
+    expect(res.clearCookie).toHaveBeenCalledWith('jwt', expect.objectContaining({ domain: '.liquio.local', sameSite: 'lax' }));
     expect(req.logout).toHaveBeenCalledTimes(1);
   });
 

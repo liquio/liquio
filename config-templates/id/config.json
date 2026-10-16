@@ -20,6 +20,12 @@
       "secret_key": "<REDACTED>"
     },
     "domain": ".internal",
+    "cookies": {
+      "secure": "auto",
+      "sameSite": "lax",
+      "profileHttpOnly": false
+    },
+    "trustProxy": 1,
     "notify": {
       "url": "http://notification:3003",
       "authorization": "Basic <removed>"

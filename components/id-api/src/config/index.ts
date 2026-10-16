@@ -102,6 +102,15 @@ export interface Config {
     secret_key?: string[];
   };
   domain?: string;
+  // Cookie attributes. `secure` defaults to `auto` (Secure for HTTPS requests), `sameSite` to `lax`.
+  cookies?: {
+    secure?: boolean | 'auto';
+    sameSite?: 'lax' | 'strict' | 'none';
+    // Make the `jwt` profile cookie unreadable by JavaScript (default false, front-ends read it).
+    profileHttpOnly?: boolean;
+  };
+  // Express `trust proxy` value: hop count, or IP/CIDR/preset list of known ingress proxies. Unset trusts nothing.
+  trustProxy?: number | string | string[];
   notify?: {
     url?: string;
     authorization?: string;

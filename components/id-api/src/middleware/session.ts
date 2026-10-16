@@ -4,7 +4,7 @@ import session, { SessionOptions } from 'express-session';
 import { Op } from 'sequelize';
 import { Log } from '@liquio/back-core';
 
-import { DEFAULT_COOKIE_DOMAIN } from '../config';
+import { profileCookieOptions, resolveSameSite, resolveSecure } from '../lib/cookie_options';
 import { avatarByGender } from '../lib/helpers';
 import { Models, UserAttributes } from '../models';
 import { Express, NextFunction, Request, Response } from '../types';
@@ -71,6 +71,8 @@ export function useSession(express: Express) {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
+      secure: resolveSecure(express.config),
+      sameSite: resolveSameSite(express.config),
       maxAge: 1000 * 60 * 60,
       signed: true,
     },
@@ -81,6 +83,9 @@ export function useSession(express: Express) {
       checkExpirationInterval: 1000 * 60 * 60,
     }),
   };
+
+  const trustProxy = express.config.trustProxy;
+  if (trustProxy !== undefined) express.set('trust proxy', trustProxy);
 
   express.use(cookieParser());
   express.use(session(sessionParams));
@@ -142,10 +147,7 @@ export function useSession(express: Express) {
         last_name: req.session.passport.user.last_name,
       };
 
-      res.cookie('jwt', JSON.stringify(user), {
-        domain: express.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-        expires: new Date(req.session.cookie.expires as Date),
-      });
+      res.cookie('jwt', JSON.stringify(user), profileCookieOptions(req, express.config, { expires: new Date(req.session.cookie.expires as Date) }));
     }
 
     const {
@@ -156,8 +158,8 @@ export function useSession(express: Express) {
     const clientId = queryClientId || sessionClientId || sessionClienClientId;
     if (clientId) {
       res.cookie('client_id', clientId, {
+        ...profileCookieOptions(req, express.config, { expires: new Date(req.session.cookie.expires as Date) }),
         domain: express.config.domain,
-        expires: new Date(req.session.cookie.expires as Date),
       });
     }
 

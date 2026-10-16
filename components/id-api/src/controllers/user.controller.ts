@@ -3,7 +3,7 @@ import { matchedData, query } from 'express-validator';
 import jwt from 'jsonwebtoken';
 import Sequelize, { Op, WhereAttributeHash, WhereOptions } from 'sequelize';
 
-import { DEFAULT_COOKIE_DOMAIN } from '../config';
+import { profileCookieOptions } from '../lib/cookie_options';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
@@ -268,9 +268,7 @@ export class UserController extends BaseController {
         await saveSession(req, user);
       }
 
-      res.cookie('jwt', JSON.stringify(changedUser), {
-        domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-      });
+      res.cookie('jwt', JSON.stringify(changedUser), profileCookieOptions(req, this.config));
       res.send('ok');
     } catch (error: any) {
       this.log.save('update-user-error', { userId, error: error.message, stack: error.stack }, 'error');
@@ -885,9 +883,7 @@ export class UserController extends BaseController {
 
     await saveSession(req, user);
 
-    res.cookie('jwt', JSON.stringify(changedUser), {
-      domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-    });
+    res.cookie('jwt', JSON.stringify(changedUser), profileCookieOptions(req, this.config));
     res.send('ok');
   }
 
@@ -975,9 +971,7 @@ export class UserController extends BaseController {
 
       await saveSession(req, updatedUser);
 
-      res.cookie('jwt', JSON.stringify(changedUser), {
-        domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-      });
+      res.cookie('jwt', JSON.stringify(changedUser), profileCookieOptions(req, this.config));
       res.send('ok');
     } catch (error: any) {
       this.log.save('update-user-info-update-user-error', { userId, error: error.message, stack: error.stack }, 'error');

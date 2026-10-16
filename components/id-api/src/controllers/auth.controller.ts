@@ -6,7 +6,7 @@ import { OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '
 import { matchedData, query } from 'express-validator';
 import { appendTraceMeta } from '@liquio/back-core';
 
-import { DEFAULT_COOKIE_DOMAIN } from '../config';
+import { profileCookieOptions } from '../lib/cookie_options';
 import { getEnabledAuthProviders } from '../lib/auth_providers';
 import { avatarByGender } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
@@ -285,9 +285,7 @@ export class AuthController extends BaseController {
   async relogin(req: Request, res: Response): Promise<void> {
     const { client_id: clientId, redirect_uri: redirectUri } = matchedData(req, { locations: ['query'] });
 
-    res.clearCookie('jwt', {
-      domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-    });
+    res.clearCookie('jwt', profileCookieOptions(req, this.config));
 
     await promisify(req.logout)();
     await promisify(req.sessionStore.destroy)(req.sessionID);
@@ -338,10 +336,7 @@ export class AuthController extends BaseController {
         avaUrl: user.avaUrl ?? avatarByGender(user.gender),
         last_name: user.last_name,
       };
-      res.cookie('jwt', JSON.stringify(jwtObj), {
-        domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-        expires: new Date(tokens.accessTokenExpiresAt as any),
-      });
+      res.cookie('jwt', JSON.stringify(jwtObj), profileCookieOptions(req, this.config, { expires: new Date(tokens.accessTokenExpiresAt as any) }));
       res.send({
         user_id: tokens.userId,
         access_token: tokens.accessToken,
@@ -385,10 +380,7 @@ export class AuthController extends BaseController {
           avaUrl: user.avaUrl ?? avatarByGender(user.gender),
           last_name: user.last_name,
         }),
-        {
-          domain: this.config.domain ?? '.liquio.local',
-          expires: new Date(tokens.accessTokenExpiresAt as Date),
-        },
+        profileCookieOptions(req, this.config, { expires: new Date(tokens.accessTokenExpiresAt as Date) }),
       );
 
       let response_object = {};

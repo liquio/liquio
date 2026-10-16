@@ -4,7 +4,8 @@ import OAuth2Server, { OAuthError } from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import { Log, appendTraceMeta } from '@liquio/back-core';
 
-import { Config, DEFAULT_COOKIE_DOMAIN } from '../config';
+import { Config } from '../config';
+import { profileCookieOptions } from '../lib/cookie_options';
 import { generatePinCode } from '../lib/helpers';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { resolveSafeRedirect } from '../lib/safe_redirect';
@@ -273,7 +274,7 @@ export class AuthMiddleware {
         await this.service('auth').revokeUserAccess(userId, { ignoreCacheErrors: true });
       }
 
-      res.clearCookie('jwt', { domain: this.express.config.domain ?? DEFAULT_COOKIE_DOMAIN });
+      res.clearCookie('jwt', profileCookieOptions(req, this.express.config));
       req.logout(() => this.onLogout(req, res, endSessionUrl));
     };
   }
