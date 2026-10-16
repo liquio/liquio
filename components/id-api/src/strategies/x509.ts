@@ -20,7 +20,7 @@ export type X509VerifyFunction = (req: Request, userInfo: SignatureInfoSigner, d
 /**
  * X509Strategy for Passport that authenticates users based on PKCS#7 (CMS) certificate data.
  * Expects a base64-encoded PKCS#7 in req.body.pkcs7. When req.body.token (a server-issued, single-use
- * challenge from /authorise/eds/token) is given, the PKCS#7 must be a signature over exactly that token.
+ * challenge from GET /authorise/eds/sign) is given, the PKCS#7 must be a signature over exactly that token.
  * Extracts eIDAS fields from the certificate subject.
  */
 export class X509Strategy extends PassportStrategy {

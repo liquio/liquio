@@ -5,7 +5,7 @@ import { calculateUserCode } from '../lib/calculate_user_code';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserCreationAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';
-import { CallbackFn, Express, Request, Response } from '../types';
+import { CallbackFn, Express, Request } from '../types';
 import { EDSStrategy } from './passport_libs/passport-eds/strategy';
 
 export async function eds(app: Express) {
@@ -216,14 +216,5 @@ export async function eds(app: Express) {
     },
   );
 
-  app.get('/authorise/eds/sign', (req: Request, res: Response) => {
-    Services.service('eds')
-      .getRandomContentToSign()
-      .then((token: string) => {
-        res.send({ token });
-      })
-      .catch((error: Error) => {
-        res.status(500).send({ error: error.message });
-      });
-  });
+  // `GET /authorise/eds/sign` (challenge token) is served by EdsController.
 }

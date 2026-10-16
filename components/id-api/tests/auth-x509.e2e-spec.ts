@@ -183,6 +183,22 @@ describe('AuthController - x509', () => {
       await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
     });
 
+    it('serves the challenge on GET /authorise/eds/sign and accepts it exactly once', async () => {
+      const res = await app.request().get('/authorise/eds/sign').expect(200);
+      const { token } = res.body;
+      expect(typeof token).toBe('string');
+      expect(() => jwt.verify(token, config.jwt!.secret as string)).not.toThrow();
+
+      nock('http://sign-tool').post('/x509/signature-info').twice().reply(200, signToolReply(token));
+      await app
+        .request()
+        .post('/authorise/x509')
+        .send({ pkcs7: 'valid', token })
+        .expect(200)
+        .expect((r) => expect(r.body.error).toBeNull());
+      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+    });
+
     it('rejects a signature over different content than the issued token', async () => {
       const token = issueToken();
       nock('http://sign-tool').post('/x509/signature-info').once().reply(200, signToolReply(issueToken()));
