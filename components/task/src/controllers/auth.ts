@@ -369,6 +369,16 @@ export class AuthController extends Controller {
 
         // Append trace meta.
         this.appendTraceMeta({ userId });
+
+        // Cached user data is stored per token and is not bound to the route, so check route requirements every time.
+        const cachedRolesError = this.checkRequestUserRoles(req, roles);
+        if (cachedRolesError) {
+          return this.responseError(res, cachedRolesError.message, cachedRolesError.status);
+        }
+        const cachedUnitsError = this.checkRequestUserUnits(req, groups);
+        if (cachedUnitsError) {
+          return this.responseError(res, cachedUnitsError.message, cachedUnitsError.status);
+        }
       } else {
         // Get user info.
         let authUserInfo;
@@ -426,14 +436,12 @@ export class AuthController extends Controller {
         this.appendTraceMeta({ userId });
 
         // Check role.
-        const userRoles = this.getUserRoles(req);
+        req.authUserRoles = this.getUserRoles(req);
 
-        const hasOneOfNeededRoles = this.hasOneOfNeededRoles(userRoles, roles);
-        if (roles && !hasOneOfNeededRoles) {
-          global.log.save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles }, 'error');
-          return this.responseError(res, ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, 401);
+        const rolesError = this.checkRequestUserRoles(req, roles);
+        if (rolesError) {
+          return this.responseError(res, rolesError.message, rolesError.status);
         }
-        req.authUserRoles = userRoles;
 
         // Sync LDAP-managed units if the user's groups were refreshed. Never fails the request.
         await this.ldapUnitSync.syncIfChanged(authUserInfo);
@@ -442,22 +450,9 @@ export class AuthController extends Controller {
         const authUserUnitEntities = await this.getUserUnitEntities(req.authUserId);
         req.authUserUnitEntities = authUserUnitEntities;
 
-        const authUserUnitIds = this.getRequestUserUnitIds(req);
-        const allowableUnits = this.access.allowableUnits || [];
-        const routeGroupsExceptions = this.access.routeGroupsExceptions || [ROUTE_GROUPS.PUBLIC];
-
-        if (
-          // Skip check for preconfigured allowed route groups.
-          !routeGroupsExceptions.some((v) => groups.includes(v)) &&
-          // check only if allowableUnits are set in the configuration.
-          Array.isArray(allowableUnits) &&
-          // ...and aren't empty.
-          allowableUnits.length &&
-          // doesn't the user belong to any of the allowable units?
-          !allowableUnits.some((v) => authUserUnitIds.all.includes(v))
-        ) {
-          global.log.save('user-with-restricted-units', { authUserUnitIds });
-          return this.responseError(res, ERROR_MESSAGE_RESTRICTED_UNIT, 403);
+        const unitsError = this.checkRequestUserUnits(req, groups);
+        if (unitsError) {
+          return this.responseError(res, unitsError.message, unitsError.status);
         }
 
         // Handle debug user.
@@ -469,6 +464,7 @@ export class AuthController extends Controller {
           const { adminUnitId } = global.config.admin;
           const adminUnitIds = [].concat(adminUnitId).filter(Boolean);
 
+          const authUserUnitIds = this.getRequestUserUnitIds(req);
           if (!authUserUnitIds.all.some((v) => adminUnitIds.includes(v))) {
             return this.responseError(res, ERROR_MESSAGE_DEBUG_USER_NOT_ALLOWED, 401);
           }
@@ -544,6 +540,47 @@ export class AuthController extends Controller {
     const all = [...new Set([...head, ...member])];
 
     return { head, member, all };
+  }
+
+  /**
+   * Check request user roles against the roles needed by the route.
+   * @param {object} req HTTP request with `authUserInfo` and `authUserRoles`.
+   * @param {string[]} [roles] Roles that has access (check by "or").
+   * @returns {{ message: string, status: number }|null} Error to respond with or null if the check is passed.
+   */
+  checkRequestUserRoles(req, roles?: string[]): { message: string; status: number } | null {
+    if (roles && !this.hasOneOfNeededRoles(req.authUserRoles, roles)) {
+      global.log.save('user-without-needed-roles', { authUserInfo: req.authUserInfo, userRoles: req.authUserRoles, neededRoles: roles }, 'error');
+      return { message: ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, status: 401 };
+    }
+    return null;
+  }
+
+  /**
+   * Check request user units against the allowable units from the configuration.
+   * @param {object} req HTTP request with `authUserUnitEntities`.
+   * @param {string[]} [groups] Route groups.
+   * @returns {{ message: string, status: number }|null} Error to respond with or null if the check is passed.
+   */
+  checkRequestUserUnits(req, groups: string[] = []): { message: string; status: number } | null {
+    const authUserUnitIds = this.getRequestUserUnitIds(req);
+    const allowableUnits = this.access.allowableUnits || [];
+    const routeGroupsExceptions = this.access.routeGroupsExceptions || [ROUTE_GROUPS.PUBLIC];
+
+    if (
+      // Skip check for preconfigured allowed route groups.
+      !routeGroupsExceptions.some((v) => groups.includes(v)) &&
+      // check only if allowableUnits are set in the configuration.
+      Array.isArray(allowableUnits) &&
+      // ...and aren't empty.
+      allowableUnits.length &&
+      // doesn't the user belong to any of the allowable units?
+      !allowableUnits.some((v) => authUserUnitIds.all.includes(v))
+    ) {
+      global.log.save('user-with-restricted-units', { authUserUnitIds });
+      return { message: ERROR_MESSAGE_RESTRICTED_UNIT, status: 403 };
+    }
+    return null;
   }
 
   /**

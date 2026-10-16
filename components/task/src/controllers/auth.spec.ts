@@ -165,4 +165,62 @@ describe('AuthController', () => {
       expect(next).toHaveBeenCalled();
     });
   });
+
+  describe('getCheckMiddleware with cached user data', () => {
+    const cachedUserData = {
+      authUserInfo: { userId: 'user-1', role: 'individual' },
+      authUserId: 'user-1',
+      authUserRoles: ['individual'],
+      authUserUnitEntities: { head: [], member: [{ id: 1 }], all: [{ id: 1 }] },
+    };
+
+    beforeEach(() => {
+      (global as any).log = { save: jest.fn() };
+      (global as any).redisClient = { get: jest.fn().mockResolvedValue(JSON.stringify(cachedUserData)), set: jest.fn() };
+      (controller as any).config = { auth: { allowedTestAuth: false }, test_users: { list: [] } };
+      (controller as any).access = { allowableUnits: [], routeGroupsExceptions: ['public'] };
+      (controller as any).userAccess = { checkAccess: jest.fn().mockResolvedValue({ isAllowed: true }) };
+      (controller as any).onboardingController = { execute: jest.fn() };
+      (controller as any).token = { decrypt: jest.fn().mockReturnValue({ authTokens: { accessToken: 'access', refreshToken: 'refresh' } }) };
+      jest.spyOn(controller, 'getRequestUserUnits').mockRestore();
+      jest.spyOn(controller, 'responseError').mockImplementation(async () => undefined as any);
+      jest.spyOn(controller as any, 'appendTraceMeta').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      delete (global as any).redisClient;
+    });
+
+    async function run(roles: string[], groups: string[]) {
+      const req: any = { headers: { token: 'session-token' } };
+      const next = jest.fn();
+      await controller.getCheckMiddleware(roles, groups)(req, {}, next);
+      return { next };
+    }
+
+    it('should pass when the cached user has one of the needed roles', async () => {
+      const { next } = await run(['individual'], []);
+
+      expect((global as any).redisClient.get).toHaveBeenCalledTimes(1);
+      expect(controller.responseError).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it('should decline a route that needs a role the cached user does not have', async () => {
+      const { next } = await run(['monitoring'], []);
+
+      expect((global as any).redisClient.get).toHaveBeenCalledTimes(1);
+      expect(controller.responseError).toHaveBeenCalledWith(expect.anything(), 'User without needed role.', 401);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should decline a cached user from outside of the allowable units', async () => {
+      (controller as any).access = { allowableUnits: [2], routeGroupsExceptions: ['public'] };
+
+      const { next } = await run(['individual'], ['some-group']);
+
+      expect(controller.responseError).toHaveBeenCalledWith(expect.anything(), 'forbidden', 403);
+      expect(next).not.toHaveBeenCalled();
+    });
+  });
 });
