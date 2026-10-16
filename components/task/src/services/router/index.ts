@@ -179,8 +179,9 @@ export class RouterService {
           fn(req, res, next).catch(next);
         };
       };
-      const basicOrBearerAuth =
-        basicAuthDescription || basicOrBearerAuthDescription
+      const basicOrBearerAuth = routeDescription.basicAuthOnly
+        ? this.controllers.auth.basicOnlyAuth.bind(this.controllers.auth)
+        : basicAuthDescription || basicOrBearerAuthDescription
           ? this.controllers.auth.basicOrBearerAuth.bind(this.controllers.auth)
           : (res, req, next) => next();
 

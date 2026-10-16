@@ -659,13 +659,26 @@ export class AuthController extends Controller {
    * @param {object} res HTTP response.
    * @param {object} next Next request handler.
    */
-  handleBearerAuthToken(token, req, res, next) {
+  async handleBearerAuthToken(token, req, res, next) {
     // Parse token.
     let tokenData;
     try {
       tokenData = this.token.decrypt(token);
     } catch (error) {
       return this.responseError(res, error, 401);
+    }
+
+    // Check revocation. Tokens issued before `jti` was introduced have no id and stay valid until they expire.
+    if (tokenData.jti && global.redisClient) {
+      let isRevoked;
+      try {
+        isRevoked = await global.redisClient.get(`bearer.revoked.${tokenData.jti}`);
+      } catch (error) {
+        global.log?.save('auth|bearer-revocation-check-failed', { error: error?.message });
+      }
+      if (isRevoked) {
+        return this.responseError(res, 'Bearer token is revoked.', 401);
+      }
     }
 
     // Get user.
@@ -707,6 +720,36 @@ export class AuthController extends Controller {
       default:
         return this.responseError(res, 'Wrong auth token type.', 401);
     }
+  }
+
+  /**
+   * Basic auth only. Rejects Bearer so it cannot be used to mint new tokens.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {object} next Next request handler.
+   */
+  basicOnlyAuth(req, res, next) {
+    const { authorization: token } = req.headers;
+    if (!token) {
+      return this.responseError(res, 'Unknown basic auth token.', 401);
+    }
+    const [tokenKeyword, tokenValue] = token.split(' ');
+    if (tokenKeyword !== 'Basic') {
+      return this.responseError(res, 'Basic auth required.', 401);
+    }
+    return this.handleBasicAuthToken(tokenValue, req, res, next);
+  }
+
+  /**
+   * Revoke Bearer token by its jti without rotating jwtSecret.
+   * @param {string} jti Token id.
+   * @param {number} [ttlSeconds] Denylist ttl, should cover the token lifetime (default 7 days).
+   */
+  async revokeBearerToken(jti, ttlSeconds = 7 * 24 * 60 * 60) {
+    if (!global.redisClient) {
+      throw new Error('Redis is required to revoke Bearer tokens.');
+    }
+    await global.redisClient.set(`bearer.revoked.${jti}`, true, ttlSeconds);
   }
 
   /**

@@ -113,6 +113,7 @@ export const routes = {
       method: 'getBearerToken',
     },
     basicAuth: true,
+    basicAuthOnly: true, // Bearer must not be exchangeable for a fresh Bearer.
   },
   'GET /redirect/auth': {
     groups: [GROUPS.PUBLIC, GROUPS.AUTH],

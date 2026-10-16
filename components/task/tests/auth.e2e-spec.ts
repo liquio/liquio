@@ -61,5 +61,9 @@ describe('Auth Controller', () => {
     it('rejects a request with no basic auth credentials', async () => {
       await app.request().post('/auth/bearer').expect(401);
     });
+
+    it('rejects a Bearer token', async () => {
+      await app.request().post('/auth/bearer').set('Authorization', 'Bearer abc').expect(401);
+    });
   });
 });

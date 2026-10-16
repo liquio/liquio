@@ -1,4 +1,5 @@
 import { AuthController } from './auth';
+import { Token } from '../lib/token';
 
 jest.mock('../models/unit', () => ({ UnitModel: jest.fn() }));
 
@@ -72,6 +73,95 @@ describe('AuthController', () => {
       controller.handleBasicAuthToken(issuedToken.slice(6), req, {}, next);
 
       expect(req.basicAuthUser).toBe('admin-api');
+      expect(next).toHaveBeenCalled();
+    });
+  });
+  describe('bearer tokens', () => {
+    const basic = `Basic ${Buffer.from('admin-api:Zk3p9QwLm2Xv8Rt').toString('base64')}`;
+    let token: Token;
+    let redis: { get: jest.Mock };
+
+    beforeEach(() => {
+      token = Object.create(Token.prototype);
+      Object.assign(token, { config: {}, jwtSecret: 's3cret', jwtOptions: { expiresIn: '1d' } });
+      (controller as any).token = token;
+      (controller as any).config = { basic_auth: { tokens: [basic] } };
+      jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
+      jest.spyOn(controller as any, 'appendTraceMeta').mockImplementation(() => undefined);
+      (global as any).log = { save: jest.fn() };
+      redis = { get: jest.fn() };
+      (global as any).redisClient = redis;
+    });
+
+    afterEach(() => {
+      (global as any).redisClient = undefined;
+    });
+
+    it('should reject a Bearer token on the basic-only route', () => {
+      const next = jest.fn();
+      const bearer = token.generateBearer('admin-api');
+
+      controller.basicOnlyAuth({ headers: { authorization: `Bearer ${bearer}` } }, {}, next);
+
+      expect(controller.responseError).toHaveBeenCalledWith({}, 'Basic auth required.', 401);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should accept Basic on the basic-only route', () => {
+      const next = jest.fn();
+      const req: any = { headers: { authorization: basic } };
+
+      controller.basicOnlyAuth(req, {}, next);
+
+      expect(req.basicAuthUser).toBe('admin-api');
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('should issue Bearer with jti and a fixed expiry', () => {
+      const payload: any = token.decrypt(token.generateBearer('admin-api'));
+
+      expect(payload.jti).toEqual(expect.any(String));
+      expect(payload.iat).toEqual(expect.any(Number));
+      expect(payload.exp - payload.iat).toBe(86400);
+    });
+
+    it('should honour bearer.maxAgeSeconds', () => {
+      token.config = { bearer: { maxAgeSeconds: 600 } };
+      const payload: any = token.decrypt(token.generateBearer('admin-api'));
+
+      expect(payload.exp - payload.iat).toBe(600);
+    });
+
+    it('should accept a valid Bearer token', async () => {
+      const next = jest.fn();
+      const req: any = {};
+      redis.get.mockResolvedValue(undefined);
+
+      await controller.handleBearerAuthToken(token.generateBearer('admin-api'), req, {}, next);
+
+      expect(req.basicAuthUser).toBe('admin-api');
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('should reject a revoked Bearer token', async () => {
+      const next = jest.fn();
+      const bearer = token.generateBearer('admin-api');
+      const { jti }: any = token.decrypt(bearer);
+      redis.get.mockImplementation(async (key) => (key === `bearer.revoked.${jti}` ? true : undefined));
+
+      await controller.handleBearerAuthToken(bearer, {}, {}, next);
+
+      expect(controller.responseError).toHaveBeenCalledWith({}, 'Bearer token is revoked.', 401);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should keep accepting already issued Bearer tokens without jti', async () => {
+      const next = jest.fn();
+      const legacy = require('jsonwebtoken').sign({ user: 'admin-api' }, 's3cret', { expiresIn: '1d' });
+
+      await controller.handleBearerAuthToken(legacy, {}, {}, next);
+
+      expect(redis.get).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalled();
     });
   });
