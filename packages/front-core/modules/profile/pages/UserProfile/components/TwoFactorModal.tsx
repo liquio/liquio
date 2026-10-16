@@ -22,6 +22,7 @@ interface TwoFactorModalProps {
   classes: Record<string, string>;
   onClose: () => void;
   phone?: string;
+  mode?: 'enable' | 'disable';
   actions: {
     sendSMSCode: (phone: string) => Promise<unknown>;
     verifySMSCode: (phone: string, code: string) => Promise<{ isConfirmed?: boolean }>;
@@ -38,6 +39,7 @@ interface TwoFactorModalState {
 class TwoFactorModal extends React.Component<TwoFactorModalProps, TwoFactorModalState> {
   static defaultProps = {
     phone: '',
+    mode: 'enable',
   };
 
   state: TwoFactorModalState = { codeSended: false, code: '', error: null };
@@ -52,10 +54,31 @@ class TwoFactorModal extends React.Component<TwoFactorModalProps, TwoFactorModal
   };
 
   sendSMSCode = () => {
-    const { actions } = this.props;
+    const { actions, mode, phone } = this.props;
+    if (mode === 'disable') {
+      // The code is bound to the current phone; show the server error if it can not be sent.
+      return Promise.resolve(actions.sendSMSCode(phone as string)).then((result) => {
+        if (result instanceof Error) {
+          return this.setState({ error: result });
+        }
+        return this.setState({ codeSended: true, error: null });
+      });
+    }
     this.setState({ codeSended: true }, () =>
       actions.sendSMSCode(this.props.phone as string),
     );
+    return undefined;
+  };
+
+  disableTwoFactor = () => {
+    const { actions } = this.props;
+    const { code } = this.state;
+    return promiseChain(
+      [
+        () => actions.setAuthMode({ useTwoFactorAuth: false, code }),
+        this.onClose,
+      ] as never,
+    ).catch((error: Error) => this.setState({ error }));
   };
 
   verifySMSCode = () => {
@@ -76,8 +99,9 @@ class TwoFactorModal extends React.Component<TwoFactorModalProps, TwoFactorModal
   };
 
   renderContent() {
-    const { t, classes, phone } = this.props;
+    const { t, classes, phone, mode } = this.props;
     const { code, error, codeSended } = this.state;
+    const isDisable = mode === 'disable';
     if (codeSended) {
       return (
         <Fragment>
@@ -99,7 +123,7 @@ class TwoFactorModal extends React.Component<TwoFactorModalProps, TwoFactorModal
             />
           </FormControl>
           <Button
-            onClick={this.verifySMSCode}
+            onClick={isDisable ? this.disableTwoFactor : this.verifySMSCode}
             variant="contained"
             color="primary"
             disabled={false}
@@ -121,8 +145,12 @@ class TwoFactorModal extends React.Component<TwoFactorModalProps, TwoFactorModal
 
     return (
       <Fragment>
-        <DialogContentText>{t('TwoFactorAuthText')}</DialogContentText>
-        <DialogContentText>{t('ConfirmText')}</DialogContentText>
+        <DialogContentText>
+          {t(isDisable ? 'TwoFactorAuthDisableText' : 'TwoFactorAuthText')}
+        </DialogContentText>
+        <DialogContentText>
+          {t(isDisable ? 'ConfirmDisableText' : 'ConfirmText')}
+        </DialogContentText>
         <DialogContentText
           className={classes.centeredText}
         >
@@ -137,12 +165,15 @@ class TwoFactorModal extends React.Component<TwoFactorModalProps, TwoFactorModal
         >
           {t('SendSMS')}
         </Button>
+        {error ? (
+          <DialogContentText color="error">{error.message}</DialogContentText>
+        ) : null}
       </Fragment>
     );
   }
 
   render() {
-    const { t, open, classes } = this.props;
+    const { t, open, classes, mode } = this.props;
 
     return (
       <Dialog
@@ -153,7 +184,7 @@ class TwoFactorModal extends React.Component<TwoFactorModalProps, TwoFactorModal
         className={classes.dialog}
       >
         <DialogTitle className={classes.dialogContentWrappers}>
-          {t('TwoFactorAuthTitle')}
+          {t(mode === 'disable' ? 'TwoFactorAuthDisableTitle' : 'TwoFactorAuthTitle')}
         </DialogTitle>
         <DialogContent className={classes.dialogContentWrappers}>
           {this.renderContent()}
