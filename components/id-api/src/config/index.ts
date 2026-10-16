@@ -193,6 +193,8 @@ export interface Config {
     x509?: {
       isEnabled?: boolean;
       display?: AuthProviderDisplay;
+      /** Require the signed server-issued challenge (`token`) for /authorise/x509; otherwise a token is used when supplied. */
+      requireChallenge?: boolean;
     };
     ldap?: LdapProviderConfig;
     oauth2?: StrategyOptions & { userProfileUrl: string };

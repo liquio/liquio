@@ -1,4 +1,5 @@
 import nock from 'nock';
+import jwt from 'jsonwebtoken';
 
 import { TestApp, config } from './test_app';
 
@@ -154,6 +155,49 @@ describe('AuthController - x509', () => {
         .expect((res) => {
           expect(res.body).toEqual({ error: { message: 'User has been blocked.' } });
         });
+    });
+  });
+
+  describe('PKCS#7 challenge flow (x509 with server-issued token)', () => {
+    const signToolReply = (content: string) => ({
+      subject: { commonName: 'Challenge User', countryName: 'UA', serialNumber: '2222222222' },
+      issuer: { commonName: 'Liquio Test CA' },
+      serial: '01',
+      signTime: '',
+      content: Buffer.from(content).toString('base64'),
+      pem: '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----',
+    });
+    const issueToken = () => jwt.sign({ random: Math.random().toString() }, config.jwt!.secret as string, { expiresIn: 60 });
+
+    it('logs in when the signature is over the issued token, and rejects a replay of it', async () => {
+      const token = issueToken();
+      nock('http://sign-tool').post('/x509/signature-info').twice().reply(200, signToolReply(token));
+
+      await app
+        .request()
+        .post('/authorise/x509')
+        .send({ pkcs7: 'valid', token })
+        .expect(200)
+        .expect((res) => expect(res.body.error).toBeNull());
+
+      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+    });
+
+    it('rejects a signature over different content than the issued token', async () => {
+      const token = issueToken();
+      nock('http://sign-tool').post('/x509/signature-info').once().reply(200, signToolReply(issueToken()));
+      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+    });
+
+    it('rejects a forged signature refused by sign-tool', async () => {
+      const token = issueToken();
+      nock('http://sign-tool').post('/x509/signature-info').once().reply(400, { cause: 'Signature verification failed' });
+      await app.request().post('/authorise/x509').send({ pkcs7: 'forged', token }).expect(401);
+    });
+
+    it('rejects a token that was not issued by the server', async () => {
+      const token = jwt.sign({ random: 'x' }, 'another-secret', { expiresIn: 60 });
+      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
     });
   });
 });

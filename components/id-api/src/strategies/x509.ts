@@ -11,38 +11,54 @@ import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 
 export interface X509StrategyOptions {
   passReqToCallback?: boolean;
+  /** Reject logins that do not carry a signed server-issued challenge (`token`). */
+  requireChallenge?: boolean;
 }
 
 export type X509VerifyFunction = (req: Request, userInfo: SignatureInfoSigner, done: (error: any, user?: any, info?: any) => void) => void;
 
 /**
  * X509Strategy for Passport that authenticates users based on PKCS#7 (CMS) certificate data.
- * Expects a base64-encoded PKCS#7 in req.body.pkcs7.
+ * Expects a base64-encoded PKCS#7 in req.body.pkcs7. When req.body.token (a server-issued, single-use
+ * challenge from /authorise/eds/token) is given, the PKCS#7 must be a signature over exactly that token.
  * Extracts eIDAS fields from the certificate subject.
  */
 export class X509Strategy extends PassportStrategy {
   name = 'x509';
   private readonly verify: X509VerifyFunction;
+  private readonly requireChallenge: boolean;
   private readonly x509Service: X509Service;
   private readonly log: Log;
 
   constructor(options: X509StrategyOptions, verify: X509VerifyFunction) {
     super();
     this.verify = verify;
+    this.requireChallenge = Boolean(options?.requireChallenge);
     this.x509Service = Services.service('x509');
     this.log = Log.getInstance();
   }
 
   async authenticate(req: Request) {
     try {
-      const signatureInfo = await this.x509Service.getSignatureInfo(req.body.pkcs7);
-      if (!signatureInfo) {
-        this.log.save('x509-strategy|authenticate|invalid-pkcs7', { pkcs7: Helpers.shorten(req.body.pkcs7) }, 'error');
-        return this.fail({ message: 'Invalid PKCS#7 structure' }, 400);
-      }
+      let userInfo: SignatureInfoSigner;
+      if (req.body.token !== undefined || this.requireChallenge) {
+        // Challenge flow: signature must be over the server-issued token, which is single-use.
+        try {
+          userInfo = (await Services.service('eds').checkRandomContentSign(req.body.token, req.body.pkcs7)).signer;
+        } catch (error: any) {
+          this.log.save('x509-strategy|authenticate|challenge-error', { error: error?.message }, 'error');
+          return this.fail({ message: 'Invalid signature or challenge' }, 401);
+        }
+      } else {
+        const signatureInfo = await this.x509Service.getSignatureInfo(req.body.pkcs7);
+        if (!signatureInfo) {
+          this.log.save('x509-strategy|authenticate|invalid-pkcs7', { pkcs7: Helpers.shorten(req.body.pkcs7) }, 'error');
+          return this.fail({ message: 'Invalid PKCS#7 structure' }, 400);
+        }
 
-      // Build user info object
-      const userInfo = signatureInfo.subject;
+        // Build user info object
+        userInfo = signatureInfo.subject;
+      }
 
       // Call verify callback
       const verified = (error: any, user?: any, info?: any) => {
@@ -89,7 +105,7 @@ export async function x509(app: Express) {
 
   passport.use(
     'x509',
-    new X509Strategy({}, async (req, userInfo, done) => {
+    new X509Strategy({ requireChallenge: app.config.auth_providers.x509?.requireChallenge }, async (req, userInfo, done) => {
       log.save('x509-strategy|authenticate|verify', { user: userInfo }, 'info');
 
       const ipn = userInfo.serialNumber || userInfo.personIdentifier;
