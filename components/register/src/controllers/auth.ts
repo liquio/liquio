@@ -4,6 +4,7 @@ import { appendTraceMeta, Log } from '@liquio/back-core';
 import { Request, Response } from '../router';
 import Controller from './controller';
 import { resolveCallerAccess } from '../lib/caller_access';
+import { authorizeRequest } from '../lib/service_permissions';
 
 const ACCESS_INFO_MAX_HEADER_LENGTH = 4096;
 const ACCESS_INFO_MAX_KEYS = 20;
@@ -119,6 +120,13 @@ export default class AuthController extends Controller {
           appendTraceMeta({ accessInfo: assertedAccessInfo });
         }
       }
+    }
+
+    // Check opt-in service permissions (users without an entry keep full access).
+    const decision = authorizeRequest(this.config.auth, user, req);
+    if (!decision.allowed) {
+      this.log.save('service-permission-denied', { user, route: decision.route, reason: decision.reason }, 'warn');
+      return this.responseError(res, 'Basic auth user does not have permission for this operation.', 403, { reason: decision.reason });
     }
 
     const limitedAccess = this.config.auth.limitedAccess || [];

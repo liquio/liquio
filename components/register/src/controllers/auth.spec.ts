@@ -93,3 +93,63 @@ describe('parseAccessInfoHeader', () => {
     expect(Object.keys(parseAccessInfoHeader(b64(many))!)).toHaveLength(20);
   });
 });
+
+describe('AuthController.basicAuth service permissions', () => {
+  const call = (auth: any, route: { method: string; url: string; path?: string; query?: any }, user = 'task') => {
+    const { controller } = setup(auth, user);
+    const token = `Basic ${Buffer.from(`${user}:secret`).toString('base64')}`;
+    const req: any = {
+      headers: { authorization: token },
+      method: route.method,
+      url: route.url,
+      route: { path: route.path ?? route.url.split('?')[0] },
+      query: route.query || {},
+      params: {},
+      body: {},
+    };
+    const next = jest.fn();
+    controller.basicAuth(req, {}, next);
+    return { next, controller };
+  };
+
+  it('behaves as before for a user without an entry', () => {
+    const { next } = call({ servicePermissions: { other: { routes: [] } } }, { method: 'DELETE', url: '/keys/1', path: '/keys/:id' });
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('allows a listed route', () => {
+    const { next } = call(
+      { servicePermissions: { task: { routes: ['GET /records'] } } },
+      { method: 'GET', url: '/records?key_id=1', query: { key_id: '1' } },
+    );
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('answers 403 for an unlisted route', () => {
+    const { next, controller } = call(
+      { servicePermissions: { task: { routes: ['GET /records'] } } },
+      { method: 'DELETE', url: '/records/1', path: '/records/:id' },
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(controller.responseError).toHaveBeenCalledWith({}, expect.any(String), 403, { reason: 'route-not-allowed' });
+  });
+
+  it('answers 403 for a key outside the allowed keys', () => {
+    const { next, controller } = call(
+      { servicePermissions: { task: { routes: ['GET /records'], keys: [1] } } },
+      { method: 'GET', url: '/records?key_id=2', query: { key_id: '2' } },
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(controller.responseError).toHaveBeenCalledWith({}, expect.any(String), 403, { reason: 'key-not-allowed' });
+  });
+
+  it('strict mode denies destructive routes to a non-trusted user without an entry', () => {
+    const { next, controller } = call({ strict: true, trustedCallers: ['admin'] }, { method: 'POST', url: '/rollback/start' }, 'task');
+    expect(next).not.toHaveBeenCalled();
+    expect(controller.responseError).toHaveBeenCalledWith({}, expect.any(String), 403, { reason: 'destructive-route-requires-trusted-caller' });
+  });
+
+  it('strict mode is off by default', () => {
+    expect(call({ trustedCallers: [] }, { method: 'POST', url: '/rollback/start' }).next).toHaveBeenCalled();
+  });
+});

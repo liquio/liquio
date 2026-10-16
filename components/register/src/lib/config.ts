@@ -29,6 +29,10 @@ export interface Config {
     /** Server-side allow tokens per verified Basic user (used for callers that are not trusted). */
     userAllowTokens?: Record<string, string[]>;
     limitedAccess: Array<{ user: string; keys: string[] }>;
+    /** Opt-in per-user allow-list (`routes`, `keys`). Users without an entry keep full access. */
+    servicePermissions?: Record<string, { routes?: string[]; keys?: Array<number | string> }>;
+    /** Opt-in: destructive routes (rollback, deletes) require `trustedCallers`. Default off. */
+    strict?: boolean;
   };
   db: {
     database: string;

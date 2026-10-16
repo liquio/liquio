@@ -1,5 +1,6 @@
 import { Config } from './config';
 import { parseEncryptionKey } from './encryption';
+import { checkServicePermissionsConfig } from './service_permissions';
 
 /** Minimum length of the password part of a Basic auth token. */
 export const MIN_TOKEN_PASSWORD_LENGTH = 8;
@@ -78,7 +79,7 @@ function fail(problems: string[]): void {
 /** Startup guard for settings that do not need the DB. Throws with setting names only. */
 export function assertSafeConfig(config: Config): void {
   const encryption = checkEncryptionConfig(config, false).filter((p) => p.includes('placeholder'));
-  fail([...checkAuthConfig(config), ...encryption]);
+  fail([...checkAuthConfig(config), ...checkServicePermissionsConfig(config?.auth), ...encryption]);
 }
 
 /** Startup guard for the encryption key; call once the DB is reachable. */

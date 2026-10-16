@@ -77,6 +77,12 @@ describe('config_guard', () => {
       expect(() => assertSafeConfig(cfg({ tokens: ['Basic <REDACTED>'] }, { key: '<REDACTED>' }))).toThrow(/auth\.tokens\[0\].*encryption\.key/);
     });
 
+    it('rejects a malformed servicePermissions config', () => {
+      expect(() => assertSafeConfig(cfg({ tokens: [GOOD_TOKEN], servicePermissions: { a: { routes: 'x' } } }, { key: GOOD_KEY }))).toThrow(
+        /auth\.servicePermissions\.a\.routes/,
+      );
+    });
+
     it('passes for valid config', () => {
       expect(() => assertSafeConfig(cfg({ tokens: [GOOD_TOKEN] }, { key: GOOD_KEY }))).not.toThrow();
     });

@@ -17,6 +17,8 @@ metadata:
   "limitedAccess" (list)
   "trustedCallers" (list "register")
   "userAllowTokens" (dict)
+  "servicePermissions" (dict)
+  "strict" false
 -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)

@@ -8,6 +8,7 @@ import Models from './models';
 import Router from './router';
 import Encryption from './lib/encryption';
 import { config } from './lib/config';
+import { listUnrestrictedUsers } from './lib/service_permissions';
 import { assertSafeConfig, assertEncryptionConfig } from './lib/config_guard';
 import { RedisClient } from './lib/redis_client';
 import { PgPubSub } from './lib/pgpubsub';
@@ -28,6 +29,12 @@ try {
 } catch (error) {
   log.save('config-guard-error', { error: error?.message }, 'error');
   process.exit(1);
+}
+
+// Basic users without a permission entry have full access (opt-in hardening, `auth.servicePermissions`).
+const unrestrictedUsers = listUnrestrictedUsers(config.auth);
+if (unrestrictedUsers.length > 0) {
+  log.save('auth-unrestricted-users', { users: unrestrictedUsers, hint: 'Set auth.servicePermissions to restrict them.' }, 'warn');
 }
 
 // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
