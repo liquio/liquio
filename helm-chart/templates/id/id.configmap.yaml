@@ -64,6 +64,7 @@ metadata:
   "accountExistsEmailText" "An account already exists for this email address. Log in, or reset your password if you have forgotten it."
   "confirmCodeEmailTemplate" (include "liquio.id-confirmCodeEmailTemplate" (dict "ctx" .))
   "confirmCodeRetries" 10
+  "cors" (dict "allowedOrigins" (list))
   "customer" .Release.Name
   "db" $dbBase
   "domain" ".internal"

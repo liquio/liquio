@@ -26,6 +26,9 @@
       "profileHttpOnly": false
     },
     "trustProxy": 1,
+    "cors": {
+      "allowedOrigins": []
+    },
     "notify": {
       "url": "http://notification:3003",
       "authorization": "Basic <removed>"
