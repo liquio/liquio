@@ -55,6 +55,14 @@ metadata:
 {{ $x509Base := dict
   "externalUrl" (printf "http://%s-sign-tool:3004" (include "liquio.fullname" .))
 -}}
+{{- /*
+  internalTransport.allowPlainHttp: explicit, documented exception. notification and sign-tool serve plain HTTP only,
+  so notify.url, pingRoutes.notify and x509.externalUrl below are http://. id-api refuses to start in production with
+  http:// internal URLs unless this flag is true. Compensating control: the chart NetworkPolicies
+  (shared/networkpolicies.yaml, liquio.networkPolicy.backendInternal) allow these services only from Liquio pods in
+  the namespace. To use TLS instead, override the URLs with https:// (e.g. via the id secret config), set
+  internalTransport.ca to the trusted CA (PEM or file path) and set allowPlainHttp to false. Verification is never disabled.
+*/ -}}
 {{ $idProductionBase := dict
   "auth_providers" $authProvidersBase
   "confirmCodeEmailChangeHeader" "Email Confirmation"
@@ -70,6 +78,7 @@ metadata:
   "enabledDeleteUser" false
   "environment" .Values.config.server.environment
   "jwt" (dict "expiresIn" 60)
+  "internalTransport" (dict "allowPlainHttp" true)
   "log" (dict
     "excludeParams" (list
       "token" "authorization" "Authorization" "oauth-token"

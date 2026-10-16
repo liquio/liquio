@@ -30,6 +30,10 @@
     "cors": {
       "allowedOrigins": []
     },
+    "internalTransport": {
+      "_comment": "Opt-in to plain http:// for notify.url, pingRoutes.notify and x509.externalUrl in production (notification and sign-tool do not serve TLS). Compensating control: NetworkPolicies restrict them to in-cluster Liquio pods. For https:// URLs set internalTransport.ca (PEM or file path); certificate verification is never disabled.",
+      "allowPlainHttp": true
+    },
     "notify": {
       "url": "http://notification:3003",
       "authorization": "Basic <removed>"

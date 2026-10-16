@@ -117,6 +117,20 @@ export interface Config {
     url?: string;
     authorization?: string;
   };
+  /**
+   * Transport security for calls to internal services: notification (`notify.url`, `pingRoutes.notify`)
+   * and sign-tool (`x509.externalUrl`).
+   */
+  internalTransport?: {
+    /** Extra CA certificate(s) trusted for https:// internal URLs: PEM string or path to a PEM file. Verification is always on. */
+    ca?: string | string[];
+    /**
+     * Explicit opt-in to plain http:// internal URLs in production (notification and sign-tool do not serve TLS themselves).
+     * Compensating control: NetworkPolicies (helm-chart `networkpolicies.yaml`) limit these services to in-cluster Liquio pods.
+     * Default false: production refuses to start with an http:// URL.
+     */
+    allowPlainHttp?: boolean;
+  };
   admin_config?: {
     api_url?: string;
     login?: string;
@@ -436,6 +450,38 @@ export function validateLdapConfig(config: Config): void {
   }
 }
 
+/** Internal service URLs covered by `internalTransport.allowPlainHttp`. */
+export function getInternalServiceUrls(config: Config): { path: string; url: string }[] {
+  const urls = [
+    { path: 'notify.url', url: config.notify?.url },
+    { path: 'pingRoutes.notify', url: config.pingRoutes?.notify },
+    { path: 'x509.externalUrl', url: config.x509?.externalUrl },
+  ];
+  return urls.filter((item): item is { path: string; url: string } => typeof item.url === 'string' && item.url.trim() !== '');
+}
+
+/**
+ * Validates transport security of internal service URLs.
+ * In production a plain http:// URL is refused unless `internalTransport.allowPlainHttp` is true.
+ */
+export function validateInternalTransportConfig(config: Config, env: string = process.env.NODE_ENV ?? 'localhost'): void {
+  if (env !== 'production' && env !== 'prod') {
+    return;
+  }
+  if (config.internalTransport?.allowPlainHttp === true) {
+    return;
+  }
+
+  const insecure = getInternalServiceUrls(config).filter(({ url }) => /^http:\/\//i.test(url.trim()));
+  if (insecure.length > 0) {
+    throw new Error(
+      `Insecure internal service URLs in production: ${insecure.map(({ path, url }) => `${path}=${url}`).join(', ')}. ` +
+        'Use https:// (and `internalTransport.ca` for a private CA), or set `internalTransport.allowPlainHttp` to true ' +
+        'to accept plain http:// when NetworkPolicies/service mesh protect the traffic.',
+    );
+  }
+}
+
 let config: Config;
 export function loadConfig(): Config {
   if (config) {
@@ -459,6 +505,7 @@ export function loadConfig(): Config {
     validateOIDCConfig(config);
     validateLdapConfig(config);
     validateEdsConfig(config);
+    validateInternalTransportConfig(config, env);
     return config;
   }
 
@@ -481,6 +528,7 @@ export function loadConfig(): Config {
   validateOIDCConfig(config);
   validateLdapConfig(config);
   validateEdsConfig(config);
+  validateInternalTransportConfig(config, resolvedEnv);
 
   return config;
 }

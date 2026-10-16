@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { Config } from '../config';
+import { internalRequestOptions } from '../lib/internal_transport';
 import { BaseService } from './base_service';
 
 export class NotifyService extends BaseService {
@@ -18,6 +19,10 @@ export class NotifyService extends BaseService {
 
   get url(): string {
     return this.cfg?.url!;
+  }
+
+  private get tls() {
+    return internalRequestOptions(this.config);
   }
 
   get authorization(): string {
@@ -42,6 +47,7 @@ export class NotifyService extends BaseService {
             Authorization: this.authorization,
             'Content-Type': 'application/json',
           },
+          ...this.tls,
         });
 
         return data;
@@ -69,6 +75,7 @@ export class NotifyService extends BaseService {
           Authorization: this.authorization,
           'Content-Type': 'application/json',
         },
+        ...this.tls,
       });
       this.log.save('email-send-success', { email, title: message.title }, 'info');
     } catch (error) {
@@ -84,6 +91,7 @@ export class NotifyService extends BaseService {
         url: this.url + '/subscribeUserForce',
         headers: { Authorization: this.authorization },
         params: { user_id: userId },
+        ...this.tls,
       });
     } catch (error: any) {
       this.log.save('subscribe-user-force-error', { error: error.message }, 'error');
@@ -91,7 +99,7 @@ export class NotifyService extends BaseService {
   }
 
   private async getTemplates() {
-    return axios.get(this.url + '/template').then((response) => response.data);
+    return axios.get(this.url + '/template', this.tls).then((response) => response.data);
   }
 
   private async prepareTpl(array: any[], text: string, title: string) {
@@ -100,12 +108,16 @@ export class NotifyService extends BaseService {
     if (!neededTpl) return { title, fullText: text.toString() };
 
     return axios
-      .post(this.url + '/prepareMessageByTemplateId', {
-        template_id: neededTpl.template_id,
-        params: {
-          code: text,
+      .post(
+        this.url + '/prepareMessageByTemplateId',
+        {
+          template_id: neededTpl.template_id,
+          params: {
+            code: text,
+          },
         },
-      })
+        this.tls,
+      )
       .then((response) => {
         return { title: neededTpl.title, fullText: response.data.message };
       });

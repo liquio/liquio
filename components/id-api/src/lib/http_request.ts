@@ -1,3 +1,5 @@
+import type https from 'node:https';
+
 import axios, { AxiosResponse } from 'axios';
 
 const HTTP_METHOD_GET = 'GET';
@@ -11,6 +13,7 @@ export interface HttpRequestOptions {
   headers?: object;
   body?: object | string;
   timeout?: number;
+  httpsAgent?: https.Agent;
 }
 
 export interface SerializableResponse<T> {
