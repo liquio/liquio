@@ -12,6 +12,7 @@ jest.mock('./http_request', () => ({
 import Auth from './auth';
 
 const moduleContext = {
+  config: { name: 'main', allowInsecure: true },
   server: 'http://os',
   port: 1,
   routes: { getTokens: '/tokens' },
@@ -46,5 +47,43 @@ describe('OpenStack Auth logging', () => {
 
     expect(logSave).toHaveBeenCalledWith('login-error-openstack-response-without-token', { keys: ['access'] });
     expect(JSON.stringify(logSave.mock.calls)).not.toContain('body-secret');
+  });
+
+  describe('catalog publicURL scheme', () => {
+    const mockCatalog = (publicURL) =>
+      sendMock.mockResolvedValueOnce({ access: { token: { id: 'user-token-secret' } } }).mockResolvedValueOnce({
+        access: {
+          token: { id: 'tenant-token-secret', tenant: { id: 'tid' } },
+          serviceCatalog: [{ endpoints: [{ publicURL }] }],
+        },
+      });
+
+    it('should refuse an http publicURL without allowInsecure and not return the token', async () => {
+      mockCatalog('http://store/v1/AUTH_tid');
+      const ctx = { ...moduleContext, config: { name: 'main' } };
+
+      await expect(new Auth(ctx).getTenantAuthInfo()).rejects.toThrow(/https/);
+
+      expect(logSave).toHaveBeenCalledWith('openstack-insecure-url-refused', expect.objectContaining({ label: 'publicURL' }));
+      expect(JSON.stringify(logSave.mock.calls)).not.toContain('token-secret');
+    });
+
+    it('should allow an http publicURL with allowInsecure and log a warning', async () => {
+      mockCatalog('http://store/v1/AUTH_tid');
+
+      const info = await new Auth(moduleContext).getTenantAuthInfo();
+
+      expect(info.tenantPublicUrl).toBe('http://store/v1/AUTH_tid');
+      expect(logSave).toHaveBeenCalledWith('openstack-server-insecure-http', expect.objectContaining({ label: 'publicURL' }));
+    });
+
+    it('should accept an https publicURL without allowInsecure', async () => {
+      mockCatalog('https://store/v1/AUTH_tid');
+      const ctx = { ...moduleContext, config: { name: 'main' } };
+
+      const info = await new Auth(ctx).getTenantAuthInfo();
+
+      expect(info.tenantPublicUrl).toBe('https://store/v1/AUTH_tid');
+    });
   });
 });

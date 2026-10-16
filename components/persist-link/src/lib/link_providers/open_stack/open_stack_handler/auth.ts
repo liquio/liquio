@@ -3,6 +3,7 @@ import PropByPath from 'prop-by-path';
 
 import { getLog } from '../../../context';
 import HttpRequest from './http_request';
+import { assertSecureUrl } from './secure_url';
 
 // Constants.
 const ERROR_MESSAGE_TOKEN_NOT_RESPONSED = 'Token not responsed from OpenStack server.';
@@ -99,6 +100,9 @@ class Auth {
     }, []);
     const publicUrls = endpoints.map((endpoint) => endpoint.publicURL);
     const tenantPublicUrl = publicUrls.find((url) => url.includes(tenantId));
+
+    // The tenant token is sent to this URL: refuse plain http unless explicitly allowed.
+    assertSecureUrl(tenantPublicUrl, this.moduleContext.config, 'publicURL');
 
     // Return token.
     const tenantAuthInfo = { tenantId, tenantToken, tenantPublicUrl };

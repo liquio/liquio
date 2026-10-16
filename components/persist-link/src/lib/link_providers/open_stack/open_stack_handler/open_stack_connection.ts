@@ -4,6 +4,7 @@ import request from 'request';
 import { getLog } from '../../../context';
 import Auth from './auth';
 import HttpRequest from './http_request';
+import { assertSecureUrl } from './secure_url';
 
 // Constants.
 const DEFAULT_ROUTES = {
@@ -21,6 +22,7 @@ class OpenStackConnection {
    */
   constructor(connectionConfig) {
     this.config = connectionConfig;
+    assertSecureUrl(connectionConfig.server, connectionConfig, 'server');
     this.server = connectionConfig.server;
     this.port = connectionConfig.port;
     this.routes = { ...DEFAULT_ROUTES, ...connectionConfig.routes };
