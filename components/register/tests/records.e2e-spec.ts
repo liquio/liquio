@@ -325,6 +325,60 @@ describe('RecordsController', () => {
         .expect('Content-Type', /json/);
     });
 
+    describe('patchable paths (RG-02e)', () => {
+      let id: string;
+      const patch = (properties: object[]) =>
+        testHarness.request().patch(`/records/${id}`).set('Authorization', validAuth).send({ keyId: 2001, properties });
+      const read = async () => (await testHarness.request().get(`/records/${id}`).set('Authorization', validAuth).expect(200)).body.data;
+
+      beforeAll(async () => {
+        const response = await testHarness
+          .request()
+          .post('/records')
+          .set('Authorization', validAuth)
+          .send({ registerId: 200, keyId: 2001, data: { name: 'before', data: 'RG02E' } })
+          .expect(200);
+        id = response.body.data.id;
+      });
+
+      afterAll(async () => {
+        await testHarness.request().delete(`/records/${id}`).set('Authorization', validAuth);
+      });
+
+      it.each(['key_id', 'id', 'meta', 'created_by', 'updated_by', 'created_at', 'allow_tokens', 'register_id'])(
+        'rejects a patch of the column %s with 400 and changes nothing',
+        async (path) => {
+          const before = await read();
+          const response = await patch([{ path, previousValue: 'x', value: 'y' }]).expect(400);
+          expect(response.body.data).toBeUndefined();
+          expect(await read()).toEqual(before);
+        },
+      );
+
+      it('rejects a mixed request as a whole', async () => {
+        await patch([
+          { path: 'data.name', previousValue: 'before', value: 'mixed' },
+          { path: 'key_id', previousValue: 2001, value: 1 },
+        ]).expect(400);
+        expect((await read()).data.name).toBe('before');
+      });
+
+      it('also rejects column paths from a trusted caller', async () => {
+        const saved = testHarness.getConfig().auth.trustedCallers;
+        testHarness.getConfig().auth.trustedCallers = ['test'];
+        try {
+          await patch([{ path: 'key_id', previousValue: 2001, value: 1 }]).expect(400);
+        } finally {
+          testHarness.getConfig().auth.trustedCallers = saved;
+        }
+      });
+
+      it('still patches data paths', async () => {
+        await patch([{ path: 'data.name', previousValue: 'before', value: 'after' }]).expect(200);
+        expect((await read()).data.name).toBe('after');
+      });
+    });
+
     it('should return 422 when validation fails', async () => {
       await testHarness
         .request()
@@ -800,7 +854,7 @@ describe('RecordsController', () => {
         .request()
         .patch(`/records/${id}`)
         .set('Authorization', validAuth)
-        .send({ keyId: 2001, properties: [{ path: 'search_string', previousValue: 'a', value: 'patched' }] });
+        .send({ keyId: 2001, properties: [{ path: 'data.name', previousValue: 'a', value: 'patched' }] });
 
     it('PATCH /records/:id keeps legacy behaviour unless auth.strict is on', async () => {
       await patch(restrictedId).expect(200);
@@ -966,18 +1020,6 @@ describe('RecordsController', () => {
           const id = await make(['secret-token', 'other-token']);
           await putTokens(id, ['secret-token']).expect(403);
           expect(await tokensOf(id)).toEqual(['secret-token', 'other-token']);
-        });
-
-        it('PATCH /records/:id refuses the row-token path', async () => {
-          const id = await make(['secret-token']);
-          const response = await testHarness
-            .request()
-            .patch(`/records/${id}`)
-            .set('Authorization', validAuth)
-            .send({ keyId: 2001, properties: [{ path: 'allow_tokens', previousValue: 'secret-token', value: 'x' }] })
-            .expect(403);
-          expect(response.body.data).toBeUndefined();
-          expect(await tokensOf(id)).toEqual(['secret-token']);
         });
 
         it('POST /records/bulk refuses foreign tokens and keeps the tokens of updated rows', async () => {

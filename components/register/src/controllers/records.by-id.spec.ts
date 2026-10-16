@@ -408,15 +408,48 @@ describe('RG-02d: row tokens a restricted caller may assign (auth.strict)', () =
       await ctx.controller.updatePatch(ctx.req, {});
       return ctx;
     };
-    it.each(['allow_tokens', 'allowTokens', 'allow_tokens.0'])('refuses the row-token path %s when strict', async (path) => {
-      const { controller } = await patch(true, path);
-      expect(controller.responseError.mock.calls[0][2]).toBe(403);
-      expect(controller.recordModel.updatePatch).not.toHaveBeenCalled();
+    it.each([
+      'key_id',
+      'id',
+      'meta',
+      'created_by',
+      'updated_by',
+      'created_at',
+      'allow_tokens',
+      'allowTokens',
+      'allow_tokens.0',
+      'dataX',
+      'meta.x',
+      '',
+    ])('rejects the non-data path "%s" with 400 for every caller, whatever strict says', async (path) => {
+      for (const [strict, user] of [
+        [true, 'reader'],
+        [undefined, 'reader'],
+        [true, 'task'],
+        [undefined, 'task'],
+      ] as const) {
+        const { controller } = await patch(strict, path, user);
+        expect(controller.responseError.mock.calls[0][2]).toBe(400);
+        expect(controller.recordModel.updatePatch).not.toHaveBeenCalled();
+      }
     });
-    it('allows ordinary paths, and any path when strict is off or the caller is trusted', async () => {
-      expect((await patch(true, 'data.name')).controller.recordModel.updatePatch).toHaveBeenCalled();
-      expect((await patch(undefined, 'allow_tokens')).controller.recordModel.updatePatch).toHaveBeenCalled();
-      expect((await patch(true, 'allow_tokens', 'task')).controller.recordModel.updatePatch).toHaveBeenCalled();
+    it('rejects the whole request when one of several paths is not under data', async () => {
+      const ctx = setupTokens();
+      ctx.req.body = {
+        keyId: 2,
+        properties: [
+          { path: 'data.name', previousValue: 'a', value: 'b' },
+          { path: 'key_id', previousValue: 1, value: 2 },
+        ],
+      };
+      await ctx.controller.updatePatch(ctx.req, {});
+      expect(ctx.controller.responseError.mock.calls[0][2]).toBe(400);
+      expect(ctx.controller.recordModel.updatePatch).not.toHaveBeenCalled();
+    });
+    it.each(['data', 'data.name', 'data.a.b'])('allows the data path %s', async (path) => {
+      const { controller } = await patch(true, path);
+      expect(controller.recordModel.updatePatch).toHaveBeenCalled();
+      expect(controller.responseError).not.toHaveBeenCalled();
     });
   });
 

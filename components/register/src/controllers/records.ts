@@ -1615,6 +1615,11 @@ export default class RecordsController extends Controller {
     const { id } = matchedData(req, { locations: ['params'] });
     const { keyId, properties } = matchedData(req, { locations: ['body'] });
 
+    // Only the record data can be patched. Columns such as `key_id`, `id`, `meta`, `allow_tokens` or the audit fields are never writable here.
+    if ((properties || []).some(({ path }) => path !== 'data' && !String(path).startsWith('data.'))) {
+      return this.responseError(res, 'Only `data` properties can be patched.', 400);
+    }
+
     // Check validation identity
     try {
       await this.checkValidationIdentity('BLOCK', keyId);
@@ -1634,11 +1639,6 @@ export default class RecordsController extends Controller {
     } catch {
       return this.responseError(res, 'Invalid register access configuration.', 500);
     }
-    // The row tokens cannot be patched by a restricted caller.
-    if (writeTokens && (properties || []).some(({ path }) => /^allow_?tokens$/i.test(String(path).split('.')[0]))) {
-      return this.responseError(res, 'Row tokens are not allowed.', 403);
-    }
-
     try {
       const recordModelResponse = await this.recordModel.updatePatch(id, keyId, properties, writeTokens);
       if (!recordModelResponse) {
