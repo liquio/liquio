@@ -73,6 +73,14 @@ export async function local(app: Express) {
         return done(new HttpError(401, GENERIC_FAIL_DESCRIPTION));
       }
 
+      // A blocked account never gets a session. The answer is the same as for a wrong password,
+      // so the response does not reveal that the account exists. It is checked after the password,
+      // so a caller without the password cannot tell a blocked account from a wrong password either.
+      if (user.isActive === false) {
+        log.save('user-auth-by-local|user-blocked', { email }, 'info');
+        return done(new HttpError(401, GENERIC_FAIL_DESCRIPTION));
+      }
+
       // Reset the attempt counter
       await Services.service('redis').delete(counterKey);
 

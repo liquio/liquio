@@ -111,7 +111,7 @@ describe('AuthController - local', () => {
       });
     });
 
-    it('should reject blocked user on /auth', async () => {
+    it('should reject a blocked user at login with the generic error and no session', async () => {
       const blockedUser = await app
         .model('user')
         .create(
@@ -135,25 +135,27 @@ describe('AuthController - local', () => {
         },
       });
 
-      let blockedCookies: any;
+      const wrongPasswordBody = await app
+        .request()
+        .post('/authorise/local')
+        .send({ email, password: 'wrong-password' })
+        .expect(401)
+        .then(({ body }) => body);
+
       await app
         .request()
         .post('/authorise/local')
         .send({ email: blockedEmail, password: blockedPassword })
-        .expect(200)
-        .expect(({ headers }) => {
-          blockedCookies = headers['set-cookie'];
-          expect(blockedCookies).toBeDefined();
+        .expect(401)
+        .expect(({ body, headers }) => {
+          // Same response as a wrong password: no account-state oracle.
+          expect(body).toEqual(wrongPasswordBody);
+          expect(body).toEqual({ message: 'Invalid email or password.' });
+          expect(headers['set-cookie']).toBeUndefined();
         });
 
-      await app
-        .request()
-        .get('/auth')
-        .set('Cookie', blockedCookies)
-        .expect(403)
-        .expect(({ body }) => {
-          expect(body).toEqual({ error: { message: 'User has been blocked.' } });
-        });
+      const history = await app.model('loginHistory').findAll({ where: { user_id: blockedUser.userId } });
+      expect(history).toHaveLength(0);
     });
 
     it('should be able to change password', async () => {

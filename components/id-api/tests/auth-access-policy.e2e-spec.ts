@@ -118,7 +118,10 @@ describe('AuthController - account policy on /authorise/continue', () => {
   });
 
   it('denies the POST scope approval of a blocked user', async () => {
+    // The previous test left this user blocked, and a blocked user cannot log in: unblock, log in, block again.
+    await app.model('user').update({ isActive: true }, { where: { userId: users.blocked.userId } });
     const agent = await startFlow('blocked');
+    await app.model('user').update({ isActive: false }, { where: { userId: users.blocked.userId } });
     const response = await agent.post('/authorise/continue').send({ scope: ['email'] });
 
     expect(response.status).toBe(403);
