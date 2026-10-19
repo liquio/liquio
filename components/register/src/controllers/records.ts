@@ -16,6 +16,7 @@ import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import HistoryModel from '../models/history';
 import JsonSchema from '../lib/json_schema';
+import { PublicError } from '../lib/public_error';
 import KeyEntity from '../entities/key';
 import typeOf from '../lib/typeOf';
 import { ModelItemResponse } from '../lib/interfaces';
@@ -157,7 +158,7 @@ export default class RecordsController extends Controller {
       await validateIdentity(page?.data || []);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
 
     res.header('Content-Disposition', 'attachment; filename=records.csv');
@@ -479,7 +480,7 @@ export default class RecordsController extends Controller {
         return this.responseError(res, 'Key records are not readable.', 403, { keyId: error.keyId });
       }
       this.log.save('get-records-error', { error: error && error.message });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
 
     if (streamCsv) {
@@ -501,7 +502,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('GET', keyId, records);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
 
     // Response.
@@ -732,7 +733,7 @@ export default class RecordsController extends Controller {
         }
       } catch (error) {
         this.log.save('get-records-error', { error: error && error.message });
-        return this.responseError(res, error.message, 500);
+        return this.responseError(res, error, 500);
       }
       records = recordsModelResponse.data;
       if (!modelResponseMeta) modelResponseMeta = recordsModelResponse.meta;
@@ -770,7 +771,7 @@ export default class RecordsController extends Controller {
               additionalFilter,
               record: record.toJSON(),
             });
-            return this.responseError(res, `Internal Error. Additional filter error. ${error.message}.`);
+            return this.responseError(res, 'Internal Error. Additional filter error.');
           }
         }
 
@@ -789,7 +790,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('GET', keyId, responseRecords);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
 
     // Response.
@@ -886,7 +887,7 @@ export default class RecordsController extends Controller {
         await this.checkValidationIdentity('GET', record.keyId, [record]);
       } catch (error) {
         this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-        return this.responseError(res, error.message, 500);
+        return this.responseError(res, error, 500);
       }
 
       if (key) {
@@ -1204,7 +1205,7 @@ export default class RecordsController extends Controller {
     } catch (error) {
       this.log.save('bulk-create-records-by-person-error', { error: error && error.message });
       if (error.name === SEQUELIZE_EXCLUSION_CONSTRAINT_ERROR) {
-        error.code = DB_CONSTRAINT_ERROR_CODE;
+        return this.responseError(res, Object.assign(new PublicError('Database constraint error.'), { code: DB_CONSTRAINT_ERROR_CODE }));
       }
       return this.responseError(res, error);
     }
@@ -1379,7 +1380,7 @@ export default class RecordsController extends Controller {
       }
     } catch (error) {
       this.log.save('create-record-schema-error', { error: error && error.message });
-      return this.responseError(res, 'Invalid JSON schema.', 400, error.toString());
+      return this.responseError(res, 'Invalid JSON schema.', 400);
     }
 
     // Check validation identity
@@ -1387,7 +1388,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('CREATE', keyId, undefined, data, signature);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 400);
+      return this.responseError(res, error, 400);
     }
 
     // Check XSS.
@@ -1395,7 +1396,7 @@ export default class RecordsController extends Controller {
       this.checkXss(data);
     } catch (error) {
       this.log.save('create-record-error|detected-xss', { error: error.toString() });
-      return this.responseError(res, 'Create record error. Detected potential XSS.', 400, { error: error.toString() });
+      return this.responseError(res, 'Create record error. Detected potential XSS.', 400);
     }
 
     // Search string function.
@@ -1443,7 +1444,7 @@ export default class RecordsController extends Controller {
       );
     } catch (error) {
       this.log.save('create-record-error', { error: error && error.message });
-      return this.responseError(res, 'Create record error.', 400, error.message);
+      return this.responseError(res, 'Create record error.', 400);
     }
     const { data: record } = recordModelResponse || {};
 
@@ -1533,7 +1534,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('UPDATE', keyId, undefined, data, signature);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 400);
+      return this.responseError(res, error, 400);
     }
 
     // Check XSS.
@@ -1541,7 +1542,7 @@ export default class RecordsController extends Controller {
       this.checkXss(data);
     } catch (error) {
       this.log.save('update-record-error|detected-xss', { error: error.toString() });
-      return this.responseError(res, 'Update record error. Detected potential XSS.', 400, { error: error.toString() });
+      return this.responseError(res, 'Update record error. Detected potential XSS.', 400);
     }
 
     // Search string function.
@@ -1632,7 +1633,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('BLOCK', keyId);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 400);
+      return this.responseError(res, error, 400);
     }
 
     // Opt-in (`auth.strict`): an untrusted caller may patch only public rows or rows that share a token with it.
@@ -1769,7 +1770,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('GET', keyId, records.data);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
 
     // Column-level security.
@@ -1945,10 +1946,10 @@ export default class RecordsController extends Controller {
     if (type === 'UPDATE' || type === 'CREATE') {
       const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
       if (!signature && validationIdentity) {
-        throw new Error(`Internal Error. BPMN Register. Key ${keyId} signature required.`);
+        throw new PublicError(`Internal Error. BPMN Register. Key ${keyId} signature required.`);
       }
       if (signature && !validationIdentity) {
-        throw new Error(`Internal Error. BPMN Register. Signature not allowed for key ${keyId}.`);
+        throw new PublicError(`Internal Error. BPMN Register. Signature not allowed for key ${keyId}.`);
       }
       if (signature && validationIdentity) {
         let verifySignatureResponse;
@@ -1978,7 +1979,7 @@ export default class RecordsController extends Controller {
     if (type === 'BLOCK') {
       const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
       if (validationIdentity) {
-        throw new Error(`Internal Error. BPMN Register. Update patch method doesnt allowed for this key ${keyId}. Key required sign.`);
+        throw new PublicError(`Internal Error. BPMN Register. Update patch method doesnt allowed for this key ${keyId}. Key required sign.`);
       }
     }
   }

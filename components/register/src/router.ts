@@ -7,6 +7,7 @@ import { Log, asyncLocalStorageMiddleware } from '@liquio/back-core';
 import Cors from './lib/cors';
 import AppIdentHeaders from './lib/app_ident_headers';
 import { createBodyParserMiddleware } from './lib/body_parser';
+import { errorHandler } from './lib/error_handler';
 import Controllers from './controllers';
 import Validators from './validators';
 
@@ -391,10 +392,7 @@ export default class Router {
     }
 
     // Internal server error handler.
-    app.use((error: Error, req: Request, res: Response, _next: Function) => {
-      global.log.save('error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send({ error: { message: 'Internal server error', code: 500, traceId: req.traceId } });
-    });
+    app.use(errorHandler);
 
     // Show static.
     app.use(express.static(path.join(__dirname, 'static')));

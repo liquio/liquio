@@ -44,7 +44,7 @@ export default class RollbackController extends Controller {
     } catch (error) {
       this.log.save('start-rollback-error', { keyId, timePoint, error: error?.message });
       if (error instanceof RollbackKeyForbiddenError) return this.responseError(res, 'Key records are not writable', 403);
-      return this.responseError(res, 'Can not start rollback.', 500, { error: error?.message });
+      return this.responseError(res, 'Can not start rollback.', 500);
     }
 
     // Return response.
@@ -94,7 +94,7 @@ export default class RollbackController extends Controller {
     } catch (error) {
       this.log.save('rollback-record-error', { historyId, recordId, keyId, error: error?.message });
       if (error instanceof RollbackKeyForbiddenError) return this.responseError(res, 'Key records are not writable', 403);
-      return this.responseError(res, 'Can not rollback record.', 500, { error: error?.message });
+      return this.responseError(res, 'Can not rollback record.', 500);
     }
 
     // Return response.

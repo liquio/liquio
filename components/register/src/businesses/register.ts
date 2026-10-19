@@ -4,6 +4,7 @@ import Business from './business';
 import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import RecordModel from '../models/record';
+import { isPublicError } from '../lib/public_error';
 
 const ADDRESS_REGION_KEY_ID = 374;
 const ADDRESS_CITY_KEY_ID = 375;
@@ -179,11 +180,12 @@ export default class RegisterBusiness extends Business {
    * @return {Error | Object}
    */
   getErrorAndLogIt(key: string, error = {}, options?: object) {
-    const errorObject = ERRORS[key] || ERRORS['default'];
+    // Copy: the shared constant must not be changed by a request.
+    const errorObject: any = { ...(ERRORS[key] || ERRORS['default']) };
 
-    // Set from original.
+    // Set from original. The text of the original error goes to the log only, unless the error is public.
     if (error && error['message']) {
-      if (!(error['message'].indexOf('notNull Violation') >= 0 || error['message'].indexOf('Validation error') >= 0)) {
+      if (isPublicError(error)) {
         errorObject.message += ' ' + error['message'];
       } else {
         errorObject.original_message = error['message'];

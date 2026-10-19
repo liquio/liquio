@@ -1,6 +1,8 @@
 import bodyParser from 'body-parser';
 import type { NextFunction, Request, Response } from 'express';
 
+import { publicError } from './public_error';
+
 export const DEFAULT_BODY_LIMIT = '10mb';
 
 // Routes that take large JSON payloads (bulk writes, register import). They get the bulk limit, but only after the token check.
@@ -44,7 +46,7 @@ export function createBodyParserMiddleware(options: BodyParserOptions) {
     const onParsed: NextFunction = (error?: unknown) => {
       const status = (error as { status?: number } | undefined)?.status;
       if (typeof status === 'number' && status >= 400 && status < 500) {
-        res.status(status).send({ error: { message: (error as Error).message, code: status } });
+        res.status(status).send({ error: { message: publicError(error, status), code: status } });
         return;
       }
       next(error);

@@ -1,6 +1,7 @@
 import { getTraceId, Log } from '@liquio/back-core';
 
 import Sign from '../lib/sign';
+import { isPublicError, publicError } from '../lib/public_error';
 import { Response } from '../router';
 
 // Constants.
@@ -67,9 +68,10 @@ export default class Controller {
    * @param {any} [details] Details.
    */
   responseError(res: Response, error: Error | string = DEFAULT_ERROR_MESSAGE, httpStatusCode: number = HTTP_STATUS_CODE_SERVER_ERROR, details?: any) {
-    // Define params.
-    const message = error instanceof Error ? error.message : error;
-    const code = error instanceof Error ? (error as any).code : null;
+    // Define params. Only the text of public errors reaches the client; strings are written by the caller.
+    const isError = error instanceof Error;
+    const message = isError ? publicError(error, httpStatusCode) : error;
+    const code = isError && isPublicError(error) ? (error as any).code : null;
 
     // Define response object.
     const responseObject = {
@@ -81,8 +83,11 @@ export default class Controller {
       traceId: getTraceId(),
     };
 
-    // Log.
+    // Log. A hidden error is logged in full.
     this.log.save('http-response', responseObject);
+    if (isError && message !== error.message) {
+      this.log.save('response-error-hidden', { message: error.message, stack: error.stack, httpStatusCode, traceId: responseObject.traceId });
+    }
 
     // Response.
     res.status(httpStatusCode).send(responseObject);

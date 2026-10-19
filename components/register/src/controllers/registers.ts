@@ -939,7 +939,7 @@ export default class RegistersController extends Controller {
       registerModelResponse = await this.registerModel.create({ name, description, parentId, meta, user });
     } catch (error) {
       this.log.save('create-register-error', { error: error && error.message });
-      return this.responseError(res, 'Create register error.', 400, error.message);
+      return this.responseError(res, 'Create register error.', 400);
     }
     const { data: register } = registerModelResponse || {};
 

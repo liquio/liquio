@@ -214,7 +214,8 @@ export default class ImportBusiness extends Business {
     } catch (error) {
       // Set error status.
       this.toImport[importId].status = ImportBusiness.Statuses.Failed;
-      this.toImport[importId].details.error = error?.message;
+      this.log.save('import-error', { importId, error: error?.message, stack: error?.stack });
+      this.toImport[importId].details.error = 'Import failed.';
       await this.updateToImportState(importId);
       throw error;
     }

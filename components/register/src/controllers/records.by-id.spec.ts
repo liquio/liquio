@@ -123,7 +123,7 @@ describe('RG-02: UUID read authorization', () => {
     const { controller, req } = setup();
     controller.checkValidationIdentity.mockRejectedValue(new Error('Invalid signature.'));
     await controller.findById(req, {});
-    expect(controller.responseError).toHaveBeenCalledWith({}, 'Invalid signature.', 500);
+    expect(controller.responseError).toHaveBeenCalledWith({}, expect.objectContaining({ message: 'Invalid signature.' }), 500);
     expect(controller.responseData).not.toHaveBeenCalled();
     expect(controller.accessLogBusiness.saveIfNeedIt).not.toHaveBeenCalled();
   });

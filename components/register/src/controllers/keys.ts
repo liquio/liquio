@@ -219,7 +219,7 @@ export default class KeysController extends Controller {
       });
     } catch (error) {
       this.log.save('create-key-error', { error: error && error.message });
-      return this.responseError(res, 'Create key error.', 400, error.message);
+      return this.responseError(res, 'Create key error.', 400);
     }
     const { data: key } = keyModelResponse || {};
 
@@ -355,7 +355,7 @@ export default class KeysController extends Controller {
       toSearchStringFunction = this.sandbox.eval(toSearchString);
     } catch (error) {
       this.log.save('define-to-search-string-function-error', { error: error && error.message });
-      return this.responseError(res, 'Can not define search string function.', 500, error && error.message);
+      return this.responseError(res, 'Can not define search string function.', 500);
     }
 
     const updateRecords = async (offset) => {
@@ -496,7 +496,8 @@ export default class KeysController extends Controller {
             result.status_message = null;
           } else {
             result.elasticStatus = 'error';
-            result.status_message = error?.reason || error?.message || error;
+            this.log.save('get-elastic-status-error', { keyId, error: error?.reason || error?.message || error });
+            result.status_message = 'Elasticsearch error.';
           }
         } else if (result.isReindexing || Number(queueLength) > 0) {
           // Elastic status is considered "In Progress" if the afterhandler is still reindexing or there are items in the sync queue.

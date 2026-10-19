@@ -204,7 +204,8 @@ export default class RollbackBusiness extends Business {
     } catch (error) {
       // Set error status.
       this.toRollback[rollbackId].status = RollbackBusiness.Statuses.Failed;
-      this.toRollback[rollbackId].details.error = error?.message;
+      this.log.save('rollback-error', { rollbackId, error: error?.message, stack: error?.stack });
+      this.toRollback[rollbackId].details.error = 'Rollback failed.';
       throw error;
     }
     this.toRollback[rollbackId].status = RollbackBusiness.Statuses.Rollbacked;
