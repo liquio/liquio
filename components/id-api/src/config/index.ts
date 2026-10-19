@@ -298,6 +298,7 @@ export interface Config {
   enabledDeleteUser?: boolean;
   log?: {
     excludeParams?: string[];
+    disableDefaultRedaction?: boolean;
   };
   signUp?: {
     isEnabled?: boolean;

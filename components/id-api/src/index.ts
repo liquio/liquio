@@ -5,7 +5,10 @@ import { loadConfig } from './config';
 
 async function main() {
   const conf = loadConfig();
-  const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: conf.log?.excludeParams });
+  const consoleLogProvider = new ConsoleLogProvider('console', {
+    excludeParams: conf.log?.excludeParams,
+    disableDefaultRedaction: conf.log?.disableDefaultRedaction === true,
+  });
   const log = new Log([consoleLogProvider], ['console']);
 
   log.save('start-application', { pid: process.pid }, 'info');
