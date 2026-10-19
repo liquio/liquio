@@ -152,4 +152,26 @@ describe('Named service clients on basic() routes (KS-24)', () => {
     const [row] = await actions(user.userId);
     expect(row.created_by).toEqual({ userId: 'admin-1' });
   });
+
+  it('resets valid.email when the legacy shared secret changes the email (GI-06)', async () => {
+    const user = await newUser({ valid: { phone: true, email: true } });
+    await update(user.userId, LEGACY, { email: 'GI06-changed@example.com' }).expect(200);
+    const stored = await reload(user.userId);
+    expect(stored.email).toBe('GI06-changed@example.com');
+    expect(stored.valid).toEqual({ phone: true, email: false });
+  });
+
+  it('keeps valid.email when the legacy shared secret sends the same email (GI-06)', async () => {
+    const user = await newUser({ valid: { phone: false, email: true } });
+    await update(user.userId, LEGACY, { email: user.email, gender: 'male' }).expect(200);
+    expect((await reload(user.userId)).valid).toEqual({ phone: false, email: true });
+  });
+
+  it('rejects an email from a named client and leaves valid.email alone (GI-06)', async () => {
+    const user = await newUser({ valid: { phone: false, email: true } });
+    await update(user.userId, ADMIN, { email: 'gi06-named@example.com' }).expect(400);
+    const stored = await reload(user.userId);
+    expect(stored.email).toBe(user.email);
+    expect(stored.valid).toEqual({ phone: false, email: true });
+  });
 });

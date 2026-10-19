@@ -1137,6 +1137,12 @@ export class UserController extends BaseController {
       data.addressStruct = user.addressStruct;
     }
 
+    // A changed email is not verified (GI-06). Named clients cannot send an email, so this covers the legacy shared secret.
+    const normalizeEmail = (value: unknown) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
+    if (typeof data.email !== 'undefined' && normalizeEmail(data.email) !== normalizeEmail(user.email)) {
+      data.valid = { phone: false, ...user.valid, email: false };
+    }
+
     try {
       const updatedUser: any = await this.service('auth').updateUser({ userId }, data);
 
