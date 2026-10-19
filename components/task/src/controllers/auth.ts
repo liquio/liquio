@@ -270,7 +270,7 @@ export class AuthController extends Controller {
       }
     } catch (error) {
       global.log.save('auth-login-error|cannot-delete-cached-user-data', { error: error.toString() }, 'error');
-      return this.responseError(res, `Cannot delete cached user data: ${error.toString()}`, 500);
+      return this.responseError(res, 'Cannot delete cached user data.', 500);
     }
     try {
       await global.businesses.task.deleteExpiredDraftsByUserId(userId);

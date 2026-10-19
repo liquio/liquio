@@ -3531,6 +3531,7 @@ export class TaskBusiness extends Business {
       }
       if (lastUserDraft) {
         const error: any = new Error('Only one draft allowed.');
+        error.expose = true; // Intentional message, the front matches on it.
         error.details = {
           message: oneDraftAllowedMessage,
           task: lastUserDraft,

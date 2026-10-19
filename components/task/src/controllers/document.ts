@@ -193,7 +193,8 @@ export class DocumentController extends Controller {
       const [firstError] = errors;
       return this.responseError(res, 'Multisign check failed', undefined, [firstError.title, firstError.text].filter(Boolean).join(': '));
     } catch (error) {
-      return this.responseError(res, 'Multisign check error', undefined, error.message);
+      global.log.save('multisign-check-error', { error: error && error.message, stack: error && error.stack }, 'error');
+      return this.responseError(res, 'Multisign check error');
     }
   }
 
@@ -1023,7 +1024,7 @@ export class DocumentController extends Controller {
         try {
           await global.businesses.document.signing.checkP7SSignaturesCount(signedDocument);
         } catch (error) {
-          return this.responseError(res, error.message, 500, error.details);
+          return this.responseError(res, error, 500, error.details);
         }
 
         try {
@@ -1965,7 +1966,8 @@ export class DocumentController extends Controller {
       const [firstError] = errors;
       return this.responseError(res, 'Singlesign check failed', undefined, [firstError.title, firstError.text].filter(Boolean).join(': '));
     } catch (error) {
-      return this.responseError(res, 'Singlesign check error', undefined, error.message);
+      global.log.save('singlesign-check-error', { error: error && error.message, stack: error && error.stack }, 'error');
+      return this.responseError(res, 'Singlesign check error');
     }
   }
 }

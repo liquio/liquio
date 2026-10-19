@@ -8,6 +8,7 @@ import { matchedData } from 'express-validator';
 import { Entity } from '../entities/entity';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { SequelizeDbError } from '../lib/errors';
+import { isPublicError, publicError } from '../lib/public_error';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -184,11 +185,20 @@ export class Controller {
       httpStatusCode = error.httpStatusCode;
     }
 
-    // Define params.
+    // Define params. Full values go to the log and workflow errors; the client gets only safe values.
     const message = error?.toString();
     const code = error?.code;
     const errorDetails = details || error?.cause || error?.details;
     const stack = error.stack;
+
+    // Error instances are hidden unless they are intentional (public); strings and plain objects are trusted constants from the code.
+    const isErrorInstance = error instanceof Error;
+    const isPublic = !isErrorInstance || isPublicError(error);
+    const clientMessage = isPublic ? message : publicError(error, httpStatusCode);
+    const clientCode = isPublic ? code : undefined;
+    // Details taken from the error itself are hidden for non-public errors; explicitly passed details are kept unless they are the error's own.
+    const clientDetails =
+      isPublic || (details && details !== (error as any)?.details && details !== (error as any)?.cause) ? errorDetails : undefined;
 
     // Define response object.
     const responseObject = {
@@ -198,6 +208,14 @@ export class Controller {
         code,
       },
       traceId: getTraceId(),
+    };
+    const clientResponseObject = {
+      error: {
+        message: clientMessage,
+        details: clientDetails,
+        code: clientCode,
+      },
+      traceId: responseObject.traceId,
     };
 
     // Define response meta.
@@ -250,22 +268,22 @@ export class Controller {
     }
 
     // Delete logged requestBody.
-    if (responseObject.error.message.startsWith('{"')) {
+    if (clientResponseObject.error.message.startsWith('{"')) {
       try {
-        responseObject.error.message = JSON.parse(responseObject.error.message);
-        delete responseObject.error.message.requestBody;
-        responseObject.error.message = JSON.stringify(responseObject.error.message);
+        const parsedMessage = JSON.parse(clientResponseObject.error.message);
+        delete parsedMessage.requestBody;
+        clientResponseObject.error.message = JSON.stringify(parsedMessage);
       } catch (error) {
-        global.log.save('try-to-parse-error-message', { message: responseObject.error.message, error: error.message }, 'error');
+        global.log.save('try-to-parse-error-message', { message: clientResponseObject.error.message, error: error.message }, 'error');
       }
     }
 
     if (error instanceof SequelizeDbError) {
-      delete responseObject.error.details;
+      delete clientResponseObject.error.details;
     }
 
     // Response.
-    res.status(httpStatusCode).send(responseObject);
+    res.status(httpStatusCode).send(clientResponseObject);
   }
 
   /**

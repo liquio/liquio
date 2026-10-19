@@ -167,7 +167,7 @@ export class ExternalReaderController extends Controller {
         code = 401;
       }
 
-      return this.responseError(res, error.message, code);
+      return this.responseError(res, error, code);
     }
     const isDataWithPagination = !!meta;
     const dataToResponse = isDataWithPagination ? { data, meta } : data;
@@ -312,7 +312,7 @@ export class ExternalReaderController extends Controller {
       response = await this.externalReader.deleteCacheByUser(oauthToken, user);
     } catch (error) {
       global.log.save('external-reader|delete-cache|error', { error: (error && error.message) || error, user }, 'error');
-      return this.responseError(res, error.message);
+      return this.responseError(res, error);
     }
 
     this.responseData(res, response, true);

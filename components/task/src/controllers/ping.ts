@@ -180,7 +180,7 @@ export class PingController extends Controller {
       }
     } catch (error) {
       global.log.save('test-ping-services-error|ping-committed-documents-count', { error: error && error.message }, 'error');
-      return this.responseError(res, error && error.message);
+      return this.responseError(res, error);
     }
   }
 
@@ -513,7 +513,7 @@ export class PingController extends Controller {
 
       this.responseData(res, { status: 'ok' });
     } catch (e) {
-      this.responseError(res, { error: e.message });
+      this.responseError(res, e);
     }
   }
 

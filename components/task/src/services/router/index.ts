@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { asyncLocalStorageMiddleware } from '@liquio/back-core';
+import { asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-core';
 
 import { AppIdentHeaders } from '../../lib/app_ident_headers';
 import { HttpRequest } from '../../lib/http_request';
@@ -8,6 +8,8 @@ import { Controllers } from '../../controllers';
 import { Validators } from '../../validators';
 import { routes } from './routes';
 import typeOf from '../../lib/type_of';
+import { errorHandler } from './error_handler';
+import { GENERIC_SERVER_ERROR } from '../../lib/public_error';
 
 /**
  * Router service.
@@ -176,11 +178,13 @@ export class RouterService {
       const catchAsync = (fn) => {
         return (req, res, next) => {
           if (typeof fn !== 'function') {
+            global.log.save('router-controller-not-defined', { message: 'Controller for route not defined. Check router configuration.' }, 'error');
             return res.status(500).send({
               error: {
-                message: 'Controller for route not defined. Check router configuration.',
+                message: GENERIC_SERVER_ERROR,
                 code: 500,
               },
+              traceId: getTraceId(),
             });
           }
           fn(req, res, next).catch(next);
@@ -236,14 +240,7 @@ export class RouterService {
     });
 
     // Error handler middleware.
-    app.use((error, _req, res, _next) => {
-      res.status(error.status || error.httpStatusCode || 500).send({
-        error: {
-          message: error.message || 'Internal Server Error.',
-          code: error.status || error.httpStatusCode || 500,
-        },
-      });
-    });
+    app.use(errorHandler);
   }
 
   /**

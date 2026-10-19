@@ -102,7 +102,11 @@ export class PaymentController extends Controller {
       bodyContent = await Stream.getFileContent(req, { limit: this.config.server?.maxBodySize || DEFAULT_MAX_BODY_SIZE });
     } catch (error) {
       global.log.save('handle-payment-status-read-body-error', { error: error && error.message, type: error && error.type }, 'error');
-      return this.responseError(res, error?.message, error?.status === HTTP_STATUS_PAYLOAD_TOO_LARGE ? HTTP_STATUS_PAYLOAD_TOO_LARGE : 400);
+      return this.responseError(
+        res,
+        error?.expose === true ? error.message : error,
+        error?.status === HTTP_STATUS_PAYLOAD_TOO_LARGE ? HTTP_STATUS_PAYLOAD_TOO_LARGE : 400,
+      );
     }
     const { customer } = req.params;
     const { status } = req.params;

@@ -102,7 +102,7 @@ export class WorkflowController extends Controller {
       });
     } catch (error) {
       global.log.save('workflow-get-all-filtered-error', { error: error && error.message }, 'error');
-      return this.responseError(res, { error: error && error.message });
+      return this.responseError(res, error);
     }
 
     this.responseData(res, workflows, true);

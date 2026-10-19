@@ -155,6 +155,32 @@ describe('Ping Controller', () => {
     });
   });
 
+  describe('error disclosure', () => {
+    it('does not leak SQL text of a forced 5xx', async () => {
+      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      global.config.ping_documents = { committedDocumentsTemplateIdsToHoursMap: { known: 1 } };
+      const spy = jest
+        .spyOn(global.models.document, 'checkExists')
+        .mockRejectedValue(new Error('SequelizeDatabaseError: relation "documents" does not exist'));
+
+      try {
+        const response = await app.request().get('/test/ping/committed-documents/known').set('Authorization', BASIC_AUTH_TOKEN).expect(500);
+        expect(response.body.error.message).toBe('Internal server error');
+        expect(JSON.stringify(response.body)).not.toMatch(/Sequelize|documents/);
+        expect(response.body.traceId).toBeDefined();
+      } finally {
+        spy.mockRestore();
+        delete global.config.ping_documents;
+      }
+    });
+
+    it('does not leak parser details of a malformed JSON body', async () => {
+      const response = await app.request().post('/test/ping').set('Content-Type', 'application/json').send('{"a": SECRET');
+      expect(response.status).toBeLessThan(500);
+      expect(JSON.stringify(response.body)).not.toContain('SECRET');
+    });
+  });
+
   describe('GET /healthz', () => {
     it('returns ok status', async () => {
       await app
