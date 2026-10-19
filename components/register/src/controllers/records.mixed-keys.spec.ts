@@ -80,3 +80,38 @@ describe.each(['getAll', 'getAllFiltered'])('RG-08: mixed-key page in %s', (meth
     expect(records[1].data).toEqual({ public: 'two', secret: 'two-secret' });
   });
 });
+
+describe('EC-35: rawSequelizeParams keeps the row-token filter', () => {
+  beforeAll(() => {
+    (global as any).typeOf = (v) => (Array.isArray(v) ? 'array' : v === null ? 'null' : typeof v);
+  });
+
+  const sentFilter = (controller) => controller.recordModel.getAll.mock.calls[0][0].filter;
+
+  it('ANDs a raw where (even one with its own or) under the token filter', async () => {
+    const { controller, req } = setup({ auth: { trustedCallers: [], userAllowTokens: { reader: ['private'] } } });
+    req.body = { rawSequelizeParams: { or: [{ allow_tokens: { overlap: ['other'] } }, { id: 'x' }], allow_tokens: ['other'] } };
+    await controller.getAll(req, {});
+    const filter = sentFilter(controller);
+    expect(filter.allow_tokens).toEqual(['private']);
+    const Op = require('sequelize').Op;
+    expect(filter[Op.and]).toHaveLength(1);
+    expect(filter[Op.and][0][Op.or]).toHaveLength(2);
+    // Nothing from the raw params sits at the top level where the token OR is written.
+    expect(Object.keys(filter).sort()).toEqual(['allow_tokens']);
+  });
+
+  it('cannot be used to drop the token filter by asking for allow_see_all_records', async () => {
+    const { controller, req } = setup({ auth: { trustedCallers: [], userAllowTokens: { reader: ['private'] } } });
+    req.body = { allow_see_all_records: true, rawSequelizeParams: { id: 'x' } };
+    await controller.getAll(req, {});
+    expect(sentFilter(controller).allow_tokens).toEqual(['private']);
+  });
+
+  it('passes only the raw params to a caller that sees all rows', async () => {
+    const { controller, req } = setup({ auth: { trustedCallers: ['reader'] } });
+    req.body = { allow_see_all_records: true, rawSequelizeParams: { id: 'x' } };
+    await controller.getAll(req, {});
+    expect(sentFilter(controller).allow_tokens).toBeUndefined();
+  });
+});

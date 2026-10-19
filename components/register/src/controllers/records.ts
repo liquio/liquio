@@ -417,8 +417,9 @@ export default class RecordsController extends Controller {
     }
 
     if (rawSequelizeParams) {
-      // Rewrite all filters.
-      filter = this.prepareRawSequelizeParams(rawSequelizeParams);
+      // Rewrite the request filters, but never the row-token filter: the raw params are AND-ed under it (`getAll` turns `allow_tokens` into a top-level OR).
+      const rawFilter = { [Sequelize.Op.and]: [this.prepareRawSequelizeParams(rawSequelizeParams)] };
+      filter = filter.allow_tokens !== undefined ? ({ allow_tokens: filter.allow_tokens, ...rawFilter } as RecordsGetAllFilter) : (rawFilter as any);
     }
 
     // Load one page and apply the per-record access rules and projection.
