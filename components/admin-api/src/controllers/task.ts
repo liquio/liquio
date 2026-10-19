@@ -8,6 +8,7 @@ import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { TaskGroupEntity } from '../entities/task_group';
 import { TaskTemplateEntity } from '../entities/task_template';
 import { DocumentTemplateEntity } from '../entities/document_template';
+import { toLogUser } from '../lib/log_sanitize';
 
 /**
  * Task controller.
@@ -75,7 +76,7 @@ export class TaskController extends Controller {
 
         const savedTaskGroupEntity = await this.taskBusiness.createOrUpdate(taskGroupEntity);
         savedTaskGroupEntities.push(savedTaskGroupEntity);
-        global.log.save('user-created-updated-task-group', { user, data: { savedTaskGroupEntity } });
+        global.log.save('user-created-updated-task-group', { user: toLogUser(user), data: { savedTaskGroupEntity } });
 
         // Auto save workflow process.
         const workflowHistory = await this.bpmnWorkflowBusiness.autoSaveVersion(workflowTemplateId, { user });
@@ -110,7 +111,7 @@ export class TaskController extends Controller {
       await this.taskBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-task-group', { user, data: { id } });
+      await global.log.save('user-deleted-task-group', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

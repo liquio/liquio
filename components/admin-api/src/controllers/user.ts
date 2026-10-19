@@ -3,6 +3,7 @@ import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { UserBusiness } from '../businesses/user';
 import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, READONLY_SECURITY_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT } from '../constants/unit';
+import { toLogUser } from '../lib/log_sanitize';
 
 /**
  * User controller.
@@ -114,7 +115,7 @@ export class UserController extends Controller {
       }
 
       await global.log.save('user-updated-user', {
-        user: this.getRequestUserBaseInfo(req),
+        user: toLogUser(this.getRequestUserBaseInfo(req)),
         data: data,
       });
     } catch (error) {
@@ -140,7 +141,7 @@ export class UserController extends Controller {
       }
 
       await global.log.save('user-blocked-user', {
-        user: this.getRequestUserBaseInfo(req),
+        user: toLogUser(this.getRequestUserBaseInfo(req)),
         data: { id },
       });
     } catch (error) {
@@ -166,7 +167,7 @@ export class UserController extends Controller {
       }
 
       await global.log.save('user-unblocked-user', {
-        user: this.getRequestUserBaseInfo(req),
+        user: toLogUser(this.getRequestUserBaseInfo(req)),
         data: { id },
       });
     } catch (error) {
@@ -198,7 +199,7 @@ export class UserController extends Controller {
 
       // Log.
       await global.log.save('user-enabled-role-admin', {
-        user: currentUser,
+        user: toLogUser(currentUser),
         data: { id, isCurrentAuthClient },
       });
     } catch (error) {
@@ -232,7 +233,7 @@ export class UserController extends Controller {
 
       // Log.
       await global.log.save('user-disabled-role-admin', {
-        user: currentUser,
+        user: toLogUser(currentUser),
         data: { id, isCurrentAuthClient },
       });
     } catch (error) {
@@ -260,7 +261,7 @@ export class UserController extends Controller {
         return this.responseThatAccepted(res);
       }
 
-      await global.log.save('user-deleted-user', { user: this.getRequestUserBaseInfo(req), data: { id, ipn } });
+      await global.log.save('user-deleted-user', { user: toLogUser(this.getRequestUserBaseInfo(req)), data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }

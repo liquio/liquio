@@ -3,6 +3,7 @@ import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { UIFilterBusiness } from '../businesses/ui_filter';
 import { UIFilterEntity } from '../entities/ui_filter';
+import { toLogUser } from '../lib/log_sanitize';
 
 /**
  * UI Filter controller.
@@ -41,7 +42,7 @@ export class UIFilterController extends Controller {
       savedUIFilterEntity = await this.uiFilterBusiness.createOrUpdate(uiFilterEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-created-ui-filter', { user, data: savedUIFilterEntity });
+      await global.log.save('user-created-ui-filter', { user: toLogUser(user), data: savedUIFilterEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -68,7 +69,7 @@ export class UIFilterController extends Controller {
       savedUIFilterEntity = await this.uiFilterBusiness.createOrUpdate(uiFilterEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-updated-ui-filter', { user, data: savedUIFilterEntity });
+      await global.log.save('user-updated-ui-filter', { user: toLogUser(user), data: savedUIFilterEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -115,7 +116,7 @@ export class UIFilterController extends Controller {
       await this.uiFilterBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-ui-filter', { user, data: { id } });
+      await global.log.save('user-deleted-ui-filter', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }

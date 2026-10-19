@@ -1,4 +1,5 @@
 import { LocalizationLanguageModel } from '../models/localization_language';
+import { toLogUser } from '../lib/log_sanitize';
 
 /**
  * Localization language business.
@@ -93,7 +94,7 @@ export class LocalizationLanguageBusiness {
       }
 
       await transaction.commit();
-      global.log.save('user-imported-localization-languages', { user: person, data });
+      global.log.save('user-imported-localization-languages', { user: toLogUser(person), data });
     } catch (error) {
       await transaction.rollback();
       throw error;

@@ -16,6 +16,7 @@ import { GatewayTemplateEntity } from '../entities/gateway_template';
 import { EventTemplateEntity } from '../entities/event_template';
 import { WorkflowHistoryEntity } from '../entities/workflow_history';
 import { NumberTemplateEntity } from '../entities/number_template';
+import { toLogUser } from '../lib/log_sanitize';
 
 const DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS = 1800;
 
@@ -118,7 +119,7 @@ export class BpmnWorkflowBusiness {
 
       // Import workflow template category.
       if (data.workflowTemplateCategory) {
-        global.log.save('import|workflow-template-category', { user, data: data.workflowTemplateCategory });
+        global.log.save('import|workflow-template-category', { user: toLogUser(user), data: data.workflowTemplateCategory });
         await global.models.workflowTemplateCategory.create(
           new WorkflowTemplateCategoryEntity(data.workflowTemplateCategory),
           bpmnWorkflowTransaction,
@@ -127,7 +128,7 @@ export class BpmnWorkflowBusiness {
 
       if (data.numberTemplates && data.numberTemplates.length > 0) {
         for (const numberTemplate of data.numberTemplates) {
-          global.log.save('import|number-template', { user, id: numberTemplate.id });
+          global.log.save('import|number-template', { user: toLogUser(user), id: numberTemplate.id });
           await global.models.numberTemplate.create(new NumberTemplateEntity(numberTemplate), bpmnWorkflowTransaction);
         }
       }
@@ -143,7 +144,7 @@ export class BpmnWorkflowBusiness {
         }
       }
 
-      global.log.save('import|workflow-template', { user, id: data.workflowTemplate.id });
+      global.log.save('import|workflow-template', { user: toLogUser(user), id: data.workflowTemplate.id });
       await global.models.workflowTemplate.create(new WorkflowTemplateEntity(data.workflowTemplate), bpmnWorkflowTransaction);
 
       // Import document templates.
@@ -179,7 +180,7 @@ export class BpmnWorkflowBusiness {
           }
         }
 
-        global.log.save('import|document-template', { user, id: documentTemplate.id });
+        global.log.save('import|document-template', { user: toLogUser(user), id: documentTemplate.id });
         await global.models.documentTemplate.create(new DocumentTemplateEntity(documentTemplate), bpmnWorkflowTransaction);
       }
 
@@ -200,7 +201,7 @@ export class BpmnWorkflowBusiness {
           }
         }
 
-        global.log.save('import|task-template', { user, id: taskTemplate.id });
+        global.log.save('import|task-template', { user: toLogUser(user), id: taskTemplate.id });
         await global.models.taskTemplate.create(new TaskTemplateEntity(taskTemplate), bpmnWorkflowTransaction);
       }
 
@@ -212,7 +213,7 @@ export class BpmnWorkflowBusiness {
 
       // Import gateway templates.
       for (const gatewayTemplate of data.gatewayTemplates) {
-        global.log.save('import|gateway-template', { user, id: gatewayTemplate.id });
+        global.log.save('import|gateway-template', { user: toLogUser(user), id: gatewayTemplate.id });
         await global.models.gatewayTemplate.create(new GatewayTemplateEntity(gatewayTemplate), bpmnWorkflowTransaction);
       }
 
@@ -228,7 +229,7 @@ export class BpmnWorkflowBusiness {
           }
         }
 
-        global.log.save('import|event-template', { user, id: eventTemplate.id });
+        global.log.save('import|event-template', { user: toLogUser(user), id: eventTemplate.id });
         await global.models.eventTemplate.create(new EventTemplateEntity(eventTemplate), bpmnWorkflowTransaction);
       }
 
@@ -261,7 +262,7 @@ export class BpmnWorkflowBusiness {
       await global.models.workflowHistory.deleteIsCurrentVersionByWorkflowTemplateId(data.workflowTemplate.id);
 
       // Create commit.
-      global.log.save('import|workflow-history', { user, id: data.workflowTemplate.id });
+      global.log.save('import|workflow-history', { user: toLogUser(user), id: data.workflowTemplate.id });
       await global.models.workflowHistory.create(
         new WorkflowHistoryEntity({
           workflowTemplateId: data.workflowTemplate.id,
@@ -278,7 +279,7 @@ export class BpmnWorkflowBusiness {
 
       await bpmnWorkflowTransaction.commit();
 
-      global.log.save('user-imported-bpmn-workflow', { user, data: data });
+      global.log.save('user-imported-bpmn-workflow', { user: toLogUser(user), data: data });
     } catch (error) {
       await bpmnWorkflowTransaction.rollback();
       throw error;
@@ -835,7 +836,11 @@ export class BpmnWorkflowBusiness {
         await global.redis.delete(redisKeyName);
       }
 
-      global.log.save('user-copied-bpmn-workflow', { user, fromTemplateId: workflowTemplateId, toTemplateId: newWorkflowTemplateId });
+      global.log.save('user-copied-bpmn-workflow', {
+        user: toLogUser(user),
+        fromTemplateId: workflowTemplateId,
+        toTemplateId: newWorkflowTemplateId,
+      });
     } catch (error) {
       await bpmnWorkflowTransaction.rollback();
       throw error;

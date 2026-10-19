@@ -4,6 +4,7 @@ import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 import { Exceptions } from '../exceptions';
 import { UnitEntity } from '../entities/unit';
 import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, SUPPORT_ADMIN_UNIT, ADMIN_UNITS } from '../constants/unit';
+import { toLogUnit, toLogUser } from '../lib/log_sanitize';
 
 const UNIT_PREVIOUS_DATA_MAP = {
   basedOn: 'previousBasedOn',
@@ -773,7 +774,7 @@ export class UnitBusiness {
 
       await unitTransaction.commit();
 
-      await global.log.save('user-imported-units', { user, data: data });
+      await global.log.save('user-imported-units', { user: toLogUser(user), data: toLogUnit(data) });
     } catch (error) {
       await unitTransaction.rollback();
       throw error;

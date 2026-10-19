@@ -4,6 +4,7 @@ import { Op } from 'sequelize';
 import { Controller } from './controller';
 import { CustomInterfaceBusiness } from '../businesses/custom_interface';
 import { CustomInterfaceEntity } from '../entities/custom_interface';
+import { toLogUser } from '../lib/log_sanitize';
 
 /**
  * Custom interface controller.
@@ -42,7 +43,7 @@ export class CustomInterfaceController extends Controller {
       savedCustomInterfaceEntity = await this.customInterfaceBusiness.createOrUpdate(customInterfaceEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-created-custom-interface', { user, data: savedCustomInterfaceEntity });
+      await global.log.save('user-created-custom-interface', { user: toLogUser(user), data: savedCustomInterfaceEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -69,7 +70,7 @@ export class CustomInterfaceController extends Controller {
       savedCustomInterfaceEntity = await this.customInterfaceBusiness.createOrUpdate(customInterfaceEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-updated-custom-interface', { user, data: savedCustomInterfaceEntity });
+      await global.log.save('user-updated-custom-interface', { user: toLogUser(user), data: savedCustomInterfaceEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -118,7 +119,7 @@ export class CustomInterfaceController extends Controller {
       await this.customInterfaceBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-custom-interface', { user, data: { id } });
+      await global.log.save('user-deleted-custom-interface', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }

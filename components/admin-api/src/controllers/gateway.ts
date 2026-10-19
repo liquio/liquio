@@ -6,6 +6,7 @@ import { GatewayBusiness } from '../businesses/gateway';
 import { WorkflowBusiness } from '../businesses/workflow';
 import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { GatewayTemplateEntity } from '../entities/gateway_template';
+import { toLogUser } from '../lib/log_sanitize';
 
 /**
  * Gateway controller.
@@ -71,7 +72,7 @@ export class GatewayController extends Controller {
         savedGatewayTemplateEntities.push(savedGatewayTemplateEntity);
 
         await global.log.save('user-created-updated-gateway-template', {
-          user,
+          user: toLogUser(user),
           data: { savedGatewayTemplateEntity },
         });
 
@@ -108,7 +109,7 @@ export class GatewayController extends Controller {
       await this.gatewayBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-gateway-template', { user, data: { id } });
+      await global.log.save('user-deleted-gateway-template', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

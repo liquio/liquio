@@ -1,4 +1,5 @@
 import { LocalizationTextModel } from '../models/localization_text';
+import { toLogUser } from '../lib/log_sanitize';
 
 /**
  * Localization text business.
@@ -101,7 +102,7 @@ export class LocalizationTextBusiness {
       }
 
       await transaction.commit();
-      global.log.save('user-imported-localization-texts', { user: person, data });
+      global.log.save('user-imported-localization-texts', { user: toLogUser(person), data });
     } catch (error) {
       await transaction.rollback();
       throw error;

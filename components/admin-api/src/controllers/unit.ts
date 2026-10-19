@@ -6,6 +6,7 @@ import { UnitBusiness } from '../businesses/unit';
 import { UnitEntity } from '../entities/unit';
 import { CustomLogs } from '../services/custom_logs';
 import { ADMIN_UNITS } from '../constants/unit';
+import { countOf, toLogUnit, toLogUser } from '../lib/log_sanitize';
 
 /**
  * Unit controller.
@@ -46,7 +47,7 @@ export class UnitController extends Controller {
 
       const afterUpdatedUnit = await this.unitBusiness.create(unitEntity, currentUser);
 
-      await global.log.save('user-created-unit', { user: currentUser, data: afterUpdatedUnit });
+      await global.log.save('user-created-unit', { user: toLogUser(currentUser), data: toLogUnit(afterUpdatedUnit) });
 
       this.responseData(res, afterUpdatedUnit);
 
@@ -108,17 +109,17 @@ export class UnitController extends Controller {
       } = await this.unitBusiness.update(req.authUserUnitIds, unitEntity, currentUser);
 
       await global.log.save('user-updated-unit', {
-        user: currentUser,
-        data: afterUpdatedUnit,
+        user: toLogUser(currentUser),
+        data: toLogUnit(afterUpdatedUnit),
         unitId: id,
         newHeads,
         newMembers,
-        newHeadsIpn,
-        newMembersIpn,
+        newHeadsIpnCount: countOf(newHeadsIpn),
+        newMembersIpnCount: countOf(newMembersIpn),
         removedHeads,
         removedMembers,
-        removedHeadsIpn,
-        removedMembersIpn,
+        removedHeadsIpnCount: countOf(removedHeadsIpn),
+        removedMembersIpnCount: countOf(removedMembersIpn),
       });
 
       this.responseData(res, afterUpdatedUnit);
@@ -160,8 +161,8 @@ export class UnitController extends Controller {
 
       const isSuccess = afterUpdatedUnit.heads.length > beforeUpdatedUnit.heads.length;
       await global.log.save('user-added-heads-unit', {
-        user: currentUser,
-        data: { isSuccess, beforeUpdatedUnit, afterUpdatedUnit },
+        user: toLogUser(currentUser),
+        data: { isSuccess, beforeUpdatedUnit: toLogUnit(beforeUpdatedUnit), afterUpdatedUnit: toLogUnit(afterUpdatedUnit) },
         unitId: id,
         addedHeads: heads,
       });
@@ -202,8 +203,8 @@ export class UnitController extends Controller {
 
       const isSuccess = afterUpdatedUnit.heads.length < beforeUpdatedUnit.heads.length;
       await global.log.save('user-removed-heads-unit', {
-        user: currentUser,
-        data: { isSuccess, beforeUpdatedUnit, afterUpdatedUnit },
+        user: toLogUser(currentUser),
+        data: { isSuccess, beforeUpdatedUnit: toLogUnit(beforeUpdatedUnit), afterUpdatedUnit: toLogUnit(afterUpdatedUnit) },
         unitId: id,
         removedHeads: heads,
       });
@@ -247,8 +248,8 @@ export class UnitController extends Controller {
 
       const isSuccess = afterUpdatedUnit.members.length > beforeUpdatedUnit.members.length;
       await global.log.save('user-added-members-unit', {
-        user: currentUser,
-        data: { isSuccess, beforeUpdatedUnit, afterUpdatedUnit },
+        user: toLogUser(currentUser),
+        data: { isSuccess, beforeUpdatedUnit: toLogUnit(beforeUpdatedUnit), afterUpdatedUnit: toLogUnit(afterUpdatedUnit) },
         unitId: id,
         addedMembers: members,
       });
@@ -289,8 +290,8 @@ export class UnitController extends Controller {
 
       const isSuccess = afterUpdatedUnit.members.length < beforeUpdatedUnit.members.length;
       await global.log.save('user-removed-members-unit', {
-        user: currentUser,
-        data: { isSuccess, beforeUpdatedUnit, afterUpdatedUnit },
+        user: toLogUser(currentUser),
+        data: { isSuccess, beforeUpdatedUnit: toLogUnit(beforeUpdatedUnit), afterUpdatedUnit: toLogUnit(afterUpdatedUnit) },
         unitId: id,
         removedMembers: members,
       });
@@ -386,7 +387,7 @@ export class UnitController extends Controller {
 
       await this.unitBusiness.deleteById(id, beforeUpdatedUnit, currentUser);
 
-      await global.log.save('user-deleted-unit', { user: currentUser, data: { id } });
+      await global.log.save('user-deleted-unit', { user: toLogUser(currentUser), data: { id } });
 
       this.responseThatAccepted(res);
 
