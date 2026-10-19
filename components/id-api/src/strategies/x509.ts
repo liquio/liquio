@@ -15,6 +15,13 @@ export interface X509StrategyOptions {
   requireChallenge?: boolean;
 }
 
+/** Keeps only the last 2 characters of an IPN so logs stay correlatable without exposing it. */
+export function maskIpn(ipn: unknown): string | undefined {
+  if (ipn === undefined || ipn === null || ipn === '') return undefined;
+  const value = String(ipn);
+  return `***${value.slice(-2)}`;
+}
+
 export type X509VerifyFunction = (req: Request, userInfo: SignatureInfoSigner, done: (error: any, user?: any, info?: any) => void) => void;
 
 /**
@@ -106,11 +113,11 @@ export async function x509(app: Express) {
   passport.use(
     'x509',
     new X509Strategy({ requireChallenge: app.config.auth_providers.x509?.requireChallenge }, async (req, userInfo, done) => {
-      log.save('x509-strategy|authenticate|verify', { user: userInfo }, 'info');
-
       const ipn = userInfo.serialNumber || userInfo.personIdentifier;
+      log.save('x509-strategy|authenticate|verify', { ipn: maskIpn(ipn) }, 'info');
+
       if (!ipn) {
-        log.save('x509-strategy|authenticate|no-user-id', { userInfo }, 'error');
+        log.save('x509-strategy|authenticate|no-user-id', { fields: Object.keys(userInfo ?? {}) }, 'error');
         return done(new Error('No user ID found in certificate'));
       }
 
@@ -203,7 +210,7 @@ export async function x509(app: Express) {
       return;
     }
 
-    log.save('x509-strategy|authorise|success', { user: Helpers.shorten(JSON.stringify(req.user)) }, 'info');
+    log.save('x509-strategy|authorise|success', { userId: (req.user as any)?.userId }, 'info');
     await saveSession(req, actualUser || req.user);
 
     const loginHistoryData = prepareLoginHistoryData(req, { actionType: 'login' });

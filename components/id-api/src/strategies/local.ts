@@ -109,7 +109,7 @@ export async function local(app: Express) {
       // If validation succeeds, return the user object
       return done(null, session);
     } catch (error: any) {
-      log.save('user-auth-by-local|error', { error }, 'error');
+      log.save('user-auth-by-local|error', { error: error?.message ?? `${error}` }, 'error');
       return done(error);
     }
   }
@@ -243,8 +243,8 @@ export async function local(app: Express) {
       log.save('user-change-password|success', { email }, 'info');
 
       res.send({ success: true, message: 'Password changed successfully.' });
-    } catch (error) {
-      log.save('user-change-password|error', { error }, 'error');
+    } catch (error: any) {
+      log.save('user-change-password|error', { error: error?.message ?? `${error}` }, 'error');
       res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
     }
   }

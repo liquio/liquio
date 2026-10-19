@@ -70,3 +70,33 @@ describe('local strategy verify', () => {
     expect(redis.delete).not.toHaveBeenCalled();
   });
 });
+
+describe('local strategy error logging', () => {
+  it('logs only the error message, not the whole error object', async () => {
+    const { Log } = jest.requireMock('@liquio/back-core');
+    const log = Log.getInstance();
+    const secretError: any = new Error('db down');
+    secretError.config = { headers: { Authorization: 'Bearer secret' } };
+    (Models.model as jest.Mock).mockReturnValue({ findOne: jest.fn().mockRejectedValue(secretError) });
+    (Services.service as jest.Mock).mockReturnValue({
+      maxAttempts: 5,
+      maxAttemptDelay: 60,
+      createKey: jest.fn((...a: string[]) => a.join('.')),
+      increment: jest.fn().mockResolvedValue(1),
+      delete: jest.fn(),
+    });
+    const app: any = {
+      config: { auth_providers: { local: { isEnabled: true } } },
+      passport: { use: jest.fn(), authenticate: jest.fn(), mapping: {} },
+      post: jest.fn(),
+    };
+    await local(app);
+    const verify = (Strategy as unknown as jest.Mock).mock.calls.slice(-1)[0][1];
+    await verify('a@b', 'pw', jest.fn());
+
+    const call = log.save.mock.calls.find((c: any[]) => c[0] === 'user-auth-by-local|error');
+    expect(call).toBeDefined();
+    expect(call[1]).toEqual({ error: 'db down' });
+    expect(JSON.stringify(call[1])).not.toContain('secret');
+  });
+});

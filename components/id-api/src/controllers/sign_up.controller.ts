@@ -498,7 +498,7 @@ export class SignUpController extends BaseController {
     try {
       const updatedUser = await this.service('auth').confirmUserPhone(userId, phone, code);
       if (!updatedUser) {
-        this.log.save('phone-set-wrong-code', { userId, phone }, 'warning');
+        this.log.save('phone-set-wrong-code', { userId }, 'warning');
         res.status(400).send({
           error: {
             message: 'Invalid or expired confirmation code.',
