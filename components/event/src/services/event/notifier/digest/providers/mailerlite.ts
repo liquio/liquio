@@ -1,5 +1,6 @@
 import { getTraceId } from '@liquio/back-core';
 
+import { Helpers } from '../../../../../lib/helpers';
 import { HttpRequest } from '../../../../../lib/http_request';
 import { Provider } from './provider';
 
@@ -67,7 +68,7 @@ export class MailerLiteProvider extends Provider {
         throw result.error;
       }
     } catch (error: any) {
-      global.log.save('sms-sending-error', error.response.data);
+      global.log.save('sms-sending-error', Helpers.prepareResponseDataToLog(error.response?.data));
       throw error;
     }
 

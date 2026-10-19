@@ -238,3 +238,55 @@ describe('sensitive name matching and redactRequestOptions (EV-05b)', () => {
     expect(JSON.stringify(out)).not.toContain('secret-token');
   });
 });
+
+describe('stringifyAxiosError (EV-05c)', () => {
+  const makeError = (data: any) =>
+    new AxiosError('Request failed with status code 400', 'ERR_BAD_REQUEST', { url: '/x' } as any, {}, {
+      status: 400,
+      statusText: 'Bad Request',
+      data,
+      headers: {},
+      config: {} as any,
+    } as any);
+
+  it('keeps the readable message and non-secret body fields', () => {
+    expect(Helpers.stringifyAxiosError(makeError({ message: 'Sign is required', statusCode: 400 }))).toBe(
+      'AxiosError - ERR_BAD_REQUEST - Request failed with status code 400 - {"message":"Sign is required","statusCode":400}',
+    );
+  });
+
+  it('masks secrets in object bodies', () => {
+    const result = Helpers.stringifyError(makeError({ error: 'bad', access_token: 'tok-1', nested: { password: 'pw-1' } }));
+    expect(result).toContain('"error":"bad"');
+    expect(result).not.toMatch(/tok-1|pw-1/);
+  });
+
+  it('masks secrets in JSON-string bodies', () => {
+    expect(Helpers.stringifyAxiosError(makeError('{"api_key":"k-1","ok":1}'))).not.toContain('k-1');
+  });
+
+  it('truncates long bodies', () => {
+    expect(Helpers.stringifyAxiosError(makeError('x'.repeat(100000))).length).toBeLessThan(2200);
+    expect(Helpers.stringifyAxiosError(makeError({ html: 'y'.repeat(100000) })).length).toBeLessThan(2200);
+  });
+
+  it('omits empty bodies and does not print binary bodies', () => {
+    expect(Helpers.stringifyAxiosError(makeError(undefined))).toBe('AxiosError - ERR_BAD_REQUEST - Request failed with status code 400');
+    expect(Helpers.stringifyAxiosError(makeError({}))).toBe('AxiosError - ERR_BAD_REQUEST - Request failed with status code 400');
+    const binary = Helpers.stringifyAxiosError(makeError(Buffer.from('secret bytes')));
+    expect(binary).not.toContain('secret bytes');
+  });
+});
+
+describe('prepareResponseDataToLog plain text (EV-05c)', () => {
+  it('masks query-style secrets in text bodies and keeps other pairs', () => {
+    const out = Helpers.prepareResponseDataToLog('error=denied&access_token=abc123&x=1');
+    expect(out).not.toContain('abc123');
+    expect(out).toContain('error=denied');
+    expect(out).toContain('x=1');
+  });
+
+  it('prints binary bodies as a marker', () => {
+    expect(Helpers.prepareResponseDataToLog(Buffer.from('secret bytes'))).toBe('binary');
+  });
+});

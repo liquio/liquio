@@ -97,7 +97,11 @@ export class Helpers {
     if (data instanceof Stream) return (data?.constructor?.name && `${data.constructor.name} stream`) || 'stream.Stream';
     if (Buffer.isBuffer(data) || data instanceof ArrayBuffer) return 'binary';
     if (data === undefined || data === null || data === '') return {};
-    return this.redactSensitiveData(this.cutLongStrings(data, MAX_LOGGED_RESPONSE_LENGTH));
+    const prepared = this.redactSensitiveData(this.cutLongStrings(data, MAX_LOGGED_RESPONSE_LENGTH));
+    // Plain-text bodies: mask query/form-style pairs, e.g. "token=abc&x=1".
+    return typeof prepared === 'string'
+      ? prepared.replace(/([\w.-]+)=([^&\s"']*)/g, (match, key) => (isSensitiveName(key) ? `${key}=${REDACTED}` : match))
+      : prepared;
   }
 
   /**
@@ -317,13 +321,15 @@ export class Helpers {
     const name = error.name; // "AxiosError"
     const code = error.code; // "ERR_BAD_REQUEST" || "ESOCKETTIMEDOUT"
     const message = error.message; // "Request failed with status code 404 || "timeout of 30000ms exceeded"
+    // Secrets masked and long values cut, the same as in the logs.
     const responseDataRaw = error.response?.data;
+    const responseDataPrepared = responseDataRaw instanceof Stream ? undefined : Helpers.prepareResponseDataToLog(responseDataRaw);
     const responseData =
-      responseDataRaw instanceof Stream
-        ? undefined
-        : typeof responseDataRaw === 'object' && responseDataRaw !== null
-          ? JSON.stringify(responseDataRaw)
-          : responseDataRaw;
+      typeof responseDataPrepared === 'object' && responseDataPrepared !== null
+        ? Object.keys(responseDataPrepared).length > 0
+          ? JSON.stringify(responseDataPrepared)
+          : undefined
+        : responseDataPrepared;
 
     // "Axios error - ERR_BAD_REQUEST - Request failed with status code 400 - {\"message\":\"Sign is required\",\"error\":\"Bad Request\",\"statusCode\":400}"
     return `${name} - ${code} - ${message}${responseData ? ` - ${responseData}` : ''}`;
