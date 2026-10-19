@@ -67,12 +67,42 @@ const FONT_FORMATS: Record<string, { mimeType: string; format: string }> = {
 };
 const FONT_CONTENT_TYPE = /^(font\/|application\/(x-)?font|application\/octet-stream|binary\/octet-stream)/i;
 
+// Browser requests made on behalf of the page (images, stylesheets, ...).
+const REQUEST_TIMEOUT = 30_000;
+const REQUEST_MAX_SIZE = 20 * 1024 * 1024;
+const HOP_BY_HOP_REQUEST_HEADERS = [
+  'host',
+  'connection',
+  'content-length',
+  'proxy-authorization',
+  'proxy-connection',
+  'transfer-encoding',
+  'upgrade',
+  'keep-alive',
+];
+const HOP_BY_HOP_RESPONSE_HEADERS = ['connection', 'content-length', 'transfer-encoding', 'keep-alive', 'proxy-connection', 'upgrade'];
+
 const LOG_PREFIX = 'pdf-generator';
 
 // Page-controlled console output is bounded per job: only these types, this many messages, this long.
 const DEFAULT_CONSOLE_LOG_LEVELS = ['warning', 'error'];
 const DEFAULT_CONSOLE_LOG_MAX_MESSAGES = 20;
 const CONSOLE_LOG_MAX_TEXT_LENGTH = 500;
+
+/**
+ * Builds a DNS lookup for http clients that always answers with the already validated address.
+ * @param {ResolvedAddress} resolved - Validated address.
+ * @returns {never} Lookup function for the `lookup` option of axios/http.
+ */
+function pinnedLookup(resolved: ResolvedAddress): never {
+  return ((_host: string, opts: unknown, callback: (...args: unknown[]) => void) => {
+    if (typeof opts === 'object' && opts !== null && (opts as { all?: boolean }).all) {
+      callback(null, [resolved]);
+    } else {
+      callback(null, resolved.address, resolved.family);
+    }
+  }) as never;
+}
 
 export type WorkerOptions = {
   // Hostnames http(s) resources may be loaded from. Empty list blocks all remote resources.
@@ -233,20 +263,60 @@ export class Worker {
 
     // Chromium does not route redirect hops of a continued request, so remote requests are made here without
     // following redirects: a 3xx response goes back to the browser, which requests the target again through
-    // this handler, so every hop is checked.
+    // this handler, so every hop is checked. The connection goes to the address that was validated just now,
+    // so the browser never resolves the host itself and a DNS answer that changes later has no effect.
     try {
-      const response = await route.fetch({ maxRedirects: 0 });
-      const headers = { ...response.headers() };
+      const [{ address, family }] = result.addresses ?? [];
+      const postData = request.postDataBuffer();
+      const response = await axios.request({
+        url: result.url?.href ?? url,
+        method: request.method(),
+        headers: this.buildForwardHeaders(request.headers()),
+        data: postData ?? undefined,
+        responseType: 'arraybuffer',
+        timeout: REQUEST_TIMEOUT,
+        maxContentLength: REQUEST_MAX_SIZE,
+        maxBodyLength: REQUEST_MAX_SIZE,
+        maxRedirects: 0,
+        // Compressed bodies are passed through, the browser decodes them.
+        decompress: false,
+        // Environment proxies would resolve the host themselves.
+        proxy: false,
+        validateStatus: () => true,
+        lookup: pinnedLookup({ address, family }),
+      });
+
+      const headers: Record<string, string> = {};
+      for (const [name, value] of Object.entries(response.headers ?? {})) {
+        const lower = name.toLowerCase();
+        if (value === undefined || value === null || HOP_BY_HOP_RESPONSE_HEADERS.includes(lower)) {
+          continue;
+        }
+
+        headers[lower] = Array.isArray(value) ? value.join(', ') : String(value);
+      }
+
       if (request.resourceType() === 'font') {
         // Cross-origin fonts require CORS, the page origin is opaque.
         headers['access-control-allow-origin'] = '*';
       }
 
-      await route.fulfill({ response, headers });
+      await route.fulfill({ status: response.status, headers, body: Buffer.from(response.data) });
     } catch (error) {
       log.save(`${LOG_PREFIX}|request-error`, { url: sanitizeUrl(url), error: sanitizeUrlsInText(error.message || error.toString()) });
       await route.abort('failed');
     }
+  }
+
+  private buildForwardHeaders(headers: Record<string, string>): Record<string, string> {
+    const forwarded: Record<string, string> = {};
+    for (const [name, value] of Object.entries(headers)) {
+      if (!HOP_BY_HOP_REQUEST_HEADERS.includes(name.toLowerCase())) {
+        forwarded[name] = value;
+      }
+    }
+
+    return forwarded;
   }
 
   /**
@@ -325,14 +395,7 @@ export class Worker {
         timeout: FONT_DOWNLOAD_TIMEOUT,
         maxContentLength: FONT_MAX_SIZE,
         maxRedirects: 0,
-        lookup: ((_host: string, opts: unknown, callback: (...args: unknown[]) => void) => {
-          const resolved: ResolvedAddress = { address, family };
-          if (typeof opts === 'object' && opts !== null && (opts as { all?: boolean }).all) {
-            callback(null, [resolved]);
-          } else {
-            callback(null, resolved.address, resolved.family);
-          }
-        }) as never,
+        lookup: pinnedLookup({ address, family }),
       });
 
       if (response.status !== 200) {

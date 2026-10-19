@@ -99,28 +99,89 @@ describe('Worker', () => {
       expect(pdf.subarray(0, 4).toString()).toBe('%PDF');
     });
 
+    const makeRoute = (url: string, resourceType = 'image') => ({
+      request: () => ({
+        url: () => url,
+        resourceType: () => resourceType,
+        method: () => 'GET',
+        headers: () => ({ host: 'x', accept: '*/*' }),
+        postDataBuffer: () => null,
+      }),
+      fetch: jest.fn(),
+      fulfill: jest.fn(),
+      abort: jest.fn(),
+      continue: jest.fn(),
+    });
+
     it('checks every redirect hop of an allowed host', async () => {
       worker = new Worker({ allowedHosts: ['assets.test'], lookup: PUBLIC_LOOKUP });
-      const makeRoute = (url: string, response?: unknown) => ({
-        request: () => ({ url: () => url, resourceType: () => 'image' }),
-        fetch: jest.fn().mockResolvedValue(response),
-        fulfill: jest.fn(),
-        abort: jest.fn(),
-        continue: jest.fn(),
-      });
+      const requestSpy = jest
+        .spyOn(axios, 'request')
+        .mockResolvedValue({ status: 302, headers: { location: 'http://127.0.0.1:1/secret.png' }, data: Buffer.alloc(0) });
 
-      const first = makeRoute('http://assets.test/redirect', { headers: () => ({ location: 'http://127.0.0.1:1/secret.png' }) });
+      const first = makeRoute('http://assets.test/redirect');
       await worker.handleRoute(first as never);
       // The redirect response goes back to the browser as is, it is not followed here.
-      expect(first.fetch).toHaveBeenCalledWith({ maxRedirects: 0 });
-      expect(first.fulfill).toHaveBeenCalledTimes(1);
+      expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({ maxRedirects: 0 }));
+      expect(first.fulfill).toHaveBeenCalledWith(expect.objectContaining({ status: 302, headers: { location: 'http://127.0.0.1:1/secret.png' } }));
 
       // The browser then requests the target, which is blocked.
+      requestSpy.mockClear();
       const second = makeRoute('http://127.0.0.1:1/secret.png');
       await worker.handleRoute(second as never);
       expect(second.abort).toHaveBeenCalledWith('blockedbyclient');
-      expect(second.fetch).not.toHaveBeenCalled();
+      expect(requestSpy).not.toHaveBeenCalled();
       expect(second.continue).not.toHaveBeenCalled();
+      requestSpy.mockRestore();
+    });
+
+    describe('DNS rebinding', () => {
+      afterEach(() => jest.restoreAllMocks());
+
+      it('connects to the validated address, not to a fresh resolution', async () => {
+        // Public at check time, loopback on any later resolution.
+        const lookup = jest
+          .fn()
+          .mockResolvedValueOnce([{ address: '93.184.216.34', family: 4 }])
+          .mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
+        worker = new Worker({ allowedHosts: ['rebind.test'], lookup });
+        const requestSpy = jest
+          .spyOn(axios, 'request')
+          .mockResolvedValue({ status: 200, headers: { 'content-type': 'image/png', 'content-length': '10' }, data: Buffer.alloc(10) });
+
+        const route = makeRoute('http://rebind.test/a.png');
+        await worker.handleRoute(route as never);
+
+        // Chromium is never told to continue (it would resolve the host again), the response is fulfilled from Node.
+        expect(route.continue).not.toHaveBeenCalled();
+        expect(route.fetch).not.toHaveBeenCalled();
+        expect(route.fulfill).toHaveBeenCalledWith(expect.objectContaining({ status: 200, headers: { 'content-type': 'image/png' } }));
+        expect(lookup).toHaveBeenCalledTimes(1);
+
+        const options = requestSpy.mock.calls[0][0] as { lookup: (...args: unknown[]) => void; headers: Record<string, string> };
+        expect(options.headers).toEqual({ accept: '*/*' });
+        const single = jest.fn();
+        options.lookup('rebind.test', {}, single);
+        expect(single).toHaveBeenCalledWith(null, '93.184.216.34', 4);
+        const all = jest.fn();
+        options.lookup('rebind.test', { all: true }, all);
+        expect(all).toHaveBeenCalledWith(null, [{ address: '93.184.216.34', family: 4 }]);
+      });
+
+      it('never reaches a loopback server in a real browser when the host rebinds', async () => {
+        const lookup = jest
+          .fn()
+          .mockResolvedValueOnce([{ address: '93.184.216.34', family: 4 }])
+          .mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
+        worker = new Worker({ allowedHosts: ['rebind.test'], lookup });
+        const requestSpy = jest.spyOn(axios, 'request').mockRejectedValue(new Error('connect refused'));
+
+        const pdf = await worker.handle(makeJob(`<html><body><img src="http://rebind.test:${port}/img.png"></body></html>`), 30_000);
+
+        expect(pdf.subarray(0, 4).toString()).toBe('%PDF');
+        expect(requestSpy).toHaveBeenCalledTimes(1);
+        expect(hits).toEqual([]);
+      }, 40_000);
     });
 
     it('still renders data URIs and inline content', async () => {
