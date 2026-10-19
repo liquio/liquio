@@ -1,4 +1,4 @@
-import { redactHeaders, redactUrl, urlPath, REDACTED } from './redact';
+import { redactHeaders, redactUrl, safeError, urlPath, REDACTED } from './redact';
 
 describe('redactHeaders', () => {
   it('redacts sensitive headers case-insensitively and keeps others', () => {
@@ -56,5 +56,36 @@ describe('urlPath', () => {
   it('strips query and fragment', () => {
     expect(urlPath('/a/b?token=1#x')).toBe('/a/b');
     expect(urlPath('/a/b')).toBe('/a/b');
+  });
+});
+
+describe('safeError', () => {
+  const axiosLike = () =>
+    Object.assign(new Error('Request failed with status code 401'), {
+      name: 'AxiosError',
+      code: 'ERR_BAD_REQUEST',
+      config: { url: '/x', headers: { Authorization: 'Bearer secret-jwt', token: 'secret-token' } },
+      request: { _header: 'token: secret-token' },
+      response: { status: 401, headers: { 'set-cookie': 'sid=secret' }, data: { token: 'secret-token' } },
+    });
+
+  it('keeps only safe fields', () => {
+    const result = safeError(axiosLike());
+    expect(Object.keys(result).sort()).toEqual(['code', 'message', 'name', 'stack', 'status']);
+    expect(result).toMatchObject({ name: 'AxiosError', message: 'Request failed with status code 401', code: 'ERR_BAD_REQUEST', status: 401 });
+  });
+
+  it('does not leak headers or tokens', () => {
+    const serialized = JSON.stringify(safeError(axiosLike()));
+    expect(serialized).not.toContain('secret-jwt');
+    expect(serialized).not.toContain('secret-token');
+    expect(serialized).not.toContain('secret');
+    expect(serialized).not.toContain('Authorization');
+  });
+
+  it('prefers own status and handles non-objects', () => {
+    expect(safeError(Object.assign(new Error('x'), { status: 404 })).status).toBe(404);
+    expect(safeError('boom')).toEqual({ message: 'boom' });
+    expect(safeError(undefined)).toEqual({ message: 'undefined' });
   });
 });

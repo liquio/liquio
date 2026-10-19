@@ -13,7 +13,7 @@ import TestController from './controllers/test';
 import { compilePathMatcher, isSuspiciousPath } from './lib/custom_api_path_matcher';
 import { sanitizeProxyHeaders } from './lib/proxy_headers';
 import { isMainProxyPathAllowed } from './lib/proxy_filter';
-import { redactHeaders, redactUrl, urlPath } from './lib/redact';
+import { redactHeaders, redactUrl, safeError, urlPath } from './lib/redact';
 
 // Constants.
 const NULL_OBJECT_BASE64 = 'bnVsbA=='; // NULL-object string (`null`) as base64 equals `bnVsbA==`.
@@ -329,7 +329,7 @@ class Router {
   }
 
   private jsonErrorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
-    (global.log as any).save('proxy-error', err);
+    (global.log as any).save('proxy-error', safeError(err));
 
     let status = 500;
     let message = err.message || 'Internal server error';

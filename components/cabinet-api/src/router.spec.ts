@@ -396,3 +396,27 @@ describe('Router CORS', () => {
     }
   });
 });
+
+describe('Router jsonErrorHandler logging', () => {
+  it('logs only safe error fields and still answers with the status', () => {
+    const save = jest.fn();
+    (global as any).log = { save };
+    const router: any = Object.create(Router.prototype);
+    const err = Object.assign(new Error('Request failed with status code 401'), {
+      name: 'AxiosError',
+      status: 401,
+      config: { headers: { Authorization: 'Bearer secret-jwt', token: 'secret-token' } },
+    });
+    const res: any = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    router.jsonErrorHandler(err, {}, res, jest.fn());
+
+    expect(save).toHaveBeenCalledTimes(1);
+    const [event, payload] = save.mock.calls[0];
+    expect(event).toBe('proxy-error');
+    expect(payload).not.toBe(err);
+    expect(payload.config).toBeUndefined();
+    expect(JSON.stringify(payload)).not.toContain('secret');
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+});

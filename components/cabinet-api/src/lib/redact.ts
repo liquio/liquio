@@ -57,3 +57,23 @@ export function urlPath(url: string | undefined | null): string | undefined | nu
   }
   return url.split(/[?#]/)[0];
 }
+
+/**
+ * Returns only safe fields of an error for logging.
+ * Axios/got errors carry request config, headers and response objects with tokens, so they are never logged as is.
+ */
+export function safeError(err: any): Record<string, any> {
+  if (!err || typeof err !== 'object') {
+    return { message: String(err) };
+  }
+  const result: Record<string, any> = { name: err.name, message: err.message };
+  const status = err.status ?? err.statusCode ?? err.response?.status ?? err.response?.statusCode;
+  if (status !== undefined) {
+    result.status = status;
+  }
+  if (err.code !== undefined) {
+    result.code = err.code;
+  }
+  result.stack = err.stack;
+  return result;
+}
