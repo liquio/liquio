@@ -4,6 +4,7 @@ import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
 import { FileStorageService } from '../services/filestorage';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Admin file library controller.
@@ -246,7 +247,7 @@ export class FileLibraryController extends Controller {
     }
     const parent = await global.models.fileLibraryItem.getById(parentId);
     if (!parent || parent.type !== 'folder') {
-      throw new Error('Parent folder not found.');
+      throw new PublicError('Parent folder not found.');
     }
     const canWrite = await global.models.fileLibraryItem.canAccess(parent, {
       userId: this.getRequestUserId(req),
@@ -254,7 +255,7 @@ export class FileLibraryController extends Controller {
       permission: 'write',
     });
     if (!canWrite) {
-      throw new Error('Forbidden.');
+      throw new PublicError('Forbidden.');
     }
   }
 
@@ -265,14 +266,14 @@ export class FileLibraryController extends Controller {
       permission: 'manage',
     });
     if (!canManage) {
-      throw new Error('Forbidden.');
+      throw new PublicError('Forbidden.');
     }
   }
 
   async getReadableFileItem(id, req, permission) {
     const item = await global.models.fileLibraryItem.getById(id);
     if (!item || item.type !== 'file' || !item.fileId) {
-      throw new Error('File not found.');
+      throw new PublicError('File not found.');
     }
     const canRead = await global.models.fileLibraryItem.canAccess(item, {
       userId: this.getRequestUserId(req),
@@ -280,7 +281,7 @@ export class FileLibraryController extends Controller {
       permission,
     });
     if (!canRead) {
-      throw new Error('Forbidden.');
+      throw new PublicError('Forbidden.');
     }
     return item;
   }

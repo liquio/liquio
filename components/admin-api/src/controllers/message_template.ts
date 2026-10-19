@@ -3,6 +3,7 @@ import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { NotifierService } from '../services/notifier';
 import { Stream } from '../lib/stream';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Event controller.
@@ -52,7 +53,7 @@ export class MessageTemplateController extends Controller {
         pageSize < 1 ||
         pageSize > 100
       ) {
-        return this.responseError(res, new Error('Invalid pagination or search parameters'), 400);
+        return this.responseError(res, new PublicError('Invalid pagination or search parameters'), 400);
       }
       const query = String(search ?? '')
         .trim()

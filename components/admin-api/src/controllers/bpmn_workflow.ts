@@ -3,6 +3,7 @@ import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { WorkflowBusiness } from '../businesses/workflow';
+import { PublicError } from '../lib/public_error';
 
 // Default max size of BPMN import body (50mb).
 const DEFAULT_IMPORT_MAX_BYTES = 50 * 1024 * 1024;
@@ -184,7 +185,7 @@ export class BpmnWorkflowController extends Controller {
       const lastWorkflowHistoryIdHeader = req.headers['last-workflow-history-id'];
 
       if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
-        const error = new Error('Header Last-Workflow-History-Id expired.');
+        const error = new PublicError('Header Last-Workflow-History-Id expired.');
         (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
         throw error;
       }

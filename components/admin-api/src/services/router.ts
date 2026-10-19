@@ -3,9 +3,10 @@ import proxy from 'express-http-proxy';
 import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import compression from 'compression';
-import { asyncLocalStorageMiddleware } from '@liquio/back-core';
+import { asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-core';
 
 import { AppIdentHeaders } from '../lib/app_ident_headers';
+import { publicError } from '../lib/public_error';
 import { PingController } from '../controllers/ping';
 import { AuthController } from '../controllers/auth';
 import { UserController } from '../controllers/user';
@@ -90,6 +91,27 @@ export const getProxyReadOnlyGuard = (units: number[]) => {
     const error = new Exceptions.ACCESS(Exceptions.ACCESS.Messages.UNIT);
     return res.status(error.httpStatusCode).send({ error: { message: error.message, code: error.httpStatusCode } });
   };
+};
+
+/**
+ * Final error handler. The client gets a generic body with the trace id; full details go to the log only.
+ */
+export const errorHandler = (error, _req, res, _next) => {
+  const traceId = getTraceId();
+  let status = Number(error?.status ?? error?.statusCode);
+  if (!Number.isInteger(status) || status < 400 || status > 599) {
+    status = 500;
+  }
+
+  global.log?.save('http-error', { message: error?.message, stack: error?.stack, status, traceId });
+
+  res.status(status).send({
+    error: {
+      message: publicError(error, status),
+      code: status,
+    },
+    traceId,
+  });
 };
 
 /**
@@ -1947,14 +1969,7 @@ export class RouterService {
     });
 
     // Error handler middleware.
-    app.use((error, req, res, _next) => {
-      res.status(error.status || 500).send({
-        error: {
-          message: error.message || 'Internal Server Error.',
-          code: error.status || 500,
-        },
-      });
-    });
+    app.use(errorHandler);
 
     return {
       ping: pingController,

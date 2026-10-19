@@ -6,6 +6,7 @@ import { getTraceId } from '@liquio/back-core';
 import { Entity } from '../entities/entity';
 import { File } from '../types/file';
 import { Stream } from '../lib/stream';
+import { isPublicError, publicError } from '../lib/public_error';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -63,21 +64,32 @@ export class Controller {
    * @param {object[]} [details] Details.
    */
   responseError(res, error: any = DEFAULT_ERROR_MESSAGE, httpStatusCode = HTTP_STATUS_CODE_SERVER_ERROR, details = []) {
-    // Define params.
-    const message = (error && error.message) || error;
-
     // Set error status code if exists.
     if (error.httpStatusCode) {
       httpStatusCode = error.httpStatusCode;
     }
 
+    // Error instances are hidden unless they are intentional (public) errors; strings and plain objects are trusted constants.
+    const isErrorInstance = error instanceof Error;
+    const isPublic = !isErrorInstance || isPublicError(error);
+    const message = isErrorInstance ? publicError(error, httpStatusCode) : (error && error.message) || error;
+
+    // Full details stay in the log only.
     global.log.save('stack', error.stack);
+    if (!isPublic) {
+      global.log.save('response-error-hidden', { message: error.message, stack: error.stack, traceId: getTraceId() });
+    }
 
     // Define response object.
     const responseObject: { error: { message: string }; traceId: string; details?: any[] } = { error: { message }, traceId: getTraceId() };
 
-    if (details.length && Array.isArray(details)) {
+    if (!isPublic) {
+      // Details of a hidden error may carry internal data, so they are not sent.
+    } else if (details.length && Array.isArray(details)) {
       responseObject.details = details.filter(Boolean).map((detail) => {
+        if (detail instanceof Error && !isPublicError(detail)) {
+          return { message: publicError(detail, HTTP_STATUS_CODE_SERVER_ERROR) };
+        }
         if (typeof detail === 'object') {
           const { message, name, details, httpStatusCode } = detail;
           return { message, name, details, httpStatusCode };

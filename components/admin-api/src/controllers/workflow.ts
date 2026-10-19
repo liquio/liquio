@@ -6,6 +6,7 @@ import { WorkflowBusiness } from '../businesses/workflow';
 import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { WorkflowTemplateEntity } from '../entities/workflow_template';
 import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 const MAX_TAGS_PER_WORKFLOW_TEMPLATE = 10;
 
@@ -91,7 +92,7 @@ export class WorkflowController extends Controller {
       const lastWorkflowHistoryIdHeader = req.headers['last-workflow-history-id'];
 
       if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
-        const error = new Error('Header Last-Workflow-History-Id expired.');
+        const error = new PublicError('Header Last-Workflow-History-Id expired.');
         (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
         throw error;
       }

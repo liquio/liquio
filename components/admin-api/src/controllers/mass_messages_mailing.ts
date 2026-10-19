@@ -4,6 +4,7 @@ import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { MassMessagesMailingBusiness } from '../businesses/mass_messages_mailing';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Mass messages mailing controller.
@@ -39,27 +40,27 @@ export class MassMessagesMailingController extends Controller {
     const { emails_list: emailsList = [], user_ids_list: userIdsList = [], subject, full_text: fullText } = matchedData(req, { locations: ['body'] });
 
     if (!emailsList?.length && !userIdsList?.length) {
-      const error = new Error('One of params emails_list or user_ids_list must be passed and must be not empty array.');
+      const error = new PublicError('One of params emails_list or user_ids_list must be passed and must be not empty array.');
       return this.responseError(res, error);
     }
 
     const emailPattern = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$/;
     if (!emailsList?.every((email) => emailPattern.test(email))) {
-      const error = new Error('Param emails_list must contains valid emails only.');
+      const error = new PublicError('Param emails_list must contains valid emails only.');
       return this.responseError(res, error);
     }
 
     if (!userIdsList.every((userId) => userId.indexOf('@') === -1 && userId.length === 24)) {
-      const error = new Error('Param user_ids_list must contains valid user ids only.');
+      const error = new PublicError('Param user_ids_list must contains valid user ids only.');
       return this.responseError(res, error);
     }
 
     if (_.uniq(userIdsList).length !== userIdsList.length) {
-      const error = new Error('All user ids must be unique.');
+      const error = new PublicError('All user ids must be unique.');
       return this.responseError(res, error);
     }
     if (_.uniq(emailsList).length !== emailsList.length) {
-      const error = new Error('All emails must be unique.');
+      const error = new PublicError('All emails must be unique.');
       return this.responseError(res, error);
     }
 
@@ -68,12 +69,14 @@ export class MassMessagesMailingController extends Controller {
     const fullTextLength = fullText.length;
 
     if (subjectLength > subjectMaxLength) {
-      const error = new Error(`Subject length is exceeded. Subject max length is ${subjectMaxLength} symbols but got ${subjectLength} symbols.`);
+      const error = new PublicError(
+        `Subject length is exceeded. Subject max length is ${subjectMaxLength} symbols but got ${subjectLength} symbols.`,
+      );
       return this.responseError(res, error);
     }
 
     if (fullTextLength > fullTextMaxLength) {
-      const error = new Error(
+      const error = new PublicError(
         `Full text length is exceeded. Full text max length is ${fullTextMaxLength} symbols but got ${fullTextLength} symbols.`,
       );
       return this.responseError(res, error);
@@ -86,7 +89,7 @@ export class MassMessagesMailingController extends Controller {
       if (responseByUserIds.length < userIdsList.length) {
         const existingUserIds = responseByUserIds.map(({ userId }) => userId);
         const notExistingUserIds = userIdsList.filter((userId) => !existingUserIds.includes(userId));
-        const error = new Error(`Passed not existing userIds: ${notExistingUserIds.join(', ')}`);
+        const error = new PublicError(`Passed not existing userIds: ${notExistingUserIds.join(', ')}`);
         return this.responseError(res, error);
       }
 
@@ -99,7 +102,7 @@ export class MassMessagesMailingController extends Controller {
     if (responseByUserEmail.length < emailsList.length) {
       const existingUserEmails = responseByUserEmail.map(({ email }) => email);
       const notExistingUserEmails = emailsList.filter((email) => !existingUserEmails.includes(email));
-      const error = new Error(`Passed not existing user emails: ${notExistingUserEmails.join(', ')}`);
+      const error = new PublicError(`Passed not existing user emails: ${notExistingUserEmails.join(', ')}`);
       return this.responseError(res, error);
     }
 

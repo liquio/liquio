@@ -9,6 +9,7 @@ import { TaskGroupEntity } from '../entities/task_group';
 import { TaskTemplateEntity } from '../entities/task_template';
 import { DocumentTemplateEntity } from '../entities/document_template';
 import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Task controller.
@@ -62,7 +63,7 @@ export class TaskController extends Controller {
         const lastWorkflowHistory = await this.workflowBusiness.findLastWorkflowHistoryByWorkflowTemplateId(workflowTemplateId);
 
         if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
-          const error = new Error('Header Last-Workflow-History-Id expired.');
+          const error = new PublicError('Header Last-Workflow-History-Id expired.');
           (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
           throw error;
         }

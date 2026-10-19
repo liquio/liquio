@@ -66,7 +66,7 @@ describe('Assets Controller', () => {
         .expect(500)
         .expect((response: SupertestResponse) => {
           expect(response.body).toEqual({
-            error: { message: '500 - {"error":"Encryption failed"}' },
+            error: { message: 'Internal server error' },
             traceId: expect.any(String),
           });
         });

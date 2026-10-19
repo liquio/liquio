@@ -68,6 +68,6 @@ describe('MassMessagesMailingController.send', () => {
     await expect(controller.send({}, res)).resolves.toBeUndefined();
 
     expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ error: { message: 'boom' } }));
+    expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ error: { message: 'Internal server error' } }));
   });
 });

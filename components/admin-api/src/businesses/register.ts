@@ -3,6 +3,7 @@ import xlsx from 'node-xlsx';
 
 import { Exceptions } from '../exceptions';
 import { RegisterService } from '../services/register';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Register business.
@@ -409,7 +410,7 @@ export class RegisterBusiness {
   async importXlsx({ registerId, keyId, unique, clearRecords = false }, data, accessInfo) {
     try {
       const keyOrigin = await this.findKeyById(keyId);
-      if (keyOrigin?.registerId !== registerId) throw new Error('keyId has no relations with registerId');
+      if (keyOrigin?.registerId !== registerId) throw new PublicError('keyId has no relations with registerId');
 
       const loadedRecords = [];
 

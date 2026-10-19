@@ -5,6 +5,7 @@ import { Exceptions } from '../exceptions';
 import { UnitEntity } from '../entities/unit';
 import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, SUPPORT_ADMIN_UNIT, ADMIN_UNITS } from '../constants/unit';
 import { toLogUnit, toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 const UNIT_PREVIOUS_DATA_MAP = {
   basedOn: 'previousBasedOn',
@@ -686,7 +687,7 @@ export class UnitBusiness {
   async deleteById(id, unit, currentUser) {
     // Decline delete units(Security, System, Support).
     if (id === SECURITY_ADMIN_UNIT || id === SYSTEM_ADMIN_UNIT || id === SUPPORT_ADMIN_UNIT) {
-      throw new Error("Can't delete this unit.");
+      throw new PublicError("Can't delete this unit.");
     }
 
     const deletedUnit = await global.models.unit.deleteById(id);
@@ -853,7 +854,7 @@ export class UnitBusiness {
     for (const prop in unitsForEachUser) {
       for (const unit of unitsForEachUser[prop]) {
         if (unitsExclusiveRules.some((v) => v.includes(unit) && v.includes(unitId) && unit !== unitId)) {
-          throw new Error(`Unit exclusive rules error with user ${prop}.`);
+          throw new PublicError(`Unit exclusive rules error with user ${prop}.`);
         }
       }
     }

@@ -17,6 +17,7 @@ import { EventTemplateEntity } from '../entities/event_template';
 import { WorkflowHistoryEntity } from '../entities/workflow_history';
 import { NumberTemplateEntity } from '../entities/number_template';
 import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 const DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS = 1800;
 
@@ -98,7 +99,7 @@ export class BpmnWorkflowBusiness {
       typeof data.eventTemplates === 'undefined' ||
       !Array.isArray(data.eventTemplates)
     ) {
-      throw new Error('Invalid data.');
+      throw new PublicError('Invalid data.');
     }
 
     // Disable to import errors subscribers.

@@ -6,6 +6,7 @@ import { IdApiClient, appendTraceMeta, getIdApiClient } from '@liquio/back-core'
 import { Controller } from './controller';
 import { Token } from '../lib/token';
 import { UnitBusiness } from '../businesses/unit';
+import { PublicError } from '../lib/public_error';
 
 // Constants.
 const ROLES_SEPARATOR = ';';
@@ -325,7 +326,7 @@ export class AuthController extends Controller {
       if (units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
         return next();
       } else {
-        return this.responseError(res, new Error('Access denied.'), 403);
+        return this.responseError(res, new PublicError('Access denied.'), 403);
       }
     }
 
@@ -343,7 +344,7 @@ export class AuthController extends Controller {
       if (global.config.access.paths[path][method].units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
         return next();
       } else {
-        return this.responseError(res, new Error('Access denied.'), 403);
+        return this.responseError(res, new PublicError('Access denied.'), 403);
       }
     }
 
