@@ -3,7 +3,7 @@ const { ensureAtLoginPage, loginWithPersonalKey } = require('./auth');
 const { importRegister } = require('./register');
 const { importWorkflow } = require('./workflow');
 const { generateTestUser } = require('./user');
-const { getConfirmationPinFromDockerLogs, getDockerComposeLogs } = require('./docker');
+const { getConfirmationPinFromNotifyDb, getDockerComposeLogs } = require('./docker');
 const { createCabinetApi } = require('./cabinet_api');
 const ldap = require('./ldap');
 
@@ -28,7 +28,7 @@ module.exports = {
   generateTestUser,
 
   // Docker helpers
-  getConfirmationPinFromDockerLogs,
+  getConfirmationPinFromNotifyDb,
   getDockerComposeLogs,
 
   // Cabinet API helpers

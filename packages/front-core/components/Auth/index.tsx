@@ -351,10 +351,10 @@ class Auth extends React.Component<AuthProps, AuthComponentState> {
     }
 
     try {
-      const pingResult = (await actions.ping()) as { message?: string; processPid?: unknown };
-      const { message, processPid } = pingResult;
+      // Public /test/ping returns only the pong message, no process details.
+      const { message } = (await actions.ping()) as { message?: string };
 
-      if (message !== 'pong' || !processPid) {
+      if (message !== 'pong') {
         throw Error();
       }
 
