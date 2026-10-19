@@ -61,7 +61,7 @@ export class LdapController extends BaseController {
   async syncUser(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
 
-    if (!this.service('auth').isUserId(userId)) {
+    if (typeof userId !== 'string' || !this.service('auth').isUserId(userId)) {
       return this.responseError(res, ControllerErrorMessage.INVALID_USER_ID, HttpStatusCode.BadRequest);
     }
 

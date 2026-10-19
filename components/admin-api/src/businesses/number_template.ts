@@ -1,5 +1,6 @@
 import { Exceptions } from '../exceptions';
 import { NumberTemplateEntity } from '../entities/number_template';
+import { toLogUser } from '../lib/log_sanitize';
 
 /**
  * Number Template business.
@@ -90,7 +91,7 @@ export class NumberTemplateBusiness {
       await global.models.numberTemplate.create(new NumberTemplateEntity(data), numberTemplateTransaction);
       await numberTemplateTransaction.commit();
 
-      global.log.save('user-imported-number-template', { user, data: data });
+      global.log.save('user-imported-number-template', { user: toLogUser(user), data: data });
     } catch (error) {
       await numberTemplateTransaction.rollback();
       throw error;

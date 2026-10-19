@@ -1,15 +1,22 @@
 import bcrypt from 'bcrypt';
-import { matchedData, query } from 'express-validator';
+import { body, matchedData, query } from 'express-validator';
 import jwt from 'jsonwebtoken';
-import Sequelize, { Op, WhereOptions } from 'sequelize';
+import Sequelize, { Op, WhereAttributeHash, WhereOptions } from 'sequelize';
 
-import { DEFAULT_COOKIE_DOMAIN } from '../config';
+import { profileCookieOptions } from '../lib/cookie_options';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../lib/helpers';
+import { HttpError, isPublicError, publicError } from '../lib/http_error';
+import { legacyConfirmationQueryGuard } from '../lib/legacy_get_confirmation';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import { buildNamedClientAuthor, changedPrivilegedFields, checkNamedClientUpdate } from '../lib/privileged_user_update';
+import { publicServices } from '../lib/public_services';
+import { resolveSafeRedirect } from '../lib/safe_redirect';
+import { clampLimit, getUsersReadPolicy, hasFullRead, minimiseUser, toNonNegativeInt } from '../lib/user_read_policy';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
 import { getTaskTokenCacheKey } from '../services/auth.service';
+import { ProfileScopeError } from '../services/user.service';
 import { Express, NextFunction, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -30,8 +37,16 @@ export class UserController extends BaseController {
       [query('email').optional().isString(), query('phone').optional().isString(), this.handleValidation.bind(this)],
       this.promoSubscribe.bind(this),
     );
-    this.router.get('/user/info/email/send', [query('email').isString(), this.handleValidation.bind(this)], this.sendToNewEmailCode.bind(this));
-
+    // Confirmation codes and recipients must not travel in URLs (logs, history, Referer): POST with a body is the supported form (SE-3930 IF-05).
+    // The GET variants stay for one release behind `legacyGetConfirmation` (default true) and log a deprecation without the query.
+    const legacyGet = legacyConfirmationQueryGuard(this.log, this.config);
+    this.router.get(
+      '/user/info/email/send',
+      legacyGet,
+      [query('email').isString(), this.handleValidation.bind(this)],
+      this.sendToNewEmailCode.bind(this),
+    );
+    this.router.post('/user/info/email/send', [body('email').isString(), this.handleValidation.bind(this)], this.sendToNewEmailCode.bind(this));
     // User methods
     this.router.get(
       '/logoff/:service',
@@ -40,14 +55,24 @@ export class UserController extends BaseController {
       this.logOff.bind(this),
     );
     this.router.get('/user/info/setValidPhone', this.auth.authorise(), this.setValidPhone.bind(this));
+    this.router.post('/user/info/phone/send', this.auth.authorise(), this.sendPhoneConfirmation.bind(this));
+    this.router.post('/user/info/phone/confirm', this.auth.authorise(), this.confirmPhone.bind(this));
     this.router.get(
       '/removeConfirmCode',
+      legacyGet,
       [query('code').exists().isString(), this.handleValidation.bind(this)],
+      this.auth.authorise(),
+      this.clearConfCode.bind(this),
+    );
+    this.router.post(
+      '/removeConfirmCode',
+      [body('code').exists().isString(), this.handleValidation.bind(this)],
       this.auth.authorise(),
       this.clearConfCode.bind(this),
     );
     this.router.get(
       '/user/info/email/set',
+      legacyGet,
       [
         query('email').exists().isString(),
         query('code_email').exists().isString(),
@@ -57,18 +82,44 @@ export class UserController extends BaseController {
       this.auth.authorise(),
       this.setToNewEmail.bind(this),
     );
+    this.router.post(
+      '/user/info/email/set',
+      [
+        body('email').exists().isString(),
+        body('code_email').exists().isString(),
+        body('code_phone').optional().isString(),
+        this.handleValidation.bind(this),
+      ],
+      this.auth.authorise(),
+      this.setToNewEmail.bind(this),
+    );
     this.router.get(
       '/user/info/email/check_email_confirmation_code',
+      legacyGet,
       [query('email').exists().isString(), query('code_email').exists().isString(), this.handleValidation.bind(this)],
+      this.auth.authorise(),
+      this.checkEmailConfirmationCode.bind(this),
+    );
+    this.router.post(
+      '/user/info/email/check_email_confirmation_code',
+      [body('email').exists().isString(), body('code_email').exists().isString(), this.handleValidation.bind(this)],
       this.auth.authorise(),
       this.checkEmailConfirmationCode.bind(this),
     );
     this.router.get('/user/info', this.auth.authorise(), this.getUserInfo.bind(this));
     this.router.post('/user/info', this.auth.authorise(), this.updateUserInfo.bind(this));
+    this.router.post('/user/two_factor_auth', this.auth.authorise(), this.setTwoFactorAuth.bind(this));
     this.router.get('/user/jwt', this.auth.authorise(), this.getUserJwt.bind(this));
     this.router.get(
       '/user/info/phone/check_phone_confirmation_code',
+      legacyGet,
       [query('phone').exists().isString(), query('code_phone').exists().isString(), this.handleValidation.bind(this)],
+      this.auth.authorise(),
+      this.checkPhoneConfirmationCode.bind(this),
+    );
+    this.router.post(
+      '/user/info/phone/check_phone_confirmation_code',
+      [body('phone').exists().isString(), body('code_phone').exists().isString(), this.handleValidation.bind(this)],
       this.auth.authorise(),
       this.checkPhoneConfirmationCode.bind(this),
     );
@@ -78,14 +129,14 @@ export class UserController extends BaseController {
     this.router.get(
       '/user/info/email/check',
       [query('email').isString(), this.handleValidation.bind(this)],
-      this.auth.basic(),
+      this.auth.basic('user:read'),
       this.checkEmail.bind(this),
     );
     this.router.get(
       '/user',
       [
-        query('offset').isNumeric().default(0),
-        query('limit').isNumeric().default(20),
+        query('offset').optional().isInt({ min: 0 }).toInt(),
+        query('limit').optional().isInt({ min: 0 }).toInt(),
         query('id').optional().isString(),
         query('email').optional().isString(),
         query('phone').optional().isString(),
@@ -94,25 +145,25 @@ export class UserController extends BaseController {
         query('search').optional().isString(),
         this.handleValidation.bind(this),
       ],
-      this.auth.basic(),
+      this.auth.basic('user:read'),
       this.getUsers.bind(this),
     );
-    this.router.post('/user/create_local', this.auth.basic(), this.createUserLocal.bind(this));
-    this.router.get('/user/:id', this.auth.basic(), this.findUserById.bind(this));
-    this.router.delete('/user/:id', this.auth.basic(), this.deleteUser.bind(this));
-    this.router.post('/user/:id/logout', this.auth.basic(), this.logoutByUserId.bind(this));
-    this.router.get('/user/info/phone', this.auth.basic(), this.getUserInfoByPhone.bind(this));
-    this.router.post('/user/info/id', this.auth.basic(), this.getUsersInfoById.bind(this));
-    this.router.post('/user/info/ipn', this.auth.basic(), this.getUsersInfoByIpn.bind(this));
-    this.router.post('/user/info/edrpou', this.auth.basic(), this.getUsersInfoByEdrpou.bind(this));
-    this.router.post('/user/info/search', this.auth.basic(), this.searchUsers.bind(this));
-    this.router.delete('/user', this.auth.basic(), this.deleteUser.bind(this));
-    this.router.put('/user/info/onboarding', this.auth.basic(), this.updateUserOnboarding.bind(this));
-    this.router.put('/user/info/:id', this.auth.basic(), this.updateUserInfoById.bind(this));
-    this.router.post('/user/prepare', this.auth.basic(), this.prepareUser.bind(this));
+    this.router.post('/user/create_local', this.auth.basic('user:write'), this.createUserLocal.bind(this));
+    this.router.get('/user/:id', this.auth.basic('user:read'), this.findUserById.bind(this));
+    this.router.delete('/user/:id', this.auth.basic('user:admin'), this.deleteUser.bind(this));
+    this.router.post('/user/:id/logout', this.auth.basic('user:write'), this.logoutByUserId.bind(this));
+    this.router.get('/user/info/phone', this.auth.basic('user:read'), this.getUserInfoByPhone.bind(this));
+    this.router.post('/user/info/id', this.auth.basic('user:read'), this.getUsersInfoById.bind(this));
+    this.router.post('/user/info/ipn', this.auth.basic('user:read'), this.getUsersInfoByIpn.bind(this));
+    this.router.post('/user/info/edrpou', this.auth.basic('user:read'), this.getUsersInfoByEdrpou.bind(this));
+    this.router.post('/user/info/search', this.auth.basic('user:read'), this.searchUsers.bind(this));
+    this.router.delete('/user', this.auth.basic('user:admin'), this.deleteUser.bind(this));
+    this.router.put('/user/info/onboarding', this.auth.basic('user:write'), this.updateUserOnboarding.bind(this));
+    this.router.put('/user/info/:id', this.auth.basic('user:write'), this.updateUserInfoById.bind(this));
+    this.router.post('/user/prepare', this.auth.basic('user:write'), this.prepareUser.bind(this));
 
     // Password management methods
-    this.router.post('/user/password/set', this.auth.basic(), this.setPassword.bind(this));
+    this.router.post('/user/password/set', this.auth.basic('password:set'), this.setPassword.bind(this));
     this.router.post('/user/password/forgot', this.checkForgotPasswordConfig.bind(this), this.forgotPassword.bind(this));
     this.router.post('/user/password/reset', this.checkForgotPasswordConfig.bind(this), this.passwordReset.bind(this));
   }
@@ -195,6 +246,9 @@ export class UserController extends BaseController {
     if (scope.includes('password')) {
       responseUser.password = !!user.password;
     }
+    if (scope.includes('services') && responseUser.services) {
+      responseUser.services = publicServices(responseUser.services);
+    }
 
     res.send(responseUser);
   }
@@ -208,7 +262,6 @@ export class UserController extends BaseController {
     const fields = [
       'gender',
       'phone',
-      'email',
       'birthday',
       'useTwoFactorAuth',
       'twoFactorType',
@@ -233,17 +286,33 @@ export class UserController extends BaseController {
       'is_private_house',
     ];
 
+    // The token's scope bounds what it may write (same vocabulary as the fields `getUserInfo` returns).
+    const { scope = [] } = res.locals.oauth?.token ?? {};
+    if (!Array.isArray(scope)) {
+      res.status(400).send('Invalid scope');
+      return;
+    }
+
     // Define update query.
-    let query: WhereOptions;
+    let query: WhereAttributeHash<any>;
     try {
-      query = this.service('user').extractUpdateUserInfoParams(req, fields);
+      query = this.service('user').extractUpdateUserInfoParams(req, fields, scope);
     } catch (error: any) {
+      if (error instanceof ProfileScopeError) {
+        this.log.save('update-user-info-scope-denied', { userId, fields: error.fields }, 'warn');
+        res.status(403).send('Insufficient scope');
+        return;
+      }
       this.log.save('update-user-info-error', { userId, error: error.message, stack: error.stack }, 'error');
-      res.status(400).send(error.message);
+      res.status(400).send(publicError(error, 'Invalid request.'));
       return;
     }
 
     try {
+      if (query.valid) {
+        const currentUser = await this.service('auth').getUser({ userId });
+        query.valid = { ...currentUser?.valid, ...query.valid };
+      }
       const user: any = await this.service('auth').updateUser({ userId }, query);
 
       const changedUser = {
@@ -258,14 +327,112 @@ export class UserController extends BaseController {
         await saveSession(req, user);
       }
 
-      res.cookie('jwt', JSON.stringify(changedUser), {
-        domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-      });
+      res.cookie('jwt', JSON.stringify(changedUser), profileCookieOptions(req, this.config));
       res.send('ok');
     } catch (error: any) {
       this.log.save('update-user-error', { userId, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error?.message);
+      res.status(500).send(publicError(error));
     }
+  }
+
+  /**
+   * Turn phone two factor auth on or off with the user token (ID-09d).
+   * Enabling needs a verified phone. Disabling active phone 2FA needs a fresh SMS code sent to the current phone.
+   * TOTP is managed by the `/totp/*` routes only.
+   */
+  async setTwoFactorAuth(req: Request, res: Response): Promise<void> {
+    const userId = (req.user as any).id;
+    const { useTwoFactorAuth, twoFactorType, code } = req.body ?? {};
+
+    const { scope = [] } = res.locals.oauth?.token ?? {};
+    if (!Array.isArray(scope) || !(scope.includes('profile:write') || scope.includes('useTwoFactorAuth'))) {
+      this.log.save('two-factor-auth-scope-denied', { userId }, 'warn');
+      res.status(403).send('Insufficient scope');
+      return;
+    }
+
+    const enable = [true, 'true', 1].includes(useTwoFactorAuth);
+    const isBoolean = [true, 'true', 1, false, 'false', 0].includes(useTwoFactorAuth);
+    const reject = (status: number, reason: string, message: string, user?: any) => {
+      this.log.save(
+        'two-factor-auth-rejected',
+        { userId, enable, previousEnabled: !!user?.useTwoFactorAuth, previousType: user?.twoFactorType, reason },
+        'warn',
+      );
+      res.status(status).send({ error: message });
+    };
+
+    if (!isBoolean) {
+      return reject(400, 'invalid-flag', '`useTwoFactorAuth` should be a boolean.');
+    }
+    if (twoFactorType !== undefined && twoFactorType !== null && twoFactorType !== 'phone') {
+      return reject(400, 'unsupported-type', 'Only phone two factor auth can be set here.');
+    }
+    if (code !== undefined && typeof code !== 'string') {
+      return reject(400, 'invalid-code', '`code` should be a string.');
+    }
+
+    try {
+      const user: any = await this.service('auth').getUser({ userId });
+      if (!user) {
+        return reject(404, 'user-not-found', 'User not found.');
+      }
+      const previousEnabled = !!user.useTwoFactorAuth;
+      if (previousEnabled && user.twoFactorType === 'totp') {
+        return reject(400, 'totp-active', 'Two factor auth by TOTP can be changed only with TOTP code.', user);
+      }
+
+      if (enable) {
+        if (!user.phone || user.valid?.phone !== true) {
+          return reject(400, 'phone-not-verified', 'Verify phone first.', user);
+        }
+      } else if (previousEnabled) {
+        if (!code) {
+          return reject(400, 'proof-missing', 'Confirmation code is required to disable two factor auth.', user);
+        }
+        if (!(await this.service('auth').consumePhoneChallenge(userId, user.phone, code))) {
+          return reject(400, 'proof-invalid', 'Confirmation code is invalid.', user);
+        }
+      }
+
+      const updated: any = await this.service('auth').updateUser(
+        { userId },
+        { useTwoFactorAuth: enable, twoFactorType: enable ? 'phone' : user.twoFactorType },
+      );
+      if (req.session.passport?.user && updated) {
+        await saveSession(req, updated);
+      }
+      await this.model('userAdminAction').create({
+        user_id: userId,
+        data: {
+          changes: { twoFactor: enable ? 'phone enabled' : 'phone disabled' },
+          previous: { useTwoFactorAuth: previousEnabled, twoFactorType: user.twoFactorType },
+        } as any,
+        created_by: { userId } as any,
+        action_type: 'update',
+      });
+      this.log.save('two-factor-auth-changed', { userId, enable, previousEnabled, previousType: user.twoFactorType }, 'info');
+      res.send('ok');
+    } catch (error: any) {
+      this.log.save('two-factor-auth-error', { userId, error: error.message, stack: error.stack }, 'error');
+      res.status(500).send(publicError(error));
+    }
+  }
+
+  private minimiseForClient(req: Request, user: any) {
+    return minimiseUser(user, hasFullRead(req.serviceClient, getUsersReadPolicy(this.config)));
+  }
+
+  private minimiseListForClient(req: Request, users: any) {
+    return Array.isArray(users) ? users.map((user) => this.minimiseForClient(req, user)) : users;
+  }
+
+  // Answers 400 and returns true when a lookup batch is bigger than the cap.
+  private isBatchTooLarge(res: Response, values: unknown[]): boolean {
+    const { maxBatch } = getUsersReadPolicy(this.config);
+    if (values.length <= maxBatch) return false;
+    res.status(400).send(`At most ${maxBatch} values are allowed per request`);
+    return true;
   }
 
   /**
@@ -281,9 +448,10 @@ export class UserController extends BaseController {
       }
 
       const user = await this.service('auth').getUser({ phone });
-      res.status(!user ? 404 : 200).send(user);
-    } catch (err) {
-      res.status(400).send(err);
+      res.status(!user ? 404 : 200).send(user && this.minimiseForClient(req, user));
+    } catch (error: any) {
+      this.log.save('get-user-info-by-phone-error', { error: error?.message, stack: error?.stack }, 'error');
+      res.status(400).send(publicError(error, 'Bad request.'));
     }
   }
 
@@ -294,6 +462,7 @@ export class UserController extends BaseController {
     try {
       let userIds = Array.isArray(req.body.id) ? req.body.id : [req.body.id];
       userIds = userIds.filter((v: any) => this.service('auth').isUserId(v));
+      if (this.isBatchTooLarge(res, userIds)) return;
 
       const params: any = {};
       if (req.query.brief_info === 'true') {
@@ -301,10 +470,10 @@ export class UserController extends BaseController {
       }
 
       const users = await this.service('auth').getUsersAsync({ userId: { [Op.in]: userIds } }, params);
-      res.status(200).send(users);
+      res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-id-error', { userId: req.body.id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -320,6 +489,7 @@ export class UserController extends BaseController {
       res.status(400).send([]);
       return;
     }
+    if (this.isBatchTooLarge(res, ipnCollection)) return;
 
     try {
       const query = {
@@ -331,10 +501,10 @@ export class UserController extends BaseController {
       };
 
       const users = await this.service('auth').getUsersAsync(query);
-      res.status(200).send(users);
+      res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-ipn-error', { ipn: req.body.ipn, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -350,14 +520,15 @@ export class UserController extends BaseController {
       res.status(400).send([]);
       return;
     }
+    if (this.isBatchTooLarge(res, edrpouCollection)) return;
 
     try {
       const query = { edrpou: { [Op.in]: edrpouCollection } };
       const users = await this.service('auth').getUsersAsync(query);
-      res.status(200).send(users);
+      res.status(200).send(this.minimiseListForClient(req, users));
     } catch (error: any) {
       this.log.save('get-users-info-by-edrpou-error', { edrpou: req.body.edrpou, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -368,6 +539,10 @@ export class UserController extends BaseController {
     try {
       // Define params.
       const searchString = req.body.searchString;
+      if (typeof searchString !== 'string' || searchString.trim() === '') {
+        res.status(400).send('searchString is required');
+        return;
+      }
       const [lastName, firstName, middleName] = searchString.split(' ');
       let query: WhereOptions;
       if (typeof lastName !== 'undefined' && typeof firstName !== 'undefined') {
@@ -383,16 +558,17 @@ export class UserController extends BaseController {
           last_name: { [Op.iLike]: `${lastName}%` },
         };
       }
-      const limit = req.body.limit ?? DEFAULT_LIMIT;
-      const offset = req.body.offset ?? 0;
+      const limit = clampLimit(req.body.limit, DEFAULT_LIMIT, getUsersReadPolicy(this.config).maxLimit);
+      const offset = toNonNegativeInt(req.body.offset, 0);
 
       const params = { offset, limit };
       const result = (await this.service('auth').getUsersWithCountAsync(query, params)) as { count: number; users: any };
+      this.log.save('search-users', { client: req.serviceClient?.name, limit, offset, count: result.users.length }, 'info');
       res.header('total', result.count.toString());
-      this.responseData(res, result.users);
+      this.responseData(res, this.minimiseListForClient(req, result.users));
     } catch (error: any) {
       this.log.save('search-users-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -409,11 +585,24 @@ export class UserController extends BaseController {
         ipn,
         role,
         search,
-        offset = 0,
-        limit = 20,
+        offset: rawOffset,
+        limit: rawLimit,
       } = matchedData(req, {
         locations: ['query'],
       });
+      const policy = getUsersReadPolicy(this.config);
+      const limit = clampLimit(rawLimit, 20, policy.maxLimit);
+      const offset = toNonNegativeInt(rawOffset, 0);
+      const filterKeys = Object.entries({ id, email, phone, ipn, role, search })
+        .filter(([, value]) => typeof value === 'string' && value.trim() !== '')
+        .map(([key]) => key);
+
+      // A named client without full read access can't page the whole table.
+      if (!filterKeys.length && !hasFullRead(req.serviceClient, policy)) {
+        this.log.save('get-users-unfiltered-rejected', { client: req.serviceClient?.name }, 'warn');
+        res.status(403).send('A filter is required');
+        return;
+      }
       const query: WhereOptions<UserAttributes> = {};
 
       if (id) {
@@ -434,11 +623,12 @@ export class UserController extends BaseController {
 
       const params = { offset, limit, order: [['createdAt', 'desc']] };
       const result: any = await this.service('auth').getUsersWithCountAsync(query, params);
+      this.log.save('get-users', { client: req.serviceClient?.name, filterKeys, limit, offset, count: result.users.length }, 'info');
       res.header('total', result.count);
-      this.responseData(res, result.users);
+      this.responseData(res, this.minimiseListForClient(req, result.users));
     } catch (error: any) {
       this.log.save('get-users-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -448,7 +638,7 @@ export class UserController extends BaseController {
   async findUserById(req: Request, res: Response): Promise<void> {
     try {
       const user = await this.service('auth').getUser({ userId: req.params.id });
-      res.status(200).send(user);
+      res.status(200).send(this.minimiseForClient(req, user));
     } catch (error: any) {
       this.log.save('find-user-by-id-error', { userId: req.params.id, error: error.message, stack: error.stack }, 'error');
       res.status(404).send('User not found');
@@ -462,7 +652,7 @@ export class UserController extends BaseController {
     try {
       const userId = req.params.id;
 
-      if (!this.service('auth').isUserId(userId)) {
+      if (typeof userId !== 'string' || !this.service('auth').isUserId(userId)) {
         res.status(400).send('Invalid user ID');
         return;
       }
@@ -484,7 +674,7 @@ export class UserController extends BaseController {
       res.status(201).send({ data: { accepted: true } });
     } catch (error: any) {
       this.log.save('logout-by-user-id-error', { userId: req.params.id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -517,7 +707,9 @@ export class UserController extends BaseController {
         userId: userSession.userId,
       });
 
-      res.redirect(forward);
+      // Only local paths or exact registered client redirect URIs are allowed; anything else goes to `/`.
+      const registeredRedirectUris = await this.service('auth').getRegisteredRedirectUris();
+      res.redirect(resolveSafeRedirect(forward, registeredRedirectUris));
     } catch (error: any) {
       this.log.save(
         'log-off-error',
@@ -528,36 +720,56 @@ export class UserController extends BaseController {
         },
         'error',
       );
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
   /**
-   * Set valid phone.
+   * Retired endpoint: phone verification requires a POST with an SMS code. Does not modify anything.
    */
-  async setValidPhone(req: Request, res: Response): Promise<void> {
+  async setValidPhone(_req: Request, res: Response): Promise<void> {
+    res.status(410).send({ error: 'Use POST /user/info/phone/confirm with a valid SMS code.' });
+  }
+
+  /**
+   * Send an SMS code bound to the authenticated user and the candidate phone.
+   */
+  async sendPhoneConfirmation(req: Request, res: Response): Promise<void> {
+    const userId = (req.user as any).id;
+    const { phone } = req.body ?? {};
+    if (typeof phone !== 'string' || !phone.trim()) {
+      res.status(400).send({ error: 'Phone is required.' });
+      return;
+    }
+
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
+      if (!(await this.service('auth').consumeSendQuota('phone', phone, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
         return;
       }
+      res.send(await this.service('auth').sendPhoneConfirmCode(phone, userId));
+    } catch (error: any) {
+      this.log.save('send-user-phone-confirmation-error', { userId, error: error.message }, 'error');
+      res.status(500).send({ error: 'Unable to send phone confirmation code.' });
+    }
+  }
 
-      const user = await this.service('auth').getUser({ userId: (req.user as any).id });
-
-      const updatedUser = await this.service('auth').updateUser(
-        { userId: user.userId },
-        {
-          valid: {
-            ...user.valid,
-            phone: true,
-          },
-        },
-      );
-
+  /**
+   * Verify the phone with the SMS code issued to this user for exactly this phone.
+   */
+  async confirmPhone(req: Request, res: Response): Promise<void> {
+    const userId = (req.user as any).id;
+    try {
+      const updatedUser = await this.service('auth').confirmUserPhone(userId, req.body?.phone, req.body?.code);
+      if (!updatedUser) {
+        res.status(400).send({ error: 'Invalid phone confirmation code.' });
+        return;
+      }
+      if (req.session.passport?.user?.userId === updatedUser.userId) await saveSession(req, updatedUser);
       res.send(updatedUser);
     } catch (error: any) {
-      this.log.save('set-valid-phone-error', { userId: (req.user as any).id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      this.log.save('confirm-user-phone-error', { userId, error: error.message, stack: error.stack }, 'error');
+      res.status(500).send({ error: 'Unable to confirm phone.' });
     }
   }
 
@@ -575,8 +787,6 @@ export class UserController extends BaseController {
         return;
       }
 
-      const user: any = await this.service('auth').getUser(email ? { email: email.toLowerCase() } : { phone });
-
       let redirectUri = this.config.oauth.defaults.redirect_uri;
       if (Array.isArray(redirectUri)) {
         redirectUri = redirectUri[0];
@@ -588,19 +798,16 @@ export class UserController extends BaseController {
         return;
       }
 
-      if (user || (user.status && user.status != 'import')) {
-        let query = `client_id=${client.clientId}&redirect_uri=${redirectUri}&state=subscriptions`;
-        if (email) {
-          query += `&user[email]=${email}`;
-        }
-        res.redirect(`/authorise?${query}`);
-      } else {
-        req.session.user = { email, phone };
-        req.session.save(() => res.redirect('/promo'));
+      // Same redirect for registered and unknown addresses, so the endpoint is not an account-existence oracle.
+      // The authorise flow itself decides between sign-in and sign-up.
+      let query = `client_id=${encodeURIComponent(client.clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=subscriptions`;
+      if (email) {
+        query += `&user[email]=${encodeURIComponent(email)}`;
       }
+      res.redirect(`/authorise?${query}`);
     } catch (error: any) {
       this.log.save('promo-subscribe-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -609,12 +816,12 @@ export class UserController extends BaseController {
    */
   async clearConfCode(req: Request, res: Response): Promise<void> {
     try {
-      const { code } = matchedData(req, { locations: ['query'] });
+      const { code } = matchedData(req, { locations: ['body', 'query'] });
       await this.service('auth').removeConfirmCode({ code });
       res.send('');
     } catch (error: any) {
       this.log.save('clear-conf-code-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -624,9 +831,14 @@ export class UserController extends BaseController {
   async sendToNewEmailCode(req: Request, res: Response): Promise<void> {
     try {
       let { email } = matchedData(req, {
-        locations: ['query'],
+        locations: ['body', 'query'],
       });
       email = email.toLowerCase();
+
+      if (!(await this.service('auth').consumeSendQuota('email', email, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
 
       // Delete old confirmation code.
       await this.service('auth').removeConfirmCode({ email });
@@ -660,7 +872,7 @@ export class UserController extends BaseController {
       res.send();
     } catch (error: any) {
       this.log.save('send-to-new-email-code-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -696,7 +908,7 @@ export class UserController extends BaseController {
    * Set new email.
    */
   async setToNewEmail(req: Request, res: Response): Promise<void> {
-    let { email, code_email: emailCode, code_phone: phoneCode } = matchedData(req, { locations: ['query'] });
+    let { email, code_email: emailCode, code_phone: phoneCode } = matchedData(req, { locations: ['body', 'query'] });
     email = email.toLowerCase();
 
     let user;
@@ -704,7 +916,7 @@ export class UserController extends BaseController {
       user = await this.service('auth').getUser({ userId: (req.user as any).id });
     } catch (error: any) {
       this.log.save('set-to-new-email-get-user-error', { userId: (req.user as any).id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
       return;
     }
 
@@ -727,7 +939,7 @@ export class UserController extends BaseController {
           await this.service('auth').incrementConfirmCodeCounterAsync({
             phone: user.phone,
           });
-          throw new Error('Invalid phone confirmation code.');
+          throw new HttpError(400, 'Invalid phone confirmation code.');
         }
       }
 
@@ -739,10 +951,10 @@ export class UserController extends BaseController {
         await this.service('auth').removeConfirmCode({ email });
       } else {
         await this.service('auth').incrementConfirmCodeCounterAsync({ email });
-        throw new Error('Invalid email confirmation code.');
+        throw new HttpError(400, 'Invalid email confirmation code.');
       }
     } catch (err) {
-      this.log.save('set-to-new-email-check-code-error', { email, err }, 'error');
+      this.log.save('set-to-new-email-check-code-error', { email, error: (err as any)?.message }, 'error');
       res.status(400).send({ error: 'Invalid confirmation code.' });
       return;
     }
@@ -759,7 +971,7 @@ export class UserController extends BaseController {
       res.send(updatedUser);
     } catch (error: any) {
       this.log.save('set-to-new-email-update-user-error', { userId: (req.user as any).id, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
     }
   }
 
@@ -767,7 +979,7 @@ export class UserController extends BaseController {
    * Check phone confirmation code.
    */
   async checkPhoneConfirmationCode(req: Request, res: Response): Promise<void> {
-    const { phone, code_phone: code } = matchedData(req, { locations: ['query'] });
+    const { phone, code_phone: code } = matchedData(req, { locations: ['body', 'query'] });
 
     try {
       const codeEntity: any = await this.service('auth').getValidConfirmCode({
@@ -777,14 +989,14 @@ export class UserController extends BaseController {
 
       if (!codeEntity?.code) {
         await this.service('auth').incrementConfirmCodeCounterAsync({ phone });
-        throw new Error('Invalid phone confirmation code.');
+        throw new HttpError(400, 'Invalid phone confirmation code.');
       }
       await this.service('auth').removeConfirmCode({ phone: phone! });
 
       res.status(200).send({ isCodeConfirmed: true });
     } catch (error: any) {
       this.log.save('user-controller|check-phone-confirmation-code|error', error.message, 'error');
-      res.status(400).send({ isCodeConfirmed: false, error: error.message });
+      res.status(isPublicError(error) ? 400 : 500).send({ isCodeConfirmed: false, error: publicError(error) });
     }
   }
 
@@ -792,7 +1004,7 @@ export class UserController extends BaseController {
    * Check email confirmation code.
    */
   async checkEmailConfirmationCode(req: Request, res: Response): Promise<void> {
-    const { email, code_email: code } = matchedData(req, { locations: ['query'] });
+    const { email, code_email: code } = matchedData(req, { locations: ['body', 'query'] });
 
     try {
       const codeEntity: any = await this.service('auth').getValidConfirmCode({ email, code });
@@ -801,14 +1013,14 @@ export class UserController extends BaseController {
         const { code } = codeEntity ?? {};
         if (!code) {
           await this.service('auth').incrementConfirmCodeCounterAsync({ email });
-          throw new Error('Invalid email confirmation code.');
+          throw new HttpError(400, 'Invalid email confirmation code.');
         }
 
         await this.service('auth').removeConfirmCode({ email });
       }
     } catch (error: any) {
       this.log.save('user-controller|check-email-confirmation-code|error', error.message, 'error');
-      res.status(400).send({ isCodeConfirmed: false, error: error.message });
+      res.status(isPublicError(error) ? 400 : 500).send({ isCodeConfirmed: false, error: publicError(error) });
       return;
     }
 
@@ -830,7 +1042,7 @@ export class UserController extends BaseController {
       user = await this.service('auth').updateUser({ userId }, { onboardingTaskId, needOnboarding });
     } catch (error: any) {
       this.log.save('update-user-onboarding-get-user-error', { userId, error: error.message, stack: error.stack }, 'error');
-      res.status(500).send(error.message);
+      res.status(500).send(publicError(error));
       return;
     }
 
@@ -848,9 +1060,7 @@ export class UserController extends BaseController {
 
     await saveSession(req, user);
 
-    res.cookie('jwt', JSON.stringify(changedUser), {
-      domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-    });
+    res.cookie('jwt', JSON.stringify(changedUser), profileCookieOptions(req, this.config));
     res.send('ok');
   }
 
@@ -859,6 +1069,10 @@ export class UserController extends BaseController {
    */
   async updateUserInfoById(req: Request, res: Response): Promise<void> {
     const userId = req.params.id;
+    if (typeof userId !== 'string') {
+      res.status(400).send('Invalid user ID');
+      return;
+    }
 
     const fieldMap: Record<string, keyof UserAttributes> = {
       email: 'email',
@@ -892,6 +1106,17 @@ export class UserController extends BaseController {
       twoFactorType: 'twoFactorType',
     };
 
+    // Named service clients are gated (KS-24). The legacy shared secret keeps its behaviour while it is allowed.
+    const namedClient = req.serviceClient && !req.serviceClient.legacy ? req.serviceClient : undefined;
+    if (namedClient) {
+      const rejection = checkNamedClientUpdate(req.body, namedClient, this.config.roles);
+      if (rejection) {
+        this.log.save('update-user-info-rejected', { userId, client: namedClient.name, reason: rejection.message }, 'warn');
+        res.status(rejection.status).send(rejection.message);
+        return;
+      }
+    }
+
     const data: Partial<UserAttributes> = {};
     for (const [key, value] of Object.entries(fieldMap).filter(([key]) => typeof req.body[key] !== 'undefined')) {
       data[value] = req.body[key];
@@ -916,35 +1141,55 @@ export class UserController extends BaseController {
       data.addressStruct = user.addressStruct;
     }
 
+    // A changed email is not verified (GI-06). Named clients cannot send an email, so this covers the legacy shared secret.
+    const normalizeEmail = (value: unknown) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
+    if (typeof data.email !== 'undefined' && normalizeEmail(data.email) !== normalizeEmail(user.email)) {
+      data.valid = { phone: false, ...user.valid, email: false };
+    }
+
+    // Same for a changed phone (KS-32): the legacy shared secret can send one, and it must be confirmed again.
+    const normalizePhone = (value: unknown) => (typeof value === 'string' ? value.replace(/[\s()-]/g, '') : value);
+    if (typeof data.phone !== 'undefined' && normalizePhone(data.phone) !== normalizePhone(user.phone)) {
+      data.valid = { email: false, ...user.valid, ...data.valid, phone: false };
+    }
+
     try {
       const updatedUser: any = await this.service('auth').updateUser({ userId }, data);
 
       // Save in history blocking/unblocking of user.
+      const createdBy = namedClient ? buildNamedClientAuthor(namedClient, req.body.updateInitiator) : req.body.updateInitiator;
       if (updatedUser.isActive !== user.isActive) {
         await this.model('userAdminAction').create({
           user_id: userId,
           data: updatedUser,
-          created_by: req.body.updateInitiator,
+          created_by: createdBy,
           action_type: user.isActive ? 'block' : 'unblock',
         });
       }
 
-      const changedUser = {
-        _id: updatedUser._id,
-        first_name: updatedUser.first_name,
-        last_name: updatedUser.last_name,
-        avaUrl: updatedUser.avaUrl ?? avatarByGender(updatedUser.gender),
-      };
+      if (namedClient) {
+        // Audit the other privileged changes and cut the target user off. The caller session is never touched.
+        const changedFields = changedPrivilegedFields(req.body).filter((field) => field !== 'isActive');
+        if (changedFields.length) {
+          await this.model('userAdminAction').create({
+            user_id: userId,
+            data: {
+              changes: Object.fromEntries(changedFields.map((field) => [field, req.body[field]])),
+              previous: Object.fromEntries(changedFields.map((field) => [field, (user as any)[field]])),
+            } as any,
+            created_by: createdBy,
+            action_type: 'update',
+          });
+        }
+        if (changedFields.length || (updatedUser.isActive === false && user.isActive !== false)) {
+          await this.service('auth').revokeUserAccess(userId, { ignoreCacheErrors: true });
+        }
+      }
 
-      await saveSession(req, updatedUser);
-
-      res.cookie('jwt', JSON.stringify(changedUser), {
-        domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-      });
       res.send('ok');
     } catch (error: any) {
       this.log.save('update-user-info-update-user-error', { userId, error: error.message, stack: error.stack }, 'error');
-      res.status(400).send(error.message);
+      res.status(isPublicError(error) ? 400 : 500).send(publicError(error));
     }
   }
 
@@ -953,7 +1198,7 @@ export class UserController extends BaseController {
    */
   async prepareUser(req: Request, res: Response): Promise<void> {
     const { name, surname, middlename, ipn, email, edrpou } = req.body;
-    this.log.save('prepare-user', { body: req.body }, 'info');
+    this.log.save('prepare-user', { email, ipn, edrpou }, 'info');
 
     const userCode = calculateUserCode(ipn, edrpou);
 
@@ -991,10 +1236,9 @@ export class UserController extends BaseController {
           last_name: surname,
           middle_name: middlename,
         });
-      } catch (error) {
-        return this.responseError(res, {
-          error: "Can't create new user in User table: " + error,
-        });
+      } catch (error: any) {
+        this.log.save('prepare-user-create-user-error', { error: error?.message, stack: error?.stack }, 'error');
+        return this.responseError(res, "Can't create new user in User table.");
       }
       if (!newUser?.userId) {
         return this.responseError(res, 'Error creating new user.');
@@ -1011,10 +1255,9 @@ export class UserController extends BaseController {
           provider_id: newUserIpn,
           data: {},
         });
-      } catch (error) {
-        return this.responseError(res, {
-          error: "Can't create new user services: " + error,
-        });
+      } catch (error: any) {
+        this.log.save('prepare-user-create-user-services-error', { error: error?.message, stack: error?.stack }, 'error');
+        return this.responseError(res, "Can't create new user services.");
       }
       if (!newUserServices?.userId) {
         return this.responseError(res, 'Error creating new user.');
@@ -1057,7 +1300,24 @@ export class UserController extends BaseController {
 
   async setPassword(req: Request, res: Response): Promise<void> {
     const userId = req.body.userId;
-    const email = req.body.email;
+    const serviceName = req.serviceClient?.name ?? 'unknown';
+    const allowAdminSet = this.config.passwordManager?.allowAdminSet !== false;
+
+    // The route never creates or re-enables a local login when the local provider is off.
+    if (!this.config.auth_providers?.local?.isEnabled) {
+      res.status(404).send({ error: 'Local authentication is disabled' });
+      return;
+    }
+
+    // The email is never taken from the request: it must already be a verified property of the user.
+    if (req.body.email !== undefined) {
+      res.status(400).send({ error: '`email` is not accepted' });
+      return;
+    }
+    if (typeof userId !== 'string' || !userId) {
+      res.status(400).send({ error: '`userId` is required' });
+      return;
+    }
 
     try {
       // Make sure that the user exists.
@@ -1065,75 +1325,99 @@ export class UserController extends BaseController {
         .findOne({ where: { userId } })
         .then((row) => row?.dataValues);
       if (!user) {
-        this.log.save('set-password-error|user-not-found', { userId, email });
+        this.log.save('set-password-error|user-not-found', { userId, service: serviceName });
         res.status(404).send({ error: 'User not found' });
         return;
       }
-
-      // Validate email.
-      if (!email && !user.email) {
-        res.status(400).send({ error: "`email` is required if user doesn't have one" });
+      if (!user.email) {
+        res.status(400).send({ error: 'User has no email' });
         return;
       }
 
-      // Validate password.
-      const password = req.body.password;
-      if (!password) {
-        this.log.save('set-password-error|password-required', { userId, email });
-        res.status(400).send({ error: '`password` is required' });
-        return;
-      }
-
-      // Make sure that the password is strong enough
-      const { strong, reason } = this.service('passwordManager').isStrongPassword(password);
-      if (!strong) {
-        this.log.save('set-password-error|weak-password', { userId, email, reason });
-        res.status(400).send({ error: reason });
-        return;
-      }
-
-      // Create a password hash.
-      const passwordHash = await bcrypt.hash(password, HASHING_SALT_ROUNDS);
-
-      // Try to find existing service record.
       const service = await this.model('userServices')
-        .findOne({
-          where: { userId, provider: 'local' },
-        })
+        .findOne({ where: { userId, provider: 'local' } })
         .then((row) => row?.dataValues);
+      const passwordManager = this.service('passwordManager');
+      const { password: _oldHash, ...currentData } = (service?.data ?? {}) as any;
+      // Keep the other keys, drop any outstanding reset token.
+      delete currentData.resetPasswordToken;
+      delete currentData.resetPasswordTokenHash;
+      delete currentData.resetPasswordTokenExpireAt;
+      const oldPasswords = currentData.oldPasswords ?? [];
 
-      if (!service) {
-        // Create a new one.
-        await this.model('userServices').create({
-          userId,
-          provider_id: email ?? user.email,
-          provider: 'local',
-          data: {
-            password: passwordHash,
-            oldPasswords: [],
-            isChangeRequired: true, // raise the flag for the user to change the password on login
-          },
-        });
+      let mode: 'password' | 'reset-email';
+      let newData: Record<string, any>;
+      let token: string | undefined;
 
-        // Overwrite the email if it's different.
-        if (email && email !== user.email) {
-          await this.model('user').update({ email }, { where: { userId } });
+      if (allowAdminSet) {
+        // Validate password.
+        const password = req.body.password;
+        if (!password) {
+          this.log.save('set-password-error|password-required', { userId, service: serviceName });
+          res.status(400).send({ error: '`password` is required' });
+          return;
         }
+        const { strong, reason } = passwordManager.isStrongPassword(password);
+        if (!strong) {
+          this.log.save('set-password-error|weak-password', { userId, service: serviceName, reason });
+          res.status(400).send({ error: reason });
+          return;
+        }
+        mode = 'password';
+        newData = {
+          ...currentData,
+          password: await bcrypt.hash(password, HASHING_SALT_ROUNDS),
+          isChangeRequired: true, // raise the flag for the user to change the password on login
+          oldPasswords,
+        };
       } else {
-        // Update the existing one.
-        await this.model('userServices').update(
-          {
-            data: {
-              password: passwordHash,
-              isChangeRequired: true, // raise the flag for the user to change the password on login
-              oldPasswords: (service.data as any).oldPasswords ?? [],
-            },
-          },
-          { where: { userId, provider: 'local' } },
-        );
+        // A caller-chosen password is not accepted: issue a single-use reset token, delivered to the user's email only.
+        if (req.body.password !== undefined) {
+          res.status(400).send({ error: '`password` is not accepted' });
+          return;
+        }
+        if (!service) {
+          res.status(409).send({ error: 'User has no local login' });
+          return;
+        }
+        const { isForgotPasswordEnabled, resetPasswordUrl } = this.config.auth_providers.local;
+        if (!isForgotPasswordEnabled || !resetPasswordUrl) {
+          res.status(409).send({ error: 'Password reset is not configured' });
+          return;
+        }
+        const { resetPasswordTokenExpiration = 3600 } = this.config.auth_providers.local;
+        mode = 'reset-email';
+        token = passwordManager.generateSecureToken();
+        newData = {
+          ...currentData,
+          ...(_oldHash ? { password: _oldHash } : {}),
+          resetPasswordTokenHash: passwordManager.hashToken(token),
+          resetPasswordTokenExpireAt: Date.now() + resetPasswordTokenExpiration * 1000,
+        };
       }
 
-      this.log.save('set-password-success', { userId, email });
+      // Store the credentials and revoke every session, code and token issued before, in one transaction.
+      const changed = await this.service('auth').updateLocalPassword(userId, newData, { providerId: user.email });
+      if (!changed) throw new Error('Unable to update local credentials');
+
+      await this.model('userAdminAction').create({
+        user_id: userId,
+        data: { action: 'password-set', mode } as any,
+        created_by: { service: serviceName } as any,
+        action_type: 'update',
+      });
+
+      if (token) {
+        const {
+          resetPasswordSubject = 'Запит на скидання паролю',
+          resetPasswordBody = 'Перейдіть за посиланням для скидання паролю: {{link}}',
+          resetPasswordUrl,
+        } = this.config.auth_providers.local;
+        const link = `${resetPasswordUrl}?${new URLSearchParams({ token, email: user.email }).toString()}`;
+        await this.service('notify').sendMail(user.email, resetPasswordBody.replace('{{link}}', link), resetPasswordSubject);
+      }
+
+      this.log.save('set-password-success', { userId, service: serviceName, mode });
       res.send({ success: true });
     } catch (error: any) {
       this.log.save('set-password-error', { userId, error: error.message, stack: error.stack }, 'error');
@@ -1341,7 +1625,7 @@ export class UserController extends BaseController {
   async forgotPassword(req: Request, res: Response): Promise<void> {
     const config = this.config.auth_providers.local;
 
-    this.log.save('forgot-password-request', { body: req.body }, 'info');
+    this.log.save('forgot-password-request', { email: req.body?.email }, 'info');
 
     // Validate the request parameters
     const { email } = req.body;
@@ -1355,6 +1639,12 @@ export class UserController extends BaseController {
     }
 
     try {
+      // Limit reset mails per address and per source, whether or not the account exists (no enumeration signal).
+      if (!(await this.service('auth').consumeSendQuota('email', email, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
+
       const localService = await this.model('userServices')
         .findOne({
           where: { provider: 'local', provider_id: email },
@@ -1369,9 +1659,10 @@ export class UserController extends BaseController {
           resetPasswordTokenExpiration = 3600,
         } = config;
 
-        // Update the service record
+        // Update the service record: store only the token digest; a new request replaces (invalidates) any outstanding token.
         const token = this.service('passwordManager').generateSecureToken();
-        (localService.data as any).resetPasswordToken = token;
+        delete (localService.data as any).resetPasswordToken; // Legacy plaintext token.
+        (localService.data as any).resetPasswordTokenHash = this.service('passwordManager').hashToken(token);
         (localService.data as any).resetPasswordTokenExpireAt = Date.now() + resetPasswordTokenExpiration * 1000;
         await this.model('userServices').update({ data: localService.data }, { where: { id: localService.id } });
 
@@ -1469,7 +1760,12 @@ export class UserController extends BaseController {
       }
 
       // Report user error if the token is invalid or expired
-      if ((localService.data as any).resetPasswordToken !== token || Date.now() > (localService.data as any).resetPasswordTokenExpireAt) {
+      const { resetPasswordTokenHash, resetPasswordTokenExpireAt } = localService.data as any;
+      if (
+        !this.service('passwordManager').verifyToken(token, resetPasswordTokenHash) ||
+        typeof resetPasswordTokenExpireAt !== 'number' ||
+        Date.now() > resetPasswordTokenExpireAt
+      ) {
         res.status(400).send({ error: 'invalid-token', message: 'Invalid token.' });
         return;
       }
@@ -1494,10 +1790,17 @@ export class UserController extends BaseController {
       oldPasswords.splice(this.service('passwordManager').rememberLastPassword, oldPasswords.length);
       (localService.data as any).oldPasswords = oldPasswords;
 
-      // Cleanup the token and expiration date
+      // Consume the token together with its expiration date; the token is checked again under the row lock,
+      // so it can be used at most once even for concurrent requests.
+      delete (localService.data as any).resetPasswordToken;
+      delete (localService.data as any).resetPasswordTokenHash;
       delete (localService.data as any).resetPasswordTokenExpireAt;
 
-      await this.model('userServices').update({ data: localService.data }, { where: { id: localService.id } });
+      const changed = await this.service('auth').updateLocalPassword(localService.userId, localService.data as any, { resetToken: token });
+      if (!changed) {
+        res.status(400).send({ error: 'invalid-token', message: 'Invalid token.' });
+        return;
+      }
       this.log.save('password-reset-success', { email, userId: localService.userId }, 'info');
 
       res.status(200).send({ success: true });

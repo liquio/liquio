@@ -60,5 +60,12 @@ describe('ExternalReader Controller', () => {
       const response = await app.request().get('/external_reader/captcha/placeholder/placeholder');
       expect(typeof response.status).toBe('number');
     });
+
+    it('rejects path traversal in service/method (validation error, 422)', async () => {
+      for (const path of ['..%2Fadmin/x', 'svc/..%2Fx', '%2e%2e/x', 'svc/a%3Fb']) {
+        const response = await app.request().get(`/external_reader/captcha/${path}`);
+        expect(response.status).toBe(422);
+      }
+    });
   });
 });

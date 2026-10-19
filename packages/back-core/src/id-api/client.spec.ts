@@ -1050,6 +1050,14 @@ describe('IdApiClient', () => {
       expect(call.headers.Authorization).toBeUndefined();
     });
 
+    it('adds the access token to the query when given', async () => {
+      mockResponse(200, { sendBySms: 'sent' });
+
+      await client.sendSms('380501234567', 'tok');
+
+      expect(lastCall().url).toBe('http://id.test:8100/sign_up/confirmation/phone/send?phone=380501234567&access_token=tok');
+    });
+
     it('throws when sendBySms is missing', async () => {
       mockResponse(200, {});
       await expect(client.sendSms('1')).rejects.toThrow('Phone verification not responsed from auth server.');
@@ -1105,6 +1113,53 @@ describe('IdApiClient', () => {
     it('throws IdApiError on a non-2xx response', async () => {
       mockResponse(401, 'Unauthorized');
       await expect(client.verifyPhoneAndSet('1', 1, 'tok')).rejects.toBeInstanceOf(IdApiError);
+    });
+  });
+
+  describe('setTwoFactorAuth', () => {
+    it('posts a form to /user/two_factor_auth with the access token in the query', async () => {
+      mockResponse(200, 'ok');
+
+      await expect(client.setTwoFactorAuth('tok', { useTwoFactorAuth: false, code: 123456 })).resolves.toEqual({ success: true });
+
+      const call = lastCall();
+      const params = new URLSearchParams(call.body);
+      expect(call.url).toBe('http://id.test:8100/user/two_factor_auth?access_token=tok');
+      expect(call.method).toBe('POST');
+      expect(call.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+      expect(call.headers.Authorization).toBeUndefined();
+      expect(params.get('useTwoFactorAuth')).toBe('false');
+      expect(params.get('code')).toBe('123456');
+    });
+
+    it('sends the enable flag without a code', async () => {
+      mockResponse(200, 'ok');
+      await client.setTwoFactorAuth('tok', { useTwoFactorAuth: 'true' });
+      const params = new URLSearchParams(lastCall().body);
+      expect(params.get('useTwoFactorAuth')).toBe('true');
+      expect(params.has('code')).toBe(false);
+    });
+
+    it('returns the refusal of id-api instead of throwing', async () => {
+      mockResponse(400, { error: 'Confirmation code is invalid.' });
+      await expect(client.setTwoFactorAuth('tok', { useTwoFactorAuth: false, code: '1' })).resolves.toEqual({
+        success: false,
+        status: 400,
+        error: 'Confirmation code is invalid.',
+      });
+    });
+
+    it('does not log the access token or the code', async () => {
+      mockResponse(200, 'ok');
+      await client.setTwoFactorAuth('tok-secret', { useTwoFactorAuth: false, code: 'code-secret' });
+      const logged = JSON.stringify(log.save.mock.calls);
+      expect(logged).not.toContain('tok-secret');
+      expect(logged).not.toContain('code-secret');
+    });
+
+    it('throws IdApiError on a 5xx response', async () => {
+      mockResponse(500, 'boom');
+      await expect(client.setTwoFactorAuth('tok', { useTwoFactorAuth: true })).rejects.toBeInstanceOf(IdApiError);
     });
   });
 
@@ -1205,6 +1260,14 @@ describe('IdApiClient', () => {
       expect(call.headers.Authorization).toBe(`Basic ${BASIC_TOKEN}`);
     });
 
+    it('sends the user access token in the query next to basic auth', async () => {
+      mockResponse(200, { secret: 'S', uri: 'otpauth://S' });
+      await client.generateUserTotp('u1', 'user-tok');
+      const call = lastCall();
+      expect(call.url).toBe('http://id.test:8100/totp/generate?userId=u1&access_token=user-tok');
+      expect(call.headers.Authorization).toBe(`Basic ${BASIC_TOKEN}`);
+    });
+
     it('returns failure when id-api answers with an error', async () => {
       mockResponse(200, { error: { message: 'no' } });
       await expect(client.generateUserTotp('u1')).resolves.toEqual({ success: false });
@@ -1236,6 +1299,15 @@ describe('IdApiClient', () => {
       expect(JSON.parse(call.body as string)).toEqual({ userId: 'u1', secret: 'S', code: '123456' });
     });
 
+    it('sends the user access token in the query, not in the body', async () => {
+      mockResponse(200, { success: true });
+      await client.enableUserTotpSecret('u1', 'S', '123456', 'user-tok');
+      const call = lastCall();
+      expect(call.url).toBe('http://id.test:8100/totp/enable?access_token=user-tok');
+      expect(call.headers.Authorization).toBe(`Basic ${BASIC_TOKEN}`);
+      expect(JSON.parse(call.body as string)).toEqual({ userId: 'u1', secret: 'S', code: '123456' });
+    });
+
     it('returns failure when id-api answers with an error', async () => {
       mockResponse(200, { error: 'bad code' });
       await expect(client.enableUserTotpSecret('u1', 'S', '1')).resolves.toEqual({ success: false });
@@ -1258,6 +1330,14 @@ describe('IdApiClient', () => {
       expect(call.url).toBe('http://id.test:8100/totp/disable');
       expect(call.method).toBe('POST');
       expect(call.headers.Authorization).toBe(`Basic ${BASIC_TOKEN}`);
+      expect(JSON.parse(call.body as string)).toEqual({ userId: 'u1', code: '123456' });
+    });
+
+    it('sends the user access token in the query, not in the body', async () => {
+      mockResponse(200, { success: true });
+      await client.disableUserTotpSecret('u1', '123456', 'user-tok');
+      const call = lastCall();
+      expect(call.url).toBe('http://id.test:8100/totp/disable?access_token=user-tok');
       expect(JSON.parse(call.body as string)).toEqual({ userId: 'u1', code: '123456' });
     });
 

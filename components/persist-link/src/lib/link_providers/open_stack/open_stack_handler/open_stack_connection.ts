@@ -1,9 +1,8 @@
 // Import.
-import request from 'request';
-
 import { getLog } from '../../../context';
 import Auth from './auth';
 import HttpRequest from './http_request';
+import { assertSecureUrl } from './secure_url';
 
 // Constants.
 const DEFAULT_ROUTES = {
@@ -21,6 +20,7 @@ class OpenStackConnection {
    */
   constructor(connectionConfig) {
     this.config = connectionConfig;
+    assertSecureUrl(connectionConfig.server, connectionConfig, 'server');
     this.server = connectionConfig.server;
     this.port = connectionConfig.port;
     this.routes = { ...DEFAULT_ROUTES, ...connectionConfig.routes };
@@ -71,7 +71,7 @@ class OpenStackConnection {
    * Download file.
    * @param {string} filePath File path.
    * @param {string} [containerName] Container name.
-   * @returns {Promise<ReadableStream>} Readable stream to download file.
+   * @returns {Promise<import('http').IncomingMessage>} Readable stream to download file (with upstream status code and headers).
    */
   async downloadFile(filePath, containerName = this.container) {
     // Get info to handle file.
@@ -80,7 +80,7 @@ class OpenStackConnection {
     const { url, headers } = infoToHandleFile;
 
     // Get readable stream to download file.
-    return request({ url, headers, method: HttpRequest.Methods.GET, timeout: this.timeout });
+    return HttpRequest.stream({ url, headers, method: HttpRequest.Methods.GET, timeout: this.timeout });
   }
 }
 

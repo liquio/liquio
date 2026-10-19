@@ -10,6 +10,7 @@ const router = Router();
 // Constants.
 const MESSAGE_PONG = 'pong';
 const FALSE_STRING = 'false';
+const ERROR_UNAVAILABLE = 'unavailable';
 const AUTH_SERVICE_NAME = 'id';
 const PERSIST_LINK_SERVICE_NAME = 'plink';
 const PERSIST_LINK_PING_URL = 'https://persist-link-test-court-services/test/ping';
@@ -34,15 +35,24 @@ export class TestController {
   registerRoutes() {
     // Add routes.
     router.get('/test/ping', this.ping.bind(this));
-    router.get('/test/ping_with_auth', checkAuth, this.ping.bind(this));
+    router.get('/test/ping_with_auth', checkAuth, this.pingWithAuth.bind(this));
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
   async ping(req: any, res: any) {
+    res.send({ message: MESSAGE_PONG });
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async pingWithAuth(req: any, res: any) {
     // Define params.
     const healthCheck = req.query.health_check;
 
@@ -60,7 +70,7 @@ export class TestController {
         authServicePingResponse = await this.sendPingRequest(AUTH_SERVICE_NAME);
       } catch (error: any) {
         console.log(error && error.message);
-        authServicePingResponseError = error && error.message;
+        authServicePingResponseError = ERROR_UNAVAILABLE;
       }
       responseData.correctAuthServiceConnection =
         (authServicePingResponse &&
@@ -89,7 +99,7 @@ export class TestController {
         persistLinkPingResponse = await this.sendPingRequest(PERSIST_LINK_SERVICE_NAME);
       } catch (error: any) {
         console.log(error && error.message);
-        persistLinkPingResponseError = error && error.message;
+        persistLinkPingResponseError = ERROR_UNAVAILABLE;
       }
       responseData.correctPeristLinkConnection =
         (persistLinkPingResponse &&

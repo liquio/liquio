@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 
+import { checkDownloadTokenSecret } from './config_validation';
+
 // Constants.
 const DEFAULT_CONFIG = {
   lifetimeInSeconds: 3600,
@@ -25,6 +27,10 @@ export class DownloadToken {
 
       if (!jwtSecret) {
         throw new Error('JWT secret is required to create download token.');
+      }
+      const secretProblem = checkDownloadTokenSecret(jwtSecret);
+      if (secretProblem) {
+        throw new Error(`Cannot create download token: ${secretProblem}`);
       }
 
       this.jwtSecret = jwtSecret;

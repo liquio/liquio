@@ -56,7 +56,7 @@ export async function bankid(app: Express) {
   async function verify(req: Request, accessToken: string, refreshToken: string, profile: Record<string, any>, done: CallbackFn) {
     const profileDecrypt = decryptProfile(privateKey, profile);
 
-    log.save('user-authorize-by-bankId', { profileDecrypt }, 'info');
+    log.save('user-authorize-by-bankId', { status: 'profile-decrypted' }, 'info');
     let saveUserQuery: UserServicesCreationAttributes = {
       userId: '',
       data: profileDecrypt,

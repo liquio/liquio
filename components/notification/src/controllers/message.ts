@@ -16,9 +16,12 @@ import { IncommingMessagesModel } from '../models/incomming_messages';
 import { ImportantMessagesModel } from '../models/important_messages';
 import { UsersMessagesModel } from '../models/users_messages';
 import { MessageCryptTypesModel } from '../models/message_crypt_types';
-import { checkAuth, checkTestAuth } from './auth';
+import { checkAuth, checkTestAuth, checkAdminCookie, checkSameOrigin } from './auth';
+import { resolveUserId } from './resolve_user_id';
+import { renderDecrypted } from '../lib/rule_to_show';
 
 const router = Router();
+const adminRouter = Router();
 const Subscribes = new UserSubscribesModel().UserSubscribes;
 const Communication = new CommunicationModel().Communications;
 const Settings = new SettingsModel().Settings;
@@ -84,12 +87,15 @@ const HEADER_TOTAL_COUNT = 'X-Total';
 const UNREAD_MESSAGE_VALUE = 0;
 const READ_MESSAGE_VALUE = 1;
 const SMS_CHANNEL = '2';
+const MAX_DECRYPTED_BASE64_LENGTH = 64 * 1024;
+const BASE64_REGEXP = /^[A-Za-z0-9+/]+={0,2}$/;
 
 export class Message extends Auth {
   constructor(app: any) {
     super();
     this.registerRoutes();
     app.use('/message', router);
+    app.use('/admin/api/message', adminRouter);
   }
 
   /**
@@ -101,6 +107,10 @@ export class Message extends Auth {
     router.post('/test/sms', checkTestAuth, this.sendTestSMS.bind(this));
     router.post('/test/user', checkTestAuth, this.sendTestUser.bind(this));
     router.post('/test/comlex_options', checkAuth, this.sendTestMessageByComplexOptions.bind(this));
+
+    // Admin panel routes (admin cookie instead of Basic credentials in client code).
+    adminRouter.post('/phonesList', checkSameOrigin, checkAdminCookie, this.sendMessageByPhonesList.bind(this));
+    adminRouter.post('/eventId', checkSameOrigin, checkAdminCookie, this.sendMessageByEventId.bind(this));
 
     // Send messages routes.
     router.post('/usersList', checkAuth, this.sendMessageByUsersList.bind(this));
@@ -117,12 +127,20 @@ export class Message extends Auth {
     router.get('/', checkAuth, this.getMessages.bind(this));
     router.get('/senderErrorCallback', this.senderErrorCallack.bind(this));
     router.post('/sms/callback/', this.gmsuCallback.bind(this));
-    router.put('/is_read', this.setIsReadProperty.bind(this));
-    router.get('/unread', this.getUnreadUserMessagesCount.bind(this));
+    router.put('/is_read', checkAuth, this.setIsReadProperty.bind(this));
+    router.get('/unread', checkAuth, this.getUnreadUserMessagesCount.bind(this));
     router.get('/important', checkAuth, this.getImportantMessages.bind(this));
     router.put('/important/:id/set-unimportant', checkAuth, this.setUnimportantMessage.bind(this));
-    router.get('/:id', this.getMessageById.bind(this));
+    router.get('/:id', checkAuth, this.getMessageById.bind(this));
     router.put('/:id/decrypt', checkAuth, this.decryptMessage.bind(this));
+  }
+
+  /**
+   * Resolve user ID from query: validated access token first, `user_id` only without a token (Basic service auth is required by routes).
+   * @param {object} query Request query.
+   */
+  resolveUserId(query: any) {
+    return resolveUserId(query, (token) => this.checkToken(token));
   }
 
   /**
@@ -137,8 +155,8 @@ export class Message extends Auth {
       return res.send({ error: 'Message ID must be defined as number' });
     }
     const { decryptedBase64 } = req.body;
-    if (typeof decryptedBase64 !== 'string') {
-      return res.send({ error: 'Decrypted base64 should be defined as number.' });
+    if (typeof decryptedBase64 !== 'string' || decryptedBase64.length > MAX_DECRYPTED_BASE64_LENGTH || !BASE64_REGEXP.test(decryptedBase64)) {
+      return res.send(400, { error: 'Decrypted base64 should be a non-empty base64 string of allowed length.' });
     }
 
     // Check access token defined.
@@ -159,11 +177,19 @@ export class Message extends Auth {
       return res.send({ error: 'Can not get message.' });
     }
 
+    // Broadcast messages share one row between all recipients: nobody may rewrite it. Decrypted content is write-once.
+    if (message.showToAll || !message.isEncrypted) {
+      return res.send(403, { error: 'Message can not be decrypted.' });
+    }
+
     // Update message.
     let updatedMessage;
     try {
       updatedMessage = await this.setDecrypted(messageId, decryptedBase64, req.query.access_token);
     } catch (error) {
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
       global.log.save('decrypt-message-error', { messageId, error: (error && error.message) || error }, 'error');
       return res.send({ message: 'Can not decrypt message.' });
     }
@@ -181,15 +207,18 @@ export class Message extends Auth {
    */
   async setDecrypted(messageId, decryptedBase64, accessToken) {
     try {
-      await IncommingMessages.update(
+      const [affectedCount] = await IncommingMessages.update(
         {
           is_encrypted: false,
           decrypted_base64: decryptedBase64,
         },
         {
-          where: { message_id: messageId },
+          where: { message_id: messageId, is_encrypted: true },
         },
       );
+      if (!affectedCount) {
+        throw Object.assign(new Error('Message is already decrypted.'), { statusCode: 409, error: { message: 'Message is already decrypted.' } });
+      }
       const updatedMessage = await this.getById(messageId, { access_token: accessToken });
       return updatedMessage;
     } catch (error) {
@@ -1089,8 +1118,8 @@ export class Message extends Auth {
     let result, resultCount, unreadQuantity, readQuantity;
     if (req.query.access_token || req.query.user_id) {
       try {
-        const userId = req.query.user_id || (await this.checkToken(req.query.access_token))._id;
-        const queryParams = { ...req.query, user_id: req.query.user_id || userId };
+        const userId = await this.resolveUserId(req.query);
+        const queryParams = { ...req.query, user_id: userId };
         delete queryParams.access_token;
         const resultPromise = showAll && req.query.access_token ? this.getAllUserMessages(queryParams) : this.getUserMessages(queryParams);
         const resultCountPromise =
@@ -1420,7 +1449,7 @@ export class Message extends Auth {
     for (const message of messages) {
       if (message.ruleToShow) {
         try {
-          message.decryptedToShow = eval(message.ruleToShow)(message.decryptedBase64);
+          message.decryptedToShow = renderDecrypted(message.ruleToShow, message.decryptedBase64);
         } catch (error) {
           message.decryptionToShowError = (error && error.message) || error;
         }
@@ -1516,19 +1545,11 @@ export class Message extends Auth {
     }
 
     let countUpdatedRows;
-    if (req.query.access_token || req.query.user_id) {
-      // Update message data.
-      try {
-        countUpdatedRows = await this.setIsReadByMessageId(req.query, messageIdsArray);
-      } catch (e) {
-        console.error(e);
-        return res.send(e.statusCode, e.error);
-      }
-    } else {
-      const error = {
-        message: 'Access token and user id should be defined.',
-      };
-      return res.send(error);
+    try {
+      countUpdatedRows = await this.setIsReadByMessageId(req.query, messageIdsArray);
+    } catch (e) {
+      console.error(e);
+      return res.send(e.statusCode || 500, e.error || { error: e.message });
     }
     const isSet = countUpdatedRows && countUpdatedRows[0] && countUpdatedRows[0] === messageIdsArray.length ? true : false;
 
@@ -1542,19 +1563,7 @@ export class Message extends Auth {
    */
   async setIsReadByMessageId(queryParams, messageIds) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Define params.
     const userMessagesFilterObject = {
@@ -1576,25 +1585,14 @@ export class Message extends Auth {
 
   async getUnreadUserMessagesCount(req: any, res: any) {
     let total;
-    if (req.query.access_token || req.query.user_id) {
-      // Update message data.
-      try {
-        let userId;
-        if (req.query.access_token) {
-          userId = (await this.checkToken(req.query.access_token))._id;
-        }
-        const queryParams = { ...req.query, user_id: req.query.user_id || userId };
-        delete queryParams.access_token;
-        total = await this.countUnreadMessages(queryParams);
-      } catch (e) {
-        console.error(e);
-        return res.send(e.statusCode, e.error);
-      }
-    } else {
-      const error = {
-        message: 'Access token and user id should be defined.',
-      };
-      return res.send(error);
+    try {
+      const userId = await this.resolveUserId(req.query);
+      const queryParams = { ...req.query, user_id: userId };
+      delete queryParams.access_token;
+      total = await this.countUnreadMessages(queryParams);
+    } catch (e) {
+      console.error(e);
+      return res.send(e.statusCode || 500, e.error || { error: e.message });
     }
 
     // Response result.
@@ -1603,19 +1601,7 @@ export class Message extends Auth {
 
   async countUnreadMessages(queryParams) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Try to get event ID filter.
     const { event_id } = queryParams;
@@ -1704,22 +1690,17 @@ export class Message extends Auth {
     }
 
     let message;
-    if (req.query.access_token || req.query.user_id) {
-      // Get message data.
-      try {
-        message = await this.getById(messageId, req.query);
-        if (!message) {
-          return res.send(404, { error: 'Message not found.' });
-        }
-      } catch (error) {
-        global.log.save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
-        return res.send(500, { error: (error && error.message) || error });
+    try {
+      message = await this.getById(messageId, req.query);
+      if (!message) {
+        return res.send(404, { error: 'Message not found.' });
       }
-    } else {
-      const error = {
-        message: 'Access token or user id should be defined.',
-      };
-      return res.send(400, error);
+    } catch (error) {
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
+      global.log.save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
+      return res.send(500, { error: (error && error.message) || error });
     }
 
     // Response result.
@@ -1728,21 +1709,7 @@ export class Message extends Auth {
 
   async getById(messageId, queryParams) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    } else {
-      throw new Error('Should be defined in query access_token or user_id.');
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Define messages info.
     const userMessagesFilterObject = { user_id, message_id: messageId };
@@ -1785,6 +1752,7 @@ export class Message extends Auth {
       isRead: message.is_read,
       userMessageId: message.user_message_id,
       userId: message.user_id,
+      showToAll: message.show_to_all,
     };
 
     // Check if decrypted.
@@ -1792,7 +1760,7 @@ export class Message extends Auth {
       const messageCryptType = await MessageCryptTypes.findOne({ where: { id: currentMessage.messageCryptTypeId } });
       const { rule_to_show: ruleToShow } = messageCryptType;
       try {
-        currentMessage.decryptedToShow = eval(ruleToShow)(currentMessage.decryptedBase64);
+        currentMessage.decryptedToShow = renderDecrypted(ruleToShow, currentMessage.decryptedBase64);
       } catch (error) {
         currentMessage.decryptionToShowError = (error && error.message) || error;
       }
@@ -2210,31 +2178,28 @@ export class Message extends Auth {
   }
 
   async deleteMessagetoAll(req: any, res: any) {
-    const { params } = req;
-    const { id } = params;
+    const id = /^\d+$/.test(String(req.params.id)) ? parseInt(req.params.id, 10) : NaN;
+    if (Number.isNaN(id)) {
+      return res.send(400, { error: 'Message id should be a number.' });
+    }
 
-    let deletedFromIncomming;
     try {
-      deletedFromIncomming = await IncommingMessages.destroy({ where: { message_id: id } });
+      // Only broadcast messages can be deleted through this route.
+      const broadcast = await UsersMessages.findOne({ where: { message_id: id, show_to_all: true } });
+      if (!broadcast) {
+        return res.send(404, { error: 'Message not found.' });
+      }
+
+      await UsersMessages.sequelize.transaction(async (transaction: any) => {
+        await UsersMessages.destroy({ where: { message_id: id, show_to_all: true }, transaction });
+        await IncommingMessages.destroy({ where: { message_id: id }, transaction });
+      });
     } catch (error) {
-      global.log.save('delete-msg-to-all-delete-incomming-message-error', { error }, 'error');
+      global.log.save('delete-msg-to-all-error', { error }, 'error');
       return res.send(500, error);
     }
 
-    let deletedFromMsg;
-    if (deletedFromIncomming) {
-      try {
-        deletedFromMsg = await UsersMessages.destroy({
-          where: { message_id: id },
-        });
-      } catch (error) {
-        global.log.save('delete-msg-to-all-delete-user-message-error', { error }, 'error');
-        return res.send(500, error);
-      }
-    }
-
-    const isDeleted = deletedFromMsg || deletedFromMsg === 0 ? true : false;
-    return res.send({ isDeleted });
+    return res.send({ isDeleted: true });
   }
 
   async senderErrorCallack(req: any, res: any, _next: any) {
@@ -2354,18 +2319,7 @@ export class Message extends Auth {
         return res.send(400, { error: 'Message ID must be defined as number' });
       }
 
-      // Check access token defined.
-      if (!req.query.access_token && !req.query.user_id) {
-        const error = { error: 'Access token or user_id should be defined.' };
-        return res.send(400, error);
-      }
-
-      let userId;
-      if (req.query.access_token) {
-        userId = (await this.checkToken(req.query.access_token))._id;
-      } else {
-        userId = req.query.user_id;
-      }
+      const userId = await this.resolveUserId(req.query);
 
       // Update important message.
       let updatedImportantMessage;
@@ -2376,17 +2330,15 @@ export class Message extends Auth {
           return res.send(404, { error: 'Not found message for this user_id.' });
         }
 
-        // Check strict allow_hide.
-        if (typeof req.query.strict_allow_hide !== 'undefined' && req.query.strict_allow_hide === 'true') {
-          const importantMessage = await ImportantMessages.findOne({ where: { message_id: messageId, user_message_id: message.userMessageId } });
-          if (importantMessage && importantMessage.allow_hide === false) {
-            const error = { error: 'Param allow_hide set false.' };
-            return res.send(400, error);
-          }
+        // Check allow_hide (always, regardless of client params).
+        const importantMessage = await ImportantMessages.findOne({ where: { message_id: messageId, user_message_id: message.userMessageId } });
+        if (importantMessage && importantMessage.allow_hide === false) {
+          const error = { error: 'Param allow_hide set false.' };
+          return res.send(400, error);
         }
 
         const [, importantMessages] = await ImportantMessages.update(
-          { is_active: false, allow_hide: true },
+          { is_active: false },
           {
             where: { user_message_id: message.userMessageId },
             returning: true,
@@ -2402,6 +2354,9 @@ export class Message extends Auth {
       // Response result.
       return res.send({ data: updatedImportantMessage });
     } catch (error) {
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
       global.log.save('set-unimportant-message-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }

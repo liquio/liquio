@@ -13,6 +13,7 @@ export interface AuthState {
   token: string | null;
   info: AuthUser | null;
   useTwoFactorAuth: boolean;
+  twoFactorType?: string | null;
   foundUser: AuthUser | null | undefined;
   tokenError: boolean;
   units: AuthUnit[] | null;
@@ -42,7 +43,7 @@ export type AuthAction =
       type: 'REQUEST_USER_SETTINGS_SUCCESS';
       payload: { data?: Record<string, unknown> | null } | null;
     }
-  | { type: 'REQUEST_AUTH_MODE_SUCCESS'; payload: { useTwoFactorAuth: boolean } }
+  | { type: 'REQUEST_AUTH_MODE_SUCCESS'; payload: { useTwoFactorAuth: boolean; twoFactorType?: string | null } }
   | { type: 'SEARCH_USER_SUCCESS'; payload: { users: AuthUser[] } }
   | { type: 'UPDATE_USER_INFO' | 'SET_USER_PHONE_VALID_SUCCESS'; payload: AuthUser }
   | {

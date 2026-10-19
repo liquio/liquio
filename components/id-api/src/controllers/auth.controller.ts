@@ -2,15 +2,17 @@ import crypto from 'crypto';
 import { URL } from 'url';
 import { promisify } from 'util';
 
-import { OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
+import { Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import { appendTraceMeta } from '@liquio/back-core';
 
-import { DEFAULT_COOKIE_DOMAIN } from '../config';
+import { profileCookieOptions } from '../lib/cookie_options';
 import { getEnabledAuthProviders } from '../lib/auth_providers';
 import { avatarByGender } from '../lib/helpers';
+import { oauthErrorBody } from '../lib/http_error';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 import { ServerCrypt } from '../lib/server_crypt';
+import { getSessionUserId, isTwoFactorCompleted } from '../lib/two_factor';
 import { AuthMiddleware } from '../middleware';
 import { saveSession } from '../middleware/session';
 import { UserAttributes } from '../models';
@@ -55,13 +57,40 @@ export class AuthController extends BaseController {
     this.router.get(
       '/authorise/continue',
       [query('redirect_uri').optional().isString(), this.handleValidation.bind(this)],
+      this.service('auth').ensureClientContext(),
       this.service('auth').readyClient(),
+      authMiddleware.checkUserAccess({ requireUser: true }),
       this.checkUserClientScope.bind(this),
       this.checkTwoFactorAuth.bind(this),
       this.authorizeContinue.bind(this),
     );
 
-    this.router.post('/authorise/continue', this.service('auth').readyClient(), this.saveUserClientScope.bind(this));
+    // Explicit consent step for clients with `need_scope_approve`: the decision is bound to the pending authorization request.
+    this.router.get(
+      '/authorise/consent',
+      this.requireScopeConsent.bind(this),
+      this.service('auth').ensureClientContext(),
+      this.service('auth').readyClient(),
+      authMiddleware.checkUserAccess({ requireUser: true }),
+      this.getConsent.bind(this),
+    );
+
+    this.router.post(
+      '/authorise/consent',
+      this.requireScopeConsent.bind(this),
+      this.service('auth').ensureClientContext(),
+      this.service('auth').readyClient(),
+      authMiddleware.checkUserAccess({ requireUser: true }),
+      this.saveConsent.bind(this),
+    );
+
+    this.router.post(
+      '/authorise/continue',
+      this.service('auth').ensureClientContext(),
+      this.service('auth').readyClient(),
+      authMiddleware.checkUserAccess({ requireUser: true }),
+      this.saveUserClientScope.bind(this),
+    );
   }
 
   defaultRoute(req: Request, res: Response) {
@@ -94,6 +123,10 @@ export class AuthController extends BaseController {
     // Check if two-factor authentication is needed.
     const twoFactorAuthNeeded = useTwoFactorAuth && !phoneChecked && !totpChecked;
     if (useTwoFactorAuth && twoFactorType === 'phone' && !phoneChecked) {
+      if (!(await this.service('auth').consumeSendQuota('twoFactor', phone, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
       await this.service('auth').sendPhoneConfirmCode(phone);
     }
 
@@ -129,13 +162,13 @@ export class AuthController extends BaseController {
    */
   async addDebugUserCode(req: Request, res: Response): Promise<void> {
     const { code, userId, serverToken } = req.body;
-    this.log.save('add-debug-user-code-request', { code, userId, serverToken }, 'info');
+    this.log.save('add-debug-user-code-request', { userId }, 'info');
     if ([code, userId, serverToken].some((v) => typeof v !== 'string')) {
-      this.log.save('add-debug-user-code-wrong-params', { code, userId }, 'error');
+      this.log.save('add-debug-user-code-wrong-params', { userId }, 'error');
       res.status(400).send({ error: { message: 'Code and user ID should be defined.' } });
       return;
     }
-    this.log.save('add-debug-user-code-params-defined', { code, userId }, 'info');
+    this.log.save('add-debug-user-code-params-defined', { userId }, 'info');
 
     // Define debug user info.
     const debugUsers = this.config.debugUsers ?? [];
@@ -148,22 +181,22 @@ export class AuthController extends BaseController {
     }));
     const debugUserInfo = decryptedDebugUsers.find((v: any) => v.code === code && v.userId === userId);
     if (!debugUserInfo) {
-      this.log.save('add-debug-user-code-auth-info-not-found', { code, userId }, 'error');
+      this.log.save('add-debug-user-code-auth-info-not-found', { userId }, 'error');
       res.status(400).send({ error: { message: 'Auth info not found.' } });
       return;
     }
     if (debugUserInfo.serverToken !== serverToken) {
-      this.log.save('add-debug-user-code-incorrect-server-token', { code, userId }, 'error');
+      this.log.save('add-debug-user-code-incorrect-server-token', { userId }, 'error');
       res.status(400).send({ error: { message: 'Incorrect server token.' } });
       return;
     }
     const { clientId, expires } = debugUserInfo;
     if ([clientId, expires].some((v) => typeof v === 'undefined')) {
-      this.log.save('add-debug-user-code-incorrect-auth-info', { code, userId }, 'error');
+      this.log.save('add-debug-user-code-incorrect-auth-info', { userId }, 'error');
       res.status(500).send({ error: { message: 'Incorrect auth info. Check config.' } });
       return;
     }
-    this.log.save('add-debug-user-code-auth-info-defined', { code, userId, clientId, expires }, 'info');
+    this.log.save('add-debug-user-code-auth-info-defined', { userId, clientId, expires }, 'info');
 
     // Define scope fields.
     const scope = this.config.oauth?.defaults?.scope_fields;
@@ -180,7 +213,7 @@ export class AuthController extends BaseController {
     try {
       await this.model('authCode').destroy({ where: { code } });
     } catch (error: any) {
-      this.log.save('add-debug-user-code-delete-previous-code-record-error', { error: error.message, stack: error.stack, code }, 'error');
+      this.log.save('add-debug-user-code-delete-previous-code-record-error', { error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         message: 'Can not delete previous auth code record.',
         details: error.message ?? error.toString(),
@@ -191,9 +224,9 @@ export class AuthController extends BaseController {
     // Create auth code.
     let createdAuthCode;
     try {
-      createdAuthCode = await this.model('authCode').create(authCodeData);
+      createdAuthCode = await this.service('auth').oAuthModel.saveCodeRecord(authCodeData);
     } catch (error: any) {
-      this.log.save('add-debug-user-code-creating-error', { code, userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
+      this.log.save('add-debug-user-code-creating-error', { userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         message: 'Can not create auth code record.',
         details: error.message ?? error.toString(),
@@ -202,7 +235,7 @@ export class AuthController extends BaseController {
     }
 
     // Response.
-    this.log.save('add-debug-user-code-response', { code, userId, clientId, expires }, 'info');
+    this.log.save('add-debug-user-code-response', { userId, clientId, expires }, 'info');
     res.send({ data: createdAuthCode });
   }
 
@@ -260,63 +293,23 @@ export class AuthController extends BaseController {
   }
 
   /**
-   * @deprecated
+   * @deprecated Retired. Phone verification requires an SMS code, see `POST /user/info/phone/confirm`. Does not modify anything.
    */
-  signInRequirementsPhoneSet(req: Request, res: Response): void {
-    if (!req.isAuthenticated()) {
-      res.redirect('/sign_in');
-      return;
-    }
-
-    const user = req.session?.passport?.user;
-    res.render('sign_in_requirements_phone', {
-      user_phone: user.phone,
-      user_phone_musked: user.phone.substr(0, 3) + '*******' + user.phone.substr(-2),
-    });
+  signInRequirementsPhoneSet(_req: Request, res: Response): void {
+    res.status(410).send({ error: 'Use POST /user/info/phone/confirm with a valid SMS code.' });
   }
 
   /**
-   * @deprecated
+   * @deprecated Retired. It used to mark an arbitrary phone as verified without a code. Does not modify anything.
    */
-  async signInRequirementsPhoneSetConfirm(req: Request, res: Response) {
-    if (!req.isAuthenticated()) {
-      res.redirect('/sign_in');
-      return;
-    }
-
-    try {
-      const { phone } = req.body;
-
-      const user = await this.service('auth').getUser({ userId: req.session?.passport?.user.userId });
-      const query: any = {
-        valid: {
-          ...user.valid,
-          phone: true,
-        },
-      };
-      if (phone) {
-        query.phone = phone;
-      }
-
-      const updatedUser = await this.service('auth').updateUser({ userId: req.session?.passport?.user.userId }, query);
-      await this.service('auth').removeConfirmCode({ phone });
-      await saveSession(req, updatedUser);
-      res.send({ success: true, redirect: '/authorise/continue' });
-    } catch (error: any) {
-      this.log.save('sign-in-requirements-phone-set-confirm-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(500).send({
-        message: 'Can not set phone.',
-        details: error.message ?? error.toString(),
-      });
-    }
+  async signInRequirementsPhoneSetConfirm(_req: Request, res: Response): Promise<void> {
+    res.status(410).send({ error: 'Use POST /user/info/phone/confirm with a valid SMS code.' });
   }
 
   async relogin(req: Request, res: Response): Promise<void> {
     const { client_id: clientId, redirect_uri: redirectUri } = matchedData(req, { locations: ['query'] });
 
-    res.clearCookie('jwt', {
-      domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-    });
+    res.clearCookie('jwt', profileCookieOptions(req, this.config));
 
     await promisify(req.logout)();
     await promisify(req.sessionStore.destroy)(req.sessionID);
@@ -352,12 +345,14 @@ export class AuthController extends BaseController {
     try {
       tokens = await this.service('auth').server.authenticate(request, response);
     } catch (error: any) {
-      res.status(error.status).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error);
+      res.status(body.statusCode).send(body);
       return;
     }
 
     try {
       const user = await this.service('auth').getUser({ userId: tokens.user.id });
+      req.session.authorizationVersion ??= tokens.user.authorizationVersion;
       await saveSession(req, user);
 
       let jwtObj = {
@@ -366,10 +361,7 @@ export class AuthController extends BaseController {
         avaUrl: user.avaUrl ?? avatarByGender(user.gender),
         last_name: user.last_name,
       };
-      res.cookie('jwt', JSON.stringify(jwtObj), {
-        domain: this.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-        expires: new Date(tokens.accessTokenExpiresAt as any),
-      });
+      res.cookie('jwt', JSON.stringify(jwtObj), profileCookieOptions(req, this.config, { expires: new Date(tokens.accessTokenExpiresAt as any) }));
       res.send({
         user_id: tokens.userId,
         access_token: tokens.accessToken,
@@ -377,7 +369,8 @@ export class AuthController extends BaseController {
       });
     } catch (error: any) {
       this.log.save('check-token-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error, 'Unauthorized', 401);
+      res.status(401).send(body);
     }
   }
 
@@ -391,18 +384,19 @@ export class AuthController extends BaseController {
       tokens = await this.service('auth').server.token(request, response);
       this.log.save('create-tokens-success', {
         userId: tokens.user.id,
-        accessTokenShort: `${tokens.accessToken.slice(0, 8)}****${tokens.accessToken.slice(-8)}`,
         accessTokenHash: crypto.createHash('sha256').update(tokens.accessToken).digest('hex'),
         accessTokenExpiresAt: tokens.accessTokenExpiresAt,
       });
     } catch (error: any) {
       this.log.save('create-tokens-error', { error: error.message, stack: error.stack, description: error.toString() }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error, 'Unauthorized', 401);
+      res.status(401).send(body);
       return;
     }
 
     try {
       const user = await this.service('auth').getUser({ userId: tokens.user.id });
+      req.session.authorizationVersion ??= tokens.user.authorizationVersion;
       await saveSession(req, user);
 
       res.cookie(
@@ -413,10 +407,7 @@ export class AuthController extends BaseController {
           avaUrl: user.avaUrl ?? avatarByGender(user.gender),
           last_name: user.last_name,
         }),
-        {
-          domain: this.config.domain ?? '.liquio.local',
-          expires: new Date(tokens.accessTokenExpiresAt as Date),
-        },
+        profileCookieOptions(req, this.config, { expires: new Date(tokens.accessTokenExpiresAt as Date) }),
       );
 
       let response_object = {};
@@ -448,7 +439,8 @@ export class AuthController extends BaseController {
       res.send(response_object);
     } catch (error: any) {
       this.log.save('create-tokens-error', { error: error.message, stack: error.stack }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
+      const body = oauthErrorBody(error, 'Unauthorized', 401);
+      res.status(401).send(body);
     }
   }
 
@@ -457,29 +449,29 @@ export class AuthController extends BaseController {
    */
   async addTestCode(req: Request, res: Response): Promise<void> {
     const { code, userId } = req.body;
-    this.log.save('add-test-code-request', { body: req.body }, 'info');
+    this.log.save('add-test-code-request', { userId: req.body?.userId }, 'info');
     if ([code, userId].some((v) => typeof v !== 'string')) {
-      this.log.save('add-test-code-wrong-params', { body: req.body, code, userId }, 'error');
+      this.log.save('add-test-code-wrong-params', { userId }, 'error');
       res.status(400).send({ error: { message: 'Code and user ID should be defined.' } });
       return;
     }
-    this.log.save('add-test-code-params-defined', { body: req.body, code, userId }, 'info');
+    this.log.save('add-test-code-params-defined', { userId }, 'info');
 
     // Define test auth info.
     const testAuth = this.config.testAuth ?? [];
     const testAuthInfo = testAuth.find((v: any) => v.code === code && v.userId === userId);
     if (!testAuthInfo) {
-      this.log.save('add-test-code-auth-info-not-found', { code, userId, testAuth }, 'error');
+      this.log.save('add-test-code-auth-info-not-found', { userId }, 'error');
       res.status(400).send({ error: { message: 'Auth info not found.' } });
       return;
     }
     const { clientId, expires } = testAuthInfo;
     if ([clientId, expires].some((v) => typeof v === 'undefined')) {
-      this.log.save('add-test-code-incorrect-auth-info', { code, userId, testAuth }, 'error');
+      this.log.save('add-test-code-incorrect-auth-info', { userId }, 'error');
       res.status(500).send({ error: { message: 'Incorrect auth info. Check config.' } });
       return;
     }
-    this.log.save('add-test-code-auth-info-defined', { code, userId, clientId, expires }, 'info');
+    this.log.save('add-test-code-auth-info-defined', { userId, clientId, expires }, 'info');
 
     // Define scope fields.
     const scope = this.config.oauth?.defaults?.scope_fields;
@@ -496,7 +488,7 @@ export class AuthController extends BaseController {
     try {
       await this.model('authCode').destroy({ where: { code } });
     } catch (error: any) {
-      this.log.save('add-test-code-delete-previous-code-record-error', { code, error: error.message, stack: error.stack }, 'error');
+      this.log.save('add-test-code-delete-previous-code-record-error', { error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         message: 'Can not delete previous auth code record.',
         details: error.message ?? error.toString(),
@@ -507,9 +499,9 @@ export class AuthController extends BaseController {
     // Create auth code.
     let createdAuthCode;
     try {
-      createdAuthCode = await this.model('authCode').create(authCodeData);
+      createdAuthCode = await this.service('auth').oAuthModel.saveCodeRecord(authCodeData);
     } catch (error: any) {
-      this.log.save('add-test-code-creating-error', { code, userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
+      this.log.save('add-test-code-creating-error', { userId, clientId, expires, error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         message: 'Can not create auth code record.',
         details: error.message ?? error.toString(),
@@ -518,7 +510,7 @@ export class AuthController extends BaseController {
     }
 
     // Response.
-    this.log.save('add-test-code-response', { code, userId, clientId, expires }, 'info');
+    this.log.save('add-test-code-response', { userId, clientId, expires }, 'info');
     res.send({ data: createdAuthCode });
   }
 
@@ -533,13 +525,14 @@ export class AuthController extends BaseController {
       code = await this.service('auth').server.authorize(request, response, {
         authenticateHandler: {
           handle: () => {
-            return userId;
+            return { id: userId, authorizationVersion: req.session.authorizationVersion };
           },
         },
       });
     } catch (error: any) {
-      this.log.save('response-type-code-error', { error: error.toString(), details: error }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
+      this.log.save('response-type-code-error', { error: error.toString() }, 'error');
+      const body = oauthErrorBody(error, 'Unauthorized', 401);
+      res.status(401).send(body);
       return;
     }
 
@@ -565,7 +558,7 @@ export class AuthController extends BaseController {
       return;
     }
 
-    const url = new URL(req.session.forward ?? req.body.redirect_uri ?? '/');
+    const url = new URL(req.body.redirect_uri);
     url.searchParams.set('code', code.authorizationCode);
     if (req.session.state) {
       url.searchParams.set('state', req.session.state);
@@ -577,74 +570,68 @@ export class AuthController extends BaseController {
     res.redirect(url.toString());
   }
 
-  async responseTypeToken(req: Request, res: Response, userId: string, request: OAuthRequest, response: OAuthResponse): Promise<void> {
-    let token;
-    try {
-      token = await this.service('auth').responseTypeToken(request, response, userId);
-    } catch (error: any) {
-      this.log.save('response-type-token-error', { error: error }, 'error');
-      res.status(401).send(new OAuthError(error.message, error));
-      return;
-    }
-
-    if (
-      req.session.client_requirements &&
-      req.session.client_requirements.length > 0 &&
-      req.session.passport?.user &&
-      !req.session.client_requirements.includes(req.session.passport.user.provider) &&
-      req.session.client_requirements.includes('require_phone') &&
-      !req.session.passport.user.valid.phone
-    ) {
-      res.redirect('/sign_in/requirements_phone_set');
-      return;
-    } else if (
-      req.session.client_requirements &&
-      req.session.client_requirements.length > 0 &&
-      req.session.passport?.user &&
-      !req.session.client_requirements.includes(req.session.passport.user.provider) &&
-      !req.session.client_requirements.includes('require_phone') &&
-      !req.session.passport.user.valid.phone
-    ) {
-      res.redirect('/sign_in/requirements');
-      return;
-    }
-
-    const { redirect_uri: redirectUri } = matchedData(req, { locations: ['query'] });
-    const url = new URL(redirectUri);
-    url.searchParams.set('access_token', token.accessToken);
-    if (req.session.state) {
-      url.searchParams.set('state', req.session.state);
-    }
-    const [flash] = req.flash!('services_error');
-    if (flash) {
-      url.searchParams.set('services_error', flash);
-    }
-    res.redirect(url.toString());
-  }
-
+  /**
+   * Allows the authorization to continue only when the account has no 2FA configured
+   * or the configured factor was completed in this login session.
+   * The 2FA settings come from the database, never from the session user.
+   */
   async checkTwoFactorAuth(req: Request, res: Response, next: NextFunction) {
-    const user = req.session.passport?.user ?? req.session.passport;
-    const { useTwoFactorAuth, phone, phoneChecked, twoFactorType, totpChecked } = user;
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      res.redirect('/');
+      return;
+    }
+
+    let account;
+    try {
+      account = await this.model('user')
+        .findOne({ where: { userId }, attributes: ['userId', 'phone', 'useTwoFactorAuth', 'twoFactorType'] })
+        .then((row) => row?.dataValues);
+    } catch (error: any) {
+      this.log.save('check-two-factor-auth-error', { userId, error: error.message }, 'error');
+      res.status(500).send({ error: { message: 'Two-factor authentication check failed.' } });
+      return;
+    }
+
+    // Unknown (e.g. deleted) user: do not continue.
+    if (!account) {
+      this.log.save('check-two-factor-auth-user-not-found', { userId }, 'warning');
+      res.redirect('/');
+      return;
+    }
+
+    const { useTwoFactorAuth, twoFactorType, phone } = account;
 
     // If useTwoFactorAuth is enabled, but the type of 2FA is not set, let the user in to set it.
-    if (!useTwoFactorAuth || (useTwoFactorAuth && !twoFactorType)) {
+    if (!useTwoFactorAuth || !twoFactorType) {
+      return next();
+    }
+
+    // Only the proof bound to this user and the currently configured factor lets the user in.
+    if (isTwoFactorCompleted(req, userId, twoFactorType)) {
       return next();
     }
 
     // Control for phone-based 2FA.
-    if (twoFactorType === 'phone' && !phoneChecked) {
-      this.service('auth').sendPhoneConfirmCode(phone);
+    if (twoFactorType === 'phone') {
+      const auth = this.service('auth');
+      auth
+        .consumeSendQuota('twoFactor', phone as string, req.ip ?? req.socket?.remoteAddress)
+        .then((allowed: boolean) => (allowed ? auth.sendPhoneConfirmCode(phone as string) : undefined))
+        .catch((error: any) => this.log.save('check-two-factor-auth-send-code-error', { userId, error: error.message }, 'error'));
       res.redirect('/');
       return;
     }
 
     // Control for TOTP-based 2FA.
-    if (twoFactorType === 'totp' && !totpChecked) {
+    if (twoFactorType === 'totp') {
       res.redirect('/totp');
       return;
     }
 
-    return next();
+    // Unsupported factor type: fail closed.
+    this.log.save('check-two-factor-auth-unsupported-type', { userId, twoFactorType }, 'error');
+    res.redirect('/');
   }
 
   async checkUserClientScope(req: Request, res: Response, next: NextFunction) {
@@ -661,6 +648,18 @@ export class AuthController extends BaseController {
 
     if (!userId) {
       return res.redirect('/');
+    }
+
+    // A client that needs approval never gets consent recorded by a GET: continue only with a stored consent covering the scope.
+    if (this.config.oauth.enforceScopeConsent && body.need_scope_approve) {
+      try {
+        const stored = await this.service('auth').getUserScopeByClient(userId, body.client_id);
+        const approved = new Set(stored?.scope ?? []);
+        if (stored && (body.scope as string[]).every((item) => approved.has(item))) return next();
+        return res.redirect('/authorise/consent');
+      } catch {
+        return res.redirect('/');
+      }
     } else {
       try {
         await this.service('auth').upsertUserByClient({
@@ -687,6 +686,9 @@ export class AuthController extends BaseController {
 
     if (!userId) {
       res.send({ success: false, redirect: '/' });
+    } else if (this.config.oauth.enforceScopeConsent && body.need_scope_approve) {
+      // Consent for such a client is recorded only by an explicit decision on POST /authorise/consent.
+      res.status(403).send({ success: false, error: 'consent_required', redirect: '/authorise/consent' });
     } else {
       await this.service('auth').upsertUserByClient({
         userId,
@@ -696,6 +698,92 @@ export class AuthController extends BaseController {
       req.session.save(() => {
         res.send({ success: true, redirect: '/authorise/continue' });
       });
+    }
+  }
+
+  /** The consent endpoints exist only when `oauth.enforceScopeConsent` is on. */
+  requireScopeConsent(req: Request, res: Response, next: NextFunction) {
+    if (!this.config.oauth.enforceScopeConsent) {
+      res.sendStatus(404);
+      return;
+    }
+    next();
+  }
+
+  private consentScope(body: Request['body']): string[] {
+    const scope = Array.isArray(body.scope) ? body.scope : [];
+    return scope.length === 0 ? [...this.config.oauth.defaults.scope_fields] : scope;
+  }
+
+  /** Returns the pending authorization request for the user to decide on, with a one-time token for the decision. */
+  async getConsent(req: Request, res: Response) {
+    const { body } = req;
+    if (!body.need_scope_approve) {
+      res.redirect('/authorise/continue');
+      return;
+    }
+    const scope = this.consentScope(body);
+    const csrfToken = crypto.randomBytes(32).toString('hex');
+    req.session.consent = { csrfToken, clientId: body.client_id, redirectUri: body.redirect_uri, state: req.session.state, scope };
+    await saveSession(req);
+    res.set('Cache-Control', 'no-store');
+    res.send({
+      client_id: body.client_id,
+      client_name: body.client_name,
+      scope,
+      csrf_token: csrfToken,
+      approve_url: '/authorise/consent',
+    });
+  }
+
+  /** Approves (stores the session's requested scope) or denies (stores nothing) the pending authorization request. */
+  async saveConsent(req: Request, res: Response) {
+    const { body } = req;
+    const userId = getSessionUserId(req);
+    const pending = req.session.consent;
+    delete req.session.consent; // One-time: every outcome needs a fresh token.
+
+    if (!userId) {
+      res.send({ success: false, redirect: '/' });
+      return;
+    }
+    if (!body.need_scope_approve) {
+      res.status(400).send({ success: false, error: 'consent_not_required' });
+      return;
+    }
+
+    const scope = this.consentScope(body);
+    const supplied = String(req.get('x-csrf-token') ?? req.body?.csrf_token ?? '');
+    const expected = Buffer.from(pending?.csrfToken ?? '');
+    const given = Buffer.from(supplied);
+    const tokenValid = expected.length > 0 && expected.length === given.length && crypto.timingSafeEqual(expected, given);
+    const sameRequest =
+      !!pending &&
+      pending.clientId === body.client_id &&
+      pending.redirectUri === body.redirect_uri &&
+      pending.state === req.session.state &&
+      pending.scope.length === scope.length &&
+      pending.scope.every((item, index) => item === scope[index]);
+    if (!tokenValid || !sameRequest) {
+      await saveSession(req);
+      res.status(403).send({ success: false, error: 'invalid_consent_request', redirect: '/authorise/consent' });
+      return;
+    }
+
+    // The decision applies to the session's own authorization request; scope, client and redirect are never taken from the POST.
+    if (req.body?.decision === 'approve') {
+      await this.service('auth').upsertUserByClient({ userId, clientId: body.client_id, scope });
+      await saveSession(req);
+      res.send({ success: true, redirect: '/authorise/continue' });
+    } else if (req.body?.decision === 'deny') {
+      await saveSession(req);
+      const url = new URL(body.redirect_uri);
+      url.searchParams.set('error', 'access_denied');
+      if (req.session.state) url.searchParams.set('state', req.session.state);
+      res.send({ success: false, error: 'access_denied', redirect: url.toString() });
+    } else {
+      await saveSession(req);
+      res.status(400).send({ success: false, error: 'invalid_decision', redirect: '/authorise/consent' });
     }
   }
 
@@ -715,11 +803,17 @@ export class AuthController extends BaseController {
     if (request.query?.state === '') {
       delete request.query.state;
     }
-
-    if (req.body.response_type === 'code') {
-      this.responseTypeCode(req, res, userId, request, response);
-    } else {
-      this.responseTypeToken(req, res, userId, request, response);
+    // The PKCE binding comes only from the authorization session (`readyClient`), never from the continue request.
+    if (request.query) {
+      delete request.query.code_challenge;
+      delete request.query.code_challenge_method;
     }
+
+    if (req.body.response_type !== 'code') {
+      res.status(400).send({ error: 'unsupported_response_type', message: 'Only response_type=code is supported' });
+      return;
+    }
+
+    await this.responseTypeCode(req, res, userId, request, response);
   }
 }

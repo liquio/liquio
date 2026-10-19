@@ -12,7 +12,7 @@ import type { Theme } from '@mui/material/styles';
 import style from 'assets/jss';
 import promiseChain from 'helpers/promiseChain';
 import { getConfig } from 'helpers/configLoader';
-import { checkPhoneExists, sendActivationCodeSMS, verifyActivationCodeSMS } from 'actions/auth';
+import { sendActivationCodeSMS, verifyActivationCodeSMS } from 'actions/auth';
 
 const regex = /380(\d{9})/g;
 
@@ -82,7 +82,7 @@ class PhoneInput extends Component<PhoneInputProps, PhoneInputState> {
 
   valid = (phone: string) => phone.match(regex);
 
-  checkPhoneExists = async () => {
+  checkPhoneValid = async () => {
     const { t } = this.props;
     const { value } = this.state;
 
@@ -90,12 +90,6 @@ class PhoneInput extends Component<PhoneInputProps, PhoneInputState> {
 
     if (!isValid) {
       throw t('PHONE_INVALID');
-    }
-
-    const { text } = (await checkPhoneExists(value as string)) as { text?: string };
-
-    if (text !== 'null') {
-      throw t('PHONE_ALREADY_EXISTS');
     }
   };
 
@@ -129,7 +123,7 @@ class PhoneInput extends Component<PhoneInputProps, PhoneInputState> {
   };
 
   handleToggleActivation = () =>
-    promiseChain([this.checkPhoneExists, this.handleSendCode, () => this.setState({ showActivation: true })]).catch((error) =>
+    promiseChain([this.checkPhoneValid, this.handleSendCode, () => this.setState({ showActivation: true })]).catch((error) =>
       this.setState({ error: error as ReactNode }),
     );
 
@@ -145,18 +139,14 @@ class PhoneInput extends Component<PhoneInputProps, PhoneInputState> {
   handleChangeCode = ({ target: { value } }: { target: { value: string } }) => this.setState({ code: value, codeError: null });
 
   handleSendCode = async () => {
-    const { t } = this.props;
     const { value } = this.state;
     this.startTimer();
-    const result = await sendActivationCodeSMS(value as string);
-    if (result === 'exist') {
-      throw t('PHONE_ALREADY_EXISTS');
-    }
+    await sendActivationCodeSMS(value as string);
   };
 
   handleNotNow = () =>
     promiseChain([
-      this.checkPhoneExists,
+      this.checkPhoneValid,
       () => this.setState({ checked: true, error: null, showActivation: false, code: '' }, this.handleFinish),
     ]).catch((error) => this.setState({ error: error as ReactNode }));
 
@@ -167,9 +157,16 @@ class PhoneInput extends Component<PhoneInputProps, PhoneInputState> {
       () => this.setState({ checked: true, showActivation: false }, this.handleFinish),
     ]).catch((error) => this.setState({ codeError: error as ReactNode }));
 
+  timerCounter: ReturnType<typeof setInterval> | undefined;
+
+  componentWillUnmount() {
+    clearInterval(this.timerCounter);
+  }
+
   startTimer = () => {
     this.setState({ timer: TIMER_VALUE });
 
+    clearInterval(this.timerCounter);
     const timerCounter = setInterval(() => {
       let { timer } = this.state;
 
@@ -180,6 +177,7 @@ class PhoneInput extends Component<PhoneInputProps, PhoneInputState> {
       timer--;
       this.setState({ timer });
     }, 1000);
+    this.timerCounter = timerCounter;
   };
 
   renderResendCodeButton = () => {

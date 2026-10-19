@@ -4,6 +4,8 @@ import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 import { Exceptions } from '../exceptions';
 import { UnitEntity } from '../entities/unit';
 import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, SUPPORT_ADMIN_UNIT, ADMIN_UNITS } from '../constants/unit';
+import { toLogUnit, toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 const UNIT_PREVIOUS_DATA_MAP = {
   basedOn: 'previousBasedOn',
@@ -187,6 +189,14 @@ export class UnitBusiness {
     const removedMembers = _.difference(currentUnit.members, unitEntity.members);
     const removedHeadsIpn = _.difference(currentUnit.headsIpn, unitEntity.headsIpn);
     const removedMembersIpn = _.difference(currentUnit.membersIpn, unitEntity.membersIpn);
+
+    // New heads/members are propagated to every `basedOn` unit, so the user must manage each of them.
+    // Newly added ids are always checked; existing ones too when something is propagated.
+    const propagates = newHeads.length > 0 || newMembers.length > 0;
+    const basedOnToCheck = propagates ? unitEntity.basedOn || [] : _.difference(unitEntity.basedOn, currentUnit.basedOn || []);
+    for (const baseUnitId of basedOnToCheck) {
+      this.checkAccess(baseUnitId, unitIds);
+    }
 
     let foundUsersFromIdApi = [];
     foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache(
@@ -677,7 +687,7 @@ export class UnitBusiness {
   async deleteById(id, unit, currentUser) {
     // Decline delete units(Security, System, Support).
     if (id === SECURITY_ADMIN_UNIT || id === SYSTEM_ADMIN_UNIT || id === SUPPORT_ADMIN_UNIT) {
-      throw new Error("Can't delete this unit.");
+      throw new PublicError("Can't delete this unit.");
     }
 
     const deletedUnit = await global.models.unit.deleteById(id);
@@ -765,7 +775,7 @@ export class UnitBusiness {
 
       await unitTransaction.commit();
 
-      await global.log.save('user-imported-units', { user, data: data });
+      await global.log.save('user-imported-units', { user: toLogUser(user), data: toLogUnit(data) });
     } catch (error) {
       await unitTransaction.rollback();
       throw error;
@@ -844,7 +854,7 @@ export class UnitBusiness {
     for (const prop in unitsForEachUser) {
       for (const unit of unitsForEachUser[prop]) {
         if (unitsExclusiveRules.some((v) => v.includes(unit) && v.includes(unitId) && unit !== unitId)) {
-          throw new Error(`Unit exclusive rules error with user ${prop}.`);
+          throw new PublicError(`Unit exclusive rules error with user ${prop}.`);
         }
       }
     }

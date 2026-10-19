@@ -440,6 +440,7 @@ export class WorkflowProcessController extends Controller {
       p7s = await this.workflowProcessBusiness.downloadP7s(fileId, asFile, asBase64);
     } catch (error) {
       const causeResponse = error?.cause?.response;
+      global.log.save('p7s-download-error', { fileId, message: error?.message, cause: causeResponse, stack: error?.stack });
       const isNotFound = error?.httpStatusCode === 404 || (typeof causeResponse === 'string' && causeResponse.includes('404'));
 
       // Response if not found.
@@ -450,7 +451,7 @@ export class WorkflowProcessController extends Controller {
             return this.responseError(
               res,
               {
-                message: causeResponse || 'P7S not found.',
+                message: 'P7S not found.',
               },
               404,
             );
@@ -463,7 +464,7 @@ export class WorkflowProcessController extends Controller {
             return this.responseError(
               res,
               {
-                message: causeResponse || 'P7S not found.',
+                message: 'P7S not found.',
               },
               404,
               [{ message: 'This document does not provide a P7S' }],
@@ -474,7 +475,7 @@ export class WorkflowProcessController extends Controller {
           return this.responseError(
             res,
             {
-              message: causeResponse || 'P7S not found.',
+              message: 'P7S not found.',
             },
             404,
           );
@@ -483,14 +484,14 @@ export class WorkflowProcessController extends Controller {
         return this.responseError(
           res,
           {
-            message: causeResponse || 'P7S not found.',
+            message: 'P7S not found.',
           },
           404,
         );
       }
 
       // Respone error.
-      return this.responseError(res, { message: causeResponse || error.message || 'P7S download failed.' });
+      return this.responseError(res, { message: 'P7S download failed.' });
     }
 
     // Response P7S.

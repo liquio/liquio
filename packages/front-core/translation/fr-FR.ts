@@ -1649,6 +1649,12 @@ export default {
     TwoFactorAuthText:
       'Si vous activez la vérification en deux étapes, vous recevrez un SMS avec un code unique sur votre téléphone à chaque connexion au système.',
     ConfirmText: 'Pour activer, un SMS avec un code sera envoyé au numéro :',
+    TwoFactorAuthDisableTitle: 'Désactivation de la vérification en deux étapes',
+    TwoFactorAuthDisableText:
+      'Si vous désactivez la vérification en deux étapes, un code SMS ne sera plus demandé lors de la connexion. Confirmez avec le code envoyé par SMS.',
+    ConfirmDisableText: 'Pour désactiver, un SMS avec un code sera envoyé au numéro :',
+    TwoFactorAuthTotpActive:
+      'La vérification en deux étapes via une application d\'authentification est active. Elle ne peut pas être modifiée ici.',
     EmailError: 'Adresse e-mail incorrecte',
     EmailDomainError:
       "L'adresse e-mail avec ce domaine ne peut pas être utilisée",

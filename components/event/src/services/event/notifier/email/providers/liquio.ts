@@ -4,7 +4,6 @@ import { HttpRequest } from '../../../../../lib/http_request';
 import { Provider } from './provider';
 
 const MESSAGE_ID_KEY = '<message-id>';
-const MAX_LOG_LENGTH = 100e3 - 1000;
 
 /**
  * Liquio provider.
@@ -453,19 +452,22 @@ export class LiquioProvider extends Provider {
   }
 
   /**
-   * Prepare to log.
+   * Prepare to log. Returns metadata only: no addresses, subject, html or attachment content.
    * @private
    * @param {object} options options.
    * @param {string} options.url Url.
-   * @param {string} options.body Body.
-   * @returns {object} Url and cut body.
+   * @param {object} options.body Body.
+   * @returns {object} Url and request metadata.
    */
-  prepareToLog({ url, body }: { url: string; body: any }): { url: string; body: any } {
-    const ending = '<...cut>';
-    const bodyToLog = body.length > MAX_LOG_LENGTH ? body.substring(0, MAX_LOG_LENGTH - ending.length) + ending : body;
+  prepareToLog({ url, body }: { url: string; body: any }): Record<string, any> {
+    const recipients = body?.list_email || body?.list_user_id || body?.list_user_ipn;
+    const attachments = Array.isArray(body?.attachments) ? body.attachments : [];
     return {
       url,
-      body: bodyToLog,
+      recipientsCount: Array.isArray(recipients) ? recipients.length : 0,
+      subjectLength: typeof body?.title_message === 'string' ? body.title_message.length : 0,
+      hasHtml: !!body?.full_message,
+      attachmentsCount: attachments.length,
     };
   }
 

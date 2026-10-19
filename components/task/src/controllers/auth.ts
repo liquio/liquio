@@ -269,7 +269,7 @@ export class AuthController extends Controller {
       }
     } catch (error) {
       global.log.save('auth-login-error|cannot-delete-cached-user-data', { error: error.toString() }, 'error');
-      return this.responseError(res, `Cannot delete cached user data: ${error.toString()}`, 500);
+      return this.responseError(res, 'Cannot delete cached user data.', 500);
     }
     try {
       await global.businesses.task.deleteExpiredDraftsByUserId(userId);
@@ -368,6 +368,16 @@ export class AuthController extends Controller {
 
         // Append trace meta.
         this.appendTraceMeta({ userId });
+
+        // Cached user data is stored per token and is not bound to the route, so check route requirements every time.
+        const cachedRolesError = this.checkRequestUserRoles(req, roles);
+        if (cachedRolesError) {
+          return this.responseError(res, cachedRolesError.message, cachedRolesError.status);
+        }
+        const cachedUnitsError = this.checkRequestUserUnits(req, groups);
+        if (cachedUnitsError) {
+          return this.responseError(res, cachedUnitsError.message, cachedUnitsError.status);
+        }
       } else {
         // Get user info.
         let authUserInfo;
@@ -425,14 +435,12 @@ export class AuthController extends Controller {
         this.appendTraceMeta({ userId });
 
         // Check role.
-        const userRoles = this.getUserRoles(req);
+        req.authUserRoles = this.getUserRoles(req);
 
-        const hasOneOfNeededRoles = this.hasOneOfNeededRoles(userRoles, roles);
-        if (roles && !hasOneOfNeededRoles) {
-          global.log.save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles }, 'error');
-          return this.responseError(res, ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, 401);
+        const rolesError = this.checkRequestUserRoles(req, roles);
+        if (rolesError) {
+          return this.responseError(res, rolesError.message, rolesError.status);
         }
-        req.authUserRoles = userRoles;
 
         // Sync LDAP-managed units if the user's groups were refreshed. Never fails the request.
         await this.ldapUnitSync.syncIfChanged(authUserInfo);
@@ -441,22 +449,9 @@ export class AuthController extends Controller {
         const authUserUnitEntities = await this.getUserUnitEntities(req.authUserId);
         req.authUserUnitEntities = authUserUnitEntities;
 
-        const authUserUnitIds = this.getRequestUserUnitIds(req);
-        const allowableUnits = this.access.allowableUnits || [];
-        const routeGroupsExceptions = this.access.routeGroupsExceptions || [ROUTE_GROUPS.PUBLIC];
-
-        if (
-          // Skip check for preconfigured allowed route groups.
-          !routeGroupsExceptions.some((v) => groups.includes(v)) &&
-          // check only if allowableUnits are set in the configuration.
-          Array.isArray(allowableUnits) &&
-          // ...and aren't empty.
-          allowableUnits.length &&
-          // doesn't the user belong to any of the allowable units?
-          !allowableUnits.some((v) => authUserUnitIds.all.includes(v))
-        ) {
-          global.log.save('user-with-restricted-units', { authUserUnitIds });
-          return this.responseError(res, ERROR_MESSAGE_RESTRICTED_UNIT, 403);
+        const unitsError = this.checkRequestUserUnits(req, groups);
+        if (unitsError) {
+          return this.responseError(res, unitsError.message, unitsError.status);
         }
 
         // Handle debug user.
@@ -468,6 +463,7 @@ export class AuthController extends Controller {
           const { adminUnitId } = global.config.admin;
           const adminUnitIds = [].concat(adminUnitId).filter(Boolean);
 
+          const authUserUnitIds = this.getRequestUserUnitIds(req);
           if (!authUserUnitIds.all.some((v) => adminUnitIds.includes(v))) {
             return this.responseError(res, ERROR_MESSAGE_DEBUG_USER_NOT_ALLOWED, 401);
           }
@@ -543,6 +539,47 @@ export class AuthController extends Controller {
     const all = [...new Set([...head, ...member])];
 
     return { head, member, all };
+  }
+
+  /**
+   * Check request user roles against the roles needed by the route.
+   * @param {object} req HTTP request with `authUserInfo` and `authUserRoles`.
+   * @param {string[]} [roles] Roles that has access (check by "or").
+   * @returns {{ message: string, status: number }|null} Error to respond with or null if the check is passed.
+   */
+  checkRequestUserRoles(req, roles?: string[]): { message: string; status: number } | null {
+    if (roles && !this.hasOneOfNeededRoles(req.authUserRoles, roles)) {
+      global.log.save('user-without-needed-roles', { authUserInfo: req.authUserInfo, userRoles: req.authUserRoles, neededRoles: roles }, 'error');
+      return { message: ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, status: 401 };
+    }
+    return null;
+  }
+
+  /**
+   * Check request user units against the allowable units from the configuration.
+   * @param {object} req HTTP request with `authUserUnitEntities`.
+   * @param {string[]} [groups] Route groups.
+   * @returns {{ message: string, status: number }|null} Error to respond with or null if the check is passed.
+   */
+  checkRequestUserUnits(req, groups: string[] = []): { message: string; status: number } | null {
+    const authUserUnitIds = this.getRequestUserUnitIds(req);
+    const allowableUnits = this.access.allowableUnits || [];
+    const routeGroupsExceptions = this.access.routeGroupsExceptions || [ROUTE_GROUPS.PUBLIC];
+
+    if (
+      // Skip check for preconfigured allowed route groups.
+      !routeGroupsExceptions.some((v) => groups.includes(v)) &&
+      // check only if allowableUnits are set in the configuration.
+      Array.isArray(allowableUnits) &&
+      // ...and aren't empty.
+      allowableUnits.length &&
+      // doesn't the user belong to any of the allowable units?
+      !allowableUnits.some((v) => authUserUnitIds.all.includes(v))
+    ) {
+      global.log.save('user-with-restricted-units', { authUserUnitIds });
+      return { message: ERROR_MESSAGE_RESTRICTED_UNIT, status: 403 };
+    }
+    return null;
   }
 
   /**
@@ -658,13 +695,26 @@ export class AuthController extends Controller {
    * @param {object} res HTTP response.
    * @param {object} next Next request handler.
    */
-  handleBearerAuthToken(token, req, res, next) {
+  async handleBearerAuthToken(token, req, res, next) {
     // Parse token.
     let tokenData;
     try {
       tokenData = this.token.decrypt(token);
     } catch (error) {
       return this.responseError(res, error, 401);
+    }
+
+    // Check revocation. Tokens issued before `jti` was introduced have no id and stay valid until they expire.
+    if (tokenData.jti && global.redisClient) {
+      let isRevoked;
+      try {
+        isRevoked = await global.redisClient.get(`bearer.revoked.${tokenData.jti}`);
+      } catch (error) {
+        global.log?.save('auth|bearer-revocation-check-failed', { error: error?.message });
+      }
+      if (isRevoked) {
+        return this.responseError(res, 'Bearer token is revoked.', 401);
+      }
     }
 
     // Get user.
@@ -709,6 +759,36 @@ export class AuthController extends Controller {
   }
 
   /**
+   * Basic auth only. Rejects Bearer so it cannot be used to mint new tokens.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {object} next Next request handler.
+   */
+  basicOnlyAuth(req, res, next) {
+    const { authorization: token } = req.headers;
+    if (!token) {
+      return this.responseError(res, 'Unknown basic auth token.', 401);
+    }
+    const [tokenKeyword, tokenValue] = token.split(' ');
+    if (tokenKeyword !== 'Basic') {
+      return this.responseError(res, 'Basic auth required.', 401);
+    }
+    return this.handleBasicAuthToken(tokenValue, req, res, next);
+  }
+
+  /**
+   * Revoke Bearer token by its jti without rotating jwtSecret.
+   * @param {string} jti Token id.
+   * @param {number} [ttlSeconds] Denylist ttl, should cover the token lifetime (default 7 days).
+   */
+  async revokeBearerToken(jti, ttlSeconds = 7 * 24 * 60 * 60) {
+    if (!global.redisClient) {
+      throw new Error('Redis is required to revoke Bearer tokens.');
+    }
+    await global.redisClient.set(`bearer.revoked.${jti}`, true, ttlSeconds);
+  }
+
+  /**
    * @param {string} httpHeaderName
    * @return {(function(req: Express.Request, res: Express.Response, next: function): Promise<*>)}
    */
@@ -746,18 +826,47 @@ export class AuthController extends Controller {
     this.responseData(res, { token_type: 'bearer', access_token: bearerToken });
   }
 
+  /**
+   * Check per-integration access rule for a basicAuth route.
+   * Rules are matched by route pattern (`req.route.path`, e.g. `/units/:id`) and HTTP method, not by the request URL,
+   * so query string and path params do not affect matching. A rule may limit methods with `method` (string) or `methods`
+   * (array); without them it applies to every method. A route without a matching rule is denied.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {object} next Next request handler.
+   */
   async checkProtectedBasicAuth(req, res, next) {
-    const { originalUrl } = req;
-    const protectedRoute = this.config.basic_auth.protectedRoutes?.find((item) => item.route === originalUrl);
-    if (!protectedRoute) {
+    const routePattern = req.route?.path;
+    const method = String(req.method || '').toUpperCase();
+    const protectedRoutes = this.config.basic_auth.protectedRoutes || [];
+    const matchedRules = protectedRoutes.filter((item) => {
+      if (item.route !== routePattern) {
+        return false;
+      }
+      const methods = [].concat(item.methods || item.method || []).map((m) => String(m).toUpperCase());
+      return methods.length === 0 || methods.includes(method);
+    });
+    if (matchedRules.length === 0) {
       return this.responseError(res, 'Protected route. Must define access rule in config.', 403);
     }
-    const { basicAuthUsers = [] } = protectedRoute;
-    const isAllowed = basicAuthUsers.includes(req.basicAuthUser);
+    const isAllowed = matchedRules.some(({ basicAuthUsers = [] }) => basicAuthUsers.includes(req.basicAuthUser));
     if (!isAllowed) {
       return this.responseError(res, 'Protected route. Not allowed for this user.', 403);
     }
     next();
+  }
+
+  /**
+   * Per-integration scoping for every basicAuth route. Opt-in via `basic_auth.scopedRoutes: true`; when it is off this is a no-op.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {object} next Next request handler.
+   */
+  async checkScopedBasicAuth(req, res, next) {
+    if (this.config.basic_auth?.scopedRoutes !== true) {
+      return next();
+    }
+    return this.checkProtectedBasicAuth(req, res, next);
   }
 
   /**

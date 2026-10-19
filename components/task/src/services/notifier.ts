@@ -246,7 +246,7 @@ export class NotifierService {
       const response = await HttpRequest.send({
         url,
         method: HttpRequest.Methods.GET,
-        headers: { 'x-trace-id': getTraceId() },
+        headers: this.getHeadersWithTraceId(),
         timeout: this.timeout,
       });
       global.log.save('get-count-unread-messages-response', response);

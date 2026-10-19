@@ -132,6 +132,14 @@ describe('ExternalReader', () => {
       expect(result).toEqual(mockResponse);
     });
 
+    it('should encode service and method so they stay inside one path segment', async () => {
+      const scope = nock('https://external-reader.example.com').get('/captcha/..%2Fadmin/x%3Fa%3Db').reply(200, { challenge: 'c' });
+
+      await externalReader.getCaptchaChallenge('../admin', 'x?a=b');
+
+      expect(scope.isDone()).toBe(true);
+    });
+
     it('should handle captcha challenge errors', async () => {
       nock('https://external-reader.example.com')
         .get('/captcha/test-service/test-method')
@@ -338,6 +346,23 @@ describe('ExternalReader', () => {
       });
     });
 
+    it('should derive userFilter only from the user object, ignoring caller-supplied userFilter', async () => {
+      const spoofedUser = { ipn: '1111111111', edrpou: '22222222', services: ['s'], userFilter: { ipn: '9999999999' } };
+      const spoofedExtra = { userFilter: { ipn: '9999999999' } };
+      const spoofedNonUser = { userFilter: { ipn: '9999999999' } };
+
+      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, spoofedUser, spoofedNonUser, spoofedExtra, userUnits);
+
+      const passedUserFilter = (externalReader.getData as jest.Mock).mock.calls[0][4];
+      expect(passedUserFilter).toEqual({
+        ipn: '1111111111',
+        edrpou: '22222222',
+        userUnits,
+        userServices: ['s'],
+      });
+      expect(Object.keys(passedUserFilter).sort()).toEqual(['edrpou', 'ipn', 'userServices', 'userUnits']);
+    });
+
     it('should get data by user successfully', async () => {
       const result = await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParams, userUnits);
 
@@ -365,37 +390,57 @@ describe('ExternalReader', () => {
       });
     });
 
-    it('should log response data', async () => {
-      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
+    it('should not log response body, filters or ipn/edrpou by default', async () => {
+      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, { secret: 'nonUserValue' });
 
-      expect(global.log.save).toHaveBeenCalledWith(
-        'external-reader-raw-data-response',
-        expect.objectContaining({
-          service,
-          method,
-          userFilter: expect.objectContaining({
-            ipn: user.ipn,
-            edrpou: user.edrpou,
-            userServices: '*****', // Should be hidden
-          }),
-          nonUserFilter: {},
-          data: expect.any(String),
-        }),
-      );
+      const call = (global.log.save as jest.Mock).mock.calls.find(([name]) => name === 'external-reader-raw-data-response');
+      expect(call).toBeDefined();
+      const payload = call[1];
+      expect(payload).toEqual(expect.objectContaining({ service, method, userFilter: '*****', nonUserFilter: '*****' }));
+      expect(payload.data).toBeUndefined();
+      expect(payload.responseKeys).toEqual(expect.arrayContaining(['data']));
+      const serialized = JSON.stringify(payload);
+      expect(serialized).not.toContain('item1');
+      expect(serialized).not.toContain('nonUserValue');
+      expect(serialized).not.toContain(String(user.ipn));
     });
 
-    it('should truncate long response data in logs', async () => {
-      const longData = { data: 'x'.repeat(200000) }; // Very long data
-      externalReader.getData.mockResolvedValue(longData);
+    describe('external_reader.logResponses enabled', () => {
+      beforeEach(() => {
+        global.config.external_reader.logResponses = true;
+      });
+      afterEach(() => {
+        delete global.config.external_reader.logResponses;
+      });
 
-      await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
+      it('should log response data with filters redacted', async () => {
+        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
 
-      expect(global.log.save).toHaveBeenCalledWith(
-        'external-reader-raw-data-response',
-        expect.objectContaining({
-          data: expect.stringContaining('<...cut>'),
-        }),
-      );
+        expect(global.log.save).toHaveBeenCalledWith(
+          'external-reader-raw-data-response',
+          expect.objectContaining({
+            service,
+            method,
+            userFilter: '*****',
+            nonUserFilter: '*****',
+            data: expect.any(String),
+          }),
+        );
+      });
+
+      it('should truncate long response data in logs', async () => {
+        const longData = { data: 'x'.repeat(200000) }; // Very long data
+        externalReader.getData.mockResolvedValue(longData);
+
+        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
+
+        expect(global.log.save).toHaveBeenCalledWith(
+          'external-reader-raw-data-response',
+          expect.objectContaining({
+            data: expect.stringContaining('<...cut>'),
+          }),
+        );
+      });
     });
 
     describe('attachment handling', () => {
@@ -427,7 +472,20 @@ describe('ExternalReader', () => {
           documentId: 'doc-123',
         };
 
-        const result = await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave);
+        const result = await externalReader.getDataByUser(
+          service,
+          method,
+          captchaPayload,
+          oauthToken,
+          user,
+          nonUserFilter,
+          extraParamsWithSave,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
 
         expect(mockStorageService.provider.uploadFileFromStream).toHaveBeenCalledTimes(2);
         expect(mockDocumentAttachmentModel.create).toHaveBeenCalledTimes(2);
@@ -437,6 +495,46 @@ describe('ExternalReader', () => {
         expect(result.data.attachments[1].data).toBe('****');
       });
 
+      describe('untrusted extraParams', () => {
+        const maliciousExtraParams = {
+          isSaveAttachments: true,
+          documentId: 'victim-doc',
+          deleteOldAttachmentsBeforeSave: true,
+          isRewriteAttachmentsOnEachRequest: true,
+          prepareAttachments: '(a) => a',
+        };
+
+        it('should not save, delete or evaluate anything without the trusted flag', async () => {
+          const result = await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, maliciousExtraParams);
+
+          expect(result).toBe(attachmentsData);
+          expect(mockDocumentAttachmentModel.deleteByDocumentId).not.toHaveBeenCalled();
+          expect(mockDocumentAttachmentModel.getByDocumentIdAndMeta).not.toHaveBeenCalled();
+          expect(mockDocumentAttachmentModel.create).not.toHaveBeenCalled();
+          expect(mockStorageService.provider.uploadFileFromStream).not.toHaveBeenCalled();
+          expect(mockSandbox.evalWithArgs).not.toHaveBeenCalled();
+        });
+
+        it('should not save attachments when the trusted documentId is not a string', async () => {
+          await externalReader.getDataByUser(
+            service,
+            method,
+            captchaPayload,
+            oauthToken,
+            user,
+            nonUserFilter,
+            { isSaveAttachments: true, documentId: { $ne: null } },
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            true,
+          );
+
+          expect(mockDocumentAttachmentModel.create).not.toHaveBeenCalled();
+        });
+      });
+
       it('should delete old attachments when deleteOldAttachmentsBeforeSave is enabled', async () => {
         const extraParamsWithDelete = {
           isSaveAttachments: true,
@@ -444,7 +542,20 @@ describe('ExternalReader', () => {
           deleteOldAttachmentsBeforeSave: true,
         };
 
-        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithDelete);
+        await externalReader.getDataByUser(
+          service,
+          method,
+          captchaPayload,
+          oauthToken,
+          user,
+          nonUserFilter,
+          extraParamsWithDelete,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
 
         expect(mockDocumentAttachmentModel.deleteByDocumentId).toHaveBeenCalledWith('doc-123');
       });
@@ -465,7 +576,20 @@ describe('ExternalReader', () => {
           isRewriteAttachmentsOnEachRequest: true,
         };
 
-        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithRewrite);
+        await externalReader.getDataByUser(
+          service,
+          method,
+          captchaPayload,
+          oauthToken,
+          user,
+          nonUserFilter,
+          extraParamsWithRewrite,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
 
         expect(mockDocumentAttachmentModel.getByDocumentIdAndMeta).toHaveBeenCalledWith('doc-123', { fromExternalReader: `${service}.${method}` });
         expect(mockStorageService.provider.deleteFile).toHaveBeenCalledTimes(2);
@@ -481,7 +605,20 @@ describe('ExternalReader', () => {
           prepareAttachments: '(args) => { return args.attachments; }',
         };
 
-        await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithPrepare);
+        await externalReader.getDataByUser(
+          service,
+          method,
+          captchaPayload,
+          oauthToken,
+          user,
+          nonUserFilter,
+          extraParamsWithPrepare,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
 
         expect(mockSandbox.evalWithArgs).toHaveBeenCalledWith(
           extraParamsWithPrepare.prepareAttachments,
@@ -504,7 +641,20 @@ describe('ExternalReader', () => {
         };
 
         await expect(
-          externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave),
+          externalReader.getDataByUser(
+            service,
+            method,
+            captchaPayload,
+            oauthToken,
+            user,
+            nonUserFilter,
+            extraParamsWithSave,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            true,
+          ),
         ).rejects.toThrow('ExternalReader.getDataByUser. Cannot upload attachment to file storage. Error: Upload failed');
       });
 
@@ -517,7 +667,20 @@ describe('ExternalReader', () => {
         };
 
         await expect(
-          externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, nonUserFilter, extraParamsWithSave),
+          externalReader.getDataByUser(
+            service,
+            method,
+            captchaPayload,
+            oauthToken,
+            user,
+            nonUserFilter,
+            extraParamsWithSave,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            true,
+          ),
         ).rejects.toThrow('ExternalReader.getDataByUser. Cannot insert attachment to DB. Error: DB insert failed');
       });
     });

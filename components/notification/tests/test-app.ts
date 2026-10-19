@@ -11,9 +11,10 @@ import nock from 'nock';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
-import { ConsoleLogProvider, Log, resetIdApiClient } from '@liquio/back-core';
+import { Log, resetIdApiClient } from '@liquio/back-core';
 
 import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
+import { createConsoleLogProvider } from '../src/lib/console_log_provider';
 
 const debug = createDebug;
 
@@ -89,7 +90,10 @@ const versionsConfText = readFileSync(path.join(__dirname, '../src/config/versio
 const versionsConf = JSON.parse(versionsConfText || '{}');
 const defaultConf = { ...rawConfig[defaultEnv], ...versionsConf };
 
-const confOverride: any = {};
+// The config template ships no admin password (NT-21), so the harness sets a test one.
+export const TEST_ADMIN = { login: 'e2e-admin', password: 'e2e-admin-pass' };
+
+const confOverride: any = { adminConfig: { ...TEST_ADMIN } };
 
 // Credentials for the two auth middlewares (auth.ts's checkAuth/checkTestAuth), injected via
 // config rather than seeded DB rows - checkAuth accepts a plain config.authorization.list match
@@ -190,7 +194,7 @@ export class TestApp {
     const config = { conf, env: defaultEnv };
 
     // Init log the same way src/index.ts does, before anything that might read global.log.
-    const consoleLogProvider = new ConsoleLogProvider(conf.log?.console?.name, { excludeParams: conf.log?.excludeParams });
+    const consoleLogProvider = createConsoleLogProvider(conf.log);
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
     global.log = log;

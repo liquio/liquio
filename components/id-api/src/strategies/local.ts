@@ -4,7 +4,8 @@ import { Log } from '@liquio/back-core';
 import { delay } from '../lib/helpers';
 import { HttpError } from '../lib/http_error';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
-import { saveSession } from '../middleware/session';
+import { clearTwoFactorState } from '../lib/two_factor';
+import { destroySession, saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesAttributes } from '../models';
 import { Services } from '../services';
 import { CallbackFn, Express, Request, Response } from '../types';
@@ -72,6 +73,14 @@ export async function local(app: Express) {
         return done(new HttpError(401, GENERIC_FAIL_DESCRIPTION));
       }
 
+      // A blocked account never gets a session. The answer is the same as for a wrong password,
+      // so the response does not reveal that the account exists. It is checked after the password,
+      // so a caller without the password cannot tell a blocked account from a wrong password either.
+      if (user.isActive === false) {
+        log.save('user-auth-by-local|user-blocked', { email }, 'info');
+        return done(new HttpError(401, GENERIC_FAIL_DESCRIPTION));
+      }
+
       // Reset the attempt counter
       await Services.service('redis').delete(counterKey);
 
@@ -84,6 +93,7 @@ export async function local(app: Express) {
 
       const session = {
         userId: user.userId,
+        authorizationVersion: user.authorizationVersion ?? 0,
         email: user.email,
         services: { local: sanitizedLocalServiceInfo },
         provider: 'local',
@@ -99,14 +109,18 @@ export async function local(app: Express) {
       // If validation succeeds, return the user object
       return done(null, session);
     } catch (error: any) {
-      log.save('user-auth-by-local|error', { error }, 'error');
+      log.save('user-auth-by-local|error', { error: error?.message ?? `${error}` }, 'error');
       return done(error);
     }
   }
 
   async function authorise(req: Request, res: Response): Promise<void> {
+    // A fresh password login never inherits a second factor completion of a previous login.
+    clearTwoFactorState(req);
+
     const user = req.session.passport?.user;
 
+    req.session.authorizationVersion = user.authorizationVersion ?? 0;
     await saveSession(req, user);
 
     const { userId, email } = req.session.passport?.user ?? {};
@@ -186,6 +200,14 @@ export async function local(app: Express) {
         return;
       }
 
+      // A blocked account cannot change its password. The answer is the same as for a wrong old password
+      // and it is checked after the old password, so the response reveals nothing about the account state.
+      if (user.isActive === false) {
+        log.save('user-change-password|user-blocked', { email }, 'info');
+        res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
+        return;
+      }
+
       // Make a list of current and old passwords and check if the new password is not the same as the old ones
       const oldPasswords = [currentPasswordHash].concat((localServiceInfo?.data as any)?.oldPasswords ?? []);
       if (oldPasswords.find((hash) => passwordManager.verifyPasswordSync(newPassword, hash))) {
@@ -201,16 +223,20 @@ export async function local(app: Express) {
       oldPasswords.splice(passwordManager.rememberLastPassword, oldPasswords.length);
 
       // Update service record with new data
-      await Models.model('userServices').update(
-        { data: { password: passwordHash, oldPasswords, isChangeRequired: false } },
-        { where: { id: localServiceInfo.id } },
+      // The password hash is compared inside the transaction, so a concurrent change cannot be overwritten.
+      const changed = await Services.service('auth').updateLocalPassword(
+        user.userId,
+        { password: passwordHash, oldPasswords, isChangeRequired: false },
+        { passwordHash: currentPasswordHash },
       );
+      if (!changed) {
+        log.save('user-change-password|conflict', { email }, 'info');
+        res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
+        return;
+      }
 
       // Reset the attempt counter
       await Services.service('redis').delete(counterKey);
-
-      // Invalidate the Redis user cache so the next /user/info call reads fresh DB data
-      await Services.service('redis').delete(['oauthmodel', 'getUser', { userId: user.userId }]);
 
       // Create login history record
       {
@@ -219,11 +245,14 @@ export async function local(app: Express) {
         await Models.model('loginHistory').create(loginHistoryData);
       }
 
+      // The change revoked every session of the user; drop the cookie session of this request as well.
+      await destroySession(req).catch(() => undefined);
+
       log.save('user-change-password|success', { email }, 'info');
 
       res.send({ success: true, message: 'Password changed successfully.' });
-    } catch (error) {
-      log.save('user-change-password|error', { error }, 'error');
+    } catch (error: any) {
+      log.save('user-change-password|error', { error: error?.message ?? `${error}` }, 'error');
       res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
     }
   }

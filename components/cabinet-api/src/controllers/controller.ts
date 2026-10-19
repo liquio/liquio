@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { getTraceId } from '@liquio/back-core';
 
 import type UnitEntity from '../entities/unit';
+import { isPublicError, publicError } from '../lib/public_error';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -53,8 +54,10 @@ export default class Controller {
     details?: unknown,
   ): void {
     // Define params.
-    const message = (error && (error as Error).message) || error;
-    const code = (error && (error as any).code) || undefined;
+    // Error instances are hidden unless they are intentional client errors; strings/objects are trusted constants.
+    const isErrorInstance = error instanceof Error;
+    const message = isErrorInstance ? publicError(error, httpStatusCode) : (error && (error as any).message) || error;
+    const code = !isErrorInstance || isPublicError(error) ? (error && (error as any).code) || undefined : undefined;
 
     // Define response object.
     const responseObject = { error: { message, details, code }, traceId: getTraceId() };

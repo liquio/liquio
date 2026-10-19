@@ -2,6 +2,7 @@ const DEFAULT_MESSAGE = "User doesn't have any access.";
 
 export class AccessError extends Error {
   httpStatusCode: number;
+  isPublic = true;
 
   constructor(message?: string) {
     super(message || DEFAULT_MESSAGE);

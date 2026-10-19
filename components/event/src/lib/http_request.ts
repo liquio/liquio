@@ -76,7 +76,9 @@ export class HttpRequest {
     } catch (error: any) {
       global.log.save('http-request-error', prepareAxiosErrorToLog(error), 'error');
       if (error.response?.data) {
-        const strError = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
+        // Error message is logged and returned to callers, so secrets are masked and long values cut.
+        const preparedData = Helpers.prepareResponseDataToLog(error.response.data);
+        const strError = typeof preparedData === 'string' ? preparedData : JSON.stringify(preparedData);
         const wrapped = new Error(strError);
         (wrapped as any).cause = error;
         throw wrapped;

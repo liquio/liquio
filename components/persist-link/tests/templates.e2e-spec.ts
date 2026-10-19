@@ -19,6 +19,7 @@ describe('TemplatesController', () => {
   beforeEach(async () => {
     await TestApp.beforeEach();
     config.auth.tokens = [token];
+    delete config.link_providers.external;
   });
 
   afterEach(async () => {
@@ -38,7 +39,47 @@ describe('TemplatesController', () => {
     });
   });
 
+  it('should not register template write routes when the external provider is off', async () => {
+    app = await TestApp.setup();
+
+    await app.request().post('/templates').set('token', token).send({ name: 'x', method: 'getRecord' }).expect(404);
+    await app.request().put('/templates/1').set('token', token).send({ name: 'x' }).expect(404);
+    await app.request().delete('/templates/1').set('token', token).expect(404);
+    await app.request().get('/templates').set('token', token).expect(200);
+  });
+
+  it('should require a token for template write routes when the external provider is on', async () => {
+    config.link_providers.external = { register: { url: 'http://127.0.0.1:1' } };
+    app = await TestApp.setup();
+
+    await app.request().post('/templates').send({ name: 'x', method: 'getRecord' }).expect(401);
+    await app.request().put('/templates/1').send({ name: 'x' }).expect(401);
+    await app.request().delete('/templates/1').expect(401);
+  });
+
+  it('should reject invalid jsonMap on template create and update', async () => {
+    config.link_providers.external = { register: { url: 'http://127.0.0.1:1' } };
+    app = await TestApp.setup();
+
+    const base = { name: 'bad-map', method: 'getRecord', html: '', pdf: '' };
+    for (const jsonMap of [{ a: 1 }, { a: { b: 'c' } }, ['x'], 'str', { a: 'x'.repeat(10001) }]) {
+      await app
+        .request()
+        .post('/templates')
+        .set('token', token)
+        .send({ ...base, jsonMap })
+        .expect(400);
+      await app
+        .request()
+        .put('/templates/1')
+        .set('token', token)
+        .send({ ...base, jsonMap })
+        .expect(400);
+    }
+  });
+
   it('should perform full templates CRUD flow', async () => {
+    config.link_providers.external = { register: { url: 'http://127.0.0.1:1' } };
     app = await TestApp.setup();
 
     const createPayload = {

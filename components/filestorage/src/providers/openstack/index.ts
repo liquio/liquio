@@ -1,7 +1,10 @@
+import type https from 'node:https';
+
 import axios from 'axios';
 
 import { Provider } from '../provider';
 import { Auth } from './auth';
+import { createHttpsAgent } from '../../lib/tls';
 import { HttpRequest as Request } from '../../lib/http_request';
 
 const EXTERNAL_SERVICE_NAME = 'openstack';
@@ -32,6 +35,7 @@ export class OpenStack extends Provider {
   container: string;
   authCacheTtl: number;
   auth: Auth;
+  httpsAgent?: https.Agent;
 
   /**
    * OpenStack constructor.
@@ -46,6 +50,7 @@ export class OpenStack extends Provider {
       this.authVersion = openStackConfig.authVersion || DEFAULT_AUTH_VERSION;
       this.routes = { ...DEFAULT_ROUTES, ...openStackConfig.routes };
       this.timeout = openStackConfig.timeout;
+      this.httpsAgent = createHttpsAgent(openStackConfig.tls);
       this.tenantName = openStackConfig.tenantName;
       this.account = openStackConfig.account;
       this.container = openStackConfig.container || DEFAULT_CONTAINER;
@@ -116,7 +121,6 @@ export class OpenStack extends Provider {
     // Get and return request options.
     global.log.save('openstack-file-downloading|request-options', {
       url,
-      headers,
       method: Request.Methods.GET,
       timeout: this.timeout,
     });
@@ -142,6 +146,7 @@ export class OpenStack extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
+      httpsAgent: this.httpsAgent,
       responseType: 'stream',
     });
 
@@ -166,6 +171,7 @@ export class OpenStack extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
+      httpsAgent: this.httpsAgent,
       responseType: 'arraybuffer',
     });
 
@@ -199,7 +205,6 @@ export class OpenStack extends Provider {
     // Get and return request options.
     global.log.save('openstack-file-uploading|request-options', {
       url,
-      headers,
       method: Request.Methods.PUT,
       body: '***',
       timeout: this.timeout,
@@ -233,11 +238,12 @@ export class OpenStack extends Provider {
         headers: requestOptions.headers,
         data: requestOptions.body,
         timeout: requestOptions.timeout,
+        httpsAgent: this.httpsAgent,
         validateStatus: () => true, // Don't throw on any status code
       });
 
       // Check response and log
-      const requestOptionsToLog = { ...requestOptions, body: '***' };
+      const requestOptionsToLog = { url: requestOptions.url, method: requestOptions.method, timeout: requestOptions.timeout, body: '***' };
       global.log.save('openstack-uploading-file-response', {
         requestOptions: requestOptionsToLog,
         filePath,
@@ -276,8 +282,22 @@ export class OpenStack extends Provider {
     const { url, headers } = infoToHandleFile;
 
     // Delete file.
-    const deletingResult = await Request.send({ url, headers, method: Request.Methods.DELETE, timeout: this.timeout });
+    const { body: deletingResult, rawResponse } = await Request.sendDetailed({
+      url,
+      headers,
+      method: Request.Methods.DELETE,
+      timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
+    });
     global.log.save('openstack-file-deleting-result', deletingResult);
+
+    // 404 means object is already absent - not an error. Other error statuses must not be silent.
+    const status = rawResponse?.status;
+    if (status >= 400 && status !== 404) {
+      const error: any = new Error(`OpenStack file deleting failed with status ${status}.`);
+      error.statusCode = status;
+      throw error;
+    }
 
     // Save metrics.
     this.externalServiceMetric('deleteFile', timer);
@@ -312,6 +332,7 @@ export class OpenStack extends Provider {
       headers,
       method: Request.Methods.HEAD,
       timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
     });
     global.log.save('container-metadata', { containerMetadata });
     const containerMetadataHeaders = containerMetadata.headers;

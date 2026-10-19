@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 import * as conf from '../../config/config';
+import { createHttpsAgent } from '../../lib/tls';
+import { maskPhone, maskPhones, redactMessage, summarizeError } from '../../lib/mask';
 import { SmsQueueModel } from '../sms_queue';
 
 const SmsQueue = new SmsQueueModel().SmsQueue;
@@ -8,10 +10,6 @@ const SmsQueue = new SmsQueueModel().SmsQueue;
 export class AbstractGate {
   options: any;
   adapter: any;
-
-  constructor() {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-  }
 
   get isEnabled(): boolean {
     return !(conf as any).smsServer || (conf as any).smsServer.isEnabled !== false;
@@ -24,10 +22,12 @@ export class AbstractGate {
   async sendRequest(object: any): Promise<any> {
     object.json = true;
     try {
-      const t = await axios(object);
+      // Optional per-gateway TLS options (private CA). Default agent verifies certificates.
+      const httpsAgent = createHttpsAgent((conf as any).smsServer?.tls);
+      const t = await axios(httpsAgent ? { ...object, httpsAgent } : object);
       return t;
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }
@@ -37,7 +37,7 @@ export class AbstractGate {
 
     if (!this.isEnabled) {
       const result = phones.map((phone) => this.getDisabledResult(phone));
-      global.log.save('send-sms-skipped', { phones, text, reason: 'SMS is disabled in config.' }, 'info');
+      global.log.save('send-sms-skipped', { phones: maskPhones(phones), text: redactMessage(text), reason: 'SMS is disabled in config.' }, 'info');
       return result;
     }
 
@@ -57,11 +57,10 @@ export class AbstractGate {
             .update(`${text}SaLt${phones.join(',')}`)
             .digest('hex'),
         };
-        console.log(this.options);
         const t = await this.sendRequest(this.options);
         return t;
       } catch (e) {
-        console.error(e);
+        console.error('SMS gateway error:', summarizeError(e));
         throw e;
       }
     } else {
@@ -95,7 +94,7 @@ export class AbstractGate {
           const t = await this.sendRequest(this.options);
           return t;
         } catch (e) {
-          console.error(e);
+          console.error('SMS gateway error:', summarizeError(e));
           throw e;
         }
       });
@@ -108,7 +107,7 @@ export class AbstractGate {
 
     if (!this.isEnabled) {
       const result = this.getDisabledResult(phone);
-      global.log.save('send-one-sms-skipped', { phone, text, reason: result.reason }, 'info');
+      global.log.save('send-one-sms-skipped', { phone: maskPhone(phone), text: redactMessage(text), reason: result.reason }, 'info');
       return result;
     }
 
@@ -139,7 +138,7 @@ export class AbstractGate {
       const t = await this.sendRequest(this.options);
       return t;
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }
@@ -156,7 +155,7 @@ export class AbstractGate {
       const t = await this.sendRequest(this.options);
       return t;
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }
@@ -174,21 +173,41 @@ export class AbstractGate {
       const t = await this.sendRequest(this.options);
       return t;
     } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }
 
-  async removeFromQueue(sms_id?: string): Promise<any> {
+  /**
+   * Remove one message from the queue. A missing id never falls back to truncating the table.
+   */
+  async removeFromQueue(sms_id?: string | number): Promise<any> {
+    if (!sms_id) {
+      throw new Error('sms_id is required, use removeAllFromQueue to clear the whole queue');
+    }
+    return this.destroyQueue({ where: { sms_id } });
+  }
+
+  /**
+   * Explicitly remove every message from the queue.
+   */
+  async removeAllFromQueue(): Promise<any> {
+    return this.destroyQueue({ truncate: true });
+  }
+
+  async retrySendInQueue(sms_id?: string | number): Promise<any> {
+    if (!sms_id) {
+      throw new Error('sms_id is required, use retrySendAllInQueue to resend the whole queue');
+    }
+    return this.destroyQueue({ where: { sms_id } });
+  }
+
+  async retrySendAllInQueue(): Promise<any> {
+    return this.destroyQueue({ truncate: true });
+  }
+
+  private async destroyQueue(query: any): Promise<any> {
     try {
-      let query: any = { truncate: true };
-      if (sms_id) {
-        query = {
-          where: {
-            sms_id,
-          },
-        };
-      }
       await SmsQueue.destroy(query);
 
       return {
@@ -196,29 +215,7 @@ export class AbstractGate {
         queue: await this.getSMSQueue(),
       };
     } catch (e) {
-      console.error(e);
-      throw e;
-    }
-  }
-
-  async retrySendInQueue(sms_id?: string): Promise<any> {
-    try {
-      let query: any = { truncate: true };
-      if (sms_id) {
-        query = {
-          where: {
-            sms_id,
-          },
-        };
-      }
-      await SmsQueue.destroy(query);
-
-      return {
-        ...(await this.getSMSQueueCounter()),
-        queue: await this.getSMSQueue(),
-      };
-    } catch (e) {
-      console.error(e);
+      console.error('SMS gateway error:', summarizeError(e));
       throw e;
     }
   }

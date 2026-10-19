@@ -86,6 +86,14 @@ describe('LoginHistoryController', () => {
     await TestApp.beforeEach();
 
     adminToken = config.oauth?.secret_key?.[0] || '';
+    config.basic_auth = {
+      allowLegacySharedSecret: true,
+      clients: [
+        { name: 'auditor', secret: 'auditor-s3cret', scopes: ['login_history'], maxLimit: 2 },
+        { name: 'auditor-all', secret: 'all-s3cret', scopes: ['login_history', 'login_history:all', 'login_history:pii'] },
+        { name: 'no-scope', secret: 'none-s3cret', scopes: ['user:read'] },
+      ],
+    };
 
     app = await TestApp.setup();
     // Delete login_history first (references users via FK), then users
@@ -321,6 +329,94 @@ describe('LoginHistoryController', () => {
   describe('Authentication', () => {
     it('requires basic auth to access login history', async () => {
       await app.request().get('/login_history?offset=0&limit=10').expect(401);
+    });
+  });
+
+  describe('Hardening (KS-33)', () => {
+    const named = (name: string, secret: string) => ({ Authorization: `Basic ${Buffer.from(`${name}:${secret}`).toString('base64')}` });
+    const auditor = () => named('auditor', 'auditor-s3cret');
+    const filterQuery = (filter: Record<string, string>) => `filter=${encodeURIComponent(JSON.stringify(filter))}`;
+
+    it('clamps limit to 100 for the legacy secret and rejects non-numeric, zero and negative paging', async () => {
+      await app
+        .request()
+        .get('/login_history?limit=1000')
+        .set(authHeader())
+        .expect(200)
+        .expect(({ body }) => expect(body.meta.limit).toBe(100));
+      await app.request().get('/login_history?limit=abc').set(authHeader()).expect(400);
+      await app.request().get('/login_history?limit=0').set(authHeader()).expect(400);
+      await app.request().get('/login_history?offset=-1').set(authHeader()).expect(400);
+      await app.request().get('/login_history?offset=1.5').set(authHeader()).expect(400);
+    });
+
+    it('keeps the unfiltered listing and full fields for the legacy shared secret', async () => {
+      await app
+        .request()
+        .get('/login_history')
+        .set(authHeader())
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.data).toHaveLength(4);
+          expect(body.data[0]).toHaveProperty('user_agent');
+          expect(body.data[0]).toHaveProperty('user_name');
+        });
+    });
+
+    it('returns 403 for a named client without the login_history scope', async () => {
+      await app.request().get('/login_history').set(named('no-scope', 'none-s3cret')).expect(403);
+    });
+
+    it('requires a narrowing filter for a named client without login_history:all', async () => {
+      await app.request().get('/login_history').set(auditor()).expect(400);
+      await app
+        .request()
+        .get(`/login_history?${filterQuery({ action_type: 'login' })}`)
+        .set(auditor())
+        .expect(400);
+      await app
+        .request()
+        .get(`/login_history?${filterQuery({ is_blocked: 'true' })}`)
+        .set(auditor())
+        .expect(400);
+    });
+
+    it('lists with a narrowing filter, applies the per-client maxLimit and hides user_agent and user_name', async () => {
+      await app
+        .request()
+        .get(`/login_history?limit=50&${filterQuery({ user_id: 'user-1', created_at_from: '2026-05-01T00:00:00.000Z' })}`)
+        .set(auditor())
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.meta.limit).toBe(2);
+          expect(body.data).toHaveLength(2);
+          for (const row of body.data) {
+            expect(row.user_id).toBe('user-1');
+            expect(row).not.toHaveProperty('user_agent');
+            expect(row).not.toHaveProperty('user_name');
+          }
+        });
+    });
+
+    it('applies a default 30-day window to a named client without login_history:all', async () => {
+      await app
+        .request()
+        .get(`/login_history?${filterQuery({ user_id: 'user-1' })}`)
+        .set(auditor())
+        .expect(200)
+        .expect(({ body }) => expect(body.data).toHaveLength(0));
+    });
+
+    it('lets login_history:all and login_history:pii list everything with full fields', async () => {
+      await app
+        .request()
+        .get('/login_history')
+        .set(named('auditor-all', 'all-s3cret'))
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.data).toHaveLength(4);
+          expect(body.data[0]).toHaveProperty('user_agent');
+        });
     });
   });
 });

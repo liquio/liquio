@@ -1,3 +1,5 @@
+import { AxiosError } from 'axios';
+
 import { Helpers } from './helpers';
 
 describe('replaceObjValues', () => {
@@ -62,5 +64,229 @@ describe('replaceObjValues', () => {
     const handler = (value) => (typeof value === 'function' ? value() : value * 2);
     const result = Helpers.replaceObjValues(obj, handler);
     expect(result).toEqual({ a: 2, b: 42 });
+  });
+});
+
+describe('redactHeaders', () => {
+  it('masks sensitive headers case-insensitively and keeps others', () => {
+    const headers = {
+      Authorization: 'Bearer abc',
+      COOKIE: 'sid=1',
+      'X-Api-Key': 'k',
+      Token: 't',
+      password: 'p',
+      Secret: 's',
+      'Proxy-Authorization': 'x',
+      Accept: 'json',
+    };
+    expect(Helpers.redactHeaders(headers)).toEqual({
+      Authorization: '****',
+      COOKIE: '****',
+      'X-Api-Key': '****',
+      Token: '****',
+      password: '****',
+      Secret: '****',
+      'Proxy-Authorization': '****',
+      Accept: 'json',
+    });
+    expect(headers.Authorization).toBe('Bearer abc');
+  });
+
+  it('returns non-objects as is', () => {
+    expect(Helpers.redactHeaders(undefined)).toBeUndefined();
+  });
+});
+
+describe('redactSensitiveData', () => {
+  it('masks sensitive keys in nested objects and arrays', () => {
+    expect(Helpers.redactSensitiveData({ a: 1, password: 'p', n: [{ Access_Token: 't', b: 2 }] })).toEqual({
+      a: 1,
+      password: '****',
+      n: [{ Access_Token: '****', b: 2 }],
+    });
+  });
+
+  it('returns strings as is', () => {
+    expect(Helpers.redactSensitiveData('abc')).toBe('abc');
+  });
+});
+
+describe('escapeCsvCell', () => {
+  it.each(['=1+1', '+1', '-1+2', '@SUM(A1)', '\tx', '\rx'])('prefixes formula-like string %j', (value) => {
+    const result = Helpers.escapeCsvCell(value);
+    expect(result.replace(/^"/, '').startsWith("'")).toBe(true);
+  });
+
+  it('prefixes and quotes a cell starting with CR', () => {
+    expect(Helpers.escapeCsvCell('\rx')).toBe('"\'\rx"');
+  });
+
+  it('prefixes a tab-leading cell without quoting', () => {
+    expect(Helpers.escapeCsvCell('\tx')).toBe("'\tx");
+  });
+
+  it('prefixes =, + and @ cells', () => {
+    expect(Helpers.escapeCsvCell('=1+1')).toBe("'=1+1");
+    expect(Helpers.escapeCsvCell('+1')).toBe("'+1");
+    expect(Helpers.escapeCsvCell('@x')).toBe("'@x");
+    expect(Helpers.escapeCsvCell('-cmd')).toBe("'-cmd");
+  });
+
+  it('keeps real numbers unprefixed, including negative ones', () => {
+    expect(Helpers.escapeCsvCell(-5)).toBe('-5');
+    expect(Helpers.escapeCsvCell(-1.5)).toBe('-1.5');
+    expect(Helpers.escapeCsvCell(0)).toBe('0');
+    expect(Helpers.escapeCsvCell(BigInt(-7))).toBe('-7');
+  });
+
+  it('treats numeric-looking strings as text and prefixes them', () => {
+    expect(Helpers.escapeCsvCell('-5')).toBe("'-5");
+  });
+
+  it('leaves plain values untouched', () => {
+    expect(Helpers.escapeCsvCell('abc')).toBe('abc');
+    expect(Helpers.escapeCsvCell('a-b=c')).toBe('a-b=c');
+    expect(Helpers.escapeCsvCell(true)).toBe('true');
+  });
+
+  it('returns empty string for null and undefined', () => {
+    expect(Helpers.escapeCsvCell(null)).toBe('');
+    expect(Helpers.escapeCsvCell(undefined)).toBe('');
+  });
+
+  it('quotes cells with commas, quotes and line breaks', () => {
+    expect(Helpers.escapeCsvCell('a,b')).toBe('"a,b"');
+    expect(Helpers.escapeCsvCell('say "hi"')).toBe('"say ""hi"""');
+    expect(Helpers.escapeCsvCell('a\nb')).toBe('"a\nb"');
+    expect(Helpers.escapeCsvCell('a\r\nb')).toBe('"a\r\nb"');
+  });
+
+  it('prefixes before quoting when both apply', () => {
+    expect(Helpers.escapeCsvCell('=A1,B1')).toBe('"\'=A1,B1"');
+  });
+});
+
+describe('prepareAxiosErrorToLog (EV-05b)', () => {
+  const makeError = (data: any, headers: any = { token: 'hdr-secret', Authorization: 'Basic abc', 'x-trace-id': 't1' }) =>
+    new AxiosError('Request failed', 'ERR_BAD_REQUEST', { url: '/x', method: 'get', headers } as any, {}, {
+      status: 500,
+      statusText: 'ERR',
+      data,
+      headers: {},
+      config: {} as any,
+    } as any);
+
+  it('masks secret keys in the response body', () => {
+    const result = Helpers.prepareAxiosErrorToLog(
+      makeError({ error: 'bad', access_token: 'tok-1', nested: { password: 'p', clientSecret: 's', ok: 1 } }),
+    );
+    expect(result.responseData).toEqual({ error: 'bad', access_token: '****', nested: { password: '****', clientSecret: '****', ok: 1 } });
+    expect(JSON.stringify(result)).not.toMatch(/tok-1|"p"/);
+  });
+
+  it('truncates long response bodies', () => {
+    const result = Helpers.prepareAxiosErrorToLog(makeError('x'.repeat(100000)));
+    expect(result.responseData.length).toBeLessThanOrEqual(2000);
+    const objResult = Helpers.prepareAxiosErrorToLog(makeError({ html: 'y'.repeat(100000) }));
+    expect(objResult.responseData.html.length).toBeLessThanOrEqual(2000);
+  });
+
+  it('keeps empty bodies as {} and drops buffers', () => {
+    expect(Helpers.prepareAxiosErrorToLog(makeError(undefined)).responseData).toEqual({});
+    expect(Helpers.prepareAxiosErrorToLog(makeError(Buffer.from('secret bytes'))).responseData).toBe('binary');
+  });
+
+  it('masks sensitive headers when withHeaders is set and does not leak them otherwise', () => {
+    const withHeaders = Helpers.prepareAxiosErrorToLog(makeError({}), { withHeaders: true });
+    expect(withHeaders.headers).toEqual({ token: '****', Authorization: '****', 'x-trace-id': 't1' });
+    expect(JSON.stringify(Helpers.prepareAxiosErrorToLog(makeError({})))).not.toMatch(/hdr-secret|Basic abc/);
+  });
+});
+
+describe('sensitive name matching and redactRequestOptions (EV-05b)', () => {
+  it('masks token, api-key, signature, cookie, secret and password names', () => {
+    const out = Helpers.redactHeaders({
+      'X-Service-Token': 'a',
+      'api-key': 'b',
+      'X-Signature': 'c',
+      'Set-Cookie': 'd',
+      'x-secret': 'e',
+      Accept: 'json',
+    });
+    expect(out).toEqual({
+      'X-Service-Token': '****',
+      'api-key': '****',
+      'X-Signature': '****',
+      'Set-Cookie': '****',
+      'x-secret': '****',
+      Accept: 'json',
+    });
+  });
+
+  it('masks headers and body keys, cuts long bodies and drops agents and streams', () => {
+    const out = Helpers.redactRequestOptions({
+      url: 'http://x',
+      headers: { token: 'secret-token' },
+      httpsAgent: {},
+      data: { password: 'p', big: 'z'.repeat(5000) },
+    });
+    expect(out.headers.token).toBe('****');
+    expect(out.httpsAgent).toBeUndefined();
+    expect(out.data.password).toBe('****');
+    expect(out.data.big.length).toBeLessThanOrEqual(2000);
+    expect(Helpers.redactRequestOptions({ data: Buffer.from('a') }).data).toBe('binary');
+    expect(JSON.stringify(out)).not.toContain('secret-token');
+  });
+});
+
+describe('stringifyAxiosError (EV-05c)', () => {
+  const makeError = (data: any) =>
+    new AxiosError('Request failed with status code 400', 'ERR_BAD_REQUEST', { url: '/x' } as any, {}, {
+      status: 400,
+      statusText: 'Bad Request',
+      data,
+      headers: {},
+      config: {} as any,
+    } as any);
+
+  it('keeps the readable message and non-secret body fields', () => {
+    expect(Helpers.stringifyAxiosError(makeError({ message: 'Sign is required', statusCode: 400 }))).toBe(
+      'AxiosError - ERR_BAD_REQUEST - Request failed with status code 400 - {"message":"Sign is required","statusCode":400}',
+    );
+  });
+
+  it('masks secrets in object bodies', () => {
+    const result = Helpers.stringifyError(makeError({ error: 'bad', access_token: 'tok-1', nested: { password: 'pw-1' } }));
+    expect(result).toContain('"error":"bad"');
+    expect(result).not.toMatch(/tok-1|pw-1/);
+  });
+
+  it('masks secrets in JSON-string bodies', () => {
+    expect(Helpers.stringifyAxiosError(makeError('{"api_key":"k-1","ok":1}'))).not.toContain('k-1');
+  });
+
+  it('truncates long bodies', () => {
+    expect(Helpers.stringifyAxiosError(makeError('x'.repeat(100000))).length).toBeLessThan(2200);
+    expect(Helpers.stringifyAxiosError(makeError({ html: 'y'.repeat(100000) })).length).toBeLessThan(2200);
+  });
+
+  it('omits empty bodies and does not print binary bodies', () => {
+    expect(Helpers.stringifyAxiosError(makeError(undefined))).toBe('AxiosError - ERR_BAD_REQUEST - Request failed with status code 400');
+    expect(Helpers.stringifyAxiosError(makeError({}))).toBe('AxiosError - ERR_BAD_REQUEST - Request failed with status code 400');
+    const binary = Helpers.stringifyAxiosError(makeError(Buffer.from('secret bytes')));
+    expect(binary).not.toContain('secret bytes');
+  });
+});
+
+describe('prepareResponseDataToLog plain text (EV-05c)', () => {
+  it('masks query-style secrets in text bodies and keeps other pairs', () => {
+    const out = Helpers.prepareResponseDataToLog('error=denied&access_token=abc123&x=1');
+    expect(out).not.toContain('abc123');
+    expect(out).toContain('error=denied');
+    expect(out).toContain('x=1');
+  });
+
+  it('prints binary bodies as a marker', () => {
+    expect(Helpers.prepareResponseDataToLog(Buffer.from('secret bytes'))).toBe('binary');
   });
 });

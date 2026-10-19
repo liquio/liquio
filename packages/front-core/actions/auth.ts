@@ -28,6 +28,7 @@ export const SEARCH_USER = 'SEARCH_USER';
 
 const REQUEST_USER_SUGGESTIONS = 'REQUEST_USER_SUGGESTIONS';
 const REQUEST_AUTH_MODE = 'REQUEST_AUTH_MODE';
+const SET_AUTH_MODE = 'SET_AUTH_MODE';
 
 const SEND_SMS_CODE = 'SEND_SMS_CODE';
 const CHECK_PHONE_EXISTS = 'CHECK_PHONE_EXISTS';
@@ -255,8 +256,11 @@ export const checkPhoneExists = (phone: string) => (dispatch: Dispatch) =>
       return error;
     });
 
+// The POST answers only with `isAccepted`, so refresh the stored mode with a separate GET.
 export const setAuthMode = (mode: unknown) => (dispatch: Dispatch) => {
-  return api.post(`${USERS_URL}/two_factor_auth`, mode, REQUEST_AUTH_MODE, dispatch);
+  return api
+    .post(`${USERS_URL}/two_factor_auth`, mode, SET_AUTH_MODE, dispatch)
+    .then(() => requestAuthMode()(dispatch));
 };
 
 export const sendSMSCode = (phone: string) => (dispatch: Dispatch) =>

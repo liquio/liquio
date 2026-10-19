@@ -50,6 +50,27 @@ describe('Task Controller', () => {
           expect(response.body).toHaveProperty('data');
         });
     });
+
+    it.each(['filters[assigned_to][]=me', 'filters[closed_by][]=me', 'filters[assigned_to][0]=unit'])(
+      'rejects array filter %s with 422 (no scope bypass)',
+      async (query) => {
+        const { jwt, payload } = app.generateUserToken(TEST_USER_ID);
+        mockUserAuth(payload);
+
+        await app
+          .request()
+          .get(`/tasks?${encodeURI(query).replace(/\[/g, '%5B').replace(/\]/g, '%5D')}`)
+          .set('token', jwt)
+          .expect(422);
+      },
+    );
+
+    it('accepts filters[assigned_to]=me', async () => {
+      const { jwt, payload } = app.generateUserToken(TEST_USER_ID);
+      mockUserAuth(payload);
+
+      await app.request().get('/tasks?filters%5Bassigned_to%5D=me').set('token', jwt).expect(200);
+    });
   });
 
   describe('GET /tasks/:id', () => {

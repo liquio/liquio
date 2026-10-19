@@ -26,6 +26,19 @@ npm run test:debug
 npm run test:e2e
 ```
 
+## Inbound HTTPS (optional)
+
+The HTTP listener is plain by default. To serve HTTPS (e.g. so `id-api` can call it over verified TLS), set in `server.json`:
+
+```json
+"tls": { "enabled": true, "certPath": "/certs/tls.crt", "keyPath": "/certs/tls.key", "caPath": "/certs/ca.crt" }
+```
+
+- `enabled` (default `false`): when off, behaviour is unchanged.
+- `certPath` / `keyPath`: PEM server certificate and key. Unreadable or missing files abort startup.
+- `caPath` (optional): PEM CA bundle. When set, mutual TLS is enforced: requests without a client certificate signed by this CA get `401`.
+  `/test/ping` stays reachable without a client certificate so probes keep working (point probes at `scheme: HTTPS`).
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

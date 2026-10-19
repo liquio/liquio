@@ -9,7 +9,6 @@ import supertest from 'supertest';
 import AuthController from '../src/controllers/auth';
 import Controllers from '../src/controllers';
 import LinkController from '../src/controllers/link';
-import MonitoringController from '../src/controllers/monitoring';
 import TestController from '../src/controllers/test';
 import Db from '../src/lib/db';
 import { getLog, setAppContext } from '../src/lib/context';
@@ -88,7 +87,6 @@ export class TestApp {
       Controllers,
       AuthController,
       TestController,
-      MonitoringController,
       LinkController,
       LinkGenerator,
       LinkProviders,

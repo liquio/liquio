@@ -6,6 +6,7 @@ export interface Configuration {
   };
   server: {
     port: number;
+    isSwaggerEnabled?: boolean;
   };
   captcha: {
     hmacKey?: string;

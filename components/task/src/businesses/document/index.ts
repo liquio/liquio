@@ -999,6 +999,8 @@ export class DocumentBusiness extends Business {
       enabledMocksHeader,
       undefined,
       customTimeout,
+      // extraParams are built above from the template config, so attachment saving is allowed.
+      true,
     );
     if (!externalReaderResult || typeof externalReaderResult.data === 'undefined') {
       throw new Error("Can't get external reader check data.");

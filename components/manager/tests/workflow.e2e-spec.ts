@@ -32,7 +32,7 @@ describe('Workflow Business (via RabbitMQ)', () => {
 
     await global.db.query(
       `INSERT INTO tasks (id, workflow_id, task_template_id, performer_users, signer_users, performer_units, tags, data, finished, deleted, created_by, updated_by, created_at, updated_at)
-       VALUES (:taskId, :workflowId, :taskTemplateId, '{}', '{}', '{}', '{}', '{}'::json, false, false, 'system', 'system', NOW(), NOW())`,
+       VALUES (:taskId, :workflowId, :taskTemplateId, '{}', '{}', '{}', '{}', '{}'::json, true, false, 'system', 'system', NOW(), NOW())`,
       { replacements: { taskId, workflowId, taskTemplateId: TASK_TEMPLATE_ID } },
     );
   });
@@ -42,9 +42,9 @@ describe('Workflow Business (via RabbitMQ)', () => {
     await TestApp.afterAll();
   });
 
-  it('forwards a forwardToTask message straight to the task queue', async () => {
-    const message = { forwardToTask: true, taskTemplateId: TASK_TEMPLATE_ID, foo: 'bar' };
-    await app.publishToReadingQueue(message);
+  it('forwards only whitelisted fields of a forwardToTask message to the task queue', async () => {
+    const message = { forwardToTask: true, taskTemplateId: TASK_TEMPLATE_ID, userId: 'system' };
+    await app.publishToReadingQueue({ ...message, foo: 'bar' });
 
     const taskMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueTask);
 

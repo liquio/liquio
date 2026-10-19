@@ -356,3 +356,16 @@ describe('HttpRequest', () => {
     });
   });
 });
+
+describe('HttpRequest httpsAgent option', () => {
+  it('forwards the https agent to axios', async () => {
+    const https = require('node:https');
+    const axios = require('axios');
+    const agent = new https.Agent({ rejectUnauthorized: true });
+    const instance = jest.fn().mockResolvedValue({ data: {}, status: 200, headers: {}, config: {} });
+    const create = jest.spyOn(axios, 'create').mockReturnValue(instance as any);
+    await HttpRequest.send({ url: 'https://x', method: 'GET', httpsAgent: agent });
+    expect(instance).toHaveBeenCalledWith(expect.objectContaining({ httpsAgent: agent }));
+    create.mockRestore();
+  });
+});

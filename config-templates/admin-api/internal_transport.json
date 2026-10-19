@@ -1,0 +1,4 @@
+{
+  "_comment": "Transport to internal services (notification, sign-tool). Set ca (PEM or file path) and use https:// URLs to enable verified TLS; cert+key add a client certificate (mTLS). allowPlainHttp acknowledges http:// URLs protected by NetworkPolicy/mesh.",
+  "allowPlainHttp": true
+}

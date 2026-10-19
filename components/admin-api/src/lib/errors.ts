@@ -1,4 +1,4 @@
-class ErrorWithHttpStatusCode extends Error {
+export class ErrorWithHttpStatusCode extends Error {
   public httpStatusCode: number;
   public cause?: any;
 

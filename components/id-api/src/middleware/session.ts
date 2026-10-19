@@ -4,7 +4,7 @@ import session, { SessionOptions } from 'express-session';
 import { Op } from 'sequelize';
 import { Log } from '@liquio/back-core';
 
-import { DEFAULT_COOKIE_DOMAIN } from '../config';
+import { profileCookieOptions, resolveSameSite, resolveSecure } from '../lib/cookie_options';
 import { avatarByGender } from '../lib/helpers';
 import { Models, UserAttributes } from '../models';
 import { Express, NextFunction, Request, Response } from '../types';
@@ -71,6 +71,8 @@ export function useSession(express: Express) {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
+      secure: resolveSecure(express.config),
+      sameSite: resolveSameSite(express.config),
       maxAge: 1000 * 60 * 60,
       signed: true,
     },
@@ -82,8 +84,29 @@ export function useSession(express: Express) {
     }),
   };
 
+  const trustProxy = express.config.trustProxy;
+  if (trustProxy !== undefined) express.set('trust proxy', trustProxy);
+
   express.use(cookieParser());
   express.use(session(sessionParams));
+
+  // A concurrent request can resave a session deleted by a password mutation. Such a session keeps a stale
+  // authorization version and must never regain authenticated access.
+  express.use(async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.session?.passport?.user?.userId;
+    if (!userId || req.session.authorizationVersion === undefined) return next();
+    try {
+      const account = await Models.model('user').findOne({ where: { userId }, attributes: ['authorizationVersion'] });
+      if (!account || req.session.authorizationVersion !== (account.dataValues.authorizationVersion ?? 0)) {
+        await destroySession(req);
+        res.status(401).send({ error: 'Authorization has been revoked' });
+        return;
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
 
   // Flash implementation based on 'connect-flash' package
   express.use((req: Request, res: Response, next: NextFunction) => {
@@ -124,10 +147,7 @@ export function useSession(express: Express) {
         last_name: req.session.passport.user.last_name,
       };
 
-      res.cookie('jwt', JSON.stringify(user), {
-        domain: express.config.domain ?? DEFAULT_COOKIE_DOMAIN,
-        expires: new Date(req.session.cookie.expires as Date),
-      });
+      res.cookie('jwt', JSON.stringify(user), profileCookieOptions(req, express.config, { expires: new Date(req.session.cookie.expires as Date) }));
     }
 
     const {
@@ -138,8 +158,8 @@ export function useSession(express: Express) {
     const clientId = queryClientId || sessionClientId || sessionClienClientId;
     if (clientId) {
       res.cookie('client_id', clientId, {
+        ...profileCookieOptions(req, express.config, { expires: new Date(req.session.cookie.expires as Date) }),
         domain: express.config.domain,
-        expires: new Date(req.session.cookie.expires as Date),
       });
     }
 
@@ -180,6 +200,18 @@ export async function destroySession(req: Request) {
  * Adds passed user to the session and saves it.
  */
 export async function saveSession(req: Request, user?: UserAttributes | null): Promise<void> {
+  const sessionUser = user ?? req.session?.passport?.user;
+  if (sessionUser?.userId) {
+    const account = await Models.model('user').findOne({ where: { userId: sessionUser.userId }, attributes: ['authorizationVersion'] });
+    const currentVersion = account?.dataValues.authorizationVersion ?? 0;
+    // A session is stamped with the authorization version it was authenticated under; a stale one cannot be saved.
+    const version = req.session.authorizationVersion ?? currentVersion;
+    if (!account || version !== currentVersion) {
+      throw Object.assign(new Error('Authorization has been revoked'), { statusCode: 401 });
+    }
+    req.session.authorizationVersion = version;
+  }
+
   return new Promise((resolve, reject) => {
     if (user && req.session?.passport) {
       req.session.passport.user = user;

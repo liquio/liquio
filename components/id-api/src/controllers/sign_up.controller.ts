@@ -1,12 +1,14 @@
 import { promisify } from 'util';
 
-import { matchedData, query } from 'express-validator';
-import Sequelize from 'sequelize';
+import { body, check, matchedData, query } from 'express-validator';
 
 import { validateEmail } from '../lib/helpers';
+import { isPublicError, publicError } from '../lib/http_error';
+import { legacyConfirmationQueryGuard } from '../lib/legacy_get_confirmation';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import { getSessionUserId, markTwoFactorCompleted } from '../lib/two_factor';
 import { saveSession } from '../middleware/session';
-import { UserAttributes, UserServicesAttributes } from '../models';
+import { UserAttributes } from '../models';
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -25,57 +27,84 @@ export class SignUpController extends BaseController {
     }
 
     this.router.get('/sign_up/confirmation', this.service('auth').prepareUser('approve'), this.signUpConfirmationGet.bind(this));
-    this.router.post('/sign_up/confirmation', this.signUpConfirmationPost.bind(this));
-    this.router.get(
-      '/sign_up/confirmation/email/exist',
-      [query('email').isString(), this.handleValidation.bind(this)],
-      this.checkEmailExist.bind(this),
+    this.router.post(
+      '/sign_up/confirmation',
+      [
+        ...['email', 'phone', 'code_email', 'code_phone'].map((field) => body(field).optional({ values: 'null' }).isString()),
+        this.handleValidation.bind(this),
+      ],
+      this.signUpConfirmationPost.bind(this),
     );
-    this.router.get(
-      '/sign_up/confirmation/email/send',
-      [query('email').isString(), this.handleValidation.bind(this)],
-      this.sendEmailConfirm.bind(this),
-    );
-    this.router.get(
+    // Confirmation codes and recipients must not travel in URLs (logs, history, Referer): POST with a body is the supported form (SE-3930 IF-05).
+    // The GET variants stay for one release behind `legacyGetConfirmation` (default true) and log a deprecation without the query.
+    const legacyGet = legacyConfirmationQueryGuard(this.log, this.config);
+    const legacyQuery = legacyConfirmationQueryGuard(this.log, this.config, ['phone', 'code']);
+    const emailExist = [query('email').isString(), this.handleValidation.bind(this)];
+    const emailSend = [query('email').isString(), this.handleValidation.bind(this)];
+    const emailVerify = [query('email').notEmpty().toLowerCase(), query('code').isString(), this.handleValidation.bind(this)];
+    const phoneExist = [query('phone').isString(), this.handleValidation.bind(this)];
+    const phoneSend = [query('phone').isString(), this.handleValidation.bind(this)];
+    const phoneVerify = [query('phone').isString(), query('code').isString(), this.handleValidation.bind(this)];
+    const bodyEmail = body('email').isString();
+    const bodyPhone = body('phone').isString();
+    const bodyCode = body('code').isString();
+
+    this.router.get('/sign_up/confirmation/email/exist', legacyGet, emailExist, this.checkEmailExist.bind(this));
+    this.router.post('/sign_up/confirmation/email/exist', [bodyEmail, this.handleValidation.bind(this)], this.checkEmailExist.bind(this));
+    this.router.get('/sign_up/confirmation/email/send', legacyGet, emailSend, this.sendEmailConfirm.bind(this));
+    this.router.post('/sign_up/confirmation/email/send', [bodyEmail, this.handleValidation.bind(this)], this.sendEmailConfirm.bind(this));
+    this.router.get('/sign_up/confirmation/email/verify', legacyGet, emailVerify, this.checkEmailConfirm.bind(this));
+    this.router.post(
       '/sign_up/confirmation/email/verify',
-      [query('email').notEmpty().toLowerCase(), query('code').isString(), this.handleValidation.bind(this)],
+      [body('email').notEmpty().toLowerCase(), bodyCode, this.handleValidation.bind(this)],
       this.checkEmailConfirm.bind(this),
     );
-    this.router.get('/sign_up/confirmation/phone/exist', this.checkPhoneExist.bind(this));
-    this.router.get(
+    this.router.get('/sign_up/confirmation/phone/exist', legacyGet, phoneExist, this.checkPhoneExist.bind(this));
+    this.router.post('/sign_up/confirmation/phone/exist', [bodyPhone, this.handleValidation.bind(this)], this.checkPhoneExist.bind(this));
+    this.router.get('/sign_up/confirmation/phone/send', legacyGet, phoneSend, this.auth.authoriseOptional(), this.sendPhoneConfirm.bind(this));
+    this.router.post(
       '/sign_up/confirmation/phone/send',
-      [query('phone').isString(), this.handleValidation.bind(this)],
+      [bodyPhone, this.handleValidation.bind(this)],
+      this.auth.authoriseOptional(),
       this.sendPhoneConfirm.bind(this),
     );
-    this.router.get(
-      '/sign_up/confirmation/phone/verify',
-      [query('phone').isString(), query('code').isString(), this.handleValidation.bind(this)],
+    this.router.get('/sign_up/confirmation/phone/verify', legacyGet, phoneVerify, this.checkPhoneConfirm.bind(this));
+    // POST /phone/verify is the authorised "confirm my phone" action; the anonymous check-only POST is `/phone/check_code`.
+    this.router.post(
+      '/sign_up/confirmation/phone/check_code',
+      [bodyPhone, bodyCode, this.handleValidation.bind(this)],
       this.checkPhoneConfirm.bind(this),
     );
     this.router.post(
       '/sign_up/confirmation/phone/verify',
-      [query('phone').isString(), query('code').isString(), this.handleValidation.bind(this)],
+      legacyQuery,
+      [check('phone', ['body', 'query']).isString(), check('code', ['body', 'query']).isString(), this.handleValidation.bind(this)],
       this.auth.authorise(),
       this.checkPhoneConfirmAndSetAsConfirmed.bind(this),
     );
-    this.router.post('/sign_up/confirmation/phone/set', this.auth.basic(), this.setPhone.bind(this));
-    this.router.post('/sign_up/confirmation/phone/check', this.checkPhoneCode.bind(this));
+    this.router.post('/sign_up/confirmation/phone/set', this.auth.basic('user:write'), this.setPhone.bind(this));
+    this.router.post(
+      '/sign_up/confirmation/phone/check',
+      [body('code').isString().notEmpty(), this.handleValidation.bind(this)],
+      this.checkPhoneCode.bind(this),
+    );
   }
 
   /**
    * A method to sign up a new user.
    */
   async signUpUser(req: Request, res: Response): Promise<void> {
-    const { email, password } = req.body;
+    const { password, code } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : req.body.email;
 
     this.log.save('registration|request', { email }, 'info');
 
-    // Email and password are required
-    if (!email || !password) {
-      this.log.save('registration|user-error', { email, error: 'Email and password are required.' }, 'warning');
+    // Email, password and the email confirmation code are required
+    if (!email || !password || !code || typeof code !== 'string') {
+      this.log.save('registration|user-error', { email, error: 'Email, password and confirmation code are required.' }, 'warning');
       res.status(400).json({
         error: 'missing-params',
-        description: 'Email and password are required.',
+        description: 'Email, password and confirmation code are required.',
       });
       return;
     }
@@ -86,19 +115,41 @@ export class SignUpController extends BaseController {
       return;
     }
 
-    // Make sure that there's no user with the same email
-    const existingUser = await this.model('user').findOne({ where: { email } });
-    if (existingUser) {
-      this.log.save('registration|user-error', { email, error: 'User already exists.' }, 'warning');
-      res.status(400).json({ error: 'email-exists', description: 'User already exists.' });
-      return;
-    }
-
     // Make sure that the password is strong enough
     const { strong, reason } = this.service('passwordManager').isStrongPassword(password);
     if (!strong) {
       this.log.save('registration|user-error', { email, error: reason }, 'warning');
       res.status(400).send({ error: 'weak-password', description: reason });
+      return;
+    }
+
+    // The account is created only for an email whose owner proved control of it with the code sent to that exact address.
+    // The answer for a wrong, expired, used or missing code does not depend on whether the email is registered.
+    const validCode = await this.service('auth')
+      .getValidConfirmCode({ email, code })
+      .catch(() => undefined);
+    if (!validCode) {
+      this.log.save('registration|user-error', { email, error: 'Invalid confirmation code.' }, 'warning');
+      await this.service('auth')
+        .incrementConfirmCodeCounterAsync({ email })
+        .catch(() => undefined);
+      res.status(400).json({ error: 'invalid-code', description: 'Invalid or expired confirmation code.' });
+      return;
+    }
+
+    // Single use: only the request that actually deletes the code may continue (parallel replays delete nothing).
+    const consumed = await this.model('confirmCode').destroy({ where: { id: validCode.id } });
+    if (!consumed) {
+      res.status(400).json({ error: 'invalid-code', description: 'Invalid or expired confirmation code.' });
+      return;
+    }
+    await this.service('auth').removeConfirmCode({ email });
+
+    // An already registered email gets the same public answer as a new one (no account-existence oracle) and nothing is created.
+    const existingUser = await this.model('user').findOne({ where: { email } });
+    if (existingUser) {
+      this.log.save('registration|user-error', { email, error: 'User already exists.' }, 'warning');
+      res.status(201).json({ message: 'User registered successfully' });
       return;
     }
 
@@ -115,6 +166,7 @@ export class SignUpController extends BaseController {
           {
             ipn,
             email,
+            valid: { email: true, phone: false },
             provider: 'local',
             userIdentificationType: 'email',
             needOnboarding: !!needOnboarding,
@@ -138,10 +190,7 @@ export class SignUpController extends BaseController {
       });
 
       this.log.save('registration|success', { userId: user.userId, email }, 'info');
-      res.status(201).json({
-        message: 'User registered successfully',
-        userId: user.userId,
-      });
+      res.status(201).json({ message: 'User registered successfully' });
     } catch (error: any) {
       this.log.save('registration|server-error', { email, error: error.message, stack: error.stack }, 'error');
       res.status(500).json({ error: 'server-error', description: 'Internal server error' });
@@ -168,42 +217,28 @@ export class SignUpController extends BaseController {
   }
 
   /**
-   * A method to check if the email exists.
+   * Legacy email existence check. Anonymous callers must not learn whether an account exists,
+   * so the answer is always 'null' and no lookup is made. Duplicates are rejected after the code proves control of the address.
    */
   async checkEmailExist(req: Request, res: Response): Promise<void> {
-    let { email } = matchedData<{ email: string }>(req, { locations: ['query'] });
-    email = email.toLowerCase();
-    this.log.save('check-email-exist-request', { email }, 'info');
-
-    // Only proceed if email has a valid format.
-    if (!validateEmail(email)) {
-      this.log.save('check-email-exist-error', { email, error: 'Invalid email format.' }, 'warning');
-      res.send('null');
-      return;
-    }
-
-    try {
-      const query = Sequelize.where(Sequelize.fn('lower', Sequelize.col('email')), email.toLowerCase());
-
-      const user = await this.service('auth').getUser(query);
-      if (user) {
-        res.send(user.password ? 'exist' : 'existWithout');
-      } else {
-        res.send('null');
-      }
-    } catch (err) {
-      this.log.save('check-email-exist-error', { error: err }, 'error');
-      res.send('null');
-    }
+    const { email } = matchedData<{ email: string }>(req, { locations: ['body', 'query'] });
+    this.log.save('check-email-exist-request', { email: email.toLowerCase() }, 'info');
+    res.send('null');
   }
 
   /**
    * Sends the email confirmation code.
    */
   async sendEmailConfirm(req: Request, res: Response): Promise<void> {
-    let { email } = matchedData<{ email: string }>(req, { locations: ['query'] });
+    let { email } = matchedData<{ email: string }>(req, { locations: ['body', 'query'] });
     email = email.toLowerCase();
     this.log.save('send-email-confirmation-code-params', { email }, 'info');
+
+    // Rate limit before any lookup, so the answer does not depend on whether the email is registered.
+    if (!(await this.service('auth').consumeSendQuota('email', email, req.ip ?? req.socket?.remoteAddress))) {
+      res.status(429).send({ error: 'Too many requests. Please try again later.' });
+      return;
+    }
 
     // Define test confirmation code if exist.
     const testEmails = this.config.testConfirmations?.codes ?? [];
@@ -216,6 +251,7 @@ export class SignUpController extends BaseController {
       this.log.save('send-email-confirmation-code-error', { error: error.message, stack: error.stack }, 'error');
     }
 
+    // A registered account gets the same public answer as an unknown one, but no code is stored or sent.
     if (!user || user?.status === 'import') {
       let randomCode = testCodeObj ? testCodeObj.confirmationCode : this.service('auth').generatePinCode();
       let { confirmCodeEmailTemplate = '{{code}}', confirmCodeEmailHeader = 'Підтвердження реєстрації' } = this.config;
@@ -238,7 +274,19 @@ export class SignUpController extends BaseController {
       res.send('null');
     } else {
       this.log.save('send-email-confirmation-code-email-already-exist', { email, userId: user?.userId }, 'info');
-      res.send('exist');
+
+      // Tell the owner of the address, out of band, that the account exists (no code). Same rate limit as a code send.
+      const {
+        accountExistsEmailHeader = 'Обліковий запис уже існує',
+        accountExistsEmailText = 'Для цієї електронної пошти вже існує обліковий запис. Увійдіть або, якщо ви забули пароль, скористайтеся відновленням пароля.',
+      } = this.config;
+      try {
+        await this.service('notify').sendMail(email, accountExistsEmailText, accountExistsEmailHeader);
+      } catch (error: any) {
+        this.log.save('send-email-account-exists-notice-error', { email, error: error.message }, 'error');
+      }
+
+      res.send('null');
     }
   }
 
@@ -246,9 +294,9 @@ export class SignUpController extends BaseController {
    * Checks the email confirmation code.
    */
   async checkEmailConfirm(req: Request, res: Response): Promise<void> {
-    let { email, code } = matchedData<{ email: string; code: string }>(req, { locations: ['query'] });
+    let { email, code } = matchedData<{ email: string; code: string }>(req, { locations: ['body', 'query'] });
     email = email.toLowerCase();
-    this.log.save('check-email-confirmation-code-params', { email, code }, 'info');
+    this.log.save('check-email-confirmation-code-params', { email }, 'info');
 
     let confirm;
     try {
@@ -257,57 +305,38 @@ export class SignUpController extends BaseController {
         code,
       });
     } catch (error: any) {
-      this.log.save('check-email-confirmation-code-error', { email, code, error: error?.message }, 'error');
+      this.log.save('check-email-confirmation-code-error', { email, error: error?.message }, 'error');
       res.send('null');
       return;
     }
 
     // If wrong code.
     if (!confirm) {
-      this.log.save('check-email-confirmation-code-wrong-code', { email, code }, 'info');
+      this.log.save('check-email-confirmation-code-wrong-code', { email }, 'info');
 
       try {
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ email });
         this.log.save('confirm-email-code-counter-incremented', { email, counter }, 'warning');
       } catch (error: any) {
-        this.log.save('check-email-confirmation-code-error', { email, code, error: error?.message }, 'error');
+        this.log.save('check-email-confirmation-code-error', { email, error: error?.message }, 'error');
       }
 
       res.send('null');
       return;
     }
 
-    this.log.save('check-email-confirmation-code-correct-code', { email, code }, 'info');
+    this.log.save('check-email-confirmation-code-correct-code', { email }, 'info');
     res.send('confirm');
   }
 
   /**
-   * Checks if the phone number exists.
+   * Legacy phone existence check. Anonymous callers must not learn whether an account exists,
+   * so the answer is always `false` and no lookup is made. Duplicates are rejected after the code proves control of the number.
    */
   async checkPhoneExist(req: Request, res: Response): Promise<void> {
-    let phone = req.query.phone;
-
-    // Log request.
+    const { phone } = matchedData<{ phone: string }>(req, { locations: ['body', 'query'] });
     this.log.save('check-phone-get-user-request', { phone }, 'info');
-
-    let user: (UserAttributes & { services?: UserServicesAttributes[] }) | null;
-    try {
-      user = await this.service('auth').getUser({ phone });
-    } catch (error: any) {
-      this.log.save('check-phone-get-user-error', { phone, error: error.message }, 'error');
-      res.send(false);
-      return;
-    }
-
-    // Log response.
-    this.log.save('check-phone-get-user-response', { phone }, 'info');
-
-    // Check phone.
-    if (user && user.services && Object.entries(user.services).length !== 0) {
-      res.send(true);
-    } else {
-      res.send(false);
-    }
+    res.send(false);
   }
 
   /**
@@ -325,16 +354,21 @@ export class SignUpController extends BaseController {
    * Sends the phone confirmation code.
    */
   async sendPhoneConfirm(req: Request, res: Response): Promise<void> {
-    const { phone } = matchedData<{ phone: string }>(req, { locations: ['query'] });
+    const { phone } = matchedData<{ phone: string }>(req, { locations: ['body', 'query'] });
 
     this.log.save('send-phone-confirmation-code-requested', { phone }, 'info');
 
     try {
-      const body = await this.service('auth').sendPhoneConfirmCode(phone);
+      if (!(await this.service('auth').consumeSendQuota('phone', phone, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
+
+      const body = await this.service('auth').sendPhoneConfirmCode(phone, (req.user as any)?.id ?? req.session?.passport?.user?.userId);
       res.send(body);
     } catch (error: any) {
       this.log.save('send-phone-confirmation-code-error', { phone, error: error.message }, 'error');
-      res.status(error.statusCode ?? 500).send(error);
+      res.status(isPublicError(error) ? (error.statusCode ?? error.status ?? 400) : 500).send({ error: publicError(error) });
     }
   }
 
@@ -342,8 +376,8 @@ export class SignUpController extends BaseController {
    * Checks the phone confirmation code.
    */
   async checkPhoneConfirm(req: Request, res: Response): Promise<void> {
-    const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['query'] });
-    this.log.save('check-phone-confirmation-code-params', { phone, code }, 'info');
+    const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['body', 'query'] });
+    this.log.save('check-phone-confirmation-code-params', { phone }, 'info');
 
     let confirm;
     try {
@@ -352,20 +386,20 @@ export class SignUpController extends BaseController {
         code,
       });
     } catch (error: any) {
-      this.log.save('check-phone-confirmation-code-error', { phone, code, error: error?.message }, 'error');
+      this.log.save('check-phone-confirmation-code-error', { phone, error: error?.message }, 'error');
       res.send('null');
       return;
     }
 
     if (!confirm) {
-      this.log.save('phone-confirmation-wrong-code', { phone, code }, 'warning');
+      this.log.save('phone-confirmation-wrong-code', { phone }, 'warning');
       try {
         const counter = await this.service('auth').incrementConfirmCodeCounterAsync({
           phone,
         });
         this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
       } catch (error: any) {
-        this.log.save('check-phone-confirmation-code-error', { phone, code, error: error?.message }, 'error');
+        this.log.save('check-phone-confirmation-code-error', { phone, error: error?.message }, 'error');
       }
     }
 
@@ -378,13 +412,13 @@ export class SignUpController extends BaseController {
   async checkPhoneConfirmAndSetAsConfirmed(req: Request, res: Response): Promise<void> {
     // Define params.
     const userId = req.user && (req.user as any).id;
-    const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['query'] });
+    const { phone, code } = matchedData<{ phone: string; code: string }>(req, { locations: ['body', 'query'] });
 
-    this.log.save('phone-confirmation-request', { userId, phone, code }, 'info');
+    this.log.save('phone-confirmation-request', { userId, phone }, 'info');
 
     // Check params.
     if (!userId || !phone || !code) {
-      this.log.save('phone-confirmation-request-validation-error', { userId, phone, code }, 'error');
+      this.log.save('phone-confirmation-request-validation-error', { userId, phone }, 'error');
       res.status(400).send({
         error: {
           message: 'All needed params should be defined.',
@@ -410,7 +444,7 @@ export class SignUpController extends BaseController {
       this.log.save('user-get-error', { userId, error: error.message, stack: error.stack }, 'error');
       res.status(500).send({
         error: {
-          message: error.message,
+          message: publicError(error),
           type: 'user-get-error',
         },
       });
@@ -418,51 +452,21 @@ export class SignUpController extends BaseController {
     }
 
     try {
-      const confirm = await this.service('auth').getValidConfirmCode({
-        phone,
-        code,
-      });
-
-      // Handle not confirmed.
-      if (!confirm) {
-        this.log.save('phone-confirmation-wrong-code', { userId, phone, code }, 'warning');
-        const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone: phone });
-        this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
+      const updatedUser = await this.service('auth').confirmUserPhone(userId, phone, code);
+      if (!updatedUser) {
+        this.log.save('phone-confirmation-wrong-code', { userId, phone }, 'warning');
         res.send({ data: { isConfirmed: false } });
         return;
       }
 
-      // Remove code.
-      try {
-        await this.service('auth').removeConfirmCode({ phone });
-      } catch (error: any) {
-        this.log.save('phone-confirmation-code-removing-error', { userId, phone, code, error: error.message }, 'error');
-      }
-
-      // Set user phone as confirmed.
-      const updateQuery = {
-        phone,
-        valid: { ...user.valid, phone: true },
-      };
-
-      try {
-        await this.service('auth').updateUser({ userId }, updateQuery);
-        this.log.save('phone-confirmation-done', { userId, phone, code }, 'info');
-        res.send({ data: { isConfirmed: true, user } });
-      } catch (error: any) {
-        this.log.save('phone-confirmation-user-updating-error', { userId, phone, code, error: error.message }, 'error');
-        res.status(500).send({
-          error: {
-            message: error.message,
-            type: 'phone-confirmation-user-updating-error',
-          },
-        });
-      }
+      this.log.save('phone-confirmation-done', { userId, phone }, 'info');
+      if (req.session?.passport?.user?.userId === userId) await saveSession(req, updatedUser);
+      res.send({ data: { isConfirmed: true, user: updatedUser } });
     } catch (error: any) {
-      this.log.save('phone-confirmation-error', { userId, phone, code, error: error.message }, 'error');
+      this.log.save('phone-confirmation-error', { userId, phone, error: error.message }, 'error');
       res.status(500).send({
         error: {
-          message: error.message,
+          message: 'Unable to confirm phone.',
           type: 'phone-confirmation-error',
         },
       });
@@ -470,15 +474,17 @@ export class SignUpController extends BaseController {
   }
 
   /**
-   * Set phone.
+   * Set phone for a user. Service route: it marks the phone verified only with a valid confirmation code
+   * issued to this user for this exact phone (KS-32). Without one nothing changes.
    */
   async setPhone(req: Request, res: Response): Promise<void> {
     // Define params.
     const { phone, user_id: userId } = req.query;
+    const code = req.body?.code ?? req.query.code;
     this.log.save('phone-set-request', { userId, phone }, 'info');
 
     // Check params.
-    if (!userId || !phone) {
+    if (typeof userId !== 'string' || !userId || typeof phone !== 'string' || !phone || typeof code !== 'string' || !code) {
       this.log.save('phone-set-request-validation-error', { userId, phone }, 'error');
       res.status(400).send({
         error: {
@@ -489,43 +495,26 @@ export class SignUpController extends BaseController {
       return;
     }
 
-    let user;
     try {
-      user = await this.service('auth').getUser({ userId });
-      if (!user) {
-        res.status(404).send({
+      const updatedUser = await this.service('auth').confirmUserPhone(userId, phone, code);
+      if (!updatedUser) {
+        this.log.save('phone-set-wrong-code', { userId }, 'warning');
+        res.status(400).send({
           error: {
-            message: 'User not found.',
-            type: 'user-not-found',
+            message: 'Invalid or expired confirmation code.',
+            type: 'phone-set-invalid-code',
           },
         });
         return;
       }
-    } catch (error: any) {
-      this.log.save('phone-set-user-get-error', { userId, error: error.message }, 'error');
-      res.status(500).send({
-        error: {
-          message: error.message,
-          type: 'phone-set-user-get-error',
-        },
-      });
-      return;
-    }
 
-    try {
-      // Set user phone as confirmed.
-      const updateQuery = {
-        phone,
-        valid: { ...user.valid, phone: true },
-      };
-      const updatedUser = await this.service('auth').updateUser({ userId }, updateQuery);
       this.log.save('phone-set-done', { userId, phone }, 'info');
       res.send({ data: { isConfirmed: true, updatedUser } });
     } catch (error: any) {
       this.log.save('phone-set-user-updating-error', { userId, phone, error: error.message }, 'error');
       res.status(500).send({
         error: {
-          message: error.message,
+          message: publicError(error),
           type: 'phone-set-user-updating-error',
         },
       });
@@ -538,33 +527,59 @@ export class SignUpController extends BaseController {
   async checkPhoneCode(req: Request, res: Response): Promise<void> {
     const code = req.body.code;
     const user = req.session.passport?.user;
-    this.log.save('check-phone-code', { phone: user.phone, code: code }, 'info');
-
-    if (!code) {
-      this.log.save('check-phone-confirmation-code-params-not-defined', { phone: user.phone, code }, 'error');
-      res.status(400).send('Phone confirmation code should be defined.');
+    const userId = getSessionUserId(req);
+    if (!user || !userId) {
+      res.status(401).send({ success: false, error: 'Unauthorized' });
       return;
     }
 
+    let phone = user.phone;
+
     try {
+      // The persisted account decides which phone and factor are in use; the session user may be a slim profile.
+      const account = await this.model('user')
+        .findOne({ where: { userId }, attributes: ['userId', 'phone', 'useTwoFactorAuth', 'twoFactorType'] })
+        .then((row) => row?.dataValues);
+      if (!account) {
+        res.status(401).send({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const isPhoneTwoFactor = !!account.useTwoFactorAuth && account.twoFactorType === 'phone';
+      if (isPhoneTwoFactor) {
+        phone = account.phone;
+      }
+
+      this.log.save('check-phone-code', { phone }, 'info');
+
+      if (!code) {
+        this.log.save('check-phone-confirmation-code-params-not-defined', { phone }, 'error');
+        res.status(400).send('Phone confirmation code should be defined.');
+        return;
+      }
+
       const confirm = await this.service('auth').getValidConfirmCode({
-        phone: user.phone,
+        phone,
         code,
       });
 
       if (!confirm) {
-        const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone: user.phone });
-        this.log.save('confirm-phone-code-counter-incremented', { phone: user.phone, counter }, 'warning');
+        const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ phone });
+        this.log.save('confirm-phone-code-counter-incremented', { phone, counter }, 'warning');
         res.send({ success: false, error: 'code not valid' });
         return;
       }
 
-      await this.service('auth').removeConfirmCode({ phone: user.phone });
-      await saveSession(req, { ...req.session.passport?.user, phoneChecked: true });
+      await this.service('auth').removeConfirmCode({ phone });
+      if (isPhoneTwoFactor) {
+        await markTwoFactorCompleted(req, userId, 'phone');
+      } else {
+        await saveSession(req, { ...req.session.passport?.user, phoneChecked: true });
+      }
       res.send({ success: true });
     } catch (error: any) {
-      this.log.save('check-phone-confirmation-code-error', { phone: user.phone, code, error: error.message }, 'error');
-      res.send({ success: false, error: error.message });
+      this.log.save('check-phone-confirmation-code-error', { phone, error: error.message }, 'error');
+      res.send({ success: false, error: publicError(error) });
     }
   }
 
@@ -625,8 +640,9 @@ export class SignUpController extends BaseController {
         }
       } catch (error: any) {
         this.log.save('save-user-with-services-error', { error: error.message }, 'error');
-        res.status(400).send({
-          error: (Array.isArray(error.errors) ? error.errors[0] : error).message,
+        const isSequelizeValidation = Array.isArray(error.errors) && error.errors[0]?.message && /^Sequelize(Unique|Validation)/.test(error.name);
+        res.status(isSequelizeValidation || isPublicError(error) ? 400 : 500).send({
+          error: isSequelizeValidation ? error.errors[0].message : publicError(error),
         });
         return;
       }
@@ -656,7 +672,8 @@ export class SignUpController extends BaseController {
       return;
     } catch (error: any) {
       this.log.save('sign-up-confirmation-error', { error: error.message, stack: error.stack }, 'error');
-      res.send({ err: error.message ?? error.toString() });
+      if (!isPublicError(error)) res.status(500);
+      res.send({ err: publicError(error) });
     }
   }
 }

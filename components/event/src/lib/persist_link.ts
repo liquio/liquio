@@ -66,7 +66,7 @@ export class PersistLink {
         small: true,
       },
     };
-    global.log.save('get-persist-link-to-document-request-params', options);
+    global.log.save('get-persist-link-to-document-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const responseData = (await axios(options)).data;
@@ -101,7 +101,7 @@ export class PersistLink {
         small: true,
       },
     };
-    global.log.save('get-persist-link-to-case-request-params', options);
+    global.log.save('get-persist-link-to-case-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const responseData = (await axios(options)).data;
@@ -136,7 +136,7 @@ export class PersistLink {
         small: true,
       },
     };
-    global.log.save('get-persist-link-to-permission-request-params', options);
+    global.log.save('get-persist-link-to-permission-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const responseData = (await axios(options)).data;
@@ -207,7 +207,7 @@ export class PersistLink {
         small: true,
       },
     };
-    global.log.save('get-persist-link-to-static-file-request-params', options);
+    global.log.save('get-persist-link-to-static-file-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const { data: responseData } = (await axios(options)).data;
@@ -247,7 +247,7 @@ export class PersistLink {
       },
       timeout: this.getLinkToFilestorageTimeout,
     };
-    global.log.save('get-persist-link-to-static-file-request-params', options);
+    global.log.save('get-persist-link-to-static-file-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const { data: responseData } = (await axios(options)).data;

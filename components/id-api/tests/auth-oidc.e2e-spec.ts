@@ -271,7 +271,7 @@ describe('AuthController - OIDC', () => {
 
       await appClient.get(`/authorise/oidc/logout-provider/callback?code=fake-code&state=${state}`).redirects(0).expect(302);
 
-      const logoutResponse = await appClient.get('/logout').redirects(0).expect(302);
+      const logoutResponse = await appClient.get('/logout').set('Sec-Fetch-Site', 'same-origin').redirects(0).expect(302);
 
       const logoutUrl = new URL(logoutResponse.headers.location);
       expect(logoutUrl.origin + logoutUrl.pathname).toBe(`${dexUrl}/session/end`);
@@ -320,7 +320,7 @@ describe('AuthController - OIDC', () => {
 
       await appClient.get(`/authorise/oidc/dex/callback?code=fake-code-3&state=${state}`).redirects(0).expect(302);
 
-      const logoutResponse = await appClient.get('/logout').redirects(0).expect(302);
+      const logoutResponse = await appClient.get('/logout').set('Sec-Fetch-Site', 'same-origin').redirects(0).expect(302);
       expect(logoutResponse.headers.location).toBe('/');
     });
   });

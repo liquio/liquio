@@ -1,3 +1,5 @@
+import { maskPhone, redactMessage } from '../lib/mask';
+
 /**
  * Test console SMS adapter.
  */
@@ -28,13 +30,13 @@ class TestConsoleSmsAdapter {
    */
   async sendOneSms(phone: string, text: string, msgid?: string): Promise<string> {
     // Log.
-    global.log.save('send-sms-request', { phone, text, msgid, isTest: true });
+    global.log.save('send-sms-request', { phone: maskPhone(phone), text: redactMessage(text), msgid, isTest: true });
 
     // Define test response.
     const response = '"aaaaaaaa-1111-aaaa-1111-aaaaaaaaaaaa"';
 
     // Log.
-    global.log.save('send-sms-response', { response, phone, text, msgid, isTest: true });
+    global.log.save('send-sms-response', { response, phone: maskPhone(phone), text: redactMessage(text), msgid, isTest: true });
 
     // Return response.
     return response;

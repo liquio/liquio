@@ -16,11 +16,11 @@ import { FileGeneratorService } from './services/file_generator';
 import { StorageService } from './services/storage';
 import { Commands } from './commands';
 import * as Errors from './lib/errors';
-import { LogsBroadcasting } from './lib/logs_broadcasting';
 import typeOf from './lib/type_of';
 import { HttpClient } from './lib/http_client';
 import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses_daemon';
 import { loadConfig } from './lib/config';
+import { assertBasicAuthConfig, assertDownloadTokenConfig, assertTestAuthConfig, buildSandboxConfig } from './lib/config_validation';
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
 import { initIdApiClient } from './lib/id_api';
@@ -111,7 +111,16 @@ export class BpmnTaskCore {
     // Init config.
     const config: any = loadConfig(configPath);
 
-    this.sandbox = new Sandbox(config.sandbox || {});
+    // Do not start with a publicly known default Basic token (or none in production).
+    assertBasicAuthConfig(config);
+
+    // Do not sign download tokens with a placeholder, empty or short secret.
+    assertDownloadTokenConfig(config);
+
+    // Do not let test_users tokens bypass auth in production.
+    assertTestAuthConfig(config);
+
+    this.sandbox = new Sandbox(buildSandboxConfig(config.sandbox) as any);
     Keywords.init();
 
     // Init global http client.
@@ -255,11 +264,6 @@ export class BpmnTaskCore {
     // Init router.
     this.routerService = new RouterService(config);
     await this.routerService.init({ customValidators, customRoutes });
-
-    // Init logs broadcasting.
-    if (process.env.NODE_ENV !== 'prod' && global.config?.logs_broadcasting?.isEnabled) {
-      LogsBroadcasting.start(global.config.logs_broadcasting);
-    }
   }
 
   async listen() {

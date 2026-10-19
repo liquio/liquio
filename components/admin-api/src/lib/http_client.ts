@@ -8,6 +8,20 @@ const getAbortError = () => import('node-fetch').then(({ AbortError }) => AbortE
 
 const DEFAULT_REQUEST_TIMEOUT = 60000; // 1 minute.
 
+/**
+ * Strip query string (may carry identifiers/tokens) from URL for logs.
+ * @param {string|URL} url URL.
+ * @returns {string} URL without query.
+ */
+function urlWithoutQuery(url: string | URL): string {
+  try {
+    const { protocol, host, pathname } = new URL(url);
+    return `${protocol}//${host}${pathname}`;
+  } catch {
+    return '[invalid-url]';
+  }
+}
+
 export class HttpClient {
   public config: any;
 
@@ -27,7 +41,7 @@ export class HttpClient {
    * @return {Promise<import('node-fetch').Response>}
    */
   async request(url: string | URL, init = {}, meta: any, options: any = {}) {
-    global.log.save('http-client-request-options', { meta, url, init });
+    global.log.save('http-client-request-options', { meta, url: urlWithoutQuery(url), method: (init as any)?.method });
 
     const { protocol, host } = new URL(url);
     const urlWithoutQueryParameters = `${protocol}//${host}`;
@@ -74,7 +88,7 @@ export class HttpClient {
       global.log.save('http-client-response-error', {
         meta,
         response: `${response.status} ${response.statusText}`,
-        responseBody: await response.text(),
+        responseBodyLength: (await response.text()).length,
       });
 
       throw new HTTPResponseError('Server sent an HTTP request and got an error in response.', {

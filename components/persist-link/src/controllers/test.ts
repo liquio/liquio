@@ -1,4 +1,5 @@
 // Import.
+import { getLog } from '../lib/context';
 import Controller from './controller';
 import FileStorageConnection from '../lib/link_providers/filestorage/filestorage_handler/filestorage_connection';
 
@@ -38,14 +39,10 @@ class TestController extends Controller {
       const { error } = await new FileStorageConnection(serversList[0]).checkValidToken();
 
       if (error) {
-        const { message } = error;
+        // The upstream error text is not for the (unauthenticated) client.
+        getLog().save('ping-filestorage-check-error', { error: error?.message });
 
-        return this.responseError(res, {
-          message: 'Wrong Filestorage provider params.',
-          details: {
-            filestorageError: message,
-          },
-        });
+        return this.responseError(res, 'Wrong Filestorage provider params.');
       }
     }
 

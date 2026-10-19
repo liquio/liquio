@@ -7,6 +7,7 @@ import { TaskService } from '../services/task';
 import { FileStorageService } from '../services/filestorage';
 import { Stream } from '../lib/stream';
 import { Db } from '../lib/db';
+import { PublicError } from '../lib/public_error';
 
 const ELASTIC_KEYS = [
   'name',
@@ -401,15 +402,15 @@ export class WorkflowProcessBusiness {
     const event = await global.models.event.findById(eventId);
 
     if (!event || event.workflowId !== workflowId) {
-      throw new Error('Event not found.');
+      throw new PublicError('Event not found.');
     }
 
     if (event?.workflow?.isFinal) {
-      throw new Error('Workflow already finished.');
+      throw new PublicError('Workflow already finished.');
     }
 
     if (event.done) {
-      throw new Error('Event already done.');
+      throw new PublicError('Event already done.');
     }
 
     await global.models.event.setCancelled(eventId);
@@ -680,22 +681,22 @@ export class WorkflowProcessBusiness {
 
     if (task.workflowId !== workflowId) {
       global.log.save('delete-signatures-error-wrong-workflow-id', { passedWorkflowId: workflowId, documentId });
-      throw new Error('Passed wrong workflowId.');
+      throw new PublicError('Passed wrong workflowId.');
     }
 
     if (task.finished) {
       global.log.save('delete-signatures-error-task-finished', { documentId });
-      throw new Error('Task is already finished.');
+      throw new PublicError('Task is already finished.');
     }
 
     if (document.isFinal) {
       global.log.save('delete-signatures-error-document-final', { documentId });
-      throw new Error('Document is already final.');
+      throw new PublicError('Document is already final.');
     }
 
     if (task.deleted) {
       global.log.save('delete-signatures-error-task-deleted', { documentId });
-      throw new Error('Task is deleted.');
+      throw new PublicError('Task is deleted.');
     }
     const user = {
       userId: initiator.userId,
@@ -707,7 +708,7 @@ export class WorkflowProcessBusiness {
     const existingDocumentSignatures = await global.models.documentSignature.getByDocumentId(documentId);
     if (existingDocumentSignatures.length === 0) {
       global.log.save('delete-signatures-error-no-signatures-by-documentId', { documentId });
-      throw new Error("Signatures by documentId doesn't exist.");
+      throw new PublicError("Signatures by documentId doesn't exist.");
     }
     await global.models.documentSignature.deleteByDocumentId(documentId);
     const promisesSavingDeletedDocumentSignature = existingDocumentSignatures.map((signature) =>

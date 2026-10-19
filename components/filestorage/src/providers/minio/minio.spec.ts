@@ -1334,7 +1334,9 @@ describe('Minio Provider', () => {
       const filePath = 'test/timeout-test.txt';
 
       // Mock Request.send to verify timeout is passed
-      const sendSpy = jest.spyOn(HttpRequest, 'send').mockResolvedValue({ success: true });
+      const sendSpy = jest
+        .spyOn(HttpRequest, 'sendDetailed')
+        .mockResolvedValue({ body: { success: true }, headers: {}, rawResponse: { status: 200 } } as any);
 
       await minio.deleteFile(filePath);
 
@@ -1375,9 +1377,8 @@ describe('Minio Provider', () => {
         .matchHeader('authorization', /^AWS testuser:/)
         .reply(403, 'Forbidden');
 
-      // The method returns the error response body
-      const result = await minio.deleteFile(filePath);
-      expect(result).toBe('Forbidden');
+      // Non-404 error statuses are not silent: the method throws.
+      await expect(minio.deleteFile(filePath)).rejects.toMatchObject({ statusCode: 403 });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -1390,9 +1391,8 @@ describe('Minio Provider', () => {
         .matchHeader('authorization', /^AWS testuser:/)
         .reply(500, 'Internal Server Error');
 
-      // The method returns the error response body
-      const result = await minio.deleteFile(filePath);
-      expect(result).toBe('Internal Server Error');
+      // Non-404 error statuses are not silent: the method throws.
+      await expect(minio.deleteFile(filePath)).rejects.toMatchObject({ statusCode: 500 });
       expect(scope.isDone()).toBe(true);
     });
 

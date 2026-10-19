@@ -2,7 +2,7 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PdfGenerationOptions } from '@modules/pdf/pdf.types';
-import { Cluster } from './cluster/cluster';
+import { Cluster, QueueFullException } from './cluster/cluster';
 import { PlaywrightAdapter } from './playwright.adapter';
 
 jest.mock('@lib/config', () => ({
@@ -14,7 +14,7 @@ jest.mock('@lib/config', () => ({
     }),
   },
 }));
-jest.mock('./cluster/cluster');
+jest.mock('./cluster/cluster', () => ({ ...jest.requireActual('./cluster/cluster'), Cluster: jest.fn() }));
 jest.mock('@lib/log', () => ({
   log: {
     save: jest.fn(),
@@ -119,6 +119,15 @@ describe('PlaywrightAdapter', () => {
       mockCluster.execute.mockRejectedValue(error);
 
       await expect(adapter.generateFromTemplate(mockHtml, {})).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('should pass the queue-full error through as 429', async () => {
+      mockCluster.execute.mockRejectedValue(new QueueFullException());
+
+      const error = await adapter.generateFromTemplate(mockHtml, {}).catch((e) => e);
+
+      expect(error).toBeInstanceOf(QueueFullException);
+      expect(error.getStatus()).toBe(429);
     });
 
     it('should partially update margin options when only some values provided', async () => {

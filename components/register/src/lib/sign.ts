@@ -2,6 +2,7 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { Log } from '@liquio/back-core';
 
 import prepareAxiosErrorToLog from './prepareAxiosErrorToLog';
+import { TlsConfig, createHttpsAgent } from './tls';
 
 // Constants.
 const ROUTES = {
@@ -12,6 +13,7 @@ export interface SignConfig {
   url: string;
   token: string;
   timeout?: number;
+  tls?: TlsConfig;
 }
 
 /**
@@ -24,6 +26,7 @@ export default class Sign {
   url: string;
   token: string;
   timeout: number;
+  tls?: TlsConfig;
 
   /**
    * Sign constructor.
@@ -33,10 +36,11 @@ export default class Sign {
     // Define singleton.
     if (!Sign.singleton) {
       this.log = Log.getInstance();
-      const { url, token, timeout = 10000 } = config || global.config.sign;
+      const { url, token, timeout = 10000, tls } = config || global.config.sign;
       this.url = url;
       this.token = token;
       this.timeout = timeout;
+      this.tls = tls;
       Sign.singleton = this;
     }
 
@@ -60,6 +64,10 @@ export default class Sign {
       },
       timeout: this.timeout,
     };
+    const httpsAgent = createHttpsAgent(this.tls, 'sign');
+    if (httpsAgent) {
+      requestOptions.httpsAgent = httpsAgent;
+    }
     try {
       const { data: response } = await axios(requestOptions);
       return response;
@@ -71,6 +79,7 @@ export default class Sign {
           requestOptions: {
             ...requestOptions,
             headers: '*****',
+            httpsAgent: undefined,
           },
         },
         'error',

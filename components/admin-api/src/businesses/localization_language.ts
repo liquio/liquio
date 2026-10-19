@@ -1,4 +1,6 @@
 import { LocalizationLanguageModel } from '../models/localization_language';
+import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Localization language business.
@@ -83,7 +85,7 @@ export class LocalizationLanguageBusiness {
       for (const lang of data) {
         const [exisitingLocalizationLanguage] = await this.localizationLanguageModel.getListByCodes([lang.code]);
         if (exisitingLocalizationLanguage && force === false) {
-          throw new Error('Localization language already exists.');
+          throw new PublicError('Localization language already exists.');
         }
         if (exisitingLocalizationLanguage) {
           await this.localizationLanguageModel.updateLocalizationLanguage(lang, { person, transaction });
@@ -93,7 +95,7 @@ export class LocalizationLanguageBusiness {
       }
 
       await transaction.commit();
-      global.log.save('user-imported-localization-languages', { user: person, data });
+      global.log.save('user-imported-localization-languages', { user: toLogUser(person), data });
     } catch (error) {
       await transaction.rollback();
       throw error;

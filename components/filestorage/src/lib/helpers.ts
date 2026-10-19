@@ -1,7 +1,11 @@
+import path from 'path';
+
 import _ from 'lodash';
 import { AxiosError } from 'axios';
 
 import { typeOf } from './type_of';
+
+const UUID_REGEXP = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class Helpers {
   /**
@@ -103,5 +107,73 @@ export class Helpers {
     };
     if (withHeaders) result.headers = error.config?.headers || {};
     return result;
+  }
+
+  /**
+   * Parse and validate a list of file IDs: trims, drops empties, dedupes, checks UUID format and count.
+   * @param {string|any[]} raw Comma separated string or array of IDs.
+   * @param {number} max Max number of unique IDs.
+   * @returns {string[]} Unique IDs.
+   * @throws {Error & {status: number}} 400 when input is malformed or exceeds `max`.
+   */
+  static parseIds(raw, max: number): string[] {
+    const fail = (message: string) => Object.assign(new Error(message), { status: 400 });
+
+    let list;
+    if (typeof raw === 'string') {
+      list = raw.split(',');
+    } else if (Array.isArray(raw)) {
+      list = raw;
+    } else {
+      throw fail('Files IDs should be an array.');
+    }
+
+    const ids = new Set<string>();
+    for (const item of list) {
+      if (typeof item !== 'string') {
+        throw fail('Invalid file ID.');
+      }
+      const id = item.trim();
+      if (!id) continue;
+      if (!UUID_REGEXP.test(id)) {
+        throw fail('Invalid file ID.');
+      }
+      ids.add(id.toLowerCase());
+      if (ids.size > max) {
+        throw fail(`Too many files. Max ${max}.`);
+      }
+    }
+    return [...ids];
+  }
+
+  /**
+   * Make a stored file name safe to use as a single ZIP entry name: keeps only the last path segment
+   * (both `/` and `\\` are separators), strips control characters and never returns `.`, `..` or empty.
+   * @param {any} name Raw file name.
+   * @returns {string} Safe entry name without path separators.
+   */
+  static safeEntryName(name): string {
+    const FALLBACK = 'file';
+    if (typeof name !== 'string') return FALLBACK;
+    const cleaned = name.replace(/\\/g, '/').replace(/[\u0000-\u001f\u007f]/g, '');
+    const base = path.posix.basename(cleaned).trim();
+    if (!base || /^\.+$/.test(base)) return FALLBACK;
+    return base;
+  }
+
+  /**
+   * Sanitise a user supplied file name for storing: `safeEntryName` (last path segment, control characters and CR/LF
+   * stripped) plus quotes removed and the length limited, keeping the extension.
+   * @param {any} name Raw file name.
+   * @returns {string} Safe file name, never empty.
+   */
+  static sanitizeFileName(name): string {
+    const MAX_LENGTH = 255;
+    const base = Helpers.safeEntryName(name).replace(/["'`]/g, '').trim();
+    if (!base || /^\.+$/.test(base)) return 'file';
+    if (base.length <= MAX_LENGTH) return base;
+    const ext = path.posix.extname(base);
+    const keepExt = ext.length > 0 && ext.length < 32 ? ext : '';
+    return base.slice(0, MAX_LENGTH - keepExt.length) + keepExt;
   }
 }

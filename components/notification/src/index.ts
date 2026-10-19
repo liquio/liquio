@@ -1,7 +1,7 @@
 // Init config.
 import path from 'node:path';
 
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { Log } from '@liquio/back-core';
 
 // eslint-disable-next-line import-x/order -- global.conf must be set before ./app and the adapters load.
 import * as config from './config/config';
@@ -11,6 +11,9 @@ global.conf = config.conf;
 import start from './app';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
 import { typeOf } from './lib/type_of';
+import { createServer } from './lib/tls_server';
+import { createConsoleLogProvider } from './lib/console_log_provider';
+import { warnOnDefaultAdminPassword } from './lib/default_admin_password';
 
 global.typeOf = typeOf;
 // Constants.
@@ -18,17 +21,12 @@ const DEFAULT_PROCESS_TITLE = 'notify';
 const ADMIN_DIRECTORY = '/admin';
 const ADAPTERS_LIST: Record<string, unknown> = { testConsoleSmsAdapter };
 const DEFAULT_SMS_ADAPTER_NAME = 'testConsoleSmsAdapter';
-// No log.excludeParams is configured anywhere for this component, so this mirrors
-// the default exclude list the local sensitiveReplace implementation used to fall back to.
-const DEFAULT_EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oauth-token'];
 
 // Set process title.
 process.title = config.conf.processTitle || DEFAULT_PROCESS_TITLE;
 
 // Logs.
-const consoleLogProvider = new ConsoleLogProvider((config as any).log?.console?.name, {
-  excludeParams: (config as any).log?.excludeParams ?? DEFAULT_EXCLUDE_PARAMS,
-});
+const consoleLogProvider = createConsoleLogProvider((config as any).log);
 const log = new Log([consoleLogProvider], ['console']);
 global.log = log;
 
@@ -43,6 +41,9 @@ process.on('uncaughtException', (error: any) => {
   log.save('unhandled-rejection', { stack, message }, 'error');
   process.exit(1);
 });
+
+// Warn when the admin password is still the shipped default (does not refuse to start, see the helper).
+warnOnDefaultAdminPassword(config.conf, log);
 
 // Define adapters to use.
 if (!config.conf.defaultMessenger) {
@@ -60,15 +61,18 @@ if (!adapters.sms) {
 }
 
 // Start Notify Core.
-const server = start(config, path.join(__dirname, ADMIN_DIRECTORY), adapters as any);
+const app = start(config, path.join(__dirname, ADMIN_DIRECTORY), adapters as any);
 
 // Start server listening.
 (async () => {
   await (async () => {
     return new Promise((resolve) => {
       const port = config.conf.port || process.env.port || 8080;
+      // Plain HTTP unless conf.tls.enabled is set; throws (fails fast) on unreadable cert/key/ca files.
+      const server = createServer(app, config.conf.tls);
+      const scheme = config.conf.tls?.enabled ? 'https' : 'http';
       server.listen(port, function () {
-        log.save('server-started', { url: `http://localhost:${port}`, port }, 'info');
+        log.save('server-started', { url: `${scheme}://localhost:${port}`, port }, 'info');
         resolve(undefined);
       });
     });

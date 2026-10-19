@@ -1081,36 +1081,39 @@ export class TaskModel extends Model {
       };
     }
 
-    if (_.has(filters, 'assigned_to')) {
-      if (filters['assigned_to'] === 'me') {
-        sequelizeOptions.filters[Sequelize.Op.or] = [
-          { performer_users: { [Sequelize.Op.overlap]: [userId] } },
-          { signer_users: { [Sequelize.Op.overlap]: [userId] } },
-        ];
-      } else if (filters['assigned_to'] === 'unit') {
-        const performerUnitsFiltered = []
-          .concat(filters.performer_units)
-          .filter(Boolean)
-          .map((v) => parseInt(v))
-          .filter((v) => userUnitIds.includes(v) || userHeadUnitIds.includes(v));
+    // Accept only plain strings: arrays/objects (e.g. `filters[assigned_to][]=me`) must never skip the default user scope.
+    const assignedTo = typeof filters.assigned_to === 'string' ? filters.assigned_to : undefined;
+    const closedBy = typeof filters.closed_by === 'string' ? filters.closed_by : undefined;
 
-        sequelizeOptions.filters[Sequelize.Op.and] = [
-          {
-            [Sequelize.Op.or]: [
-              { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },
-              { performer_units: { [Sequelize.Op.overlap]: userHeadUnitIds }, only_for_heads: true },
-            ],
-          },
-          {
-            [Sequelize.Op.or]: [
-              Sequelize.literal("required_performer_units = '{}'"),
-              { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
-            ],
-          },
-          performerUnitsFiltered.length && { performer_units: { [Sequelize.Op.overlap]: performerUnitsFiltered } },
-        ].filter(Boolean);
-      }
+    if (assignedTo === 'me') {
+      sequelizeOptions.filters[Sequelize.Op.or] = [
+        { performer_users: { [Sequelize.Op.overlap]: [userId] } },
+        { signer_users: { [Sequelize.Op.overlap]: [userId] } },
+      ];
+    } else if (assignedTo === 'unit') {
+      const performerUnitsFiltered = []
+        .concat(filters.performer_units)
+        .filter(Boolean)
+        .map((v) => parseInt(v))
+        .filter((v) => userUnitIds.includes(v) || userHeadUnitIds.includes(v));
+
+      sequelizeOptions.filters[Sequelize.Op.and] = [
+        {
+          [Sequelize.Op.or]: [
+            { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },
+            { performer_units: { [Sequelize.Op.overlap]: userHeadUnitIds }, only_for_heads: true },
+          ],
+        },
+        {
+          [Sequelize.Op.or]: [
+            Sequelize.literal("required_performer_units = '{}'"),
+            { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
+          ],
+        },
+        performerUnitsFiltered.length && { performer_units: { [Sequelize.Op.overlap]: performerUnitsFiltered } },
+      ].filter(Boolean);
     } else {
+      // Default scope (also for any unknown/non-string `assigned_to`).
       sequelizeOptions.filters[Sequelize.Op.and].push({
         [Sequelize.Op.or]: [
           { performer_users: { [Sequelize.Op.overlap]: [userId] } },
@@ -1138,9 +1141,9 @@ export class TaskModel extends Model {
 
     if (_.has(filters, 'closed_by')) {
       sequelizeOptions.filters['finished'] = true;
-      if (filters['closed_by'] === 'me') {
+      if (closedBy === 'me') {
         sequelizeOptions.filters['updated_by'] = userId;
-      } else if (filters['closed_by'] === 'unit' && _.has(filters, 'assigned_to') && filters['assigned_to'] !== 'unit') {
+      } else if (closedBy === 'unit' && assignedTo === 'me') {
         sequelizeOptions.filters[Sequelize.Op.and].push({
           [Sequelize.Op.or]: [
             { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },

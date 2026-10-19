@@ -1,12 +1,6 @@
 import crypto from 'crypto';
 
-import OAuth2Server, {
-  InvalidClientError,
-  InvalidRequestError,
-  OAuthError,
-  Request as OAuthRequest,
-  Response as OAuthResponse,
-} from '@node-oauth/oauth2-server';
+import OAuth2Server, { InvalidRequestError } from '@node-oauth/oauth2-server';
 import { matchedData, query, validationResult } from 'express-validator';
 import moment from 'moment';
 import { Op } from 'sequelize';
@@ -14,7 +8,9 @@ import { Op } from 'sequelize';
 import { Config, DEFAULT_CODE_RETRIES, DEFAULT_CODE_LENGTH } from '../config';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { generatePinCode } from '../lib/helpers';
+import { HttpError, oauthErrorBody } from '../lib/http_error';
 import { OAuthModel } from '../lib/oauth_model';
+import { publicService } from '../lib/public_services';
 import { saveSession } from '../middleware/session';
 import {
   ClientAttributes,
@@ -36,6 +32,19 @@ const DEFAULT_CACHE_TTL = 600; // 10 minutes.
 const DEFAULT_ACCESS_TOKEN_LIFETIME = 8 * 60 * 60; // 8 hours.
 const DEFAULT_REFRESH_TOKEN_LIFETIME = 16 * 60 * 60; // 16 hours.
 const MAX_CONFIRM_CODES_TO_KEEP = 5;
+export const DEFAULT_SEND_LIMIT = {
+  recipientMax: 10, // Codes per recipient and channel per window.
+  recipientWindowSeconds: 3600,
+  sourceMax: 100, // Codes per source IP per window (shared NAT friendly).
+  sourceWindowSeconds: 3600,
+};
+// 2FA phone sends (login with a verified password): own counters, a login sends up to two codes, so the source limit is higher.
+export const DEFAULT_TWO_FACTOR_SEND_LIMIT = {
+  recipientMax: 10,
+  recipientWindowSeconds: 3600,
+  sourceMax: 300,
+  sourceWindowSeconds: 3600,
+};
 
 /**
  * Redis key under which task caches the user info for an access token (`token.<sha256(accessToken)>`).
@@ -143,7 +152,6 @@ export class AuthService extends BaseService {
   prepareClient() {
     return [
       query('client_id').isString(),
-      query('client_secret').optional().isString(),
       query('response_type').optional().default('code').isString(),
       query('state').optional().isString(),
       query('redirect_uri').isString().notEmpty(),
@@ -153,26 +161,45 @@ export class AuthService extends BaseService {
         .matches(/^[A-Za-z0-9_-]{43}$/),
       query('code_challenge_method').optional().isString().equals('S256'),
       async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-        const { client_id, client_secret, response_type, state, redirect_uri, code_challenge, code_challenge_method } = matchedData(req, {
-          locations: ['query'],
-        });
+        let { client_id, response_type = 'code', state, redirect_uri } = matchedData(req, { locations: ['query'] });
+        const { code_challenge, code_challenge_method } = req.query;
+
+        if (response_type !== 'code') {
+          res.status(400).send({ error: 'unsupported_response_type', message: 'Only response_type=code is supported' });
+          return;
+        }
+
+        // PKCE is optional, but a request that uses it must carry both parameters, and only S256 is supported.
+        if (
+          (code_challenge !== undefined || code_challenge_method !== undefined) &&
+          (typeof code_challenge !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(code_challenge) || code_challenge_method !== 'S256')
+        ) {
+          res.status(400).send({ error: 'invalid_request', message: 'Invalid PKCE parameters; use S256' });
+          return;
+        }
 
         try {
           if (!validationResult(req).isEmpty()) throw new InvalidRequestError('Invalid authorization parameters');
-          if ((code_challenge !== undefined || code_challenge_method !== undefined) && (!code_challenge || code_challenge_method !== 'S256')) {
-            throw new InvalidRequestError('Invalid PKCE parameters; use S256');
-          }
-          const client = await this.oAuth2Model.getClient(client_id, client_secret);
+          // The client secret is not accepted here: confidential clients are authenticated at /oauth/token.
+          const client = await this.oAuth2Model.getClient(client_id, null);
 
           if (!client) {
             res.status(400).send({ message: 'Client not found' });
             return;
           }
 
+          const registeredRedirectUris = [client.redirectUris ?? []].flat();
+          redirect_uri ??= registeredRedirectUris[0];
+          if (!redirect_uri || !registeredRedirectUris.includes(redirect_uri)) {
+            this.log.save('prepareClientRedirectUriRejected', { clientId: client_id }, 'error');
+            res.status(400).send({ message: 'Redirect URI is not registered for the client' });
+            return;
+          }
+
           const session = req.session;
           session.client_id = client_id;
-          session.client_secret = client.secret;
           session.redirect_uri = redirect_uri;
+          // Always overwrite so that a previous authorization's PKCE binding cannot leak into this one.
           session.code_challenge = code_challenge;
           session.code_challenge_method = code_challenge_method;
           session.state = state;
@@ -181,21 +208,74 @@ export class AuthService extends BaseService {
           session.response_type = response_type;
           session.client_name = client.client_name;
           session.need_scope_approve = client.need_scope_approve;
-          session.client = client;
+          session.client = {
+            clientId: client.clientId,
+            client_name: client.client_name,
+            requirements: client.requirements,
+            redirectUri: registeredRedirectUris,
+          };
           await saveSession(req);
 
-          this.log.save('preparedClient', { session }, 'info');
+          this.log.save('preparedClient', { clientId: client_id, redirectUri: redirect_uri, responseType: response_type }, 'info');
           next();
         } catch (error: any) {
           if (!error.statusCode) {
             this.log.save('prepareClientError', { error }, 'error');
             error.statusCode = 500;
           }
-          res.status(error.statusCode).send(new OAuthError(error.message, error));
+          const body = oauthErrorBody(error);
+          res.status(body.statusCode).send(body);
           return;
         }
       },
     ];
+  }
+
+  /**
+   * Authorization continuation needs a client prepared by `/authorise` (`prepareClient`).
+   * Without it only the configured default client is used, and it is resolved and validated explicitly here
+   * (it must exist and have the default redirect URI registered) instead of silently falling back to defaults.
+   */
+  ensureClientContext() {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      if (req.session.client_id) {
+        return next();
+      }
+
+      try {
+        const defaults = this.cfg!.defaults!;
+        const found = defaults.client_id ? await this.oAuth2Model.getClient(defaults.client_id, null) : undefined;
+        const client = found || undefined;
+        const registeredRedirectUris = [client?.redirectUris ?? []].flat();
+        const redirectUri = defaults.redirect_uri?.[0];
+
+        if (!client || !redirectUri || !registeredRedirectUris.includes(redirectUri)) {
+          this.log.save('ensureClientContextRejected', { clientId: defaults.client_id }, 'error');
+          res.status(400).send({ message: 'Authorization request is not prepared' });
+          return;
+        }
+
+        const session = req.session;
+        session.client_id = client.clientId;
+        session.redirect_uri = redirectUri;
+        session.client_requirements = client.requirements;
+        session.scope = client.scope;
+        session.response_type = 'code';
+        session.client_name = client.client_name;
+        session.need_scope_approve = client.need_scope_approve;
+        session.client = {
+          clientId: client.clientId,
+          client_name: client.client_name,
+          requirements: client.requirements,
+          redirectUri: registeredRedirectUris,
+        };
+        await saveSession(req);
+        next();
+      } catch (error: any) {
+        this.log.save('ensureClientContextError', { error: error?.message }, 'error');
+        res.status(500).send({ message: 'Unable to resolve the authorization client' });
+      }
+    };
   }
 
   readyClient() {
@@ -208,8 +288,6 @@ export class AuthService extends BaseService {
         // Express 5 re-parses `req.query` on every access, so the client params are passed via `req.body` only
         // (@node-oauth/oauth2-server reads `request.body` before `request.query`).
         req.body.client_id = req.session.client_id ?? this.cfg!.defaults!.client_id;
-        req.body.client_secret = req.session.client_secret ?? this.cfg!.defaults!.client_secret;
-        req.body.redirect_uri = req.session.redirect_uri ?? this.cfg!.defaults!.redirect_uri?.[0];
         req.body.code_challenge = req.session.code_challenge;
         req.body.code_challenge_method = req.session.code_challenge_method;
         req.body.state = req.session.state ?? '';
@@ -218,43 +296,20 @@ export class AuthService extends BaseService {
         req.body.client_name = req.session.client_name ?? this.cfg!.defaults!.client_name;
         req.body.scope = req.session.scope ?? (this.cfg!.defaults!.scope || []);
 
-        this.log.save('readyClient', { body: req.body }, 'info');
+        // The destination comes only from the session (validated in `prepareClient`) or the config, never from the request query.
+        const redirectUri = req.session.redirect_uri ?? this.cfg!.defaults!.redirect_uri?.[0];
+        const registeredRedirectUris = req.session.client?.redirectUri;
+        if (!redirectUri || (registeredRedirectUris && !registeredRedirectUris.includes(redirectUri))) {
+          this.log.save('readyClientRedirectUriRejected', { clientId: req.body.client_id }, 'error');
+          res.status(400).send({ message: 'Redirect URI is not registered for the client' });
+          return;
+        }
+        req.body.redirect_uri = redirectUri;
+
+        this.log.save('readyClient', { clientId: req.body.client_id, redirectUri, responseType: req.body.response_type }, 'info');
         next();
       },
     ];
-  }
-
-  private getAccessTokenExpiresAt() {
-    let expires = new Date();
-
-    expires.setSeconds(expires.getSeconds() + this.accessTokenLifetime);
-
-    return expires;
-  }
-
-  async responseTypeToken(req: OAuthRequest, res: OAuthResponse, userId: string) {
-    let { client_id, client_secret } = req.body;
-    if (!client_id || !client_secret) {
-      throw new InvalidClientError('Missing client_id or client_secret');
-    }
-
-    let client = await this.oAuthModel.getClient(client_id, client_secret);
-    if (!client) throw new InvalidClientError('Client not found');
-
-    const buffer = crypto.randomBytes(256);
-    let accessToken = crypto.createHash('sha1').update(buffer).digest('hex');
-    let savedToken = await this.oAuthModel.saveToken(
-      {
-        accessToken,
-        accessTokenExpiresAt: this.getAccessTokenExpiresAt(),
-        scope: client.scope,
-        client,
-        user: { userId } as any,
-      },
-      client,
-      { userId },
-    );
-    return savedToken;
   }
 
   getConfirmCode(params: Record<string, any>, callback: CallbackFn<ConfirmCodeAttributes | null>) {
@@ -278,6 +333,11 @@ export class AuthService extends BaseService {
   }
 
   async getValidConfirmCode(params: Record<string, any>) {
+    // An array would be compiled into `IN (...)` and match any of the candidate codes.
+    if (typeof params?.code !== 'string' || !params.code || !hasOnlyStringValues(params)) {
+      return undefined;
+    }
+
     const queryParams = {
       ...params,
       counter: { [Op.lte]: this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES },
@@ -373,55 +433,103 @@ export class AuthService extends BaseService {
     });
   }
 
-  incrementConfirmCodeCounter(params: any, callback: CallbackFn<number | null>) {
-    // Check input params.
+  /**
+   * Count a failed attempt against the active confirmation codes of the email or phone.
+   * One atomic UPDATE ... RETURNING, so parallel failures never lose an increment. Expired codes are not touched.
+   * Codes that exceeded the retries limit are deleted (awaited).
+   * Resolves to the new counter, or null if there is no active code.
+   */
+  async incrementConfirmCodeCounterAsync(params: Record<string, any>): Promise<number | null> {
     const { email, phone } = params ?? {};
     if (!email && !phone) {
-      return callback(new Error('Email or phone should be defined.'), null);
+      throw new Error('Email or phone should be defined.');
+    }
+    if (!hasOnlyStringValues(params)) {
+      throw new Error('Email and phone should be strings.');
     }
 
-    // Handle.
-    this.model('confirmCode')
-      .findOne({ where: params })
-      .then((confirmCode: any) => {
-        // Check if confirm code not exists.
-        if (!confirmCode) {
-          return callback(null, null);
-        }
+    const column = email ? 'email' : 'phone';
+    const recipient = email ?? phone;
+    const maxCounter = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
 
-        // Increment counter and return.
-        const { counter } = confirmCode;
-        const nextCounter = counter + 1;
+    const [rows] = (await Models.db.query(
+      `UPDATE confirmation_codes SET counter = counter + 1
+       WHERE "${column}" = :recipient AND "expiresIn" > NOW()
+       RETURNING counter`,
+      { replacements: { recipient } },
+    )) as [{ counter: number }[], unknown];
 
-        if (nextCounter > (this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES)) {
-          let paramsToDestroy = {} as { email?: string; phone?: string };
-          if (email) paramsToDestroy.email = email;
-          if (phone) paramsToDestroy.phone = phone;
-          this.model('confirmCode').destroy({ where: paramsToDestroy });
-          this.log.save(
-            'confirm-code-counter-max-value|deleted',
-            {
-              paramsToDestroy,
-              nextCounter,
-              maxCounter: this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES,
-            },
-            'warning',
-          );
-        } else {
-          this.model('confirmCode').update({ counter: nextCounter }, { where: params });
-        }
+    if (!rows?.length) {
+      return null;
+    }
 
-        callback(null, nextCounter);
-      });
+    const nextCounter = Math.max(...rows.map((row) => Number(row.counter)));
+    if (nextCounter > maxCounter) {
+      await this.model('confirmCode').destroy({ where: { [column]: recipient, counter: { [Op.gt]: maxCounter } } });
+      this.log.save('confirm-code-counter-max-value|deleted', { [column]: recipient, nextCounter, maxCounter }, 'warning');
+    }
+
+    return nextCounter;
   }
 
-  async incrementConfirmCodeCounterAsync(params: Record<string, any>) {
-    return new Promise((resolve, reject) => {
-      this.incrementConfirmCodeCounter(params, (err, counter) => {
-        if (err) return reject(err);
-        resolve(counter);
-      });
-    });
+  /**
+   * Count one confirmation-code send for the recipient (per channel) and for the source.
+   * Fixed windows, atomic in redis (shared by all instances); with redis disabled the counters are per instance.
+   * Returns false when a limit is exceeded: the caller must not send the code.
+   */
+  async consumeSendQuota(channel: 'phone' | 'email' | 'twoFactor', recipient: string, source?: string): Promise<boolean> {
+    const isTwoFactor = channel === 'twoFactor';
+    const sendLimit = this.config.confirmCode?.sendLimit;
+    const configured: Partial<typeof DEFAULT_SEND_LIMIT> = (isTwoFactor ? sendLimit?.twoFactor : sendLimit) ?? {};
+    const defaults = isTwoFactor ? DEFAULT_TWO_FACTOR_SEND_LIMIT : DEFAULT_SEND_LIMIT;
+    const limit = (name: keyof typeof DEFAULT_SEND_LIMIT) => {
+      const value = Number(configured[name]);
+      return Number.isFinite(value) && value > 0 ? value : defaults[name];
+    };
+    const limits = {
+      recipientMax: limit('recipientMax'),
+      recipientWindowSeconds: limit('recipientWindowSeconds'),
+      sourceMax: limit('sourceMax'),
+      sourceWindowSeconds: limit('sourceWindowSeconds'),
+    };
+    const normalized = channel === 'email' ? recipient.trim().toLowerCase() : recipient.replace(/\D/g, '');
+    const digest = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
+
+    const checks: [string, number, number][] = [
+      [`confirm-send.${channel}.${digest(normalized)}`, limits.recipientWindowSeconds, limits.recipientMax],
+    ];
+    if (source) {
+      checks.push([`confirm-send-source.${isTwoFactor ? 'twoFactor.' : ''}${digest(source)}`, limits.sourceWindowSeconds, limits.sourceMax]);
+    }
+
+    let allowed = true;
+    for (const [key, windowSeconds, max] of checks) {
+      const count = await this.incrementSendWindow(key, windowSeconds);
+      if (count > max) allowed = false;
+    }
+    if (!allowed) {
+      this.log.save('confirm-code-send|rate-limited', { channel, hasSource: !!source }, 'warning');
+    }
+    return allowed;
+  }
+
+  private sendWindows = new Map<string, { count: number; resetAt: number }>();
+
+  private async incrementSendWindow(key: string, windowSeconds: number): Promise<number> {
+    const shared = await this.service('redis').incrementWindow([key], windowSeconds);
+    if (shared !== null && shared !== undefined) return shared;
+
+    // Redis is disabled: per-instance fixed window.
+    const now = Date.now();
+    if (this.sendWindows.size > 10000) {
+      for (const [k, v] of this.sendWindows) if (v.resetAt <= now) this.sendWindows.delete(k);
+    }
+    const current = this.sendWindows.get(key);
+    if (!current || current.resetAt <= now) {
+      this.sendWindows.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
+      return 1;
+    }
+    return ++current.count;
   }
 
   /**
@@ -506,16 +614,15 @@ export class AuthService extends BaseService {
 
       user.services = {};
       for (const service of user.user_services) {
-        // Do not disclose sensitive data.
-        delete service.data?.password;
-        delete service.data?.oldPasswords;
-
-        user.services[service.provider] = service;
+        // Allowlist only public service fields; never return stored credentials.
+        user.services[service.provider] = publicService(service);
         user.provider ??= service.provider;
       }
 
       user._id = user.userId;
       delete user.user_services;
+      // Internal credential version; never exposed to API consumers.
+      delete user.authorizationVersion;
 
       return user;
     } catch (error: any) {
@@ -546,7 +653,7 @@ export class AuthService extends BaseService {
           const services: Record<string, any> = {};
           if (user.user_services) {
             for (let service of user.user_services) {
-              services[service.provider!] = service;
+              services[service.provider!] = publicService(service);
             }
           }
 
@@ -733,7 +840,7 @@ export class AuthService extends BaseService {
       if (error.name === 'SequelizeUniqueConstraintError') {
         const [uniqueFieldError] = error.errors ?? [];
         const message = uniqueFieldError.message.charAt(0).toUpperCase() + uniqueFieldError.message.slice(1);
-        throw new Error(`Can not update user. ${message}`);
+        throw new HttpError(400, `Can not update user. ${message}`);
       }
       this.log.save('update-user-error', { error: error }, 'error');
       throw error;
@@ -840,6 +947,14 @@ export class AuthService extends BaseService {
     }
   }
 
+  /**
+   * All redirect URIs registered by OAuth clients.
+   */
+  async getRegisteredRedirectUris(): Promise<string[]> {
+    const clients = await this.model('client').findAll();
+    return clients.flatMap((client) => client.dataValues.redirectUri ?? []);
+  }
+
   async getClientByRedirectUri(redirectUri: string, callback?: CallbackFn<ClientAttributes | null>) {
     if (callback) {
       this.model('client')
@@ -925,7 +1040,7 @@ export class AuthService extends BaseService {
     }
   }
 
-  async sendPhoneConfirmCode(phoneNumber: string) {
+  async sendPhoneConfirmCode(phoneNumber: string, userId?: string) {
     // Define test confirmation code if exist.
     const testConfirmations = this.config.testConfirmations?.codes || [];
     let testCodeObj: any;
@@ -939,13 +1054,74 @@ export class AuthService extends BaseService {
     const expiresIn = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
     await this.removePreviousConfirmCodes({ phone: phoneNumber });
-    await this.saveConfirmCodeAsync({ phone: phoneNumber, code, counter: 0, expiresIn });
+    await this.saveConfirmCodeAsync({ phone: phoneNumber, userId: userId ?? null, code, counter: 0, expiresIn });
 
     if (testCodeObj) {
       return { sendBySms: { testUser: true } };
     }
 
     return this.service('notify').sendSms(phoneNumber, SMS_CODE_WORD + code);
+  }
+
+  /**
+   * Verify an SMS challenge bound to this user and phone, and apply it to the profile.
+   * The challenge is consumed and the user updated in one transaction (row locks make it single-use).
+   * Returns the updated user, or null (changing nothing) for any invalid, expired, exhausted, replayed,
+   * cross-user or cross-number code.
+   */
+  async confirmUserPhone(userId: string, phone: unknown, code: unknown): Promise<UserAttributes | null> {
+    if (typeof userId !== 'string' || !userId || typeof phone !== 'string' || !phone.trim() || typeof code !== 'string' || !code.trim()) {
+      return null;
+    }
+
+    const maxRetries = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
+    const confirmed = await Models.db.transaction(async (transaction) => {
+      const user = await this.model('user').findOne({ where: { userId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!user || user.dataValues.isActive === false) return false;
+
+      const challenge = await this.model('confirmCode').findOne({
+        where: { userId, phone, code, counter: { [Op.lte]: maxRetries }, expiresIn: { [Op.gt]: Models.db.fn('NOW') } },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!challenge) {
+        await this.model('confirmCode').increment('counter', { by: 1, where: { userId, phone }, transaction });
+        return false;
+      }
+
+      await user.update({ phone, valid: { email: false, ...user.dataValues.valid, phone: true } }, { transaction });
+      await this.model('confirmCode').destroy({ where: { userId, phone }, transaction });
+      return true;
+    });
+
+    if (!confirmed) return null;
+    await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+    return this.getUser({ userId });
+  }
+
+  /**
+   * Consume an SMS challenge issued to this user for exactly this phone, without changing the profile.
+   * Used as proof for sensitive changes (e.g. turning phone 2FA off). Single-use; wrong codes count against the retry limit.
+   */
+  async consumePhoneChallenge(userId: string, phone: unknown, code: unknown): Promise<boolean> {
+    if (typeof userId !== 'string' || !userId || typeof phone !== 'string' || !phone.trim() || typeof code !== 'string' || !code.trim()) {
+      return false;
+    }
+
+    const maxRetries = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
+    return Models.db.transaction(async (transaction) => {
+      const challenge = await this.model('confirmCode').findOne({
+        where: { userId, phone, code, counter: { [Op.lte]: maxRetries }, expiresIn: { [Op.gt]: Models.db.fn('NOW') } },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!challenge) {
+        await this.model('confirmCode').increment('counter', { by: 1, where: { userId, phone }, transaction });
+        return false;
+      }
+      await this.model('confirmCode').destroy({ where: { userId, phone }, transaction });
+      return true;
+    });
   }
 
   /**
@@ -956,6 +1132,53 @@ export class AuthService extends BaseService {
       return /^[0-9a-fA-F]{24}$/.test(userId);
     }
     return false;
+  }
+
+  /**
+   * Update local credentials and revoke all preceding authorization in one transaction.
+   * The user's authorization version is incremented, and sessions, codes and tokens are deleted.
+   * Returns false, changing nothing, when the expectations do not hold (e.g. a reset token that
+   * is unknown, already consumed or expired, or a password hash that changed concurrently).
+   */
+  async updateLocalPassword(
+    userId: string,
+    data: Record<string, any>,
+    expected: { passwordHash?: string; resetToken?: string; providerId?: string; email?: string } = {},
+  ): Promise<boolean> {
+    const changed = await Models.db.transaction(async (transaction) => {
+      const user = await this.model('user').findOne({ where: { userId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!user) return false;
+      const local = await this.model('userServices').findOne({ where: { userId, provider: 'local' }, transaction, lock: transaction.LOCK.UPDATE });
+      const current = local?.dataValues.data as any;
+      if (expected.passwordHash !== undefined && current?.password !== expected.passwordHash) return false;
+      if (
+        expected.resetToken !== undefined &&
+        (typeof expected.resetToken !== 'string' ||
+          !expected.resetToken ||
+          !this.service('passwordManager').verifyToken(expected.resetToken, current?.resetPasswordTokenHash) ||
+          typeof current?.resetPasswordTokenExpireAt !== 'number' ||
+          !Number.isFinite(current.resetPasswordTokenExpireAt) ||
+          current.resetPasswordTokenExpireAt < Date.now())
+      ) {
+        return false;
+      }
+
+      if (local) await local.update({ data }, { transaction });
+      else if (expected.providerId)
+        await this.model('userServices').create({ userId, provider: 'local', provider_id: expected.providerId, data }, { transaction });
+      else return false;
+
+      if (expected.email) await user.update({ email: expected.email }, { transaction });
+      await user.increment('authorizationVersion', { transaction });
+      await this.model('accessToken').destroy({ where: { userId }, transaction });
+      await this.model('refreshToken').destroy({ where: { userId }, transaction });
+      await this.model('authCode').destroy({ where: { userId }, transaction });
+      await this.model('sessions').destroy({ where: { userId }, transaction });
+      return true;
+    });
+
+    if (changed) await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+    return changed;
   }
 
   /**
@@ -991,7 +1214,7 @@ export class AuthService extends BaseService {
         } catch (error: any) {
           this.log.save('check-email-confirmation-code-error', { email, code: req.body.code_email, error: error.message }, 'error');
         }
-        throw new Error("Email confirmation code doesn't match");
+        throw new HttpError(400, "Email confirmation code doesn't match");
       }
     } else {
       req.prepared!.user.valid = {
@@ -1031,7 +1254,7 @@ export class AuthService extends BaseService {
             'error',
           );
         }
-        throw new Error("Phone confirmation code doesn't match");
+        throw new HttpError(400, "Phone confirmation code doesn't match");
       }
 
       req.prepared!.user.valid = { phone: true };
@@ -1053,7 +1276,7 @@ export class AuthService extends BaseService {
         .catch(() => null);
 
       if (user) {
-        throw new Error('Phone is already taken');
+        throw new HttpError(400, 'Phone is already taken');
       }
     }
   }
@@ -1062,7 +1285,7 @@ export class AuthService extends BaseService {
     const preparedUser = req.session?.preparedUser;
     const authInfo = req.session?.authInfo;
     if (!preparedUser || !authInfo) {
-      throw new Error('User session should be defined.');
+      throw new HttpError(400, 'User session should be defined.');
     }
     let userToSave = {
       ...(req.prepared!.user ?? {}),
@@ -1088,4 +1311,9 @@ export class AuthService extends BaseService {
 
     return userToSave;
   }
+}
+
+/** Confirm code lookups compare values for equality, so arrays and objects are not allowed. */
+function hasOnlyStringValues(params: Record<string, unknown>): boolean {
+  return Object.values(params).every((v) => v === undefined || typeof v === 'string');
 }

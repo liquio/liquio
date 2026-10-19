@@ -3,5 +3,9 @@
   "port": 7004,
   "maxBodySize": "10mb",
   "customer": "liquio",
-  "environment": "dev"
+  "environment": "dev",
+  "monitoring": {
+    "isEnabled": false,
+    "token": ""
+  }
 }

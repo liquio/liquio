@@ -1,12 +1,12 @@
-import { matchedData, query } from 'express-validator';
 import { FindOptions } from 'sequelize';
 import { Log } from '@liquio/back-core';
 
+import { HttpError } from '../lib/http_error';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';
 import { CallbackFn, Express, Request, Response } from '../types';
-import { GovIdStrategy } from './passport_libs/passport-govid/strategy';
+import { GovIdStrategy, issueGovIdState } from './passport_libs/passport-govid/strategy';
 
 // Constants.
 const EDRPOU_TYPE = 'edrpou';
@@ -52,11 +52,11 @@ export async function govid(app: Express) {
 
       if (!code) {
         log.save('user-auth-by-govid|invalid-ipn', { userInfo }, 'error');
-        return callback(new Error('DRFO or EDRPOU does not exist.'));
+        return callback(new HttpError(400, 'DRFO or EDRPOU does not exist.'));
       }
 
       if (!/^\d{9,10}$/.test(code) && !/^[А-Яа-я]{2}\d{6}$/.test(code)) {
-        const error = new Error('DRFO or EDRPOU has an invalid format.');
+        const error = new HttpError(400, 'DRFO or EDRPOU has an invalid format.');
         (error as any).details = code;
         log.save('user-auth-by-govid|invalid-ipn', { userInfo, error }, 'error');
         return callback(error);
@@ -64,12 +64,12 @@ export async function govid(app: Express) {
 
       if (!surname) {
         log.save('user-auth-by-govid|invalid-surname', { userInfo }, 'error');
-        return callback(new Error('Surname does not exist.'));
+        return callback(new HttpError(400, 'Surname does not exist.'));
       }
 
       if (config.eds?.onlyLegalEntityAllow && ipn.EDRPOU && !ipn.DRFO) {
         log.save('user-auth-by-govid|only-legal-entity', { userInfo }, 'error');
-        return callback(new Error('Only legal entity allowed.'));
+        return callback(new HttpError(400, 'Only legal entity allowed.'));
       }
 
       const findUserOptions = {
@@ -122,7 +122,7 @@ export async function govid(app: Express) {
   async function handleAuthenticated(req: Request, searchUserCriteria: FindOptions, userServiceAttributes: UserServicesCreationAttributes) {
     // Check signer code not the same as authenticated.
     if (req.user!.ipn !== userServiceAttributes.provider_id) {
-      throw new Error('DRFO or EDRPOU not the same as authenticated.');
+      throw new HttpError(400, 'DRFO or EDRPOU not the same as authenticated.');
     }
 
     // Handle.
@@ -257,7 +257,7 @@ export async function govid(app: Express) {
     async (req, res) => {
       const user = req.session.passport?.user;
 
-      log.save('user-auth-by-govid', { user }, 'info');
+      log.save('user-auth-by-govid', { userId: user?.userId ?? user?.id }, 'info');
 
       await saveSession(req, user);
 
@@ -267,10 +267,10 @@ export async function govid(app: Express) {
 
   // Route to get Gov ID auth info.
   app.get('/authorise/govid/info', [
-    query('state').optional().isString(),
     async (req: Request, res: Response) => {
       const { authorizationUrl, clientId, redirectUrl, authType } = govidConfig as any;
-      const { state = 'null' } = matchedData(req, { locations: ['query'] });
+      // The state is generated server-side and bound to the session; a client-supplied one is ignored.
+      const state = issueGovIdState(req);
 
       let authTypeString = 'dig_sign,bank_id,mobile_id,diia_id';
       if (Array.isArray(authType)) {

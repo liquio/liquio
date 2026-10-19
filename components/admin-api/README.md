@@ -42,3 +42,15 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
 - `admin-api` → RabbitMQ (publishes/consumes BPMN messages)
 - `admin-api` → PostgreSQL (`bpmn` database, shared with `cabinet-api`,
   `task`, `manager`, `gateway`, `event`), Redis/Dragonfly
+
+## Secrets in config
+
+Secrets (`notifier.password`, `server.token`, `server.crypto.password`, `server.crypto.iv`, `db.password`, `auth.jwtSecret`, `auth.basicAuthToken`) must not be left as the `<REDACTED>` placeholder from `config-templates/admin-api` or empty. Outside `server.environment: dev` the service refuses to start. Provide them via the secret config (`<release>-admin-api-secret-config`, `notifier.json` / `server.json` / `db.json` / `auth.json`); the Helm chart generates random values when `secrets.createSecrets: true`.
+`auth.clientSecret` and `sign.token` only log the warning `config-placeholder-secrets-warning` when left as a placeholder.
+
+## TLS to internal services
+
+Calls to notification (`notifier`, `system_notifier`) and sign-tool (`sign`) can use verified HTTPS. Use `https://` URLs and the optional
+`internal_transport.json` config: `ca` (PEM or path, or an array) is trusted for these calls, `cert` + `key` add a client certificate (mTLS).
+Certificate verification cannot be disabled. In production (`NODE_ENV=production|prod`) a plain `http://` URL logs the warning
+`internal-service-plain-http`; set `internal_transport.allowPlainHttp: true` to acknowledge it (NetworkPolicy/mesh-protected traffic).

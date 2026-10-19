@@ -1,7 +1,10 @@
+import type https from 'node:https';
+
 import axios from 'axios';
 
 import { Provider } from '../provider';
 import { Auth } from './auth';
+import { createHttpsAgent } from '../../lib/tls';
 import { HttpRequest } from '../../lib/http_request';
 
 const PROVIDER_NAME = 'minio';
@@ -32,6 +35,7 @@ export class Minio extends Provider {
   container: string;
   authCacheTtl: number;
   auth: Auth;
+  httpsAgent?: https.Agent;
 
   /**
    * Minio constructor.
@@ -47,6 +51,7 @@ export class Minio extends Provider {
       this.authVersion = minioConfig.authVersion || DEFAULT_AUTH_VERSION;
       this.routes = { ...DEFAULT_ROUTES, ...minioConfig.routes };
       this.timeout = minioConfig.timeout;
+      this.httpsAgent = createHttpsAgent(minioConfig.tls);
       this.tenantName = minioConfig.tenantName;
       this.account = minioConfig.account;
       this.container = minioConfig.container || DEFAULT_CONTAINER;
@@ -124,6 +129,7 @@ export class Minio extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
+      httpsAgent: this.httpsAgent,
       responseType: 'stream',
     };
 
@@ -147,6 +153,7 @@ export class Minio extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
+      httpsAgent: this.httpsAgent,
       responseType: 'arraybuffer',
     };
 
@@ -202,6 +209,7 @@ export class Minio extends Provider {
         headers: requestOptions.headers,
         data: requestOptions.body,
         timeout: requestOptions.timeout,
+        httpsAgent: this.httpsAgent,
         validateStatus: (status) => status === 200,
       };
 
@@ -243,8 +251,22 @@ export class Minio extends Provider {
     const { url, headers } = infoToHandleFile;
 
     // Delete file.
-    const deletingResult = await HttpRequest.send({ url, headers, method: HttpRequest.Methods.DELETE, timeout: this.timeout });
+    const { body: deletingResult, rawResponse } = await HttpRequest.sendDetailed({
+      url,
+      headers,
+      method: HttpRequest.Methods.DELETE,
+      timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
+    });
     !global.silentUpload && global.log.save('minio-file-deleting-result', deletingResult);
+
+    // 404 means object is already absent - not an error. Other error statuses must not be silent.
+    const status = rawResponse?.status;
+    if (status >= 400 && status !== 404) {
+      const error: any = new Error(`MinIO file deleting failed with status ${status}.`);
+      error.statusCode = status;
+      throw error;
+    }
 
     return deletingResult;
   }
@@ -273,6 +295,7 @@ export class Minio extends Provider {
       headers,
       method: HttpRequest.Methods.HEAD,
       timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
     });
     !global.silentUpload && global.log.save('container-metadata', { containerMetadata });
     const containerMetadataHeaders = containerMetadata.headers;

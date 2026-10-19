@@ -308,7 +308,7 @@ export class TaskController extends Controller {
       const document = await global.models.document.findById(task.document.id); // Get by document model because of json_schema.
       await global.businesses.document.signing.checkP7SSignaturesCount(document);
     } catch (error) {
-      return this.responseError(res, error.message, 500, error.details);
+      return this.responseError(res, error, 500, error.details);
     }
 
     let finishedTask;
@@ -985,7 +985,7 @@ export class TaskController extends Controller {
           break;
       }
     } catch (error) {
-      this.responseError(res, error.message, 400);
+      this.responseError(res, error, 400);
       global.log.save('get-task-statistics-error', { error }, 'error');
     }
 
@@ -1020,7 +1020,7 @@ export class TaskController extends Controller {
     try {
       list = await this.taskModel.getListByUnitId(unitId, options);
     } catch (error) {
-      this.responseError(res, error.message, 400);
+      this.responseError(res, error, 400);
       global.log.save('get-task-list-error', { error }, 'error');
     }
 
@@ -1067,7 +1067,7 @@ export class TaskController extends Controller {
       });
     } catch (error) {
       global.log.save('get-tasks-by-performer-user-error', { error }, 'error');
-      this.responseError(res, error.message);
+      this.responseError(res, error);
     }
 
     let taskTemplates;
@@ -1076,7 +1076,7 @@ export class TaskController extends Controller {
       taskTemplates = await Promise.all(taskTemplatesPromises);
     } catch (error) {
       global.log.save('get-tasks-by-performer-user-error', { error }, 'error');
-      this.responseError(res, error.message);
+      this.responseError(res, error);
     }
 
     const tasksWithNames = tasks.map((task) => ({

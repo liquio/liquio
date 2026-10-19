@@ -1,6 +1,7 @@
 const logSave = jest.fn();
 const appConfig = {
   link_providers: { filestorage: { serversList: [] } },
+  sandbox: { isolationLevel: 'function', lruMax: 5 },
 };
 
 jest.mock('../../context', () => ({
@@ -11,8 +12,13 @@ jest.mock('../../context', () => ({
 const templateModelMock = jest.fn();
 jest.mock('../../../models/template', () => templateModelMock);
 
-const sandboxGetInstanceMock = jest.fn();
-jest.mock('@liquio/back-core', () => ({ Sandbox: { getInstance: sandboxGetInstanceMock } }));
+const sandboxCtorMock = jest.fn();
+jest.mock('@liquio/back-core', () => ({
+  Sandbox: function (this: any, ...args: any[]) {
+    sandboxCtorMock(...args);
+    this.evalWithArgs = jest.fn();
+  },
+}));
 
 const filestorageHandlerMock = jest.fn();
 jest.mock('../filestorage/filestorage_handler', () => filestorageHandlerMock);
@@ -46,7 +52,6 @@ describe('ExternalLinkProvider', () => {
     templateModelMock.mockImplementation(function (this: any) {
       this.findByNameAndMethod = jest.fn();
     });
-    sandboxGetInstanceMock.mockReturnValue({ evalWithArgs: jest.fn() });
     filestorageHandlerMock.mockImplementation(function (this: any, config: any) {
       this.config = config;
       this.connections = {};
@@ -64,8 +69,8 @@ describe('ExternalLinkProvider', () => {
 
       expect(TemplateModel).toHaveBeenCalled();
       expect(RegisterProvider).toHaveBeenCalledWith(config.register);
-      expect(Sandbox.getInstance).toHaveBeenCalledTimes(1);
-      expect(provider.sandbox).toBe(sandboxGetInstanceMock.mock.results[0].value);
+      expect(sandboxCtorMock).toHaveBeenCalledTimes(1);
+      expect(provider.sandbox).toBeInstanceOf(Sandbox);
       expect(FilestorageHandler).toHaveBeenCalledWith(appConfig.link_providers.filestorage);
       expect(provider.provider.register).toBeInstanceOf(RegisterProvider);
     });
@@ -76,7 +81,13 @@ describe('ExternalLinkProvider', () => {
 
       expect(second).toBe(first);
       expect(TemplateModel).toHaveBeenCalledTimes(1);
-      expect(Sandbox.getInstance).toHaveBeenCalledTimes(1);
+      expect(sandboxCtorMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('should force isolated-vm even when config asks for the function isolation level', () => {
+      createProvider();
+
+      expect(sandboxCtorMock).toHaveBeenCalledWith(expect.objectContaining({ isolationLevel: 'isolated-vm', lruMax: 5 }));
     });
   });
 
@@ -116,7 +127,7 @@ describe('ExternalLinkProvider', () => {
 
       await provider.open(undefined as any, res);
 
-      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.status).toHaveBeenCalledWith(404);
     });
 
     it('should respond with 404 when the template is not found', async () => {
@@ -165,6 +176,8 @@ describe('ExternalLinkProvider', () => {
       await provider.open(options, res);
 
       expect(res.set).toHaveBeenCalledWith('Content-Type', 'text/html; charset=utf-8');
+      expect(res.set).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
+      expect(res.set).toHaveBeenCalledWith('Content-Security-Policy', 'sandbox');
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith('<p>Alice</p>');
     });
@@ -221,6 +234,7 @@ describe('ExternalLinkProvider', () => {
       await provider.open(options, res, 'pdf');
 
       expect(res.set).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(res.set).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
       expect(pdfCreate).toHaveBeenCalledWith('<p>Alice</p>', expect.objectContaining({ orientation: 'portrait' }));
       expect(pipe).toHaveBeenCalledWith(res);
     });
@@ -283,6 +297,18 @@ describe('ExternalLinkProvider', () => {
       await provider.getTemplate(options, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should respond with exactly one 404 and not query templates when options are invalid', async () => {
+      const provider = createProvider();
+      const res = createRes();
+
+      await provider.getTemplate({ templateName: 'unknown' }, res);
+
+      expect(res.status).toHaveBeenCalledTimes(1);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.send).toHaveBeenCalledTimes(1);
+      expect(provider.templateModel.findByNameAndMethod).not.toHaveBeenCalled();
     });
 
     it('should respond with the template data', async () => {

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import jwt from 'jsonwebtoken';
 
 // Constants.
@@ -58,8 +60,16 @@ export class Token {
       user: userInfo,
     };
 
+    // Bearer tokens are not renewable: lifetime is fixed at issue time. Optional `bearer.maxAgeSeconds` overrides the default lifetime.
+    const maxAgeSeconds = Number(this.config?.bearer?.maxAgeSeconds);
+    const options = {
+      ...this.jwtOptions,
+      ...(maxAgeSeconds > 0 ? { expiresIn: maxAgeSeconds } : {}),
+      jwtid: randomUUID(),
+    };
+
     // Return token.
-    const token = jwt.sign(tokenData, this.jwtSecret, this.jwtOptions);
+    const token = jwt.sign(tokenData, this.jwtSecret, options);
     return token;
   }
 

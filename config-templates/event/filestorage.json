@@ -5,5 +5,6 @@
   "getFileTimeout": 60000,
   "downloadFileTimeout": 60000,
   "getSetSignatureTimeout": 40000,
-  "createAsicTimeout": 60000
+  "createAsicTimeout": 60000,
+  "allowInsecureTls": false
 }

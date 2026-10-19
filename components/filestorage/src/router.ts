@@ -84,8 +84,8 @@ export class Router {
 
     // Test controller.
     app.get('/test/ping', getHandler('test', 'ping'));
-    app.get('/test/ping_with_auth', getHandler('auth', 'basicAuth'), getHandler('test', 'ping'));
-    app.get('/test/file_provider', getHandler('test', 'checkOpenstackProvider'));
+    app.get('/test/ping_with_auth', getHandler('auth', 'basicAuth'), getHandler('test', 'pingWithAuth'));
+    app.get('/test/file_provider', getHandler('auth', 'basicAuth'), getHandler('test', 'checkOpenstackProvider'));
 
     // Containers controller.
     app.get('/containers', getHandler('auth', 'basicAuth'), getHandler('containers', 'getAll'));

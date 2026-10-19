@@ -7,6 +7,7 @@ import qrImage from 'qr-image';
 import { Sandbox } from '@liquio/back-core';
 
 import { getConfig, getLog } from '../../context';
+import { describeOptions } from '../../log_redact';
 import FilestorageHandler from '../filestorage/filestorage_handler';
 import LinkProvider from '../link_provider';
 import RegisterProvider from './providers/register';
@@ -38,7 +39,12 @@ class ExternalLinkProvider extends LinkProvider {
         register: new RegisterProvider(config.register),
       };
       const appConfig = getConfig();
-      this.sandbox = Sandbox.getInstance();
+      // jsonMap code is DB-stored, so it always runs in isolated-vm whatever `sandbox.isolationLevel` is configured.
+      this.sandbox = new Sandbox({
+        ...appConfig.sandbox,
+        isolationLevel: 'isolated-vm' as any,
+        getLog,
+      });
       this.filestorageHandler = new FilestorageHandler(appConfig.link_providers.filestorage);
 
       ExternalLinkProvider.singleton = this;
@@ -81,14 +87,14 @@ class ExternalLinkProvider extends LinkProvider {
       // Check.
       const isValidData = this.isValidOptions(options);
       if (!isValidData) {
-        res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+        return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
       }
 
       // Define params.
       const { templateName, filter } = options;
       let { templateMethod } = options;
 
-      getLog().save('external-link-provider-options', options);
+      getLog().save('external-link-provider-options', describeOptions(options));
 
       const template = await this.templateModel.findByNameAndMethod(templateName, templateMethod);
       if (!template) {
@@ -176,7 +182,12 @@ class ExternalLinkProvider extends LinkProvider {
       if (responseFormat !== 'pdf') {
         const handlebarsTemplate = handlebars.compile(template.html);
         const html = handlebarsTemplate(preparedData);
-        return res.set(CONTENT_TYPE_HEADER, 'text/html; charset=utf-8').status(200).send(html);
+        return res
+          .set(CONTENT_TYPE_HEADER, 'text/html; charset=utf-8')
+          .set('X-Content-Type-Options', 'nosniff')
+          .set('Content-Security-Policy', 'sandbox')
+          .status(200)
+          .send(html);
       }
 
       const handlebarsTemplate = handlebars.compile(template.pdf);
@@ -246,6 +257,7 @@ class ExternalLinkProvider extends LinkProvider {
       }
 
       res.set(CONTENT_TYPE_HEADER, 'application/pdf');
+      res.set('X-Content-Type-Options', 'nosniff');
       pdf.create(html, pdfOptions).toStream((err, stream) => {
         if (err) {
           getLog().save('external-provider-error', { error: err && err.message });
@@ -289,13 +301,13 @@ class ExternalLinkProvider extends LinkProvider {
       // Check.
       const isValidData = this.isValidOptions(options);
       if (!isValidData) {
-        res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+        return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
       }
 
       // Define params.
       const { templateName, templateMethod } = options;
 
-      getLog().save('external-link-provider-options', options);
+      getLog().save('external-link-provider-options', describeOptions(options));
 
       const template = await this.templateModel.findByNameAndMethod(templateName, templateMethod);
       if (!template) {

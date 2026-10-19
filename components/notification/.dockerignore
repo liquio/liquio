@@ -1,9 +1,22 @@
-*.log
 .git
 .gitignore
 .DS_Store
-*.md
 node_modules
 dist/
 tests/
 coverage/
+
+# Local config and secrets must never enter the build context.
+config
+config*
+.env*
+**/.env*
+*.pem
+*.key
+*.log
+.npmrc
+**/secrets*
+
+# Not needed by the build.
+Dockerfile
+*.md

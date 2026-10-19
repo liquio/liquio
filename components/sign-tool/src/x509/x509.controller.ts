@@ -7,6 +7,9 @@ import { X509Service } from './x509.service';
 class GetSignatureInfoDto {
   @ApiProperty({ description: 'Base64-encoded CMS/PKCS#7 signature' })
   sign: string;
+
+  @ApiPropertyOptional({ description: 'Base64-encoded signed content, for detached signatures' })
+  content?: string;
 }
 
 class GetSignatureInfoSigner {
@@ -110,13 +113,13 @@ export class X509Controller {
     description: 'Signature information package has been successfully created',
     type: GetSignatureInfoResponse,
   })
-  async getSignatureInfo(@Body() { sign }: GetSignatureInfoDto): Promise<GetSignatureInfoResponse> {
+  async getSignatureInfo(@Body() { sign, content }: GetSignatureInfoDto): Promise<GetSignatureInfoResponse> {
     if (!sign) {
       throw new BadRequestException('Sign is required');
     }
     try {
       // Service method will be implemented to use pkijs/asn1js
-      return await this.x509.getSignatureInfo(sign);
+      return await this.x509.getSignatureInfo(sign, content);
     } catch (e) {
       throw new BadRequestException('Invalid signature data', {
         cause: e.message,

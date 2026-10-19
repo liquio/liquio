@@ -1,10 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { INestApplication } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as bodyParser from 'body-parser';
 
 import { AppModule } from './app.module';
 import { Configuration, ConfigurationService } from './configuration/configuration.service';
+import { applyBodyLimit } from './common/body-limit';
+import { loadHttpsOptions, requireClientCert } from './common/tls';
 import { LoggingInterceptor } from './observability/logging.interceptor';
 import { LoggerService } from './observability/logger.service';
 import { ObservabilityModule } from './observability/observability.module';
@@ -26,24 +27,29 @@ async function bootstrap() {
 
   const logger = new LoggerService(als);
 
-  const app = await NestFactory.create(AppModule, { logger });
+  // Opt-in HTTPS (server.tls.enabled). Resolved before the app starts so unreadable cert files fail fast.
+  const bootConfig = new ConfigurationService(logger).get('server') as Configuration['server'];
+  const httpsOptions = loadHttpsOptions(bootConfig.tls);
+
+  const app = await NestFactory.create(AppModule, { logger, ...(httpsOptions ? { httpsOptions } : {}) });
 
   const config: Configuration['server'] = app.get(ConfigurationService).get('server');
+
+  if (httpsOptions?.ca) {
+    app.use(requireClientCert());
+  }
 
   if (config.isSwaggerEnabled) {
     useSwagger(app);
   }
 
-  // Set the payload size limit
-  if (config.acceptedBodySize) {
-    app.use(bodyParser.json({ limit: config.acceptedBodySize }));
-    app.use(bodyParser.urlencoded({ limit: config.acceptedBodySize, extended: true }));
-  }
+  // Set the payload size limit (falls back to a safe default when not configured)
+  applyBodyLimit(app, config.acceptedBodySize);
 
   app.useGlobalInterceptors(new LoggingInterceptor(logger));
   app.useGlobalInterceptors(new ErrorsInterceptor(logger));
 
-  logger.log(`Listening`, { host: config.host, port: config.port });
+  logger.log(`Listening`, { host: config.host, port: config.port, tls: !!httpsOptions });
   await app.listen(config.port, config.host);
 }
 bootstrap();

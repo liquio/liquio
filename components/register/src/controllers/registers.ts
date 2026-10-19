@@ -8,6 +8,7 @@ import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import RecordModel from '../models/record';
 import RegisterBusiness from '../businesses/register';
+import { ExportAccess, isKeyExportable, projectRecordsForExport, resolveExportAccess } from '../lib/export_access';
 
 // Constants.
 const DB_ERROR_KEYS_EXIST = 'violates foreign key constraint "keys_register_id_fkey" on table "keys"';
@@ -108,6 +109,15 @@ export default class RegistersController extends Controller {
     this.responseData(res, register);
   }
 
+  /** Omit keys the caller must not read from a data export (logged). */
+  private filterExportableKeys(keys: any[] = []): any[] {
+    return keys.filter((key) => {
+      if (isKeyExportable(key)) return true;
+      this.log.save('export-key-not-readable', { keyId: key?.id, registerId: key?.registerId });
+      return false;
+    });
+  }
+
   /**
    * Export by ID.
    */
@@ -160,6 +170,19 @@ export default class RegistersController extends Controller {
     const { data: registerKeysData, meta: registerKeysMeta } = keysModelResponse || {};
     register.keys = { data: registerKeysData, count: registerKeysMeta.count };
 
+    // Export rights: trusted callers get the full dump, everyone else projected output.
+    let exportAccess: ExportAccess;
+    try {
+      exportAccess = resolveExportAccess(req, this.config);
+    } catch (error) {
+      this.log.save('export-access-config-error', { error: error?.message });
+      return this.responseError(res, 'Server access configuration is invalid.', 500);
+    }
+    if (withData && !exportAccess.full) {
+      register.keys.data = this.filterExportableKeys(register.keys.data);
+      register.keys.count = register.keys.data.length;
+    }
+
     // Define register without data.
     const registerWithoutData = JSON.parse(JSON.stringify(register));
 
@@ -201,8 +224,19 @@ export default class RegistersController extends Controller {
           const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-records-error', error);
           return this.responseError(res, errorObject.message, errorObject.code);
         }
-        const { data: records, meta: recordsMeta } = recordsModelResponse || {};
-        register.keys.data[index].records = { data: records, count: recordsMeta.count };
+        let { data: records } = recordsModelResponse || {};
+        const { meta: recordsMeta } = recordsModelResponse || {};
+        let recordsCount = recordsMeta.count;
+        if (!exportAccess.full) {
+          try {
+            records = projectRecordsForExport(records, key, exportAccess.tokens);
+          } catch (error) {
+            const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-records-error', error);
+            return this.responseError(res, errorObject.message, errorObject.code);
+          }
+          recordsCount = records.length;
+        }
+        register.keys.data[index].records = { data: records, count: recordsCount };
       }
     }
 
@@ -642,17 +676,33 @@ export default class RegistersController extends Controller {
       const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-keys-error', error);
       return this.responseError(res, errorObject.message, errorObject.code);
     }
-    const { data: registerKeysData, meta: registerKeysMeta } = keysModelResponse || {};
+    let { data: registerKeysData } = keysModelResponse || {};
+    const { meta: registerKeysMeta } = keysModelResponse || {};
+    let registerKeysCount = registerKeysMeta.count;
+
+    // Export rights: trusted callers get the full dump, everyone else projected output.
+    let exportAccess: ExportAccess;
+    try {
+      exportAccess = resolveExportAccess(req, this.config);
+    } catch (error) {
+      this.log.save('export-access-config-error', { error: error?.message });
+      return this.responseError(res, 'Server access configuration is invalid.', 500);
+    }
+    if (withData && !exportAccess.full) {
+      registerKeysData = this.filterExportableKeys(registerKeysData);
+      registerKeysCount = registerKeysData.length;
+    }
 
     // Backward compatibility: remove after implementation on bpmn-admin.
     registerKeysData.forEach((item) => (item.lock = item.accessMode === 'read_only'));
 
-    register.keys = { data: registerKeysData, count: registerKeysMeta.count };
+    register.keys = { data: registerKeysData, count: registerKeysCount };
 
     res.write(JSON.stringify(register) + this.exportImportRegisterUuid);
 
     if (withData) {
-      for (const { id = undefined } of register.keys.data) {
+      for (const key of register.keys.data) {
+        const { id = undefined } = key;
         if (!id) continue;
 
         let recordsModelResponse;
@@ -669,7 +719,16 @@ export default class RegistersController extends Controller {
           const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-records-error', error);
           return this.responseError(res, errorObject.message, errorObject.code);
         }
-        recordsModelResponse?.data?.forEach((item) => res.write(`${this.exportImportRecordUuid}${JSON.stringify(item)}`));
+        let exportRecords = recordsModelResponse?.data;
+        if (!exportAccess.full) {
+          try {
+            exportRecords = projectRecordsForExport(exportRecords, key, exportAccess.tokens);
+          } catch (error) {
+            this.log.save('export-register-records-error', { error: error?.message });
+            return res.end();
+          }
+        }
+        exportRecords?.forEach((item) => res.write(`${this.exportImportRecordUuid}${JSON.stringify(item)}`));
       }
     }
 
@@ -880,7 +939,7 @@ export default class RegistersController extends Controller {
       registerModelResponse = await this.registerModel.create({ name, description, parentId, meta, user });
     } catch (error) {
       this.log.save('create-register-error', { error: error && error.message });
-      return this.responseError(res, 'Create register error.', 400, error.message);
+      return this.responseError(res, 'Create register error.', 400);
     }
     const { data: register } = registerModelResponse || {};
 

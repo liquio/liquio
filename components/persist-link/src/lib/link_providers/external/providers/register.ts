@@ -34,16 +34,21 @@ class RegisterProvider extends Provider {
       responseType: 'json',
       resolveBodyOnly: true,
     };
-    getLog().save('external-register-request', { requestOptions });
+    getLog().save('external-register-request', { url: requestOptions.url, recordId: filter.recordId });
 
     try {
       const response = await got(requestOptions);
-      getLog().save('external-register-response', response);
+      const data = response && response.data;
+      getLog().save('external-register-response', {
+        recordId: filter.recordId,
+        hasData: !!data,
+        size: data ? JSON.stringify(data).length : 0,
+      });
 
       return response && response.data;
     } catch (error) {
       getLog().save('external-register-error', {
-        ...filter,
+        recordId: filter.recordId,
         error: error && error.message,
       });
 

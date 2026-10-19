@@ -2,6 +2,9 @@ import { checkSchema } from 'express-validator';
 
 import { ValidationConfig, Validator } from './validator';
 
+// File ID is inserted into the file storage URL, so path separators and dots are not allowed.
+const FILE_ID_REGEXP = /^[\w-]+$/;
+
 /**
  * Workflow process validator.
  */
@@ -130,6 +133,8 @@ export class WorkflowProcessValidator extends Validator {
       ['filters.user_data']: {
         in: ['query'],
         optional: true,
+        isString: true,
+        isLength: { options: { max: 64 } },
       },
       ['filters.workflow_template']: {
         in: ['query'],
@@ -409,6 +414,10 @@ export class WorkflowProcessValidator extends Validator {
       ['fileId']: {
         in: ['params'],
         isString: true,
+        matches: {
+          options: [FILE_ID_REGEXP],
+          errorMessage: 'Field "fileId" must contain only letters, digits, "-" and "_"',
+        },
       },
     });
   }
@@ -425,6 +434,10 @@ export class WorkflowProcessValidator extends Validator {
       ['fileId']: {
         in: ['params'],
         isString: true,
+        matches: {
+          options: [FILE_ID_REGEXP],
+          errorMessage: 'Field "fileId" must contain only letters, digits, "-" and "_"',
+        },
       },
       ['as_file']: {
         in: ['query'],

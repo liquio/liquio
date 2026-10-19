@@ -2,6 +2,7 @@ import { BaseModel, DataTypes, Sequelize } from './base_model';
 
 export interface UserAttributes {
   userId: string;
+  authorizationVersion?: number;
   email?: string;
   password?: string;
   gender?: string;
@@ -59,6 +60,7 @@ export class UserModel extends BaseModel<UserAttributes, UserCreationAttributes>
     this.entity = this.sequelize.define(
       'users',
       {
+        authorizationVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         userId: {
           type: DataTypes.STRING(24),
           defaultValue: this.sequelize.literal('generate_object_id()'),

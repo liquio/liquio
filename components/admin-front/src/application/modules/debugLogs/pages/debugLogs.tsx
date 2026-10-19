@@ -6,6 +6,7 @@ import asModulePage from 'hooks/asModulePage';
 import LeftSidebarLayout, { Content } from 'layouts/LeftSidebar';
 import storage from 'helpers/storage';
 import { getConfig } from 'core/helpers/configLoader';
+import buildDebugLogsSocket from './buildDebugLogsSocket';
 
 interface DebugLogsProps {
   title?: string;
@@ -23,9 +24,7 @@ const DebugLogs = ({ title, location, loading }: DebugLogsProps) => {
 
     const token = storage.getItem('token');
 
-    const url = (backendUrl as string).replace('https', 'wss');
-
-    ws.current = new WebSocket(`${url}/ws/ws?token=${token}`);
+    ws.current = buildDebugLogsSocket(backendUrl as string, token as string);
 
     ws.current.onerror = (event) => console.error('WebSocket error observed:', event);
 

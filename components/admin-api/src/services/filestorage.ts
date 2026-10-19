@@ -28,7 +28,7 @@ export class FileStorageService {
    */
   async downloadFileRequestOptions(id) {
     const requestOptions = {
-      url: `${this.apiHost}/files/${id}`,
+      url: `${this.apiHost}/files/${encodeURIComponent(id)}`,
       method: 'GET',
       headers: {
         token: this.token,
@@ -45,7 +45,7 @@ export class FileStorageService {
    */
   async downloadPreviewRequestOptions(id) {
     return {
-      url: `${this.apiHost}/files/${id}/preview`,
+      url: `${this.apiHost}/files/${encodeURIComponent(id)}/preview`,
       method: 'GET',
       headers: {
         token: this.token,
@@ -60,7 +60,7 @@ export class FileStorageService {
    */
   async findInfoById(id) {
     const response = await global.httpClient.request(
-      `${this.apiHost}/files/${id}/info`,
+      `${this.apiHost}/files/${encodeURIComponent(id)}/info`,
       {
         method: 'GET',
         headers: {
@@ -112,7 +112,7 @@ export class FileStorageService {
    */
   async downloadP7sRequestOptions(id, asFile = false, asBase64 = false) {
     const requestOptions = {
-      url: `${this.apiHost}/files/${id}/p7s?as_file=${asFile}&as_base64=${asBase64}`,
+      url: `${this.apiHost}/files/${encodeURIComponent(id)}/p7s?as_file=${asFile}&as_base64=${asBase64}`,
       method: 'GET',
       headers: {
         token: this.token,
@@ -131,7 +131,7 @@ export class FileStorageService {
    */
   async downloadP7s(id, asFile = false, asBase64 = false) {
     const response = await global.httpClient.request(
-      `${this.apiHost}/files/${id}/p7s?as_file=${asFile}&as_base64=${asBase64}`,
+      `${this.apiHost}/files/${encodeURIComponent(id)}/p7s?as_file=${asFile}&as_base64=${asBase64}`,
       {
         method: 'GET',
         headers: {
@@ -157,7 +157,7 @@ export class FileStorageService {
    */
   async download(id, asFile = false, asBase64 = false) {
     const response = await global.httpClient.request(
-      `${this.apiHost}/files/${id}?as_file=${asFile}&as_base64=${asBase64}`,
+      `${this.apiHost}/files/${encodeURIComponent(id)}?as_file=${asFile}&as_base64=${asBase64}`,
       {
         method: 'GET',
         headers: {
@@ -182,7 +182,7 @@ export class FileStorageService {
 
   async deleteP7s(id) {
     const response = await global.httpClient.request(
-      `${this.apiHost}/p7s_signatures/${id}`,
+      `${this.apiHost}/p7s_signatures/${encodeURIComponent(id)}`,
       {
         method: 'DELETE',
         headers: {

@@ -3,6 +3,7 @@ import PropByPath from 'prop-by-path';
 
 import { getLog } from '../../../context';
 import HttpRequest from './http_request';
+import { assertSecureUrl } from './secure_url';
 
 // Constants.
 const ERROR_MESSAGE_TOKEN_NOT_RESPONSED = 'Token not responsed from OpenStack server.';
@@ -50,7 +51,7 @@ class Auth {
     // Check response.
     const token = PropByPath.get(response, 'access.token.id');
     if (!token) {
-      getLog().save('login-error-openstack-response-without-token', response);
+      getLog().save('login-error-openstack-response-without-token', { keys: Object.keys(response || {}) });
       throw new Error(ERROR_MESSAGE_TOKEN_NOT_RESPONSED);
     }
 
@@ -90,7 +91,7 @@ class Auth {
     const tenantToken = PropByPath.get(response, 'access.token.id');
     const tenantId = PropByPath.get(response, 'access.token.tenant.id');
     if (!tenantId) {
-      getLog().save('login-error-openstack-response-without-tenant-token', response);
+      getLog().save('login-error-openstack-response-without-tenant-token', { keys: Object.keys(response || {}) });
       throw new Error(ERROR_MESSAGE_TENANT_TOKEN_NOT_RESPONSED);
     }
     const serviceCatalog = PropByPath.get(response, 'access.serviceCatalog');
@@ -100,9 +101,12 @@ class Auth {
     const publicUrls = endpoints.map((endpoint) => endpoint.publicURL);
     const tenantPublicUrl = publicUrls.find((url) => url.includes(tenantId));
 
+    // The tenant token is sent to this URL: refuse plain http unless explicitly allowed.
+    assertSecureUrl(tenantPublicUrl, this.moduleContext.config, 'publicURL');
+
     // Return token.
     const tenantAuthInfo = { tenantId, tenantToken, tenantPublicUrl };
-    getLog().save('open-stack-auth', tenantAuthInfo);
+    getLog().save('open-stack-auth', { tenantId, tenantPublicUrl });
     return tenantAuthInfo;
   }
 }

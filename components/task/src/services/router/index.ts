@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { asyncLocalStorageMiddleware } from '@liquio/back-core';
+import { asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-core';
 
 import { AppIdentHeaders } from '../../lib/app_ident_headers';
 import { HttpRequest } from '../../lib/http_request';
@@ -8,6 +8,8 @@ import { Controllers } from '../../controllers';
 import { Validators } from '../../validators';
 import { routes } from './routes';
 import typeOf from '../../lib/type_of';
+import { errorHandler } from './error_handler';
+import { GENERIC_SERVER_ERROR } from '../../lib/public_error';
 
 /**
  * Router service.
@@ -60,6 +62,13 @@ export class RouterService {
 
     // Use extended query parser.
     app.set('query parser', 'extended');
+
+    // Trust proxy: hop count, or IP/CIDR/preset list of known proxies. Unset trusts nothing, so `req.ip` is the socket address.
+    // Behind ingress and cabinet-api (which forwards the ingress-set `X-Forwarded-For` untouched) use `1`.
+    const { trustProxy } = this.config.server || {};
+    if (trustProxy !== undefined) {
+      app.set('trust proxy', trustProxy);
+    }
 
     // Tracing.
     app.use(asyncLocalStorageMiddleware);
@@ -169,25 +178,30 @@ export class RouterService {
       const catchAsync = (fn) => {
         return (req, res, next) => {
           if (typeof fn !== 'function') {
+            global.log.save('router-controller-not-defined', { message: 'Controller for route not defined. Check router configuration.' }, 'error');
             return res.status(500).send({
               error: {
-                message: 'Controller for route not defined. Check router configuration.',
+                message: GENERIC_SERVER_ERROR,
                 code: 500,
               },
+              traceId: getTraceId(),
             });
           }
           fn(req, res, next).catch(next);
         };
       };
-      const basicOrBearerAuth =
-        basicAuthDescription || basicOrBearerAuthDescription
+      const basicOrBearerAuth = routeDescription.basicAuthOnly
+        ? this.controllers.auth.basicOnlyAuth.bind(this.controllers.auth)
+        : basicAuthDescription || basicOrBearerAuthDescription
           ? this.controllers.auth.basicOrBearerAuth.bind(this.controllers.auth)
           : (res, req, next) => next();
 
       const checkProtectedBasicAuth =
         basicAuthDescription && protectedBasicAuth
           ? this.controllers.auth.checkProtectedBasicAuth.bind(this.controllers.auth)
-          : (res, req, next) => next();
+          : basicAuthDescription
+            ? this.controllers.auth.checkScopedBasicAuth.bind(this.controllers.auth) // No-op unless `basic_auth.scopedRoutes` is enabled.
+            : (res, req, next) => next();
 
       const externalIdHeaderAuth =
         typeOf(externalIdHeaderAuthName) === 'string'
@@ -226,14 +240,7 @@ export class RouterService {
     });
 
     // Error handler middleware.
-    app.use((error, _req, res, _next) => {
-      res.status(error.status || error.httpStatusCode || 500).send({
-        error: {
-          message: error.message || 'Internal Server Error.',
-          code: error.status || error.httpStatusCode || 500,
-        },
-      });
-    });
+    app.use(errorHandler);
   }
 
   /**

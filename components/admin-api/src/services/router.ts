@@ -1,11 +1,12 @@
 import express from 'express';
 import proxy from 'express-http-proxy';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import compression from 'compression';
-import { asyncLocalStorageMiddleware } from '@liquio/back-core';
+import { asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-core';
 
 import { AppIdentHeaders } from '../lib/app_ident_headers';
+import { publicError } from '../lib/public_error';
 import { PingController } from '../controllers/ping';
 import { AuthController } from '../controllers/auth';
 import { UserController } from '../controllers/user';
@@ -24,6 +25,7 @@ import { GatewayTypeController } from '../controllers/gateway_type';
 import { GatewayController } from '../controllers/gateway';
 import { WorkflowCategoryController } from '../controllers/workflow_category';
 import { UnitController } from '../controllers/unit';
+import { Exceptions } from '../exceptions';
 import { UnitAccessController } from '../controllers/unit_access';
 import { NumberTemplateController } from '../controllers/number_template';
 import { CustomLogController } from '../controllers/custom_log';
@@ -60,6 +62,57 @@ import {
   SNIPPETS_ADMIN_UNIT,
   TAG_ADMIN_UNIT,
 } from '../constants/unit';
+
+// WebSocket subprotocol marker; the auth token follows it in Sec-WebSocket-Protocol.
+export const WS_AUTH_PROTOCOL = 'liquio-admin-ws';
+
+const SAFE_HTTP_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+const READONLY_UNITS = [READONLY_SECURITY_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT, READONLY_SUPPORT_ADMIN_UNIT];
+
+/**
+ * Get proxy guard middleware: rejects non-safe HTTP methods for callers that have only read-only units
+ * among the units allowed for the proxy item. Must be used after the auth middleware.
+ * @param {number[]} units Units allowed for the proxy item.
+ */
+export const getProxyReadOnlyGuard = (units: number[]) => {
+  const writableUnits = units.filter((unit) => !READONLY_UNITS.includes(unit));
+
+  return (req, res, next) => {
+    if (SAFE_HTTP_METHODS.includes(String(req.method).toUpperCase())) {
+      return next();
+    }
+
+    // Server token auth does not set unit ids.
+    const userUnitIds: number[] | undefined = req.authUserUnitIds?.all;
+    if (!userUnitIds || userUnitIds.some((unitId) => writableUnits.includes(unitId))) {
+      return next();
+    }
+
+    const error = new Exceptions.ACCESS(Exceptions.ACCESS.Messages.UNIT);
+    return res.status(error.httpStatusCode).send({ error: { message: error.message, code: error.httpStatusCode } });
+  };
+};
+
+/**
+ * Final error handler. The client gets a generic body with the trace id; full details go to the log only.
+ */
+export const errorHandler = (error, _req, res, _next) => {
+  const traceId = getTraceId();
+  let status = Number(error?.status ?? error?.statusCode);
+  if (!Number.isInteger(status) || status < 400 || status > 599) {
+    status = 500;
+  }
+
+  global.log?.save('http-error', { message: error?.message, stack: error?.stack, status, traceId });
+
+  res.status(status).send({
+    error: {
+      message: publicError(error, status),
+      code: status,
+    },
+    traceId,
+  });
+};
 
 /**
  * Router service.
@@ -132,33 +185,44 @@ export class RouterService {
     // Start listening.
     await this.listen(app);
 
-    this.wss = new WebSocketServer({ server: this.server });
+    this.initWebSocket();
+  }
+
+  /**
+   * Init WebSocket server. Only authenticated system/support admins can connect.
+   * Token is passed in the "Sec-WebSocket-Protocol" header: "<WS_AUTH_PROTOCOL>, <token>".
+   * The server only pushes server-originated packets, client messages are ignored.
+   * @private
+   */
+  initWebSocket() {
+    const authController = new AuthController(this.config);
+    const { clientId } = this.config.auth;
+    const adminRoles = ['admin', `admin-${clientId}`];
+    const allowedOrigins: string[] = this.config.server.allowedOrigins || [];
+
+    this.wss = new WebSocketServer({
+      server: this.server,
+      handleProtocols: (protocols) => (protocols.has(WS_AUTH_PROTOCOL) ? WS_AUTH_PROTOCOL : false),
+      verifyClient: (info, done) => {
+        const origin = info.req.headers.origin;
+        if (allowedOrigins.length && origin && !allowedOrigins.includes(origin)) {
+          return done(false, 403, 'Origin not allowed.');
+        }
+
+        const protocols = String(info.req.headers['sec-websocket-protocol'] || '')
+          .split(',')
+          .map((v) => v.trim());
+        const token = protocols.includes(WS_AUTH_PROTOCOL) ? protocols.find((v) => v && v !== WS_AUTH_PROTOCOL) : undefined;
+
+        authController
+          .authenticateToken(token, adminRoles, [SYSTEM_ADMIN_UNIT, SUPPORT_ADMIN_UNIT])
+          .then((result) => (result.status === 200 ? done(true) : done(false, result.status, result.error)))
+          .catch(() => done(false, 401, 'Unauthorized.'));
+      },
+    });
 
     this.wss.on('connection', (ws: any) => {
-      ws.data = {};
-
       ws.send('user connected');
-
-      ws.on('message', (message) => {
-        try {
-          message = JSON.parse(message);
-        } catch (error) {
-          global.log.save('websocket-parse-message-error', error.message);
-        }
-        try {
-          this.wss.clients.forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-              client.send(typeof message === 'object' ? JSON.stringify(message) : message);
-            }
-          });
-
-          ws.message = message;
-
-          global.log.save('websocket-message', ws.message);
-        } catch (error) {
-          global.log.save('websocket-error', error.message);
-        }
-      });
     });
   }
 
@@ -218,7 +282,8 @@ export class RouterService {
 
     // Init routes.
     app.get('/test/ping', pingController.ping.bind(pingController));
-    app.get('/test/ping/services', pingController.pingServices.bind(pingController));
+    app.get('/test/ping_with_auth', authController.getCheckMiddleware(adminRoles), pingController.pingWithAuth.bind(pingController));
+    app.get('/test/ping/services', authController.getCheckMiddleware(adminRoles), pingController.pingServices.bind(pingController));
 
     app.post('/auth/login', authController.login.bind(authController));
     app.get('/auth/me', authController.getCheckMiddleware(adminRoles), authController.me.bind(authController));
@@ -1338,7 +1403,7 @@ export class RouterService {
     );
     app.post(
       '/bpmn-workflows/:id/copy',
-      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT, WORKFLOW_SYSTEM_ADMIN_UNIT]),
+      authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT, WORKFLOW_SYSTEM_ADMIN_UNIT]),
       validators.getHandler('bpmnWorkflow', 'copy'),
       validators.getValidationResultHandler(),
       bpmnWorkflowController.copy.bind(bpmnWorkflowController),
@@ -1865,7 +1930,7 @@ export class RouterService {
     const { proxyList = [] } = this.config.proxy;
     for (const proxyItem of proxyList) {
       // Define proxy params.
-      const { proxyUrl, destinationUrl, onlyForUnits = [], headers: proxyHeaders = [], proxyOptions = {} } = proxyItem;
+      const { proxyUrl, destinationUrl, onlyForUnits = [], headers: proxyHeaders = [], proxyOptions = {}, allowMutations = false } = proxyItem;
 
       const defaultUnits = [SYSTEM_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT, WORKFLOW_SYSTEM_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SUPPORT_ADMIN_UNIT];
       const units = onlyForUnits?.length ? onlyForUnits : defaultUnits;
@@ -1874,6 +1939,7 @@ export class RouterService {
       app.use(
         proxyUrl,
         authController.getCheckMiddleware(adminRoles, units),
+        allowMutations ? (_req, _res, next) => next() : getProxyReadOnlyGuard(units),
         proxy(destinationUrl, {
           // Define request decorator.
           proxyReqOptDecorator: function (proxyReqOpts) {
@@ -1903,14 +1969,7 @@ export class RouterService {
     });
 
     // Error handler middleware.
-    app.use((error, req, res, _next) => {
-      res.status(error.status || 500).send({
-        error: {
-          message: error.message || 'Internal Server Error.',
-          code: error.status || 500,
-        },
-      });
-    });
+    app.use(errorHandler);
 
     return {
       ping: pingController,

@@ -1517,6 +1517,12 @@ export default {
     TwoFactorAuthText:
       'Als u tweestapsverificatie inschakelt, ontvangt u bij elke login in het systeem een extra sms met een unieke code op uw telefoon.',
     ConfirmText: 'Om te activeren ontvangt u een sms met een code op het nummer:',
+    TwoFactorAuthDisableTitle: 'Tweefactorauthenticatie uitschakelen',
+    TwoFactorAuthDisableText:
+      'Als u tweestapsverificatie uitschakelt, wordt bij het inloggen geen sms-code meer gevraagd. Bevestig met een code die per sms is verzonden.',
+    ConfirmDisableText: 'Om uit te schakelen ontvangt u een sms met een code op het nummer:',
+    TwoFactorAuthTotpActive:
+      'Tweefactorauthenticatie via een authenticator-app is actief. Dit kan hier niet worden gewijzigd.',
     EmailError: 'Ongeldig e-mailadres',
     EmailDomainError:
       'E-mailadressen van dit domein mogen niet worden gebruikt voor overheidsdiensten',

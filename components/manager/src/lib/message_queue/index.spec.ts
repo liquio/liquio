@@ -2,7 +2,7 @@ import { setTimeout } from 'node:timers/promises';
 
 import amqp from 'amqplib/callback_api';
 
-import { MessageQueue } from './index';
+import { MessageQueue, pickMessageMeta } from './index';
 
 jest.mock('amqplib/callback_api', () => ({
   connect: jest.fn((url, callback) => {
@@ -86,8 +86,19 @@ describe('MessageQueue', () => {
         persistent: true,
       });
       expect(global.log.save).toHaveBeenCalledWith('amqp-message-sent', {
-        messageString: JSON.stringify(message),
+        type: 'test',
+        queue: 'writingQueueTask',
+        length: JSON.stringify(message).length,
       });
+    });
+
+    it('should reject (not fail silently) when the channel throws on publish', async () => {
+      await messageQueue.init();
+      messageQueue.channels.writing.sendToQueue.mockImplementationOnce(() => {
+        throw new Error('Channel closed');
+      });
+
+      await expect(messageQueue.produce('writingQueueTask', { type: 'test' })).rejects.toThrow('Channel closed');
     });
 
     it('should send message to specific queue when workflowTemplateId matches', async () => {
@@ -135,6 +146,19 @@ describe('MessageQueue', () => {
     });
   });
 
+  describe('pickMessageMeta', () => {
+    it('should keep only existing id keys and drop body fields', () => {
+      const meta = pickMessageMeta({ workflowId: 'w', taskId: 't', amqpMessageId: 'a', type: 'x', data: { secret: 1 }, token: 'z' });
+      expect(meta).toEqual({ workflowId: 'w', taskId: 't', amqpMessageId: 'a', type: 'x' });
+    });
+
+    it('should drop non-primitive values and tolerate non-objects', () => {
+      expect(pickMessageMeta({ eventId: { nested: 1 }, gatewayId: 5 })).toEqual({ gatewayId: 5 });
+      expect(pickMessageMeta(null)).toEqual({});
+      expect(pickMessageMeta('str')).toEqual({});
+    });
+  });
+
   describe('subscribeToConsuming', () => {
     it('should handle the message and acknowledge it if it is successfully handled', async () => {
       const message = { type: 'test', data: { foo: 'bar' } };
@@ -149,9 +173,11 @@ describe('MessageQueue', () => {
       await setTimeout(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-handled', {
-        messageString: JSON.stringify(message),
-      });
+      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-handled', { type: 'test' });
+      const logged = JSON.stringify((global.log.save as jest.Mock).mock.calls);
+      expect(logged).not.toContain(JSON.stringify(message));
+      expect(logged).not.toContain('messageString');
+      expect(logged).not.toContain('"foo"');
     });
 
     it('should not handle the message and not acknowledge it if it is not successfully handled', async () => {
@@ -167,9 +193,68 @@ describe('MessageQueue', () => {
       await setTimeout(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.nack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-not-handled', {
-        messageString: JSON.stringify(message),
-      });
+      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-not-handled', { type: 'test' });
+    });
+
+    it('should ack a duplicate message from the redis cache without handling it and keep the key', async () => {
+      const message = { type: 'test', amqpMessageId: 'abc' };
+      const handler = jest.fn().mockReturnValue(true);
+      global.config.redis.amqpMessageCache.isEnabled = true;
+      global.redisClient = { get: jest.fn().mockResolvedValue('abc'), delete: jest.fn(), set: jest.fn() } as any;
+
+      await messageQueue.init();
+      messageQueue.subscribeToConsuming(handler);
+      const decoratedHandler = messageQueue.channels.reading.consume.mock.calls[0][1];
+
+      decoratedHandler({ content: Buffer.from(JSON.stringify(message)) });
+
+      await setTimeout(500);
+      expect(handler).not.toHaveBeenCalled();
+      expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
+      expect(global.redisClient.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('subscribeToConsuming poison messages', () => {
+    const consume = async (handler, content) => {
+      await messageQueue.init();
+      messageQueue.subscribeToConsuming(handler);
+      const decoratedHandler = messageQueue.channels.reading.consume.mock.calls[0][1];
+      decoratedHandler({ content: Buffer.from(content) });
+      await setTimeout(200);
+    };
+
+    it.each(['not json', 'null', '"str"', '[]', '42'])('should ack payload %s without calling the handler', async (payload) => {
+      const handler = jest.fn().mockReturnValue(true);
+
+      await consume(handler, payload);
+
+      expect(handler).not.toHaveBeenCalled();
+      expect(messageQueue.channels.reading.ack).toHaveBeenCalledTimes(1);
+      expect(global.log.save).toHaveBeenCalledWith('message-parse-error', expect.anything(), 'error');
+    });
+
+    it('should not log the full payload on parse failure', async () => {
+      const payload = 'x'.repeat(500);
+
+      await consume(jest.fn(), payload);
+
+      const call = (global.log.save as jest.Mock).mock.calls.find(([name]) => name === 'message-parse-error');
+      expect(JSON.stringify(call)).not.toContain(payload);
+      expect(call[1]).toEqual({ error: expect.any(String), length: 500 });
+    });
+
+    it('should nack without requeue and not reject when the handler throws', async () => {
+      const handler = jest.fn().mockRejectedValue(new Error('boom'));
+      const onUnhandled = jest.fn();
+      process.on('unhandledRejection', onUnhandled);
+
+      await consume(handler, JSON.stringify({ type: 'test' }));
+      process.off('unhandledRejection', onUnhandled);
+
+      expect(onUnhandled).not.toHaveBeenCalled();
+      expect(messageQueue.channels.reading.nack).toHaveBeenCalledWith(expect.anything(), false, false);
+      expect(messageQueue.channels.reading.ack).not.toHaveBeenCalled();
     });
   });
 

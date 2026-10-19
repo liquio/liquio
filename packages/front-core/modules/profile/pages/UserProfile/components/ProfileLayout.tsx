@@ -1,11 +1,20 @@
-import React from 'react';
-import { FormControl, TextField, Snackbar, Button } from '@mui/material';
+import React, { useState } from 'react';
+import {
+  FormControl,
+  FormControlLabel,
+  FormHelperText,
+  Switch,
+  TextField,
+  Snackbar,
+  Button,
+} from '@mui/material';
 import CustomDatePicker from 'components/CustomInput/CustomDatePicker';
 import getFields from 'modules/profile/pages/UserProfile/components/fields';
 import { getQueryLangParam } from 'actions/auth';
 import { getConfig } from 'core/helpers/configLoader';
 import PhoneInput from './PhoneInput';
 import EmailInput from './EmailInput';
+import TwoFactorModal from './TwoFactorModal';
 
 const isUkrainianLanguage = () => {
   const config = getConfig();
@@ -117,6 +126,7 @@ interface ProfileLayoutProps {
   classes: Record<string, string>;
   values: Record<string, unknown> & { isLegal?: boolean };
   saving: boolean;
+  auth?: { useTwoFactorAuth?: boolean; twoFactorType?: string | null };
   showNotification?: boolean;
   handleChange: (event: { target: { name: string; value: unknown } }) => void;
   handleChangePhone: (phone: unknown) => void;
@@ -131,6 +141,7 @@ const ProfileLayout = ({
   values,
   values: { isLegal },
   saving,
+  auth,
   showNotification = false,
   handleChange,
   handleChangePhone,
@@ -144,6 +155,11 @@ const ProfileLayout = ({
     showMiddleName: isUkrainianLanguage(),
   });
   const inputs = isLegal ? fields.isLegal : fields.notIsLegal;
+  const [twoFactorModalMode, setTwoFactorModalMode] = useState<'enable' | 'disable' | null>(null);
+  const twoFactorEnabled = !!auth?.useTwoFactorAuth;
+  const isTotp = auth?.twoFactorType === 'totp';
+  // Phone 2FA needs a phone; TOTP is managed by its own endpoints.
+  const showTwoFactor = isTotp || twoFactorEnabled || !!values.phone;
   return (
     <>
       {inputs.map(
@@ -157,6 +173,28 @@ const ProfileLayout = ({
           handleSave,
         }),
       )}
+      {showTwoFactor ? (
+        <FormControl variant="standard" fullWidth={true} className={classes.formControl} margin="dense">
+          <FormControlLabel
+            control={
+              <Switch
+                checked={twoFactorEnabled}
+                disabled={isTotp}
+                onChange={() => setTwoFactorModalMode(twoFactorEnabled ? 'disable' : 'enable')}
+                color="primary"
+              />
+            }
+            label={t(twoFactorEnabled ? 'TwoFactorAuthDisable' : 'TwoFactorAuthEnable')}
+          />
+          {isTotp ? <FormHelperText>{t('TwoFactorAuthTotpActive')}</FormHelperText> : null}
+          <TwoFactorModal
+            open={!!twoFactorModalMode}
+            onClose={() => setTwoFactorModalMode(null)}
+            phone={values.phone as string}
+            mode={twoFactorModalMode || 'enable'}
+          />
+        </FormControl>
+      ) : null}
       <Button
         variant="contained"
         color="primary"

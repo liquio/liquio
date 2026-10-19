@@ -136,7 +136,7 @@ describe('auth state transitions', () => {
     });
     state = reducer(state, {
       type: 'REQUEST_AUTH_MODE_SUCCESS',
-      payload: { useTwoFactorAuth: true },
+      payload: { useTwoFactorAuth: true, twoFactorType: 'totp' },
     });
     state = reducer(state, {
       type: 'SEARCH_USER_SUCCESS',
@@ -144,6 +144,7 @@ describe('auth state transitions', () => {
     });
     expect(state.settings).toEqual({ language: 'en' });
     expect(state.useTwoFactorAuth).toBe(true);
+    expect(state.twoFactorType).toBe('totp');
     expect(state.foundUser?.userId).toBe('user-2');
     expect(
       reducer(state, { type: 'SEARCH_USER_SUCCESS', payload: { users: [] } }).foundUser,

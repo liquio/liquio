@@ -34,8 +34,7 @@ export async function wso2(app: Express) {
 
     log.save('wso2|oauth2-metadata', { ...data }, 'info');
   } catch (error: any) {
-    const response = error.response?.data;
-    log.save('wso2|init', { status: 'error', error, response }, 'info');
+    log.save('wso2|init', { status: 'error', error: error?.message, httpStatus: error?.response?.status }, 'info');
     return;
   }
 
@@ -63,11 +62,9 @@ export async function wso2(app: Express) {
 
           userInfo = data;
 
-          log.save('wso2|user-info', { status: 'success', userInfo }, 'info');
+          log.save('wso2|user-info', { status: 'success' }, 'info');
         } catch (error: any) {
-          const response = error.response?.data;
-
-          log.save('wso2|user-info-fetch-error', { error, response }, 'error');
+          log.save('wso2|user-info-fetch-error', { error: error?.message, httpStatus: error?.response?.status }, 'error');
 
           return done(error);
         }

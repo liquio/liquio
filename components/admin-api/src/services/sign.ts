@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import { getInternalHttpsAgent } from '../lib/internal_transport';
+
 // Constants.
 const ROUTES = {
   sign: '/sign',
@@ -58,6 +60,7 @@ export class Sign {
         base64,
       },
       timeout: this.timeout,
+      httpsAgent: getInternalHttpsAgent(),
     };
     try {
       const response = await axios(requestOptions);
@@ -66,7 +69,7 @@ export class Sign {
       const formattedError = this.formatAxiosError(error);
       global.log.save('sign-service-sign-error', {
         error: formattedError.message,
-        requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
+        requestOptions: { ...requestOptions, data: '*****', headers: '*****', httpsAgent: undefined },
       });
       throw formattedError;
     }
@@ -86,6 +89,7 @@ export class Sign {
         data,
       },
       timeout: this.timeout,
+      httpsAgent: getInternalHttpsAgent(),
     };
     try {
       const response = await axios(requestOptions);
@@ -94,7 +98,7 @@ export class Sign {
       const formattedError = this.formatAxiosError(error);
       global.log.save('sign-service-sign-hash-error', {
         error: formattedError.message,
-        requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
+        requestOptions: { ...requestOptions, data: '*****', headers: '*****', httpsAgent: undefined },
       });
       throw formattedError;
     }
@@ -114,6 +118,7 @@ export class Sign {
         data,
       },
       timeout: this.timeout,
+      httpsAgent: getInternalHttpsAgent(),
     };
     try {
       const response = await axios(requestOptions);
@@ -122,7 +127,7 @@ export class Sign {
       const formattedError = this.formatAxiosError(error);
       global.log.save('sign-service-hash-error', {
         error: formattedError.message,
-        requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
+        requestOptions: { ...requestOptions, data: '*****', headers: '*****', httpsAgent: undefined },
       });
       throw formattedError;
     }
@@ -144,6 +149,7 @@ export class Sign {
         data,
       },
       timeout: this.timeout,
+      httpsAgent: getInternalHttpsAgent(),
     };
     try {
       const response = await axios(requestOptions);
@@ -152,7 +158,7 @@ export class Sign {
       const formattedError = this.formatAxiosError(error);
       global.log.save('sign-service-encrypt-error', {
         error: formattedError.message,
-        requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
+        requestOptions: { ...requestOptions, data: '*****', headers: '*****', httpsAgent: undefined },
       });
       throw formattedError;
     }
@@ -174,6 +180,7 @@ export class Sign {
         data,
       },
       timeout: this.timeout,
+      httpsAgent: getInternalHttpsAgent(),
     };
     try {
       const response = await axios(requestOptions);
@@ -182,7 +189,7 @@ export class Sign {
       const formattedError = this.formatAxiosError(error);
       global.log.save('sign-service-decrypt-error', {
         error: formattedError.message,
-        requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
+        requestOptions: { ...requestOptions, data: '*****', headers: '*****', httpsAgent: undefined },
       });
       throw formattedError;
     }
@@ -202,6 +209,7 @@ export class Sign {
         data: internalSignature,
       },
       timeout: this.timeout,
+      httpsAgent: getInternalHttpsAgent(),
     };
     try {
       const response = await axios(requestOptions);
@@ -210,7 +218,7 @@ export class Sign {
       const formattedError = this.formatAxiosError(error);
       global.log.save('sign-service-convert-internal-signature-to-external-error', {
         error: formattedError.message,
-        requestOptions: { ...requestOptions, data: '*****', headers: '*****' },
+        requestOptions: { ...requestOptions, data: '*****', headers: '*****', httpsAgent: undefined },
       });
       throw formattedError;
     }

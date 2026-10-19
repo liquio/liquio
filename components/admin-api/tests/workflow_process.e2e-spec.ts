@@ -121,6 +121,45 @@ describe('Workflow Process Controller', () => {
         });
     });
 
+    const mockAdmin = () => {
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      app
+        .nock('http://id-api:8100')
+        .get('/user/info')
+        .query({ access_token: payload.authTokens.accessToken })
+        .once()
+        .reply(200, {
+          userId: '61efddaa351d6219eee09043',
+          role: 'admin',
+          services: { eds: { data: { pem: 'PEM' } } },
+          units: [1000003],
+        });
+      return jwt;
+    };
+
+    it.each(["' OR 1=1 --", "\\' OR 1=1 --", "x' ; select pg_sleep(5) --"])(
+      'should treat filters[user_data] payload %p as a plain value',
+      async (payload) => {
+        const jwt = mockAdmin();
+
+        await app
+          .request()
+          .get('/workflow-processes')
+          .query({ 'filters[user_data]': payload })
+          .set('token', jwt)
+          .expect(200)
+          .expect((response: SupertestResponse) => {
+            expect(response.body.data).toEqual([]);
+          });
+      },
+    );
+
+    it('should reject array filters[user_data] with a validation error', async () => {
+      const jwt = mockAdmin();
+
+      await app.request().get('/workflow-processes?filters[user_data][]=a').set('token', jwt).expect(422);
+    });
+
     it('should support brief_info parameter', async () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
 

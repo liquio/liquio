@@ -226,7 +226,7 @@
         "tags": [
           "Sign in"
         ],
-        "summary": "Render sign in requirements page"
+        "summary": "Retired (410): phone verification requires an SMS code"
       }
     },
     "/sign_in/requirements_phone": {
@@ -242,7 +242,7 @@
         "tags": [
           "Sign in"
         ],
-        "summary": "Render sign in requirements page"
+        "summary": "Retired (410): phone verification requires an SMS code"
       }
     },
     "/sign_in/requirements_phone_set/confirm": {
@@ -250,7 +250,7 @@
         "tags": [
           "Sign in"
         ],
-        "summary": "Set phone is valid"
+        "summary": "Retired (410): phone verification requires an SMS code"
       }
     },
     "/relogin": {
@@ -444,7 +444,23 @@
         "tags": [
           "User"
         ],
-        "summary": "Set current user phone validation indicator"
+        "summary": "Retired (410): use POST /user/info/phone/confirm"
+      }
+    },
+    "/user/info/phone/send": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Send an SMS code bound to the current user and the given phone (body: phone)"
+      }
+    },
+    "/user/info/phone/confirm": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Verify the phone with the SMS code issued to the current user for that phone (body: phone, code)"
       }
     },
     "/removeConfirmCode": {

@@ -8,6 +8,7 @@ metadata:
 {{ $authBase := dict
   "authRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "clientId" "liquio-portal"
+  "jwtExpiresIn" "12h"
   "logoutRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "serverPublicUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "port" 80
@@ -45,13 +46,13 @@ metadata:
   "customer" .Release.Name
   "environment" .Values.config.server.environment
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
-  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "maxBodySize" (default "20mb" .Values.config.server.maxBodySize)
   "port" (default 8080 .Values.services.adminApi.containerPort)
   "swagger" false
 -}}
 {{ $logBase := dict
   "console" (list)
-  "excludeParams" (list "token" "authorization")
+  "excludeParams" (list "token" "authorization" "accessToken" "refreshToken" "access_token" "refresh_token" "id_token" "password")
 -}}
 {{ $elasticBase := dict
   "headers" (dict)
@@ -63,7 +64,7 @@ metadata:
   "enabled" false
 -}}
 {{ $notifierBase := dict
-  "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+  "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "port" 80
   "timeout" 30000
   "routes" (dict
@@ -81,7 +82,6 @@ metadata:
   "port" 80
   "server" (printf "http://%s-task" (include "liquio.fullname" .))
   "timeout" 10000
-  "token" "Basic dGFzazp0YXNr"
 -}}
 {{ $redisBase := dict
   "isEnabled" true
@@ -96,8 +96,13 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 30000
-  "url" (printf "http://%s-sign-tool" (include "liquio.fullname" .))
+  "url" (printf "%s://%s-sign-tool%s" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .) (ternary ":80" "" (eq (include "liquio.internalTls.enabled" .) "true")))
 -}}
+{{- /* https has no implicit port 80, so the sign-tool Service port is explicit when TLS is on. */ -}}
+{{- $internalTransportBase := dict "allowPlainHttp" true }}
+{{- if include "liquio.internalTls.enabled" . }}
+{{- $internalTransportBase = mergeOverwrite (include "liquio.internalTls.clientConfig" (dict "ctx" . "clientCert" true) | fromJson) (dict "allowPlainHttp" false) }}
+{{- end -}}
 {{ $workflowEditorBase := dict
   "disabled" false
   "debugMode" (dict
@@ -157,6 +162,10 @@ data:
   # User configuration
   user.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "user.json" "base" $userBase) | nindent 4 }}
+
+  # Internal transport (TLS to notification and sign-tool; allowPlainHttp acknowledges http:// URLs)
+  internal_transport.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "adminApi" "config" "internal_transport.json" "base" $internalTransportBase) | nindent 4 }}
 
   # Sign configuration
   sign.json: |

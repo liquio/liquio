@@ -333,8 +333,7 @@ class OidcProvider {
         end_session_endpoint: data.end_session_endpoint,
       };
     } catch (error: any) {
-      const response = error.response?.data;
-      this.log.save(log_tag, { status: 'discovery_error', providerId, error: error.message, response }, 'error');
+      this.log.save(log_tag, { status: 'discovery_error', providerId, error: error.message, httpStatus: error.response?.status }, 'error');
       throw error;
     }
   }

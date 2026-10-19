@@ -23,6 +23,7 @@ async function main(): Promise<void> {
   // Init log.
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
     excludeParams: config.log.excludeParams,
+    disableDefaultRedaction: config.log.disableDefaultRedaction === true,
   });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;

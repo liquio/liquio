@@ -1,4 +1,6 @@
 import { LocalizationTextModel } from '../models/localization_text';
+import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Localization text business.
@@ -91,7 +93,7 @@ export class LocalizationTextBusiness {
         const { localizationLanguageCode, key } = text;
         const [exisitingLocalizationText] = await this.localizationTextModel.getListByCodeAndKey([{ localizationLanguageCode, key }]);
         if (exisitingLocalizationText && force === false) {
-          throw new Error('Localization text already exists.');
+          throw new PublicError('Localization text already exists.');
         }
         if (exisitingLocalizationText) {
           await this.localizationTextModel.updateLocalizationText(text, { transaction });
@@ -101,7 +103,7 @@ export class LocalizationTextBusiness {
       }
 
       await transaction.commit();
-      global.log.save('user-imported-localization-texts', { user: person, data });
+      global.log.save('user-imported-localization-texts', { user: toLogUser(person), data });
     } catch (error) {
       await transaction.rollback();
       throw error;

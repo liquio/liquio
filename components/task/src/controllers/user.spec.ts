@@ -23,6 +23,7 @@ describe('UserController', () => {
       getUserByCode: jest.fn(),
       searchUsers: jest.fn(),
       updateUser: jest.fn(),
+      setTwoFactorAuth: jest.fn(),
       checkPhoneExist: jest.fn(),
       sendSms: jest.fn(),
       verifyPhoneAndSet: jest.fn(),
@@ -105,27 +106,79 @@ describe('UserController', () => {
   });
 
   describe('setTwoFactorAuth', () => {
+    const phoneInfo = { phone: '380500000000', valid: { phone: true }, useTwoFactorAuth: true, twoFactorType: 'phone' };
+    const call = (body: any, userInfo: any = phoneInfo) => {
+      jest.spyOn(controller, 'getRequestUserInfo').mockReturnValue(userInfo);
+      return controller.setTwoFactorAuth({ body }, {});
+    };
+    const auditCalls = (name: string) => (global as any).log.save.mock.calls.filter((c) => c[0] === `user-controller|two-factor-auth|${name}`);
+
     beforeEach(() => {
       jest.spyOn(controller, 'getRequestUserId').mockReturnValue(USER_ID);
       jest.spyOn(controller, 'getRequestUserAccessToken').mockReturnValue('access-token');
     });
 
-    it('should respond with the error of id-api when the update is rejected', async () => {
-      const error = httpError('Forbidden.', 403);
-      client.updateUser.mockRejectedValue(error);
+    it('should respond with the error of id-api when the request fails', async () => {
+      const error = httpError('Boom.', 500);
+      client.setTwoFactorAuth.mockRejectedValue(error);
 
-      await controller.setTwoFactorAuth({ body: { useTwoFactorAuth: true, twoFactorType: 'phone' } }, {});
+      await call({ useTwoFactorAuth: true, twoFactorType: 'phone' });
 
-      expect(client.updateUser).toHaveBeenCalledWith(USER_ID, 'access-token', { useTwoFactorAuth: true, twoFactorType: 'phone' });
       expect(responseError).toHaveBeenCalledWith({}, error);
+      expect(auditCalls('changed')).toHaveLength(0);
     });
 
-    it('should respond that the two factor auth is not set when id-api does not confirm it', async () => {
-      client.updateUser.mockResolvedValue(false);
+    it('should enable through the dedicated id-api route, never through updateUser, and audit without secrets', async () => {
+      client.setTwoFactorAuth.mockResolvedValue({ success: true });
 
-      await controller.setTwoFactorAuth({ body: { useTwoFactorAuth: false } }, {});
+      await call({ useTwoFactorAuth: true, twoFactorType: 'phone' }, { phone: '380500000000', valid: { phone: true } });
 
-      expect(responseError).toHaveBeenCalledWith({}, "Can't set two factor auth.");
+      expect(client.setTwoFactorAuth).toHaveBeenCalledWith('access-token', { useTwoFactorAuth: true, code: undefined });
+      expect(client.updateUser).not.toHaveBeenCalled();
+      expect(responseThatAccepted).toHaveBeenCalled();
+      const [entry] = auditCalls('changed');
+      expect(entry[1]).toMatchObject({ userId: USER_ID, enable: true, previousEnabled: false });
+      expect(JSON.stringify(entry[1])).not.toContain('access-token');
+    });
+
+    it('should pass the SMS code to id-api when disabling and not verify it beforehand', async () => {
+      client.setTwoFactorAuth.mockResolvedValue({ success: true });
+
+      await call({ useTwoFactorAuth: false, code: '123456' });
+
+      expect(client.setTwoFactorAuth).toHaveBeenCalledWith('access-token', { useTwoFactorAuth: false, code: '123456' });
+      expect(client.verifyPhoneAndSet).not.toHaveBeenCalled();
+      expect(client.updateUser).not.toHaveBeenCalled();
+      expect(auditCalls('changed')).toHaveLength(1);
+    });
+
+    it('should relay a refusal of id-api and audit it', async () => {
+      client.setTwoFactorAuth.mockResolvedValue({ success: false, status: 400, error: 'Confirmation code is invalid.' });
+
+      await call({ useTwoFactorAuth: false, code: '000000' });
+
+      expect(responseError).toHaveBeenCalledWith({}, 'Confirmation code is invalid.');
+      expect(responseThatAccepted).not.toHaveBeenCalled();
+      expect(auditCalls('rejected')).toHaveLength(1);
+      expect(auditCalls('changed')).toHaveLength(0);
+    });
+
+    it('should refuse the totp type without calling id-api', async () => {
+      await call({ useTwoFactorAuth: true, twoFactorType: 'totp' });
+
+      expect(responseError).toHaveBeenLastCalledWith({}, 'Only phone two factor auth can be set here.');
+      expect(client.setTwoFactorAuth).not.toHaveBeenCalled();
+    });
+
+    it('should clear the cached user info after a change', async () => {
+      const deleteKey = jest.fn().mockResolvedValue(undefined);
+      (global as any).redisClient = { delete: deleteKey };
+      jest.spyOn(controller, 'getSha256Hash').mockReturnValue('hash');
+      client.setTwoFactorAuth.mockResolvedValue({ success: true });
+
+      await call({ useTwoFactorAuth: true });
+
+      expect(deleteKey).toHaveBeenCalledWith('token.hash');
     });
   });
 
@@ -232,6 +285,18 @@ describe('UserController', () => {
       await controller.sendSmsForPhoneVerification({ body: { phone: '+380501112233' } }, {});
 
       expect(responseError).toHaveBeenCalledWith({}, "Can't send sms.");
+    });
+  });
+
+  describe('sendSmsForPhoneVerification token binding', () => {
+    it('should pass the user access token to id-api so the code is bound to the user', async () => {
+      jest.spyOn(controller, 'getRequestUserInfo').mockReturnValue({} as any);
+      jest.spyOn(controller, 'getRequestUserAccessToken').mockReturnValue('tok');
+      client.sendSms.mockResolvedValue('sent');
+
+      await controller.sendSmsForPhoneVerification({ body: { phone: '+380501112233' } }, {});
+
+      expect(client.sendSms).toHaveBeenCalledWith('+380501112233', 'tok');
     });
   });
 

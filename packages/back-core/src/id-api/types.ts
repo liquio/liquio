@@ -32,6 +32,7 @@ export interface IdApiRoutes {
   updateUserInfo: string;
   updateUserById: string;
   updateUserOnboarding: string;
+  setTwoFactorAuth: string;
   deleteUser: string;
   logoutByUserId: string;
   logoutOtherSessions: string;
@@ -190,6 +191,22 @@ export interface IdApiHttpResult<T = any> {
   status: number;
   headers: Record<string, string>;
   body: T;
+}
+
+/** Options of `setTwoFactorAuth`. */
+export interface IdApiSetTwoFactorAuthOptions {
+  useTwoFactorAuth: boolean | 'true' | 'false';
+  /** Fresh SMS code sent to the current phone; required to disable active phone 2FA. */
+  code?: string | number | null;
+}
+
+/** Result of `setTwoFactorAuth`. */
+export interface IdApiSetTwoFactorAuthResult {
+  success: boolean;
+  /** HTTP status of a refusal. */
+  status?: number;
+  /** Id-api refusal message. */
+  error?: string;
 }
 
 /** Options of `updateUser` (self update by access token). */

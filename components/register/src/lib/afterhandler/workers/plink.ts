@@ -3,6 +3,8 @@ import axios, { AxiosRequestConfig } from 'axios';
 
 import AfterhandlerWorker from './worker';
 import prepareAxiosErrorToLog from '../../prepareAxiosErrorToLog';
+import { createHttpsAgent } from '../../tls';
+import { redactRequestOptions } from '../../redact_headers';
 
 // Constants.
 const AFTERHANDLER_TYPE = 'plink';
@@ -154,7 +156,11 @@ export default class PLinkAfterhandlerWorker extends AfterhandlerWorker {
         },
         timeout: this.timeout,
       };
-      this.log.save('plink-request', requestOptions);
+      const httpsAgent = createHttpsAgent(this.config.tls, 'plink');
+      if (httpsAgent) {
+        requestOptions.httpsAgent = httpsAgent;
+      }
+      this.log.save('plink-request', redactRequestOptions(requestOptions));
 
       const response = await axios(requestOptions);
       this.log.save('plink-create-data-response', { id, response: response.data });

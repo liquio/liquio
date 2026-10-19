@@ -1,6 +1,6 @@
 // Import.
+import axios from 'axios';
 import bodyParser from 'body-parser';
-import request from 'request';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -58,19 +58,58 @@ class HttpRequest {
    * @return {Promise<object>}
    */
   static async send(requestOptions) {
-    return new Promise((resolve, reject) => {
-      // Do request.
-      request(requestOptions, (err, res, body) => {
-        // Check error.
-        if (err) {
-          return reject(err);
-        }
-
-        // Return responsed body object.
-        const bodyObject = parseBody(body);
-        resolve(bodyObject);
-      });
+    const { body, ...axiosOptions } = requestOptions;
+    // Any HTTP status is a result (not an error), only network errors and timeouts reject.
+    const response = await axios({
+      ...axiosOptions,
+      data: body,
+      responseType: 'text',
+      transformResponse: (data) => data,
+      validateStatus: () => true,
     });
+
+    // Return responsed body object.
+    return parseBody(response.data);
+  }
+
+  /**
+   * Send HTTP request and get the response as a readable stream.
+   * Body is not decoded: upstream status code and headers are available on the returned stream.
+   * @param {object} requestOptions Request options.
+   * @param {string} requestOptions.url URL.
+   * @param {string} [requestOptions.method] Method.
+   * @param {object} [requestOptions.headers] Headers in format {"key": "value"}.
+   * @param {number} [requestOptions.timeout] Connection timeout.
+   * @return {Promise<import('http').IncomingMessage>} Response stream.
+   */
+  static async stream(requestOptions) {
+    const response = await axios({
+      ...requestOptions,
+      headers: { 'Accept-Encoding': 'identity', ...requestOptions.headers },
+      responseType: 'stream',
+      decompress: false,
+      validateStatus: () => true,
+    });
+    return response.data;
+  }
+
+  /**
+   * Upload readable stream and get response body.
+   * @param {object} requestOptions Request options.
+   * @param {ReadableStream} readableStream Stream to upload.
+   * @return {Promise<object>} Parsed response body.
+   */
+  static async upload(requestOptions, readableStream) {
+    const response = await axios({
+      ...requestOptions,
+      data: readableStream,
+      maxBodyLength: Infinity,
+      maxRedirects: 0,
+      responseType: 'text',
+      transformResponse: (data) => data,
+      validateStatus: () => true,
+    });
+    return response.data;
   }
 
   /**

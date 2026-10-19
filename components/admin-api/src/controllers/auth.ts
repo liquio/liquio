@@ -1,9 +1,12 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+
 import _ from 'lodash';
 import { IdApiClient, appendTraceMeta, getIdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { Token } from '../lib/token';
 import { UnitBusiness } from '../businesses/unit';
+import { PublicError } from '../lib/public_error';
 
 // Constants.
 const ROLES_SEPARATOR = ';';
@@ -58,8 +61,6 @@ export class AuthController extends Controller {
     } catch (err) {
       return this.responseError(res, err, 401);
     }
-    global.log.save('login-tokens', authTokens);
-
     // Get user info.
     let authUserInfo;
     try {
@@ -123,7 +124,7 @@ export class AuthController extends Controller {
     } catch (err) {
       return this.responseError(res, err, 401);
     }
-    global.log.save('login-user-info', authUserInfo);
+    global.log.save('login-user-info', { userId: authUserInfo?.userId });
 
     // Get token.
     let token;
@@ -137,6 +138,20 @@ export class AuthController extends Controller {
 
     // Response.
     this.responseData(res, { token });
+  }
+
+  /**
+   * Check that token is the shared server (service) token. Constant time, never matches when server token is not set.
+   * @param {unknown} token Token from request.
+   * @returns {boolean} Is server token.
+   */
+  isServerToken(token: unknown): boolean {
+    if (typeof token !== 'string' || typeof this.serverToken !== 'string' || this.serverToken === '') {
+      return false;
+    }
+    const a = createHash('sha256').update(token).digest();
+    const b = createHash('sha256').update(this.serverToken).digest();
+    return timingSafeEqual(a, b);
   }
 
   /**
@@ -160,14 +175,10 @@ export class AuthController extends Controller {
         return isJustTry ? next() : this.responseError(res, ERROR_MESSAGE_TOKEN_NOT_DEFINED, 401);
       }
 
-      // Check server token.
-      if (token === this.serverToken) {
-        return next();
-      }
-
-      // Check case auth from another service.
+      // Check case auth from another service. The server token is accepted only on routes declared as service only.
       if (isServiceOnly) {
-        if (token !== this.serverToken) return this.responseError(res, ERROR_MESSAGE_INCORRECT_SERVER_TOKEN, 401);
+        if (!this.isServerToken(token)) return this.responseError(res, ERROR_MESSAGE_INCORRECT_SERVER_TOKEN, 401);
+        return next();
       }
 
       // Get auth access and refresh tokens.
@@ -239,7 +250,7 @@ export class AuthController extends Controller {
 
       const hasOneOfNeededRoles = this.hasOneOfNeededRoles(userRoles, roles);
       if (roles && !hasOneOfNeededRoles) {
-        global.log.save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles });
+        global.log.save('user-without-needed-roles', { userId, userRoles, neededRoles: roles });
         return this.responseError(res, ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, 403);
       }
       req.authUserRoles = userRoles;
@@ -260,6 +271,53 @@ export class AuthController extends Controller {
   }
 
   /**
+   * Authenticate token outside of HTTP middleware flow (e.g. WebSocket upgrade).
+   * @param {string} token Token.
+   * @param {string[]} roles Roles that has access (check by "or").
+   * @param {number[]} units Access for units (check by "or"). Empty - any unit.
+   * @returns {Promise<{ status: number, error?: string, authUserInfo?: object }>} Result.
+   */
+  async authenticateToken(token, roles: string[] = [], units: number[] = []): Promise<{ status: number; error?: string; authUserInfo?: any }> {
+    if (!token || typeof token !== 'string') {
+      return { status: 401, error: ERROR_MESSAGE_TOKEN_NOT_DEFINED };
+    }
+
+    let authUserInfo;
+    try {
+      const tokenData = this.token.decrypt(token);
+      const { accessToken, refreshToken } = tokenData.authTokens;
+
+      authUserInfo = await this.idApiClient.getUser(accessToken);
+      if (!authUserInfo || !authUserInfo.userId) {
+        const newAuthTokens = await this.idApiClient.renewTokens(refreshToken);
+        authUserInfo = await this.idApiClient.getUser(newAuthTokens.accessToken);
+      }
+    } catch (err) {
+      return { status: 401, error: err?.message || 'Unauthorized.' };
+    }
+    if (!authUserInfo || !authUserInfo.userId) {
+      return { status: 401, error: 'Unauthorized.' };
+    }
+
+    const mainUserInfo = this.idApiClient.getMainUserInfo(authUserInfo, true, true);
+    const userRoles = this.getUserRoles({ authUserInfo: mainUserInfo });
+    if (!this.hasOneOfNeededRoles(userRoles, roles)) {
+      return { status: 403, error: ERROR_MESSAGE_WITHOUT_NEEDED_ROLE };
+    }
+
+    const authUserUnitIds = await this.getUserUnitIds(authUserInfo.userId);
+    const allowableUnits = this.access?.allowableUnits || [];
+    if (Array.isArray(allowableUnits) && allowableUnits.length && !allowableUnits.some((v) => authUserUnitIds.all.includes(v))) {
+      return { status: 403, error: ERROR_MESSAGE_USER_WITHOUT_ALLOWABLE_UNITS };
+    }
+    if (units.length > 0 && !units.some((v) => authUserUnitIds.all.includes(v))) {
+      return { status: 403, error: 'Access denied.' };
+    }
+
+    return { status: 200, authUserInfo: mainUserInfo };
+  }
+
+  /**
    * Check unit access.
    */
   checkUnitAccess(req, res, next, units) {
@@ -267,7 +325,7 @@ export class AuthController extends Controller {
       if (units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
         return next();
       } else {
-        return this.responseError(res, new Error('Access denied.'), 403);
+        return this.responseError(res, new PublicError('Access denied.'), 403);
       }
     }
 
@@ -285,7 +343,7 @@ export class AuthController extends Controller {
       if (global.config.access.paths[path][method].units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
         return next();
       } else {
-        return this.responseError(res, new Error('Access denied.'), 403);
+        return this.responseError(res, new PublicError('Access denied.'), 403);
       }
     }
 
@@ -386,7 +444,7 @@ export class AuthController extends Controller {
     try {
       // Refer to `admin` configuration block to check for setup requirements.
       if (this.config.user.shouldSetupAdmin && this.config.user.adminUnitId) {
-        global.log.save('setup-admin-units', { userInfo });
+        global.log.save('setup-admin-units', { userId: userInfo?.userId });
 
         const { adminUnitId } = this.config.user;
 

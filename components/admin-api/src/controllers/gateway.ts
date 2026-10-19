@@ -6,6 +6,8 @@ import { GatewayBusiness } from '../businesses/gateway';
 import { WorkflowBusiness } from '../businesses/workflow';
 import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { GatewayTemplateEntity } from '../entities/gateway_template';
+import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Gateway controller.
@@ -55,7 +57,7 @@ export class GatewayController extends Controller {
         const lastWorkflowHistory = await this.workflowBusiness.findLastWorkflowHistoryByWorkflowTemplateId(workflowTemplateId);
 
         if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
-          const error = new Error('Header Last-Workflow-History-Id expired.');
+          const error = new PublicError('Header Last-Workflow-History-Id expired.');
           (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
           throw error;
         }
@@ -71,7 +73,7 @@ export class GatewayController extends Controller {
         savedGatewayTemplateEntities.push(savedGatewayTemplateEntity);
 
         await global.log.save('user-created-updated-gateway-template', {
-          user,
+          user: toLogUser(user),
           data: { savedGatewayTemplateEntity },
         });
 
@@ -108,7 +110,7 @@ export class GatewayController extends Controller {
       await this.gatewayBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-gateway-template', { user, data: { id } });
+      await global.log.save('user-deleted-gateway-template', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

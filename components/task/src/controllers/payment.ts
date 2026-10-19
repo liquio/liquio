@@ -9,6 +9,8 @@ import { PaymentLogsModel } from '../models/payment_logs';
 // Constants.
 const RAW_PAYMENT_ACTION_TYPE = 'raw';
 const PROCESSED_PAYMENT_ACTION_TYPE = 'processed';
+const DEFAULT_MAX_BODY_SIZE = '10mb';
+const HTTP_STATUS_PAYLOAD_TOO_LARGE = 413;
 
 type CalculatePaymentDataRequest = AuthenticatedRequest<{ id: string }>;
 
@@ -95,7 +97,17 @@ export class PaymentController extends Controller {
    */
   async handleStatus(req: HandleStatusRequest, res: Response): Promise<void> {
     // Get body content from stream.
-    const bodyContent = await Stream.getFileContent(req);
+    let bodyContent;
+    try {
+      bodyContent = await Stream.getFileContent(req, { limit: this.config.server?.maxBodySize || DEFAULT_MAX_BODY_SIZE });
+    } catch (error) {
+      global.log.save('handle-payment-status-read-body-error', { error: error && error.message, type: error && error.type }, 'error');
+      return this.responseError(
+        res,
+        error?.expose === true ? error.message : error,
+        error?.status === HTTP_STATUS_PAYLOAD_TOO_LARGE ? HTTP_STATUS_PAYLOAD_TOO_LARGE : 400,
+      );
+    }
     const { customer } = req.params;
     const { status } = req.params;
     const queryParamsObject = req.query;

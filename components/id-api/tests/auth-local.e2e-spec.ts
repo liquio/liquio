@@ -111,7 +111,7 @@ describe('AuthController - local', () => {
       });
     });
 
-    it('should reject blocked user on /auth', async () => {
+    it('should reject a blocked user at login with the generic error and no session', async () => {
       const blockedUser = await app
         .model('user')
         .create(
@@ -135,25 +135,27 @@ describe('AuthController - local', () => {
         },
       });
 
-      let blockedCookies: any;
+      const wrongPasswordBody = await app
+        .request()
+        .post('/authorise/local')
+        .send({ email, password: 'wrong-password' })
+        .expect(401)
+        .then(({ body }) => body);
+
       await app
         .request()
         .post('/authorise/local')
         .send({ email: blockedEmail, password: blockedPassword })
-        .expect(200)
-        .expect(({ headers }) => {
-          blockedCookies = headers['set-cookie'];
-          expect(blockedCookies).toBeDefined();
+        .expect(401)
+        .expect(({ body, headers }) => {
+          // Same response as a wrong password: no account-state oracle.
+          expect(body).toEqual(wrongPasswordBody);
+          expect(body).toEqual({ message: 'Invalid email or password.' });
+          expect(headers['set-cookie']).toBeUndefined();
         });
 
-      await app
-        .request()
-        .get('/auth')
-        .set('Cookie', blockedCookies)
-        .expect(403)
-        .expect(({ body }) => {
-          expect(body).toEqual({ error: { message: 'User has been blocked.' } });
-        });
+      const history = await app.model('loginHistory').findAll({ where: { user_id: blockedUser.userId } });
+      expect(history).toHaveLength(0);
     });
 
     it('should be able to change password', async () => {
@@ -204,6 +206,48 @@ describe('AuthController - local', () => {
             error: 'Invalid email or password.',
           });
         });
+    });
+
+    it('should reject password change of a blocked user with the generic error and keep the password', async () => {
+      const blockedChangeEmail = 'blocked-change@email';
+      const oldHash = bcrypt.hashSync(blockedPassword, 1).toString();
+      const blockedUser = await app
+        .model('user')
+        .create({ ipn: '#9999999998', provider: 'local', email: blockedChangeEmail, isActive: false }, { returning: true })
+        .then((row) => row.dataValues);
+
+      await app.model('userServices').create({
+        provider: 'local',
+        provider_id: blockedChangeEmail,
+        userId: blockedUser.userId,
+        data: { password: oldHash, oldPasswords: [] },
+      });
+
+      const wrongOldBody = await app
+        .request()
+        .post('/authorise/local/change_password')
+        .send({ email: blockedChangeEmail, oldPassword: 'invalid', newPassword: 'NewP4ssw0!rd' })
+        .expect(401)
+        .then(({ body }) => body);
+
+      await app
+        .request()
+        .post('/authorise/local/change_password')
+        .send({ email: blockedChangeEmail, oldPassword: blockedPassword, newPassword: 'NewP4ssw0!rd' })
+        .expect(401)
+        .expect(({ body }) => {
+          expect(body).toEqual(wrongOldBody);
+          expect(body).toEqual({ success: false, error: 'Invalid email or password.' });
+        });
+
+      const service = await app
+        .model('userServices')
+        .findOne({ where: { userId: blockedUser.userId, provider: 'local' } })
+        .then((row) => row?.dataValues as any);
+      expect(service.data.password).toBe(oldHash);
+
+      const history = await app.model('loginHistory').findAll({ where: { user_id: blockedUser.userId, action_type: 'change_password' } });
+      expect(history).toHaveLength(0);
     });
 
     it('should fail to change password with weak password', async () => {

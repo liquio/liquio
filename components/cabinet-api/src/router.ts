@@ -10,11 +10,17 @@ import { AppInfo, asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-c
 import AppIdentHeaders from './lib/app_ident_headers';
 import AuthController from './controllers/auth';
 import TestController from './controllers/test';
+import { compilePathMatcher, isSuspiciousPath } from './lib/custom_api_path_matcher';
+import { sanitizeProxyHeaders } from './lib/proxy_headers';
+import { isMainProxyPathAllowed } from './lib/proxy_filter';
+import { publicError } from './lib/public_error';
+import { redactHeaders, redactUrl, safeError, urlPath } from './lib/redact';
 
 // Constants.
 const NULL_OBJECT_BASE64 = 'bnVsbA=='; // NULL-object string (`null`) as base64 equals `bnVsbA==`.
 const USER_DATA_HEADER = 'User-Data';
 const ALLOW_TOKENS_HEADER = 'Allow-Tokens';
+const CLIENT_FORBIDDEN_HEADERS = [USER_DATA_HEADER, ALLOW_TOKENS_HEADER]; // Set by cabinet-api only, never taken from the client.
 const MAX_HEADER_SIZE = 65535; // Raised from Node's 16 KiB default to fit large auth headers.
 
 /**
@@ -58,7 +64,7 @@ class Router {
         origin: '*',
         methods: 'GET, POST, PUT, DELETE, OPTIONS',
         allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, token, Authorization, debug-user-id, enabled-mocks',
-        exposedHeaders: 'Name, Version, Customer, Environment, returned-mocks, external-reader-errors',
+        exposedHeaders: 'Name, Version, Customer, Environment, returned-mocks, external-reader-errors, new_token',
       }),
     );
 
@@ -100,13 +106,37 @@ class Router {
         apiName,
         proxyTo,
         authHeader,
-        sendUserData = false,
-        isCheckJwtOnly = false, // Check user JWT without sending user auth data (from ID) to custom API. TTL - 24h.
+        sendUserData = true, // Authenticated by default; set explicitly to false for public custom APIs.
+        isCheckJwtOnly = false, // Check user JWT without sending user auth data (from ID) to custom API. Fresh JWT only (auth.jwtOnlyFreshnessSeconds, 15 min by default), otherwise full ID session check.
         headers,
         allowedUnits = [],
-        allowedPaths,
+        allowedPaths = [],
       } = customApi;
       const route = `/custom/${apiName}`;
+      const isAuthenticated = sendUserData || isCheckJwtOnly;
+
+      // Fail closed per route: skip a custom API without an explicit allow-list, keep the app running.
+      if (!Array.isArray(allowedPaths) || allowedPaths.length === 0) {
+        (global.log as any).save('custom-api-invalid-config', { apiName, error: '"allowedPaths" allowlist is missing or empty' });
+        continue;
+      }
+
+      // forwardClientToken + cabinet auth would re-leak the cabinet JWT (ID access/refresh tokens) as `token`.
+      if (isAuthenticated && allowedPaths.some((allowedPath: { forwardClientToken?: boolean }) => allowedPath && allowedPath.forwardClientToken)) {
+        (global.log as any).save('custom-api-invalid-config', {
+          apiName,
+          error: '"forwardClientToken" cannot be combined with sendUserData/isCheckJwtOnly',
+        });
+        continue;
+      }
+
+      // Compile path matchers once per API.
+      const compiledAllowedPaths = allowedPaths.map(
+        (allowedPath: { method: string; path: string; authorizationHeader?: string; forwardClientToken?: boolean }) => ({
+          ...allowedPath,
+          matches: compilePathMatcher(allowedPath.path),
+        }),
+      );
 
       // Init proxy.
       app.use(
@@ -115,31 +145,44 @@ class Router {
           (global.log as any).save('proxy-to', { proxyTo, route });
           next();
         },
-        sendUserData || isCheckJwtOnly
-          ? authController.getAuthMiddleware({ isCheckJwtOnly })
-          : (req: Request, _res: Response, next: NextFunction) => next(),
+        isAuthenticated ? authController.getAuthMiddleware({ isCheckJwtOnly }) : (req: Request, _res: Response, next: NextFunction) => next(),
         authController.getCheckUserInOneOfUnits(allowedUnits),
         proxy(proxyTo, {
           // Define request decorator.
           proxyReqOptDecorator: function (proxyReqOpts: any, req: Request) {
             return new Promise(function (resolve, reject) {
-              // Check allowed paths.
-              if (allowedPaths && allowedPaths.length > 0) {
-                // Define params.
-                const {
-                  method: reqMethod,
-                  path: reqPath,
-                  headers: { authorization: reqAuthorizationHeader },
-                } = proxyReqOpts;
+              // Define params.
+              const { method: reqMethod } = proxyReqOpts;
+              const reqAuthorizationHeader = req.headers['authorization'];
+              const reqPath = (req.url || '').split('?')[0];
 
-                // Check access.
-                if (
-                  !allowedPaths.find(({ method, path, authorizationHeader }: { method: string; path: string; authorizationHeader: string }) => {
-                    return reqMethod === method && reqPath === path && reqAuthorizationHeader === authorizationHeader;
-                  })
-                ) {
-                  return reject('Not allowed');
-                }
+              // Reject encoded separators/null bytes before any pattern matching.
+              if (isSuspiciousPath(reqPath)) {
+                return reject('Not allowed');
+              }
+
+              // Check allowed paths.
+              const matchedPath = compiledAllowedPaths.find(
+                ({ method, matches, authorizationHeader }) =>
+                  reqMethod === method && matches(reqPath) && reqAuthorizationHeader === authorizationHeader,
+              );
+              if (!matchedPath) {
+                return reject('Not allowed');
+              }
+
+              // Strip client credentials: the proxy forwards all incoming headers, including the cabinet JWT and cookies.
+              // `forwardClientToken` opts a path out for non-authenticated APIs that use `token` for their own value.
+              if (!matchedPath.forwardClientToken) {
+                delete proxyReqOpts.headers['token'];
+              }
+              delete proxyReqOpts.headers['cookie'];
+              delete proxyReqOpts.headers['authorization'];
+              // Drop client-supplied User-Data/Allow-Tokens (any case) before configured headers are applied.
+              sanitizeProxyHeaders(proxyReqOpts.headers, CLIENT_FORBIDDEN_HEADERS);
+
+              // Re-apply the matched path's own authorization header, if any.
+              if (matchedPath.authorizationHeader) {
+                proxyReqOpts.headers['Authorization'] = matchedPath.authorizationHeader;
               }
 
               // Set header.
@@ -198,14 +241,22 @@ class Router {
 
     // Proxy other requests to main proxy.
     if ((global.config as any).discovery.mainProxy) {
+      const { mainProxyDenyPaths, mainProxyAllowPaths } = (global.config as any).discovery;
+      const proxyFilterConfig = { mainProxyDenyPaths, mainProxyAllowPaths };
       app.use(
         proxy((global.config as any).discovery.mainProxy, {
           limit: (global.config as any).server.maxBodySize,
           filter: async (req: Request) => {
-            (global.log as any).save('proxy-to', { route: req.originalUrl, method: req.method });
+            // Internal task routes (and, in allow-list mode, everything not listed) are not reachable from outside.
+            if (!isMainProxyPathAllowed(req.method, req.path, proxyFilterConfig)) {
+              (global.log as any).save('proxy-denied', { route: urlPath(req.originalUrl), method: req.method });
+              return false;
+            }
+            (global.log as any).save('proxy-to', { route: urlPath(req.originalUrl), method: req.method });
             return true;
           },
           proxyReqOptDecorator: function (proxyReqOpts: any) {
+            sanitizeProxyHeaders(proxyReqOpts.headers, CLIENT_FORBIDDEN_HEADERS);
             proxyReqOpts.headers['x-trace-id'] = getTraceId();
             proxyReqOpts.headers['x-trace-service'] = appInfo.name;
             return proxyReqOpts;
@@ -213,7 +264,7 @@ class Router {
           proxyErrorHandler: (err: Error, res: any, next: NextFunction) => {
             (global.log as any).save(
               'proxy-error',
-              { error: { message: err.message, stack: err.stack }, route: res.req.originalUrl, method: res.req.method },
+              { error: { message: err.message, stack: err.stack }, route: urlPath(res.req.originalUrl), method: res.req.method },
               'error',
             );
             res.status(500).json({ error: { message: 'Proxy error' } });
@@ -221,6 +272,11 @@ class Router {
           },
         }),
       );
+
+      // Requests rejected by the proxy filter end here.
+      app.use((_req: Request, res: Response) => {
+        res.status(404).json({ error: { message: 'Not found' } });
+      });
     }
 
     // Handle errors.
@@ -257,8 +313,8 @@ class Router {
   private async logRouter(req: Request, res: Response, next: NextFunction): Promise<void> {
     // Define params.
     const method = req && req.method;
-    const headers = req && req.headers;
-    const url = req && req.url;
+    const headers = redactHeaders(req && req.headers);
+    const url = redactUrl(req && req.url);
     const remoteAddress = (req.connection as any).remoteAddress;
     const xForwardedFor = req.headers['x-forwarded-for'] || null;
     const userIp = { remoteAddress, xForwardedFor };
@@ -274,23 +330,27 @@ class Router {
   }
 
   private jsonErrorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
-    (global.log as any).save('proxy-error', err);
+    (global.log as any).save('proxy-error', { ...safeError(err), traceId: getTraceId() });
 
     let status = 500;
-    let message = err.message || 'Internal server error';
 
     // Handle HTTP errors.
     if ((err as any).status) {
-      status = (err as any).status;
+      status = Number((err as any).status);
+      if (!Number.isInteger(status) || status < 400 || status > 599) {
+        status = 500;
+      }
 
       // Handle proxy connection errors.
     } else if (['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN'].includes((err as any).code)) {
       status = 503;
-      message = 'Service unavailable';
     }
 
+    // Client gets only a safe message (never raw error text, SQL or stack); details are in the log above.
+    const message = status === 503 ? 'Service unavailable' : publicError(err, status);
+
     res.status(status);
-    res.json({ error: { message } });
+    res.json({ error: { message }, traceId: getTraceId() });
   }
 
   /**
@@ -311,7 +371,7 @@ class Router {
         (global.log as any).save('http-response', {
           requestId: (req as any).requestId,
           method: req.method,
-          url: req.url,
+          url: redactUrl(req.url),
           statusCode: res.statusCode,
           responseSize: body ? body.length : 0,
           responseTime: Date.now() - time,

@@ -4,6 +4,7 @@ import { asyncLocalStorageMiddleware } from '@liquio/back-core';
 
 import { securityHeadersMiddleware, inputSanitizationMiddleware, corsValidationMiddleware, responseEncodingMiddleware } from './middleware/security';
 import { AppIdentHeaders } from './lib/app_ident_headers';
+import { applyTrustProxy } from './lib/trust_proxy';
 import { Lists } from './controllers/ListsAndTransports';
 import { Message } from './controllers/message';
 import { Template } from './controllers/templates';
@@ -24,6 +25,9 @@ const corsConfig = {
 };
 
 const app = express();
+
+// Behind an ingress, `req.ip` (login rate limit) is the proxy unless `trustProxy` is configured. Unset trusts nothing.
+applyTrustProxy(app, (global as any).conf?.trustProxy);
 
 app.use(asyncLocalStorageMiddleware);
 

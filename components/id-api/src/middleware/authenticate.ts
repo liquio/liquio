@@ -1,12 +1,23 @@
 import crypto from 'crypto';
 
-import OAuth2Server, { OAuthError } from '@node-oauth/oauth2-server';
+import OAuth2Server from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import { Log, appendTraceMeta } from '@liquio/back-core';
 
-import { Config, DEFAULT_COOKIE_DOMAIN } from '../config';
+import { Config } from '../config';
+import { profileCookieOptions } from '../lib/cookie_options';
 import { generatePinCode } from '../lib/helpers';
+import { oauthErrorBody } from '../lib/http_error';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
+import {
+  LOGOUT_CSRF_FIELD,
+  collectTrustedHosts,
+  getLogoutCsrfToken,
+  isSameSiteRequest,
+  isValidLogoutCsrfToken,
+  renderLogoutConfirmation,
+} from '../lib/logout_csrf';
+import { resolveSafeRedirect } from '../lib/safe_redirect';
 import { Models, UserAttributes } from '../models';
 import { Services } from '../services';
 import { govid, logout as govidLogout } from '../strategies/govid';
@@ -17,6 +28,7 @@ import { wso2, logout as wso2Logout } from '../strategies/wso2';
 import { x509, logout as x509Logout } from '../strategies/x509';
 import { Express, NextFunction, Request, Response } from '../types';
 import { destroySession, saveSession } from './session';
+import { SERVICE_SCOPES, ServiceClientRegistry } from './service_clients';
 
 type StrategyLogout = (req: Request) => Promise<{ endSessionUrl?: string } | void>;
 
@@ -32,6 +44,8 @@ export class AuthMiddleware {
     realmHash: string;
   };
   private readonly config: Config;
+  private readonly serviceClients: ServiceClientRegistry;
+  private legacyWarned = false;
   private readonly service = Services.service.bind(Services);
 
   constructor(private readonly express: Express) {
@@ -47,6 +61,10 @@ export class AuthMiddleware {
     }
     this.secretKey = secretKey![0];
 
+    // Named service identities plus the legacy shared secret pool (`oauth.secret_key[]`, all scopes while allowed).
+    const legacySecrets = (Array.isArray(secretKey) ? secretKey : [secretKey]).map((v) => Buffer.from(v, 'base64').toString().trim());
+    this.serviceClients = new ServiceClientRegistry(this.config.basic_auth, legacySecrets);
+
     const [username, password] = Buffer.from(this.secretKey, 'base64').toString().trim().split(':');
 
     const realm = 'Digest Authentication';
@@ -57,8 +75,10 @@ export class AuthMiddleware {
       realmHash: cryptoUsingMD5(realm),
     };
 
-    // Logout user.
-    express.get('/logout', query('redirect_uri').optional().default('/').isString(), this.logout());
+    // Logout user. GET revokes only for same-site navigations (front-ends redirect the browser here), any other GET
+    // gets a confirmation page. POST is protected by a session-bound CSRF token or a same-site check (ID-19).
+    express.get('/logout', this.logoutConfirmationGuard(), query('redirect_uri').optional().default('/').isString(), this.logout());
+    express.post('/logout', this.logoutPostGuard(), query('redirect_uri').optional().default('/').isString(), this.logout());
 
     AuthMiddleware.singleton = this;
   }
@@ -118,12 +138,11 @@ export class AuthMiddleware {
     await Promise.all(promises);
   }
 
-  basic() {
-    // Define inner secrets.
-    const hashedInnerSecret = this.secretKey;
-    const hashedInnerSecrets = Array.isArray(hashedInnerSecret) ? hashedInnerSecret : [hashedInnerSecret];
-    const innerSecrets = hashedInnerSecrets.map((v) => Buffer.from(v, 'base64').toString().trim());
-
+  /**
+   * HTTP Basic auth for service-to-service routes.
+   * Identifies the caller (`req.serviceClient`) and, when `scope` is given, requires it (403 otherwise).
+   */
+  basic(scope?: (typeof SERVICE_SCOPES)[number]) {
     return (req: Request, res: Response, next: NextFunction): void => {
       // Define params.
       const authorization = req.headers.authorization ?? '';
@@ -142,7 +161,25 @@ export class AuthMiddleware {
         }
 
         // Check incoming secret.
-        if (innerSecrets.includes(incomingSecret)) {
+        const client = this.serviceClients.authenticate(incomingSecret);
+        if (client) {
+          if (client.legacy && !this.legacyWarned) {
+            this.legacyWarned = true;
+            this.log.save(
+              'basic-auth-legacy-shared-secret-used',
+              { deprecated: true, hint: 'Configure basic_auth.clients and set basic_auth.allowLegacySharedSecret=false' },
+              'warn',
+            );
+          }
+
+          if (scope && !client.scopes.includes(scope)) {
+            this.log.save('basic-auth-scope-denied', { client: client.name, scope, path: req.path }, 'warn');
+            res.status(403).send('forbidden');
+            return;
+          }
+
+          req.serviceClient = { name: client.name, scopes: client.scopes, legacy: client.legacy, maxLimit: client.maxLimit };
+          appendTraceMeta({ serviceClient: client.name });
           return next();
         }
       }
@@ -152,14 +189,17 @@ export class AuthMiddleware {
     };
   }
 
-  authorise() {
+  /**
+   * OAuth access token auth. With `options.scope` the token must carry every listed scope (403 otherwise).
+   */
+  authorise(options: { scope?: string | string[] } = {}) {
     const service = this.service('auth');
 
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
       try {
         const request = new OAuth2Server.Request(req);
         const response = new OAuth2Server.Response(res);
-        const token = await service.server.authenticate(request, response);
+        const token = await service.server.authenticate(request, response, options.scope ? { scope: [options.scope].flat() } : undefined);
         req.user = token.user as any;
         res.locals.oauth = { token };
         const passport = req.session.passport ?? ({} as any);
@@ -169,12 +209,79 @@ export class AuthMiddleware {
           return;
         }
         req.session.passport = passport;
+        req.session.authorizationVersion ??= token.user.authorizationVersion;
         appendTraceMeta({ auth: 'authorise', userId: user.userId });
         await saveSession(req, user);
         return next();
       } catch (error: any) {
         this.log.save('oauth-authenticate', { error: error.message, stack: error.stack }, 'error');
-        res.status(error.statusCode).send(new OAuthError(error.message, error));
+        const body = oauthErrorBody(error);
+        res.status(body.statusCode).send(body);
+      }
+    };
+  }
+
+  /**
+   * Resolves `req.user` from an access token (query or Bearer) when a valid one is present.
+   * A missing or invalid token is not an error: the request just continues unauthenticated (fail closed for binding).
+   */
+  authoriseOptional() {
+    const service = this.service('auth');
+
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      const hasToken = !!req.query?.access_token || /^Bearer /i.test(req.headers.authorization ?? '');
+      if (hasToken) {
+        try {
+          const token = await service.server.authenticate(new OAuth2Server.Request(req), new OAuth2Server.Response(res));
+          const user = await service.getUser({ userId: token.user.id });
+          if (user && user.isActive !== false) req.user = token.user as any;
+        } catch {
+          // Invalid token: continue unauthenticated.
+        }
+      }
+      next();
+    };
+  }
+
+  /**
+   * Binds a service (basic auth) request to the end user by the user access token in `?access_token=`.
+   * The basic `Authorization` header stays for the service identity, so the token is read from the query only.
+   * A valid token sets `req.user` (no session is created). An invalid token is always 401. A missing one is 401 when
+   * `required()` is true; otherwise the request goes on without a bound user (legacy service-only mode).
+   */
+  userToken(required: () => boolean = () => false) {
+    const service = this.service('auth');
+
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      const accessToken = req.query?.access_token;
+      if (accessToken === undefined || accessToken === '') {
+        if (required()) {
+          res.status(401).send({ error: 'User access token is required.' });
+          return;
+        }
+        return next();
+      }
+
+      try {
+        if (typeof accessToken !== 'string') {
+          throw new Error('Invalid access token.');
+        }
+        const request = new OAuth2Server.Request({ headers: {}, method: 'GET', query: { access_token: accessToken } });
+        const token = await service.server.authenticate(request, new OAuth2Server.Response({ headers: {} }));
+        const user = await service.getUser({ userId: token.user.id });
+        if (!user) {
+          throw new Error('User not found.');
+        }
+        if (user.isActive === false) {
+          res.status(403).send({ error: { message: 'User has been blocked.' } });
+          return;
+        }
+        req.user = token.user as any;
+        appendTraceMeta({ userId: user.userId });
+        return next();
+      } catch (error: any) {
+        this.log.save('totp-user-token-error', { error: error.message }, 'warn');
+        res.status(401).send({ error: 'Invalid user access token.' });
       }
     };
   }
@@ -200,9 +307,9 @@ export class AuthMiddleware {
       const clients = await Models.model('client')
         .findAll()
         .then((rows) => rows.map((row) => row.dataValues));
-      const clientsRedirectUri: string[] = clients.map((v) => v.redirectUri).reduce((t, v) => [...t, ...v], []);
+      const clientsRedirectUri: string[] = clients.map((v) => v.redirectUri).reduce((t, v) => [...t, ...(v ?? [])], []);
 
-      finalRedirect = clientsRedirectUri.some((v) => redirectUri.startsWith(v)) ? redirectUri : '/';
+      finalRedirect = resolveSafeRedirect(redirectUri, clientsRedirectUri);
     }
 
     // No IdP session to terminate (or it's not an OIDC provider) — redirect as usual.
@@ -221,6 +328,72 @@ export class AuthMiddleware {
     logoutUrl.searchParams.set('post_logout_redirect_uri', absoluteRedirect);
 
     res.redirect(logoutUrl.toString());
+  }
+
+  /**
+   * Whether the request comes from this server or the configured front-ends. `Sec-Fetch-Site` decides when present,
+   * otherwise Origin/Referer is checked against the own host, the cookie domain, CORS origins and registered redirect URIs.
+   */
+  private async isSameSiteLogout(req: Request): Promise<boolean> {
+    if (req.get('sec-fetch-site')) {
+      return isSameSiteRequest(req, []);
+    }
+
+    const clients = await Models.model('client')
+      .findAll()
+      .then((rows) => rows.map((row) => row.dataValues));
+    const trustedHosts = collectTrustedHosts(req.get('host'), {
+      domain: this.config.domain,
+      origins: this.config.cors?.allowedOrigins,
+      redirectUris: clients.flatMap((client) => client.redirectUri ?? []),
+    });
+
+    return isSameSiteRequest(req, trustedHosts);
+  }
+
+  /** GET /logout from a cross-site or unverifiable source does not revoke: it shows a confirmation form. */
+  private logoutConfirmationGuard() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (await this.isSameSiteLogout(req)) {
+          return next();
+        }
+      } catch (error: any) {
+        this.log.save('logout-source-check-error', { error: error?.message ?? error.toString() }, 'error');
+      }
+
+      const redirectUri = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri : undefined;
+      res.set({ 'Cache-Control': 'no-store', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "frame-ancestors 'none'" });
+      res
+        .status(200)
+        .type('html')
+        .send(renderLogoutConfirmation(getLogoutCsrfToken(req.session as any), redirectUri));
+    };
+  }
+
+  /** POST /logout needs the session-bound CSRF token; without a token only a verified same-site request passes. */
+  private logoutPostGuard() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      const token = req.body?.[LOGOUT_CSRF_FIELD];
+
+      let allowed = false;
+      if (token !== undefined) {
+        allowed = isValidLogoutCsrfToken(req.session as any, token);
+      } else {
+        try {
+          allowed = await this.isSameSiteLogout(req);
+        } catch (error: any) {
+          this.log.save('logout-source-check-error', { error: error?.message ?? error.toString() }, 'error');
+        }
+      }
+
+      if (!allowed) {
+        res.status(403).json({ error: 'Forbidden', message: 'Invalid or missing CSRF proof.' });
+        return;
+      }
+
+      next();
+    };
   }
 
   logout(): (req: Request, res: Response, next: NextFunction) => Promise<void> | void {
@@ -249,26 +422,52 @@ export class AuthMiddleware {
         await this.service('auth').revokeUserAccess(userId, { ignoreCacheErrors: true });
       }
 
-      res.clearCookie('jwt', { domain: this.express.config.domain ?? DEFAULT_COOKIE_DOMAIN });
+      res.clearCookie('jwt', profileCookieOptions(req, this.express.config));
       req.logout(() => this.onLogout(req, res, endSessionUrl));
     };
   }
 
-  checkUserAccess() {
+  /**
+   * Enforce the account policy (identification type, EDRPOU/RNOKPP allowlists, blocked flag).
+   * The policy is evaluated against the current persisted user, never against stale session fields.
+   * With `requireUser` a missing session user, an unknown user or a failed lookup stops the request (fail closed).
+   */
+  checkUserAccess({ requireUser = false }: { requireUser?: boolean } = {}) {
     return async (req: Request, res: Response, next: NextFunction) => {
       let user = req.session?.passport?.user;
-      const userId = user?.userId;
+      const userId = user?.userId ?? user?.user_id;
 
-      // Local auth session initially stores a slim profile without isActive.
-      // Refresh user from DB so blocked checks are always based on current state.
-      if (userId && typeof user?.isActive === 'undefined') {
-        const actualUser = await this.service('auth').getUser({ userId });
-        if (actualUser) {
+      // No authenticated session: keep the unauthenticated user on the sign in page, never continue.
+      if (requireUser && !userId) {
+        res.redirect('/');
+        return;
+      }
+
+      if (userId) {
+        try {
+          const actualUser = await this.service('auth').getUser({ userId });
+          if (!actualUser) {
+            throw new Error('user not found');
+          }
+          // Local auth session initially stores a slim profile without isActive: complete it from the DB.
+          if (typeof user?.isActive === 'undefined') {
+            const passport = req.session.passport ?? ({} as any);
+            passport.user = actualUser as any;
+            req.session.passport = passport;
+            await saveSession(req);
+          }
           user = actualUser as any;
-          const passport = req.session.passport ?? ({} as any);
-          passport.user = actualUser as any;
-          req.session.passport = passport;
-          await saveSession(req);
+        } catch (error: any) {
+          if (error?.message === 'user not found') {
+            if (requireUser) {
+              res.status(401).send({ error: { message: 'Unauthorized' } });
+              return;
+            }
+          } else {
+            this.log.save('user-access-policy-load-error', { userId, error: error?.message }, 'error');
+            res.status(503).send({ error: { message: 'Unable to verify user access.' } });
+            return;
+          }
         }
       }
 
@@ -286,8 +485,8 @@ export class AuthMiddleware {
         return;
       }
 
-      // If EDRPOU and/or RNOKPP whitelists are enabled, make sure that the user matches at least one of the criteria
-      if (!this.checkEdrpouWhitelist(user) && !this.checkRnokppWhitelist(user)) {
+      // Every configured EDRPOU/RNOKPP whitelist must accept the user; an unset whitelist takes no part in the decision.
+      if (!this.checkEdrpouWhitelist(user) || !this.checkRnokppWhitelist(user)) {
         this.log.save('get-auth|user-edrpou-or-rnokpp-not-allowed', { userId, edrpou: user.edrpou, rnokpp: user.ipn }, 'warning');
 
         if (loginHistoryData) {

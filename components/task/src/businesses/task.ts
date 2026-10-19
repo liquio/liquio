@@ -41,6 +41,7 @@ import {
   ERROR_DRAFT_EXPIRED,
   ERROR_WORKFLOW_TEMPLATE_NOT_FOUND,
   ERROR_WORKFLOW_NOT_FOUND,
+  ERROR_WORKFLOW_ACCESS,
   ERROR_TASK_TEMPLATE_NOT_FOUND,
   ERROR_TASK_NOT_FOUND,
   ERROR_DOCUMENT_TEMPLATE_NOT_FOUND,
@@ -988,6 +989,16 @@ export class TaskBusiness extends Business {
       workflow = await global.models.workflow.findById(workflowId);
       if (!workflow) {
         throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      }
+      if (Number(workflow.workflowTemplateId) !== Number(workflowTemplateId)) {
+        throw new BadRequestError("Param workflowTemplateId does not match workflow's actual template.");
+      }
+      // Trusted server-side callers (service auth / RMQ) may create tasks in any workflow.
+      if (!isCreateByOtherSystem && !isCreateFromRmqMessage) {
+        const hasWorkflowAccess = workflow.hasAccess(userId, unitIds || { all: [], head: [], member: [] });
+        if (!hasWorkflowAccess) {
+          throw new ForbiddenError(ERROR_WORKFLOW_ACCESS);
+        }
       }
     }
 
@@ -3520,6 +3531,7 @@ export class TaskBusiness extends Business {
       }
       if (lastUserDraft) {
         const error: any = new Error('Only one draft allowed.');
+        error.expose = true; // Intentional message, the front matches on it.
         error.details = {
           message: oneDraftAllowedMessage,
           task: lastUserDraft,

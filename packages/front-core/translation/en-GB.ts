@@ -1555,6 +1555,12 @@ export default {
     TwoFactorAuthText:
       'If you enable two-step verification, you will additionally receive an SMS with a unique code to your phone every time you log in to the system.',
     ConfirmText: 'To activate, you will be sent an SMS with a code to the number:',
+    TwoFactorAuthDisableTitle: 'Disable two-factor authentication',
+    TwoFactorAuthDisableText:
+      'If you disable two-step verification, an SMS code will no longer be requested when you log in. Confirm with a code sent by SMS.',
+    ConfirmDisableText: 'To disable, you will be sent an SMS with a code to the number:',
+    TwoFactorAuthTotpActive:
+      'Two-factor authentication through an authenticator app is active. It cannot be changed here.',
     EmailError: 'Invalid email address',
     EmailDomainError: 'Email with this domain cannot be used',
     NotChangeEmailError: 'You entered the same address',

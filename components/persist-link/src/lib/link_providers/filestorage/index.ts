@@ -1,5 +1,7 @@
 // Import.
 import { getLog } from '../../context';
+import { describeOptions } from '../../log_redact';
+import { applyFileSafetyHeaders, pipeUpstreamResponse } from '../../stream_response';
 import FilestorageHandler from './filestorage_handler';
 import LinkProvider from '../link_provider';
 
@@ -10,6 +12,13 @@ const RESPONSE_NOT_FOUND_OBJECT = {
     message: 'Not found.',
   },
 };
+const RESPONSE_BAD_GATEWAY_CODE = 502;
+const RESPONSE_BAD_GATEWAY_OBJECT = {
+  error: {
+    message: 'Bad gateway.',
+  },
+};
+const DEFAULT_INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
 /**
  * Filestorage link provider.
@@ -54,6 +63,17 @@ class FilestorageLinkProvider extends LinkProvider {
   }
 
   /**
+   * Get content types allowed to be displayed inline.
+   * @returns {string[]} Lower-cased content types.
+   */
+  getInlineContentTypes() {
+    const { inlineContentTypes = DEFAULT_INLINE_CONTENT_TYPES } = this.config || {};
+    return (Array.isArray(inlineContentTypes) ? inlineContentTypes : DEFAULT_INLINE_CONTENT_TYPES)
+      .map((type) => String(type).trim().toLowerCase())
+      .filter((type) => type !== 'text/html' && type !== 'image/svg+xml');
+  }
+
+  /**
    * Open.
    * @param {object} options Options.
    * @param {string} options.serverName Filestorage server name.
@@ -69,9 +89,9 @@ class FilestorageLinkProvider extends LinkProvider {
     if (!isValidData) {
       getLog().save('filestorage-invalid-options', {
         isValidData,
-        options,
+        options: describeOptions(options),
       });
-      res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+      return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
     }
 
     // Define params.
@@ -82,8 +102,8 @@ class FilestorageLinkProvider extends LinkProvider {
     if (!filestorageConnection) {
       getLog().save('filestorage-invalid-connection', {
         isValidData,
-        filestorageConnection,
-        options,
+        hasConnection: !!filestorageConnection,
+        options: describeOptions(options),
       });
       return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
     }
@@ -92,18 +112,42 @@ class FilestorageLinkProvider extends LinkProvider {
     const handleStreamError = (error) => {
       getLog().save('filestorage-download-stream-error', {
         error: error && error.message,
-        options,
+        options: describeOptions(options),
       });
     };
-    const downloadReadableStream = await filestorageConnection.downloadFile(fileId, { isP7s });
-    downloadReadableStream
-      .on('response', (res) => {
-        if (showInBrowser) res.headers['Content-Disposition'] = 'inline';
-        res.headers['Accept-Ranges'] = 'bytes';
-      })
-      .on('error', handleStreamError)
-      .pipe(res)
-      .on('error', handleStreamError);
+    let downloadReadableStream;
+    try {
+      downloadReadableStream = await filestorageConnection.downloadFile(fileId, { isP7s });
+    } catch (error) {
+      handleStreamError(error);
+      return res.status(RESPONSE_BAD_GATEWAY_CODE).send(RESPONSE_BAD_GATEWAY_OBJECT);
+    }
+    downloadReadableStream.on('error', handleStreamError);
+    pipeUpstreamResponse(downloadReadableStream, res, (headers) => {
+      const contentType = String(headers['content-type'] || headers['Content-Type'] || '')
+        .split(';')[0]
+        .trim()
+        .toLowerCase();
+      const isInlineAllowed = this.getInlineContentTypes().includes(contentType);
+      const currentDisposition = headers['content-disposition'] || headers['Content-Disposition'];
+
+      // Never render non-allowlisted types inline, even if upstream asked for it.
+      let disposition: string | undefined;
+      if (!isInlineAllowed) {
+        disposition = 'attachment';
+      } else if (showInBrowser) {
+        disposition = 'inline';
+      }
+      if (disposition) {
+        delete headers['content-disposition'];
+        headers['Content-Disposition'] = /^\s*(inline|attachment)/i.test(currentDisposition || '')
+          ? currentDisposition.replace(/^\s*(inline|attachment)/i, disposition)
+          : disposition;
+      }
+
+      applyFileSafetyHeaders(headers);
+      headers['Accept-Ranges'] = 'bytes';
+    }).on('error', handleStreamError);
   }
 
   /**
@@ -120,7 +164,7 @@ class FilestorageLinkProvider extends LinkProvider {
     if (!isValidData) {
       getLog().save('filestorage-invalid-options-get-stream', {
         isValidData,
-        options,
+        options: describeOptions(options),
       });
       throw new Error('Invalid options.');
     }
@@ -133,8 +177,8 @@ class FilestorageLinkProvider extends LinkProvider {
     if (!filestorageConnection) {
       getLog().save('filestorage-invalid-connection-get-stream', {
         isValidData,
-        filestorageConnection,
-        options,
+        hasConnection: !!filestorageConnection,
+        options: describeOptions(options),
       });
       throw new Error('Connection not found.');
     }

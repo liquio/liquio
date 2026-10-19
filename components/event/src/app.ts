@@ -12,12 +12,10 @@ import { ExternalServiceRequester } from './services/event/requester/external_se
 import { EventBusiness } from './businesses/event';
 import { RedisClient } from './lib/redis_client';
 import { HttpClient } from './lib/http_client';
-import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
-
-// Allow not secure connections.
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+import { installTlsOverrides } from './lib/tls';
+import { buildSandboxConfig } from './lib/sandbox_config';
 
 export class App {
   config: any;
@@ -36,7 +34,7 @@ export class App {
 
   constructor(config: any) {
     this.config = config;
-    this.sandbox = new Sandbox(config.sandbox);
+    this.sandbox = new Sandbox(buildSandboxConfig(config.sandbox) as any);
     // Set global config for models and other legacy code that still uses it
     global.config = config;
   }
@@ -59,7 +57,10 @@ export class App {
       this.config.log.console && typeof this.config.log.console === 'object' && this.config.log.console.name
         ? this.config.log.console.name
         : 'console';
-    const consoleLogProvider = new ConsoleLogProvider(consoleName, { excludeParams: this.config.log.excludeParams });
+    const consoleLogProvider = new ConsoleLogProvider(consoleName, {
+      excludeParams: this.config.log.excludeParams,
+      disableDefaultRedaction: this.config.log?.disableDefaultRedaction === true,
+    } as any);
     this.log = global.log = new Log([consoleLogProvider], ['console']);
   }
 
@@ -70,6 +71,12 @@ export class App {
 
   // Init http client.
   useHttpClient() {
+    // TLS verification stays on by default. Exceptions (self-signed endpoints) are opt-in per endpoint.
+    const { filestorage, http_client: httpClientConfig } = this.config;
+    installTlsOverrides(
+      [{ url: filestorage?.apiHost, allowInsecureTls: filestorage?.allowInsecureTls, ca: filestorage?.ca }, ...(httpClientConfig?.tls || [])],
+      (message: string) => this.log.save('tls-warning', { message }, 'warn'),
+    );
     this.httpClient = new HttpClient(this.config.http_client, this.log.save.bind(this.log), getTraceId);
   }
 
@@ -176,12 +183,5 @@ export class App {
     await routerService.init();
 
     this.routerService = routerService;
-  }
-
-  // Init logs broadcasting.
-  useLogsBroadcasting() {
-    if (process.env.NODE_ENV !== 'prod' && this.config?.logs_broadcasting?.isEnabled) {
-      LogsBroadcasting.start(this.config.logs_broadcasting);
-    }
   }
 }

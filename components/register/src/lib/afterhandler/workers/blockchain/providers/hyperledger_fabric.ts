@@ -79,7 +79,7 @@ export default class HyperledgerFabricBlockchainProvider extends BlockchainProvi
     // Do request.
     let blockchainData;
     try {
-      blockchainData = await HttpRequest.send(requestOptions);
+      blockchainData = await HttpRequest.send({ ...requestOptions, tls: this.config.tls });
       this.log.save('blockchain-get-data-response', { id, response: blockchainData });
     } catch (error) {
       this.log.save('blockchain-get-data-error', { error: error && error.message, params: { id } });
@@ -118,7 +118,7 @@ export default class HyperledgerFabricBlockchainProvider extends BlockchainProvi
     // Do request.
     let blockchainData;
     try {
-      blockchainData = await HttpRequest.send(requestOptions);
+      blockchainData = await HttpRequest.send({ ...requestOptions, tls: this.config.tls });
       this.log.save('blockchain-create-data-response', { id, response: blockchainData });
     } catch (error) {
       this.log.save('blockchain-create-data-error', { error: error && error.message, params: { id } });
@@ -157,7 +157,7 @@ export default class HyperledgerFabricBlockchainProvider extends BlockchainProvi
     // Do request.
     let blockchainData;
     try {
-      blockchainData = await HttpRequest.send(requestOptions);
+      blockchainData = await HttpRequest.send({ ...requestOptions, tls: this.config.tls });
       this.log.save('blockchain-update-data-response', { id, response: blockchainData });
     } catch (error) {
       this.log.save('blockchain-update-data-error', { error: error && error.message, params: { id } });
@@ -192,7 +192,7 @@ export default class HyperledgerFabricBlockchainProvider extends BlockchainProvi
     // Do request.
     let blockchainData;
     try {
-      blockchainData = await HttpRequest.send(requestOptions);
+      blockchainData = await HttpRequest.send({ ...requestOptions, tls: this.config.tls });
       this.log.save('blockchain-delete-data-response', { id, response: blockchainData });
     } catch (error) {
       this.log.save('blockchain-delete-data-error', { error: error && error.message, params: { id } });

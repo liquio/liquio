@@ -140,14 +140,14 @@ export class Rmq {
     // Send message.
     let response: any;
     try {
-      global.log.save('rmq-decorator-request', { requestOptions });
+      global.log.save('rmq-decorator-request', { requestOptions: Helpers.redactRequestOptions(requestOptions) });
       response = (await axios(requestOptions)).data;
-      global.log.save('rmq-decorator-response', { requestOptions, response });
+      global.log.save('rmq-decorator-response', { requestOptions: Helpers.redactRequestOptions(requestOptions), response });
     } catch (error: any) {
       global.log.save(
         'rmq-decorator-error',
         {
-          requestOptions,
+          requestOptions: Helpers.redactRequestOptions(requestOptions),
           ...prepareAxiosErrorToLog(error),
         },
         'error',

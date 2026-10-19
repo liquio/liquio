@@ -2080,6 +2080,12 @@ export default {
     TwoFactorAuthText:
       'Wenn Sie die zweistufige Verifizierung aktivieren, erhalten Sie zusätzlich bei jeder Anmeldung im System eine SMS mit einem eindeutigen Code auf Ihr Telefon.',
     ConfirmText: 'Zur Aktivierung wird Ihnen eine SMS mit einem Code an folgende Nummer gesendet:',
+    TwoFactorAuthDisableTitle: 'Zweistufige Verifizierung deaktivieren',
+    TwoFactorAuthDisableText:
+      'Wenn Sie die zweistufige Verifizierung deaktivieren, wird bei der Anmeldung kein SMS-Code mehr abgefragt. Bestätigen Sie mit einem per SMS gesendeten Code.',
+    ConfirmDisableText: 'Zur Deaktivierung wird Ihnen eine SMS mit einem Code an folgende Nummer gesendet:',
+    TwoFactorAuthTotpActive:
+      'Die zweistufige Verifizierung über eine Authenticator-App ist aktiv. Sie kann hier nicht geändert werden.',
     EmailError: 'Ungültige E-Mail-Adresse',
     EmailDomainError: 'Eine E-Mail-Adresse mit dieser Domain kann nicht verwendet werden',
     NotChangeEmailError: 'Sie haben dieselbe Adresse eingegeben',

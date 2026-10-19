@@ -1,11 +1,51 @@
-import { Op, WhereAttributeHash, WhereOptions } from 'sequelize';
+import { Op, WhereAttributeHash } from 'sequelize';
 
-import { Config } from '../config';
+import { HttpError } from '../lib/http_error';
 import { Request } from '../types';
 import { BaseService } from './base_service';
 
+/** Aggregate write scope: lets a token write every profile field `POST /user/info` accepts. */
+export const PROFILE_WRITE_SCOPE = 'profile:write';
+
+/**
+ * Writable profile fields that have no scope of their own in `oauth.defaults.scope_fields`;
+ * they are covered by the scope of the field they belong to.
+ */
+const WRITE_SCOPE_ALIASES: Record<string, string> = {
+  twoFactorType: 'useTwoFactorAuth',
+  legalEntityDateRegistration: 'isIndividualEntrepreneur',
+  foreigners_document_series: 'passport_series',
+  foreigners_document_number: 'passport_number',
+  foreigners_document_issue_date: 'passport_issue_date',
+  foreigners_document_expire_date: 'passport_issue_date',
+  foreigners_document_issued_by: 'passport_issued_by',
+  foreigners_document_type: 'passport_series',
+};
+
+/** Profile fields that change the second factor; see `UserController.setTwoFactorAuth`. */
+const TWO_FACTOR_FIELDS = ['useTwoFactorAuth', 'twoFactorType'];
+
+/** The token does not cover a profile field present in the request. */
+export class ProfileScopeError extends HttpError {
+  readonly statusCode = 403;
+  constructor(readonly fields: string[]) {
+    super(403, 'Insufficient scope');
+  }
+}
+
 export class UserService extends BaseService {
-  extractUpdateUserInfoParams(req: Request, fields: string[]): WhereOptions {
+  /**
+   * `scope`, when given, is the token's scope: only fields it covers (by name, alias or `profile:write`) may be present in the body.
+   * Throws `ProfileScopeError` for the rest, so nothing is written partially.
+   */
+  extractUpdateUserInfoParams(req: Request, fields: string[], scope?: string[]): WhereAttributeHash<any> {
+    if ('email' in req.body) {
+      throw new HttpError(400, 'Email can only be changed after verification through /user/info/email/set');
+    }
+    // Two factor auth is changed through `POST /user/two_factor_auth`, which checks the factor (ID-09d).
+    if (!this.config.user_info?.allowTwoFactorFields && TWO_FACTOR_FIELDS.some((field) => field in req.body)) {
+      throw new HttpError(400, 'Two factor auth can only be changed through /user/two_factor_auth');
+    }
     const modules = this.config.modules ?? {};
     const { denyToUpdateUserName = true, denyToUpdateUserValidParams = true } = modules;
 
@@ -17,7 +57,14 @@ export class UserService extends BaseService {
       fields.push('valid');
     }
 
-    const query: WhereOptions = {};
+    if (scope) {
+      const denied = fields.filter((f) => f in req.body && !scope.includes(PROFILE_WRITE_SCOPE) && !scope.includes(WRITE_SCOPE_ALIASES[f] ?? f));
+      if (denied.length) {
+        throw new ProfileScopeError(denied);
+      }
+    }
+
+    const query: WhereAttributeHash<any> = {};
     for (const field of fields.filter((f) => f in req.body)) {
       query[field] = req.body[field];
     }
@@ -26,15 +73,14 @@ export class UserService extends BaseService {
       query.foreigners_document_type = JSON.parse(decodeURIComponent(query.foreigners_document_type));
     }
 
-    this.processPhoneValidation(req, modules, query);
+    this.processPhoneValidation(req, query);
     this.extractAddressStructure(query);
-    this.processEmailValidation(req, modules, query);
+    this.processEmailValidation(req, query);
 
-    // Handle two factor auth.
-    if ([true, 'true', 1].includes(query.useTwoFactorAuth)) {
-      query.useTwoFactorAuth = true;
+    // Handle two factor auth. Omitted fields must never change the persisted 2FA state.
+    if ('useTwoFactorAuth' in query) {
+      query.useTwoFactorAuth = [true, 'true', 1].includes(query.useTwoFactorAuth as any);
     }
-    query.useTwoFactorAuth = query.useTwoFactorAuth ?? false;
     if ('twoFactorType' in query && query.twoFactorType != undefined && query.twoFactorType !== 'phone' && query.twoFactorType !== 'totp') {
       query.twoFactorType = null;
     }
@@ -75,36 +121,39 @@ export class UserService extends BaseService {
     return query;
   }
 
-  processPhoneValidation(req: Request, modules: NonNullable<Config['modules']>, query: WhereAttributeHash<any>) {
-    if (!modules.denyToUpdateUserValidParams) {
-      if (query.valid?.phone) {
-        query.valid.phone = query.valid.phone === 'true';
-      }
-      if (['true', 'false'].includes(req.body.isValidPhone)) {
-        if (typeof query.valid !== 'object') {
-          query.valid = {};
-        }
-        query.valid.phone = req.body.isValidPhone === 'true';
-      }
+  /**
+   * Profile phone verification is only possible through an SMS challenge (see `AuthService.confirmUserPhone`).
+   * A caller can never mark a phone as valid here, and changing the phone resets its validity.
+   */
+  processPhoneValidation(req: Request, query: WhereAttributeHash<any>) {
+    const requestedValidity = query.valid?.phone;
+    if (
+      req.body.isValidPhone === 'true' ||
+      req.body.isValidPhone === true ||
+      (requestedValidity !== undefined && requestedValidity !== false && requestedValidity !== 'false')
+    ) {
+      throw new HttpError(400, 'Phone confirmation requires a valid SMS code');
     }
-
-    // Set new phone only as not valid.
-    if (modules.setPhoneOnlyAsNotValid && query.phone) {
-      query.valid = { phone: false };
+    if ('phone' in query || requestedValidity !== undefined || req.body.isValidPhone === 'false' || req.body.isValidPhone === false) {
+      query.valid = { ...query.valid, phone: false };
     }
   }
 
-  processEmailValidation(req: Request, modules: NonNullable<Config['modules']>, query: WhereAttributeHash<any>) {
-    if (!modules.denyToUpdateUserValidParams) {
-      if (query.valid?.email) {
-        query.valid.email = query.valid.email === 'true';
-      }
-      if (['true', 'false'].includes(req.body.isValidEmail)) {
-        if (typeof query.valid !== 'object') {
-          query.valid = {};
-        }
-        query.valid.email = req.body.isValidEmail === 'true';
-      }
+  /**
+   * Profile email verification is only possible through a confirmation code (see `UserController.setToNewEmail`).
+   * A caller can never mark an email as valid here.
+   */
+  processEmailValidation(req: Request, query: WhereAttributeHash<any>) {
+    const requestedValidity = query.valid?.email;
+    if (
+      req.body.isValidEmail === true ||
+      req.body.isValidEmail === 'true' ||
+      (requestedValidity !== undefined && requestedValidity !== false && requestedValidity !== 'false')
+    ) {
+      throw new HttpError(400, 'Email confirmation requires a valid confirmation code');
+    }
+    if (requestedValidity !== undefined || req.body.isValidEmail === false || req.body.isValidEmail === 'false') {
+      query.valid = { ...query.valid, email: false };
     }
   }
 
@@ -114,7 +163,7 @@ export class UserService extends BaseService {
     } else if (query.addressStruct) {
       const validationError = this.validateAddressStruct(query);
       if (validationError) {
-        throw new Error(validationError);
+        throw new HttpError(400, validationError);
       }
     }
   }

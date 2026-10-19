@@ -244,23 +244,46 @@ export class UserController extends Controller {
    */
   async setTwoFactorAuth(req, res) {
     // Define params.
-    const { useTwoFactorAuth, twoFactorType } = req.body;
-    const updateOptions = {
-      useTwoFactorAuth: !!useTwoFactorAuth,
-      twoFactorType,
-    };
+    const { useTwoFactorAuth, twoFactorType, code } = req.body;
+    const enable = !!useTwoFactorAuth;
     const userId = this.getRequestUserId(req);
     const accessToken = this.getRequestUserAccessToken(req);
+    const userInfo = this.getRequestUserInfo(req) || {};
+    const currentType = userInfo.twoFactorType;
+    const currentEnabled = !!userInfo.useTwoFactorAuth;
+    const auditBase = { userId, enable, previousEnabled: currentEnabled, previousType: currentType, requestedType: twoFactorType };
+    const reject = (reason: string, message: string) => {
+      global.log.save('user-controller|two-factor-auth|rejected', { ...auditBase, reason }, 'warn');
+      return this.responseError(res, message);
+    };
 
-    // Update.
-    let isUpdated;
+    // TOTP is managed by its own endpoints that ask for a current code; this route manages phone 2FA only.
+    if (twoFactorType !== undefined && twoFactorType !== null && twoFactorType !== 'phone') {
+      return reject('unsupported-type', 'Only phone two factor auth can be set here.');
+    }
+
+    // Id-api decides: a verified phone to enable, a fresh SMS code to disable, no change while TOTP is active.
+    // It consumes the code, so it must not be verified here beforehand.
+    let result;
     try {
-      isUpdated = await this.idApiClient.updateUser(userId, accessToken, updateOptions);
+      result = await this.idApiClient.setTwoFactorAuth(accessToken, { useTwoFactorAuth: enable, code });
     } catch (error) {
       return this.responseError(res, error);
     }
-    if (!isUpdated) {
-      return this.responseError(res, "Can't set two factor auth.");
+    if (!result.success) {
+      return reject('refused-by-id-api', result.error || "Can't set two factor auth.");
+    }
+
+    // Audit. No codes or secrets here.
+    global.log.save('user-controller|two-factor-auth|changed', { ...auditBase, nextType: enable ? 'phone' : currentType });
+
+    // Clear user info cache, so the next read shows the new state.
+    if (global.redisClient) {
+      try {
+        await global.redisClient.delete(`token.${this.getSha256Hash(accessToken)}`);
+      } catch (error) {
+        global.log.save('user-controller|two-factor-auth|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
+      }
     }
 
     this.responseThatAccepted(res);
@@ -336,6 +359,7 @@ export class UserController extends Controller {
     const userInfo = this.getRequestUserInfo(req);
     const existingPhone = userInfo.phone;
     const phone = newPhone || existingPhone;
+    const accessToken = this.getRequestUserAccessToken(req);
 
     // Check phone.
     if (!phone) {
@@ -343,9 +367,9 @@ export class UserController extends Controller {
       return this.responseError(res, "Phone does't exist.");
     }
 
-    // Send SMS.
+    // Send SMS. The code is bound to the user by the access token, so it can be verified by the same user only.
     try {
-      await this.idApiClient.sendSms(phone);
+      await this.idApiClient.sendSms(phone, accessToken);
     } catch (error) {
       global.log.save('can-not-send-sms', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't send sms.");

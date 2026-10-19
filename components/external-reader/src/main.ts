@@ -1,10 +1,9 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-import { description, name, version } from 'package.json';
 import { GlobalExceptionFilter } from '@common/filters/global-exception.filter';
 import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
+import { assertAuthConfig } from '@components/auth/auth-config';
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { Configuration } from '@components/configuration/configuration.types';
 import { ErrorsInterceptor } from '@components/observability/errors.interceptor';
@@ -12,12 +11,7 @@ import { LoggerService } from '@components/observability/logger.service';
 import { LoggingInterceptor } from '@components/observability/logging.interceptor';
 import { ObservabilityModule } from '@components/observability/observability.module';
 import { AppModule } from './app.module';
-
-function useSwagger(app: INestApplication) {
-  const config = new DocumentBuilder().setTitle(name).setDescription(description).setVersion(version).build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-}
+import { useSwagger } from './swagger';
 
 async function bootstrap() {
   const als = ObservabilityModule.getAlsInstance();
@@ -25,7 +19,10 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { logger });
 
-  const appConfig: Configuration['server'] = app.get(ConfigurationService).get('server');
+  const configService = app.get(ConfigurationService);
+  assertAuthConfig(configService.get('auth'));
+
+  const appConfig: Configuration['server'] = configService.get('server');
 
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
@@ -34,7 +31,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ErrorsInterceptor(logger));
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  useSwagger(app);
+  useSwagger(app, appConfig.isSwaggerEnabled);
 
   const { port } = appConfig;
 
@@ -45,4 +42,5 @@ async function bootstrap() {
 
 bootstrap().catch((error) => {
   console.error('unhandled-error', { error });
+  process.exit(1);
 });

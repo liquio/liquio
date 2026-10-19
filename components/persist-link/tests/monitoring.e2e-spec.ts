@@ -1,7 +1,7 @@
 // Import.
 import { TestApp } from './test_app';
 
-describe('MonitoringController', () => {
+describe('Monitoring (removed system endpoint)', () => {
   let app: TestApp;
 
   beforeAll(async () => {
@@ -25,26 +25,12 @@ describe('MonitoringController', () => {
     }
   });
 
-  it('should check /monitoring/system with success', async () => {
+  it('should not expose /monitoring/system', async () => {
     app = await TestApp.setup();
 
-    const response = await app.request().get('/monitoring/system').expect(200);
+    const response = await app.request().get('/monitoring/system').expect(404);
 
-    expect(response.body).toEqual({
-      data: {
-        hostname: expect.any(String),
-        osType: expect.any(String),
-        osPlatform: expect.any(String),
-        arch: expect.any(String),
-        release: expect.any(String),
-        uptimeSec: expect.any(String),
-        loadAvg: expect.any(Array),
-        totalMemGb: expect.any(String),
-        freeMemGb: expect.any(String),
-        cpus: expect.any(Array),
-      },
-    });
-
-    expect(response.body.data.loadAvg).toHaveLength(3);
+    expect(response.body).not.toHaveProperty('data.hostname');
+    expect(JSON.stringify(response.body)).not.toMatch(/hostname|cpus|osType/);
   });
 });

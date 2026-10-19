@@ -1,6 +1,7 @@
 import { parse as parseJsonc } from 'jsonc-parser';
 import { Sandbox } from '@liquio/back-core';
 
+import { pickMessageMeta } from '../lib/message_queue';
 import { SystemNotifier } from '../lib/system_notifier';
 import { GatewayTypeEntity } from '../entities/gateway_type';
 import { WorkflowErrorModel } from '../models/workflow_error';
@@ -87,9 +88,16 @@ export class GatewayBusiness {
    * @param {string[]} sequenceIds Sequence ID list.
    * @param {DocumentEntity[]} documents Documents.
    * @param {EventEntity[]} events Events.
+   * @param {{workflowId?: string, gatewayTemplateId?: number}} [logMeta] Ids to log on condition error.
    * @returns {Promise<{resultSequence: string, sequenceIds: string[], condition: string, isDefault: boolean, handledAsDefault: boolean}>} Gateway data promise.
    */
-  async calcExclusiveGatewayData(jsonSchemaObject: any, sequenceIds: string[], documents: any[], events: any[]): Promise<any> {
+  async calcExclusiveGatewayData(
+    jsonSchemaObject: any,
+    sequenceIds: string[],
+    documents: any[],
+    events: any[],
+    logMeta: { workflowId?: string; gatewayTemplateId?: number } = {},
+  ): Promise<any> {
     // Check.
     const formulas = jsonSchemaObject.formulas;
     if (!Array.isArray(formulas)) {
@@ -102,9 +110,15 @@ export class GatewayBusiness {
       const { condition, isDefault } = formula;
       let conditionResult;
       try {
-        conditionResult = this.sandbox.evalWithArgs(condition, [documents, events]);
+        // Await the result: an async formula returns a Promise, which is always truthy if not awaited.
+        conditionResult = await this.sandbox.evalWithArgs(condition, [documents, events], { isAsync: true });
       } catch (error: any) {
-        global.log.save('condition-calculation-error', { error: error && error.message, condition, isDefault, documents, events });
+        global.log.save('condition-calculation-error', {
+          workflowId: logMeta.workflowId,
+          gatewayTemplateId: logMeta.gatewayTemplateId,
+          condition,
+          error: error && error.message,
+        });
         throw error;
       }
       if (conditionResult) {
@@ -134,6 +148,30 @@ export class GatewayBusiness {
   }
 
   /**
+   * Check that the gateway template is a part of the BPMN schema of the workflow's template.
+   * @param {number} gatewayTemplateId Gateway template ID.
+   * @param {string} workflowId Workflow ID.
+   * @returns {Promise<boolean>} True if the gateway belongs to the workflow template.
+   */
+  async isGatewayTemplateInWorkflow(gatewayTemplateId: number, workflowId: string): Promise<boolean> {
+    if (!Number.isInteger(Number(gatewayTemplateId))) {
+      return false;
+    }
+    const workflow = await this.workflowModel.findById(workflowId);
+    if (!workflow || !workflow.workflowTemplateId) {
+      return false;
+    }
+    const workflowTemplate = await this.workflowTemplateModel.findById(workflow.workflowTemplateId);
+    const xmlBpmnSchema = workflowTemplate && workflowTemplate.xmlBpmnSchema;
+    if (typeof xmlBpmnSchema !== 'string') {
+      return false;
+    }
+
+    // Gateways are identified as `Gateway-<id>` in BPMN (see manager's writingQueueGateway producer).
+    return new RegExp(`\\bid\\s*=\\s*["']gateway-${Number(gatewayTemplateId)}["']`, 'i').test(xmlBpmnSchema);
+  }
+
+  /**
    * Create from message.
    * @param {object} messageObject AMQP message object.
    * @param {string} messageObject.workflowId Workflow ID.
@@ -155,6 +193,13 @@ export class GatewayBusiness {
 
       // Define gateway options.
       const gatewayTemplate = await this.gatewayTemplateModel.findById(gatewayTemplateId);
+
+      // The gateway template must belong to the template of the workflow. Ack and drop forged/mismatched messages
+      // without recording a workflow error (that would let a forged message mark a foreign workflow as errored).
+      if (!(await this.isGatewayTemplateInWorkflow(gatewayTemplateId, workflowId))) {
+        global.log.save('gateway-handling|template-workflow-mismatch', pickMessageMeta(messageObject));
+        return true;
+      }
       const gatewayTypeId = gatewayTemplate.gatewayTypeId;
       const name = gatewayTemplate.name;
       const jsonSchema = gatewayTemplate.jsonSchema;
@@ -175,7 +220,7 @@ export class GatewayBusiness {
           data = await this.calcParallelGatewayData(jsonSchemaObject, sequenceIds);
           break;
         case GatewayTypeEntity.Types.Exclusive:
-          data = await this.calcExclusiveGatewayData(jsonSchemaObject, sequenceIds, documents, events);
+          data = await this.calcExclusiveGatewayData(jsonSchemaObject, sequenceIds, documents, events, { workflowId, gatewayTemplateId });
           break;
         case GatewayTypeEntity.Types.Inclusive:
           data = await this.calcInclusiveGatewayData(jsonSchemaObject, sequenceIds);
@@ -212,7 +257,13 @@ export class GatewayBusiness {
         }
 
         // Log.
-        global.log.save('gateway-handling|db-instance-created', { createdGateway });
+        global.log.save('gateway-handling|db-instance-created', {
+          workflowId,
+          gatewayTemplateId,
+          gatewayId: createdGateway.id,
+          gatewayTypeId: createdGateway.gatewayTypeId,
+          version: createdGateway.version,
+        });
 
         // Send message to RabbitMQ.
         const outMessage = { workflowId, gatewayId: createdGateway.id };
@@ -222,7 +273,7 @@ export class GatewayBusiness {
 
       // Inform about handling status.
     } catch (error: any) {
-      global.log.save('document-creating-by-message-from-queue-error', { messageObject });
+      global.log.save('document-creating-by-message-from-queue-error', { ...pickMessageMeta(messageObject), error: error && error.message });
 
       // If enabled debug model.
       if (typeof messageObject.debugId !== 'undefined' && messageObject && messageObject.workflowId) {
@@ -237,7 +288,7 @@ export class GatewayBusiness {
           await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject });
           await this.workflowModel.setError(messageObject.workflowId);
         } catch (error: any) {
-          global.log.save('workflow-id-not-found-error', { messageObject, error: error.message });
+          global.log.save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
         }
 
         try {
@@ -269,7 +320,7 @@ export class GatewayBusiness {
       gatewayTemplateId,
       workflowId,
       sequenceIds,
-      latestGatewayInWorkflow,
+      latestGatewayId: latestGatewayInWorkflow?.id,
     });
 
     return sequenceIds;

@@ -93,7 +93,8 @@ export class ClientModel extends BaseModel<ClientAttributes> {
         defaults: {
           clientId,
           client_name: clientName,
-          need_scope_approve: true,
+          // Follows the configured default (false unless a deployment enables scope approval).
+          need_scope_approve: authConf?.defaults?.need_scope_approve ?? false,
           secret: authConf?.secret_key![0],
           redirectUri,
           grants: ['authorization_code'],

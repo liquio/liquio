@@ -6,6 +6,8 @@ import { EventBusiness } from '../businesses/event';
 import { WorkflowBusiness } from '../businesses/workflow';
 import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { EventTemplateEntity } from '../entities/event_template';
+import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Event controller.
@@ -55,7 +57,7 @@ export class EventController extends Controller {
         const lastWorkflowHistory = await this.workflowBusiness.findLastWorkflowHistoryByWorkflowTemplateId(workflowTemplateId);
 
         if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
-          const error = new Error('Header Last-Workflow-History-Id expired.');
+          const error = new PublicError('Header Last-Workflow-History-Id expired.');
           (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
           throw error;
         }
@@ -71,7 +73,7 @@ export class EventController extends Controller {
         savedEventTemplateEntities.push(savedEventTemplateEntity);
 
         await global.log.save('user-created-updated-event-template', {
-          user,
+          user: toLogUser(user),
           data: { savedEventTemplateEntity },
         });
 
@@ -108,7 +110,7 @@ export class EventController extends Controller {
       await this.eventBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-event-template', { user, data: { id } });
+      await global.log.save('user-deleted-event-template', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

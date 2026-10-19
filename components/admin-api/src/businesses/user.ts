@@ -249,7 +249,7 @@ export class UserBusiness {
     // Check the user for their IPN to make sure that the correct account is being deleted.
     const existingUser = await this.idApiClient.findUserById(userId);
     if (existingUser?.ipn !== ipn) {
-      global.log.save('delete-user-ipn-mismatch', { userId, ipn });
+      global.log.save('delete-user-ipn-mismatch', { userId });
       return false;
     }
 

@@ -5,11 +5,14 @@ import forge from 'node-forge';
 import renderWithTranslations from '../../testHelpers/renderWithTranslations';
 import PKCS7SignForm from './PKCS7SignForm';
 import { handlePKCS7Auth } from 'actions/auth';
+import { requestSignData } from 'actions/eds';
 
 // `actions/auth` pulls in the store, which needs a loaded runtime config; the form only needs the one action.
 vi.mock('actions/auth', () => ({ handlePKCS7Auth: vi.fn() }));
+vi.mock('actions/eds', () => ({ requestSignData: vi.fn() }));
 
 const mockedAuth = vi.mocked(handlePKCS7Auth);
+const mockedSignData = vi.mocked(requestSignData);
 
 const PASSWORD = 'secret';
 
@@ -66,6 +69,9 @@ describe('PKCS7SignForm', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     mockedAuth.mockReset();
     mockedAuth.mockResolvedValue({});
+    // By default the sign route is unavailable (a failed request resolves with the error), so the legacy payload is used.
+    mockedSignData.mockReset().mockResolvedValue(new Error('404 Not Found'));
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -186,6 +192,49 @@ describe('PKCS7SignForm', () => {
       expect(first).toMatch(/^[A-Za-z0-9+/]{86}==$/);
       expect(second).toMatch(/^[A-Za-z0-9+/]{86}==$/);
       expect(first).not.toBe(second);
+    });
+
+    describe('server challenge', () => {
+      const CHALLENGE = 'eyJhbGciOiJIUzI1NiJ9.eyJyYW5kb20iOiJ4In0.sig';
+      const signWithChallenge = async () => {
+        const { chooseFile, typePassword, signButton, p12File } = renderForm();
+        await chooseFile(p12File());
+        typePassword(PASSWORD);
+        await act(async () => {
+          fireEvent.click(signButton());
+        });
+        await waitFor(() => expect(mockedAuth).toHaveBeenCalledTimes(1));
+      };
+      const signedContent = () => {
+        const message = forge.pkcs7.messageFromAsn1(
+          forge.asn1.fromDer(forge.util.decode64(mockedAuth.mock.calls[0][0] as string)),
+        ) as unknown as { rawCapture: { content: forge.asn1.Asn1 } };
+        const content = message.rawCapture.content as unknown as { value: forge.asn1.Asn1[] };
+        return (content.value[0] as unknown as { value: string }).value;
+      };
+
+      it('signs the token from GET authorise/eds/sign exactly and posts { pkcs7, token }', async () => {
+        mockedSignData.mockResolvedValue({ token: CHALLENGE });
+        await signWithChallenge();
+        expect(mockedSignData).toHaveBeenCalledTimes(1);
+        expect(signedContent()).toBe(CHALLENGE);
+        expect(mockedAuth.mock.calls[0][1]).toBe(CHALLENGE);
+        expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining('legacy'));
+      });
+
+      it('falls back to the legacy payload without a token, and logs it, when the sign route is unavailable', async () => {
+        await signWithChallenge();
+        expect(signedContent()).toMatch(/^[A-Za-z0-9+/]{86}==$/);
+        expect(mockedAuth.mock.calls[0][1]).toBeUndefined();
+        expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('legacy'));
+      });
+
+      it('falls back to the legacy payload when the request throws', async () => {
+        mockedSignData.mockRejectedValue(new Error('network'));
+        await signWithChallenge();
+        expect(mockedAuth.mock.calls[0][1]).toBeUndefined();
+        expect(console.warn).toHaveBeenCalled();
+      });
     });
 
     it('shows the busy state while the request is pending, then clears it', async () => {

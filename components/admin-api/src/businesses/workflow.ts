@@ -1,6 +1,7 @@
 import { BpmnWorkflowBusiness } from './bpmn_workflow';
 import { Exceptions } from '../exceptions';
 import { SYSTEM_ADMIN_UNIT, WORKFLOW_SYSTEM_ADMIN_UNIT } from '../constants/unit';
+import { PublicError } from '../lib/public_error';
 
 // Constants.
 const SEQUELIZE_CONSTRAINT_ERROR = 'SequelizeForeignKeyConstraintError';
@@ -253,14 +254,14 @@ export class WorkflowBusiness {
 
     // Check passed user subscribed on workflow errors.
     if (existingErrorsSubscribers.some(({ id }) => id === userId)) {
-      let error = new Error('User already subscribed on workflow errors');
+      let error = new PublicError('User already subscribed on workflow errors');
       (error as any).details = { workflowTemplateId, userId };
       throw error;
     }
 
     // Check passed email subscribed on workflow errors.
     if (existingErrorsSubscribers.some(({ email: existingUserEmail }) => existingUserEmail === email)) {
-      let error = new Error('Email already subscribed on workflow errors');
+      let error = new PublicError('Email already subscribed on workflow errors');
       (error as any).details = { workflowTemplateId, email };
       throw error;
     }
@@ -285,7 +286,7 @@ export class WorkflowBusiness {
 
     // Check passed user subscribed on workflow errors.
     if (!existingErrorsSubscribers.some(({ id }) => id === userId)) {
-      let error = new Error("User didn't subscribe on workflow errors. Can't unsubscribe.");
+      let error = new PublicError("User didn't subscribe on workflow errors. Can't unsubscribe.");
       (error as any).details = { workflowTemplateId, userId };
       throw error;
     }

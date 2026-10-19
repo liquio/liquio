@@ -345,9 +345,14 @@ describe('AuthController - ldap', () => {
     // Issue real tokens: an authorization code is put in the database, then exchanged on the token endpoint.
     async function issueTokens(): Promise<{ accessToken: string; refreshToken: string }> {
       const code = `ldap-sync-code-${++codeCounter}`;
-      await app
-        .model('authCode')
-        .create({ code, userId, clientId: CLIENT_ID, expires: new Date(Date.now() + 60000), scope: [], redirectUri: 'http://test-client-site' });
+      await app.model('authCode').create({
+        code,
+        userId,
+        clientId: CLIENT_ID,
+        expires: new Date(Date.now() + 60000),
+        scope: [],
+        redirectUri: 'http://test-client-site',
+      });
 
       const { body } = await app
         .request()

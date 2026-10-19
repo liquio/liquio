@@ -17,6 +17,8 @@ import {
   IdApiRoutes,
   IdApiSuccessResult,
   IdApiTokens,
+  IdApiSetTwoFactorAuthOptions,
+  IdApiSetTwoFactorAuthResult,
   IdApiUpdateUserOptions,
   IdApiUser,
   IdApiUserAdminAction,
@@ -54,6 +56,7 @@ export const ID_API_DEFAULT_ROUTES: IdApiRoutes = {
   updateUserInfo: '/user/info',
   updateUserById: '/user/info',
   updateUserOnboarding: '/user/info/onboarding',
+  setTwoFactorAuth: '/user/two_factor_auth',
   deleteUser: '/user',
   logoutByUserId: '/user/:id/logout',
   logoutOtherSessions: '/user/logout_other_sessions',
@@ -147,6 +150,9 @@ export class IdApiClient {
   /**
    * Get tokens by the authorization code. `POST /oauth/token/` (form).
    * @param {string} code Auth code.
+   * @param {object} [options] Code binding.
+   * @param {string} [options.redirectUri] Redirect URI used in the authorization request; id-api requires the same value here.
+   * @param {string} [options.codeVerifier] PKCE code verifier, when the authorization request had a code challenge.
    * @returns {Promise<IdApiTokens>}
    */
   async getTokens(code: string, options: IdApiGetTokensOptions = {}): Promise<IdApiTokens> {
@@ -507,6 +513,34 @@ export class IdApiClient {
   }
 
   /**
+   * Turn phone two factor auth on or off with the user token. `POST /user/two_factor_auth` (form, access token in the query).
+   * Id-api enables only for a verified phone and disables active phone 2FA only with a fresh SMS code. Refusals (4xx) are returned, not thrown.
+   * @param {string} accessToken User access token.
+   * @param {IdApiSetTwoFactorAuthOptions} options `useTwoFactorAuth` and, to disable, the SMS `code`.
+   * @returns {Promise<IdApiSetTwoFactorAuthResult>} `success` is `true` when id-api answered `ok`.
+   * @throws {IdApiError} On network errors, timeouts and 5xx answers.
+   */
+  async setTwoFactorAuth(accessToken: string, options: IdApiSetTwoFactorAuthOptions): Promise<IdApiSetTwoFactorAuthResult> {
+    const form: Record<string, string | undefined> = {
+      useTwoFactorAuth: options.useTwoFactorAuth === true || options.useTwoFactorAuth === 'true' ? 'true' : 'false',
+      code: options.code === undefined || options.code === null ? undefined : String(options.code),
+    };
+
+    try {
+      const { body } = await this.request({ method: 'POST', route: this.routes.setTwoFactorAuth, query: { access_token: accessToken }, form });
+      this.log('user-two-factor-auth-response', { enable: form.useTwoFactorAuth, response: body });
+      return { success: body === USER_INFO_UPDATED_RESPONSE };
+    } catch (error: any) {
+      if (error instanceof IdApiError && error.status && error.status < 500) {
+        const message = error.body?.error ?? error.message;
+        this.log('user-two-factor-auth-refused', { status: error.status, error: message }, 'warn');
+        return { success: false, status: error.status, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Update the user by ID. `PUT /user/info/:id` (basic auth).
    * @param {string} id User ID.
    * @param {Record<string, unknown>} data Fields to update.
@@ -708,10 +742,12 @@ export class IdApiClient {
   /**
    * Send an SMS for the phone verification. `GET /sign_up/confirmation/phone/send?phone=` (no basic auth).
    * @param {string | number} phone Phone.
+   * @param {string} [accessToken] User access token; binds the code to that user (required for `verifyPhoneAndSet`).
    * @returns {Promise<string>} `sendBySms` value.
    */
-  async sendSms(phone: string | number): Promise<string> {
-    const { body } = await this.request({ method: 'GET', route: this.routes.sendSms, query: { phone } });
+  async sendSms(phone: string | number, accessToken?: string): Promise<string> {
+    const query: Record<string, any> = accessToken ? { phone, access_token: accessToken } : { phone };
+    const { body } = await this.request({ method: 'GET', route: this.routes.sendSms, query });
 
     if (!body?.sendBySms) {
       throw new Error(IdApiErrorMessage.UserSmsNotResponsed);
@@ -824,13 +860,19 @@ export class IdApiClient {
   // ---------------------------------------------------------------------------
 
   /**
-   * Generate a user TOTP secret. `GET /totp/generate?userId=` (basic auth). Never throws.
+   * Generate a user TOTP secret. `GET /totp/generate?userId=&access_token=` (basic auth plus the user token). Never throws.
    * @param {string} userId User ID.
+   * @param {string} [accessToken] User access token; id-api binds the operation to that user (required when `auth_providers.totp.requireUserToken` is on).
    * @returns {Promise<{success: boolean, secret?: string, uri?: string}>}
    */
-  async generateUserTotp(userId: string): Promise<{ success: boolean; secret?: string; uri?: string }> {
+  async generateUserTotp(userId: string, accessToken?: string): Promise<{ success: boolean; secret?: string; uri?: string }> {
     try {
-      const { body } = await this.request({ method: 'GET', route: this.routes.generateUserTotp, query: { userId }, basicAuth: true });
+      const { body } = await this.request({
+        method: 'GET',
+        route: this.routes.generateUserTotp,
+        query: this.totpQuery({ userId }, accessToken),
+        basicAuth: true,
+      });
       const { secret, uri, error } = body || {};
 
       if (error) {
@@ -846,24 +888,26 @@ export class IdApiClient {
   }
 
   /**
-   * Enable the user TOTP secret. `POST /totp/enable` (basic auth). Never throws.
+   * Enable the user TOTP secret. `POST /totp/enable?access_token=` (basic auth plus the user token). Never throws.
    * @param {string} userId User ID.
    * @param {string} secret TOTP secret.
    * @param {string} code TOTP code.
+   * @param {string} [accessToken] User access token (required when `auth_providers.totp.requireUserToken` is on).
    * @returns {Promise<{success: boolean}>}
    */
-  async enableUserTotpSecret(userId: string, secret: string, code: string): Promise<{ success: boolean }> {
-    return this.postTotp('enable-user-totp', this.routes.enableUserTotpSecret, { userId, secret, code });
+  async enableUserTotpSecret(userId: string, secret: string, code: string, accessToken?: string): Promise<{ success: boolean }> {
+    return this.postTotp('enable-user-totp', this.routes.enableUserTotpSecret, { userId, secret, code }, accessToken);
   }
 
   /**
-   * Disable the user TOTP secret. `POST /totp/disable` (basic auth). Never throws.
+   * Disable the user TOTP secret. `POST /totp/disable?access_token=` (basic auth plus the user token). Never throws.
    * @param {string} userId User ID.
-   * @param {string} code TOTP code.
+   * @param {string} code TOTP code (current code of the user, re-authenticates the change).
+   * @param {string} [accessToken] User access token (required when `auth_providers.totp.requireUserToken` is on).
    * @returns {Promise<{success: boolean}>}
    */
-  async disableUserTotpSecret(userId: string, code: string): Promise<{ success: boolean }> {
-    return this.postTotp('disable-user-totp', this.routes.disableUserTotpSecret, { userId, code });
+  async disableUserTotpSecret(userId: string, code: string, accessToken?: string): Promise<{ success: boolean }> {
+    return this.postTotp('disable-user-totp', this.routes.disableUserTotpSecret, { userId, code }, accessToken);
   }
 
   // ---------------------------------------------------------------------------
@@ -1165,10 +1209,14 @@ export class IdApiClient {
   // Internals.
   // ---------------------------------------------------------------------------
 
-  private async postTotp(logPrefix: string, route: string, json: Record<string, unknown>): Promise<{ success: boolean }> {
+  private totpQuery(query: Record<string, QueryValue>, accessToken?: string): Record<string, QueryValue> {
+    return accessToken ? { ...query, access_token: accessToken } : query;
+  }
+
+  private async postTotp(logPrefix: string, route: string, json: Record<string, unknown>, accessToken?: string): Promise<{ success: boolean }> {
     try {
       this.log(`${logPrefix}-request`, { userId: json.userId });
-      const { body } = await this.request({ method: 'POST', route, json, basicAuth: true });
+      const { body } = await this.request({ method: 'POST', route, query: this.totpQuery({}, accessToken), json, basicAuth: true });
 
       if (body?.error) {
         this.log(`${logPrefix}-error`, { error: body.error }, 'error');

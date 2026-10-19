@@ -8,6 +8,7 @@ import { matchedData } from 'express-validator';
 import { Entity } from '../entities/entity';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { SequelizeDbError } from '../lib/errors';
+import { isPublicError, publicError } from '../lib/public_error';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -17,6 +18,8 @@ const EMPTY_DATA = {};
 const EMPTY_TEXT = '';
 const CONTENT_TYPE_HEADER = 'Content-Type';
 const CONTENT_DISPOSITION_HEADER = 'Content-Disposition';
+const CONTENT_TYPE_OPTIONS_HEADER = 'X-Content-Type-Options';
+const INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 const DEFAULT_ERROR_MESSAGE = 'Server error.';
 const RESPONSE_REPLACEMENT_TEXT = '*****';
 
@@ -153,9 +156,15 @@ export class Controller {
   responseFile(res: any, file: any, contentType: any, fileName?: any) {
     // Response.
     res.set(CONTENT_TYPE_HEADER, contentType);
+    res.set(CONTENT_TYPE_OPTIONS_HEADER, 'nosniff');
     if (fileName) {
-      const convertedFileName = _.toLower(transliteration.transliterate(fileName)).replace(/\s+/g, '_');
+      const convertedFileName = _.toLower(transliteration.transliterate(fileName))
+        .replace(/\s+/g, '_')
+        .replace(/["\\\r\n]/g, '');
       res.set(CONTENT_DISPOSITION_HEADER, `attachment; filename="${convertedFileName}"`);
+    } else if (!INLINE_CONTENT_TYPES.includes(String(contentType).split(';')[0].trim().toLowerCase())) {
+      // Only safe types may be rendered inline; everything else is a download.
+      res.set(CONTENT_DISPOSITION_HEADER, 'attachment');
     }
 
     global.log.save('http-response|file', { fileName, contentType });
@@ -176,11 +185,20 @@ export class Controller {
       httpStatusCode = error.httpStatusCode;
     }
 
-    // Define params.
+    // Define params. Full values go to the log and workflow errors; the client gets only safe values.
     const message = error?.toString();
     const code = error?.code;
     const errorDetails = details || error?.cause || error?.details;
     const stack = error.stack;
+
+    // Error instances are hidden unless they are intentional (public); strings and plain objects are trusted constants from the code.
+    const isErrorInstance = error instanceof Error;
+    const isPublic = !isErrorInstance || isPublicError(error);
+    const clientMessage = isPublic ? message : publicError(error, httpStatusCode);
+    const clientCode = isPublic ? code : undefined;
+    // Details taken from the error itself are hidden for non-public errors; explicitly passed details are kept unless they are the error's own.
+    const clientDetails =
+      isPublic || (details && details !== (error as any)?.details && details !== (error as any)?.cause) ? errorDetails : undefined;
 
     // Define response object.
     const responseObject = {
@@ -190,6 +208,14 @@ export class Controller {
         code,
       },
       traceId: getTraceId(),
+    };
+    const clientResponseObject = {
+      error: {
+        message: clientMessage,
+        details: clientDetails,
+        code: clientCode,
+      },
+      traceId: responseObject.traceId,
     };
 
     // Define response meta.
@@ -242,22 +268,22 @@ export class Controller {
     }
 
     // Delete logged requestBody.
-    if (responseObject.error.message.startsWith('{"')) {
+    if (clientResponseObject.error.message.startsWith('{"')) {
       try {
-        responseObject.error.message = JSON.parse(responseObject.error.message);
-        delete responseObject.error.message.requestBody;
-        responseObject.error.message = JSON.stringify(responseObject.error.message);
+        const parsedMessage = JSON.parse(clientResponseObject.error.message);
+        delete parsedMessage.requestBody;
+        clientResponseObject.error.message = JSON.stringify(parsedMessage);
       } catch (error) {
-        global.log.save('try-to-parse-error-message', { message: responseObject.error.message, error: error.message }, 'error');
+        global.log.save('try-to-parse-error-message', { message: clientResponseObject.error.message, error: error.message }, 'error');
       }
     }
 
     if (error instanceof SequelizeDbError) {
-      delete responseObject.error.details;
+      delete clientResponseObject.error.details;
     }
 
     // Response.
-    res.status(httpStatusCode).send(responseObject);
+    res.status(httpStatusCode).send(clientResponseObject);
   }
 
   /**

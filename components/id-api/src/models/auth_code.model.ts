@@ -5,10 +5,11 @@ export interface AuthCodeAttributes {
   clientId: string;
   expires: Date;
   userId: string;
+  authorizationVersion?: number;
   scope: string[];
-  redirectUri?: string;
-  codeChallenge?: string;
-  codeChallengeMethod?: string;
+  redirectUri?: string | null;
+  codeChallenge?: string | null;
+  codeChallengeMethod?: string | null;
 }
 
 /**
@@ -21,6 +22,7 @@ export class AuthCodeModel extends BaseModel<AuthCodeAttributes> {
     this.entity = this.sequelize.define(
       'auth_codes',
       {
+        authorizationVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         code: {
           type: DataTypes.STRING,
           primaryKey: true,
@@ -46,14 +48,14 @@ export class AuthCodeModel extends BaseModel<AuthCodeAttributes> {
             key: 'userId',
           },
         },
-        redirectUri: { type: DataTypes.TEXT, allowNull: true },
-        codeChallenge: { type: DataTypes.STRING(128), allowNull: true },
-        codeChallengeMethod: { type: DataTypes.STRING, allowNull: true },
         scope: {
           type: DataTypes.ARRAY(DataTypes.STRING),
           allowNull: false,
           defaultValue: [],
         },
+        redirectUri: { type: DataTypes.TEXT, allowNull: true },
+        codeChallenge: { type: DataTypes.STRING(128), allowNull: true },
+        codeChallengeMethod: { type: DataTypes.STRING, allowNull: true },
       },
       {
         timestamps: false,

@@ -5,7 +5,7 @@ import { getConfig } from 'core/helpers/configLoader';
 import generatePassword from 'password-generator';
 import { readAsUint8Array } from 'helpers/readFileList';
 import storage from 'helpers/storage';
-import { logout } from 'actions/auth';
+import { logout, AUTH_SET_TOKEN } from 'actions/auth';
 import { showServiceMessage } from 'actions/error';
 import objectProxy from './objectProxy';
 
@@ -62,6 +62,18 @@ const getResponseBody = async (response: Response, options?: ApiOptions): Promis
   const blob = await response.blob();
   return blob;
 };
+
+// Sliding session: the backend returns a renewed JWT in the `new_token` response header.
+export const NEW_TOKEN_HEADER = 'new_token';
+
+export function storeRenewedToken(response: Response, dispatch: Dispatch): void {
+  const newToken = response?.headers?.get?.(NEW_TOKEN_HEADER);
+  if (!newToken || !response.ok || newToken === storage.getItem('token')) {
+    return;
+  }
+  storage.setItem('token', newToken);
+  dispatch({ type: AUTH_SET_TOKEN, payload: newToken });
+}
 
 const st = storage.getItem('cabState');
 
@@ -153,6 +165,8 @@ async function createRequest(
     if (!navigator.onLine) {
       dispatch(showServiceMessage(new Error('ConnectionFailed')));
     }
+
+    storeRenewedToken(response, dispatch);
 
     const responseBody = (await getResponseBody(response, options)) as Record<string, unknown>;
 

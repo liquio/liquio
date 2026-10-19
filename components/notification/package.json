@@ -74,6 +74,7 @@
     "core-js@2.6.12": true,
     "cpu-features@0.0.10": true,
     "iconv@2.3.5": true,
+    "isolated-vm@6.2.0": true,
     "node-expat@2.4.1": true,
     "protobufjs@7.6.5": true,
     "ssh2@1.17.0": true,

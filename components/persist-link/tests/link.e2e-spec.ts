@@ -118,6 +118,30 @@ describe('LinkController', () => {
     await app.request().get(`/${definedHash}`).expect(302).expect('Location', targetUrl);
   });
 
+  it('should reject simple link create with a non-http(s) url', async () => {
+    app = await TestApp.setup();
+
+    for (const url of ['file:///etc/passwd', 'ftp://example.com/x', 'not a url']) {
+      await app.request().post('/link').set('token', token).send({ type: 'simple', options: { url }, small: true }).expect(400);
+    }
+  });
+
+  it('should redirect a simple link without redirect flag and never fetch the url', async () => {
+    app = await TestApp.setup();
+
+    const definedHash = `simple-noredirect-${Date.now()}`;
+    const targetUrl = 'http://127.0.0.1:1/';
+
+    await app
+      .request()
+      .post('/link')
+      .set('token', token)
+      .send({ type: 'simple', options: { url: targetUrl, method: 'POST' }, small: true, definedHash })
+      .expect(200);
+
+    await app.request().get(`/${definedHash}`).expect(302).expect('Location', targetUrl);
+  });
+
   it('should reject duplicated definedHash on /link create', async () => {
     app = await TestApp.setup();
 

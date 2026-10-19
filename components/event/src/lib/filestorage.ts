@@ -69,7 +69,7 @@ export class FileStorage {
       },
       timeout: this.getFileTimeout,
     };
-    global.log.save('filestorage-get-info-request-options-defined', { fileId, requestOptions });
+    global.log.save('filestorage-get-info-request-options-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
     const fileInfoResponse = await HttpRequest.send(requestOptions);
     global.log.save('filestorage-get-info-response', { fileId, fileInfoResponse });
     const { data: fileInfo } = fileInfoResponse;
@@ -95,7 +95,7 @@ export class FileStorage {
       timeout: this.downloadFileTimeout,
       responseType: encoding === null ? 'arraybuffer' : encoding,
     };
-    global.log.save('filestorage-download-request-options-defined', { fileId, requestOptions });
+    global.log.save('filestorage-download-request-options-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
     return requestOptions;
   }
 
@@ -148,7 +148,7 @@ export class FileStorage {
       },
       timeout: this.downloadFileTimeout,
     };
-    global.log.save('filestorage-download-preview-request-options-defined', { fileId, requestOptions });
+    global.log.save('filestorage-download-preview-request-options-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
     return requestOptions;
   }
 
@@ -181,7 +181,7 @@ export class FileStorage {
       },
       timeout: this.downloadFileTimeout,
     };
-    global.log.save('filestorage-download-zip-request-options-defined', { filesIds, requestOptions });
+    global.log.save('filestorage-download-zip-request-options-defined', { filesIds, requestOptions: Helpers.redactRequestOptions(requestOptions) });
     return requestOptions;
   }
 
@@ -225,7 +225,13 @@ export class FileStorage {
     if (contentLength) {
       requestOptions.headers['Content-Length'] = contentLength;
     }
-    global.log.save('filestorage-upload-request-options-defined', { name, description, contentType, contentLength, requestOptions });
+    global.log.save('filestorage-upload-request-options-defined', {
+      name,
+      description,
+      contentType,
+      contentLength,
+      requestOptions: Helpers.redactRequestOptions(requestOptions),
+    });
     return requestOptions;
   }
 
@@ -295,7 +301,7 @@ export class FileStorage {
       },
       timeout: this.getSetSignatureTimeout,
     };
-    global.log.save('filestorage-get-signatures-defined', { fileId, requestOptions });
+    global.log.save('filestorage-get-signatures-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
 
     // Do request and return result.
     const signaturesResponse = await HttpRequest.send(requestOptions);
@@ -326,7 +332,7 @@ export class FileStorage {
       body: { fileId, signedData, signature, certificate },
       timeout: this.getSetSignatureTimeout,
     };
-    global.log.save('filestorage-add-signature-defined', { fileId, requestOptions });
+    global.log.save('filestorage-add-signature-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
 
     // Do request and return result.
     const signatureResponse = await HttpRequest.send(requestOptions);
@@ -357,7 +363,7 @@ export class FileStorage {
     if (asFile) {
       requestOptions.responseType = 'stream';
     }
-    global.log.save('filestorage-get-p7s-signatures-defined', { fileId, requestOptions });
+    global.log.save('filestorage-get-p7s-signatures-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
     return requestOptions;
   }
 
@@ -440,7 +446,7 @@ export class FileStorage {
       body: { p7s },
       timeout: this.getSetSignatureTimeout,
     };
-    global.log.save('filestorage-update-p7s-signature-defined', { id, requestOptions });
+    global.log.save('filestorage-update-p7s-signature-defined', { id, requestOptions: Helpers.redactRequestOptions(requestOptions) });
 
     // Do request and return result.
     const updateSignatureResponse = await HttpRequest.send(requestOptions);
@@ -466,7 +472,7 @@ export class FileStorage {
       },
       timeout: this.getSetSignatureTimeout,
     };
-    global.log.save('filestorage-delete-file-defined', { id, requestOptions });
+    global.log.save('filestorage-delete-file-defined', { id, requestOptions: Helpers.redactRequestOptions(requestOptions) });
 
     // Do request and return result.
     const deleteSignatureResponse = await HttpRequest.send(requestOptions);
@@ -492,7 +498,7 @@ export class FileStorage {
       },
       timeout: this.getSetSignatureTimeout,
     };
-    global.log.save('filestorage-delete-signature-defined', { fileId, requestOptions });
+    global.log.save('filestorage-delete-signature-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
 
     // Do request and return result.
     const deleteSignatureResponse = await HttpRequest.send(requestOptions);
@@ -518,7 +524,7 @@ export class FileStorage {
       },
       timeout: this.getSetSignatureTimeout,
     };
-    global.log.save('filestorage-delete-p7s-signature-defined', { fileId, requestOptions });
+    global.log.save('filestorage-delete-p7s-signature-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
 
     // Do request and return result.
     const deleteSignatureResponse = await HttpRequest.send(requestOptions);
@@ -544,7 +550,7 @@ export class FileStorage {
       },
       timeout: this.downloadFileTimeout,
     };
-    global.log.save('filestorage-copy-file-defined', { fileId, requestOptions });
+    global.log.save('filestorage-copy-file-defined', { fileId, requestOptions: Helpers.redactRequestOptions(requestOptions) });
 
     // Do request and return result.
     const fileCopyResponse = await HttpRequest.send(requestOptions);
@@ -572,7 +578,7 @@ export class FileStorage {
       body: { filesIds },
       timeout: this.createAsicTimeout,
     };
-    global.log.save('filestorage-create-asic-manifest-defined', { filesIds, requestOptions });
+    global.log.save('filestorage-create-asic-manifest-defined', { filesIds, requestOptions: Helpers.redactRequestOptions(requestOptions) });
 
     // Do request and return result.
     const asicManifestResponse = await HttpRequest.send(requestOptions);
@@ -601,7 +607,7 @@ export class FileStorage {
       data: { manifestFileId, filesIds },
       timeout: this.createAsicTimeout,
     };
-    global.log.save('filestorage-create-asic-request-options-defined', { filesIds, requestOptions });
+    global.log.save('filestorage-create-asic-request-options-defined', { filesIds, requestOptions: Helpers.redactRequestOptions(requestOptions) });
     return requestOptions;
   }
 

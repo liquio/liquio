@@ -42,10 +42,10 @@ describe('translation locales', () => {
     expect(ua.locale).toBe('en');
   });
 
-  it('en has 293 keys, fr 342 and ua 339', () => {
-    expect(enKeys.size).toBe(293);
-    expect(keysOf(fr).size).toBe(342);
-    expect(keysOf(ua).size).toBe(339);
+  it('en has 292 keys, fr 341 and ua 338', () => {
+    expect(enKeys.size).toBe(292);
+    expect(keysOf(fr).size).toBe(341);
+    expect(keysOf(ua).size).toBe(338);
   });
 
   const missingInBoth = [

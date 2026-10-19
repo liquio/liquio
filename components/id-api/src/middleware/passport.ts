@@ -6,7 +6,25 @@ import { Log } from '@liquio/back-core';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { Models } from '../models';
 import { Services } from '../services';
-import { Express } from '../types';
+import { clearTwoFactorState } from '../lib/two_factor';
+import { Express, NextFunction, Request, Response } from '../types';
+
+/**
+ * Requests the upstream OAuth2 user profile.
+ * The access token is sent in the `Authorization: Bearer` header, so it never lands in URLs (access logs, proxies).
+ * `tokenInQuery` is a legacy opt-in for upstreams which accept only `?access_token=`.
+ */
+export function fetchOAuth2Profile(config: { userProfileUrl: string; tokenInQuery?: boolean }, accessToken: string, log?: Log) {
+  if (config.tokenInQuery) {
+    log?.save(
+      'user-auth-by-oauth2-token-in-query',
+      { warning: 'auth_providers.oauth2.tokenInQuery is enabled: access token is sent in the URL query' },
+      'warn',
+    );
+    return axios.get(config.userProfileUrl, { params: { access_token: accessToken } });
+  }
+  return axios.get(config.userProfileUrl, { headers: { Authorization: 'Bearer ' + accessToken } });
+}
 
 export function usePassport(express: Express) {
   const log = Log.getInstance();
@@ -18,6 +36,19 @@ export function usePassport(express: Express) {
 
   express.use(passport.initialize());
   express.use(passport.session());
+
+  // Every new primary authentication (any strategy) goes through `req.logIn`.
+  // Reset the second factor state there, so a completion proof of a previous login can never be reused.
+  express.use((req: Request, res: Response, next: NextFunction) => {
+    const logIn = req.logIn;
+    const resetAndLogIn = function (this: Request, ...args: any[]) {
+      clearTwoFactorState(this);
+      return (logIn as any).apply(this, args);
+    };
+    req.logIn = resetAndLogIn as any;
+    req.login = resetAndLogIn as any;
+    next();
+  });
 
   passport.serializeUser(function (user: any, done) {
     if (user?.cached) {
@@ -57,11 +88,10 @@ export function usePassport(express: Express) {
     const config = express.config.auth_providers.oauth2;
     passport.use(
       new OAuth2Strategy(config, (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
-        log.save('user-auth-by-oauth2', { accessToken, refreshToken, profile }, 'info');
-        axios
-          .get(config.userProfileUrl + '?access_token=' + accessToken)
+        log.save('user-auth-by-oauth2', { profileId: profile?.id }, 'info');
+        fetchOAuth2Profile(config, accessToken, log)
           .then(async (response) => {
-            log.save('user-auth-by-oauth2', { response: response.data }, 'info');
+            log.save('user-auth-by-oauth2', { status: response.status }, 'info');
             const userData = response.data;
 
             const userCode = calculateUserCode(userData.ipn, userData.edrpou);
@@ -98,7 +128,7 @@ export function usePassport(express: Express) {
                   )
                   .then((row) => row?.dataValues);
               } catch (error) {
-                log.save('user-auth-by-oauth2', { error }, 'error');
+                log.save('user-auth-by-oauth2', { error: (error as any)?.message }, 'error');
                 done(error);
                 return;
               }
@@ -107,7 +137,7 @@ export function usePassport(express: Express) {
             done(null, user as any);
           })
           .catch((error) => {
-            log.save('user-auth-by-oauth2', { error }, 'error');
+            log.save('user-auth-by-oauth2', { error: (error as any)?.message }, 'error');
             done(error);
           });
       }),
@@ -121,7 +151,7 @@ export function usePassport(express: Express) {
         keepSessionInfo: true,
       }),
       (req, res) => {
-        log.save('user-auth-by-oauth2', { user: req.session.passport?.user }, 'info');
+        log.save('user-auth-by-oauth2', { userId: (req.session.passport?.user as any)?.userId ?? (req.session.passport?.user as any)?.id }, 'info');
         req.session.save(() => setTimeout(() => res.redirect('/authorise/continue/'), 250));
       },
     );

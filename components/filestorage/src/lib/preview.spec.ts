@@ -95,12 +95,11 @@ describe('Preview', () => {
 
       const preview = new Preview({});
 
-      expect(preview.config.server).toBe('http://0.0.0.0:3345');
+      expect(preview.config.server).toBe('');
+      expect(preview.enabled).toBe(false);
       expect(preview.config.routes.generatePreview).toBe('/preview');
       expect(preview.config.routes.ping).toBe('/test/ping');
       expect(preview.timeout).toBe(5000);
-      expect(preview.generatePreviewUrl).toBe('http://0.0.0.0:3345/preview');
-      expect(preview.sendTestPingUrl).toBe('http://0.0.0.0:3345/test/ping');
     });
 
     it('should merge default config with provided config', () => {
@@ -191,6 +190,24 @@ describe('Preview', () => {
       }
     });
 
+    it.each([['a.pdf&x=1'], ['a.pdf#frag'], ['a.p df'], ['a.pdf=1'], ['a.pdf%26x%3D1'], ['a.waytoolongextension']])(
+      'should not let file name %j alter query parameters',
+      async (fileName) => {
+        let requestedUrl = '';
+        const scope = nock('http://localhost:3345')
+          .post(/\/preview/)
+          .reply(200, function (uri) {
+            requestedUrl = uri;
+            return 'preview';
+          });
+
+        await preview.getPreview('content', fileName);
+
+        expect(scope.isDone()).toBe(true);
+        expect(requestedUrl).toBe('/preview?file_extension=');
+      },
+    );
+
     it('should handle file data as Buffer', async () => {
       const fileData = Buffer.from([0x89, 0x50, 0x4e, 0x47]); // PNG header
       const fileName = 'image.png';
@@ -234,7 +251,7 @@ describe('Preview', () => {
       const fileData = 'content';
       const fileName = 'filename_without_extension';
 
-      nock('http://localhost:3345').post('/preview?file_extension=filename_without_extension').reply(200, 'preview');
+      nock('http://localhost:3345').post('/preview?file_extension=').reply(200, 'preview');
 
       const result = await preview.getPreview(fileData, fileName);
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -500,6 +517,7 @@ describe('Preview', () => {
 
     it('should return true for allowed content types', () => {
       const config = {
+        server: 'http://localhost:3345',
         contentTypes: ['image/jpeg', 'image/png', 'application/pdf'],
       };
 
@@ -512,6 +530,7 @@ describe('Preview', () => {
 
     it('should return false for disallowed content types', () => {
       const config = {
+        server: 'http://localhost:3345',
         contentTypes: ['image/jpeg', 'image/png'],
       };
 
@@ -533,6 +552,7 @@ describe('Preview', () => {
 
     it('should return false when content types array is empty', () => {
       const config = {
+        server: 'http://localhost:3345',
         contentTypes: [],
       };
 
@@ -544,6 +564,7 @@ describe('Preview', () => {
 
     it('should handle case sensitivity correctly', () => {
       const config = {
+        server: 'http://localhost:3345',
         contentTypes: ['image/jpeg', 'image/PNG'],
       };
 
@@ -557,6 +578,7 @@ describe('Preview', () => {
 
     it('should handle special characters in content types', () => {
       const config = {
+        server: 'http://localhost:3345',
         contentTypes: ['application/vnd.ms-excel', 'text/plain; charset=utf-8'],
       };
 
@@ -569,6 +591,7 @@ describe('Preview', () => {
 
     it('should handle undefined content type', () => {
       const config = {
+        server: 'http://localhost:3345',
         contentTypes: ['image/jpeg'],
       };
 
@@ -581,6 +604,7 @@ describe('Preview', () => {
 
     it('should handle content types with multiple values', () => {
       const config = {
+        server: 'http://localhost:3345',
         contentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword'],
       };
 
@@ -597,6 +621,49 @@ describe('Preview', () => {
       disallowedTypes.forEach((type) => {
         expect(preview.isPreviewAllowed(type)).toBe(false);
       });
+    });
+  });
+
+  describe('Disabled preview (empty server)', () => {
+    beforeEach(() => {
+      Preview.singleton = null;
+      (global.log.save as jest.Mock).mockClear();
+    });
+
+    it.each(['', '   ', undefined])('is disabled for server=%p and never errors', async (server) => {
+      const preview = new Preview({ server, contentTypes: ['application/pdf'] });
+      nock.disableNetConnect();
+
+      expect(preview.enabled).toBe(false);
+      expect(preview.isPreviewAllowed('application/pdf')).toBe(false);
+      await expect(preview.getPreview(Buffer.from('x'), 'a.pdf')).resolves.toBeUndefined();
+      await expect(preview.sendPingRequest()).resolves.toBeUndefined();
+      expect(global.log.save).not.toHaveBeenCalled();
+      nock.enableNetConnect();
+    });
+  });
+
+  describe('Insecure transport warning', () => {
+    beforeEach(() => {
+      Preview.singleton = null;
+      (global.log.save as jest.Mock).mockClear();
+    });
+
+    it.each(['http://preview.example.com:3345', 'http://10.10.172.128:3345'])('warns for %s', (server) => {
+      new Preview({ server });
+      expect(global.log.save).toHaveBeenCalledWith('preview-server-insecure-http', expect.objectContaining({ host: expect.any(String) }));
+    });
+
+    it.each([
+      'http://localhost:3345',
+      'http://127.0.0.1:3345',
+      'http://preview:3345',
+      'http://preview.ns.svc:3345',
+      'http://preview.ns.svc.cluster.local',
+      'https://preview.example.com',
+    ])('does not warn for %s', (server) => {
+      new Preview({ server });
+      expect(global.log.save).not.toHaveBeenCalled();
     });
   });
 

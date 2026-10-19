@@ -56,37 +56,42 @@ describe('actions/auth', () => {
     expect(api.post).toHaveBeenCalledWith('users/email/confirm', { email: 'a@b', code: '1' }, 'VERIFY_EMAIL_CODE', dispatch);
   });
 
-  it('checkPhoneExists puts the phone in the query string without encoding it', () => {
-    actions.checkPhoneExists('+380 50');
-    expect(api.get).toHaveBeenCalledWith('sign_up/confirmation/phone/exist?phone=+380 50', 'CHECK_PHONE_EXISTS', dispatch);
-  });
-
-  it('sendActivationCodeSMS requests the code by phone', () => {
+  it('sendActivationCodeSMS posts the phone in the body', () => {
     actions.sendActivationCodeSMS('1');
-    expect(api.get).toHaveBeenCalledWith('sign_up/confirmation/phone/send?phone=1', 'SEND_ACTIVATION_CODE_SMS', dispatch);
+    expect(api.post).toHaveBeenCalledWith('sign_up/confirmation/phone/send', { phone: '1' }, 'SEND_ACTIVATION_CODE_SMS', dispatch);
   });
 
-  it('verifyActivationCodeSMS sends the phone and the code in the query string', () => {
+  it('verifyActivationCodeSMS posts the phone and the code in the body, not the URL', () => {
     actions.verifyActivationCodeSMS('1', '2');
-    expect(api.get).toHaveBeenCalledWith(
-      'sign_up/confirmation/phone/verify?phone=1&code=2',
+    expect(api.post).toHaveBeenCalledWith(
+      'sign_up/confirmation/phone/check_code',
+      { phone: '1', code: '2' },
       'VERIFY_ACTIVATION_CODE_SMS',
       dispatch,
     );
   });
 
-  it('sendActivationCodeEmail requests the code by email', () => {
+  it('sendActivationCodeEmail posts the email in the body', () => {
     actions.sendActivationCodeEmail('a@b');
-    expect(api.get).toHaveBeenCalledWith('sign_up/confirmation/email/send?email=a@b', 'SEND_ACTIVATION_CODE_EMAIL', dispatch);
+    expect(api.post).toHaveBeenCalledWith('sign_up/confirmation/email/send', { email: 'a@b' }, 'SEND_ACTIVATION_CODE_EMAIL', dispatch);
   });
 
-  it('verifyActivationCodeEmail sends the email and the code in the query string', () => {
+  it('verifyActivationCodeEmail posts the email and the code in the body, not the URL', () => {
     actions.verifyActivationCodeEmail('a@b', '2');
-    expect(api.get).toHaveBeenCalledWith(
-      'sign_up/confirmation/email/verify?email=a@b&code=2',
+    expect(api.post).toHaveBeenCalledWith(
+      'sign_up/confirmation/email/verify',
+      { email: 'a@b', code: '2' },
       'VERIFY_ACTIVATION_CODE_EMAIL',
       dispatch,
     );
+  });
+
+  it('no auth action puts a code or recipient in a GET URL', () => {
+    actions.sendActivationCodeSMS('1');
+    actions.verifyActivationCodeSMS('1', '2');
+    actions.sendActivationCodeEmail('a@b');
+    actions.verifyActivationCodeEmail('a@b', '2');
+    expect(api.get).not.toHaveBeenCalled();
   });
 
   it('signUpConfirmation posts the register data as is', () => {
@@ -134,5 +139,10 @@ describe('actions/auth', () => {
   it('handlePKCS7Auth posts the signature', () => {
     actions.handlePKCS7Auth('sig');
     expect(api.post).toHaveBeenCalledWith('authorise/x509', { pkcs7: 'sig' }, 'PKCS7_AUTH', dispatch);
+  });
+
+  it('handlePKCS7Auth posts the signature with the signed challenge token', () => {
+    actions.handlePKCS7Auth('sig', 'tok');
+    expect(api.post).toHaveBeenCalledWith('authorise/x509', { pkcs7: 'sig', token: 'tok' }, 'PKCS7_AUTH', dispatch);
   });
 });

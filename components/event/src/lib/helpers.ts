@@ -16,7 +16,94 @@ const MIME_TYPES: Record<string, number[]> = {
   'IMAGE/JPG': [0xff, 0xd8, 0xff],
 };
 
+const REDACTED = '****';
+
+// Names (headers, body keys) whose values must never be logged.
+const SENSITIVE_NAME_RE = /token|authori[sz]ation|cookie|api[-_]?key|secret|password|signature/i;
+// Max length of a logged response body string.
+const MAX_LOGGED_RESPONSE_LENGTH = 2000;
+
+const SENSITIVE_KEYS = new Set([
+  'authorization',
+  'proxy-authorization',
+  'cookie',
+  'x-api-key',
+  'token',
+  'access_token',
+  'refresh_token',
+  'client_secret',
+  'password',
+  'secret',
+]);
+
+const isSensitiveName = (name: string): boolean => SENSITIVE_KEYS.has(name.toLowerCase()) || SENSITIVE_NAME_RE.test(name);
+
 export class Helpers {
+  /**
+   * Mask values of sensitive headers (case-insensitive) for logging.
+   * @param {object} [headers]
+   * @return {object}
+   */
+  static redactHeaders(headers: any): any {
+    if (!headers || typeof headers !== 'object' || Array.isArray(headers)) return headers;
+    const result: any = {};
+    for (const [key, value] of Object.entries(headers)) {
+      result[key] = isSensitiveName(key) ? REDACTED : value;
+    }
+    return result;
+  }
+
+  /**
+   * Mask values of sensitive keys (case-insensitive) in a nested object/array for logging.
+   * Strings and other primitives are returned as is.
+   * @param {any} data
+   * @return {any}
+   */
+  static redactSensitiveData(data: any): any {
+    if (Array.isArray(data)) return data.map((v) => this.redactSensitiveData(v));
+    if (typeOf(data) !== 'object') return data;
+    const result: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      result[key] = isSensitiveName(key) ? REDACTED : this.redactSensitiveData(value);
+    }
+    return result;
+  }
+
+  /**
+   * Request options safe to log: sensitive headers and body keys masked, long bodies cut, agents and streams/buffers dropped.
+   * @param {object} requestOptions Axios-like request options.
+   * @return {object}
+   */
+  static redactRequestOptions(requestOptions: any): any {
+    if (!requestOptions || typeof requestOptions !== 'object') return requestOptions;
+    const result: any = { ...requestOptions, headers: this.redactHeaders(requestOptions.headers), httpsAgent: undefined, agent: undefined };
+    for (const field of ['data', 'body']) {
+      const value = requestOptions[field];
+      if (value === undefined) continue;
+      result[field] =
+        value instanceof Stream || Buffer.isBuffer(value)
+          ? 'binary'
+          : this.redactSensitiveData(this.cutLongStrings(value, MAX_LOGGED_RESPONSE_LENGTH));
+    }
+    return result;
+  }
+
+  /**
+   * Response body safe to log: streams and buffers dropped, secret keys masked, long strings cut.
+   * @param {any} data Response data.
+   * @return {any}
+   */
+  static prepareResponseDataToLog(data: any): any {
+    if (data instanceof Stream) return (data?.constructor?.name && `${data.constructor.name} stream`) || 'stream.Stream';
+    if (Buffer.isBuffer(data) || data instanceof ArrayBuffer) return 'binary';
+    if (data === undefined || data === null || data === '') return {};
+    const prepared = this.redactSensitiveData(this.cutLongStrings(data, MAX_LOGGED_RESPONSE_LENGTH));
+    // Plain-text bodies: mask query/form-style pairs, e.g. "token=abc&x=1".
+    return typeof prepared === 'string'
+      ? prepared.replace(/([\w.-]+)=([^&\s"']*)/g, (match, key) => (isSensitiveName(key) ? `${key}=${REDACTED}` : match))
+      : prepared;
+  }
+
   /**
    * Substring long strings in object. {str1: '12345', str2: '123456789'} => {str1: '12345', str2: '12345...'}
    * @param {Object|String} strOrObj
@@ -181,20 +268,16 @@ export class Helpers {
   static prepareAxiosErrorToLog(error: any, { withHeaders = false }: { withHeaders?: boolean } = {}): any {
     // Prepare axios error only.
     if (!(error instanceof AxiosError)) return { error: error.toString() };
-    const responseData = error.response?.data;
     const result: any = {
       error: error.message || 'UNKNOWN_ERROR_MESSAGE', // "Request failed with status code 404" || "timeout of 30000ms exceeded"
       code: error.code || 'UNKNOWN_ERROR_CODE', // "ERR_BAD_REQUEST" || "ESOCKETTIMEDOUT"
       status: error.response?.status || (error as any).status || 'UNKNOWN_ERROR_STATUS', // 404 || 500 || "UNKNOWN_ERROR_STATUS"
       statusText: error.response?.statusText, // "Not Found" || null
-      responseData:
-        responseData instanceof Stream
-          ? (responseData?.constructor?.name && `${responseData.constructor.name} stream`) || 'stream.Stream'
-          : responseData || {}, // { "error": "File not found" }
+      responseData: Helpers.prepareResponseDataToLog(error.response?.data), // { "error": "File not found" }, secrets masked, long values cut
       url: `${error.config?.baseURL ? error.config.baseURL : ''}${error.config?.url}`, // "https://api.example.com/files/12345"
       method: (error.config?.method || '').toUpperCase(), // GET || POST
     };
-    if (withHeaders) result.headers = error.config?.headers || {};
+    if (withHeaders) result.headers = Helpers.redactHeaders(error.config?.headers) || {};
     return result;
   }
 
@@ -238,13 +321,15 @@ export class Helpers {
     const name = error.name; // "AxiosError"
     const code = error.code; // "ERR_BAD_REQUEST" || "ESOCKETTIMEDOUT"
     const message = error.message; // "Request failed with status code 404 || "timeout of 30000ms exceeded"
+    // Secrets masked and long values cut, the same as in the logs.
     const responseDataRaw = error.response?.data;
+    const responseDataPrepared = responseDataRaw instanceof Stream ? undefined : Helpers.prepareResponseDataToLog(responseDataRaw);
     const responseData =
-      responseDataRaw instanceof Stream
-        ? undefined
-        : typeof responseDataRaw === 'object' && responseDataRaw !== null
-          ? JSON.stringify(responseDataRaw)
-          : responseDataRaw;
+      typeof responseDataPrepared === 'object' && responseDataPrepared !== null
+        ? Object.keys(responseDataPrepared).length > 0
+          ? JSON.stringify(responseDataPrepared)
+          : undefined
+        : responseDataPrepared;
 
     // "Axios error - ERR_BAD_REQUEST - Request failed with status code 400 - {\"message\":\"Sign is required\",\"error\":\"Bad Request\",\"statusCode\":400}"
     return `${name} - ${code} - ${message}${responseData ? ` - ${responseData}` : ''}`;
@@ -310,5 +395,28 @@ export class Helpers {
 
     // Return transformed function.
     return asyncFunctionString;
+  }
+
+  /**
+   * Escape a value for safe use as a CSV cell.
+   * Prevents formula injection (leading `=`, `+`, `-`, `@`, tab, CR get a `'` prefix) and quotes cells
+   * containing commas, double quotes or line breaks (RFC 4180). Real numbers are never prefixed,
+   * so negative numbers stay numeric; numeric-looking strings such as "-5" are treated as text and prefixed.
+   * @param {*} value Cell value.
+   * @returns {string} Escaped cell.
+   */
+  static escapeCsvCell(value: any): string {
+    let cell = String(value ?? '');
+
+    const isNumber = typeof value === 'number' || typeof value === 'bigint';
+    if (!isNumber && /^[=+\-@\t\r]/.test(cell)) {
+      cell = `'${cell}`;
+    }
+
+    if (/[,"\n\r]/.test(cell)) {
+      cell = `"${cell.replace(/"/g, '""')}"`;
+    }
+
+    return cell;
   }
 }

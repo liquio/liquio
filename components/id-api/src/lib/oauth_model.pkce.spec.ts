@@ -5,7 +5,12 @@ import OAuth2Server from '@node-oauth/oauth2-server';
 import { Models } from '../models';
 import { OAuthModel } from './oauth_model';
 
-jest.mock('../models', () => ({ Models: { model: jest.fn() } }));
+jest.mock('../models', () => ({
+  Models: {
+    model: jest.fn(),
+    db: { transaction: jest.fn((callback) => callback({ LOCK: { UPDATE: 'UPDATE' } })) },
+  },
+}));
 jest.mock('../services', () => ({ Services: { service: jest.fn() } }));
 jest.mock('@liquio/back-core', () => ({ Log: { getInstance: () => ({ save: jest.fn() }) } }));
 
@@ -40,6 +45,7 @@ describe('OAuth authorization code bindings', () => {
           findOne: jest.fn(async ({ where }) => (rows.has(where.code) ? { dataValues: { ...rows.get(where.code) } } : null)),
           destroy: jest.fn(async ({ where }) => Number(rows.delete(where.code))),
         };
+      if (name === 'user') return { findOne: jest.fn(async () => ({ dataValues: { authorizationVersion: 0 } })) };
       if (name === 'client') return { findOne: jest.fn(async () => ({ dataValues: { ...client } })) };
       if (name === 'accessToken' || name === 'refreshToken') return { create: createToken };
       throw new Error(`Unexpected model ${name}`);

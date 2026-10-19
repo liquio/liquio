@@ -26,6 +26,9 @@ import { HttpClient } from '../src/lib/http_client';
 import { typeOf } from '../src/lib/type_of';
 import { initIdApiClient } from '../src/lib/id_api';
 
+// Token admin-api sends to task in tests (not a real credential).
+export const TASK_TOKEN = `Basic ${Buffer.from('admin-api:test-task-secret').toString('base64')}`;
+
 const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout
@@ -132,7 +135,7 @@ export class TestApp {
       ...defaultConfig.task,
       server: 'http://task',
       port: 3000,
-      token: 'Basic dGFzazp0YXNr',
+      token: TASK_TOKEN,
     };
 
     configOverride.register = {
@@ -343,7 +346,7 @@ export class TestApp {
       },
     };
     return {
-      jwt: jsonwebtoken.sign(JSON.stringify(payload), global.config.auth.jwtSecret),
+      jwt: jsonwebtoken.sign(payload, global.config.auth.jwtSecret),
       payload,
     };
   }
@@ -381,11 +384,14 @@ export class TestApp {
     if (global.slaveDb) {
       await global.slaveDb.close();
     }
-    if (this.routerService && this.routerService.httpServer) {
-      this.routerService.httpServer.close();
+    const { wss, server } = this.routerService || {};
+    if (wss) {
+      wss.clients.forEach((client) => client.terminate());
+      await new Promise((resolve) => wss.close(resolve));
     }
-    if (this.ws) {
-      this.ws.close();
+    if (server) {
+      server.closeAllConnections?.();
+      await new Promise((resolve) => server.close(resolve));
     }
   }
 }

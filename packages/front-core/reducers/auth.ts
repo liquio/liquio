@@ -37,6 +37,8 @@ export const initialState: AuthState = {
   debugMode: false,
 };
 
+const readTwoFactorType = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
 const rootReducer = (state: AuthState = initialState, action: StoreAction): AuthState => {
   const config = getConfig();
 
@@ -132,6 +134,7 @@ const rootReducer = (state: AuthState = initialState, action: StoreAction): Auth
           readRecord(action.payload, 'Auth mode').useTwoFactorAuth,
           'useTwoFactorAuth',
         ),
+        twoFactorType: readTwoFactorType(readRecord(action.payload, 'Auth mode').twoFactorType),
       };
     case SEARCH_USER_SUCCESS: {
       const { users } = readRecord(action.payload, 'User search');

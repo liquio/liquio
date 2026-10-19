@@ -2,6 +2,7 @@ import moment from 'moment';
 import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
+import { PublicError } from '../lib/public_error';
 
 /**
  * SQL Reports controller.
@@ -29,7 +30,7 @@ export class StatController extends Controller {
    */
   async getStatByDate({ params: { date } }) {
     const methodStartTimestamp = Date.now();
-    if (!date?.match(/^\d{4}-\d{2}-\d{2}$/)) throw new Error('date should be in YYYY-MM-DD format');
+    if (!date?.match(/^\d{4}-\d{2}-\d{2}$/)) throw new PublicError('date should be in YYYY-MM-DD format');
     const yesterday = moment(date).subtract(1, 'day').format('YYYY-MM-DD');
     const date7daysAgo = moment(date).subtract(7, 'day').format('YYYY-MM-DD');
 

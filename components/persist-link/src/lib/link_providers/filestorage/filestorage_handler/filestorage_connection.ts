@@ -1,12 +1,21 @@
 // Import.
 import crypto from 'node:crypto';
+import { PassThrough } from 'node:stream';
 
 import axios from 'axios';
-import request from 'request';
 
 import { getLog } from '../../../context';
 import { prepareAxiosErrorToLog } from '../../../helpers';
+import { redact } from '../../../log_redact';
 import HttpRequest from './http_request';
+
+/**
+ * Save log with sensitive values (tokens, headers) redacted.
+ * @param {string} name Log name.
+ * @param {*} [payload] Log payload.
+ * @param {...*} rest Other log params.
+ */
+const saveLog = (name, payload?, ...rest) => getLog().save(name, redact(payload), ...rest);
 
 /**
  * File storage connection.
@@ -36,16 +45,16 @@ class FileStorageConnection {
    */
   async getFileInfo(fileId) {
     // Define and return request options.
-    getLog().save('filestorage-get-info-request-options-initialized', { fileId });
+    saveLog('filestorage-get-info-request-options-initialized', { fileId });
     const requestOptions = {
       url: `${this.apiHost}/files/${fileId}/info`,
       method: 'GET',
       headers: { token: this.token },
     };
-    getLog().save('filestorage-get-info-request-options-defined', { fileId, requestOptions });
+    saveLog('filestorage-get-info-request-options-defined', { fileId, requestOptions });
 
     const fileInfoResponse = await HttpRequest.send(requestOptions);
-    getLog().save('filestorage-get-info-response', { fileId, fileInfoResponse });
+    saveLog('filestorage-get-info-response', { fileId, fileInfoResponse });
     const { data: fileInfo } = fileInfoResponse;
     return fileInfo;
   }
@@ -58,7 +67,7 @@ class FileStorageConnection {
   async checkValidToken() {
     const url = `${this.apiHost}/test/ping_with_auth`;
 
-    getLog().save('filestorage-check-valid-token-request-initialized', { url });
+    saveLog('filestorage-check-valid-token-request-initialized', { url });
 
     const requestOptions = {
       url,
@@ -66,14 +75,14 @@ class FileStorageConnection {
       headers: { token: this.token },
     };
 
-    getLog().save('filestorage-check-token-request-defined', {
+    saveLog('filestorage-check-token-request-defined', {
       url,
       requestOptions,
     });
 
     const { data, error } = await HttpRequest.send(requestOptions);
 
-    getLog().save('filestorage-get-info-response', { url, data });
+    saveLog('filestorage-get-info-response', { url, data });
 
     return { data, error };
   }
@@ -87,14 +96,14 @@ class FileStorageConnection {
    */
   async downloadFileRequestOptions(fileId, { isP7s = false }) {
     // Define and return request options.
-    getLog().save('filestorage-download-request-options-initialized', { fileId, isP7s });
+    saveLog('filestorage-download-request-options-initialized', { fileId, isP7s });
     const requestOptions = {
       url: `${this.apiHost}/files/${fileId}${isP7s ? '/p7s?as_file=true' : ''}`,
       method: 'GET',
       headers: { token: this.token },
       timeout: this.downloadUploadTimeout,
     };
-    getLog().save('filestorage-download-request-options-defined', {
+    saveLog('filestorage-download-request-options-defined', {
       fileId,
       requestOptions,
     });
@@ -106,12 +115,12 @@ class FileStorageConnection {
    * @param {string} fileId File ID.
    * @param {object} additionalOptions Additional options.
    * @param {boolean} additionalOptions.isP7s Must we return link to p7s of file.
-   * @returns {Promise<ReadableStream>} Promise of readable stream to download file.
+   * @returns {Promise<import('http').IncomingMessage>} Promise of readable stream to download file (with upstream status code and headers).
    */
   async downloadFile(fileId, { isP7s = false }) {
     // Get options to handle file.
     const requestOptions = await this.downloadFileRequestOptions(fileId, { isP7s });
-    return request(requestOptions);
+    return HttpRequest.stream(requestOptions);
   }
 
   /**
@@ -130,7 +139,7 @@ class FileStorageConnection {
       timeout: this.downloadUploadTimeout,
       responseType: 'arraybuffer',
     };
-    getLog().save('filestorage-download-without-stream-request-options-defined', {
+    saveLog('filestorage-download-without-stream-request-options-defined', {
       fileId,
       requestOptions,
     });
@@ -142,7 +151,7 @@ class FileStorageConnection {
       }
       return response.data;
     } catch (error) {
-      getLog().save('filestorage-download-file-without-stream|error', prepareAxiosErrorToLog(error), 'error');
+      saveLog('filestorage-download-file-without-stream|error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -154,7 +163,7 @@ class FileStorageConnection {
    */
   async downloadFilePreviewRequestOptions(fileId) {
     // Define and return request options.
-    getLog().save('filestorage-download-preview-request-options-initialized', {
+    saveLog('filestorage-download-preview-request-options-initialized', {
       fileId,
     });
     const requestOptions = {
@@ -163,7 +172,7 @@ class FileStorageConnection {
       headers: { token: this.token },
       timeout: this.downloadUploadTimeout,
     };
-    getLog().save('filestorage-download-preview-request-options-defined', {
+    saveLog('filestorage-download-preview-request-options-defined', {
       fileId,
       requestOptions,
     });
@@ -178,7 +187,7 @@ class FileStorageConnection {
   async downloadFilePreview(fileId) {
     // Get options to handle file.
     const requestOptions = await this.downloadFilePreviewRequestOptions(fileId);
-    return request(requestOptions);
+    return HttpRequest.stream(requestOptions);
   }
 
   /**
@@ -188,7 +197,7 @@ class FileStorageConnection {
    */
   async downloadZipRequestOptions(filesIds) {
     // Define and return request options.
-    getLog().save('filestorage-download-zip-request-options-initialized', {
+    saveLog('filestorage-download-zip-request-options-initialized', {
       filesIds,
     });
     const filesIdsSeparatedByComma = filesIds.join(',');
@@ -198,7 +207,7 @@ class FileStorageConnection {
       headers: { token: this.token },
       timeout: this.downloadUploadTimeout,
     };
-    getLog().save('filestorage-download-zip-request-options-defined', {
+    saveLog('filestorage-download-zip-request-options-defined', {
       filesIds,
       requestOptions,
     });
@@ -213,7 +222,7 @@ class FileStorageConnection {
   async downloadZip(filesIds) {
     // Get options to handle file.
     const requestOptions = await this.downloadZipRequestOptions(filesIds);
-    return request(requestOptions);
+    return HttpRequest.stream(requestOptions);
   }
 
   /**
@@ -226,7 +235,7 @@ class FileStorageConnection {
    */
   async uploadFileRequestOptions(name, description = '', contentType, contentLength) {
     // Define and return request options.
-    getLog().save('filestorage-upload-request-options-initialized', {
+    saveLog('filestorage-upload-request-options-initialized', {
       name,
       description,
       contentType,
@@ -246,7 +255,7 @@ class FileStorageConnection {
     if (contentLength) {
       requestOptions.headers['Content-Length'] = contentLength;
     }
-    getLog().save('filestorage-upload-request-options-defined', {
+    saveLog('filestorage-upload-request-options-defined', {
       name,
       description,
       contentType,
@@ -267,7 +276,9 @@ class FileStorageConnection {
   async uploadFile(name, description, contentType, contentLength) {
     // Get options to handle file.
     const requestOptions = await this.uploadFileRequestOptions(name, description, contentType, contentLength);
-    return request(requestOptions);
+    const uploadStream = new PassThrough();
+    HttpRequest.upload(requestOptions, uploadStream).catch((error) => uploadStream.destroy(error));
+    return uploadStream;
   }
 
   /**
@@ -280,30 +291,15 @@ class FileStorageConnection {
    * @returns {Promise<{id, name, contentType, contentLength, description, containerId, hash: {md5, sha1}, meta, createdBy, updatedBy, createdAt, updatedAt}>} Promise of file info.
    */
   async uploadFileFromStream(readableStream, name, description, contentType, contentLength) {
-    return new Promise(async (resolve, reject) => {
-      // Get options to handle file.
-      const requestOptions = await this.uploadFileRequestOptions(name, description, contentType, contentLength);
-      readableStream.pipe(
-        request(requestOptions, (error, response, body) => {
-          // Check error.
-          if (error) {
-            return reject(error);
-          }
+    // Get options to handle file.
+    const requestOptions = await this.uploadFileRequestOptions(name, description, contentType, contentLength);
+    const body = await HttpRequest.upload(requestOptions, readableStream);
 
-          // Parse body.
-          let fileInfo;
-          try {
-            const { error, data } = JSON.parse(body);
-            if (error) throw new Error(error.message || error);
-            fileInfo = data;
-          } catch (error) {
-            return reject(error);
-          }
-          getLog().save('filestorage-upload-from-stream-result', { name, fileInfo });
-          resolve(fileInfo);
-        }),
-      );
-    });
+    // Parse body.
+    const { error, data: fileInfo } = JSON.parse(body);
+    if (error) throw new Error(error.message || error);
+    saveLog('filestorage-upload-from-stream-result', { name, fileInfo });
+    return fileInfo;
   }
 
   /**
@@ -313,18 +309,18 @@ class FileStorageConnection {
    */
   async getSignatures(fileId) {
     // Define request options.
-    getLog().save('filestorage-get-signatures-initialized', { fileId });
+    saveLog('filestorage-get-signatures-initialized', { fileId });
     const requestOptions = {
       url: `${this.apiHost}/signatures?file_id=${fileId}&limit=1000`,
       method: 'GET',
       headers: { token: this.token },
       timeout: this.signatureTimeout,
     };
-    getLog().save('filestorage-get-signatures-defined', { fileId, requestOptions });
+    saveLog('filestorage-get-signatures-defined', { fileId, requestOptions });
 
     // Do request and return result.
     const signaturesResponse = await HttpRequest.send(requestOptions);
-    getLog().save('filestorage-get-signatures-response', {
+    saveLog('filestorage-get-signatures-response', {
       fileId,
       signaturesResponse,
     });
@@ -342,7 +338,7 @@ class FileStorageConnection {
    */
   async addSignature(fileId, signedData, signature, certificate) {
     // Define request options.
-    getLog().save('filestorage-add-signature-initialized', { fileId });
+    saveLog('filestorage-add-signature-initialized', { fileId });
     const requestOptions = {
       url: `${this.apiHost}/signatures`,
       method: 'POST',
@@ -353,11 +349,11 @@ class FileStorageConnection {
       body: JSON.stringify({ fileId, signedData, signature, certificate }),
       timeout: this.signatureTimeout,
     };
-    getLog().save('filestorage-add-signature-defined', { fileId, requestOptions });
+    saveLog('filestorage-add-signature-defined', { fileId, requestOptions });
 
     // Do request and return result.
     const signatureResponse = await HttpRequest.send(requestOptions);
-    getLog().save('filestorage-add-signature-response', {
+    saveLog('filestorage-add-signature-response', {
       fileId,
       signatureResponse,
     });
@@ -373,26 +369,26 @@ class FileStorageConnection {
    */
   async getP7sSignature(fileId, asFile = false) {
     // Define request options.
-    getLog().save('filestorage-get-p7s-signature-initialized', { fileId });
+    saveLog('filestorage-get-p7s-signature-initialized', { fileId });
     const requestOptions = {
       url: `${this.apiHost}/files/${fileId}/p7s${asFile ? '?as_file=true' : ''}`,
       method: 'GET',
       headers: { token: this.token },
       timeout: this.signatureTimeout,
     };
-    getLog().save('filestorage-get-p7s-signatures-defined', {
+    saveLog('filestorage-get-p7s-signatures-defined', {
       fileId,
       requestOptions,
     });
 
     // Do request and return P7S file readable stream if need it.
     if (asFile) {
-      return request(requestOptions);
+      return HttpRequest.stream(requestOptions);
     }
 
     // Do request and return BASE64 result in other case.
     const signaturesResponse = await HttpRequest.send(requestOptions);
-    getLog().save('filestorage-get-p7s-signatures-response', {
+    saveLog('filestorage-get-p7s-signatures-response', {
       fileId,
       signaturesResponse,
     });
@@ -407,7 +403,7 @@ class FileStorageConnection {
    */
   async addP7sSignature(fileId, p7s) {
     // Define request options.
-    getLog().save('filestorage-add-p7s-signature-initialized', { fileId });
+    saveLog('filestorage-add-p7s-signature-initialized', { fileId });
     const requestOptions = {
       url: `${this.apiHost}/p7s_signatures`,
       method: 'POST',
@@ -418,14 +414,14 @@ class FileStorageConnection {
       body: JSON.stringify({ fileId, p7s }),
       timeout: this.signatureTimeout,
     };
-    getLog().save('filestorage-add-p7s-signature-defined', {
+    saveLog('filestorage-add-p7s-signature-defined', {
       fileId,
       requestOptions,
     });
 
     // Do request and return result.
     const createSignatureResponse = await HttpRequest.send(requestOptions);
-    getLog().save('filestorage-add-p7s-signature-response', {
+    saveLog('filestorage-add-p7s-signature-response', {
       fileId,
       signatureResponse: createSignatureResponse,
     });
@@ -440,7 +436,7 @@ class FileStorageConnection {
    */
   async updateP7sSignature(id, p7s) {
     // Define request options.
-    getLog().save('filestorage-update-p7s-signature-initialized', { id });
+    saveLog('filestorage-update-p7s-signature-initialized', { id });
     const requestOptions = {
       url: `${this.apiHost}/p7s_signatures/${id}`,
       method: 'PUT',
@@ -451,14 +447,14 @@ class FileStorageConnection {
       body: JSON.stringify({ p7s }),
       timeout: this.signatureTimeout,
     };
-    getLog().save('filestorage-update-p7s-signature-defined', {
+    saveLog('filestorage-update-p7s-signature-defined', {
       id,
       requestOptions,
     });
 
     // Do request and return result.
     const updateSignatureResponse = await HttpRequest.send(requestOptions);
-    getLog().save('filestorage-update-p7s-signature-response', {
+    saveLog('filestorage-update-p7s-signature-response', {
       id,
       signatureResponse: updateSignatureResponse,
     });
@@ -472,7 +468,7 @@ class FileStorageConnection {
    */
   async removeP7sSignature(id) {
     // Define request options.
-    getLog().save('filestorage-remove-p7s-signature-initialized', { id });
+    saveLog('filestorage-remove-p7s-signature-initialized', { id });
     const requestOptions = {
       url: `${this.apiHost}/p7s_signatures/${id}`,
       method: 'DELETE',
@@ -482,14 +478,14 @@ class FileStorageConnection {
       },
       timeout: this.signatureTimeout,
     };
-    getLog().save('filestorage-remove-p7s-signature-defined', {
+    saveLog('filestorage-remove-p7s-signature-defined', {
       id,
       requestOptions,
     });
 
     // Do request and return result.
     const deleteSignatureResponse = await HttpRequest.send(requestOptions);
-    getLog().save('filestorage-remove-p7s-signature-response', {
+    saveLog('filestorage-remove-p7s-signature-response', {
       id,
       signatureResponse: deleteSignatureResponse,
     });
@@ -504,18 +500,18 @@ class FileStorageConnection {
    */
   async copyFile(fileId) {
     // Define request options.
-    getLog().save('filestorage-copy-file-initialized', { fileId });
+    saveLog('filestorage-copy-file-initialized', { fileId });
     const requestOptions = {
       url: `${this.apiHost}/files/${fileId}/copy`,
       method: 'POST',
       headers: { token: this.token },
       timeout: this.downloadUploadTimeout,
     };
-    getLog().save('filestorage-copy-file-defined', { fileId, requestOptions });
+    saveLog('filestorage-copy-file-defined', { fileId, requestOptions });
 
     // Do request and return result.
     const fileCopyResponse = await HttpRequest.send(requestOptions);
-    getLog().save('filestorage-copy-file-response', { fileId, fileCopyResponse });
+    saveLog('filestorage-copy-file-response', { fileId, fileCopyResponse });
     const { data: fileCopy } = fileCopyResponse;
     return fileCopy;
   }

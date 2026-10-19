@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 
 import { UserAttributes } from '../src/models';
 import { TestApp, config } from './test_app';
+import { Services } from '../src/services';
 
 describe('AuthController', () => {
   let app: TestApp;
@@ -250,13 +251,46 @@ describe('AuthController', () => {
             passport_issued_by: null,
             passport_number: null,
             passport_series: null,
-            password: null,
             status: null,
             twoFactorType: null,
             useTwoFactorAuth: false,
             userIdentificationType: 'local',
           });
         });
+    });
+
+    it('should not leak database error details in a 5xx response', async () => {
+      const sqlText = 'relation "users" does not exist: SELECT "userId", "password" FROM "users" WHERE "ipn" = \'1234567890\'';
+      jest
+        .spyOn(Services.service('auth'), 'getUsersAsync')
+        .mockRejectedValue(Object.assign(new Error(sqlText), { name: 'SequelizeDatabaseError', sql: sqlText }));
+
+      for (const contentType of ['application/json', 'text/plain']) {
+        const res = await app
+          .request()
+          .post('/user/info/id')
+          .set('Authorization', `Basic ${adminToken}`)
+          .set('Content-Type', contentType)
+          .send(contentType === 'application/json' ? { id: [users.local1!.userId] } : JSON.stringify({ id: [users.local1!.userId] }))
+          .expect(500);
+
+        const raw = res.text ?? JSON.stringify(res.body);
+        expect(raw).toContain('Internal server error');
+        expect(raw).not.toMatch(/SELECT|relation|users|SequelizeDatabaseError|password|1234567890/);
+      }
+    });
+
+    it('should not leak parser details when the global error handler answers', async () => {
+      const res = await app
+        .request()
+        .post('/user/info/id')
+        .set('Authorization', `Basic ${adminToken}`)
+        .set('Content-Type', 'application/json')
+        .send('{"id": [')
+        .expect(400);
+
+      expect(res.text).not.toMatch(/Unexpected|JSON|position|token/i);
+      expect(res.body).toEqual({ error: 'Bad Request', ...(res.body.traceId && { traceId: res.body.traceId }) });
     });
 
     it('should fail to get user info by a wrong id', async () => {

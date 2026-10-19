@@ -54,10 +54,17 @@ export class PingController extends Controller {
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
+   */
+  async ping() {
+    return { message: MESSAGE_PONG };
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
    * @param {query} query HTTP query.
    */
-  async ping({ query }) {
+  async pingWithAuth({ query }) {
     const { health_check: healthCheck, payment, sign } = query || {};
     return this.selfPing(healthCheck, payment, sign);
   }
@@ -83,7 +90,7 @@ export class PingController extends Controller {
       }
 
       promises.push(
-        this.sendPingRequest(cfg[key].url)
+        this.sendPingRequest(cfg[key].url, cfg[key].monitoringToken)
           .then((data) => ({ [key]: { data } }))
           .catch((error) => ({ [key]: { error } })),
       );
@@ -140,7 +147,10 @@ export class PingController extends Controller {
     const { workflow_template_id: workflowTemplateId, type } = req.query;
 
     // Available document templates to ping count.
-    const { committedDocumentsTemplateIdsToHoursMap } = global.config.ping_documents;
+    const committedDocumentsTemplateIdsToHoursMap = global.config.ping_documents?.committedDocumentsTemplateIdsToHoursMap;
+    if (!committedDocumentsTemplateIdsToHoursMap) {
+      return this.responseText(res, 'not-configured', 404);
+    }
     const hours = committedDocumentsTemplateIdsToHoursMap[documentTemplateId];
     if (!hours) {
       global.log.save('ping-committed-document-not-available', { documentTemplateId, committedDocumentsTemplateIdsToHoursMap });
@@ -170,7 +180,7 @@ export class PingController extends Controller {
       }
     } catch (error) {
       global.log.save('test-ping-services-error|ping-committed-documents-count', { error: error && error.message }, 'error');
-      return this.responseError(res, error && error.message);
+      return this.responseError(res, error);
     }
   }
 
@@ -178,18 +188,23 @@ export class PingController extends Controller {
    * Send ping request.
    * @private
    * @param {string} url URL.
+   * @param {string} [monitoringToken] Token for target's guarded diagnostic routes (x-monitoring-token header). Sent only if set.
    * @returns {Promise<{object}>}
    */
-  async sendPingRequest(url) {
+  async sendPingRequest(url, monitoringToken?: string) {
     try {
+      const headers: any = {
+        'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
+        token: this.token,
+      };
+      if (monitoringToken) {
+        headers['x-monitoring-token'] = monitoringToken;
+      }
       const { response, body } = await HttpRequest.send(
         {
           url: url,
           method: HttpRequest.Methods.GET,
-          headers: {
-            'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
-            token: this.token,
-          },
+          headers,
           timeout: 10000,
         },
         true,
@@ -316,7 +331,10 @@ export class PingController extends Controller {
       // Check manager.
       let managerServiceResponse;
       try {
-        managerServiceResponse = await this.sendPingRequest(global.config.ping.manager.active === false ? undefined : global.config.ping.manager.url);
+        managerServiceResponse = await this.sendPingRequest(
+          global.config.ping.manager.active === false ? undefined : global.config.ping.manager.url,
+          global.config.ping.manager.monitoringToken,
+        );
       } catch (error) {
         global.log.save('test-ping-manager-service-error', { error: error && error.message }, 'warn');
       }
@@ -495,7 +513,7 @@ export class PingController extends Controller {
 
       this.responseData(res, { status: 'ok' });
     } catch (e) {
-      this.responseError(res, { error: e.message });
+      this.responseError(res, e);
     }
   }
 

@@ -8,15 +8,7 @@ interface CustomLogTemplateEntityOptions {
   documentTemplateId: string;
   /** Operation type. */
   operationType:
-    | 'read-document'
-    | 'create-document'
-    | 'update-document'
-    | 'delete-document'
-    | 'add-attach'
-    | 'remove-attach'
-    | 'generate-pdf'
-    | 'sign'
-    | 'commit';
+    'read-document' | 'create-document' | 'update-document' | 'delete-document' | 'add-attach' | 'remove-attach' | 'generate-pdf' | 'sign' | 'commit';
   /** Schema. */
   schema: string;
   /** Created at. */

@@ -57,22 +57,18 @@ export class UserIpAccessProvider extends AccessProvider {
       return false;
     }
 
-    // Define request IP list.
-    // Sample: `['127.0.0.1', '10.10.5.109']`.
-    const requestIpList = this.getRequestIpList(req);
+    // Define resolved client IP (honours Express `trust proxy`, never the raw `X-Forwarded-For` header).
+    const requestIp = this.getRequestIp(req);
 
-    // Check if empty request list.
-    if (!requestIpList) {
+    // Check if client IP is not resolved.
+    if (!requestIp) {
       return false;
     }
 
     // Match IP patterns.
-    for (const requestIp of requestIpList) {
-      for (const userIpPattern of userMergedIpList) {
-        const matchIpPattern = this.matchIpPattern(requestIp, userIpPattern);
-        if (matchIpPattern) {
-          return true;
-        }
+    for (const userIpPattern of userMergedIpList) {
+      if (this.matchIpPattern(requestIp, userIpPattern)) {
+        return true;
       }
     }
 
@@ -114,20 +110,19 @@ export class UserIpAccessProvider extends AccessProvider {
   }
 
   /**
-   * Get request IP list.
+   * Get request client IP.
+   * Uses `req.ip`, which Express resolves from the socket address and `X-Forwarded-For` only through hops
+   * allowed by the `server.trustProxy` setting. Client-supplied header entries are never trusted on their own.
    * @private
    * @param {object} req HTTP request.
-   * @returns {string[]} Request IP list.
+   * @returns {string|undefined} Request client IP, sample: `10.10.5.109`.
    */
-  getRequestIpList(req) {
-    // Define remote address and request header `x-forwarded-for`.
-    // Sample of remote address: `127.0.0.1`.
-    // Sample of `x-forwarded-for` request header: `203.0.113.195, 70.41.3.18, 150.172.238.178`.
-    const remoteAddress = req.connection.remoteAddress;
-    const xForwardedForHeader = req.headers['x-forwarded-for'];
-
-    // Define and return request IP list.
-    // Sample: `['127.0.0.1', '203.0.113.195', '70.41.3.18', '150.172.238.178']`.
-    return [...new Set([remoteAddress, ...(xForwardedForHeader || '').split(',')].filter((v) => !!v).map((v) => v.trim()))];
+  getRequestIp(req) {
+    const ip = req.ip || (req.socket || req.connection || {}).remoteAddress;
+    return ip
+      ? String(ip)
+          .trim()
+          .replace(/^::ffff:/i, '')
+      : undefined;
   }
 }

@@ -2,6 +2,7 @@ import _ from 'lodash';
 
 import { TaskService } from '../services/task';
 import { RegisterService } from '../services/register';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Unit Access business.
@@ -79,7 +80,7 @@ export class UnitAccessBusiness {
 
           // Check if the key is personal.
           if (key?.meta?.isPersonal) {
-            throw new Error(`Cannot add the personal key(${newKey}) to strict access.`);
+            throw new PublicError(`Cannot add the personal key(${newKey}) to strict access.`);
           }
         }
       }

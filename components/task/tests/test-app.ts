@@ -51,7 +51,8 @@ jest.mock('@liquio/back-core', () => {
 });
 
 // Mock the configuration module
-const configOverride: any = {};
+// The template ships a placeholder download_token secret that the app refuses, so tests use their own.
+const configOverride: any = { download_token: { jwtSecret: 'e2e-download-token-secret-0123456789', lifetimeInSeconds: 3600 } };
 jest.mock('../src/lib/config', () => {
   const Multiconf = require('multiconf');
   const baseConfig = Multiconf.get('../../config-templates/task');

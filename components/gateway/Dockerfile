@@ -52,7 +52,7 @@ EXPOSE 7003
 
 # Setup the healthcheck
 HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:7003/test/ping', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+    CMD node -e "require('http').get('http://localhost:7003/healthz', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Start the application
 CMD ["npm", "run", "start:prod"]

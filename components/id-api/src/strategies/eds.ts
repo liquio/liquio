@@ -2,14 +2,21 @@ import { FindOptions } from 'sequelize';
 import { Log } from '@liquio/back-core';
 
 import { calculateUserCode } from '../lib/calculate_user_code';
+import { HttpError } from '../lib/http_error';
 import { saveSession } from '../middleware/session';
 import { Models, UserAttributes, UserCreationAttributes, UserServicesCreationAttributes } from '../models';
 import { Services } from '../services';
-import { CallbackFn, Express, Request, Response } from '../types';
+import { CallbackFn, Express, Request } from '../types';
 import { EDSStrategy } from './passport_libs/passport-eds/strategy';
 
 export async function eds(app: Express) {
   const log = Log.getInstance();
+
+  if (!app.config.auth_providers?.eds?.isEnabled) {
+    log.save('eds-strategy', { status: 'disabled' }, 'info');
+    return;
+  }
+
   const passport = app.passport;
 
   passport.mapping['eds'] = {
@@ -66,25 +73,25 @@ export async function eds(app: Express) {
       const { DRFO: ipn, EDRPOU: edrpou } = ipnObj;
 
       if (!ipn) {
-        const error = new Error('Ipn does not exist.');
+        const error = new HttpError(400, 'Ipn does not exist.');
         (error as any).details = surname;
         throw error;
       }
 
       if (!/^\d{9,10}$/.test(ipn) && !/^[А-Яа-я]{2}\d{6}$/.test(ipn)) {
-        const error = new Error('Ipn has an invalid format.');
+        const error = new HttpError(400, 'Ipn has an invalid format.');
         (error as any).details = ipn;
         throw error;
       }
 
       if (!surname) {
-        const error = new Error('Surname does not exist.');
+        const error = new HttpError(400, 'Surname does not exist.');
         (error as any).details = ipn;
         throw error;
       }
 
       if (app.config.eds?.onlyLegalEntityAllow && ipn.EDRPOU && !ipn.DRFO) {
-        throw new Error('Only legal entity allowed.');
+        throw new HttpError(400, 'Only legal entity allowed.');
       }
 
       const userCode = calculateUserCode(ipn, edrpou);
@@ -129,7 +136,7 @@ export async function eds(app: Express) {
     // Check signer code not the same as authenticated.
     const reqUserCode = calculateUserCode(req.user!.ipn, req.user!.edrpou);
     if (reqUserCode !== userServiceAttributes.provider_id) {
-      throw new Error('DRFO or EDRPOU not the same as authenticated.');
+      throw new HttpError(400, 'DRFO or EDRPOU not the same as authenticated.');
     }
 
     const service = await Models.model('userServices')
@@ -198,7 +205,11 @@ export async function eds(app: Express) {
       keepSessionInfo: true,
     }),
     async (req, res) => {
-      log.save('user-success-authorize-by-eds', { userPassportData: req.session.passport?.user }, 'info');
+      log.save(
+        'user-success-authorize-by-eds',
+        { userId: (req.session.passport?.user as any)?.userId ?? (req.session.passport?.user as any)?.id },
+        'info',
+      );
       await saveSession(req);
       if (!res.headersSent) {
         res.send({ error: null, redirect: '/authorise/continue/' });
@@ -206,14 +217,5 @@ export async function eds(app: Express) {
     },
   );
 
-  app.get('/authorise/eds/sign', (req: Request, res: Response) => {
-    Services.service('eds')
-      .getRandomContentToSign()
-      .then((token: string) => {
-        res.send({ token });
-      })
-      .catch((error: Error) => {
-        res.status(500).send({ error: error.message });
-      });
-  });
+  // `GET /authorise/eds/sign` (challenge token) is served by EdsController.
 }

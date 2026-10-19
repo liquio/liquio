@@ -169,3 +169,65 @@ describe('TaskBusiness id-api calls', () => {
     });
   });
 });
+
+describe('TaskBusiness.create in an existing workflow', () => {
+  const USER_ID = 'user-id';
+  let taskBusiness: TaskBusiness;
+  let workflow: { workflowTemplateId: number; hasAccess: jest.Mock };
+  let changeIsCurrentStateToOld: jest.Mock;
+
+  const baseOptions = { workflowId: 'wf-id', workflowTemplateId: 5, taskTemplateId: 7, userId: USER_ID, userInfo: {} };
+
+  beforeEach(() => {
+    taskBusiness = Object.create(TaskBusiness.prototype);
+    jest.spyOn(taskBusiness as any, '_assertOnboarding').mockResolvedValue(undefined);
+    jest.spyOn(taskBusiness as any, 'appendTraceMeta').mockImplementation(() => undefined);
+    jest.spyOn(taskBusiness as any, 'getTraceId').mockReturnValue('trace');
+
+    workflow = { workflowTemplateId: 5, hasAccess: jest.fn().mockReturnValue(true) };
+    changeIsCurrentStateToOld = jest.fn();
+    global.config = {} as any;
+    global.models = {
+      workflowTemplate: { findById: jest.fn().mockResolvedValue({ isActive: true }) },
+      taskTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) },
+      workflow: { findById: jest.fn().mockImplementation(async () => workflow) },
+      task: {
+        findCurrentTaskByWorkflowIdAndTaskTemplateID: jest.fn().mockRejectedValue(new Error('past access checks')),
+        changeIsCurrentStateToOld,
+      },
+    } as any;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('rejects a user without access to the workflow with 403 and changes nothing', async () => {
+    workflow.hasAccess.mockReturnValue(false);
+    const unitIds = { all: [1], head: [], member: [1] };
+
+    await expect(taskBusiness.create({ ...baseOptions, unitIds })).rejects.toMatchObject({
+      httpStatusCode: 403,
+      message: "User doesn't have any access to workflow.",
+    });
+    expect(workflow.hasAccess).toHaveBeenCalledWith(USER_ID, unitIds);
+    expect(changeIsCurrentStateToOld).not.toHaveBeenCalled();
+  });
+
+  it('rejects a workflowTemplateId that does not match the workflow with 400', async () => {
+    await expect(taskBusiness.create({ ...baseOptions, workflowTemplateId: 6, unitIds: {} })).rejects.toMatchObject({ httpStatusCode: 400 });
+    expect(changeIsCurrentStateToOld).not.toHaveBeenCalled();
+  });
+
+  it('lets a user with access pass the checks, comparing the template id numerically', async () => {
+    await expect(taskBusiness.create({ ...baseOptions, workflowTemplateId: '5', unitIds: {} })).rejects.toThrow('past access checks');
+    expect(workflow.hasAccess).toHaveBeenCalled();
+  });
+
+  it.each([['isCreateByOtherSystem'], ['isCreateFromRmqMessage']])('skips the access check for %s', async (flag) => {
+    workflow.hasAccess.mockReturnValue(false);
+
+    await expect(taskBusiness.create({ ...baseOptions, [flag]: true })).rejects.toThrow('past access checks');
+    expect(workflow.hasAccess).not.toHaveBeenCalled();
+  });
+});

@@ -11,10 +11,12 @@ import { Models } from './models';
 import { WorkflowHandlerBusiness } from './businesses/workflow_handler';
 import { ElasticBusiness } from './businesses/elastic';
 import { WorkflowBusiness } from './businesses/workflow';
-import { LogsBroadcasting } from './lib/logs_broadcasting';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
+import { warnPlainHttpInternalUrls } from './lib/internal_transport';
+import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault, findPlaceholderSecretWarnings } from './lib/config_check';
+import { buildSandboxConfig } from './lib/sandbox_config';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
@@ -30,6 +32,9 @@ async function main() {
   if (config.server.token === '') {
     throw new Error("Token must'n be empty.");
   }
+  const placeholderSecrets = assertNoPlaceholderSecrets(config);
+  const placeholderSecretWarnings = findPlaceholderSecretWarnings(config);
+  assertTaskTokenIsNotDefault(config);
   global.config = config;
 
   // Init http client.
@@ -37,15 +42,25 @@ async function main() {
   global.typeOf = typeOf;
 
   // Init log.
-  const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
+  const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
+    excludeParams: config.log.excludeParams,
+    disableDefaultRedaction: config.log.disableDefaultRedaction === true,
+  });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;
+  warnPlainHttpInternalUrls(config);
+  if (placeholderSecrets.length > 0) {
+    global.log.save('config-placeholder-secrets-in-dev', { paths: placeholderSecrets });
+  }
+  if (placeholderSecretWarnings.length > 0) {
+    global.log.save('config-placeholder-secrets-warning', { paths: placeholderSecretWarnings });
+  }
 
   // Init id-api client (shared by the whole process, see `getIdApiClient()`).
   initIdApiClient(config.auth);
 
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
-  new Sandbox(config.sandbox || {});
+  new Sandbox(buildSandboxConfig(config.sandbox) as any);
 
   global.db = await Db.getInstance(config.db);
   global.models = new Models().getModels();
@@ -80,11 +95,6 @@ async function main() {
   // Init router.
   const routerService = new RouterService(config);
   await routerService.init();
-
-  if (process.env.NODE_ENV !== 'prod' && global.config.logs_broadcasting?.isEnabled) {
-    const logsBroadcasting = new LogsBroadcasting(global.config);
-    logsBroadcasting.start();
-  }
 
   global.businesses = {
     workflow: new WorkflowBusiness(),
