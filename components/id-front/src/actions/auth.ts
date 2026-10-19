@@ -19,7 +19,6 @@ const VERIFY_EMAIL_CODE = 'VERIFY_EMAIL_CODE';
 
 const CHECK_TOTP_CODE = 'CHECK_TOTP_CODE';
 
-const CHECK_PHONE_EXISTS = 'CHECK_PHONE_EXISTS';
 const SEND_ACTIVATION_CODE_SMS = 'SEND_ACTIVATION_CODE_SMS';
 const VERIFY_ACTIVATION_CODE_SMS = 'VERIFY_ACTIVATION_CODE_SMS';
 
@@ -76,15 +75,6 @@ export function verifyEmailCode(email: string, code: string) {
     'users/email/confirm',
     { email, code },
     VERIFY_EMAIL_CODE,
-    dispatch
-  );
-}
-
-export function checkPhoneExists(phone: string) {
-  return api.post(
-    'sign_up/confirmation/phone/exist',
-    { phone },
-    CHECK_PHONE_EXISTS,
     dispatch
   );
 }

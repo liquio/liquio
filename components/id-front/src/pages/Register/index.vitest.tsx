@@ -149,10 +149,21 @@ describe('pages/Register', () => {
       await act(async () => {
         await form.props?.onSubmit({ ...user });
       });
-      expect(utils.getByText('This phone number is already registered in the system')).toBeInTheDocument();
+      expect(utils.getByText('This phone number is already registered. Log in or reset your password.')).toBeInTheDocument();
       expect(log).toHaveBeenCalledWith('Phone is already taken');
       fireEvent.click(utils.getByRole('button', { name: 'OK' }));
-      expect(utils.queryByText('This phone number is already registered in the system')).toBeNull();
+      expect(utils.queryByText('This phone number is already registered. Log in or reset your password.')).toBeNull();
+    });
+
+    it('tells the user to log in or reset the password when the email is already registered', async () => {
+      mockedSignUp.mockResolvedValue({ success: false, err: 'email must be unique' });
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      const utils = renderPage();
+      await start(utils);
+      await act(async () => {
+        await form.props?.onSubmit({ ...user });
+      });
+      expect(utils.getByText('This email is already registered. Log in or reset your password.')).toBeInTheDocument();
     });
 
     it('prefers `message` over `err`, and uses `err` when there is no message', async () => {

@@ -85,15 +85,6 @@ describe('pages/Register/EmailInput', () => {
     expect(await findByText('You can resend after 00:59')).toBeInTheDocument();
   });
 
-  it('shows "already exists" when the address is taken and stays on the first form', async () => {
-    send.mockResolvedValue('exist');
-    const { getCode, type, field, findByText, code } = setup();
-    type(field(), 'a@b.co');
-    getCode();
-    expect(await findByText('Sorry, this email is already used by another user')).toBeInTheDocument();
-    expect(code()).toBeNull();
-  });
-
   it('requires a code before verifying', async () => {
     const { getCode, type, field, findByText, getByRole } = setup();
     type(field(), 'a@b.co');

@@ -3,13 +3,12 @@ import { act, fireEvent, waitFor } from '@testing-library/react';
 
 import renderWithTranslations from '../../../testHelpers/renderWithTranslations';
 import PhoneInput from './PhoneInput';
-import { checkPhoneExists, sendActivationCodeSMS, verifyActivationCodeSMS } from 'actions/auth';
+import { sendActivationCodeSMS, verifyActivationCodeSMS } from 'actions/auth';
 import { getConfig } from 'helpers/configLoader';
 
-vi.mock('actions/auth', () => ({ checkPhoneExists: vi.fn(), sendActivationCodeSMS: vi.fn(), verifyActivationCodeSMS: vi.fn() }));
+vi.mock('actions/auth', () => ({ sendActivationCodeSMS: vi.fn(), verifyActivationCodeSMS: vi.fn() }));
 vi.mock('helpers/configLoader', () => ({ getConfig: vi.fn() }));
 
-const exists = vi.mocked(checkPhoneExists);
 const send = vi.mocked(sendActivationCodeSMS);
 const verify = vi.mocked(verifyActivationCodeSMS);
 const config = vi.mocked(getConfig);
@@ -32,7 +31,6 @@ const setup = (confirm: boolean, props: Record<string, unknown> = {}) => {
 
 describe('pages/Register/PhoneInput', () => {
   beforeEach(() => {
-    exists.mockReset().mockResolvedValue({ text: 'null' });
     send.mockReset().mockResolvedValue('ok');
     verify.mockReset().mockResolvedValue('confirm');
   });
@@ -57,12 +55,11 @@ describe('pages/Register/PhoneInput', () => {
       expect(onChange).toHaveBeenCalledWith({ target: { value: PHONE } });
     });
 
-    it('rejects an invalid number and does not ask the server', async () => {
+    it('rejects an invalid number', async () => {
       const { field, type, getByRole, findByText, handleNextStep } = setup(false);
       type(field(), '123');
       fireEvent.click(getByRole('button', { name: 'Confirm' }));
       expect(await findByText('Invalid phone number')).toBeInTheDocument();
-      expect(exists).not.toHaveBeenCalled();
       expect(handleNextStep).not.toHaveBeenCalled();
     });
 
@@ -72,12 +69,11 @@ describe('pages/Register/PhoneInput', () => {
       expect(await findByText('Invalid phone number')).toBeInTheDocument();
     });
 
-    it('checks that the number is free (GET), reports it and goes on', async () => {
+    it('reports the number and goes on', async () => {
       const { field, type, getByRole, handleNextStep, onChange } = setup(false);
       type(field(), PHONE);
       fireEvent.click(getByRole('button', { name: 'Confirm' }));
       await waitFor(() => expect(handleNextStep).toHaveBeenCalledTimes(1));
-      expect(exists).toHaveBeenCalledWith(PHONE);
       expect(onChange).toHaveBeenLastCalledWith({ target: { value: PHONE } }, expect.any(Function));
     });
 
@@ -89,22 +85,6 @@ describe('pages/Register/PhoneInput', () => {
       expect(onCodeChange).not.toHaveBeenCalled();
     });
 
-    it('shows "already exists" when the server knows the number', async () => {
-      exists.mockResolvedValue({ text: '{"id":1}' });
-      const { field, type, getByRole, findByText, handleNextStep } = setup(false);
-      type(field(), PHONE);
-      fireEvent.click(getByRole('button', { name: 'Confirm' }));
-      expect(await findByText('Sorry, this phone number is already used by another user')).toBeInTheDocument();
-      expect(handleNextStep).not.toHaveBeenCalled();
-    });
-
-    it('PRESERVED BUG: a plain-text reply (a string has no `text`) also reads as "already exists"', async () => {
-      exists.mockResolvedValue('null');
-      const { field, type, getByRole, findByText } = setup(false);
-      type(field(), PHONE);
-      fireEvent.click(getByRole('button', { name: 'Confirm' }));
-      expect(await findByText('Sorry, this phone number is already used by another user')).toBeInTheDocument();
-    });
   });
 
   describe('with SMS confirmation (SHOW_PHONE_CONFIRM on)', () => {
@@ -125,35 +105,16 @@ describe('pages/Register/PhoneInput', () => {
       type(field(), '123');
       fireEvent.click(getByRole('button', { name: 'Get confirmation code' }));
       expect(getByText('The phone number must be in the format +380XXXXXXXXX')).toBeInTheDocument();
-      expect(exists).not.toHaveBeenCalled();
     });
 
-    it('checks the number, sends the SMS (GET) and shows the code form', async () => {
+    it('sends the SMS and shows the code form', async () => {
       const { field, type, getByRole, findByText, code } = setup(true);
       type(field(), PHONE);
       fireEvent.click(getByRole('button', { name: 'Get confirmation code' }));
       expect(await findByText(`SMS code sent to +${PHONE}`)).toBeInTheDocument();
-      expect(exists).toHaveBeenCalledWith(PHONE);
       expect(send).toHaveBeenCalledWith(PHONE);
       expect(code()).toHaveAttribute('maxlength', '6');
       expect(field()).toBeDisabled();
-    });
-
-    it('stops with an error when the number is taken, before sending the SMS', async () => {
-      exists.mockResolvedValue({ text: 'x' });
-      const { field, type, getByRole, findByText } = setup(true);
-      type(field(), PHONE);
-      fireEvent.click(getByRole('button', { name: 'Get confirmation code' }));
-      expect(await findByText('Sorry, this phone number is already used by another user')).toBeInTheDocument();
-      expect(send).not.toHaveBeenCalled();
-    });
-
-    it('shows "already exists" when sending reports `exist`', async () => {
-      send.mockResolvedValue('exist');
-      const { field, type, getByRole, findByText } = setup(true);
-      type(field(), PHONE);
-      fireEvent.click(getByRole('button', { name: 'Get confirmation code' }));
-      expect(await findByText('Sorry, this phone number is already used by another user')).toBeInTheDocument();
     });
 
     const toCodeForm = async (utils: ReturnType<typeof setup>) => {

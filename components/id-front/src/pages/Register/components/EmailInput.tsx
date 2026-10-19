@@ -117,13 +117,9 @@ class EmailInput extends React.Component<EmailInputProps, EmailInputState> {
   handleChangeCode = ({ target: { value } }: { target: { value: string } }) => this.setState({ code: value, codeError: null });
 
   handleSendCode = async () => {
-    const { t } = this.props;
     const { value } = this.state;
     this.startTimer();
-    const result = await sendActivationCodeEmail(value);
-    if (result === 'exist') {
-      throw t('EMAIL_ALREADY_EXISTS');
-    }
+    await sendActivationCodeEmail(value);
   };
 
   handleActivate = () =>
@@ -133,9 +129,16 @@ class EmailInput extends React.Component<EmailInputProps, EmailInputState> {
       () => this.setState({ checked: true, showActivation: false }, this.handleFinish),
     ]).catch((error) => this.setState({ codeError: error as ReactNode }));
 
+  timerCounter: ReturnType<typeof setInterval> | undefined;
+
+  componentWillUnmount() {
+    clearInterval(this.timerCounter);
+  }
+
   startTimer = () => {
     this.setState({ timer: TIMER_VALUE });
 
+    clearInterval(this.timerCounter);
     const timerCounter = setInterval(() => {
       let { timer } = this.state;
 
@@ -146,6 +149,7 @@ class EmailInput extends React.Component<EmailInputProps, EmailInputState> {
       timer--;
       this.setState({ timer });
     }, 1000);
+    this.timerCounter = timerCounter;
   };
 
   renderResendCodeButton = () => {

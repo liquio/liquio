@@ -56,11 +56,6 @@ describe('actions/auth', () => {
     expect(api.post).toHaveBeenCalledWith('users/email/confirm', { email: 'a@b', code: '1' }, 'VERIFY_EMAIL_CODE', dispatch);
   });
 
-  it('checkPhoneExists posts the phone in the body, not the URL', () => {
-    actions.checkPhoneExists('+380 50');
-    expect(api.post).toHaveBeenCalledWith('sign_up/confirmation/phone/exist', { phone: '+380 50' }, 'CHECK_PHONE_EXISTS', dispatch);
-  });
-
   it('sendActivationCodeSMS posts the phone in the body', () => {
     actions.sendActivationCodeSMS('1');
     expect(api.post).toHaveBeenCalledWith('sign_up/confirmation/phone/send', { phone: '1' }, 'SEND_ACTIVATION_CODE_SMS', dispatch);
@@ -92,7 +87,6 @@ describe('actions/auth', () => {
   });
 
   it('no auth action puts a code or recipient in a GET URL', () => {
-    actions.checkPhoneExists('1');
     actions.sendActivationCodeSMS('1');
     actions.verifyActivationCodeSMS('1', '2');
     actions.sendActivationCodeEmail('a@b');
