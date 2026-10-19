@@ -49,7 +49,7 @@
       "allowLegacySharedSecret": true,
       "clients": []
     },
-    "roles": [],
+    "roles": ["individual", "admin", "admin-liquio-portal"],
     "oauth": {
       "enforceScopeConsent": false,
       "accessTokenLifetimeInSeconds": 28800,
@@ -176,7 +176,7 @@
     "users": {
       "maxLimit": 100,
       "maxBatch": 1000,
-      "fullReadClients": []
+      "fullReadClients": ["admin-api"]
     },
     "redis": {
       "isEnabled": true,

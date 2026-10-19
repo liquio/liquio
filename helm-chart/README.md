@@ -201,7 +201,7 @@ A separate `pre-upgrade` hook only adds what older releases lack, and never over
 
 - the task Basic token (`basic_auth.json` in the task Secret and `task.json` in the admin-api Secret);
 - the Basic token of user `event` (added to `tokens` in the task `basic_auth.json`, and written as `test.token` in the event `external_bpmn.json`), so `event` has its own task user next to `admin-api`. Skipped when the event Secret already has an `external_bpmn.json`; task and event are restarted when it is added. To scope task Basic routes per caller, set `config.task.basic_auth.scopedRoutes: true`. The chart ships rules for `admin-api` and `event`; a caller without a rule gets 403, so first check out-of-chart `external_bpmn` systems and any other Basic caller;
-- the named id-api clients `task`, `cabinet-api`, `event` and `notification`. A client is added only when `production.basic_auth.clients` in the id Secret has no entry with that name. The hook generates its secret, writes the caller's token (`LiquioId.basicAuthToken` in the task and cabinet-api `auth.json` and in the event `user.json`, `production.auth_server.basicAuthToken` in the notification `config.json`), then adds the hash to the id Secret. If anything was added, it restarts id-api (and waits for it) and then the four callers, because they read secrets at startup. Re-running changes nothing.
+- the named id-api clients `task`, `cabinet-api`, `event`, `notification` and `admin-api` (scopes: see [Named id-api clients](#named-id-api-clients)). A client is added only when `production.basic_auth.clients` in the id Secret has no entry with that name. The hook generates its secret, writes the caller's token (`LiquioId.basicAuthToken` in the task and cabinet-api `auth.json` and in the event `user.json`, `production.auth_server.basicAuthToken` in the notification `config.json`, `basicAuthToken` in the admin-api `auth.json`), then adds the hash to the id Secret. If anything was added, it restarts id-api (and waits for it) and then the five callers, because they read secrets at startup. Re-running changes nothing.
 
 - the shipped default register and filestorage Basic tokens (SE-3930 KS-09b). A token is replaced only when its SHA-256 equals a known shipped default: a default in the register Secret's `auth.json` `tokens`, or in a caller (`register.json` `token` in the admin-api and task Secrets, `requester.json` `registers.token` in the event Secret). The hook adds a new generated token to the callee, moves the callers that held a default, and then removes the default from the callee, so both sides change together; the same for filestorage (`auth.json` `tokens`; callers: `filestorage.json` in admin-api, task and event, `storage.json` `FileStorage.token` in task). Operator-set tokens are never touched. The hook also fills filestorage `tokens` from the token the callers already use when a release only has the old `token` key, because filestorage refuses to start with no tokens. register, filestorage, admin-api, task and event are restarted only when something changed. Re-running changes nothing. With `createSecrets: false`, check that none of your tokens equals the old shipped defaults (`register:OaUiZ70kuHLj`, `test1:test`, `test2:...`);
 
@@ -210,6 +210,26 @@ A separate `pre-upgrade` hook only adds what older releases lack, and never over
 - a monitoring token for manager, gateway and event (see [Monitoring](#monitoring)): `server.json` (`monitoring.isEnabled`, `monitoring.token`) in each Secret, manager's token as `ping.json` `manager.monitoringToken` in the event Secret, and manager's and gateway's tokens in the task Secret's `ping.json`. Only where no token is set; an existing token or `isEnabled` is never changed. The hook also creates or completes the `<release>-monitoring-tokens` Secret. The Deployments concerned (including task) are restarted when something was added. Re-running changes nothing.
 
 With `secrets.existingSecrets` the hook works on the Secrets you named. With `createSecrets: false` it is not rendered, so add the id-api clients and the caller tokens yourself (see Mode B).
+
+#### Named id-api clients
+
+id-api authenticates its service-to-service routes with named clients (`production.basic_auth.clients` in the id Secret: `name`, `secret_hash` = SHA-256 of the secret, `scopes`). Callers send `Basic base64(name:secret)`. The chart provisions one client per in-cluster caller, on install and (idempotently) in the pre-upgrade hook:
+
+| Client | Scopes | Token written to |
+|---|---|---|
+| `task`, `event` | `user:read`, `user:write` | `LiquioId.basicAuthToken` (task / cabinet-api `auth.json`, event `user.json`) |
+| `notification` | `user:read` | notification `config.json` `production.auth_server.basicAuthToken` |
+| `cabinet-api` | `totp` | cabinet-api `auth.json` |
+| `admin-api` | `user:read`, `user:write`, `user:admin`, `password:set`, `login_history`, `login_history:all`, `login_history:pii` | admin-api `auth.json` `basicAuthToken` |
+
+`admin-api` sets user roles, blocks users and disables 2FA through id-api, so it holds `user:admin`. A named client can only set roles on the id `roles` allowlist (`config.id.assignableRoles`, default `individual`, `admin`, `admin-liquio-portal`): every role in the submitted value must be on the list, otherwise id-api answers 400. Change it if you rename the admin-api `clientId` (`admin-<clientId>`) or give users other roles through admin-api. The id config also lists `admin-api` in `users.fullReadClients`, so the admin user list can be shown without a filter.
+
+The id config keeps `basic_auth.allowLegacySharedSecret: true` by default, because callers outside the chart may still use the shared secret (`oauth.secret_key`). All callers shipped in this chart now use named clients, so **once every caller of your deployment is named, you can set `allowLegacySharedSecret` to `false`** (`config.id.config.production.basic_auth.allowLegacySharedSecret: false`) and restart id-api. id-api logs `basic-auth-legacy-shared-secret-used` while the shared secret is still used, so check the logs for it before switching it off. With the shared secret off, any caller without a client gets 401, and the legacy secret no longer limits roles or scopes.
+
+Notes for operators with a customised setup:
+
+- The pre-upgrade hook replaces `basicAuthToken` in the admin-api `auth.json` only when the id Secret has no `admin-api` client yet. `clientSecret` (the OAuth client secret) is not touched.
+- The admin journal ("user operations") shows who blocked a user: id-api records the human initiator that `admin-api` sends next to `service: admin-api`. Role, 2FA and password changes made through admin-api are audited with the service name only.
 
 #### Notification admin password
 

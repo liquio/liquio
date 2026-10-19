@@ -9,7 +9,7 @@ import { avatarByGender, delay, generateRandomBase36, validateEmail } from '../l
 import { HttpError, isPublicError, publicError } from '../lib/http_error';
 import { legacyConfirmationQueryGuard } from '../lib/legacy_get_confirmation';
 import { prepareLoginHistoryData } from '../lib/login_history_extractor';
-import { changedPrivilegedFields, checkNamedClientUpdate } from '../lib/privileged_user_update';
+import { buildNamedClientAuthor, changedPrivilegedFields, checkNamedClientUpdate } from '../lib/privileged_user_update';
 import { publicServices } from '../lib/public_services';
 import { resolveSafeRedirect } from '../lib/safe_redirect';
 import { clampLimit, getUsersReadPolicy, hasFullRead, minimiseUser, toNonNegativeInt } from '../lib/user_read_policy';
@@ -1141,7 +1141,7 @@ export class UserController extends BaseController {
       const updatedUser: any = await this.service('auth').updateUser({ userId }, data);
 
       // Save in history blocking/unblocking of user.
-      const createdBy = namedClient ? { service: namedClient.name } : req.body.updateInitiator;
+      const createdBy = namedClient ? buildNamedClientAuthor(namedClient, req.body.updateInitiator) : req.body.updateInitiator;
       if (updatedUser.isActive !== user.isActive) {
         await this.model('userAdminAction').create({
           user_id: userId,

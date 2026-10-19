@@ -269,8 +269,7 @@ jq --arg secret "$OAUTH_SECRET" \
 }
 
 {
-  echo "==> Generate named id-api clients (basic_auth.clients) for task, cabinet-api, event and notification (notification token is written in its own block below)"
-  echo "    admin-api keeps the legacy shared OAuth secret (it disables 2FA and sets roles through id-api)."
+  echo "==> Generate named id-api clients (basic_auth.clients) for task, cabinet-api, event, notification and admin-api (notification token is written in its own block below)"
   id_client_hash() {
     printf '%s' "$1" | openssl dgst -sha256 | awk '{print $NF}'
   }
@@ -281,6 +280,7 @@ jq --arg secret "$OAUTH_SECRET" \
   CABINET_ID_SECRET=$(generate_secret)
   EVENT_ID_SECRET=$(generate_secret)
   NOTIFICATION_ID_SECRET=$(generate_secret)
+  ADMIN_API_ID_SECRET=$(generate_secret)
 
   file="config/id/config.json"
   echo "$file"
@@ -288,12 +288,20 @@ jq --arg secret "$OAUTH_SECRET" \
     --arg cabinet "$(id_client_hash "$CABINET_ID_SECRET")" \
     --arg event "$(id_client_hash "$EVENT_ID_SECRET")" \
     --arg notification "$(id_client_hash "$NOTIFICATION_ID_SECRET")" \
+    --arg adminApi "$(id_client_hash "$ADMIN_API_ID_SECRET")" \
     '.production.basic_auth.clients = [
       {name: "task", secret_hash: $task, scopes: ["user:read", "user:write"]},
       {name: "cabinet-api", secret_hash: $cabinet, scopes: ["totp"]},
       {name: "event", secret_hash: $event, scopes: ["user:read", "user:write"]},
-      {name: "notification", secret_hash: $notification, scopes: ["user:read"]}
+      {name: "notification", secret_hash: $notification, scopes: ["user:read"]},
+      {name: "admin-api", secret_hash: $adminApi, scopes: ["user:read", "user:write", "user:admin", "password:set", "login_history", "login_history:all", "login_history:pii"]}
     ]' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/admin-api/auth.json"
+  echo "$file"
+  jq --arg token "$(id_client_token admin-api "$ADMIN_API_ID_SECRET")" \
+    '.basicAuthToken = $token' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/task/auth.json"

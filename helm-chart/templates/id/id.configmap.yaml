@@ -125,7 +125,8 @@ metadata:
   "swagger" false
   "trustProxy" 1
   "legacyGetConfirmation" true
-  "users" (dict "maxLimit" 100 "maxBatch" 1000 "fullReadClients" (list))
+  "roles" (default (list "individual" "admin" "admin-liquio-portal") (get (default (dict) .Values.config.id) "assignableRoles"))
+  "users" (dict "maxLimit" 100 "maxBatch" 1000 "fullReadClients" (list "admin-api"))
   "x509" $x509Base
 -}}
 {{ $idConfigBase := dict

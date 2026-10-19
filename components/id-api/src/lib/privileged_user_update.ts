@@ -50,3 +50,21 @@ export function checkNamedClientUpdate(
 
   return undefined;
 }
+
+/**
+ * Author recorded in `user_admin_actions.created_by` for an update made by a named service client.
+ * Always names the service. A client holding `user:admin` (a service that already acts for admins, such as admin-api)
+ * may also attest the human initiator: only `userId` and `name` of an object `updateInitiator` are kept, so the
+ * admin journal still shows who acted. Any other client, and any non-object initiator, is ignored.
+ */
+export function buildNamedClientAuthor(client: UpdateServiceClient, initiator: unknown): Record<string, unknown> {
+  const author: Record<string, unknown> = { service: client.name };
+  if (!client.scopes.includes('user:admin') || !initiator || typeof initiator !== 'object' || Array.isArray(initiator)) return author;
+
+  const { userId, name } = initiator as Record<string, unknown>;
+  return {
+    ...(typeof userId === 'string' && userId ? { userId } : {}),
+    ...(typeof name === 'string' && name ? { name } : {}),
+    ...author,
+  };
+}

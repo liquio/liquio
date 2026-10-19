@@ -1,4 +1,4 @@
-import { changedPrivilegedFields, checkNamedClientUpdate } from './privileged_user_update';
+import { buildNamedClientAuthor, changedPrivilegedFields, checkNamedClientUpdate } from './privileged_user_update';
 
 const client = (...scopes: string[]) => ({ name: 'svc', scopes, legacy: false });
 
@@ -36,5 +36,28 @@ describe('checkNamedClientUpdate (KS-24)', () => {
 
   it('lists the privileged fields of a body', () => {
     expect(changedPrivilegedFields({ role: 'a', gender: 'x', isActive: true })).toEqual(['role', 'isActive']);
+  });
+});
+
+describe('buildNamedClientAuthor (KS-24m)', () => {
+  const initiator = { userId: 'admin-1', name: 'Admin One', email: 'a@b.test', ipn: '123' };
+
+  it('names the service and keeps only userId and name of the initiator for a user:admin client', () => {
+    expect(buildNamedClientAuthor(client('user:admin'), initiator)).toEqual({ userId: 'admin-1', name: 'Admin One', service: 'svc' });
+  });
+
+  it('never lets the initiator override the service name', () => {
+    expect(buildNamedClientAuthor(client('user:admin'), { ...initiator, service: 'someone-else' })).toEqual({
+      userId: 'admin-1',
+      name: 'Admin One',
+      service: 'svc',
+    });
+  });
+
+  it('ignores the initiator for a client without user:admin and for non-object values', () => {
+    expect(buildNamedClientAuthor(client('user:write'), initiator)).toEqual({ service: 'svc' });
+    expect(buildNamedClientAuthor(client('user:admin'), 'spoofed')).toEqual({ service: 'svc' });
+    expect(buildNamedClientAuthor(client('user:admin'), ['x'])).toEqual({ service: 'svc' });
+    expect(buildNamedClientAuthor(client('user:admin'), undefined)).toEqual({ service: 'svc' });
   });
 });

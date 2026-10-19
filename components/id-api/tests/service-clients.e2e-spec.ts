@@ -134,6 +134,13 @@ describe('Named service clients on basic() routes (KS-24)', () => {
     expect(row.created_by).toEqual({ service: 'admin-service' });
   });
 
+  it('records the human initiator next to the service for a user:admin client (KS-24m)', async () => {
+    const user = await newUser();
+    await update(user.userId, ADMIN, { isActive: false, updateInitiator: { userId: 'admin-1', name: 'Admin One', email: 'x@y.test' } }).expect(200);
+    const [row] = await actions(user.userId);
+    expect(row.created_by).toEqual({ userId: 'admin-1', name: 'Admin One', service: 'admin-service' });
+  });
+
   it('keeps the legacy shared secret working with all scopes and no session or cookie written for the target', async () => {
     const user = await newUser();
     const res = await update(user.userId, LEGACY, { role: 'individual;legacy', isActive: false, updateInitiator: { userId: 'admin-1' } }).expect(200);

@@ -593,6 +593,14 @@ config:
   # Identity API configuration
   # Configuration for authentication providers and OIDC integration
   id:
+    # Roles a named id-api client with the user:admin scope (admin-api) may set through PUT /user/info/:id, rendered as
+    # `roles` in the id config. Every role in the submitted value must be on the list, else 400, so a named client can
+    # never grant (or keep) a role outside it. Defaults to the roles admin-api manages: `individual` (the default user
+    # role), `admin` and `admin-<admin-api auth.clientId>` (set-admin with isCurrentAuthClient; clientId is
+    # `liquio-portal`). Add `admin-<clientId>` if you change the admin-api clientId, and any other role you give users
+    # through admin-api. A user holding a role that is not on the list cannot be updated with a role through admin-api.
+    # The legacy shared secret is not limited by this list.
+    # assignableRoles: ["individual", "admin", "admin-liquio-portal"]
     config:
       # OIDC provider configuration
       # Add OIDC providers to enable generic OpenID Connect authentication
