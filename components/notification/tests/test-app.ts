@@ -11,9 +11,10 @@ import nock from 'nock';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
-import { ConsoleLogProvider, Log, resetIdApiClient } from '@liquio/back-core';
+import { Log, resetIdApiClient } from '@liquio/back-core';
 
 import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
+import { createConsoleLogProvider } from '../src/lib/console_log_provider';
 
 const debug = createDebug;
 
@@ -193,7 +194,7 @@ export class TestApp {
     const config = { conf, env: defaultEnv };
 
     // Init log the same way src/index.ts does, before anything that might read global.log.
-    const consoleLogProvider = new ConsoleLogProvider(conf.log?.console?.name, { excludeParams: conf.log?.excludeParams });
+    const consoleLogProvider = createConsoleLogProvider(conf.log);
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
     global.log = log;
