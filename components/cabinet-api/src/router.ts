@@ -13,6 +13,7 @@ import TestController from './controllers/test';
 import { compilePathMatcher, isSuspiciousPath } from './lib/custom_api_path_matcher';
 import { sanitizeProxyHeaders } from './lib/proxy_headers';
 import { isMainProxyPathAllowed } from './lib/proxy_filter';
+import { publicError } from './lib/public_error';
 import { redactHeaders, redactUrl, safeError, urlPath } from './lib/redact';
 
 // Constants.
@@ -329,23 +330,27 @@ class Router {
   }
 
   private jsonErrorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
-    (global.log as any).save('proxy-error', safeError(err));
+    (global.log as any).save('proxy-error', { ...safeError(err), traceId: getTraceId() });
 
     let status = 500;
-    let message = err.message || 'Internal server error';
 
     // Handle HTTP errors.
     if ((err as any).status) {
-      status = (err as any).status;
+      status = Number((err as any).status);
+      if (!Number.isInteger(status) || status < 400 || status > 599) {
+        status = 500;
+      }
 
       // Handle proxy connection errors.
     } else if (['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN'].includes((err as any).code)) {
       status = 503;
-      message = 'Service unavailable';
     }
 
+    // Client gets only a safe message (never raw error text, SQL or stack); details are in the log above.
+    const message = status === 503 ? 'Service unavailable' : publicError(err, status);
+
     res.status(status);
-    res.json({ error: { message } });
+    res.json({ error: { message }, traceId: getTraceId() });
   }
 
   /**
