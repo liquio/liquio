@@ -347,6 +347,13 @@ export interface Config {
       recipientWindowSeconds?: number;
       sourceMax?: number;
       sourceWindowSeconds?: number;
+      // Separate limits for 2FA phone code sends (same fields).
+      twoFactor?: {
+        recipientMax?: number;
+        recipientWindowSeconds?: number;
+        sourceMax?: number;
+        sourceWindowSeconds?: number;
+      };
     };
   };
 }

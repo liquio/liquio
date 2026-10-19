@@ -165,4 +165,32 @@ describe('AuthService.consumeSendQuota (ID-20)', () => {
     expect(await auth.consumeSendQuota('phone', '1')).toBe(true);
     now.mockRestore();
   });
+
+  it('limits 2FA sends per phone and per source with separate counters and generous defaults', async () => {
+    const redis = memoryRedis();
+    const auth = build(undefined, redis);
+
+    const results = [];
+    for (let i = 0; i < 11; i++) results.push(await auth.consumeSendQuota('twoFactor', '+380501', `10.0.0.${i}`));
+    expect(results.slice(0, 10).every(Boolean)).toBe(true);
+    expect(results[10]).toBe(false);
+
+    // Sign-up phone sends to the same number are counted separately.
+    expect(await auth.consumeSendQuota('phone', '+380501', '10.0.0.1')).toBe(true);
+    const keys = [...redis.counters.keys()];
+    expect(keys.some((k) => k.startsWith('confirm-send-source.twoFactor.'))).toBe(true);
+    expect(keys.some((k) => k.startsWith('confirm-send.twoFactor.'))).toBe(true);
+
+    // Source default is higher than the generic one.
+    const other = build(undefined, memoryRedis());
+    for (let i = 0; i < 150; i++) expect(await other.consumeSendQuota('twoFactor', `+38050${i}`, '1.1.1.1')).toBe(true);
+  });
+
+  it('reads 2FA limits from confirmCode.sendLimit.twoFactor', async () => {
+    const auth = build({ recipientMax: 100, twoFactor: { recipientMax: 2 } }, memoryRedis());
+
+    expect(await auth.consumeSendQuota('twoFactor', '+380501')).toBe(true);
+    expect(await auth.consumeSendQuota('twoFactor', '+380501')).toBe(true);
+    expect(await auth.consumeSendQuota('twoFactor', '+380501')).toBe(false);
+  });
 });

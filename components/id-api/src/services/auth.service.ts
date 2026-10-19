@@ -38,6 +38,13 @@ export const DEFAULT_SEND_LIMIT = {
   sourceMax: 100, // Codes per source IP per window (shared NAT friendly).
   sourceWindowSeconds: 3600,
 };
+// 2FA phone sends (login with a verified password): own counters, a login sends up to two codes, so the source limit is higher.
+export const DEFAULT_TWO_FACTOR_SEND_LIMIT = {
+  recipientMax: 10,
+  recipientWindowSeconds: 3600,
+  sourceMax: 300,
+  sourceWindowSeconds: 3600,
+};
 
 /**
  * Redis key under which task caches the user info for an access token (`token.<sha256(accessToken)>`).
@@ -464,11 +471,14 @@ export class AuthService extends BaseService {
    * Fixed windows, atomic in redis (shared by all instances); with redis disabled the counters are per instance.
    * Returns false when a limit is exceeded: the caller must not send the code.
    */
-  async consumeSendQuota(channel: 'phone' | 'email', recipient: string, source?: string): Promise<boolean> {
-    const configured: Partial<typeof DEFAULT_SEND_LIMIT> = this.config.confirmCode?.sendLimit ?? {};
+  async consumeSendQuota(channel: 'phone' | 'email' | 'twoFactor', recipient: string, source?: string): Promise<boolean> {
+    const isTwoFactor = channel === 'twoFactor';
+    const sendLimit = this.config.confirmCode?.sendLimit;
+    const configured: Partial<typeof DEFAULT_SEND_LIMIT> = (isTwoFactor ? sendLimit?.twoFactor : sendLimit) ?? {};
+    const defaults = isTwoFactor ? DEFAULT_TWO_FACTOR_SEND_LIMIT : DEFAULT_SEND_LIMIT;
     const limit = (name: keyof typeof DEFAULT_SEND_LIMIT) => {
       const value = Number(configured[name]);
-      return Number.isFinite(value) && value > 0 ? value : DEFAULT_SEND_LIMIT[name];
+      return Number.isFinite(value) && value > 0 ? value : defaults[name];
     };
     const limits = {
       recipientMax: limit('recipientMax'),
@@ -483,7 +493,7 @@ export class AuthService extends BaseService {
       [`confirm-send.${channel}.${digest(normalized)}`, limits.recipientWindowSeconds, limits.recipientMax],
     ];
     if (source) {
-      checks.push([`confirm-send-source.${digest(source)}`, limits.sourceWindowSeconds, limits.sourceMax]);
+      checks.push([`confirm-send-source.${isTwoFactor ? 'twoFactor.' : ''}${digest(source)}`, limits.sourceWindowSeconds, limits.sourceMax]);
     }
 
     let allowed = true;

@@ -123,6 +123,10 @@ export class AuthController extends BaseController {
     // Check if two-factor authentication is needed.
     const twoFactorAuthNeeded = useTwoFactorAuth && !phoneChecked && !totpChecked;
     if (useTwoFactorAuth && twoFactorType === 'phone' && !phoneChecked) {
+      if (!(await this.service('auth').consumeSendQuota('twoFactor', phone, req.ip ?? req.socket?.remoteAddress))) {
+        res.status(429).send({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
       await this.service('auth').sendPhoneConfirmCode(phone);
     }
 
@@ -610,8 +614,10 @@ export class AuthController extends BaseController {
 
     // Control for phone-based 2FA.
     if (twoFactorType === 'phone') {
-      this.service('auth')
-        .sendPhoneConfirmCode(phone as string)
+      const auth = this.service('auth');
+      auth
+        .consumeSendQuota('twoFactor', phone as string, req.ip ?? req.socket?.remoteAddress)
+        .then((allowed: boolean) => (allowed ? auth.sendPhoneConfirmCode(phone as string) : undefined))
         .catch((error: any) => this.log.save('check-two-factor-auth-send-code-error', { userId, error: error.message }, 'error'));
       res.redirect('/');
       return;

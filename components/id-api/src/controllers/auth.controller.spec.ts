@@ -15,6 +15,7 @@ describe('AuthController.checkTwoFactorAuth', () => {
   let controller: AuthController;
   let findOne: jest.Mock;
   let sendPhoneConfirmCode: jest.Mock;
+  let consumeSendQuota: jest.Mock;
   let res: any;
   let next: jest.Mock;
 
@@ -25,8 +26,9 @@ describe('AuthController.checkTwoFactorAuth', () => {
     jest.clearAllMocks();
     findOne = jest.fn();
     sendPhoneConfirmCode = jest.fn().mockResolvedValue(undefined);
+    consumeSendQuota = jest.fn().mockResolvedValue(true);
     (Models.model as jest.Mock).mockReturnValue({ findOne });
-    (Services.service as jest.Mock).mockReturnValue({ sendPhoneConfirmCode });
+    (Services.service as jest.Mock).mockReturnValue({ sendPhoneConfirmCode, consumeSendQuota });
     controller = new AuthController({ get: jest.fn(), post: jest.fn() } as any, { config: {} } as any);
     res = { redirect: jest.fn(), status: jest.fn().mockReturnThis(), send: jest.fn() };
     next = jest.fn();
@@ -66,9 +68,20 @@ describe('AuthController.checkTwoFactorAuth', () => {
 
     await controller.checkTwoFactorAuth(request(session()), res, next);
 
+    expect(consumeSendQuota).toHaveBeenCalledWith('twoFactor', '+380501112233', undefined);
     expect(sendPhoneConfirmCode).toHaveBeenCalledWith('+380501112233');
     expect(res.redirect).toHaveBeenCalledWith('/');
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it('does not send the phone code when the send quota is exhausted', async () => {
+    account({ useTwoFactorAuth: true, twoFactorType: 'phone', phone: '+380501112233' });
+    consumeSendQuota.mockResolvedValue(false);
+
+    await controller.checkTwoFactorAuth(request(session()), res, next);
+
+    expect(sendPhoneConfirmCode).not.toHaveBeenCalled();
+    expect(res.redirect).toHaveBeenCalledWith('/');
   });
 
   it('redirects to /totp when the TOTP factor is incomplete', async () => {
@@ -135,5 +148,25 @@ describe('AuthController.checkTwoFactorAuth', () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(res.redirect).toHaveBeenCalledWith('/');
+  });
+});
+
+describe('AuthController.getAuth send quota', () => {
+  it('answers 429 and sends no SMS once the 2FA quota is exhausted', async () => {
+    const sendPhoneConfirmCode = jest.fn();
+    const consumeSendQuota = jest.fn().mockResolvedValue(false);
+    (Services.service as jest.Mock).mockReturnValue({ sendPhoneConfirmCode, consumeSendQuota });
+    const controller = new AuthController({ get: jest.fn(), post: jest.fn() } as any, { config: {} } as any);
+    const res: any = { status: jest.fn().mockReturnThis(), send: jest.fn() };
+    const req: any = {
+      ip: '10.0.0.1',
+      session: { passport: { user: { useTwoFactorAuth: true, twoFactorType: 'phone', phone: '+380501112233' } } },
+    };
+
+    await controller.getAuth(req, res);
+
+    expect(consumeSendQuota).toHaveBeenCalledWith('twoFactor', '+380501112233', '10.0.0.1');
+    expect(sendPhoneConfirmCode).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(429);
   });
 });

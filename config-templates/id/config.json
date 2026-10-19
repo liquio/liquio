@@ -26,6 +26,16 @@
       "profileHttpOnly": false
     },
     "trustProxy": 1,
+    "confirmCode": {
+      "ttlMinutes": 60,
+      "sendLimit": {
+        "recipientMax": 10,
+        "recipientWindowSeconds": 3600,
+        "sourceMax": 100,
+        "sourceWindowSeconds": 3600,
+        "twoFactor": { "recipientMax": 10, "recipientWindowSeconds": 3600, "sourceMax": 300, "sourceWindowSeconds": 3600 }
+      }
+    },
     "legacyGetConfirmation": true,
     "cors": {
       "allowedOrigins": []
