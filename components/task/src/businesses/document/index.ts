@@ -543,6 +543,7 @@ export class DocumentBusiness extends Business {
     if (validationErrors.length > 0) {
       const error: any = new Error('Validation error.');
       error.details = validationErrors;
+      error.expose = true; // Intentional, the front shows these errors next to the fields.
       throw error;
     }
 

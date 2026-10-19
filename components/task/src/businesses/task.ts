@@ -899,7 +899,9 @@ export class TaskBusiness extends Business {
             ))
           ) {
             global.log.save('workflow-entry-task-template-id-error', { workflowTemplate }, 'error');
-            throw new Error('Invalid entryTaskTemplateId.');
+            const error: any = new Error('Invalid entryTaskTemplateId.');
+            error.expose = true; // Intentional message, the front matches on it.
+            throw error;
           }
           taskTemplateId = workflowTemplate.data.entryTaskTemplateIds[0];
         }
@@ -917,6 +919,7 @@ export class TaskBusiness extends Business {
         ) {
           global.log.save('workflow-entry-task-template-id-error', { workflowTemplate, entryTaskTemplateIds, userInfo, unitIds, userUnits }, 'error');
           const error: any = new Error('Invalid entryTaskTemplateId.');
+          error.expose = true; // Intentional message, the front matches on it and shows details.disabledText.
 
           if (workflowTemplate.data.disabledText) {
             error.details = {
@@ -2153,7 +2156,9 @@ export class TaskBusiness extends Business {
       // Check commit available.
       const isCommitAvailable = await this.isCommitAvailable(document, user, units);
       if (!isCommitAvailable) {
-        throw new Error('Commit not available.');
+        const error: any = new Error('Commit not available.');
+        error.expose = true; // Intentional message, the front matches on it.
+        throw error;
       }
 
       // Get document JSON schema.

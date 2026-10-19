@@ -1,62 +1,45 @@
-const { execSync } = require('child_process');
+const { execFileSync, execSync } = require('child_process');
 const { debug } = require('./debug');
 
 /**
- * Extracts a 6-digit confirmation PIN from docker compose logs
- * Greps for 'email-send-success' message and extracts the PIN
- * 
+ * Reads the 6-digit confirmation PIN of the latest email sent to an address.
+ * id-api does not log message bodies, so the PIN is taken from the email that the notification service stored in its database.
+ *
+ * @param {string} email - Address the confirmation email was sent to
  * @param {number} maxRetries - Maximum number of retry attempts (default: 10)
  * @param {number} delayMs - Delay between retries in milliseconds (default: 500)
- * @returns {Promise<string>} The 6-digit PIN extracted from logs
- * @throws {Error} If PIN cannot be extracted after all retries
+ * @returns {Promise<string>} The 6-digit PIN from the email body
+ * @throws {Error} If no PIN is found after all retries
  */
-async function getConfirmationPinFromDockerLogs(maxRetries = 10, delayMs = 500) {
-  debug('getConfirmationPinFromDockerLogs: Starting PIN extraction from docker compose logs');
-  
+async function getConfirmationPinFromNotifyDb(email, maxRetries = 10, delayMs = 500) {
+  // The address goes in as a psql variable through stdin (psql -c does not interpolate variables), never spliced into the SQL.
+  const query = `SELECT substring(full_message from '>\\s*([0-9]{6})\\s*</div>') FROM incomming_messages
+    WHERE :'email' = ANY(list_email) ORDER BY message_id DESC LIMIT 1;`;
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    debug(`getConfirmationPinFromNotifyDb: Attempt ${attempt}/${maxRetries} for ${email}`);
     try {
-      debug(`getConfirmationPinFromDockerLogs: Attempt ${attempt}/${maxRetries}`);
-      
-      // Run docker compose logs command and grep for email-send-success
-      const logsOutput = execSync('docker compose logs | grep "email-send-success"', {
-        stdio: 'pipe',
-        encoding: 'utf8',
-        shell: '/bin/bash'
-      });
+      const pin = execFileSync(
+        'docker',
+        ['compose', 'exec', '-T', 'postgres', 'sh', '-c', 'psql -U "$POSTGRES_USER" -d notify -At -v email="$1"', 'sh', email],
+        { input: query, stdio: 'pipe', encoding: 'utf8' },
+      ).trim();
 
-      debug('getConfirmationPinFromDockerLogs: Found matching log entries, searching for PIN');
-
-      // Extract 6-digit PIN from the logs using regex
-      // The PIN is in the email body in the format: " 110836 </div>"
-      // Use global flag to find all matches, then take the last one (most recent)
-      const allPinMatches = logsOutput.match(/>\s*(\d{6})\s*<\/div>/g);
-      
-      if (allPinMatches && allPinMatches.length > 0) {
-        // Extract the digit from the last match
-        const lastMatch = allPinMatches[allPinMatches.length - 1];
-        const pinMatch = lastMatch.match(/\d{6}/);
-        const pin = pinMatch[0];
-        debug(`getConfirmationPinFromDockerLogs: ✓ Successfully extracted PIN: ${pin} (from ${allPinMatches.length} matches)`);
+      if (/^\d{6}$/.test(pin)) {
+        debug(`getConfirmationPinFromNotifyDb: Found PIN ${pin}`);
         return pin;
       }
-
-      debug('getConfirmationPinFromDockerLogs: No 6-digit PIN found in matched logs');
-      
-      if (attempt < maxRetries) {
-        debug(`getConfirmationPinFromDockerLogs: Waiting ${delayMs}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      }
+      debug('getConfirmationPinFromNotifyDb: No PIN stored yet');
     } catch (error) {
-      debug(`getConfirmationPinFromDockerLogs: Attempt ${attempt}/${maxRetries} error: ${error.message}`);
-      
-      if (attempt < maxRetries) {
-        debug(`getConfirmationPinFromDockerLogs: Waiting ${delayMs}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      }
+      debug(`getConfirmationPinFromNotifyDb: Attempt ${attempt}/${maxRetries} error: ${error.message}`);
+    }
+
+    if (attempt < maxRetries) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
-  throw new Error(`Failed to extract 6-digit PIN from docker compose logs after ${maxRetries} attempts`);
+  throw new Error(`Failed to read a 6-digit PIN for ${email} from the notify database after ${maxRetries} attempts`);
 }
 
 /**
@@ -78,6 +61,6 @@ function getDockerComposeLogs(service, since) {
 }
 
 module.exports = {
-  getConfirmationPinFromDockerLogs,
+  getConfirmationPinFromNotifyDb,
   getDockerComposeLogs,
 };

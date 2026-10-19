@@ -4,6 +4,7 @@ import nock from 'nock';
 import { Sandbox } from '@liquio/back-core';
 
 import { initIdApiClient } from '../../lib/id_api';
+import { DocumentValidatorService } from '../../services/document_validator';
 import { DocumentBusiness } from './index';
 
 new Sandbox();
@@ -499,6 +500,25 @@ describe('DocumentBusiness', () => {
       expect(result).toBe(expectedBase64);
       // Verify we can decode it back
       expect(Buffer.from(result, 'base64').toString('utf8')).toBe(textContent);
+    });
+  });
+
+  describe('validate', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it('throws a public error so the client gets the validation details', async () => {
+      const documentBusiness = new DocumentBusiness(global.config);
+      const validationErrors = [{ dataPath: 'step.field', message: 'should be string' }];
+      jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue({ documentTemplateId: 1, data: {} } as any);
+      jest.spyOn(DocumentValidatorService.prototype, 'check').mockResolvedValue(validationErrors as any);
+      global.models = { documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) } } as any;
+      global.businesses = { register: { getFilteredRecordsByKeyId: jest.fn() } } as any;
+
+      await expect(documentBusiness.validate('document-id', { userId: 'user-id' }, {} as any, true)).rejects.toMatchObject({
+        message: 'Validation error.',
+        expose: true,
+        details: validationErrors,
+      });
     });
   });
 });

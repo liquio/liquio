@@ -162,7 +162,7 @@ services:
       postgres:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_started
 
@@ -210,7 +210,7 @@ services:
       postgres:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_started
 
@@ -339,10 +339,15 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      # Healthy only once the AMQP listener accepts connections, so services that wait for it can connect on first try.
+      # A plain TCP probe: rabbitmq-diagnostics runs as root and, before the server starts, writes a root-owned
+      # .erlang.cookie into the fresh volume that the server then cannot read.
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/5672"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
+      start_period: 60s
+      start_interval: 2s
 
   redis:
     image: redis:latest

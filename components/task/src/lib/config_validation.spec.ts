@@ -70,8 +70,13 @@ describe('buildSandboxConfig', () => {
     const { Sandbox } = require('@liquio/back-core');
     const getLog = () => ({ save: jest.fn() });
     const sandbox = new Sandbox({ ...buildSandboxConfig({ isolationLevel: 'function' }, jest.fn()), getLog });
-    const result = sandbox.evalWithArgs('() => [typeof process, typeof require, typeof Buffer]', [], { checkArrow: true });
-    expect(result).toEqual(['undefined', 'undefined', 'undefined']);
+    // The isolate has its own `Buffer` (the `buffer` package): a Uint8Array without the host-only internals such as `utf8Write`.
+    const result = sandbox.evalWithArgs(
+      '() => { const buffer = Buffer.from("a"); return [typeof process, typeof require, buffer instanceof Uint8Array, typeof buffer.utf8Write]; }',
+      [],
+      { checkArrow: true },
+    );
+    expect(result).toEqual(['undefined', 'undefined', true, 'undefined']);
   });
 });
 
