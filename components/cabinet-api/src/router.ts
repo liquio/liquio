@@ -63,7 +63,7 @@ class Router {
         origin: '*',
         methods: 'GET, POST, PUT, DELETE, OPTIONS',
         allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, token, Authorization, debug-user-id, enabled-mocks',
-        exposedHeaders: 'Name, Version, Customer, Environment, returned-mocks, external-reader-errors',
+        exposedHeaders: 'Name, Version, Customer, Environment, returned-mocks, external-reader-errors, new_token',
       }),
     );
 

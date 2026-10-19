@@ -371,3 +371,28 @@ describe('Router custom APIs', () => {
     });
   });
 });
+
+describe('Router CORS', () => {
+  it('exposes the renewed token header to cross-origin browsers', async () => {
+    (global as any).log = { save: jest.fn() };
+    (global as any).config = { server: { maxBodySize: '1mb' }, discovery: {} };
+    const router: any = new Router();
+    let app: express.Express | undefined;
+    jest.spyOn(router, 'listen').mockImplementation(async (a: any) => {
+      app = a;
+    });
+    await router.init();
+    const server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    try {
+      const base = `http://localhost:${(server.address() as AddressInfo).port}`;
+      const res = await fetch(`${base}/test/ping`, {
+        method: 'OPTIONS',
+        headers: { Origin: 'https://front.example', 'Access-Control-Request-Method': 'GET' },
+      });
+      expect(res.headers.get('access-control-expose-headers')).toContain('new_token');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+});
