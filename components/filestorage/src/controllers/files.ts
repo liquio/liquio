@@ -337,7 +337,7 @@ export class FilesController extends Controller {
         continue;
       }
 
-      const name = Helpers.safeEntryName(zipEntry.entryName);
+      const name = Helpers.sanitizeFileName(zipEntry.entryName);
       const content = zipEntry.getData();
       const contentType = mime.lookup(name) || 'application/octet-stream';
       const contentLength = content.length;
@@ -408,7 +408,7 @@ export class FilesController extends Controller {
     const { user } = req.auth;
 
     if (typeof name === 'string' && name) {
-      name = Helpers.safeEntryName(name);
+      name = Helpers.sanitizeFileName(name);
     }
 
     if (isSetExtension === 'true') {
@@ -857,7 +857,7 @@ export class FilesController extends Controller {
 
     // Prepare file data.
     const { data: fileBuffer } = fileInfo;
-    const fileName = Helpers.safeEntryName(fileInfo.name);
+    const fileName = Helpers.sanitizeFileName(fileInfo.name);
 
     // Get signature.
     let signaturesModelResponse;
@@ -867,6 +867,9 @@ export class FilesController extends Controller {
       global.log.save('get-signatures-error', { error: error && error.message });
     }
     const { data: signatures } = signaturesModelResponse || {};
+    if (!Array.isArray(signatures)) {
+      return this.responseError(res, 'Can not get file signatures.', 400);
+    }
     const [signatureInfo] = signatures;
 
     // Check signature.

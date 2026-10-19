@@ -1,6 +1,7 @@
 import AdmZip from 'adm-zip';
 import JSZip from 'jszip';
 
+import { SignatureModel } from '../src/models/signature';
 import { TestApp, TEST_AUTH_HEADER } from './test-app';
 
 const AUTH_HEADER = TEST_AUTH_HEADER;
@@ -460,6 +461,38 @@ describe('Files Controller', () => {
       const asicsNames = Object.keys(asicsZip.files);
       expect(asicsNames).toContain('x.txt');
       expect(asicsNames.every(isSafe)).toBe(true);
+    });
+
+    it('should respond 400, not 500, when file signatures can not be loaded for ASiC-S', async () => {
+      const id = (
+        await app
+          .request()
+          .post('/files')
+          .query({ name: 'nosig.txt', container_id: DEFAULT_CONTAINER_ID })
+          .set('Authorization', AUTH_HEADER)
+          .set('Content-Type', 'application/octet-stream')
+          .send('payload')
+          .expect(200)
+      ).body.data.id as string;
+      const spy = jest.spyOn(SignatureModel.prototype, 'getAll').mockRejectedValueOnce(new Error('db down'));
+      try {
+        const res = await app.request().post('/files/asics').set('Authorization', AUTH_HEADER).send({ fileId: id }).expect(400);
+        expect(JSON.stringify(res.body)).toMatch(/signatures/i);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('should sanitize the name on create like on update', async () => {
+      const res = await app
+        .request()
+        .post('/files')
+        .query({ name: '..\\..//evil/"a"\u0000b.txt', container_id: DEFAULT_CONTAINER_ID })
+        .set('Authorization', AUTH_HEADER)
+        .set('Content-Type', 'application/octet-stream')
+        .send('payload')
+        .expect(200);
+      expect(res.body.data.name).toBe('ab.txt');
     });
   });
 });
