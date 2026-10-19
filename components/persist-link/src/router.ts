@@ -7,6 +7,7 @@ import { redactUrl } from './lib/log_redact';
 import AppIdentHeaders from './lib/app_ident_headers';
 import Controllers from './controllers';
 import Cors from './lib/cors';
+import { errorHandler } from './lib/error_handler';
 import HttpRequest from './lib/http_request';
 
 /**
@@ -63,6 +64,9 @@ class Router {
 
     // Init routes.
     this.initRoutes(app);
+
+    // Error handler: generic body for clients, details in the log only.
+    app.use(errorHandler);
 
     // Start listening.
     await this.listen(app);

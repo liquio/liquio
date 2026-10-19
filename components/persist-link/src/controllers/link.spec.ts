@@ -119,3 +119,26 @@ describe('LinkController', () => {
     });
   });
 });
+
+describe('Controller.responseError', () => {
+  it('should not send the text of an unmarked Error to the client', () => {
+    delete (LinkController as any).singleton;
+    const controller: any = new LinkController({});
+    const res = createRes();
+
+    controller.responseError(res, new Error('connect ECONNREFUSED 10.0.0.5:5432'));
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(JSON.stringify(res.send.mock.calls[0][0])).not.toContain('ECONNREFUSED');
+    expect(logSave).toHaveBeenCalledWith('response-error-hidden', expect.objectContaining({ message: 'connect ECONNREFUSED 10.0.0.5:5432' }));
+  });
+
+  it('should keep intentional string messages', () => {
+    const controller: any = new LinkController({});
+    const res = createRes();
+
+    controller.responseError(res, 'Provider error.');
+
+    expect(res.send).toHaveBeenCalledWith({ error: { message: 'Provider error.' } });
+  });
+});

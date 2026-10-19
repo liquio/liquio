@@ -1,5 +1,6 @@
 // Import.
 import { getLog } from '../lib/context';
+import { publicError } from '../lib/public_error';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -60,7 +61,9 @@ class Controller {
    */
   responseError(res, error = DEFAULT_ERROR_MESSAGE, httpStatusCode = HTTP_STATUS_CODE_SERVER_ERROR) {
     // Define params.
-    const message = error instanceof Error ? error.message : error;
+    // Only the text of public errors reaches the client; strings are written by the caller.
+    const isError = error instanceof Error;
+    const message = isError ? publicError(error, httpStatusCode) : error;
 
     // Define response object.
     const responseObject = {
@@ -69,6 +72,9 @@ class Controller {
 
     // Log.
     getLog().save('http-response', responseObject);
+    if (isError && message !== error.message) {
+      getLog().save('response-error-hidden', { message: error.message, stack: error.stack, httpStatusCode });
+    }
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
