@@ -30,7 +30,10 @@ module.exports = (async () => {
   global.redisClient = global.config?.redis?.isEnabled ? new RedisClient(global.config.redis) : null;
 
   // Init log.
-  const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
+  const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
+    excludeParams: config.log.excludeParams,
+    disableDefaultRedaction: config.log.disableDefaultRedaction,
+  });
   const log = new Log([consoleLogProvider], ['console']);
   global.log = log;
 
