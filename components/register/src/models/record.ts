@@ -13,6 +13,13 @@ const ENCRYPTED_FIELD_NAME = '$encrypted';
 const JOIN_FIELD_REGEX = /^[a-zA-Z0-9_-]+$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Patched record data failed the key JSON schema. */
+export class PatchValidationError extends Error {
+  constructor(public readonly validatorErrors: any[]) {
+    super('JSON schema validation error.');
+  }
+}
+
 /**
  * Record model.
  */
@@ -500,11 +507,14 @@ export default class RecordModel extends Model {
   }
 
   // Update record properties.
+  // `validate` gets the patched (not yet saved) data and returns validation errors; any error aborts the write.
+  // It runs on the row read under the token filter, right before the save.
   async updatePatch(
     id: string,
     keyId: number,
     properties: Array<{ path: string; previousValue: any; value: any }>,
     allowTokens?: string[],
+    validate?: (data: any, recordId: string) => Promise<any[]>,
   ): Promise<RecordEntity | undefined> {
     const where: any = { ...(isNaN(+id) ? { id } : { key_id: keyId, search_string: id.toString() }), ...this.allowTokensWhere(allowTokens) };
     const record = await this.model.findOne({
@@ -530,6 +540,11 @@ export default class RecordModel extends Model {
           record[key] = value;
         }
       });
+    }
+
+    if (validate) {
+      const validatorErrors = await validate(JSON.parse(JSON.stringify(record.data ?? {})), record.id);
+      if (validatorErrors.length > 0) throw new PatchValidationError(validatorErrors);
     }
 
     return new RecordEntity(await record.save());

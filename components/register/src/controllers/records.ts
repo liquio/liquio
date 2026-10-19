@@ -11,7 +11,7 @@ import Controller from './controller';
 import SearchBusiness from '../businesses/search';
 import AccessLogBusiness from '../businesses/access_log';
 import HistoryBusiness from '../businesses/history';
-import RecordModel from '../models/record';
+import RecordModel, { PatchValidationError } from '../models/record';
 import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import HistoryModel from '../models/history';
@@ -1634,10 +1634,6 @@ export default class RecordsController extends Controller {
       return this.responseError(res, error.message, 400);
     }
 
-    if (!(await this.keyModel.checkRecordsWritableById(keyId))) {
-      return this.responseError(res, 'Key records are not writable.', 403);
-    }
-
     // Opt-in (`auth.strict`): an untrusted caller may patch only public rows or rows that share a token with it.
     let writeTokens: string[] | undefined;
     try {
@@ -1645,8 +1641,32 @@ export default class RecordsController extends Controller {
     } catch {
       return this.responseError(res, 'Invalid register access configuration.', 500);
     }
+    // The patched data must satisfy the key JSON schema (incl. uniqueness), the same as PUT. Checked on the row inside the model write.
+    let schema;
     try {
-      const recordModelResponse = await this.recordModel.updatePatch(id, keyId, properties, writeTokens);
+      const keyModelResponse = await this.keyModel.findById(keyId);
+      if (!keyModelResponse) {
+        return this.responseError(res, 'Can not find key.', 404);
+      }
+      if (!this.keyModel.checkRecordsWritable(keyModelResponse.data)) {
+        return this.responseError(res, 'Key records are not writable.', 403);
+      }
+      schema = keyModelResponse.data?.schema;
+    } catch (error) {
+      this.log.save('update-record-schema-error', { error: error && error.message });
+      return this.responseError(res, 'JSON schema validation error.', 500, 'Cannot validate record data');
+    }
+    const validate = async (data, recordId) => {
+      try {
+        return await new JsonSchema(schema ?? {}).check(data, keyId, recordId);
+      } catch (error) {
+        this.log.save('update-record-schema-error', { error: error && error.message });
+        throw new Error('Cannot validate record data');
+      }
+    };
+
+    try {
+      const recordModelResponse = await this.recordModel.updatePatch(id, keyId, properties, writeTokens, validate);
       if (!recordModelResponse) {
         // With token enforcement a missing and a foreign row look the same, so existence is not disclosed.
         return writeTokens ? this.responseError(res, 'Record is not writable.', 403) : this.responseError(res, 'Cannot update.', 500);
@@ -1655,6 +1675,12 @@ export default class RecordsController extends Controller {
       await this.projectWriteResponse(req, recordModelResponse);
       this.responseData(res, recordModelResponse);
     } catch (error) {
+      if (error instanceof PatchValidationError) {
+        return this.responseError(res, 'JSON schema validation error.', 400, error.validatorErrors);
+      }
+      if (error?.message === 'Cannot validate record data') {
+        return this.responseError(res, 'JSON schema validation error.', 500, 'Cannot validate record data');
+      }
       this.log.save('update-record-status-error', { error: error?.message, properties });
       // Fail closed: never leave the request hanging or return an unprojected record.
       return this.responseError(res, 'Cannot update.', 500);

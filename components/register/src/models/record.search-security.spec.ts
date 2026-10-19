@@ -1,6 +1,6 @@
 import Sequelize from 'sequelize';
 
-import RecordModel from './record';
+import RecordModel, { PatchValidationError } from './record';
 
 describe('RG-07: search filters before count/pagination', () => {
   it.each([[], ['private']].map((tokens) => [tokens]))('uses server token overlap %j in the shared count/row query', async (tokens) => {
@@ -29,6 +29,29 @@ describe('RG-02b: updatePatch token filter', () => {
   });
   it.each([[[]], [['private']]])('limits the row to public or overlapping tokens %j', async (tokens) => {
     expect((await run(tokens))[Sequelize.Op.or]).toEqual([{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: tokens } }]);
+  });
+});
+
+describe('RG-02g: updatePatch validates before saving', () => {
+  const build = (errors: any[]) => {
+    const record: any = { id: 'row-id', data: { name: 'a' }, set: jest.fn(), save: jest.fn().mockResolvedValue({ id: 'row-id' }) };
+    const model: any = Object.create(RecordModel.prototype);
+    model.model = { findOne: jest.fn().mockResolvedValue(record) };
+    const validate = jest.fn().mockResolvedValue(errors);
+    return { model, record, validate };
+  };
+  const props = [{ path: 'data.name', previousValue: 'a', value: 'b' }];
+  it('passes a copy of the patched data and the row id to the validator, then saves', async () => {
+    const { model, record, validate } = build([]);
+    await model.updatePatch('row-id', 1, props, undefined, validate);
+    expect(validate).toHaveBeenCalledWith({ name: 'a' }, 'row-id');
+    expect(validate.mock.calls[0][0]).not.toBe(record.data);
+    expect(record.save).toHaveBeenCalled();
+  });
+  it('does not save and throws PatchValidationError when validation fails', async () => {
+    const { model, record, validate } = build([{ message: 'bad' }]);
+    await expect(model.updatePatch('row-id', 1, props, undefined, validate)).rejects.toBeInstanceOf(PatchValidationError);
+    expect(record.save).not.toHaveBeenCalled();
   });
 });
 

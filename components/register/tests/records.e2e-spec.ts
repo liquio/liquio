@@ -379,6 +379,19 @@ describe('RecordsController', () => {
         expect(await read()).toEqual(before);
       });
 
+      it('rejects a data patch that breaks the key JSON schema and changes nothing (RG-02g)', async () => {
+        const before = await read();
+        const response = await patch([{ path: 'data.name', previousValue: 'before', value: 5 }]).expect(400);
+        expect(response.body.error?.message ?? response.body.message ?? JSON.stringify(response.body)).toMatch(/JSON schema validation error/);
+        expect(await read()).toEqual(before);
+      });
+
+      it('rejects a wrong-typed value in another declared field (RG-02g)', async () => {
+        const before = await read();
+        await patch([{ path: 'data.data', previousValue: 'RG02E', value: 7 }]).expect(400);
+        expect(await read()).toEqual(before);
+      });
+
       it('still patches data paths', async () => {
         await patch([{ path: 'data.name', previousValue: 'before', value: 'after' }]).expect(200);
         expect((await read()).data.name).toBe('after');

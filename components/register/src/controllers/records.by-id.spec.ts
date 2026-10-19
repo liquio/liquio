@@ -1,5 +1,6 @@
 import RecordsController from './records';
 import RecordEntity from '../entities/record';
+import { PatchValidationError } from '../models/record';
 
 jest.mock('express-validator', () => ({
   matchedData: (req, options) => Object.assign({}, ...options.locations.map((location) => req[location] || {})),
@@ -191,7 +192,7 @@ describe('RG-02: UUID read authorization', () => {
         Object.assign(ctx.controller, {
           recordModel: { updatePatch: jest.fn().mockResolvedValue(ctx.record) },
         });
-        ctx.controller.keyModel.checkRecordsWritableById = jest.fn().mockResolvedValue(true);
+        ctx.controller.keyModel.checkRecordsWritable = jest.fn().mockReturnValue(true);
         ctx.controller.config.auth.strict = strict;
         ctx.req.params = { id: ctx.record.id };
         ctx.req.body = { keyId: 2, properties: [] };
@@ -200,14 +201,14 @@ describe('RG-02: UUID read authorization', () => {
       it('does not restrict by tokens when strict is off', async () => {
         const { controller, req } = setupPatch();
         await controller.updatePatch(req, {});
-        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], undefined);
+        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], undefined, expect.any(Function));
         expect(controller.responseData).toHaveBeenCalled();
       });
       it('passes the server tokens of an untrusted caller when strict is on', async () => {
         const { controller, req } = setupPatch(true);
         controller.config.auth.userAllowTokens = { reader: ['private'] };
         await controller.updatePatch(req, {});
-        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], ['private']);
+        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], ['private'], expect.any(Function));
       });
       it('returns 403 without data for a foreign or missing row when strict is on', async () => {
         const { controller, req } = setupPatch(true);
@@ -220,7 +221,60 @@ describe('RG-02: UUID read authorization', () => {
         const { controller, req } = setupPatch(true);
         req.auth.user = 'task';
         await controller.updatePatch(req, {});
-        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], undefined);
+        expect(controller.recordModel.updatePatch).toHaveBeenCalledWith('record-id', 2, [], undefined, expect.any(Function));
+      });
+      describe('key JSON schema (RG-02g)', () => {
+        const JsonSchemaMock = jest.requireMock('../lib/json_schema').default;
+        const withCheck = (check: jest.Mock) => JsonSchemaMock.mockImplementationOnce(() => ({ check }));
+        it('validates the patched data against the key schema inside the model write', async () => {
+          const { controller, key, req } = setupPatch();
+          const check = jest.fn().mockResolvedValue([]);
+          withCheck(check);
+          await controller.updatePatch(req, {});
+          const validate = controller.recordModel.updatePatch.mock.calls[0][4];
+          await expect(validate({ a: 1 }, 'row-id')).resolves.toEqual([]);
+          expect(JsonSchemaMock).toHaveBeenLastCalledWith(key.schema);
+          expect(check).toHaveBeenCalledWith({ a: 1 }, 2, 'row-id');
+        });
+        it('answers 400 with the validator errors like PUT when the model reports a schema failure', async () => {
+          const { controller, req } = setupPatch();
+          const errors = [{ message: 'must be string' }];
+          controller.recordModel.updatePatch.mockRejectedValue(new PatchValidationError(errors));
+          await controller.updatePatch(req, {});
+          expect(controller.responseError).toHaveBeenCalledWith({}, 'JSON schema validation error.', 400, errors);
+          expect(controller.responseData).not.toHaveBeenCalled();
+        });
+        it('answers 500 like PUT when the schema cannot be evaluated', async () => {
+          const { controller, req } = setupPatch();
+          controller.recordModel.updatePatch.mockImplementation(async (...args) => args[4]({}, 'row-id'));
+          withCheck(jest.fn().mockRejectedValue(new Error('boom')));
+          await controller.updatePatch(req, {});
+          expect(controller.responseError).toHaveBeenCalledWith({}, 'JSON schema validation error.', 500, 'Cannot validate record data');
+        });
+        it('treats a key without schema as an empty schema', async () => {
+          const { controller, key, req } = setupPatch();
+          delete key.schema;
+          const check = jest.fn().mockResolvedValue([]);
+          withCheck(check);
+          await controller.updatePatch(req, {});
+          await controller.recordModel.updatePatch.mock.calls[0][4]({}, 'row-id');
+          expect(JsonSchemaMock).toHaveBeenLastCalledWith({});
+        });
+        it('answers 403 when the key is not writable and loads the key once', async () => {
+          const { controller, req } = setupPatch();
+          controller.keyModel.checkRecordsWritable.mockReturnValue(false);
+          await controller.updatePatch(req, {});
+          expect(controller.responseError.mock.calls[0][2]).toBe(403);
+          expect(controller.keyModel.findById).toHaveBeenCalledTimes(1);
+          expect(controller.recordModel.updatePatch).not.toHaveBeenCalled();
+        });
+        it('answers 404 when the key is missing', async () => {
+          const { controller, req } = setupPatch();
+          controller.keyModel.findById.mockResolvedValue(undefined);
+          await controller.updatePatch(req, {});
+          expect(controller.responseError.mock.calls[0][2]).toBe(404);
+          expect(controller.recordModel.updatePatch).not.toHaveBeenCalled();
+        });
       });
       it('responds 500 instead of hanging when the response cannot be projected', async () => {
         const { controller, key, req } = setupPatch();
