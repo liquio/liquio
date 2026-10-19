@@ -8,5 +8,15 @@ export default (
 ): 'object' | 'array' | 'string' | 'number' | 'null' | 'undefined' | 'bigint' | 'boolean' | 'set' | 'map' | 'symbol' => {
   const type = Object.prototype.toString.call(value);
   return type.substring(type.indexOf(' ') + 1, type.indexOf(']')).toLowerCase() as
-    'object' | 'array' | 'string' | 'number' | 'null' | 'undefined' | 'bigint' | 'boolean' | 'set' | 'map' | 'symbol';
+    | 'object'
+    | 'array'
+    | 'string'
+    | 'number'
+    | 'null'
+    | 'undefined'
+    | 'bigint'
+    | 'boolean'
+    | 'set'
+    | 'map'
+    | 'symbol';
 };

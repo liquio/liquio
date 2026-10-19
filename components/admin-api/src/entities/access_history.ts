@@ -4,7 +4,12 @@ import { Entity } from './entity';
  * Access history entity.
  */
 type AccessHistoryOperationType =
-  'added-to-head-unit' | 'added-to-member-unit' | 'deleted-from-head-unit' | 'deleted-from-member-unit' | 'added-to-admin' | 'deleted-from-admin';
+  | 'added-to-head-unit'
+  | 'added-to-member-unit'
+  | 'deleted-from-head-unit'
+  | 'deleted-from-member-unit'
+  | 'added-to-admin'
+  | 'deleted-from-admin';
 
 interface AccessHistoryEntityOptions {
   /** ID. */
