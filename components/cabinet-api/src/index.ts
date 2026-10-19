@@ -29,7 +29,7 @@ async function main(): Promise<void> {
 
   global.typeOf = typeOf;
 
-  initIdApiClient(config.auth.LiquioId);
+  initIdApiClient({ ...config.auth.LiquioId, authRedirectUrl: config.auth.authRedirectUrl });
 
   // Init DB.
   const db = await Db.getInstance(config.db);

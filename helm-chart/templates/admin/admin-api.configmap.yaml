@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "liquio.labels" . | nindent 4 }}
 {{ $authBase := dict
-  "authRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
+  "authRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "clientId" "liquio-portal"
   "logoutRedirectUrl" (printf "%s://%s/" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
   "serverPublicUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))

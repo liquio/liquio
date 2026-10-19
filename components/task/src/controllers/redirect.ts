@@ -38,12 +38,15 @@ export class RedirectController extends Controller {
   async auth(req, res) {
     // Read state.
     const { state } = req.query;
-    const stateQueryParam = state ? `&state=${state}` : '';
 
     // Define params.
     const { front, server, routes, clientId } = this.idConfig;
     const idAuthUrl = `${front || server}${routes?.getCode || DEFAULT_GET_CODE_ROUTE}`;
-    const idAuthQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}&client_id=${clientId}${stateQueryParam}`;
+    const idAuthQueryParams = `?${new URLSearchParams({
+      redirect_uri: global.config.auth.authRedirectUrl,
+      client_id: clientId,
+      ...(state ? { state: String(state) } : {}),
+    }).toString()}`;
     const idAuthFullUrl = `${idAuthUrl}${idAuthQueryParams}`;
     const redirectUrl = idAuthFullUrl;
 

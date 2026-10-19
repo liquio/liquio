@@ -17,6 +17,7 @@ export function initIdApiClient(authConfig: Record<string, any> = {}): IdApiClie
     timeout: authConfig.timeout || DEFAULT_TIMEOUT,
     clientId: authConfig.clientId,
     clientSecret: authConfig.clientSecret,
+    authRedirectUrl: authConfig.authRedirectUrl,
     basicAuthToken: authConfig.basicAuthToken,
     // Task works with 24-character user IDs only.
     strictIds: true,

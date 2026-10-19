@@ -174,7 +174,7 @@ export class AuthController extends BaseController {
     }
 
     // Prepare auth code data to add.
-    const authCodeData = { code, userId, clientId, expires, scope };
+    const authCodeData = { code, userId, clientId, expires, scope, redirectUri: this.config.oauth?.defaults?.redirect_uri?.[0] };
 
     // Delete existing auth code.
     try {
@@ -490,7 +490,7 @@ export class AuthController extends BaseController {
     }
 
     // Prepare auth code data to add.
-    const authCodeData = { code, userId, clientId, expires, scope };
+    const authCodeData = { code, userId, clientId, expires, scope, redirectUri: this.config.oauth?.defaults?.redirect_uri?.[0] };
 
     // Delete existing auth code.
     try {

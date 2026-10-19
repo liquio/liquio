@@ -345,13 +345,15 @@ describe('AuthController - ldap', () => {
     // Issue real tokens: an authorization code is put in the database, then exchanged on the token endpoint.
     async function issueTokens(): Promise<{ accessToken: string; refreshToken: string }> {
       const code = `ldap-sync-code-${++codeCounter}`;
-      await app.model('authCode').create({ code, userId, clientId: CLIENT_ID, expires: new Date(Date.now() + 60000), scope: [] });
+      await app
+        .model('authCode')
+        .create({ code, userId, clientId: CLIENT_ID, expires: new Date(Date.now() + 60000), scope: [], redirectUri: 'http://test-client-site' });
 
       const { body } = await app
         .request()
         .post('/oauth/token')
         .type('form')
-        .send({ grant_type: 'authorization_code', code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET })
+        .send({ grant_type: 'authorization_code', code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET, redirect_uri: 'http://test-client-site' })
         .expect(200);
 
       return { accessToken: body.access_token, refreshToken: body.refresh_token };

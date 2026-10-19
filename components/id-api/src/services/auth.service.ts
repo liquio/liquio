@@ -1,7 +1,13 @@
 import crypto from 'crypto';
 
-import OAuth2Server, { InvalidClientError, OAuthError, Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
-import { matchedData, query } from 'express-validator';
+import OAuth2Server, {
+  InvalidClientError,
+  InvalidRequestError,
+  OAuthError,
+  Request as OAuthRequest,
+  Response as OAuthResponse,
+} from '@node-oauth/oauth2-server';
+import { matchedData, query, validationResult } from 'express-validator';
 import moment from 'moment';
 import { Op } from 'sequelize';
 
@@ -137,14 +143,25 @@ export class AuthService extends BaseService {
   prepareClient() {
     return [
       query('client_id').isString(),
-      query('client_secret').isString(),
+      query('client_secret').optional().isString(),
       query('response_type').optional().default('code').isString(),
-      query('state').isString(),
-      query('redirect_uri').isString(),
+      query('state').optional().isString(),
+      query('redirect_uri').isString().notEmpty(),
+      query('code_challenge')
+        .optional()
+        .isString()
+        .matches(/^[A-Za-z0-9_-]{43}$/),
+      query('code_challenge_method').optional().isString().equals('S256'),
       async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-        let { client_id, client_secret, response_type, state, redirect_uri } = matchedData(req, { locations: ['query'] });
+        const { client_id, client_secret, response_type, state, redirect_uri, code_challenge, code_challenge_method } = matchedData(req, {
+          locations: ['query'],
+        });
 
         try {
+          if (!validationResult(req).isEmpty()) throw new InvalidRequestError('Invalid authorization parameters');
+          if ((code_challenge !== undefined || code_challenge_method !== undefined) && (!code_challenge || code_challenge_method !== 'S256')) {
+            throw new InvalidRequestError('Invalid PKCE parameters; use S256');
+          }
           const client = await this.oAuth2Model.getClient(client_id, client_secret);
 
           if (!client) {
@@ -156,6 +173,8 @@ export class AuthService extends BaseService {
           session.client_id = client_id;
           session.client_secret = client.secret;
           session.redirect_uri = redirect_uri;
+          session.code_challenge = code_challenge;
+          session.code_challenge_method = code_challenge_method;
           session.state = state;
           session.client_requirements = client.requirements;
           session.scope = client.scope;
@@ -191,6 +210,8 @@ export class AuthService extends BaseService {
         req.body.client_id = req.session.client_id ?? this.cfg!.defaults!.client_id;
         req.body.client_secret = req.session.client_secret ?? this.cfg!.defaults!.client_secret;
         req.body.redirect_uri = req.session.redirect_uri ?? this.cfg!.defaults!.redirect_uri?.[0];
+        req.body.code_challenge = req.session.code_challenge;
+        req.body.code_challenge_method = req.session.code_challenge_method;
         req.body.state = req.session.state ?? '';
         req.body.response_type = req.session.response_type ?? 'code';
         req.body.need_scope_approve = 'need_scope_approve' in req.session ? req.session.need_scope_approve : this.cfg!.defaults!.need_scope_approve;
@@ -412,11 +433,12 @@ export class AuthService extends BaseService {
     return generatePinCode(length);
   }
 
-  async generateCustomAuthorizationCode(user: any, clientId: any, scope: any, expiresIn = 60) {
+  async generateCustomAuthorizationCode(user: any, clientId: any, scope: any, expiresIn = 60, redirectUri = this.cfg?.defaults?.redirect_uri?.[0]) {
     const code = {
       authorizationCode: crypto.randomBytes(20).toString('hex'),
       expiresAt: Models.db.literal(`NOW() + INTERVAL '${expiresIn} SECOND'`),
       scope,
+      redirectUri,
     };
 
     await this.oAuth2Model.saveAuthorizationCode(code as any, { clientId } as any, user);

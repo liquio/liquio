@@ -134,7 +134,7 @@ export class BpmnTaskCore {
     global.typeOf = typeOf;
 
     // Init id-api client.
-    initIdApiClient(config.auth?.LiquioId);
+    initIdApiClient({ ...config.auth?.LiquioId, authRedirectUrl: config.auth?.authRedirectUrl });
 
     // Log unhandled rejections.
     process.on('unhandledRejection', (error: any) => {

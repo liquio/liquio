@@ -20,6 +20,7 @@ export function initIdApiClient(authConfig: Record<string, any> = {}): IdApiClie
     timeout: authConfig.timeout || DEFAULT_TIMEOUT,
     clientId: authConfig.clientId || DEFAULT_CLIENT_ID,
     clientSecret: authConfig.clientSecret,
+    authRedirectUrl: authConfig.authRedirectUrl,
     basicAuthToken: authConfig.basicAuthToken,
     getLog: () => global.log,
   });

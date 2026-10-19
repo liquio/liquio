@@ -54,7 +54,7 @@ export class AuthController extends Controller {
     // Get auth tokens.
     let authTokens;
     try {
-      authTokens = await this.idApiClient.getTokens(code);
+      authTokens = await this.idApiClient.getTokens(code, { codeVerifier: req.body.code_verifier });
     } catch (err) {
       return this.responseError(res, err, 401);
     }

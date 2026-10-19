@@ -72,6 +72,8 @@ export interface IdApiConfig {
   timeout?: number;
   /** OAuth client ID. */
   clientId?: string;
+  /** Exact OAuth callback used when the authorization code was issued. */
+  authRedirectUrl?: string;
   /** OAuth client secret. */
   clientSecret?: string;
   /** Base64 `user:password` token (a `Basic ` prefix is accepted). */
@@ -309,4 +311,10 @@ export interface IdApiSuccessResult {
 export interface IdApiPhoneExistence {
   isExist: boolean;
   isConfirmed: boolean;
+}
+
+/** Authorization code exchange bindings. */
+export interface IdApiGetTokensOptions {
+  redirectUri?: string;
+  codeVerifier?: string;
 }
