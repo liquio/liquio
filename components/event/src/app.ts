@@ -57,7 +57,10 @@ export class App {
       this.config.log.console && typeof this.config.log.console === 'object' && this.config.log.console.name
         ? this.config.log.console.name
         : 'console';
-    const consoleLogProvider = new ConsoleLogProvider(consoleName, { excludeParams: this.config.log.excludeParams });
+    const consoleLogProvider = new ConsoleLogProvider(consoleName, {
+      excludeParams: this.config.log.excludeParams,
+      disableDefaultRedaction: this.config.log?.disableDefaultRedaction === true,
+    } as any);
     this.log = global.log = new Log([consoleLogProvider], ['console']);
   }
 

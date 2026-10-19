@@ -75,6 +75,7 @@ export interface Config {
     console: any[];
     responsesData: boolean;
     excludeParams: string[];
+    disableDefaultRedaction?: boolean;
   };
   pagination: {
     maxLimit: number;

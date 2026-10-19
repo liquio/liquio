@@ -11,7 +11,10 @@ import { validateAuthConfig } from './lib/config_validation';
 const config = initializeConfig();
 
 // Init log.
-const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });
+const consoleLogProvider = new ConsoleLogProvider('console', {
+  excludeParams: config.log.excludeParams,
+  disableDefaultRedaction: config.log?.disableDefaultRedaction === true,
+} as any);
 // Activate providers specified in config.log.console (array of provider names).
 // If not set, fall back to enabling the 'console' provider so logs appear in docker logs.
 const activeProviders = Array.isArray(config.log?.console) && config.log.console.length ? config.log.console : ['console'];

@@ -15,7 +15,10 @@ import { PgPubSub } from './lib/pgpubsub';
 import { buildSandboxConfig } from './lib/sandbox_config';
 
 // Init.
-const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });
+const consoleLogProvider = new ConsoleLogProvider('console', {
+  excludeParams: config.log.excludeParams,
+  disableDefaultRedaction: config.log?.disableDefaultRedaction === true,
+} as any);
 const log = new Log([consoleLogProvider as any], ['console']);
 
 // Globals for legacy JS code: do not use in new code.
