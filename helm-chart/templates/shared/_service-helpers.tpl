@@ -27,11 +27,11 @@ Per-service image tag versions managed in chart templates.
 {{- $fallback := include "liquio.imageDefaultTag" . -}}
 {{- $overrides := .Values.serviceVersions | default dict -}}
 {{- $versions := dict
-  "admin-api" "1.0.2"
-  "admin-front" "1.0.1"
-  "cabinet-api" "1.0.2"
-  "cabinet-front" "1.0.1"
-  "event" "1.0.2"
+  "admin-api" "1.0.3"
+  "admin-front" "1.0.2"
+  "cabinet-api" "1.0.3"
+  "cabinet-front" "1.0.2"
+  "event" "1.0.3"
   "external-reader" "1.0.1"
   "filestorage" "1.0.2"
   "gateway" "1.0.2"
@@ -40,10 +40,10 @@ Per-service image tag versions managed in chart templates.
   "manager" "1.0.2"
   "notification" "1.0.2"
   "pdf-generator" "1.0.1"
-  "persist-link" "1.0.2"
+  "persist-link" "1.0.3"
   "register" "1.0.2"
   "sign-tool" "1.0.1"
-  "task" "1.0.2"
+  "task" "1.0.3"
 -}}
 {{- if and (kindIs "map" $overrides) (hasKey $overrides $component) -}}
 {{- index $overrides $component -}}
