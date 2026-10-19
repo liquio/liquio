@@ -147,7 +147,10 @@ export class PingController extends Controller {
     const { workflow_template_id: workflowTemplateId, type } = req.query;
 
     // Available document templates to ping count.
-    const { committedDocumentsTemplateIdsToHoursMap } = global.config.ping_documents;
+    const committedDocumentsTemplateIdsToHoursMap = global.config.ping_documents?.committedDocumentsTemplateIdsToHoursMap;
+    if (!committedDocumentsTemplateIdsToHoursMap) {
+      return this.responseText(res, 'not-configured', 404);
+    }
     const hours = committedDocumentsTemplateIdsToHoursMap[documentTemplateId];
     if (!hours) {
       global.log.save('ping-committed-document-not-available', { documentTemplateId, committedDocumentsTemplateIdsToHoursMap });

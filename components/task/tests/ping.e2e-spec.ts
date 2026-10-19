@@ -136,14 +136,22 @@ describe('Ping Controller', () => {
       await app.request().get('/test/ping/committed-documents/placeholder').expect(401);
     });
 
-    it('is routed to a real handler when authenticated', async () => {
+    it('returns 404 instead of 500 when ping_documents is not configured', async () => {
       global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      delete global.config.ping_documents;
 
-      // No `ping_documents` config template exists in this environment, so the
-      // handler can't do anything useful here beyond proving it's wired up.
-      const response = await app.request().get('/test/ping/committed-documents/placeholder').set('Authorization', BASIC_AUTH_TOKEN);
-      expect(response.status).not.toBe(404);
-      expect(response.status).not.toBe(401);
+      await app.request().get('/test/ping/committed-documents/placeholder').set('Authorization', BASIC_AUTH_TOKEN).expect(404);
+    });
+
+    it('returns 400 for a template that is not in the configured map', async () => {
+      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      global.config.ping_documents = { committedDocumentsTemplateIdsToHoursMap: { known: 1 } };
+
+      try {
+        await app.request().get('/test/ping/committed-documents/placeholder').set('Authorization', BASIC_AUTH_TOKEN).expect(400);
+      } finally {
+        delete global.config.ping_documents;
+      }
     });
   });
 

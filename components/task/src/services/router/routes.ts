@@ -70,7 +70,7 @@ export const routes = {
     basicAuth: true,
   },
   'GET /test/ping/services': {
-    groups: [GROUPS.PUBLIC, GROUPS.MONITORING, GROUPS.ADMIN_API],
+    groups: [GROUPS.MONITORING, GROUPS.ADMIN_API],
     middlewares: [],
     validator: {
       name: 'test',
@@ -83,7 +83,7 @@ export const routes = {
     basicAuth: true,
   },
   'GET /test/ping/committed-documents/:document_template_id': {
-    groups: [GROUPS.PUBLIC, GROUPS.MONITORING],
+    groups: [GROUPS.MONITORING],
     middlewares: [],
     controller: {
       name: 'ping',
