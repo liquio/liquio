@@ -174,4 +174,32 @@ describe('Named service clients on basic() routes (KS-24)', () => {
     expect(stored.email).toBe(user.email);
     expect(stored.valid).toEqual({ phone: false, email: true });
   });
+
+  it('resets valid.phone when the legacy shared secret changes the phone (KS-32)', async () => {
+    const user = await newUser({ phone: '+380501230001', valid: { phone: true, email: true } });
+    await update(user.userId, LEGACY, { phone: '+380501230002' }).expect(200);
+    const stored = await reload(user.userId);
+    expect(stored.phone).toBe('+380501230002');
+    expect(stored.valid).toEqual({ phone: false, email: true });
+  });
+
+  it('keeps valid.phone when the legacy shared secret sends the same phone in another format (KS-32)', async () => {
+    const user = await newUser({ phone: '+380501230003', valid: { phone: true, email: false } });
+    await update(user.userId, LEGACY, { phone: ' +380 50 123-00-03 ', gender: 'male' }).expect(200);
+    expect((await reload(user.userId)).valid).toEqual({ phone: true, email: false });
+  });
+
+  it('resets both flags when the legacy shared secret changes email and phone together (KS-32)', async () => {
+    const user = await newUser({ phone: '+380501230004', valid: { phone: true, email: true } });
+    await update(user.userId, LEGACY, { phone: '+380501230005', email: 'ks32-both@example.com' }).expect(200);
+    expect((await reload(user.userId)).valid).toEqual({ phone: false, email: false });
+  });
+
+  it('rejects a phone from a named client and leaves valid.phone alone (KS-32)', async () => {
+    const user = await newUser({ phone: '+380501230006', valid: { phone: true, email: false } });
+    await update(user.userId, ADMIN, { phone: '+380501230007' }).expect(400);
+    const stored = await reload(user.userId);
+    expect(stored.phone).toBe('+380501230006');
+    expect(stored.valid).toEqual({ phone: true, email: false });
+  });
 });

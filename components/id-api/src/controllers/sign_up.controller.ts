@@ -474,15 +474,17 @@ export class SignUpController extends BaseController {
   }
 
   /**
-   * Set phone.
+   * Set phone for a user. Service route: it marks the phone verified only with a valid confirmation code
+   * issued to this user for this exact phone (KS-32). Without one nothing changes.
    */
   async setPhone(req: Request, res: Response): Promise<void> {
     // Define params.
     const { phone, user_id: userId } = req.query;
+    const code = req.body?.code ?? req.query.code;
     this.log.save('phone-set-request', { userId, phone }, 'info');
 
     // Check params.
-    if (!userId || !phone) {
+    if (typeof userId !== 'string' || !userId || typeof phone !== 'string' || !phone || typeof code !== 'string' || !code) {
       this.log.save('phone-set-request-validation-error', { userId, phone }, 'error');
       res.status(400).send({
         error: {
@@ -493,36 +495,19 @@ export class SignUpController extends BaseController {
       return;
     }
 
-    let user;
     try {
-      user = await this.service('auth').getUser({ userId });
-      if (!user) {
-        res.status(404).send({
+      const updatedUser = await this.service('auth').confirmUserPhone(userId, phone, code);
+      if (!updatedUser) {
+        this.log.save('phone-set-wrong-code', { userId, phone }, 'warning');
+        res.status(400).send({
           error: {
-            message: 'User not found.',
-            type: 'user-not-found',
+            message: 'Invalid or expired confirmation code.',
+            type: 'phone-set-invalid-code',
           },
         });
         return;
       }
-    } catch (error: any) {
-      this.log.save('phone-set-user-get-error', { userId, error: error.message }, 'error');
-      res.status(500).send({
-        error: {
-          message: publicError(error),
-          type: 'phone-set-user-get-error',
-        },
-      });
-      return;
-    }
 
-    try {
-      // Set user phone as confirmed.
-      const updateQuery = {
-        phone,
-        valid: { ...user.valid, phone: true },
-      };
-      const updatedUser = await this.service('auth').updateUser({ userId }, updateQuery);
       this.log.save('phone-set-done', { userId, phone }, 'info');
       res.send({ data: { isConfirmed: true, updatedUser } });
     } catch (error: any) {

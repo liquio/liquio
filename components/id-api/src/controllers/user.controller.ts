@@ -1143,6 +1143,12 @@ export class UserController extends BaseController {
       data.valid = { phone: false, ...user.valid, email: false };
     }
 
+    // Same for a changed phone (KS-32): the legacy shared secret can send one, and it must be confirmed again.
+    const normalizePhone = (value: unknown) => (typeof value === 'string' ? value.replace(/[\s()-]/g, '') : value);
+    if (typeof data.phone !== 'undefined' && normalizePhone(data.phone) !== normalizePhone(user.phone)) {
+      data.valid = { email: false, ...user.valid, ...data.valid, phone: false };
+    }
+
     try {
       const updatedUser: any = await this.service('auth').updateUser({ userId }, data);
 

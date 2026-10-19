@@ -248,4 +248,45 @@ describe('Profile phone verification (ID-07)', () => {
       await expectUntouched(victim.userId);
     });
   });
+
+  describe('service route POST /sign_up/confirmation/phone/set (KS-32)', () => {
+    const LEGACY = () => `Basic ${config.oauth?.secret_key?.[0]}`;
+    const setPhone = (userId: string, phone: string, code?: string) =>
+      app
+        .request()
+        .post('/sign_up/confirmation/phone/set')
+        .set('Authorization', LEGACY())
+        .query({ user_id: userId, phone })
+        .send(code === undefined ? {} : { code });
+
+    it('does not mark a phone verified without a code', async () => {
+      await setPhone(victim.userId, ATTACKER_PHONE).expect(400);
+      await expectUntouched(victim.userId);
+    });
+
+    it('rejects a wrong code and a code issued to another user or phone', async () => {
+      await send(attacker.token, PHONE).expect(200);
+      await setPhone(victim.userId, PHONE, CODE).expect(400);
+      await send(victim.token, PHONE).expect(200);
+      await setPhone(victim.userId, OTHER_PHONE, CODE).expect(400);
+      await setPhone(victim.userId, PHONE, '000000').expect(400);
+      await expectUntouched(victim.userId);
+    });
+
+    it('marks the phone verified with a valid code, once', async () => {
+      await send(victim.token, PHONE).expect(200);
+      const res = await setPhone(victim.userId, PHONE, CODE).expect(200);
+      expect(res.body.data.isConfirmed).toBe(true);
+      const user = await getUser(victim.userId);
+      expect(user.phone).toBe(PHONE);
+      expect(user.valid?.phone).toBe(true);
+      await resetUser(victim.userId);
+      await setPhone(victim.userId, PHONE, CODE).expect(400);
+      await expectUntouched(victim.userId);
+    });
+
+    it('still requires basic auth', async () => {
+      await app.request().post('/sign_up/confirmation/phone/set').query({ user_id: victim.userId, phone: PHONE }).send({ code: CODE }).expect(401);
+    });
+  });
 });
