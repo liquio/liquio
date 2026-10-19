@@ -6,6 +6,8 @@ import OpenStackHandler from './open_stack_handler';
 // Constants.
 const RESPONSE_NOT_FOUND_CODE = 404;
 const RESPONSE_BAD_GATEWAY_CODE = 502;
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS_REGEXP = /[\u0000-\u001f\u007f]/;
 const RESPONSE_NOT_FOUND_OBJECT = {
   error: {
     message: 'Not found.',
@@ -47,6 +49,11 @@ class OpenStackLinkProvider extends LinkProvider {
       return false;
     }
     if (typeof options.fileName !== 'string') {
+      return false;
+    }
+
+    // Reject CR/LF and other control chars (header injection / invalid header value).
+    if (CONTROL_CHARS_REGEXP.test(options.fileName)) {
       return false;
     }
 

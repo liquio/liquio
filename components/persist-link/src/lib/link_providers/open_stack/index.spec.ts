@@ -45,6 +45,13 @@ describe('OpenStackLinkProvider', () => {
       expect(provider.isValidOptions({ serverName: 'main' } as any)).toBe(false);
     });
 
+    it('should return false when fileName contains CR/LF or control characters', () => {
+      const provider = new OpenStackLinkProvider({});
+      expect(provider.isValidOptions({ serverName: 'main', fileName: 'a.txt\r\nSet-Cookie: x=1' })).toBe(false);
+      expect(provider.isValidOptions({ serverName: 'main', fileName: 'a\u0000.txt' })).toBe(false);
+      expect(provider.isValidOptions({ serverName: 'main', fileName: 'a\u007f.txt' })).toBe(false);
+    });
+
     it('should return true for a valid options object', () => {
       const provider = new OpenStackLinkProvider({});
       expect(provider.isValidOptions({ serverName: 'main', fileName: 'a.txt' })).toBe(true);
@@ -60,6 +67,19 @@ describe('OpenStackLinkProvider', () => {
 
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.send).toHaveBeenCalledWith({ error: { message: 'Not found.' } });
+    });
+
+    it('should respond with 404 and not download or set headers for a CRLF fileName', async () => {
+      const downloadFile = jest.fn();
+      const provider = new OpenStackLinkProvider({});
+      provider.openStackHandler.connections.main = { downloadFile };
+      const res = createRes();
+
+      await provider.open({ serverName: 'main', fileName: 'a.txt\r\nX-Injected: 1' }, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.setHeader).not.toHaveBeenCalled();
+      expect(downloadFile).not.toHaveBeenCalled();
     });
 
     it('should set the content-disposition header and pipe the file by default', async () => {
