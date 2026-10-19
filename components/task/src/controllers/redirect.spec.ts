@@ -18,7 +18,7 @@ describe('RedirectController', () => {
 
       await controller.auth({ query: {} }, {});
 
-      expect(redirect).toHaveBeenCalledWith({}, `http://id.local/authorise?redirect_uri=${authRedirectUrl}&client_id=task`);
+      expect(redirect).toHaveBeenCalledWith({}, `http://id.local/authorise?redirect_uri=${encodeURIComponent(authRedirectUrl)}&client_id=task`);
     });
 
     it('should use the id server and the configured route and pass the state', async () => {
@@ -26,8 +26,21 @@ describe('RedirectController', () => {
 
       await controller.auth({ query: { state: 'abc' } }, {});
 
-      expect(redirect).toHaveBeenCalledWith({}, `http://id-api/custom/authorise?redirect_uri=${authRedirectUrl}&client_id=task&state=abc`);
+      expect(redirect).toHaveBeenCalledWith(
+        {},
+        `http://id-api/custom/authorise?redirect_uri=${encodeURIComponent(authRedirectUrl)}&client_id=task&state=abc`,
+      );
     });
+  });
+
+  it('preserves callback query parameters and state as individual values', async () => {
+    build({ front: 'https://id.example', clientId: 'task&client' });
+    (global as any).config.auth.authRedirectUrl = 'https://cabinet.example/?a=1&b=2';
+    await controller.auth({ query: { state: 'state&=+' } }, {});
+    const location = new URL(redirect.mock.calls[0][1]);
+    expect(location.searchParams.get('redirect_uri')).toBe('https://cabinet.example/?a=1&b=2');
+    expect(location.searchParams.get('state')).toBe('state&=+');
+    expect(location.searchParams.get('client_id')).toBe('task&client');
   });
 
   describe('logout', () => {

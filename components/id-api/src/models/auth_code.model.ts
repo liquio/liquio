@@ -6,6 +6,9 @@ export interface AuthCodeAttributes {
   expires: Date;
   userId: string;
   scope: string[];
+  redirectUri?: string;
+  codeChallenge?: string;
+  codeChallengeMethod?: string;
 }
 
 /**
@@ -43,6 +46,9 @@ export class AuthCodeModel extends BaseModel<AuthCodeAttributes> {
             key: 'userId',
           },
         },
+        redirectUri: { type: DataTypes.TEXT, allowNull: true },
+        codeChallenge: { type: DataTypes.STRING(128), allowNull: true },
+        codeChallengeMethod: { type: DataTypes.STRING, allowNull: true },
         scope: {
           type: DataTypes.ARRAY(DataTypes.STRING),
           allowNull: false,

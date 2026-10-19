@@ -5,6 +5,7 @@ import {
   AuthorizationCodeModel,
   Falsey,
   InvalidTokenError,
+  InvalidRequestError,
   Client as OAuthClient,
   OAuthError,
   Token as OAuthToken,
@@ -110,12 +111,24 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
         errorCode: 400,
       });
     }
+    if (typeof authCode.redirectUri !== 'string' || !authCode.redirectUri.length) {
+      throw new InvalidRequestError('Missing authorization code redirect URI');
+    }
+    if (
+      (authCode.codeChallenge !== undefined || authCode.codeChallengeMethod !== undefined) &&
+      (typeof authCode.codeChallenge !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(authCode.codeChallenge) || authCode.codeChallengeMethod !== 'S256')
+    ) {
+      throw new InvalidRequestError('Invalid PKCE parameters; use S256');
+    }
     const query: AuthCodeAttributes = {
       code: authCode.authorizationCode,
       userId: user.userId ?? user.id ?? user,
       clientId: client.clientId,
       expires: authCode.expiresAt,
       scope: authCode.scope!,
+      redirectUri: authCode.redirectUri,
+      codeChallenge: authCode.codeChallenge,
+      codeChallengeMethod: authCode.codeChallengeMethod,
     };
     return Models.model('authCode')
       .create(query)
@@ -130,7 +143,10 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
         return {
           authorizationCode: authCode.authorizationCode,
           expiresAt: authCode.expiresAt,
-          redirectUri: client.redirectUri,
+          redirectUri: authCode.redirectUri,
+          scope: authCode.scope,
+          codeChallenge: authCode.codeChallenge,
+          codeChallengeMethod: authCode.codeChallengeMethod,
           user,
           client,
         };
@@ -146,7 +162,7 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
       .findOne({ where: { code: authorizationCode } })
       .then((v) => v?.dataValues as AuthCodeAttributes);
 
-    if (!authCode) {
+    if (!authCode || !authCode.redirectUri) {
       const codeShort =
         typeof authorizationCode === 'string' ? `${authorizationCode.slice(0, 8)}****${authorizationCode.slice(-8)}` : String(authorizationCode);
 
@@ -157,18 +173,29 @@ export class OAuthModel implements AuthorizationCodeModel, RefreshTokenModel {
       return false;
     } else {
       return {
-        code: authCode.code,
+        authorizationCode: authCode.code,
+        redirectUri: authCode.redirectUri,
+        codeChallenge: authCode.codeChallenge,
+        codeChallengeMethod: authCode.codeChallengeMethod,
         expiresAt: authCode.expires,
-        client: { id: authCode.clientId },
+        client: { id: authCode.clientId, grants: ['authorization_code'] },
         user: { id: authCode.userId },
         scope: authCode.scope,
-      } as unknown as AuthorizationCode;
+      };
     }
   }
 
   async revokeAuthorizationCode(code: AuthorizationCode): Promise<boolean> {
-    this.log.save('revoke-authorization-code', { code }, 'info');
-    return Boolean(Models.model('authCode').destroy({ where: { code: code.code } }));
+    const authorizationCode = code.authorizationCode;
+    this.log.save(
+      'revoke-authorization-code',
+      {
+        codeShort: `${authorizationCode.slice(0, 8)}****${authorizationCode.slice(-8)}`,
+        codeHash: crypto.createHash('sha256').update(authorizationCode).digest('hex'),
+      },
+      'info',
+    );
+    return (await Models.model('authCode').destroy({ where: { code: authorizationCode } })) > 0;
   }
 
   async getRefreshToken(refreshToken: string): Promise<RefreshToken | Falsey> {

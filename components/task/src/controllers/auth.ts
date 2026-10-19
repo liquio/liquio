@@ -116,7 +116,7 @@ export class AuthController extends Controller {
     // Get auth tokens.
     let authTokens;
     try {
-      authTokens = await this.idApiClient.getTokens(code);
+      authTokens = await this.idApiClient.getTokens(code, { codeVerifier: req.body.code_verifier });
     } catch (err) {
       global.log.save(
         'auth-login-error|cannot-get-tokens',

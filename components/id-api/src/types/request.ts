@@ -19,6 +19,8 @@ declare module 'express-session' {
     client_id?: string;
     client_secret?: string;
     redirect_uri?: string;
+    code_challenge?: string;
+    code_challenge_method?: string;
     state?: string;
     scope?: string;
     response_type?: string;

@@ -5,6 +5,7 @@ import {
   IdApiConfig,
   IdApiCreateLocalUserOptions,
   IdApiGetUsersByIdsOptions,
+  IdApiGetTokensOptions,
   IdApiHttpResult,
   IdApiLog,
   IdApiLoginHistoryEntry,
@@ -148,11 +149,22 @@ export class IdApiClient {
    * @param {string} code Auth code.
    * @returns {Promise<IdApiTokens>}
    */
-  async getTokens(code: string): Promise<IdApiTokens> {
+  async getTokens(code: string, options: IdApiGetTokensOptions = {}): Promise<IdApiTokens> {
+    const redirectUri = options.redirectUri ?? this.config.authRedirectUrl;
+    if (typeof redirectUri !== 'string' || !redirectUri.length) {
+      throw new Error('Missing OAuth redirect URI: configure authRedirectUrl');
+    }
     const { body } = await this.request({
       method: 'POST',
       route: this.routes.getToken,
-      form: { grant_type: 'authorization_code', code, client_id: this.clientId, client_secret: this.clientSecret },
+      form: {
+        grant_type: 'authorization_code',
+        code,
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+        redirect_uri: redirectUri,
+        code_verifier: options.codeVerifier,
+      },
     });
 
     if (!body?.access_token || !body?.refresh_token) {

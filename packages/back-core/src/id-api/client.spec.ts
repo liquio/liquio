@@ -10,6 +10,7 @@ const baseConfig: IdApiConfig = {
   port: 8100,
   clientId: 'client-1',
   clientSecret: 'secret-1',
+  authRedirectUrl: 'https://cabinet.example/callback/',
   basicAuthToken: BASIC_TOKEN,
   timeout: 1234,
 };
@@ -202,6 +203,24 @@ describe('IdApiClient', () => {
       expect(new URLSearchParams(call.body).get('code')).toBe('code 1');
       expect(new URLSearchParams(call.body).get('client_id')).toBe('client-1');
       expect(new URLSearchParams(call.body).get('client_secret')).toBe('secret-1');
+      expect(new URLSearchParams(call.body).get('redirect_uri')).toBe(baseConfig.authRedirectUrl);
+      expect(new URLSearchParams(call.body).has('code_verifier')).toBe(false);
+    });
+
+    it('encodes the selected callback and verifier without changing their values', async () => {
+      mockResponse(200, { access_token: 'a', refresh_token: 'r' });
+      const redirectUri = 'https://cabinet.example/callback/?a=1&b=2';
+      await client.getTokens('code&=+', { redirectUri, codeVerifier: 'a'.repeat(43) });
+      const form = new URLSearchParams(lastCall().body);
+      expect(form.get('redirect_uri')).toBe(redirectUri);
+      expect(form.get('code_verifier')).toBe('a'.repeat(43));
+      expect(form.get('code')).toBe('code&=+');
+    });
+
+    it('requires a callback before making a token request', async () => {
+      const unconfigured = new IdApiClient({ ...baseConfig, authRedirectUrl: undefined });
+      await expect(unconfigured.getTokens('code')).rejects.toThrow('Missing OAuth redirect URI');
+      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('throws when tokens are missing', async () => {

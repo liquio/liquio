@@ -18,6 +18,7 @@ export function initIdApiClient(authConfig: Record<string, any> = {}): IdApiClie
     timeout: authConfig.timeout || DEFAULT_TIMEOUT,
     clientId: authConfig.clientId,
     clientSecret: authConfig.clientSecret,
+    authRedirectUrl: authConfig.authRedirectUrl,
     basicAuthToken: authConfig.basicAuthToken,
     canDeleteUser: authConfig.canDeleteUser || false,
     legalEntityNameSource: 'company',

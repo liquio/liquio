@@ -38,6 +38,7 @@ describe('initIdApiClient', () => {
       timeout: 5000,
       clientId: 'my-client',
       clientSecret: 'secret',
+      authRedirectUrl: 'https://cabinet.example/',
       basicAuthToken: 'dG9rZW4=',
       routes,
     });
@@ -48,6 +49,7 @@ describe('initIdApiClient', () => {
       timeout: 5000,
       clientId: 'my-client',
       clientSecret: 'secret',
+      authRedirectUrl: 'https://cabinet.example/',
       basicAuthToken: 'dG9rZW4=',
       routes,
     });

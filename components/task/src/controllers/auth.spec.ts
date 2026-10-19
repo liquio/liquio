@@ -44,3 +44,21 @@ describe('AuthController', () => {
     });
   });
 });
+
+describe('AuthController PKCE login', () => {
+  it('forwards the verifier to the shared token client', async () => {
+    const controller = Object.create(AuthController.prototype);
+    controller.config = { auth: {} };
+    const getTokens = jest.fn().mockRejectedValue(new Error('stop after token request'));
+    controller.idApiClient = { getTokens };
+    controller.responseError = jest.fn();
+    const previousLog = global.log;
+    global.log = { save: jest.fn() } as any;
+    try {
+      await controller.login({ body: { code: 'authorization-code', code_verifier: 'a'.repeat(43) } }, {});
+      expect(getTokens).toHaveBeenCalledWith('authorization-code', { codeVerifier: 'a'.repeat(43) });
+    } finally {
+      global.log = previousLog;
+    }
+  });
+});
