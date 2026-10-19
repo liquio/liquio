@@ -200,6 +200,14 @@ export async function local(app: Express) {
         return;
       }
 
+      // A blocked account cannot change its password. The answer is the same as for a wrong old password
+      // and it is checked after the old password, so the response reveals nothing about the account state.
+      if (user.isActive === false) {
+        log.save('user-change-password|user-blocked', { email }, 'info');
+        res.status(401).send({ success: false, error: GENERIC_FAIL_DESCRIPTION });
+        return;
+      }
+
       // Make a list of current and old passwords and check if the new password is not the same as the old ones
       const oldPasswords = [currentPasswordHash].concat((localServiceInfo?.data as any)?.oldPasswords ?? []);
       if (oldPasswords.find((hash) => passwordManager.verifyPasswordSync(newPassword, hash))) {
