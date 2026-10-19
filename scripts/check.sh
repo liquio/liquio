@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 # (admin-api register.json) and filestorage (auth.json test1:test).
 check_no_default_tokens() {
   local default_token failed=0
-  for default_token in "dGFzazp0YXNr" "cmVnaXN0ZXI6T2FVaVo3MGt1SExq" "dGVzdDE6dGVzdA=="; do
+  for default_token in "dGFzazp0YXNr" "cmVnaXN0ZXI6T2FVaVo3MGt1SExq" "dGVzdDE6dGVzdA==" "dXNlcm5hbWU6cGFzc3dvcmQ=" "username:password" "testpassword"; do
     if grep -rIl --exclude-dir=node_modules -e "$default_token" "$PROJECT_ROOT/config-templates" "$PROJECT_ROOT/helm-chart"; then
       echo -e "${RED}Default Basic token $default_token found in the files above, remove it${NC}" >&2
       failed=1

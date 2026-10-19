@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 
 import { GlobalExceptionFilter } from '@common/filters/global-exception.filter';
 import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
+import { assertAuthConfig } from '@components/auth/auth-config';
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { Configuration } from '@components/configuration/configuration.types';
 import { ErrorsInterceptor } from '@components/observability/errors.interceptor';
@@ -18,7 +19,10 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { logger });
 
-  const appConfig: Configuration['server'] = app.get(ConfigurationService).get('server');
+  const configService = app.get(ConfigurationService);
+  assertAuthConfig(configService.get('auth'));
+
+  const appConfig: Configuration['server'] = configService.get('server');
 
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
@@ -38,4 +42,5 @@ async function bootstrap() {
 
 bootstrap().catch((error) => {
   console.error('unhandled-error', { error });
+  process.exit(1);
 });

@@ -128,7 +128,7 @@ Each service can be individually enabled/disabled and configured:
 |-----------|-------------|---------|
 | `postgresql.enabled` | Deploy bundled PostgreSQL (local/non-production) | `true` |
 | `postgresql.auth.username` | PostgreSQL username | `postgres` |
-| `postgresql.auth.password` | PostgreSQL password | `changeme` |
+| `postgresql.auth.password` | Not used. The bundled PostgreSQL password is generated into the infra Secret | `""` |
 | `config.database.host` | External PostgreSQL host when `postgresql.enabled=false` | `liquio-test-postgresql` |
 | `config.database.port` | External PostgreSQL port | `5432` |
 
@@ -138,7 +138,7 @@ Each service can be individually enabled/disabled and configured:
 |-----------|-------------|---------|
 | `rabbitmq.enabled` | Deploy bundled RabbitMQ (local/non-production) | `true` |
 | `rabbitmq.auth.username` | RabbitMQ username | `guest` |
-| `rabbitmq.auth.password` | RabbitMQ password | `changeme` |
+| `rabbitmq.auth.password` | Not used. The bundled RabbitMQ password is generated into the infra Secret | `""` |
 | `config.rabbitmq.host` | External RabbitMQ host when `rabbitmq.enabled=false` | `liquio-test-rabbitmq` |
 | `config.rabbitmq.port` | External RabbitMQ port | `5672` |
 
@@ -240,6 +240,10 @@ kubectl get secret <release>-notification-secret-config -o jsonpath='{.data.conf
 ```
 
 To set your own, edit that key in the Secret (or in the Secret you name in `secrets.existingSecrets.notification`) and restart the notification Deployment. With `createSecrets: false`, add `{"production": {"adminConfig": {"password": "<your password>"}}}` to that Secret's `config.json` yourself; with no password the admin login is disabled. You can also set `config.notification.config.production.adminConfig.password` in values, but a Secret is preferred because values end up in a ConfigMap.
+
+#### External-reader token
+
+The install job generates the `external-reader:<random>` Basic token into the external-reader Secret (`auth.json`) and the same value into the task Secret (`external_reader.json`). The old shipped placeholder token is gone from the config templates. In production (`NODE_ENV=production`, the image default) external-reader refuses to start when `auth.basicAuthTokens` is empty, holds a placeholder (`<REDACTED>`, `changeme`), has a password under 8 characters, or is the old shipped default (refused in every environment). With `createSecrets: false`, supply `auth.json` as `{"basicAuthTokens": ["user:password"]}` in the external-reader Secret and a matching `basicAuthToken` in the task Secret.
 
 #### Mode B: Bring your own (`createSecrets: false`)
 
