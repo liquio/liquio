@@ -34,7 +34,7 @@
     "json2csv": "^5.0.7",
     "lodash": "^4.18.1",
     "moment": "^2.30.1",
-    "multiconf": "^4.2.1",
+    "multiconf": "^4.2.2",
     "object-path": "^0.11.8",
     "pg": "^8.20.0",
     "pg-hstore": "^2.3.4",
