@@ -43,7 +43,7 @@ lerna-debug.log*
 # Other
 terraform
 .gitignore
-docker-compose.yml
+compose.yaml
 
 *.md
 **/*.md

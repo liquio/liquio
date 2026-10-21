@@ -55,9 +55,13 @@ generate_fixed_alnum_secret() {
 echo "==> Copy configuration templates"
 cp -r ./config-templates ./config
 
+# Every backend listens on this port inside its container; services reach each other at http://<service>:8080.
+# The SVC_*_PORT values below are only the host ports Docker Compose publishes them on.
+CONTAINER_PORT=8080
+
 echo "==> Create .env file with service ports"
 cat <<EOF > .env
-# Public service ports
+# Host ports the services are published on (inside its container every service listens on 8080)
 SVC_ID_PORT=8080
 SVC_CABINET_FRONT_PORT=8081
 SVC_ADMIN_FRONT_PORT=8082
@@ -68,12 +72,6 @@ SVC_REGISTER_PORT=8103
 SVC_EXTERNAL_READER_PORT=8104
 SVC_FILESTORAGE_PORT=8105
 SVC_PDF_GENERATOR_PORT=7007
-
-# Internal service ports
-SVC_TASK_PORT=3000
-SVC_GATEWAY_PORT=3001
-SVC_MANAGER_PORT=3002
-SVC_NOTIFICATION_PORT=3003
 SVC_SIGN_TOOL_PORT=3004
 SVC_PERSIST_LINK_PORT=3346
 EOF
@@ -379,7 +377,7 @@ jq --arg key "$(generate_secret)" \
 
   file="config/admin-api/register.json"
   echo "$file"
-  jq --arg port "$SVC_REGISTER_PORT" \
+  jq --arg port "$CONTAINER_PORT" \
     --arg server "http://register" \
     --arg token "$token" \
     '.port = $port | .server = $server | .token = $token' \
@@ -387,7 +385,7 @@ jq --arg key "$(generate_secret)" \
 
   file="config/task/register.json"
   echo "$file"
-  jq --arg port "$SVC_REGISTER_PORT" \
+  jq --arg port "$CONTAINER_PORT" \
     --arg server "http://register" \
     --arg token "$token" \
     '.port = $port | .server = $server | .token = $token' \
@@ -395,7 +393,7 @@ jq --arg key "$(generate_secret)" \
 
   file="config/event/requester.json"
   echo "$file"
-  jq --arg url "http://register:$SVC_REGISTER_PORT" \
+  jq --arg url "http://register:$CONTAINER_PORT" \
     --arg token "$token" \
     '.registers.url = $url | .registers.token = $token' \
     $file > $file.tmp && mv $file.tmp $file
@@ -418,7 +416,7 @@ jq --arg key "$(generate_secret)" \
   file="config/task/external_reader.json"
   echo "$file"
   jq --arg token "$token" \
-    --arg port "$SVC_EXTERNAL_READER_PORT" \
+    --arg port "$CONTAINER_PORT" \
     --arg server "http://external-reader" \
     '.url = $server + ":" + $port | .basicAuthToken = $token' \
     $file > $file.tmp && mv $file.tmp $file
@@ -492,16 +490,10 @@ jq --arg key "$(generate_secret)" \
     '.basicAuthTokens = [$token]' \
     $file > $file.tmp && mv $file.tmp $file
 
-  file="config/pdf-generator/server.json"
-  echo "$file"
-  jq --arg port "$SVC_PDF_GENERATOR_PORT" \
-    '.port = ($port|tonumber)' \
-    $file > $file.tmp && mv $file.tmp $file
-
   file="config/task/pdf_generator.json"
   echo "$file"
   jq --arg token "$token" \
-    --arg port "$SVC_PDF_GENERATOR_PORT" \
+    --arg port "$CONTAINER_PORT" \
     --arg server "http://pdf-generator" \
     '.url = $server + ":" + $port + "/pdf" | .basicAuthToken = $token | .requestTimeout = 120000' \
     $file > $file.tmp && mv $file.tmp $file
@@ -520,7 +512,7 @@ jq --arg key "$(generate_secret)" \
   file="config/task/filestorage.json"
   echo "$file"
   jq --arg token "$token" \
-    --arg port "$SVC_FILESTORAGE_PORT" \
+    --arg port "$CONTAINER_PORT" \
     --arg server "http://filestorage" \
     '.apiHost = $server + ":" + $port | .token = $token' \
     $file > $file.tmp && mv $file.tmp $file
@@ -528,7 +520,7 @@ jq --arg key "$(generate_secret)" \
   file="config/task/storage.json"
   echo "$file"
   jq --arg token "$token" \
-    --arg port "$SVC_FILESTORAGE_PORT" \
+    --arg port "$CONTAINER_PORT" \
     --arg server "http://filestorage" \
     '.FileStorage.apiHost = $server + ":" + $port | .FileStorage.token = $token' \
     $file > $file.tmp && mv $file.tmp $file
@@ -536,7 +528,7 @@ jq --arg key "$(generate_secret)" \
   file="config/admin-api/filestorage.json"
   echo "$file"
   jq --arg token "$token" \
-    --arg port "$SVC_FILESTORAGE_PORT" \
+    --arg port "$CONTAINER_PORT" \
     --arg server "http://filestorage" \
     '.apiHost = $server + ":" + $port | .token = $token' \
     $file > $file.tmp && mv $file.tmp $file
@@ -544,7 +536,7 @@ jq --arg key "$(generate_secret)" \
   file="config/event/filestorage.json"
   echo "$file"
   jq --arg token "$token" \
-    --arg port "$SVC_FILESTORAGE_PORT" \
+    --arg port "$CONTAINER_PORT" \
     --arg server "http://filestorage" \
     '.apiHost = $server + ":" + $port | .token = $token' \
     $file > $file.tmp && mv $file.tmp $file
@@ -571,14 +563,16 @@ jq --arg key "$(generate_secret)" \
   jq --arg login "$login" \
     --arg password "$password" \
     --arg server "$server" \
-    '.user = $login | .password = $password | .server = $server' \
+    --argjson port "$CONTAINER_PORT" \
+    '.user = $login | .password = $password | .server = $server | .port = $port' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/task/notifier.json"
   echo "$file"
   jq --arg login "$login" \
     --arg password "$password" \
-    '.user = $login | .password = $password' \
+    --argjson port "$CONTAINER_PORT" \
+    '.user = $login | .password = $password | .port = $port' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/event/notifier.json"
@@ -586,7 +580,8 @@ jq --arg key "$(generate_secret)" \
   jq --arg login "$login" \
     --arg password "$password" \
     --arg server "$server" \
-    '.email.user = $login | .email.password = $password | .email.server = $server | .sms.user = $login | .sms.password = $password | .sms.server = $server' \
+    --argjson port "$CONTAINER_PORT" \
+    '.email.user = $login | .email.password = $password | .email.server = $server | .email.port = $port | .sms.user = $login | .sms.password = $password | .sms.server = $server | .sms.port = $port' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/event/system_notifier.json"
@@ -594,7 +589,8 @@ jq --arg key "$(generate_secret)" \
   jq --arg login "$login" \
     --arg password "$password" \
     --arg server "$server" \
-    '.email.user = $login | .email.password = $password | .email.server = $server' \
+    --argjson port "$CONTAINER_PORT" \
+    '.email.user = $login | .email.password = $password | .email.server = $server | .email.port = $port' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/gateway/system_notifier.json"
@@ -602,7 +598,8 @@ jq --arg key "$(generate_secret)" \
   jq --arg login "$login" \
     --arg password "$password" \
     --arg server "$server" \
-    '.email.user = $login | .email.password = $password | .email.server = $server' \
+    --argjson port "$CONTAINER_PORT" \
+    '.email.user = $login | .email.password = $password | .email.server = $server | .email.port = $port' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/manager/system_notifier.json"
@@ -610,7 +607,8 @@ jq --arg key "$(generate_secret)" \
   jq --arg login "$login" \
     --arg password "$password" \
     --arg server "$server" \
-    '.email.user = $login | .email.password = $password | .email.server = $server' \
+    --argjson port "$CONTAINER_PORT" \
+    '.email.user = $login | .email.password = $password | .email.server = $server | .email.port = $port' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/id/config.json"
@@ -656,12 +654,12 @@ jq --arg key "$(generate_secret)" \
 
   file="config/task/persist_link.json"
   echo "$file"
-  jq --arg token "$token" '.server = "http://persist-link" | .port = 3346 | .token = $token' \
+  jq --arg token "$token" --argjson port "$CONTAINER_PORT" '.server = "http://persist-link" | .port = $port | .token = $token' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/event/persist_link.json"
   echo "$file"
-  jq --arg token "$token" '.server = "http://persist-link" | .port = 3346 | .token = $token' \
+  jq --arg token "$token" --argjson port "$CONTAINER_PORT" '.server = "http://persist-link" | .port = $port | .token = $token' \
     $file > $file.tmp && mv $file.tmp $file
 }
 
@@ -690,36 +688,26 @@ jq --arg key "$(generate_secret)" \
   echo "==> Update ping.json with Docker service endpoints"
   file="config/task/ping.json"
   echo "$file"
-  jq --arg id_port "$SVC_ID_API_PORT" \
-    --arg event_port "$SVC_TASK_PORT" \
-    --arg manager_port "$SVC_MANAGER_PORT" \
-    --arg gateway_port "$SVC_GATEWAY_PORT" \
-    --arg register_port "$SVC_REGISTER_PORT" \
-    --arg filestorage_port "$SVC_FILESTORAGE_PORT" \
-    --arg notification_port "$SVC_NOTIFICATION_PORT" \
-    --arg external_reader_port "$SVC_EXTERNAL_READER_PORT" \
-    --arg sign_tool_port "$SVC_SIGN_TOOL_PORT" \
-    --arg cabinet_front_port "$SVC_CABINET_FRONT_PORT" \
-    --arg admin_front_port "$SVC_ADMIN_FRONT_PORT" \
-    '.id.url = "http://id-api:" + $id_port + "/test/ping" |
-     .eds.url = "http://sign-tool:" + $sign_tool_port + "/api/v1/test/ping" |
-     .event.url = "http://task:" + $event_port + "/test/ping" |
-     .manager.url = "http://manager:" + $manager_port + "/test/ping" |
-     .gateway.url = "http://gateway:" + $gateway_port + "/test/ping" |
-     .workflow.url = "http://manager:" + $manager_port + "/test/ping" |
-     .register.url = "http://register:" + $register_port + "/test/ping" |
-     .filestorage.url = "http://filestorage:" + $filestorage_port + "/test/ping" |
-     .externalReader.url = "http://external-reader:" + $external_reader_port + "/test/ping" |
-     .notification.url = "http://notification:" + $notification_port + "/test/ping" |
-     .signTool.url = "http://sign-tool:" + $sign_tool_port + "/test/ping" |
-     .front.url = "http://cabinet-front:" + $cabinet_front_port + "/version.json" |
-     .frontAdmin.url = "http://admin-front:" + $admin_front_port + "/version.json"' \
+  jq --arg port "$CONTAINER_PORT" \
+    '.id.url = "http://id-api:" + $port + "/test/ping" |
+     .eds.url = "http://sign-tool:" + $port + "/api/v1/test/ping" |
+     .event.url = "http://event:" + $port + "/healthz" |
+     .manager.url = "http://manager:" + $port + "/test/ping" |
+     .gateway.url = "http://gateway:" + $port + "/test/ping" |
+     .workflow.url = "http://manager:" + $port + "/test/ping" |
+     .register.url = "http://register:" + $port + "/test/ping" |
+     .filestorage.url = "http://filestorage:" + $port + "/test/ping" |
+     .externalReader.url = "http://external-reader:" + $port + "/test/ping" |
+     .notification.url = "http://notification:" + $port + "/test/ping" |
+     .signTool.url = "http://sign-tool:" + $port + "/test/ping" |
+     .front.url = "http://cabinet-front:" + $port + "/version.json" |
+     .frontAdmin.url = "http://admin-front:" + $port + "/version.json"' \
     $file > $file.tmp && mv $file.tmp $file
 
   # Event pings Manager (the template points at https://manager.liquio.local).
   file="config/event/ping.json"
   echo "$file"
-  jq --arg manager_port "$SVC_MANAGER_PORT" \
-    '.manager.url = "http://manager:" + $manager_port + "/test/ping"' \
+  jq --arg port "$CONTAINER_PORT" \
+    '.manager.url = "http://manager:" + $port + "/test/ping"' \
     $file > $file.tmp && mv $file.tmp $file
 }

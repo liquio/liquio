@@ -116,7 +116,11 @@ export class MessageQueue {
         // Check error.
         if (error) {
           global.log.save('amqp-connection-error|cannot-create-connection', error, 'error');
-          return this.reconnect();
+          // Retry the connect itself instead of reconnect(): reconnect() starts a fresh init() and this promise
+          // would never settle, leaving whoever awaits init() (app startup) stuck even after the broker is up.
+          return setTimeout(() => {
+            if (!this.isClosing) this.initConnection().then(resolve);
+          }, this.config.retryConnectionTime || RETRY_CONNECTION_TIME);
         }
 
         // Subscribe on error events.

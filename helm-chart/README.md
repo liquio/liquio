@@ -387,8 +387,7 @@ mTLS limit: with `internalTls.mtls=true` notification and sign-tool require a cl
 for the probes). Only register and admin-api can present one (the same Secret's `tls.crt` and `tls.key`). id-api, task, event, manager and
 gateway cannot, so their calls get 401. Use `mtls` only when those callers are disabled or sit behind a mesh sidecar that adds the certificate.
 
-Not covered: `x509.externalUrl` in id-api keeps its existing port (`:3004`) and only changes scheme; sign-tool's Service listens on 80.
-Check that value for your deployment. Certificate rotation needs a pod restart, since certificates are read at startup.
+`x509.externalUrl` in id-api follows the same scheme switch and targets sign-tool's Service on port 80. Certificate rotation needs a pod restart, since certificates are read at startup.
 
 ### PodDisruptionBudget
 
@@ -502,7 +501,7 @@ To use a token of your own (or with `createSecrets: false`), put it in the compo
 
 Event's ping to manager reads `ping.manager.monitoringToken`; the hook sets it in the event Secret's `ping.json`, so set it to manager's token yourself in Mode B. Task's cross-service ping (`GET /test/ping/services`) is rendered from in-chart URLs, and the hook sets `ping.manager.monitoringToken` and `ping.gateway.monitoringToken` in the task Secret's `ping.json` (set them yourself in Mode B). Restart the Deployments after changing a secret.
 
-With docker-compose, `scripts/init.sh` generates the tokens into `config/{manager,gateway,event}/server.json`, event's `ping.json` and task's `ping.json`.
+With Docker Compose, `scripts/init.sh` generates the tokens into `config/{manager,gateway,event}/server.json`, event's `ping.json` and task's `ping.json`.
 
 ## Troubleshooting
 

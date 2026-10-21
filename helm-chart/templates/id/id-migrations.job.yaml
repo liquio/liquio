@@ -35,7 +35,7 @@ spec:
         - name: id-migrations
           image: {{ include "liquio.image" (dict "component" "id-api" "Values" .Values "Chart" .Chart) }}
           imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
-          command: ["npm", "run", "migration-up"]
+          command: ["node", "node_modules/.bin/sequelize", "db:migrate", "--migrations-path", "./migrations", "--config", "./migrations-config.js"]
           env:
             - name: NODE_ENV
               value: "production"

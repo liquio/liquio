@@ -1,13 +1,13 @@
 import crypto from 'crypto';
 
 import Sequelize from 'sequelize';
-import Ajv from 'ajv';
 
 import Business from './business';
 import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import RecordModel from '../models/record';
 import { RedisClient } from '../lib/redis_client';
+import JsonSchema from '../lib/json_schema';
 
 // Constants.
 const AUTO_CLEAR_INTERVAL = 1000 * 60 * 60 * 24; // 1 day.
@@ -154,7 +154,11 @@ export default class ImportBusiness extends Business {
   ) {
     await this.validate({ key, register, records, options });
     const importId = this.generateImportId();
-    this.import(importId, { key, register, records, options }, removeOldRecords, user, accessInfo);
+    // Runs in the background: the caller polls the import status. import() records the failure in that status,
+    // so the rejection only needs logging here - left unhandled it would take the whole process down.
+    this.import(importId, { key, register, records, options }, removeOldRecords, user, accessInfo).catch((error) =>
+      this.log.save('import-failed', { importId, error: error?.message }, 'error'),
+    );
     setTimeout(() => this.clearToImport(importId), AUTO_CLEAR_INTERVAL);
     return importId;
   }
@@ -470,9 +474,9 @@ export default class ImportBusiness extends Business {
    * @see https://github.com/ajv-validator/ajv
    */
   async checkExistingRecordsByJsonSchema(keyId, jsonSchema) {
-    // Create JSON schema validator.
-    const ajv = new Ajv();
-    const validation = ajv.compile(jsonSchema);
+    // Validate the same way records are validated (Liquio keywords such as customTypes and public allowed).
+    // JsonSchema strips customTypes from the schema it gets, so hand it a copy: the key is saved with jsonSchema next.
+    const { validation } = new JsonSchema(structuredClone(jsonSchema));
 
     // Check existing records by JSON schema.
     const { data: existingRecords } = await this.recordModel.getByKeyId(keyId);

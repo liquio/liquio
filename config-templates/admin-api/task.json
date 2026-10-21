@@ -1,6 +1,6 @@
 {
   "elastic": false,
-  "port": 3000,
+  "port": 8080,
   "server": "http://task",
   "timeout": 10000,
   "token": ""

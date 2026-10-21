@@ -7,7 +7,7 @@ const { debug } = require('./debug');
 const ID_API_URL = 'http://localhost:8100';
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const FIXTURES_DIR = path.join(__dirname, '..', 'fixtures', 'ldap');
-const COMPOSE_ARGS = ['compose', '-f', 'docker-compose.yml', '-f', 'test/fixtures/ldap/docker-compose.ldap.yml'];
+const COMPOSE_ARGS = ['compose', '-f', 'compose.yaml', '-f', 'test/fixtures/ldap/docker-compose.ldap.yml'];
 
 const BASE_DN = 'dc=example,dc=org';
 const ADMIN_DN = `cn=admin,${BASE_DN}`;

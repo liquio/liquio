@@ -1,6 +1,6 @@
 {
   "hostname": "0.0.0.0",
-  "port": 8103,
+  "port": 8080,
   "maxBodySize": "10mb",
   "maxBulkBodySize": "500mb",
   "customer": "liquio",

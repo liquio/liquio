@@ -10,7 +10,7 @@
       "logging": false,
       "dialect": "postgres"
     },
-    "port": "8100",
+    "port": "8080",
     "modules": {
       "denyToUpdateUserName": true,
       "denyToUpdateUserValidParams": true,
@@ -45,7 +45,7 @@
       "allowPlainHttp": true
     },
     "notify": {
-      "url": "http://notification:3003",
+      "url": "http://notification:8080",
       "authorization": "Basic <removed>"
     },
     "jwt": {
@@ -181,7 +181,7 @@
       "allowAdminSet": true
     },
     "pingRoutes": {
-      "notify": "http://localhost:3002/test/ping"
+      "notify": "http://notification:8080/test/ping"
     },
     "users": {
       "maxLimit": 100,
@@ -204,7 +204,7 @@
     "customer": "liquio",
     "environment": "dev",
     "x509": {
-      "externalUrl": "http://sign-tool:3004"
+      "externalUrl": "http://sign-tool:8080"
     },
     "enabledDeleteUser": false,
     "log": {

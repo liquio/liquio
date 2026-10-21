@@ -4,7 +4,7 @@
 // fixtures/ldap/docker-compose.ldap.yml. When id-api does not offer the `ldap` login the whole file is skipped.
 //
 // Start the stack from the repository root:
-//   docker compose -f docker-compose.yml -f test/fixtures/ldap/docker-compose.ldap.yml up -d openldap id-api
+//   docker compose -f compose.yaml -f test/fixtures/ldap/docker-compose.ldap.yml up -d openldap id-api
 // Run in `test/`:
 //   npx playwright test ldap.spec.js
 //

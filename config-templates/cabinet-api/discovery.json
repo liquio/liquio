@@ -1,4 +1,4 @@
 {
   "customApis": [],
-  "mainProxy": "http://task:3000"
+  "mainProxy": "http://task:8080"
 }

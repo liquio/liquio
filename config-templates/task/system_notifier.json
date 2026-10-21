@@ -2,7 +2,7 @@
   "adminUrl": "http://localhost:8000",
   "email": {
     "server": "http://localhost",
-    "port": 3002,
+    "port": 8080,
     "routes": {
       "sendEmail": "/message/emailsList",
       "sendToUser": "/message/usersList",

@@ -11,12 +11,12 @@ Liquio is designed to run on **Kubernetes** (see [CONTRIBUTING.md § Kubernetes 
 deployed via the umbrella [Helm chart](helm-chart/) described throughout
 this document (ingress, network policies, per-service toggles, data-layer
 configuration). For **local development**, the same set of services is
-brought up with [`docker-compose.yml`](docker-compose.yml) — see
+brought up with [`compose.yaml`](compose.yaml) — see
 [CONTRIBUTING.md § Docker Compose Setup](CONTRIBUTING.md#docker-compose-setup) —
 which wires up the equivalent Postgres/RabbitMQ/Redis dependencies without
 Kubernetes. The two are kept in sync but are not identical — e.g.
 Kubernetes-only concerns like Ingress hostnames and NetworkPolicy tiers
-have no docker-compose equivalent.
+have no Docker Compose equivalent.
 
 ## Services
 
@@ -109,7 +109,7 @@ proxy differently:
 
 - **`cabinet-api`** is mostly a thin auth gateway: anything not matched by
   its own routes is forwarded wholesale via `express-http-proxy` to
-  `discovery.mainProxy` (`http://task:3000`,
+  `discovery.mainProxy` (`http://task:8080`,
   `config-templates/cabinet-api/discovery.json`). It also supports a
   configurable list of additional proxy targets (`discovery.customApis`).
 - **`admin-api`** proxies selectively: a `TaskService` client
@@ -125,7 +125,7 @@ or businesses. Its record-management methods are exposed externally
 through `task`: `task` implements its own `/register/...` REST endpoints
 (`components/task/src/controllers/register.ts`) whose handlers call out to
 the internal `register` service (`components/task/src/services/register.ts`,
-`config-templates/task/register.json` → `http://register:3350`). Since
+`config-templates/task/register.json` → `http://register:8080`). Since
 `cabinet-api` proxies unmatched requests wholesale to `task`, citizens and
 businesses reach register data via the chain
 `cabinet-api → task → register`, not by calling `register` directly. This
@@ -296,7 +296,7 @@ C4Container
 
 - [`helm-chart/values.yaml`](helm-chart/values.yaml) — service list, ingress hosts, data-layer toggles
 - [`helm-chart/templates/shared/ingress.yaml`](helm-chart/templates/shared/ingress.yaml) — ingress routing
-- [`docker-compose.yml`](docker-compose.yml) — local dev topology
+- [`compose.yaml`](compose.yaml) — local dev topology
 - [`config-templates/`](config-templates/) — per-service inter-service URLs (richest source for cross-service edges)
 - [`components/filestorage/src/providers/`](components/filestorage/src/providers/) — DB vs. S3-compatible storage backends
 - [`components/cabinet-api/src/router.ts`](components/cabinet-api/src/router.ts) — catch-all proxy to `task`

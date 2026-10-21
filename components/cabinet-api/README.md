@@ -60,7 +60,7 @@ returns 404. The deny-list still applies.
   `GET|POST /documents/:id/pdf`), plus `GET /healthz` and the `/payment` provider callbacks (`GET|POST`). Task routes the front
   never uses (`/tasks/statistics/*`, `/tasks/list/*`, `/tasks/by-other-system`, `DELETE /tasks/expired-drafts`, ...) and the
   same path with another method (`DELETE /documents/:id/pdf`, `POST /tasks/unread/count`) return 404. Example
-  `discovery.json`: `{ "mainProxy": "http://task:3000", "mainProxyAllowPaths": "default" }`. With Helm, set
+  `discovery.json`: `{ "mainProxy": "http://task:8080", "mainProxyAllowPaths": "default" }`. With Helm, set
   `config.cabinetApi.discovery.mainProxyAllowPaths: default` in the values.
 - An array replaces the built-in list (it is not merged with it), for example `["/tasks", "/auth/me"]`. A plain string entry
   allows every method. An entry can also be an object, `{ "path": "/tasks/:id/commit$", "methods": ["POST"], "except":

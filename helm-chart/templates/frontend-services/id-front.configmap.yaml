@@ -36,6 +36,7 @@ data:
       resolver 127.0.0.11 valid=10s;
 
       listen 8080;
+      server_tokens off;
 
       error_log /dev/stderr;
       access_log /dev/stdout;

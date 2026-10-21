@@ -1,5 +1,5 @@
 # Stage 1: transpile TypeScript to JavaScript
-FROM node:24 AS build
+FROM node:24@sha256:925de64a85319052d6971ae81ef2417da956e8a3a2c4a0fac732327970f017f5 AS build
 ARG NODE_MAX_OLD_SPACE_SIZE=4096
 ENV NODE_OPTIONS="--max_old_space_size=${NODE_MAX_OLD_SPACE_SIZE}"
 
@@ -20,8 +20,8 @@ RUN npm run build
 # Drop dev dependencies, keeping the compiled native modules for the runtime image
 RUN npm prune --omit=dev
 
-# Stage 2: runtime image
-FROM node:24-slim AS runtime
+# Stage 2: runtime image - node only, non-root, read-only friendly
+FROM node:24-slim@sha256:91acba91b842bec0bf7ea6f5e09c644c7ccad72c4996ed9616d861d1c7cd60d4 AS runtime
 
 # Image metadata
 LABEL tech.liquio.app="liquio" \
@@ -37,35 +37,43 @@ ENV CONFIG_PATH=/var/www/config
 # Run in production mode
 ENV NODE_ENV=production
 
+# Strip package managers (npm, corepack, yarn, apt, dpkg) and setuid/setgid bits:
+# the runtime only needs node. /var/lib/dpkg is kept so image scanners still see the OS packages
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+        /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-* \
+    && rm -rf /usr/bin/apt* /usr/bin/dpkg* /usr/bin/debconf* /usr/sbin/dpkg* /usr/lib/apt /usr/lib/dpkg \
+        /usr/share/debconf /etc/apt /var/lib/apt /var/cache/apt /var/cache/debconf /var/log/apt /var/log/dpkg.log \
+    && find / -xdev -perm /6000 -type f -exec chmod a-s {} +
+
 # Set the working directory
 WORKDIR /var/www/components/notification
 
 # Copy package files and production dependencies (native modules are compiled in the build stage)
-COPY package*.json .
-COPY --from=build /build/components/notification/node_modules ./node_modules
+COPY --chown=root:root package*.json .
+COPY --chown=root:root --from=build /build/components/notification/node_modules ./node_modules
 
 # Copy migration tooling and admin UI assets needed at runtime
-COPY .sequelizerc migrations-config.js ./
-COPY migrations/ ./migrations
-COPY admin/ ./admin
+COPY --chown=root:root .sequelizerc migrations-config.js ./
+COPY --chown=root:root migrations/ ./migrations
+COPY --chown=root:root admin/ ./admin
 # versions.json.default is a plain data file, tsc doesn't emit it into dist
-COPY src/config/versions.json.default ./src/config/versions.json.default
+COPY --chown=root:root src/config/versions.json.default ./src/config/versions.json.default
 
 # Copy the compiled application
-COPY --from=build /build/components/notification/dist ./
+COPY --chown=root:root --from=build /build/components/notification/dist ./
 
 # Switch to the node user
-USER node
+USER 1000:1000
 
 # Expose the default listening port
-EXPOSE 3003
+EXPOSE 8080
 
 # Setup the healthcheck
 HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3003/test/ping', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+    CMD ["node", "-e", "require('http').get('http://localhost:8080/test/ping', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "src/index.js"]
 
 # Build metadata, declared last so per-build values don't invalidate cached layers
 ARG VERSION

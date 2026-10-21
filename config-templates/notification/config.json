@@ -2,7 +2,7 @@
   "default_env": "production",
   "production": {
     "processTitle": "notify",
-    "port": "3003",
+    "port": "8080",
     "trustProxy": 1,
     "tls": {
       "enabled": false
@@ -22,7 +22,7 @@
       "dialect": "postgres"
     },
     "auth_server": {
-      "host": "http://id-api:8100",
+      "host": "http://id-api:8080",
       "basicAuthToken": "Basic <REDACTED>"
     },
     "smsServer": {

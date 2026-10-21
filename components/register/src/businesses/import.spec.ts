@@ -1,4 +1,4 @@
-import { Log, LogProvider } from '@liquio/back-core';
+import { Log, LogProvider, Sandbox } from '@liquio/back-core';
 
 import ImportBusiness from './import';
 import RecordModel from '../models/record';
@@ -26,6 +26,11 @@ describe('ImportBusiness', () => {
   let recordModelMock: jest.Mocked<typeof RecordModel>;
   let registerModelMock: jest.Mocked<typeof RegisterModel>;
   let keyModelMock: jest.Mocked<typeof KeyModel>;
+
+  beforeAll(() => {
+    // Existing records are validated through JsonSchema, which evaluates customTypes in the sandbox.
+    new Sandbox({ getLog: () => ({ save: jest.fn() }) });
+  });
 
   beforeEach(() => {
     // Initialize Log singleton if not already done
@@ -583,6 +588,53 @@ describe('ImportBusiness', () => {
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).rejects.toThrow(/doesn't match JSON schema/);
+    });
+  });
+
+  describe('checkExistingRecordsByJsonSchema with Liquio keywords', () => {
+    const customTypes = { isEven: '(value) => value % 2 === 0' };
+    const schemaWithKeywords = () => ({
+      type: 'object',
+      customTypes: { ...customTypes },
+      properties: { count: { type: 'number', isEven: true, public: true } },
+    });
+
+    it('accepts customTypes and public and leaves the schema to be saved untouched', async () => {
+      const schema = schemaWithKeywords();
+      recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({ data: [{ id: 1, data: { count: 2 } }] });
+
+      await expect(importBusiness.checkExistingRecordsByJsonSchema(123, schema)).resolves.toBeUndefined();
+      expect(schema.customTypes).toEqual(customTypes);
+    });
+
+    it('rejects an existing record that fails a custom type', async () => {
+      recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({ data: [{ id: 7, data: { count: 3 } }] });
+
+      await expect(importBusiness.checkExistingRecordsByJsonSchema(123, schemaWithKeywords())).rejects.toThrow(
+        /Record with ID "7" doesn't match JSON schema/,
+      );
+    });
+  });
+
+  describe('startImport', () => {
+    beforeEach(() => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    });
+
+    it('logs a failed background import instead of leaving the rejection unhandled', async () => {
+      const save = jest.spyOn((importBusiness as any).log, 'save');
+      jest.spyOn(importBusiness, 'validate').mockResolvedValue(undefined);
+      jest.spyOn(importBusiness, 'import').mockRejectedValue(new Error('strict mode: unknown keyword'));
+
+      const importId = await importBusiness.startImport({ key: {}, register: {}, records: [] });
+      await new Promise(process.nextTick);
+
+      expect(save).toHaveBeenCalledWith('import-failed', { importId, error: 'strict mode: unknown keyword' }, 'error');
     });
   });
 });

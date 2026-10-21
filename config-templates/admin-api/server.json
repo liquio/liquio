@@ -8,7 +8,7 @@
   "environment": "dev",
   "hostname": "0.0.0.0",
   "maxBodySize": "20mb",
-  "port": 8102,
+  "port": 8080,
   "swagger": false,
   "token": "<REDACTED>"
 }

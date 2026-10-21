@@ -47,9 +47,9 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
 
 - **Internal only.** filestorage must never be exposed publicly. The helm chart
   has no ingress for it and a `backendInternal` network policy keeps it
-  reachable only from in-cluster services. In `docker-compose.yml` the port is
-  published on loopback only (`127.0.0.1:${SVC_FILESTORAGE_PORT}:8105`);
-  other services reach it over the compose network (`http://filestorage:8105`).
+  reachable only from in-cluster services. In `compose.yaml` the port is
+  published on loopback only (`127.0.0.1:${SVC_FILESTORAGE_PORT}:8080`);
+  other services reach it over the compose network (`http://filestorage:8080`).
 - **No object-level authorization.** Authentication (Basic / token, see the
   `tokens` list in the auth config) only identifies the caller. Any valid
   token gives full read, update, delete, copy and zip access to every file,
@@ -60,7 +60,7 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
   the service exits at startup (`config-validation-error`) if `tokens` is
   empty, malformed (must be `Basic base64(user:password)`) or one of the
   publicly known tokens previously committed to the repository. Generate
-  tokens with `scripts/init.sh` (docker-compose) or the helm `init-secrets`
+  tokens with `scripts/init.sh` (Docker Compose) or the helm `init-secrets`
   job. Helm upgrade note: releases created before this change hold a
   `filestorage` secret with `auth.json = {"token": ...}`, which the service
   ignores; delete that secret and re-run the init job (or set `tokens`
@@ -69,7 +69,7 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
   redeploy filestorage and the affected caller.
 - **Transport (no in-process TLS).** The HTTP listener (`server.hostname`
   `0.0.0.0` inside the container/pod, port `server.port`) is plain HTTP by
-  design and is not meant to cross hosts. docker-compose publishes it on
+  design and is not meant to cross hosts. Docker Compose publishes it on
   loopback only; helm keeps it cluster-internal behind the `backendInternal`
   network policy. If a caller must reach it across hosts or untrusted
   networks, terminate TLS in front of it (ingress, service mesh or reverse

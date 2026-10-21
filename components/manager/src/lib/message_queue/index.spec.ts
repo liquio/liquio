@@ -72,6 +72,17 @@ describe('MessageQueue', () => {
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
       expect(global.log.save).toHaveBeenCalled();
     });
+
+    it('should resolve once a failed first connect succeeds on retry', async () => {
+      messageQueue.config.retryConnectionTime = 1;
+      (amqp.connect as jest.Mock).mockImplementationOnce((url, callback) => callback(new Error('connect ECONNREFUSED')));
+
+      await messageQueue.init();
+
+      expect(amqp.connect).toHaveBeenCalledTimes(2);
+      expect(messageQueue.connection.createChannel).toHaveBeenCalled();
+      expect(global.log.save).toHaveBeenCalledWith('amqp-connected', true);
+    });
   });
 
   describe('produce', () => {
