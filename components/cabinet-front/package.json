@@ -104,7 +104,7 @@
     "mime-types": "^2.1.35",
     "mobile-detect": "1.4.5",
     "moment": "2.29.4",
-    "moment-timezone": "0.5.45",
+    "moment-timezone": "0.6.5",
     "mustache": "4.2.0",
     "node-forge": "1.4.0",
     "node-html-parser": "2.0.2",
