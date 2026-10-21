@@ -884,7 +884,7 @@ export class DocumentSigningBusiness extends Business {
    * Get md5 hash.
    * @param data Data.
    */
-  getMd5Hash(data: crypto.BinaryLike): string {
+  getMd5Hash(data: string | NodeJS.ArrayBufferView): string {
     return crypto.createHash('md5').update(data).digest('hex');
   }
 
@@ -894,7 +894,7 @@ export class DocumentSigningBusiness extends Business {
    * @param options Options.
    * @param options.hmac HMAC secret.
    */
-  getSha512Hash(data: crypto.BinaryLike, options?: { hmac?: string }): string {
+  getSha512Hash(data: string | NodeJS.ArrayBufferView, options?: { hmac?: string }): string {
     if (options?.hmac) {
       return crypto.createHmac('sha512', options.hmac).update(data).digest('hex');
     }
