@@ -47,7 +47,7 @@
     "@eslint/js": "^10.0.1",
     "@testcontainers/postgresql": "^12.2.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.6.4",
+    "@types/node": "^26.6.5",
     "@types/supertest": "^7.2.1",
     "debug": "^4.3.7",
     "eslint": "^10.12.0",
