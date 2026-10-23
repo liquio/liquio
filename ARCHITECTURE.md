@@ -174,122 +174,138 @@ service/router source. Synchronous HTTP unless noted.
 C4Container
     title Liquio — Container Diagram
 
+    UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="3")
+
     Person(citizen, "Citizen / Business user")
-    Person(official, "Government official", "Usually uses cabinet; sometimes granted admin access")
+    Person(official, "Government official")
     Person(admin, "Platform administrator")
 
     Enterprise_Boundary(liquio, "Liquio Platform") {
-        Container_Boundary(external, "Externally exposed (via Ingress)") {
-            Container(id_front, "id-front", "SPA", "Login / identity UI")
-            Container(admin_front, "admin-front", "SPA", "Admin console, workflow designer")
-            Container(cabinet_front, "cabinet-front", "SPA", "Citizen personal cabinet UI")
-
-            Container(id_api, "id-api", "Node.js", "Identity provider: accounts, auth, sessions")
-            Container(admin_api, "admin-api", "Node.js", "Back-office API; selective proxy to task")
-            Container(cabinet_api, "cabinet-api", "Node.js", "Citizen-facing API; catch-all proxy to task")
-            Container(persist_link, "persist-link", "Node.js", "Shareable persistent document links")
-        }
-
-        Container_Boundary(internal, "Internal-only (ClusterIP)") {
-            Container_Boundary(bpmn, "BPMN") {
-                Container(task, "task", "Node.js", "Core workflow/business-logic engine")
-                Container(manager, "manager", "Node.js", "BPMN orchestration hub")
-                Container(gateway, "gateway", "Node.js", "BPMN gateway node processor")
-                Container(event, "event", "Node.js", "External integrations, callbacks, X-Road")
+        Container_Boundary(entry, "Public applications — Ingress") {
+            Container_Boundary(cabinet_app, "Personal cabinet") {
+                Container(cabinet_front, "cabinet-front", "SPA", "Personal cabinet UI")
+                Container(cabinet_api, "cabinet-api", "Node.js", "Citizen API / task proxy")
             }
-            Container(register, "register", "Node.js", "Registry / reference-data store")
-            Container(notification, "notification", "Node.js", "Email/SMS/push dispatch")
-            Container(sign_tool, "sign-tool", "NestJS", "Digital signature (x509) operations")
-            Container(pdf_generator, "pdf-generator", "NestJS", "HTML to PDF rendering")
-            Container(filestorage, "filestorage", "Node.js", "File storage: DB or S3-compatible")
-            Container(external_reader, "external-reader", "Node.js", "Plugin-based external data reader")
+            Container_Boundary(admin_app, "Administration") {
+                Container(admin_front, "admin-front", "SPA", "Back-office UI")
+                Container(admin_api, "admin-api", "Node.js", "Back-office API")
+            }
+            Container_Boundary(identity_app, "Identity") {
+                Container(id_front, "id-front", "SPA", "Authentication UI")
+                Container(id_api, "id-api", "Node.js", "Identity provider")
+            }
         }
 
-        ContainerDb(postgres, "PostgreSQL", "Database", "Primary datastore; multiple databases, incl. a shared 'bpmn' database")
-        ContainerQueue(rabbitmq, "RabbitMQ", "Message bus", "BPMN workflow message bus")
-        ContainerDb(redis, "Redis / Dragonfly", "Cache", "Cache & session store")
+        Container_Boundary(internal, "Internal services — ClusterIP") {
+            Container_Boundary(bpmn, "BPMN execution") {
+                Container(task, "task", "Node.js", "Workflow / business logic")
+                Container(manager, "manager", "Node.js", "BPMN orchestration")
+                Container(gateway, "gateway", "Node.js", "Gateway processor")
+                Container(event, "event", "Node.js", "Events / integrations")
+            }
+            Container_Boundary(domain_services, "Supporting services") {
+                Container(register, "register", "Node.js", "Records / reference data")
+                Container(notification, "notification", "Node.js", "Notifications")
+                Container(sign_tool, "sign-tool", "NestJS", "Digital signatures")
+                Container(pdf_generator, "pdf-generator", "NestJS", "PDF rendering")
+                Container(filestorage, "filestorage", "Node.js", "File storage")
+                Container(external_reader, "external-reader", "Node.js", "External data reader")
+            }
+        }
+
+        Container_Boundary(public_links, "Public document links — Ingress") {
+            Container(persist_link, "persist-link", "Node.js", "Shareable document links")
+        }
+
+        Container_Boundary(data, "Shared infrastructure") {
+            ContainerQueue(rabbitmq, "RabbitMQ", "AMQP", "BPMN queues")
+            ContainerDb(postgres, "PostgreSQL", "SQL", "Service databases + shared BPMN DB")
+            ContainerDb(redis, "Redis / Dragonfly", "Redis protocol", "Cache / sessions")
+        }
     }
 
-    System_Ext(xroad, "X-Road", "External gov data exchange")
-    System_Ext(external_apis, "External APIs / registries", "Third-party & government systems")
-    System_Ext(objectstore, "MinIO / OpenStack", "S3-compatible object storage")
+    System_Ext(xroad, "X-Road", "Government data exchange")
+    System_Ext(external_apis, "External APIs / registries", "Third-party systems")
+    System_Ext(objectstore, "MinIO / OpenStack", "Optional object storage")
 
-    Rel(citizen, cabinet_front, "Uses", "HTTPS")
-    Rel(citizen, id_front, "Logs in via", "HTTPS")
+    %% User access (upper layer)
+    Rel_D(citizen, cabinet_front, "Uses", "HTTPS")
+    Rel_D(citizen, id_front, "Logs in", "HTTPS")
+    Rel_D(official, cabinet_front, "Uses", "HTTPS")
+    Rel_D(official, admin_front, "Optional access", "HTTPS")
+    Rel_D(official, id_front, "Logs in", "HTTPS")
+    Rel_D(admin, admin_front, "Uses", "HTTPS")
+    Rel_D(admin, id_front, "Logs in", "HTTPS")
 
-    Rel(official, cabinet_front, "Uses", "HTTPS")
-    Rel(official, admin_front, "Occasionally uses (if granted access)", "HTTPS")
-    Rel(official, id_front, "Logs in via", "HTTPS")
+    %% Frontend / API pairs
+    Rel_D(cabinet_front, cabinet_api, "REST", "HTTPS")
+    Rel_D(admin_front, admin_api, "REST", "HTTPS")
+    Rel_D(id_front, id_api, "REST", "HTTPS")
+    Rel_U(admin_api, admin_front, "Debug logs (opt-in)", "WebSocket")
 
-    Rel(admin, admin_front, "Uses", "HTTPS")
-    Rel(admin, id_front, "Logs in via", "HTTPS")
+    %% Public API to core
+    Rel_D(admin_api, task, "Selected routes", "HTTP")
+    Rel_D(cabinet_api, task, "Catch-all proxy", "HTTP")
+    Rel_R(admin_api, id_api, "Auth", "HTTP")
+    Rel_R(cabinet_api, id_api, "Auth", "HTTP")
 
-    Rel(cabinet_front, cabinet_api, "Calls", "HTTPS/REST")
-    Rel(admin_front, admin_api, "Calls", "HTTPS/REST")
-    Rel(id_front, id_api, "Calls", "HTTPS/REST")
+    %% HTTP service dependencies: all original edges retained
+    Rel_D(admin_api, register, "Proxy", "HTTP")
+    Rel_D(admin_api, notification, "Sends", "HTTP")
+    Rel_D(admin_api, filestorage, "Files", "HTTP")
+    Rel_D(admin_api, sign_tool, "Signing", "HTTP")
+    Rel_U(task, id_api, "Auth", "HTTP")
+    Rel_D(task, sign_tool, "Signs", "HTTP")
+    Rel_D(task, filestorage, "Files", "HTTP")
+    Rel_D(task, register, "Records", "HTTP")
+    Rel_D(task, notification, "Sends", "HTTP")
+    Rel_D(task, pdf_generator, "PDFs", "HTTP")
+    Rel_R(task, persist_link, "Links", "HTTP")
+    Rel_D(task, external_reader, "External data", "HTTP")
+    Rel_D(id_api, sign_tool, "Signing", "HTTP")
+    Rel_D(id_api, notification, "Sends", "HTTP")
+    Rel_U(notification, id_api, "Users", "HTTP")
+    Rel_R(register, sign_tool, "Signs", "HTTP")
+    Rel_U(event, task, "Triggers", "HTTP")
+    Rel_D(event, filestorage, "Files", "HTTP")
+    Rel_R(event, persist_link, "Links", "HTTP")
+    Rel_D(event, notification, "Sends", "HTTP")
+    Rel_D(event, register, "Records", "HTTP")
+    Rel_U(event, id_api, "Identity", "HTTP")
+    Rel_D(event, sign_tool, "Signing", "HTTP")
+    Rel_R(event, xroad, "Gov data", "SOAP/X-Road")
+    Rel_R(event, external_apis, "Integrations", "HTTP/SOAP")
+    Rel_R(external_reader, external_apis, "Reads", "HTTP/SOAP")
+    Rel_R(external_reader, xroad, "Reads", "SOAP/X-Road")
+    Rel_R(filestorage, objectstore, "Files (optional)", "S3 API")
 
-    Rel(admin_api, id_api, "Verifies auth", "HTTP")
-    Rel(cabinet_api, id_api, "Verifies auth", "HTTP")
-    Rel(admin_api, task, "Calls specific routes", "HTTP")
-    Rel(cabinet_api, task, "Proxies wholesale", "HTTP")
-    Rel(admin_api, register, "Proxies", "HTTP")
-    Rel(admin_api, notification, "Sends", "HTTP")
-    Rel(admin_api, filestorage, "Uses", "HTTP")
-    Rel(admin_api, sign_tool, "Uses", "HTTP")
+    %% BPMN message bus
+    Rel_D(manager, rabbitmq, "Routes", "AMQP")
+    Rel_D(task, rabbitmq, "BPMN", "AMQP")
+    Rel_D(event, rabbitmq, "BPMN", "AMQP")
+    Rel_D(gateway, rabbitmq, "BPMN", "AMQP")
+    Rel_D(admin_api, rabbitmq, "BPMN", "AMQP")
 
-    Rel(task, id_api, "Verifies auth", "HTTP")
-    Rel(task, sign_tool, "Signs documents", "HTTP")
-    Rel(task, filestorage, "Stores files", "HTTP")
-    Rel(task, register, "Reads/writes records", "HTTP")
-    Rel(task, notification, "Sends", "HTTP")
-    Rel(task, pdf_generator, "Renders PDFs", "HTTP")
-    Rel(task, persist_link, "Creates links", "HTTP")
-    Rel(task, external_reader, "Reads external data", "HTTP")
+    %% Persistent storage: retain every original relationship
+    Rel_D(id_api, postgres, "SQL")
+    Rel_D(admin_api, postgres, "SQL")
+    Rel_D(cabinet_api, postgres, "SQL")
+    Rel_D(task, postgres, "SQL")
+    Rel_D(manager, postgres, "SQL")
+    Rel_D(register, postgres, "SQL")
+    Rel_D(event, postgres, "SQL")
+    Rel_D(gateway, postgres, "SQL")
+    Rel_D(notification, postgres, "SQL")
+    Rel_D(filestorage, postgres, "SQL (default)")
+    Rel_D(persist_link, postgres, "SQL")
 
-    Rel(id_api, sign_tool, "Uses", "HTTP")
-    Rel(id_api, notification, "Sends", "HTTP")
-    Rel(notification, id_api, "Looks up users", "HTTP")
-    Rel(register, sign_tool, "Signs", "HTTP")
-
-    Rel(event, task, "Triggers workflows", "HTTP")
-    Rel(event, filestorage, "Uses", "HTTP")
-    Rel(event, persist_link, "Uses", "HTTP")
-    Rel(event, notification, "Uses", "HTTP")
-    Rel(event, register, "Uses", "HTTP")
-    Rel(event, id_api, "Uses", "HTTP")
-    Rel(event, sign_tool, "Uses", "HTTP")
-    Rel(event, xroad, "Exchanges gov data", "SOAP/X-Road")
-    Rel(event, external_apis, "Calls directly", "HTTP/SOAP")
-    Rel(external_reader, external_apis, "Reads directly, or via X-Road", "HTTP/SOAP")
-    Rel(external_reader, xroad, "Reads via", "SOAP/X-Road")
-
-    Rel(filestorage, objectstore, "Stores files", "S3 API (optional)")
-
-    Rel(manager, rabbitmq, "Routes BPMN messages", "AMQP")
-    Rel(task, rabbitmq, "Publishes/consumes", "AMQP")
-    Rel(event, rabbitmq, "Publishes/consumes", "AMQP")
-    Rel(gateway, rabbitmq, "Publishes/consumes", "AMQP")
-    Rel(admin_api, rabbitmq, "Publishes/consumes", "AMQP")
-    Rel(admin_api, admin_front, "Streams debug logs (dev-only, opt-in)", "WebSocket")
-
-    Rel(id_api, postgres, "Reads/writes")
-    Rel(admin_api, postgres, "Reads/writes")
-    Rel(cabinet_api, postgres, "Reads/writes")
-    Rel(task, postgres, "Reads/writes")
-    Rel(manager, postgres, "Reads/writes")
-    Rel(register, postgres, "Reads/writes")
-    Rel(event, postgres, "Reads/writes")
-    Rel(gateway, postgres, "Reads/writes")
-    Rel(notification, postgres, "Reads/writes")
-    Rel(filestorage, postgres, "Reads/writes (default backend)")
-    Rel(persist_link, postgres, "Reads/writes")
-
-    Rel(id_api, redis, "Caches")
-    Rel(admin_api, redis, "Caches")
-    Rel(cabinet_api, redis, "Caches")
-    Rel(manager, redis, "Caches")
-    Rel(event, redis, "Caches")
-    Rel(gateway, redis, "Caches")
+    %% Caching
+    Rel_D(id_api, redis, "Cache")
+    Rel_D(admin_api, redis, "Cache")
+    Rel_D(cabinet_api, redis, "Cache")
+    Rel_D(manager, redis, "Cache")
+    Rel_D(event, redis, "Cache")
+    Rel_D(gateway, redis, "Cache")
 ```
 
 ## Key files
