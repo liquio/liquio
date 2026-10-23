@@ -6,7 +6,7 @@ const {
   setupLogging,
   generateTestUser,
   log,
-  getConfirmationPinFromDockerLogs,
+  getConfirmationPinFromNotifyDb,
 } = require('./helpers');
 
 test('User can change email and verify with PIN confirmation', async ({ page }) => {
@@ -66,8 +66,8 @@ test('User can change email and verify with PIN confirmation', async ({ page }) 
   await confirmationCodeInput.waitFor({ state: 'visible', timeout: 10000 });
   log('Confirmation code input is now visible');
 
-  log('Extracting confirmation PIN from docker-compose logs');
-  const confirmationPin = await getConfirmationPinFromDockerLogs(10, 500);
+  log('Reading confirmation PIN from the notify database');
+  const confirmationPin = await getConfirmationPinFromNotifyDb(newEmail, 10, 500);
   log(`Successfully extracted confirmation PIN: ${confirmationPin}`);
 
   log('Entering confirmation PIN into input field');

@@ -1,5 +1,6 @@
 {
   "maxLimit": 100000,
   "maxExportLimit": 1000000,
+  "maxCsvExportRecords": 1000000,
   "packetLimit": 1000
 }

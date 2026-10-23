@@ -13,6 +13,21 @@ data:
       websocket upgrade;
     }
 
+    {{- $allow := default dict .Values.ingress.idApiPublicAllowlist }}
+    {{- if $allow.enabled }}
+    # Public id-api routes reachable through this front (KS-24i, ingress.idApiPublicAllowlist). Everything else is 404 here.
+    map $uri $id_api_public {
+      default 0;
+      {{- range (concat (default list $allow.paths) (default list $allow.extraPaths)) }}
+      {{- if eq (default "Exact" .pathType) "Exact" }}
+      "~^{{ .path }}/?$" 1;
+      {{- else }}
+      "~^{{ .path }}(/|$)" 1;
+      {{- end }}
+      {{- end }}
+    }
+    {{- end }}
+
     upstream id-api-upstream {
         server {{ include "liquio.fullname" . }}-id-api:80;
     }
@@ -21,6 +36,7 @@ data:
       resolver 127.0.0.11 valid=10s;
 
       listen 8080;
+      server_tokens off;
 
       error_log /dev/stderr;
       access_log /dev/stdout;
@@ -57,6 +73,11 @@ data:
       }
 
       location @id-api {
+        {{- if $allow.enabled }}
+        if ($id_api_public = 0) {
+          return 404;
+        }
+        {{- end }}
         proxy_pass http://id-api-upstream;
         proxy_cache off;
         proxy_http_version 1.1;

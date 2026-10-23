@@ -1,4 +1,5 @@
 {
-  "port": 7007,
-  "bodyLimit": "50mb"
+  "port": 8080,
+  "bodyLimit": "50mb",
+  "defaultBodyLimit": "100kb"
 }

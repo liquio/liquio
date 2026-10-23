@@ -62,35 +62,32 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Check chart version changed
-        id: version_check
-        run: |
-          if git diff --unified=0 "${{ github.event.before }}" "${{ github.sha }}" -- "${{ env.CHART_PATH }}Chart.yaml" | grep -qE '^[+-]version:'; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Install Helm
-        if: steps.version_check.outputs.changed == 'true'
         uses: azure/setup-helm@v5
         with:
           version: ${{ env.HELM_VERSION }}
 
-      - name: Helm package
-        if: steps.version_check.outputs.changed == 'true'
-        run: helm package ${{ env.CHART_PATH }} --destination /tmp/chart-packages/
-
       - name: Log in to GHCR
-        if: steps.version_check.outputs.changed == 'true'
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" \
             | helm registry login ${{ env.REGISTRY }} \
               --username ${{ github.repository_owner }} \
               --password-stdin
+
+      - name: Check chart version published
+        id: version_check
+        run: |
+          VERSION=$(grep -E '^version:' "${{ env.CHART_PATH }}Chart.yaml" | awk '{print $2}')
+          if helm pull "oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/liquio" --version "$VERSION" -d /tmp/chart-check >/dev/null 2>&1; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Helm package
+        if: steps.version_check.outputs.changed == 'true'
+        run: helm package ${{ env.CHART_PATH }} --destination /tmp/chart-packages/
 
       - name: Push chart to GHCR
         if: steps.version_check.outputs.changed == 'true'
@@ -99,5 +96,5 @@ jobs:
             oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts
 
       - name: Log out of GHCR
-        if: always() && steps.version_check.outputs.changed == 'true'
+        if: always()
         run: helm registry logout ${{ env.REGISTRY }}

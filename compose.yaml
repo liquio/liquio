@@ -1,0 +1,455 @@
+# Runtime hardening shared by all backend (node) services: read-only root fs,
+# no capabilities, no privilege escalation. /tmp is the only writable path.
+x-hardened: &hardened
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp
+
+# Same hardening for the nginx fronts, which also need their cache dir writable.
+x-hardened-front: &hardened-front
+  <<: *hardened
+  tmpfs:
+    - /tmp
+    - /var/cache/nginx
+
+# Resource tiers (deploy.resources is honoured by `docker compose up`). Defaults mirror the helm chart's
+# resources; pdf-generator gets more because headless chromium alone idles near 300M.
+x-res-service: &res-service
+  deploy:
+    resources:
+      limits: { cpus: "0.5", memory: 512M }
+      reservations: { cpus: "0.1", memory: 128M }
+
+x-res-pdf: &res-pdf
+  deploy:
+    resources:
+      limits: { cpus: "1.0", memory: 1G }
+      reservations: { cpus: "0.25", memory: 512M }
+
+x-res-job: &res-job
+  deploy:
+    resources:
+      limits: { cpus: "0.5", memory: 256M }
+      reservations: { cpus: "0.1", memory: 128M }
+
+x-res-front: &res-front
+  deploy:
+    resources:
+      limits: { cpus: "0.25", memory: 128M }
+      reservations: { cpus: "0.05", memory: 32M }
+
+x-res-infra: &res-infra
+  deploy:
+    resources:
+      limits: { cpus: "0.5", memory: 512M }
+      reservations: { cpus: "0.1", memory: 256M }
+
+x-res-redis: &res-redis
+  deploy:
+    resources:
+      limits: { cpus: "0.2", memory: 256M }
+      reservations: { cpus: "0.05", memory: 128M }
+
+services:
+  id-front:
+    <<: [*hardened-front, *res-front]
+    build:
+      context: ./components/id-front
+    restart: on-failure
+    ports:
+      - "${SVC_ID_PORT}:8080"
+    volumes:
+      - ./config/id/config.json:/usr/share/nginx/html/config.json:ro
+    depends_on:
+      - id-api
+
+  id-api:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/id-api
+    restart: on-failure
+    ports:
+      - "${SVC_ID_API_PORT}:8080"
+    volumes:
+      - ./config/id:/var/www/config:ro
+    depends_on:
+      - id-migrations
+      - rabbitmq
+      - redis
+
+  id-migrations:
+    <<: [*hardened, *res-job]
+    build:
+      context: ./components/id-api
+    command: ["node", "node_modules/.bin/sequelize", "db:migrate", "--migrations-path", "./migrations", "--config", "./migrations-config.js"]
+    restart: on-failure
+    volumes:
+      - ./config/id:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  admin-api:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/admin-api
+    restart: on-failure
+    ports:
+      - "${SVC_ADMIN_API_PORT}:8080"
+    volumes:
+      - ./config/admin-api:/var/www/config:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  admin-front:
+    <<: [*hardened-front, *res-front]
+    build:
+      context: ./components/admin-front
+      args:
+        NODE_MAX_OLD_SPACE_SIZE: 1536
+        GENERATE_SOURCEMAP: ${GENERATE_SOURCEMAP:-false}
+        DISABLE_ESLINT_PLUGIN: ${DISABLE_ESLINT_PLUGIN:-true}
+        INLINE_RUNTIME_CHUNK: ${INLINE_RUNTIME_CHUNK:-false}
+      additional_contexts:
+        core: ./packages/front-core
+    restart: on-failure
+    ports:
+      - "${SVC_ADMIN_FRONT_PORT}:8080"
+    volumes:
+      - ./config/admin-front/config.json:/usr/share/nginx/html/config.json:ro
+    depends_on:
+      - admin-api
+
+  cabinet-api:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/cabinet-api
+    restart: on-failure
+    ports:
+      - "${SVC_CABINET_API_PORT}:8080"
+    volumes:
+      - ./config/cabinet-api:/var/www/config:ro
+    depends_on:
+      - postgres
+      - redis
+
+  cabinet-front:
+    <<: [*hardened-front, *res-front]
+    build:
+      context: ./components/cabinet-front
+      args:
+        NODE_MAX_OLD_SPACE_SIZE: 1536
+        GENERATE_SOURCEMAP: ${GENERATE_SOURCEMAP:-false}
+        DISABLE_ESLINT_PLUGIN: ${DISABLE_ESLINT_PLUGIN:-true}
+        INLINE_RUNTIME_CHUNK: ${INLINE_RUNTIME_CHUNK:-false}
+      additional_contexts:
+        core: ./packages/front-core
+    restart: on-failure
+    ports:
+      - "${SVC_CABINET_FRONT_PORT}:8080"
+    volumes:
+      - ./config/cabinet-front/config.json:/usr/share/nginx/html/config.json:ro
+    depends_on:
+      - cabinet-api
+
+  manager-migrations:
+    <<: [*hardened, *res-job]
+    build:
+      context: ./components/manager
+    command: ["node", "node_modules/.bin/sequelize", "db:migrate"]
+    restart: on-failure
+    volumes:
+      - ./config/manager:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  manager:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/manager
+    restart: on-failure
+    volumes:
+      - ./config/manager:/var/www/config:ro
+    depends_on:
+      - manager-migrations
+      - rabbitmq
+      - redis
+
+  register:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/register
+    restart: on-failure
+    ports:
+      - "${SVC_REGISTER_PORT}:8080"
+    volumes:
+      - ./config/register:/var/www/config:ro
+    depends_on:
+      - register-migrations
+
+  register-migrations:
+    <<: [*hardened, *res-job]
+    build:
+      context: ./components/register
+    command: ["node", "node_modules/.bin/sequelize", "db:migrate", "--config", "migrations-config.js"]
+    restart: on-failure
+    volumes:
+      - ./config/register:/var/www/config:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  event-plugin-installer:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/event
+    command: ["npm", "run", "plugin-installer"]
+    restart: on-failure
+    volumes:
+      - ./config/event:/var/www/config:ro
+      - event-plugins:/var/www/plugins
+    environment:
+      PLUGINS_INSTALL_DIR: /var/www/plugins
+
+  event:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/event
+    restart: on-failure
+    volumes:
+      - ./config/event:/var/www/config:ro
+      - event-plugins:/var/www/plugins:ro
+    depends_on:
+      event-plugin-installer:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  gateway:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/gateway
+    restart: on-failure
+    volumes:
+      - ./config/gateway:/var/www/config:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  sign-tool:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/sign-tool
+    restart: on-failure
+    ports:
+      - "${SVC_SIGN_TOOL_PORT}:8080"
+    volumes:
+      - ./config/sign-tool:/var/www/config:ro
+
+  task-plugin-installer:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/task
+    command: ["npm", "run", "plugin-installer"]
+    restart: on-failure
+    volumes:
+      - ./config/task:/var/www/config:ro
+      - task-plugins:/var/www/plugins
+    environment:
+      PLUGINS_INSTALL_DIR: /var/www/plugins
+
+  task:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/task
+    restart: on-failure
+    volumes:
+      - ./config/task:/var/www/config:ro
+      - task-plugins:/var/www/plugins:ro
+    depends_on:
+      task-plugin-installer:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  notification:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/notification
+    restart: on-failure
+    volumes:
+      - ./config/notification:/var/www/config:ro
+    depends_on:
+      - notification-migrations
+
+  notification-migrations:
+    <<: [*hardened, *res-job]
+    build:
+      context: ./components/notification
+    command: ["node", "node_modules/.bin/sequelize", "db:migrate"]
+    restart: on-failure
+    volumes:
+      - ./config/notification:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  external-reader-plugin-installer:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/external-reader
+    command: ["npm", "run", "plugin-installer"]
+    restart: on-failure
+    volumes:
+      - ./config/external-reader:/var/www/config:ro
+      - external-reader-plugins:/var/www/plugins
+    environment:
+      PLUGINS_INSTALL_DIR: /var/www/plugins
+
+  external-reader:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/external-reader
+    restart: on-failure
+    ports:
+      # Internal-only service (trusts the caller-asserted userFilter): publish on loopback only.
+      - "127.0.0.1:${SVC_EXTERNAL_READER_PORT}:8080"
+    volumes:
+      - ./config/external-reader:/var/www/config:ro
+      - external-reader-plugins:/var/www/plugins:ro
+    depends_on:
+      external-reader-plugin-installer:
+        condition: service_completed_successfully
+
+  pdf-generator:
+    <<: [*hardened, *res-pdf]
+    build:
+      context: ./components/pdf-generator
+    restart: on-failure
+    ports:
+      - "${SVC_PDF_GENERATOR_PORT}:8080"
+    volumes:
+      - ./config/pdf-generator:/var/www/config:ro
+
+  filestorage:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/filestorage
+    restart: on-failure
+    ports:
+      - "127.0.0.1:${SVC_FILESTORAGE_PORT}:8080"
+    volumes:
+      - ./config/filestorage:/var/www/config:ro
+    depends_on:
+      - filestorage-migrations
+
+  filestorage-migrations:
+    <<: [*hardened, *res-job]
+    build:
+      context: ./components/filestorage
+    command: ["node", "node_modules/.bin/sequelize", "db:migrate"]
+    restart: on-failure
+    volumes:
+      - ./config/filestorage:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  persist-link-migrations:
+    <<: [*hardened, *res-job]
+    build:
+      context: ./components/persist-link
+    command: ["node", "node_modules/.bin/sequelize", "db:migrate", "--migrations-path", "./migrations", "--config", "./migrations-config.js"]
+    restart: on-failure
+    volumes:
+      - ./config/persist-link:/var/www/config:ro
+    depends_on:
+      - postgres
+
+  persist-link:
+    <<: [*hardened, *res-service]
+    build:
+      context: ./components/persist-link
+    restart: on-failure
+    ports:
+      - "${SVC_PERSIST_LINK_PORT}:8080"
+    volumes:
+      - ./config/persist-link:/var/www/config:ro
+    depends_on:
+      - persist-link-migrations
+      - postgres
+
+  postgres:
+    <<: *res-infra
+    image: postgres:17
+    ports:
+      - "${POSTGRES_PUBLISHED_PORT:-5432}:5432"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_NAME: ${POSTGRES_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init/db/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  rabbitmq:
+    <<: *res-infra
+    image: rabbitmq:3-management
+    ports:
+      - "${RABBITMQ_MANAGEMENT_PUBLISHED_PORT:-15672}:15672"
+      - "${RABBITMQ_AMQP_PUBLISHED_PORT:-5672}:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      # Healthy only once the AMQP listener accepts connections, so services that wait for it can connect on first try.
+      # A plain TCP probe: rabbitmq-diagnostics runs as root and, before the server starts, writes a root-owned
+      # .erlang.cookie into the fresh volume that the server then cannot read.
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/5672"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
+
+  redis:
+    <<: *res-redis
+    image: redis:latest
+    ports:
+      - "${REDIS_PUBLISHED_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
+  event-plugins:
+  external-reader-plugins:
+  task-plugins:
