@@ -18,6 +18,7 @@ vi.mock('react-translate', async (importOriginal) => ({
   translate: () => (component: unknown) => component
 }));
 
+vi.mock('helpers/waitForAction', () => ({ default: { run: vi.fn().mockResolvedValue(undefined) } }));
 
 type HandleStore = () => Promise<unknown>;
 
@@ -131,5 +132,86 @@ describe('TaskPage handleStore', () => {
 
     await expect(page.handleStore()).resolves.toBeNull();
     expect(storeTaskDocument).not.toHaveBeenCalled();
+  });
+});
+
+describe('TaskPage handleFinishEditing', () => {
+  type FinishPage = {
+    handleFinishEditing: () => Promise<void>;
+    commitDocument: unknown;
+    setTaskScreen: unknown;
+    setState: unknown;
+    redirectToInvalidPage: unknown;
+  };
+
+  const createFinishPage = (actions: Record<string, unknown>) => {
+    const Page = TaskPage as unknown as new (props: Record<string, unknown>) => FinishPage;
+    const task = { id: TASK_ID, taskTemplateId: TEMPLATE_ID, finished: false, documentId: 'doc-1', document: {} };
+    const page = new Page({
+      t: (key: string) => key,
+      taskId: TASK_ID,
+      tasks: { [TASK_ID]: task },
+      origins: { [TASK_ID]: task },
+      templates: { [TEMPLATE_ID]: { id: TEMPLATE_ID, jsonSchema: {} } },
+      authInfo: {},
+      taskScreens: {},
+      actions: { loadTask: vi.fn(), ...actions }
+    });
+    page.commitDocument = vi.fn();
+    page.setTaskScreen = vi.fn();
+    page.setState = vi.fn();
+    page.redirectToInvalidPage = vi.fn();
+    return page;
+  };
+
+  it('does not start a second finish while one is in flight', async () => {
+    let resolvePrepare: (v: unknown) => void = () => undefined;
+    const prepareDocument = vi.fn().mockReturnValue(new Promise((resolve) => (resolvePrepare = resolve)));
+    const validateDocument = vi.fn().mockResolvedValue({});
+    const page = createFinishPage({ prepareDocument, validateDocument });
+
+    const first = page.handleFinishEditing();
+    const second = page.handleFinishEditing();
+    resolvePrepare({});
+    await Promise.all([first, second]);
+
+    expect(prepareDocument).toHaveBeenCalledTimes(1);
+    expect(validateDocument).toHaveBeenCalledTimes(1);
+    expect(validateDocument).toHaveBeenCalledWith('doc-1', true, true);
+  });
+
+  it('does not commit the same task twice', async () => {
+    const validateDocument = vi.fn().mockResolvedValue({});
+    const page = createFinishPage({ prepareDocument: vi.fn().mockResolvedValue({}), validateDocument });
+
+    await page.handleFinishEditing();
+    await page.handleFinishEditing();
+
+    expect(validateDocument).toHaveBeenCalledTimes(1);
+    expect(page.commitDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows a retry after a failed validation', async () => {
+    const validateDocument = vi.fn().mockResolvedValueOnce(new Error('invalid')).mockResolvedValueOnce({});
+    const page = createFinishPage({ prepareDocument: vi.fn().mockResolvedValue({}), validateDocument });
+
+    await page.handleFinishEditing();
+    await page.handleFinishEditing();
+
+    expect(validateDocument).toHaveBeenCalledTimes(2);
+    expect(page.redirectToInvalidPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets the in-flight flag when prepareDocument throws', async () => {
+    const prepareDocument = vi.fn().mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce({});
+    const validateDocument = vi.fn().mockResolvedValue({});
+    const page = createFinishPage({ prepareDocument, validateDocument });
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await page.handleFinishEditing();
+    await page.handleFinishEditing();
+
+    expect(prepareDocument).toHaveBeenCalledTimes(2);
+    expect(validateDocument).toHaveBeenCalledTimes(1);
   });
 });

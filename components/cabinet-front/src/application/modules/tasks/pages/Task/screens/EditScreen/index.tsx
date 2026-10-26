@@ -58,6 +58,7 @@ import GreetingsPage from 'modules/tasks/pages/Task/screens/EditScreen/component
 import EditScreenLayoutRaw from 'modules/tasks/pages/Task/screens/EditScreen/components/EditScreenLayout';
 
 import propsToData from 'modules/tasks/pages/Task/helpers/propsToData';
+import getNextVisibleStep from 'modules/tasks/pages/Task/helpers/getNextVisibleStep';
 import removeHiddenStepsData from 'modules/tasks/pages/Task/screens/EditScreen/methods/removeHiddenStepsData';
 import triggerInitSignerList from 'modules/tasks/pages/Task/screens/EditScreen/methods/triggerInitSignerList';
 import handleHiddenTriggers from 'modules/tasks/pages/Task/screens/EditScreen/methods/handleHiddenTriggers';
@@ -247,7 +248,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
   ignoreEmptyValues: boolean;
   altchaRef: React.RefObject<{ value?: unknown } | null>;
   queue: ReturnType<typeof queueFactory.get>;
-  finishingRemovedStep: boolean;
+  handledRemovedStep: string | null;
 
   removeHiddenStepsData: () => Promise<void>;
   triggerInitSignerList: (props?: { navigating?: boolean }) => string | false;
@@ -280,7 +281,7 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
     };
 
     this.altchaRef = React.createRef();
-    this.finishingRemovedStep = false;
+    this.handledRemovedStep = null;
 
     this.queue = queueFactory.get(taskId as string);
 
@@ -396,8 +397,8 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
   };
 
   componentDidUpdate(prevProps: EditScreenProps): void {
-    const { stepId: oldStepId } = propsToData(prevProps) as EditScreenData;
-    const { stepId: newStepId, steps } = propsToData(this.props) as EditScreenData;
+    const { stepId: oldStepId, steps: previousSteps } = propsToData(prevProps) as EditScreenData;
+    const { stepId: newStepId, steps, taskId, template } = propsToData(this.props) as EditScreenData;
     const { self } = this.props;
 
     if (oldStepId !== newStepId) {
@@ -408,14 +409,24 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
     }
 
     if (newStepId !== undefined && steps?.length && !steps.includes(newStepId)) {
-      if (!this.finishingRemovedStep) {
-        this.finishingRemovedStep = true;
-        self.handleFinishEditing();
+      const removedKey = `${taskId}:${newStepId}`;
+      if (this.handledRemovedStep !== removedKey) {
+        this.handledRemovedStep = removedKey;
+        const nextStepId = getNextVisibleStep({ removedStepId: newStepId, steps, previousSteps, template });
+        if (nextStepId) {
+          this.handleSetStep(steps.indexOf(nextStepId));
+        } else {
+          self.handleFinishEditing();
+        }
       }
       return;
     }
 
-    this.finishingRemovedStep = false;
+    // Clear only when the current step is really present (or there is no step in the URL).
+    // A transiently empty or missing `steps` must not re-arm the auto-finish.
+    if (newStepId === undefined || (steps?.length && steps.includes(newStepId))) {
+      this.handledRemovedStep = null;
+    }
   }
 
   updateTaskMetaActions = async (initing?: boolean): Promise<void> => {
@@ -1248,9 +1259,11 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
       const {
         task,
         template,
-        stepId
+        stepId,
+        steps: previousSteps
       } = propsToData(this.props) as EditScreenData;
       const { properties } = template.jsonSchema;
+      const currentStepId = stepId;
 
       const stepSchema = (properties?.[stepId as string] || {}) as { triggerBeforeReader?: boolean };
       const triggerBeforeReader = stepSchema?.triggerBeforeReader || false;
@@ -1269,12 +1282,36 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
         }
         await handleStore();
 
-        const valid = await this.validateStep();
+        const { steps, stepId: routeStepId } = propsToData(this.props) as EditScreenData;
 
-        const userDataValid = await this.validateUserData();
+        if (!currentStepId) {
+          const valid = await this.validateStep();
+          const userDataValid = await this.validateUserData();
 
-        if (valid && userDataValid) {
-          await this.handleSetStep(activeStep + 1);
+          if (valid && userDataValid) {
+            await this.handleSetStep(activeStep + 1);
+          }
+        } else if (steps?.includes(currentStepId)) {
+          const valid = await this.validateStep(currentStepId);
+          const userDataValid = await this.validateUserData();
+
+          if (valid && userDataValid) {
+            await this.handleSetStep(steps.indexOf(currentStepId) + 1);
+          }
+        } else {
+          const userDataValid = await this.validateUserData();
+
+          if (userDataValid && routeStepId === currentStepId) {
+            const next = getNextVisibleStep({
+              removedStepId: currentStepId,
+              steps: steps || [],
+              previousSteps,
+              template
+            });
+            if (next) {
+              await this.handleSetStep(steps.indexOf(next));
+            }
+          }
         }
 
         this.setState({ readOnly: false }, resolve);

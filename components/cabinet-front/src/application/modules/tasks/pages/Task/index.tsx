@@ -251,6 +251,8 @@ class TaskPage extends ModulePage<TaskPageProps> {
   };
 
   settingDefaultStep = false;
+  finishingEditing = false;
+  committedTaskId: string | null = null;
 
   expiringTimer?: ReturnType<typeof setInterval>;
 
@@ -1049,73 +1051,83 @@ class TaskPage extends ModulePage<TaskPageProps> {
     const { taskId, task, template } = propsToData(this.props) as TaskPageData;
     const finished = task?.finished;
 
+    if (this.finishingEditing) return;
+    if (taskId && this.committedTaskId === taskId && !finished) return;
+
     const expired = this.checkDraftExpiredDate(task);
 
     if (expired) return;
 
-    this.setState({ busy: true, locked: true });
-
-    await waiter.run(taskId as string);
+    this.finishingEditing = true;
 
     try {
-      if (!finished) {
-        task.document = await actions.prepareDocument(task?.documentId);
+      this.setState({ busy: true, locked: true });
 
-        if (template?.jsonSchema?.updateUserInfo) {
-          const userInfoData = await this.updateUserInfo();
-          if (userInfoData instanceof Error) {
+      await waiter.run(taskId as string);
+
+      try {
+        if (!finished) {
+          task.document = await actions.prepareDocument(task?.documentId);
+
+          if (template?.jsonSchema?.updateUserInfo) {
+            const userInfoData = await this.updateUserInfo();
+            if (userInfoData instanceof Error) {
+              this.setState({ busy: false, locked: false });
+              return;
+            }
+          }
+
+          const shouldCommit = !pdfRequired(template, task) && !signRequired(template, task);
+
+          const validateDocumentBeforeCommit = await actions.validateDocument(
+            task.documentId,
+            true,
+            shouldCommit
+          );
+
+          if (validateDocumentBeforeCommit instanceof Error) {
+            this.redirectToInvalidPage(
+              (validateDocumentBeforeCommit as Error & { details?: Array<{ dataPath: string; validationParam?: unknown }> })
+                ?.details as Array<{ dataPath: string; validationParam?: unknown }>
+            );
             this.setState({ busy: false, locked: false });
             return;
           }
-        }
 
-        const shouldCommit = !pdfRequired(template, task) && !signRequired(template, task);
-
-        const validateDocumentBeforeCommit = await actions.validateDocument(
-          task.documentId,
-          true,
-          shouldCommit
-        );
-
-        if (validateDocumentBeforeCommit instanceof Error) {
-          this.redirectToInvalidPage(
-            (validateDocumentBeforeCommit as Error & { details?: Array<{ dataPath: string; validationParam?: unknown }> })
-              ?.details as Array<{ dataPath: string; validationParam?: unknown }>
-          );
-          this.setState({ busy: false, locked: false });
-          return;
-        }
-
-        if (shouldCommit) {
-          this.setState({ busy: true, locked: true });
-          this.commitDocument();
-          return;
-        }
-
-        this.setState({ busy: true, locked: true });
-
-        const forceLargeDocument = template?.jsonSchema?.largePdfFile;
-        const processingSign = (await dbStorage.getItem('sessionId')) && isMobile;
-
-        if (forceLargeDocument) {
-          await actions.setStartPDFGenerationTime(taskId, new Date().getTime());
-          if (!processingSign) await actions.generatePDFDocument(task.documentId, true);
-          this.setTaskScreen(screens.PROCESSING);
-          this.setState({ busy: false });
-          return;
-        } else {
-          if (!processingSign && !this.getHideMainPdf()) {
-            await actions.generatePDFDocument(task.documentId);
+          if (shouldCommit) {
+            this.setState({ busy: true, locked: true });
+            this.committedTaskId = taskId as string;
+            this.commitDocument();
+            return;
           }
-          await actions.loadTask(taskId as string);
+
+          this.setState({ busy: true, locked: true });
+
+          const forceLargeDocument = template?.jsonSchema?.largePdfFile;
+          const processingSign = (await dbStorage.getItem('sessionId')) && isMobile;
+
+          if (forceLargeDocument) {
+            await actions.setStartPDFGenerationTime(taskId, new Date().getTime());
+            if (!processingSign) await actions.generatePDFDocument(task.documentId, true);
+            this.setTaskScreen(screens.PROCESSING);
+            this.setState({ busy: false });
+            return;
+          } else {
+            if (!processingSign && !this.getHideMainPdf()) {
+              await actions.generatePDFDocument(task.documentId);
+            }
+            await actions.loadTask(taskId as string);
+          }
         }
+        this.setState({ busy: false, locked: false });
+        this.settingDefaultStep = true;
+        this.setTaskScreen(screens.PREVIEW);
+        history.push(this.getRootPath());
+      } catch (e) {
+        console.log('handleFinishEditing error', e);
       }
-      this.setState({ busy: false, locked: false });
-      this.settingDefaultStep = true;
-      this.setTaskScreen(screens.PREVIEW);
-      history.push(this.getRootPath());
-    } catch (e) {
-      console.log('handleFinishEditing error', e);
+    } finally {
+      this.finishingEditing = false;
     }
   };
 
