@@ -70,6 +70,48 @@ const ghostTemplate = {
   }
 };
 
+const quizTemplate = {
+  id: TEMPLATE_ID,
+  jsonSchema: {
+    properties: {
+      calculated: { type: 'object', checkStepHidden: '() => true', properties: {} },
+      quizInfo: {
+        type: 'object',
+        checkStepHidden: '(data) => data?.calculated?.hideStep',
+        checkStepFinal: '(data) => !data?.quizInfo?.done',
+        properties: {}
+      },
+      answersInfo: { type: 'object', properties: {} }
+    }
+  }
+};
+
+// a is hidden once `calculated.hideA` is set.
+const abcdTemplate = {
+  id: TEMPLATE_ID,
+  jsonSchema: {
+    properties: {
+      calculated: { type: 'object', checkStepHidden: '() => true', properties: {} },
+      a: { type: 'object', checkStepHidden: '(data) => data?.calculated?.hideA', properties: {} },
+      b: { type: 'object', properties: {} },
+      c: { type: 'object', properties: {} },
+      d: { type: 'object', properties: {} }
+    }
+  }
+};
+
+// b is the last step; hideB hides it, hideAll hides every step.
+const lastTemplate = {
+  id: TEMPLATE_ID,
+  jsonSchema: {
+    properties: {
+      calculated: { type: 'object', checkStepHidden: '() => true', properties: {} },
+      a: { type: 'object', checkStepHidden: '(data) => data?.calculated?.hideAll', properties: {} },
+      b: { type: 'object', checkStepHidden: '(data) => data?.calculated?.hideB || data?.calculated?.hideAll', properties: {} }
+    }
+  }
+};
+
 const makeTask = (data: Record<string, unknown>) => ({
   id: TASK_ID,
   taskTemplateId: TEMPLATE_ID,
@@ -86,7 +128,7 @@ const makeProps = ({
   data?: Record<string, unknown>;
   stepId: string;
   activeStep: number;
-  jsonTemplate?: typeof template | typeof ghostTemplate;
+  jsonTemplate?: typeof template | typeof ghostTemplate | typeof quizTemplate | typeof abcdTemplate | typeof lastTemplate;
 }) => ({
   t: (key: string) => key,
   taskId: TASK_ID,
@@ -175,6 +217,71 @@ describe('EditScreen step navigation', () => {
     });
   });
 
+  describe('incrementStep with hidden steps', () => {
+    it('opens answersInfo when the silent triggers hide the current step', async () => {
+      const props = makeProps({
+        data: { quizInfo: { done: true } },
+        stepId: 'quizInfo',
+        activeStep: 0,
+        jsonTemplate: quizTemplate
+      });
+      const screen = createScreen(props);
+      props.handleSilentTriggers.mockImplementation(async () => {
+        screen.props = {
+          ...makeProps({
+            data: { quizInfo: { done: true }, calculated: { hideStep: true } },
+            stepId: 'quizInfo',
+            activeStep: 0,
+            jsonTemplate: quizTemplate
+          }),
+          self: props.self
+        };
+      });
+
+      await screen.incrementStep();
+
+      expect(replace).toHaveBeenCalledWith(`${ROOT_PATH}/answersInfo`);
+      expect(screen.props.saveLastStepVisited).toHaveBeenCalledWith({ stepId: 'answersInfo' });
+      expect(props.self.handleFinishEditing).not.toHaveBeenCalled();
+    });
+
+    it('does not skip a step when an earlier step is hidden by the triggers', async () => {
+      const props = makeProps({ stepId: 'b', activeStep: 1, jsonTemplate: abcdTemplate });
+      const screen = createScreen(props);
+      props.handleSilentTriggers.mockImplementation(async () => {
+        screen.props = makeProps({
+          data: { calculated: { hideA: true } },
+          stepId: 'b',
+          activeStep: 1,
+          jsonTemplate: abcdTemplate
+        });
+      });
+
+      await screen.incrementStep();
+
+      expect(replace).toHaveBeenCalledTimes(1);
+      expect(replace).toHaveBeenCalledWith(`${ROOT_PATH}/c`);
+    });
+
+    it('does not navigate or finish when the last step hides itself', async () => {
+      const props = makeProps({ stepId: 'b', activeStep: 1, jsonTemplate: lastTemplate });
+      const screen = createScreen(props);
+      props.handleSilentTriggers.mockImplementation(async () => {
+        screen.props = makeProps({
+          data: { calculated: { hideB: true } },
+          stepId: 'b',
+          activeStep: 1,
+          jsonTemplate: lastTemplate
+        });
+      });
+
+      await screen.incrementStep();
+
+      expect(replace).not.toHaveBeenCalled();
+      expect(props.self.handleFinishEditing).not.toHaveBeenCalled();
+    });
+  });
+
   describe('validateStep', () => {
     it('returns false for the active step when stepOrders names a step without a schema', async () => {
       const screen = createScreen(makeProps({ stepId: 'ghost', activeStep: 1, jsonTemplate: ghostTemplate }));
@@ -203,16 +310,54 @@ describe('EditScreen step navigation', () => {
   });
 
   describe('componentDidUpdate', () => {
-    it('finishes editing once when the current step disappears from the step list', () => {
+    it('opens the next visible step when the current step disappears', async () => {
       const props = makeProps({ stepId: 's2', activeStep: 1, data: { calculated: { showS2: true } } });
       const screen = createScreen(props);
       // s2 is hidden again, so the list is [s1, s3] while the URL still points at s2.
       screen.props = { ...makeProps({ stepId: 's2', activeStep: 1 }), self: props.self };
 
       screen.componentDidUpdate(props);
+
+      await vi.waitFor(() => expect(replace).toHaveBeenCalledWith(`${ROOT_PATH}/s3`));
+      expect(props.self.handleFinishEditing).not.toHaveBeenCalled();
+    });
+
+    it('finishes editing once when no step follows the removed step', () => {
+      const props = makeProps({ stepId: 'b', activeStep: 1, jsonTemplate: lastTemplate });
+      const screen = createScreen(props);
+      const withProps = (data: Record<string, unknown>) => ({
+        ...makeProps({ data, stepId: 'b', activeStep: 1, jsonTemplate: lastTemplate }),
+        self: props.self
+      });
+
+      screen.props = withProps({ calculated: { hideB: true } });
+      screen.componentDidUpdate(props);
+      // Every step hidden: the list is empty and must not re-arm the guard.
+      screen.props = withProps({ calculated: { hideAll: true } });
+      screen.componentDidUpdate(props);
+      screen.props = withProps({ calculated: { hideB: true } });
       screen.componentDidUpdate(props);
 
       expect(props.self.handleFinishEditing).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens answersInfo when quizInfo hides itself', async () => {
+      const props = makeProps({ stepId: 'quizInfo', activeStep: 0, jsonTemplate: quizTemplate });
+      const screen = createScreen(props);
+      screen.props = {
+        ...makeProps({
+          data: { calculated: { hideStep: true } },
+          stepId: 'quizInfo',
+          activeStep: 0,
+          jsonTemplate: quizTemplate
+        }),
+        self: props.self
+      };
+
+      screen.componentDidUpdate(props);
+
+      await vi.waitFor(() => expect(replace).toHaveBeenCalledWith(`${ROOT_PATH}/answersInfo`));
+      expect(props.self.handleFinishEditing).not.toHaveBeenCalled();
     });
 
     it('does not finish editing while the current step is in the step list', () => {
