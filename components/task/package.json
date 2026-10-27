@@ -81,7 +81,7 @@
     "nock": "^14.0.17",
     "portfinder": "^1.0.37",
     "supertest": "^7.2.2",
-    "ts-jest": "^29.4.14",
+    "ts-jest": "^29.4.15",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1"
