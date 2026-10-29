@@ -19,8 +19,8 @@
     "test": "jest src",
     "test:watch": "jest src --watch",
     "test:cov": "jest src --coverage",
-    "test:e2e": "jest tests",
-    "ci:e2e": "jest tests --ci --maxWorkers=2 --coverage --coverageDirectory=coverage/e2e",
+    "test:e2e": "jest --config jest.e2e.config.js --verbose",
+    "ci:e2e": "jest --config jest.e2e.config.js --ci --maxWorkers=2 --coverageDirectory=coverage/e2e",
     "test:build": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json"
   },
   "dependencies": {
