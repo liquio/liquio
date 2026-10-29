@@ -13,8 +13,6 @@ describe('EventBusiness - User type events', () => {
     await TestApp.beforeAll();
 
     app = await TestApp.setup({});
-
-    await app.init();
   });
 
   afterAll(async () => {
