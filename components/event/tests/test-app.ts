@@ -10,24 +10,14 @@ import { merge } from 'lodash';
 import { resetIdApiClient } from '@liquio/back-core';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
+import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 
 import { App } from '../src/app';
+import { MessageQueue } from '../src/lib/message_queue';
 import { prepareFixtures } from './fixtures';
 
 // E2E tests are slow, so we increase the timeout
 jest.setTimeout(30000);
-
-// Mock the RabbitMQ connection
-jest.mock('../src/lib/message_queue', () => {
-  return {
-    MessageQueue: jest.fn().mockImplementation(() => {
-      return {
-        init: jest.fn(),
-        produce: jest.fn(),
-      };
-    }),
-  };
-});
 
 // Mock the log module
 jest.mock('@liquio/back-core', () => {
@@ -142,6 +132,7 @@ const defaultConfig = getConfig();
 class TestApp extends App {
   static pgContainer;
   static redisContainer;
+  static rabbitmqContainer;
 
   // Initialize the application
   static async setup(configOverrides = {}) {
@@ -300,6 +291,13 @@ class TestApp extends App {
         port: this.redisContainer.getMappedPort(6379),
       };
     }
+    // Start RabbitMQ container
+    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management').start();
+    configOverride.message_queue = {
+      ...defaultConfig.message_queue,
+      amqpConnection: this.rabbitmqContainer.getAmqpUrl(),
+    };
+
     // Activate nock to intercept HTTP requests
     nock.activate();
   }
@@ -336,7 +334,7 @@ class TestApp extends App {
     nock.restore();
 
     // Stop containers
-    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop()]);
+    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.rabbitmqContainer?.stop()]);
   }
 
   model(modelName) {
@@ -370,12 +368,26 @@ class TestApp extends App {
     this.useModels();
     this.useEventService();
     this.useEventBusiness();
-    this.useMessageQueue();
+    await this.useMessageQueue();
   }
 
   // Destroy the application
   async destroy() {
     this.eventBusiness.stopDaemon();
+
+    // Close the message queue connection and stop its reconnect timer
+    const messageQueue = this.messageQueue;
+    if (messageQueue) {
+      clearTimeout(messageQueue.reconnectTimeout);
+      messageQueue.isClosing = true;
+      if (messageQueue.connection) {
+        await messageQueue.close();
+      }
+      // close() resets isClosing and the close event may schedule a reconnect; cancel both.
+      messageQueue.isClosing = true;
+      clearTimeout(messageQueue.reconnectTimeout);
+      MessageQueue.singleton = undefined;
+    }
   }
 
   // Load test fixtures into the database

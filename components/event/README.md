@@ -30,6 +30,10 @@ npm run migration-clear
 npm run plugin-installer
 ```
 
+## E2E infrastructure
+
+`npm run test:e2e` (`jest.e2e.config.js`) runs `tests/**/*.e2e-spec.ts` against the real app and enforces coverage of at least 80% statements and lines. Docker is required: Postgres, Redis and RabbitMQ are started through testcontainers; the message queue is real, so consumer tests publish to the reading queue and wait for the result in the database. Postgres can instead be an external database when `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` are set. Upstream HTTP services (id-api, filestorage, sign, persist-link, registers, external services) are mocked with `nock`. Use `--runInBand --forceExit` for a stable run.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

@@ -19,7 +19,7 @@
     "test": "jest src",
     "test:watch": "jest --watch src",
     "test:cov": "jest --coverage src",
-    "test:e2e": "jest --coverage --verbose tests",
+    "test:e2e": "jest --config jest.e2e.config.js --verbose",
     "test:build": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "plugin-installer": "liquio-plugin-installer"
   },
@@ -62,6 +62,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@testcontainers/postgresql": "^12.2.0",
+    "@testcontainers/rabbitmq": "^12.1.0",
     "@testcontainers/redis": "^12.2.0",
     "@types/amqplib": "^0.10.8",
     "@types/express": "^5.0.6",
