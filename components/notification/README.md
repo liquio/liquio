@@ -51,6 +51,15 @@ The HTTP listener is plain by default. To serve HTTPS (e.g. so `id-api` can call
 - `caPath` (optional): PEM CA bundle. When set, mutual TLS is enforced: requests without a client certificate signed by this CA get `401`.
   `/test/ping` stays reachable without a client certificate so probes keep working (point probes at `scheme: HTTPS`).
 
+## E2E infrastructure
+
+`npm run test:e2e` starts PostgreSQL with testcontainers (Docker required, or set `DB_HOST`, `DB_USER`, `DB_PASSWORD`,
+`DB_NAME` and `DB_PORT` to use an external database). No other infrastructure is needed: id-api, E-Consulting,
+persist-link, the SMS gateway and Corezoid are mocked with `nock`, and SMTP with a stubbed nodemailer transport. The app
+is booted through `src/app.ts` with the adapters from `src/bootstrap.ts`, the same code path as `src/index.ts`. Coverage
+of `src` (except `index.ts` and the static `src/admin` assets) is collected and a global 80% statements/lines threshold
+is enforced (`jest.e2e.config.js`).
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

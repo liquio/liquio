@@ -88,3 +88,5 @@ fabric.properties
 
 # TypeScript build output.
 dist/
+# Test coverage output
+coverage

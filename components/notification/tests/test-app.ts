@@ -13,7 +13,7 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
 import { Log, resetIdApiClient } from '@liquio/back-core';
 
-import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
+import { buildAdapters } from '../src/bootstrap';
 import { createConsoleLogProvider } from '../src/lib/console_log_provider';
 
 const debug = createDebug;
@@ -209,7 +209,7 @@ export class TestApp {
     const start = require('../src/app').default;
     // Mirror src/index.ts's real adapter wiring: config's defaultMessenger ("testConsoleSmsAdapter")
     // routes through CustomGate to this adapter, which just logs and returns a canned response.
-    this.server = start(config, undefined, { sms: testConsoleSmsAdapter });
+    this.server = start(config, undefined, buildAdapters(conf, log));
   }
 
   async listen() {

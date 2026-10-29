@@ -9,18 +9,15 @@ import * as config from './config/config';
 global.conf = config.conf;
 
 import start from './app';
-import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
+import { buildAdapters } from './bootstrap';
 import { typeOf } from './lib/type_of';
 import { createServer } from './lib/tls_server';
 import { createConsoleLogProvider } from './lib/console_log_provider';
-import { warnOnDefaultAdminPassword } from './lib/default_admin_password';
 
 global.typeOf = typeOf;
 // Constants.
 const DEFAULT_PROCESS_TITLE = 'notify';
 const ADMIN_DIRECTORY = '/admin';
-const ADAPTERS_LIST: Record<string, unknown> = { testConsoleSmsAdapter };
-const DEFAULT_SMS_ADAPTER_NAME = 'testConsoleSmsAdapter';
 
 // Set process title.
 process.title = config.conf.processTitle || DEFAULT_PROCESS_TITLE;
@@ -42,23 +39,8 @@ process.on('uncaughtException', (error: any) => {
   process.exit(1);
 });
 
-// Warn when the admin password is still the shipped default (does not refuse to start, see the helper).
-warnOnDefaultAdminPassword(config.conf, log);
-
-// Define adapters to use.
-if (!config.conf.defaultMessenger) {
-  log.save('sms-adapter-warning', { message: 'SMS adapter name not defined. Default will be used.' }, 'warn');
-}
-const smsAdapterName = config.conf.defaultMessenger || DEFAULT_SMS_ADAPTER_NAME;
-log.save('sms-adapter-used', { smsAdapterName });
-const adapters = {
-  sms: ADAPTERS_LIST[smsAdapterName],
-};
-
-// Check.
-if (!adapters.sms) {
-  log.save('sms-adapter-initialization-error', { smsAdapterName }, 'error');
-}
+// Warn about default admin password and define adapters to use.
+const adapters = buildAdapters(config.conf, log);
 
 // Start Notify Core.
 const app = start(config, path.join(__dirname, ADMIN_DIRECTORY), adapters as any);
