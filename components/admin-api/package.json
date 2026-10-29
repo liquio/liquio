@@ -17,8 +17,8 @@
     "test": "jest src",
     "test:watch": "jest --watch src",
     "test:cov": "jest --coverage src",
-    "test:e2e": "jest tests",
-    "ci:e2e": "jest tests --ci --maxWorkers=2 --coverage --coverageDirectory=coverage/e2e"
+    "test:e2e": "jest --config jest.e2e.config.js",
+    "ci:e2e": "jest --config jest.e2e.config.js --ci --maxWorkers=2 --coverageDirectory=coverage/e2e"
   },
   "dependencies": {
     "@liquio/back-core": "^1.0.2",
@@ -51,6 +51,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@testcontainers/postgresql": "^12.2.1",
+    "@testcontainers/rabbitmq": "^12.1.0",
     "@testcontainers/redis": "^12.2.0",
     "@types/amqplib": "^0.10.8",
     "@types/compression": "^1.8.1",
