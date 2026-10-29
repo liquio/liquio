@@ -13,12 +13,8 @@ import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as Multiconf from 'multiconf';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
 
-import { Db } from '../src/lib/db';
-import { MessageQueue } from '../src/lib/message_queue';
-import { RouterService } from '../src/services/router';
-import { WorkflowBusiness } from '../src/businesses/workflow';
+import { bootstrap } from '../src/bootstrap';
 
 const debug = createDebug;
 
@@ -199,34 +195,15 @@ export class TestApp {
     this.config = config;
     global.config = config;
 
-    global.redisClient = null;
-
-    // Init log.
-    const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
-    const log = new Log([consoleLogProvider], ['console']);
-    this.log = log;
-    global.log = log;
-
-    global.db = await Db.getInstance(config.db);
-
-    // Init workflow business.
-    this.workflowBusiness = new WorkflowBusiness();
-    await this.workflowBusiness.init();
-
-    // Init message queue, mirroring src/index.ts's boot sequence.
-    this.messageQueue = new MessageQueue(config.message_queue, {
-      onInit: () => {
-        this.messageQueue.subscribeToConsuming(this.workflowBusiness.createFromMessage.bind(this.workflowBusiness));
-      },
-    });
-    await this.messageQueue.init();
-    global.messageQueue = this.messageQueue;
+    const { workflowBusiness, messageQueue, routerService } = await bootstrap(config);
+    this.log = global.log;
+    this.workflowBusiness = workflowBusiness;
+    this.messageQueue = messageQueue;
+    this.routerService = routerService;
   }
 
   async listen() {
-    // Init router.
-    this.routerService = new RouterService(this.config);
-    await this.routerService.init();
+    // Router is started by bootstrap.
   }
 
   // Run this before each test.
