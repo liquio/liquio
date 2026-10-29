@@ -16,7 +16,7 @@ export class LoggerService extends ConsoleLogger {
   private appInfo: { name: string; version: string };
 
   constructor(private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>) {
-    super();
+    super({ structuredParams: false });
 
     // Debug logs are opt-in (LOG_LEVEL=debug) to keep request details out of default logs.
     if (process.env.LOG_LEVEL !== 'debug') {
