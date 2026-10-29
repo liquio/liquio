@@ -20,9 +20,10 @@ const readAll = async (stream: any): Promise<string> => {
 describe('FileStorageConnection against a local filestorage stub', () => {
   let stub: StubServer;
   let connection: any;
+  const logSave = jest.fn();
 
   beforeAll(async () => {
-    setAppContext({ log: { save: jest.fn() } });
+    setAppContext({ log: { save: logSave } });
     stub = new StubServer((req, res) => {
       const url = req.url || '';
       const chunks: Buffer[] = [];
@@ -93,7 +94,14 @@ describe('FileStorageConnection against a local filestorage stub', () => {
   it('should download a file without a stream and fail on a bad status', async () => {
     expect(Buffer.from(await connection.downloadFileWithoutStream('f1')).toString()).toBe('file-bytes');
     expect(Buffer.from(await connection.downloadFileWithoutStream('f1', { isP7s: true })).toString()).toBe('p7s-bytes');
-    await expect(connection.downloadFileWithoutStream('bad-download')).rejects.toThrow();
+    logSave.mockClear();
+    const error = await connection.downloadFileWithoutStream('bad-download').catch((e) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(TypeError);
+    expect(error.response.status).toBe(404);
+    const errorLog = logSave.mock.calls.find((c) => c[0] === 'filestorage-download-file-without-stream|error');
+    expect(errorLog[1]).toMatchObject({ status: 404, method: 'GET', url: expect.stringContaining('/files/bad-download') });
+    expect(errorLog[2]).toBe('error');
   });
 
   it('should upload from a stream and surface an upstream error', async () => {

@@ -4,7 +4,7 @@ import FormData from 'form-data';
 import { getTraceId } from '@liquio/back-core';
 
 import { getLog } from './context';
-import { prepareAxiosErrorToLog } from '../lib/helpers';
+import Helpers from '../lib/helpers';
 
 // Constants.
 const DEFAULT_ROUTES = {
@@ -82,7 +82,7 @@ class FileConverterService {
           fileName,
           sourceFormat,
           targetFormat,
-          ...prepareAxiosErrorToLog(error),
+          ...Helpers.prepareAxiosErrorToLog(error),
         },
         'error',
       );
@@ -118,7 +118,7 @@ class FileConverterService {
           fileId,
           sourceFormat,
           targetFormat,
-          ...prepareAxiosErrorToLog(error),
+          ...Helpers.prepareAxiosErrorToLog(error),
         },
         'error',
       );
