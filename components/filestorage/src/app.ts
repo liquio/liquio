@@ -1,11 +1,7 @@
 import { Log, ConsoleLogProvider } from '@liquio/back-core';
 
 import { initialize as initializeConfig } from './lib/config';
-import { Db } from './lib/db';
-import { Providers } from './providers';
-import { Models } from './models';
-import { Router } from './router';
-import { validateAuthConfig } from './lib/config_validation';
+import { bootstrap } from './bootstrap';
 
 // Init config.
 const config = initializeConfig();
@@ -23,36 +19,17 @@ const log = new Log([consoleLogProvider], activeProviders);
 // Globals.
 global.log = log;
 
-// Do not start with missing or publicly known auth tokens.
-const authConfigProblems = validateAuthConfig(config);
-if (authConfigProblems.length) {
-  log.save('config-validation-error', { problems: authConfigProblems }, 'error');
-  process.exit(1);
-}
-
 // Set process title.
 process.title = config.app.processTitle;
 
 // Start async thread.
 (async () => {
-  // Init DB.
-  global.db = await Db.getInstance(config.db);
-
-  // Init providers.
-  const providers = new Providers(config.providers);
-  providers.init();
-
-  // Init models.
-  const models = new Models(config, providers.activeProvider);
-  models.init();
-
-  if (config.app.cliEnabled) {
-    const { Cli } = await import('./lib/cli');
-    const cli = new Cli(config, models);
-    await cli.init();
+  try {
+    await bootstrap(config, log);
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.startsWith('Invalid auth config')) {
+      throw error;
+    }
+    process.exit(1);
   }
-
-  // Start server.
-  const router = new Router(config);
-  await router.init();
 })();

@@ -21,7 +21,7 @@
     "test": "jest src",
     "test:watch": "jest src --watch",
     "test:cov": "jest src --coverage",
-    "test:e2e": "jest tests"
+    "test:e2e": "jest --config jest.e2e.config.js --verbose"
   },
   "dependencies": {
     "@liquio/back-core": "^1.0.2",

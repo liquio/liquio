@@ -12,11 +12,7 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
 import { Log, ConsoleLogProvider } from '@liquio/back-core';
 
-import { Db } from '../src/lib/db';
-import { Providers } from '../src/providers';
-import { Models } from '../src/models';
-import { Router } from '../src/router';
-import { validateAuthConfig } from '../src/lib/config_validation';
+import { bootstrap } from '../src/bootstrap';
 
 const debug = createDebug;
 
@@ -100,7 +96,7 @@ export class TestApp {
   // mechanism, see node_modules/multiconf's README), so both our own config object below and
   // src/lib/config.ts's separate module-level singleton (used by Preview's no-arg constructor)
   // resolve to the exact same values.
-  static async beforeAll() {
+  static async beforeAll({ providers, preview }: { providers?: any; preview?: any } = {}) {
     // Read the base template once, only to compute full override objects to push back as env vars.
     const templateConfig = Multiconf.get(CONFIG_PATH, ENV_PREFIX);
 
@@ -127,6 +123,7 @@ export class TestApp {
     process.env[`${ENV_PREFIX}providers`] = JSON.stringify({
       ...templateConfig.providers,
       activeProvider: null,
+      ...providers,
     });
 
     // Point the preview service at a closed local port, so tests exercise its
@@ -135,6 +132,7 @@ export class TestApp {
       ...templateConfig.preview,
       server: 'http://127.0.0.1:1',
       timeout: 1000,
+      ...preview,
     });
 
     const isExternalDb = !!process.env.DB_HOST;
@@ -205,33 +203,21 @@ export class TestApp {
     const config = initializeConfig();
     this.config = config;
 
-    // Same startup validation as src/app.ts.
-    const authProblems = validateAuthConfig(config);
-    if (authProblems.length) {
-      throw new Error(`Invalid auth config: ${authProblems.join('; ')}`);
-    }
-
     // Init log.
     const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
     global.log = log;
 
-    global.db = await Db.getInstance(config.db);
-
-    // Init providers.
-    this.providers = new Providers(config.providers);
-    this.providers.init();
-
-    // Init models.
-    this.models = new Models(config, this.providers.activeProvider);
-    this.models.init();
+    // Same startup sequence as src/app.ts (validation, DB, providers, models, router).
+    const { providers, models, router } = await bootstrap(config, log);
+    this.providers = providers;
+    this.models = models;
+    this.routerService = router;
   }
 
   async listen() {
-    // Init router.
-    this.routerService = new Router(this.config);
-    await this.routerService.init();
+    // The router is already listening after bootstrap().
   }
 
   // Run this before each test.

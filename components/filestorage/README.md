@@ -33,6 +33,14 @@ npm run seed-up
 npm run seed-clear
 ```
 
+## E2E infrastructure
+
+`npm run test:e2e` starts PostgreSQL with testcontainers (Docker required, or set `DB_HOST`, `DB_PORT`, `DB_USER`,
+`DB_PASSWORD` and `DB_NAME` to use an external database). The app is booted through `src/bootstrap.ts`, the same code
+path as `src/app.ts`. The MinIO, OpenStack (Keystone and Swift) and preview services are mocked with `nock`. Coverage of
+`src` (except `app.ts` and `lib/cli`) is collected with the v8 provider and a global 80% statements/lines threshold is
+enforced (`jest.e2e.config.js`).
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
