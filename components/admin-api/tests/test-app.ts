@@ -129,6 +129,11 @@ export class TestApp {
       disabled: false,
     };
 
+    configOverride.mass_messages_mailing = {
+      subjectMaxLength: 500,
+      fullTextMaxLength: 50000,
+    };
+
     configOverride.assets = {
       encryptCert: 'test-encrypt-cert',
     };
