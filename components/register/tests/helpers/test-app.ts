@@ -19,7 +19,7 @@ export const config: Config = {
   admin: { swagger: true },
   app: { processTitle: 'bpmn-register' },
   auth: {
-    tokens: ['Basic dGVzdDp0ZXN0'],
+    tokens: ['Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA=='],
     allowRawSequelizeParamsUsers: [],
     limitedAccess: [],
   },

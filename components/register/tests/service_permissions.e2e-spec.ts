@@ -1,7 +1,7 @@
 import { TestHarness } from './test-harness';
 
 const restrictedToken = `Basic ${Buffer.from('reader:reader-secret').toString('base64')}`;
-const fullToken = 'Basic dGVzdDp0ZXN0'; // test:test, no permission entry.
+const fullToken = 'Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA=='; // test:test-pass-1234, no permission entry.
 
 describe('Service permissions (opt-in)', () => {
   let testHarness: TestHarness;

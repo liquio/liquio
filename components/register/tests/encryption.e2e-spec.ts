@@ -2,7 +2,7 @@ import { TestHarness } from './test-harness';
 
 describe('Record Encryption', () => {
   let testHarness: TestHarness;
-  const validAuth = 'Basic dGVzdDp0ZXN0';
+  const validAuth = 'Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA==';
 
   beforeAll(async () => {
     testHarness = new TestHarness();
