@@ -31,6 +31,13 @@ npm run migration-up
 npm run migration-clear
 ```
 
+## E2E infrastructure
+
+`npm run test:e2e` starts PostgreSQL and RabbitMQ with testcontainers (Docker required, or set `DB_HOST` to use an
+external database). The app is booted through `src/bootstrap.ts`, the same code path as `src/index.ts`. Coverage of
+`src` (except `index.ts`) is collected with the v8 provider and a global 80% statements/lines threshold is enforced
+(`jest.e2e.config.js`). Redis is disabled in tests.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
