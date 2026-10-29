@@ -1,7 +1,9 @@
+import { AsyncLocalStorage } from 'async_hooks';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
+import { Injectable } from '@nestjs/common';
 import * as pkijs from 'pkijs';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Crypto } from '@peculiar/webcrypto';
@@ -29,7 +31,12 @@ class MockConfigurationService {
   }
 }
 
+@Injectable()
 class MockLoggerService extends LoggerService {
+  constructor() {
+    super(new AsyncLocalStorage());
+  }
+
   printMessages = debug('test:log');
 }
 
