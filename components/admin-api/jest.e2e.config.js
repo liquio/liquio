@@ -13,6 +13,9 @@ const config = {
   coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
   coverageDirectory: 'coverage',
   bail: false,
+  coverageThreshold: {
+    global: { statements: 80, lines: 80 },
+  },
 };
 
 module.exports = config;
