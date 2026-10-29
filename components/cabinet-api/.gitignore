@@ -18,3 +18,6 @@ dist/
 # User defined configs.
 config/*.json
 
+
+# Test coverage.
+coverage/

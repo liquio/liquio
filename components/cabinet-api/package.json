@@ -14,9 +14,10 @@
     "build": "tsc",
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test": "jest src",
+    "test:watch": "jest --watch src",
+    "test:cov": "jest --coverage src",
+    "test:e2e": "jest --config jest.e2e.config.js --verbose"
   },
   "dependencies": {
     "@liquio/back-core": "^1.0.2",
@@ -37,6 +38,8 @@
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.0",
+    "@testcontainers/redis": "^12.2.0",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.25",
@@ -50,6 +53,9 @@
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-prettier": "^5.5.7",
     "jest": "^30.5.2",
+    "nock": "^14.0.10",
+    "portfinder": "^1.0.37",
+    "supertest": "^7.3.1",
     "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
