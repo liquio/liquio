@@ -30,6 +30,14 @@ npm run test:e2e
 npm run migration-up
 ```
 
+## E2E infrastructure
+
+`npm run test:e2e` starts a Postgres container (`postgres:16`, testcontainers) per test file and applies the migrations, so Docker
+must be available. Downstream services (filestorage, register, OpenStack, file converter) are local `http.createServer` stubs on
+ephemeral ports (`tests/stub_server.ts`); nothing external is called. The run collects coverage over `src/**` (without the
+`src/app.ts` entry) and fails below 80% statements or lines (`jest.e2e.config.js`). Use
+`npm run test:e2e -- --runInBand --forceExit` as the code-quality gate does.
+
 ## OpenStack link provider
 
 `link_providers.json` -> `openStack.serversList[]`: `server` must be an `https://host` URL, because account

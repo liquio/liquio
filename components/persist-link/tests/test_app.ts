@@ -2,20 +2,23 @@
 import { execSync } from 'node:child_process';
 
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { Sandbox } from '@liquio/back-core';
 import portfinder from 'portfinder';
 import supertest from 'supertest';
 
+import { bootstrap } from '../src/bootstrap';
 import AuthController from '../src/controllers/auth';
 import Controllers from '../src/controllers';
 import LinkController from '../src/controllers/link';
 import TestController from '../src/controllers/test';
 import Db from '../src/lib/db';
-import { getLog, setAppContext } from '../src/lib/context';
+import { setAppContext } from '../src/lib/context';
 import FileConverterService from '../src/lib/file_converter';
 import LinkGenerator from '../src/lib/link_generator';
 import LinkProviders from '../src/lib/link_providers';
 import ExternalLinkProvider from '../src/lib/link_providers/external';
+import FilestorageHandler from '../src/lib/link_providers/filestorage/filestorage_handler';
+import FileStorageConnection from '../src/lib/link_providers/filestorage/filestorage_handler/filestorage_connection';
+import OpenStackHandler from '../src/lib/link_providers/open_stack/open_stack_handler';
 import FilestorageLinkProvider from '../src/lib/link_providers/filestorage';
 import OpenStackLinkProvider from '../src/lib/link_providers/open_stack';
 import Qr from '../src/lib/qr';
@@ -38,11 +41,7 @@ const mockLog = {
 
 export class TestApp {
   private static pgContainer: StartedPostgreSqlContainer;
-  private router: Router;
-
-  constructor() {
-    this.router = new Router(config);
-  }
+  private router?: Router;
 
   static async setup() {
     const app = new TestApp();
@@ -93,6 +92,9 @@ export class TestApp {
       SimpleLinkProvider,
       OpenStackLinkProvider,
       FilestorageLinkProvider,
+      FilestorageHandler,
+      OpenStackHandler,
+      FileStorageConnection,
       ExternalLinkProvider,
       Qr,
       FileConverterService,
@@ -106,14 +108,7 @@ export class TestApp {
   async init() {
     TestApp.resetSingletons();
     setAppContext({ config, typeOf, log: mockLog, db: null });
-    new Sandbox({ ...config.sandbox, getLog });
-    const db = await Db.getInstance(config.db);
-    setAppContext({ db });
-
-    const models = new Models(config);
-    models.initModels();
-
-    await this.router.init();
+    this.router = await bootstrap(config, { sandboxIsolationLevel: config.sandbox?.isolationLevel });
   }
 
   request() {
@@ -121,7 +116,7 @@ export class TestApp {
   }
 
   async destroy() {
-    await this.router.stop();
+    await this.router?.stop();
 
     const db = (Db as any).singleton;
     if (db?.close) {
