@@ -1,0 +1,302 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_ping",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Pong"
+          }
+        },
+        "summary": "Ping the server",
+        "tags": ["Server"]
+      }
+    },
+    "/test/ping": {
+      "get": {
+        "operationId": "HealthcheckController_ping",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Healthcheck"]
+      }
+    },
+    "/x509/signature-info": {
+      "post": {
+        "description": "Extracts information from the signature (eIDAS compatible)",
+        "operationId": "X509Controller_getSignatureInfo",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSignatureInfoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Signature information package has been successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSignatureInfoResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get signature information",
+        "tags": ["X.509"]
+      }
+    },
+    "/x509/verify-hash": {
+      "post": {
+        "description": "Verifies the hash with the signature",
+        "operationId": "X509Controller_verifyHash",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyHashDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Hash has been successfully verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Verify hash",
+        "tags": ["X.509"]
+      }
+    },
+    "/x509/hash-data": {
+      "post": {
+        "description": "Hashes the data",
+        "operationId": "X509Controller_hashData",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HashDataDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Data has been successfully hashed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Hash data",
+        "tags": ["X.509"]
+      }
+    },
+    "/x509/hash-to-internal-signature": {
+      "post": {
+        "description": "Converts the hash to internal signature",
+        "operationId": "X509Controller_hashToInternalSignature",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HashToInternalSignatureDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Hash has been successfully converted to internal signature",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Hash to internal signature",
+        "tags": ["X.509"]
+      }
+    }
+  },
+  "info": {
+    "title": "Sign Tool",
+    "description": "A crypto toolkit for signing and verifying messages",
+    "version": "<version>",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "IIT",
+      "description": ""
+    }
+  ],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "GetSignatureInfoDto": {
+        "type": "object",
+        "properties": {
+          "sign": {
+            "type": "string",
+            "description": "Base64-encoded CMS/PKCS#7 signature"
+          },
+          "content": {
+            "type": "string",
+            "description": "Base64-encoded signed content, for detached signatures"
+          }
+        },
+        "required": ["sign"]
+      },
+      "GetSignatureInfoSigner": {
+        "type": "object",
+        "properties": {
+          "commonName": {
+            "type": "string"
+          },
+          "surname": {
+            "type": "string"
+          },
+          "givenName": {
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "organizationIdentifier": {
+            "type": "string"
+          },
+          "countryName": {
+            "type": "string"
+          },
+          "localityName": {
+            "type": "string"
+          },
+          "personIdentifier": {
+            "type": "string"
+          }
+        },
+        "required": ["commonName"]
+      },
+      "GetSignatureInfoIssuer": {
+        "type": "object",
+        "properties": {
+          "commonName": {
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "organizationIdentifier": {
+            "type": "string"
+          },
+          "countryName": {
+            "type": "string"
+          },
+          "localityName": {
+            "type": "string"
+          }
+        },
+        "required": ["commonName"]
+      },
+      "GetSignatureInfoResponse": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "$ref": "#/components/schemas/GetSignatureInfoSigner"
+          },
+          "issuer": {
+            "$ref": "#/components/schemas/GetSignatureInfoIssuer"
+          },
+          "serial": {
+            "type": "string"
+          },
+          "signTime": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "pem": {
+            "type": "string"
+          }
+        },
+        "required": ["subject", "issuer", "serial", "signTime"]
+      },
+      "VerifyHashDto": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string",
+            "description": "Base64-encoded hash"
+          },
+          "sign": {
+            "type": "string",
+            "description": "Base64-encoded signature"
+          }
+        },
+        "required": ["hash", "sign"]
+      },
+      "HashDataDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Base64-encoded data"
+          },
+          "isReturnAsBase64": {
+            "type": "boolean",
+            "description": "Need to return data in base64"
+          }
+        },
+        "required": ["data"]
+      },
+      "HashToInternalSignatureDto": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string",
+            "description": "Base64-encoded hash"
+          },
+          "content": {
+            "type": "string",
+            "description": "Base64-encoded content"
+          }
+        },
+        "required": ["hash"]
+      }
+    }
+  }
+}
