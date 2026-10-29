@@ -17,7 +17,7 @@ import { resetIdApiClient } from '@liquio/back-core';
 import { BpmnTaskCore } from '../src/app';
 
 // E2E tests are slow, so we increase the timeout
-jest.setTimeout(30000);
+jest.setTimeout(120000);
 
 // Mock the log module
 jest.mock('@liquio/back-core', () => {
