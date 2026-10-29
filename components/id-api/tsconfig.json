@@ -17,6 +17,7 @@
   },
   "exclude": [
     "jest.config.js",
+    "jest.e2e.config.js",
     "eslint.config.js",
     "migrations-config.js",
     "dist",

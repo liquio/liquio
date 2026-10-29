@@ -66,3 +66,7 @@ are unaffected. Configure `auth.authRedirectUrl` in task, admin-api and
 cabinet-api to match the frontend callback exactly, including the path and
 trailing slash. Deploy updated token clients before id-api so they send
 `redirect_uri`. Test/debug codes use `oauth.defaults.redirect_uri[0]`.
+
+## E2E infrastructure
+
+`npm run test:e2e` (`jest.e2e.config.js`) runs `tests/**/*.e2e-spec.ts` against the real app and enforces coverage of at least 80% statements and lines. Docker is required: Postgres, Redis, Dex and OpenLDAP are started through testcontainers. Postgres can instead be an external database when the `DB_*` variables are set. Upstream services (sign-tool, notify and others) are mocked with `nock`. Use `--runInBand --forceExit` for a stable run.
