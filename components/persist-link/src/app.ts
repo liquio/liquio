@@ -2,12 +2,10 @@
 import fs from 'node:fs';
 
 import Multiconf from 'multiconf';
-import { Log, Sandbox } from '@liquio/back-core';
+import { Log } from '@liquio/back-core';
 
-import { getLog, setAppContext } from './lib/context';
-import Db from './lib/db';
-import Models from './models';
-import Router from './router';
+import { setAppContext } from './lib/context';
+import { bootstrap } from './bootstrap';
 import typeOf from './lib/type_of';
 import { createConsoleLogProvider } from './lib/console_log_provider';
 
@@ -20,24 +18,10 @@ const consoleLogProvider = createConsoleLogProvider(config.log);
 const log = new Log([consoleLogProvider], ['console']);
 setAppContext({ config, log, typeOf });
 
-// Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
-// Template jsonMap code must never run outside isolated-vm, so the isolation level is not configurable.
-new Sandbox({ ...config.sandbox, isolationLevel: 'isolated-vm' as any, getLog });
-
 // Process title.
 process.title = 'persist-link';
 
 // Start async thread.
 (async () => {
-  // Init DB.
-  const db = await Db.getInstance(config.db);
-  setAppContext({ db });
-
-  // Init models.
-  const models = new Models(config);
-  models.initModels();
-
-  // Start server.
-  const router = new Router(config);
-  await router.init();
+  await bootstrap(config);
 })();
