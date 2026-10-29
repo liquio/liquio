@@ -66,6 +66,6 @@ export default [
     },
   },
   {
-    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js', 'eslint.config.js', 'jest.config.js', 'node_modules/**'],
+    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js', 'eslint.config.js', 'jest.config.js', 'jest.e2e.config.js', 'node_modules/**'],
   },
 ];
