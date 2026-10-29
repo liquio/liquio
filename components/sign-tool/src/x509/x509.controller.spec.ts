@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import * as pkijs from 'pkijs';
 import * as asn1js from 'asn1js';
 import { Crypto } from '@peculiar/webcrypto';

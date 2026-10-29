@@ -12,7 +12,7 @@ export class LoggerService extends ConsoleLogger {
   private appInfo: { name: string; version: string };
 
   constructor(private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>) {
-    super();
+    super({ structuredParams: false });
 
     this.prepareAppInfo();
   }
