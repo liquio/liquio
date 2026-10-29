@@ -2,7 +2,7 @@ import { TestHarness } from './test-harness';
 
 describe('RegistersController', () => {
   let testHarness: TestHarness;
-  const validAuth = 'Basic dGVzdDp0ZXN0';
+  const validAuth = 'Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA==';
   const invalidAuth = 'Basic aW52YWxpZDppbnZhbGlk';
 
   beforeAll(async () => {

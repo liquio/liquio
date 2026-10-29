@@ -40,6 +40,6 @@ export default [
     },
   },
   {
-    ignores: ['coverage/**', 'dist/**', 'lib/**/*.js'],
+    ignores: ['jest.e2e.config.js', 'coverage/**', 'dist/**', 'lib/**/*.js'],
   },
 ];

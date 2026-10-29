@@ -42,6 +42,10 @@ For untrusted callers `GET /records/:id` also enforces key readability (`accessM
 - **Patchable paths** (`PATCH /records/:id`, always on, for every caller including trusted ones and regardless of `strict`): only `properties[].path` equal to `data` or starting with `data.` is accepted. Any other path (`key_id`, `id`, `meta`, `allow_tokens`, `created_by`, `updated_by`, `created_at`, ...) gives 400 and the whole request is rejected before anything is written, so a patch can't move a row to another key or change its tokens or audit fields. No caller in this repository or in EE `bpmn-register` (its tests patch `data.*`) uses other paths. `previousValue` is only used to keep `search_string*` in step with a patched `data.*` value, and that still works.
 - Before enabling `strict`, add the services that call destructive routes or manage row tokens to `trustedCallers`, and give other writers their tokens in `userAllowTokens`. `GET /records/search` filters rows by the caller tokens before count/paging, hides fields, and returns 403 `Search field is not readable.` when the searched field (or, without `search_key`, the derived `search_string`) is hidden or partly projected; `search.<keyId>.defaultSearchKey` supplies a safe data path when the caller omits `search_key`. Trusted callers keep the previous unrestricted behaviour.
 
+## E2E infrastructure
+
+`npm run test:e2e` (`jest.e2e.config.js`) runs `tests/**/*.e2e-spec.ts` against the real app, started through `src/bootstrap.ts` as in production, and enforces coverage of at least 80% statements and lines. Docker is required: Postgres and Redis are started through testcontainers. Postgres can instead be an external database when `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` are set. Upstream HTTP services (Elasticsearch, persist-link, Hyperledger Fabric) are replaced by local `node:http` stubs on ephemeral ports. Use `--runInBand --forceExit` for a stable run.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

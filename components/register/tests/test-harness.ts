@@ -9,19 +9,13 @@ import moment from 'moment';
 import Multiconf from 'multiconf';
 import { Sequelize } from 'sequelize';
 import supertest from 'supertest';
-import { Log, ConsoleLogProvider, LogProvider, Sandbox } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, LogProvider } from '@liquio/back-core';
 
 import { insertData } from './fixtures';
 import ExportBusiness from '../src/businesses/export';
-import Afterhandler from '../src/lib/afterhandler';
+import { bootstrap } from '../src/bootstrap';
 import { Config } from '../src/lib/config';
-import Db from '../src/lib/db';
-import Encryption from '../src/lib/encryption';
-import ErrorWithDetails from '../src/lib/errors';
 import { RedisClient } from '../src/lib/redis_client';
-import typeOf from '../src/lib/typeOf';
-import Models from '../src/models';
-import Router from '../src/router';
 
 type LogLevels = 'info' | 'warning' | 'error';
 
@@ -39,6 +33,7 @@ export class TestHarness {
   private server?: Server;
   private db?: Sequelize;
   private isExternalDb: boolean = false;
+  private migrated: boolean = false;
   private uniqueDbName?: string;
 
   constructor() {
@@ -61,49 +56,32 @@ export class TestHarness {
     // Override auth tokens for testing
     if (!config.auth) {
       config.auth = {
-        tokens: ['Basic dGVzdDp0ZXN0'], // test:test
+        tokens: ['Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA=='], // test:test-pass-1234
         allowRawSequelizeParamsUsers: [],
         limitedAccess: [],
       };
     } else {
-      config.auth.tokens = ['Basic dGVzdDp0ZXN0']; // test:test
+      config.auth.tokens = ['Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA==']; // test:test-pass-1234
     }
 
     await this.setupLogger();
 
     if (options.useDatabase) {
       await this.setupDatabase(config);
+      // Startup guards read the keys table, so the schema must exist before bootstrap.
+      await this.runMigrations();
+      this.migrated = true;
     }
 
     if (options.useRedis) {
       await this.setupRedis(config);
     }
 
-    global.ErrorWithDetails = ErrorWithDetails;
-    global.typeOf = typeOf;
     global.moment = moment;
-    global.config = config;
 
-    // Init sandbox, mirroring src/index.ts's boot sequence.
-    new Sandbox(config.sandbox || {});
-
-    // Init DB.
-    const db = (global.db = await Db.getInstance(config.db));
+    // Same init sequence as src/index.ts.
+    const { express, router, db } = await bootstrap(config);
     this.db = db;
-
-    // Init models.
-    const models = new Models(config);
-    models.init();
-
-    // Init afterhandler.
-    const afterhandler = new Afterhandler(config.afterhandler, models.models.afterhandler, models.models.record);
-    afterhandler.init();
-    global.afterhandler = afterhandler;
-    global.encryption = new Encryption(config.encryption);
-
-    // Start server.
-    const router = new Router(config);
-    const express = await router.init();
     this.server = express;
 
     return { express, router, db };
@@ -150,7 +128,9 @@ export class TestHarness {
   }
 
   async setupFixtures() {
-    await this.runMigrations();
+    if (!this.migrated) {
+      await this.runMigrations();
+    }
     testDebug('Inserting test fixtures...');
     const fixtures = await insertData(this.db);
     testDebug('Fixtures inserted:', Object.keys(fixtures));

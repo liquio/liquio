@@ -32,7 +32,7 @@ describe('RegistersController', () => {
       await testHarness
         .request()
         .get('/test/ping_with_auth')
-        .set('Authorization', 'Basic dGVzdDp0ZXN0')
+        .set('Authorization', 'Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA==')
         .expect(200)
         .expect('Content-Type', /json/)
         .expect((response) => {

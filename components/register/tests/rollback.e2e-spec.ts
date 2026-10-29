@@ -2,7 +2,7 @@ import { TestHarness } from './test-harness';
 
 describe('RollbackController (SE-3930 RG-27)', () => {
   let testHarness: TestHarness;
-  const validAuth = 'Basic dGVzdDp0ZXN0';
+  const validAuth = 'Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA==';
   const keyId = 2002;
   let savedAuth: any;
   let recordId: string;
