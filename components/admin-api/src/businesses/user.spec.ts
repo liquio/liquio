@@ -1,6 +1,7 @@
 import { IdApiError, getIdApiClient } from '@liquio/back-core';
 
 import { UserBusiness } from './user';
+import { setAppContext, resetAppContext } from '../lib/context';
 
 jest.mock('@liquio/back-core', () => ({ ...jest.requireActual('@liquio/back-core'), getIdApiClient: jest.fn() }));
 jest.mock('../services/notifier', () => ({ NotifierService: jest.fn() }));
@@ -14,16 +15,16 @@ describe('UserBusiness', () => {
   let business: UserBusiness;
   let idApiClient: Record<string, jest.Mock>;
   let log: { save: jest.Mock };
+  let models: any;
 
   beforeEach(() => {
     (UserBusiness as any).singleton = undefined;
     log = { save: jest.fn() };
-    (global as any).log = log;
-    (global as any).config = { auth: { clientId: 'admin-api' } };
-    (global as any).models = {
+    models = {
       unit: { getAll: jest.fn().mockResolvedValue([{ id: 1, heads: ['u1'], members: ['u1', 'u2'] }]) },
       accessHistory: { save: jest.fn().mockResolvedValue(undefined) },
     };
+    setAppContext({ log, config: { auth: { clientId: 'admin-api' } }, models });
     idApiClient = {
       getUsersPage: jest.fn(),
       findUserById: jest.fn(),
@@ -36,9 +37,7 @@ describe('UserBusiness', () => {
   });
 
   afterEach(() => {
-    delete (global as any).log;
-    delete (global as any).config;
-    delete (global as any).models;
+    resetAppContext();
   });
 
   describe('getUsers', () => {
@@ -163,7 +162,7 @@ describe('UserBusiness', () => {
 
       await expect(business.setAdmin('u1', { userId: 'admin' })).resolves.toBe(true);
       expect(idApiClient.updateUserById).toHaveBeenCalledWith('u1', { role: 'user;admin' }, undefined);
-      expect((global as any).models.accessHistory.save).toHaveBeenCalledTimes(1);
+      expect(models.accessHistory.save).toHaveBeenCalledTimes(1);
     });
 
     it('should return false when id-api rejects the update', async () => {
@@ -171,7 +170,7 @@ describe('UserBusiness', () => {
       idApiClient.updateUserById.mockRejectedValue(httpError());
 
       await expect(business.setAdmin('u1', { userId: 'admin' })).resolves.toBe(false);
-      expect((global as any).models.accessHistory.save).not.toHaveBeenCalled();
+      expect(models.accessHistory.save).not.toHaveBeenCalled();
     });
   });
 

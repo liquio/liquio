@@ -2,6 +2,7 @@ import { BpmnWorkflowBusiness } from './bpmn_workflow';
 import { Exceptions } from '../exceptions';
 import { SYSTEM_ADMIN_UNIT, WORKFLOW_SYSTEM_ADMIN_UNIT } from '../constants/unit';
 import { PublicError } from '../lib/public_error';
+import { getDb, getModels } from '../lib/context';
 
 // Constants.
 const SEQUELIZE_CONSTRAINT_ERROR = 'SequelizeForeignKeyConstraintError';
@@ -37,10 +38,10 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateEntity>}
    */
   async create(workflowTemplateEntity) {
-    if (await global.models.workflowTemplate.findById(workflowTemplateEntity.id)) {
+    if (await getModels().workflowTemplate.findById(workflowTemplateEntity.id)) {
       throw new Exceptions.COMMITED(Exceptions.COMMITED.Messages.WORKFLOW);
     }
-    return await global.models.workflowTemplate.create(workflowTemplateEntity);
+    return await getModels().workflowTemplate.create(workflowTemplateEntity);
   }
 
   /**
@@ -49,7 +50,7 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateEntity>}
    */
   async update(workflowTemplateEntity) {
-    return global.models.workflowTemplate.create(workflowTemplateEntity);
+    return getModels().workflowTemplate.create(workflowTemplateEntity);
   }
 
   /**
@@ -74,12 +75,12 @@ export class WorkflowBusiness {
     }
     delete params.userId;
 
-    const workflowTemplates = await global.models.workflowTemplate.getAllWithPagination({
+    const workflowTemplates = await getModels().workflowTemplate.getAllWithPagination({
       ...params,
     });
     let workflowTemplatesDataPrepared = await Promise.all(
       workflowTemplates.data.map(async (item) => {
-        const { userId, updatedAt } = (await global.models.workflowHistory.findLastByWorkflowTemplateId(item.id)) || {};
+        const { userId, updatedAt } = (await getModels().workflowHistory.findLastByWorkflowTemplateId(item.id)) || {};
         return { ...item, updatedBy: userId, updatedAt: updatedAt || item.updatedAt };
       }),
     );
@@ -117,14 +118,14 @@ export class WorkflowBusiness {
       params.filters.search = params.filters.search.replaceAll('\\\\', '\\\\\\\\');
     }
 
-    const workflowTemplates = await global.models.workflowTemplate.getAllBySchemaSearchWithPagination({
+    const workflowTemplates = await getModels().workflowTemplate.getAllBySchemaSearchWithPagination({
       ...params,
     });
     return {
       ...workflowTemplates,
       data: await Promise.all(
         workflowTemplates.data.map(async (item) => {
-          const { userId, updatedAt } = (await global.models.workflowHistory.findLastByWorkflowTemplateId(item.id)) || {};
+          const { userId, updatedAt } = (await getModels().workflowHistory.findLastByWorkflowTemplateId(item.id)) || {};
           return { ...item, updatedBy: userId, updatedAt: updatedAt };
         }),
       ),
@@ -136,7 +137,7 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateEntity[]>}
    */
   async getShortWorkflows() {
-    return global.models.workflowTemplate.getAll({
+    return getModels().workflowTemplate.getAll({
       attributes: ['id', 'name'],
     });
   }
@@ -146,7 +147,7 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateEntity[]>}
    */
   async getLastWorkflow() {
-    const [lastTemaplate] = await global.models.workflowTemplate.getAll({
+    const [lastTemaplate] = await getModels().workflowTemplate.getAll({
       attributes: ['id'],
       order: [['id', 'DESC']],
       limit: 1,
@@ -170,7 +171,7 @@ export class WorkflowBusiness {
       }
 
       try {
-        return await global.models.workflowTemplate.deleteById(id);
+        return await getModels().workflowTemplate.deleteById(id);
       } catch (error) {
         if (error.name === SEQUELIZE_CONSTRAINT_ERROR) {
           throw new Exceptions.WORKFLOW(Exceptions.WORKFLOW.Messages.CONSTRAINT);
@@ -180,36 +181,36 @@ export class WorkflowBusiness {
       }
     }
 
-    const bpmnWorkflowTransaction = await global.db.transaction();
+    const bpmnWorkflowTransaction = await getDb().transaction();
 
     try {
       if (typeof bpmnWorkflow === 'object' && Array.isArray(bpmnWorkflow.taskTemplates)) {
         for (const taskTemplate of bpmnWorkflow.taskTemplates) {
-          await global.models.taskTemplate.deleteById(taskTemplate.id, bpmnWorkflowTransaction);
+          await getModels().taskTemplate.deleteById(taskTemplate.id, bpmnWorkflowTransaction);
         }
       }
 
       if (typeof bpmnWorkflow === 'object' && Array.isArray(bpmnWorkflow.documentTemplates)) {
         for (const documentTemplate of bpmnWorkflow.documentTemplates) {
-          await global.models.documentTemplate.deleteById(documentTemplate.id, bpmnWorkflowTransaction);
+          await getModels().documentTemplate.deleteById(documentTemplate.id, bpmnWorkflowTransaction);
         }
       }
 
       if (typeof bpmnWorkflow === 'object' && Array.isArray(bpmnWorkflow.gatewayTemplates)) {
         for (const gatewayTemplate of bpmnWorkflow.gatewayTemplates) {
-          await global.models.gatewayTemplate.deleteById(gatewayTemplate.id, bpmnWorkflowTransaction);
+          await getModels().gatewayTemplate.deleteById(gatewayTemplate.id, bpmnWorkflowTransaction);
         }
       }
 
       if (typeof bpmnWorkflow === 'object' && Array.isArray(bpmnWorkflow.eventTemplates)) {
         for (const eventTemplate of bpmnWorkflow.eventTemplates) {
-          await global.models.eventTemplate.deleteById(eventTemplate.id, bpmnWorkflowTransaction);
+          await getModels().eventTemplate.deleteById(eventTemplate.id, bpmnWorkflowTransaction);
         }
       }
 
       if (typeof bpmnWorkflow === 'object' && typeof bpmnWorkflow.workflowTemplate !== 'undefined') {
-        await global.models.workflowHistory.deleteByWorkflowTemplateId(id, bpmnWorkflowTransaction);
-        await global.models.workflowTemplate.deleteById(id, bpmnWorkflowTransaction);
+        await getModels().workflowHistory.deleteByWorkflowTemplateId(id, bpmnWorkflowTransaction);
+        await getModels().workflowTemplate.deleteById(id, bpmnWorkflowTransaction);
       }
       await bpmnWorkflowTransaction.commit();
     } catch (error) {
@@ -229,7 +230,7 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateEntity>}
    */
   async findById(id) {
-    return global.models.workflowTemplate.findById(id);
+    return getModels().workflowTemplate.findById(id);
   }
 
   /**
@@ -238,7 +239,7 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateEntity>}
    */
   async findLastWorkflowHistoryByWorkflowTemplateId(workflowTemplateId) {
-    return await global.models.workflowHistory.findLastByWorkflowTemplateId(workflowTemplateId);
+    return await getModels().workflowHistory.findLastByWorkflowTemplateId(workflowTemplateId);
   }
 
   /**
@@ -270,7 +271,7 @@ export class WorkflowBusiness {
     const newErrorsSubscribers = [...existingErrorsSubscribers, { id: userId, email }];
 
     // Set and return new errors subscribers.
-    return await global.models.workflowTemplate.setErrorsSubscribers(workflowTemplateId, newErrorsSubscribers);
+    return await getModels().workflowTemplate.setErrorsSubscribers(workflowTemplateId, newErrorsSubscribers);
   }
 
   /**
@@ -295,7 +296,7 @@ export class WorkflowBusiness {
     const newErrorsSubscribers = existingErrorsSubscribers.filter(({ id }) => id !== userId);
 
     // Set and return new errors subscribers.
-    return await global.models.workflowTemplate.setErrorsSubscribers(workflowTemplateId, newErrorsSubscribers);
+    return await getModels().workflowTemplate.setErrorsSubscribers(workflowTemplateId, newErrorsSubscribers);
   }
 
   /**
@@ -304,7 +305,7 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateTagEntity[]>}
    */
   async getTagsByWorkflowTemplateId(workflowTemplateId) {
-    return global.models.workflowTemplateTag.getAllByWorkflowTemplateId(workflowTemplateId);
+    return getModels().workflowTemplateTag.getAllByWorkflowTemplateId(workflowTemplateId);
   }
 
   /**
@@ -313,9 +314,9 @@ export class WorkflowBusiness {
    * @param {number[]} tagIds List of tag IDs.
    */
   async setWorkflowTemplateTags(workflowTemplateId, tagIds) {
-    await global.models.workflowTemplateTagMap.model.destroy({ where: { workflowTemplateId } });
+    await getModels().workflowTemplateTagMap.model.destroy({ where: { workflowTemplateId } });
 
-    return global.models.workflowTemplateTagMap.model.bulkCreate(tagIds.map((tagId) => ({ workflowTemplateId, workflowTemplateTagId: tagId })));
+    return getModels().workflowTemplateTagMap.model.bulkCreate(tagIds.map((tagId) => ({ workflowTemplateId, workflowTemplateTagId: tagId })));
   }
 
   /**
@@ -329,12 +330,12 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateTagEntity>}
    */
   async createTag(data) {
-    const tag = await global.models.workflowTemplateTag.findByName(data.name);
+    const tag = await getModels().workflowTemplateTag.findByName(data.name);
     if (tag) {
       throw new Exceptions.WORKFLOW(Exceptions.WORKFLOW.Messages.TAG_EXISTS);
     }
 
-    return global.models.workflowTemplateTag.create(data);
+    return getModels().workflowTemplateTag.create(data);
   }
 
   /**
@@ -348,12 +349,12 @@ export class WorkflowBusiness {
    * @returns {Promise<WorkflowTemplateTagEntity>}
    */
   async updateTag(id, data) {
-    const tag = await global.models.workflowTemplateTag.findById(id);
+    const tag = await getModels().workflowTemplateTag.findById(id);
     if (!tag) {
       throw new Exceptions.WORKFLOW(Exceptions.WORKFLOW.Messages.TAG_NOT_FOUND);
     }
 
-    return global.models.workflowTemplateTag.update(id, data);
+    return getModels().workflowTemplateTag.update(id, data);
   }
 
   /**
@@ -368,10 +369,10 @@ export class WorkflowBusiness {
     const { currentPage = 0, perPage = 10, short = false, search } = options;
 
     if (short) {
-      return global.models.workflowTemplateTag.getAll(true);
+      return getModels().workflowTemplateTag.getAll(true);
     }
 
-    return global.models.workflowTemplateTag.getAllWithPagination({
+    return getModels().workflowTemplateTag.getAllWithPagination({
       currentPage,
       perPage,
       search,
@@ -379,10 +380,10 @@ export class WorkflowBusiness {
   }
 
   async getTagById(id) {
-    return global.models.workflowTemplateTag.findById(id);
+    return getModels().workflowTemplateTag.findById(id);
   }
 
   async deleteTag(id) {
-    return global.models.workflowTemplateTag.deleteById(id);
+    return getModels().workflowTemplateTag.deleteById(id);
   }
 }

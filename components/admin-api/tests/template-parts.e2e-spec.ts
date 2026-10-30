@@ -1,6 +1,7 @@
 import { TestApp } from './test-app';
 import { prepareFixtures, WORKFLOW_FIXTURES } from './fixtures';
 import { asAdmin, grantAllAdminUnits } from './fixtures/auth';
+import { getConfig } from '../src/lib/context';
 
 const TEMPLATE_ID = 161070;
 const BPMN_XML =
@@ -129,8 +130,8 @@ describe('Task, event and gateway template controllers', () => {
     });
 
     it('refuses to change templates when the workflow editor is disabled', async () => {
-      const previous = global.config.workflow_editor;
-      global.config.workflow_editor = { disabled: true };
+      const previous = getConfig().workflow_editor;
+      getConfig().workflow_editor = { disabled: true };
       try {
         const created = await asAdmin(app, 'post', '/tasks').send([{ workflowTemplateId: TEMPLATE_ID, taskTemplate, documentTemplate }]);
         expect(created.status).toBeGreaterThanOrEqual(400);
@@ -143,7 +144,7 @@ describe('Task, event and gateway template controllers', () => {
         await asAdmin(app, 'delete', '/events/161070201');
         await asAdmin(app, 'delete', '/gateways/161070301');
       } finally {
-        global.config.workflow_editor = previous;
+        getConfig().workflow_editor = previous;
       }
     });
   });

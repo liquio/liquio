@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { Sign } from '../services/sign';
 import { RegisterService } from '../services/register';
 import { TaskService } from '../services/task';
+import { getLog, getModels } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_LIFE_TIME_SECONDS = 10; // Default life time for cache - 10 seconds.
@@ -55,10 +56,10 @@ export class AssetsBusiness {
     // Return data from cache if can.
     const dataFromCache = this.getCacheData(cacheKeyName, CALLER);
     if (dataFromCache) {
-      global.log.save('assets-get-to-units-result-from-cache', { usersIds, executingTime: `${Date.now() - timestampStart} ms` });
+      getLog().save('assets-get-to-units-result-from-cache', { usersIds, executingTime: `${Date.now() - timestampStart} ms` });
       return dataFromCache;
     }
-    const dbResponse = await global.models.unit.getAccessedUsersToUnits();
+    const dbResponse = await getModels().unit.getAccessedUsersToUnits();
 
     const result = dbResponse.map((el) => ({
       key: `unit.${el.access_index}`,
@@ -70,12 +71,12 @@ export class AssetsBusiness {
       const signerResponse = await this.sign.encrypt(encryptCert, Buffer.from(JSON.stringify(result), 'utf8').toString('base64'));
       encryptedDataResult = signerResponse.data;
     } catch (error) {
-      global.log.save('assets-get-to-units-encrypting-result-error', { error: error?.message }, 'error');
+      getLog().save('assets-get-to-units-encrypting-result-error', { error: error?.message }, 'error');
       throw error;
     }
 
     this.setCacheData(cacheKeyName, CALLER, encryptedDataResult);
-    global.log.save('assets-get-to-units-result', { result, executingTime: `${Date.now() - timestampStart} ms` });
+    getLog().save('assets-get-to-units-result', { result, executingTime: `${Date.now() - timestampStart} ms` });
     return encryptedDataResult;
   }
 
@@ -97,7 +98,7 @@ export class AssetsBusiness {
     // Return data from cache if can.
     const dataFromCache = this.getCacheData(cacheKeyName, CALLER);
     if (dataFromCache) {
-      global.log.save('assets-get-to-registers-result-from-cache', { usersIds, executingTime: `${Date.now() - timestampStart} ms` });
+      getLog().save('assets-get-to-registers-result-from-cache', { usersIds, executingTime: `${Date.now() - timestampStart} ms` });
       return dataFromCache;
     }
 
@@ -105,7 +106,7 @@ export class AssetsBusiness {
     try {
       getKeysResult = await this.register.getKeys({ limit: 1000000 });
     } catch (error) {
-      global.log.save('assets-get-to-registers-get-keys-error', { error: error?.message }, 'error');
+      getLog().save('assets-get-to-registers-get-keys-error', { error: error?.message }, 'error');
       throw error;
     }
     const existingKeysIdsSorted = getKeysResult.data.map(({ id }) => id).sort((a, b) => a - b);
@@ -119,7 +120,7 @@ export class AssetsBusiness {
       return acc;
     }, {}); // { "register.1.read": [], "register.1.create": [],"register.1.delete": [], ... }
 
-    const usersUnits = (await global.models.unit.getAll({ filters: { heads: usersIdsSorted, members: usersIdsSorted } })).map(
+    const usersUnits = (await getModels().unit.getAll({ filters: { heads: usersIdsSorted, members: usersIdsSorted } })).map(
       ({ id, members = [], heads = [] }) => ({
         id,
         users: [...new Set([...heads, ...members])].filter((id) => usersIdsSorted.includes(id)),
@@ -132,7 +133,7 @@ export class AssetsBusiness {
     try {
       unitAccessResponse = await this.task.getUnitAccess({ type: 'register' });
     } catch (error) {
-      global.log.save('assets-get-to-registers-get-unit-access-error', { error: error?.message }, 'error');
+      getLog().save('assets-get-to-registers-get-unit-access-error', { error: error?.message }, 'error');
       throw error;
     }
     const unitAccessFiltered = unitAccessResponse.filter(({ unitId }) => usersUnitsIds.includes(unitId));
@@ -168,11 +169,11 @@ export class AssetsBusiness {
       const signerResponse = await this.sign.encrypt(encryptCert, Buffer.from(JSON.stringify(result), 'utf8').toString('base64'));
       encryptedDataResult = signerResponse.data;
     } catch (error) {
-      global.log.save('assets-get-to-registers-encrypting-result-error', { error: error?.message }, 'error');
+      getLog().save('assets-get-to-registers-encrypting-result-error', { error: error?.message }, 'error');
       throw error;
     }
     this.setCacheData(cacheKeyName, CALLER, encryptedDataResult);
-    global.log.save('assets-get-to-registers-result', { result, executingTime: `${Date.now() - timestampStart} ms` });
+    getLog().save('assets-get-to-registers-result', { result, executingTime: `${Date.now() - timestampStart} ms` });
     return encryptedDataResult;
   }
 

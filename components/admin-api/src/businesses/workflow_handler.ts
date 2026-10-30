@@ -1,5 +1,7 @@
 import crypto, { randomUUID } from 'node:crypto';
 
+import { getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
+
 // Constants.
 const ERROR_WRONG_QUEUE_NAME = 'Wrong queue name.';
 
@@ -25,7 +27,7 @@ export class WorkflowHandlerBusiness {
       this.config = config;
       this.defaultDebugRepeats = [1, 2, 2, 5, 10];
 
-      const workflowEditorConfig = global.config?.workflow_editor;
+      const workflowEditorConfig = getConfig()?.workflow_editor;
       const debugModeConfig = workflowEditorConfig?.debugMode;
 
       this.debugModeEnabled = debugModeConfig?.enabled === true;
@@ -44,7 +46,7 @@ export class WorkflowHandlerBusiness {
    * @returns {Promise<WorkflowErrorEntity[]>}
    */
   async getErrorMessages() {
-    return await global.models.workflowError.getAll();
+    return await getModels().workflowError.getAll();
   }
 
   /**
@@ -53,7 +55,7 @@ export class WorkflowHandlerBusiness {
    * @returns {Promise<WorkflowErrorEntity>}
    */
   async findById(id) {
-    return await global.models.workflowError.findById(id);
+    return await getModels().workflowError.findById(id);
   }
 
   /**
@@ -62,7 +64,7 @@ export class WorkflowHandlerBusiness {
    * @returns {Promise<boolean>}
    */
   async deleteById(id) {
-    if ((await global.models.workflowError.deleteById(id)) === 0) {
+    if ((await getModels().workflowError.deleteById(id)) === 0) {
       return false;
     }
 
@@ -86,7 +88,7 @@ export class WorkflowHandlerBusiness {
     // Replace/Create new amqp message id.
     message.amqpMessageId = randomUUID();
 
-    global.messageQueue.produce(name, message);
+    getMessageQueue().produce(name, message);
 
     if (message.debug === true) {
       if (this.debugModeEnabled === false) {
@@ -98,7 +100,7 @@ export class WorkflowHandlerBusiness {
         // Wait response.
         await new Promise((resolve) => setTimeout(resolve, this.debugRepeats[i] * 1000));
 
-        debug = await global.models.workflowDebug.findById(message.debugId);
+        debug = await getModels().workflowDebug.findById(message.debugId);
         if (debug && debug.data) {
           break;
         }
@@ -122,7 +124,7 @@ export class WorkflowHandlerBusiness {
       return 'writingQueueEvent';
     }
     if (queueMessage.gatewayTemplateId) {
-      global.log.save('message-to-writingQueueGateway', { queueMessage }); // TODO: remove it later.
+      getLog().save('message-to-writingQueueGateway', { queueMessage }); // TODO: remove it later.
       return 'writingQueueGateway';
     }
 

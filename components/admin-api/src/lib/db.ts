@@ -1,5 +1,7 @@
 import { Sequelize } from 'sequelize';
 
+import { getLog } from './context';
+
 export class Db {
   private static singleton: Db;
 
@@ -19,27 +21,27 @@ export class Db {
         const sequelize = new Sequelize(config.database, config.username, config.password, config);
 
         await sequelize.authenticate();
-        global.log.save('db-connection', 'Connection to DB has been established successfully.');
+        getLog().save('db-connection', 'Connection to DB has been established successfully.');
 
         Sequelize.beforeConnect(() => {
-          global.log.save('db-connection-opening');
+          getLog().save('db-connection-opening');
         });
 
         Sequelize.afterConnect(() => {
-          global.log.save('db-connection-opened');
+          getLog().save('db-connection-opened');
         });
 
         Sequelize.beforeDisconnect(() => {
-          global.log.save('db-connection-closing');
+          getLog().save('db-connection-closing');
         });
 
         Sequelize.afterDisconnect(() => {
-          global.log.save('db-connection-closed');
+          getLog().save('db-connection-closed');
         });
 
         Db.singleton = sequelize;
       } catch (error) {
-        global.log.save('Unable to connect to the DB', error);
+        getLog().save('Unable to connect to the DB', error);
         throw error;
       }
     }

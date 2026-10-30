@@ -1,5 +1,7 @@
 import amqp from 'amqplib/callback_api';
 
+import { getLog } from '../context';
+
 // Constants.
 const RETRY_CONNECTION_TIME = 10 * 1000;
 
@@ -61,12 +63,12 @@ export class MessageQueue {
 
     // Try to reconnect.
     this.reconnectTimeout = setTimeout(async () => {
-      global.log.save('amqp-starting-reconnect', { totalReconnectCount: this.totalReconnectCount });
+      getLog().save('amqp-starting-reconnect', { totalReconnectCount: this.totalReconnectCount });
       await this.close();
       this.reconnectTimeout = null;
       await this.init();
       this.totalReconnectCount += 1;
-      global.log.save('amqp-successfully-reconnected', { totalReconnectCount: this.totalReconnectCount });
+      getLog().save('amqp-successfully-reconnected', { totalReconnectCount: this.totalReconnectCount });
     }, this.config.retryConnectionTime || RETRY_CONNECTION_TIME);
   }
 
@@ -82,24 +84,24 @@ export class MessageQueue {
       amqp.connect(this.config.amqpConnection, (error, connection) => {
         // Check error.
         if (error) {
-          global.log.save('amqp-connection-error|cannot-create-connection', { error: error.toString(), stack: error.stack }, 'error');
+          getLog().save('amqp-connection-error|cannot-create-connection', { error: error.toString(), stack: error.stack }, 'error');
           return this.reconnect();
         }
 
         // Subscribe on connection error events.
         connection.on('error', async (error) => {
-          global.log.save('amqp-connection-error', error && error.message, 'error');
+          getLog().save('amqp-connection-error', error && error.message, 'error');
         });
 
         // Subscribe on connection close events.
         connection.on('close', async () => {
-          global.log.save('amqp-connection-closed');
+          getLog().save('amqp-connection-closed');
           return this.reconnect();
         });
 
         // Save connection.
         this.connection = connection;
-        global.log.save('amqp-connected', true);
+        getLog().save('amqp-connected', true);
         resolve(undefined);
       });
     });
@@ -112,7 +114,7 @@ export class MessageQueue {
   async initChannels() {
     // Create channels.
     const [reading, writing] = await Promise.all([this.createNewChannel(), this.createNewChannel()]);
-    global.log.save('amqp-channel-opened', true);
+    getLog().save('amqp-channel-opened', true);
 
     // Save channels.
     this.channels = { reading, writing };
@@ -144,18 +146,18 @@ export class MessageQueue {
       this.connection.createChannel((error, ch) => {
         // Check error.
         if (error) {
-          global.log.save('amqp-channel-error|cannot-create-channel', error, 'error');
+          getLog().save('amqp-channel-error|cannot-create-channel', error, 'error');
           return this.reconnect();
         }
 
         // Subscribe on channel error events.
         ch.on('error', async (error) => {
-          global.log.save('amqp-channel-error', error && error.message, 'error');
+          getLog().save('amqp-channel-error', error && error.message, 'error');
         });
 
         // Subscribe on channel close events.
         ch.on('close', async (data) => {
-          global.log.save('amqp-channel-closed', data);
+          getLog().save('amqp-channel-closed', data);
           return this.reconnect();
         });
 
@@ -180,7 +182,7 @@ export class MessageQueue {
     this.channels.writing.sendToQueue(this.config[writingQueueName], preparedMessage, {
       persistent: true,
     });
-    global.log.save('amqp-message-sent', { messageString, writingQueueName });
+    getLog().save('amqp-message-sent', { messageString, writingQueueName });
     return true;
   }
 
@@ -199,12 +201,12 @@ export class MessageQueue {
     return new Promise((resolve) => {
       this.connection.close((error) => {
         if (error) {
-          global.log.save('can-not-close-connection', error && error.message);
+          getLog().save('can-not-close-connection', error && error.message);
           this.isClosing = false;
           return resolve(undefined);
         }
 
-        global.log.save('connection-closed-by-app');
+        getLog().save('connection-closed-by-app');
         this.isClosing = false;
         return resolve(undefined);
       });

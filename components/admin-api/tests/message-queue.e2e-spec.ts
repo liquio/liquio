@@ -3,6 +3,7 @@ import * as amqplib from 'amqplib';
 import { TestApp } from './test-app';
 import { prepareFixtures, WORKFLOW_FIXTURES } from './fixtures';
 import { asAdmin, grantAllAdminUnits } from './fixtures/auth';
+import { getLog, getMessageQueue } from '../src/lib/context';
 
 const QUEUES = ['test-admin-to-manager', 'test-admin-to-task', 'test-admin-to-event', 'test-admin-to-gateway'];
 
@@ -59,7 +60,7 @@ describe('Message queue', () => {
   });
 
   it('publishes a message to the configured queue', () => {
-    expect(global.messageQueue.produce('writingQueueTask', { type: 'ping', data: { value: 1 } })).toBe(true);
+    expect(getMessageQueue().produce('writingQueueTask', { type: 'ping', data: { value: 1 } })).toBe(true);
   });
 
   it('delivers the published message to the task queue', async () => {
@@ -80,9 +81,9 @@ describe('Message queue', () => {
   });
 
   it('reconnects after the broker connection is lost', async () => {
-    const mq = global.messageQueue;
+    const mq = getMessageQueue();
     mq.config.retryConnectionTime = 100;
-    const logs = global.log.getLogs();
+    const logs = getLog().getLogs();
     const before = logs.length;
 
     // Drop the connection from the app side: the close event schedules a reconnect.

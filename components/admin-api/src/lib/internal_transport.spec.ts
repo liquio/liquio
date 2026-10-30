@@ -3,6 +3,7 @@ import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
 
+import { setAppContext, resetAppContext } from './context';
 import { getInternalHttpsAgent, getPlainHttpInternalUrls, warnPlainHttpInternalUrls } from './internal_transport';
 
 const PEM = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
@@ -11,9 +12,13 @@ const KEY = '-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----';
 describe('internal_transport', () => {
   let save: jest.Mock;
 
+  afterEach(() => {
+    resetAppContext();
+  });
+
   beforeEach(() => {
     save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ log: { save } });
   });
 
   describe('getInternalHttpsAgent', () => {
