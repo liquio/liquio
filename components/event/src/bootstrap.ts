@@ -185,3 +185,22 @@ export class App {
     this.routerService = routerService;
   }
 }
+
+export async function bootstrap(config: any) {
+  const app = new App(config);
+  app.useGlobalErrors();
+  app.useGlobalTypeOf();
+  app.useLog();
+  app.useIdApiClient();
+  app.useHttpClient();
+  app.useUnhandedRejectionLogging();
+  app.useMoment();
+  app.useRedis();
+  await app.useDb();
+  app.useModels();
+  await app.usePlugins();
+  app.useEventService();
+  app.useEventBusiness();
+  await app.useMessageQueue();
+  await app.useRouter();
+}
