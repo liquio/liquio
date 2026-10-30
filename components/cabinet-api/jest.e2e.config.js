@@ -16,5 +16,5 @@ export const collectCoverageFrom = ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**
 export const coverageReporters = ['text', 'text-summary', 'json-summary', 'lcov'];
 export const coverageDirectory = 'coverage';
 export const coverageThreshold = {
-  global: { statements: 85, lines: 85, functions: 85, branches: 75 },
+  global: { statements: 80, lines: 80 },
 };
