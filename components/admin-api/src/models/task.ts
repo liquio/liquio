@@ -3,6 +3,7 @@ import _ from 'lodash';
 
 import { Model } from './model';
 import { TaskEntity } from '../entities/task';
+import { getModels } from '../lib/context';
 
 /**
  * Task Model.
@@ -101,7 +102,7 @@ export class TaskModel extends Model {
    */
   async getAllByWorkflowId(workflowId) {
     let tasks: any = await this.model.findAll({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, is_current: true },
     });
 
@@ -149,7 +150,7 @@ export class TaskModel extends Model {
    */
   async findById(id) {
     const task: any = await this.model.findByPk(id, {
-      include: [{ model: global.models.workflow.model }],
+      include: [{ model: getModels().workflow.model }],
     });
 
     if (!task) {
@@ -187,7 +188,7 @@ export class TaskModel extends Model {
   async findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId) {
     // Find task.
     const task: any = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
     });
 
@@ -216,7 +217,7 @@ export class TaskModel extends Model {
 
     // Find task.
     const task: any = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateIds, is_current: true },
     });
 
@@ -240,7 +241,7 @@ export class TaskModel extends Model {
   async findDocumentIdByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId) {
     // Find all task.
     const task = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
       attributes: ['id', 'document_id'],
     });
@@ -491,7 +492,7 @@ export class TaskModel extends Model {
    */
   async findCurrentTaskByWorkflowIdAndTaskTemplateID(workflowId, taskTemplateId) {
     let task: any = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
     });
 
@@ -598,7 +599,7 @@ export class TaskModel extends Model {
       for (const task of tasks) {
         const document = await task.getDocument();
         if (document) {
-          documents.push(global.models.document.prepareEntity(document));
+          documents.push(getModels().document.prepareEntity(document));
         }
       }
     }
@@ -759,16 +760,16 @@ export class TaskModel extends Model {
     }
 
     sequelizeOptions.include = [
-      { model: global.models.document.model, required: true, attributes: ['number'] },
-      { model: global.models.workflow.model, required: true, attributes: ['number', 'user_data'] },
+      { model: getModels().document.model, required: true, attributes: ['number'] },
+      { model: getModels().workflow.model, required: true, attributes: ['number', 'user_data'] },
     ];
 
     if (typeof filters.name !== 'undefined') {
       sequelizeOptions.include.push({
-        model: global.models.taskTemplate.model,
+        model: getModels().taskTemplate.model,
         attributes: ['name'],
         required: true,
-        include: [{ model: global.models.documentTemplate.model, attributes: ['name'] }],
+        include: [{ model: getModels().documentTemplate.model, attributes: ['name'] }],
       });
 
       sequelizeOptions.filters[Sequelize.Op.and].push({
@@ -802,7 +803,7 @@ export class TaskModel extends Model {
     let sequelizeOptions = {
       currentPage,
       perPage,
-      include: [{ model: global.models.document.model, include: [{ model: global.models.documentTemplate.model }] }],
+      include: [{ model: getModels().document.model, include: [{ model: getModels().documentTemplate.model }] }],
       filters: { is_current: true },
       sort: [['created_at', 'desc']],
     };

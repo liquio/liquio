@@ -1,6 +1,7 @@
 import { matchedData } from 'express-validator';
 import { IdApiError, getIdApiClient } from '@liquio/back-core';
 
+import { resetAppContext, setAppContext } from '../lib/context';
 import { MassMessagesMailingController } from './mass_messages_mailing';
 
 jest.mock('express-validator', () => ({ matchedData: jest.fn() }));
@@ -17,7 +18,7 @@ describe('MassMessagesMailingController.send', () => {
 
   beforeEach(() => {
     (MassMessagesMailingController as any).singleton = undefined;
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
     idApiClient = { getUsersByIds: jest.fn(), getUsers: jest.fn() };
     (getIdApiClient as jest.Mock).mockReturnValue(idApiClient);
     controller = new MassMessagesMailingController({ mass_messages_mailing: {} });
@@ -28,7 +29,7 @@ describe('MassMessagesMailingController.send', () => {
   });
 
   afterEach(() => {
-    delete (global as any).log;
+    resetAppContext();
   });
 
   it('should send when all users and emails exist', async () => {

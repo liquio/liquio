@@ -40,6 +40,7 @@ import { UserSettingsModel } from './user_settings';
 import { FileLibraryItemModel } from './file_library_item';
 import { FileLibraryGrantModel } from './file_library_grant';
 import { CabinetMenuModel } from './cabinet_menu';
+import { setAppContext } from '../lib/context';
 
 // Constants.
 const MODELS_CLASSES_LIST = {
@@ -191,7 +192,7 @@ export class Models {
       );
 
     if (!dbInstance) {
-      global.models = this.getModels();
+      setAppContext({ models: this.getModels() });
     }
   }
 

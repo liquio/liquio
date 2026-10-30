@@ -2,6 +2,8 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { SnippetGroupEntity } from '../entities/snippet_group';
+import {} from '../lib/context';
+import { SequelizeDbError } from '../lib/errors';
 
 export class SnippetGroupsModel extends Model {
   static singleton: SnippetGroupsModel;
@@ -44,7 +46,7 @@ export class SnippetGroupsModel extends Model {
     try {
       snippetGroup = await this.model.findByPk(id);
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
     if (!snippetGroup) {
       return;
@@ -61,7 +63,7 @@ export class SnippetGroupsModel extends Model {
     try {
       snippetGroups = await this.model.findAll();
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     if (!snippetGroups) {
@@ -80,7 +82,7 @@ export class SnippetGroupsModel extends Model {
     try {
       createdSnippetGroup = await this.model.create(this.prepareForModel(snippetGroup));
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return this.prepareEntity(createdSnippetGroup);
@@ -106,7 +108,7 @@ export class SnippetGroupsModel extends Model {
         },
       );
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     const [updatedCount, updatedSnippetGroups] = updateResult;
@@ -126,7 +128,7 @@ export class SnippetGroupsModel extends Model {
     try {
       deletedCount = await this.model.destroy({ where: { name: name } });
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return deletedCount;
@@ -145,7 +147,7 @@ export class SnippetGroupsModel extends Model {
       if (transaction) {
         await transaction.rollback();
       }
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return deletedCount;
@@ -169,7 +171,7 @@ export class SnippetGroupsModel extends Model {
       if (transaction) {
         await transaction.rollback();
       }
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return createdSnippets.filter((v) => v.isNewRecord).length;

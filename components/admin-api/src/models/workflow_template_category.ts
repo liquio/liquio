@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { WorkflowTemplateCategoryEntity } from '../entities/workflow_template_category';
+import { getLog } from '../lib/context';
 
 export class WorkflowTemplateCategoryModel extends Model {
   static singleton: WorkflowTemplateCategoryModel;
@@ -93,7 +94,7 @@ export class WorkflowTemplateCategoryModel extends Model {
       throw new Error('Must be instance of WorkflowTemplateCategoryEntity');
     }
 
-    global.log.save('workflow_template_category|create', { workflowTemplateCategoryEntity });
+    getLog().save('workflow_template_category|create', { workflowTemplateCategoryEntity });
 
     const [data] = await this.model.upsert(this.prepareForModel(workflowTemplateCategoryEntity), {
       returning: true,

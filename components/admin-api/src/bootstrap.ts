@@ -23,13 +23,10 @@ import { setAppContext, getLog } from './lib/context';
  */
 export async function bootstrap(config: Record<string, any>, options: { placeholderSecrets?: string[]; placeholderSecretWarnings?: string[] } = {}) {
   const { placeholderSecrets = [], placeholderSecretWarnings = [] } = options;
-  global.config = config;
   setAppContext({ config });
 
   // Init http client.
-  global.httpClient = new HttpClient(config.http_client);
-  global.typeOf = typeOf;
-  setAppContext({ httpClient: global.httpClient, typeOf });
+  setAppContext({ httpClient: new HttpClient(config.http_client), typeOf });
 
   // Init log.
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
@@ -37,7 +34,6 @@ export async function bootstrap(config: Record<string, any>, options: { placehol
     disableDefaultRedaction: config.log.disableDefaultRedaction === true,
   });
   const log = new Log([consoleLogProvider], ['console']);
-  global.log = log;
   setAppContext({ log });
   warnPlainHttpInternalUrls(config);
   if (placeholderSecrets.length > 0) {
@@ -53,20 +49,18 @@ export async function bootstrap(config: Record<string, any>, options: { placehol
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
   new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
 
-  global.db = await Db.getInstance(config.db);
-  global.models = new Models().getModels();
-  setAppContext({ db: global.db, models: global.models });
+  const db = await Db.getInstance(config.db);
+  setAppContext({ db });
+  setAppContext({ models: new Models().getModels() });
 
   if (config.db.slave) {
-    global.slaveDb = await Db.getInstance(config.db.slave, true);
-    global.slaveModels = new Models({}, global.slaveDb).getModels();
-    setAppContext({ slaveDb: global.slaveDb, slaveModels: global.slaveModels });
+    const slaveDb = await Db.getInstance(config.db.slave, true);
+    setAppContext({ slaveDb, slaveModels: new Models({}, slaveDb).getModels() });
   }
 
   if (config?.redis?.isEnabled) {
     const client = new RedisClient({ host: config.redis.host, port: config.redis.port });
     await client.connect();
-    global.redis = client;
     setAppContext({ redis: client });
   }
 
@@ -84,17 +78,13 @@ export async function bootstrap(config: Record<string, any>, options: { placehol
   // Init message queue.
   const messageQueue = new MessageQueue(config.message_queue);
   await messageQueue.init();
-  global.messageQueue = messageQueue;
   setAppContext({ messageQueue });
 
   // Init router.
   const routerService = new RouterService(config);
   await routerService.init();
 
-  global.businesses = {
-    workflow: new WorkflowBusiness(),
-  };
-  setAppContext({ businesses: global.businesses });
+  setAppContext({ businesses: { workflow: new WorkflowBusiness() } });
 
   return { messageQueue, routerService, elasticBusiness };
 }

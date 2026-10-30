@@ -1,4 +1,5 @@
 import { FileStorageService } from './filestorage';
+import { resetAppContext, setAppContext } from '../lib/context';
 
 describe('services/filestorage', () => {
   const API_HOST = 'http://filestorage.local';
@@ -10,16 +11,17 @@ describe('services/filestorage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (global as any).httpClient = { request: mockRequest };
-    (global as any).config = { filestorage: { apiHost: API_HOST, token: 'token', containerId: 'container' } };
+    setAppContext({
+      httpClient: { request: mockRequest },
+      config: { filestorage: { apiHost: API_HOST, token: 'token', containerId: 'container' } },
+    });
     (FileStorageService as any).singleton = undefined;
     service = new FileStorageService();
     mockRequest.mockResolvedValue({ body: null, headers: { get: () => null }, json: async () => ({}) });
   });
 
   afterAll(() => {
-    delete (global as any).config;
-    delete (global as any).httpClient;
+    resetAppContext();
   });
 
   it('keeps regular file ids as is', async () => {

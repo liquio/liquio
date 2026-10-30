@@ -7,6 +7,7 @@ import { UnitEntity } from '../entities/unit';
 import { CustomLogs } from '../services/custom_logs';
 import { ADMIN_UNITS } from '../constants/unit';
 import { countOf, toLogUnit, toLogUser } from '../lib/log_sanitize';
+import { getLog } from '../lib/context';
 
 /**
  * Unit controller.
@@ -47,7 +48,7 @@ export class UnitController extends Controller {
 
       const afterUpdatedUnit = await this.unitBusiness.create(unitEntity, currentUser);
 
-      await global.log.save('user-created-unit', { user: toLogUser(currentUser), data: toLogUnit(afterUpdatedUnit) });
+      await getLog().save('user-created-unit', { user: toLogUser(currentUser), data: toLogUnit(afterUpdatedUnit) });
 
       this.responseData(res, afterUpdatedUnit);
 
@@ -108,7 +109,7 @@ export class UnitController extends Controller {
         removedMembersIpn,
       } = await this.unitBusiness.update(req.authUserUnitIds, unitEntity, currentUser);
 
-      await global.log.save('user-updated-unit', {
+      await getLog().save('user-updated-unit', {
         user: toLogUser(currentUser),
         data: toLogUnit(afterUpdatedUnit),
         unitId: id,
@@ -160,7 +161,7 @@ export class UnitController extends Controller {
         } as any)) || {};
 
       const isSuccess = afterUpdatedUnit.heads.length > beforeUpdatedUnit.heads.length;
-      await global.log.save('user-added-heads-unit', {
+      await getLog().save('user-added-heads-unit', {
         user: toLogUser(currentUser),
         data: { isSuccess, beforeUpdatedUnit: toLogUnit(beforeUpdatedUnit), afterUpdatedUnit: toLogUnit(afterUpdatedUnit) },
         unitId: id,
@@ -202,7 +203,7 @@ export class UnitController extends Controller {
         })) || {};
 
       const isSuccess = afterUpdatedUnit.heads.length < beforeUpdatedUnit.heads.length;
-      await global.log.save('user-removed-heads-unit', {
+      await getLog().save('user-removed-heads-unit', {
         user: toLogUser(currentUser),
         data: { isSuccess, beforeUpdatedUnit: toLogUnit(beforeUpdatedUnit), afterUpdatedUnit: toLogUnit(afterUpdatedUnit) },
         unitId: id,
@@ -247,7 +248,7 @@ export class UnitController extends Controller {
         } as any)) || {};
 
       const isSuccess = afterUpdatedUnit.members.length > beforeUpdatedUnit.members.length;
-      await global.log.save('user-added-members-unit', {
+      await getLog().save('user-added-members-unit', {
         user: toLogUser(currentUser),
         data: { isSuccess, beforeUpdatedUnit: toLogUnit(beforeUpdatedUnit), afterUpdatedUnit: toLogUnit(afterUpdatedUnit) },
         unitId: id,
@@ -289,7 +290,7 @@ export class UnitController extends Controller {
         })) || {};
 
       const isSuccess = afterUpdatedUnit.members.length < beforeUpdatedUnit.members.length;
-      await global.log.save('user-removed-members-unit', {
+      await getLog().save('user-removed-members-unit', {
         user: toLogUser(currentUser),
         data: { isSuccess, beforeUpdatedUnit: toLogUnit(beforeUpdatedUnit), afterUpdatedUnit: toLogUnit(afterUpdatedUnit) },
         unitId: id,
@@ -387,7 +388,7 @@ export class UnitController extends Controller {
 
       await this.unitBusiness.deleteById(id, beforeUpdatedUnit, currentUser);
 
-      await global.log.save('user-deleted-unit', { user: toLogUser(currentUser), data: { id } });
+      await getLog().save('user-deleted-unit', { user: toLogUser(currentUser), data: { id } });
 
       this.responseThatAccepted(res);
 
