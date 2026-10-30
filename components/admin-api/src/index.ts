@@ -4,6 +4,7 @@ import Multiconf from 'multiconf';
 
 import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault, findPlaceholderSecretWarnings } from './lib/config_check';
 import { bootstrap } from './bootstrap';
+import { setAppContext } from './lib/context';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
@@ -23,6 +24,7 @@ async function main() {
   const placeholderSecretWarnings = findPlaceholderSecretWarnings(config);
   assertTaskTokenIsNotDefault(config);
   global.config = config;
+  setAppContext({ config });
 
   await bootstrap(config, { placeholderSecrets, placeholderSecretWarnings });
 }

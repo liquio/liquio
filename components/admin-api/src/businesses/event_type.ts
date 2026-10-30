@@ -1,3 +1,5 @@
+import { getModels } from '../lib/context';
+
 /**
  * Event type business.
  */
@@ -26,6 +28,6 @@ export class EventTypeBusiness {
    * @returns {Promise<EventTypeEntity[]>}
    */
   async getAll() {
-    return await global.models.eventType.getAll();
+    return await getModels().eventType.getAll();
   }
 }

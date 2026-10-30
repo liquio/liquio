@@ -4,6 +4,7 @@ import type { Response as SupertestResponse } from 'supertest';
 import { TestApp, TASK_TOKEN } from './test-app';
 import { prepareFixtures } from './fixtures';
 import { AssetsBusiness } from '../src/businesses/assets';
+import { getConfig } from '../src/lib/context';
 
 describe('Assets Controller', () => {
   let app: TestApp;
@@ -37,7 +38,7 @@ describe('Assets Controller', () => {
     });
 
     it('should return encrypted data for valid user_ids', async () => {
-      const serverToken = global.config.server.token;
+      const serverToken = getConfig().server.token;
 
       nock('http://eds-service:80').post('/encrypt').matchHeader('token', 'test-sign-token').once().reply(200, { data: 'mocked-encrypted-data' });
 
@@ -53,7 +54,7 @@ describe('Assets Controller', () => {
     });
 
     it('should handle sign service encrypt error', async () => {
-      const serverToken = global.config.server.token;
+      const serverToken = getConfig().server.token;
 
       // Mock sign service encrypt calls to return an error response (not network error)
       nock('http://eds-service:80').post('/encrypt').matchHeader('token', 'test-sign-token').once().reply(500, { error: 'Encryption failed' });
@@ -79,7 +80,7 @@ describe('Assets Controller', () => {
     });
 
     it('should return encrypted data for valid user_ids', async () => {
-      const serverToken = global.config.server.token;
+      const serverToken = getConfig().server.token;
 
       // Mock register service getKeys call
       app
@@ -126,7 +127,7 @@ describe('Assets Controller', () => {
     });
 
     it('should handle sign service encrypt error', async () => {
-      const serverToken = global.config.server.token;
+      const serverToken = getConfig().server.token;
 
       // Mock register service getKeys call
       app

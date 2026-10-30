@@ -4,6 +4,7 @@ import xlsx from 'node-xlsx';
 import { Exceptions } from '../exceptions';
 import { RegisterService } from '../services/register';
 import { PublicError } from '../lib/public_error';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Register business.
@@ -24,7 +25,7 @@ export class RegisterBusiness {
     if (!RegisterBusiness.singleton) {
       this.config = config;
       this.registerService = new RegisterService();
-      this.importXlsxBatchSize = global.config.register?.importXlsx?.batchSize || 256;
+      this.importXlsxBatchSize = getConfig().register?.importXlsx?.batchSize || 256;
       RegisterBusiness.singleton = this;
     }
 
@@ -331,7 +332,7 @@ export class RegisterBusiness {
     try {
       register = await this.registerService.export(id, params);
     } catch (error) {
-      global.log.save('register-export-error', error);
+      getLog().save('register-export-error', error);
       throw error;
     }
 
@@ -357,7 +358,7 @@ export class RegisterBusiness {
       }
       return await this.registerService.import({ force, rewriteSchema, clearRecords, addData, file }, data, accessInfo);
     } catch (error) {
-      global.log.save('register-import-error', error);
+      getLog().save('register-import-error', error);
       if (error && error.message && error.message === '"Register already exists."') {
         throw new Exceptions.COMMITED(Exceptions.COMMITED.Messages.REGISTER);
       }
@@ -378,7 +379,7 @@ export class RegisterBusiness {
     try {
       register = await this.registerService.export(id, { withData, file } as any);
     } catch (error) {
-      global.log.save('register-export-error', error);
+      getLog().save('register-export-error', error);
       throw error;
     }
 
@@ -416,7 +417,7 @@ export class RegisterBusiness {
 
       const time = Date.now();
       const xlsxParsed = xlsx.parse(data);
-      global.log.save('register-import-xlsx-parsed', { time: Date.now() - time, size: data.length, sheets: xlsxParsed.length });
+      getLog().save('register-import-xlsx-parsed', { time: Date.now() - time, size: data.length, sheets: xlsxParsed.length });
 
       let recordsToCreate = [];
       const batchResults = [];
@@ -462,14 +463,14 @@ export class RegisterBusiness {
               );
 
               loadedRecords.push(recordId);
-              global.log.save('register-import-xlsx-item-updated', item);
+              getLog().save('register-import-xlsx-item-updated', item);
               continue;
             }
           }
 
           recordsToCreate.push(item);
 
-          global.log.save('register-import-xlsx-item-saving', item);
+          getLog().save('register-import-xlsx-item-saving', item);
 
           // Batch records and clear the buffer.
           if (recordsToCreate.length >= this.importXlsxBatchSize) {
@@ -498,10 +499,10 @@ export class RegisterBusiness {
       if (clearRecords && loadedRecords.length) {
         const result = await this.registerService.deleteBulkRecords({ registerId, keyId, skipRecordIds: loadedRecords }, accessInfo);
 
-        global.log.save('register-import-xlsx-clear-records', result);
+        getLog().save('register-import-xlsx-clear-records', result);
       }
     } catch (error) {
-      global.log.save('register-import-xlsx-error', error);
+      getLog().save('register-import-xlsx-error', error);
       throw error;
     }
 
@@ -529,7 +530,7 @@ export class RegisterBusiness {
       accessInfo,
     );
 
-    global.log.save('register-import-xlsx-batch-imported', { batchSize: batch.length });
+    getLog().save('register-import-xlsx-batch-imported', { batchSize: batch.length });
 
     return importedRecords.map((r) => r.id);
   }
@@ -599,7 +600,7 @@ export class RegisterBusiness {
 
       return res.end();
     } catch (error) {
-      global.log.save('register-export-xlsx-error', error);
+      getLog().save('register-export-xlsx-error', error);
       throw error;
     }
   }

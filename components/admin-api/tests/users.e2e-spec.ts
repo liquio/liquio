@@ -1,6 +1,7 @@
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';
 import { asAdmin, grantAllAdminUnits } from './fixtures/auth';
+import { getConfig } from '../src/lib/context';
 
 const ID_API = 'http://id-api:8100';
 const NOTIFIER = 'http://notification:8080';
@@ -180,8 +181,8 @@ describe('Users controller', () => {
     });
 
     it('forbids assigning admin to test users when it is disabled', async () => {
-      const previous = global.config.user.allowSetAdminTestUser;
-      global.config.user.allowSetAdminTestUser = false;
+      const previous = getConfig().user.allowSetAdminTestUser;
+      getConfig().user.allowSetAdminTestUser = false;
       try {
         app
           .nock(ID_API)
@@ -190,7 +191,7 @@ describe('Users controller', () => {
         const response = await asAdmin(app, 'post', `/users/${USER_ID}/set-admin`);
         expect(response.status).toBe(403);
       } finally {
-        global.config.user.allowSetAdminTestUser = previous;
+        getConfig().user.allowSetAdminTestUser = previous;
       }
     });
 

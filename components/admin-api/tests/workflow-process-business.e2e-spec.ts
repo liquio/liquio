@@ -1,6 +1,7 @@
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';
 import { asAdmin, grantAllAdminUnits } from './fixtures/auth';
+import { getConfig } from '../src/lib/context';
 
 const FILESTORAGE = 'http://filestorage:8080';
 const FINAL_WORKFLOW_ID = 'f7a0f7e0-3576-11f0-9cb4-c3090b0731a2';
@@ -69,12 +70,12 @@ describe('Workflow process business', () => {
     let originalElastic;
 
     beforeEach(() => {
-      originalElastic = global.config.elastic;
-      global.config.elastic = elasticConfig;
+      originalElastic = getConfig().elastic;
+      getConfig().elastic = elasticConfig;
     });
 
     afterEach(() => {
-      global.config.elastic = originalElastic;
+      getConfig().elastic = originalElastic;
     });
 
     it('lists workflows from the elastic response', async () => {

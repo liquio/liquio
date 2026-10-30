@@ -18,6 +18,7 @@ import { resetIdApiClient } from '@liquio/back-core';
 
 import { MessageQueue } from '../src/lib/message_queue';
 import { bootstrap } from '../src/bootstrap';
+import { getConfig, getDb, getMessageQueue, getModels, getRedis, getSlaveDb, setAppContext } from '../src/lib/context';
 
 // Token admin-api sends to task in tests (not a real credential).
 export const TASK_TOKEN = `Basic ${Buffer.from('admin-api:test-task-secret').toString('base64')}`;
@@ -44,8 +45,8 @@ jest.mock('node-fetch', () => {
         },
       });
     },
-    Response: global.Response,
-    AbortError: global.DOMException,
+    Response: Response,
+    AbortError: DOMException,
   };
 });
 
@@ -283,14 +284,14 @@ export class TestApp {
     // Merge config with overrides
     const config = { ...defaultConfig, ...configOverride };
     this.config = config;
-    global.config = config;
+    setAppContext({ config });
 
     // Init id-api client from scratch for every app instance.
     resetIdApiClient();
 
     const { routerService } = await bootstrap(config);
     this.routerService = routerService;
-    this.models = { models: global.models };
+    this.models = { models: getModels() };
   }
 
   async listen() {
@@ -318,7 +319,7 @@ export class TestApp {
 
   // Obtain a client instance to interact with the application
   request() {
-    const address = `http://${global.config.server.host}:${global.config.server.port}`;
+    const address = `http://${getConfig().server.host}:${getConfig().server.port}`;
     return supertest(address);
   }
 
@@ -332,7 +333,7 @@ export class TestApp {
       },
     };
     return {
-      jwt: jsonwebtoken.sign(payload, global.config.auth.jwtSecret),
+      jwt: jsonwebtoken.sign(payload, getConfig().auth.jwtSecret),
       payload,
     };
   }
@@ -347,7 +348,7 @@ export class TestApp {
    * @returns {import('nock').Scope}
    */
   get nockId() {
-    const { server, port } = global.config.auth.LiquioId;
+    const { server, port } = getConfig().auth.LiquioId;
     return nock(`${server}:${port}`);
   }
 
@@ -361,23 +362,23 @@ export class TestApp {
 
   // Destroy the application
   async destroy() {
-    const mq = global.messageQueue;
+    const mq = getMessageQueue();
     if (mq) {
       await mq.close();
       // Prevent reconnect timers after the connection is closed.
       mq.isClosing = true;
       clearTimeout(mq.reconnectTimeout);
       MessageQueue.singleton = undefined;
-      global.messageQueue = undefined;
+      setAppContext({ messageQueue: undefined });
     }
-    if (global.redis) {
-      await global.redis.close();
+    if (getRedis()) {
+      await getRedis().close();
     }
-    if (global.db) {
-      await global.db.close();
+    if (getDb()) {
+      await getDb().close();
     }
-    if (global.slaveDb) {
-      await global.slaveDb.close();
+    if (getSlaveDb()) {
+      await getSlaveDb().close();
     }
     const { wss, server } = this.routerService || {};
     if (wss) {

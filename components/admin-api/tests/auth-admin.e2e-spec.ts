@@ -3,6 +3,7 @@ import * as jsonwebtoken from 'jsonwebtoken';
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';
 import { asAdmin, grantAllAdminUnits } from './fixtures/auth';
+import { getConfig } from '../src/lib/context';
 
 const ID_API = 'http://id-api:8100';
 const LOGIN_USER_ID = 'eeeeeeeeeeeeeeeeeeeeee01';
@@ -80,7 +81,7 @@ describe('Auth controller', () => {
         });
 
       const response = await app.request().post('/auth/login').send({ code: 'code-2', code_verifier: 'verifier' }).expect(200);
-      const decoded: any = jsonwebtoken.verify(response.body.data.token, global.config.auth.jwtSecret);
+      const decoded: any = jsonwebtoken.verify(response.body.data.token, getConfig().auth.jwtSecret);
       expect(decoded.userId).toBe(LOGIN_USER_ID);
       expect(decoded.authTokens).toEqual({ accessToken: 'access-1', refreshToken: 'refresh-1' });
 
@@ -126,7 +127,7 @@ describe('Auth controller', () => {
     });
 
     it('sets up the first user as admin when the admin units are empty', async () => {
-      for (const id of global.config.user.adminUnitId) {
+      for (const id of getConfig().user.adminUnitId) {
         await app.model('unit').update({ members: [], heads: [] }, { where: { id } });
       }
 
@@ -144,7 +145,7 @@ describe('Auth controller', () => {
       app.nock(ID_API).put(`/user/info/${LOGIN_USER_ID}`).reply(200, 'ok');
 
       await app.request().post('/auth/login').send({ code: 'code-4' }).expect(200);
-      const unit = await app.model('unit').findByPk(global.config.user.adminUnitId[0]);
+      const unit = await app.model('unit').findByPk(getConfig().user.adminUnitId[0]);
       expect(unit.members).toContain(LOGIN_USER_ID);
 
       await grantAllAdminUnits(app);
@@ -164,7 +165,7 @@ describe('Auth controller', () => {
     });
 
     it('rejects a JWT that has expired', async () => {
-      const expired = jsonwebtoken.sign({ userId: 'x', authTokens: { accessToken: 'a', refreshToken: 'b' } }, global.config.auth.jwtSecret, {
+      const expired = jsonwebtoken.sign({ userId: 'x', authTokens: { accessToken: 'a', refreshToken: 'b' } }, getConfig().auth.jwtSecret, {
         expiresIn: -10,
       });
       await app.request().get('/auth/me').set('token', expired).expect(401);

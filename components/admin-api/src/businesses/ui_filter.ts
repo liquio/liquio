@@ -1,3 +1,5 @@
+import { getModels } from '../lib/context';
+
 /**
  * UI Filter business.
  */
@@ -27,7 +29,7 @@ export class UIFilterBusiness {
    * @returns {Promise<UIFilterEntity>}
    */
   async createOrUpdate(uiFilter) {
-    return await global.models.uiFilter.create(uiFilter);
+    return await getModels().uiFilter.create(uiFilter);
   }
 
   /**
@@ -35,7 +37,7 @@ export class UIFilterBusiness {
    * @returns {Promise<UIFilterEntity[]>}
    */
   async getAll({ currentPage, perPage, filters, sort }) {
-    return await global.models.uiFilter.getAll({ currentPage, perPage, filters, sort });
+    return await getModels().uiFilter.getAll({ currentPage, perPage, filters, sort });
   }
 
   /**
@@ -44,7 +46,7 @@ export class UIFilterBusiness {
    * @returns {Promise<UIFilterEntity>}
    */
   async deleteById(id) {
-    return await global.models.uiFilter.deleteById(id);
+    return await getModels().uiFilter.deleteById(id);
   }
 
   /**
@@ -53,6 +55,6 @@ export class UIFilterBusiness {
    * @returns {Promise<UIFilterEntity>}
    */
   async findById(id) {
-    return await global.models.uiFilter.findById(id);
+    return await getModels().uiFilter.findById(id);
   }
 }

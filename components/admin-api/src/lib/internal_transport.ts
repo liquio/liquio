@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import https from 'node:https';
 
+import { getConfig, getLog } from './context';
+
 const PRODUCTION_ENVS = ['production', 'prod'];
 
 type PemOrPath = string | string[];
@@ -19,7 +21,7 @@ const agents = new WeakMap<object, https.Agent | undefined>();
  * @param {Record<string, any>} [config] Config. Defaults to global config.
  * @returns {https.Agent|undefined}
  */
-export function getInternalHttpsAgent(config: Record<string, any> = global.config): https.Agent | undefined {
+export function getInternalHttpsAgent(config: Record<string, any> = getConfig()): https.Agent | undefined {
   const transport = config?.internal_transport;
   if (!transport) {
     return undefined;
@@ -77,7 +79,7 @@ export function warnPlainHttpInternalUrls(config: Record<string, any>, env: stri
   }
   const keys = Object.keys(getPlainHttpInternalUrls(config));
   if (keys.length > 0) {
-    global.log?.save(
+    getLog()?.save(
       'internal-service-plain-http',
       {
         keys,

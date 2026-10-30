@@ -1,6 +1,7 @@
 import { LocalizationTextModel } from '../models/localization_text';
 import { toLogUser } from '../lib/log_sanitize';
 import { PublicError } from '../lib/public_error';
+import { getDb, getLog } from '../lib/context';
 
 /**
  * Localization text business.
@@ -87,7 +88,7 @@ export class LocalizationTextBusiness {
   async import(dataRaw, { force = false, person }: { force?: boolean; person?: string } = {}) {
     const data = JSON.parse(dataRaw);
 
-    const transaction = await global.db.transaction();
+    const transaction = await getDb().transaction();
     try {
       for (const text of data) {
         const { localizationLanguageCode, key } = text;
@@ -103,7 +104,7 @@ export class LocalizationTextBusiness {
       }
 
       await transaction.commit();
-      global.log.save('user-imported-localization-texts', { user: toLogUser(person), data });
+      getLog().save('user-imported-localization-texts', { user: toLogUser(person), data });
     } catch (error) {
       await transaction.rollback();
       throw error;

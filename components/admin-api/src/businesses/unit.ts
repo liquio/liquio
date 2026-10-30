@@ -6,6 +6,7 @@ import { UnitEntity } from '../entities/unit';
 import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, SUPPORT_ADMIN_UNIT, ADMIN_UNITS } from '../constants/unit';
 import { toLogUnit, toLogUser } from '../lib/log_sanitize';
 import { PublicError } from '../lib/public_error';
+import { getBusinesses, getDb, getLog, getModels } from '../lib/context';
 
 const UNIT_PREVIOUS_DATA_MAP = {
   basedOn: 'previousBasedOn',
@@ -55,7 +56,7 @@ export class UnitBusiness {
     foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache([...unitEntity.members, ...unitEntity.heads], foundUsersFromIdApi);
 
     for (const baseUnitId of unitEntity.basedOn) {
-      const baseUnit = await global.models.unit.findById(baseUnitId);
+      const baseUnit = await getModels().unit.findById(baseUnitId);
       if (!baseUnit) {
         continue;
       }
@@ -75,13 +76,13 @@ export class UnitBusiness {
 
       foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache([...members, ...heads], foundUsersFromIdApi);
 
-      await global.models.unit.updateMembers(baseUnitId, members);
+      await getModels().unit.updateMembers(baseUnitId, members);
       for (const memberId of members) {
         const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
         // Save to access history.
-        const baseUnit = await global.models.unit.findById(baseUnitId);
-        await global.models.accessHistory.save({
+        const baseUnit = await getModels().unit.findById(baseUnitId);
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'added-to-member-unit',
           user: {
@@ -92,13 +93,13 @@ export class UnitBusiness {
         });
       }
 
-      await global.models.unit.updateHeads(baseUnitId, heads);
+      await getModels().unit.updateHeads(baseUnitId, heads);
       for (const headId of heads) {
         const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
         // Save to access history.
-        const baseUnit = await global.models.unit.findById(baseUnitId);
-        await global.models.accessHistory.save({
+        const baseUnit = await getModels().unit.findById(baseUnitId);
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'added-to-head-unit',
           user: {
@@ -110,13 +111,13 @@ export class UnitBusiness {
       }
     }
 
-    const createdUnit = await global.models.unit.create(unitEntity);
+    const createdUnit = await getModels().unit.create(unitEntity);
 
     for (const memberId of unitEntity.members) {
       const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-member-unit',
         user: {
@@ -129,7 +130,7 @@ export class UnitBusiness {
 
     for (const ipn of unitEntity.membersIpn) {
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-member-unit',
         user: { ipn },
@@ -141,7 +142,7 @@ export class UnitBusiness {
       const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-head-unit',
         user: {
@@ -154,7 +155,7 @@ export class UnitBusiness {
 
     for (const ipn of unitEntity.headsIpn) {
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-head-unit',
         user: { ipn },
@@ -180,7 +181,7 @@ export class UnitBusiness {
     unitEntity.headsIpn = _.uniq(unitEntity.headsIpn || []);
     unitEntity.membersIpn = _.uniq(unitEntity.membersIpn || []);
 
-    const currentUnit = await global.models.unit.findById(unitEntity.id);
+    const currentUnit = await getModels().unit.findById(unitEntity.id);
     const newHeads = _.difference(unitEntity.heads, currentUnit.heads);
     const newMembers = _.difference(unitEntity.members, currentUnit.members);
     const newHeadsIpn = _.difference(unitEntity.headsIpn, currentUnit.headsIpn);
@@ -205,7 +206,7 @@ export class UnitBusiness {
     );
 
     for (const baseUnitId of unitEntity.basedOn) {
-      const baseUnit = await global.models.unit.findById(baseUnitId);
+      const baseUnit = await getModels().unit.findById(baseUnitId);
       if (!baseUnit) {
         continue;
       }
@@ -225,13 +226,13 @@ export class UnitBusiness {
 
       foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache([...members, ...heads], foundUsersFromIdApi);
 
-      await global.models.unit.updateMembers(baseUnitId, members);
+      await getModels().unit.updateMembers(baseUnitId, members);
       for (const memberId of newMembers) {
         const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
         // Save to access history.
-        const baseUnit = await global.models.unit.findById(baseUnitId);
-        await global.models.accessHistory.save({
+        const baseUnit = await getModels().unit.findById(baseUnitId);
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'added-to-member-unit',
           user: {
@@ -242,13 +243,13 @@ export class UnitBusiness {
         });
       }
 
-      await global.models.unit.updateHeads(baseUnitId, heads);
+      await getModels().unit.updateHeads(baseUnitId, heads);
       for (const headId of newHeads) {
         const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
         // Save to access history.
-        const baseUnit = await global.models.unit.findById(baseUnitId);
-        await global.models.accessHistory.save({
+        const baseUnit = await getModels().unit.findById(baseUnitId);
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'added-to-head-unit',
           user: {
@@ -260,13 +261,13 @@ export class UnitBusiness {
       }
     }
 
-    const updatedUnit = await global.models.unit.create(unitEntity);
+    const updatedUnit = await getModels().unit.create(unitEntity);
 
     for (const memberId of newMembers) {
       const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-member-unit',
         user: {
@@ -279,7 +280,7 @@ export class UnitBusiness {
 
     for (const ipn of newMembersIpn) {
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-member-unit',
         user: { ipn },
@@ -291,10 +292,10 @@ export class UnitBusiness {
       const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
       // Remove performer user from tasks.
-      await global.models.task.removePerformerUserFromTasks(memberId, unitEntity.id);
+      await getModels().task.removePerformerUserFromTasks(memberId, unitEntity.id);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-member-unit',
         user: {
@@ -307,7 +308,7 @@ export class UnitBusiness {
 
     for (const ipn of removedMembersIpn) {
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-member-unit',
         user: { ipn },
@@ -319,7 +320,7 @@ export class UnitBusiness {
       const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-head-unit',
         user: {
@@ -332,7 +333,7 @@ export class UnitBusiness {
 
     for (const ipn of newHeadsIpn) {
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-head-unit',
         user: { ipn },
@@ -344,10 +345,10 @@ export class UnitBusiness {
       const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
       // Remove performer user from tasks.
-      await global.models.task.removePerformerUserFromTasks(headId, unitEntity.id);
+      await getModels().task.removePerformerUserFromTasks(headId, unitEntity.id);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-head-unit',
         user: {
@@ -360,7 +361,7 @@ export class UnitBusiness {
 
     for (const ipn of removedHeadsIpn) {
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-head-unit',
         user: { ipn },
@@ -398,7 +399,7 @@ export class UnitBusiness {
       params.filters.ids_not_in = ADMIN_UNITS;
       delete params.filters.admin_units;
     }
-    return await global.models.unit.getAllWithPagination({
+    return await getModels().unit.getAllWithPagination({
       ...params,
     });
   }
@@ -416,7 +417,7 @@ export class UnitBusiness {
       params.filters.ids_not_in = ADMIN_UNITS;
       delete params.filters.admin_units;
     }
-    return await global.models.unit.getAll(params);
+    return await getModels().unit.getAll(params);
   }
 
   /**
@@ -434,7 +435,7 @@ export class UnitBusiness {
       this.checkAccess(id, unitIds);
     }
 
-    const unit = await global.models.unit.findById(id);
+    const unit = await getModels().unit.findById(id);
 
     if (!unit) {
       return;
@@ -453,11 +454,11 @@ export class UnitBusiness {
 
       const { basedOn = [] } = unit;
       for (const baseUnitId of basedOn) {
-        await global.models.unit.addHead(baseUnitId, headId);
+        await getModels().unit.addHead(baseUnitId, headId);
 
         // Save to access history.
-        const baseUnit = await global.models.unit.findById(baseUnitId);
-        await global.models.accessHistory.save({
+        const baseUnit = await getModels().unit.findById(baseUnitId);
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'added-to-head-unit',
           user: {
@@ -468,10 +469,10 @@ export class UnitBusiness {
         });
       }
 
-      lastUpdatedUnit = await global.models.unit.addHead(id, headId);
+      lastUpdatedUnit = await getModels().unit.addHead(id, headId);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-head-unit',
         user: {
@@ -496,7 +497,7 @@ export class UnitBusiness {
   async removeHeads({ unitIds, id, heads, currentUser }) {
     this.checkAccess(id, unitIds);
 
-    const unit = await global.models.unit.findById(id);
+    const unit = await getModels().unit.findById(id);
 
     if (!unit) {
       return;
@@ -513,10 +514,10 @@ export class UnitBusiness {
     for (const headId of headsToRemove) {
       const head = await this.idApiClient.findUserById(headId);
 
-      lastUpdatedUnit = await global.models.unit.removeHead(id, headId);
+      lastUpdatedUnit = await getModels().unit.removeHead(id, headId);
 
       // Remove performer user from tasks.
-      await global.models.task.removePerformerUserFromTasks(headId, id);
+      await getModels().task.removePerformerUserFromTasks(headId, id);
 
       //If removed from SUPPORT_ADMIN_UNIT unsubscribe from errors
       if (lastUpdatedUnit.id === SUPPORT_ADMIN_UNIT) {
@@ -524,16 +525,16 @@ export class UnitBusiness {
           where: {},
           attributes: ['id', 'errors_subscribers'],
         };
-        const allWorkflowTemplates = await global.models.workflowTemplate.getAll(options);
+        const allWorkflowTemplates = await getModels().workflowTemplate.getAll(options);
         const subscribedWorkflowTemplates = allWorkflowTemplates.filter(({ errorsSubscribers }) => errorsSubscribers.some((el) => el.id === headId));
 
         subscribedWorkflowTemplates.forEach((workflowTemplate) => {
-          global.businesses.workflow.unsubscribeFromWorkflowErrors(workflowTemplate.id, { userData: { userId: headId } });
+          getBusinesses().workflow.unsubscribeFromWorkflowErrors(workflowTemplate.id, { userData: { userId: headId } });
         });
       }
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-head-unit',
         user: {
@@ -561,7 +562,7 @@ export class UnitBusiness {
       this.checkAccess(id, unitIds);
     }
 
-    const unit = await global.models.unit.findById(id);
+    const unit = await getModels().unit.findById(id);
 
     if (!unit) {
       return;
@@ -581,11 +582,11 @@ export class UnitBusiness {
       const member = await this.idApiClient.findUserById(memberId);
 
       for (const baseUnitId of basedOn) {
-        await global.models.unit.addMember(baseUnitId, memberId);
+        await getModels().unit.addMember(baseUnitId, memberId);
 
         // Save to access history.
-        const baseUnit = await global.models.unit.findById(baseUnitId);
-        await global.models.accessHistory.save({
+        const baseUnit = await getModels().unit.findById(baseUnitId);
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'added-to-member-unit',
           user: {
@@ -596,10 +597,10 @@ export class UnitBusiness {
         });
       }
 
-      lastUpdatedUnit = await global.models.unit.addMember(id, memberId);
+      lastUpdatedUnit = await getModels().unit.addMember(id, memberId);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-member-unit',
         user: {
@@ -624,7 +625,7 @@ export class UnitBusiness {
   async removeMembers({ unitIds, id, members, currentUser }) {
     this.checkAccess(id, unitIds);
 
-    const unit = await global.models.unit.findById(id);
+    const unit = await getModels().unit.findById(id);
 
     if (!unit) {
       return;
@@ -641,10 +642,10 @@ export class UnitBusiness {
     for (const memberId of membersToRemove) {
       const member = await this.idApiClient.findUserById(memberId);
 
-      lastUpdatedUnit = await global.models.unit.removeMember(id, memberId);
+      lastUpdatedUnit = await getModels().unit.removeMember(id, memberId);
 
       // Remove performer user from tasks.
-      await global.models.task.removePerformerUserFromTasks(memberId, id);
+      await getModels().task.removePerformerUserFromTasks(memberId, id);
 
       //If removed from SUPPORT_ADMIN_UNIT unsubscribe from errors
       if (lastUpdatedUnit.id === SUPPORT_ADMIN_UNIT) {
@@ -652,18 +653,18 @@ export class UnitBusiness {
           where: {},
           attributes: ['id', 'errors_subscribers'],
         };
-        const allWorkflowTemplates = await global.models.workflowTemplate.getAll(options);
+        const allWorkflowTemplates = await getModels().workflowTemplate.getAll(options);
         const subscribedWorkflowTemplates = allWorkflowTemplates.filter(({ errorsSubscribers }) =>
           errorsSubscribers.some((el) => el.id === memberId),
         );
 
         subscribedWorkflowTemplates.forEach((workflowTemplate) => {
-          global.businesses.workflow.unsubscribeFromWorkflowErrors(workflowTemplate.id, { userData: { userId: memberId } });
+          getBusinesses().workflow.unsubscribeFromWorkflowErrors(workflowTemplate.id, { userData: { userId: memberId } });
         });
       }
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-member-unit',
         user: {
@@ -690,7 +691,7 @@ export class UnitBusiness {
       throw new PublicError("Can't delete this unit.");
     }
 
-    const deletedUnit = await global.models.unit.deleteById(id);
+    const deletedUnit = await getModels().unit.deleteById(id);
 
     let foundUsersFromIdApi = [];
     foundUsersFromIdApi = await this.idApiClient.getUsersByIdsWithCache([...unit.members, ...unit.heads], foundUsersFromIdApi);
@@ -699,7 +700,7 @@ export class UnitBusiness {
       const member = foundUsersFromIdApi.find((v) => v.userId === memberId);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-member-unit',
         user: {
@@ -714,7 +715,7 @@ export class UnitBusiness {
       const head = foundUsersFromIdApi.find((v) => v.userId === headId);
 
       // Save to access history.
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-head-unit',
         user: {
@@ -737,7 +738,7 @@ export class UnitBusiness {
   async findById(id, unitIds) {
     this.checkAccess(id, unitIds);
 
-    return await global.models.unit.findById(id);
+    return await getModels().unit.findById(id);
   }
 
   /**
@@ -746,7 +747,7 @@ export class UnitBusiness {
    * @returns {Promise<string>}
    */
   async export(ids) {
-    const units = await global.models.unit.getByIds(ids);
+    const units = await getModels().unit.getByIds(ids);
     const preparedToExportUnits = units.map((unit) => unit.getPreparedForExport());
     return preparedToExportUnits;
   }
@@ -762,20 +763,20 @@ export class UnitBusiness {
   async import(data, force = false, { user }) {
     data = JSON.parse(data);
 
-    const unitTransaction = await global.db.transaction();
+    const unitTransaction = await getDb().transaction();
 
     try {
       for (const unit of data) {
-        if ((await global.models.unit.findById(unit.id)) && force === false) {
+        if ((await getModels().unit.findById(unit.id)) && force === false) {
           throw new Exceptions.COMMITED(Exceptions.COMMITED.Messages.UNIT);
         }
         const updateLastUnitIdIfNeedIt = true;
-        await global.models.unit.create(new UnitEntity(unit), unitTransaction, updateLastUnitIdIfNeedIt);
+        await getModels().unit.create(new UnitEntity(unit), unitTransaction, updateLastUnitIdIfNeedIt);
       }
 
       await unitTransaction.commit();
 
-      await global.log.save('user-imported-units', { user: toLogUser(user), data: toLogUnit(data) });
+      await getLog().save('user-imported-units', { user: toLogUser(user), data: toLogUnit(data) });
     } catch (error) {
       await unitTransaction.rollback();
       throw error;
@@ -803,7 +804,7 @@ export class UnitBusiness {
    * @param {object} data Data: data.type, data.ruleSchema.
    */
   async createUnitRules({ type, ruleSchema }) {
-    return await global.models.unitRules.create({ type, ruleSchema });
+    return await getModels().unitRules.create({ type, ruleSchema });
   }
 
   /**
@@ -811,14 +812,14 @@ export class UnitBusiness {
    * @param {object} data Data: data.type, data.ruleSchema.
    */
   async updateRulesByType({ type, ruleSchema }) {
-    return await global.models.unitRules.update({ type, ruleSchema });
+    return await getModels().unitRules.update({ type, ruleSchema });
   }
 
   /**
    * Get all unit rules.
    */
   async getAllUnitRules() {
-    return await global.models.unitRules.getAll();
+    return await getModels().unitRules.getAll();
   }
 
   /**
@@ -826,7 +827,7 @@ export class UnitBusiness {
    * @param {object} data Data: data.type.
    */
   async deleteRulesByType({ type }) {
-    return await global.models.unitRules.deleteByRuleType(type);
+    return await getModels().unitRules.deleteByRuleType(type);
   }
 
   /**
@@ -835,13 +836,13 @@ export class UnitBusiness {
    */
   async checkUnitsExclusiveRules({ unitId, userIds }) {
     // Get unit exclusive rules.
-    const unitsExclusiveRules = (await global.models.unitRules.getRulesByType('exclusive')) || [];
+    const unitsExclusiveRules = (await getModels().unitRules.getRulesByType('exclusive')) || [];
     if (unitsExclusiveRules.length === 0) {
       return;
     }
 
     // Get all users units.
-    const allUnits = await global.models.unit.getAll();
+    const allUnits = await getModels().unit.getAll();
     const unitsForEachUser = {};
     for (const userId of userIds) {
       const head = allUnits.filter((v) => v.heads.includes(userId));

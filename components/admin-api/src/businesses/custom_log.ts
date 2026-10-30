@@ -1,3 +1,5 @@
+import { getModels } from '../lib/context';
+
 /**
  * Custom log business.
  */
@@ -26,11 +28,11 @@ export class CustomLogBusiness {
    * @returns {Promise<{expandedCustomLogs: Object[], customFieldNames: {key: string, name: string}[]}|Object[]>}
    */
   async getAll({ currentPage, perPage, filters, sort, isAppendCustomFields }) {
-    const customLogs = await global.models.customLog.getAll({ currentPage, perPage, filters, sort });
+    const customLogs = await getModels().customLog.getAll({ currentPage, perPage, filters, sort });
 
     if (isAppendCustomFields) {
       // Get las custom log. To get the actual list of fields.
-      const lastCustomLog = await global.models.customLog.getLastLog({ attributes: ['custom'] });
+      const lastCustomLog = await getModels().customLog.getLastLog({ attributes: ['custom'] });
       const customFieldNames = Object.keys(lastCustomLog?.custom || {}).map((key) => ({
         key: key,
         name: lastCustomLog.custom[key].name,

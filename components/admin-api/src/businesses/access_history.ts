@@ -1,4 +1,5 @@
 import { AccessHistoryEntity } from '../entities/access_history';
+import { getModels } from '../lib/context';
 
 /**
  * Access history business.
@@ -26,6 +27,6 @@ export class AccessHistoryBusiness {
    * Get all.
    */
   async getAll({ currentPage, perPage, filters, sort }): Promise<AccessHistoryEntity[]> {
-    return await global.models.accessHistory.getAll({ currentPage, perPage, filters, sort });
+    return await getModels().accessHistory.getAll({ currentPage, perPage, filters, sort });
   }
 }

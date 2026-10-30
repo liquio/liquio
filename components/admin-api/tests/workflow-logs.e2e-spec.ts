@@ -1,6 +1,7 @@
 import { TestApp } from './test-app';
 import { prepareFixtures, WORKFLOW_FIXTURES } from './fixtures';
 import { asAdmin, grantAllAdminUnits } from './fixtures/auth';
+import { getConfig, getModels } from '../src/lib/context';
 
 const ELASTIC_HOST = 'http://elastic.local:9200';
 const LIMITED_USER = 'dddddddddddddddddddddd01';
@@ -25,11 +26,11 @@ describe('Workflow logs controller', () => {
     app = await TestApp.setup();
     await prepareFixtures(app);
     await grantAllAdminUnits(app);
-    Object.assign(originalElastic, global.config.elastic);
+    Object.assign(originalElastic, getConfig().elastic);
   });
 
   afterAll(async () => {
-    global.config.elastic = originalElastic;
+    getConfig().elastic = originalElastic;
     await app?.destroy();
     await TestApp.afterAll();
   });
@@ -46,7 +47,7 @@ describe('Workflow logs controller', () => {
   // ElasticReindexLogModel.create() returns an entity without the row fields (see BUGS.md), so the background job cannot
   // update its log row. Return the plain row so that the job can run to the end.
   const fixReindexLogCreate = () => {
-    const model = global.models.elasticReindexLog;
+    const model = getModels().elasticReindexLog;
     const original = model.create.bind(model);
     return jest.spyOn(model, 'create').mockImplementation(async (data) => {
       const created: any = await original(data);
@@ -56,7 +57,7 @@ describe('Workflow logs controller', () => {
 
   const enableElastic = () => {
     fixReindexLogCreate();
-    global.config.elastic = {
+    getConfig().elastic = {
       ...originalElastic,
       enabled: true,
       reindexCount: 2,
@@ -162,7 +163,7 @@ describe('Workflow logs controller', () => {
     });
 
     it('answers an error when elastic is disabled', async () => {
-      global.config.elastic = { ...originalElastic };
+      getConfig().elastic = { ...originalElastic };
       const response = await asAdmin(app, 'post', '/workflow-logs/manual-reindex').send({ fromCreatedAt: '2020-01-01T00:00:00.000Z' });
       expect(response.status).toBe(500);
     });

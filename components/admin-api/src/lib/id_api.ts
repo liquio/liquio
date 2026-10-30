@@ -1,5 +1,7 @@
 import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 
+import { getLog } from './context';
+
 // Constants.
 const DEFAULT_SERVER = 'http://id-api';
 const DEFAULT_PORT = 8100;
@@ -22,6 +24,6 @@ export function initIdApiClient(authConfig: Record<string, any> = {}): IdApiClie
     clientSecret: authConfig.clientSecret,
     authRedirectUrl: authConfig.authRedirectUrl,
     basicAuthToken: authConfig.basicAuthToken,
-    getLog: () => global.log,
+    getLog,
   });
 }

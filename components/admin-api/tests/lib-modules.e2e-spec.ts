@@ -28,6 +28,7 @@ import { getInternalHttpsAgent, getPlainHttpInternalUrls, warnPlainHttpInternalU
 import * as errors from '../src/lib/errors';
 import { HttpClient } from '../src/lib/http_client';
 import { buildSandboxConfig } from '../src/lib/sandbox_config';
+import { getConfig, getDb } from '../src/lib/context';
 
 const NOTIFIER = 'http://notification:8080';
 
@@ -276,7 +277,7 @@ describe('Library modules', () => {
 
   describe('SystemNotifier', () => {
     it('sends emails about a workflow and reports failures', async () => {
-      global.config.system_notifier = {
+      getConfig().system_notifier = {
         adminUrl: 'http://admin.local',
         email: {
           server: 'http://notification',
@@ -308,11 +309,11 @@ describe('Library modules', () => {
       expect(Db.tz).toMatch(/^[+-]\d{2}:\d{2}$/);
       expect(Db.tz).toBe(Db.tz);
       expect(() => new (Db as any)()).toThrow('Constructor is private.');
-      expect(await Db.getInstance(global.config.db)).toBe(global.db);
+      expect(await Db.getInstance(getConfig().db)).toBe(getDb());
     });
 
     it('fails to connect with a wrong configuration', async () => {
-      await expect(Db.getInstance({ ...global.config.db, host: '127.0.0.1', port: 1, retry: { max: 0 } }, true)).rejects.toBeDefined();
+      await expect(Db.getInstance({ ...getConfig().db, host: '127.0.0.1', port: 1, retry: { max: 0 } }, true)).rejects.toBeDefined();
     });
   });
 

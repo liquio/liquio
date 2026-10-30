@@ -1,6 +1,7 @@
 import { Exceptions } from '../exceptions';
 import { NumberTemplateEntity } from '../entities/number_template';
 import { toLogUser } from '../lib/log_sanitize';
+import { getDb, getLog, getModels } from '../lib/context';
 
 /**
  * Number Template business.
@@ -31,7 +32,7 @@ export class NumberTemplateBusiness {
    * @returns {Promise<NumberTemplateEntity>}
    */
   async createOrUpdate(numberTemplateEntity) {
-    return await global.models.numberTemplate.create(numberTemplateEntity);
+    return await getModels().numberTemplate.create(numberTemplateEntity);
   }
 
   /**
@@ -39,7 +40,7 @@ export class NumberTemplateBusiness {
    * @returns {Promise<NumberTemplateEntity[]>}
    */
   async getNumberTemplates(params) {
-    return await global.models.numberTemplate.getAllWithPagination({
+    return await getModels().numberTemplate.getAllWithPagination({
       ...params,
     });
   }
@@ -50,7 +51,7 @@ export class NumberTemplateBusiness {
    * @returns {Promise<NumberTemplateEntity>}
    */
   async deleteById(id) {
-    return await global.models.numberTemplate.deleteById(id);
+    return await getModels().numberTemplate.deleteById(id);
   }
 
   /**
@@ -59,7 +60,7 @@ export class NumberTemplateBusiness {
    * @returns {Promise<NumberTemplateEntity>}
    */
   async findById(id) {
-    return await global.models.numberTemplate.findById(id);
+    return await getModels().numberTemplate.findById(id);
   }
 
   /**
@@ -68,7 +69,7 @@ export class NumberTemplateBusiness {
    * @returns {Promise<string>}
    */
   async export(id) {
-    return await global.models.numberTemplate.findById(id);
+    return await getModels().numberTemplate.findById(id);
   }
 
   /**
@@ -81,17 +82,17 @@ export class NumberTemplateBusiness {
   async import(data, { user }) {
     data = JSON.parse(data);
 
-    if (await global.models.numberTemplate.findById(data.id)) {
+    if (await getModels().numberTemplate.findById(data.id)) {
       throw new Exceptions.COMMITED(Exceptions.COMMITED.Messages.NUMBER_TEMPLATE);
     }
 
-    const numberTemplateTransaction = await global.db.transaction();
+    const numberTemplateTransaction = await getDb().transaction();
 
     try {
-      await global.models.numberTemplate.create(new NumberTemplateEntity(data), numberTemplateTransaction);
+      await getModels().numberTemplate.create(new NumberTemplateEntity(data), numberTemplateTransaction);
       await numberTemplateTransaction.commit();
 
-      global.log.save('user-imported-number-template', { user: toLogUser(user), data: data });
+      getLog().save('user-imported-number-template', { user: toLogUser(user), data: data });
     } catch (error) {
       await numberTemplateTransaction.rollback();
       throw error;

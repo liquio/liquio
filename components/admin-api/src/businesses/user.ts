@@ -4,6 +4,7 @@ import { IdApiClient, IdApiError, getIdApiClient } from '@liquio/back-core';
 import { NotifierService } from '../services/notifier';
 import { TestUserChecker } from '../lib/test_user_checker';
 import { ForbiddenError } from '../lib/errors';
+import { getConfig, getLog, getModels } from '../lib/context';
 
 // Constants.
 const ERROR_CODE_HTTP = 'HTTP_ERROR';
@@ -76,7 +77,7 @@ export class UserBusiness {
       limit,
     });
 
-    const units = await global.models.unit.getAll();
+    const units = await getModels().unit.getAll();
 
     for (const user of users) {
       const heads = units.filter((v) => v.heads.includes(user.userId));
@@ -111,7 +112,7 @@ export class UserBusiness {
       return user;
     }
 
-    const units = await global.models.unit.getAll();
+    const units = await getModels().unit.getAll();
     const heads = units.filter((v) => v.heads.includes(user.userId));
     const members = units.filter((v) => v.members.includes(user.userId));
     const all = [...new Set([...heads, ...members])];
@@ -161,7 +162,7 @@ export class UserBusiness {
    * @returns {Promise<boolean>}
    */
   async setAdmin(id, currentUser, isCurrentAuthClient = false) {
-    const { clientId } = global.config.auth;
+    const { clientId } = getConfig().auth;
     const roleName = isCurrentAuthClient ? `admin-${clientId}` : 'admin';
 
     const user = await this.idApiClient.findUserById(id);
@@ -174,7 +175,7 @@ export class UserBusiness {
     const { allowSetAdminTestUser = false } = this.config?.user || {};
 
     if (isTestUser && !allowSetAdminTestUser) {
-      global.log.save('set-admin|attempt-to-set-admin-role-to-test-user', { testUserId: id, initiatorUserId: currentUser.userId });
+      getLog().save('set-admin|attempt-to-set-admin-role-to-test-user', { testUserId: id, initiatorUserId: currentUser.userId });
       throw new ForbiddenError('Assigning the administrator role to test users is prohibited');
     }
 
@@ -189,7 +190,7 @@ export class UserBusiness {
     if (await this.isUserUpdated(id, { role: preparedRoles })) {
       await this.logoutByUserId(id);
 
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'added-to-admin',
         user: user,
@@ -209,7 +210,7 @@ export class UserBusiness {
    * @returns {Promise<boolean>}
    */
   async unsetAdmin(id, currentUser, isCurrentAuthClient = false) {
-    const { clientId } = global.config.auth;
+    const { clientId } = getConfig().auth;
     const roleName = isCurrentAuthClient ? `admin-${clientId}` : 'admin';
 
     const user = await this.idApiClient.findUserById(id);
@@ -228,7 +229,7 @@ export class UserBusiness {
     if (await this.isUserUpdated(id, { role: preparedRoles })) {
       await this.logoutByUserId(id);
 
-      await global.models.accessHistory.save({
+      await getModels().accessHistory.save({
         currentUser: currentUser,
         operationType: 'deleted-from-admin',
         user: user,
@@ -249,7 +250,7 @@ export class UserBusiness {
     // Check the user for their IPN to make sure that the correct account is being deleted.
     const existingUser = await this.idApiClient.findUserById(userId);
     if (existingUser?.ipn !== ipn) {
-      global.log.save('delete-user-ipn-mismatch', { userId });
+      getLog().save('delete-user-ipn-mismatch', { userId });
       return false;
     }
 
@@ -281,7 +282,7 @@ export class UserBusiness {
       return true;
     } catch (error) {
       if (error instanceof IdApiError && error.code === ERROR_CODE_HTTP) {
-        global.log.save('user-update-rejected-by-id-api', { id, status: error.status, error: error.message }, 'error');
+        getLog().save('user-update-rejected-by-id-api', { id, status: error.status, error: error.message }, 'error');
         return false;
       }
       throw error;
@@ -300,7 +301,7 @@ export class UserBusiness {
       return await this.idApiClient.logoutByUserId(id);
     } catch (error) {
       if (error instanceof IdApiError && error.code === ERROR_CODE_HTTP) {
-        global.log.save('id-request-logout-by-user-id-error', { id, status: error.status, error: error.message }, 'error');
+        getLog().save('id-request-logout-by-user-id-error', { id, status: error.status, error: error.message }, 'error');
         return error.body;
       }
       throw error;
@@ -316,7 +317,7 @@ export class UserBusiness {
     try {
       response = await this.notifierService.sendMessageToAll(messageBody);
     } catch (error) {
-      global.log.save('send-message-to-all-user-notify-error', error.message);
+      getLog().save('send-message-to-all-user-notify-error', error.message);
       throw error;
     }
     if (response && response.createdMessageId && Number.isInteger(response.createdMessageId)) {
@@ -336,7 +337,7 @@ export class UserBusiness {
     try {
       response = await this.notifierService.getMessagesForAllUsers(start, count);
     } catch (error) {
-      global.log.save('get-messages-for-all-users-notify-error', error.message);
+      getLog().save('get-messages-for-all-users-notify-error', error.message);
       throw error;
     }
     return response;
@@ -351,7 +352,7 @@ export class UserBusiness {
     try {
       response = await this.notifierService.deleteMessagesForAllUsers(messageId);
     } catch (error) {
-      global.log.save('delete-message-for-all-users-notify-error', error.message);
+      getLog().save('delete-message-for-all-users-notify-error', error.message);
       throw error;
     }
     return response;
@@ -376,7 +377,7 @@ export class UserBusiness {
 
       return { success: true };
     } catch (error) {
-      global.log.save('enforce-totp-error', { error: error.message, stack: error.stack, userId });
+      getLog().save('enforce-totp-error', { error: error.message, stack: error.stack, userId });
       return { error: 'Error enabling 2FA for this user' };
     }
   }
@@ -400,7 +401,7 @@ export class UserBusiness {
 
       return { success: true };
     } catch (error) {
-      global.log.save('disable-totp-error', { error: error.message, stack: error.stack, userId });
+      getLog().save('disable-totp-error', { error: error.message, stack: error.stack, userId });
       return { error: 'Error disabling 2FA for this user' };
     }
   }

@@ -1,6 +1,7 @@
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';
 import { asAdmin, grantAllAdminUnits, textParser } from './fixtures/auth';
+import { getConfig } from '../src/lib/context';
 
 const TEMPLATE_ID = 161070;
 const REGISTER = 'http://register:8103';
@@ -84,13 +85,13 @@ describe('BPMN workflow controller', () => {
     });
 
     it('rejects an oversized import by the declared length', async () => {
-      const previous = global.config.bpmnImport;
-      global.config.bpmnImport = { maxBytes: 10 };
+      const previous = getConfig().bpmnImport;
+      getConfig().bpmnImport = { maxBytes: 10 };
       try {
         const response = await asAdmin(app, 'post', '/bpmn-workflows/import').set('Content-Type', 'text/plain').send('x'.repeat(200));
         expect(response.status).toBe(413);
       } finally {
-        global.config.bpmnImport = previous;
+        getConfig().bpmnImport = previous;
       }
     });
   });

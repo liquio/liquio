@@ -1,5 +1,6 @@
 import { checkSchema } from 'express-validator';
 
+import { getTypeOf } from '../lib/context';
 import { ValidationConfig, Validator } from './validator';
 
 /**
@@ -116,7 +117,7 @@ export class SnippetsValidator extends Validator {
             if (!value) {
               return true;
             }
-            return global.typeOf(value) === 'array' && value.length && value.every((v) => global.typeOf(v) === 'number');
+            return getTypeOf()(value) === 'array' && value.length && value.every((v) => getTypeOf()(v) === 'number');
           },
         },
       },
