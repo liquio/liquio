@@ -3,6 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import amqp from 'amqplib/callback_api';
 
 import { MessageQueue, pickMessageMeta } from './index';
+import { resetAppContext, getConfig, getLog, getRedisClient, setAppContext } from '../context';
 
 jest.mock('amqplib/callback_api', () => ({
   connect: jest.fn((url, callback) => {
@@ -34,20 +35,18 @@ jest.mock('@liquio/back-core', () => ({
 }));
 
 describe('MessageQueue', () => {
+  afterEach(() => {
+    resetAppContext();
+  });
+
   let messageQueue;
 
   beforeEach(() => {
-    global.log = {
-      save: jest.fn(),
-    };
-    global.redisClient = null;
-    global.config = {
-      redis: {
-        amqpMessageCache: {
-          isEnabled: false,
-        },
-      },
-    };
+    setAppContext({
+      log: { save: jest.fn() },
+      redisClient: null,
+      config: { redis: { amqpMessageCache: { isEnabled: false } } },
+    });
 
     messageQueue = new MessageQueue({
       amqpConnection: 'amqp://localhost',
@@ -70,7 +69,7 @@ describe('MessageQueue', () => {
 
       expect(amqp.connect).toHaveBeenCalledWith('amqp://localhost', expect.any(Function));
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalled();
+      expect(getLog().save).toHaveBeenCalled();
     });
 
     it('should resolve once a failed first connect succeeds on retry', async () => {
@@ -81,7 +80,7 @@ describe('MessageQueue', () => {
 
       expect(amqp.connect).toHaveBeenCalledTimes(2);
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('amqp-connected', true);
+      expect(getLog().save).toHaveBeenCalledWith('amqp-connected', true);
     });
   });
 
@@ -96,7 +95,7 @@ describe('MessageQueue', () => {
       expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledWith('writingQueueTask', Buffer.from(JSON.stringify(preparedMessage)), {
         persistent: true,
       });
-      expect(global.log.save).toHaveBeenCalledWith('amqp-message-sent', {
+      expect(getLog().save).toHaveBeenCalledWith('amqp-message-sent', {
         type: 'test',
         queue: 'writingQueueTask',
         length: JSON.stringify(message).length,
@@ -184,8 +183,8 @@ describe('MessageQueue', () => {
       await setTimeout(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-handled', { type: 'test' });
-      const logged = JSON.stringify((global.log.save as jest.Mock).mock.calls);
+      expect(getLog().save).toHaveBeenCalledWith('message-from-queue-handled', { type: 'test' });
+      const logged = JSON.stringify((getLog().save as jest.Mock).mock.calls);
       expect(logged).not.toContain(JSON.stringify(message));
       expect(logged).not.toContain('messageString');
       expect(logged).not.toContain('"foo"');
@@ -204,14 +203,14 @@ describe('MessageQueue', () => {
       await setTimeout(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.nack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-not-handled', { type: 'test' });
+      expect(getLog().save).toHaveBeenCalledWith('message-from-queue-not-handled', { type: 'test' });
     });
 
     it('should ack a duplicate message from the redis cache without handling it and keep the key', async () => {
       const message = { type: 'test', amqpMessageId: 'abc' };
       const handler = jest.fn().mockReturnValue(true);
-      global.config.redis.amqpMessageCache.isEnabled = true;
-      global.redisClient = { get: jest.fn().mockResolvedValue('abc'), delete: jest.fn(), set: jest.fn() } as any;
+      getConfig().redis.amqpMessageCache.isEnabled = true;
+      setAppContext({ redisClient: { get: jest.fn().mockResolvedValue('abc'), delete: jest.fn(), set: jest.fn() } as any });
 
       await messageQueue.init();
       messageQueue.subscribeToConsuming(handler);
@@ -222,7 +221,7 @@ describe('MessageQueue', () => {
       await setTimeout(500);
       expect(handler).not.toHaveBeenCalled();
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
-      expect(global.redisClient.delete).not.toHaveBeenCalled();
+      expect(getRedisClient().delete).not.toHaveBeenCalled();
     });
   });
 
@@ -242,7 +241,7 @@ describe('MessageQueue', () => {
 
       expect(handler).not.toHaveBeenCalled();
       expect(messageQueue.channels.reading.ack).toHaveBeenCalledTimes(1);
-      expect(global.log.save).toHaveBeenCalledWith('message-parse-error', expect.anything(), 'error');
+      expect(getLog().save).toHaveBeenCalledWith('message-parse-error', expect.anything(), 'error');
     });
 
     it('should not log the full payload on parse failure', async () => {
@@ -250,7 +249,7 @@ describe('MessageQueue', () => {
 
       await consume(jest.fn(), payload);
 
-      const call = (global.log.save as jest.Mock).mock.calls.find(([name]) => name === 'message-parse-error');
+      const call = (getLog().save as jest.Mock).mock.calls.find(([name]) => name === 'message-parse-error');
       expect(JSON.stringify(call)).not.toContain(payload);
       expect(call[1]).toEqual({ error: expect.any(String), length: 500 });
     });
@@ -377,7 +376,7 @@ describe('MessageQueue', () => {
 
       expect(messageQueue.isClosing).toBe(false);
       expect(messageQueue.connection.close).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('connection-closed-by-app');
+      expect(getLog().save).toHaveBeenCalledWith('connection-closed-by-app');
     });
 
     it('should handle close error gracefully', async () => {
@@ -390,7 +389,7 @@ describe('MessageQueue', () => {
       await messageQueue.close();
 
       expect(messageQueue.isClosing).toBe(false);
-      expect(global.log.save).toHaveBeenCalledWith('can-not-close-connection', 'Close failed');
+      expect(getLog().save).toHaveBeenCalledWith('can-not-close-connection', 'Close failed');
     });
   });
 

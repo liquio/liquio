@@ -11,6 +11,7 @@ import { GatewayModel } from '../models/gateway';
 import { EventModel } from '../models/event';
 import { TaskEntity } from '../entities/task';
 import { EventEntity } from '../entities/event';
+import { getLog, getMessageQueue } from '../lib/context';
 
 // Constants.
 const SYSTEM_USER = 'system';
@@ -108,11 +109,11 @@ export class WorkflowBusiness {
   }
 
   async init() {
-    global.log.save('bpmn-schemas-initialization-started');
+    getLog().save('bpmn-schemas-initialization-started');
     const workflowTemplates = await this.workflowTemplateModel.getAll();
 
     this.bpmnSchemes = (await Promise.all(workflowTemplates.map((workflowTemplate) => this.parseBpmnSchema(workflowTemplate)))).filter((v) => !!v);
-    global.log.save('bpmn-schemas-initialization-ends');
+    getLog().save('bpmn-schemas-initialization-ends');
   }
 
   /**
@@ -135,7 +136,7 @@ export class WorkflowBusiness {
 
       return { id: workflowTemplate.id, name: workflowTemplate.name, schema: bpmnSchema['bpmn:definitions']['bpmn:process'][0] };
     } catch {
-      global.log.save('invalid-bpmn-schema', { workflowTemplate });
+      getLog().save('invalid-bpmn-schema', { workflowTemplate });
     }
   }
 
@@ -165,7 +166,7 @@ export class WorkflowBusiness {
     const schema = await this.parseBpmnSchema(workflowTemplate);
     if (schema) {
       this.bpmnSchemes = [...this.bpmnSchemes.filter((item) => item.id !== id), schema];
-      global.log.save('bpmn-schema-loaded-on-demand', { workflowTemplateId: id });
+      getLog().save('bpmn-schema-loaded-on-demand', { workflowTemplateId: id });
     }
 
     return schema;
@@ -204,10 +205,10 @@ export class WorkflowBusiness {
         case Object.prototype.hasOwnProperty.call(messageObject, 'forwardToTask'): {
           const forwardedMessage = pickForwardToTaskMessage(messageObject);
           if (!forwardedMessage) {
-            global.log.save('forward-to-task-message-rejected', pickMessageMeta(messageObject));
+            getLog().save('forward-to-task-message-rejected', pickMessageMeta(messageObject));
             return true;
           }
-          await global.messageQueue.produce('writingQueueTask', forwardedMessage);
+          await getMessageQueue().produce('writingQueueTask', forwardedMessage);
           return true;
         }
         case Object.prototype.hasOwnProperty.call(messageObject, 'taskId'): {
@@ -299,7 +300,7 @@ export class WorkflowBusiness {
 
       // Premature message: the step is not finished yet. Ack and drop it, it must not advance the flow.
       if (notFinishedReason) {
-        global.log.save('workflow-message-dropped', { reason: notFinishedReason, ...pickMessageMeta(messageObject) });
+        getLog().save('workflow-message-dropped', { reason: notFinishedReason, ...pickMessageMeta(messageObject) });
         return true;
       }
 
@@ -311,7 +312,7 @@ export class WorkflowBusiness {
 
       // Finished workflow: nothing to advance and nothing to record.
       if (workflow.isFinal !== false) {
-        global.log.save('workflow-message-dropped', { reason: 'workflow-final', ...pickMessageMeta(messageObject) });
+        getLog().save('workflow-message-dropped', { reason: 'workflow-final', ...pickMessageMeta(messageObject) });
         return true;
       }
 
@@ -376,7 +377,7 @@ export class WorkflowBusiness {
 
             // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
             // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
-            await global.messageQueue.produce('writingQueueTask', preparedMessageForQueue);
+            await getMessageQueue().produce('writingQueueTask', preparedMessageForQueue);
           } else if (currentSequence['$']['targetRef'].search(/^gateway-[0-9]+$/i) !== -1) {
             const nextGatewayId = parseInt(currentSequence['$']['targetRef'].replace(/gateway-/i, ''));
             if (!nextGatewayId) {
@@ -431,7 +432,7 @@ export class WorkflowBusiness {
 
             // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
             // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
-            await global.messageQueue.produce('writingQueueGateway', preparedMessageForQueue);
+            await getMessageQueue().produce('writingQueueGateway', preparedMessageForQueue);
           } else if (currentSequence['$']['targetRef'].search(/^event-[0-9]+$/i) !== -1) {
             const nextEventId = parseInt(currentSequence['$']['targetRef'].replace(/event-/i, ''));
             if (!nextEventId) {
@@ -458,12 +459,12 @@ export class WorkflowBusiness {
 
             // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
             // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
-            await global.messageQueue.produce('writingQueueEvent', preparedMessageForQueue);
+            await getMessageQueue().produce('writingQueueEvent', preparedMessageForQueue);
           }
         }
       }
     } catch (error) {
-      global.log.save('workflow-processing-by-message-from-queue-error', {
+      getLog().save('workflow-processing-by-message-from-queue-error', {
         ...pickMessageMeta(messageObject),
         error: { message: error && error.message, stack: error.stack },
       });
@@ -476,14 +477,14 @@ export class WorkflowBusiness {
           await this.workflowModel.setError(workflowId);
         }
       } catch (error) {
-        global.log.save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
+        getLog().save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
       }
 
       try {
         const workflowTemplate = await this.workflowTemplateModel.findById(workflowTemplateId);
         await this.systemNotifier.sendEmails(workflowId, workflowTemplate && workflowTemplate.name, error?.message);
       } catch (error) {
-        global.log.save('system-notifier-error', error.message);
+        getLog().save('system-notifier-error', error.message);
       }
     }
 

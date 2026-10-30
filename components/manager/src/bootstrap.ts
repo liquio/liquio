@@ -5,6 +5,7 @@ import { MessageQueue } from './lib/message_queue';
 import { RouterService } from './services/router';
 import { WorkflowBusiness } from './businesses/workflow';
 import { RedisClient } from './lib/redis_client';
+import { setAppContext, getConfig } from './lib/context';
 
 /**
  * Initializes globals and services of the manager.
@@ -12,10 +13,10 @@ import { RedisClient } from './lib/redis_client';
  * @returns Initialized services.
  */
 export async function bootstrap(config: Record<string, any>) {
-  global.config = config;
+  setAppContext({ config });
 
   // Init redis.
-  global.redisClient = global.config?.redis?.isEnabled ? new RedisClient(global.config.redis) : null;
+  setAppContext({ redisClient: getConfig()?.redis?.isEnabled ? new RedisClient(getConfig().redis) : null });
 
   // Init log.
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
@@ -23,10 +24,10 @@ export async function bootstrap(config: Record<string, any>) {
     disableDefaultRedaction: config.log?.disableDefaultRedaction === true,
   } as any);
   const log = new Log([consoleLogProvider], ['console']);
-  global.log = log;
+  setAppContext({ log });
 
   const db = await Db.getInstance(config.db);
-  global.db = db;
+  setAppContext({ db });
 
   const workflowBusiness = new WorkflowBusiness();
   await workflowBusiness.init();
@@ -39,7 +40,7 @@ export async function bootstrap(config: Record<string, any>) {
   });
 
   await messageQueue.init();
-  global.messageQueue = messageQueue;
+  setAppContext({ messageQueue });
 
   // Init router.
   const routerService = new RouterService(config);

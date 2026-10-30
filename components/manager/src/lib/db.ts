@@ -1,5 +1,7 @@
 import { Sequelize } from 'sequelize';
 
+import { getLog } from './context';
+
 export class Db {
   static singleton: Sequelize;
 
@@ -17,11 +19,11 @@ export class Db {
         const sequelize = new Sequelize(config.database, config.username, config.password, config);
 
         await sequelize.authenticate();
-        global.log.save('db-connection', 'Connection to DB has been established successfully.');
+        getLog().save('db-connection', 'Connection to DB has been established successfully.');
 
         Db.singleton = sequelize;
       } catch (error) {
-        global.log.save('Unable to connect to the DB', error);
+        getLog().save('Unable to connect to the DB', error);
         throw error;
       }
     }

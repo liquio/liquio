@@ -1,5 +1,7 @@
 import { getTraceId } from '@liquio/back-core';
 
+import { getLog } from '../lib/context';
+
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
 const HTTP_STATUS_CODE_SERVER_ERROR = 500;
@@ -31,7 +33,7 @@ export class Controller {
     const responseObject = { data };
 
     // Log.
-    global.log.save('http-response', responseObject);
+    getLog().save('http-response', responseObject);
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
@@ -51,7 +53,7 @@ export class Controller {
     const responseObject = { error: { message }, traceId: getTraceId() };
 
     // Log.
-    global.log.save('http-response', responseObject);
+    getLog().save('http-response', responseObject);
 
     // Response.
     res.status(httpStatusCode).send(responseObject);

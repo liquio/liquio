@@ -1,4 +1,5 @@
 import { Controller } from './controller';
+import { getDb } from '../lib/context';
 
 // Constants.
 const MESSAGE_PONG = 'pong';
@@ -61,7 +62,7 @@ export class PingController extends Controller {
    * Check database connect
    */
   async checkDataBase() {
-    const result = await global.db.query('select true');
+    const result = await getDb().query('select true');
     return result;
   }
 }
