@@ -6,6 +6,7 @@ jest.mock('../models/authorize', () => ({
 
 import { AuthorizeModel } from '../models/authorize';
 import { checkAuth, checkConfigAuth, clearDigestNoncesForTests } from './auth';
+import { setAppContext, getConf } from '../lib/context';
 
 const makeRes = () => ({ send: jest.fn() });
 const makeNext = () => jest.fn();
@@ -14,12 +15,12 @@ const getFindOneMock = () => (AuthorizeModel as any).mock.results[0].value.Autho
 
 describe('checkAuth', () => {
   beforeEach(() => {
-    (global as any).conf = { authorization: {} };
+    setAppContext({ conf: { authorization: {} } });
     getFindOneMock().mockReset();
   });
 
   it('allows request when base64 token matches plain credentials from config list', async () => {
-    (global as any).conf.authorization.list = [{ user: 'notification', password: 'secret-pass' }];
+    getConf().authorization.list = [{ user: 'notification', password: 'secret-pass' }];
     const token = Buffer.from('notification:secret-pass', 'utf8').toString('base64');
     const req = { headers: { authorization: `Basic ${token}` } };
     const res = makeRes();
@@ -86,7 +87,7 @@ describe('checkAdminCookie', () => {
   const { createAdminSession, destroyAdminSession, ADMIN_COOKIE_NAME } = require('./adminSession');
 
   beforeEach(() => {
-    (global as any).conf = { adminConfig: { login: 'admin-login', password: 'admin-pass' } };
+    setAppContext({ conf: { adminConfig: { login: 'admin-login', password: 'admin-pass' } } });
   });
 
   it('rejects a request without the admin cookie', () => {
@@ -157,7 +158,7 @@ describe('checkConfigAuth (Digest, NT-05)', () => {
   };
 
   beforeEach(() => {
-    (global as any).conf = { adminConfig: { login: 'a', password: 'admin-pass' } };
+    setAppContext({ conf: { adminConfig: { login: 'a', password: 'admin-pass' } } });
     getFindOneMock()
       .mockReset()
       .mockImplementation(async ({ where }: any) => (where.login === 'client' ? { login: 'client', password } : null));

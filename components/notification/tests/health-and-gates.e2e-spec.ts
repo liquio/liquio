@@ -183,20 +183,20 @@ describe('Health checks, admin queue and internal gates', () => {
   describe('AbstractGate', () => {
     let gate: any;
     let savedSmsServer: any;
-    let savedCrypto: any;
+    let savedCrypto: PropertyDescriptor | undefined;
 
     beforeEach(() => {
       const { AbstractGate } = require('../src/models/smsGate/abstractSmsGate');
       gate = new AbstractGate();
       gate.options = {};
       savedSmsServer = config.smsServer;
-      savedCrypto = (global as any).crypto;
       config.smsServer = { url: SMS_GATE, access_token: 'gate-token' };
-      (global as any).crypto = require('node:crypto');
+      savedCrypto = Object.getOwnPropertyDescriptor(global, 'crypto');
+      Object.defineProperty(global, 'crypto', { value: require('node:crypto'), configurable: true, writable: true });
     });
     afterEach(() => {
       config.smsServer = savedSmsServer;
-      (global as any).crypto = savedCrypto;
+      Object.defineProperty(global, 'crypto', savedCrypto!);
     });
 
     it('sends one SMS and rejects an empty phone', async () => {

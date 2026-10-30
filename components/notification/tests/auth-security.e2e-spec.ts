@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 
+import { getConf } from '../src/lib/context';
 import { TestApp, TEST_AUTH_HEADER } from './test-app';
 
 const md5 = (data: string) => crypto.createHash('md5').update(data).digest('hex');
@@ -58,26 +59,26 @@ describe('Auth and security middleware', () => {
       const hmacLogin = crypto.createHmac('sha512', login).update(password).digest('hex').toUpperCase();
       await Authorize.create({ login: hmacLogin, password });
 
-      const saved = global.conf.authorization;
-      global.conf.authorization = {};
+      const saved = getConf().authorization;
+      getConf().authorization = {};
       try {
         await get(basic(`${login}:${password}`)).expect(200);
         await get(basic(`${login}:wrong`)).expect(401);
       } finally {
-        global.conf.authorization = saved;
+        getConf().authorization = saved;
       }
     });
   });
 
   describe('Test auth (checkTestAuth)', () => {
     it('rejects when the token is not configured', async () => {
-      const saved = global.conf.testService;
-      global.conf.testService = undefined;
+      const saved = getConf().testService;
+      getConf().testService = undefined;
       try {
         const res = await app.request().post('/message/test/sms').set('Authorization', 'anything').expect(401);
         expect(res.body.message).toBe('Test auth token not defined in config.');
       } finally {
-        global.conf.testService = saved;
+        getConf().testService = saved;
       }
     });
   });

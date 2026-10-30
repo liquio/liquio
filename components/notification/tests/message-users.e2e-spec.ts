@@ -1,4 +1,5 @@
 import { TestApp, TEST_AUTH_HEADER } from './test-app';
+import { getConf } from '../src/lib/context';
 
 const ID_API = 'http://id-api:8080';
 const SMS_RESPONSE = '"aaaaaaaa-1111-aaaa-1111-aaaaaaaaaaaa"';
@@ -34,7 +35,7 @@ describe('Message Controller: user messages', () => {
 
   afterEach(async () => {
     jest.restoreAllMocks();
-    delete (global as any).conf.smsBlacklist;
+    delete getConf().smsBlacklist;
     await TestApp.afterEach();
   });
 
@@ -111,7 +112,7 @@ describe('Message Controller: user messages', () => {
       const sent = await post({ list_user_id: ['u-sms'], short_message: 's', short_message_translit: 's' }).expect(200);
       expect(sent.body.sendBySms).toBe(SMS_RESPONSE);
 
-      (global as any).conf.smsBlacklist = ['+38050'];
+      getConf().smsBlacklist = ['+38050'];
       app
         .nock(ID_API)
         .post('/user/info/id')

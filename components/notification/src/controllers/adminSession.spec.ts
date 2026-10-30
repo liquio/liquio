@@ -9,13 +9,15 @@ import {
   verifyAdminCredentials,
   verifyAdminSession,
 } from './adminSession';
+import { setAppContext, resetAppContext } from '../lib/context';
 
 describe('adminSession', () => {
   beforeEach(() => {
-    (global as any).conf = { adminConfig: { login: 'l', password: 'p' } };
+    setAppContext({ conf: { adminConfig: { login: 'l', password: 'p' } } });
     clearAdminSessionsForTests();
   });
   afterEach(() => jest.useRealTimers());
+  afterAll(() => resetAppContext());
 
   it('verifies credentials', () => {
     expect(verifyAdminCredentials('l', 'p')).toBe(true);

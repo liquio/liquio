@@ -9,6 +9,7 @@ jest.mock('axios', () => jest.fn());
 import axios from 'axios';
 
 import { AbstractGate } from './abstractSmsGate';
+import { setAppContext } from '../../lib/context';
 
 describe('AbstractGate queue removal (NT-06)', () => {
   let gate: AbstractGate;
@@ -40,7 +41,7 @@ describe('AbstractGate queue removal (NT-06)', () => {
 describe('AbstractGate logging (NT-10)', () => {
   it('disabled gate logs masked phones and no text', async () => {
     const save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ log: { save } });
     const gate = new AbstractGate();
     jest.spyOn(gate, 'isEnabled', 'get').mockReturnValue(false);
     await gate.sendSms(['380501234567'], 'SECRET-OTP');
@@ -67,7 +68,7 @@ describe('AbstractGate error logging (NT-10b)', () => {
     const gate = new AbstractGate();
     gate.options = {};
     jest.spyOn(gate, 'isEnabled', 'get').mockReturnValue(true);
-    (global as any).crypto = require('node:crypto');
+    Object.defineProperty(global, 'crypto', { value: require('node:crypto'), configurable: true, writable: true });
     (axios as unknown as jest.Mock).mockRejectedValue(axiosError);
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 

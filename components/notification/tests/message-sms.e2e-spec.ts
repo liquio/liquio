@@ -1,4 +1,5 @@
 import { TestApp, TEST_AUTH_HEADER, TEST_SERVICE } from './test-app';
+import { getConf } from '../src/lib/context';
 
 const ID_API = 'http://id-api:8080';
 const ECONSULTING_URL = 'http://econsulting.example.test';
@@ -13,7 +14,7 @@ describe('Message Controller: SMS and complex sending', () => {
   beforeAll(async () => {
     await TestApp.beforeAll();
     app = await TestApp.setup();
-    savedConf = { ...(global as any).conf };
+    savedConf = { ...getConf() };
   });
 
   afterAll(async () => {
@@ -26,14 +27,14 @@ describe('Message Controller: SMS and complex sending', () => {
   });
 
   afterEach(async () => {
-    for (const key of Object.keys((global as any).conf)) {
-      if (!(key in savedConf)) delete (global as any).conf[key];
+    for (const key of Object.keys(getConf())) {
+      if (!(key in savedConf)) delete getConf()[key];
     }
-    Object.assign((global as any).conf, savedConf);
+    Object.assign(getConf(), savedConf);
     await TestApp.afterEach();
   });
 
-  const setConf = (values: Record<string, any>) => Object.assign((global as any).conf, values);
+  const setConf = (values: Record<string, any>) => Object.assign(getConf(), values);
   const mockUsers = (users: any[]) => app.nock(ID_API).post('/user/info/id').reply(200, users);
   const smsUser = (id: string, extra: any = {}) => ({
     userId: id,
