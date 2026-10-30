@@ -1,5 +1,7 @@
 import { RedisClient as BackCoreRedisClient, RedisClientConfig } from '@liquio/back-core';
 
+import { getLog } from './context';
+
 export type RedisConfig = Omit<RedisClientConfig, 'getLog' | 'prefix'>;
 
 /**
@@ -19,7 +21,7 @@ export class RedisClient extends BackCoreRedisClient {
       return RedisClient.singleton;
     }
 
-    super({ ...config, prefix: RedisClient.prefix, getLog: () => global.log });
+    super({ ...config, prefix: RedisClient.prefix, getLog: () => getLog() });
     RedisClient.singleton = this;
   }
 

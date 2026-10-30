@@ -7,6 +7,7 @@ import { Model } from './model';
 import { TaskEntity } from '../entities/task';
 import { RedisClient } from '../lib/redis_client';
 import { SequelizeDbError } from '../lib/errors';
+import { getConfig, getModels } from '../lib/context';
 
 // Constants.
 const GET_ALL_BY_USER_ID_CACHE_TTL = 600; // 10 minutes.
@@ -193,7 +194,7 @@ export class TaskModel extends Model {
    */
   async getAllByWorkflowId(workflowId) {
     let tasks = await this.model.findAll({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, is_current: true },
     });
 
@@ -240,16 +241,16 @@ export class TaskModel extends Model {
    * @returns {Promise<TaskEntity>}
    */
   async findById(id, { withWorkflow = false, withWorkflowTemplate = false } = {}) {
-    const include: any[] = [{ model: global.models.document.model }, { model: global.models.taskTemplate.model }];
+    const include: any[] = [{ model: getModels().document.model }, { model: getModels().taskTemplate.model }];
 
     if (withWorkflow) {
       include.push({
-        model: global.models.workflow.model,
+        model: getModels().workflow.model,
         attributes: Array.isArray(withWorkflow) ? withWorkflow : undefined,
         include: withWorkflowTemplate
           ? [
               {
-                model: global.models.workflowTemplate.model,
+                model: getModels().workflowTemplate.model,
                 attributes: Array.isArray(withWorkflowTemplate) ? withWorkflowTemplate : undefined,
               },
             ]
@@ -266,13 +267,13 @@ export class TaskModel extends Model {
     const taskEntity = this.prepareEntity(task);
 
     if (task.document) {
-      taskEntity.document = await global.models.document.prepareEntity(task.document);
+      taskEntity.document = await getModels().document.prepareEntity(task.document);
     }
 
     if (task.workflow) {
-      taskEntity.workflow = global.models.workflow.prepareEntity(task.workflow);
+      taskEntity.workflow = getModels().workflow.prepareEntity(task.workflow);
       if (task.workflow.workflowTemplate) {
-        taskEntity.workflow.workflowTemplate = global.models.workflowTemplate.prepareEntity(task.workflow.workflowTemplate);
+        taskEntity.workflow.workflowTemplate = getModels().workflowTemplate.prepareEntity(task.workflow.workflowTemplate);
       }
     }
 
@@ -298,11 +299,11 @@ export class TaskModel extends Model {
   async findByDocumentIdWithWorkflow(documentId) {
     const task = await this.model.findOne({
       where: { document_id: documentId },
-      include: [{ model: global.models.workflow.model }],
+      include: [{ model: getModels().workflow.model }],
     });
 
     if (task.workflow) {
-      task.workflow = global.models.workflow.prepareEntity(task.workflow);
+      task.workflow = getModels().workflow.prepareEntity(task.workflow);
     }
 
     return this.prepareEntity(task);
@@ -310,7 +311,7 @@ export class TaskModel extends Model {
 
   /**
    * Check draft expiration by document ID.
-   * @note Similar to global.businesses.task.checkDraftExpired, but fetches task.
+   * @note Similar to getBusinesses().task.checkDraftExpired, but fetches task.
    * @param {string} documentId Document ID.
    * @returns {Promise<boolean>} Draft expiration flag promise.
    */
@@ -330,7 +331,7 @@ export class TaskModel extends Model {
   async getDocumentsByWorkflowId(workflowId, isCurrentOnly = true, isAppendPerformerUsers = false) {
     // Define common params.
     const options: any = {
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId },
     };
 
@@ -382,7 +383,7 @@ export class TaskModel extends Model {
     const task = await this.model.findOne({
       include: [
         {
-          model: global.models.document.model,
+          model: getModels().document.model,
           where: {
             data: {
               result: {
@@ -396,7 +397,7 @@ export class TaskModel extends Model {
         workflow_id: workflowId,
         task_template_id: taskTemplateId,
       },
-      order: [[global.models.document.model, 'created_at', 'desc']],
+      order: [[getModels().document.model, 'created_at', 'desc']],
     });
 
     // Check.
@@ -418,7 +419,7 @@ export class TaskModel extends Model {
   async findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId, finished) {
     // Find task.
     const options: any = {
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: {
         workflow_id: workflowId,
         task_template_id: taskTemplateId,
@@ -457,7 +458,7 @@ export class TaskModel extends Model {
 
     // Find task.
     const task = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateIds, is_current: true },
       order: [['created_at', 'DESC']],
     });
@@ -482,7 +483,7 @@ export class TaskModel extends Model {
   async findDocumentIdByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId) {
     // Find all task.
     const task = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
       attributes: ['id', 'document_id'],
     });
@@ -875,7 +876,7 @@ export class TaskModel extends Model {
    */
   async findCurrentTaskByWorkflowIdAndTaskTemplateID(workflowId, taskTemplateId) {
     const task = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
       attributes: ['id'],
     });
@@ -944,7 +945,7 @@ export class TaskModel extends Model {
 
     // Count unread tasks.
     const unreadTasks = await this.model.count({
-      include: [{ model: global.models.workflow.model, required: true, attributes: [] }],
+      include: [{ model: getModels().workflow.model, required: true, attributes: [] }],
       where: {
         ...sequelizeOptions.filters,
         // meta: { isRead: false },
@@ -990,7 +991,7 @@ export class TaskModel extends Model {
       limit: 1,
       where: { workflow_id: workflowId, task_template_id: taskTemplateId },
       order: [['created_at', 'DESC']],
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
     });
     const task = result && result[0];
 
@@ -1049,21 +1050,21 @@ export class TaskModel extends Model {
 
     sequelizeOptions.include = [
       {
-        model: global.models.document.model,
+        model: getModels().document.model,
         required: true,
         attributes: ['number'],
       },
       {
-        model: global.models.workflow.model,
+        model: getModels().workflow.model,
         required: true,
         attributes: ['number', 'user_data', 'data'],
-        include: _.has(filters, 'workflow_name') ? [{ model: global.models.workflowTemplate.model, attributes: ['name', 'data'] }] : [],
+        include: _.has(filters, 'workflow_name') ? [{ model: getModels().workflowTemplate.model, attributes: ['name', 'data'] }] : [],
       },
       (_.has(filters, 'search') || _.has(filters, 'name')) && {
-        model: global.models.taskTemplate.model,
+        model: getModels().taskTemplate.model,
         attributes: ['name'],
         required: true,
-        include: [{ model: global.models.documentTemplate.model, attributes: ['name'] }],
+        include: [{ model: getModels().documentTemplate.model, attributes: ['name'] }],
       },
     ];
 
@@ -1118,7 +1119,7 @@ export class TaskModel extends Model {
         [Sequelize.Op.or]: [
           { performer_users: { [Sequelize.Op.overlap]: [userId] } },
           { signer_users: { [Sequelize.Op.overlap]: [userId] } },
-          global.config.modules.main && global.config.modules.main.observerUnits ? { observer_units: { [Sequelize.Op.overlap]: userUnitIds } } : null,
+          getConfig().modules.main && getConfig().modules.main.observerUnits ? { observer_units: { [Sequelize.Op.overlap]: userUnitIds } } : null,
           {
             [Sequelize.Op.or]: [
               { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },
@@ -1148,9 +1149,7 @@ export class TaskModel extends Model {
           [Sequelize.Op.or]: [
             { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },
             { performer_units: { [Sequelize.Op.overlap]: userHeadUnitIds }, only_for_heads: true },
-            global.config.modules.main && global.config.modules.main.observerUnits
-              ? { observer_units: { [Sequelize.Op.overlap]: userUnitIds } }
-              : null,
+            getConfig().modules.main && getConfig().modules.main.observerUnits ? { observer_units: { [Sequelize.Op.overlap]: userUnitIds } } : null,
           ].filter((v) => v !== null),
         });
         sequelizeOptions.filters[Sequelize.Op.and].push({
@@ -1350,7 +1349,7 @@ export class TaskModel extends Model {
     query.where.performer_units = { [Sequelize.Op.contains]: [unitId] };
     query.include = [
       {
-        model: global.models.taskTemplate.model,
+        model: getModels().taskTemplate.model,
         attributes: ['name', 'id'],
       },
     ];

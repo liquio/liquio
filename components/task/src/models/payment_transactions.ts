@@ -7,7 +7,7 @@ import { PaymentTransactionEntity } from '../services/payment/entities/payment_t
  * Payment transactions model.
  *
  * Backs `TaskPaymentTransactionService` (see `src/app.ts`, wired into `PluginLoader`'s
- * `contextExtensions`) - a payment provider never touches this model or `global.db` directly, it
+ * `contextExtensions`) - a payment provider never touches this model or the app-context db directly, it
  * only ever calls the service methods exposed on its `PluginContext`.
  */
 export class PaymentTransactionsModel extends Model {

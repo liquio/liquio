@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { AxiosError } from 'axios';
 
 import typeOf from './type_of';
+import { getConfig, getModels } from './context';
 
 const MIME_TYPES = {
   PDF: [0x25, 0x50, 0x44, 0x46],
@@ -18,8 +19,8 @@ export class Helpers {
    * @return {Promise<{head: Array<number>, all: Array<number>, member: Array<number>}>}
    */
   static async getUserUnits(userId) {
-    const units = await global.models.unit.getAll();
-    const defaultUnits = global.config.auth.defaultUnits || [];
+    const units = await getModels().unit.getAll();
+    const defaultUnits = getConfig().auth.defaultUnits || [];
     const head = units.filter((v) => v.heads.includes(userId)).map((v) => v.id);
     const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id)).map((v) => v.id);
     return { head, member, all: [...new Set([...head, ...member])] };
@@ -30,8 +31,8 @@ export class Helpers {
    * @return {Promise<{userId: string, userUnits: {head: Array<number>, all: Array<number>, member: Array<number>}}>}
    */
   static async appendUnitIdsToUser(userId) {
-    const units = await global.models.unit.getAll();
-    const defaultUnits = global.config.auth.defaultUnits || [];
+    const units = await getModels().unit.getAll();
+    const defaultUnits = getConfig().auth.defaultUnits || [];
     const head = units.filter((v) => v.heads.includes(userId)).map((v) => v.id);
     const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id)).map((v) => v.id);
     return { userId, userUnits: { head, member, all: [...new Set([...head, ...member])] } };
@@ -42,8 +43,8 @@ export class Helpers {
    * @return {Promise<Array<{userId: string, userUnits: {head: Array<number>, all: Array<number>, member: Array<number>}}>>}
    */
   static async appendUnitIdsToUsers(userIds) {
-    const units = await global.models.unit.getAll();
-    const defaultUnits = global.config.auth.defaultUnits || [];
+    const units = await getModels().unit.getAll();
+    const defaultUnits = getConfig().auth.defaultUnits || [];
     return userIds.map((userId) => {
       const head = units.filter((v) => v.heads.includes(userId)).map((v) => v.id);
       const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id)).map((v) => v.id);

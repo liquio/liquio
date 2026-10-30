@@ -2,6 +2,7 @@ import { PluginRegistry } from '@liquio/plugin-sdk';
 
 import { BadRequestError } from '../../lib/errors';
 import type { CalculatePaymentData, PaymentProviderOptions, PaymentProviderResult, PaymentReceiptFile, UnHoldPaymentData } from './types';
+import { getLog } from '../../lib/context';
 
 export type { PaymentProviderOptions, PaymentProviderResult } from './types';
 
@@ -56,12 +57,12 @@ export class PaymentService {
     try {
       result = await this.getProvider(providerName).calculatePayment(data);
     } catch (error) {
-      global.log.save('calculate-payment-data-error', { error: error && error.message }, 'error');
+      getLog().save('calculate-payment-data-error', { error: error && error.message }, 'error');
       const wrapped: any = new Error(error.message || error);
       wrapped.cause = error;
       throw wrapped;
     }
-    global.log.save('calculate-payment-data-provider-result', { result });
+    getLog().save('calculate-payment-data-provider-result', { result });
 
     return result;
   }
@@ -98,12 +99,12 @@ export class PaymentService {
         checkPrevTransaction,
       );
     } catch (error) {
-      global.log.save('handle-payment-status-on-provider-error', { error }, 'error');
+      getLog().save('handle-payment-status-on-provider-error', { error }, 'error');
       const wrapped: any = new Error(error.message || error);
       wrapped.cause = error;
       throw wrapped;
     }
-    global.log.save('handle-payment-status-on-provider-result', { result });
+    getLog().save('handle-payment-status-on-provider-result', { result });
 
     return result;
   }
@@ -122,10 +123,10 @@ export class PaymentService {
     try {
       result = await this.getProvider(providerName).confirmBySmsCode(providerOptions, calculatedData, smsCode);
     } catch (error) {
-      global.log.save('confirm-payment-by-sms-code-error', { error }, 'error');
+      getLog().save('confirm-payment-by-sms-code-error', { error }, 'error');
       throw error;
     }
-    global.log.save('confirm-payment-by-sms-code-result', { result });
+    getLog().save('confirm-payment-by-sms-code-result', { result });
 
     return result;
   }
@@ -144,11 +145,11 @@ export class PaymentService {
 
       const result = await this.getProvider(providerName).cancelOrder(providerOptions, orderId, transactionId, sessionId);
 
-      global.log.save('cancel-order-payment-service-result', { result });
+      getLog().save('cancel-order-payment-service-result', { result });
 
       return result;
     } catch (error) {
-      global.log.save('cancel-order-payment-service-error', { error: error && error.message }, 'error');
+      getLog().save('cancel-order-payment-service-error', { error: error && error.message }, 'error');
       throw error;
     }
   }
@@ -166,10 +167,10 @@ export class PaymentService {
     try {
       result = await this.getProvider(providerName).unHoldOrder(data);
     } catch (error) {
-      global.log.save('unhold-payment-error', { error }, 'error');
+      getLog().save('unhold-payment-error', { error }, 'error');
       throw error;
     }
-    global.log.save('unhold-payment-result', { result });
+    getLog().save('unhold-payment-result', { result });
 
     return result;
   }
@@ -188,10 +189,10 @@ export class PaymentService {
     try {
       result = await this.getProvider(providerName).checkStatus(providerOptions, sessionId, invoiceId);
     } catch (error) {
-      global.log.save('cancel-payment-error', { error }, 'error');
+      getLog().save('cancel-payment-error', { error }, 'error');
       throw error;
     }
-    global.log.save('cancel-payment-result', { result });
+    getLog().save('cancel-payment-result', { result });
 
     return result;
   }
@@ -209,10 +210,10 @@ export class PaymentService {
     try {
       result = await this.getProvider(providerName).getPaymentReceiptInfo({ paymentSystemParams: providerOptions, orderId });
     } catch (error) {
-      global.log.save('get-payment-receipt-info-error', { error: error && error.message ? error.message : error }, 'error');
+      getLog().save('get-payment-receipt-info-error', { error: error && error.message ? error.message : error }, 'error');
       throw error;
     }
-    global.log.save('get-payment-receipt-info-result', { result });
+    getLog().save('get-payment-receipt-info-result', { result });
 
     return result;
   }
@@ -242,11 +243,11 @@ export class PaymentService {
         paymentControlSchema,
       });
     } catch (error) {
-      global.log.save('get-payment-receipt-error', { error: error && error.message ? error.message : error }, 'error');
+      getLog().save('get-payment-receipt-error', { error: error && error.message ? error.message : error }, 'error');
       throw error;
     }
 
-    global.log.save('get-payment-receipt-result', {
+    getLog().save('get-payment-receipt-result', {
       result: result.map((v) => ({ ...v, fileBuffer: '****', fileBufferLength: v.fileBuffer?.length })),
     });
 
@@ -266,10 +267,10 @@ export class PaymentService {
     try {
       result = await this.getProvider(providerName).getWithdrawalFundsStatus({ paymentSystemParams: providerOptions, orderId });
     } catch (error) {
-      global.log.save('get-withdrawal-status-provider-error', { error }, 'error');
+      getLog().save('get-withdrawal-status-provider-error', { error }, 'error');
       throw error;
     }
-    global.log.save('get-withdrawal-status-provider-result', { result });
+    getLog().save('get-withdrawal-status-provider-result', { result });
 
     return result;
   }
@@ -286,10 +287,10 @@ export class PaymentService {
     try {
       result = await this.getProvider(providerName).sendCheckRequest(providerOptions);
     } catch (error) {
-      global.log.save('send-check-request-error', { error }, 'error');
+      getLog().save('send-check-request-error', { error }, 'error');
       throw error;
     }
-    global.log.save('send-check-request-result', { result });
+    getLog().save('send-check-request-result', { result });
 
     return result;
   }

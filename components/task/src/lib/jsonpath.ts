@@ -2,6 +2,8 @@ import * as crypto from 'node:crypto';
 
 import { JSONPath as JSONPathOrigin } from 'jsonpath-plus';
 
+import { getLog } from './context';
+
 function searchByKeyValue(obj, searchKey, sign, searchValue, { onlyInArrays = false } = {}) {
   const result = [];
   let level = 0;
@@ -64,7 +66,7 @@ export const JSONPath = (objOrPath, jsonDocument?) => {
   const cacheData = path + JSON.stringify(json);
   const cacheKey = crypto.createHash('md5').update(cacheData).digest('hex');
   if (cache[cacheKey])
-    global.log.save('jsonpath-handler-repeating-warning', {
+    getLog().save('jsonpath-handler-repeating-warning', {
       path,
       jsonSize: cacheData.length,
     });
@@ -93,7 +95,7 @@ export const JSONPath = (objOrPath, jsonDocument?) => {
   }
 
   const executionTime = (Date.now() - startTime) / 1000;
-  global.log.save('jsonpath-handler', {
+  getLog().save('jsonpath-handler', {
     path,
     executionTime,
     jsonSize: cacheData.length,

@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { Sandbox } from '@liquio/back-core';
 
 import { InvalidSchemaError } from './errors';
+import { getConfig, getLog } from './context';
 
 // Constants.
 const REASSIGN_TRIGGER_ERROR = 'reassignTrigger error.';
@@ -82,7 +83,7 @@ export class Assigner {
           [
             {
               documents,
-              optionalProjectParams: global.config?.custom?.optionalProjectParams || {},
+              optionalProjectParams: getConfig()?.custom?.optionalProjectParams || {},
               currentTaskPerformerUnitIds,
               meta: meta,
               taskActivityLog: _.cloneDeep(taskActivityLog),
@@ -97,7 +98,7 @@ export class Assigner {
         const userIds = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
         performerUsers.push(...userIds);
       } catch (error) {
-        global.log.save('task-permission-reassign-trigger-calc-users-error', {
+        getLog().save('task-permission-reassign-trigger-calc-users-error', {
           error: error && error.message,
           workflowId: workflow.id,
           permissionDescription,
@@ -124,7 +125,7 @@ export class Assigner {
         const userIds = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
         performerUsers.push(...userIds);
       } catch (error) {
-        global.log.save('task-permission-calc-users-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUsersFunction });
+        getLog().save('task-permission-calc-users-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUsersFunction });
       }
     }
 
@@ -137,7 +138,7 @@ export class Assigner {
         const userIpns = Array.isArray(userIpnOrIpns) ? userIpnOrIpns : [userIpnOrIpns];
         performerUsersIpn.push(...userIpns);
       } catch (error) {
-        global.log.save('task-permission-calc-users-ipn-error', {
+        getLog().save('task-permission-calc-users-ipn-error', {
           error: error && error.message,
           workflowId: workflow.id,
           calcPerformerUsersFunction,
@@ -152,7 +153,7 @@ export class Assigner {
         const userEmails = Array.isArray(userEmailOrEmails) ? userEmailOrEmails : [userEmailOrEmails];
         performerUsersEmail.push(...userEmails);
       } catch (error) {
-        global.log.save('task-permission-calc-users-email-error', {
+        getLog().save('task-permission-calc-users-email-error', {
           error: error && error.message,
           workflowId: workflow.id,
           calcPerformerUsersFunction,
@@ -169,7 +170,7 @@ export class Assigner {
         const userNames = Array.isArray(userNameOrNames) ? userNameOrNames : [userNameOrNames];
         performerUsersName.push(...userNames);
       } catch (error) {
-        global.log.save('task-permission-calc-users-ipn-error', {
+        getLog().save('task-permission-calc-users-ipn-error', {
           error: error && error.message,
           workflowId: workflow.id,
           calcPerformerUsersFunction,
@@ -244,7 +245,7 @@ export class Assigner {
             optimalUserTasksCount = memberTasksCount;
           }
         }
-        global.log.save('optimal-assign', { workflowId: workflow.id, optimalUserId, optimalUserTasksCount, userTasksInfoToLog });
+        getLog().save('optimal-assign', { workflowId: workflow.id, optimalUserId, optimalUserTasksCount, userTasksInfoToLog });
         performerUsers.push(optimalUserId);
       }
     }
@@ -302,7 +303,7 @@ export class Assigner {
           [
             {
               documents,
-              optionalProjectParams: global.config?.custom?.optionalProjectParams || {},
+              optionalProjectParams: getConfig()?.custom?.optionalProjectParams || {},
               currentTaskPerformerUnitIds,
               meta: meta,
               taskActivityLog: _.cloneDeep(taskActivityLog),
@@ -317,7 +318,7 @@ export class Assigner {
         const unitIds = Array.isArray(unitIdOrIds) ? unitIdOrIds : [unitIdOrIds];
         performerUnits.push(...unitIds);
       } catch (error) {
-        global.log.save('task-permission-reassign-trigger-calc-units-error', {
+        getLog().save('task-permission-reassign-trigger-calc-units-error', {
           error: error.toString(),
           workflowId: workflow.id,
           permissionDescription,
@@ -342,7 +343,7 @@ export class Assigner {
         const unitIds = Array.isArray(unitIdOrIds) ? unitIdOrIds : [unitIdOrIds];
         performerUnits.push(...unitIds);
       } catch (error) {
-        global.log.save('task-permission-calc-units-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUnitsFunction });
+        getLog().save('task-permission-calc-units-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUnitsFunction });
       }
     }
 
@@ -390,7 +391,7 @@ export class Assigner {
           [
             {
               documents,
-              optionalProjectParams: global.config?.custom?.optionalProjectParams || {},
+              optionalProjectParams: getConfig()?.custom?.optionalProjectParams || {},
               currentTaskPerformerUnitIds,
               meta: meta,
               taskActivityLog: _.cloneDeep(taskActivityLog),
@@ -405,7 +406,7 @@ export class Assigner {
         const unitIds = Array.isArray(unitIdOrIds) ? unitIdOrIds : [unitIdOrIds];
         requiredPerformerUnits.push(...unitIds);
       } catch (error) {
-        global.log.save('task-permission-reassign-trigger-calc-units-error', {
+        getLog().save('task-permission-reassign-trigger-calc-units-error', {
           error: error.toString(),
           workflowId: workflow.id,
           permissionDescription,
@@ -430,7 +431,7 @@ export class Assigner {
         const unitIds = Array.isArray(unitIdOrIds) ? unitIdOrIds : [unitIdOrIds];
         requiredPerformerUnits.push(...unitIds);
       } catch (error) {
-        global.log.save('task-permission-calc-units-error', {
+        getLog().save('task-permission-calc-units-error', {
           error: error && error.message,
           workflowId: workflow.id,
           calcRequiredPerformerUnitsFunction,

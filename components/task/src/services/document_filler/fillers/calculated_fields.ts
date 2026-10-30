@@ -1,6 +1,7 @@
 import jcopy from 'jcopy';
 
 import { Filler } from './filler';
+import { getLog } from '../../../lib/context';
 
 /**
  * Calculated fields filler.
@@ -43,7 +44,7 @@ export class CalculatedFieldsFiller extends Filler {
           meta: { fn: 'CalculatedFieldsFiller.fill.calcBack', workflowId },
         });
       } catch (error) {
-        global.log.save('calculated-field-filling-error', error, 'warn');
+        getLog().save('calculated-field-filling-error', error, 'warn');
       }
 
       // Return value to set.

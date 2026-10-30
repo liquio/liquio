@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { KycProvider } from './provider';
+import { getLog } from '../../../lib/context';
 
 const STATUS_MAP = {
   requires_input: 'waiting',
@@ -37,7 +38,7 @@ export class StripeProvider extends KycProvider {
       this.config.timeout = 30000;
     }
 
-    global.log.save('kyc-provider|stripe|initialized', true);
+    getLog().save('kyc-provider|stripe|initialized', true);
   }
 
   async testConnection() {
@@ -57,7 +58,7 @@ export class StripeProvider extends KycProvider {
       return_url: returnUrl,
     });
 
-    global.log.save('kyc-provider|stripe|create-session', { data });
+    getLog().save('kyc-provider|stripe|create-session', { data });
 
     return {
       sessionId: data.id,
@@ -69,7 +70,7 @@ export class StripeProvider extends KycProvider {
   async getSession(sessionId) {
     const data = await this.sendRequest('get', `v1/identity/verification_sessions/${sessionId}`);
 
-    global.log.save('kyc-provider|stripe|get-session', { data });
+    getLog().save('kyc-provider|stripe|get-session', { data });
 
     return {
       status: STATUS_MAP[data.status] || 'waiting',
@@ -103,7 +104,7 @@ export class StripeProvider extends KycProvider {
         data: body,
       };
 
-      global.log.save('kyc-provider|stripe|request', {
+      getLog().save('kyc-provider|stripe|request', {
         ...requestOptions,
         headers: { Authorization: 'Basic ***' },
       });
@@ -111,7 +112,7 @@ export class StripeProvider extends KycProvider {
       const response = await axios(requestOptions);
       return response.data;
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'kyc-provider|stripe|request-error',
         {
           error: error.message,

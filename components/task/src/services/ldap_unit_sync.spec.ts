@@ -1,4 +1,5 @@
 import { LdapUnitSync, normalizeDn } from './ldap_unit_sync';
+import { getLog, getRedisClient, setAppContext } from '../lib/context';
 
 const USER_ID = 'user-1';
 const GROUP_MEMBERS = 'CN=LIQUIO-PROD-UNIT-X,OU=Groups,DC=DOMAIN,DC=LOC';
@@ -54,14 +55,16 @@ describe('LdapUnitSync', () => {
     idApiClient = { ldapGroupsExist: jest.fn(async (dns) => dns) };
     accessHistory = { create: jest.fn() };
     taskModel = { removePerformerUserFromTasks: jest.fn() };
-    (global as any).log = { save: jest.fn() };
-    (global as any).models = { accessHistory, task: taskModel };
-    (global as any).redisClient = {
-      get: jest.fn(async (key) => redis.get(key) ?? null),
-      set: jest.fn(async (key, value) => {
-        redis.set(key, typeof value === 'object' ? JSON.stringify(value) : value);
-      }),
-    };
+    setAppContext({ log: { save: jest.fn() } as any });
+    setAppContext({ models: { accessHistory, task: taskModel } as any });
+    setAppContext({
+      redisClient: {
+        get: jest.fn(async (key) => redis.get(key) ?? null),
+        set: jest.fn(async (key, value) => {
+          redis.set(key, typeof value === 'object' ? JSON.stringify(value) : value);
+        }),
+      },
+    });
     sync = new LdapUnitSync({ unitModel, idApiClient });
   });
 
@@ -177,7 +180,7 @@ describe('LdapUnitSync', () => {
 
       expect(units[0].members).toEqual([USER_ID]);
       expect(result).toEqual({ changed: false, complete: false });
-      expect(global.log.save).toHaveBeenCalledWith('ldap-unit-sync|group-not-found', { unitId: 1, dn: GROUP_MEMBERS, level: 'member' }, 'warn');
+      expect(getLog().save).toHaveBeenCalledWith('ldap-unit-sync|group-not-found', { unitId: 1, dn: GROUP_MEMBERS, level: 'member' }, 'warn');
       expect(accessHistory.create).not.toHaveBeenCalled();
     });
 
@@ -189,7 +192,7 @@ describe('LdapUnitSync', () => {
       await sync.sync(userInfo([]));
 
       expect(units[0].members).toEqual([USER_ID]);
-      expect(global.log.save).toHaveBeenCalledWith('ldap-unit-sync|group-not-found', { unitId: 1, dn: other, level: 'member' }, 'warn');
+      expect(getLog().save).toHaveBeenCalledWith('ldap-unit-sync|group-not-found', { unitId: 1, dn: other, level: 'member' }, 'warn');
     });
 
     it('keeps the head when the configured head group no longer exists', async () => {
@@ -213,15 +216,15 @@ describe('LdapUnitSync', () => {
 
     it('still checks the groups when the cache cannot be read or written', async () => {
       units = [makeUnit(1, { members: [USER_ID], data: { ldap: { memberGroups: [GROUP_MEMBERS] } } })];
-      (global.redisClient.get as jest.Mock).mockRejectedValue(new Error('redis down'));
-      (global.redisClient.set as jest.Mock).mockRejectedValue(new Error('redis down'));
+      (getRedisClient().get as jest.Mock).mockRejectedValue(new Error('redis down'));
+      (getRedisClient().set as jest.Mock).mockRejectedValue(new Error('redis down'));
 
       const result = await sync.sync(userInfo([]));
 
       expect(idApiClient.ldapGroupsExist).toHaveBeenCalledTimes(1);
       expect(units[0].members).toEqual([]);
       expect(result.changed).toBe(true);
-      const keys = (global.log.save as jest.Mock).mock.calls.map(([key]) => key);
+      const keys = (getLog().save as jest.Mock).mock.calls.map(([key]) => key);
       expect(keys).toContain('ldap-unit-sync|cache-read-error');
       expect(keys).toContain('ldap-unit-sync|cache-write-error');
     });
@@ -235,7 +238,7 @@ describe('LdapUnitSync', () => {
       expect(units[0].members).toEqual([USER_ID]);
       expect(units[0].heads).toEqual([USER_ID]);
       expect(result).toEqual({ changed: false, complete: false });
-      expect(global.log.save).toHaveBeenCalledWith('ldap-unit-sync|group-check-failed', { unitId: 1, error: 'id-api down' }, 'error');
+      expect(getLog().save).toHaveBeenCalledWith('ldap-unit-sync|group-check-failed', { unitId: 1, error: 'id-api down' }, 'error');
       expect(redis.size).toBe(0);
     });
 
@@ -250,7 +253,7 @@ describe('LdapUnitSync', () => {
       expect(idApiClient.ldapGroupsExist).toHaveBeenCalledTimes(1);
       expect(units[0].members).toEqual([]);
       expect(units[1].members).toEqual([]);
-      expect((global.redisClient.set as jest.Mock).mock.calls[0][2]).toBe(300);
+      expect((getRedisClient().set as jest.Mock).mock.calls[0][2]).toBe(300);
     });
 
     it('does nothing when the user has no ldap service', async () => {
@@ -410,7 +413,7 @@ describe('LdapUnitSync', () => {
     });
 
     it('does nothing without redis', async () => {
-      (global as any).redisClient = undefined;
+      setAppContext({ redisClient: undefined });
 
       const result = await sync.syncIfChanged(userInfo([GROUP_MEMBERS]));
 
@@ -419,13 +422,13 @@ describe('LdapUnitSync', () => {
     });
 
     it('does nothing when the synced marker cannot be read', async () => {
-      (global.redisClient.get as jest.Mock).mockRejectedValue(new Error('redis down'));
+      (getRedisClient().get as jest.Mock).mockRejectedValue(new Error('redis down'));
 
       const result = await sync.syncIfChanged(userInfo([GROUP_MEMBERS]));
 
       expect(result).toEqual({ changed: false, complete: true });
       expect(unitModel.getAll).not.toHaveBeenCalled();
-      expect((global.log.save as jest.Mock).mock.calls.map(([key]) => key)).toContain('ldap-unit-sync|error');
+      expect((getLog().save as jest.Mock).mock.calls.map(([key]) => key)).toContain('ldap-unit-sync|error');
     });
 
     it('does nothing for a user without the ldap service', async () => {

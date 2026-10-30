@@ -1,6 +1,7 @@
 import { KycSessionModel } from '../../models/kyc_session';
 import { StripeProvider } from './providers/stripe';
 import { BadRequestError, NotFoundError } from '../../lib/errors';
+import { getConfig, getLog } from '../../lib/context';
 
 /**
  * KYC service.
@@ -13,7 +14,7 @@ export class KycService {
 
   constructor() {
     if (!KycService.singleton) {
-      this.config = global.config.kyc || {};
+      this.config = getConfig().kyc || {};
 
       this.providers = {
         stripe: this.config.stripe?.isEnabled ? new StripeProvider(this.config.stripe) : null,
@@ -23,7 +24,7 @@ export class KycService {
       for (const provider in this.providers) {
         if (this.providers[provider]) {
           this.providers[provider].testConnection().then((success) => {
-            global.log.save('kyc-service|test', { provider, success });
+            getLog().save('kyc-service|test', { provider, success });
           });
         }
       }
@@ -70,7 +71,7 @@ export class KycService {
 
     const { sessionId, redirectUrl, data } = await this.getProvider(provider).createSession(userId, returnUrl);
 
-    global.log.save('kyc-service|create-session', { provider, userId, sessionId, returnUrl, redirectUrl, data });
+    getLog().save('kyc-service|create-session', { provider, userId, sessionId, returnUrl, redirectUrl, data });
 
     const session = await this.kycSessionModel.create({
       provider,
@@ -115,11 +116,11 @@ export class KycService {
     let { status } = sessionResult;
 
     if (['pending', 'waiting', 'verified', 'canceled', 'failed'].indexOf(status) === -1) {
-      global.log.save('kyc-service|update-session-unknown-status', { provider, userId, id, status }, 'error');
+      getLog().save('kyc-service|update-session-unknown-status', { provider, userId, id, status }, 'error');
       status = 'failed';
     }
 
-    global.log.save('kyc-service|update-session', { provider, userId, id, status, data });
+    getLog().save('kyc-service|update-session', { provider, userId, id, status, data });
 
     const [, [session]] = await this.kycSessionModel.update({ status, data }, { where: { id: existingSession.id }, returning: true });
 

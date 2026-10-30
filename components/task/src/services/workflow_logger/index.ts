@@ -2,6 +2,7 @@ import { WorkflowLoggerRecordEntity } from './entities/workflow_logger_record';
 import { WorkflowLoggerEntity } from './entities/workflow_logger';
 import { ForbiddenError, NotFoundError } from '../../lib/errors';
 import { ERROR_WORKFLOW_NOT_FOUND } from '../../constants/error';
+import { getModels } from '../../lib/context';
 
 // Constants.
 const ROLE_ADMIN = 'admin';
@@ -38,7 +39,7 @@ export class WorkflowLoggerService {
       throw new ForbiddenError(ERROR_ROLE_ADMIN);
     }
 
-    const workflow = await global.models.workflow.findById(id, {
+    const workflow = await getModels().workflow.findById(id, {
       with: ['tasks', 'events', 'gateways', 'workflowErrors', 'workflowRestarts'],
     });
     if (!workflow) {
@@ -80,23 +81,23 @@ export class WorkflowLoggerService {
       }
 
       if (!task.name) {
-        const taskTemplate = await global.models.taskTemplate.findById(task.taskTemplateId);
+        const taskTemplate = await getModels().taskTemplate.findById(task.taskTemplateId);
         if (taskTemplate && taskTemplate.name) {
           task.name = taskTemplate.name;
         }
       }
 
-      const document = await global.models.document.findById(task.documentId);
+      const document = await getModels().document.findById(task.documentId);
       if (document) {
         // Add document.
         task.document = document;
 
         // Append attachments.
-        const attachments = await global.models.documentAttachment.getByDocumentId(document.id);
+        const attachments = await getModels().documentAttachment.getByDocumentId(document.id);
         task.document.attachments = attachments;
 
         // Append document signature.
-        const signatures = await global.models.documentSignature.getByDocumentId(document.id);
+        const signatures = await getModels().documentSignature.getByDocumentId(document.id);
         task.document.signatures = signatures;
       }
 
@@ -135,17 +136,17 @@ export class WorkflowLoggerService {
 
     for (const workflowError of workflow.workflowErrors) {
       if (workflowError.data && workflowError.data.queueMessage && workflowError.data.queueMessage.taskTemplateId) {
-        const taskTemplate = await global.models.taskTemplate.findById(workflowError.data.queueMessage.taskTemplateId);
+        const taskTemplate = await getModels().taskTemplate.findById(workflowError.data.queueMessage.taskTemplateId);
         if (taskTemplate && taskTemplate.name) {
           workflowError.name = taskTemplate.name;
         }
       } else if (workflowError.data && workflowError.data.queueMessage && workflowError.data.queueMessage.eventTemplateId) {
-        const eventTemplate = await global.models.eventTemplate.findById(workflowError.data.queueMessage.eventTemplateId);
+        const eventTemplate = await getModels().eventTemplate.findById(workflowError.data.queueMessage.eventTemplateId);
         if (eventTemplate && eventTemplate.name) {
           workflowError.name = eventTemplate.name;
         }
       } else if (workflowError.data && workflowError.data.queueMessage && workflowError.data.queueMessage.gatewayTemplateId) {
-        const gatewayTemplate = await global.models.gatewayTemplate.findById(workflowError.data.queueMessage.gatewayTemplateId);
+        const gatewayTemplate = await getModels().gatewayTemplate.findById(workflowError.data.queueMessage.gatewayTemplateId);
         if (gatewayTemplate && gatewayTemplate.name) {
           workflowError.name = gatewayTemplate.name;
         }

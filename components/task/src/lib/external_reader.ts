@@ -6,6 +6,7 @@ import { appendTraceMeta, getTraceMeta, getTraceId, Sandbox } from '@liquio/back
 import { StorageService } from '../services/storage';
 import { DocumentAttachmentModel } from '../models/document_attachment';
 import typeOf from './type_of';
+import { getConfig, getHttpClient, getLog } from './context';
 
 const HIDE_REPLACEMENT_TEXT = '*****';
 const MAX_LOG_LENGTH = 100e3 - 1000;
@@ -29,7 +30,7 @@ export class ExternalReader {
    * External Reader constructor.
    * @param {object} config External reader config.
    */
-  constructor(config = global.config.external_reader) {
+  constructor(config = getConfig().external_reader) {
     // Singleton.
     if (!ExternalReader.singleton) {
       // Save params.
@@ -142,7 +143,7 @@ export class ExternalReader {
       const errorMessage = (error.response?.body?.error?.message || error.toString()).replace(/[^a-zA-Z0-9+=_\-?"'.:, ]/g, '');
 
       if (error.code === 'ESOCKETTIMEDOUT' || error.cause?.code === 'ESOCKETTIMEDOUT') {
-        global.log.save('external-reader-get-data-esockettimeout', {
+        getLog().save('external-reader-get-data-esockettimeout', {
           url,
           errorCode: error.code || error.cause?.code,
           error: error.message,
@@ -152,7 +153,7 @@ export class ExternalReader {
       }
 
       if (error.code === 'ECONNRESET' || error.cause?.code === 'ECONNRESET' || error.message === 'socket hang up') {
-        global.log.save('external-reader-get-data-econnreset', {
+        getLog().save('external-reader-get-data-econnreset', {
           url,
           errorCode: error.code || error.cause?.code,
           error: error.message,
@@ -222,7 +223,7 @@ export class ExternalReader {
       token,
       customTimeout,
     );
-    const logResponses = !!global.config?.external_reader?.logResponses;
+    const logResponses = !!getConfig()?.external_reader?.logResponses;
     const logPayload: any = {
       service,
       method,
@@ -242,7 +243,7 @@ export class ExternalReader {
           dataToLog = data.length > MAX_LOG_LENGTH ? data.substring(0, MAX_LOG_LENGTH - ending.length) + ending : data;
         }
       } catch (error) {
-        global.log.save('external-reader-cannot-cut-data-to-log', { error, service, method });
+        getLog().save('external-reader-cannot-cut-data-to-log', { error, service, method });
         dataToLog = data;
       }
       logPayload.data = dataToLog;
@@ -257,7 +258,7 @@ export class ExternalReader {
       logPayload.responseKeys = data && typeof data === 'object' ? Object.keys(data) : [];
       logPayload.responseSize = size;
     }
-    global.log.save('external-reader-raw-data-response', logPayload);
+    getLog().save('external-reader-raw-data-response', logPayload);
 
     // Check for attachments saving.
     // Attachment saving is driven by server-side config only: untrusted extraParams never reach it.
@@ -296,7 +297,7 @@ export class ExternalReader {
           await Promise.all(attachments.map((v) => this.storageService.provider.deleteFile(v.link)));
         } catch (error) {
           // Do not throw error. This error should not block saving new attachments.
-          global.log.save('external-reader|get-data-by-user|delete-file-from-file-storage-error', { error: error.toString() }, 'warn');
+          getLog().save('external-reader|get-data-by-user|delete-file-from-file-storage-error', { error: error.toString() }, 'warn');
         }
 
         try {
@@ -373,7 +374,7 @@ export class ExternalReader {
     query += readersQuery ? readersQuery : '';
     query = query === '?' ? '' : query;
 
-    const response = await global.httpClient.request(
+    const response = await getHttpClient().request(
       `${this.url}${this.apiRoutes.getMocksKeysByUser}${query}`,
       {
         method: 'GET',
@@ -428,7 +429,7 @@ export class ExternalReader {
     const traceMeta = getTraceMeta();
 
     if (!traceMeta) {
-      global.log.save('external-reader-errors|trace-meta-not-found', { traceId: getTraceId(), externalReaderError });
+      getLog().save('external-reader-errors|trace-meta-not-found', { traceId: getTraceId(), externalReaderError });
       return;
     }
 

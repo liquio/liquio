@@ -2,7 +2,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { DocumentBusiness } from './index';
 import { DocumentValidatorService } from '../../services/document_validator';
-import { getLog, getConfig, setAppContext as setContext, resetAppContext } from '../../lib/context';
+import { getLog, getConfig, setAppContext, resetAppContext } from '../../lib/context';
 
 // Wrap the real validator so constructor arguments can be asserted while its behaviour stays real.
 jest.mock('../../services/document_validator', () => {
@@ -12,12 +12,6 @@ jest.mock('../../services/document_validator', () => {
     DocumentValidatorService: jest.fn().mockImplementation((...args) => new actual.DocumentValidatorService(...args)),
   };
 });
-
-const setAppContext = (context: Parameters<typeof setContext>[0]) => {
-  setContext(context);
-  // Unmigrated services, models and lib (T17-task-b) still read the bare globals.
-  Object.assign(global, context);
-};
 
 setAppContext({ log: { save: jest.fn() } as any });
 

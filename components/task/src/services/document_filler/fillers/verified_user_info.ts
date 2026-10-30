@@ -1,6 +1,7 @@
 import { Filler } from './filler';
 import { ExternalReader } from '../../../lib/external_reader';
 import { RegisterService } from '../../register';
+import { getLog } from '../../../lib/context';
 
 /**
  * Verified user info filler.
@@ -96,7 +97,7 @@ export class VerifiedUserInfoFiller extends Filler {
 
         valueToSet = await this.prepareData(valueToSet, fields, userInfo, passport, oauthToken, enabledMocksHeader);
       } catch (error) {
-        global.log.save('verified-user-info-field-filling-error', { error: (error && error.message) || error, stack: error.stack }, 'warn');
+        getLog().save('verified-user-info-field-filling-error', { error: (error && error.message) || error, stack: error.stack }, 'warn');
       }
 
       return valueToSet;

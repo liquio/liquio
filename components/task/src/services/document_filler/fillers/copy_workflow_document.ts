@@ -2,6 +2,7 @@ import PropByPath from 'prop-by-path';
 
 import { Filler } from './filler';
 import { StorageService } from '../../storage';
+import { getLog, getModels } from '../../../lib/context';
 
 /**
  * Copy Workflow Document filler.
@@ -43,33 +44,33 @@ export class CopyWorkflowDocumentFiller extends Filler {
 
         const { workflowId, taskTemplateId } = PropByPath.get(objectToFill, path) || {};
         if (!workflowId || !taskTemplateId) {
-          global.log.save('copy-workflow-document-filling-not-defined', { path, workflowId, taskTemplateId }, 'warn');
+          getLog().save('copy-workflow-document-filling-not-defined', { path, workflowId, taskTemplateId }, 'warn');
           return;
         }
 
-        const { document } = (await global.models.task.findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId, true)) || {};
+        const { document } = (await getModels().task.findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId, true)) || {};
 
         if (!document) {
-          global.log.save('copy-workflow-document-filling-document-not-found', { workflowId, taskTemplateId }, 'warn');
+          getLog().save('copy-workflow-document-filling-document-not-found', { workflowId, taskTemplateId }, 'warn');
           return;
         }
 
         if (rawUnitId) {
           const unitId = this.getUnitId(rawUnitId, { objectToFill, userInfo });
           if (!unitId) {
-            global.log.save('copy-workflow-document-filling-unit-id-not-defined', { unitId, workflowId, taskTemplateId }, 'warn');
+            getLog().save('copy-workflow-document-filling-unit-id-not-defined', { unitId, workflowId, taskTemplateId }, 'warn');
             return;
           }
 
           const isUserInUnit = userUnitsEntities.all.some((unit) => unit.id === unitId);
           if (!isUserInUnit) {
-            global.log.save('copy-workflow-document-filling-user-not-in-unit', { unitId, workflowId, taskTemplateId }, 'warn');
+            getLog().save('copy-workflow-document-filling-user-not-in-unit', { unitId, workflowId, taskTemplateId }, 'warn');
             return;
           }
         } else {
           // Check if the current user is the creator.
           if (document.createdBy !== userInfo.userId) {
-            global.log.save('copy-workflow-document-filling-not-allowed', { createdBy: document.createdBy, userId: userInfo.userId }, 'warn');
+            getLog().save('copy-workflow-document-filling-not-allowed', { createdBy: document.createdBy, userId: userInfo.userId }, 'warn');
             return;
           }
         }
@@ -89,7 +90,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
         }
 
         // Copy attachments.
-        const attachments = await global.models.documentAttachment.getByDocumentId(document.id);
+        const attachments = await getModels().documentAttachment.getByDocumentId(document.id);
         const copyAttachments = [];
         for (const attachment of attachments) {
           const { link, name, type, labels = [], meta = {}, isGenerated, isSystem } = attachment || {};
@@ -97,7 +98,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
           const file = await this.storageService.provider.copyFile(link);
 
           if (file && file.id) {
-            const documentAttachment = await global.models.documentAttachment.create({
+            const documentAttachment = await getModels().documentAttachment.create({
               documentId,
               link: file.id,
               name,
@@ -129,7 +130,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
           PropByPath.set(objectToFill, step, stepValue);
         }
       } catch (error) {
-        global.log.save('copy-workflow-document-filling-error', { error: (error && error.message) || error, stack: error.stack }, 'warn');
+        getLog().save('copy-workflow-document-filling-error', { error: (error && error.message) || error, stack: error.stack }, 'warn');
       }
     });
 
@@ -181,7 +182,7 @@ export class CopyWorkflowDocumentFiller extends Filler {
       const unitId = this.sandbox.evalWithArgs(rawUnitId, [objectToFill, userInfo], { meta: { fn: 'CopyWorkflowDocumentFiller.fill.unitId' } });
       return unitId;
     } catch (error) {
-      global.log.save('copy-workflow-document-filling-unit-id-eval-error', error, 'error');
+      getLog().save('copy-workflow-document-filling-unit-id-eval-error', error, 'error');
       return null;
     }
   }

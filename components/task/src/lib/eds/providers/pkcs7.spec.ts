@@ -1,14 +1,14 @@
 import { Pkcs7EdsProvider } from './pkcs7';
+import { setAppContext, resetAppContext } from '../../context';
 
 describe('Pkcs7EdsProvider.getSignatureInfo', () => {
   beforeEach(() => {
-    global.log = {
-      save: jest.fn(),
-    } as any;
+    setAppContext({ log: { save: jest.fn() } as any });
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+    resetAppContext();
   });
 
   it('extracts short numeric serialNumber as signer DRFO', async () => {

@@ -4,6 +4,7 @@ import jcopy from 'jcopy';
 import cyrillicToTranslit from 'cyrillic-to-translit-js';
 
 import { Filler } from './filler';
+import { getLog } from '../../../lib/context';
 
 /**
  * Value Function Filler.
@@ -65,7 +66,7 @@ export class ValueFunctionFiller extends Filler {
       try {
         user = this.prepareUserInfo(userInfo, mainPersonUserInfo, userUnits, userUnitsEntities);
       } catch (error) {
-        global.log.save('value-function-filer-get-user-info-error', error, 'warn');
+        getLog().save('value-function-filer-get-user-info-error', error, 'warn');
       }
 
       // Try calling value function and set value in document.
@@ -79,7 +80,7 @@ export class ValueFunctionFiller extends Filler {
           valueToSet = undefined;
         }
       } catch (error) {
-        global.log.save('value-function-filer-function-calling-error', error, 'warn');
+        getLog().save('value-function-filer-function-calling-error', error, 'warn');
       }
 
       // Return value to set.

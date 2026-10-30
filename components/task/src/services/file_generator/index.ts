@@ -4,6 +4,7 @@ import qrImage from 'qr-image';
 
 import { Options } from './options';
 import typeOf from '../../lib/type_of';
+import { getConfig, getHttpClient, getLog } from '../../lib/context';
 
 /**
  * File generator service.
@@ -158,7 +159,7 @@ export class FileGeneratorService {
    * @returns {Promise<Buffer>} Buffer promise.
    */
   async createPdf(html, options = {}) {
-    const pdfConfig = global.config.pdf_generator || {};
+    const pdfConfig = getConfig().pdf_generator || {};
     if (!pdfConfig.url || !pdfConfig.basicAuthToken) {
       throw new Error('PDF generator config is missing url or basicAuthToken');
     }
@@ -176,11 +177,11 @@ export class FileGeneratorService {
     };
 
     try {
-      const response = await global.httpClient.request(pdfConfig.url, requestInit, 'file-generator:create-pdf', { isNonSensitiveDataRegime: true });
+      const response = await getHttpClient().request(pdfConfig.url, requestInit, 'file-generator:create-pdf', { isNonSensitiveDataRegime: true });
       const arrayBuffer = await response.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } catch (error) {
-      global.log.save('pdf-generator-request-error', { error: error.toString(), stack: error.stack }, 'error');
+      getLog().save('pdf-generator-request-error', { error: error.toString(), stack: error.stack }, 'error');
       throw error;
     }
   }

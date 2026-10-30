@@ -14,6 +14,7 @@ import { ExternalReaderFiller } from './external_reader';
 import { ValueFunctionFiller } from './value_function';
 import { VerifiedUserInfoFiller } from './verified_user_info';
 import { CopyWorkflowDocumentFiller } from './copy_workflow_document';
+import { getLog } from '../../../lib/context';
 
 // Constants.
 const FILLERS_CLASSES_LIST = {
@@ -88,12 +89,12 @@ export class Fillers {
       allProcessDocuments = await this.taskModel.getDocumentsByWorkflowId(workflowId, false);
       currentOnlyDocuments = allProcessDocuments.filter((document) => document.isTaskCurrent);
     } catch (error) {
-      global.log.save('document-filler-get-documents-error', error, 'error');
+      getLog().save('document-filler-get-documents-error', error, 'error');
     }
     try {
       events = await this.eventModel.getEventsByWorkflowId(workflowId);
     } catch (error) {
-      global.log.save('document-filler-get-events-error', error, 'error');
+      getLog().save('document-filler-get-events-error', error, 'error');
     }
 
     // Fill object using all fillers.

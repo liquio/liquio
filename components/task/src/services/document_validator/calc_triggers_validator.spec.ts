@@ -3,13 +3,15 @@ import * as crypto from 'node:crypto';
 import { Sandbox } from '@liquio/back-core';
 
 import { CalcTriggersValidator } from './calc_triggers_validator';
+import { getConfig, getLog, setAppContext } from '../../lib/context';
 
 // Suppress missing log references in validation keywords
-global.log = { save: jest.fn() } as any;
+const specLog = { save: jest.fn() } as any;
+setAppContext({ log: specLog });
 
 describe('CalcTriggersValidator.check', () => {
   const makeValidator = (schema) => {
-    new Sandbox(global.config);
+    new Sandbox(getConfig());
     return new CalcTriggersValidator(schema, {});
   };
 
@@ -34,14 +36,16 @@ describe('CalcTriggersValidator.check', () => {
   });
 
   beforeEach(() => {
-    global.config = {
-      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
-    };
-    new Sandbox(global.config);
+    setAppContext({
+      config: {
+        register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+      },
+    });
+    new Sandbox(getConfig());
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -570,12 +574,12 @@ describe('CalcTriggersValidator.check with targetPaths under the target', () => 
   });
 
   beforeEach(() => {
-    global.config = { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } };
-    new Sandbox(global.config);
+    setAppContext({ config: { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } } });
+    new Sandbox(getConfig());
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -645,15 +649,15 @@ describe('CalcTriggersValidator.check with targetPaths under the target', () => 
 describe('CalcTriggersValidator mismatch log', () => {
   const MISMATCH_LOG_TYPE = 'calc-triggers-validation-mismatch';
 
-  const mismatchLogCalls = () => (global.log.save as jest.Mock).mock.calls.filter(([type]) => type === MISMATCH_LOG_TYPE);
+  const mismatchLogCalls = () => (getLog().save as jest.Mock).mock.calls.filter(([type]) => type === MISMATCH_LOG_TYPE);
 
   beforeEach(() => {
-    global.config = { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } };
-    new Sandbox(global.config);
+    setAppContext({ config: { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } } });
+    new Sandbox(getConfig());
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -676,7 +680,7 @@ describe('CalcTriggersValidator mismatch log', () => {
     const validator = new CalcTriggersValidator(schema, {});
     await validator.check({ step1: { fieldA: 'SECRET-SOURCE', fieldB: 'SECRET-TAMPERED' } });
 
-    const logged = JSON.stringify((global.log.save as jest.Mock).mock.calls);
+    const logged = JSON.stringify((getLog().save as jest.Mock).mock.calls);
     expect(mismatchLogCalls()).toHaveLength(1);
     expect(logged).not.toContain('SECRET-SOURCE');
     expect(logged).not.toContain('SECRET-TAMPERED');
@@ -745,7 +749,7 @@ describe('CalcTriggersValidator mismatch log', () => {
 
     expect(errors).toEqual([]);
     expect(mismatchLogCalls()).toEqual([]);
-    expect(global.log.save).toHaveBeenCalledWith(
+    expect(getLog().save).toHaveBeenCalledWith(
       'json-schema-validation-exception|check-calc-triggers',
       expect.objectContaining({ target: 'step1.fieldB' }),
       'warn',

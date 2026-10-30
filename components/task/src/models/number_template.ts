@@ -4,6 +4,7 @@ import { Model } from './model';
 import { NumberTemplateEntity } from '../entities/number_template';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 600; // 10 minutes
@@ -35,7 +36,7 @@ export class NumberTemplateModel extends Model {
       PgPubSub.getInstance()?.subscribe('number_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache?.numberTemplate?.findById || DEFAULT_CACHE_TTL,
+        findById: getConfig().cache?.numberTemplate?.findById || DEFAULT_CACHE_TTL,
       };
 
       NumberTemplateModel.singleton = this;

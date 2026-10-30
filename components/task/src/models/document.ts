@@ -3,6 +3,7 @@ import Sequelize from 'sequelize';
 import { Model } from './model';
 import { DocumentEntity, DocumentEntityOptions, DocumentAsic } from '../entities/document';
 import { RedisClient } from '../lib/redis_client';
+import { getModels } from '../lib/context';
 
 // Constants.
 const SYSTEM_USER = 'system';
@@ -138,7 +139,7 @@ export class DocumentModel extends Model {
    */
   async findById(id: string, includeTask = false, includeTaskTemplate = false): Promise<DocumentEntity | undefined> {
     const document = await this.model.findByPk(id, {
-      include: [{ model: global.models.task.model, required: includeTask }],
+      include: [{ model: getModels().task.model, required: includeTask }],
     });
 
     if (!document) {
@@ -150,7 +151,7 @@ export class DocumentModel extends Model {
     if (document.task) {
       documentEntity.task = document.task.prepareEntity(document.task);
       if (includeTaskTemplate && !documentEntity.task.taskTemplate?.jsonSchema) {
-        documentEntity.task.taskTemplate = await global.models.taskTemplate.findById(document.task.task_template_id);
+        documentEntity.task.taskTemplate = await getModels().taskTemplate.findById(document.task.task_template_id);
       }
     }
 
@@ -356,7 +357,7 @@ export class DocumentModel extends Model {
       async () => this.getTimestampByWorkflowId(workflowId),
       async () =>
         this.model.findAll({
-          include: [{ model: global.models.task.model, where: { workflow_id: workflowId } }],
+          include: [{ model: getModels().task.model, where: { workflow_id: workflowId } }],
           order: [['created_at', order]],
         }),
       GET_ALL_BY_WORKFLOW_ID_CACHE_TTL,
@@ -366,7 +367,7 @@ export class DocumentModel extends Model {
     for (const item of documents) {
       const document = await this.prepareEntity(item);
       if (item.task) {
-        document.task = global.models.task.prepareEntity(item.task);
+        document.task = getModels().task.prepareEntity(item.task);
       }
       entities.push(document);
     }
@@ -446,7 +447,7 @@ export class DocumentModel extends Model {
    * @param item Raw document row (a live Sequelize instance, or a plain object shaped like one).
    */
   async prepareEntity(item: DocumentRow): Promise<DocumentEntity> {
-    const docTemplate = await global.models.documentTemplate.findById(item.document_template_id);
+    const docTemplate = await getModels().documentTemplate.findById(item.document_template_id);
 
     const newDocumentEntity = new DocumentEntity({
       id: item.id,

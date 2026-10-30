@@ -1,5 +1,6 @@
 import { Filler } from './filler';
 import { RegisterService } from '../../register';
+import { getLog } from '../../../lib/context';
 
 /**
  * Registers filler.
@@ -69,21 +70,21 @@ export class RegistersFiller extends Filler {
         try {
           searchEqual = this.sandbox.evalWithArgs(searchFunction, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-equal-1-eval-error', { error: (error && error.message) || error }, 'error');
+          getLog().save('registers-field-filling|search-equal-1-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
       if (searchFunction2) {
         try {
           searchEqual2 = this.sandbox.evalWithArgs(searchFunction2, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-equal-2-eval-error', { error: (error && error.message) || error }, 'error');
+          getLog().save('registers-field-filling|search-equal-2-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
       if (searchFunction3) {
         try {
           searchEqual3 = this.sandbox.evalWithArgs(searchFunction3, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-equal-3-eval-error', { error: (error && error.message) || error }, 'error');
+          getLog().save('registers-field-filling|search-equal-3-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
 
@@ -95,21 +96,21 @@ export class RegistersFiller extends Filler {
         try {
           searchLike = this.sandbox.evalWithArgs(searchFunctionLike, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-like-1-eval-error', { error: (error && error.message) || error }, 'error');
+          getLog().save('registers-field-filling|search-like-1-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
       if (searchFunctionLike2) {
         try {
           searchLike2 = this.sandbox.evalWithArgs(searchFunctionLike2, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-like-2-eval-error', { error: (error && error.message) || error }, 'error');
+          getLog().save('registers-field-filling|search-like-2-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
       if (searchFunctionLike3) {
         try {
           searchLike3 = this.sandbox.evalWithArgs(searchFunctionLike3, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-like-3-eval-error', { error: (error && error.message) || error }, 'error');
+          getLog().save('registers-field-filling|search-like-3-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
 
@@ -182,7 +183,7 @@ export class RegistersFiller extends Filler {
           valueToSet = records.data.map((v) => ({ ...v.data, registerId: v.registerId, keyId: v.keyId, recordId: v.id }));
         }
       } catch (error) {
-        global.log.save('registers-field-filling-error', { error: (error && error.message) || error }, 'warn');
+        getLog().save('registers-field-filling-error', { error: (error && error.message) || error }, 'warn');
       }
 
       // Return value to set.

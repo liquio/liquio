@@ -1,6 +1,8 @@
 import camelCase from 'lodash/camelCase';
 import upperFirst from 'lodash/upperFirst';
 
+import { getConfig, getDb, getLog } from '../lib/context';
+
 /**
  * Params accepted by {@link Model#paginate}. Spread across a real caller's query params, so this
  * intentionally keeps an index signature for whatever extra filter fields a subclass passes
@@ -53,7 +55,7 @@ export class Model {
   db: any;
 
   constructor() {
-    this.db = global.db;
+    this.db = getDb();
   }
 
   /**
@@ -68,8 +70,8 @@ export class Model {
       order: [],
     };
 
-    if (perPage > global.config.model.pagination.limitPerPage) {
-      perPage = global.config.model.pagination.limitPerPage;
+    if (perPage > getConfig().model.pagination.limitPerPage) {
+      perPage = getConfig().model.pagination.limitPerPage;
     }
 
     if (currentPage < 1) {
@@ -145,7 +147,7 @@ export class Model {
         }),
       );
     } catch (error) {
-      global.log.save('relation-error', error, 'error');
+      getLog().save('relation-error', error, 'error');
       throw error;
     }
 

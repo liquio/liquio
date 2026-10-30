@@ -5,6 +5,7 @@ import { Model } from './model';
 import { EventTemplateEntity } from '../entities/event_template';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -44,8 +45,8 @@ export class EventTemplateModel extends Model {
       PgPubSub.getInstance().subscribe('event_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache.eventTemplate?.findById || DEFAULT_CACHE_TTL,
-        findByIds: global.config.cache.eventTemplate?.findByIds || DEFAULT_CACHE_TTL,
+        findById: getConfig().cache.eventTemplate?.findById || DEFAULT_CACHE_TTL,
+        findByIds: getConfig().cache.eventTemplate?.findByIds || DEFAULT_CACHE_TTL,
       };
 
       EventTemplateModel.singleton = this;

@@ -2,11 +2,13 @@ import { performance, PerformanceObserver } from 'node:perf_hooks';
 
 import { getTraceId } from '@liquio/back-core';
 
+import { getConfig, getLog } from './context';
+
 // Init new observer instance.
 const performanceObserver = new PerformanceObserver((items) => {
   items.getEntries().forEach((entry: any) => {
-    if (entry.duration > (global.config?.performance_observer?.maxDuration || 10000)) {
-      global.log.save('performance-measure-warning', { ...entry.detail, duration: entry.duration }, 'warning');
+    if (entry.duration > (getConfig()?.performance_observer?.maxDuration || 10000)) {
+      getLog().save('performance-measure-warning', { ...entry.detail, duration: entry.duration }, 'warning');
     }
   });
 });

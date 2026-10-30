@@ -1,5 +1,7 @@
 import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 
+import { getLog } from './context';
+
 // Constants.
 const DEFAULT_TIMEOUT = 30000;
 
@@ -21,6 +23,6 @@ export function initIdApiClient(authConfig: Record<string, any> = {}): IdApiClie
     basicAuthToken: authConfig.basicAuthToken,
     // Task works with 24-character user IDs only.
     strictIds: true,
-    getLog: () => global.log,
+    getLog: () => getLog(),
   });
 }

@@ -1,6 +1,8 @@
 import { RedisClient } from '@liquio/back-core';
 import axios from 'axios';
 
+import { getLog } from '../lib/context';
+
 // Constants.
 const CACHE_KEY_PREFIX = 'static-url';
 const DEFAULT_TIMEOUT = 5000;
@@ -26,11 +28,11 @@ export class RemoteStaticCache {
 
       // Remote static cache config.
       const { useCache = false } = config || {};
-      this.client = isRedisEnabled && useCache && host && port ? new RedisClient({ host, port, getLog: () => global.log }) : undefined;
+      this.client = isRedisEnabled && useCache && host && port ? new RedisClient({ host, port, getLog }) : undefined;
       if (this.client) {
-        global.log.save('remote-static-cache-initialized', { useCache, host, port });
+        getLog().save('remote-static-cache-initialized', { useCache, host, port });
       } else {
-        global.log.save('remote-static-cache-not-initialized', { useCache });
+        getLog().save('remote-static-cache-not-initialized', { useCache });
       }
       // Define singleton.
       RemoteStaticCache.singleton = this;
@@ -51,7 +53,7 @@ export class RemoteStaticCache {
 
     // Check if connected to Redis.
     if (!this.client) {
-      global.log.save('redis-client-is-not-defined-for-static-cache');
+      getLog().save('redis-client-is-not-defined-for-static-cache');
       return;
     }
 
@@ -67,7 +69,7 @@ export class RemoteStaticCache {
         this.client.set(key, resString);
       })
       .catch((err) => {
-        global.log.save('set-data-by-remote-url-error', err, 'error');
+        getLog().save('set-data-by-remote-url-error', err, 'error');
       });
 
     // Return data as object.

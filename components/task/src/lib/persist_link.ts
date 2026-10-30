@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import { getConfig, getLog } from './context';
+
 // Constants.
 const DEFAULT_CONFIG = {
   server: 'https://persist-link-test-court-services.liquio.local',
@@ -28,7 +30,7 @@ export class PersistLink {
    * Persist link constructor.
    * @param {object} persistLinkConfig Persist Link config.
    */
-  constructor(persistLinkConfig = global.config.persist_link) {
+  constructor(persistLinkConfig = getConfig().persist_link) {
     // Define singleton.
     if (!PersistLink.singleton) {
       this.config = { ...DEFAULT_CONFIG, ...(persistLinkConfig || {}) };
@@ -66,21 +68,21 @@ export class PersistLink {
         validateStatus: () => true, // Don't reject on HTTP error status codes
       };
 
-      global.log.save('get-persist-link-to-document-request-params', options);
+      getLog().save('get-persist-link-to-document-request-params', options);
 
       const response = await axios(options);
 
       if (response.status === 200) {
         const qrAndLink = response.data.data;
-        global.log.save('get-persist-link-to-document-response', qrAndLink);
+        getLog().save('get-persist-link-to-document-response', qrAndLink);
         return qrAndLink;
       } else {
         const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        global.log.save('get-persist-link-to-document-response-error', error);
+        getLog().save('get-persist-link-to-document-response-error', error);
         throw error;
       }
     } catch (error) {
-      global.log.save('get-persist-link-to-document-response-error', error);
+      getLog().save('get-persist-link-to-document-response-error', error);
       throw error;
     }
   }
@@ -110,21 +112,21 @@ export class PersistLink {
         validateStatus: () => true, // Don't reject on HTTP error status codes
       };
 
-      global.log.save('get-persist-link-to-case-request-params', options);
+      getLog().save('get-persist-link-to-case-request-params', options);
 
       const response = await axios(options);
 
       if (response.status === 200) {
         const qrAndLink = response.data.data;
-        global.log.save('get-persist-link-to-case-response', qrAndLink);
+        getLog().save('get-persist-link-to-case-response', qrAndLink);
         return qrAndLink;
       } else {
         const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        global.log.save('get-persist-link-to-case-response-error', error);
+        getLog().save('get-persist-link-to-case-response-error', error);
         throw error;
       }
     } catch (error) {
-      global.log.save('get-persist-link-to-case-response-error', error);
+      getLog().save('get-persist-link-to-case-response-error', error);
       throw error;
     }
   }
@@ -154,21 +156,21 @@ export class PersistLink {
         validateStatus: () => true, // Don't reject on HTTP error status codes
       };
 
-      global.log.save('get-persist-link-to-permission-request-params', options);
+      getLog().save('get-persist-link-to-permission-request-params', options);
 
       const response = await axios(options);
 
       if (response.status === 200) {
         const qrAndLink = response.data.data;
-        global.log.save('get-persist-link-to-permission-response', qrAndLink);
+        getLog().save('get-persist-link-to-permission-response', qrAndLink);
         return qrAndLink;
       } else {
         const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        global.log.save('get-persist-link-to-permission-response-error', error);
+        getLog().save('get-persist-link-to-permission-response-error', error);
         throw error;
       }
     } catch (error) {
-      global.log.save('get-persist-link-to-permission-response-error', error);
+      getLog().save('get-persist-link-to-permission-response-error', error);
       throw error;
     }
   }
@@ -234,21 +236,21 @@ export class PersistLink {
         validateStatus: () => true, // Don't reject on HTTP error status codes
       };
 
-      global.log.save('get-persist-link-to-static-file-request-params', options);
+      getLog().save('get-persist-link-to-static-file-request-params', options);
 
       const response = await axios(options);
 
       if (response.status === 200) {
         const generatedQr = response.data.data.qrCode;
-        global.log.save('get-persist-link-to-static-file-response', generatedQr);
+        getLog().save('get-persist-link-to-static-file-response', generatedQr);
         return generatedQr;
       } else {
         const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        global.log.save('get-persist-link-to-static-file-response-error', error);
+        getLog().save('get-persist-link-to-static-file-response-error', error);
         throw error;
       }
     } catch (error) {
-      global.log.save('get-persist-link-to-static-file-response-error', error);
+      getLog().save('get-persist-link-to-static-file-response-error', error);
       throw error;
     }
   }
@@ -281,20 +283,20 @@ export class PersistLink {
         validateStatus: () => true, // Don't reject on HTTP error status codes
       };
 
-      global.log.save('get-persist-link-to-static-file-request-params', options);
+      getLog().save('get-persist-link-to-static-file-request-params', options);
 
       const response = await axios(options);
 
       if (response.status === 200) {
-        global.log.save('get-persist-link-to-static-file-response', response.data.data);
+        getLog().save('get-persist-link-to-static-file-response', response.data.data);
         return response.data.data.link;
       } else {
         const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        global.log.save('get-persist-link-to-static-file-response-error', { error, body: response.data });
+        getLog().save('get-persist-link-to-static-file-response-error', { error, body: response.data });
         throw error;
       }
     } catch (error) {
-      global.log.save('get-persist-link-to-static-file-response-error', { error, body: error.response?.data });
+      getLog().save('get-persist-link-to-static-file-response-error', { error, body: error.response?.data });
       throw error;
     }
   }

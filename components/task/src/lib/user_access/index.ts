@@ -1,4 +1,5 @@
 import { UserIpAccessProvider } from './access_providers/user_ip';
+import { getConfig, getLog } from '../context';
 
 // Providers.
 const PROVIDERS_CLASSES = [UserIpAccessProvider];
@@ -18,7 +19,7 @@ export class UserAccess {
     // Singleton.
     if (!UserAccess.singleton) {
       // Init providers.
-      this.providers = UserAccess.ProvidersClasses.map((v) => new v(global.config));
+      this.providers = UserAccess.ProvidersClasses.map((v) => new v(getConfig()));
 
       // Define singleton.
       UserAccess.singleton = this;
@@ -42,7 +43,7 @@ export class UserAccess {
           return { isAllowed: false, declinedByProvider: provider.name };
         }
       } catch (error) {
-        global.log.save('check-access-error', { error: error && error.message });
+        getLog().save('check-access-error', { error: error && error.message });
         return { isAllowed: false, declinedByProvider: provider.name };
       }
     }

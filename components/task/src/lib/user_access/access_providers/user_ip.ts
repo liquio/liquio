@@ -1,4 +1,5 @@
 import { AccessProvider } from './provider';
+import { getConfig } from '../../context';
 
 // Constants.
 const PROVIDER_NAME = 'user-ip';
@@ -13,7 +14,7 @@ export class UserIpAccessProvider extends AccessProvider {
    * User IP access provider constructor.
    * @param config Config objects.
    */
-  constructor(config = global.config) {
+  constructor(config = getConfig()) {
     super();
 
     // Define and save config.

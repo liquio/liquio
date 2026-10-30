@@ -10,6 +10,7 @@ import { routes } from './routes';
 import typeOf from '../../lib/type_of';
 import { errorHandler } from './error_handler';
 import { GENERIC_SERVER_ERROR } from '../../lib/public_error';
+import { getLog } from '../../lib/context';
 
 /**
  * Router service.
@@ -74,7 +75,7 @@ export class RouterService {
     app.use(asyncLocalStorageMiddleware);
 
     // Save request info to log.
-    app.use(global.log.logRouter.bind(global.log));
+    app.use(getLog().logRouter.bind(getLog()));
 
     // App info in headers.
     AppIdentHeaders.add(app);
@@ -178,7 +179,7 @@ export class RouterService {
       const catchAsync = (fn) => {
         return (req, res, next) => {
           if (typeof fn !== 'function') {
-            global.log.save('router-controller-not-defined', { message: 'Controller for route not defined. Check router configuration.' }, 'error');
+            getLog().save('router-controller-not-defined', { message: 'Controller for route not defined. Check router configuration.' }, 'error');
             return res.status(500).send({
               error: {
                 message: GENERIC_SERVER_ERROR,
@@ -254,7 +255,7 @@ export class RouterService {
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
       this.server = this.express.listen(port, hostname, () => {
-        global.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
+        getLog().save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });
     });
@@ -264,7 +265,7 @@ export class RouterService {
     return new Promise<void>((resolve) => {
       if (this.server) {
         this.server.close(() => {
-          global.log.save('server-listening-stopped');
+          getLog().save('server-listening-stopped');
           resolve();
         });
       } else {

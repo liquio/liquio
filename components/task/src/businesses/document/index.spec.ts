@@ -6,16 +6,10 @@ import { Sandbox } from '@liquio/back-core';
 import { initIdApiClient } from '../../lib/id_api';
 import { DocumentValidatorService } from '../../services/document_validator';
 import { DocumentBusiness } from './index';
-import { getLog, getConfig, setAppContext as setContext, resetAppContext } from '../../lib/context';
+import { getLog, getConfig, setAppContext, resetAppContext } from '../../lib/context';
 
 new Sandbox();
 initIdApiClient({});
-
-const setAppContext = (context: Parameters<typeof setContext>[0]) => {
-  setContext(context);
-  // Unmigrated services, models and lib (T17-task-b) still read the bare globals.
-  Object.assign(global, context);
-};
 
 describe('DocumentBusiness', () => {
   setAppContext({

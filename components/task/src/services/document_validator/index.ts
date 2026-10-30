@@ -10,6 +10,7 @@ import { ValidatorError } from './validator_error';
 import { Paths } from './paths';
 import { RegisterService } from '../../services/register';
 import { CalcTriggersValidator } from './calc_triggers_validator';
+import { getLog } from '../../lib/context';
 
 // Constants.
 // const CONTROL_PAYMENT_NAME = 'payment';
@@ -258,7 +259,7 @@ export class DocumentValidatorService {
         }));
         errors.push(...currentElementKeywordFormattedErrors);
       } catch (error) {
-        global.log.save('json-schema-validation-exception', error.message, 'warn');
+        getLog().save('json-schema-validation-exception', error.message, 'warn');
       }
     };
 

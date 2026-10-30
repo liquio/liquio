@@ -1,5 +1,6 @@
 import { Filler } from './filler';
 import { ExternalReader } from '../../../lib/external_reader';
+import { getLog } from '../../../lib/context';
 
 /**
  * External Reader filler.
@@ -72,7 +73,7 @@ export class ExternalReaderFiller extends Filler {
           valueToSet = records.data;
         }
       } catch (error) {
-        global.log.save('external-services-field-filling-error', { error: (error && error.message) || error }, 'warn');
+        getLog().save('external-services-field-filling-error', { error: (error && error.message) || error }, 'warn');
       }
 
       // Return value to set.
@@ -126,7 +127,7 @@ export class ExternalReaderFiller extends Filler {
               { meta: { fn: 'ExternalReaderFiller.normalizeFilters', key } },
             );
           } catch (error) {
-            global.log.save('external-reader-filer-function-calling-error', error, 'warn');
+            getLog().save('external-reader-filer-function-calling-error', error, 'warn');
             normalizedFilters[key] = value;
           }
         } else {

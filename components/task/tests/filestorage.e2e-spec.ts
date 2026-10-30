@@ -6,11 +6,12 @@ import axios from 'axios';
 import { FileStorage } from '../src/lib/filestorage';
 import { setAppContext } from '../src/lib/context';
 
+declare const gc: undefined | (() => void);
+
 // Mock the log module
 const mockLog = {
   save: jest.fn(),
 };
-global.log = mockLog as any;
 setAppContext({ log: mockLog as any });
 
 // Mock async_local_storage
@@ -29,7 +30,6 @@ const mockConfig = {
     timeout: 10000,
   },
 };
-global.config = mockConfig;
 setAppContext({ config: mockConfig });
 
 describe('FileStorage', () => {
@@ -68,8 +68,8 @@ describe('FileStorage', () => {
     }
 
     // Force garbage collection if available
-    if (global.gc) {
-      global.gc();
+    if (typeof gc === 'function') {
+      gc();
     }
   });
 
@@ -91,8 +91,8 @@ describe('FileStorage', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Force Jest to exit by clearing any remaining timers
-    if (global.gc) {
-      global.gc();
+    if (typeof gc === 'function') {
+      gc();
     }
   });
 

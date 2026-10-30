@@ -5,6 +5,7 @@ import { Model } from './model';
 import { DocumentTemplateEntity } from '../entities/document_template';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig, getLog, getModels } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -66,8 +67,8 @@ export class DocumentTemplateModel extends Model {
       PgPubSub.getInstance().subscribe('document_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache.documentTemplate?.findById || DEFAULT_CACHE_TTL,
-        substituteJsonProps: global.config.cache.documentTemplate?.substituteJsonProps || DEFAULT_CACHE_TTL,
+        findById: getConfig().cache.documentTemplate?.findById || DEFAULT_CACHE_TTL,
+        substituteJsonProps: getConfig().cache.documentTemplate?.substituteJsonProps || DEFAULT_CACHE_TTL,
       };
 
       DocumentTemplateModel.singleton = this;
@@ -81,13 +82,13 @@ export class DocumentTemplateModel extends Model {
    */
   async getAll(): Promise<DocumentTemplateEntity[]> {
     const documentTemplates = await this.model.findAll({
-      include: [{ model: global.models.taskTemplate.model, attributes: ['id', 'name'] }],
+      include: [{ model: getModels().taskTemplate.model, attributes: ['id', 'name'] }],
       attributes: ['id', 'name'],
     });
 
     const documentTemplatesEntities = documentTemplates.map((item) => {
       const documentTemplate = this.prepareEntity(item);
-      const taskTemplate = global.models.taskTemplate.prepareEntity(item.taskTemplate);
+      const taskTemplate = getModels().taskTemplate.prepareEntity(item.taskTemplate);
       documentTemplate.taskTemplate = taskTemplate;
       return documentTemplate;
     });
@@ -195,7 +196,7 @@ export class DocumentTemplateModel extends Model {
       try {
         jsonSchema = jsoncParser.parse(documentTemplate.json_schema);
       } catch (error) {
-        global.log.save('substitute-json-schema-parse-error', error.toString(), 'error');
+        getLog().save('substitute-json-schema-parse-error', error.toString(), 'error');
         const wrapped: any = new Error(
           `Cannot parse JSON schema from document ${documentTemplateId}. Trying to substitute by (properties.${key}.import = document.${documentTemplateId}).`,
         );

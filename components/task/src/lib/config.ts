@@ -2,6 +2,8 @@ import * as fs from 'node:fs';
 
 import Multiconf from 'multiconf';
 
+import { setAppContext } from './context';
+
 const config: any = {};
 
 /**
@@ -22,6 +24,6 @@ export function getConfig() {
 export function loadConfig(configPath) {
   const SECRET_PATH = process.env.SECRET_PATH;
   const config = Multiconf.get([configPath, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], 'LIQUIO_BPMN_TASK_');
-  global.config = config;
+  setAppContext({ config });
   return config;
 }

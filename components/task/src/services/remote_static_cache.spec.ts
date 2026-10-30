@@ -1,5 +1,7 @@
 import nock from 'nock';
 
+import { getLog, setAppContext } from '../lib/context';
+
 // Mock the back-core RedisClient this service delegates to.
 const redisConstructorSpy = jest.fn();
 const mockRedisClient = {
@@ -21,9 +23,11 @@ jest.mock('@liquio/back-core', () => ({ RedisClient: BackCoreRedisClientMock }))
 const { RemoteStaticCache } = require('./remote_static_cache');
 
 // Mock global log
-global.log = {
-  save: jest.fn(),
-} as any;
+setAppContext({
+  log: {
+    save: jest.fn(),
+  } as any,
+});
 
 describe('RemoteStaticCache', () => {
   beforeEach(() => {
@@ -35,7 +39,7 @@ describe('RemoteStaticCache', () => {
     redisConstructorSpy.mockClear();
     mockRedisClient.get.mockClear();
     mockRedisClient.set.mockClear();
-    (global.log.save as any).mockClear();
+    (getLog().save as any).mockClear();
 
     // Clear nock
     nock.cleanAll();
@@ -54,7 +58,7 @@ describe('RemoteStaticCache', () => {
 
       expect(redisConstructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379 }));
       expect(cache.client).toBe(mockRedisClient);
-      expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-initialized', {
+      expect(getLog().save).toHaveBeenCalledWith('remote-static-cache-initialized', {
         useCache: true,
         host: 'localhost',
         port: 6379,
@@ -69,7 +73,7 @@ describe('RemoteStaticCache', () => {
 
       expect(redisConstructorSpy).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
-      expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
+      expect(getLog().save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
         useCache: true,
       });
     });
@@ -82,7 +86,7 @@ describe('RemoteStaticCache', () => {
 
       expect(redisConstructorSpy).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
-      expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
+      expect(getLog().save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
         useCache: false,
       });
     });
@@ -209,7 +213,7 @@ describe('RemoteStaticCache', () => {
       const result = await cacheWithoutRedis.getAndUpdateByRemoteUrl(testUrl);
 
       expect(result).toBeUndefined();
-      expect(global.log.save).toHaveBeenCalledWith('redis-client-is-not-defined-for-static-cache');
+      expect(getLog().save).toHaveBeenCalledWith('redis-client-is-not-defined-for-static-cache');
       expect(mockRedisClient.get).not.toHaveBeenCalled();
     });
 
