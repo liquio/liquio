@@ -68,7 +68,7 @@ describe('Misc endpoints and error paths', () => {
     }
   });
 
-  it('should create a long (not small) link without saving it', async () => {
+  it('should create a stored link when small is not set', async () => {
     const created = await app.request().post('/link').set('token', token).send({ type: 'simple', options: simple }).expect(200);
     expect(String(created.body.data).startsWith(config.link_generator.linksPrefix)).toBe(true);
   });
