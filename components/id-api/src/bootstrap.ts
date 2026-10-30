@@ -1,0 +1,28 @@
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
+
+import { Application } from './application';
+
+export async function bootstrap(conf: any): Promise<void> {
+  const consoleLogProvider = new ConsoleLogProvider('console', {
+    excludeParams: conf.log?.excludeParams,
+    disableDefaultRedaction: conf.log?.disableDefaultRedaction === true,
+  });
+  const log = new Log([consoleLogProvider], ['console']);
+
+  log.save('start-application', { pid: process.pid }, 'info');
+
+  // Log unhandled rejections.
+  process.on('unhandledRejection', (error) => {
+    const { stack, message } = error ?? ({} as any);
+    log.save('unhandled-rejection', { stack, message }, 'error');
+  });
+
+  const application = new Application(conf);
+  try {
+    await application.init();
+    application.listen();
+  } catch (error: any) {
+    log.save('start-application|error', { error: error.message, stack: error.stack }, 'error');
+    process.exit(1);
+  }
+}
