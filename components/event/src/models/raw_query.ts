@@ -1,3 +1,4 @@
+import { getLog } from '../lib/context';
 import { Model } from './model';
 
 /**
@@ -27,7 +28,7 @@ export class RawQueryModel extends Model {
       error.details = `Can't create sequence ${sequenceName}`;
       throw error;
     }
-    global.log.save('create-sequence-result', { result, sequenceName }); // TODO: remove it after test.
+    getLog().save('create-sequence-result', { result, sequenceName }); // TODO: remove it after test.
     return result;
   }
 

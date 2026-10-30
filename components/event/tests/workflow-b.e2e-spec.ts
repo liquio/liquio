@@ -3,6 +3,7 @@ import nock from 'nock';
 import { EventWorkflow } from '../src/services/event/workflow';
 import { FileStorage } from '../src/lib/filestorage';
 import { TestApp } from './test-app';
+import { getConfig, getMessageQueue, getModels } from '../src/lib/context';
 
 const WF = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 
@@ -15,10 +16,10 @@ describe('Group B - event workflow service', () => {
     await TestApp.beforeAll();
     app = await TestApp.setup({});
     service = new EventWorkflow();
-    originalExternal = (global as any).config.external_bpmn;
+    originalExternal = getConfig().external_bpmn;
   });
   afterAll(async () => {
-    (global as any).config.external_bpmn = originalExternal;
+    getConfig().external_bpmn = originalExternal;
     await TestApp.afterAll(app);
   });
   afterEach(async () => {
@@ -28,7 +29,7 @@ describe('Group B - event workflow service', () => {
   });
   beforeEach(async () => {
     await TestApp.beforeEach(app);
-    (global as any).config.external_bpmn = {
+    getConfig().external_bpmn = {
       ext: { url: 'http://ext-bpmn.test', token: 'fake-token', queryParams: { a: '1' }, requestHeaders: { 'X-Test': 'y' } },
       noToken: { url: 'http://ext-bpmn.test' },
     };
@@ -42,7 +43,7 @@ describe('Group B - event workflow service', () => {
 
   describe('createWorkflows', () => {
     it('produces one message per workflow and loads files', async () => {
-      const produce = jest.spyOn((global as any).messageQueue, 'produce').mockImplementation((() => undefined) as any);
+      const produce = jest.spyOn(getMessageQueue(), 'produce').mockImplementation((() => undefined) as any);
       const res = await service.createWorkflows({
         workflowParentId: WF,
         createWorkflows: [{ initData: { a: 1 }, fileIds: ['f1'], filesMeta: [{ m: 1 }], p7sFileIds: ['p1'] }, { workflowTemplateId: 1 }],
@@ -71,7 +72,7 @@ describe('Group B - event workflow service', () => {
           att: body.initData.attachmentsSignatures.length,
           sig: body.initData.signatures,
         }));
-      jest.spyOn((global as any).models.documentSignature, 'findByDocumentId').mockResolvedValue([{ signature: JSON.stringify(['sig-1']) }] as any);
+      jest.spyOn(getModels().documentSignature, 'findByDocumentId').mockResolvedValue([{ signature: JSON.stringify(['sig-1']) }] as any);
       const res = await service.createWorkflowsExternal({
         createWorkflowsExternal: [{ fileIds: ['f1'], p7sFileIds: ['p1'], attachmentsSignaturesIds: ['a1'], signaturesDocumentId: 'doc1', files: [] }],
         jsonSchemaObject: schema,
@@ -91,7 +92,7 @@ describe('Group B - event workflow service', () => {
         service.createWorkflowsExternal({ createWorkflowsExternal: [{}], jsonSchemaObject: { externalSystem: 'noToken' } }),
       ).rejects.toThrow(/not defined/);
 
-      jest.spyOn((global as any).models.documentSignature, 'findByDocumentId').mockResolvedValue([] as any);
+      jest.spyOn(getModels().documentSignature, 'findByDocumentId').mockResolvedValue([] as any);
       await expect(
         service.createWorkflowsExternal({ createWorkflowsExternal: [{ signaturesDocumentId: 'd' }], jsonSchemaObject: schema }),
       ).rejects.toThrow('Document signatures not found.');
@@ -137,7 +138,7 @@ describe('Group B - event workflow service', () => {
   });
 
   describe('sendStatus', () => {
-    const g = () => (global as any).models;
+    const g = () => getModels();
     const happy = () => {
       const task = { id: 't1', taskTemplateId: '9', documentId: 'd1', isSystem: true, finished: false };
       jest.spyOn(g().workflow, 'findById').mockResolvedValue({ id: WF, workflowTemplateId: 1 });
@@ -149,7 +150,7 @@ describe('Group B - event workflow service', () => {
       jest.spyOn(g().workflowTemplate, 'findByIdCached').mockResolvedValue({ id: 1, data: { statuses: [] } });
       jest.spyOn(g().task, 'getDocumentsByWorkflowId').mockResolvedValue([]);
       jest.spyOn(g().event, 'getEventsByWorkflowId').mockResolvedValue([]);
-      jest.spyOn((global as any).messageQueue, 'produce').mockImplementation((() => undefined) as any);
+      jest.spyOn(getMessageQueue(), 'produce').mockImplementation((() => undefined) as any);
       return task;
     };
 
@@ -200,7 +201,7 @@ describe('Group B - event workflow service', () => {
     const tpl = (statuses: any) => ({ id: 1, data: { statuses } });
     let setStatus: jest.SpyInstance;
     beforeEach(() => {
-      setStatus = jest.spyOn((global as any).models.workflow, 'setStatus').mockResolvedValue(undefined as any);
+      setStatus = jest.spyOn(getModels().workflow, 'setStatus').mockResolvedValue(undefined as any);
     });
     const run = (statuses: any, taskTemplateId = 1) => service.setWorkflowStatus(WF, tpl(statuses), taskTemplateId, { documents: [], events: [] });
 
@@ -227,7 +228,7 @@ describe('Group B - event workflow service', () => {
     });
 
     it('replaces frontUrl and handles empty and invalid calculations', async () => {
-      (global as any).config.notifier = { ...(global as any).config.notifier, email: { templateParams: { frontUrl: 'http://front.test' } } };
+      getConfig().notifier = { ...getConfig().notifier, email: { templateParams: { frontUrl: 'http://front.test' } } };
       await run([
         {
           taskTemplateId: 1,

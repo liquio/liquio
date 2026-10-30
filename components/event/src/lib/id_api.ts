@@ -1,11 +1,13 @@
 import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 
+import { getLog } from './context';
+
 // Constants.
 const DEFAULT_TIMEOUT = 30000;
 
 /**
  * Init the shared id-api client from the `LiquioId` config section of the user config. Call once on startup,
- * after the global log is set. Everywhere else use `getIdApiClient()` without arguments.
+ * after the app context log is set. Everywhere else use `getIdApiClient()` without arguments.
  * @param {object} liquioIdConfig Id-api config section (`config.user.LiquioId`).
  * @returns {IdApiClient}
  */
@@ -18,6 +20,6 @@ export function initIdApiClient(liquioIdConfig: Record<string, any> = {}): IdApi
     clientId: liquioIdConfig.clientId,
     clientSecret: liquioIdConfig.clientSecret,
     basicAuthToken: liquioIdConfig.basicAuthToken,
-    getLog: () => global.log,
+    getLog,
   });
 }

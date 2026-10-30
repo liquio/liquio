@@ -20,21 +20,25 @@ Object.assign(BackCoreRedisClientMock.prototype, mockMethods);
 jest.mock('@liquio/back-core', () => ({ RedisClient: BackCoreRedisClientMock }));
 
 import { RedisClient } from './redis_client';
+import { setAppContext, resetAppContext, getLog } from './context';
 
 describe('RedisClient (event wrapper)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (RedisClient as any).singleton = undefined;
-    global.log = { save: jest.fn() } as any;
-    global.config = { redis: { host: 'localhost', port: 6379, ttl: 60, enabled: true } } as any;
+    setAppContext({ log: { save: jest.fn() }, config: { redis: { host: 'localhost', port: 6379, ttl: 60, enabled: true } } });
   });
 
-  it('reads its config from global.config.redis, mapping enabled/ttl to isEnabled/defaultTtl', () => {
+  afterEach(() => {
+    resetAppContext();
+  });
+
+  it('reads its config from the context redis config, mapping enabled/ttl to isEnabled/defaultTtl', () => {
     new RedisClient();
 
     expect(constructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379, defaultTtl: 60, isEnabled: true }));
     const config = constructorSpy.mock.calls[0][0];
-    expect(config.getLog()).toBe(global.log);
+    expect(config.getLog).toBe(getLog);
   });
 
   it('is a singleton across constructions', () => {
@@ -45,8 +49,8 @@ describe('RedisClient (event wrapper)', () => {
     expect(constructorSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('handles a missing global.config.redis gracefully', () => {
-    global.config = {} as any;
+  it('handles a missing context redis config gracefully', () => {
+    setAppContext({ config: {} });
 
     expect(() => new RedisClient()).not.toThrow();
     expect(constructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: undefined, port: undefined }));

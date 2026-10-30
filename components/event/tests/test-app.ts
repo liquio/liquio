@@ -60,8 +60,9 @@ jest.mock('../src/lib/config', () => {
   return {
     getConfig: jest.fn().mockImplementation(getMerged),
     loadConfig: jest.fn().mockImplementation(() => {
-      global.config = getMerged();
-      return global.config;
+      const merged = getMerged();
+      require('../src/lib/context').setAppContext({ config: merged });
+      return merged;
     }),
   };
 });

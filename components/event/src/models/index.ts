@@ -1,3 +1,4 @@
+import { setAppContext } from '../lib/context';
 import { ShareAccessModel } from './share_access';
 import { AccessHistoryModel } from './access_history';
 import { AdditionalDataSignatureModel } from './additional_data_signature';
@@ -81,7 +82,7 @@ export class Models {
         {},
       );
 
-    // Set models as global.
-    global.models = this.models;
+    // Set models in app context.
+    setAppContext({ models: this.models });
   }
 }

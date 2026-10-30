@@ -4,6 +4,7 @@ import nock from 'nock';
 
 import { FileStorage } from '../src/lib/filestorage';
 import { TestApp } from './test-app';
+import { getLog } from '../src/lib/context';
 
 const HOST = 'http://fs.test';
 
@@ -56,7 +57,7 @@ describe('Group D - filestorage', () => {
   });
 
   it('downloadFileWithoutStream logs and rethrows errors', async () => {
-    const save = jest.spyOn(global.log, 'save').mockImplementation(() => undefined as any);
+    const save = jest.spyOn(getLog(), 'save').mockImplementation(() => undefined as any);
     nock(HOST).get('/files/F2').reply(404, 'nf');
     await expect(fs.downloadFileWithoutStream('F2', true)).rejects.toThrow('Request failed with status code 404');
     expect(save.mock.calls.some((c) => c[0] === 'filestorage-download-file-without-stream|error' && c[2] === 'error')).toBe(true);
@@ -117,7 +118,7 @@ describe('Group D - filestorage', () => {
     nock(HOST).post('/files').query(true).reply(200, { error: 'plain' });
     await expect(fs.uploadFileFromStream(Readable.from(['x']), 'n.txt')).rejects.toThrow('plain');
 
-    const save = jest.spyOn(global.log, 'save').mockImplementation(() => undefined as any);
+    const save = jest.spyOn(getLog(), 'save').mockImplementation(() => undefined as any);
     nock(HOST).post('/files').query(true).reply(500, {});
     await expect(fs.uploadFileFromStream(Readable.from(['x']), 'n.txt', 'd', 'text/plain', 1, true)).rejects.toThrow(
       'Request failed with status code 500',
@@ -160,7 +161,7 @@ describe('Group D - filestorage', () => {
   });
 
   it('getP7sSignature does not log the p7s body', async () => {
-    const save = jest.spyOn(global.log, 'save').mockImplementation(() => undefined as any);
+    const save = jest.spyOn(getLog(), 'save').mockImplementation(() => undefined as any);
     nock(HOST)
       .get('/files/F9/p7s')
       .reply(200, { data: { p7s: 'SECRETP7S' } });

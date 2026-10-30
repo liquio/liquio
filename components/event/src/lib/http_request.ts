@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import { getLog } from './context';
 import { Helpers } from './helpers';
 
 const { prepareAxiosErrorToLog } = Helpers;
@@ -74,7 +75,7 @@ export class HttpRequest {
         ? { fullResponse: { statusCode: response.status, headers: response.headers, body: responseData }, body: responseData }
         : responseData;
     } catch (error: any) {
-      global.log.save('http-request-error', prepareAxiosErrorToLog(error), 'error');
+      getLog().save('http-request-error', prepareAxiosErrorToLog(error), 'error');
       if (error.response?.data) {
         // Error message is logged and returned to callers, so secrets are masked and long values cut.
         const preparedData = Helpers.prepareResponseDataToLog(error.response.data);

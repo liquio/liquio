@@ -2,6 +2,7 @@ import amqp from 'amqplib/callback_api';
 
 import { Rmq } from '../src/lib/rmq';
 import { TestApp } from './test-app';
+import { getConfig, getMessageQueue, getModels, getRedisClient, setAppContext } from '../src/lib/context';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -142,7 +143,7 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
     it('records a failing event with retry info, produces a postponed retry message and notFailOnError event', async () => {
       const ids = { wfTpl: 960003, evTpl: 960003001, wf: 'a0000003-0000-4000-8000-000000000003' };
       await seedDelay(ids, { delay: "() => { throw new Error('boom'); }", retryIfError: ['10m'], notFailOnError: true });
-      const produceSpy = jest.spyOn(global.messageQueue, 'produce');
+      const produceSpy = jest.spyOn(getMessageQueue(), 'produce');
 
       publishRaw(readingQueue, JSON.stringify({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl }));
       await waitFor(async () => produceSpy.mock.calls.length > 0);
@@ -194,15 +195,15 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
 
       beforeEach(() => {
         fakeRedis = makeFakeRedis();
-        prevRedis = (global as any).redisClient;
-        prevCfg = (global as any).config.redis;
-        (global as any).redisClient = fakeRedis;
-        (global as any).config.redis = { ...(prevCfg || {}), amqpMessageCache: { isEnabled: true } };
+        prevRedis = getRedisClient();
+        prevCfg = getConfig().redis;
+        setAppContext({ redisClient: fakeRedis });
+        getConfig().redis = { ...(prevCfg || {}), amqpMessageCache: { isEnabled: true } };
       });
 
       afterEach(() => {
-        (global as any).redisClient = prevRedis;
-        (global as any).config.redis = prevCfg;
+        setAppContext({ redisClient: prevRedis });
+        getConfig().redis = prevCfg;
       });
 
       it('handles a message once, caches the id and acks a duplicate from the cache', async () => {
@@ -244,14 +245,16 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
       it('survives redis errors while checking and storing ids', async () => {
         const ids = { wfTpl: 960008, evTpl: 960008001, wf: 'a0000008-0000-4000-8000-000000000008' };
         await seedDelay(ids);
-        (global as any).redisClient = {
-          get: async () => {
-            throw new Error('redis down');
+        setAppContext({
+          redisClient: {
+            get: async () => {
+              throw new Error('redis down');
+            },
+            set: async () => {
+              throw new Error('redis down');
+            },
           },
-          set: async () => {
-            throw new Error('redis down');
-          },
-        };
+        });
         publishRaw(
           readingQueue,
           JSON.stringify({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl, amqpMessageId: 'amqp-id-a-3' }),
@@ -405,13 +408,13 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
     });
 
     it('sends a request and receives the response (redis store)', async () => {
-      const prev = (global as any).redisClient;
-      (global as any).redisClient = makeFakeRedis();
+      const prev = getRedisClient();
+      setAppContext({ redisClient: makeFakeRedis() });
       try {
         const res = await rmq.sendRequestAndWaitResponse('req-2', { a: 1 }, 'ping', false);
         expect(res.payload).toMatchObject({ uuid: 'req-2', answer: 42 });
       } finally {
-        (global as any).redisClient = prev;
+        setAppContext({ redisClient: prev });
       }
     });
 
@@ -754,7 +757,7 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
     describe('setWorkflowStatus', () => {
       let setStatus: jest.SpyInstance;
       beforeEach(() => {
-        setStatus = jest.spyOn((global as any).models.workflow, 'setStatus').mockResolvedValue(undefined as any);
+        setStatus = jest.spyOn(getModels().workflow, 'setStatus').mockResolvedValue(undefined as any);
       });
       afterEach(() => setStatus.mockRestore());
       const run = (statuses: any) => app.eventBusiness.setWorkflowStatus('wf', { id: 1, data: { statuses } }, 10, 1, { documents: [], events: [] });
@@ -806,7 +809,7 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
 
     it('runDaemon sends due delay events and retries postponed notifications', async () => {
       const bus: any = app.eventBusiness;
-      const produce = jest.spyOn(global.messageQueue, 'produce').mockReturnValue(true);
+      const produce = jest.spyOn(getMessageQueue(), 'produce').mockReturnValue(true);
       const running = jest.spyOn(bus.runningEvents, 'lockAndGetRunningEvents').mockResolvedValue([{ id: 'e-delay' }]);
       const setDone = jest.spyOn(bus.eventModel, 'setDone').mockResolvedValue({ workflowId: 'wf-d' } as any);
       const unlock = jest.spyOn(bus.eventModel, 'unlockOldLockedEvents').mockResolvedValue(undefined as any);
@@ -822,8 +825,8 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
         return { sent: true };
       }) as any);
       const update = jest.spyOn(bus.eventModel.model, 'update').mockResolvedValue([1] as any);
-      const prevInterval = global.config.delayer?.interval;
-      global.config.delayer = { ...(global.config.delayer || {}), interval: 0.05 };
+      const prevInterval = getConfig().delayer?.interval;
+      getConfig().delayer = { ...(getConfig().delayer || {}), interval: 0.05 };
       try {
         await bus.runDaemon();
         await waitFor(async () => update.mock.calls.length >= 3);
@@ -836,7 +839,7 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
         expect((badEvent2.data as any).dueDate).toBeUndefined();
       } finally {
         bus.stopDaemon();
-        global.config.delayer.interval = prevInterval;
+        getConfig().delayer.interval = prevInterval;
         [produce, running, setDone, unlock, postponed, send, update].forEach((s) => s.mockRestore());
       }
     });
@@ -845,15 +848,15 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
       const bus: any = app.eventBusiness;
       const running = jest.spyOn(bus.runningEvents, 'lockAndGetRunningEvents').mockRejectedValue(new Error('lock failed'));
       const postponed = jest.spyOn(bus.eventModel, 'getPostponedEvents').mockRejectedValue(new Error('postponed failed'));
-      const prevDelayer = global.config.delayer;
-      global.config.delayer = { ...(prevDelayer || {}), interval: 0.05 };
+      const prevDelayer = getConfig().delayer;
+      getConfig().delayer = { ...(prevDelayer || {}), interval: 0.05 };
       try {
         await bus.runDaemon();
         await waitFor(async () => postponed.mock.calls.length > 0);
         bus.stopDaemon();
       } finally {
         bus.stopDaemon();
-        global.config.delayer = prevDelayer;
+        getConfig().delayer = prevDelayer;
         running.mockRestore();
         postponed.mockRestore();
       }

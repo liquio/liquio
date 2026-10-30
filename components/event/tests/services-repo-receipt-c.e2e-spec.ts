@@ -5,6 +5,7 @@ import nock from 'nock';
 import { ServicesRepositoryRequester } from '../src/services/event/requester/services_repository';
 import { StandardPaymentReceiptDocumentRequesterProvider } from '../src/services/event/requester/document/providers/standard_payment_receipt';
 import { TestApp } from './test-app';
+import { setAppContext } from '../src/lib/context';
 
 const REPO = 'http://repo.test';
 const PAY = 'http://pay.test';
@@ -17,6 +18,7 @@ describe('Group C - services repository and payment receipt', () => {
   beforeAll(async () => {
     await TestApp.beforeAll();
     app = await TestApp.setup({});
+    setAppContext({ httpClient: app.httpClient });
     (global as any).httpClient = app.httpClient;
     const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
     privateKeyBase64 = Buffer.from(privateKey.export({ type: 'pkcs8', format: 'pem' }) as string).toString('base64');
