@@ -2,7 +2,7 @@ import fs from 'node:fs';
 
 import Multiconf from 'multiconf';
 
-import { App } from './app';
+import { bootstrap } from './bootstrap';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/event';
 const SECRET_PATH = process.env.SECRET_PATH;
@@ -11,22 +11,7 @@ const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_EVE
 async function main() {
   const config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`);
 
-  const app = new App(config);
-  app.useGlobalErrors();
-  app.useGlobalTypeOf();
-  app.useLog();
-  app.useIdApiClient();
-  app.useHttpClient();
-  app.useUnhandedRejectionLogging();
-  app.useMoment();
-  app.useRedis();
-  await app.useDb();
-  app.useModels();
-  await app.usePlugins();
-  app.useEventService();
-  app.useEventBusiness();
-  await app.useMessageQueue();
-  await app.useRouter();
+  await bootstrap(config);
 }
 
 main();

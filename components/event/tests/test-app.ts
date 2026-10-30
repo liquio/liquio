@@ -12,7 +12,7 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 
-import { App } from '../src/app';
+import { App } from '../src/bootstrap';
 import { MessageQueue } from '../src/lib/message_queue';
 import { prepareFixtures } from './fixtures';
 
