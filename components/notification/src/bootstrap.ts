@@ -1,9 +1,13 @@
+import path from 'node:path';
+
+import { initIdApiClient } from './lib/id_api';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
 import { warnOnDefaultAdminPassword } from './lib/default_admin_password';
 
 // Constants.
 const ADAPTERS_LIST: Record<string, unknown> = { testConsoleSmsAdapter };
 const DEFAULT_SMS_ADAPTER_NAME = 'testConsoleSmsAdapter';
+const ADMIN_DIRECTORY = '/admin';
 
 /**
  * Warn about default admin password and select adapters to use.
@@ -32,3 +36,23 @@ export function buildAdapters(conf: any, log: any): { sms: any } {
 
   return adapters;
 }
+
+/**
+ * Start.
+ * @param {object} config Config.
+ * @param {string} adminStaticDir Admin static directory path.
+ * @param {{sms: {sendSms, sendOneSms, getSMSQueue, getSMSQueueCounter, getSMSLog}}} adapters Custom adapters.
+ */
+const start = function (config: any, adminStaticDir: string = path.join(__dirname, ADMIN_DIRECTORY), adapters: any = {}): any {
+  global.conf = config.conf;
+  initIdApiClient(config.conf.auth_server);
+  global.env = config.env;
+  (global as any).adminStaticDir = adminStaticDir;
+  (global as any).extensions = { adapters };
+  // Deferred require: server.ts reads global.conf/global.env/global.adminStaticDir/global.extensions
+  // at module-load time, so it must not be imported until this function has set them.
+
+  return require('./server').server;
+};
+
+export default start;
