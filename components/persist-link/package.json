@@ -2,14 +2,15 @@
   "name": "liquio-persist-link",
   "version": "1.0.4",
   "description": "Persist link",
-  "main": "src/app.ts",
+  "main": "dist/index.js",
   "directories": {
     "lib": "src/lib"
   },
   "scripts": {
-    "start": "ts-node --transpile-only src/app.ts",
-    "start:prod": "node dist/src/app.js",
-    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:prod": "node dist/index.js",
+    "start:ts": "ts-node --transpile-only src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
     "migration-up": "sequelize db:migrate --migrations-path ./migrations --config ./migrations-config.js",
     "lint": "eslint \"**/*.ts\" \"**/*.js\"",
     "lint:fix": "eslint \"**/*.ts\" \"**/*.js\" --fix",

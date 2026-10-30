@@ -10,11 +10,11 @@ ingress host. See the full system context in
 ```bash
 npm install
 
-# run against TypeScript sources
-npm start
+# run compiled build (npm start runs dist/index.js after npm run build)
+npm run build && npm start
 
-# run compiled build
-npm run build && npm run start:prod
+# run TypeScript sources
+npm run start:ts
 
 # lint
 npm run lint
@@ -35,7 +35,7 @@ npm run migration-up
 `npm run test:e2e` starts a Postgres container (`postgres:16`, testcontainers) per test file and applies the migrations, so Docker
 must be available. Downstream services (filestorage, register, OpenStack, file converter) are local `http.createServer` stubs on
 ephemeral ports (`tests/stub_server.ts`); nothing external is called. The run collects coverage over `src/**` (without the
-`src/app.ts` entry) and fails below 80% statements or lines (`jest.e2e.config.js`). Use
+`src/index.ts` entry) and fails below 80% statements or lines (`jest.e2e.config.js`). Use
 `npm run test:e2e -- --runInBand --forceExit` as the code-quality gate does.
 
 ## OpenStack link provider
