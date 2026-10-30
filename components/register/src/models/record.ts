@@ -6,6 +6,7 @@ import RecordEntity from '../entities/record';
 import deepFind from '../lib/deepFind';
 import HistoryModel from './history';
 import { BasicFilter, ModelListResponse, ModelListWithMetaResponse, ModelItemResponse, ModelUpdateResponse } from '../lib/interfaces';
+import { getAfterhandler, getEncryption } from '../lib/context';
 
 const ERROR_ORDER_FIELD_VALIDATION = 'Order field path is not valid.';
 const DB_FIELD_NAME_REGEX = '[a-zA-Z0-9_-]+';
@@ -63,7 +64,7 @@ export default class RecordModel extends Model {
               const rawData = this.getDataValue('data');
               if (rawData && rawData[ENCRYPTED_FIELD_NAME]) {
                 try {
-                  return JSON.parse(global.encryption.decrypt(rawData[ENCRYPTED_FIELD_NAME]));
+                  return JSON.parse(getEncryption().decrypt(rawData[ENCRYPTED_FIELD_NAME]));
                 } catch {
                   return rawData;
                 }
@@ -119,7 +120,7 @@ export default class RecordModel extends Model {
               if (record.is_encrypted && record.data && !record.data[ENCRYPTED_FIELD_NAME]) {
                 // Let encryption error fail saving: otherwise record of encrypted key is stored as plain text
                 // (e.g. when encryption key is not configured).
-                const encryptedData = global.encryption.encrypt(JSON.stringify(record.data));
+                const encryptedData = getEncryption().encrypt(JSON.stringify(record.data));
                 record.data = { [ENCRYPTED_FIELD_NAME]: encryptedData };
               }
             },
@@ -379,7 +380,7 @@ export default class RecordModel extends Model {
 
     if (id) recordToCreateRaw.id = id;
 
-    await global.afterhandler.validateRecord(recordToCreateRaw, 'create');
+    await getAfterhandler().validateRecord(recordToCreateRaw, 'create');
 
     // DB query.
     const createdRecordRaw = await this.model.create(recordToCreateRaw);
@@ -479,7 +480,7 @@ export default class RecordModel extends Model {
       allow_tokens: allowTokens,
     });
 
-    await global.afterhandler.validateRecord(recordToUpdateRaw, 'update');
+    await getAfterhandler().validateRecord(recordToUpdateRaw, 'update');
 
     if (isSkipDataUpdating) {
       delete recordToUpdateRaw.data; // Do not update record data. For example: it is possible that record will be updated by user at the time of indexation, and we will roll back changes.
@@ -568,7 +569,7 @@ export default class RecordModel extends Model {
       signature: record.signature,
     });
 
-    await global.afterhandler.validateRecord(recordToUpdateRaw, 'update');
+    await getAfterhandler().validateRecord(recordToUpdateRaw, 'update');
 
     // DB query.
     const [updatedRowsCount, [updatedRecordRaw]] = await this.model.update(recordToUpdateRaw, {
@@ -590,7 +591,7 @@ export default class RecordModel extends Model {
     // Find existing record that should be deleted.
     const recordToDeleteRaw = await this.findById(id);
 
-    await global.afterhandler.validateRecord(recordToDeleteRaw, 'delete');
+    await getAfterhandler().validateRecord(recordToDeleteRaw, 'delete');
 
     const { data: recordToDeleteEntity } = recordToDeleteRaw;
 

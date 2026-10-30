@@ -2,7 +2,6 @@ import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 
 import Db from './lib/db';
 import Afterhandler from './lib/afterhandler';
-import ErrorWithDetails from './lib/errors';
 import typeOf from './lib/typeOf';
 import Models from './models';
 import Router from './router';
@@ -12,6 +11,7 @@ import { assertSafeConfig, assertEncryptionConfig, warnPlainHttpSign, warnEmptyS
 import { RedisClient } from './lib/redis_client';
 import { PgPubSub } from './lib/pgpubsub';
 import { buildSandboxConfig } from './lib/sandbox_config';
+import { setAppContext, getLog, getDb } from './lib/context';
 
 export async function bootstrap(config: any, overrides: { log?: Log } = {}) {
   let log = overrides.log;
@@ -23,11 +23,7 @@ export async function bootstrap(config: any, overrides: { log?: Log } = {}) {
     log = new Log([consoleLogProvider as any], ['console']);
   }
 
-  // Globals for legacy JS code: do not use in new code.
-  global.config = config;
-  global.log = log;
-  global.ErrorWithDetails = ErrorWithDetails;
-  global.typeOf = typeOf;
+  setAppContext({ config, log, typeOf });
 
   // Refuse to start with placeholder/empty credentials (messages name settings only, never values).
   try {
@@ -47,7 +43,7 @@ export async function bootstrap(config: any, overrides: { log?: Log } = {}) {
   }
 
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
-  new Sandbox(buildSandboxConfig(config.sandbox) as any);
+  new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
 
   // Init Redis.
   if (config.redis && config.redis.isEnabled) {
@@ -64,7 +60,7 @@ export async function bootstrap(config: any, overrides: { log?: Log } = {}) {
   }
 
   // Init DB.
-  global.db = await Db.getInstance(config.db);
+  setAppContext({ db: await Db.getInstance(config.db) });
 
   // Init pgpubsub.
   const pgpubsub = new PgPubSub(config.db);
@@ -77,22 +73,22 @@ export async function bootstrap(config: any, overrides: { log?: Log } = {}) {
   // Init afterhandler.
   const afterhandler = new Afterhandler(config.afterhandler, models.models.afterhandler as any, models.models.record as any);
   afterhandler.init();
-  global.afterhandler = afterhandler;
+  setAppContext({ afterhandler });
 
   // Never generate or replace a key: only refuse an unusable one when encrypted keys exist.
   try {
-    const [encrypted] = await global.db.query('SELECT 1 FROM keys WHERE is_encrypted = true LIMIT 1', { type: 'SELECT' });
+    const [encrypted] = await getDb().query('SELECT 1 FROM keys WHERE is_encrypted = true LIMIT 1', { type: 'SELECT' });
     assertEncryptionConfig(config, !!encrypted);
   } catch (error) {
     log.save('config-guard-error', { error: error?.message }, 'error');
     throw error;
   }
 
-  global.encryption = new Encryption(config.encryption);
+  setAppContext({ encryption: new Encryption(config.encryption) });
 
   // Start server.
   const router = new Router(config);
   const express = await router.init();
 
-  return { express, router, db: global.db };
+  return { express, router, db: getDb() };
 }

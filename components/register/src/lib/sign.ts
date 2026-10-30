@@ -3,6 +3,7 @@ import { Log } from '@liquio/back-core';
 
 import prepareAxiosErrorToLog from './prepareAxiosErrorToLog';
 import { TlsConfig, createHttpsAgent } from './tls';
+import { getConfig, getLog } from './context';
 
 // Constants.
 const ROUTES = {
@@ -36,7 +37,7 @@ export default class Sign {
     // Define singleton.
     if (!Sign.singleton) {
       this.log = Log.getInstance();
-      const { url, token, timeout = 10000, tls } = config || global.config.sign;
+      const { url, token, timeout = 10000, tls } = config || getConfig().sign;
       this.url = url;
       this.token = token;
       this.timeout = timeout;
@@ -72,7 +73,7 @@ export default class Sign {
       const { data: response } = await axios(requestOptions);
       return response;
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'sign-service-verify-signature-external-error',
         {
           ...prepareAxiosErrorToLog(error),

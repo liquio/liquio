@@ -7,6 +7,7 @@ import ElasticAfterhandlerWorker from '../src/lib/afterhandler/workers/elastic';
 import PLinkAfterhandlerWorker from '../src/lib/afterhandler/workers/plink';
 import HyperledgerFabricBlockchainProvider from '../src/lib/afterhandler/workers/blockchain/providers/hyperledger_fabric';
 import { PgPubSub } from '../src/lib/pgpubsub';
+import { setAppContext, getAfterhandler, getConfig, getDb } from '../src/lib/context';
 import {
   assertEncryptionConfig,
   assertSafeConfig,
@@ -78,7 +79,7 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
     keyId = key.body.data.id;
     const rec = await post('/records', { registerId, keyId, data: { f: 'alpha', n: 1 } }).expect(200);
     recordId = rec.body.data.id;
-    model = (global as any).afterhandler.afterhandlerModel;
+    model = getAfterhandler().afterhandlerModel;
   }, 60000);
 
   afterAll(async () => {
@@ -221,17 +222,11 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
 
     it('dispose clears references once and returns 0 without gc', () => {
       const w = new AfterhandlerWorker('elastic', cfg, model);
-      const g = (global as any).gc;
-      (global as any).gc = undefined;
-      try {
-        expect(w.dispose()).toBe(0);
-        expect(w.disposed).toBe(true);
-        expect(w.config).toBeNull();
-        expect(w.afterhandlerModel).toBeNull();
-        expect(w.dispose()).toBeUndefined();
-      } finally {
-        (global as any).gc = g;
-      }
+      expect(w.dispose()).toBe(0);
+      expect(w.disposed).toBe(true);
+      expect(w.config).toBeNull();
+      expect(w.afterhandlerModel).toBeNull();
+      expect(w.dispose()).toBeUndefined();
     });
 
     it('findFirstNotSynced/setSynced delegate to the model', async () => {
@@ -527,7 +522,7 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
     let svc: any;
     let originalWorkers: any[];
     beforeAll(() => {
-      svc = (global as any).afterhandler;
+      svc = getAfterhandler();
       originalWorkers = svc.workers;
     });
     afterEach(() => {
@@ -555,7 +550,7 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
       expect(await svc.isKeyReindexing(4242)).toBe(true);
       await svc.markKeyReindexStop(4242);
       expect(await svc.isKeyReindexing(4242)).toBe(false);
-      const cfg = (global as any).config;
+      const cfg = getConfig();
       const saved = cfg.redis.isEnabled;
       cfg.redis.isEnabled = false;
       try {
@@ -570,7 +565,7 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
     });
 
     const fastWait = () => {
-      const real = global.setTimeout;
+      const real = setTimeout;
       jest.spyOn(global, 'setTimeout').mockImplementation(((fn: any, ms?: number, ...a: any[]) => real(fn, ms === 5e3 ? 0 : ms, ...a)) as any);
     };
 
@@ -706,7 +701,7 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
 
     it('warnPlainHttpSign and warnEmptySignToken warn only in production', () => {
       const save = jest.fn();
-      (global as any).log = { save };
+      setAppContext({ log: { save } });
       try {
         expect(warnPlainHttpSign({ sign: { url: 'http://s' } } as any, 'production')).toBe(true);
         expect(save).toHaveBeenCalledWith('sign-plain-http', expect.objectContaining({ key: 'sign.url' }), 'warn');
@@ -723,7 +718,7 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
         expect(warnEmptySignToken({ sign: { token: '', allowEmptyToken: true } } as any, 'prod')).toBe(false);
         expect(warnEmptySignToken({ sign: { token: '' } } as any, 'dev')).toBe(false);
       } finally {
-        delete (global as any).log;
+        setAppContext({ log: undefined });
       }
     });
   });
@@ -809,7 +804,7 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
       const got: any[] = [];
       await ps.subscribe('c_test_chan', (channel, data) => got.push([channel, data]));
       await ps.subscribe('c_test_chan', () => got.push('second'));
-      const db = (global as any).db;
+      const db = getDb();
       await db.query(`SELECT pg_notify('c_test_chan', '{"id":1,"table":"t","action":"INSERT"}')`);
       await db.query(`SELECT pg_notify('c_test_chan', 'not-json')`);
       await db.query(`SELECT pg_notify('c_other_chan', '{}')`);
@@ -838,7 +833,7 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
       expect(ps.isReconnecting).toBe(false);
       expect(ps.reconnectAttempts).toBe(0);
       ps.config = origConfig;
-      await (global as any).db.query(`SELECT pg_notify('c_re_chan', '{"id":3,"table":"t","action":"DELETE"}')`);
+      await getDb().query(`SELECT pg_notify('c_re_chan', '{"id":3,"table":"t","action":"DELETE"}')`);
       await sleep(300);
       expect(got).toEqual([{ id: 3, table: 't', action: 'DELETE' }]);
       await ps.unsubscribe('c_re_chan');

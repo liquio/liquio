@@ -6,6 +6,7 @@ import HistoryEntity from '../entities/history';
 import AfterhandlerEntity from '../entities/afterhandler';
 import KeyModel from './key';
 import AfterhandlerModel from './afterhandler';
+import { getConfig } from '../lib/context';
 
 const KEYMODEL_CACHE_TIME = 30;
 
@@ -242,7 +243,7 @@ export default class HistoryModel extends Model {
     let historyId;
 
     // Check afterhandler config.
-    const afterhandlerConfig = global.config.afterhandler;
+    const afterhandlerConfig = getConfig().afterhandler;
 
     // Handle all afterhandler types.
     const afterhandlerTypes = Object.values(AfterhandlerEntity.Types);

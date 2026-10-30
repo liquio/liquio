@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import https from 'node:https';
 
+import { getLog } from './context';
+
 /**
  * TLS options for outgoing HTTPS connections.
  * @property {string|string[]} [ca] Extra CA certificate(s): PEM string or path to a PEM file.
@@ -33,7 +35,7 @@ export function createHttpsAgent(tls?: TlsConfig, target?: string): https.Agent 
 
   const options: https.AgentOptions = { rejectUnauthorized: tls.rejectUnauthorized !== false };
   if (options.rejectUnauthorized === false) {
-    global.log?.save(
+    getLog()?.save(
       'tls-verification-disabled',
       { target, message: 'TLS certificate verification is disabled by config (tls.rejectUnauthorized=false).' },
       'warn',

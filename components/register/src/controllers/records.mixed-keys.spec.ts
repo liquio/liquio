@@ -1,5 +1,6 @@
 import RecordsController from './records';
 import RecordEntity from '../entities/record';
+import { setAppContext } from '../lib/context';
 
 jest.mock('express-validator', () => ({
   matchedData: (req, options) => Object.assign({}, ...options.locations.map((location) => req[location] || {})),
@@ -83,7 +84,7 @@ describe.each(['getAll', 'getAllFiltered'])('RG-08: mixed-key page in %s', (meth
 
 describe('EC-35: rawSequelizeParams keeps the row-token filter', () => {
   beforeAll(() => {
-    (global as any).typeOf = (v) => (Array.isArray(v) ? 'array' : v === null ? 'null' : typeof v);
+    setAppContext({ typeOf: (v) => (Array.isArray(v) ? 'array' : v === null ? 'null' : typeof v) });
   });
 
   const sentFilter = (controller) => controller.recordModel.getAll.mock.calls[0][0].filter;

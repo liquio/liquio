@@ -4,6 +4,7 @@ import { RedisClient } from '../redis_client';
 import BlockchainAfterhandlerWorker from './workers/blockchain';
 import ElasticAfterhandlerWorker from './workers/elastic';
 import PLinkAfterhandlerWorker from './workers/plink';
+import { getConfig } from '../context';
 
 // Constants.
 const AFTERHANDLER_WORKERS_LIST = [BlockchainAfterhandlerWorker, ElasticAfterhandlerWorker, PLinkAfterhandlerWorker];
@@ -169,7 +170,7 @@ export default class Afterhandler {
    * @returns {Promise<boolean>} True if key reindexing is in progress.
    **/
   async isKeyReindexing(keyId) {
-    if (global.config?.redis?.isEnabled) {
+    if (getConfig()?.redis?.isEnabled) {
       return !!(await RedisClient.getInstance().get([Afterhandler.redisReindexPrefix, keyId]));
     } else {
       return !!this.keyReindexing[keyId];
@@ -183,7 +184,7 @@ export default class Afterhandler {
    * @returns {Promise<void>}
    */
   async markKeyReindexStart(keyId) {
-    if (global.config?.redis?.isEnabled) {
+    if (getConfig()?.redis?.isEnabled) {
       await RedisClient.getInstance().set([Afterhandler.redisReindexPrefix, keyId], 'started', REDIS_KEY_EXPIRATION);
     } else {
       this.keyReindexing[keyId] = true;
@@ -197,7 +198,7 @@ export default class Afterhandler {
    * @returns {Promise<void>}
    */
   async markKeyReindexStop(keyId) {
-    if (global.config?.redis?.isEnabled) {
+    if (getConfig()?.redis?.isEnabled) {
       await RedisClient.getInstance().delete([Afterhandler.redisReindexPrefix, keyId]);
     } else {
       delete this.keyReindexing[keyId];

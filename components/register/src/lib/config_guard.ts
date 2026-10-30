@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { Config } from './config';
 import { parseEncryptionKey } from './encryption';
 import { checkServicePermissionsConfig } from './service_permissions';
+import { getLog } from './context';
 
 /** Minimum length of the password part of a Basic auth token. */
 export const MIN_TOKEN_PASSWORD_LENGTH = 8;
@@ -112,7 +113,7 @@ export function warnPlainHttpSign(config: Config, env: string | undefined = proc
   const sign = config?.sign;
   if (!env || !['production', 'prod'].includes(env) || sign?.allowPlainHttp === true) return false;
   if (typeof sign?.url !== 'string' || !/^http:\/\//i.test(sign.url.trim())) return false;
-  global.log?.save(
+  getLog()?.save(
     'sign-plain-http',
     { key: 'sign.url', hint: 'Use https:// with sign.tls.ca, or set sign.allowPlainHttp=true when NetworkPolicy/mesh mTLS protects the traffic.' },
     'warn',
@@ -132,7 +133,7 @@ export function warnEmptySignToken(config: Config, env: string | undefined = pro
   const token = sign?.token;
   const unusable = typeof token !== 'string' || token.trim() === '' || isPlaceholder(token);
   if (!unusable) return false;
-  global.log?.save(
+  getLog()?.save(
     'sign-empty-token',
     {
       key: 'sign.token',

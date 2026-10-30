@@ -133,7 +133,6 @@ export default class RollbackBusiness extends Business {
     } else {
       this.toRollback = {};
     }
-    if (global.gc) global.gc();
   }
 
   /**
