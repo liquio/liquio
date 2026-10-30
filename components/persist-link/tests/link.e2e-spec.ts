@@ -118,6 +118,32 @@ describe('LinkController', () => {
     await app.request().get(`/${definedHash}`).expect(302).expect('Location', targetUrl);
   });
 
+  it('should open a link created without small or with small false', async () => {
+    app = await TestApp.setup();
+
+    const targetUrl = 'https://example.com/opened';
+    for (const extra of [{}, { small: false }]) {
+      const created = await app
+        .request()
+        .post('/link')
+        .set('token', token)
+        .send({ type: 'simple', options: { url: targetUrl, redirect: true }, ...extra })
+        .expect(200);
+
+      const link: string = created.body.data;
+      expect(link.startsWith(config.link_generator.linksPrefix)).toBe(true);
+      const hash = link.split('/').pop();
+      await app.request().get(`/link/${hash}`).expect(302).expect('Location', targetUrl);
+    }
+  });
+
+  it('should answer an error for an unknown hash', async () => {
+    app = await TestApp.setup();
+
+    const response = await app.request().get('/link/unknown-hash-value').expect(500);
+    expect(JSON.stringify(response.body)).toContain('Wrong URL.');
+  });
+
   it('should reject simple link create with a non-http(s) url', async () => {
     app = await TestApp.setup();
 

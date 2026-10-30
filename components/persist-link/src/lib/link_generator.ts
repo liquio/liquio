@@ -60,7 +60,7 @@ class LinkGenerator {
    */
   async generateLinkByData(data) {
     // Define params.
-    const { small, definedHash } = data;
+    const { definedHash } = data;
 
     // Define data to enctypt.
     const dataToEncrypt = {
@@ -77,18 +77,12 @@ class LinkGenerator {
     // Encrypt stringified data.
     const encryptedDataString = this.encrypt(dataString);
 
-    // Check if small link needed (with saving to DB).
-    let smallHash;
-    if (small) {
-      // Generate small hash.
-      smallHash = definedHash || crypto.randomBytes(this.smallHashRandomBytesLength).toString(SMALL_HASH_RANDOM_BYTES_ENCODING);
-
-      // Save to DB.
-      await this.linksModel.create({ key: smallHash, data: encryptedDataString });
-    }
+    // Always save to DB: links are only openable by hash lookup (the small flag is kept for compatibility).
+    const smallHash = definedHash || crypto.randomBytes(this.smallHashRandomBytesLength).toString(SMALL_HASH_RANDOM_BYTES_ENCODING);
+    await this.linksModel.create({ key: smallHash, data: encryptedDataString });
 
     // Define and return link.
-    const link = `${this.linksPrefix}${smallHash || encryptedDataString}`;
+    const link = `${this.linksPrefix}${smallHash}`;
     return link;
   }
 
