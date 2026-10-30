@@ -1,5 +1,7 @@
 import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 
+import { getLog } from './context';
+
 /**
  * Init the shared id-api client from the `auth_server` config section. Call once on startup, before anything uses
  * the client. Everywhere else use `getIdApiClient()` without arguments.
@@ -15,6 +17,6 @@ export function initIdApiClient(authServerConfig: Record<string, any> = {}): IdA
     basicAuthToken: authServerConfig.basicAuthToken,
     basicAuthUser: authServerConfig.user,
     basicAuthPassword: authServerConfig.password,
-    getLog: () => global.log,
+    getLog: () => getLog(),
   });
 }

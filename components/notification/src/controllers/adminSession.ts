@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 
+import { getConf } from '../lib/context';
+
 export const ADMIN_COOKIE_NAME = 'adminSid';
 export const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
@@ -20,7 +22,7 @@ const digest = (value: unknown): Buffer =>
  * Constant-time check of the submitted admin credentials against config.
  */
 export function verifyAdminCredentials(login: unknown, pass: unknown): boolean {
-  const { login: confLogin, password: confPassword } = (global as any).conf?.adminConfig || {};
+  const { login: confLogin, password: confPassword } = getConf()?.adminConfig || {};
   if (!confLogin || !confPassword) return false;
   const loginOk = crypto.timingSafeEqual(digest(login), digest(confLogin));
   const passOk = crypto.timingSafeEqual(digest(pass), digest(confPassword));

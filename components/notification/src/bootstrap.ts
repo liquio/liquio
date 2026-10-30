@@ -3,6 +3,7 @@ import path from 'node:path';
 import { initIdApiClient } from './lib/id_api';
 import { testConsoleSmsAdapter } from './adapters/test_console_sms_adapter';
 import { warnOnDefaultAdminPassword } from './lib/default_admin_password';
+import { setAppContext } from './lib/context';
 
 // Constants.
 const ADAPTERS_LIST: Record<string, unknown> = { testConsoleSmsAdapter };
@@ -44,12 +45,10 @@ export function buildAdapters(conf: any, log: any): { sms: any } {
  * @param {{sms: {sendSms, sendOneSms, getSMSQueue, getSMSQueueCounter, getSMSLog}}} adapters Custom adapters.
  */
 const start = function (config: any, adminStaticDir: string = path.join(__dirname, ADMIN_DIRECTORY), adapters: any = {}): any {
-  global.conf = config.conf;
+  setAppContext({ conf: config.conf });
   initIdApiClient(config.conf.auth_server);
-  global.env = config.env;
-  (global as any).adminStaticDir = adminStaticDir;
-  (global as any).extensions = { adapters };
-  // Deferred require: server.ts reads global.conf/global.env/global.adminStaticDir/global.extensions
+  setAppContext({ env: config.env, adminStaticDir, extensions: { adapters } });
+  // Deferred require: server.ts reads conf/env/adminStaticDir/extensions from the app context
   // at module-load time, so it must not be imported until this function has set them.
 
   return require('./server').server;

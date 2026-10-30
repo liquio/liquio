@@ -4,6 +4,7 @@ import { appendTraceMeta } from '@liquio/back-core';
 
 import { AuthorizeModel } from '../models/authorize';
 import { verifyAdminSession } from './adminSession';
+import { getConf } from '../lib/context';
 
 const Authorize = new AuthorizeModel().Authorize;
 
@@ -12,7 +13,7 @@ function sendAuthError(res: any, code = 'Authorization error', message = 'Author
 }
 
 const checkAuth = async function (req: any, res: any, next: any) {
-  const { authorization: authConfig = {} } = (global as any).conf;
+  const { authorization: authConfig = {} } = getConf();
   const { authorization = '' } = req.headers;
 
   if (!authorization.trim()) {
@@ -104,7 +105,7 @@ const checkSameOrigin = function (req: any, res: any, next: any) {
 const checkTestAuth = async function (req: any, res: any, next: any) {
   // Define params.
   const testAuthToken = req.headers.authorization;
-  const conf = (global as any).conf;
+  const conf = getConf();
   const neededTestAuthToken = conf && conf.testService && conf.testService.token;
 
   // Check.
@@ -139,7 +140,7 @@ function safeEqual(a: unknown, b: unknown): boolean {
 }
 
 function signNonce(value: string): string {
-  const key = String((global as any).conf?.adminConfig?.password || processNonceKey);
+  const key = String(getConf()?.adminConfig?.password || processNonceKey);
   return crypto.createHmac('sha256', key).update(value).digest('hex');
 }
 

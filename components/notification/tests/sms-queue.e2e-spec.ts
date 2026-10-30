@@ -1,4 +1,5 @@
 import { TestApp, TEST_AUTH_HEADER, TEST_SERVICE } from './test-app';
+import { getExtensions } from '../src/lib/context';
 
 describe('SMS queue, gate and callbacks', () => {
   let app: TestApp;
@@ -64,11 +65,11 @@ describe('SMS queue, gate and callbacks', () => {
     let saved: any;
 
     beforeAll(() => {
-      saved = (global as any).extensions.adapters.sms;
-      (global as any).extensions.adapters.sms = adapter;
+      saved = getExtensions().adapters.sms;
+      getExtensions().adapters.sms = adapter;
     });
     afterAll(() => {
-      (global as any).extensions.adapters.sms = saved;
+      getExtensions().adapters.sms = saved;
     });
 
     it('proxies queue, count and log to the adapter', async () => {
@@ -142,8 +143,8 @@ describe('SMS queue, gate and callbacks', () => {
 
   describe('adapter without any methods', () => {
     it('returns nothing from every gate method', async () => {
-      const saved = (global as any).extensions.adapters.sms;
-      (global as any).extensions.adapters.sms = {};
+      const saved = getExtensions().adapters.sms;
+      getExtensions().adapters.sms = {};
       try {
         const { CustomGate } = require('../src/models/smsGate/customGate');
         const gate = new CustomGate();
@@ -153,7 +154,7 @@ describe('SMS queue, gate and callbacks', () => {
         expect(await gate.getSMSQueueCounter()).toBeUndefined();
         expect(await gate.getSMSLog('+380500000001')).toBeUndefined();
       } finally {
-        (global as any).extensions.adapters.sms = saved;
+        getExtensions().adapters.sms = saved;
       }
     });
   });

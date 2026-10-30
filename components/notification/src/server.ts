@@ -12,13 +12,14 @@ import { StaticRoutes } from './controllers/staticRoutes';
 import { Queue } from './controllers/queue';
 import { ConfigsController } from './controllers/configAPIContoller';
 import { TestController } from './controllers/test';
+import { getAdminStaticDir, getConf, getEnv, getLog } from './lib/context';
 
-const { env } = global as any;
+const env = getEnv();
 
-// CORS configuration from global.conf
+// CORS configuration from the app context conf
 const corsConfig = {
   allowedOrigins:
-    (global as any).conf?.cors?.allowedOrigins ||
+    getConf()?.cors?.allowedOrigins ||
     (env === 'localhost'
       ? ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8080']
       : ['http://localhost:3000', 'http://localhost:3001']),
@@ -27,14 +28,14 @@ const corsConfig = {
 const app = express();
 
 // Behind an ingress, `req.ip` (login rate limit) is the proxy unless `trustProxy` is configured. Unset trusts nothing.
-applyTrustProxy(app, (global as any).conf?.trustProxy);
+applyTrustProxy(app, getConf()?.trustProxy);
 
 app.use(asyncLocalStorageMiddleware);
 
 // Log all requests. Wraps res.send/res.end/res.json - must run before responseEncodingMiddleware
 // wraps res.send again below, so that the restify-compat shim ends up as the outer wrapper that
 // every controller's res.send([code], body) call actually hits.
-app.use(global.log.logRouter.bind(global.log));
+app.use(getLog().logRouter.bind(getLog()));
 
 // Security middleware - applied before routes
 app.use(securityHeadersMiddleware());
@@ -54,7 +55,7 @@ app.use(corsValidationMiddleware(corsConfig));
 
 // Static admin UI assets (src/admin/static/**). express.static falls through to the next
 // handler (the controllers below) when a path doesn't match a file on disk.
-app.use(express.static((global as any).adminStaticDir));
+app.use(express.static(getAdminStaticDir()));
 
 const lists = new Lists(app);
 const message = new Message(app);
@@ -81,7 +82,7 @@ app.use((req: any, res: any) => {
 
 // Global error handler for uncaught errors.
 app.use((err: any, req: any, res: any, _next: any) => {
-  global.log.save(
+  getLog().save(
     'server-uncaught-exception',
     {
       error: err?.message,
@@ -96,7 +97,7 @@ app.use((err: any, req: any, res: any, _next: any) => {
 
 // Handle unhandled promise rejections.
 process.on('unhandledRejection', (reason: any, _promise) => {
-  global.log.save(
+  getLog().save(
     'unhandled-rejection',
     {
       reason: reason?.message || String(reason),

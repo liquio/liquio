@@ -1,8 +1,12 @@
 // Models build a (lazy, never connected) Sequelize instance at import time.
-(global as any).conf = {
-  corezoidConfig: { apiLogin: 'x' },
-  db: { database: 'x', username: 'x', password: 'x', host: 'localhost', dialect: 'postgres', port: 5432 },
-};
+import { setAppContext } from '../lib/context';
+
+setAppContext({
+  conf: {
+    corezoidConfig: { apiLogin: 'x' },
+    db: { database: 'x', username: 'x', password: 'x', host: 'localhost', dialect: 'postgres', port: 5432 },
+  },
+});
 
 jest.mock('../config/config', () => ({ corezoidConfig: { apiLogin: 'x' } }));
 jest.mock('../models/authorize', () => ({
@@ -26,7 +30,7 @@ describe('Message.getMessages user resolution (NT-02b)', () => {
   const makeRes = () => ({ send: jest.fn(), setHeader: jest.fn() });
 
   beforeEach(() => {
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
   });
 
   it('lists the token owner messages when both access_token and a different user_id are sent', async () => {

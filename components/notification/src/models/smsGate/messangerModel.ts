@@ -2,9 +2,10 @@
 
 import { CustomGate } from './customGate';
 import { CorezoidGate } from './corezoidModel';
+import { getConf } from '../../lib/context';
 
 // Read config.
-const { conf } = global as any;
+const conf = getConf();
 
 // Constants.
 const GATES_MAP: Record<string, any> = {

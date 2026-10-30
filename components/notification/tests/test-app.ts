@@ -15,6 +15,7 @@ import { Log, resetIdApiClient } from '@liquio/back-core';
 
 import { buildAdapters } from '../src/bootstrap';
 import { createConsoleLogProvider } from '../src/lib/console_log_provider';
+import { setAppContext } from '../src/lib/context';
 
 const debug = createDebug;
 
@@ -193,15 +194,15 @@ export class TestApp {
     const conf = { ...defaultConf, ...confOverride };
     const config = { conf, env: defaultEnv };
 
-    // Init log the same way src/index.ts does, before anything that might read global.log.
+    // Init log the same way src/index.ts does, before anything that might read the context log.
     const consoleLogProvider = createConsoleLogProvider(conf.log);
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
-    global.log = log;
+    setAppContext({ log });
 
-    // Deferred require: src/bootstrap.ts's start() sets global.conf/env/adminStaticDir/extensions and
+    // Deferred require: src/bootstrap.ts's start() sets the app context conf/env/adminStaticDir/extensions and
     // only then requires src/server.ts (and, transitively, every model's DB connection) - importing
-    // it statically here would run that boot sequence before global.log/global.conf are ready.
+    // it statically here would run that boot sequence before the context log/conf are ready.
 
     // Each app gets an id-api client built from its own config (start() inits it).
     resetIdApiClient();

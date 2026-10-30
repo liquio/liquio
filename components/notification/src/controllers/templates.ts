@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { TemplatesModel } from '../models/templates';
 import { checkAuth } from './auth';
+import { getLog } from '../lib/context';
 
 const router = Router();
 const templatesModel = new TemplatesModel();
@@ -11,7 +12,7 @@ export class Template {
   log: any;
 
   constructor(app: any) {
-    this.log = global.log;
+    this.log = getLog();
     this.registerRoutes();
     app.use(router);
   }

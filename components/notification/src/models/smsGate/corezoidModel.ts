@@ -3,8 +3,9 @@ import crypto from 'node:crypto';
 import moment from 'moment';
 
 import { AbstractGate } from './abstractSmsGate';
+import { getConf } from '../../lib/context';
 
-const { conf } = global as any;
+const conf = getConf();
 
 export class CorezoidGate extends AbstractGate {
   v1Url: string;

@@ -24,13 +24,16 @@ jest.mock('../models/authorize', () => ({
 import { responseEncodingMiddleware } from '../middleware/security';
 import { StaticRoutes } from './staticRoutes';
 import { createAdminSession, ADMIN_COOKIE_NAME, clearAdminSessionsForTests } from './adminSession';
+import { setAppContext, resetAppContext } from '../lib/context';
 
 describe('admin queue routes (NT-06)', () => {
   let request: supertest.Agent;
   let cookie: string;
 
+  afterAll(() => resetAppContext());
+
   beforeAll(() => {
-    (global as any).conf = { adminConfig: { login: 'l', password: 'p' } };
+    setAppContext({ conf: { adminConfig: { login: 'l', password: 'p' } } });
     const app = express();
     app.use(express.json());
     app.use(responseEncodingMiddleware());

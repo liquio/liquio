@@ -3,17 +3,18 @@ import path from 'node:path';
 
 import { Log } from '@liquio/back-core';
 
-// eslint-disable-next-line import-x/order -- global.conf must be set before ./app and the adapters load.
 import * as config from './config/config';
+// eslint-disable-next-line import-x/order -- the context conf must be set before ./bootstrap and the adapters load.
+import { setAppContext } from './lib/context';
 
-global.conf = config.conf;
+setAppContext({ conf: config.conf });
 
 import start, { buildAdapters } from './bootstrap';
 import { typeOf } from './lib/type_of';
 import { createServer } from './lib/tls_server';
 import { createConsoleLogProvider } from './lib/console_log_provider';
 
-global.typeOf = typeOf;
+setAppContext({ typeOf });
 // Constants.
 const DEFAULT_PROCESS_TITLE = 'notify';
 const ADMIN_DIRECTORY = '/admin';
@@ -24,7 +25,7 @@ process.title = config.conf.processTitle || DEFAULT_PROCESS_TITLE;
 // Logs.
 const consoleLogProvider = createConsoleLogProvider((config as any).log);
 const log = new Log([consoleLogProvider], ['console']);
-global.log = log;
+setAppContext({ log });
 
 // Log unhandled errors.
 process.on('unhandledRejection', (error: any) => {

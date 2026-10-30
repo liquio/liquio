@@ -16,8 +16,9 @@ import {
   verifyAdminSession,
 } from './adminSession';
 import { checkAdminCookie, checkSameOrigin } from './auth';
+import { getAdminStaticDir } from '../lib/context';
 
-const { adminStaticDir } = global as any;
+const adminStaticDir = getAdminStaticDir();
 
 const router = Router();
 
