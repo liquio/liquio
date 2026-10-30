@@ -8,8 +8,7 @@ import * as config from './config/config';
 
 global.conf = config.conf;
 
-import start from './app';
-import { buildAdapters } from './bootstrap';
+import start, { buildAdapters } from './bootstrap';
 import { typeOf } from './lib/type_of';
 import { createServer } from './lib/tls_server';
 import { createConsoleLogProvider } from './lib/console_log_provider';
