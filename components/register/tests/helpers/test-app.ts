@@ -1,18 +1,17 @@
 import { execSync } from 'child_process';
 
-import moment from 'moment';
 import debug from 'debug';
 import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
 
 import Db from '../../src/lib/db';
 import Afterhandler from '../../src/lib/afterhandler';
-import ErrorWithDetails from '../../src/lib/errors';
 import typeOf from '../../src/lib/typeOf';
 import Models from '../../src/models';
 import Router from '../../src/router';
 import Encryption from '../../src/lib/encryption';
 import { Config } from '../../src/lib/config';
 import { RedisClient } from '../../src/lib/redis_client';
+import { setAppContext, getDb, getAfterhandler } from '../../src/lib/context';
 
 export const config: Config = {
   access_log: { keyIds: ['16', '505'] },
@@ -148,9 +147,7 @@ const log = new Log(process.env.ENABLE_CONSOLE_LOG ? [consoleLogProvider] : [], 
 };
 
 // Globals.
-global.config = config;
-global.ErrorWithDetails = ErrorWithDetails;
-global.typeOf = typeOf;
+setAppContext({ config, typeOf });
 
 // Log unhandled rejections.
 process.on('unhandledRejection', (error) => {
@@ -164,10 +161,7 @@ process.title = config.app?.processTitle;
 
 // Start async thread.
 export async function startApp(config: Config) {
-  // Save moment global to use in eval.
-  global.moment = moment;
-
-  // Init sandbox (this harness doesn't set `global.log`, so pass the logger explicitly).
+  // Init sandbox (this harness doesn't set the app-context log, so pass the logger explicitly).
   new Sandbox({ ...config.sandbox, getLog: () => log });
 
   // Init Redis.
@@ -179,7 +173,7 @@ export async function startApp(config: Config) {
   }
 
   // Init DB.
-  global.db = await Db.getInstance(config.db);
+  setAppContext({ db: await Db.getInstance(config.db) });
 
   // Init models.
   const models = new Models(config);
@@ -188,15 +182,15 @@ export async function startApp(config: Config) {
   // Init afterhandler.
   const afterhandler = new Afterhandler(config.afterhandler, (models.models as any).afterhandler, (models.models as any).record);
   afterhandler.init();
-  global.afterhandler = afterhandler;
+  setAppContext({ afterhandler });
 
-  global.encryption = new Encryption(config.encryption);
+  setAppContext({ encryption: new Encryption(config.encryption) });
 
   // Start server.
   const router = new Router(config);
   const express = await router.init();
 
-  return { express, router, db: global.db };
+  return { express, router, db: getDb() };
 }
 
 export async function runMigrations(url) {
@@ -747,10 +741,10 @@ export async function teardownApp(pgContainer: any, app: any, db: any) {
   }
 
   // Stop and dispose afterhandler workers
-  if (global.afterhandler) {
+  if (getAfterhandler()) {
     testDebug('Stopping afterhandler workers...');
     try {
-      const workers = global.afterhandler.workers || [];
+      const workers = getAfterhandler().workers || [];
       // First stop all workers to exit their processing loops
       await Promise.all(
         workers.map((worker: any) => {
@@ -790,17 +784,6 @@ export async function teardownApp(pgContainer: any, app: any, db: any) {
       testDebug('Database connection closed');
     } catch (error) {
       testDebug('Error closing database:', error);
-    }
-  }
-
-  // Close Redis client if it exists
-  if (global.redis) {
-    testDebug('Closing Redis client...');
-    try {
-      await global.redis.close();
-      testDebug('Redis client closed');
-    } catch (error) {
-      testDebug('Error closing Redis client:', error);
     }
   }
 

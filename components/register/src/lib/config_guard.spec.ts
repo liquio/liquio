@@ -7,6 +7,7 @@ import {
   warnEmptySignToken,
 } from './config_guard';
 import { Config } from './config';
+import { setAppContext } from './context';
 
 const basic = (pair: string) => `Basic ${Buffer.from(pair).toString('base64')}`;
 const GOOD_KEY = '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
@@ -127,7 +128,7 @@ describe('warnPlainHttpSign', () => {
 
   beforeEach(() => {
     save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ log: { save } });
   });
 
   it('warns about http in production', () => {
@@ -150,7 +151,7 @@ describe('warnEmptySignToken', () => {
 
   beforeEach(() => {
     save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ log: { save } });
   });
 
   it('warns about an empty, missing or placeholder token in production without echoing it', () => {

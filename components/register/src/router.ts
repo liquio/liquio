@@ -10,6 +10,7 @@ import { createBodyParserMiddleware } from './lib/body_parser';
 import { errorHandler } from './lib/error_handler';
 import Controllers from './controllers';
 import Validators from './validators';
+import { getConfig } from './lib/context';
 
 const MAX_HEADER_SIZE = 65535; // Raised from Node's 16 KiB default to fit large auth headers.
 
@@ -84,7 +85,7 @@ export default class Router {
     app.use(this.log.logRouter.bind(this.log));
 
     // App info in headers.
-    AppIdentHeaders.add(app, global.config);
+    AppIdentHeaders.add(app, getConfig());
 
     // Allow CORS.
     Cors.allow(app);

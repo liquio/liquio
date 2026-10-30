@@ -10,8 +10,8 @@
   "scripts": {
     "start": "node dist/index.js",
     "start:prod": "node dist/index.js",
-    "start:ts": "node --expose-gc -r ts-node/register src/index.ts",
-    "start:dev": "DISABLE_LOG=true node --expose-gc -r ts-node/register src/index.ts",
+    "start:ts": "node -r ts-node/register src/index.ts",
+    "start:dev": "DISABLE_LOG=true node -r ts-node/register src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint \"{src,apps,libs,tests}/**/*.ts\"",
     "lint:fix": "eslint \"{src,apps,libs,tests}/**/*.ts\" --fix",

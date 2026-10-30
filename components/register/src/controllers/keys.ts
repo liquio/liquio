@@ -13,6 +13,7 @@ import KeyEntity from '../entities/key';
 import { ModelUpdateResponse } from '../lib/interfaces';
 import { resolveCallerAccess } from '../lib/caller_access';
 import HistoryAccess, { HistoryKeyForbiddenError, canSearchHistoryData } from '../lib/history_access';
+import { getAfterhandler } from '../lib/context';
 
 const REINDEX_CHUNK_SIZE = 10;
 
@@ -286,7 +287,7 @@ export default class KeysController extends Controller {
 
     if (!_.isEqual(oldAfterhandlers, newAfterhandlers)) {
       const addedAfterhandlers = newAfterhandlers.filter((afterhandler) => !oldAfterhandlers.includes(afterhandler));
-      global.afterhandler.reindex(id, { types: addedAfterhandlers });
+      getAfterhandler().reindex(id, { types: addedAfterhandlers });
     }
 
     // Check.
@@ -449,7 +450,7 @@ export default class KeysController extends Controller {
     this.responseData(res, { keyToReindex: key }, undefined, 202);
 
     // Afterhandlers reindex.
-    await global.afterhandler.reindex(keyId, options);
+    await getAfterhandler().reindex(keyId, options);
   }
 
   /**
@@ -475,7 +476,7 @@ export default class KeysController extends Controller {
       this.log.save('get-synced-by-ids-error', { error: error && error.message });
     }
 
-    const elasticWorker = global.afterhandler.workers.find((worker) => worker instanceof ElasticAfterhandlerWorker);
+    const elasticWorker = getAfterhandler().workers.find((worker) => worker instanceof ElasticAfterhandlerWorker);
 
     for (const result of syncedResponse) {
       const { key_id: keyId, total, queue_length: queueLength, is_elastic_active: isElasticActive } = result;
@@ -488,7 +489,7 @@ export default class KeysController extends Controller {
         const { count = 0, error } = await elasticWorker.getIndexCount(keyId);
 
         result.elastic = count;
-        result.isReindexing = await global.afterhandler.isKeyReindexing(keyId);
+        result.isReindexing = await getAfterhandler().isKeyReindexing(keyId);
 
         if (error) {
           if (error.type === 'index_not_found_exception') {
@@ -535,7 +536,7 @@ export default class KeysController extends Controller {
       this.log.save('get-all-synced-error', { error: error && error.message });
     }
 
-    const elasticWorker = global.afterhandler.workers.find((worker) => worker instanceof ElasticAfterhandlerWorker);
+    const elasticWorker = getAfterhandler().workers.find((worker) => worker instanceof ElasticAfterhandlerWorker);
 
     if (elasticWorker?.config?.isActive) {
       for (const result of syncedResponse) {

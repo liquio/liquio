@@ -1,6 +1,7 @@
 import RecordsController from './records';
 import RecordEntity from '../entities/record';
 import { PatchValidationError } from '../models/record';
+import { resetAppContext, setAppContext } from '../lib/context';
 
 jest.mock('express-validator', () => ({
   matchedData: (req, options) => Object.assign({}, ...options.locations.map((location) => req[location] || {})),
@@ -289,10 +290,10 @@ describe('RG-02: UUID read authorization', () => {
 
 describe('RG-02c: PUT/bulk-import token enforcement (auth.strict)', () => {
   beforeAll(() => {
-    (global as any).typeOf = (value) => typeof value;
+    setAppContext({ typeOf: (value) => typeof value });
   });
   afterAll(() => {
-    delete (global as any).typeOf;
+    resetAppContext();
   });
 
   const setupWrite = (strict?: boolean) => {
@@ -385,10 +386,10 @@ describe('RG-02c: PUT/bulk-import token enforcement (auth.strict)', () => {
 
 describe('RG-02d: row tokens a restricted caller may assign (auth.strict)', () => {
   beforeAll(() => {
-    (global as any).typeOf = (value) => typeof value;
+    setAppContext({ typeOf: (value) => typeof value });
   });
   afterAll(() => {
-    delete (global as any).typeOf;
+    resetAppContext();
   });
 
   const setupTokens = (strict?: boolean) => {

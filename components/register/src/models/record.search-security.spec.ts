@@ -1,6 +1,7 @@
 import Sequelize from 'sequelize';
 
 import RecordModel, { PatchValidationError } from './record';
+import { setAppContext } from '../lib/context';
 
 describe('RG-07: search filters before count/pagination', () => {
   it.each([[], ['private']].map((tokens) => [tokens]))('uses server token overlap %j in the shared count/row query', async (tokens) => {
@@ -69,7 +70,7 @@ describe('RG-02c: row-token guard on writes', () => {
     };
     model.historyModel = { createAfterhandlers: jest.fn() };
     model.findById = jest.fn().mockResolvedValue({ data: { id: 'r', keyId: 1, meta: {} } });
-    (global as any).afterhandler = { validateRecord: jest.fn() };
+    setAppContext({ afterhandler: { validateRecord: jest.fn() } });
     return model;
   };
 

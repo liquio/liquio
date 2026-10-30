@@ -6,6 +6,7 @@ import express from 'express';
 jest.mock('@liquio/back-core', () => ({ getTraceId: () => 'trace', asyncLocalStorageMiddleware: jest.fn() }));
 
 import { errorHandler } from './error_handler';
+import { setAppContext } from './context';
 
 describe('errorHandler client response', () => {
   const sqlError = Object.assign(new Error('SequelizeDatabaseError: relation "users" does not exist'), {
@@ -15,7 +16,7 @@ describe('errorHandler client response', () => {
 
   const serve = async (error: any, contentType?: string) => {
     const save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ log: { save } });
     const app = express();
     app.get('/boom', (_req, res, next) => {
       if (contentType) res.type(contentType);

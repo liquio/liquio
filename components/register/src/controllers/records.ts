@@ -26,6 +26,8 @@ import JoinedRecordAccess from '../lib/joined_record_access';
 import { escapeCsvCell } from '../lib/csv';
 import { canSearchField, canSearchString } from '../lib/record_search_access';
 import HistoryAccess, { HistoryKeyForbiddenError } from '../lib/history_access';
+import { getConfig, getTypeOf } from '../lib/context';
+import ErrorWithDetails from '../lib/errors';
 
 const ADDITIONAL_FILTER_RECORD_MAX_COUNT = 10000;
 const DB_CONSTRAINT_ERROR_CODE = 'DB_CONSTRAINT_ERROR';
@@ -1032,7 +1034,7 @@ export default class RecordsController extends Controller {
     let recordsToUpdate = [];
     if (!updateByDataField) {
       recordsToUpdate =
-        global.typeOf(updateByDataField) === 'string'
+        getTypeOf()(updateByDataField) === 'string'
           ? []
           : records
               .filter((v) => v.id)
@@ -1139,7 +1141,7 @@ export default class RecordsController extends Controller {
     const { user: basicAuthUser } = req.auth;
 
     // Check records.
-    if (global.typeOf(recordsData) !== 'array' || !recordsData.every((v) => global.typeOf(v) === 'object')) {
+    if (getTypeOf()(recordsData) !== 'array' || !recordsData.every((v) => getTypeOf()(v) === 'object')) {
       return this.responseError(res, 'Can not create. All records should be defined as objects.', 500);
     }
 
@@ -1182,7 +1184,7 @@ export default class RecordsController extends Controller {
       const recordsToCreate = recordsData.map((data) => {
         const toSearchString = this.sandbox.evalWithArgs(toSearchStringFunction, [{ data }]);
         const [searchString = null, searchString2 = null, searchString3 = null] =
-          global.typeOf(toSearchString) === 'array' ? toSearchString : [toSearchString];
+          getTypeOf()(toSearchString) === 'array' ? toSearchString : [toSearchString];
         return {
           registerId,
           keyId,
@@ -1913,7 +1915,7 @@ export default class RecordsController extends Controller {
     signature?: any,
   ) {
     if (type === 'GET') {
-      const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
+      const validationIdentity = getConfig()?.key_signature[keyId]?.validationIdentity;
       if (validationIdentity) {
         for (const record of records) {
           if (!record.signature) {
@@ -1944,7 +1946,7 @@ export default class RecordsController extends Controller {
     }
 
     if (type === 'UPDATE' || type === 'CREATE') {
-      const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
+      const validationIdentity = getConfig()?.key_signature[keyId]?.validationIdentity;
       if (!signature && validationIdentity) {
         throw new PublicError(`Internal Error. BPMN Register. Key ${keyId} signature required.`);
       }
@@ -1967,7 +1969,7 @@ export default class RecordsController extends Controller {
           !validationIdentity.includes(verifySignatureResponse.data?.subjDRFOCode) &&
           !validationIdentity.includes(verifySignatureResponse.data?.subjEDRPOUCode)
         ) {
-          throw new global.ErrorWithDetails('User do not have permission to sign record.', {
+          throw new ErrorWithDetails('User do not have permission to sign record.', {
             signature,
             verifySignatureResponse,
             validationIdentity,
@@ -1977,7 +1979,7 @@ export default class RecordsController extends Controller {
     }
 
     if (type === 'BLOCK') {
-      const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
+      const validationIdentity = getConfig()?.key_signature[keyId]?.validationIdentity;
       if (validationIdentity) {
         throw new PublicError(`Internal Error. BPMN Register. Update patch method doesnt allowed for this key ${keyId}. Key required sign.`);
       }
@@ -2004,9 +2006,9 @@ export default class RecordsController extends Controller {
     };
 
     function replace(object) {
-      if (global.typeOf(object) === 'array') {
+      if (getTypeOf()(object) === 'array') {
         return object.map(replace);
-      } else if (global.typeOf(object) === 'object') {
+      } else if (getTypeOf()(object) === 'object') {
         return Object.fromEntries(Object.entries(object).map(([k, v]) => [k in operators ? operators[k] : k, replace(v)]));
       } else {
         return object;

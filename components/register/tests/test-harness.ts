@@ -5,7 +5,6 @@ import { createServer } from 'net';
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import debug from 'debug';
-import moment from 'moment';
 import Multiconf from 'multiconf';
 import { Sequelize } from 'sequelize';
 import supertest from 'supertest';
@@ -16,6 +15,7 @@ import ExportBusiness from '../src/businesses/export';
 import { bootstrap } from '../src/bootstrap';
 import { Config } from '../src/lib/config';
 import { RedisClient } from '../src/lib/redis_client';
+import { setAppContext, resetAppContext, getAfterhandler } from '../src/lib/context';
 
 type LogLevels = 'info' | 'warning' | 'error';
 
@@ -76,8 +76,6 @@ export class TestHarness {
     if (options.useRedis) {
       await this.setupRedis(config);
     }
-
-    global.moment = moment;
 
     // Same init sequence as src/index.ts.
     const { express, router, db } = await bootstrap(config);
@@ -179,15 +177,15 @@ export class TestHarness {
     }
 
     // Stop and dispose afterhandler workers
-    if (global.afterhandler) {
+    if (getAfterhandler()) {
       testDebug('Stopping afterhandler workers...');
       // First stop all workers to exit their processing loops
-      await Promise.all(global.afterhandler.workers.map((worker: { stop: () => Promise<void> }) => worker.stop()));
+      await Promise.all(getAfterhandler().workers.map((worker: { stop: () => Promise<void> }) => worker.stop()));
       testDebug('Afterhandler workers stopped');
 
       // Then dispose of them
       testDebug('Disposing afterhandler workers...');
-      global.afterhandler.workers.forEach((worker: { dispose: () => void }) => worker.dispose());
+      getAfterhandler().workers.forEach((worker: { dispose: () => void }) => worker.dispose());
       testDebug('Afterhandler workers disposed');
     }
 
@@ -267,11 +265,7 @@ export class TestHarness {
 
     // Clean up global references to allow fresh setup in next test suite
     testDebug('Cleaning up global references...');
-    delete (global as any).config;
-    delete (global as any).db;
-    delete (global as any).afterhandler;
-    delete (global as any).encryption;
-    delete (global as any).log;
+    resetAppContext();
     testDebug('Global references cleaned up');
 
     testDebug('Teardown complete');
@@ -285,7 +279,7 @@ export class TestHarness {
       testDebug(level, type, data);
     };
 
-    global.log = log;
+    setAppContext({ log });
   }
 
   private async setupDatabase(config: Config): Promise<StartedPostgreSqlContainer | undefined> {

@@ -122,11 +122,6 @@ export default class RegistersController extends Controller {
    * Export by ID.
    */
   async export(req: Request, res: Response) {
-    // Run GC.
-    if (global.gc) {
-      global.gc();
-    }
-
     // Define params.
     const { id: registerId } = matchedData(req, { locations: ['params'] });
     const { with_data: withData, file, key_ids: keyIds } = matchedData(req, { locations: ['query'] });
@@ -265,22 +260,12 @@ export default class RegistersController extends Controller {
       // Response JSON.
       this.responseData(res, register);
     }
-
-    // Run GC.
-    if (global.gc) {
-      global.gc();
-    }
   }
 
   /**
    * Import by ID.
    */
   async import(req: Request, res: Response) {
-    // Run GC.
-    if (global.gc) {
-      global.gc();
-    }
-
     // Define params.
     let registerId;
     let { data: importRegister } = matchedData(req, { locations: ['body'] });
@@ -311,9 +296,6 @@ export default class RegistersController extends Controller {
 
       // GC.
       chunks = [];
-      if (global.gc) {
-        global.gc();
-      }
 
       // Define file content lines.
       const fileContentParts = fileContentBuffer.toString('utf8').split('\n');
@@ -629,11 +611,6 @@ export default class RegistersController extends Controller {
       res.end('}}');
     } else {
       this.responseData(res, { isAccepted: true, changes: backupInfo.changes }, undefined, 202);
-    }
-
-    // Run GC.
-    if (global.gc) {
-      global.gc();
     }
   }
 
