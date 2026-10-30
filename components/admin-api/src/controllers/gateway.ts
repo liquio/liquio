@@ -8,6 +8,7 @@ import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { GatewayTemplateEntity } from '../entities/gateway_template';
 import { toLogUser } from '../lib/log_sanitize';
 import { PublicError } from '../lib/public_error';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Gateway controller.
@@ -44,7 +45,7 @@ export class GatewayController extends Controller {
     let savedGatewayTemplateEntities = [];
     let newLastWorkflowHistoryId;
     try {
-      if (global.config.workflow_editor.disabled === true) {
+      if (getConfig().workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -72,7 +73,7 @@ export class GatewayController extends Controller {
         const savedGatewayTemplateEntity = await this.gatewayBusiness.createOrUpdate(gatewayEntity);
         savedGatewayTemplateEntities.push(savedGatewayTemplateEntity);
 
-        await global.log.save('user-created-updated-gateway-template', {
+        await getLog().save('user-created-updated-gateway-template', {
           user: toLogUser(user),
           data: { savedGatewayTemplateEntity },
         });
@@ -103,14 +104,14 @@ export class GatewayController extends Controller {
     const id = paramsData.id;
 
     try {
-      if (global.config.workflow_editor.disabled === true) {
+      if (getConfig().workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
       await this.gatewayBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-gateway-template', { user: toLogUser(user), data: { id } });
+      await getLog().save('user-deleted-gateway-template', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

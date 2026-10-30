@@ -3,6 +3,7 @@ import { IdApiClient, getIdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { PublicError } from '../lib/public_error';
+import { getDb, getLog } from '../lib/context';
 
 /**
  * SQL Reports controller.
@@ -47,13 +48,13 @@ export class StatController extends Controller {
         this.idApiClient.getUserStatByDate({ date: yesterday }),
         this.idApiClient.getUserStatByDate({ date }),
       ]);
-      global.log.save('get-stat-by-date|get-user-stat-success', {
+      getLog().save('get-stat-by-date|get-user-stat-success', {
         date,
         gotFields: ['userStatLast7Days', 'userStatYesterday', 'userStat'],
         executingTime: `${Date.now() - getUserStatTimestamp} ms`,
       });
     } catch (error) {
-      global.log.save('get-stat-by-date|get-user-stat-error', { date, error: error?.message, stack: error?.stack }, 'error');
+      getLog().save('get-stat-by-date|get-user-stat-error', { date, error: error?.message, stack: error?.stack }, 'error');
       throw error;
     }
 
@@ -79,7 +80,7 @@ export class StatController extends Controller {
         [allServicesLast7Days],
       ] = await Promise.all([
         // allServices
-        global.db.query(
+        getDb().query(
           `SELECT COUNT(distinct(workflows.id)) c
           FROM workflows
           INNER JOIN tasks on tasks.workflow_id = workflows.id
@@ -90,7 +91,7 @@ export class StatController extends Controller {
           options,
         ),
         // topServices
-        global.db.query(
+        getDb().query(
           `SELECT workflow_templates.id, workflow_templates.name, COUNT(distinct(workflows.id)) c
           FROM workflows
           INNER JOIN workflow_templates ON workflow_templates.id = workflows.workflow_template_id
@@ -105,7 +106,7 @@ export class StatController extends Controller {
           options,
         ),
         // errorsCountLast7Days
-        global.db.query(
+        getDb().query(
           `SELECT  COUNT(*) c
           FROM workflows
           WHERE created_at BETWEEN :date7daysAgo AND :date::date + INTERVAL '1 day - 1 microsecond'
@@ -114,7 +115,7 @@ export class StatController extends Controller {
           options,
         ),
         // errorsCountYesterday
-        global.db.query(
+        getDb().query(
           `SELECT  COUNT(*) c
           FROM workflows
           WHERE created_at BETWEEN :yesterday AND :yesterday::date + INTERVAL '1 day - 1 microsecond'
@@ -123,7 +124,7 @@ export class StatController extends Controller {
           options,
         ),
         // errorsCount
-        global.db.query(
+        getDb().query(
           `SELECT  COUNT(*) c
           FROM workflows
           WHERE created_at BETWEEN :date AND :date::date + INTERVAL '1 day - 1 microsecond'
@@ -132,7 +133,7 @@ export class StatController extends Controller {
           options,
         ),
         // errorsTop
-        global.db.query(
+        getDb().query(
           `SELECT workflow_templates.id, workflow_templates.name, COUNT(distinct(workflows.id)) c
           FROM workflows
           INNER JOIN workflow_templates ON workflow_templates.id = workflows.workflow_template_id
@@ -146,7 +147,7 @@ export class StatController extends Controller {
           options,
         ),
         // allServicesYesterday
-        global.db.query(
+        getDb().query(
           `SELECT COUNT(distinct(workflows.id)) c
         FROM workflows
         INNER JOIN tasks on tasks.workflow_id = workflows.id
@@ -157,7 +158,7 @@ export class StatController extends Controller {
           options,
         ),
         // allServicesLast7Days
-        global.db.query(
+        getDb().query(
           `SELECT COUNT(distinct(workflows.id)) c
         FROM workflows
         INNER JOIN tasks on tasks.workflow_id = workflows.id
@@ -169,7 +170,7 @@ export class StatController extends Controller {
         ),
       ]);
 
-      global.log.save('get-stat-by-date|get-workflow-stat-1st-part-success', {
+      getLog().save('get-stat-by-date|get-workflow-stat-1st-part-success', {
         date,
         gotFields: [
           'allServices',
@@ -184,7 +185,7 @@ export class StatController extends Controller {
         executingTime: `${Date.now() - getWorkflowStatFirstPartStatTimestamp} ms`,
       });
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'get-stat-by-date|get-workflow-stat-1st-part-error',
         {
           date,
@@ -218,7 +219,7 @@ export class StatController extends Controller {
     if ((options.replacements as any).ids.length) {
       topServicesPromises = [
         // topServicesYesterday
-        global.db.query(
+        getDb().query(
           `SELECT workflow_templates.id, workflow_templates.name, COUNT(distinct(workflows.id)) c
           FROM workflows
           INNER JOIN workflow_templates ON workflow_templates.id = workflows.workflow_template_id
@@ -233,7 +234,7 @@ export class StatController extends Controller {
           options,
         ),
         // topServicesLast7Days
-        global.db.query(
+        getDb().query(
           `SELECT workflow_templates.id, workflow_templates.name, COUNT(distinct(workflows.id)) c
           FROM workflows
           INNER JOIN workflow_templates ON workflow_templates.id = workflows.workflow_template_id
@@ -254,7 +255,7 @@ export class StatController extends Controller {
     if ((options.replacements as any).errorsIds.length) {
       topErrorsPromises = [
         // errorsTopYesterday
-        global.db.query(
+        getDb().query(
           `SELECT workflow_templates.id, workflow_templates.name, COUNT(distinct(workflows.id)) c
           FROM workflows
           INNER JOIN workflow_templates ON workflow_templates.id = workflows.workflow_template_id
@@ -268,7 +269,7 @@ export class StatController extends Controller {
           options,
         ),
         // errorsTopLast7Days
-        global.db.query(
+        getDb().query(
           `SELECT workflow_templates.id, workflow_templates.name, COUNT(distinct(workflows.id)) c
           FROM workflows
           INNER JOIN workflow_templates ON workflow_templates.id = workflows.workflow_template_id
@@ -291,13 +292,13 @@ export class StatController extends Controller {
       if (topErrorsPromises?.length) {
         [[errorsTopYesterday], [errorsTopLast7Days]] = await Promise.all(topErrorsPromises);
       }
-      global.log.save('get-stat-by-date|get-workflow-stat-2nd-part-success', {
+      getLog().save('get-stat-by-date|get-workflow-stat-2nd-part-success', {
         date,
         gotFields: ['topServicesYesterday', 'topServicesLast7Days', 'errorsTopYesterday', 'errorsTopLast7Days'],
         executingTime: `${Date.now() - getWorkflowStatSecondPartStatTimestamp} ms`,
       });
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'get-stat-by-date|get-workflow-stat-2nd-part-error',
         {
           date,
@@ -336,7 +337,7 @@ export class StatController extends Controller {
         last7Days: errorsTopLast7Days || [],
       },
     };
-    global.log.save('get-stat-by-date|success', { date, result, executingTime: `${Date.now() - methodStartTimestamp} ms` });
+    getLog().save('get-stat-by-date|success', { date, result, executingTime: `${Date.now() - methodStartTimestamp} ms` });
     return result;
   }
 }

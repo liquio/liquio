@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 
+import { getConfig } from '../lib/context';
+
 export class EncrypterService {
   private static singleton: EncrypterService;
 
@@ -24,7 +26,7 @@ export class EncrypterService {
    * @returns {string}
    */
   encrypt(text) {
-    const cipher = crypto.createCipheriv(global.config.server.crypto.algorithm, global.config.server.crypto.password, global.config.server.crypto.iv);
+    const cipher = crypto.createCipheriv(getConfig().server.crypto.algorithm, getConfig().server.crypto.password, getConfig().server.crypto.iv);
     let crypted = cipher.update(text, 'utf8', 'hex');
     crypted += cipher.final('hex');
     return crypted;
@@ -36,11 +38,7 @@ export class EncrypterService {
    * @returns {string}
    */
   decrypt(text) {
-    const decipher = crypto.createDecipheriv(
-      global.config.server.crypto.algorithm,
-      global.config.server.crypto.password,
-      global.config.server.crypto.iv,
-    );
+    const decipher = crypto.createDecipheriv(getConfig().server.crypto.algorithm, getConfig().server.crypto.password, getConfig().server.crypto.iv);
     let dec = decipher.update(text, 'hex', 'utf8');
     dec += decipher.final('utf8');
     return dec;

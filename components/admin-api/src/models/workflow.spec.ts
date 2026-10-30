@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize';
 
 import { WorkflowModel } from './workflow';
+import { resetAppContext, setAppContext } from '../lib/context';
 
 describe('models/workflow getAll user_data filter', () => {
   const db = new Sequelize('postgres://u:p@localhost:5432/db', { dialect: 'postgres', logging: false });
@@ -14,7 +15,7 @@ describe('models/workflow getAll user_data filter', () => {
   };
 
   beforeAll(() => {
-    (global as any).models = { workflowTemplate: { model: {} }, workflowTemplateCategory: { model: {} }, workflowError: { model: {} } };
+    setAppContext({ models: { workflowTemplate: { model: {} }, workflowTemplateCategory: { model: {} }, workflowError: { model: {} } } });
     model = new WorkflowModel(db);
     (model.model as any).paginate = jest.fn(async (options) => {
       captured = options;
@@ -24,6 +25,7 @@ describe('models/workflow getAll user_data filter', () => {
 
   afterAll(async () => {
     await db.close();
+    resetAppContext();
   });
 
   const payloads = ["' OR 1=1 --", "\\' OR 1=1 --", "x' ; select pg_sleep(5) --"];

@@ -2,6 +2,7 @@ import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
 import { AssetsBusiness } from '../businesses/assets';
+import { getLog } from '../lib/context';
 
 /**
  * Unit controller.
@@ -38,7 +39,7 @@ export class AssetsController extends Controller {
     try {
       encryptedDataResult = await this.assetsBusiness.getToUnits(userIds);
     } catch (error) {
-      global.log.save('assets-get-to-units-error', { error: error.message, stack: error.stack }, 'error');
+      getLog().save('assets-get-to-units-error', { error: error.message, stack: error.stack }, 'error');
       return this.responseError(res, error);
     }
     this.responseData(res, encryptedDataResult);
@@ -56,7 +57,7 @@ export class AssetsController extends Controller {
     try {
       encryptedDataResult = await this.assetsBusiness.getToRegisters(userIds);
     } catch (error) {
-      global.log.save('assets-get-to-registers-error', { error: error.message, stack: error.stack }, 'error');
+      getLog().save('assets-get-to-registers-error', { error: error.message, stack: error.stack }, 'error');
       return this.responseError(res, error);
     }
     this.responseData(res, encryptedDataResult);

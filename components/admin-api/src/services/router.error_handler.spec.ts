@@ -6,15 +6,20 @@ import express from 'express';
 jest.mock('@liquio/back-core', () => ({ getTraceId: () => 'trace', asyncLocalStorageMiddleware: jest.fn() }));
 
 import { errorHandler } from './router';
+import { resetAppContext, setAppContext, getLog } from '../lib/context';
 
 describe('Router errorHandler client response', () => {
+  afterEach(() => {
+    resetAppContext();
+  });
+
   const sqlError = Object.assign(new Error('SequelizeDatabaseError: relation "users" does not exist'), {
     sql: 'SELECT * FROM users',
     stack: 'Error: boom\n    at /app/src/secret.ts:1:1',
   });
 
   const serve = async (error: any, contentType?: string) => {
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
     const app = express();
     app.get('/boom', (_req, res, next) => {
       if (contentType) res.type(contentType);
@@ -34,7 +39,7 @@ describe('Router errorHandler client response', () => {
         .on('error', reject);
     });
     await new Promise((resolve) => server.close(resolve));
-    return { ...response, save: (global as any).log.save as jest.Mock };
+    return { ...response, save: getLog().save as jest.Mock };
   };
 
   it.each([undefined, 'text/plain', 'application/json'])('hides SQL, error text and stack on a forced 500 (content type %s)', async (contentType) => {

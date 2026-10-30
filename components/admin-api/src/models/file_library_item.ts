@@ -5,6 +5,7 @@ import Sequelize from 'sequelize';
 import { Model } from './model';
 import { FileLibraryItemEntity } from '../entities/file_library_item';
 import { SYSTEM_ADMIN_UNIT } from '../constants/unit';
+import { getModels } from '../lib/context';
 
 const ITEM_TYPES = ['folder', 'file'];
 const VISIBILITIES = ['private', 'public'];
@@ -299,7 +300,7 @@ export class FileLibraryItemModel extends Model {
   }
 
   async replaceGrants(itemId, grants: any[] = [], userId) {
-    await global.models.fileLibraryGrant.model.destroy({ where: { item_id: itemId } });
+    await getModels().fileLibraryGrant.model.destroy({ where: { item_id: itemId } });
     const rows = grants.map((grant) => {
       const subjectType = grant.subjectType || grant.subject_type;
       const subjectId = grant.subjectId || grant.subject_id;
@@ -320,14 +321,14 @@ export class FileLibraryItemModel extends Model {
       };
     });
     if (rows.length) {
-      await global.models.fileLibraryGrant.model.bulkCreate(rows);
+      await getModels().fileLibraryGrant.model.bulkCreate(rows);
     }
     return this.getGrants(itemId);
   }
 
   async getGrants(itemId) {
-    const rows = await global.models.fileLibraryGrant.model.findAll({ where: { item_id: itemId }, order: [['created_at', 'asc']] });
-    return rows.map((row) => global.models.fileLibraryGrant.prepareEntity(row));
+    const rows = await getModels().fileLibraryGrant.model.findAll({ where: { item_id: itemId }, order: [['created_at', 'asc']] });
+    return rows.map((row) => getModels().fileLibraryGrant.prepareEntity(row));
   }
 
   async createPublicLink(id, { expiresAt = null, updatedBy }: any) {

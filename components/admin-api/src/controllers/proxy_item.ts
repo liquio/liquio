@@ -1,6 +1,7 @@
 import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
+import { getModels } from '../lib/context';
 
 /**
  * Workflow category controller.
@@ -31,7 +32,7 @@ export class ProxyItemController extends Controller {
 
     let item;
     try {
-      item = await global.models.proxyItem.findById(id);
+      item = await getModels().proxyItem.findById(id);
       if (!item) {
         return this.responseError(res, 'Not found.', 404);
       }
@@ -50,7 +51,7 @@ export class ProxyItemController extends Controller {
   async getAll(req, res) {
     let list;
     try {
-      list = await global.models.proxyItem.getAll();
+      list = await getModels().proxyItem.getAll();
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -68,7 +69,7 @@ export class ProxyItemController extends Controller {
 
     let savedItem;
     try {
-      savedItem = await global.models.proxyItem.create(bodyData);
+      savedItem = await getModels().proxyItem.create(bodyData);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -87,7 +88,7 @@ export class ProxyItemController extends Controller {
 
     let savedItem;
     try {
-      savedItem = await global.models.proxyItem.update(id, bodyData);
+      savedItem = await getModels().proxyItem.update(id, bodyData);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -104,7 +105,7 @@ export class ProxyItemController extends Controller {
     const { id } = matchedData(req, { locations: ['params'] });
 
     try {
-      await global.models.proxyItem.deleteById(id);
+      await getModels().proxyItem.deleteById(id);
     } catch (error) {
       return this.responseError(res, error);
     }

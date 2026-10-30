@@ -2,6 +2,8 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { EventEntity } from '../entities/event';
+import { getModels } from '../lib/context';
+import { SequelizeDbError } from '../lib/errors';
 
 const DELAY_TYPE = 2;
 const NOTIFICATION_TYPE = 1;
@@ -67,7 +69,7 @@ export class EventModel extends Model {
     try {
       currentEvent = await this.findById(id);
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     if (!currentEvent) {
@@ -90,7 +92,7 @@ export class EventModel extends Model {
         },
       );
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     const [updatedCount, [updatedEvent]] = updateResult;
@@ -199,7 +201,7 @@ export class EventModel extends Model {
    * @returns {Promise<EventEntity>}
    */
   async findById(id) {
-    const event: any = await this.model.findByPk(id, { include: [{ model: global.models.workflow.model }] });
+    const event: any = await this.model.findByPk(id, { include: [{ model: getModels().workflow.model }] });
     if (!event) {
       return;
     }
@@ -243,7 +245,7 @@ export class EventModel extends Model {
       for (const event of events) {
         const document = await event.getDocument();
         if (document) {
-          documents.push(global.models.document.prepareEntity(document));
+          documents.push(getModels().document.prepareEntity(document));
         }
       }
     }

@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 
 import { matchedData } from 'express-validator';
 
+import { resetAppContext, setAppContext } from '../lib/context';
 import { BpmnWorkflowController } from './bpmn_workflow';
 
 jest.mock('express-validator', () => ({ matchedData: jest.fn() }));
@@ -27,7 +28,7 @@ describe('BpmnWorkflowController.import', () => {
 
   beforeEach(() => {
     (BpmnWorkflowController as any).singleton = undefined;
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
     controller = new BpmnWorkflowController({ bpmnImport: { maxBytes: MAX } });
     business = { import: jest.fn().mockResolvedValue(true) };
     (controller as any).bpmnWorkflowBusiness = business;
@@ -36,7 +37,7 @@ describe('BpmnWorkflowController.import', () => {
   });
 
   afterEach(() => {
-    delete (global as any).log;
+    resetAppContext();
   });
 
   it('imports a body below the cap', async () => {

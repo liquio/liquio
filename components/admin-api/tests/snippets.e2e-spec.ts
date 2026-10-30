@@ -25,13 +25,12 @@ describe('Snippets controllers', () => {
     await TestApp.afterEach();
   });
 
-  // BUGS.md: global.NotFoundError / InvalidParamsError are never defined, so these paths answer 500 instead of 404/400.
-  it('answers 500 for missing snippets and groups (known bug)', async () => {
-    await asAdmin(app, 'get', '/snippets/987654').expect(500);
-    await asAdmin(app, 'put', '/snippets/987654').send({ name: 'n', data: 'd' }).expect(500);
-    await asAdmin(app, 'delete', '/snippets/987654').expect(500);
-    await asAdmin(app, 'put', '/snippet-groups/missing-group').send({ name: 'x' }).expect(500);
-    await asAdmin(app, 'delete', '/snippet-groups/missing-group').expect(500);
+  it('answers 404 for missing snippets and groups', async () => {
+    await asAdmin(app, 'get', '/snippets/987654').expect(404);
+    await asAdmin(app, 'put', '/snippets/987654').send({ name: 'n', data: 'd' }).expect(404);
+    await asAdmin(app, 'delete', '/snippets/987654').expect(404);
+    await asAdmin(app, 'put', '/snippet-groups/missing-group').send({ name: 'x' }).expect(404);
+    await asAdmin(app, 'delete', '/snippet-groups/missing-group').expect(404);
   });
 
   it('manages a snippet lifecycle', async () => {
@@ -81,6 +80,6 @@ describe('Snippets controllers', () => {
     expect(rewritten.body.data.snippetsDeletedCount).toBeDefined();
 
     const invalid = await asAdmin(app, 'post', '/snippets/import').set('Content-Type', 'text/plain').send('not json');
-    expect(invalid.status).toBe(500);
+    expect(invalid.status).toBe(400);
   });
 });

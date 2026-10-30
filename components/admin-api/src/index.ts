@@ -23,7 +23,6 @@ async function main() {
   const placeholderSecrets = assertNoPlaceholderSecrets(config);
   const placeholderSecretWarnings = findPlaceholderSecretWarnings(config);
   assertTaskTokenIsNotDefault(config);
-  global.config = config;
   setAppContext({ config });
 
   await bootstrap(config, { placeholderSecrets, placeholderSecretWarnings });

@@ -7,6 +7,7 @@ import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { WorkflowLogBusiness } from '../businesses/workflow_log';
 import { WorkflowProcessBusiness } from '../businesses/workflow_process';
+import { getConfig, getLog, getModels } from '../lib/context';
 
 // 30 min
 const PROCESS_TIMEOUT = 30 * 60 * 1000;
@@ -105,7 +106,7 @@ export class WorkflowLogController extends Controller {
     this.queue = Queue({ autostart: true, concurrency: 10 });
     this.queue.timeout = PROCESS_TIMEOUT;
     this.queue.on('timeout', function (next, job) {
-      global.log.save('reindex-workflow-processes|main-reindex-job-timeout', { job: job.toString().replace(/\n/g, '') }, 'error');
+      getLog().save('reindex-workflow-processes|main-reindex-job-timeout', { job: job.toString().replace(/\n/g, '') }, 'error');
       next();
     });
   }
@@ -142,7 +143,7 @@ export class WorkflowLogController extends Controller {
     const filters = queryData.filters || {};
     const { page: currentPage, count: perPage } = queryData;
 
-    this.responseData(res, await global.models.elasticReindexLog.getAll({ currentPage, perPage, filters, sort }), true);
+    this.responseData(res, await getModels().elasticReindexLog.getAll({ currentPage, perPage, filters, sort }), true);
   }
 
   /**
@@ -155,14 +156,14 @@ export class WorkflowLogController extends Controller {
 
     try {
       const [timeStats, periodStats, lastEntries] = await Promise.all([
-        global.models.elasticReindexLog.getReindexTimeStats({ bucketSize, timeFrom, timeTo }),
-        global.models.elasticReindexLog.getReindexPeriodStats({ bucketSize, timeFrom, timeTo }),
-        global.models.elasticReindexLog.getLatestReindexLogs(),
+        getModels().elasticReindexLog.getReindexTimeStats({ bucketSize, timeFrom, timeTo }),
+        getModels().elasticReindexLog.getReindexPeriodStats({ bucketSize, timeFrom, timeTo }),
+        getModels().elasticReindexLog.getLatestReindexLogs(),
       ]);
 
       this.responseData(res, { timeStats, periodStats, lastEntries }, true);
     } catch (error) {
-      global.log.save('reindex-statistics-error', { error: error.message, stack: error.stack });
+      getLog().save('reindex-statistics-error', { error: error.message, stack: error.stack });
       this.responseError(res, { error: error.message }, 500);
     }
   }
@@ -178,7 +179,7 @@ export class WorkflowLogController extends Controller {
     let { fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt } = filters;
 
     // Check that Elastic enabled.
-    const { enabled, reindex: { enabled: isReindexEnabled } = {} } = global.config?.elastic || {};
+    const { enabled, reindex: { enabled: isReindexEnabled } = {} } = getConfig()?.elastic || {};
     if (!enabled || !isReindexEnabled) {
       return this.responseError(res, 'Elastic is disabled.', 500);
     }
@@ -214,7 +215,7 @@ export class WorkflowLogController extends Controller {
     try {
       const preparedFilters = { fromUpdatedAt, toUpdatedAt, fromCreatedAt, toCreatedAt };
       Object.keys(preparedFilters).forEach((key) => (preparedFilters[key] = preparedFilters[key] ? preparedFilters[key] : undefined));
-      const reindexLog = await global.models.elasticReindexLog.create({ userId, userName, filters: preparedFilters });
+      const reindexLog = await getModels().elasticReindexLog.create({ userId, userName, filters: preparedFilters });
       this.queue.push(async () => await this.handleReindexForPeriod(reindexLog, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt));
       return this.responseData(res, reindexLog, true);
     } catch (e) {
@@ -239,7 +240,7 @@ export class WorkflowLogController extends Controller {
           disableElastic: true,
           useSlaveDBInstance: true,
           page: currentPage,
-          count: global.config.elastic?.reindexCount || 100,
+          count: getConfig().elastic?.reindexCount || 100,
           sort: { created_at: 'asc' },
           filters: {
             from_created_at: fromCreatedAt,
@@ -267,9 +268,9 @@ export class WorkflowLogController extends Controller {
         await this.workflowLogBusiness.reindexWorkflowProcesses(data);
       }
 
-      await global.models.elasticReindexLog.setFinished(reindexLog.id);
+      await getModels().elasticReindexLog.setFinished(reindexLog.id);
     } catch (error) {
-      await global.models.elasticReindexLog.setError(reindexLog.id, error?.message);
+      await getModels().elasticReindexLog.setError(reindexLog.id, error?.message);
     }
   }
 
@@ -294,7 +295,7 @@ export class WorkflowLogController extends Controller {
     const { authUserInfo: { userId = 'SYSTEM', name: userName = 'SYSTEM' } = {} } = req;
 
     // Check that Elastic enabled.
-    const { enabled, reindex: { enabled: isReindexEnabled } = {} } = global.config?.elastic || {};
+    const { enabled, reindex: { enabled: isReindexEnabled } = {} } = getConfig()?.elastic || {};
     if (!enabled || !isReindexEnabled) {
       return this.responseError(res, 'Elastic is disabled.', 500);
     }
@@ -354,12 +355,12 @@ export class WorkflowLogController extends Controller {
     };
 
     // Log.
-    global.log.save('manual-reindex-started', { userId, userName, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt });
+    getLog().save('manual-reindex-started', { userId, userName, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt });
 
     // Run reindex.
     let reindexLog;
     try {
-      reindexLog = await global.models.elasticReindexLog.create({
+      reindexLog = await getModels().elasticReindexLog.create({
         userId,
         userName,
         filters: {
@@ -371,14 +372,14 @@ export class WorkflowLogController extends Controller {
       });
 
       // Get workflow IDs list.
-      global.log.save('manual-reindex-before-get-workflow-ids-list', { jobId, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt });
-      const workflowIds = await global.models.workflow.getWorkflowIdsList({
+      getLog().save('manual-reindex-before-get-workflow-ids-list', { jobId, fromCreatedAt, toCreatedAt, fromUpdatedAt, toUpdatedAt });
+      const workflowIds = await getModels().workflow.getWorkflowIdsList({
         fromCreatedAt,
         toCreatedAt,
         fromUpdatedAt,
         toUpdatedAt,
       });
-      global.log.save('manual-reindex-after-get-workflow-ids-list', {
+      getLog().save('manual-reindex-after-get-workflow-ids-list', {
         jobId,
         fromCreatedAt,
         toCreatedAt,
@@ -395,7 +396,7 @@ export class WorkflowLogController extends Controller {
       while (workflowIdsToHandle.length > 0) {
         // Define chunk.
         const workflowIdsChunk = workflowIdsToHandle.splice(0, 100);
-        global.log.save('manual-reindex-workflow-ids-chunk', { jobId, workflowIdsChunk });
+        getLog().save('manual-reindex-workflow-ids-chunk', { jobId, workflowIdsChunk });
         let workflows;
         try {
           workflows = await this.workflowProcessBusiness.getAllByWorkflowIds(workflowIdsChunk);
@@ -409,7 +410,7 @@ export class WorkflowLogController extends Controller {
           const workflow = workflows[workflowIndex];
           // Log every 1000th entry.
           if (parseInt(processIndex as any) % 1000 === 0) {
-            global.log.save('manual-reindex-workflow-handling', { jobId, workflowId: workflow.id, processesLength, processIndex });
+            getLog().save('manual-reindex-workflow-handling', { jobId, workflowId: workflow.id, processesLength, processIndex });
           }
           if (skipErrors) {
             // Skip errors and don't wait promise resolving.
@@ -444,14 +445,14 @@ export class WorkflowLogController extends Controller {
       // Set status.
       this.manualReindexProcess.status = this.ManualReindexProcessStatuses.Completed;
       this.manualReindexProcess.endTimestamp = +new Date();
-      await global.models.elasticReindexLog.setFinished(reindexLog.id);
+      await getModels().elasticReindexLog.setFinished(reindexLog.id);
     } catch (error) {
       // Set error status.
       this.manualReindexProcess.status = this.ManualReindexProcessStatuses.Failed;
       this.manualReindexProcess.endTimestamp = +new Date();
       this.manualReindexProcess.error = error?.message;
       this.manualReindexProcess.failed = this.manualReindexProcess.total - this.manualReindexProcess.completed;
-      await global.models.elasticReindexLog.setError(reindexLog.id, error?.message);
+      await getModels().elasticReindexLog.setError(reindexLog.id, error?.message);
     }
   }
 }

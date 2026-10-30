@@ -4,6 +4,7 @@ import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from '../lib/http_request';
 import { getInternalHttpsAgent } from '../lib/internal_transport';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Notifier service.
@@ -25,17 +26,17 @@ export class NotifierService {
   constructor() {
     // Define singleton.
     if (!NotifierService.singleton) {
-      this.server = global.config.notifier.server;
-      this.port = global.config.notifier.port;
-      this.user = global.config.notifier.user;
-      this.routes = global.config.notifier.routes;
-      this.password = global.config.notifier.password;
+      this.server = getConfig().notifier.server;
+      this.port = getConfig().notifier.port;
+      this.user = getConfig().notifier.user;
+      this.routes = getConfig().notifier.routes;
+      this.password = getConfig().notifier.password;
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         Authorization: `Basic ${Buffer.from(`${this.user}:${this.password}`, 'utf8').toString('base64')}`,
       };
-      this.timeout = global.config.notifier.timeout || 30000;
+      this.timeout = getConfig().notifier.timeout || 30000;
       NotifierService.singleton = this;
     }
 
@@ -62,7 +63,7 @@ export class NotifierService {
       timeout: this.timeout,
       json: true,
     });
-    global.log.save('send-message-to-all-notifier-service-response', response);
+    getLog().save('send-message-to-all-notifier-service-response', response);
 
     return response;
   }
@@ -80,7 +81,7 @@ export class NotifierService {
       headers: this.getHeadersWithTraceId(),
       timeout: this.timeout,
     });
-    global.log.save('get-message-for-all-notifier-service-response', response);
+    getLog().save('get-message-for-all-notifier-service-response', response);
 
     return response;
   }
@@ -97,7 +98,7 @@ export class NotifierService {
       headers: this.getHeadersWithTraceId(),
       timeout: this.timeout,
     });
-    global.log.save('delete-message-for-all-notifier-service-response', response);
+    getLog().save('delete-message-for-all-notifier-service-response', response);
 
     return response;
   }
@@ -129,7 +130,7 @@ export class NotifierService {
 
       return { version, customer, environment, body };
     } catch (error) {
-      global.log.save('send-ping-request-to-notify', error.message);
+      getLog().save('send-ping-request-to-notify', error.message);
     }
   }
 
@@ -172,7 +173,7 @@ export class NotifierService {
         headers: this.getHeadersWithTraceId(),
       });
     } catch (error) {
-      global.log.save('delete-message-template-error', { error: error.message || error.toString(), id }, 'error');
+      getLog().save('delete-message-template-error', { error: error.message || error.toString(), id }, 'error');
       throw error;
     }
   }
@@ -193,7 +194,7 @@ export class NotifierService {
       timeout: this.timeout,
       json: true,
     });
-    global.log.save('send-message-by-emails-notifier-service-response', response);
+    getLog().save('send-message-by-emails-notifier-service-response', response);
 
     return response;
   }
@@ -214,7 +215,7 @@ export class NotifierService {
       timeout: this.timeout,
       json: true,
     });
-    global.log.save('send-message-by-user-ids-notifier-service-response', response);
+    getLog().save('send-message-by-user-ids-notifier-service-response', response);
 
     return response;
   }

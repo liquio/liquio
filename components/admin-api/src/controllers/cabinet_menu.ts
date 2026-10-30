@@ -4,6 +4,7 @@ import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
 import { CabinetMenuBusiness } from '../businesses/cabinet_menu';
+import { getDb } from '../lib/context';
 
 export class CabinetMenuController extends Controller {
   private static singleton: CabinetMenuController;
@@ -140,7 +141,7 @@ export class CabinetMenuController extends Controller {
         return this.responseError(res, hierarchyValidationError, 400);
       }
 
-      const transaction = await global.db.transaction();
+      const transaction = await getDb().transaction();
 
       try {
         await this.business.sort(

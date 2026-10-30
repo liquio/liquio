@@ -1,4 +1,5 @@
 import { HttpRequest } from '../lib/http_request';
+import { getLog } from '../lib/context';
 
 /**
  * Elastic service.
@@ -48,7 +49,7 @@ export class ElasticService {
     try {
       return await HttpRequest.send(requestOptions);
     } catch (error) {
-      global.log.save('elastic-service-update-search-template-error', {
+      getLog().save('elastic-service-update-search-template-error', {
         error: error?.message,
         requestOptions,
       });

@@ -1,5 +1,6 @@
 import { Controller } from './controller';
 import { PublicError } from '../lib/public_error';
+import { getDb } from '../lib/context';
 
 const TYPES = {
   integer: 'integer',
@@ -269,7 +270,7 @@ export class SqlReportsController extends Controller {
       if (missingParams.length) throw new PublicError(`the following query params are missing: ${missingParams.join(', ')}`);
     }
 
-    const [result] = await global.db.query(sql, { replacements: query });
+    const [result] = await getDb().query(sql, { replacements: query });
     return result;
   }
 }

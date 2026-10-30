@@ -62,6 +62,7 @@ import {
   SNIPPETS_ADMIN_UNIT,
   TAG_ADMIN_UNIT,
 } from '../constants/unit';
+import { getConfig, getLog } from '../lib/context';
 
 // WebSocket subprotocol marker; the auth token follows it in Sec-WebSocket-Protocol.
 export const WS_AUTH_PROTOCOL = 'liquio-admin-ws';
@@ -103,7 +104,7 @@ export const errorHandler = (error, _req, res, _next) => {
     status = 500;
   }
 
-  global.log?.save('http-error', { message: error?.message, stack: error?.stack, status, traceId });
+  getLog()?.save('http-error', { message: error?.message, stack: error?.stack, status, traceId });
 
   res.status(status).send({
     error: {
@@ -156,7 +157,7 @@ export class RouterService {
     app.use(compression());
 
     // Save request info to log.
-    app.use(global.log.logRouter.bind(global.log));
+    app.use(getLog().logRouter.bind(getLog()));
 
     // Allow CORS.
     app.use(
@@ -1898,11 +1899,11 @@ export class RouterService {
     app.use(
       '/register-proxy/admin',
       authController.getCheckMiddleware(adminRoles, [SYSTEM_ADMIN_UNIT]),
-      proxy(`${global.config.register.server}:${global.config.register.port}`, {
+      proxy(`${getConfig().register.server}:${getConfig().register.port}`, {
         proxyReqOptDecorator: function (proxyReqOpts, req) {
           return new Promise(function (resolve, reject) {
             // Add authorization header.
-            proxyReqOpts.headers['Authorization'] = global.config.register.token;
+            proxyReqOpts.headers['Authorization'] = getConfig().register.token;
 
             // Add access info header.
             const accessInfo = {
@@ -1987,7 +1988,7 @@ export class RouterService {
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
       this.server = app.listen(port, hostname, () => {
-        global.log.save('server-listening-started', `Server listening started at "http://${hostname}:${port}".`);
+        getLog().save('server-listening-started', `Server listening started at "http://${hostname}:${port}".`);
         resolve(true);
       });
     });

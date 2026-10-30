@@ -2,6 +2,8 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { SnippetsEntity } from '../entities/snippet';
+import { getModels, getTypeOf } from '../lib/context';
+import { SequelizeDbError } from '../lib/errors';
 
 export class SnippetsModel extends Model {
   static singleton: SnippetsModel;
@@ -57,17 +59,17 @@ export class SnippetsModel extends Model {
     let snippet;
     try {
       snippet = await this.model.findByPk(id, {
-        include: [{ model: global.models.snippetGroups.model, attributes: ['name'] }],
+        include: [{ model: getModels().snippetGroups.model, attributes: ['name'] }],
       });
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
     if (!snippet) {
       return;
     }
 
     if (snippet.snippet_group) {
-      snippet.snippet_group = global.models.snippetGroups.prepareEntity(snippet.snippet_group);
+      snippet.snippet_group = getModels().snippetGroups.prepareEntity(snippet.snippet_group);
     }
     return this.prepareEntity(snippet);
   }
@@ -77,7 +79,7 @@ export class SnippetsModel extends Model {
    */
   async getAll({ idList }: any = {}) {
     const where: any = {};
-    if (global.typeOf(idList) === 'array' && idList.length) {
+    if (getTypeOf()(idList) === 'array' && idList.length) {
       where.id = { [Sequelize.Op.in]: idList };
     }
 
@@ -85,10 +87,10 @@ export class SnippetsModel extends Model {
     try {
       snippets = await this.model.findAll({
         where: where,
-        include: [{ model: global.models.snippetGroups.model }],
+        include: [{ model: getModels().snippetGroups.model }],
       });
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     if (!snippets) {
@@ -97,7 +99,7 @@ export class SnippetsModel extends Model {
 
     return snippets.map((snippet) => {
       if (snippet.snippet_group) {
-        snippet.snippet_group = global.models.snippetGroups.prepareEntity(snippet.snippet_group);
+        snippet.snippet_group = getModels().snippetGroups.prepareEntity(snippet.snippet_group);
       }
       return this.prepareEntity(snippet);
     });
@@ -112,7 +114,7 @@ export class SnippetsModel extends Model {
     try {
       createdSnippet = await this.model.create(this.prepareForModel(snippet));
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return await this.findById(createdSnippet.id);
@@ -136,7 +138,7 @@ export class SnippetsModel extends Model {
       if (transaction) {
         await transaction.rollback();
       }
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return createdSnippets.length;
@@ -157,7 +159,7 @@ export class SnippetsModel extends Model {
         returning: true,
       });
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     const [updatedCount, [updatedSnippet]] = updateResult;
@@ -177,7 +179,7 @@ export class SnippetsModel extends Model {
     try {
       deletedCount = await this.model.destroy({ where: { id: id } });
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return deletedCount;
@@ -196,7 +198,7 @@ export class SnippetsModel extends Model {
       if (transaction) {
         await transaction.rollback();
       }
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return deletedCount;
@@ -209,7 +211,7 @@ export class SnippetsModel extends Model {
    */
   async export({ idList }: any = {}) {
     const where: any = {};
-    if (global.typeOf(idList) === 'array' && idList.length) {
+    if (getTypeOf()(idList) === 'array' && idList.length) {
       where.id = { [Sequelize.Op.in]: idList };
     }
 
@@ -217,10 +219,10 @@ export class SnippetsModel extends Model {
     try {
       snippets = await this.model.findAll({
         where: where,
-        include: [{ model: global.models.snippetGroups.model }],
+        include: [{ model: getModels().snippetGroups.model }],
       });
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     if (!snippets) {
@@ -229,7 +231,7 @@ export class SnippetsModel extends Model {
 
     return snippets.map((snippet) => {
       if (snippet.snippet_group) {
-        snippet.snippet_group = global.models.snippetGroups.prepareEntity(snippet.snippet_group);
+        snippet.snippet_group = getModels().snippetGroups.prepareEntity(snippet.snippet_group);
       }
       return this.prepareEntity(snippet);
     });
