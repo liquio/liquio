@@ -13,6 +13,7 @@ import { FileHash } from '../lib/file_hash';
 import { Preview } from '../lib/preview';
 import { AsicManifest } from '../lib/asicmanifest';
 import { Helpers } from '../lib/helpers';
+import { getLog } from '../lib/context';
 
 const DEFAULT_MAX_UPLOAD_SIZE = 100 * 1024 * 1024;
 const DEFAULT_ARCHIVE_MAX_ENTRIES = 1000;
@@ -73,7 +74,7 @@ export class FilesController extends Controller {
         filter,
       });
     } catch (error) {
-      global.log.save('get-files-error', { error: error && error.message });
+      getLog().save('get-files-error', { error: error && error.message });
     }
     const { data: files, meta } = filesModelResponse || {};
 
@@ -95,7 +96,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findInfoById(id);
     } catch (error) {
-      global.log.save('get-file-main-info-by-id-error', { error: error && error.message });
+      getLog().save('get-file-main-info-by-id-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -122,7 +123,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findById(id);
     } catch (error) {
-      global.log.save('get-file-by-id-error', { error: error && error.message });
+      getLog().save('get-file-by-id-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -149,7 +150,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findWithoutDataById(id);
     } catch (error) {
-      global.log.save('get-file-by-id-error', { error: error && error.message });
+      getLog().save('get-file-by-id-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -192,7 +193,7 @@ export class FilesController extends Controller {
       try {
         fileModelResponse = await this.fileModel.findById(id);
       } catch (error) {
-        global.log.save('get-file-by-id-error', { error: error && error.message });
+        getLog().save('get-file-by-id-error', { error: error && error.message });
       }
       const { data: file } = fileModelResponse || {};
 
@@ -204,7 +205,7 @@ export class FilesController extends Controller {
       // Check total size.
       totalBytes += file.data?.length || 0;
       if (totalBytes > maxZipBytes) {
-        global.log.save('zip-too-large', { limit: maxZipBytes });
+        getLog().save('zip-too-large', { limit: maxZipBytes });
         return this.responseError(res, 'Payload too large.', 413);
       }
 
@@ -255,12 +256,12 @@ export class FilesController extends Controller {
    */
   responseReadError(req, res, error) {
     if (error instanceof PayloadTooLargeError) {
-      global.log.save('upload-too-large', { limit: this.getMaxUploadSize() });
+      getLog().save('upload-too-large', { limit: this.getMaxUploadSize() });
       res.setHeader('Connection', 'close');
       res.on('finish', () => req.destroy());
       return this.responseError(res, 'Payload too large.', 413);
     }
-    global.log.save('upload-read-error', { error: error && error.message });
+    getLog().save('upload-read-error', { error: error && error.message });
     return this.responseError(res, 'Can not read request body.', 400);
   }
 
@@ -292,7 +293,7 @@ export class FilesController extends Controller {
 
     // Check size.
     if (archiveContentBuffer.length === 0) {
-      global.log.save('upload-empty-file');
+      getLog().save('upload-empty-file');
       return this.responseError(res, 'Can not upload empty file.', 400);
     }
 
@@ -301,7 +302,7 @@ export class FilesController extends Controller {
     try {
       zip = new AdmZip(archiveContentBuffer);
     } catch (error) {
-      global.log.save('parse-archive-error', { error: error && error.message });
+      getLog().save('parse-archive-error', { error: error && error.message });
       return this.responseError(res, 'Can not parse archive.', 400);
     }
 
@@ -312,7 +313,7 @@ export class FilesController extends Controller {
     // Check archive limits using declared header sizes, before any entry is decompressed.
     const limits = this.getArchiveLimits();
     if (zipEntries.length > limits.maxEntries) {
-      global.log.save('archive-too-many-entries', { count: zipEntries.length });
+      getLog().save('archive-too-many-entries', { count: zipEntries.length });
       return this.responseError(res, 'Archive contains too many entries.', 413);
     }
     let totalSize = 0;
@@ -323,11 +324,11 @@ export class FilesController extends Controller {
       const { size, compressedSize } = zipEntry.header;
       totalSize += size;
       if (size > limits.maxEntrySize || totalSize > limits.maxTotalSize) {
-        global.log.save('archive-too-large', { name: zipEntry.entryName, size, totalSize });
+        getLog().save('archive-too-large', { name: zipEntry.entryName, size, totalSize });
         return this.responseError(res, 'Archive content is too large.', 413);
       }
       if (size > 0 && size / Math.max(compressedSize, 1) > limits.maxRatio) {
-        global.log.save('archive-ratio-too-high', { name: zipEntry.entryName, size, compressedSize });
+        getLog().save('archive-ratio-too-high', { name: zipEntry.entryName, size, compressedSize });
         return this.responseError(res, 'Archive compression ratio is too high.', 413);
       }
     }
@@ -344,7 +345,7 @@ export class FilesController extends Controller {
 
       // Check size.
       if (content.length === 0) {
-        global.log.save('upload-empty-file', { name });
+        getLog().save('upload-empty-file', { name });
         return this.responseError(res, 'Can not upload empty file.', 400);
       }
 
@@ -368,7 +369,7 @@ export class FilesController extends Controller {
           user: req.auth.user,
         });
       } catch (error) {
-        global.log.save('upload-file-error', { error: error && error.message });
+        getLog().save('upload-file-error', { error: error && error.message });
       }
       const { data: file } = fileModelResponse || {};
 
@@ -429,7 +430,7 @@ export class FilesController extends Controller {
 
     // Check size.
     if (fileContentBuffer.length === 0) {
-      global.log.save('upload-empty-file', { name });
+      getLog().save('upload-empty-file', { name });
       return this.responseError(res, 'Can not upload empty file.', 400);
     }
 
@@ -443,7 +444,7 @@ export class FilesController extends Controller {
       try {
         previewContent = await this.preview.getPreview(fileContentBuffer, name);
       } catch (error) {
-        global.log.save('preview-generating-error', { name, containerId, error: error && error.message });
+        getLog().save('preview-generating-error', { name, containerId, error: error && error.message });
         previewContent = undefined;
       }
     }
@@ -464,7 +465,7 @@ export class FilesController extends Controller {
         user,
       });
     } catch (error) {
-      global.log.save('upload-file-error', { error: error && error.message });
+      getLog().save('upload-file-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -500,7 +501,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.update(id, { name, description, containerId, meta, user });
     } catch (error) {
-      global.log.save('update-file-error', { error: error && error.message });
+      getLog().save('update-file-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -527,7 +528,7 @@ export class FilesController extends Controller {
     try {
       deletedRowsCountModelResponse = await this.fileModel.delete(id);
     } catch (error) {
-      global.log.save('delete-file-error', { error: error && error.message });
+      getLog().save('delete-file-error', { error: error && error.message });
     }
     const { data: deletedRowsCount } = deletedRowsCountModelResponse || {};
 
@@ -555,7 +556,7 @@ export class FilesController extends Controller {
     try {
       fileCopyModelResponse = await this.fileModel.copy(id, user);
     } catch (error) {
-      global.log.save('copy-file-error', { error: error && error.message });
+      getLog().save('copy-file-error', { error: error && error.message });
     }
     const { data: fileCopy } = fileCopyModelResponse || {};
 
@@ -583,7 +584,7 @@ export class FilesController extends Controller {
     try {
       signaturesModelResponse = await this.p7sSignatureModel.findByFileId(fileId);
     } catch (error) {
-      global.log.save('get-p7s-signatures-error', { error: error && error.message });
+      getLog().save('get-p7s-signatures-error', { error: error && error.message });
       return this.responseError(res, 'Get P7S signature error.');
     }
     const { data: p7sSignature } = signaturesModelResponse || {};
@@ -609,7 +610,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findInfoById(fileId);
     } catch (error) {
-      global.log.save('get-file-main-info-by-id-error', { error: error && error.message });
+      getLog().save('get-file-main-info-by-id-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
     const { name: fileName } = file;
@@ -665,7 +666,7 @@ export class FilesController extends Controller {
       try {
         fileModelResponse = await this.fileModel.findWithoutDataById(id);
       } catch (error) {
-        global.log.save('get-file-by-id-error', { error: error && error.message });
+        getLog().save('get-file-by-id-error', { error: error && error.message });
       }
       const { data: file } = fileModelResponse || {};
 
@@ -702,7 +703,7 @@ export class FilesController extends Controller {
         user,
       });
     } catch (error) {
-      global.log.save('save-generated-manifest-file-error', { error: error && error.message });
+      getLog().save('save-generated-manifest-file-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -746,7 +747,7 @@ export class FilesController extends Controller {
     try {
       manifestFileModelResponse = await this.fileModel.findById(manifestFileId);
     } catch (error) {
-      global.log.save('get-file-by-id-error', { error: error && error.message });
+      getLog().save('get-file-by-id-error', { error: error && error.message });
     }
     const { data: manifestFile } = manifestFileModelResponse || {};
 
@@ -765,7 +766,7 @@ export class FilesController extends Controller {
     try {
       dataObjectBase64String = await AsicManifest.getDataObjectValue(manifestFile.data);
     } catch (error) {
-      global.log.save('get-data-object-from-asic-manifest-error', { manifestFileId, error: error && error.message });
+      getLog().save('get-data-object-from-asic-manifest-error', { manifestFileId, error: error && error.message });
     }
     const dataObjectJsonString = Buffer.from(dataObjectBase64String || '', 'base64').toString('utf8');
     zip.addFile('data.json', Buffer.from(dataObjectJsonString));
@@ -775,7 +776,7 @@ export class FilesController extends Controller {
     try {
       manifestSignaturesModelResponse = await this.p7sSignatureModel.findByFileId(manifestFileId);
     } catch (error) {
-      global.log.save('get-manifest-file-p7s-signatures-error', { error: error && error.message });
+      getLog().save('get-manifest-file-p7s-signatures-error', { error: error && error.message });
     }
     const { data: manifestP7sSignature } = manifestSignaturesModelResponse || {};
 
@@ -791,7 +792,7 @@ export class FilesController extends Controller {
       try {
         fileModelResponse = await this.fileModel.findById(fileId);
       } catch (error) {
-        global.log.save('get-file-by-id-error', { error: error && error.message });
+        getLog().save('get-file-by-id-error', { error: error && error.message });
       }
       const { data: file } = fileModelResponse || {};
 
@@ -803,7 +804,7 @@ export class FilesController extends Controller {
       // Check total size.
       totalBytes += file.data?.length || 0;
       if (totalBytes > maxZipBytes) {
-        global.log.save('zip-too-large', { limit: maxZipBytes });
+        getLog().save('zip-too-large', { limit: maxZipBytes });
         return this.responseError(res, 'Payload too large.', 413);
       }
 
@@ -815,7 +816,7 @@ export class FilesController extends Controller {
       try {
         signaturesModelResponse = await this.p7sSignatureModel.findByFileId(fileId);
       } catch (error) {
-        global.log.save('get-file-p7s-signatures-error', { error: error && error.message });
+        getLog().save('get-file-p7s-signatures-error', { error: error && error.message });
       }
       const { data: p7sSignature } = signaturesModelResponse || {};
 
@@ -846,7 +847,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findById(fileId);
     } catch (error) {
-      global.log.save('get-file-by-id-error', { error: error && error.message });
+      getLog().save('get-file-by-id-error', { error: error && error.message });
     }
     const { data: fileInfo } = fileModelResponse || {};
 
@@ -864,7 +865,7 @@ export class FilesController extends Controller {
     try {
       signaturesModelResponse = await this.signatureModel.getAll({ limit: 1, filter: { file_id: fileId } });
     } catch (error) {
-      global.log.save('get-signatures-error', { error: error && error.message });
+      getLog().save('get-signatures-error', { error: error && error.message });
     }
     const { data: signatures } = signaturesModelResponse || {};
     if (!Array.isArray(signatures)) {
@@ -911,7 +912,7 @@ export class FilesController extends Controller {
     try {
       fileWithP7sMeta = await this.p7sSignatureModel.getP7sMetadataByFileIds(fileIds);
     } catch (error) {
-      global.log.save('get-p7s-by-file-ids-error', { error: error && error.message });
+      getLog().save('get-p7s-by-file-ids-error', { error: error && error.message });
       return this.responseError(res, 'Get P7S by file ids error.');
     }
     const fileWithP7sMetaString = JSON.stringify(fileWithP7sMeta);

@@ -6,6 +6,7 @@ import { Provider } from '../provider';
 import { Auth } from './auth';
 import { createHttpsAgent } from '../../lib/tls';
 import { HttpRequest as Request } from '../../lib/http_request';
+import { getLog, getMetrics } from '../../lib/context';
 
 const EXTERNAL_SERVICE_NAME = 'openstack';
 const PROVIDER_NAME = 'openstack';
@@ -114,12 +115,12 @@ export class OpenStack extends Provider {
     const timer = new Date();
 
     // Get info to handle file.
-    global.log.save('openstack-file-downloading', { filePath });
+    getLog().save('openstack-file-downloading', { filePath });
     const infoToHandleFile = await this.getInfoToHandleFile(filePath);
     const { url, headers } = infoToHandleFile;
 
     // Get and return request options.
-    global.log.save('openstack-file-downloading|request-options', {
+    getLog().save('openstack-file-downloading|request-options', {
       url,
       method: Request.Methods.GET,
       timeout: this.timeout,
@@ -196,14 +197,14 @@ export class OpenStack extends Provider {
     const timer = new Date();
 
     // Get info to handle file.
-    global.log.save('openstack-file-uploading', { filePath, contentType });
+    getLog().save('openstack-file-uploading', { filePath, contentType });
     const infoToHandleFile = await this.getInfoToHandleFile(filePath);
     const { url, headers } = infoToHandleFile;
     headers['Content-Type'] = contentType;
     const body = fileContent;
 
     // Get and return request options.
-    global.log.save('openstack-file-uploading|request-options', {
+    getLog().save('openstack-file-uploading|request-options', {
       url,
       method: Request.Methods.PUT,
       body: '***',
@@ -244,7 +245,7 @@ export class OpenStack extends Provider {
 
       // Check response and log
       const requestOptionsToLog = { url: requestOptions.url, method: requestOptions.method, timeout: requestOptions.timeout, body: '***' };
-      global.log.save('openstack-uploading-file-response', {
+      getLog().save('openstack-uploading-file-response', {
         requestOptions: requestOptionsToLog,
         filePath,
         body: response.data,
@@ -261,7 +262,7 @@ export class OpenStack extends Provider {
 
       return uploadedFileInfo;
     } catch (error) {
-      global.log.save('openstack-uploading-error', { error: error && error.message, filePath });
+      getLog().save('openstack-uploading-error', { error: error && error.message, filePath });
       throw error;
     }
   }
@@ -277,7 +278,7 @@ export class OpenStack extends Provider {
     const timer = new Date();
 
     // Get info to handle file.
-    global.log.save('openstack-file-deleting', { filePath });
+    getLog().save('openstack-file-deleting', { filePath });
     const infoToHandleFile = await this.getInfoToHandleFile(filePath, containerName);
     const { url, headers } = infoToHandleFile;
 
@@ -289,7 +290,7 @@ export class OpenStack extends Provider {
       timeout: this.timeout,
       httpsAgent: this.httpsAgent,
     });
-    global.log.save('openstack-file-deleting-result', deletingResult);
+    getLog().save('openstack-file-deleting-result', deletingResult);
 
     // 404 means object is already absent - not an error. Other error statuses must not be silent.
     const status = rawResponse?.status;
@@ -334,19 +335,19 @@ export class OpenStack extends Provider {
       timeout: this.timeout,
       httpsAgent: this.httpsAgent,
     });
-    global.log.save('container-metadata', { containerMetadata });
+    getLog().save('container-metadata', { containerMetadata });
     const containerMetadataHeaders = containerMetadata.headers;
-    global.log.save('container-metadata-headers', { containerMetadataHeaders });
+    getLog().save('container-metadata-headers', { containerMetadataHeaders });
 
     const bytesUsedCount = containerMetadataHeaders[CONTAINER_BYTES_USED_HEADER];
     const objectCount = containerMetadataHeaders[CONTAINER_OBJECT_COUNT_HEADER];
-    global.log.save('bytes-used-count', { bytesUsedCount });
+    getLog().save('bytes-used-count', { bytesUsedCount });
 
     let bytesUsedCountNumber;
     try {
       bytesUsedCountNumber = Number(bytesUsedCount);
     } catch (error) {
-      global.log.save('get-openstack-bytes-used-count-error', { bytesUsedCount, error });
+      getLog().save('get-openstack-bytes-used-count-error', { bytesUsedCount, error });
       const wrappedError = new Error(error);
       (wrappedError as any).cause = error;
       throw wrappedError;
@@ -385,7 +386,7 @@ export class OpenStack extends Provider {
    */
   externalServiceMetric(methodName, timer) {
     // Check metrics initialization.
-    if (!global.metrics || !global.metrics.increment || !global.metrics.timing) {
+    if (!getMetrics() || !getMetrics().increment || !getMetrics().timing) {
       return;
     }
 
@@ -396,9 +397,9 @@ export class OpenStack extends Provider {
     const allTimeMetricName = `external_services.${EXTERNAL_SERVICE_NAME}.all.response_time`;
 
     // Init metrics.
-    global.metrics.increment(currentMetricName);
-    global.metrics.increment(allMetricName);
-    global.metrics.timing(currentTimeMetricName, timer);
-    global.metrics.timing(allTimeMetricName, timer);
+    getMetrics().increment(currentMetricName);
+    getMetrics().increment(allMetricName);
+    getMetrics().timing(currentTimeMetricName, timer);
+    getMetrics().timing(allTimeMetricName, timer);
   }
 }

@@ -1,5 +1,6 @@
 import { Controller } from './controller';
 import { P7sSignatureModel } from '../models/p7s_signature';
+import { getLog } from '../lib/context';
 
 /**
  * P7S signatures controller.
@@ -37,7 +38,7 @@ export class P7sSignaturesController extends Controller {
     try {
       p7sSignatureModelResponse = await this.p7sSignatureModel.findInfoByFileId(fileId);
     } catch (error) {
-      global.log.save('get-p7s-signature-main-info-by-id-error', { error: error && error.message });
+      getLog().save('get-p7s-signature-main-info-by-id-error', { error: error && error.message });
     }
     const { data: p7sSignature } = p7sSignatureModelResponse || {};
 
@@ -64,7 +65,7 @@ export class P7sSignaturesController extends Controller {
     try {
       p7sSignatureModelResponse = await this.p7sSignatureModel.findById(id);
     } catch (error) {
-      global.log.save('get-signature-by-id-error', { error: error && error.message });
+      getLog().save('get-signature-by-id-error', { error: error && error.message });
     }
     const { data: p7sSignature } = p7sSignatureModelResponse || {};
 
@@ -92,7 +93,7 @@ export class P7sSignaturesController extends Controller {
     try {
       p7sSignatureModelResponse = await this.p7sSignatureModel.createOrUpdate({ fileId, p7s, meta, user });
     } catch (error) {
-      global.log.save('create-p7s-signature-error', { error: error && error.message });
+      getLog().save('create-p7s-signature-error', { error: error && error.message });
     }
     const { data: createdP7sSignature } = p7sSignatureModelResponse || {};
 
@@ -121,7 +122,7 @@ export class P7sSignaturesController extends Controller {
     try {
       p7sSignatureModelResponse = await this.p7sSignatureModel.update(id, { p7s, meta, user });
     } catch (error) {
-      global.log.save('update-p7s-signature-error', { error: error && error.message });
+      getLog().save('update-p7s-signature-error', { error: error && error.message });
     }
     const { data: updatedP7sSignature } = p7sSignatureModelResponse || {};
 
@@ -148,7 +149,7 @@ export class P7sSignaturesController extends Controller {
     try {
       deletedRowsCountModelResponse = await this.p7sSignatureModel.delete(id);
     } catch (error) {
-      global.log.save('delete-p7s-signature-error', { error: error && error.message });
+      getLog().save('delete-p7s-signature-error', { error: error && error.message });
     }
     const { data: deletedRowsCount } = deletedRowsCountModelResponse || {};
 
@@ -175,7 +176,7 @@ export class P7sSignaturesController extends Controller {
     try {
       deletedRowsCountModelResponse = await this.p7sSignatureModel.deleteByFileId(fileId);
     } catch (error) {
-      global.log.save('delete-p7s-signature-by-file-id-error', { error: error && error.message });
+      getLog().save('delete-p7s-signature-by-file-id-error', { error: error && error.message });
     }
     const { data: deletedRowsCount } = deletedRowsCountModelResponse || {};
 

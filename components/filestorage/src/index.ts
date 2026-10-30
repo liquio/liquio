@@ -2,6 +2,7 @@ import { Log, ConsoleLogProvider } from '@liquio/back-core';
 
 import { initialize as initializeConfig } from './lib/config';
 import { bootstrap } from './bootstrap';
+import { setAppContext } from './lib/context';
 
 // Init config.
 const config = initializeConfig();
@@ -16,8 +17,8 @@ const consoleLogProvider = new ConsoleLogProvider('console', {
 const activeProviders = Array.isArray(config.log?.console) && config.log.console.length ? config.log.console : ['console'];
 const log = new Log([consoleLogProvider], activeProviders);
 
-// Globals.
-global.log = log;
+// App context.
+setAppContext({ log });
 
 // Set process title.
 process.title = config.app.processTitle;

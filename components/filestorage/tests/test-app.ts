@@ -12,6 +12,7 @@ import * as Multiconf from 'multiconf';
 import { Log, ConsoleLogProvider } from '@liquio/back-core';
 
 import { bootstrap } from '../src/bootstrap';
+import { setAppContext, getDb } from '../src/lib/context';
 
 const debug = createDebug;
 
@@ -218,7 +219,7 @@ export class TestApp {
     const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
-    global.log = log;
+    setAppContext({ log });
 
     // Same startup sequence as src/index.ts (validation, DB, providers, models, router).
     const { providers, models, router } = await bootstrap(config, log);
@@ -251,8 +252,8 @@ export class TestApp {
 
   // Destroy the application.
   async destroy() {
-    if (global.db) {
-      await global.db.close();
+    if (getDb()) {
+      await getDb().close();
     }
     const server = this.routerService?.httpServer;
     if (server?.listening) {

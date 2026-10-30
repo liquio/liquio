@@ -2,6 +2,7 @@ import nock from 'nock';
 
 import { Preview } from './preview';
 import { getConfig } from './config';
+import { setAppContext, resetAppContext, getLog } from './context';
 
 // Mock the config module
 jest.mock('./config', () => {
@@ -23,10 +24,7 @@ jest.mock('./config', () => {
 });
 
 beforeAll(() => {
-  global.log = {
-    save: jest.fn(),
-  };
-  global.silentUpload = true;
+  setAppContext({ log: { save: jest.fn() }, silentUpload: true });
 
   // Suppress Bluebird warnings in tests
   const originalConsoleWarn = console.warn;
@@ -48,8 +46,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  delete global.log;
-  delete global.silentUpload;
+  resetAppContext();
   nock.cleanAll();
   nock.restore();
 });
@@ -627,7 +624,7 @@ describe('Preview', () => {
   describe('Disabled preview (empty server)', () => {
     beforeEach(() => {
       Preview.singleton = null;
-      (global.log.save as jest.Mock).mockClear();
+      (getLog().save as jest.Mock).mockClear();
     });
 
     it.each(['', '   ', undefined])('is disabled for server=%p and never errors', async (server) => {
@@ -638,7 +635,7 @@ describe('Preview', () => {
       expect(preview.isPreviewAllowed('application/pdf')).toBe(false);
       await expect(preview.getPreview(Buffer.from('x'), 'a.pdf')).resolves.toBeUndefined();
       await expect(preview.sendPingRequest()).resolves.toBeUndefined();
-      expect(global.log.save).not.toHaveBeenCalled();
+      expect(getLog().save).not.toHaveBeenCalled();
       nock.enableNetConnect();
     });
   });
@@ -646,12 +643,12 @@ describe('Preview', () => {
   describe('Insecure transport warning', () => {
     beforeEach(() => {
       Preview.singleton = null;
-      (global.log.save as jest.Mock).mockClear();
+      (getLog().save as jest.Mock).mockClear();
     });
 
     it.each(['http://preview.example.com:3345', 'http://10.10.172.128:3345'])('warns for %s', (server) => {
       new Preview({ server });
-      expect(global.log.save).toHaveBeenCalledWith('preview-server-insecure-http', expect.objectContaining({ host: expect.any(String) }));
+      expect(getLog().save).toHaveBeenCalledWith('preview-server-insecure-http', expect.objectContaining({ host: expect.any(String) }));
     });
 
     it.each([
@@ -663,7 +660,7 @@ describe('Preview', () => {
       'https://preview.example.com',
     ])('does not warn for %s', (server) => {
       new Preview({ server });
-      expect(global.log.save).not.toHaveBeenCalled();
+      expect(getLog().save).not.toHaveBeenCalled();
     });
   });
 

@@ -1,6 +1,7 @@
 import { Log } from '@liquio/back-core';
 
 import { Db } from './lib/db';
+import { setAppContext } from './lib/context';
 import { Providers } from './providers';
 import { Models } from './models';
 import { Router } from './router';
@@ -19,7 +20,7 @@ export async function bootstrap(config: any, log: Log) {
   }
 
   // Init DB.
-  global.db = await Db.getInstance(config.db);
+  setAppContext({ db: await Db.getInstance(config.db) });
 
   // Init providers.
   const providers = new Providers(config.providers);
