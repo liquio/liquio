@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import Multiconf from 'multiconf';
 
 import { bootstrap } from './bootstrap';
+import { getLog } from './lib/context';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/manager';
@@ -22,7 +23,7 @@ module.exports = (async () => {
   // Log unhandled rejections.
   process.on('unhandledRejection', (error: any) => {
     const { stack, message } = error || {};
-    global.log.save('unhandled-rejection', { stack, message });
+    getLog().save('unhandled-rejection', { stack, message });
     process.exit(1);
   });
 

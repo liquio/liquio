@@ -6,6 +6,7 @@ import { MonitorController } from '../controllers/monitor';
 import { AppIdentHeaders } from '../lib/app_ident_headers';
 import { Cors } from '../lib/cors';
 import { monitoringGuard } from '../lib/monitoring_guard';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Router service.
@@ -42,10 +43,10 @@ export class RouterService {
     app.use(asyncLocalStorageMiddleware);
 
     // Save request info to log.
-    app.use(global.log.logRouter.bind(global.log));
+    app.use(getLog().logRouter.bind(getLog()));
 
     // App info in headers.
-    AppIdentHeaders.add(app, global.config);
+    AppIdentHeaders.add(app, getConfig());
 
     // Allow CORS.
     Cors.allow(app);
@@ -96,7 +97,7 @@ export class RouterService {
         if (error) {
           return reject(error);
         }
-        global.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
+        getLog().save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });
     });

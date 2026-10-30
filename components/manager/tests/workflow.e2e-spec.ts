@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { TestApp } from './test-app';
+import { getDb } from '../src/lib/context';
 
 // Workflow template 988191, seeded by data/test.e2e.sql, flows:
 // task-988191001 --Flow_1twkt51--> gateway-988191001 (exclusive gateway)
@@ -24,13 +25,13 @@ describe('Workflow Business (via RabbitMQ)', () => {
     workflowId = randomUUID();
     taskId = randomUUID();
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
        VALUES (:workflowId, :workflowTemplateId, false, '{"messages": []}'::jsonb, 'system', 'system', NOW(), NOW())`,
       { replacements: { workflowId, workflowTemplateId: WORKFLOW_TEMPLATE_ID } },
     );
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO tasks (id, workflow_id, task_template_id, performer_users, signer_users, performer_units, tags, data, finished, deleted, created_by, updated_by, created_at, updated_at)
        VALUES (:taskId, :workflowId, :taskTemplateId, '{}', '{}', '{}', '{}', '{}'::json, true, false, 'system', 'system', NOW(), NOW())`,
       { replacements: { taskId, workflowId, taskTemplateId: TASK_TEMPLATE_ID } },
@@ -68,7 +69,7 @@ describe('Workflow Business (via RabbitMQ)', () => {
   it('processes a gateway-completion message and forwards the next step to the event queue', async () => {
     const gatewayId = randomUUID();
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO gateways (id, gateway_template_id, gateway_type_id, workflow_id, data, created_by, updated_by, created_at, updated_at)
        VALUES (:gatewayId, :gatewayTemplateId, 1, :workflowId, :data::json, 'system', 'system', NOW(), NOW())`,
       {
@@ -96,7 +97,7 @@ describe('Workflow Business (via RabbitMQ)', () => {
   it('processes an event-completion message and forwards the next step to the event queue', async () => {
     const eventId = randomUUID();
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO events (id, event_template_id, event_type_id, workflow_id, done, data, created_by, updated_by, created_at, updated_at)
        VALUES (:eventId, :eventTemplateId, 1, :workflowId, true, '{}', 'system', 'system', NOW(), NOW())`,
       { replacements: { eventId, eventTemplateId: EVENT_TEMPLATE_ID, workflowId } },
