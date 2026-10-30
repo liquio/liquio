@@ -3,6 +3,7 @@ import { getTraceId } from '@liquio/back-core';
 import { Helpers } from '../../../../../lib/helpers';
 import { HttpRequest } from '../../../../../lib/http_request';
 import { Provider } from './provider';
+import { getLog } from '../../../../../lib/context';
 
 const DEFAULT_ROUTES = {
   getStats: '/api/v2/stats',
@@ -68,7 +69,7 @@ export class MailerLiteProvider extends Provider {
         throw result.error;
       }
     } catch (error: any) {
-      global.log.save('sms-sending-error', Helpers.prepareResponseDataToLog(error.response?.data));
+      getLog().save('sms-sending-error', Helpers.prepareResponseDataToLog(error.response?.data));
       throw error;
     }
 
@@ -84,7 +85,7 @@ export class MailerLiteProvider extends Provider {
     try {
       return await this.getStats();
     } catch (error: any) {
-      global.log.save('send-ping-request-to-mailerlite', { error: error && error.message });
+      getLog().save('send-ping-request-to-mailerlite', { error: error && error.message });
     }
   }
 
@@ -107,7 +108,7 @@ export class MailerLiteProvider extends Provider {
         'x-trace-id': getTraceId(),
       },
     };
-    global.log.save('send-add-subscribers-to-group-request-to-mailerlite', { subscribersCount: subscribers.length });
+    getLog().save('send-add-subscribers-to-group-request-to-mailerlite', { subscribersCount: subscribers.length });
     const response = await HttpRequest.send(requestOptions);
 
     return response;
@@ -128,7 +129,7 @@ export class MailerLiteProvider extends Provider {
         'x-trace-id': getTraceId(),
       },
     };
-    global.log.save('send-get-stats-request-to-mailerlite');
+    getLog().save('send-get-stats-request-to-mailerlite');
     const response = await HttpRequest.send(requestOptions);
 
     return response;

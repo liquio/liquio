@@ -3,6 +3,7 @@ import _ from 'lodash';
 import { UnitResult } from './unit_result';
 import { EventUser } from '../user/index';
 import { UnitRulesModel } from '../../../models/unit_rules';
+import { getLog } from '../../../lib/context';
 
 /**
  * Event unit.
@@ -87,13 +88,13 @@ export class EventUnit {
       }
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-unit-create-error', { error: exceptionMessage, stack: error.stack, unitData });
+      getLog().save('event-unit-create-error', { error: exceptionMessage, stack: error.stack, unitData });
       throw error;
     }
 
     // Log user's units.
     const { heads = [], members = [], headsIpn = [], membersIpn = [] } = unitData;
-    global.log.save('unit-created-with-users', { workflowId, eventTemplate, unitId: unit && unit.id, heads, members, headsIpn, membersIpn });
+    getLog().save('unit-created-with-users', { workflowId, eventTemplate, unitId: unit && unit.id, heads, members, headsIpn, membersIpn });
 
     // Create and return result.
     const unitResult = new UnitResult('create', unit.id, unit, exceptionMessage);
@@ -217,13 +218,13 @@ export class EventUnit {
       }
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-unit-update-error', { error: exceptionMessage, stack: error.stack, unitData });
+      getLog().save('event-unit-update-error', { error: exceptionMessage, stack: error.stack, unitData });
       throw error;
     }
 
     // Log user's units.
     const { heads = [], members = [], headsIpn = [], membersIpn = [] } = unitData;
-    global.log.save('unit-updated-with-users', { workflowId, eventTemplate, unitId: unit && unit.id, heads, members, headsIpn, membersIpn });
+    getLog().save('unit-updated-with-users', { workflowId, eventTemplate, unitId: unit && unit.id, heads, members, headsIpn, membersIpn });
 
     // Update and return result.
     const unitResult = new UnitResult('update', unit.id, unit, exceptionMessage);

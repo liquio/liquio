@@ -1,4 +1,5 @@
 import { FileStorage } from '../../../lib/filestorage';
+import { getModels } from '../../../lib/context';
 
 /**
  * Event cleaner.
@@ -41,12 +42,12 @@ export class EventCleaner {
    * @returns {Promise<void>}
    */
   async clearTasks(workflowId: string): Promise<any[]> {
-    const tasks = await global.models.task.getTasksByWorkflowId(workflowId);
+    const tasks = await getModels().task.getTasksByWorkflowId(workflowId);
     const taskIds = tasks.map((item: any) => item.id);
     const updatedTaskIds = [];
 
     for (const taskId of taskIds) {
-      await global.models.task.update(taskId, { performerUserNames: [], meta: { cleaned: true } });
+      await getModels().task.update(taskId, { performerUserNames: [], meta: { cleaned: true } });
       updatedTaskIds.push(taskId);
     }
 
@@ -60,24 +61,24 @@ export class EventCleaner {
    * @returns {Promise<void>}
    */
   async clearDocuments(workflowId: string): Promise<any[]> {
-    const documents = await global.models.task.getDocumentsByWorkflowId(workflowId, false);
+    const documents = await getModels().task.getDocumentsByWorkflowId(workflowId, false);
     const updatedDocumentIds = [];
     for (const document of documents) {
-      await global.models.document.updateData(document.id, { cleaned: true });
-      await global.models.document.clearFileData(document.id);
+      await getModels().document.updateData(document.id, { cleaned: true });
+      await getModels().document.clearFileData(document.id);
       updatedDocumentIds.push(document.id);
 
-      const documentAttachments = await global.models.documentAttachment.getByDocumentId(document.id);
+      const documentAttachments = await getModels().documentAttachment.getByDocumentId(document.id);
       for (const { link } of documentAttachments) {
         await this.deleteFileAndSignatureFromFilestorage(link);
       }
       if (document.fileId) {
         await this.deleteFileAndSignatureFromFilestorage(document.fileId);
       }
-      await global.models.documentAttachment.deleteByDocumentId(document.id);
-      await global.models.documentSignature.deleteByDocumentId(document.id);
-      await global.models.additionalDataSignature.deleteByDocumentId(document.id);
-      await global.models.userInbox.deleteByDocumentId(document.id);
+      await getModels().documentAttachment.deleteByDocumentId(document.id);
+      await getModels().documentSignature.deleteByDocumentId(document.id);
+      await getModels().additionalDataSignature.deleteByDocumentId(document.id);
+      await getModels().userInbox.deleteByDocumentId(document.id);
     }
     return updatedDocumentIds;
   }
@@ -89,22 +90,22 @@ export class EventCleaner {
    * @returns {Promise<void>}
    */
   async clearEvents(workflowId: string): Promise<{ updatedEventIds: any[]; updatedDocumentIds: any[] }> {
-    const events = await global.models.event.getEventsByWorkflowId(workflowId);
+    const events = await getModels().event.getEventsByWorkflowId(workflowId);
     const updatedEventIds = [];
     const updatedDocumentIds = [];
 
     for (const { id: eventId, documentId } of events) {
-      await global.models.event.update(eventId, { data: { cleaned: true } });
+      await getModels().event.update(eventId, { data: { cleaned: true } });
       updatedEventIds.push(eventId);
       if (documentId) {
-        const document = await global.models.document.getByDocumentId(documentId);
-        await global.models.document.updateData(documentId, { cleaned: true });
-        await global.models.document.clearFileData(documentId);
+        const document = await getModels().document.getByDocumentId(documentId);
+        await getModels().document.updateData(documentId, { cleaned: true });
+        await getModels().document.clearFileData(documentId);
         updatedDocumentIds.push(documentId);
         if (document.fileId) {
           await this.deleteFileAndSignatureFromFilestorage(document.fileId);
         }
-        await global.models.userInbox.deleteByDocumentId(documentId);
+        await getModels().userInbox.deleteByDocumentId(documentId);
       }
     }
     return { updatedEventIds, updatedDocumentIds };

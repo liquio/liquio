@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import { LiquioProvider } from './liquio';
+import { setAppContext, resetAppContext } from '../../../../../lib/context';
 
 jest.mock('@liquio/back-core', () => ({
   getTraceId: jest.fn(() => '123e4567-e89b-12d3-a456-426614174000'),
@@ -10,6 +11,8 @@ jest.mock('@liquio/back-core', () => ({
 const SERVER = 'http://notify.test';
 
 describe('SMS LiquioProvider logging', () => {
+  afterEach(() => resetAppContext());
+
   it('does not log phones or message text', async () => {
     const provider = new LiquioProvider({
       server: SERVER,
@@ -20,7 +23,7 @@ describe('SMS LiquioProvider logging', () => {
       password: 'p',
     });
     const saved: any[] = [];
-    global.log = { save: jest.fn((type, data) => saved.push({ type, data })) } as any;
+    setAppContext({ log: { save: jest.fn((type, data) => saved.push({ type, data })) } });
     nock(SERVER).post('/sms').reply(200, { ok: true });
 
     await provider.send(['+380501112233', '+380509998877'], 'SECRET-SMS-TEXT', 'SECRET-TRANSLIT');

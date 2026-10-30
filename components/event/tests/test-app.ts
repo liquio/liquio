@@ -359,7 +359,6 @@ class TestApp extends App {
   }
 
   async init() {
-    this.useGlobalErrors();
     this.useGlobalTypeOf();
     this.useLog();
     resetIdApiClient();

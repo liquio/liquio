@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import { LiquioProvider } from './liquio';
+import { setAppContext, resetAppContext } from '../../../../../lib/context';
 
 jest.mock('@liquio/back-core', () => ({
   getTraceId: jest.fn(() => '123e4567-e89b-12d3-a456-426614174000'),
@@ -31,10 +32,13 @@ describe('Email LiquioProvider logging', () => {
 
   beforeEach(() => {
     saved = [];
-    global.log = { save: jest.fn((type, data) => saved.push({ type, data })) } as any;
+    setAppContext({ log: { save: jest.fn((type, data) => saved.push({ type, data })) } });
   });
 
-  afterEach(() => nock.cleanAll());
+  afterEach(() => {
+    nock.cleanAll();
+    resetAppContext();
+  });
 
   const attachments = [{ name: 'secret-name.pdf', contentType: 'application/pdf', content: ATTACHMENT_CONTENT }];
 

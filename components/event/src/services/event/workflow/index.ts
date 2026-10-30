@@ -9,6 +9,7 @@ import { TaskModel } from '../../../models/task';
 import { Helpers } from '../../../lib/helpers';
 import { SYSTEM_USER } from '../../../constants/common';
 import { typeOf } from '../../../lib/type_of';
+import { getConfig, getLog, getMessageQueue, getModels } from '../../../lib/context';
 
 const { prepareAxiosErrorToLog } = Helpers;
 
@@ -72,7 +73,7 @@ export class EventWorkflow {
         files.push({ ...fileInfo, meta: fileMeta });
       }
 
-      global.messageQueue.produce({
+      getMessageQueue().produce({
         ...createWorkflow,
         initData: {
           ...initData,
@@ -130,19 +131,19 @@ export class EventWorkflow {
         attachmentsSignaturesIds = [],
         signaturesDocumentId,
       } = createWorkflowExternal;
-      const externalSystemConfig = global.config.external_bpmn[externalSystem];
+      const externalSystemConfig = getConfig().external_bpmn[externalSystem];
 
       const { url, urlPath = '/tasks/by-other-system', token, requestTimeout = 30000, queryParams, requestHeaders } = externalSystemConfig || {};
 
       if (!url || !token) {
-        global.log.save('create-workflow-external-error|external-system-params-not-defined', {
+        getLog().save('create-workflow-external-error|external-system-params-not-defined', {
           createWorkflowExternal,
           externalSystemConfig,
         });
         const error: any = new Error('External system params not defined in config file. Check external system name in JSON schema.');
         error.details = {
           jsonSchemaExternalSystem: externalSystem,
-          availableExternalSystems: Object.keys(global.config.external_bpmn),
+          availableExternalSystems: Object.keys(getConfig().external_bpmn),
         };
         throw error;
       }
@@ -177,7 +178,7 @@ export class EventWorkflow {
       // Get document signatures.
       let signatures: any;
       if (signaturesDocumentId) {
-        const documentSignatures = await global.models.documentSignature.findByDocumentId(signaturesDocumentId);
+        const documentSignatures = await getModels().documentSignature.findByDocumentId(signaturesDocumentId);
         if (!Array.isArray(documentSignatures) || documentSignatures.length === 0) {
           throw new Error('Document signatures not found.');
         }
@@ -200,7 +201,7 @@ export class EventWorkflow {
       try {
         response = (await axios(requestOptions as any)).data;
       } catch (error: any) {
-        global.log.save(
+        getLog().save(
           'create-workflow-external-error|request-error',
           {
             requestOptions,
@@ -248,7 +249,7 @@ export class EventWorkflow {
       p7sFileIds = [],
       attachmentsSignaturesIds = [],
     } = sendStatusExternal;
-    const externalSystemConfig = global.config.external_bpmn[externalSystem];
+    const externalSystemConfig = getConfig().external_bpmn[externalSystem];
 
     const {
       url,
@@ -260,7 +261,7 @@ export class EventWorkflow {
     } = externalSystemConfig || {};
 
     if (!url || !token) {
-      global.log.save('send-status-external-error|external-system-params-not-defined', {
+      getLog().save('send-status-external-error|external-system-params-not-defined', {
         sendStatusExternal,
         externalSystemConfig,
       });
@@ -306,7 +307,7 @@ export class EventWorkflow {
     try {
       response = (await axios(requestOptions as any)).data;
     } catch (error: any) {
-      global.log.save(
+      getLog().save(
         'send-status-external-error|request-error',
         {
           requestOptions,
@@ -346,12 +347,12 @@ export class EventWorkflow {
       try {
         const { workflowId, taskTemplateId, data } = sendStatusData;
 
-        const workflow = await global.models.workflow.findById(workflowId);
+        const workflow = await getModels().workflow.findById(workflowId);
         if (!workflow) {
           throw new Error('Workflow not found.');
         }
 
-        const task = await global.models.task.findByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId);
+        const task = await getModels().task.findByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId);
         if (!task) {
           throw new Error('Task not found.');
         }
@@ -362,7 +363,7 @@ export class EventWorkflow {
           throw new Error('The task has already been committed.');
         }
 
-        const document = await global.models.document.findById(task.documentId);
+        const document = await getModels().document.findById(task.documentId);
         if (!document) {
           throw new Error('Document not found.');
         }
@@ -370,29 +371,29 @@ export class EventWorkflow {
           throw new Error('The document has already been committed.');
         }
 
-        const savedDocument = await global.models.document.updateData(document.id, data);
+        const savedDocument = await getModels().document.updateData(document.id, data);
         if (!savedDocument) {
           throw new Error('The document cannot be saved.');
         }
-        await global.models.document.setStatusFinal(document.id);
+        await getModels().document.setStatusFinal(document.id);
 
-        const savedTask = await global.models.task.setStatusFinished(task.id);
+        const savedTask = await getModels().task.setStatusFinished(task.id);
         if (!savedTask) {
           throw new Error('The task cannot be saved.');
         }
 
         try {
-          const workflowTemplate = await global.models.workflowTemplate.findByIdCached(workflow.workflowTemplateId);
-          const documents = await global.models.task.getDocumentsByWorkflowId(workflowId, true);
-          const events = await global.models.event.getEventsByWorkflowId(workflowId);
+          const workflowTemplate = await getModels().workflowTemplate.findByIdCached(workflow.workflowTemplateId);
+          const documents = await getModels().task.getDocumentsByWorkflowId(workflowId, true);
+          const events = await getModels().event.getEventsByWorkflowId(workflowId);
 
           await this.setWorkflowStatus(workflowId, workflowTemplate, parseInt(task.taskTemplateId), {
             documents,
             events,
           });
         } catch (error: any) {
-          global.log.save('set-workflow-status-error', { workflowId, error: error.message });
-          await global.models.workflowError.create(
+          getLog().save('set-workflow-status-error', { workflowId, error: error.message });
+          await getModels().workflowError.create(
             {
               error: 'Can not set the workflow status.',
               details: {
@@ -409,7 +410,7 @@ export class EventWorkflow {
           );
         }
 
-        global.messageQueue.produce({ workflowId: workflowId, taskId: task.id });
+        getMessageQueue().produce({ workflowId: workflowId, taskId: task.id });
 
         const response = {
           ...savedTask,
@@ -418,7 +419,7 @@ export class EventWorkflow {
 
         return response;
       } catch (error: any) {
-        global.log.save('workflow-send-status-error', {
+        getLog().save('workflow-send-status-error', {
           ...sendStatus,
         });
         throw error;
@@ -444,7 +445,7 @@ export class EventWorkflow {
     }
 
     if (status.calculate) {
-      const frontUrl = global.config.notifier?.email?.templateParams?.frontUrl;
+      const frontUrl = getConfig().notifier?.email?.templateParams?.frontUrl;
       if (typeOf(frontUrl) === 'string') {
         status.calculate = status.calculate.replaceAll('{{frontUrl}}', frontUrl);
       }
@@ -469,7 +470,7 @@ export class EventWorkflow {
           return false;
         })
       ) {
-        global.log.save('set-workflow-status|status-calculate-error', { workflowId, status });
+        getLog().save('set-workflow-status|status-calculate-error', { workflowId, status });
         throw new Error('Invalid status.');
       }
 
@@ -477,7 +478,7 @@ export class EventWorkflow {
       const nonTabedStatusesLength = nonTabedStatuses.length;
 
       if (nonTabedStatusesLength === 0) {
-        global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
+        getLog().save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
         throw new Error("Invalid status. Non tabed statuses don't exist.");
       }
 
@@ -489,16 +490,16 @@ export class EventWorkflow {
       } else if (nonTabedStatuses[nonTabedStatusesLength - 1].type.toLowerCase() === 'rejected') {
         statusId = 3;
       }
-      await global.models.workflow.setStatus(workflowId, statusId, calculatedStatus);
-      global.log.save('set-workflow-status|status-defined', {
+      await getModels().workflow.setStatus(workflowId, statusId, calculatedStatus);
+      getLog().save('set-workflow-status|status-defined', {
         workflowId,
         statusId,
         calculatedStatus,
         workflowTemplateId: workflowTemplate.id,
       });
     } else if (status.statusId) {
-      await global.models.workflow.setStatus(workflowId, status.statusId);
-      global.log.save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
+      await getModels().workflow.setStatus(workflowId, status.statusId);
+      getLog().save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
     }
   }
 

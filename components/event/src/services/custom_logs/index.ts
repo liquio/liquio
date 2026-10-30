@@ -1,6 +1,7 @@
 import { RedisClient, Sandbox } from '@liquio/back-core';
 
 import { CustomLogEntity } from '../../entities/custom_log';
+import { getConfig, getLog, getModels } from '../../lib/context';
 
 /**
  * Custom logs.
@@ -19,7 +20,7 @@ export class CustomLogs {
    * @param {object} [config] Document update log config. Global config `custom_logs` used by default.
    * @param {object} [redisConfig] Redis config. Global config `redis` used by default.
    */
-  constructor(config: any = global.config.custom_logs, redisConfig: any = global.config.redis) {
+  constructor(config: any = getConfig().custom_logs, redisConfig: any = getConfig().redis) {
     // Singleton.
     if (!CustomLogs.singleton) {
       // Save params.
@@ -33,13 +34,13 @@ export class CustomLogs {
         redis: { ttl },
       } = config;
       this.cacheEnabled = isRedisEnabled && cacheEnabled;
-      this.client = this.cacheEnabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => global.log }) : null;
+      this.client = this.cacheEnabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => getLog() }) : null;
 
       this.ttl = ttl;
       if (this.client) {
-        global.log.save('custom-logs-cache-initialized', { cacheEnabled, host, port });
+        getLog().save('custom-logs-cache-initialized', { cacheEnabled, host, port });
       } else {
-        global.log.save('custom-logs-cache-not-initialized', { cacheEnabled });
+        getLog().save('custom-logs-cache-not-initialized', { cacheEnabled });
       }
 
       // Define singleton.
@@ -64,9 +65,9 @@ export class CustomLogs {
       const { eventTemplateId } = event;
 
       // Get custom log templates.
-      customLogTemplates = await global.models.customLogTemplate.getByOperationTypeAndEventTemplateIdWithCache(operationType, eventTemplateId);
+      customLogTemplates = await getModels().customLogTemplate.getByOperationTypeAndEventTemplateIdWithCache(operationType, eventTemplateId);
     } else {
-      customLogTemplates = await global.models.customLogTemplate.getByOperationType(operationType);
+      customLogTemplates = await getModels().customLogTemplate.getByOperationType(operationType);
     }
 
     // Handle.
@@ -77,8 +78,8 @@ export class CustomLogs {
       let documents;
       let events;
       if (isGetWorkflowData && workflowId) {
-        documents = await global.models.task.getDocumentsByWorkflowId(workflowId);
-        events = await global.models.event.getEventsByWorkflowId(workflowId);
+        documents = await getModels().task.getDocumentsByWorkflowId(workflowId);
+        events = await getModels().event.getEventsByWorkflowId(workflowId);
       }
 
       // Main params.
@@ -90,9 +91,9 @@ export class CustomLogs {
         customParams = this.sandbox.evalWithArgs(schema, [{ event, documents, events }], {
           meta: { fn: 'schema', caller: 'CustomLogs.saveCustomLog' },
         }); // Returns `{ type, custom: { someProperty: { name, value }, ... } }`.
-        global.log.save('custom-log-params-calculation-result', { schema, customParams });
+        getLog().save('custom-log-params-calculation-result', { schema, customParams });
       } catch (error: any) {
-        global.log.save('custom-log-params-calculation-error', { error: error && error.message, schema, event });
+        getLog().save('custom-log-params-calculation-error', { error: error && error.message, schema, event });
       }
 
       // Do not save if custom params equals `null`.
@@ -106,14 +107,14 @@ export class CustomLogs {
       if (this.cacheEnabled) {
         const cacheExist = await this.isCacheExist(logParams);
         if (cacheExist) {
-          global.log.save('custom-log-not-created-accordance-to-cache', { logParams });
+          getLog().save('custom-log-not-created-accordance-to-cache', { logParams });
           return;
         }
       }
 
       // Create custom log.
-      const customLog = await global.models.customLog.create(logParams);
-      global.log.save('custom-log-created', { customLogId: (customLog && customLog.id) || null });
+      const customLog = await getModels().customLog.create(logParams);
+      getLog().save('custom-log-created', { customLogId: (customLog && customLog.id) || null });
 
       // Save to cache.
       if (this.cacheEnabled) {

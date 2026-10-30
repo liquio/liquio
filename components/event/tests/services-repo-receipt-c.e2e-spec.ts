@@ -19,7 +19,6 @@ describe('Group C - services repository and payment receipt', () => {
     await TestApp.beforeAll();
     app = await TestApp.setup({});
     setAppContext({ httpClient: app.httpClient });
-    (global as any).httpClient = app.httpClient;
     const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
     privateKeyBase64 = Buffer.from(privateKey.export({ type: 'pkcs8', format: 'pem' }) as string).toString('base64');
     ServicesRepositoryRequester.singleton = undefined as any;

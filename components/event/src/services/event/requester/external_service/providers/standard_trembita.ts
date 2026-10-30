@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import axios from 'axios';
 
 import { Provider } from './provider';
+import { getLog } from '../../../../../lib/context';
 
 // Constants.
 const TREMBITA_TEMPLATE = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xro="http://x-road.eu/xsd/xroad.xsd" xmlns:iden="http://x-road.eu/xsd/identifiers">
@@ -114,7 +115,7 @@ export class StandardTrembitaProvider extends Provider {
       data: soapMessage,
       timeout: requestTimeout,
     };
-    global.log.save('send-to-standard-trembita-provider|request-options', { requestOptions });
+    getLog().save('send-to-standard-trembita-provider|request-options', { requestOptions });
 
     // Do request.
     let response;
@@ -125,7 +126,7 @@ export class StandardTrembitaProvider extends Provider {
         try {
           await new Promise((resolve) => setTimeout(resolve, retryAfter));
           response = (await axios(requestOptions)).data;
-          global.log.save('send-to-standard-trembita-provider|response', { requestOptions, response, data });
+          getLog().save('send-to-standard-trembita-provider|response', { requestOptions, response, data });
           break;
         } catch (error) {
           errors.push(error);
@@ -135,7 +136,7 @@ export class StandardTrembitaProvider extends Provider {
         throw new Error(errors.map((e) => e && e.message).join('|'));
       }
     } catch (error) {
-      global.log.save('send-to-standard-trembita-provider|all|exception', { error: error && error.message, data });
+      getLog().save('send-to-standard-trembita-provider|all|exception', { error: error && error.message, data });
       throw error;
     }
     if (isTest) {
@@ -177,7 +178,7 @@ export class StandardTrembitaProvider extends Provider {
       const providersConfigData = fs.readFileSync(providersConfigPath, { encoding: 'utf8' });
       providersConfig = JSON.parse(providersConfigData);
     } catch (error) {
-      global.log.save('standard-trembita-providers-config-definition-error', { error: error && error.message, providersConfigPath });
+      getLog().save('standard-trembita-providers-config-definition-error', { error: error && error.message, providersConfigPath });
     }
     return providersConfig;
   }

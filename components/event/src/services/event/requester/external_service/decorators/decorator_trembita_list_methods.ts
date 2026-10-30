@@ -1,4 +1,5 @@
 import { Decorator } from './decorator';
+import { getConfig } from '../../../../../lib/context';
 
 // Constants.
 const TREMBITA_TEMPLATE = `<soapenv:Envelope 
@@ -56,7 +57,7 @@ export class DecoratorTrembitaListMethods extends Decorator {
           trembita: { trembitaHeader },
         },
       },
-    } = global.config;
+    } = getConfig();
     const headerId = String(timestamp);
     soapMessage = soapMessage
       .replace('{header.client.objectType}', trembitaHeader.client.objectType)

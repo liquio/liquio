@@ -2,6 +2,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { Decorators } from './decorators';
 import { Providers } from './providers';
+import { getLog } from '../../../../lib/context';
 
 /**
  * External service requester.
@@ -70,7 +71,7 @@ export class ExternalServiceRequester {
     // Get decorator.
     const decorator = this.getDecorator(providerName, documentTemplateId);
     if (!decorator) {
-      global.log.save('external-service-error|decorator-not-found', { providerName, documentTemplateId });
+      getLog().save('external-service-error|decorator-not-found', { providerName, documentTemplateId });
       throw new Error('Decorator not found.');
     }
 
@@ -80,7 +81,7 @@ export class ExternalServiceRequester {
     try {
       dataToSend = await decorator.transform(dataBeforeTransformation);
     } catch (error) {
-      global.log.save('external-service-error|transform-error', {
+      getLog().save('external-service-error|transform-error', {
         error: error && error.message,
         providerName,
         receiver,
@@ -92,7 +93,7 @@ export class ExternalServiceRequester {
     // Get provider.
     const provider = this.getProvider(providerName);
     if (!provider) {
-      global.log.save('external-service-error|provider-not-found', { providerName });
+      getLog().save('external-service-error|provider-not-found', { providerName });
       throw new Error('Provider not found.');
     }
 
@@ -106,7 +107,7 @@ export class ExternalServiceRequester {
         workflowId,
       });
     } catch (error) {
-      global.log.save('external-service-error|send-error', {
+      getLog().save('external-service-error|send-error', {
         error: error.toString(),
         providerName,
         documentTemplateId,
@@ -119,7 +120,7 @@ export class ExternalServiceRequester {
     try {
       externalIdSavingResult = await this.setExternalIdIfNeedIt(sendingResult, data.documentModel);
     } catch (error) {
-      global.log.save('external-service-error|set-external-id-error', {
+      getLog().save('external-service-error|set-external-id-error', {
         error: error && error.message,
         providerName,
         documentTemplateId,

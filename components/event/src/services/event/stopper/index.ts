@@ -1,4 +1,5 @@
 import { StopResult } from './stop_result';
+import { getLog } from '../../../lib/context';
 
 /**
  * Event stopper.
@@ -56,7 +57,7 @@ export class EventStopper {
 
     // Set stop result as handled and return.
     stopResult.setIsHandled();
-    global.log.save('stop-result', stopResult);
+    getLog().save('stop-result', stopResult);
     return stopResult;
   }
 
@@ -80,7 +81,7 @@ export class EventStopper {
       await documentModel.setCancelled(documentStopIds);
       stopResult.addStoppedTaskIds(...tasksToStopIds);
     } catch (error: any) {
-      global.log.save('stop-tasks-error', { error: error && error.message, stopResult });
+      getLog().save('stop-tasks-error', { error: error && error.message, stopResult });
       throw error;
     }
   }
@@ -110,7 +111,7 @@ export class EventStopper {
       await eventModel.setCancelled(eventsToStopIds);
       stopResult.addStoppedEventIds(...eventsToStopIds);
     } catch (error: any) {
-      global.log.save('stop-events-error', { error: error && error.message, stopResult });
+      getLog().save('stop-events-error', { error: error && error.message, stopResult });
       throw error;
     }
   }

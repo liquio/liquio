@@ -8,6 +8,7 @@ import { HttpRequest } from '../../../../../lib/http_request';
 import { Helpers } from '../../../../../lib/helpers';
 const { prepareAxiosErrorToLog } = Helpers;
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../../../../../constants/common';
+import { getLog } from '../../../../../lib/context';
 
 // Constants.
 const API_METHODS: Record<string, string> = {
@@ -139,7 +140,7 @@ export class LiquioProvider extends Provider {
       responseType: 'stream',
       // body: '' // JSON.stringify({ additionalFilter }),
     };
-    global.log.save('get-csv-records-from-registers|request-options', { requestOptions });
+    getLog().save('get-csv-records-from-registers|request-options', { requestOptions });
 
     // Do request.
     let fileInfo;
@@ -149,18 +150,18 @@ export class LiquioProvider extends Provider {
       try {
         downloadDocumentReadStream = (await axios(requestOptions as any)).data;
       } catch (error) {
-        global.log.save('get-csv-records-from-registers|request-error', prepareAxiosErrorToLog(error), 'error');
+        getLog().save('get-csv-records-from-registers|request-error', prepareAxiosErrorToLog(error), 'error');
         throw error;
       }
       fileInfo = await filestorage.uploadFileFromStream(downloadDocumentReadStream, 'records', undefined, 'text/csv; charset=utf-8', undefined, true);
-      global.log.save('get-csv-records-from-registers|successful', { fileInfo });
+      getLog().save('get-csv-records-from-registers|successful', { fileInfo });
 
       // Save document and return.
       const { id: fileId, contentType, name } = fileInfo;
 
       // Check that is correct content type.
       if (contentType !== 'text/csv; charset=utf-8') {
-        global.log.save('get-csv-records-from-registers|wrong-content-type', { contentType });
+        getLog().save('get-csv-records-from-registers|wrong-content-type', { contentType });
         throw new Error('File download. Wrong content type.');
       }
 
@@ -173,7 +174,7 @@ export class LiquioProvider extends Provider {
           fileType: contentType,
         });
       } catch (error: any) {
-        global.log.save('get-csv-records-from-registers-save-document|error', {
+        getLog().save('get-csv-records-from-registers-save-document|error', {
           error: error && error.message,
         });
         throw error;
@@ -189,7 +190,7 @@ export class LiquioProvider extends Provider {
       // Return saving result.
       return { savedDocument, saveToEventResult };
     } catch (error) {
-      global.log.save('get-csv-records-from-registers|error', {
+      getLog().save('get-csv-records-from-registers|error', {
         ...prepareAxiosErrorToLog(error),
         registerId,
         keyId,
@@ -295,7 +296,7 @@ export class LiquioProvider extends Provider {
         method: HttpRequest.Methods.GET,
         headers: this.getHeadersWithTraceId(),
       };
-      global.log.save(`${method}|requested`, { requestOptions });
+      getLog().save(`${method}|requested`, { requestOptions });
     } else if (requestMethod === 'POST') {
       const body: any = {
         register_id: registerId,
@@ -329,7 +330,7 @@ export class LiquioProvider extends Provider {
         headers: this.getHeadersWithTraceId(),
         body,
       };
-      global.log.save('get-records-from-registers|requested', { requestOptions });
+      getLog().save('get-records-from-registers|requested', { requestOptions });
     } else {
       throw new Error(`LiquioProvider.getRecords: Unknown requestMethod: ${requestMethod}.`);
     }
@@ -338,9 +339,9 @@ export class LiquioProvider extends Provider {
     let response: any;
     try {
       response = await HttpRequest.send(requestOptions);
-      global.log.save(`${method}|successful`, { response, registerId, keyId, path, name });
+      getLog().save(`${method}|successful`, { response, registerId, keyId, path, name });
     } catch (error: any) {
-      global.log.save(`${method}|error`, { error: error && error.message, registerId, keyId, path, name });
+      getLog().save(`${method}|error`, { error: error && error.message, registerId, keyId, path, name });
       throw error;
     }
 
@@ -350,7 +351,7 @@ export class LiquioProvider extends Provider {
       try {
         response.data = response.data.filter((record: any) => additionalFilterFunction(record, documents, events));
       } catch (error: any) {
-        global.log.save(`${method}|error-calling-additional-filter-function`, {
+        getLog().save(`${method}|error-calling-additional-filter-function`, {
           error: error?.message,
           registerId,
           keyId,
@@ -369,7 +370,7 @@ export class LiquioProvider extends Provider {
     if (response?.data && response?.data.length > limit) {
       response.data = response?.data.slice(0, limit);
     }
-    global.log.save(`${method}|execution-time`, { registerId, keyId, additionalFilter, executionTime: `${Date.now() - startTimeStamp} ms` });
+    getLog().save(`${method}|execution-time`, { registerId, keyId, additionalFilter, executionTime: `${Date.now() - startTimeStamp} ms` });
 
     // Return response.
     return response;
@@ -511,7 +512,7 @@ export class LiquioProvider extends Provider {
 
       return this.prepareResponse(response);
     } catch (error) {
-      global.log.save('liquio-register-provider|find-records|error', prepareAxiosErrorToLog(error));
+      getLog().save('liquio-register-provider|find-records|error', prepareAxiosErrorToLog(error));
       throw error;
     }
   }
@@ -529,15 +530,15 @@ export class LiquioProvider extends Provider {
       method: HttpRequest.Methods.GET,
       headers: this.getHeadersWithTraceId(),
     };
-    global.log.save('get-from-registers|requested', { requestOptions });
+    getLog().save('get-from-registers|requested', { requestOptions });
 
     // Do request.
     let response: any;
     try {
       response = await HttpRequest.send(requestOptions);
-      global.log.save('get-from-registers|successful', { response, id });
+      getLog().save('get-from-registers|successful', { response, id });
     } catch (error: any) {
-      global.log.save('get-from-registers|error', { error: error && error.message, id });
+      getLog().save('get-from-registers|error', { error: error && error.message, id });
       throw error;
     }
 
@@ -562,15 +563,15 @@ export class LiquioProvider extends Provider {
       headers: this.getHeadersWithAccessInfo(eventContext),
       body: record,
     };
-    global.log.save('save-to-registers|requested', { requestOptions });
+    getLog().save('save-to-registers|requested', { requestOptions });
 
     // Do request.
     let response: any;
     try {
       response = await HttpRequest.send(requestOptions);
-      global.log.save('saved-to-registers|successful', { response, record });
+      getLog().save('saved-to-registers|successful', { response, record });
     } catch (error: any) {
-      global.log.save('save-to-registers|error', { error: (error && error.message) || error, record });
+      getLog().save('save-to-registers|error', { error: (error && error.message) || error, record });
       throw error;
     }
 
@@ -598,7 +599,7 @@ export class LiquioProvider extends Provider {
         throw new Error('Can not find existing record data.');
       }
     } catch (error: any) {
-      global.log.save('get-data-from-registers|error', {
+      getLog().save('get-data-from-registers|error', {
         error: error && error.message,
         id,
         existingRecordData,
@@ -619,15 +620,15 @@ export class LiquioProvider extends Provider {
       headers: this.getHeadersWithAccessInfo(eventContext),
       body: record,
     };
-    global.log.save('update-in-registers|requested', { requestOptions });
+    getLog().save('update-in-registers|requested', { requestOptions });
 
     // Do request.
     let response: any;
     try {
       response = await HttpRequest.send(requestOptions);
-      global.log.save('updated-in-registers|successful', { response, id, record });
+      getLog().save('updated-in-registers|successful', { response, id, record });
     } catch (error: any) {
-      global.log.save('update-in-registers|error', { error: error && error.message, id, record });
+      getLog().save('update-in-registers|error', { error: error && error.message, id, record });
       throw error;
     }
 
@@ -648,15 +649,15 @@ export class LiquioProvider extends Provider {
       method: HttpRequest.Methods.GET,
       headers: this.getHeadersWithTraceId(),
     };
-    global.log.save('get-key-from-registers|requested', { requestOptions });
+    getLog().save('get-key-from-registers|requested', { requestOptions });
 
     // Do request.
     let response: any;
     try {
       response = await HttpRequest.send(requestOptions);
-      global.log.save('get-key-from-registers|successful', { response, id });
+      getLog().save('get-key-from-registers|successful', { response, id });
     } catch (error: any) {
-      global.log.save('get-key-from-registers|error', { error: error && error.message, id });
+      getLog().save('get-key-from-registers|error', { error: error && error.message, id });
       throw error;
     }
 
@@ -677,15 +678,15 @@ export class LiquioProvider extends Provider {
       method: HttpRequest.Methods.DELETE,
       headers: this.getHeadersWithAccessInfo(eventContext),
     };
-    global.log.save('delete-from-registers|requested', { requestOptions });
+    getLog().save('delete-from-registers|requested', { requestOptions });
 
     // Do request.
     let response: any;
     try {
       response = await HttpRequest.send(requestOptions);
-      global.log.save('deleted-from-registers|successful', { response, id });
+      getLog().save('deleted-from-registers|successful', { response, id });
     } catch (error: any) {
-      global.log.save('delete-from-registers|error', { error: error && error.message, id });
+      getLog().save('delete-from-registers|error', { error: error && error.message, id });
       throw error;
     }
 
@@ -708,12 +709,12 @@ export class LiquioProvider extends Provider {
         },
         fullResponse,
       );
-      global.log.save('send-ping-request-to-register', response);
+      getLog().save('send-ping-request-to-register', response);
       const headers = response && response.fullResponse && response.fullResponse.headers && response.fullResponse.headers;
       const { version, customer, environment } = headers;
       return { version, customer, environment, body: response.body };
     } catch (error: any) {
-      global.log.save('send-ping-request-to-register', error.message);
+      getLog().save('send-ping-request-to-register', error.message);
     }
   }
 

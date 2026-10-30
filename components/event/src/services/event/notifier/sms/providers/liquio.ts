@@ -2,6 +2,7 @@ import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from '../../../../../lib/http_request';
 import { Provider } from './provider';
+import { getLog } from '../../../../../lib/context';
 
 /**
  * Liquio provider.
@@ -60,7 +61,7 @@ export class LiquioProvider extends Provider {
       };
 
       // Do request to send messages.
-      global.log.save('sms-sending-request', {
+      getLog().save('sms-sending-request', {
         phonesCount: body.list_phone.length,
         messageLength: typeof message === 'string' ? message.length : 0,
       });
@@ -70,14 +71,14 @@ export class LiquioProvider extends Provider {
         headers: this.getHeadersWithTraceId(),
         body,
       });
-      global.log.save('sms-sending-response', response);
+      getLog().save('sms-sending-response', response);
 
       return {
         data: body,
         response,
       };
     } catch (error: any) {
-      global.log.save('sms-sending-error', error.message);
+      getLog().save('sms-sending-error', error.message);
       throw error;
     }
   }
@@ -98,12 +99,12 @@ export class LiquioProvider extends Provider {
         },
         fullResponse,
       );
-      global.log.save('send-ping-request-to-notify', response);
+      getLog().save('send-ping-request-to-notify', response);
       const headers = response && response.fullResponse && response.fullResponse.headers && response.fullResponse.headers;
       const { version, customer, environment } = headers;
       return { version, customer, environment, body: response.body };
     } catch (error: any) {
-      global.log.save('send-ping-request-to-notify', error.message);
+      getLog().save('send-ping-request-to-notify', error.message);
     }
   }
 

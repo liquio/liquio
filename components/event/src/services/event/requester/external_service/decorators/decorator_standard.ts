@@ -1,6 +1,7 @@
 import { Sign } from '../../../../../lib/sign';
 import { Decorator } from './decorator';
 import { typeOf } from '../../../../../lib/type_of';
+import { getModels } from '../../../../../lib/context';
 
 /**
  * Decorator standard.
@@ -94,7 +95,7 @@ export class DecoratorStandard extends Decorator {
     // Get additional signatures.
     let additionalSignatures;
     if (sendAdditionalDataSignatures) {
-      const additionalDataSignatures = await global.models.additionalDataSignature.getByDocumentId(documentId, 'asc');
+      const additionalDataSignatures = await getModels().additionalDataSignature.getByDocumentId(documentId, 'asc');
       if (typeOf(additionalDataSignatureIndex) === 'string' && typeOf(additionalDataSignatureFilter) === 'string') {
         throw new Error(
           'DecoratorStandard.transform. additionalDataSignatureIndex and additionalDataSignatureFilter cannot be used at the same time.',
@@ -193,7 +194,7 @@ export class DecoratorStandard extends Decorator {
    * @returns {string}
    */
   async getAdditionalSignatures(documentId: any): Promise<any> {
-    return await global.models.additionalDataSignature.getByDocumentId(documentId);
+    return await getModels().additionalDataSignature.getByDocumentId(documentId);
   }
 
   /**
