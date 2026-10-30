@@ -1,5 +1,7 @@
 import { Sequelize, ModelStatic, Model as SequelizeModel } from 'sequelize';
 
+import { getDb } from '../lib/context';
+
 /**
  * Model.
  */
@@ -13,7 +15,7 @@ export class Model {
    * @param {object} config Config.
    */
   constructor(config?: any) {
-    this.db = global.db;
+    this.db = getDb();
     this.config = config;
   }
 }

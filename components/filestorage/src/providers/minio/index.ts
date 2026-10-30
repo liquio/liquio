@@ -6,6 +6,7 @@ import { Provider } from '../provider';
 import { Auth } from './auth';
 import { createHttpsAgent } from '../../lib/tls';
 import { HttpRequest } from '../../lib/http_request';
+import { getLog, getSilentUpload } from '../../lib/context';
 
 const PROVIDER_NAME = 'minio';
 const DEFAULT_ROUTES = {
@@ -98,13 +99,13 @@ export class Minio extends Provider {
    */
   async downloadFileRequestOptions({ filePath, contentType }: any) {
     // Get info to handle file.
-    !global.silentUpload && global.log.save('minio-file-downloading', { filePath });
+    !getSilentUpload() && getLog().save('minio-file-downloading', { filePath });
     const infoToHandleFile = await this.getInfoToHandleFile({ filePath, contentType, method: HttpRequest.Methods.GET });
     const { url, headers } = infoToHandleFile;
 
     // Get and return request options.
-    !global.silentUpload &&
-      global.log.save('minio-file-downloading|request-options', {
+    !getSilentUpload() &&
+      getLog().save('minio-file-downloading|request-options', {
         url,
         headers,
         method: HttpRequest.Methods.GET,
@@ -172,14 +173,14 @@ export class Minio extends Provider {
    */
   async uploadFileRequestOptions(filePath, contentType, fileContent) {
     // Get info to handle file.
-    !global.silentUpload && global.log.save('minio-file-uploading', { filePath, contentType });
+    !getSilentUpload() && getLog().save('minio-file-uploading', { filePath, contentType });
     const { url, headers } = await this.getInfoToHandleFile({ filePath, contentType, method: HttpRequest.Methods.PUT });
     // headers['Content-Type'] = contentType;
     const body = fileContent;
 
     // Get and return request options.
-    !global.silentUpload &&
-      global.log.save('minio-file-uploading|request-options', {
+    !getSilentUpload() &&
+      getLog().save('minio-file-uploading|request-options', {
         url,
         headers,
         method: HttpRequest.Methods.PUT,
@@ -218,8 +219,8 @@ export class Minio extends Provider {
 
       // Check responsed body.
       const requestOptionsToLog = { ...requestOptions, body: '***' };
-      !global.silentUpload &&
-        global.log.save('minio-uploading-file-response', {
+      !getSilentUpload() &&
+        getLog().save('minio-uploading-file-response', {
           requestOptions: requestOptionsToLog,
           filePath,
           body: response.data,
@@ -233,7 +234,7 @@ export class Minio extends Provider {
       return uploadedFileInfo;
     } catch (error) {
       // Handle error.
-      !global.silentUpload && global.log.save('minio-uploading-error', { error: error.message, filePath });
+      !getSilentUpload() && getLog().save('minio-uploading-error', { error: error.message, filePath });
       throw error;
     }
   }
@@ -246,7 +247,7 @@ export class Minio extends Provider {
    */
   async deleteFile(filePath, containerName = this.container) {
     // Get info to handle file.
-    !global.silentUpload && global.log.save('minio-file-deleting', { filePath });
+    !getSilentUpload() && getLog().save('minio-file-deleting', { filePath });
     const infoToHandleFile = await this.getInfoToHandleFile({ filePath, containerName, method: HttpRequest.Methods.DELETE });
     const { url, headers } = infoToHandleFile;
 
@@ -258,7 +259,7 @@ export class Minio extends Provider {
       timeout: this.timeout,
       httpsAgent: this.httpsAgent,
     });
-    !global.silentUpload && global.log.save('minio-file-deleting-result', deletingResult);
+    !getSilentUpload() && getLog().save('minio-file-deleting-result', deletingResult);
 
     // 404 means object is already absent - not an error. Other error statuses must not be silent.
     const status = rawResponse?.status;
@@ -297,19 +298,19 @@ export class Minio extends Provider {
       timeout: this.timeout,
       httpsAgent: this.httpsAgent,
     });
-    !global.silentUpload && global.log.save('container-metadata', { containerMetadata });
+    !getSilentUpload() && getLog().save('container-metadata', { containerMetadata });
     const containerMetadataHeaders = containerMetadata.headers;
-    !global.silentUpload && global.log.save('container-metadata-headers', { containerMetadataHeaders });
+    !getSilentUpload() && getLog().save('container-metadata-headers', { containerMetadataHeaders });
 
     const bytesUsedCount = containerMetadataHeaders[CONTAINER_BYTES_USED_HEADER];
     const objectCount = containerMetadataHeaders[CONTAINER_OBJECT_COUNT_HEADER];
-    !global.silentUpload && global.log.save('bytes-used-count', { bytesUsedCount });
+    !getSilentUpload() && getLog().save('bytes-used-count', { bytesUsedCount });
 
     let bytesUsedCountNumber;
     try {
       bytesUsedCountNumber = Number(bytesUsedCount);
     } catch (error) {
-      !global.silentUpload && global.log.save('get-minio-bytes-used-count-error', { bytesUsedCount, error });
+      !getSilentUpload() && getLog().save('get-minio-bytes-used-count-error', { bytesUsedCount, error });
       const wrappedError = new Error(error);
       (wrappedError as any).cause = error;
       throw wrappedError;

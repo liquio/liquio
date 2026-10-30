@@ -1,4 +1,5 @@
 import { TestController } from './test';
+import { setAppContext } from '../lib/context';
 
 const mockGetMetadata = jest.fn();
 jest.mock('../providers/openstack', () => ({
@@ -15,7 +16,7 @@ describe('TestController.checkOpenstackProvider', () => {
   };
 
   beforeEach(() => {
-    global.log = { save: jest.fn() } as any;
+    setAppContext({ log: { save: jest.fn() } });
     mockGetMetadata.mockReset();
     res = { status: jest.fn().mockReturnThis(), send: jest.fn() };
   });

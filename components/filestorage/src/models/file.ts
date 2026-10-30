@@ -3,6 +3,7 @@ import Sequelize from 'sequelize';
 import { Model } from './model';
 import { FileEntity } from '../entities/file';
 import { FileHash } from '../lib/file_hash';
+import { getLog } from '../lib/context';
 
 const FOLDER_NAME = 'files';
 const NOT_FOUND_STATUS = 404;
@@ -319,7 +320,7 @@ export class FileModel extends Model {
       } catch (error: any) {
         // Object already absent is the desired state.
         if (!isProviderNotFoundError(error)) {
-          global.log.save('file-provider-delete-error', { id, error: error && error.message });
+          getLog().save('file-provider-delete-error', { id, error: error && error.message });
           throw error;
         }
       }
@@ -366,7 +367,7 @@ export class FileModel extends Model {
 
     const { sha256 } = new FileHash(fileData).calc();
     if (sha256 !== storedSha256) {
-      global.log.save('file-integrity-error', { id: fileEntity.id });
+      getLog().save('file-integrity-error', { id: fileEntity.id });
       throw new Error('FileModel.verifyIntegrity. File integrity check failed.');
     }
   }

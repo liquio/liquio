@@ -22,6 +22,7 @@ jest.mock('../../../models/p7s_signature', () => {
 });
 
 import { CliSeparateHandler } from './separate';
+import { resetAppContext, getSilentUpload } from '../../context';
 import { FileEntity } from '../../../entities/file';
 
 const FOLDER = 'files/D20250101';
@@ -38,7 +39,7 @@ describe('CliSeparateHandler', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    delete (global as any).silentUpload;
+    resetAppContext();
     setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(((fn: () => void) => (fn(), 0)) as any);
     mockFileModel.getAll.mockResolvedValue({ data: [] });
     mockP7sSignatureModel.getAll.mockResolvedValue({ data: [] });
@@ -60,7 +61,7 @@ describe('CliSeparateHandler', () => {
   it('should query files and signatures in the date range with a non-empty folder', async () => {
     await handler.run('2025-01-01', '2025-01-31');
 
-    expect((global as any).silentUpload).toBe(true);
+    expect(getSilentUpload()).toBe(true);
     const filter = {
       created_at: {
         [Op.between]: [moment('2025-01-01', 'YYYY-MM-DD').startOf('day').toDate(), moment('2025-01-31', 'YYYY-MM-DD').endOf('day').toDate()],

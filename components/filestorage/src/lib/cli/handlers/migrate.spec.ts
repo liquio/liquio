@@ -12,6 +12,7 @@ jest.mock('../../../models/file', () => ({ FileModel: jest.fn(() => mockFileMode
 jest.mock('../../../models/p7s_signature', () => ({ P7sSignatureModel: jest.fn(() => mockP7sSignatureModel) }));
 
 import { CliMigrateHandler } from './migrate';
+import { resetAppContext, getSilentUpload } from '../../context';
 
 const NOT_EMPTY = { [Op.and]: { [Op.ne]: null, [Op.not]: '' } };
 
@@ -22,7 +23,7 @@ describe('CliMigrateHandler', () => {
     jest.clearAllMocks();
     jest.useFakeTimers({ doNotFake: ['setTimeout', 'nextTick', 'setImmediate'] }).setSystemTime(new Date('2025-03-04T10:00:00Z'));
     setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(((fn: () => void) => (fn(), 0)) as any);
-    delete (global as any).silentUpload;
+    resetAppContext();
   });
 
   afterEach(() => {
@@ -41,7 +42,7 @@ describe('CliMigrateHandler', () => {
     const handler = new CliMigrateHandler();
     await handler.run();
 
-    expect((global as any).silentUpload).toBe(true);
+    expect(getSilentUpload()).toBe(true);
     expect(mockFileModel.getAll).toHaveBeenCalledWith({
       attributes: ['id', 'data', 'content_type'],
       filter: { data: NOT_EMPTY },

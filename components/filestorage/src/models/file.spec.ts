@@ -1,5 +1,6 @@
 import { FileModel } from './file';
 import { FileHash } from '../lib/file_hash';
+import { setAppContext, getLog } from '../lib/context';
 
 const FILE_ID = 'f1';
 const FOLDER = 'files/D20250101';
@@ -15,13 +16,13 @@ describe('FileModel', () => {
   };
 
   beforeEach(() => {
-    global.log = { save: jest.fn() } as any;
+    setAppContext({ log: { save: jest.fn() } });
     sequelizeModel = {
       findByPk: jest.fn(),
       destroy: jest.fn().mockResolvedValue(1),
       update: jest.fn(),
     };
-    global.db = { define: jest.fn(() => sequelizeModel) } as any;
+    setAppContext({ db: { define: jest.fn(() => sequelizeModel) } });
     provider = {
       deleteFile: jest.fn().mockResolvedValue(undefined),
       downloadFileAsBuffer: jest.fn().mockResolvedValue(DATA),
@@ -111,7 +112,7 @@ describe('FileModel', () => {
       provider.downloadFileAsBuffer.mockResolvedValue(Buffer.from('tampered'));
 
       await expect(createModel().findById(FILE_ID)).rejects.toThrow('integrity');
-      expect(global.log.save).toHaveBeenCalledWith('file-integrity-error', { id: FILE_ID });
+      expect(getLog().save).toHaveBeenCalledWith('file-integrity-error', { id: FILE_ID });
     });
 
     it('should serve legacy rows without hash and fill the hash', async () => {

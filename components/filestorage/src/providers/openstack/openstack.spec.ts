@@ -2,17 +2,14 @@ import nock from 'nock';
 
 import { OpenStack } from './index';
 import { HttpRequest } from '../../lib/http_request';
+import { setAppContext, resetAppContext, getLog } from '../../lib/context';
 
 beforeAll(() => {
-  global.log = {
-    save: jest.fn(),
-  };
-  global.silentUpload = true;
+  setAppContext({ log: { save: jest.fn() }, silentUpload: true });
 });
 
 afterAll(() => {
-  delete global.log;
-  delete global.silentUpload;
+  resetAppContext();
   nock.cleanAll();
   nock.restore();
 });
@@ -1255,12 +1252,12 @@ describe('OpenStack Provider', () => {
 
   describe('token logging', () => {
     const SECRET = 'SECRET-TOKEN-VALUE-9f8e7d';
-    const allLogged = () => JSON.stringify((global.log.save as jest.Mock).mock.calls);
+    const allLogged = () => JSON.stringify((getLog().save as jest.Mock).mock.calls);
 
     beforeEach(() => {
       jest.restoreAllMocks();
       nock.cleanAll();
-      (global.log.save as jest.Mock).mockClear();
+      (getLog().save as jest.Mock).mockClear();
     });
 
     const makeProvider = (authVersion: number) => {
@@ -1286,7 +1283,7 @@ describe('OpenStack Provider', () => {
       const info = await makeProvider(3).auth.getTenantAuthInfo();
 
       expect(info.tenantToken).toBe(SECRET);
-      expect((global.log.save as jest.Mock).mock.calls.length).toBeGreaterThan(0);
+      expect((getLog().save as jest.Mock).mock.calls.length).toBeGreaterThan(0);
       expect(allLogged()).not.toContain(SECRET);
     });
 

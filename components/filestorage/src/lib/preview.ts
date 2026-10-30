@@ -4,6 +4,7 @@ import axios from 'axios';
 
 import { getConfig } from './config';
 import { createHttpsAgent } from './tls';
+import { getLog } from './context';
 
 const DEFAULT_CONFIG = {
   // Empty server disables preview generation.
@@ -64,11 +65,11 @@ export class Preview {
     try {
       url = new URL(this.config.server);
     } catch {
-      global.log?.save('preview-server-invalid-url', { server: this.config.server });
+      getLog()?.save('preview-server-invalid-url', { server: this.config.server });
       return;
     }
     if (url.protocol === 'http:' && !INTERNAL_HOST_REGEXP.test(url.hostname)) {
-      global.log?.save('preview-server-insecure-http', {
+      getLog()?.save('preview-server-insecure-http', {
         host: url.hostname,
         message: 'Files are sent to the preview server over plain http on a non-internal host; use https or an internal address.',
       });

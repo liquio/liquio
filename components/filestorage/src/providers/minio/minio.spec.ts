@@ -2,17 +2,14 @@ import nock from 'nock';
 
 import { Minio } from './index';
 import { HttpRequest } from '../../lib/http_request';
+import { setAppContext, resetAppContext } from '../../lib/context';
 
 beforeAll(() => {
-  global.log = {
-    save: jest.fn(),
-  };
-  global.silentUpload = true;
+  setAppContext({ log: { save: jest.fn() }, silentUpload: true });
 });
 
 afterAll(() => {
-  delete global.log;
-  delete global.silentUpload;
+  resetAppContext();
   nock.cleanAll();
   nock.restore();
 });
@@ -1730,15 +1727,14 @@ describe('Minio Provider', () => {
       });
 
       // Mock Number constructor to throw error
-      const originalNumber = global.Number;
-      (global as any).Number = jest.fn(() => {
+      const numberSpy = jest.spyOn(global, 'Number').mockImplementation(() => {
         throw new Error('Invalid number conversion');
       });
 
       await expect(minio.getMetadata()).rejects.toThrow();
 
       // Restore Number constructor
-      global.Number = originalNumber;
+      numberSpy.mockRestore();
     });
 
     it('should handle missing headers gracefully', async () => {

@@ -3,13 +3,14 @@ import { Op } from 'sequelize';
 import { CliHandler } from './handler';
 import { FileModel } from '../../../models/file';
 import { P7sSignatureModel } from '../../../models/p7s_signature';
+import { setAppContext } from '../../context';
 
 export class CliMigrateHandler extends CliHandler {
   fileModel: FileModel;
   p7sSignatureModel: P7sSignatureModel;
 
   async run() {
-    global.silentUpload = true;
+    setAppContext({ silentUpload: true });
     this.fileModel = new FileModel();
     this.p7sSignatureModel = new P7sSignatureModel();
 
