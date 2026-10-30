@@ -18,6 +18,7 @@ describe('Preview service', () => {
     await app?.destroy();
     await TestApp.afterAll();
     nock.cleanAll();
+    nock.restore();
   });
 
   afterEach(() => {
