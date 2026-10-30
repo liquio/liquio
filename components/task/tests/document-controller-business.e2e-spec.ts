@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { getBusinesses, getConfig, getMessageQueue, getRedisClient, setAppContext } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 const BASIC_RAW = 'ZG9jczpkb2Nz'; // fake "docs:docs"
@@ -11,7 +12,7 @@ describe('Document controller flows', () => {
   let app: TestApp;
   let nextId = 990480;
   const as = (userId = USER) => userRequest(app, userId);
-  const document = () => (global as any).businesses.document;
+  const document = () => (getBusinesses() as any).document;
 
   const draft = async (documentSchema: any = {}, data?: any) => {
     const id = nextId++;
@@ -30,7 +31,7 @@ describe('Document controller flows', () => {
     app = await TestApp.setup();
     await seedScenario(app);
     await addUnit(app, { id: 990061, name: 'Document unit', heads: [USER], members: [USER], heads_ipn: [], members_ipn: [] });
-    (global as any).config.basic_auth.tokens.push(BASIC_RAW);
+    getConfig().basic_auth.tokens.push(BASIC_RAW);
   });
 
   afterAll(async () => {
@@ -52,7 +53,7 @@ describe('Document controller flows', () => {
 
     it('returns the document only for an allowed template of the integration user', async () => {
       const task = await draft();
-      const config = (global as any).config;
+      const config = getConfig();
       config.external_services = { ...config.external_services, getDocumentWithTemplateIdsByUser: {} };
       expect((await read(MISSING)).status).toBe(404);
       expect((await read(task.documentId)).status).toBe(401);
@@ -71,7 +72,7 @@ describe('Document controller flows', () => {
       await app.model('document').update({ data: { name: 'Valid' } }, { where: { id: task.documentId } });
       const valid = await as()('post', `/documents/${task.documentId}/validate`).send({});
       expect(valid.status).toBe(200);
-      jest.spyOn((global as any).messageQueue, 'produce').mockResolvedValue(undefined as any);
+      jest.spyOn(getMessageQueue(), 'produce').mockResolvedValue(undefined as any);
       const committed = await as()('post', `/documents/${task.documentId}/validate`).query({ commit: 'true' }).send({});
       expect(committed.status).toBe(200);
       expect((await app.model('task').findByPk(task.id)).finished).toBe(true);
@@ -92,7 +93,7 @@ describe('Document controller flows', () => {
       as()('post', `/documents/${task.documentId}/attachments`).query(query).set('Content-Type', 'text/plain').send(body);
 
     it('rejects a forbidden extension and invalid meta', async () => {
-      const config = (global as any).config;
+      const config = getConfig();
       config.documents = { ...config.documents, allowedFileExtensions: ['.TXT'] };
       const task = await draft();
       expect((await upload(task, { file_name: 'bad.exe' })).status).toBe(400);
@@ -100,7 +101,7 @@ describe('Document controller flows', () => {
     });
 
     it('stores the uploaded file as an attachment and references it in the document data', async () => {
-      const config = (global as any).config;
+      const config = getConfig();
       config.documents = { ...config.documents, allowedFileExtensions: ['.TXT'] };
       const task = await draft({ properties: { name: { type: 'string' }, files: { type: 'array', items: { type: 'object' } } } });
       const send = jest
@@ -156,16 +157,19 @@ describe('Document controller flows', () => {
     let previousRedis: any;
 
     beforeAll(() => {
-      previousRedis = (global as any).redisClient;
-      (global as any).redisClient = {
+      previousRedis = getRedisClient();
+      const fakeRedis = {
         get: async (key: string) => store.get(key),
         set: async (key: string, value: any) => void store.set(key, JSON.stringify(value)),
         delete: async (key: string) => void store.delete(key),
       };
+      (global as any).redisClient = fakeRedis;
+      setAppContext({ redisClient: fakeRedis });
     });
 
     afterAll(() => {
       (global as any).redisClient = previousRedis;
+      setAppContext({ redisClient: previousRedis });
     });
 
     const schema = { properties: { name: { type: 'string' }, reader: { control: 'externalReaderCheck' } } };
@@ -173,14 +177,16 @@ describe('Document controller flows', () => {
 
     it('answers an error when the redis client is not available', async () => {
       const task = await draft({ properties: { name: { type: 'string' }, reader: { control: 'externalReaderCheck' } } });
-      const redis = (global as any).redisClient;
+      const redis = getRedisClient();
       (global as any).redisClient = undefined;
+      setAppContext({ redisClient: undefined });
       const response = await as()('post', `/documents/${task.documentId}/external-reader/check/async`).send({
         path: 'reader',
         service: 'svc',
         method: 'mth',
       });
       (global as any).redisClient = redis;
+      setAppContext({ redisClient: redis });
       expect(response.status).toBe(500);
     });
 

@@ -9,6 +9,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '../../lib/errors
 import { Business } from '../business';
 import type { DocumentBusiness } from './index';
 import type { UserUnitIds } from './types';
+import { getLog, getModels, getBusinesses, getConfig, getRedisClient, getMessageQueue } from '../../lib/context';
 
 // Constants.
 const DOCUMENT_PREVIEW_SCHEMA_CONTROL = 'preview.document';
@@ -37,7 +38,7 @@ export class DocumentFileBusiness extends Business {
    */
   async getAttachmentInfo(attachmentId: string): Promise<DocumentAttachmentEntity> {
     // Return attachment info.
-    const attachmentInfo = await global.models.documentAttachment.findById(attachmentId);
+    const attachmentInfo = await getModels().documentAttachment.findById(attachmentId);
     if (!attachmentInfo) {
       throw new NotFoundError('Attachment not found.');
     }
@@ -71,7 +72,7 @@ export class DocumentFileBusiness extends Business {
    */
   async getAttachmentFilesLinks(documentId: string): Promise<string[]> {
     // Get document attachments.
-    const attachments = await global.models.documentAttachment.getByDocumentId(documentId);
+    const attachments = await getModels().documentAttachment.getByDocumentId(documentId);
     if (!attachments) {
       throw new ForbiddenError(ERROR_DOCUMENT_ACCESS);
     }
@@ -118,7 +119,7 @@ export class DocumentFileBusiness extends Business {
     const fileLink = await this.getAttachmentFileLink(documentId, attachmentId, userId as any);
 
     // Delete attachment from DB.
-    const deleted = await global.models.documentAttachment.delete(attachmentId);
+    const deleted = await getModels().documentAttachment.delete(attachmentId);
     if (!deleted) {
       throw new Error("Can't delete attachment.");
     }
@@ -147,7 +148,7 @@ export class DocumentFileBusiness extends Business {
     isNotOnlyCurrent = false,
   ): Promise<any[]> {
     // Define step schema.
-    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
     const { jsonSchema } = documentTemplate || {};
     const controlSchema = _.get((jsonSchema && jsonSchema.properties) || {}, path);
 
@@ -181,7 +182,7 @@ export class DocumentFileBusiness extends Business {
       useFilterByTask = { onlyCurrent: false, isDistinct: true };
     }
 
-    const taskIdsAndDocumentIds = await global.models.task.getTaskAndDocumentMainInfo(workflowId, useFilterByTask); // Format: `{ taskId, documentId, taskPerformerUsers, taskPerformerUnits, taskRequiredPerformerUnits, taskObserverUnits }[]`.
+    const taskIdsAndDocumentIds = await getModels().task.getTaskAndDocumentMainInfo(workflowId, useFilterByTask); // Format: `{ taskId, documentId, taskPerformerUsers, taskPerformerUnits, taskRequiredPerformerUnits, taskObserverUnits }[]`.
     let documentIds = taskIdsAndDocumentIds.map((v) => v.documentId).filter((v) => !!v);
 
     // Define all files info.
@@ -189,16 +190,15 @@ export class DocumentFileBusiness extends Business {
 
     let directDocument;
     if (isDirect && documentAttachesFunctionString) {
-      const { document } =
-        (await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateIds as any)(workflowId, [filesDocumentTemplateId])) || {};
+      const { document } = (await (getModels().task.findDocumentByWorkflowIdAndTaskTemplateIds as any)(workflowId, [filesDocumentTemplateId])) || {};
       if (!document) {
         return [];
       }
       directDocument = document;
-      directDocument.attachments = await global.models.documentAttachment.getByDocumentId(document.id);
+      directDocument.attachments = await getModels().documentAttachment.getByDocumentId(document.id);
     }
 
-    const events = await global.models.event.getEventsByWorkflowId(workflowId);
+    const events = await getModels().event.getEventsByWorkflowId(workflowId);
     filesEventTemplateIds = [...new Set([...filesEventTemplateIds, ...events.map((v) => v.eventTemplateId)])];
     const eventsWithTemplates = [];
     if (Array.isArray(filesEventTemplateIds) && filesEventTemplateIds.length > 0) {
@@ -207,7 +207,7 @@ export class DocumentFileBusiness extends Business {
       documentIds = documentIds.concat(eventDocumentIds);
       documentTemplateIds.push(EVENT_FILE_DOCUMENT_TEMPLATE_ID);
 
-      const eventsTemplates = await global.models.eventTemplate.findByIds(events.map((v) => v.eventTemplateId));
+      const eventsTemplates = await getModels().eventTemplate.findByIds(events.map((v) => v.eventTemplateId));
       for (const eventEntity of events) {
         const { eventTemplateId } = eventEntity;
         const eventTemplate = eventsTemplates.find((v) => v.id === eventTemplateId);
@@ -225,10 +225,10 @@ export class DocumentFileBusiness extends Business {
         meta: { fn: 'documentAttaches', workflowId },
       });
     } else {
-      documentAttachments = await (global.models.documentAttachment.getByDocumentIds as any)(documentIds);
+      documentAttachments = await (getModels().documentAttachment.getByDocumentIds as any)(documentIds);
     }
 
-    const documentInfoWithFileNames: any = await global.models.document.getFilesNamesByIds(documentIds);
+    const documentInfoWithFileNames: any = await getModels().document.getFilesNamesByIds(documentIds);
 
     let mainFilesInfo = [];
     if (!isDirect || (isDirect && includeMainFile)) {
@@ -262,7 +262,7 @@ export class DocumentFileBusiness extends Business {
 
     let allFilesInfo = [...mainFilesInfo, ...attachesInfo].filter((v) => !!v.fileLink);
 
-    const documentTemplates = await global.models.documentTemplate.getAccessJsonSchemasByIds(allFilesInfo.map((v) => v.documentTemplateId));
+    const documentTemplates = await getModels().documentTemplate.getAccessJsonSchemasByIds(allFilesInfo.map((v) => v.documentTemplateId));
 
     allFilesInfo = allFilesInfo
       .map((v) => ({
@@ -293,12 +293,12 @@ export class DocumentFileBusiness extends Business {
       const { fileName: fileNameFunc } = workflowFiles;
       if (fileNameFunc) {
         if (!documents) {
-          documents = await global.models.document.getByIds(documentIds);
+          documents = await getModels().document.getByIds(documentIds);
         }
         try {
           fileInfo.fileName = this.host.sandbox.evalWithArgs(fileNameFunc, [documents], { checkArrow: true, meta: { fn: 'fileName', workflowId } });
         } catch (error) {
-          global.log.save('file-name-generating-error', { error: error.message, fileNameFunc, documentIds, workflowId });
+          getLog().save('file-name-generating-error', { error: error.message, fileNameFunc, documentIds, workflowId });
         }
       }
       fileInfo.downloadToken = this.host.downloadToken.generate(fileLink);
@@ -309,7 +309,7 @@ export class DocumentFileBusiness extends Business {
         const f = this.host.sandbox.eval(filterFunction);
         allFilesInfo = allFilesInfo.filter(f);
       } catch (error) {
-        global.log.save('filter-error', { error });
+        getLog().save('filter-error', { error });
       }
     }
 
@@ -338,14 +338,14 @@ export class DocumentFileBusiness extends Business {
     const { documentTemplateId } = document;
 
     // Define workflow ID.
-    const task = await global.models.task.findByDocumentId(documentId);
+    const task = await getModels().task.findByDocumentId(documentId);
     const { workflowId } = task;
 
     // Get and return files to preview.
     const filesToPreview = await this.getFilesToPreview(workflowId, documentTemplateId, stepOrPath, task, isDirect);
     const documentIds = [...new Set(filesToPreview.map((v) => v.documentId).filter(Boolean))];
 
-    const documentSignaturesPromises = documentIds.map((documentId) => (global.models.documentSignature.getByDocumentId as any)(documentId));
+    const documentSignaturesPromises = documentIds.map((documentId) => (getModels().documentSignature.getByDocumentId as any)(documentId));
     const documentSignatures = await Promise.all(documentSignaturesPromises);
     const fileIds = filesToPreview.map((v) => v.fileLink);
     const p7sMetadata = await this.host.storageService.provider.getP7sMetadata(fileIds);
@@ -364,7 +364,7 @@ export class DocumentFileBusiness extends Business {
               const signatureInfo = await this.host.eds.getSignatureInfo(signature);
               signaturesInfo.push(signatureInfo);
             } catch (error) {
-              global.log.save('get-files-to-preview-and-check-access|get-signature-info-error', error.message);
+              getLog().save('get-files-to-preview-and-check-access|get-signature-info-error', error.message);
             }
           }
         } else {
@@ -373,7 +373,7 @@ export class DocumentFileBusiness extends Business {
               const signatureInfo = await this.host.eds.getSignatureInfo(signatures[0]);
               signaturesInfo.push(signatureInfo);
             } catch (error) {
-              global.log.save('get-files-to-preview-and-check-access|get-signature-info-error', error.message);
+              getLog().save('get-files-to-preview-and-check-access|get-signature-info-error', error.message);
             }
           }
         }
@@ -382,7 +382,7 @@ export class DocumentFileBusiness extends Business {
           [],
         );
       } catch (error) {
-        global.log.save('error', error.message);
+        getLog().save('error', error.message);
       }
     }
 
@@ -394,7 +394,7 @@ export class DocumentFileBusiness extends Business {
         filesToPreview[i].signatures = (signaturesInfo || []).map((v) => ({ ...v, content: undefined }));
         filesToPreview[i].hasP7sSignature = p7sMetadata.some((v) => v.file_id === filesToPreview[i].fileLink);
       } catch (error) {
-        global.log.save('Can not get signature info', error);
+        getLog().save('Can not get signature info', error);
       }
     }
 
@@ -436,7 +436,7 @@ export class DocumentFileBusiness extends Business {
 
     const rejectedFiles = uploadFilesInfo.map(({ status, reason }: any, index) => status === 'rejected' && { reason, index }).filter(Boolean);
     if (rejectedFiles.length) {
-      global.log.save('create-attachments-for-system-task|upload-file-rejected', { rejectedFiles });
+      getLog().save('create-attachments-for-system-task|upload-file-rejected', { rejectedFiles });
       throw new Error(rejectedFiles.map((item) => `File ${files[item.index].name} upload error: ${item.reason}`).join(', '));
     }
 
@@ -461,8 +461,8 @@ export class DocumentFileBusiness extends Business {
     // Save attachment info to document.
     for (const [index, attachment] of attachmentList.entries()) {
       // We need to get the updated document for correct saving attachment array.
-      const updatedDocument = await global.models.document.findById(documentId);
-      await global.businesses.document.files.saveAttachmentToDocumentData(
+      const updatedDocument = await getModels().document.findById(documentId);
+      await getBusinesses().document.files.saveAttachmentToDocumentData(
         attachment,
         `initData.files.${index}`,
         updatedDocument,
@@ -522,11 +522,11 @@ export class DocumentFileBusiness extends Business {
    * @param userId User ID.
    */
   async addGeneratingPdfToQueue(document: any, userId: string): Promise<void> {
-    if (document.fileId === 'generating' && global.redisClient && (await global.redisClient.get(`generating-pdf-document-${document.id}`))) {
+    if (document.fileId === 'generating' && getRedisClient() && (await getRedisClient().get(`generating-pdf-document-${document.id}`))) {
       return;
     }
 
-    await (global.models.document.addDocumentFile as any)({
+    await (getModels().document.addDocumentFile as any)({
       id: document.id,
       updatedBy: userId,
       fileId: 'generating',
@@ -536,10 +536,10 @@ export class DocumentFileBusiness extends Business {
 
     // Send message to RabbitMQ.
     const message = { documentId: document.id, userId: userId };
-    global.messageQueue.produce(message, 'writingPdf', 'bpmn-task-incoming-generating-pdf');
+    getMessageQueue().produce(message, 'writingPdf', 'bpmn-task-incoming-generating-pdf');
 
-    if (global.redisClient) {
-      global.redisClient.set(`generating-pdf-document-${document.id}`, true, 3600);
+    if (getRedisClient()) {
+      getRedisClient().set(`generating-pdf-document-${document.id}`, true, 3600);
     }
   }
 
@@ -548,19 +548,19 @@ export class DocumentFileBusiness extends Business {
    */
   async createPdf({ document, userId }: { document: any; userId: string }): Promise<Buffer> {
     const documentId = document.id;
-    const workflow = await global.models.workflow.findById(document.task.workflowId);
+    const workflow = await getModels().workflow.findById(document.task.workflowId);
     if (!workflow) {
       throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
     }
 
     // Get template data.
-    const documentTemplate = await global.models.documentTemplate.findById(document.documentTemplateId);
+    const documentTemplate = await getModels().documentTemplate.findById(document.documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
 
-    global.log.save('create-pdf', { cfg: global.config });
-    const { variables, ...staticFileOptions } = global.config.file_generator;
+    getLog().save('create-pdf', { cfg: getConfig() });
+    const { variables, ...staticFileOptions } = getConfig().file_generator;
 
     // Define file HTMLs.
     const htmls = [];
@@ -595,7 +595,7 @@ export class DocumentFileBusiness extends Business {
 
       // Check if wrong schema.
       if (allHtmlParts.length > 2) {
-        global.log.save('html-schema-delimiter-error', { allHtmls, currentHtmlWithError: allHtmlParts }, 'error');
+        getLog().save('html-schema-delimiter-error', { allHtmls, currentHtmlWithError: allHtmlParts }, 'error');
         throw new Error('Wrong HTML schema delimiters.');
       }
     }
@@ -729,8 +729,8 @@ export class DocumentFileBusiness extends Business {
 
     // Delete exist signatures and rejections.
     if (document.task && document.task.signerUsers && document.task.signerUsers.length > 0) {
-      await global.models.documentSignature.deleteByDocumentId(documentId);
-      await global.models.documentSignatureRejection.deleteByDocumentId(documentId);
+      await getModels().documentSignature.deleteByDocumentId(documentId);
+      await getModels().documentSignatureRejection.deleteByDocumentId(documentId);
     }
 
     // Add file id, name, type if not exist
@@ -739,7 +739,7 @@ export class DocumentFileBusiness extends Business {
     if (!document.fileType) document.fileType = APLICATION_PDF;
 
     // Add document file.
-    const created = await (global.models.document.addDocumentFile as any)({
+    const created = await (getModels().document.addDocumentFile as any)({
       id: documentId,
       updatedBy: userId,
       fileId: mainFileId,
@@ -752,12 +752,12 @@ export class DocumentFileBusiness extends Business {
     }
 
     // Delete last attachments.
-    await global.models.documentAttachment.deleteGeneratedByDocumentId(documentId);
+    await getModels().documentAttachment.deleteGeneratedByDocumentId(documentId);
 
     // Save attachments.
     const attachments = [];
     for (const attachmentIndex in attachmentIds) {
-      const attachment = await (global.models.documentAttachment.create as any)({
+      const attachment = await (getModels().documentAttachment.create as any)({
         documentId,
         name: attachesPdfFileNames[attachmentIndex],
         type: APLICATION_PDF,
@@ -778,12 +778,12 @@ export class DocumentFileBusiness extends Business {
    */
   async createPdfFromMessage(messageObject: any): Promise<boolean> {
     try {
-      const document: any = await global.models.document.findById(messageObject.documentId);
+      const document: any = await getModels().document.findById(messageObject.documentId);
       if (!document) {
         throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
       }
-      const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(messageObject.documentId);
-      const documentSignatureRejections = await (global.models.documentSignatureRejection.getByDocumentId as any)(messageObject.documentId);
+      const documentSignatures = await (getModels().documentSignature.getByDocumentId as any)(messageObject.documentId);
+      const documentSignatureRejections = await (getModels().documentSignatureRejection.getByDocumentId as any)(messageObject.documentId);
       document.signatures = documentSignatures;
       document.signatureRejections = documentSignatureRejections;
 
@@ -792,10 +792,10 @@ export class DocumentFileBusiness extends Business {
         throw new Error("PDF wasn't created.");
       }
     } catch (error) {
-      global.log.save('pdf-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error });
+      getLog().save('pdf-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error });
 
       // If it errors, will delete state generating pdf.
-      await (global.models.document.addDocumentFile as any)({
+      await (getModels().document.addDocumentFile as any)({
         id: messageObject.documentId,
         updatedBy: messageObject.userId,
         fileId: null,
@@ -805,8 +805,8 @@ export class DocumentFileBusiness extends Business {
       });
     }
 
-    if (global.redisClient) {
-      global.redisClient.delete(`generating-pdf-document-${messageObject.documentId}`);
+    if (getRedisClient()) {
+      getRedisClient().delete(`generating-pdf-document-${messageObject.documentId}`);
     }
 
     return true;
@@ -828,7 +828,7 @@ export class DocumentFileBusiness extends Business {
     );
 
     // Add document file.
-    const result = await (global.models.document.addDocumentFile as any)({
+    const result = await (getModels().document.addDocumentFile as any)({
       id: documentId,
       updatedBy: userId,
       fileId: fileInfo.id,

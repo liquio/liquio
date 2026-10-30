@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { getConfig } from '../src/lib/context';
 
 // TaskBusiness.setStatusFinished through POST /tasks/:id/commit with one template per rule.
 describe('Task commit business', () => {
@@ -39,7 +40,7 @@ describe('Task commit business', () => {
   beforeAll(async () => {
     await TestApp.beforeAll();
     app = await TestApp.setup();
-    (global as any).config.multisigners = { schemaControl: 'signature.multisign' };
+    getConfig().multisigners = { schemaControl: 'signature.multisign' };
     await seedScenario(app);
     await addUnit(app, { id: 990001, name: 'Commit unit', heads: [USER], members: [USER] });
   });
@@ -68,7 +69,7 @@ describe('Task commit business', () => {
   });
 
   it('writes activity log entries when the activity log is enabled', async () => {
-    const config = (global as any).config;
+    const config = getConfig();
     const previous = config.activity_log;
     config.activity_log = { ...(previous || {}), isEnabled: true };
     try {

@@ -15,6 +15,7 @@ import jsonwebtoken from 'jsonwebtoken';
 import { resetIdApiClient } from '@liquio/back-core';
 
 import { BpmnTaskCore } from '../src/bootstrap';
+import { getConfig, getMessageQueue } from '../src/lib/context';
 
 // E2E tests are slow, so we increase the timeout
 jest.setTimeout(120000);
@@ -52,16 +53,15 @@ jest.mock('../src/lib/config', () => {
   return {
     getConfig: jest.fn().mockImplementation(getMerged),
     loadConfig: jest.fn().mockImplementation(() => {
-      global.config = getMerged();
-      return global.config;
+      return getMerged();
     }),
   };
 });
 
 // Obtain the default configuration object
 
-const { getConfig } = require('../src/lib/config');
-const defaultConfig = getConfig();
+const { getConfig: getTemplateConfig } = require('../src/lib/config');
+const defaultConfig = getTemplateConfig();
 
 export class TestApp extends BpmnTaskCore {
   static pgContainer;
@@ -259,7 +259,7 @@ export class TestApp extends BpmnTaskCore {
 
   // Obtain a client instance to interact with the application
   request() {
-    const address = `http://${global.config.server.host}:${global.config.server.port}`;
+    const address = `http://${getConfig().server.host}:${getConfig().server.port}`;
     return supertest(address);
   }
 
@@ -273,7 +273,7 @@ export class TestApp extends BpmnTaskCore {
       },
     };
     return {
-      jwt: jsonwebtoken.sign(JSON.stringify(payload), global.config.auth.jwtSecret),
+      jwt: jsonwebtoken.sign(JSON.stringify(payload), getConfig().auth.jwtSecret),
       payload,
     };
   }
@@ -288,7 +288,7 @@ export class TestApp extends BpmnTaskCore {
    * @returns {import('nock').Scope}
    */
   get nockId() {
-    const { server, port } = global.config.auth.LiquioId;
+    const { server, port } = getConfig().auth.LiquioId;
     return nock(`${server}:${port}`);
   }
 
@@ -303,7 +303,7 @@ export class TestApp extends BpmnTaskCore {
   // Get (or open) the single AMQP channel reused by the test helpers below.
   async getTestAmqpChannel() {
     if (!this.testAmqpConnection) {
-      this.testAmqpConnection = await amqp.connect(global.config.message_queue.amqpConnection);
+      this.testAmqpConnection = await amqp.connect(getConfig().message_queue.amqpConnection);
     }
     if (!this.testAmqpChannel) {
       this.testAmqpChannel = await this.testAmqpConnection.createChannel();
@@ -333,7 +333,7 @@ export class TestApp extends BpmnTaskCore {
   async destroy() {
     await this.testAmqpChannel?.close().catch(() => undefined);
     await this.testAmqpConnection?.close().catch(() => undefined);
-    const messageQueue: any = (global as any).messageQueue;
+    const messageQueue: any = getMessageQueue();
     if (messageQueue) {
       await messageQueue.close();
       // Closing fires channel/connection close events which schedule a reconnect; drop it.

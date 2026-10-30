@@ -1,4 +1,5 @@
 import { TestApp } from './test-app';
+import { getBusinesses, getConfig, getMessageQueue, getModels } from '../src/lib/context';
 
 const BODY = 'soapenv:Envelope.soapenv:Body.0';
 const CLAIM = `${BODY}.ext:claimStatus`;
@@ -6,8 +7,8 @@ const CLAIM = `${BODY}.ext:claimStatus`;
 // ExternalServicesBusiness: SOAP body helpers and the certificate result status flow with model spies.
 describe('External services business', () => {
   let app: TestApp;
-  const business = () => (global as any).businesses.externalServices;
-  const models = () => (global as any).models;
+  const business = () => getBusinesses().externalServices;
+  const models = () => getModels();
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -107,7 +108,7 @@ describe('External services business', () => {
     });
 
     it('finds the status task template and the workflow', async () => {
-      const config = (global as any).config;
+      const config = getConfig();
       config.external_services = { ...config.external_services, trembitaStatusTaskTemplateIds: { 5: 77 } };
       expect(business().getTaskTemplateIdByWorkflowTemplateId(5)).toBe(77);
       jest.spyOn(models().workflow, 'findById').mockResolvedValue({ id: 'w' } as any);
@@ -129,12 +130,12 @@ describe('External services business', () => {
       jest.spyOn(business().eds, 'getSignatureInfo').mockResolvedValue({ content: Buffer.from('%PDF').toString('base64') } as any);
       jest.spyOn(business().storageService.provider, 'uploadFileFromStream').mockResolvedValue({ id: 'cert-file' } as any);
       jest.spyOn(models().document, 'addDocumentFile').mockResolvedValue(undefined as any);
-      jest.spyOn((global as any).businesses.document, 'updateByExternalService').mockResolvedValue(undefined as any);
+      jest.spyOn(getBusinesses().document, 'updateByExternalService').mockResolvedValue(undefined as any);
       jest.spyOn(models().workflow, 'setNumber').mockResolvedValue(undefined as any);
-      jest.spyOn((global as any).businesses.task, 'setStatusFinished').mockResolvedValue({ id: 't-target' } as any);
-      jest.spyOn((global as any).businesses.userInbox, 'sendToInboxesIfNeedIt').mockResolvedValue(undefined as any);
+      jest.spyOn(getBusinesses().task, 'setStatusFinished').mockResolvedValue({ id: 't-target' } as any);
+      jest.spyOn(getBusinesses().userInbox, 'sendToInboxesIfNeedIt').mockResolvedValue(undefined as any);
       jest.spyOn(models().document, 'setStatusFinal').mockResolvedValue(true as any);
-      return jest.spyOn((global as any).messageQueue, 'produce').mockResolvedValue(undefined as any);
+      return jest.spyOn(getMessageQueue(), 'produce').mockResolvedValue(undefined as any);
     };
 
     it('stores the certificate, finishes the task and notifies the queue', async () => {
@@ -171,13 +172,13 @@ describe('External services business', () => {
       await expect(run()).rejects.toThrow('storage down');
       jest.spyOn(models().document, 'addDocumentFile').mockRejectedValueOnce(new Error('db down'));
       await expect(run()).rejects.toThrow('db down');
-      jest.spyOn((global as any).businesses.document, 'updateByExternalService').mockRejectedValueOnce(new Error('bad data'));
+      jest.spyOn(getBusinesses().document, 'updateByExternalService').mockRejectedValueOnce(new Error('bad data'));
       await expect(run()).rejects.toThrow('Cannot update document: bad data');
       jest.spyOn(models().workflow, 'setNumber').mockRejectedValueOnce(new Error('db down'));
       await expect(run()).rejects.toThrow('Cannot update workflow number');
       const failure: any = new Error('invalid');
       failure.details = [{ dataPath: '.a', message: 'wrong' }];
-      jest.spyOn((global as any).businesses.task, 'setStatusFinished').mockRejectedValueOnce(failure);
+      jest.spyOn(getBusinesses().task, 'setStatusFinished').mockRejectedValueOnce(failure);
       await expect(run()).rejects.toThrow('Cannot commit task');
     });
   });

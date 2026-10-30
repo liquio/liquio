@@ -2,6 +2,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { DocumentBusiness } from './index';
 import { DocumentValidatorService } from '../../services/document_validator';
+import { getLog, getConfig, setAppContext as setContext, resetAppContext } from '../../lib/context';
 
 // Wrap the real validator so constructor arguments can be asserted while its behaviour stays real.
 jest.mock('../../services/document_validator', () => {
@@ -12,7 +13,13 @@ jest.mock('../../services/document_validator', () => {
   };
 });
 
-global.log = { save: jest.fn() } as any;
+const setAppContext = (context: Parameters<typeof setContext>[0]) => {
+  setContext(context);
+  // Unmigrated services, models and lib (T17-task-b) still read the bare globals.
+  Object.assign(global, context);
+};
+
+setAppContext({ log: { save: jest.fn() } as any });
 
 describe('DocumentBusiness.update', () => {
   const jsonSchema = {
@@ -32,8 +39,8 @@ describe('DocumentBusiness.update', () => {
   let updateData: jest.Mock;
 
   beforeEach(() => {
-    global.config = { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } };
-    new Sandbox(global.config);
+    setAppContext({ config: { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } } });
+    new Sandbox(getConfig());
 
     // Bypass the singleton constructor: `update` only needs the sandbox and its own helper methods.
     documentBusiness = Object.create(DocumentBusiness.prototype);
@@ -49,20 +56,24 @@ describe('DocumentBusiness.update', () => {
     jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(document);
 
     updateData = jest.fn().mockImplementation(async (id, _userId, data) => ({ id, data }));
-    global.models = {
-      documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
-      documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
-      document: { updateData },
-    } as any;
-    global.businesses = {
-      task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
-    } as any;
+    setAppContext({
+      models: {
+        documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
+        documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
+        document: { updateData },
+      } as any,
+    });
+    setAppContext({
+      businesses: {
+        task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
+      } as any,
+    });
 
     (DocumentValidatorService as unknown as jest.Mock).mockClear();
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.restoreAllMocks();
   });
 
@@ -190,8 +201,8 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
   const writtenData = () => updateData.mock.calls[0][2];
 
   beforeEach(() => {
-    global.config = { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } };
-    new Sandbox(global.config);
+    setAppContext({ config: { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } } });
+    new Sandbox(getConfig());
 
     documentBusiness = Object.create(DocumentBusiness.prototype);
     documentBusiness.sandbox = Sandbox.getInstance();
@@ -207,19 +218,23 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
 
     updateData = jest.fn().mockImplementation(async (id, _userId, data) => ({ id, data }));
     findTemplateById = jest.fn();
-    global.models = {
-      documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
-      documentTemplate: { findById: findTemplateById },
-      document: { updateData },
-    } as any;
-    global.businesses = {
-      task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
-    } as any;
-    (global.log.save as jest.Mock).mockClear();
+    setAppContext({
+      models: {
+        documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
+        documentTemplate: { findById: findTemplateById },
+        document: { updateData },
+      } as any,
+    });
+    setAppContext({
+      businesses: {
+        task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
+      } as any,
+    });
+    (getLog().save as jest.Mock).mockClear();
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.restoreAllMocks();
   });
 
@@ -270,8 +285,8 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
         ],
         ['calc.result'],
       ).catch(() => undefined);
-      expect(global.log.save).toHaveBeenCalledWith('calc-triggers-validation-mismatch', { target: 'calc.result', source: 'calc.input' }, 'warn');
-      expect(JSON.stringify((global.log.save as jest.Mock).mock.calls)).not.toContain('TAMPERED');
+      expect(getLog().save).toHaveBeenCalledWith('calc-triggers-validation-mismatch', { target: 'calc.result', source: 'calc.input' }, 'warn');
+      expect(JSON.stringify((getLog().save as jest.Mock).mock.calls)).not.toContain('TAMPERED');
     });
 
     it('drops a readOnly target written without triggerPath and does not check it', async () => {
@@ -435,4 +450,8 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
       expect(writtenData()).toEqual({ calc: { input: 'xyz', result: 'ABC' }, s1: { t: 'abc' } });
     });
   });
+});
+
+afterAll(() => {
+  resetAppContext();
 });

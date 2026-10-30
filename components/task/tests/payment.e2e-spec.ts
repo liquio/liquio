@@ -1,6 +1,7 @@
 import { TestApp } from './test-app';
 import { expectAuthRequired } from './helpers/auth_guard';
 import { PaymentService } from '../src/services/payment';
+import { getConfig, getModels } from '../src/lib/context';
 
 // Test fixture identifiers.
 const TEST_USER_ID = '61efddaa351d6219eee09043';
@@ -166,11 +167,11 @@ describe('Payment Controller', () => {
     // Fixture provider standing in for a provider whose returnUrl carries only an opaque
     // paymentTransactionId (see PayoneProvider's useTransactionBinding support) - it never
     // receives documentId/paymentControlPath directly, it resolves them itself from
-    // global.models.paymentTransactions (the exact model/service a real provider is handed via
+    // getModels().paymentTransactions (the exact model/service a real provider is handed via
     // its PluginContext.paymentTransactions, see src/bootstrap.ts).
     paymentService.providers[PROVIDER_NAME_TRANSACTION_BINDING] = {
       handleStatus: async (_data: any, _providerOptions: any, _status: any, queryParamsObject: any) => {
-        const record = await global.models.paymentTransactions.findById(queryParamsObject.paymentTransactionId);
+        const record = await getModels().paymentTransactions.findById(queryParamsObject.paymentTransactionId);
         if (!record) {
           throw new Error(`Unknown payment transaction id: ${queryParamsObject.paymentTransactionId}`);
         }
@@ -185,10 +186,10 @@ describe('Payment Controller', () => {
     };
 
     // Wire fixture customers to the fake providers/redirect behavior. document.ts and
-    // controllers/payment.ts both read from `global.config.payment`/`this.config.payment`,
+    // controllers/payment.ts both read from `getConfig().payment`/`this.config.payment`,
     // which is the exact same object reference captured at app init time (see src/bootstrap.ts,
-    // `loadConfig` returns `global.config`), so mutating it here is visible everywhere.
-    global.config.payment = {
+    // `loadConfig` returns `getConfig()`), so mutating it here is visible everywhere.
+    getConfig().payment = {
       defaultRedirect: DEFAULT_REDIRECT_URL,
       [CUSTOMER_SUCCESS]: { providerName: PROVIDER_NAME, doRedirect: true },
       [CUSTOMER_TRANSACTION_BINDING]: { providerName: PROVIDER_NAME_TRANSACTION_BINDING, doRedirect: true, useTransactionBinding: true },
@@ -358,7 +359,7 @@ describe('Payment Controller', () => {
         }),
       };
 
-      global.config.payment[CUSTOMER_PENDING] = { providerName: PROVIDER_NAME_PENDING, doRedirect: true };
+      getConfig().payment[CUSTOMER_PENDING] = { providerName: PROVIDER_NAME_PENDING, doRedirect: true };
     });
 
     it('reuses the still-pending checkout instead of minting a new one when calc_payment is called again before it resolves', async () => {
@@ -499,7 +500,7 @@ describe('Payment Controller', () => {
         }),
       };
 
-      global.config.payment[CUSTOMER_FAILED] = { providerName: PROVIDER_NAME_FAILED, doRedirect: true };
+      getConfig().payment[CUSTOMER_FAILED] = { providerName: PROVIDER_NAME_FAILED, doRedirect: true };
     });
 
     it('mints a fresh checkout (does not get stuck on the dead one) when the previous payment already failed on the provider', async () => {
@@ -568,7 +569,7 @@ describe('Payment Controller', () => {
     });
 
     // Note: document.validateApplePaySession does not go through PaymentService/a provider at
-    // all - it calls global.httpClient directly against Apple's API using
+    // all - it calls getHttpClient() directly against Apple's API using
     // config.merchantIdentityCertificateInBase64/merchantIdentityPrivateKeyInBase64, so there is
     // no fixture provider to exercise here (see src/businesses/document.ts validateApplePaySession).
   });
@@ -598,7 +599,7 @@ describe('Payment Controller', () => {
     });
 
     it('cancels the order via the fixture provider when authenticated', async () => {
-      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      getConfig().basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
 
       const response = await app
         .request()
@@ -618,7 +619,7 @@ describe('Payment Controller', () => {
     });
   });
 
-  // These call into global.businesses.document.handlePaymentStatus, which requires payment
+  // These call into getBusinesses().document.handlePaymentStatus, which requires payment
   // provider config not present for an unknown customer, so an unknown customer legitimately
   // errors out. Just assert the route is reachable and handled by the controller.
   describe('GET /payment/:customer/:status', () => {
@@ -876,7 +877,7 @@ describe('Payment Controller', () => {
   describe('Payment transaction binding', () => {
     describe('PaymentTransactionsModel', () => {
       it('round-trips documentId/paymentControlPath/taskId through create/findById', async () => {
-        const id = await global.models.paymentTransactions.create({
+        const id = await getModels().paymentTransactions.create({
           documentId: DOCUMENT_ID,
           paymentControlPath: PAYMENT_CONTROL_PATH,
           taskId: TASK_ID,
@@ -884,7 +885,7 @@ describe('Payment Controller', () => {
         expect(typeof id).toBe('string');
         expect(id.length).toBeGreaterThan(0);
 
-        const record = await global.models.paymentTransactions.findById(id);
+        const record = await getModels().paymentTransactions.findById(id);
         expect(record).toMatchObject({
           id,
           documentId: DOCUMENT_ID,
@@ -894,14 +895,14 @@ describe('Payment Controller', () => {
       });
 
       it('returns null for an id that was never created', async () => {
-        const record = await global.models.paymentTransactions.findById('00000000-0000-4000-8000-000000000000');
+        const record = await getModels().paymentTransactions.findById('00000000-0000-4000-8000-000000000000');
         expect(record).toBeNull();
       });
     });
 
     describe('GET /payment/:customer/return', () => {
       it('resolves documentId/paymentControlPath from the bound transaction record when the URL carries only the opaque id', async () => {
-        const paymentTransactionId = await global.models.paymentTransactions.create({
+        const paymentTransactionId = await getModels().paymentTransactions.create({
           documentId: DOCUMENT_ID,
           paymentControlPath: PAYMENT_CONTROL_PATH,
           taskId: TASK_ID,
@@ -942,7 +943,7 @@ describe('Payment Controller', () => {
 
   // `businesses/document.ts#handlePaymentStatus` gates its one-time "commit after payment" side
   // effects (finish task, finalize document, fire TASK_COMMITTED activity, produce a workflow
-  // message) on `global.models.document.setStatusFinal`'s return value rather than the stale
+  // message) on `getModels().document.setStatusFinal`'s return value rather than the stale
   // `!document.isFinal` snapshot read at the top of the function - this is what actually prevents
   // two concurrent payment callbacks (e.g. completing payment in two browser tabs, each against
   // its own checkout) from both running those side effects. This exercises that guarantee at the
@@ -977,8 +978,8 @@ describe('Payment Controller', () => {
 
     it('only lets one of two concurrent setStatusFinal calls for the same document report success', async () => {
       const [firstResult, secondResult] = await Promise.all([
-        global.models.document.setStatusFinal(RACE_DOCUMENT_ID),
-        global.models.document.setStatusFinal(RACE_DOCUMENT_ID),
+        getModels().document.setStatusFinal(RACE_DOCUMENT_ID),
+        getModels().document.setStatusFinal(RACE_DOCUMENT_ID),
       ]);
 
       // Exactly one of the two concurrent calls actually flipped is_final false -> true - a caller
@@ -992,7 +993,7 @@ describe('Payment Controller', () => {
 
     it('reports no-op (false) when called again on an already-final document', async () => {
       // Follows the two calls above: the document is already final at this point.
-      const result = await global.models.document.setStatusFinal(RACE_DOCUMENT_ID);
+      const result = await getModels().document.setStatusFinal(RACE_DOCUMENT_ID);
       expect(result).toBe(false);
     });
   });

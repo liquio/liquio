@@ -2,6 +2,7 @@ import nock from 'nock';
 
 import { TestApp } from './test-app';
 import { addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { getBusinesses, getConfig } from '../src/lib/context';
 
 // RegisterBusiness, RegisterService and the register controller against a mocked register service.
 describe('Register business', () => {
@@ -44,8 +45,8 @@ describe('Register business', () => {
   beforeAll(async () => {
     await TestApp.beforeAll();
     app = await TestApp.setup();
-    registerUrl = `${(global as any).config.register.server}:${(global as any).config.register.port}`;
-    (global as any).config.register.access = [
+    registerUrl = `${getConfig().register.server}:${getConfig().register.port}`;
+    getConfig().register.access = [
       {
         unit: UNIT_ID,
         keys: {
@@ -235,7 +236,7 @@ describe('Register business', () => {
   });
 
   describe('direct business calls', () => {
-    const business = () => (global as any).businesses.register;
+    const business = () => getBusinesses().register;
     const units = { all: [UNIT_ID], head: [UNIT_ID], member: [UNIT_ID] };
 
     it('answers access questions', async () => {

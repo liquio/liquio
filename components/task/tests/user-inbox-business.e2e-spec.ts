@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, userRequest, SCENARIO } from './helpers/scenario';
+import { getBusinesses } from '../src/lib/context';
 
 const CREATOR = SCENARIO.userId;
 const OTHER = 'inbox-other-user';
@@ -10,7 +11,7 @@ describe('User inbox', () => {
   let app: TestApp;
   let nextId = 990470;
   const as = (userId = CREATOR) => userRequest(app, userId);
-  const inboxBusiness = () => (global as any).businesses.userInbox;
+  const inboxBusiness = () => (getBusinesses() as any).userInbox;
 
   const finishedTask = async (inboxes: any, fileId: string | null = 'inbox-file') => {
     const id = nextId++;
@@ -95,9 +96,9 @@ describe('User inbox', () => {
         created_at: new Date(),
         updated_at: new Date(),
       });
-      const storage = (global as any).businesses.document.files.host.storageService.provider;
+      const storage = (getBusinesses() as any).document.files.host.storageService.provider;
       jest.spyOn(storage, 'getP7sMetadata').mockResolvedValue([{ file_id: 'inbox-file' }] as any);
-      jest.spyOn((global as any).businesses.task.eds, 'getSignatureInfo').mockResolvedValue({ signer: 'S' } as any);
+      jest.spyOn((getBusinesses() as any).task.eds, 'getSignatureInfo').mockResolvedValue({ signer: 'S' } as any);
       const first = await as()('get', '/user-inboxes').query({ page: 1, count: 10 });
       expect(first.status).toBe(200);
       expect(first.body.data[0]).toMatchObject({ fileType: 'application/pdf', hasP7sSignature: true });

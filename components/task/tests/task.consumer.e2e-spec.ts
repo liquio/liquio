@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { prepareFixtures, TASK_FIXTURES, DOCUMENT_FIXTURES } from './fixtures';
+import { getLog } from '../src/lib/context';
 
 const READING_QUEUE = 'bpmn-task-incoming';
 const PDF_QUEUE = 'bpmn-task-incoming-generating-pdf';
@@ -27,7 +28,7 @@ describe('Task RabbitMQ consumers', () => {
     await TestApp.beforeEach();
   });
 
-  const logged = (name: string) => () => (global.log as any).getLogs().some((args) => args[0] === name);
+  const logged = (name: string) => () => (getLog() as any).getLogs().some((args) => args[0] === name);
 
   it('asserts the delayed auto commit queues and the consumers are subscribed', async () => {
     const channel = await app.getTestAmqpChannel();

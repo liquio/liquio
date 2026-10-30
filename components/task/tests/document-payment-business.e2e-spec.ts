@@ -3,6 +3,7 @@ import nock from 'nock';
 import { TestApp } from './test-app';
 import { PaymentService } from '../src/services/payment';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { getBusinesses, getConfig, getModels } from '../src/lib/context';
 
 const FS = 'https://filestorage.liquio.local';
 const CUSTOMER = 'scenarioPay';
@@ -18,7 +19,7 @@ describe('Document payment business', () => {
   let nextId = 990250;
 
   const as = (userId = USER) => userRequest(app, userId);
-  const payment = () => (global as any).businesses.document.payment;
+  const payment = () => getBusinesses().document.payment;
 
   const control = (extra: any = {}) => ({
     type: 'object',
@@ -81,7 +82,7 @@ describe('Document payment business', () => {
       getPaymentReceiptFiles: jest.fn(async () => [{ fileBuffer: PDF, contentType: 'application/pdf' }]),
     };
     service.providers[PROVIDER] = provider;
-    (global as any).config.payment = { [CUSTOMER]: { providerName: PROVIDER, doRedirect: true } };
+    getConfig().payment = { [CUSTOMER]: { providerName: PROVIDER, doRedirect: true } };
   });
 
   afterAll(async () => {
@@ -200,15 +201,15 @@ describe('Document payment business', () => {
     it('answers a short response for providers that only notify', async () => {
       const task = await draft();
       const transactionId = await calculatedTransaction(task);
-      (global as any).config.payment[CUSTOMER] = { providerName: PROVIDER, notifyUrlShortResponse: true };
+      getConfig().payment[CUSTOMER] = { providerName: PROVIDER, notifyUrlShortResponse: true };
       try {
         provider.handleStatus.mockResolvedValueOnce(status(task, { transactionId }));
         expect(await payment().handlePaymentStatus({}, CUSTOMER, 'success', {}, {})).toEqual({ isAccepted: true });
         provider.handleStatus.mockResolvedValueOnce(status(task, { transactionId }));
-        (global as any).config.payment[CUSTOMER] = { providerName: PROVIDER };
+        getConfig().payment[CUSTOMER] = { providerName: PROVIDER };
         expect((await payment().handlePaymentStatus({}, CUSTOMER, 'success', {}, {})).transactionId).toBe(transactionId);
       } finally {
-        (global as any).config.payment[CUSTOMER] = { providerName: PROVIDER, doRedirect: true };
+        getConfig().payment[CUSTOMER] = { providerName: PROVIDER, doRedirect: true };
       }
     });
 
@@ -231,7 +232,7 @@ describe('Document payment business', () => {
         ],
       });
       const transactionId = await calculatedTransaction(task);
-      const registerUrl = `${(global as any).config.register.server}:${(global as any).config.register.port}`;
+      const registerUrl = `${getConfig().register.server}:${getConfig().register.port}`;
       nock(registerUrl)
         .get('/records/rec-1')
         .reply(200, { data: { id: 'rec-1', data: { a: 1 } } });
@@ -269,7 +270,7 @@ describe('Document payment business', () => {
 
     it('logs and swallows receipt download errors', async () => {
       const task = await draft();
-      const document = await (global as any).models.document.findById(task.documentId);
+      const document = await getModels().document.findById(task.documentId);
       provider.getPaymentReceiptFiles.mockResolvedValueOnce([{ fileBuffer: Buffer.from('not a pdf'), contentType: 'application/pdf' }]);
       await payment().tryToDownloadPaymentReceiptFiles({ document, providerOptions: {}, orderId: 'o', paymentSchemaControl: {} });
       provider.getPaymentReceiptFiles.mockRejectedValueOnce(new Error('down'));
@@ -330,8 +331,8 @@ describe('Document payment business', () => {
         status(task, { transactionId: 'tx-h2', extraData: { redirectUrl: 'x', paymentId: 'p-2', order_id: 'o' } }),
       );
       await payment().handlePaymentStatus({}, CUSTOMER, 'success', {}, {});
-      const document = await (global as any).models.document.findById(task.documentId);
-      const template = await (global as any).models.documentTemplate.findById(document.documentTemplateId);
+      const document = await getModels().document.findById(task.documentId);
+      const template = await getModels().documentTemplate.findById(document.documentTemplateId);
       await payment().unholdPayment(document, { paymentControlPath: 'pay.properties.control' }, template.jsonSchema, USER);
       expect(provider.unHoldOrder).toHaveBeenCalled();
       provider.unHoldOrder.mockResolvedValueOnce(undefined);

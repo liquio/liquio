@@ -4,6 +4,7 @@ import { RegistersFiller } from '../src/services/document_filler/fillers/registe
 import { RegistersDefaultValueFiller } from '../src/services/document_filler/fillers/registers_default_value';
 import { VerifiedUserInfoFiller } from '../src/services/document_filler/fillers/verified_user_info';
 import { CopyWorkflowDocumentFiller } from '../src/services/document_filler/fillers/copy_workflow_document';
+import { getModels } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 
@@ -250,7 +251,7 @@ describe('Document filler service', () => {
 
     it('skips when the source is not defined or not allowed', async () => {
       const filler = new CopyWorkflowDocumentFiller();
-      const find = jest.spyOn((global as any).models.task, 'findDocumentByWorkflowIdAndTaskTemplateId');
+      const find = jest.spyOn(getModels().task, 'findDocumentByWorkflowIdAndTaskTemplateId');
       const base = { source: { workflowId: 'w', taskTemplateId: 1 } };
       const run = async (itemControl: any, objectToFill: any, extra: any = {}) =>
         filler.fill(schema({ item: itemControl }), objectToFill, options(extra));
@@ -271,16 +272,16 @@ describe('Document filler service', () => {
 
     it('copies steps and attachments of an allowed document', async () => {
       const filler = new CopyWorkflowDocumentFiller();
-      jest.spyOn((global as any).models.task, 'findDocumentByWorkflowIdAndTaskTemplateId').mockResolvedValue({
+      jest.spyOn(getModels().task, 'findDocumentByWorkflowIdAndTaskTemplateId').mockResolvedValue({
         document: { id: 'src', createdBy: USER, data: { copied: { file: 'link-1', empty: null } } },
       } as any);
-      jest.spyOn((global as any).models.documentAttachment, 'getByDocumentId').mockResolvedValue([
+      jest.spyOn(getModels().documentAttachment, 'getByDocumentId').mockResolvedValue([
         { id: 'a1', link: 'link-1', documentId: 'src', name: 'f.txt', type: 'text/plain' },
         { id: 'a2', link: 'link-2', documentId: 'src', name: 'g.txt', type: 'text/plain' },
       ] as any);
       jest.spyOn(filler.storageService.provider, 'copyFile').mockResolvedValue({ id: 'copy-1' });
       const create = jest
-        .spyOn((global as any).models.documentAttachment, 'create')
+        .spyOn(getModels().documentAttachment, 'create')
         .mockResolvedValue({ id: 'c1', link: 'copy-1', documentId: 'target-doc' } as any);
       const objectToFill: any = { source: { workflowId: 'w', taskTemplateId: 1 } };
       await filler.fill(schema({ item: control({ unitId: '(data) => 990081', steps: ['copied', 'missing'] }) }), objectToFill, options());

@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { getBusinesses, getConfig, getModels } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 const IPN = '1234567890';
@@ -11,8 +12,8 @@ describe('Task business methods', () => {
   let nextId = 990300;
   const units = { all: [990011], head: [990011], member: [990011] };
   const as = (userId = USER) => userRequest(app, userId);
-  const biz = () => (global as any).businesses.task;
-  const models = () => (global as any).models;
+  const biz = () => (getBusinesses() as any).task;
+  const models = () => getModels();
 
   const draft = async (taskSchema: any = {}, documentSchema: any = {}) => {
     const id = nextId++;
@@ -308,7 +309,7 @@ describe('Task business methods', () => {
     });
 
     it('checks if creation by other systems is allowed', async () => {
-      const config = (global as any).config;
+      const config = getConfig();
       config.system_task = { isAllowedCreateByOtherSystems: true, tasksTemplateIds: [5] };
       expect(await biz().checkCreateByOtherSystemFromMessage({ taskTemplateId: 5 })).toBe(true);
       expect(await biz().checkCreateByOtherSystemFromMessage({ taskTemplateId: 6 })).toBe(false);
@@ -339,7 +340,7 @@ describe('Task business methods', () => {
       jest.spyOn(biz().idApiClient, 'getUsersByIds').mockRejectedValueOnce(new Error('down'));
       await expect(biz().extendedAccessCheck(user, document, USER)).rejects.toThrow('Cannot get user data');
 
-      const reader = jest.spyOn((global as any).businesses.document.externalReader, 'getDataByUser').mockResolvedValue({ data: { ok: true } } as any);
+      const reader = jest.spyOn((getBusinesses() as any).document.externalReader, 'getDataByUser').mockResolvedValue({ data: { ok: true } } as any);
       const external = {
         isEnabled: true,
         context: [{ name: 'e', provider: 'external-reader.svc.method', options: '(data) => ({ a: data.amount })' }],

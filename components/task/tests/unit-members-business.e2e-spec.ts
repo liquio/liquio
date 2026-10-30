@@ -3,6 +3,7 @@ import { getIdApiClient } from '@liquio/back-core';
 import { UnitRulesModel } from '../src/models/unit_rules';
 import { TestApp } from './test-app';
 import { addUnit, userRequest } from './helpers/scenario';
+import { getConfig } from '../src/lib/context';
 
 const BASIC_RAW = 'dW5pdHM6dW5pdHM='; // fake "units:units"
 const HEAD = 'unit-head';
@@ -24,7 +25,7 @@ describe('Unit members', () => {
   beforeAll(async () => {
     await TestApp.beforeAll();
     app = await TestApp.setup();
-    (global as any).config.basic_auth.tokens.push(BASIC_RAW);
+    getConfig().basic_auth.tokens.push(BASIC_RAW);
     const common = { heads_ipn: [], members_ipn: [], requested_members: [], based_on: [] };
     await addUnit(app, { id: BASE_UNIT, name: 'Base unit', heads: [], members: [], ...common });
     await addUnit(app, { id: UNIT, name: 'Main unit', heads: [HEAD], members: [HEAD, MEMBER], ...common, based_on: [BASE_UNIT] });
@@ -75,7 +76,7 @@ describe('Unit members', () => {
     });
 
     it('hides head users from members of other units when a super head unit is configured', async () => {
-      const config = (global as any).config;
+      const config = getConfig();
       config.custom = { ...config.custom, optionalProjectParams: { userRoleUnits: { superHeadUnitId: OTHER_UNIT } } };
       jest.spyOn(idApi(), 'getUsersByIds').mockResolvedValue([{ userId: HEAD }, { userId: MEMBER }]);
       const response = await as(HEAD)('get', `/units/${UNIT}/as-head`);
@@ -86,7 +87,7 @@ describe('Unit members', () => {
 
     it('lists participants of a unit for the integration by head id', async () => {
       jest.spyOn(idApi(), 'getUsersByIds').mockResolvedValue([{ userId: HEAD, ipn: IPN }, { userId: MEMBER }]);
-      const config = (global as any).config;
+      const config = getConfig();
       config.basic_auth.protectedRoutes = [{ route: '/units/participants-as-head', method: 'POST', basicAuthUsers: ['units'] }];
       const ok = await basic('post', '/units/participants-as-head').send({ unitId: UNIT, userId: HEAD });
       expect(ok.status).toBe(200);

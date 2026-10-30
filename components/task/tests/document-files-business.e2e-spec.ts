@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { getBusinesses, getMessageQueue, getModels } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 const MISSING = '00000000-0000-4000-8000-000000000000';
@@ -11,7 +12,7 @@ describe('Document files business', () => {
   let nextId = 990400;
   const units = { all: [990021], head: [990021], member: [990021] };
   const as = (userId = USER) => userRequest(app, userId);
-  const files = () => (global as any).businesses.document.files;
+  const files = () => (getBusinesses() as any).document.files;
   const provider = () => files().host.storageService.provider;
 
   const draft = async (taskSchema: any = {}, documentSchema: any = {}) => {
@@ -132,12 +133,10 @@ describe('Document files business', () => {
       await attach(own.documentId, 'skip');
       await attach(own.documentId, 'keep');
       await app.model('task').update({ finished: true }, { where: { id: own.id } });
-      jest
-        .spyOn((global as any).models.task, 'findDocumentByWorkflowIdAndTaskTemplateIds')
-        .mockResolvedValue({ document: { id: own.documentId } } as any);
+      jest.spyOn(getModels().task, 'findDocumentByWorkflowIdAndTaskTemplateIds').mockResolvedValue({ document: { id: own.documentId } } as any);
       const list = await files().getFilesToPreview(own.workflowId, own.document.documentTemplateId, 'preview', undefined, true);
       expect(list.map((v) => v.fileLink)).toEqual(['keep']);
-      jest.spyOn((global as any).models.task, 'findDocumentByWorkflowIdAndTaskTemplateIds').mockResolvedValue({} as any);
+      jest.spyOn(getModels().task, 'findDocumentByWorkflowIdAndTaskTemplateIds').mockResolvedValue({} as any);
       expect(await files().getFilesToPreview(own.workflowId, own.document.documentTemplateId, 'preview', undefined, true)).toEqual([]);
     });
 
@@ -196,7 +195,7 @@ describe('Document files business', () => {
 
     it('saves attachment info by path and detects array paths', async () => {
       const task = await draft();
-      const document = await (global as any).models.document.findById(task.documentId);
+      const document = await getModels().document.findById(task.documentId);
       await files().saveAttachmentToDocumentData({ id: 'a1', isAttachmentPlaceholder: true }, undefined, document, USER, units);
       await files().saveAttachmentToDocumentData({ id: 'a1', meta: { k: 1 } }, 'note', document, USER, units, true);
       expect(files().isDocumentPathToArray('files.0')).toBe(true);
@@ -206,8 +205,8 @@ describe('Document files business', () => {
 
     it('queues pdf generation once and stores an external pdf', async () => {
       const task = await draft();
-      const document = await (global as any).models.document.findById(task.documentId);
-      const produce = jest.spyOn((global as any).messageQueue, 'produce').mockResolvedValue(undefined as any);
+      const document = await getModels().document.findById(task.documentId);
+      const produce = jest.spyOn(getMessageQueue(), 'produce').mockResolvedValue(undefined as any);
       await files().addGeneratingPdfToQueue(document, USER);
       expect(produce).toHaveBeenCalledTimes(1);
       expect((await app.model('document').findByPk(task.documentId)).file_id).toBe('generating');

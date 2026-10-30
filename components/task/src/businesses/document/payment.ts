@@ -15,6 +15,7 @@ import { TaskActivity } from '../../types/task_activity';
 import { Business } from '../business';
 import type { DocumentBusiness } from './index';
 import type { UserUnitIds } from './types';
+import { getLog, getModels, getBusinesses, getConfig, getMessageQueue, getHttpClient } from '../../lib/context';
 
 // Constants.
 const CALCULATED_PAYMENT_PATH = 'calculated';
@@ -156,7 +157,7 @@ export class DocumentPaymentBusiness extends Business {
 
     // Get document template.
     const templateId = document.documentTemplateId;
-    const documentTemplate = await global.models.documentTemplate.findById(templateId);
+    const documentTemplate = await getModels().documentTemplate.findById(templateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -167,7 +168,7 @@ export class DocumentPaymentBusiness extends Business {
     if (!paymentProperties) {
       throw new Error('Can not find payment properties in JSON schema.');
     }
-    global.log.save('payment-properties', {
+    getLog().save('payment-properties', {
       documentTemplateId: documentTemplate.id,
       documentTemplateName: documentTemplate.name,
       paymentProperties,
@@ -188,7 +189,7 @@ export class DocumentPaymentBusiness extends Business {
     const resolvedDocumentId = document.id;
     let documentDataObject = document.data;
     let controlPaymentData = PropByPath.get(documentDataObject, paymentDocumentPath);
-    const checkouts = global.models.paymentCheckouts;
+    const checkouts = getModels().paymentCheckouts;
     const alreadyPaid = () => controlPaymentData?.processed?.find((entry) => entry?.status?.isSuccess);
     let checkout = await checkouts.find(resolvedDocumentId, paymentDocumentPath);
     let reserved = false;
@@ -206,7 +207,7 @@ export class DocumentPaymentBusiness extends Business {
           calculated: control.calculated || checkout.calculated,
           processed: [...(control.processed || []), checkout.success_status],
         });
-        await global.models.document.updateData(resolvedDocumentId, userId, document.data);
+        await getModels().document.updateData(resolvedDocumentId, userId, document.data);
       }
       return document;
     }
@@ -234,7 +235,7 @@ export class DocumentPaymentBusiness extends Business {
         undefined,
         true,
       );
-      const currentDocument = await global.models.document.findById(resolvedDocumentId);
+      const currentDocument = await getModels().document.findById(resolvedDocumentId);
       if (!currentDocument) throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
       controlPaymentData = PropByPath.get(currentDocument.data, paymentDocumentPath);
       if (alreadyPaid() || statusInfo?.status?.isSuccess) {
@@ -276,24 +277,24 @@ export class DocumentPaymentBusiness extends Business {
     if (!paymentData) {
       throw new Error(ERROR_GET_PAYMENT_DATA);
     }
-    global.log.save('get-payment-data', { paymentData });
+    getLog().save('get-payment-data', { paymentData });
 
     // Persist the result before updating the document. A later request can recover this
     // projection without contacting the provider to create another checkout.
     await checkouts.saveCalculated(checkout, paymentData);
     await this.storeCalculatedPayment(resolvedDocumentId, paymentDocumentPath, paymentData, userId);
-    return global.models.document.findById(resolvedDocumentId);
+    return getModels().document.findById(resolvedDocumentId);
   }
 
   private async storeCalculatedPayment(documentId: string, path: string, calculated: any, userId?: string): Promise<any> {
-    const document = await global.models.document.findById(documentId);
+    const document = await getModels().document.findById(documentId);
     if (!document) throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     const control = PropByPath.get(document.data, path) || {};
     if (control.calculated?.transactionId === calculated.transactionId) return document.data;
     const history = Array.isArray(control.calculatedHistory) ? control.calculatedHistory : [];
     if (!history.some((entry) => entry.transactionId === calculated.transactionId)) history.push(calculated);
     PropByPath.set(document.data, path, { ...control, calculated, calculatedHistory: history });
-    const updated = await global.models.document.updateData(documentId, userId, document.data);
+    const updated = await getModels().document.updateData(documentId, userId, document.data);
     if (!updated) throw new Error(ERROR_UPDATE_DOCUMENT);
     return updated.data;
   }
@@ -318,9 +319,9 @@ export class DocumentPaymentBusiness extends Business {
     checkPrevTransaction = false,
   ): Promise<any> {
     // Get provider options.
-    global.log.save('external-services-payment-status-business-payload', payload);
+    getLog().save('external-services-payment-status-business-payload', payload);
     const providerOptions = this.config && this.config.payment && this.config.payment[paymentCustomer];
-    global.log.save('get-provider-options-to-handle-payment-status', {
+    getLog().save('get-provider-options-to-handle-payment-status', {
       ...providerOptions,
       rsaPrivateKeyInBase64: '****',
       rsaPublicKeyInBase64: '****',
@@ -338,27 +339,27 @@ export class DocumentPaymentBusiness extends Business {
     if (!statusInfo) {
       throw new NotFoundError("Can't get payment status.");
     }
-    global.log.save('get-payment-status-info-from-payment-provider', { statusInfo });
+    getLog().save('get-payment-status-info-from-payment-provider', { statusInfo });
 
     // Get document by user or by external service.
     const { documentId, paymentControlPath, extraData, transactionId } = statusInfo;
     const paymentDocumentPath = paymentControlPath.replace(/.properties./g, '.');
 
-    const document: any = await global.models.document.findById(documentId);
+    const document: any = await getModels().document.findById(documentId);
     if (!document || !document.task) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
-    global.log.save('get-document-to-handle-payment-status', {
+    getLog().save('get-document-to-handle-payment-status', {
       document: { ...document, data: HIDE_REPLACEMENT_TEXT, documentTemplate: HIDE_REPLACEMENT_TEXT },
     }); // Do not log large document.data and document.documentTemplate.
 
     if (statusInfo.status?.isSuccess) {
-      await global.models.paymentCheckouts.reserve(
+      await getModels().paymentCheckouts.reserve(
         documentId,
         paymentDocumentPath,
         PropByPath.get(document.data, `${paymentDocumentPath}.calculated`) ?? null,
       );
-      await global.models.paymentCheckouts.markPaid(documentId, paymentDocumentPath, statusInfo);
+      await getModels().paymentCheckouts.markPaid(documentId, paymentDocumentPath, statusInfo);
     }
 
     // Append trace meta.
@@ -369,7 +370,7 @@ export class DocumentPaymentBusiness extends Business {
     const { task } = document;
     const { createdBy } = task;
 
-    global.log.save('control-payment-data', { documentId: document.id, taskId: task.id, controlPaymentData });
+    getLog().save('control-payment-data', { documentId: document.id, taskId: task.id, controlPaymentData });
 
     // Store payment document path if hold success payment.
     if (statusInfo.status && statusInfo.status.isSuccess) {
@@ -378,7 +379,7 @@ export class DocumentPaymentBusiness extends Business {
       const isHold = calcPaymentInfo && calcPaymentInfo.extraData && calcPaymentInfo.extraData.isHold;
       if (isHold) {
         const metaDocPayment = { paymentControlPath, isHoldPayment: isHold };
-        global.businesses.task.addTaskMetadata(task, createdBy, false, metaDocPayment);
+        getBusinesses().task.addTaskMetadata(task, createdBy, false, metaDocPayment);
       }
     }
 
@@ -393,16 +394,16 @@ export class DocumentPaymentBusiness extends Business {
     }
     controlPaymentData[PROCESSED_PAYMENT_PATH].push(statusInfo);
 
-    const updatedDocument = await global.models.document.updateData(documentId, undefined, documentDataObject);
+    const updatedDocument = await getModels().document.updateData(documentId, undefined, documentDataObject);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    global.log.save('updated-document-with-payment-status', { documentId, controlPaymentData });
+    getLog().save('updated-document-with-payment-status', { documentId, controlPaymentData });
 
     // Get payment schema control template.
-    const template = await global.models.documentTemplate.findById(document.documentTemplateId);
+    const template = await getModels().documentTemplate.findById(document.documentTemplateId);
     if (!template) {
-      global.log.save('handle-payment-status-not-found-document-template-error', {
+      getLog().save('handle-payment-status-not-found-document-template-error', {
         templateId: document.documentTemplateId,
         documentId,
         taskId: task.id,
@@ -463,7 +464,7 @@ export class DocumentPaymentBusiness extends Business {
           details: validationErrors,
           queueMessage: { workflowId: task.workflowId },
         };
-        await (global.models.workflowError.create as any)(workflowError);
+        await (getModels().workflowError.create as any)(workflowError);
       } else {
         // If no validation error - commit.
         // Check commitAfterPayment flag in schema.
@@ -477,13 +478,13 @@ export class DocumentPaymentBusiness extends Business {
           // returns without re-running them. This must run (and be checked) BEFORE those side
           // effects, not after - the earlier `!document.isFinal` check alone is a stale snapshot
           // read at the top of this function and cannot serialize two concurrent callbacks.
-          const isNewlyFinalized = await global.models.document.setStatusFinal(documentId);
+          const isNewlyFinalized = await getModels().document.setStatusFinal(documentId);
           if (isNewlyFinalized) {
-            const finishedTask = await global.models.task.setStatusFinished(taskId);
+            const finishedTask = await getModels().task.setStatusFinished(taskId);
 
             // Handle activity.
-            await global.businesses.task.handleActivityTypeEvents(task, 'TASK_COMMITTED');
-            if (global.config.activity_log?.isEnabled) {
+            await getBusinesses().task.handleActivityTypeEvents(task, 'TASK_COMMITTED');
+            if (getConfig().activity_log?.isEnabled) {
               const activity = new TaskActivity({
                 type: 'TASK_COMMITTED',
                 details: {
@@ -491,22 +492,22 @@ export class DocumentPaymentBusiness extends Business {
                   systemName: providerOptions.providerName,
                 } as any,
               });
-              await global.models.task.appendActivityLog(task.id, activity);
+              await getModels().task.appendActivityLog(task.id, activity);
             }
 
             // Set the workflow status.
             const { workflowId, taskTemplateId } = finishedTask;
-            const { workflowTemplate }: any = await global.models.workflow.findById(workflowId as any);
-            const documents = await global.models.task.getDocumentsByWorkflowId(workflowId);
-            const events = await global.models.event.getEventsByWorkflowId(workflowId);
+            const { workflowTemplate }: any = await getModels().workflow.findById(workflowId as any);
+            const documents = await getModels().task.getDocumentsByWorkflowId(workflowId);
+            const events = await getModels().event.getEventsByWorkflowId(workflowId);
             try {
-              await global.businesses.workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId as any), {
+              await getBusinesses().workflow.setWorkflowStatus(workflowId, workflowTemplate, parseInt(taskTemplateId as any), {
                 documents,
                 events,
               });
             } catch (error) {
-              global.log.save('set-workflow-status-error', { workflowId, error: error.message });
-              await global.models.workflowError.create(
+              getLog().save('set-workflow-status-error', { workflowId, error: error.message });
+              await getModels().workflowError.create(
                 {
                   error: 'Can not set the workflow status.',
                   details: {
@@ -525,7 +526,7 @@ export class DocumentPaymentBusiness extends Business {
 
             // Send message to RabbitMQ.
             const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-            global.messageQueue.produce(message);
+            getMessageQueue().produce(message);
           }
         }
       }
@@ -583,7 +584,7 @@ export class DocumentPaymentBusiness extends Business {
     try {
       await this.host.paymentService.confirmBySmsCode(providerOptions, calculatedData, smsCode);
     } catch (error) {
-      global.log.save('confirm-code-response-error', { error }, 'error');
+      getLog().save('confirm-code-response-error', { error }, 'error');
     }
 
     // Add payment status.
@@ -598,11 +599,11 @@ export class DocumentPaymentBusiness extends Business {
     PropByPath.set(documentDataObjectUpdated, `${paymentDocumentPath}.${CONFIRM_CODE_INFO_PATH}`, confirmCodeResObj);
 
     // Update document.
-    const updatedDocument = await global.models.document.updateData(documentId, undefined, documentDataObjectUpdated);
+    const updatedDocument = await getModels().document.updateData(documentId, undefined, documentDataObjectUpdated);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    global.log.save('updated-document-with-payment-status', { updatedDocument });
+    getLog().save('updated-document-with-payment-status', { updatedDocument });
 
     return { isConfirmed: confirmCodeRes, transactionId };
   }
@@ -620,7 +621,7 @@ export class DocumentPaymentBusiness extends Business {
 
       return await this.host.paymentService.cancelOrder(providerOptions, orderId, transactionId, sessionId);
     } catch (error) {
-      global.log.save('cancel-order-payment-document-error', { error: error && error.message }, 'error');
+      getLog().save('cancel-order-payment-document-error', { error: error && error.message }, 'error');
       throw error;
     }
   }
@@ -660,7 +661,7 @@ export class DocumentPaymentBusiness extends Business {
 
     // OR transaction Id when failed payment.
     const providerTransactionId = paidOrder && paidOrder.extraData && (paidOrder.extraData.paymentId || paidOrder.extraData.externalTransactionId);
-    global.log.save(
+    getLog().save(
       'prepare-params-to-unhold-payment',
       { paymentOptions: paymentSystemParams, transactionId: providerTransactionId, sessionId },
       'info',
@@ -674,13 +675,13 @@ export class DocumentPaymentBusiness extends Business {
         sessionId,
       });
     } catch (error) {
-      global.log.save('unhold-payment-while-commit-error', error, 'error');
+      getLog().save('unhold-payment-while-commit-error', error, 'error');
       const wrappedError = new Error(error.message);
       (wrappedError as any).cause = error;
       throw wrappedError;
     }
     if (!unholdPaymentRes) {
-      global.log.save('unhold-payment-empty-res-while-commit-error', { unholdPaymentRes, documentId }, 'error');
+      getLog().save('unhold-payment-empty-res-while-commit-error', { unholdPaymentRes, documentId }, 'error');
       throw new Error('Unhold payment result is empty.');
     }
 
@@ -692,11 +693,11 @@ export class DocumentPaymentBusiness extends Business {
     });
 
     // Update document.
-    const updatedDocument = await global.models.document.updateData(documentId, userId, documentData);
+    const updatedDocument = await getModels().document.updateData(documentId, userId, documentData);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    global.log.save('update-document-with-payment-data', { updatedDocument });
+    getLog().save('update-document-with-payment-data', { updatedDocument });
 
     return;
   }
@@ -721,7 +722,7 @@ export class DocumentPaymentBusiness extends Business {
     try {
       paymentSystemParams = await this.getPaymentProviderOptionsByDocId(paymentControlPath, documentId, userId, userUnitIds);
     } catch (error) {
-      global.log.save('get-payment-receipt-get-system-params-error', { error, documentId, orderId, userId });
+      getLog().save('get-payment-receipt-get-system-params-error', { error, documentId, orderId, userId });
       throw error;
     }
 
@@ -729,7 +730,7 @@ export class DocumentPaymentBusiness extends Business {
     if (!receipt) {
       throw new Error("Can't get payment receipt.");
     }
-    global.log.save('get-payment-receipt', { receipt });
+    getLog().save('get-payment-receipt', { receipt });
 
     return receipt;
   }
@@ -754,7 +755,7 @@ export class DocumentPaymentBusiness extends Business {
     try {
       paymentSystemParams = await this.getPaymentProviderOptionsByDocId(paymentControlPath, documentId, userId, userUnitIds);
     } catch (error) {
-      global.log.save('get-withdrawal-status-get-system-params-error', { error, documentId, orderId, userId });
+      getLog().save('get-withdrawal-status-get-system-params-error', { error, documentId, orderId, userId });
       throw error;
     }
 
@@ -762,7 +763,7 @@ export class DocumentPaymentBusiness extends Business {
     if (!withdrawalStatus) {
       throw new Error(ERROR_GET_PAYMENT_DATA);
     }
-    global.log.save('get-withdrawal-status-result', { withdrawalStatus });
+    getLog().save('get-withdrawal-status-result', { withdrawalStatus });
 
     return withdrawalStatus;
   }
@@ -783,7 +784,7 @@ export class DocumentPaymentBusiness extends Business {
 
     // Get document template.
     const templateId = document.documentTemplateId;
-    const documentTemplate = await global.models.documentTemplate.findById(templateId);
+    const documentTemplate = await getModels().documentTemplate.findById(templateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -794,7 +795,7 @@ export class DocumentPaymentBusiness extends Business {
     if (!paymentProperties) {
       throw new Error('Can not find payment properties in JSON schema.');
     }
-    global.log.save('payment-properties', {
+    getLog().save('payment-properties', {
       documentTemplateId: documentTemplate.id,
       documentTemplateName: documentTemplate.name,
       paymentProperties,
@@ -845,31 +846,31 @@ export class DocumentPaymentBusiness extends Business {
     initiativeContext: string;
   }): Promise<any> {
     // Check config.
-    const config = global.config?.payment?.applePay;
+    const config = getConfig()?.payment?.applePay;
     if (!config) {
       throw new InvalidConfigError('payment.applePay required.');
     }
 
     // Check domain name.
     const { host } = new URL(validationUrl);
-    if (host !== global.config.allowedApplePayGateway) {
+    if (host !== getConfig().allowedApplePayGateway) {
       throw new ForbiddenError(`validationUrl domain ${host} is not allowed Apple Pay gateway.`);
     }
 
     // Send request to Apple API.
-    const response = await global.httpClient.request(
+    const response = await getHttpClient().request(
       validationUrl,
       {
         agent: new https.Agent({
-          cert: Buffer.from(global.config.merchantIdentityCertificateInBase64, 'base64').toString('utf-8'),
-          key: Buffer.from(global.config.merchantIdentityPrivateKeyInBase64, 'base64').toString('utf-8'),
+          cert: Buffer.from(getConfig().merchantIdentityCertificateInBase64, 'base64').toString('utf-8'),
+          key: Buffer.from(getConfig().merchantIdentityPrivateKeyInBase64, 'base64').toString('utf-8'),
         }),
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          merchantIdentifier: global.config.merchantIdentifier,
+          merchantIdentifier: getConfig().merchantIdentifier,
           displayName,
           initiative,
           initiativeContext,
@@ -944,7 +945,7 @@ export class DocumentPaymentBusiness extends Business {
       }
     } catch (error) {
       // Do not throw error.
-      global.log.save('download-payment-receipt-error', { error: error.toString() }, 'error');
+      getLog().save('download-payment-receipt-error', { error: error.toString() }, 'error');
     }
   }
 

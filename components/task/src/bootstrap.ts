@@ -24,6 +24,7 @@ import { assertBasicAuthConfig, assertDownloadTokenConfig, assertTestAuthConfig,
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
 import { initIdApiClient } from './lib/id_api';
+import { setAppContext, getModels, getConfig, getLog } from './lib/context';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/task';
 
@@ -41,6 +42,7 @@ const DEFAULT_OPTIONS = {
 };
 const JEST_ENV = 'jest';
 global.JEST_ENV = JEST_ENV;
+setAppContext({ JEST_ENV });
 
 /**
  * BPMN Task core.
@@ -111,6 +113,9 @@ export class BpmnTaskCore {
     // Init config.
     const config: any = loadConfig(configPath);
 
+    setAppContext({ config });
+    global.config = config;
+
     // Do not start with a publicly known default Basic token (or none in production).
     assertBasicAuthConfig(config);
 
@@ -120,11 +125,13 @@ export class BpmnTaskCore {
     // Do not let test_users tokens bypass auth in production.
     assertTestAuthConfig(config);
 
-    this.sandbox = new Sandbox(buildSandboxConfig(config.sandbox) as any);
+    this.sandbox = new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
     Keywords.init();
 
     // Init global http client.
-    global.httpClient = new HttpClient(global.config.http_client);
+    const httpClient = new HttpClient(config.http_client);
+    setAppContext({ httpClient });
+    global.httpClient = httpClient;
 
     // Init global custom error.
     Object.entries(Errors).forEach(([ErrorName, ErrorClass]) => {
@@ -139,6 +146,7 @@ export class BpmnTaskCore {
     } else {
       log = new Log([consoleLogProvider], ['console']);
     }
+    setAppContext({ log, typeOf });
     global.log = log;
     global.typeOf = typeOf;
 
@@ -153,10 +161,12 @@ export class BpmnTaskCore {
     });
 
     // Save moment global to use in eval.
+    setAppContext({ moment });
     global.moment = moment;
 
     // Init DB.
     const db = await Db.getInstance(config.db);
+    setAppContext({ db });
     global.db = db;
 
     // Init pgpubsub.
@@ -169,20 +179,21 @@ export class BpmnTaskCore {
 
     // Init models.
     this.models = new Models(customModels);
+    setAppContext({ models: global.models });
     new DictionariesModel(customDictionaryModels);
 
     // Initialize sandbox.
     await this.sandbox.init(this.models);
 
     // Init plugins. `paymentTransactions` is the only capability a TaskPaymentProvider plugin
-    // gets besides logging/config - it never touches `global.models`/`global.db` directly (see
+    // gets besides logging/config - it never touches the models/db globals directly (see
     // `TaskPaymentTransactionService`'s own JSDoc in `@liquio/plugin-sdk`).
     const pluginsConfig = config.plugins;
     let pluginRegistry;
     if (pluginsConfig) {
       const paymentTransactions = {
-        create: (data) => global.models.paymentTransactions.create(data),
-        resolve: async (id) => (await global.models.paymentTransactions.findById(id)) ?? undefined,
+        create: (data) => getModels().paymentTransactions.create(data),
+        resolve: async (id) => (await getModels().paymentTransactions.findById(id)) ?? undefined,
       };
       pluginRegistry = await new PluginLoader(log, undefined, { paymentTransactions }).load(pluginsConfig);
     } else {
@@ -196,24 +207,30 @@ export class BpmnTaskCore {
 
     // Init businesses.
     const businesses: any = new Businesses(config);
+    global.businesses = businesses.businesses;
+    setAppContext({ businesses: businesses.businesses });
 
     // Init BPMN Task redis.
-    global.redisClient = config?.redis?.isEnabled
+    const redisClient = config?.redis?.isEnabled
       ? new RedisClient({
           host: config.redis.host,
           port: config.redis.port,
           defaultTtl: config.redis.defaultTtl,
         })
       : undefined;
+    setAppContext({ redisClient });
+    global.redisClient = redisClient;
 
     // Init common BPMN redis.
-    global.redisClientCommonBpmn = config?.redis?.redisCommonBpmn?.isEnabled
+    const redisClientCommonBpmn = config?.redis?.redisCommonBpmn?.isEnabled
       ? new RedisClient({
           host: config.redis.redisCommonBpmn.host,
           port: config.redis.redisCommonBpmn.port,
           defaultTtl: config.redis.redisCommonBpmn.defaultTtl,
         })
       : undefined;
+    setAppContext({ redisClientCommonBpmn });
+    global.redisClientCommonBpmn = redisClientCommonBpmn;
 
     const taskBusiness = businesses.businesses.task;
     const documentBusiness = businesses.businesses.document;
@@ -243,6 +260,7 @@ export class BpmnTaskCore {
     });
 
     await messageQueue.init();
+    setAppContext({ messageQueue });
     global.messageQueue = messageQueue;
 
     // Init file generator.
@@ -252,8 +270,8 @@ export class BpmnTaskCore {
     new StorageService(customStorageProvider);
 
     // Start external service statuses daemon.
-    if (global.config.external_services?.daemon?.isEnbaled) {
-      const externalServicesStatusesDaemon = new ExternalServicesStatusesDaemon(global.config.external_services.daemon);
+    if (getConfig().external_services?.daemon?.isEnbaled) {
+      const externalServicesStatusesDaemon = new ExternalServicesStatusesDaemon(getConfig().external_services.daemon);
       externalServicesStatusesDaemon.start();
     }
 

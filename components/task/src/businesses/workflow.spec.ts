@@ -2,11 +2,12 @@ import nock from 'nock';
 import { Sandbox } from '@liquio/back-core';
 
 import { WorkflowBusiness } from './workflow';
+import { setAppContext, resetAppContext, getConfig } from '../lib/context';
 
 new Sandbox();
 
 describe('WorkflowBusiness', () => {
-  global.config = {
+  const config: any = {
     workflow: {
       elastic: {
         protocol: 'https',
@@ -36,8 +37,18 @@ describe('WorkflowBusiness', () => {
     },
   };
 
+  beforeEach(() => {
+    setAppContext({ config });
+    // Temporary: unmigrated services/storage still reads the bare global config.
+    Object.assign(global, { config });
+  });
+
+  afterEach(() => {
+    resetAppContext();
+  });
+
   it('should initialize', () => {
-    const workflowBusiness = new WorkflowBusiness(global.config);
+    const workflowBusiness = new WorkflowBusiness(getConfig());
     expect(workflowBusiness).toBeDefined();
   });
 
@@ -47,7 +58,7 @@ describe('WorkflowBusiness', () => {
     beforeEach(() => {
       // Create fresh instance for each test
       (WorkflowBusiness as any).singleton = null;
-      workflowBusiness = new WorkflowBusiness(global.config);
+      workflowBusiness = new WorkflowBusiness(getConfig());
     });
 
     afterEach(() => {

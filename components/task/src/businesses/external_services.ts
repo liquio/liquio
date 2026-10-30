@@ -6,6 +6,7 @@ import { Sign } from '../lib/sign';
 import { StorageService } from '../services/storage';
 import { DocumentAttachmentModel } from '../models/document_attachment';
 import { certResultSetStatus } from './external_services/cert_result_set_status';
+import { getModels, getConfig } from '../lib/context';
 
 // Constants.
 const BODY_WORKFLOW_ID_AND_TIMESTAMP_SEPARATOR = '|';
@@ -238,7 +239,7 @@ export class ExternalServicesBusiness extends Business {
    * @return {string|undefined}
    */
   getTaskTemplateIdByWorkflowTemplateId(workflowTemplateId) {
-    const { trembitaStatusTaskTemplateIds } = global.config.external_services;
+    const { trembitaStatusTaskTemplateIds } = getConfig().external_services;
     return trembitaStatusTaskTemplateIds[workflowTemplateId];
   }
 
@@ -248,7 +249,7 @@ export class ExternalServicesBusiness extends Business {
    * @return {Promise<WorkflowEntity|Promise<undefined>>}.
    */
   async fetchWorkflowByWorkflowId(workflowId) {
-    return await global.models.workflow.findById(workflowId);
+    return await getModels().workflow.findById(workflowId);
   }
 
   /**

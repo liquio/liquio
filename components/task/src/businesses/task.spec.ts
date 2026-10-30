@@ -1,13 +1,20 @@
 import { Sandbox } from '@liquio/back-core';
 
 import { TaskBusiness } from './task';
+import { setAppContext, resetAppContext, getModels } from '../lib/context';
 import { DocumentValidatorService } from '../services/document_validator';
 
 jest.mock('../services/document_validator', () => ({
   DocumentValidatorService: jest.fn(),
 }));
 
-global.log = { save: jest.fn() } as any;
+beforeEach(() => {
+  setAppContext({ log: { save: jest.fn() } as any });
+});
+
+afterEach(() => {
+  resetAppContext();
+});
 
 describe('TaskBusiness.setStatusFinished', () => {
   const jsonSchema = { properties: { step1: { properties: { fieldA: { type: 'string' } } } } };
@@ -38,19 +45,23 @@ describe('TaskBusiness.setStatusFinished', () => {
       hasAccess: jest.fn().mockResolvedValue(true),
       document: { id: 'document-id', documentTemplateId: 1, data: { step1: { fieldA: 'a' } } },
     };
-    global.models = {
-      task: {
-        findById: jest.fn().mockResolvedValue(task),
-        getTraceMetaByTaskId: jest.fn().mockResolvedValue({ taskId: 'task-id', workflowTemplateId: 3 }),
-      },
-      workflow: { findById: jest.fn().mockResolvedValue({ workflowTemplate: { data: {} } }) },
-      taskTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) },
-      documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
-      workflowError: { create: jest.fn().mockResolvedValue(undefined) },
-    } as any;
-    global.businesses = {
-      register: { getFilteredRecordsByKeyId: jest.fn() },
-    } as any;
+    setAppContext({
+      models: {
+        task: {
+          findById: jest.fn().mockResolvedValue(task),
+          getTraceMetaByTaskId: jest.fn().mockResolvedValue({ taskId: 'task-id', workflowTemplateId: 3 }),
+        },
+        workflow: { findById: jest.fn().mockResolvedValue({ workflowTemplate: { data: {} } }) },
+        taskTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) },
+        documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
+        workflowError: { create: jest.fn().mockResolvedValue(undefined) },
+      } as any,
+    });
+    setAppContext({
+      businesses: {
+        register: { getFilteredRecordsByKeyId: jest.fn() },
+      } as any,
+    });
   });
 
   afterEach(() => {
@@ -79,7 +90,7 @@ describe('TaskBusiness.setStatusFinished', () => {
     await expect(
       taskBusiness.setStatusFinished('task-id', 'user-id', { all: [], head: [], member: [] }, false, { user: {}, units: {} }),
     ).rejects.toBeDefined();
-    expect(global.models.task.getTraceMetaByTaskId).toHaveBeenCalledWith('task-id');
+    expect(getModels().task.getTraceMetaByTaskId).toHaveBeenCalledWith('task-id');
   });
 });
 
@@ -105,9 +116,11 @@ describe('TaskBusiness id-api calls', () => {
   describe('setPerformerUsers', () => {
     it('looks the users up with the strict ids check and saves their names', async () => {
       const setPerformerUsers = jest.fn().mockResolvedValue({ id: 'task-id' });
-      global.models = {
-        task: { findById: jest.fn().mockResolvedValue({ isPerformerViaUnit: () => true }), setPerformerUsers },
-      } as any;
+      setAppContext({
+        models: {
+          task: { findById: jest.fn().mockResolvedValue({ isPerformerViaUnit: () => true }), setPerformerUsers },
+        } as any,
+      });
       taskBusiness.customLogs = { saveCustomLog: jest.fn() };
       client.getUsersByIds.mockResolvedValue([{ userId: USER_ID, name: 'Ivanov Ivan' }]);
 
@@ -118,7 +131,7 @@ describe('TaskBusiness id-api calls', () => {
     });
 
     it('wraps an error of id-api and keeps the cause', async () => {
-      global.models = { task: { findById: jest.fn().mockResolvedValue({ isPerformerViaUnit: () => true }) } } as any;
+      setAppContext({ models: { task: { findById: jest.fn().mockResolvedValue({ isPerformerViaUnit: () => true }) } } as any });
       const error = new Error('Users list not responsed.');
       client.getUsersByIds.mockRejectedValue(error);
 
@@ -140,14 +153,16 @@ describe('TaskBusiness id-api calls', () => {
       jest.spyOn(taskBusiness, 'addTaskMetadata').mockResolvedValue(undefined as any);
       jest.spyOn(taskBusiness.sandbox, 'evalWithArgs').mockReturnValue([signer]);
       setSignerUsers = jest.fn().mockResolvedValue({ setIsMeSignerAndPerformer: jest.fn() });
-      global.models = {
-        documentTemplate: {
-          findById: jest
-            .fn()
-            .mockResolvedValue({ jsonSchema: { isContinueSignAvailable: true, properties: { ms: { calcSigners: '(document) => []' } } } }),
-        },
-        task: { setSignerUsers },
-      } as any;
+      setAppContext({
+        models: {
+          documentTemplate: {
+            findById: jest
+              .fn()
+              .mockResolvedValue({ jsonSchema: { isContinueSignAvailable: true, properties: { ms: { calcSigners: '(document) => []' } } } }),
+          },
+          task: { setSignerUsers },
+        } as any,
+      });
     });
 
     it('prepares the signers by IPN and email only', async () => {
@@ -186,16 +201,18 @@ describe('TaskBusiness.create in an existing workflow', () => {
 
     workflow = { workflowTemplateId: 5, hasAccess: jest.fn().mockReturnValue(true) };
     changeIsCurrentStateToOld = jest.fn();
-    global.config = {} as any;
-    global.models = {
-      workflowTemplate: { findById: jest.fn().mockResolvedValue({ isActive: true }) },
-      taskTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) },
-      workflow: { findById: jest.fn().mockImplementation(async () => workflow) },
-      task: {
-        findCurrentTaskByWorkflowIdAndTaskTemplateID: jest.fn().mockRejectedValue(new Error('past access checks')),
-        changeIsCurrentStateToOld,
-      },
-    } as any;
+    setAppContext({ config: {} as any });
+    setAppContext({
+      models: {
+        workflowTemplate: { findById: jest.fn().mockResolvedValue({ isActive: true }) },
+        taskTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) },
+        workflow: { findById: jest.fn().mockImplementation(async () => workflow) },
+        task: {
+          findCurrentTaskByWorkflowIdAndTaskTemplateID: jest.fn().mockRejectedValue(new Error('past access checks')),
+          changeIsCurrentStateToOld,
+        },
+      } as any,
+    });
   });
 
   afterEach(() => {

@@ -2,6 +2,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { initIdApiClient } from '../../lib/id_api';
 import { DocumentBusiness } from './index';
+import { getLog, getModels, getConfig, getHttpClient, setAppContext as setContext, resetAppContext } from '../../lib/context';
 
 // Characterization tests for the 7 payment-orchestration methods on DocumentBusiness.
 // PaymentService is mocked out (instance property override, matching the existing
@@ -11,6 +12,12 @@ import { DocumentBusiness } from './index';
 // propagation) — not PaymentService/provider behavior itself, which is covered elsewhere.
 new Sandbox();
 initIdApiClient({});
+
+const setAppContext = (context: Parameters<typeof setContext>[0]) => {
+  setContext(context);
+  // Unmigrated services, models and lib (T17-task-b) still read the bare globals.
+  Object.assign(global, context);
+};
 
 describe('DocumentBusiness payment methods', () => {
   let documentBusiness: any;
@@ -44,49 +51,55 @@ describe('DocumentBusiness payment methods', () => {
 
   beforeEach(() => {
     (DocumentBusiness as any).singleton = null;
-    global.config = buildConfig();
-    global.db = {
-      define: jest.fn().mockReturnValue({ prototype: {} }),
-      sync: jest.fn(),
-      authenticate: jest.fn(),
-      transaction: jest.fn(),
-      query: jest.fn(),
-      close: jest.fn(),
-    } as any;
-    documentBusiness = new DocumentBusiness(global.config);
+    setAppContext({ config: buildConfig() });
+    setAppContext({
+      db: {
+        define: jest.fn().mockReturnValue({ prototype: {} }),
+        sync: jest.fn(),
+        authenticate: jest.fn(),
+        transaction: jest.fn(),
+        query: jest.fn(),
+        close: jest.fn(),
+      } as any,
+    });
+    documentBusiness = new DocumentBusiness(getConfig());
 
-    global.log = {
-      save: jest.fn(),
-    } as any;
+    setAppContext({
+      log: {
+        save: jest.fn(),
+      } as any,
+    });
 
     const checkouts = new Map<string, any>();
-    global.models = {
-      paymentCheckouts: {
-        find: jest.fn(async (id, path) => checkouts.get(`${id}:${path}`) ?? null),
-        reserve: jest.fn(async (id, path, calculated = null, previousId) => {
-          const key = `${id}:${path}`;
-          const previous = checkouts.get(key);
-          if (previous && (previous.attempt_id !== previousId || previous.paid || !previous.calculated)) return null;
-          const checkout = { document_id: id, payment_control_path: path, attempt_id: `attempt-${Math.random()}`, calculated, paid: false };
-          checkouts.set(key, checkout);
-          return checkout;
-        }),
-        saveCalculated: jest.fn(async (checkout, calculated) => {
-          checkout.calculated = calculated;
-        }),
-        markPaid: jest.fn(async (id, path, status) => {
-          const checkout = checkouts.get(`${id}:${path}`);
-          if (checkout) Object.assign(checkout, { paid: true, success_status: status });
-        }),
-      },
-      document: {
-        findById: jest.fn(),
-        updateData: jest.fn(),
-      },
-      documentTemplate: {
-        findById: jest.fn(),
-      },
-    } as any;
+    setAppContext({
+      models: {
+        paymentCheckouts: {
+          find: jest.fn(async (id, path) => checkouts.get(`${id}:${path}`) ?? null),
+          reserve: jest.fn(async (id, path, calculated = null, previousId) => {
+            const key = `${id}:${path}`;
+            const previous = checkouts.get(key);
+            if (previous && (previous.attempt_id !== previousId || previous.paid || !previous.calculated)) return null;
+            const checkout = { document_id: id, payment_control_path: path, attempt_id: `attempt-${Math.random()}`, calculated, paid: false };
+            checkouts.set(key, checkout);
+            return checkout;
+          }),
+          saveCalculated: jest.fn(async (checkout, calculated) => {
+            checkout.calculated = calculated;
+          }),
+          markPaid: jest.fn(async (id, path, status) => {
+            const checkout = checkouts.get(`${id}:${path}`);
+            if (checkout) Object.assign(checkout, { paid: true, success_status: status });
+          }),
+        },
+        document: {
+          findById: jest.fn(),
+          updateData: jest.fn(),
+        },
+        documentTemplate: {
+          findById: jest.fn(),
+        },
+      } as any,
+    });
 
     // Mock out the PaymentService instance created in the constructor - tests here
     // only care about how document.ts calls into it, not its own behavior.
@@ -143,8 +156,8 @@ describe('DocumentBusiness payment methods', () => {
 
     beforeEach(() => {
       documentEntity.data = {};
-      (global.models.document.findById as jest.Mock).mockResolvedValue(documentEntity);
-      (global.models.document.updateData as jest.Mock).mockImplementation(async (_id, _user, data) => {
+      (getModels().document.findById as jest.Mock).mockResolvedValue(documentEntity);
+      (getModels().document.updateData as jest.Mock).mockImplementation(async (_id, _user, data) => {
         documentEntity.data = data;
         return documentEntity;
       });
@@ -152,13 +165,13 @@ describe('DocumentBusiness payment methods', () => {
 
     it('builds the expected data/config shape and forwards it to PaymentService.calculatePayment (happy path)', async () => {
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(documentEntity);
-      (global.models.documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
+      (getModels().documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
 
       const paymentData = { transactionId: 'tx-1', amount: 100 };
       documentBusiness.paymentService.calculatePayment.mockResolvedValue(paymentData);
 
       const updatedDocument = { id: documentId, data: { payment: { calculated: paymentData } } };
-      (global.models.document.updateData as jest.Mock).mockResolvedValue(updatedDocument);
+      (getModels().document.updateData as jest.Mock).mockResolvedValue(updatedDocument);
 
       const result = await documentBusiness.payment.calculatePayment(
         documentId,
@@ -200,13 +213,13 @@ describe('DocumentBusiness payment methods', () => {
           paymentProperties: expect.anything(),
         }),
       );
-      expect(global.models.document.updateData).toHaveBeenCalledWith(documentId, userId, expect.any(Object));
+      expect(getModels().document.updateData).toHaveBeenCalledWith(documentId, userId, expect.any(Object));
       expect(result.data).toMatchObject(updatedDocument.data);
     });
 
     it('propagates the error when PaymentService.calculatePayment returns no data', async () => {
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(documentEntity);
-      (global.models.documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
+      (getModels().documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
       documentBusiness.paymentService.calculatePayment.mockResolvedValue(undefined);
 
       await expect(
@@ -218,7 +231,7 @@ describe('DocumentBusiness payment methods', () => {
 
     function setupCheckout() {
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(documentEntity);
-      (global.models.documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
+      (getModels().documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
       documentBusiness.paymentService.calculatePayment.mockResolvedValue({ transactionId: 'tx-1', amount: 100 });
       jest.spyOn(documentBusiness.payment, 'handlePaymentStatus').mockImplementation(async (calculated: any) => ({
         transactionId: calculated.transactionId,
@@ -263,14 +276,14 @@ describe('DocumentBusiness payment methods', () => {
       };
       const paymentControlPath = 'paymentInfo.properties.paymentControl';
       const control = { calculated: legacyPayment, calculatedHistory: [legacyPayment] };
-      (global.models.documentTemplate.findById as jest.Mock).mockResolvedValue({
+      (getModels().documentTemplate.findById as jest.Mock).mockResolvedValue({
         ...documentTemplate,
         jsonSchema: { properties: { paymentInfo: { properties: { paymentControl: jsonSchema.properties.payment } } } },
       });
       if (source === 'document') {
         documentEntity.data = { paymentInfo: { paymentControl: control } };
       } else {
-        await global.models.paymentCheckouts.reserve(documentId, 'paymentInfo.paymentControl', legacyPayment);
+        await getModels().paymentCheckouts.reserve(documentId, 'paymentInfo.paymentControl', legacyPayment);
       }
       documentBusiness.payment.handlePaymentStatus.mockImplementation(async (data, _customer, _status, params) => {
         if (!params?.documentId || !params?.paymentControlPath) throw new Error('Missing callback routing context');
@@ -301,7 +314,7 @@ describe('DocumentBusiness payment methods', () => {
 
     it('recovers the saved checkout after failure to write the document', async () => {
       setupCheckout();
-      (global.models.document.updateData as jest.Mock).mockRejectedValueOnce(new Error('db unavailable'));
+      (getModels().document.updateData as jest.Mock).mockRejectedValueOnce(new Error('db unavailable'));
       await expect(initialize()).rejects.toThrow('db unavailable');
       documentEntity.data = {};
       await initialize();
@@ -370,10 +383,10 @@ describe('DocumentBusiness payment methods', () => {
     };
 
     beforeEach(() => {
-      (global.models.document.findById as jest.Mock).mockResolvedValue(documentEntity);
-      (global.models.documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
-      (global.models.document.updateData as jest.Mock).mockResolvedValue(documentEntity);
-      global.businesses = { task: { addTaskMetadata: jest.fn(), handleActivityTypeEvents: jest.fn() } } as any;
+      (getModels().document.findById as jest.Mock).mockResolvedValue(documentEntity);
+      (getModels().documentTemplate.findById as jest.Mock).mockResolvedValue(documentTemplate);
+      (getModels().document.updateData as jest.Mock).mockResolvedValue(documentEntity);
+      setAppContext({ businesses: { task: { addTaskMetadata: jest.fn(), handleActivityTypeEvents: jest.fn() } } as any });
     });
 
     it('resolves providerOptions from config.payment[paymentCustomer] and shapes the response for a redirect provider', async () => {
@@ -385,13 +398,13 @@ describe('DocumentBusiness payment methods', () => {
         status: { isSuccess: false },
       };
       documentBusiness.paymentService.handleStatus.mockResolvedValue(statusInfo);
-      global.config.payment.testCustomer.doRedirect = true;
+      getConfig().payment.testCustomer.doRedirect = true;
 
       const result = await documentBusiness.payment.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false);
 
       expect(documentBusiness.paymentService.handleStatus).toHaveBeenCalledWith(
         payload,
-        global.config.payment.testCustomer,
+        getConfig().payment.testCustomer,
         status,
         undefined,
         undefined,
@@ -409,8 +422,8 @@ describe('DocumentBusiness payment methods', () => {
         status: { isSuccess: false },
       };
       documentBusiness.paymentService.handleStatus.mockResolvedValue(statusInfo);
-      global.config.payment.testCustomer.doRedirect = false;
-      global.config.payment.testCustomer.notifyUrlShortResponse = true;
+      getConfig().payment.testCustomer.doRedirect = false;
+      getConfig().payment.testCustomer.notifyUrlShortResponse = true;
 
       const result = await documentBusiness.payment.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false);
 
@@ -433,7 +446,7 @@ describe('DocumentBusiness payment methods', () => {
         transactionId: 'tx-1',
         status: { isSuccess: false },
       });
-      (global.models.document.findById as jest.Mock).mockResolvedValue({ id: 'doc-1', task: null });
+      (getModels().document.findById as jest.Mock).mockResolvedValue({ id: 'doc-1', task: null });
 
       await expect(documentBusiness.payment.handlePaymentStatus(payload, paymentCustomer, status, undefined, undefined, false)).rejects.toThrow();
     });
@@ -456,7 +469,7 @@ describe('DocumentBusiness payment methods', () => {
 
     it('forwards providerOptions, calculated payment data and sms code to PaymentService.confirmBySmsCode (happy path)', async () => {
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(documentEntity);
-      (global.models.document.updateData as jest.Mock).mockResolvedValue(documentEntity);
+      (getModels().document.updateData as jest.Mock).mockResolvedValue(documentEntity);
       documentBusiness.paymentService.confirmBySmsCode.mockResolvedValue(undefined);
 
       const result = await documentBusiness.payment.confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds);
@@ -471,14 +484,14 @@ describe('DocumentBusiness payment methods', () => {
 
     it('swallows the PaymentService.confirmBySmsCode error, logs it, and still updates the document', async () => {
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(documentEntity);
-      (global.models.document.updateData as jest.Mock).mockResolvedValue(documentEntity);
+      (getModels().document.updateData as jest.Mock).mockResolvedValue(documentEntity);
       const providerError = new Error('provider failure');
       documentBusiness.paymentService.confirmBySmsCode.mockRejectedValue(providerError);
 
       // document.ts today catches and only logs this error - it does not rethrow.
       const result = await documentBusiness.payment.confirmBySmsCode(smsCode, paymentCustomer, paymentControlPath, documentId, userId, userUnitIds);
 
-      expect(global.log.save).toHaveBeenCalledWith('confirm-code-response-error', { error: providerError }, 'error');
+      expect(getLog().save).toHaveBeenCalledWith('confirm-code-response-error', { error: providerError }, 'error');
       expect(result).toEqual({ isConfirmed: 0, transactionId: 'tx-1' });
     });
 
@@ -513,7 +526,7 @@ describe('DocumentBusiness payment methods', () => {
       documentBusiness.paymentService.cancelOrder.mockRejectedValue(providerError);
 
       await expect(documentBusiness.payment.cancelOrder(paymentCustomer, orderId, transactionId, sessionId)).rejects.toThrow(providerError);
-      expect(global.log.save).toHaveBeenCalledWith('cancel-order-payment-document-error', { error: providerError.message }, 'error');
+      expect(getLog().save).toHaveBeenCalledWith('cancel-order-payment-document-error', { error: providerError.message }, 'error');
     });
   });
 
@@ -599,7 +612,7 @@ describe('DocumentBusiness payment methods', () => {
 
   // validateApplePaySession does NOT go through PaymentService/the provider system at all
   // (confirmed by reading document.ts): it validates config/domain and then calls Apple's
-  // session-validation endpoint directly via global.httpClient. So these tests exercise it
+  // session-validation endpoint directly via getHttpClient(). So these tests exercise it
   // independently of the PaymentService mock set up in the outer beforeEach.
   describe('validateApplePaySession', () => {
     const validSession = {
@@ -610,20 +623,20 @@ describe('DocumentBusiness payment methods', () => {
     };
 
     beforeEach(() => {
-      global.config.allowedApplePayGateway = 'apple-pay-gateway.example.com';
-      global.config.merchantIdentityCertificateInBase64 = Buffer.from('cert').toString('base64');
-      global.config.merchantIdentityPrivateKeyInBase64 = Buffer.from('key').toString('base64');
-      global.config.merchantIdentifier = 'merchant.example';
-      global.httpClient = { request: jest.fn() } as any;
+      getConfig().allowedApplePayGateway = 'apple-pay-gateway.example.com';
+      getConfig().merchantIdentityCertificateInBase64 = Buffer.from('cert').toString('base64');
+      getConfig().merchantIdentityPrivateKeyInBase64 = Buffer.from('key').toString('base64');
+      getConfig().merchantIdentifier = 'merchant.example';
+      setAppContext({ httpClient: { request: jest.fn() } as any });
     });
 
     it('sends a request to the Apple Pay validation endpoint and returns the parsed response (happy path)', async () => {
       const applePayResponse = { epochTimestamp: 123, merchantSessionIdentifier: 'abc' };
-      (global.httpClient.request as jest.Mock).mockResolvedValue({ json: jest.fn().mockResolvedValue(applePayResponse) });
+      (getHttpClient().request as jest.Mock).mockResolvedValue({ json: jest.fn().mockResolvedValue(applePayResponse) });
 
       const result = await documentBusiness.payment.validateApplePaySession(validSession);
 
-      expect(global.httpClient.request).toHaveBeenCalledWith(
+      expect(getHttpClient().request).toHaveBeenCalledWith(
         validSession.validationUrl,
         expect.objectContaining({ method: 'POST' }),
         'validate-apple-pay-session',
@@ -633,17 +646,21 @@ describe('DocumentBusiness payment methods', () => {
     });
 
     it('throws InvalidConfigError when payment.applePay config is missing', async () => {
-      global.config.payment.applePay = undefined;
+      getConfig().payment.applePay = undefined;
 
       await expect(documentBusiness.payment.validateApplePaySession(validSession)).rejects.toThrow('payment.applePay required.');
-      expect(global.httpClient.request).not.toHaveBeenCalled();
+      expect(getHttpClient().request).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenError when the validationUrl domain is not the allowed Apple Pay gateway', async () => {
       await expect(
         documentBusiness.payment.validateApplePaySession({ ...validSession, validationUrl: 'https://not-allowed.example.com/session' }),
       ).rejects.toThrow(/not allowed Apple Pay gateway/);
-      expect(global.httpClient.request).not.toHaveBeenCalled();
+      expect(getHttpClient().request).not.toHaveBeenCalled();
     });
   });
+});
+
+afterAll(() => {
+  resetAppContext();
 });
