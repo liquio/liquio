@@ -2,6 +2,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { ERROR_OVERRIDE } from '../../../../../constants/error';
 import { InvalidConfigError } from '../../../../../lib/errors';
+import { getConfig, getHttpClient } from '../../../../../lib/context';
 
 /**
  * Provider.
@@ -18,7 +19,7 @@ export class Provider {
       TREMBITA_REST_API_V2: 'TREMBITA_REST_API_V2',
     };
     this.sandbox = Sandbox.getInstance();
-    this.httpClient = global.httpClient;
+    this.httpClient = getHttpClient();
   }
 
   /**
@@ -55,7 +56,7 @@ export class Provider {
       id: defaultRequestId,
       protocolVersion: defaultProtocolVersion,
       userId: defaultUserId,
-    } = trembitaConfig || global.config.trembita || {};
+    } = trembitaConfig || getConfig().trembita || {};
 
     const id = requestId || defaultRequestId;
     const protocolVersion = serviceConfig?.protocolVersion || defaultProtocolVersion;
@@ -91,7 +92,7 @@ export class Provider {
    * @return {{url: string}}
    */
   static getTrembitaRestApiV1Params(serviceConfig: any): any {
-    const { host, client, protocolVersion: defaultProtocolVersion } = global.config.trembita || {};
+    const { host, client, protocolVersion: defaultProtocolVersion } = getConfig().trembita || {};
 
     const protocolVersion = serviceConfig?.protocolVersion || defaultProtocolVersion;
 
@@ -121,7 +122,7 @@ export class Provider {
    * @return {{url: string, headers: {'Uxp-client': string, 'Uxp-service': string}}}
    */
   static getTrembitaRestApiV2Params(serviceConfig: any): any {
-    const { host, client, protocolVersion: defaultProtocolVersion } = global.config.trembita || {};
+    const { host, client, protocolVersion: defaultProtocolVersion } = getConfig().trembita || {};
 
     const protocolVersion = serviceConfig?.protocolVersion || defaultProtocolVersion;
 

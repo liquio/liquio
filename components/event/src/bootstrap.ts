@@ -4,7 +4,6 @@ import { PluginLoader } from '@liquio/plugin-sdk';
 
 import { Db } from './lib/db';
 import { MessageQueue } from './lib/message_queue';
-import * as Errors from './lib/errors';
 import { Models } from './models';
 import { RouterService } from './services/router';
 import { EventService } from './services/event';
@@ -37,15 +36,6 @@ export class App {
     this.config = config;
     setAppContext({ config });
     this.sandbox = new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
-    // Set global config for models and other legacy code that still uses it
-    global.config = config;
-  }
-
-  // Init global custom error.
-  useGlobalErrors() {
-    Object.entries(Errors).forEach(([ErrorName, ErrorClass]) => {
-      (global as any)[ErrorName] = ErrorClass;
-    });
   }
 
   // Init global typeOf.
@@ -64,7 +54,7 @@ export class App {
       excludeParams: this.config.log.excludeParams,
       disableDefaultRedaction: this.config.log?.disableDefaultRedaction === true,
     } as any);
-    this.log = global.log = new Log([consoleLogProvider], ['console']);
+    this.log = new Log([consoleLogProvider], ['console']);
     setAppContext({ log: this.log });
   }
 
@@ -95,7 +85,6 @@ export class App {
 
   // Import moment globally to use in eval.
   useMoment() {
-    global.moment = moment;
     setAppContext({ moment });
   }
 
@@ -107,14 +96,12 @@ export class App {
   // Init DB.
   async useDb() {
     this.db = await Db.getInstance(this.config.db);
-    global.db = this.db;
     setAppContext({ db: this.db });
   }
 
   // Init models.
   useModels() {
     this.models = new Models();
-    global.models = this.models.models;
   }
 
   // Init plugins.
@@ -178,8 +165,6 @@ export class App {
     await messageQueue.init();
     this.messageQueue = messageQueue;
 
-    // TODO: inject, do not set global.
-    global.messageQueue = messageQueue;
     setAppContext({ messageQueue });
   }
 
@@ -196,7 +181,6 @@ export class App {
 
 export async function bootstrap(config: any) {
   const app = new App(config);
-  app.useGlobalErrors();
   app.useGlobalTypeOf();
   app.useLog();
   app.useIdApiClient();

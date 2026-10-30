@@ -1,5 +1,6 @@
 import { Provider } from './provider';
 import { HttpRequest } from '../../../../../lib/http_request';
+import { getLog } from '../../../../../lib/context';
 
 /**
  * Liquio provider.
@@ -49,15 +50,15 @@ export class LiquioProvider extends Provider {
    */
   async detail(id: string): Promise<any> {
     try {
-      global.log.save('document-detail-request', id);
+      getLog().save('document-detail-request', id);
       const response = await HttpRequest.send({
         url: `${this.server}:${this.port}${this.routes.documentsCRUD}/${id}`,
         method: HttpRequest.Methods.GET,
         headers: this.headers,
       });
-      global.log.save('document-detail-response', response);
+      getLog().save('document-detail-response', response);
     } catch (error: any) {
-      global.log.save('document-detail-error', error.message);
+      getLog().save('document-detail-error', error.message);
       throw error;
     }
   }
@@ -68,7 +69,7 @@ export class LiquioProvider extends Provider {
    */
   async register(data: any): Promise<any> {
     try {
-      global.log.save('document-register-request', data);
+      getLog().save('document-register-request', data);
       console.log(this.headers);
       const response = await HttpRequest.send({
         url: `${this.server}:${this.port}${this.routes.documentsCRUD}`,
@@ -76,10 +77,10 @@ export class LiquioProvider extends Provider {
         headers: this.headers,
         body: data,
       });
-      global.log.save('document-register-response', response);
+      getLog().save('document-register-response', response);
       return response;
     } catch (error: any) {
-      global.log.save('document-register-error', error.message);
+      getLog().save('document-register-error', error.message);
       throw error;
     }
   }
@@ -90,7 +91,7 @@ export class LiquioProvider extends Provider {
    */
   async update(data: any): Promise<any> {
     try {
-      global.log.save('document-update-request', data);
+      getLog().save('document-update-request', data);
       console.log(this.headers);
       const response = await HttpRequest.send({
         url: `${this.server}:${this.port}${this.routes.documentsCRUD}`,
@@ -98,9 +99,9 @@ export class LiquioProvider extends Provider {
         headers: this.headers,
         body: data,
       });
-      global.log.save('document-update-response', response);
+      getLog().save('document-update-response', response);
     } catch (error: any) {
-      global.log.save('document-update-error', error.message);
+      getLog().save('document-update-error', error.message);
       throw error;
     }
   }
@@ -111,7 +112,7 @@ export class LiquioProvider extends Provider {
    */
   async revoke(data: any): Promise<any> {
     try {
-      global.log.save('document-revoke-request', data);
+      getLog().save('document-revoke-request', data);
       console.log(this.headers);
       const response = await HttpRequest.send({
         url: `${this.server}:${this.port}${this.routes.documentsRevoke}`,
@@ -119,9 +120,9 @@ export class LiquioProvider extends Provider {
         headers: this.headers,
         body: data,
       });
-      global.log.save('document-revoke-response', response);
+      getLog().save('document-revoke-response', response);
     } catch (error: any) {
-      global.log.save('document-revoke-error', error.message);
+      getLog().save('document-revoke-error', error.message);
       throw error;
     }
   }

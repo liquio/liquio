@@ -8,6 +8,7 @@ import _ from 'lodash';
 import { Rmq } from '../../../../../lib/rmq';
 import { Provider } from './provider';
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../../../../../constants/common';
+import { getLog } from '../../../../../lib/context';
 
 /**
  * Standard provider.
@@ -146,7 +147,7 @@ export class StandardProvider extends Provider {
           throw new Error('Custom provider type not defined.');
       }
     } catch (error) {
-      global.log.save('standard-provider-method-error', {
+      getLog().save('standard-provider-method-error', {
         error: (error && error.message) || error,
       });
       throw error;
@@ -185,7 +186,7 @@ export class StandardProvider extends Provider {
       data: body,
       timeout: requestTimeout,
     };
-    global.log.save('send-to-standard-provider|request-options', { requestOptions });
+    getLog().save('send-to-standard-provider|request-options', { requestOptions });
 
     // Do request.
     let response;
@@ -196,7 +197,7 @@ export class StandardProvider extends Provider {
         try {
           await new Promise((resolve) => setTimeout(resolve, retryAfter));
           response = (await axios(requestOptions)).data;
-          global.log.save('send-to-standard-provider|response', { requestOptions, response, data });
+          getLog().save('send-to-standard-provider|response', { requestOptions, response, data });
           break;
         } catch (error) {
           errors.push(error);
@@ -206,7 +207,7 @@ export class StandardProvider extends Provider {
         throw new Error(errors.map((e) => e && e.message).join('|'));
       }
     } catch (error) {
-      global.log.save('send-to-standard-provider|all|exception', { error: error && error.message, data });
+      getLog().save('send-to-standard-provider|all|exception', { error: error && error.message, data });
       throw error;
     }
     if (isTest) {
@@ -236,7 +237,7 @@ export class StandardProvider extends Provider {
           documentModel,
         });
       } catch (error) {
-        global.log.save('standard-provider-rest-response-file-error', {
+        getLog().save('standard-provider-rest-response-file-error', {
           error: error && error.message,
           response,
         });
@@ -245,7 +246,7 @@ export class StandardProvider extends Provider {
       try {
         if (!saveBase64Logs) response.file.content = '***';
       } catch (error) {
-        global.log.save('standard-provider-hide-file-content-error', { error: error?.message, file: response.file });
+        getLog().save('standard-provider-hide-file-content-error', { error: error?.message, file: response.file });
       }
     }
 
@@ -286,7 +287,7 @@ export class StandardProvider extends Provider {
     // Request data.
     let response;
     try {
-      global.log.save('standard-provider-rmq-request', { body, traceLogId, event });
+      getLog().save('standard-provider-rmq-request', { body, traceLogId, event });
       if (useRmqDecorator) {
         response = await rmq.sendRequestAndWaitResponseViaDecorator({
           id: traceLogId,
@@ -304,7 +305,7 @@ export class StandardProvider extends Provider {
         response = await rmq.sendRequestAndWaitResponse(traceLogId, (body && body.data) || body, event);
       }
 
-      global.log.save('standard-provider-rmq-response', { response, traceLogId, event });
+      getLog().save('standard-provider-rmq-response', { response, traceLogId, event });
 
       if (!response) {
         const error: any = new Error('Response not defined.');
@@ -326,14 +327,14 @@ export class StandardProvider extends Provider {
         throw error;
       }
     } catch (error) {
-      global.log.save('standard-provider-rmq-error', {
+      getLog().save('standard-provider-rmq-error', {
         error: (error && error.message) || error,
         traceLogId,
       });
       throw error;
     }
 
-    global.log.save('standard-provider-rmq-prepared-response', { response, traceLogId, event });
+    getLog().save('standard-provider-rmq-prepared-response', { response, traceLogId, event });
 
     if (responseFile) {
       try {
@@ -349,7 +350,7 @@ export class StandardProvider extends Provider {
           });
         }
       } catch (error) {
-        global.log.save('standard-provider-rmq-response-file-error', {
+        getLog().save('standard-provider-rmq-response-file-error', {
           error: error && error.message,
           response,
         });
@@ -359,7 +360,7 @@ export class StandardProvider extends Provider {
         try {
           if (!saveBase64Logs) response.payload.response.document = '***';
         } catch (error) {
-          global.log.save('standard-provider-hide-rmq-file-content-error', { error: error?.message, file: response.payload.response.document });
+          getLog().save('standard-provider-hide-rmq-file-content-error', { error: error?.message, file: response.payload.response.document });
         }
       }
     }
@@ -405,7 +406,7 @@ export class StandardProvider extends Provider {
         fileType,
       });
     } catch (error) {
-      global.log.save('standard-provider-create-document-error', {
+      getLog().save('standard-provider-create-document-error', {
         error: error && error.message,
         fileInfo,
       });
@@ -436,7 +437,7 @@ export class StandardProvider extends Provider {
       const providersConfigData = fs.readFileSync(providersConfigPath, { encoding: 'utf8' });
       providersConfig = JSON.parse(providersConfigData);
     } catch (error) {
-      global.log.save('standard-providers-config-definition-error', {
+      getLog().save('standard-providers-config-definition-error', {
         error: error && error.message,
         providersConfigPath,
       });

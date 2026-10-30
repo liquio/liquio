@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Helpers } from '../../../../lib/helpers';
 const { prepareAxiosErrorToLog } = Helpers;
 import { HttpRequest } from '../../../../lib/http_request';
+import { getLog } from '../../../../lib/context';
 
 // Constants.
 const ID_CARD_LENGTH = 9;
@@ -102,15 +103,15 @@ export class ServicesRepositoryRequester {
       data: body,
       timeout: this.timeout,
     };
-    global.log.save('create-request-in-services-repository|request-options', { requestOptions });
+    getLog().save('create-request-in-services-repository|request-options', { requestOptions });
 
     // Do request.
     let response;
     try {
       response = (await axios(requestOptions)).data;
-      global.log.save('create-request-in-services-repository|response', { requestOptions, response, body });
+      getLog().save('create-request-in-services-repository|response', { requestOptions, response, body });
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'create-request-in-services-repository|exception',
         {
           ...prepareAxiosErrorToLog(error),
@@ -149,15 +150,15 @@ export class ServicesRepositoryRequester {
       data: body,
       timeout: this.timeout,
     };
-    global.log.save('change-status-in-services-repository|request-options', { requestOptions });
+    getLog().save('change-status-in-services-repository|request-options', { requestOptions });
 
     // Do request.
     let response;
     try {
       response = (await axios(requestOptions)).data;
-      global.log.save('change-status-in-services-repository|response', { requestOptions, response, body });
+      getLog().save('change-status-in-services-repository|response', { requestOptions, response, body });
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'create-status-in-services-repository|exception',
         {
           ...prepareAxiosErrorToLog(error),
@@ -190,15 +191,15 @@ export class ServicesRepositoryRequester {
       },
       timeout: this.timeout,
     };
-    global.log.save('get-request-in-services-repository|request-options', { requestOptions });
+    getLog().save('get-request-in-services-repository|request-options', { requestOptions });
 
     // Do request.
     let response;
     try {
       response = (await axios(requestOptions)).data;
-      global.log.save('get-request-in-services-repository|response', { requestOptions, response, userIpn, repositoryRequestId });
+      getLog().save('get-request-in-services-repository|response', { requestOptions, response, userIpn, repositoryRequestId });
     } catch (error) {
-      global.log.save('get-request-in-services-repository|exception', { ...prepareAxiosErrorToLog(error), userIpn, repositoryRequestId });
+      getLog().save('get-request-in-services-repository|exception', { ...prepareAxiosErrorToLog(error), userIpn, repositoryRequestId });
       throw error;
     }
 
@@ -223,15 +224,15 @@ export class ServicesRepositoryRequester {
       },
       timeout: this.timeout,
     };
-    global.log.save('get-request-status-in-services-repository|request-options', { requestOptions });
+    getLog().save('get-request-status-in-services-repository|request-options', { requestOptions });
 
     // Do request.
     let response;
     try {
       response = (await axios(requestOptions)).data;
-      global.log.save('get-request-status-in-services-repository|response', { requestOptions, response, statusId });
+      getLog().save('get-request-status-in-services-repository|response', { requestOptions, response, statusId });
     } catch (error) {
-      global.log.save('create-request-status-in-services-repository|exception', { ...prepareAxiosErrorToLog(error), statusId });
+      getLog().save('create-request-status-in-services-repository|exception', { ...prepareAxiosErrorToLog(error), statusId });
       throw error;
     }
 
@@ -256,15 +257,15 @@ export class ServicesRepositoryRequester {
       },
       timeout: this.timeout,
     };
-    global.log.save('get-all-user-services-from-repository|request-options', { requestOptions });
+    getLog().save('get-all-user-services-from-repository|request-options', { requestOptions });
 
     // Do request.
     let response;
     try {
       response = (await axios(requestOptions)).data;
-      global.log.save('get-all-user-services-from-repository|response', { requestOptions, response, userIpn });
+      getLog().save('get-all-user-services-from-repository|response', { requestOptions, response, userIpn });
     } catch (error) {
-      global.log.save('get-all-user-services-from-repository|exception', { ...prepareAxiosErrorToLog(error), userIpn });
+      getLog().save('get-all-user-services-from-repository|exception', { ...prepareAxiosErrorToLog(error), userIpn });
       throw error;
     }
 
@@ -287,9 +288,9 @@ export class ServicesRepositoryRequester {
     let response: any;
     try {
       response = (await axios(requestOptions)).data;
-      global.log.save('send-ping-request-to-services-repository', response);
+      getLog().save('send-ping-request-to-services-repository', response);
     } catch (error) {
-      global.log.save('send-ping-request-to-services-repository', prepareAxiosErrorToLog(error), 'error');
+      getLog().save('send-ping-request-to-services-repository', prepareAxiosErrorToLog(error), 'error');
     }
     return JSON.parse(response);
   }

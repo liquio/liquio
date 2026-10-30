@@ -2,6 +2,7 @@ import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from '../../../../../lib/http_request';
 import { Provider } from './provider';
+import { getLog } from '../../../../../lib/context';
 
 const MESSAGE_ID_KEY = '<message-id>';
 
@@ -183,14 +184,14 @@ export class LiquioProvider extends Provider {
 
       // Do request to send emails.
       const url = `${this.server}:${this.port}${this.routes.sendEmail}`;
-      global.log.save('email-sending-request', this.prepareToLog({ url, body }));
+      getLog().save('email-sending-request', this.prepareToLog({ url, body }));
       const response = await HttpRequest.send({
         url,
         method: HttpRequest.Methods.POST,
         headers: this.getHeadersWithTraceId(),
         body,
       });
-      global.log.save('email-sending-response', response);
+      getLog().save('email-sending-response', response);
 
       return {
         data: {
@@ -200,7 +201,7 @@ export class LiquioProvider extends Provider {
         response,
       };
     } catch (error: any) {
-      global.log.save('email-sending-error', error.message);
+      getLog().save('email-sending-error', error.message);
       throw error;
     }
   }
@@ -247,14 +248,14 @@ export class LiquioProvider extends Provider {
 
       // Do request to send emails.
       const url = `${this.server}:${this.port}${this.routes.sendToUser}`;
-      global.log.save('email-sending-request', this.prepareToLog({ url, body }));
+      getLog().save('email-sending-request', this.prepareToLog({ url, body }));
       const response = await HttpRequest.send({
         url,
         method: HttpRequest.Methods.POST,
         headers: this.getHeadersWithTraceId(),
         body,
       });
-      global.log.save('email-sending-response', response);
+      getLog().save('email-sending-response', response);
 
       return {
         data: {
@@ -264,7 +265,7 @@ export class LiquioProvider extends Provider {
         response,
       };
     } catch (error: any) {
-      global.log.save('email-sending-error', error.message);
+      getLog().save('email-sending-error', error.message);
       throw error;
     }
   }
@@ -311,14 +312,14 @@ export class LiquioProvider extends Provider {
 
       // Do request to send emails.
       const url = `${this.server}:${this.port}${this.routes.sendToUser}`;
-      global.log.save('email-sending-request', this.prepareToLog({ url, body }));
+      getLog().save('email-sending-request', this.prepareToLog({ url, body }));
       const response = await HttpRequest.send({
         url,
         method: HttpRequest.Methods.POST,
         headers: this.getHeadersWithTraceId(),
         body,
       });
-      global.log.save('email-sending-response', response);
+      getLog().save('email-sending-response', response);
 
       return {
         data: {
@@ -328,7 +329,7 @@ export class LiquioProvider extends Provider {
         response,
       };
     } catch (error: any) {
-      global.log.save('email-sending-error', error.message);
+      getLog().save('email-sending-error', error.message);
       throw error;
     }
   }
@@ -346,13 +347,13 @@ export class LiquioProvider extends Provider {
           MESSAGE_ID_KEY,
           message.messageId,
         );
-        global.log.save('hide-important-message-request', { url, message });
+        getLog().save('hide-important-message-request', { url, message });
         const response = await HttpRequest.send({
           url,
           method: HttpRequest.Methods.PUT,
           headers: this.getHeadersWithTraceId(),
         });
-        global.log.save('hide-important-message-response', response);
+        getLog().save('hide-important-message-response', response);
 
         responses.push(response);
       }
@@ -362,7 +363,7 @@ export class LiquioProvider extends Provider {
         response: responses,
       };
     } catch (error: any) {
-      global.log.save('hide-important-message-error', error.message);
+      getLog().save('hide-important-message-error', error.message);
       throw error;
     }
   }
@@ -383,12 +384,12 @@ export class LiquioProvider extends Provider {
         },
         fullResponse,
       );
-      global.log.save('send-ping-request-to-notify', response);
+      getLog().save('send-ping-request-to-notify', response);
       const headers = response && response.fullResponse && response.fullResponse.headers && response.fullResponse.headers;
       const { version, customer, environment } = headers;
       return { version, customer, environment, body: response.body };
     } catch (error: any) {
-      global.log.save('send-ping-request-to-notify', error.message);
+      getLog().save('send-ping-request-to-notify', error.message);
     }
   }
 

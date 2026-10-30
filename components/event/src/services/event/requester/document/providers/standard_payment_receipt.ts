@@ -4,6 +4,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { ReadableData } from '../../../../../types/readable_data';
 import { InvalidSchemaError, EvaluateSchemaFunctionError, ExternalServiceError } from '../../../../../lib/errors';
+import { getHttpClient, getLog } from '../../../../../lib/context';
 
 const CONTENT_TYPES: Record<string, string> = {
   pdf: 'application/pdf',
@@ -121,7 +122,7 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
       contentType: CONTENT_TYPES[receiptFormat],
     });
 
-    global.log.save('standard-payment-receipt-document-request-provider|get-payment-receipt|receipt-files', {
+    getLog().save('standard-payment-receipt-document-request-provider|get-payment-receipt|receipt-files', {
       receiptFiles: receiptFiles.map((v: any) => ({ ...v, readableStream: '****' })),
     });
 
@@ -129,7 +130,7 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
     for (const [index, receipt] of receiptFiles.entries()) {
       // Check that is correct receipt format.
       if (CONTENT_TYPES[receiptFormat].toUpperCase() !== receipt.dataType.toUpperCase()) {
-        global.log.save('standard-payment-receipt-document-request-provider|get-payment-receipt|received-invalid-format', {
+        getLog().save('standard-payment-receipt-document-request-provider|get-payment-receipt|received-invalid-format', {
           contentType: receipt.dataType,
         });
         throw new ExternalServiceError(
@@ -146,7 +147,7 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
       try {
         fileInfo = await filestorage.uploadFileFromStream(receipt.readableStream, fullReceiptName, undefined, receipt.dataType);
       } catch (error: any) {
-        global.log.save('standard-payment-receipt-document-request-provider|get-payment-receipt|upload-to-file-storage-error', {
+        getLog().save('standard-payment-receipt-document-request-provider|get-payment-receipt|upload-to-file-storage-error', {
           cause: { error: error.toString() },
         });
         const wrapped = new Error(
@@ -170,7 +171,7 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
           meta: fileMeta,
         });
       } catch (error: any) {
-        global.log.save('standard-payment-receipt-document-request-provider|get-payment-receipt|create-document-attachment-error', {
+        getLog().save('standard-payment-receipt-document-request-provider|get-payment-receipt|create-document-attachment-error', {
           error: error?.toString(),
           fullReceiptName,
           contentLength: fileInfo.contentLength,
@@ -207,7 +208,7 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
 
     const receiptFiles = [];
     for (const receipt of receiptInfo.receipts) {
-      const response = await global.httpClient.request(
+      const response = await getHttpClient().request(
         receipt.link,
         {
           method: 'GET',
@@ -250,20 +251,20 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
       responseType: 'json',
       timeout: this.timeout,
     };
-    global.log.save('standard-payment-receipt-document-request-provider|get-receipt-info|request-options', { requestOption });
+    getLog().save('standard-payment-receipt-document-request-provider|get-receipt-info|request-options', { requestOption });
 
     let receiptInfo;
     try {
       const response = await axios(requestOption as any);
       receiptInfo = response.data;
     } catch (error: any) {
-      global.log.save('standard-payment-receipt-document-request-provider|get-receipt-info|response-error', { error: error?.toString() });
+      getLog().save('standard-payment-receipt-document-request-provider|get-receipt-info|response-error', { error: error?.toString() });
       error.details = {
         responseBody: error?.response?.data,
       };
       throw error;
     }
-    global.log.save('standard-payment-receipt-document-request-provider|get-receipt-info|response', { receiptInfo });
+    getLog().save('standard-payment-receipt-document-request-provider|get-receipt-info|response', { receiptInfo });
 
     if (receiptInfo.result !== 'ok' || !receiptInfo?.receipts?.length) {
       throw new Error('StandardPaymentReceiptDocumentRequesterProvider.getPaymentReceiptInfo. Get receipt info error');
@@ -285,7 +286,7 @@ export class StandardPaymentReceiptDocumentRequesterProvider {
     try {
       return jwt.sign(payloadString, rsaPrivateKeyString, { algorithm: SIGN_ALGORITHM as any });
     } catch (error: any) {
-      global.log.save('standard-payment-receipt-document-request-provider|generate-jwt-token|sign-error', { error: error?.toString() }, 'error');
+      getLog().save('standard-payment-receipt-document-request-provider|generate-jwt-token|sign-error', { error: error?.toString() }, 'error');
       const wrapped = new Error('StandardPaymentReceiptDocumentRequesterProvider.generateJwtToken. Cannot generate token');
       (wrapped as any).cause = error;
       throw wrapped;

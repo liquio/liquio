@@ -1,6 +1,7 @@
 import { Provider } from './provider';
 import { Sign } from '../../../../../lib/sign';
 import { FileStorage as Filestorage } from '../../../../../lib/filestorage';
+import { getLog } from '../../../../../lib/context';
 
 export class SignerProvider extends Provider {
   signer: Sign;
@@ -14,7 +15,7 @@ export class SignerProvider extends Provider {
 
   async send(data: any): Promise<any> {
     const { method } = data;
-    global.log.save(`signer|${method}|send`, { data });
+    getLog().save(`signer|${method}|send`, { data });
 
     switch (method) {
       case 'sign-file':

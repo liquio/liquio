@@ -1,6 +1,7 @@
 import { IdApiError } from '@liquio/back-core';
 
 import { EventUser } from './index';
+import { setAppContext, resetAppContext } from '../../../lib/context';
 
 jest.mock('../../../models/unit_rules', () => ({
   UnitRulesModel: jest.fn().mockImplementation(() => ({})),
@@ -48,14 +49,14 @@ describe('EventUser', () => {
     client = createFakeClient();
     backCore.getIdApiClient.mockReturnValue(client);
     log = { save: jest.fn() };
-    (global as any).log = log;
+    setAppContext({ log });
     (EventUser as any).singleton = undefined;
     eventUser = new EventUser({ searchUsersLimit: SEARCH_LIMIT });
   });
 
   afterEach(() => {
     (EventUser as any).singleton = undefined;
-    delete (global as any).log;
+    resetAppContext();
   });
 
   describe('constructor', () => {
