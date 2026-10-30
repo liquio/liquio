@@ -3,6 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import amqp from 'amqplib/callback_api';
 
 import { MessageQueue } from './index';
+import { setAppContext, resetAppContext, getLog } from '../context';
 
 jest.mock('amqplib/callback_api', () => ({
   connect: jest.fn((url, callback) => {
@@ -37,17 +38,17 @@ describe('MessageQueue', () => {
   let messageQueue;
 
   beforeEach(() => {
-    global.log = {
-      save: jest.fn(),
-    } as any;
-    global.redisClient = null;
-    global.config = {
-      redis: {
-        amqpMessageCache: {
-          isEnabled: false,
+    setAppContext({
+      log: { save: jest.fn() },
+      redisClient: null,
+      config: {
+        redis: {
+          amqpMessageCache: {
+            isEnabled: false,
+          },
         },
       },
-    };
+    });
 
     messageQueue = new MessageQueue({
       amqpConnection: 'amqp://localhost',
@@ -60,6 +61,7 @@ describe('MessageQueue', () => {
   afterEach(() => {
     jest.clearAllMocks();
     MessageQueue.singleton = null;
+    resetAppContext();
   });
 
   describe('init', () => {
@@ -68,7 +70,7 @@ describe('MessageQueue', () => {
 
       expect(amqp.connect).toHaveBeenCalledWith('amqp://localhost', expect.any(Function));
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalled();
+      expect(getLog().save).toHaveBeenCalled();
     });
 
     it('should resolve once a failed first connect succeeds on retry', async () => {
@@ -79,7 +81,7 @@ describe('MessageQueue', () => {
 
       expect(amqp.connect).toHaveBeenCalledTimes(2);
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('amqp-connected', true);
+      expect(getLog().save).toHaveBeenCalledWith('amqp-connected', true);
     });
   });
 
@@ -94,7 +96,7 @@ describe('MessageQueue', () => {
       expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledWith('writingQueue', Buffer.from(JSON.stringify(preparedMessage)), {
         persistent: true,
       });
-      expect(global.log.save).toHaveBeenCalledWith('amqp-message-sent', {
+      expect(getLog().save).toHaveBeenCalledWith('amqp-message-sent', {
         messageString: JSON.stringify(message),
         queueName: 'writingQueue',
       });
@@ -115,14 +117,14 @@ describe('MessageQueue', () => {
       await setTimeout(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenNthCalledWith(1, 'amqp-connected', true);
-      expect(global.log.save).toHaveBeenNthCalledWith(2, 'amqp-channel-opened', true);
-      expect(global.log.save).toHaveBeenNthCalledWith(3, 'message-from-queue-to-handle', { messageString: JSON.stringify(message) });
-      expect(global.log.save).toHaveBeenNthCalledWith(4, 'message-from-queue-handled', {
+      expect(getLog().save).toHaveBeenNthCalledWith(1, 'amqp-connected', true);
+      expect(getLog().save).toHaveBeenNthCalledWith(2, 'amqp-channel-opened', true);
+      expect(getLog().save).toHaveBeenNthCalledWith(3, 'message-from-queue-to-handle', { messageString: JSON.stringify(message) });
+      expect(getLog().save).toHaveBeenNthCalledWith(4, 'message-from-queue-handled', {
         messageString: JSON.stringify(message),
         duration: expect.any(Number),
       });
-      expect(global.log.save).toHaveBeenNthCalledWith(5, 'message-from-queue-ack', { messageString: JSON.stringify(message) });
+      expect(getLog().save).toHaveBeenNthCalledWith(5, 'message-from-queue-ack', { messageString: JSON.stringify(message) });
     });
 
     it('should not handle the message and not acknowledge it if it is not successfully handled', async () => {
@@ -138,9 +140,9 @@ describe('MessageQueue', () => {
       await setTimeout(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.nack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenNthCalledWith(1, 'amqp-connected', true);
-      expect(global.log.save).toHaveBeenNthCalledWith(2, 'amqp-channel-opened', true);
-      expect(global.log.save).toHaveBeenNthCalledWith(3, 'message-from-queue-to-handle', { messageString: JSON.stringify(message) });
+      expect(getLog().save).toHaveBeenNthCalledWith(1, 'amqp-connected', true);
+      expect(getLog().save).toHaveBeenNthCalledWith(2, 'amqp-channel-opened', true);
+      expect(getLog().save).toHaveBeenNthCalledWith(3, 'message-from-queue-to-handle', { messageString: JSON.stringify(message) });
     });
   });
 
@@ -271,7 +273,7 @@ describe('MessageQueue', () => {
 
       expect(messageQueue.isClosing).toBe(false);
       expect(messageQueue.connection.close).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('connection-closed-by-app');
+      expect(getLog().save).toHaveBeenCalledWith('connection-closed-by-app');
     });
 
     it('should handle close error gracefully', async () => {
@@ -284,7 +286,7 @@ describe('MessageQueue', () => {
       await messageQueue.close();
 
       expect(messageQueue.isClosing).toBe(false);
-      expect(global.log.save).toHaveBeenCalledWith('can-not-close-connection', 'Close failed');
+      expect(getLog().save).toHaveBeenCalledWith('can-not-close-connection', 'Close failed');
     });
   });
 
@@ -296,7 +298,7 @@ describe('MessageQueue', () => {
       const exitSpy = jest.spyOn(messageQueue, 'exitGracefully').mockImplementation(() => {});
 
       // The implementation exists and won't throw with valid inputs
-      expect(global.log.save).toBeDefined();
+      expect(getLog().save).toBeDefined();
 
       exitSpy.mockRestore();
     });

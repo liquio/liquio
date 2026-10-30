@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import { getLog, getConfig } from './context';
 import { Helpers } from './helpers';
 
 const { prepareAxiosErrorToLog } = Helpers;
@@ -31,7 +32,7 @@ export class Sign {
   constructor(config?: { url?: string; token?: string; timeout?: number }) {
     // Define singleton.
     if (!Sign.singleton) {
-      const { url, token, timeout = 10000 } = config || global.config.sign;
+      const { url, token, timeout = 10000 } = config || getConfig().sign;
       this.url = url;
       this.token = token;
       this.timeout = timeout;
@@ -66,7 +67,7 @@ export class Sign {
     try {
       return (await axios(requestOptions)).data;
     } catch (error: any) {
-      global.log.save(
+      getLog().save(
         'sign-service-sign-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -96,7 +97,7 @@ export class Sign {
     try {
       return (await axios(requestOptions)).data;
     } catch (error: any) {
-      global.log.save(
+      getLog().save(
         'sign-service-sign-hash-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -126,7 +127,7 @@ export class Sign {
     try {
       return (await axios(requestOptions)).data;
     } catch (error: any) {
-      global.log.save(
+      getLog().save(
         'sign-service-hash-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -158,7 +159,7 @@ export class Sign {
     try {
       return (await axios(requestOptions)).data;
     } catch (error: any) {
-      global.log.save(
+      getLog().save(
         'sign-service-encrypt-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -190,7 +191,7 @@ export class Sign {
     try {
       return await (axios(requestOptions) as any).data;
     } catch (error: any) {
-      global.log.save(
+      getLog().save(
         'sign-service-decrypt-error',
         {
           ...prepareAxiosErrorToLog(error),
@@ -220,7 +221,7 @@ export class Sign {
     try {
       return (await axios(requestOptions)).data?.data;
     } catch (error: any) {
-      global.log.save(
+      getLog().save(
         'sign-service-convert-internal-signature-to-external-error',
         {
           ...prepareAxiosErrorToLog(error),

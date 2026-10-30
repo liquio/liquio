@@ -31,6 +31,7 @@ import { EvaluateSchemaFunctionError } from '../lib/errors';
 import { SYSTEM_USER } from '../constants/common';
 import { CRUD_TYPE } from '../constants/http';
 import { getConfig } from '../lib/config';
+import { getConfig as getAppConfig, getLog, getModels, getMessageQueue } from '../lib/context';
 
 // Constants.
 const ERROR_WRONG_EVENT_TYPE = 'Wrong event type.';
@@ -464,7 +465,7 @@ export class EventBusiness {
 
       return calculated;
     } catch (error) {
-      global.log.save('eval-error', { error: error && error.toString() });
+      getLog().save('eval-error', { error: error && error.toString() });
       throw new EvaluateSchemaFunctionError(error.toString());
     }
   }
@@ -762,7 +763,7 @@ export class EventBusiness {
         if (!isKeyAllowedToDeleteMore100ThanRecords) {
           throw new Error("deleteRegistersList: deleted recods count mustn't be more than 100.");
         }
-        global.log.save('delete-registers-list|delete-more-than-100-records', { keyId, recordIdsLength, workflowId, eventTemplateId }, 'warn');
+        getLog().save('delete-registers-list|delete-more-than-100-records', { keyId, recordIdsLength, workflowId, eventTemplateId }, 'warn');
       }
 
       const { concurrent, interval } = config.requester?.registers?.deleteRecordsQueue || {};
@@ -784,7 +785,7 @@ export class EventBusiness {
       );
 
       if (recordsToDelete.length !== recordIdsLength) {
-        global.log.save(
+        getLog().save(
           'delete-registers-list|deleted-count-mismatch',
           {
             workflowId,
@@ -1432,7 +1433,7 @@ export class EventBusiness {
 
       // Check if events with the same template are more than 50.
       const eventsWithTheSameTemplate = events.filter((event) => event.eventTemplateId === eventTemplateId);
-      if (eventsWithTheSameTemplate.length >= (global.config.system_notifier?.maxLoops ?? 50)) {
+      if (eventsWithTheSameTemplate.length >= (getAppConfig().system_notifier?.maxLoops ?? 50)) {
         jsonSchemaObject = { ...jsonSchemaObject, notFailOnError: false };
         throw new Error('Too many loops.');
       }
@@ -1522,7 +1523,7 @@ export class EventBusiness {
             events,
           });
         } catch (error) {
-          global.log.save('set-workflow-status-error', { workflowId, error: error.toString() });
+          getLog().save('set-workflow-status-error', { workflowId, error: error.toString() });
           await this.workflowErrorModel.create(
             {
               error: 'Can not set the workflow status.',
@@ -1539,7 +1540,7 @@ export class EventBusiness {
           // Send message to RabbitMQ.
           const outMessage = { workflowId, eventId: createdEvent.id };
           if (typeof messageObject.onlyExecute === 'undefined') {
-            global.messageQueue?.produce?.(outMessage);
+            getMessageQueue()?.produce?.(outMessage);
           }
 
           // Save custom logs.
@@ -1549,7 +1550,7 @@ export class EventBusiness {
     } catch (error) {
       try {
         // Create error.
-        global.log.save('event-handling-by-message-from-queue-error', {
+        getLog().save('event-handling-by-message-from-queue-error', {
           messageObject,
           error: error.toString(),
           stack: error.stack,
@@ -1576,7 +1577,7 @@ export class EventBusiness {
           // Retry.
           const { retryMessage, postponedTime } = retryInfo;
           if (typeof messageObject.onlyExecute === 'undefined') {
-            global.messageQueue.produce(retryMessage, postponedTime);
+            getMessageQueue().produce(retryMessage, postponedTime);
           }
 
           // Save event was failed, async.
@@ -1599,7 +1600,7 @@ export class EventBusiness {
                 version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
               } as any);
             } catch (error) {
-              global.log.save('event-error-catch-creating-error', { messageObject, error: error.toString() });
+              getLog().save('event-error-catch-creating-error', { messageObject, error: error.toString() });
             }
 
             // Workflow error entity.
@@ -1616,7 +1617,7 @@ export class EventBusiness {
                 type,
               );
             } catch (error) {
-              global.log.save('workflow-id-not-found-error', { messageObject, error: error.toString() });
+              getLog().save('workflow-id-not-found-error', { messageObject, error: error.toString() });
             }
           })();
 
@@ -1637,7 +1638,7 @@ export class EventBusiness {
             type,
           );
         } catch (error) {
-          global.log.save('workflow-id-not-found-error', { messageObject, error: error.toString() });
+          getLog().save('workflow-id-not-found-error', { messageObject, error: error.toString() });
         }
 
         // Check if no need to fail on error.
@@ -1659,13 +1660,13 @@ export class EventBusiness {
               version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
             } as any);
           } catch (error) {
-            global.log.save('event-error-catch-creating-error', { messageObject, error: error.toString() });
+            getLog().save('event-error-catch-creating-error', { messageObject, error: error.toString() });
           }
 
           // Send message to RabbitMQ.
           const outMessage = { workflowId, eventId: createdEvent.id };
           if (typeof messageObject.onlyExecute === 'undefined') {
-            global.messageQueue.produce(outMessage);
+            getMessageQueue().produce(outMessage);
           }
         } else {
           await this.workflowModel.setError(messageObject.workflowId);
@@ -1690,10 +1691,10 @@ export class EventBusiness {
             });
           }
         } catch (error) {
-          global.log.save('system-notifier-error', { error: error.toString(), stack: error.stack }, 'error');
+          getLog().save('system-notifier-error', { error: error.toString(), stack: error.stack }, 'error');
         }
       } catch (error) {
-        global.log.save('unknown-error', { error: (error && error.toString()) || error, messageObject });
+        getLog().save('unknown-error', { error: (error && error.toString()) || error, messageObject });
       }
     }
 
@@ -1754,7 +1755,7 @@ export class EventBusiness {
           const doneEvent = await this.eventModel.setDone(event.id);
 
           // Send message to RabbitMQ.
-          global.messageQueue.produce({
+          getMessageQueue().produce({
             workflowId: doneEvent.workflowId,
             eventId: event.id,
           });
@@ -1763,7 +1764,7 @@ export class EventBusiness {
         // Unlock old locked events.
         await this.eventModel.unlockOldLockedEvents();
       } catch (error) {
-        global.log.save('daemon-delay-error', error.toString());
+        getLog().save('daemon-delay-error', error.toString());
       }
 
       // Event type - notification
@@ -1814,7 +1815,7 @@ export class EventBusiness {
             );
 
             // Send message to RabbitMQ.
-            global.messageQueue.produce({ workflowId: event.workflowId, eventId: event.id });
+            getMessageQueue().produce({ workflowId: event.workflowId, eventId: event.id });
           } catch (error) {
             event.data.statuses[event.data.dueDate] = 'Error: ' + ((error && error.toString()) || 'Unknown error!');
             if (event.data.dueDates && event.data.dueDates.length) {
@@ -1834,11 +1835,11 @@ export class EventBusiness {
           }
         }
       } catch (error) {
-        global.log.save('daemon-notification-error', error.toString());
+        getLog().save('daemon-notification-error', error.toString());
       }
 
       isRunning = false;
-    }, global.config.delayer.interval * 1000);
+    }, getAppConfig().delayer.interval * 1000);
   }
 
   /**
@@ -1957,7 +1958,7 @@ export class EventBusiness {
           }
         }
       } else {
-        global.log.save('notification-sms-send-result-error', { error: result.notificationSms.response.sendBySms }, 'warn');
+        getLog().save('notification-sms-send-result-error', { error: result.notificationSms.response.sendBySms }, 'warn');
       }
     }
 
@@ -2033,7 +2034,7 @@ export class EventBusiness {
     if (workflowCreator) {
       const workflow = await this.workflowModel.findById(workflowId);
       const { createdBy: workflowCreatedBy } = workflow;
-      global.log.save('save-to-inboxes|users-definition-by-workflow-created-by|defined', { workflowCreatedBy, inboxesJsonSchema, workflowId });
+      getLog().save('save-to-inboxes|users-definition-by-workflow-created-by|defined', { workflowCreatedBy, inboxesJsonSchema, workflowId });
       users.push(workflowCreatedBy);
     }
 
@@ -2048,11 +2049,11 @@ export class EventBusiness {
             : typeof usersFunctionResponse === 'string'
               ? [usersFunctionResponse]
               : [];
-        global.log.save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
+        getLog().save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
 
         users = users.concat(usersAfterEvalFunction);
       } catch (error) {
-        global.log.save('save-to-inboxes|users-definition-by-function|error', { inboxesJsonSchema, workflowId, error: error && error.toString() });
+        getLog().save('save-to-inboxes|users-definition-by-function|error', { inboxesJsonSchema, workflowId, error: error && error.toString() });
       }
     }
 
@@ -2131,7 +2132,7 @@ export class EventBusiness {
           return false;
         })
       ) {
-        global.log.save('set-workflow-status|status-calculate-error', { workflowId, status });
+        getLog().save('set-workflow-status|status-calculate-error', { workflowId, status });
         throw new Error('Invalid status.');
       }
 
@@ -2139,7 +2140,7 @@ export class EventBusiness {
       const nonTabedStatusesLength = nonTabedStatuses.length;
 
       if (nonTabedStatusesLength === 0) {
-        global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
+        getLog().save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
         throw new Error("Invalid status. Non tabed statuses don't exist.");
       }
 
@@ -2151,11 +2152,11 @@ export class EventBusiness {
       } else if (nonTabedStatuses[nonTabedStatusesLength - 1].type.toLowerCase() === 'rejected') {
         statusId = 3;
       }
-      await global.models.workflow.setStatus(workflowId, statusId, calculatedStatus);
-      global.log.save('set-workflow-status|status-defined', { workflowId, statusId, calculatedStatus, workflowTemplateId: workflowTemplate.id });
+      await getModels().workflow.setStatus(workflowId, statusId, calculatedStatus);
+      getLog().save('set-workflow-status|status-defined', { workflowId, statusId, calculatedStatus, workflowTemplateId: workflowTemplate.id });
     } else if (status.statusId) {
-      await global.models.workflow.setStatus(workflowId, status.statusId);
-      global.log.save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
+      await getModels().workflow.setStatus(workflowId, status.statusId);
+      getLog().save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
     }
   }
 
@@ -2173,7 +2174,7 @@ export class EventBusiness {
       const signResponse: any = await this.sign.sign(recordDataInBase64, true, undefined, true);
       return signResponse.data;
     } catch (error) {
-      global.log.save('sign-register-record-error', { error: error.toString() || error, stack: error.stack });
+      getLog().save('sign-register-record-error', { error: error.toString() || error, stack: error.stack });
       throw error;
     }
   }
@@ -2245,15 +2246,15 @@ export class EventBusiness {
     const queue = new Queue({ concurrent, interval });
 
     // Log queue events.
-    queue.on('start', () => global.log.save('delete-registers-queue|start', meta));
-    queue.on('stop', () => global.log.save('delete-registers-queue|stop', meta));
-    queue.on('end', () => global.log.save('delete-registers-queue|end', meta));
+    queue.on('start', () => getLog().save('delete-registers-queue|start', meta));
+    queue.on('stop', () => getLog().save('delete-registers-queue|stop', meta));
+    queue.on('end', () => getLog().save('delete-registers-queue|end', meta));
 
     // Raise a flag if the queue fails at least one time.
     let isFailed = false;
     queue.on('reject', (error) => {
       isFailed = true;
-      global.log.save('delete-registers-queue|reject', { ...meta, error: error.toString() }, 'error');
+      getLog().save('delete-registers-queue|reject', { ...meta, error: error.toString() }, 'error');
     });
 
     // Enqueue jobs to fetch record data.
@@ -2301,7 +2302,7 @@ async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEn
   // Check.
   if (!link || !name || !type) {
     // Log and exit.
-    global.log.save('plink-from-filestorage-attach-params-error', { attach: attach || null });
+    getLog().save('plink-from-filestorage-attach-params-error', { attach: attach || null });
     return;
   }
 
@@ -2314,7 +2315,7 @@ async function plinkFromFilestorageAttach(attach, { isIncludeP7s = false, linkEn
   try {
     url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
   } catch (error) {
-    global.log.save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
+    getLog().save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
     throw error;
   }
 
@@ -2337,7 +2338,7 @@ async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP
   // Check.
   if (!link) {
     // Log and exit.
-    global.log.save('plink-from-filestorage-pdf-params-error', { link: link || null });
+    getLog().save('plink-from-filestorage-pdf-params-error', { link: link || null });
     return;
   }
 
@@ -2350,7 +2351,7 @@ async function plinkFromFilestoragePdf(link, name = 'document.pdf', { isIncludeP
   try {
     url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
   } catch (error) {
-    global.log.save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
+    getLog().save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
     throw error;
   }
 
@@ -2370,7 +2371,7 @@ async function generateP7sLink(link) {
     const preparedHashForP7s = Buffer.from(link.slice(-16).toString('hex')) + crypto.randomBytes(64).toString('hex');
     return await persistLink.getLinkToStaticFileInFilestorage(link, preparedHashForP7s);
   } catch (error) {
-    global.log.save('generate-p7s-link-error', { error: error && error.message });
+    getLog().save('generate-p7s-link-error', { error: error && error.message });
     throw error;
   }
 }

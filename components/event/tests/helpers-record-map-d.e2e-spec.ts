@@ -6,6 +6,7 @@ import { Sequelize } from 'sequelize';
 import { Helpers } from '../src/lib/helpers';
 import { RecordMap } from '../src/lib/record_map';
 import { TestApp } from './test-app';
+import { getLog, getModels } from '../src/lib/context';
 
 describe('Group D - helpers and record map', () => {
   let app: TestApp;
@@ -259,7 +260,7 @@ describe('Group D - helpers and record map', () => {
     });
 
     it('id.string always fails because Number#toString(base64) is invalid (bug)', async () => {
-      const save = jest.spyOn(global.log, 'save').mockImplementation(() => undefined as any);
+      const save = jest.spyOn(getLog(), 'save').mockImplementation(() => undefined as any);
       await expect(mk({ map: { ids: 'id.string' } }).getRecord()).rejects.toThrow(
         'You have error on "map.ids". Details: "toString() radix argument must be between 2 and 36"!',
       );
@@ -288,7 +289,7 @@ describe('Group D - helpers and record map', () => {
     });
 
     it('wraps map entry errors', async () => {
-      const save = jest.spyOn(global.log, 'save').mockImplementation(() => undefined as any);
+      const save = jest.spyOn(getLog(), 'save').mockImplementation(() => undefined as any);
       const rm = mk({ map: { bad: '(documents) => { throw new Error("oops"); }' } });
       const err: any = await rm.getRecord().catch((e: any) => e);
       expect(err.message).toMatch(/^You have error on "map\.bad"\. Details: ".*oops.*"!$/);
@@ -298,7 +299,7 @@ describe('Group D - helpers and record map', () => {
     });
 
     it('rejects disallowed custom methods', async () => {
-      const save = jest.spyOn(global.log, 'save').mockImplementation(() => undefined as any);
+      const save = jest.spyOn(getLog(), 'save').mockImplementation(() => undefined as any);
       const err: any = await mk({ map: { c: 'custom.evil.method' } })
         .getRecord()
         .catch((e: any) => e);
@@ -312,8 +313,8 @@ describe('Group D - helpers and record map', () => {
 
     it('generates executive document number', async () => {
       const raw = { options: { executorIssuerCode: '() => "COURT7"' }, map: { num: 'custom.courts.generate-executive-document-number' } };
-      const create = jest.spyOn(global.models.rawQueryModel, 'createSequence').mockResolvedValue(undefined as any);
-      const next = jest.spyOn(global.models.rawQueryModel, 'getNextvalOfSequence').mockResolvedValue(42 as any);
+      const create = jest.spyOn(getModels().rawQueryModel, 'createSequence').mockResolvedValue(undefined as any);
+      const next = jest.spyOn(getModels().rawQueryModel, 'getNextvalOfSequence').mockResolvedValue(42 as any);
       const year = new Date().getFullYear();
       const rec = await mk(raw).getRecord();
       expect(rec.data.num).toBe(`COURT7.${year}.0000042`);

@@ -16,6 +16,7 @@ import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
 import { installTlsOverrides } from './lib/tls';
 import { buildSandboxConfig } from './lib/sandbox_config';
+import { setAppContext, getLog, getConfig } from './lib/context';
 
 export class App {
   config: any;
@@ -34,7 +35,8 @@ export class App {
 
   constructor(config: any) {
     this.config = config;
-    this.sandbox = new Sandbox(buildSandboxConfig(config.sandbox) as any);
+    setAppContext({ config });
+    this.sandbox = new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
     // Set global config for models and other legacy code that still uses it
     global.config = config;
   }
@@ -49,6 +51,7 @@ export class App {
   // Init global typeOf.
   useGlobalTypeOf() {
     this.typeOf = typeOf;
+    setAppContext({ typeOf });
   }
 
   // Init log.
@@ -62,6 +65,7 @@ export class App {
       disableDefaultRedaction: this.config.log?.disableDefaultRedaction === true,
     } as any);
     this.log = global.log = new Log([consoleLogProvider], ['console']);
+    setAppContext({ log: this.log });
   }
 
   // Init id-api client.
@@ -92,6 +96,7 @@ export class App {
   // Import moment globally to use in eval.
   useMoment() {
     global.moment = moment;
+    setAppContext({ moment });
   }
 
   // Init redis.
@@ -103,11 +108,13 @@ export class App {
   async useDb() {
     this.db = await Db.getInstance(this.config.db);
     global.db = this.db;
+    setAppContext({ db: this.db });
   }
 
   // Init models.
   useModels() {
     this.models = new Models();
+    global.models = this.models.models;
   }
 
   // Init plugins.
@@ -138,7 +145,7 @@ export class App {
     this.eventBusiness = new EventBusiness();
 
     // If enabled run daemon mode in config/app.json file.
-    if (global.config.app.enabledRunDaemonMode) {
+    if (getConfig().app.enabledRunDaemonMode) {
       // Run event daemon.
       // Note: this is an async method with an infinite loop inside.
       this.eventBusiness.runDaemon();
@@ -173,11 +180,12 @@ export class App {
 
     // TODO: inject, do not set global.
     global.messageQueue = messageQueue;
+    setAppContext({ messageQueue });
   }
 
   // Init router.
   async useRouter() {
-    const routerService = new RouterService(global.config);
+    const routerService = new RouterService(getConfig());
 
     // Note: there is an open async handle created inside.
     await routerService.init();

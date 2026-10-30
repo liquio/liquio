@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 
+import { getConfig } from '../lib/context';
 import { Model } from './model';
 import { EventTemplateEntity } from '../entities/event_template';
 import { RedisClient } from '../lib/redis_client';
@@ -38,7 +39,7 @@ export class EventTemplateModel extends Model {
       );
 
       this.cacheTtl = {
-        findByIdCached: global.config.cache?.eventTemplate?.findByIdCached || 60, // 1 minute
+        findByIdCached: getConfig().cache?.eventTemplate?.findByIdCached || 60, // 1 minute
       };
 
       EventTemplateModel.singleton = this;

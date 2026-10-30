@@ -10,6 +10,7 @@ import { DecoratorTrembita } from '../src/services/event/requester/external_serv
 import { Rmq } from '../src/lib/rmq';
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../src/constants/common';
 import { TestApp } from './test-app';
+import { getConfig } from '../src/lib/context';
 
 const EXT = 'http://ext.test';
 const TREMBITA = 'http://trembita.test';
@@ -46,10 +47,10 @@ describe('Group C - external service providers', () => {
   beforeAll(async () => {
     await TestApp.beforeAll();
     app = await TestApp.setup({});
-    originalTrembita = (global as any).config.requester.externalService.trembita;
+    originalTrembita = getConfig().requester.externalService.trembita;
   });
   afterAll(async () => {
-    (global as any).config.requester.externalService.trembita = originalTrembita;
+    getConfig().requester.externalService.trembita = originalTrembita;
     await TestApp.afterAll(app);
   });
   afterEach(async () => {
@@ -59,7 +60,7 @@ describe('Group C - external service providers', () => {
   });
   beforeEach(async () => {
     await TestApp.beforeEach(app);
-    (global as any).config.requester.externalService.trembita = trembitaConfig();
+    getConfig().requester.externalService.trembita = trembitaConfig();
   });
 
   describe('StandardProvider', () => {
@@ -321,7 +322,7 @@ describe('Group C - external service providers', () => {
       expect(provider.getTrembitaConfig('PostPetition').serviceConfig.soapAction).toBe('urn:pp');
       expect(provider.getTrembitaConfig('unknown').serviceConfig.soapAction).toBe('urn:default');
       expect(() => provider.getTrembitaConfig('NoAction')).toThrow('Trembita provider. Service soap action not defined.');
-      delete (global as any).config.requester.externalService.trembita.trembitaHeader.service;
+      delete getConfig().requester.externalService.trembita.trembitaHeader.service;
       expect(() => provider.getTrembitaConfig('unknown')).toThrow('Trembita provider. Service config not defined.');
     });
 
@@ -557,7 +558,7 @@ describe('Group C - external service providers', () => {
       expect(soap).toContain('<iden:serviceCode>DefaultService</iden:serviceCode>');
       expect(soap).toContain('<xro:id>123</xro:id>');
       expect(soap).toContain('<drac:asicBase64>B64</drac:asicBase64>');
-      delete (global as any).config.requester.externalService.trembita.trembitaHeader.service;
+      delete getConfig().requester.externalService.trembita.trembitaHeader.service;
       expect(() => decorator().getTrembitaConfig('unknown')).toThrow('Trembita provider. Service config not defined.');
     });
   });

@@ -1,5 +1,7 @@
 import { AppInfo } from '@liquio/back-core';
 
+import { getConfig } from './context';
+
 // Constants.
 const DEFAULT_CUSTOMER = '1';
 const DEFAULT_ENVIRONMENT = '0';
@@ -15,8 +17,8 @@ export class AppIdentHeaders {
   static add(app: any) {
     // Defoine app info.
     const appInfo = new AppInfo();
-    const customer = (global.config && global.config.server && global.config.server.customer) || DEFAULT_CUSTOMER;
-    const environment = (global.config && global.config.server && global.config.server.environment) || DEFAULT_ENVIRONMENT;
+    const customer = (getConfig() && getConfig().server && getConfig().server.customer) || DEFAULT_CUSTOMER;
+    const environment = (getConfig() && getConfig().server && getConfig().server.environment) || DEFAULT_ENVIRONMENT;
 
     // Set headers.
     app.use(function (req: any, res: any, next: any) {

@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 
+import { getConfig } from '../lib/context';
 import { Model } from './model';
 import { DocumentTemplateEntity } from '../entities/document_template';
 import { RedisClient } from '../lib/redis_client';
@@ -37,7 +38,7 @@ export class DocumentTemplateModel extends Model {
       );
 
       this.cacheTtl = {
-        findByIdCached: global.config.cache?.documentTemplate?.findByIdCached || 60, // 1 minute
+        findByIdCached: getConfig().cache?.documentTemplate?.findByIdCached || 60, // 1 minute
       };
 
       DocumentTemplateModel.singleton = this;

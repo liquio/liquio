@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 
 import { Sandbox } from '@liquio/back-core';
 
+import { getLog, getConfig, getModels } from './context';
 import { PersistLink } from './persist_link';
 import { FileStorage } from './filestorage';
 
@@ -129,7 +130,7 @@ export class RecordMap {
         // Define record data param as function in other cases.
         recordData[mapEntryKey] = await this.getRecordDataValueAsFunctionString(mapEntryValue);
       } catch (error: any) {
-        global.log.save('eval-error', { error: error && error.message });
+        getLog().save('eval-error', { error: error && error.message });
         const wrapped = new Error(MAP_ENTRIES_EVAL_ERROR.replace('%s', mapEntryKey).replace('%d', (error && error.message) || error));
         (wrapped as any).cause = error;
         throw wrapped;
@@ -300,7 +301,7 @@ export class RecordMap {
       error.details = 'Error while evaluation executorIssuerCode function.';
       throw error;
     }
-    global.log.save('custom-courts-generate-executive-document-number', {
+    getLog().save('custom-courts-generate-executive-document-number', {
       executingTime: `${Date.now() - startTimestamp} ms`,
       number: `${executorIssuerCode}.${currentYear}.${newSequenceNumberString}`,
     }); // TODO: remove it after test.
@@ -315,9 +316,9 @@ export class RecordMap {
   async getSequenceNumberByYear(year: number): Promise<number> {
     const startTimestamp = Date.now(); // TODO: remove it after test.
     const sequenceName = `courts_exetutive_doc_number_sequence_in_year_${year}`;
-    await global.models.rawQueryModel.createSequence(sequenceName);
-    const nextval = await global.models.rawQueryModel.getNextvalOfSequence(sequenceName);
-    global.log.save('custom-courts-get-sequence-number-by-year', { executingTime: `${Date.now() - startTimestamp} ms`, nextval, year }); // TODO: remove it after test.
+    await getModels().rawQueryModel.createSequence(sequenceName);
+    const nextval = await getModels().rawQueryModel.getNextvalOfSequence(sequenceName);
+    getLog().save('custom-courts-get-sequence-number-by-year', { executingTime: `${Date.now() - startTimestamp} ms`, nextval, year }); // TODO: remove it after test.
     return nextval;
   }
 
@@ -381,7 +382,7 @@ export class RecordMap {
 async function deepLink(method: string) {
   return {
     method,
-    host: global.config.persist_link.qrFrontUrl || global.config.persist_link.server,
+    host: getConfig().persist_link.qrFrontUrl || getConfig().persist_link.server,
     hash: crypto.randomBytes(16).toString('hex'),
   };
 }
@@ -404,12 +405,12 @@ async function plinkFromFilestorageAttach(
   // Check.
   if (!link || !name || !type) {
     // Log and exit.
-    global.log.save('plink-from-filestorage-attach-params-error', { attach: attach || null });
+    getLog().save('plink-from-filestorage-attach-params-error', { attach: attach || null });
     return;
   }
 
   // Init Persist Link.
-  const persistLink = new PersistLink(global.config.persist_link);
+  const persistLink = new PersistLink(getConfig().persist_link);
 
   // Define URL and create Persist Link record.
   const preparedHash = Buffer.from(link.slice(0, 16).toString('hex')) + crypto.randomBytes(64).toString('hex') + linkEnding;
@@ -418,7 +419,7 @@ async function plinkFromFilestorageAttach(
   try {
     url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
   } catch (error: any) {
-    global.log.save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
+    getLog().save('plink-from-filestorage-attach-create-plink-url-error', { error: error && error.message });
     throw error;
   }
   const p7sUrl = isIncludeP7s ? await generateP7sLink(link) : undefined;
@@ -445,12 +446,12 @@ async function plinkFromFilestoragePdf(
   // Check.
   if (!link) {
     // Log and exit.
-    global.log.save('plink-from-filestorage-pdf-params-error', { link: link || null });
+    getLog().save('plink-from-filestorage-pdf-params-error', { link: link || null });
     return;
   }
 
   // Init Persist Link.
-  const persistLink = new PersistLink(global.config.persist_link);
+  const persistLink = new PersistLink(getConfig().persist_link);
 
   // Define URL and create Persist Link record.
   const preparedHash = Buffer.from((link as any).slice(0, 16).toString('hex')) + crypto.randomBytes(64).toString('hex') + linkEnding;
@@ -459,7 +460,7 @@ async function plinkFromFilestoragePdf(
   try {
     url = await persistLink.getLinkToStaticFileInFilestorage(link, preparedHash);
   } catch (error: any) {
-    global.log.save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
+    getLog().save('plink-from-filestorage-pdf-create-plink-url-error', { error: error && error.message });
     throw error;
   }
 
@@ -475,11 +476,11 @@ async function plinkFromFilestoragePdf(
  */
 async function generateP7sLink(link: any): Promise<string> {
   try {
-    const persistLink = new PersistLink(global.config.persist_link);
+    const persistLink = new PersistLink(getConfig().persist_link);
     const preparedHashForP7s = Buffer.from(link.slice(-16).toString('hex')) + crypto.randomBytes(64).toString('hex');
     return await (persistLink.getLinkToStaticFileInFilestorage as any)(link, preparedHashForP7s, { isP7s: true });
   } catch (error: any) {
-    global.log.save('generate-p7s-link-error', { error: error && error.message });
+    getLog().save('generate-p7s-link-error', { error: error && error.message });
     throw error;
   }
 }
@@ -498,7 +499,7 @@ function protectedFileFromAttach(attach: any, options: any) {
 
   // Check.
   if (!link || !name || !type) {
-    global.log.save('protected-file-from-attach|params-error', { link, name, type });
+    getLog().save('protected-file-from-attach|params-error', { link, name, type });
     return;
   }
 
@@ -519,7 +520,7 @@ function protectedFileFromPdf(link: string, name = 'document.pdf', options: any)
 
   // Check.
   if (!link || !name) {
-    global.log.save('protected-file-from-pdf|params-error', { link, name });
+    getLog().save('protected-file-from-pdf|params-error', { link, name });
     return;
   }
 
@@ -551,7 +552,7 @@ async function cabinetAttach(attach: any, { isIncludeP7s = false }: { isIncludeP
   // Check.
   if (!documentId || !attachId || !link || !name || !type) {
     // Log and exit.
-    global.log.save('cabinet-attach-params-error', { documentId, link, name, type });
+    getLog().save('cabinet-attach-params-error', { documentId, link, name, type });
     return;
   }
 
@@ -561,7 +562,7 @@ async function cabinetAttach(attach: any, { isIncludeP7s = false }: { isIncludeP
   try {
     fileInfo = await filestorage.getFileInfo(link);
   } catch (error: any) {
-    global.log.save('cabinet-attach-get-hash-error', { error: error && error.message });
+    getLog().save('cabinet-attach-get-hash-error', { error: error && error.message });
     return;
   }
   const { hash } = fileInfo;
@@ -581,7 +582,7 @@ async function cabinetFile(documentId: string, link: string, name = 'document.pd
   // Check.
   if (!link || !name || !documentId) {
     // Log and exit.
-    global.log.save('cabinet-file-params-error', { link, name, documentId });
+    getLog().save('cabinet-file-params-error', { link, name, documentId });
     return;
   }
 
@@ -591,7 +592,7 @@ async function cabinetFile(documentId: string, link: string, name = 'document.pd
   try {
     fileInfo = await filestorage.getFileInfo(link);
   } catch (error: any) {
-    global.log.save('cabinet-file-get-hash-error', { error: error && error.message });
+    getLog().save('cabinet-file-get-hash-error', { error: error && error.message });
     return;
   }
   const { hash } = fileInfo;

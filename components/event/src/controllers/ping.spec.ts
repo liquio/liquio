@@ -1,5 +1,6 @@
 import { PingController } from './ping';
 import { HttpRequest } from '../lib/http_request';
+import { setAppContext, resetAppContext } from '../lib/context';
 
 describe('PingController.sendPingRequest monitoring token', () => {
   const makeController = (): any => {
@@ -10,11 +11,14 @@ describe('PingController.sendPingRequest monitoring token', () => {
   };
 
   beforeEach(() => {
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
     jest.spyOn(HttpRequest, 'send').mockResolvedValue({ fullResponse: {}, body: {} } as any);
   });
 
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => {
+    jest.restoreAllMocks();
+    resetAppContext();
+  });
 
   it('sends x-monitoring-token when configured and keeps the token header', async () => {
     await makeController().sendPingRequest('http://manager/test/ping', true, 'mon-secret');

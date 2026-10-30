@@ -6,6 +6,7 @@ import { Encryptor } from '../src/lib/encryptor';
 import { Sign } from '../src/lib/sign';
 import { PersistLink } from '../src/lib/persist_link';
 import { TestApp } from './test-app';
+import { getLog } from '../src/lib/context';
 
 const SIGN = 'http://sign.test';
 const PL = 'http://pl.test';
@@ -150,7 +151,7 @@ describe('Group D - encryptor, sign, persist link', () => {
     });
 
     it('logs and rethrows on failure for every method', async () => {
-      const save = jest.spyOn(global.log, 'save').mockImplementation(() => undefined as any);
+      const save = jest.spyOn(getLog(), 'save').mockImplementation(() => undefined as any);
       const calls: [string, string, () => Promise<any>][] = [
         ['/sign', 'sign-service-sign-error', () => sign.sign('a')],
         ['/sign-hash', 'sign-service-sign-hash-error', () => sign.signHash('a')],
@@ -236,7 +237,7 @@ describe('Group D - encryptor, sign, persist link', () => {
     });
 
     it('logs and rethrows request errors', async () => {
-      const save = jest.spyOn(global.log, 'save').mockImplementation(() => undefined as any);
+      const save = jest.spyOn(getLog(), 'save').mockImplementation(() => undefined as any);
       const fns: [string, () => Promise<any>][] = [
         ['get-persist-link-to-document-response-error', () => pl.getQrAndLinkToDocument('D')],
         ['get-persist-link-to-case-response-error', () => pl.getQrAndLinkToCase('C')],

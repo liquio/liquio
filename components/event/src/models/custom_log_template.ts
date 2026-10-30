@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 
+import { getConfig } from '../lib/context';
 import { Model } from './model';
 import { CustomLogTemplateEntity } from '../entities/custom_log_template';
 
@@ -115,7 +116,7 @@ export class CustomLogTemplateModel extends Model {
    */
   async getAllWithCache() {
     // Check cache available.
-    const { templatesCacheLifetime: cacheLifetime = 60000 } = global.config.custom_logs;
+    const { templatesCacheLifetime: cacheLifetime = 60000 } = getConfig().custom_logs;
     const { createdAt: cacheCreatedAt, data: cacheData } = this.cache;
     const now = Date.now();
     if (cacheCreatedAt && now - cacheCreatedAt <= cacheLifetime) {

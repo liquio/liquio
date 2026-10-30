@@ -2,10 +2,11 @@ import debug from 'debug';
 import nock from 'nock';
 
 import { FileStorage } from './filestorage';
+import { setAppContext, resetAppContext, getLog } from './context';
 
-global.log = {
+const testLog = {
   save: jest.fn((type, data, level) => debug('test:log')({ type, data, level })),
-} as any;
+};
 
 jest.mock('@liquio/back-core', () => ({
   getTraceId: jest.fn(() => '123e4567-e89b-12d3-a456-426614174000'),
@@ -22,9 +23,13 @@ describe('FileStorage', () => {
     createAsicTimeout: 1000,
   };
 
-  global.config = {
-    filestorage: mockOptions,
-  };
+  beforeEach(() => {
+    setAppContext({ log: testLog, config: { filestorage: mockOptions } });
+  });
+
+  afterEach(() => {
+    resetAppContext();
+  });
 
   let fileStorage;
 
@@ -69,9 +74,9 @@ describe('FileStorage', () => {
   });
 
   it('does not log the filestorage token in request options (EV-05b)', async () => {
-    (global.log.save as jest.Mock).mockClear();
+    (getLog().save as jest.Mock).mockClear();
     await fileStorage.downloadFileRequestOptions('file-id');
-    const logged = JSON.stringify((global.log.save as jest.Mock).mock.calls);
+    const logged = JSON.stringify((getLog().save as jest.Mock).mock.calls);
     expect(logged).not.toContain('mock-token');
     expect(logged).toContain('file-id');
   });
