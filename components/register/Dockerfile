@@ -62,7 +62,7 @@ COPY --chown=root:root migrations-config.js ./
 COPY --chown=root:root migrations/ ./migrations
 
 # Copy the compiled application
-COPY --chown=root:root --from=build /build/components/register/dist ./
+COPY --chown=root:root --from=build /build/components/register/dist ./dist
 
 # Switch to the node user
 USER 1000:1000
@@ -75,7 +75,7 @@ HEALTHCHECK --start-period=10s --interval=30s --timeout=5s --retries=3 \
     CMD ["node", "-e", "require('http').get('http://localhost:8080/test/ping', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
 
 # Start the application
-CMD ["node", "src/index.js"]
+CMD ["node", "dist/index.js"]
 
 # Build metadata, declared last so per-build values don't invalidate cached layers
 ARG VERSION
