@@ -9,7 +9,7 @@ const config = {
   ...baseConfig,
   testMatch: ['<rootDir>/tests/**/*.e2e-spec.[tj]s?(x)'],
   collectCoverage: true,
-  collectCoverageFrom: ['src/**/*.{ts,js}', '!src/**/*.spec.ts', '!src/**/*.d.ts', '!src/types/**', '!src/app.ts', '!src/lib/cli/**'],
+  collectCoverageFrom: ['src/**/*.{ts,js}', '!src/**/*.spec.ts', '!src/**/*.d.ts', '!src/types/**', '!src/index.ts', '!src/lib/cli/**'],
   coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
   coverageDirectory: 'coverage',
   bail: false,

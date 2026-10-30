@@ -5,13 +5,13 @@
     "node": "24"
   },
   "private": true,
-  "main": "src/app.js",
+  "main": "dist/index.js",
   "license": "SEE LICENSE IN ../../LICENSE.md",
   "scripts": {
-    "start": "node src/app.js",
-    "start:prod": "node src/app.js",
-    "start:ts": "node -r ts-node/register src/app.ts",
-    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:prod": "node dist/index.js",
+    "start:ts": "node -r ts-node/register src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint \"**/*.{js,ts}\"",
     "lint:fix": "eslint \"**/*.{js,ts}\" --fix",
     "migration-up": "sequelize db:migrate",
