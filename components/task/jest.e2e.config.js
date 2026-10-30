@@ -16,6 +16,7 @@ const config = {
     '!src/types/**',
     '!src/commands/**',
     '!src/index.ts',
+    '!src/bin/**',
   ],
   coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
   coverageDirectory: 'coverage',

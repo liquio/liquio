@@ -278,3 +278,12 @@ export class BpmnTaskCore {
     JSONPath.cleanTimeouts();
   }
 }
+
+export async function bootstrap(): Promise<void> {
+  // Init.
+  const bpmnTaskCore = new BpmnTaskCore();
+  await bpmnTaskCore.init();
+
+  // Start.
+  await bpmnTaskCore.listen();
+}

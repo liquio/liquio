@@ -6,8 +6,8 @@ describe('unauthenticated logs broadcasting WebSocket server', () => {
     expect(fs.existsSync(path.join(__dirname, 'logs_broadcasting.ts'))).toBe(false);
   });
 
-  it('is not wired into the app.ts bootstrap', () => {
-    const source = fs.readFileSync(path.join(__dirname, '..', 'app.ts'), 'utf8');
+  it('is not wired into the bootstrap.ts module', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'bootstrap.ts'), 'utf8');
     expect(source).not.toMatch(/logs_?broadcasting/i);
   });
 });

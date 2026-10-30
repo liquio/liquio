@@ -1,12 +1,3 @@
-import { BpmnTaskCore } from './app';
+import { bootstrap } from './bootstrap';
 
-async function main() {
-  // Init.
-  const bpmnTaskCore = new BpmnTaskCore();
-  await bpmnTaskCore.init();
-
-  // Start.
-  await bpmnTaskCore.listen();
-}
-
-main();
+bootstrap();

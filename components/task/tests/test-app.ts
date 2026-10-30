@@ -14,7 +14,7 @@ import amqp from 'amqplib';
 import jsonwebtoken from 'jsonwebtoken';
 import { resetIdApiClient } from '@liquio/back-core';
 
-import { BpmnTaskCore } from '../src/app';
+import { BpmnTaskCore } from '../src/bootstrap';
 
 // E2E tests are slow, so we increase the timeout
 jest.setTimeout(120000);
