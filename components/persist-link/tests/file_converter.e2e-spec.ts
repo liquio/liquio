@@ -21,13 +21,13 @@ describe('FileConverterService error paths against a local converter stub', () =
       res.end(JSON.stringify({ error: 'converter failed' }));
     });
     const url = await stub.start();
-    (global as any).config = { file_converter: { isEnabled: true, url, token: 'converter-token', timeout: 5000 } };
+    setAppContext({ config: { file_converter: { isEnabled: true, url, token: 'converter-token', timeout: 5000 } } });
     delete (FileConverterService as any).singleton;
     service = new FileConverterService();
   });
 
   afterAll(async () => {
-    delete (global as any).config;
+    setAppContext({ config: undefined });
     delete (FileConverterService as any).singleton;
     await stub.stop();
   });
