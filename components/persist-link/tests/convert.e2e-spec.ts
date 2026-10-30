@@ -1,5 +1,6 @@
 // Import.
 import { TestApp, config } from './test_app';
+import { setAppContext } from '../src/lib/context';
 import { StubServer } from './stub_server';
 
 describe('File conversion', () => {
@@ -25,8 +26,8 @@ describe('File conversion', () => {
     const storageUrl = await storage.start();
     const converterUrl = await converter.start();
     config.link_providers.filestorage = { serversList: [{ name: 'fs1', apiHost: storageUrl, token: 't', containerId: 'c' }] };
-    // FileConverterService reads `global.config` (the app never sets it, so the converter is off in production); set it here to reach the code.
-    (global as any).config = config;
+    // FileConverterService reads the app context config; set it here to enable the converter.
+    setAppContext({ config: config });
     config.file_converter = { isEnabled: true, url: `${converterUrl}/api/v1`, token: 'conv-token', timeout: 5000, routes: {} };
   });
 

@@ -23,7 +23,7 @@ export async function bootstrap(config: any, overrides: BootstrapOverrides = {})
 
   // Init DB.
   const db = await Db.getInstance(config.db);
-  setAppContext({ db });
+  setAppContext({ config, db });
 
   // Init models.
   const models = new Models(config);

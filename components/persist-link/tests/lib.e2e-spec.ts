@@ -50,7 +50,7 @@ describe('Library helpers', () => {
       });
     });
     const url = await converter.start();
-    (global as any).config = { file_converter: { isEnabled: true, url: `${url}/api/v1`, token: 'x', routes: {}, timeout: 5000 } };
+    setAppContext({ config: { file_converter: { isEnabled: true, url: `${url}/api/v1`, token: 'x', routes: {}, timeout: 5000 } } });
     delete (FileConverterService as any).singleton;
     try {
       const service: any = new FileConverterService();
@@ -61,15 +61,15 @@ describe('Library helpers', () => {
       await expect(service.convertByFileId('', {})).rejects.toThrow('required');
       await expect(service.convertByStream(null, {})).rejects.toThrow('required');
 
-      (global as any).config = { file_converter: { isEnabled: true, url: '', token: '' } };
+      setAppContext({ config: { file_converter: { isEnabled: true, url: '', token: '' } } });
       delete (FileConverterService as any).singleton;
       expect(() => new FileConverterService()).toThrow('configuration error');
 
-      (global as any).config = { file_converter: { isEnabled: false } };
+      setAppContext({ config: { file_converter: { isEnabled: false } } });
       delete (FileConverterService as any).singleton;
       expect(() => (new FileConverterService() as any).client).toThrow('disabled');
     } finally {
-      delete (global as any).config;
+      setAppContext({ config: undefined });
       delete (FileConverterService as any).singleton;
       await converter.stop();
     }

@@ -3,7 +3,7 @@ import axios from 'axios';
 import FormData from 'form-data';
 import { getTraceId } from '@liquio/back-core';
 
-import { getLog } from './context';
+import { getConfig, getLog } from './context';
 import Helpers from '../lib/helpers';
 
 // Constants.
@@ -24,7 +24,7 @@ class FileConverterService {
   constructor() {
     // Define singleton.
     if (!FileConverterService.singleton) {
-      const { isEnabled, url, token, routes, timeout } = global?.config?.file_converter || {};
+      const { isEnabled, url, token, routes, timeout } = getConfig()?.file_converter || {};
       if (!isEnabled) {
         getLog().save('file-converter-service-disabled');
         return;
