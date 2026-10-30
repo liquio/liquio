@@ -151,7 +151,7 @@ export class TestApp {
       };
     } else {
       // Start PostgreSQL container.
-      this.pgContainer = await new PostgreSqlContainer('postgres:16').start();
+      this.pgContainer = await TestApp.startPostgres();
 
       // Inject database credentials into the config.
       dbConfig = {
@@ -168,6 +168,19 @@ export class TestApp {
     process.env[`${ENV_PREFIX}db`] = JSON.stringify(dbConfig);
 
     await TestApp.applyMigrations(dbConfig);
+  }
+
+  // testcontainers sporadically fails the port-wait exec with "write EPIPE" right after the container starts; retry.
+  static async startPostgres(attempts = 3) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await new PostgreSqlContainer('postgres:16').start();
+      } catch (error) {
+        if (attempt >= attempts) {
+          throw error;
+        }
+      }
+    }
   }
 
   // Run migrations and seed a default container to set up the database schema and data.
@@ -196,7 +209,7 @@ export class TestApp {
   }
 
   async init() {
-    // Load config the same way src/app.ts does, so it resolves to the exact env-var-overridden
+    // Load config the same way src/index.ts does, so it resolves to the exact env-var-overridden
     // values set in beforeAll() above — including for classes (e.g. Preview) that re-derive
     // config from this same module-level singleton instead of receiving it via constructor args.
     const { initialize: initializeConfig } = await import('../src/lib/config');
@@ -209,7 +222,7 @@ export class TestApp {
     this.log = log;
     global.log = log;
 
-    // Same startup sequence as src/app.ts (validation, DB, providers, models, router).
+    // Same startup sequence as src/index.ts (validation, DB, providers, models, router).
     const { providers, models, router } = await bootstrap(config, log);
     this.providers = providers;
     this.models = models;
