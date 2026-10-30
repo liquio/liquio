@@ -198,8 +198,9 @@ postgresql:
   auth:
     # Database username
     username: postgres
-    # Database password
-    password: "testpassword"
+    # Not used by any template: the bundled PostgreSQL password is generated into the
+    # <release>-infra-secrets Secret by the init-secrets job. Leave empty.
+    password: ""
     # Default database name
     database: postgres
   # Primary database instance configuration
@@ -235,8 +236,9 @@ rabbitmq:
   auth:
     # RabbitMQ username
     username: guest
-    # RabbitMQ password
-    password: "testpassword"
+    # Not used by any template: the bundled RabbitMQ password is generated into the
+    # <release>-infra-secrets Secret by the init-secrets job. Leave empty.
+    password: ""
   # Persistence configuration
   persistence:
     # Whether to enable persistent storage for messages
@@ -316,6 +318,86 @@ ingress:
   configurationSnippet: |
     proxy_hide_header Content-Security-Policy;
     add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com; worker-src blob: 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' blob: http://localhost:* http://172.18.0.1:* http://*.liquio.local https://*; frame-src 'self' blob: https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self';" always;
+  # Public allow-list for the id-api host (KS-24i). id-api exposes service-to-service routes (basic auth:
+  # /user/info/{id,ipn,edrpou,search,phone,onboarding,:id}, GET /user, /user/:id, /user/password/set, /totp/generate|enable|disable,
+  # /login_history, /user_admin_actions, /stat, /ldap, /sign_up/confirmation/phone/set, /oauth/token/test_code, ...) and /proxy/*.
+  # In-cluster callers (task, admin-api, cabinet-api, event, notification) use the id-api Service and are unaffected.
+  # enabled (default): hosts that route to id-api are served by a second Ingress "<fullname>-id-api-public" that lists
+  # only `paths` and `extraPaths`, and the id-front nginx fallback proxies only the same paths to id-api; everything else
+  # is 404 from outside. Set enabled: false to restore the old catch-all "/" routing (NOT recommended: exposes the
+  # service-to-service routes). Add deployment-specific browser routes (for example /proxy/authorise/eds when the
+  # EDS sign proxy is used by browsers) to `extraPaths`. A new public id-api route must be added here.
+  # Exact entries do not match a trailing slash.
+  idApiPublicAllowlist:
+    enabled: true
+    paths:
+      - path: /test/ping
+        pathType: Exact
+      - path: /auth
+        pathType: Exact
+      - path: /auth_providers
+        pathType: Exact
+      - path: /sign_in
+        pathType: Prefix
+      - path: /relogin
+        pathType: Exact
+      - path: /authorise
+        pathType: Prefix
+      - path: /oauth/token
+        pathType: Exact
+      - path: /logout
+        pathType: Exact
+      - path: /logoff
+        pathType: Prefix
+      - path: /subscribe
+        pathType: Exact
+      - path: /removeConfirmCode
+        pathType: Exact
+      - path: /user/info
+        pathType: Exact
+      - path: /user/jwt
+        pathType: Exact
+      - path: /user/logout_other_sessions
+        pathType: Exact
+      - path: /user/password/forgot
+        pathType: Exact
+      - path: /user/password/reset
+        pathType: Exact
+      - path: /user/info/email/send
+        pathType: Exact
+      - path: /user/info/email/set
+        pathType: Exact
+      - path: /user/info/email/check_email_confirmation_code
+        pathType: Exact
+      - path: /user/info/setValidPhone
+        pathType: Exact
+      - path: /user/info/phone/send
+        pathType: Exact
+      - path: /user/info/phone/confirm
+        pathType: Exact
+      - path: /user/info/phone/check_phone_confirmation_code
+        pathType: Exact
+      - path: /sign_up
+        pathType: Exact
+      - path: /sign_up/confirmation
+        pathType: Exact
+      - path: /sign_up/confirmation/email/exist
+        pathType: Exact
+      - path: /sign_up/confirmation/email/send
+        pathType: Exact
+      - path: /sign_up/confirmation/email/verify
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/exist
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/send
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/verify
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/check_code
+        pathType: Exact
+      - path: /sign_up/confirmation/phone/check
+        pathType: Exact
+    extraPaths: []
   # Self-signed TLS certificate for local/dev deployments.
   # When enabled, a kubernetes.io/tls Secret is generated at helm render time
   # using Helm's built-in genSelfSignedCert function. The cert covers all hosts
@@ -429,6 +511,17 @@ initContainerResources:
     cpu: 50m
     memory: 32Mi
 
+# Resource limits for the plugin-installer init container specifically - it runs
+# a real `npm install`, which needs meaningfully more memory than the plain
+# nc-based wait-for-* init containers above.
+pluginInstallerResources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
 # Node selector for pod assignment
 nodeSelector: {}
 
@@ -448,8 +541,9 @@ config:
     port: 5432
     # Database username
     username: postgres
-    # Database password
-    password: "testpassword"
+    # Not used by any template: database passwords come from the per-service Secrets
+    # (generated by the init-secrets job, or supplied via secrets.existingSecrets). Leave empty.
+    password: ""
 
   # RabbitMQ message broker configuration
   rabbitmq:
@@ -459,8 +553,8 @@ config:
     port: 5672
     # RabbitMQ username
     username: guest
-    # RabbitMQ password
-    password: "testpassword"
+    # Not used by any template: see config.database.password. Leave empty.
+    password: ""
 
   # Redis cache configuration
   redis:
@@ -490,19 +584,26 @@ config:
   #     isSwaggerEnabled: true
 
   # Services that handle large file uploads retain a higher maxBodySize default.
-  adminApi:
-    server:
-      maxBodySize: "500mb"
+  # admin-api is not one of them: its file-library upload bypasses `express.json`, and BPMN import has its own cap.
   manager:
     server:
       maxBodySize: "500mb"
   register:
     server:
-      maxBodySize: "500mb"
+      # Ordinary routes use maxBodySize (10mb); only authenticated bulk/import routes use maxBulkBodySize.
+      maxBulkBodySize: "500mb"
 
   # Identity API configuration
   # Configuration for authentication providers and OIDC integration
   id:
+    # Roles a named id-api client with the user:admin scope (admin-api) may set through PUT /user/info/:id, rendered as
+    # `roles` in the id config. Every role in the submitted value must be on the list, else 400, so a named client can
+    # never grant (or keep) a role outside it. Defaults to the roles admin-api manages: `individual` (the default user
+    # role), `admin` and `admin-<admin-api auth.clientId>` (set-admin with isCurrentAuthClient; clientId is
+    # `liquio-portal`). Add `admin-<clientId>` if you change the admin-api clientId, and any other role you give users
+    # through admin-api. A user holding a role that is not on the list cannot be updated with a role through admin-api.
+    # The legacy shared secret is not limited by this list.
+    # assignableRoles: ["individual", "admin", "admin-liquio-portal"]
     config:
       # OIDC provider configuration
       # Add OIDC providers to enable generic OpenID Connect authentication
@@ -527,12 +628,86 @@ config:
       #         family_name: "last_name"
       #       userInfo:
       #         enabled: true
+      #
+      # EDS (IIT) login is disabled by default and no credentials are shipped in the chart.
+      # To enable it, put auth_providers.eds with isEnabled: true, clientID and clientSecret
+      # into the id secret config (`<release>-id-secret-config`, key config.json), not into values.
+      # The secret is mounted read-only into id-api at `secrets.secretConfigPath` (SECRET_PATH),
+      # and its config.json is deep-merged over the configmap config.json, so the keys live under
+      # the environment section (`production` by default). Only the changed keys are needed:
+      #
+      #   {"production": {"auth_providers": {"eds": {
+      #     "isEnabled": true, "clientID": "<IIT client id>", "clientSecret": "<IIT client secret>"}}}}
+      #
+      # id-api refuses to start when EDS is enabled with a missing or placeholder clientID,
+      # clientSecret or callbackURL. Restart id-api after changing the secret.
+      #
+      # LDAP / Active Directory login (see components/id-api/docs/ldap.md).
+      # Settings go under `production`. Keep bindPassword (and an inline CA) out of values:
+      # put them into the id secret config (`<release>-id-secret-config`, key config.json).
+      #
+      # production:
+      #   auth_providers:
+      #     ldap:
+      #       isEnabled: true
+      #       connection:
+      #         url: "ldaps://dc.domain.loc:636"
+      #         bindDN: "svc-liquio@domain.loc"
+      #       baseDN: "dc=domain,dc=loc"
+      #       nestedGroups: true
+      #       attributes:
+      #         email: "mail"
+      #         first_name: "givenName"
+      #         last_name: "sn"
+      #       accessGroups:
+      #         - "CN=LIQUIO-PROD-USERS,OU=Groups,DC=domain,DC=loc"
+      #       sync:
+      #         isEnabled: true
+      #         intervalMinutes: 15
+
+  # Task per-integration Basic route scoping (off by default). When true, every Basic-auth route of task needs a rule
+  # naming the caller, else 403. The chart ships rules for `admin-api` and `event` (see task.configmap.yaml). Callers
+  # outside the chart (other external_bpmn systems, /auth/bearer users) have no rule, so check them first.
+  # task:
+  #   basic_auth:
+  #     scopedRoutes: true
+
+# Opt-in TLS between Liquio services and the notification / sign-tool backends (SE-3930, ID-27c). Off by default:
+# the rendered manifests are then unchanged and notification and sign-tool serve plain HTTP, protected only by the
+# NetworkPolicies (networkPolicy.enabled).
+#
+# When enabled:
+#   - notification and sign-tool serve HTTPS (conf.tls / server.tls) from the cert and key in the Secret, and their
+#     liveness and readiness probes use scheme HTTPS (/test/ping).
+#   - every in-chart URL to them becomes https:// (id, register, admin-api, task, event, manager, gateway configmaps).
+#   - id-api (internalTransport.ca, allowPlainHttp=false), register (sign.tls, allowPlainHttp=false) and admin-api
+#     (internal_transport.json) get the CA mounted and configured; verification is always on.
+#   - task, event, manager and gateway have no CA option, so they get NODE_EXTRA_CA_CERTS pointing at the mounted CA.
+#   - no Ingress routes to these two services (they are internal-only), so no backend-protocol annotation is needed.
+#     If you add your own Ingress path to them, add nginx.ingress.kubernetes.io/backend-protocol: "HTTPS".
+internalTls:
+  enabled: false
+  # Existing Secret (created outside this chart, independent of secrets.createSecrets) with the keys
+  #   ca.crt   CA that signed tls.crt
+  #   tls.crt  server certificate, SANs must cover <release>-notification and <release>-sign-tool
+  #            (short and .<namespace>.svc names) and also serve as the client certificate when mtls is on
+  #   tls.key  private key
+  # This is the layout cert-manager writes for a Certificate with issuer ca.crt. Required when enabled.
+  secretName: ""
+  # Require client certificates on notification and sign-tool (sets caPath, so requests without a certificate signed
+  # by the CA get 401, except /test/ping for the probes). Only register and admin-api can present a client certificate.
+  # id-api, task, event, manager and gateway cannot, so with mtls=true their calls to notification and sign-tool are
+  # rejected. Enable it only when those callers are disabled or go through a mesh/sidecar that adds the certificate.
+  mtls: false
 
 # Secret configuration
 secrets:
   # Whether Helm should generate all required secrets on install.
   # Set to false when you manage secrets externally (secrets manager, manual setup, CI pipeline).
   # When false, all secrets must exist in the namespace before running helm install.
+  # When true, a pre-upgrade hook also adds the missing named id-api clients (task, cabinet-api, event, notification)
+  # and the caller tokens to existing releases, never overwriting present values, then restarts the affected pods.
+  # When false, no hook runs: add production.basic_auth.clients to the id secret and the tokens to the caller secrets.
   createSecrets: true
 
   # Override default secret names. Optional.
@@ -552,6 +727,8 @@ secrets:
   #   sign-tool:        liquio-sign-tool-secret-config
   #   pdf-generator:    liquio-pdf-generator-secret-config
   #   task:             liquio-task-secret-config
+  #   monitoring:       liquio-monitoring-tokens   (plain x-monitoring-token values of manager, gateway, event; keys
+  #                                                manager, gateway, event; read it to configure your scraper)
   existingSecrets: {}
 
   # Mount path for per-service config volume (SECRET_PATH env var). Default: /var/www/secret

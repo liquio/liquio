@@ -1,0 +1,420 @@
+{
+    "workflowTemplate": {
+        "id": 900004,
+        "workflowTemplateCategoryId": 29,
+        "name": "calcTriggers steps",
+        "description": "",
+        "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\">\n  <bpmn2:process id=\"Process_1\" isExecutable=\"false\">\n    <bpmn2:startEvent id=\"start-event-1\">\n      <bpmn2:outgoing>Flow_start_1</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-900004001\" name=\"1 - later step appears on Next\">\n      <bpmn2:incoming>Flow_start_1</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_1</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_1\" sourceRef=\"start-event-1\" targetRef=\"task-900004001\" />\n    <bpmn2:endEvent id=\"end-event-1\" name=\"end-event-1\">\n      <bpmn2:incoming>Flow_end_1</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_1\" sourceRef=\"task-900004001\" targetRef=\"end-event-1\" />\n    <bpmn2:startEvent id=\"start-event-2\">\n      <bpmn2:outgoing>Flow_start_2</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-900004002\" name=\"2 - earlier step disappears on Next\">\n      <bpmn2:incoming>Flow_start_2</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_2</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_2\" sourceRef=\"start-event-2\" targetRef=\"task-900004002\" />\n    <bpmn2:endEvent id=\"end-event-2\" name=\"end-event-2\">\n      <bpmn2:incoming>Flow_end_2</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_2\" sourceRef=\"task-900004002\" targetRef=\"end-event-2\" />\n    <bpmn2:startEvent id=\"start-event-3\">\n      <bpmn2:outgoing>Flow_start_3</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-900004003\" name=\"3 - current step disappears on Next\">\n      <bpmn2:incoming>Flow_start_3</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_3</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_3\" sourceRef=\"start-event-3\" targetRef=\"task-900004003\" />\n    <bpmn2:endEvent id=\"end-event-3\" name=\"end-event-3\">\n      <bpmn2:incoming>Flow_end_3</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_3\" sourceRef=\"task-900004003\" targetRef=\"end-event-3\" />\n    <bpmn2:startEvent id=\"start-event-4\">\n      <bpmn2:outgoing>Flow_start_4</bpmn2:outgoing>\n    </bpmn2:startEvent>\n    <bpmn2:task id=\"task-900004004\" name=\"4 - stepOrders names a step without a schema\">\n      <bpmn2:incoming>Flow_start_4</bpmn2:incoming>\n      <bpmn2:outgoing>Flow_end_4</bpmn2:outgoing>\n    </bpmn2:task>\n    <bpmn2:sequenceFlow id=\"Flow_start_4\" sourceRef=\"start-event-4\" targetRef=\"task-900004004\" />\n    <bpmn2:endEvent id=\"end-event-4\" name=\"end-event-4\">\n      <bpmn2:incoming>Flow_end_4</bpmn2:incoming>\n    </bpmn2:endEvent>\n    <bpmn2:sequenceFlow id=\"Flow_end_4\" sourceRef=\"task-900004004\" targetRef=\"end-event-4\" />\n  </bpmn2:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Process_1\">\n      <bpmndi:BPMNShape id=\"start-event-1_di\" bpmnElement=\"start-event-1\">\n        <dc:Bounds x=\"412\" y=\"240\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-900004001_di\" bpmnElement=\"task-900004001\">\n        <dc:Bounds x=\"540\" y=\"218\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_1_di\" bpmnElement=\"Flow_start_1\">\n        <di:waypoint x=\"448\" y=\"258\" />\n        <di:waypoint x=\"540\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-1_di\" bpmnElement=\"end-event-1\">\n        <dc:Bounds x=\"722\" y=\"240\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"283\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_1_di\" bpmnElement=\"Flow_end_1\">\n        <di:waypoint x=\"640\" y=\"258\" />\n        <di:waypoint x=\"722\" y=\"258\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-2_di\" bpmnElement=\"start-event-2\">\n        <dc:Bounds x=\"412\" y=\"380\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-900004002_di\" bpmnElement=\"task-900004002\">\n        <dc:Bounds x=\"540\" y=\"358\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_2_di\" bpmnElement=\"Flow_start_2\">\n        <di:waypoint x=\"448\" y=\"398\" />\n        <di:waypoint x=\"540\" y=\"398\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-2_di\" bpmnElement=\"end-event-2\">\n        <dc:Bounds x=\"722\" y=\"380\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"423\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_2_di\" bpmnElement=\"Flow_end_2\">\n        <di:waypoint x=\"640\" y=\"398\" />\n        <di:waypoint x=\"722\" y=\"398\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-3_di\" bpmnElement=\"start-event-3\">\n        <dc:Bounds x=\"412\" y=\"520\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-900004003_di\" bpmnElement=\"task-900004003\">\n        <dc:Bounds x=\"540\" y=\"498\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_3_di\" bpmnElement=\"Flow_start_3\">\n        <di:waypoint x=\"448\" y=\"538\" />\n        <di:waypoint x=\"540\" y=\"538\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-3_di\" bpmnElement=\"end-event-3\">\n        <dc:Bounds x=\"722\" y=\"520\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"563\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_3_di\" bpmnElement=\"Flow_end_3\">\n        <di:waypoint x=\"640\" y=\"538\" />\n        <di:waypoint x=\"722\" y=\"538\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"start-event-4_di\" bpmnElement=\"start-event-4\">\n        <dc:Bounds x=\"412\" y=\"660\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"task-900004004_di\" bpmnElement=\"task-900004004\">\n        <dc:Bounds x=\"540\" y=\"638\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_4_di\" bpmnElement=\"Flow_start_4\">\n        <di:waypoint x=\"448\" y=\"678\" />\n        <di:waypoint x=\"540\" y=\"678\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"end-event-4_di\" bpmnElement=\"end-event-4\">\n        <dc:Bounds x=\"722\" y=\"660\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"710\" y=\"703\" width=\"61\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_end_4_di\" bpmnElement=\"Flow_end_4\">\n        <di:waypoint x=\"640\" y=\"678\" />\n        <di:waypoint x=\"722\" y=\"678\" />\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
+        "data": {
+            "statuses": [],
+            "entryTaskTemplateIds": [
+                {
+                    "name": "Start",
+                    "id": "() => 900004001;"
+                },
+                {
+                    "hidden": false,
+                    "name": "2 - earlier step disappears on Next",
+                    "id": "() => 900004002;"
+                },
+                {
+                    "hidden": false,
+                    "name": "3 - current step disappears on Next",
+                    "id": "() => 900004003;"
+                },
+                {
+                    "hidden": false,
+                    "name": "4 - stepOrders names a step without a schema",
+                    "id": "() => 900004004;"
+                }
+            ]
+        },
+        "isActive": true,
+        "accessUnits": [],
+        "createdAt": "2026-09-25T12:00:00.000Z",
+        "updatedAt": "2026-09-25T12:00:00.000Z",
+        "meta": {}
+    },
+    "workflowTemplateCategory": {
+        "id": 29,
+        "parentId": 0,
+        "name": "testProcess",
+        "createdAt": "2022-12-02T11:32:34.679Z",
+        "updatedAt": "2026-09-18T13:24:04.776Z"
+    },
+    "taskTemplates": [
+        {
+            "id": 900004001,
+            "name": "1 - later step appears on Next",
+            "documentTemplateId": 900004001,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "createdAt": "2026-09-25T12:00:00.000Z",
+            "updatedAt": "2026-09-25T12:00:00.000Z"
+        },
+        {
+            "id": 900004002,
+            "name": "2 - earlier step disappears on Next",
+            "documentTemplateId": 900004002,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "createdAt": "2026-09-25T12:00:00.000Z",
+            "updatedAt": "2026-09-25T12:00:00.000Z"
+        },
+        {
+            "id": 900004003,
+            "name": "3 - current step disappears on Next",
+            "documentTemplateId": 900004003,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "createdAt": "2026-09-25T12:00:00.000Z",
+            "updatedAt": "2026-09-25T12:00:00.000Z"
+        },
+        {
+            "id": 900004004,
+            "name": "4 - stepOrders names a step without a schema",
+            "documentTemplateId": 900004004,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n    \"setPermissions\": [\n        {\n            \"performerUsersIsWorkflowOwner\": true\n        }\n    ]\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "createdAt": "2026-09-25T12:00:00.000Z",
+            "updatedAt": "2026-09-25T12:00:00.000Z"
+        }
+    ],
+    "documentTemplates": [
+        {
+            "id": 900004001,
+            "name": "1 - later step appears on Next",
+            "jsonSchema": {
+                "title": "Наступний крок з'являється",
+                "type": "object",
+                "signRequired": false,
+                "pdfRequired": false,
+                "diiaSign": false,
+                "isP7sSign": false,
+                "forceRedirect": false,
+                "calcTriggers": [
+                    {
+                        "step": "s1",
+                        "target": "calculated.showS2",
+                        "calculate": "(value, step) => step?.radio === 'Так'"
+                    }
+                ],
+                "properties": {
+                    "calculated": {
+                        "type": "object",
+                        "description": "Розрахункові дані",
+                        "checkStepHidden": "() => true",
+                        "properties": {
+                            "showS2": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "s1": {
+                        "type": "object",
+                        "description": "Крок 1",
+                        "properties": {
+                            "radio": {
+                                "type": "string",
+                                "control": "radio.group",
+                                "checkRequired": "() => true",
+                                "description": "Показати крок 2?",
+                                "items": [
+                                    {
+                                        "id": "Так",
+                                        "title": "Так"
+                                    },
+                                    {
+                                        "id": "Ні",
+                                        "title": "Ні"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "s2": {
+                        "type": "object",
+                        "description": "Крок 2",
+                        "checkStepHidden": "(documentData) => documentData?.calculated?.showS2 !== true",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 2 показує тригер кроку 1"
+                            }
+                        }
+                    },
+                    "s3": {
+                        "type": "object",
+                        "description": "Крок 3",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 3"
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n    \"title\": \"Наступний крок з'являється\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"step\": \"s1\",\n            \"target\": \"calculated.showS2\",\n            \"calculate\": \"(value, step) => step?.radio === 'Так'\"\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"checkStepHidden\": \"() => true\",\n            \"properties\": {\n                \"showS2\": {\n                    \"type\": \"boolean\"\n                }\n            }\n        },\n        \"s1\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 1\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Показати крок 2?\",\n                    \"items\": [\n                        {\n                            \"id\": \"Так\",\n                            \"title\": \"Так\"\n                        },\n                        {\n                            \"id\": \"Ні\",\n                            \"title\": \"Ні\"\n                        }\n                    ]\n                }\n            }\n        },\n        \"s2\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 2\",\n            \"checkStepHidden\": \"(documentData) => documentData?.calculated?.showS2 !== true\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 2 показує тригер кроку 1\"\n                }\n            }\n        },\n        \"s3\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 3\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 3\"\n                }\n            }\n        }\n    }\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "mocks": [],
+            "createdAt": "2026-09-25T12:00:00.000Z",
+            "updatedAt": "2026-09-25T12:00:00.000Z"
+        },
+        {
+            "id": 900004002,
+            "name": "2 - earlier step disappears on Next",
+            "jsonSchema": {
+                "title": "Попередній крок зникає",
+                "type": "object",
+                "signRequired": false,
+                "pdfRequired": false,
+                "diiaSign": false,
+                "isP7sSign": false,
+                "forceRedirect": false,
+                "calcTriggers": [
+                    {
+                        "step": "s2",
+                        "target": "calculated.hideS1",
+                        "calculate": "(value, step) => step?.radio === 'Так'"
+                    }
+                ],
+                "properties": {
+                    "calculated": {
+                        "type": "object",
+                        "description": "Розрахункові дані",
+                        "checkStepHidden": "() => true",
+                        "properties": {
+                            "hideS1": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "s1": {
+                        "type": "object",
+                        "description": "Крок 1",
+                        "checkStepHidden": "(documentData) => documentData?.calculated?.hideS1 === true",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 1 ховає тригер кроку 2"
+                            }
+                        }
+                    },
+                    "s2": {
+                        "type": "object",
+                        "description": "Крок 2",
+                        "properties": {
+                            "radio": {
+                                "type": "string",
+                                "control": "radio.group",
+                                "checkRequired": "() => true",
+                                "description": "Сховати крок 1?",
+                                "items": [
+                                    {
+                                        "id": "Так",
+                                        "title": "Так"
+                                    },
+                                    {
+                                        "id": "Ні",
+                                        "title": "Ні"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "s3": {
+                        "type": "object",
+                        "description": "Крок 3",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 3"
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n    \"title\": \"Попередній крок зникає\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"step\": \"s2\",\n            \"target\": \"calculated.hideS1\",\n            \"calculate\": \"(value, step) => step?.radio === 'Так'\"\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"checkStepHidden\": \"() => true\",\n            \"properties\": {\n                \"hideS1\": {\n                    \"type\": \"boolean\"\n                }\n            }\n        },\n        \"s1\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 1\",\n            \"checkStepHidden\": \"(documentData) => documentData?.calculated?.hideS1 === true\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 1 ховає тригер кроку 2\"\n                }\n            }\n        },\n        \"s2\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 2\",\n            \"properties\": {\n                \"radio\": {\n                    \"type\": \"string\",\n                    \"control\": \"radio.group\",\n                    \"checkRequired\": \"() => true\",\n                    \"description\": \"Сховати крок 1?\",\n                    \"items\": [\n                        {\n                            \"id\": \"Так\",\n                            \"title\": \"Так\"\n                        },\n                        {\n                            \"id\": \"Ні\",\n                            \"title\": \"Ні\"\n                        }\n                    ]\n                }\n            }\n        },\n        \"s3\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 3\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 3\"\n                }\n            }\n        }\n    }\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "mocks": [],
+            "createdAt": "2026-09-25T12:00:00.000Z",
+            "updatedAt": "2026-09-25T12:00:00.000Z"
+        },
+        {
+            "id": 900004003,
+            "name": "3 - current step disappears on Next",
+            "jsonSchema": {
+                "title": "Поточний крок зникає",
+                "type": "object",
+                "signRequired": false,
+                "pdfRequired": false,
+                "diiaSign": false,
+                "isP7sSign": false,
+                "forceRedirect": false,
+                "calcTriggers": [
+                    {
+                        "step": "s2",
+                        "target": "calculated.leftS2",
+                        "calculate": "() => true"
+                    }
+                ],
+                "properties": {
+                    "calculated": {
+                        "type": "object",
+                        "description": "Розрахункові дані",
+                        "checkStepHidden": "() => true",
+                        "properties": {
+                            "leftS2": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "s1": {
+                        "type": "object",
+                        "description": "Крок 1",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 1"
+                            }
+                        }
+                    },
+                    "s2": {
+                        "type": "object",
+                        "description": "Крок 2",
+                        "checkStepHidden": "(documentData) => documentData?.calculated?.leftS2 === true",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 2 ховає власний тригер"
+                            }
+                        }
+                    },
+                    "s3": {
+                        "type": "object",
+                        "description": "Крок 3",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 3"
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n    \"title\": \"Поточний крок зникає\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"calcTriggers\": [\n        {\n            \"step\": \"s2\",\n            \"target\": \"calculated.leftS2\",\n            \"calculate\": \"() => true\"\n        }\n    ],\n    \"properties\": {\n        \"calculated\": {\n            \"type\": \"object\",\n            \"description\": \"Розрахункові дані\",\n            \"checkStepHidden\": \"() => true\",\n            \"properties\": {\n                \"leftS2\": {\n                    \"type\": \"boolean\"\n                }\n            }\n        },\n        \"s1\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 1\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 1\"\n                }\n            }\n        },\n        \"s2\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 2\",\n            \"checkStepHidden\": \"(documentData) => documentData?.calculated?.leftS2 === true\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 2 ховає власний тригер\"\n                }\n            }\n        },\n        \"s3\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 3\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 3\"\n                }\n            }\n        }\n    }\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "mocks": [],
+            "createdAt": "2026-09-25T12:00:00.000Z",
+            "updatedAt": "2026-09-25T12:00:00.000Z"
+        },
+        {
+            "id": 900004004,
+            "name": "4 - stepOrders names a step without a schema",
+            "jsonSchema": {
+                "title": "Крок без схеми у stepOrders",
+                "type": "object",
+                "signRequired": false,
+                "pdfRequired": false,
+                "diiaSign": false,
+                "isP7sSign": false,
+                "forceRedirect": false,
+                "stepOrders": "() => ['s1', 'ghost', 's2']",
+                "properties": {
+                    "s1": {
+                        "type": "object",
+                        "description": "Крок 1",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 1"
+                            }
+                        }
+                    },
+                    "s2": {
+                        "type": "object",
+                        "description": "Крок 2",
+                        "properties": {
+                            "hint": {
+                                "control": "infobox",
+                                "text": "Крок 2"
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n    \"title\": \"Крок без схеми у stepOrders\",\n    \"type\": \"object\",\n    \"signRequired\": false,\n    \"pdfRequired\": false,\n    \"diiaSign\": false,\n    \"isP7sSign\": false,\n    \"forceRedirect\": false,\n    \"stepOrders\": \"() => ['s1', 'ghost', 's2']\",\n    \"properties\": {\n        \"s1\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 1\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 1\"\n                }\n            }\n        },\n        \"s2\": {\n            \"type\": \"object\",\n            \"description\": \"Крок 2\",\n            \"properties\": {\n                \"hint\": {\n                    \"control\": \"infobox\",\n                    \"text\": \"Крок 2\"\n                }\n            }\n        }\n    }\n}",
+            "htmlTemplate": "<pdf-engine>pdf-generator</pdf-engine>\n\n<!DOCTYPE html>\n\n<html lang=\"uk\">\n\n<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>PDF Title</title>\n    <style>\n        body {\n            font-size: 12px;\n            font-family: Roboto-Regular;\n            margin: 0;\n            padding: 0 20px;\n            line-height: 1;\n            letter-spacing: -0.02em;\n        }\n\n        @font-face {\n            font-family: Roboto-Regular;\n            src: url({{publicUrl}}/fonts/Roboto-Regular.woff);\n        }\n    </style>\n</head>\n\n<body>\n    PDF Template\n</body>\n\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "mocks": [],
+            "createdAt": "2026-09-25T12:00:00.000Z",
+            "updatedAt": "2026-09-25T12:00:00.000Z"
+        }
+    ],
+    "gatewayTemplates": [],
+    "eventTemplates": []
+}

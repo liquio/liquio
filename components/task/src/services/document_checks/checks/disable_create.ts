@@ -1,0 +1,41 @@
+import { Sandbox } from '@liquio/back-core';
+
+import { Checks } from './index';
+
+/**
+ * Disable create document service
+ * @extends Checks
+ */
+export class DisableCreate extends Checks {
+  static get sandbox(): Sandbox {
+    return Sandbox.getInstance();
+  }
+
+  /**
+   * Disable create document check.
+   * @param {object} jsonSchema
+   * @param {object} documentData.
+   * @returns {object} result Check result.
+   * @returns {boolean} result.isDocumentPassedChecks.
+   * @returns {array} result.reasons.
+   */
+  check(jsonSchema, documentData) {
+    let isDocumentShouldBeDeleted = false;
+    let reason;
+
+    // Check that disableCreate is defined.
+    if (!jsonSchema.disableCreate) return { passed: true };
+
+    for (const check of jsonSchema.disableCreate) {
+      const isCheckPassed = DisableCreate.sandbox.eval(check.checkDelete)(documentData);
+      if (!isCheckPassed) {
+        isDocumentShouldBeDeleted = true;
+        reason = check.errorText;
+        break;
+      }
+    }
+
+    if (isDocumentShouldBeDeleted) return { passed: false, reason };
+    return { passed: true };
+  }
+}

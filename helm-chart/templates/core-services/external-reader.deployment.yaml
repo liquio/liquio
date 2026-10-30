@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/component: external-reader
     app.kubernetes.io/tier: backend
     app.kubernetes.io/exposure: internal
+    liquio.tech/uses-plugins: "true"
 spec:
   replicas: {{ .Values.services.externalReader.replicaCount }}
   selector:
@@ -22,6 +23,7 @@ spec:
         app.kubernetes.io/component: external-reader
         app.kubernetes.io/tier: backend
         app.kubernetes.io/exposure: internal
+        liquio.tech/uses-plugins: "true"
     spec:
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -30,6 +32,8 @@ spec:
       serviceAccountName: {{ include "liquio.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- include "liquio.initContainer.pluginInstaller" (dict "component" "external-reader" "Values" .Values "Chart" .Chart) | nindent 8 }}
       containers:
         - name: external-reader
           securityContext:
@@ -58,6 +62,9 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            - name: plugins
+              mountPath: /var/www/plugins
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /test/ping
@@ -80,6 +87,8 @@ spec:
           secret:
             secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "external-reader") }}
         - name: tmp
+          emptyDir: {}
+        - name: plugins
           emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:

@@ -1,0 +1,179 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/test/ping": {
+      "get": {
+        "operationId": "PingController_ping",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Ping response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PingDtoResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ping"
+        ]
+      }
+    },
+    "/captcha/providers/list": {
+      "get": {
+        "operationId": "CaptchaController_getProviderList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of available captcha providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetProviderListResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Captcha"
+        ]
+      }
+    },
+    "/captcha/{service}/{method}": {
+      "get": {
+        "operationId": "CaptchaController_getCaptcha",
+        "parameters": [
+          {
+            "name": "service",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "method",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get captcha for the specified service and method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCaptchaResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Captcha"
+        ]
+      }
+    },
+    "/{service}/{method}": {
+      "post": {
+        "operationId": "ProvidersController_handleProviderRequest",
+        "parameters": [
+          {
+            "name": "service",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "method",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Method executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Providers"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "liquio-external-reader",
+    "description": "External reader service for Liquio",
+    "version": "<version>",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "PingDtoResponse": {
+        "type": "object",
+        "properties": {
+          "processPid": {
+            "type": "number",
+            "description": "Process ID of the application"
+          },
+          "message": {
+            "type": "string",
+            "description": "Ping response message"
+          }
+        },
+        "required": [
+          "processPid",
+          "message"
+        ]
+      },
+      "GetProviderListResponse": {
+        "type": "object",
+        "properties": {
+          "isEnabledFor": {
+            "description": "List of available captcha providers",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "isEnabledFor"
+        ]
+      },
+      "GetCaptchaResponse": {
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "type": "object",
+            "description": "Captcha challenge"
+          }
+        },
+        "required": [
+          "challenge"
+        ]
+      }
+    }
+  }
+}

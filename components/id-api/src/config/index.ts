@@ -1,0 +1,561 @@
+import fs from 'fs';
+
+import Multiconf from 'multiconf';
+import { StrategyOptions } from 'passport-oauth2';
+import { Dialect } from 'sequelize';
+
+export const DEFAULT_COOKIE_DOMAIN = '.liquio';
+export const DEFAULT_CODE_RETRIES = 5;
+export const DEFAULT_CODE_LENGTH = 6;
+
+export interface AuthProviderDisplay {
+  title?: string;
+  icon?: string;
+  description?: string;
+}
+
+export interface LdapProviderConfig {
+  isEnabled?: boolean;
+  display?: AuthProviderDisplay;
+  connection?: {
+    url?: string;
+    startTLS?: boolean;
+    tlsOptions?: {
+      // PEM string or path to a PEM file.
+      ca?: string;
+      rejectUnauthorized?: boolean;
+    };
+    bindDN?: string;
+    bindPassword?: string;
+    timeout?: number;
+    connectTimeout?: number;
+  };
+  baseDN?: string;
+  // Defaults to baseDN.
+  userSearchBase?: string;
+  // Filter template, `{{username}}` is replaced with the escaped login.
+  userFilter?: string;
+  // Stable unique user attribute. Defaults to objectGUID.
+  idAttribute?: string;
+  nestedGroups?: boolean;
+  // LDAP attribute -> Liquio user field.
+  attributes?: Record<string, string>;
+  linkByEmail?: boolean;
+  accessGroups?: string[];
+  sync?: {
+    isEnabled?: boolean;
+    intervalMinutes?: number;
+  };
+}
+
+export interface OIDCProviderConfig {
+  issuer?: string;
+  authorizationURL?: string;
+  tokenURL?: string;
+  userInfoURL?: string;
+  endSessionURL?: string;
+  clientID: string;
+  clientSecret: string;
+  callbackURL: string;
+  scope?: string;
+  isEnabled?: boolean;
+  mapping?: Record<string, string>;
+  userInfo?: { enabled: boolean };
+  usePKCE?: boolean;
+  display?: AuthProviderDisplay;
+}
+
+export interface Config {
+  allowIdentificationTypes?: string[];
+  allowEdrpou?: string[];
+  allowRnokpp?: string[];
+  cors?: {
+    allowedOrigins?: string[];
+    maxAge?: number;
+  };
+  db: {
+    host: string;
+    port: number;
+    database: string;
+    username: string;
+    password: string;
+    logging: boolean;
+    dialect: Dialect;
+    ssl?: boolean;
+    dialectOptions?: any;
+  };
+  host?: string;
+  port: number;
+  modules?: {
+    denyToUpdateUserName?: boolean;
+    denyToUpdateUserValidParams?: boolean;
+    setPhoneOnlyAsNotValid?: boolean;
+  };
+  notifyServer?: {
+    host?: string;
+  };
+  kindergartens?: {
+    url?: string;
+    key?: string;
+  };
+  session?: {
+    secret_key?: string[];
+  };
+  domain?: string;
+  // Cookie attributes. `secure` defaults to `auto` (Secure for HTTPS requests), `sameSite` to `lax`.
+  cookies?: {
+    secure?: boolean | 'auto';
+    sameSite?: 'lax' | 'strict' | 'none';
+    // Make the `jwt` profile cookie unreadable by JavaScript (default false, front-ends read it).
+    profileHttpOnly?: boolean;
+  };
+  // Express `trust proxy` value: hop count, or IP/CIDR/preset list of known ingress proxies. Unset trusts nothing.
+  trustProxy?: number | string | string[];
+  // Keep the deprecated GET (query string) variants of the confirmation code routes (IF-05). Default true; false answers 410.
+  legacyGetConfirmation?: boolean;
+  notify?: {
+    url?: string;
+    authorization?: string;
+  };
+  /**
+   * Transport security for calls to internal services: notification (`notify.url`, `pingRoutes.notify`)
+   * and sign-tool (`x509.externalUrl`).
+   */
+  internalTransport?: {
+    /** Extra CA certificate(s) trusted for https:// internal URLs: PEM string or path to a PEM file. Verification is always on. */
+    ca?: string | string[];
+    /**
+     * Explicit opt-in to plain http:// internal URLs in production (notification and sign-tool do not serve TLS themselves).
+     * Compensating control: NetworkPolicies (helm-chart `networkpolicies.yaml`) limit these services to in-cluster Liquio pods.
+     * Default false: production refuses to start with an http:// URL.
+     */
+    allowPlainHttp?: boolean;
+  };
+  admin_config?: {
+    api_url?: string;
+    login?: string;
+    password?: string;
+  };
+  jwt?: {
+    secret?: string;
+    expiresIn?: number | string | null | object | any[];
+  };
+  // `POST /user/info` options.
+  user_info?: {
+    // Let a user token set `useTwoFactorAuth` and `twoFactorType` through `POST /user/info` without a proof of the factor (default false).
+    // The supported way is `POST /user/two_factor_auth`.
+    allowTwoFactorFields?: boolean;
+  };
+  // Named identities for `basic()` routes (service-to-service). The legacy shared secret keeps all scopes while allowed.
+  basic_auth?: {
+    allowLegacySharedSecret?: boolean;
+    clients?: {
+      name: string;
+      secret?: string;
+      secret_hash?: string;
+      scopes?: ('user:read' | 'user:write' | 'user:admin' | 'password:set' | 'totp' | 'login_history' | 'login_history:all' | 'login_history:pii')[];
+      // Page size cap for `/login_history` (default 100).
+      maxLimit?: number;
+    }[];
+  };
+  // Roles named clients may assign through `PUT /user/info/:id` (`;`-separated values are checked one by one).
+  roles?: string[];
+  oauth?: {
+    accessTokenLifetimeInSeconds?: number;
+    refreshTokenLifetimeInSeconds?: number;
+    secret_key?: string[];
+    // Enforce the explicit consent step for clients with `need_scope_approve` (needs a consent page in id-front). Default false.
+    enforceScopeConsent?: boolean;
+    defaults?: {
+      client_id?: string;
+      client_secret?: string;
+      redirect_uri?: string[];
+      state?: string;
+      scope_fields?: string[];
+      need_scope_approve?: boolean;
+      client_name?: string;
+      scope?: string[];
+    };
+  };
+  mail?: {
+    gateway?: string;
+    from?: string;
+  };
+  auth_providers: {
+    totp?: {
+      // Require the end user access token (`?access_token=`) on `/totp/generate|enable|disable` and take `userId` from it.
+      requireUserToken?: boolean;
+    };
+    govid?: {
+      timeout?: number;
+      authorizationUrl?: string;
+      clientId?: string;
+      clientSecret?: string;
+      redirectUrl?: string;
+      useEncryption?: boolean;
+      idCert?: string;
+      encryptionServiceUrl?: string;
+      encryptionServiceToken?: string;
+      namesNaList?: string[];
+      authType?: string | string[];
+    };
+    bankid?: {
+      authorizationURL?: string;
+      tokenURL?: string;
+      customerURL?: string;
+      clientID?: string;
+      clientSecret?: string;
+      callbackURL?: string;
+      privateKey?: string;
+      passReqToCallback?: string;
+    };
+    eds?: {
+      isEnabled?: boolean;
+      authorizationURL?: string;
+      tokenURL?: string;
+      customerURL?: string;
+      clientID?: string;
+      clientSecret?: string;
+      callbackURL?: string;
+      passReqToCallback?: string;
+      caServerList?: string;
+      blacklistAcsk?: string[];
+    };
+    local?: {
+      isEnabled?: boolean;
+      isForgotPasswordEnabled?: boolean;
+      resetPasswordUrl?: string;
+      resetPasswordSubject?: string;
+      resetPasswordBody?: string;
+      resetPasswordTokenExpiration?: number;
+      display?: AuthProviderDisplay;
+    };
+    wso2?: {
+      isEnabled?: boolean;
+      display?: AuthProviderDisplay;
+      [key: string]: any;
+    };
+    x509?: {
+      isEnabled?: boolean;
+      display?: AuthProviderDisplay;
+      /** Require the signed server-issued challenge (`token`) for /authorise/x509; otherwise a token is used when supplied. */
+      requireChallenge?: boolean;
+    };
+    ldap?: LdapProviderConfig;
+    oauth2?: StrategyOptions & {
+      userProfileUrl: string;
+      /** Legacy, default false: send the access token as `?access_token=` instead of the `Authorization: Bearer` header. Leaks the token into URLs/logs; a warning is logged when on. */
+      tokenInQuery?: boolean;
+    };
+    oidc?: {
+      [providerId: string]: OIDCProviderConfig;
+    };
+  };
+  passwordManager?: {
+    minPasswordLength?: number;
+    maxAttempts?: number;
+    maxAttemptDelay?: number;
+    hashingSaltRounds?: number;
+    rememberLastPasswords?: number;
+    // Let `POST /user/password/set` take a caller-chosen password. When false, it emails the user a single-use reset link instead. Default true.
+    allowAdminSet?: boolean;
+  };
+  pingRoutes?: {
+    notify?: string;
+    eds?: string;
+  };
+  // Limits for the `basic()` user read routes (KS-25), see lib/user_read_policy.ts.
+  users?: {
+    // Page size cap for `GET /user` and `POST /user/info/search`. Default 100.
+    maxLimit?: number;
+    // Batch cap for `POST /user/info/{id,ipn,edrpou}`. Default 1000.
+    maxBatch?: number;
+    // Named basic_auth clients that may receive `services` and run unfiltered lists. The legacy shared secret always may.
+    fullReadClients?: string[];
+  };
+  redis: {
+    isEnabled?: boolean;
+    host?: string;
+    port?: number;
+    defaultTtl?: number;
+    prefix?: string;
+  };
+  confirmCodeLength?: number;
+  confirmCodeRetries?: number;
+  confirmCodeEmailTemplate?: string;
+  confirmCodeEmailHeader?: string;
+  accountExistsEmailHeader?: string;
+  accountExistsEmailText?: string;
+  confirmCodeEmailChangeHeader?: string;
+  swagger?: boolean;
+  customer?: string;
+  environment?: string;
+  x509?: {
+    isEnabled?: boolean;
+    externalUrl?: string;
+    timeout?: number;
+  };
+  enabledDeleteUser?: boolean;
+  log?: {
+    excludeParams?: string[];
+    disableDefaultRedaction?: boolean;
+  };
+  signUp?: {
+    isEnabled?: boolean;
+  };
+  gtm_key?: string;
+  separateLegalUsers?: boolean;
+  eds?: {
+    onlyLegalEntityAllow?: boolean;
+    sign_proxy_url?: string;
+    sign_proxy_allowed_paths?: string[];
+    sign_proxy_allowed_methods?: string[];
+    ics_proxy?: {
+      enabled?: boolean;
+      allowed_paths?: string[];
+      timeout?: number;
+    };
+    unavailableMessage?: string;
+    limit?: number;
+    timeout?: number;
+  };
+  encryption?: {
+    enabled?: boolean;
+    algorithm?: string;
+    securityKey?: string;
+    iv?: string;
+  };
+  edsServer?: {
+    host?: string;
+    acskListUrl?: string;
+    signVerifyUrl?: string;
+  };
+  testConfirmations?: {
+    codes?: string[];
+  };
+  versions: {
+    services: {
+      name: string;
+      minVersion: string;
+    }[];
+  };
+  confirmCode?: {
+    ttlMinutes: number;
+    // Limits for sending confirmation codes (defaults: DEFAULT_SEND_LIMIT).
+    sendLimit?: {
+      recipientMax?: number;
+      recipientWindowSeconds?: number;
+      sourceMax?: number;
+      sourceWindowSeconds?: number;
+      // Separate limits for 2FA phone code sends (same fields).
+      twoFactor?: {
+        recipientMax?: number;
+        recipientWindowSeconds?: number;
+        sourceMax?: number;
+        sourceWindowSeconds?: number;
+      };
+    };
+  };
+}
+
+const CONFIG_PATH = process.env.CONFIG_PATH || process.cwd() + '/config';
+const SECRET_PATH = process.env.SECRET_PATH;
+
+/**
+ * Validates OIDC provider configuration
+ * Throws an error if required fields are missing or invalid
+ */
+function validateOIDCConfig(config: Config): void {
+  if (!config.auth_providers?.oidc) {
+    return; // No OIDC providers configured
+  }
+
+  const providersMap = config.auth_providers.oidc;
+  const providers = Object.entries(providersMap);
+
+  for (const [providerId, provider] of providers) {
+    // Skip validation if provider is explicitly disabled
+    if (provider.isEnabled === false) {
+      continue;
+    }
+
+    // Validate required fields for enabled providers
+    const errors: string[] = [];
+
+    if (!providerId) {
+      errors.push('providerId (key) is required');
+    }
+    if (!provider.clientID) {
+      errors.push('clientID is required');
+    }
+    if (!provider.clientSecret) {
+      errors.push('clientSecret is required');
+    }
+    if (!provider.callbackURL) {
+      errors.push('callbackURL is required');
+    }
+
+    // Validate issuer or endpoint overrides
+    const hasIssuer = !!provider.issuer;
+    const hasAllEndpoints = !!provider.authorizationURL && !!provider.tokenURL && !!provider.userInfoURL;
+
+    if (!hasIssuer && !hasAllEndpoints) {
+      errors.push('must have either "issuer" or all of "authorizationURL", "tokenURL", "userInfoURL"');
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Invalid OIDC provider config [${providerId}]: ${errors.join('; ')}`);
+    }
+  }
+}
+
+const EDS_PLACEHOLDER_PATTERN = /^\s*(<[^>]*>|\$\{[^}]*\}|\{\{[^}]*\}\}|REDACTED|CHANGE_?ME|TODO|XXX+)\s*$/i;
+
+/**
+ * Validates EDS provider configuration
+ * Throws an error if the provider is enabled and required fields are missing or placeholders
+ */
+export function validateEdsConfig(config: Config): void {
+  const provider = config.auth_providers?.eds;
+  if (!provider?.isEnabled) {
+    return;
+  }
+
+  const errors: string[] = [];
+  for (const field of ['clientID', 'clientSecret', 'callbackURL'] as const) {
+    const value = provider[field];
+    if (typeof value !== 'string' || !value.trim()) {
+      errors.push(`${field} is required`);
+    } else if (EDS_PLACEHOLDER_PATTERN.test(value)) {
+      errors.push(`${field} must not be a placeholder`);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid EDS provider config: ${errors.join('; ')}`);
+  }
+}
+
+/**
+ * Validates LDAP provider configuration
+ * Throws an error if the provider is enabled and required fields are missing or invalid
+ */
+export function validateLdapConfig(config: Config): void {
+  const provider = config.auth_providers?.ldap;
+  if (!provider?.isEnabled) {
+    return;
+  }
+
+  const errors: string[] = [];
+
+  const url = provider.connection?.url;
+  if (!url) {
+    errors.push('connection.url is required');
+  } else if (!/^ldaps?:\/\//i.test(url)) {
+    errors.push('connection.url must use the ldap:// or ldaps:// scheme');
+  }
+  // Without the service account the search would run as an anonymous bind.
+  if (!provider.connection?.bindDN) {
+    errors.push('connection.bindDN is required');
+  }
+  if (!provider.connection?.bindPassword) {
+    errors.push('connection.bindPassword is required');
+  }
+  if (!provider.baseDN) {
+    errors.push('baseDN is required');
+  }
+  if (!Array.isArray(provider.accessGroups) || provider.accessGroups.filter((group) => typeof group === 'string' && group.trim()).length === 0) {
+    errors.push('accessGroups must contain at least one group');
+  }
+  const intervalMinutes = provider.sync?.intervalMinutes;
+  if (intervalMinutes !== undefined && (typeof intervalMinutes !== 'number' || !Number.isFinite(intervalMinutes) || intervalMinutes <= 0)) {
+    errors.push('sync.intervalMinutes must be a number greater than 0');
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid LDAP provider config: ${errors.join('; ')}`);
+  }
+}
+
+/** Internal service URLs covered by `internalTransport.allowPlainHttp`. */
+export function getInternalServiceUrls(config: Config): { path: string; url: string }[] {
+  const urls = [
+    { path: 'notify.url', url: config.notify?.url },
+    { path: 'pingRoutes.notify', url: config.pingRoutes?.notify },
+    { path: 'x509.externalUrl', url: config.x509?.externalUrl },
+  ];
+  return urls.filter((item): item is { path: string; url: string } => typeof item.url === 'string' && item.url.trim() !== '');
+}
+
+/**
+ * Validates transport security of internal service URLs.
+ * In production a plain http:// URL is refused unless `internalTransport.allowPlainHttp` is true.
+ */
+export function validateInternalTransportConfig(config: Config, env: string = process.env.NODE_ENV ?? 'localhost'): void {
+  if (env !== 'production' && env !== 'prod') {
+    return;
+  }
+  if (config.internalTransport?.allowPlainHttp === true) {
+    return;
+  }
+
+  const insecure = getInternalServiceUrls(config).filter(({ url }) => /^http:\/\//i.test(url.trim()));
+  if (insecure.length > 0) {
+    throw new Error(
+      `Insecure internal service URLs in production: ${insecure.map(({ path, url }) => `${path}=${url}`).join(', ')}. ` +
+        'Use https:// (and `internalTransport.ca` for a private CA), or set `internalTransport.allowPlainHttp` to true ' +
+        'to accept plain http:// when NetworkPolicies/service mesh protect the traffic.',
+    );
+  }
+}
+
+let config: Config;
+export function loadConfig(): Config {
+  if (config) {
+    return config;
+  }
+
+  const envConfigVar = process.env['LIQUIO_ID_CONFIG'];
+  const env = process.env.NODE_ENV ?? 'localhost';
+
+  if (typeof envConfigVar === 'string') {
+    let parsedEnvConfig;
+    try {
+      parsedEnvConfig = JSON.parse(envConfigVar);
+    } catch (error) {
+      throw new Error(`LIQUIO_ID_CONFIG is invalid json: ${error}`);
+    }
+    if (typeof parsedEnvConfig[env] === 'undefined') {
+      throw new Error(`LIQUIO_ID_CONFIG [${env}] is not defined object config.`);
+    }
+    config = parsedEnvConfig[env] as Config;
+    validateOIDCConfig(config);
+    validateLdapConfig(config);
+    validateEdsConfig(config);
+    validateInternalTransportConfig(config, env);
+    return config;
+  }
+
+  const paths = [CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])];
+  const raw = Multiconf.get(paths, 'LIQUIO_CFG_ID_') as any;
+
+  const configData = raw.config;
+  const resolvedEnv = env !== 'localhost' ? env : (configData?.default_env ?? 'localhost');
+  const envConf = configData?.[resolvedEnv];
+
+  if (!envConf || !envConf.db) {
+    throw new Error(`Config for env [${resolvedEnv}] is not defined or missing 'db' section.`);
+  }
+
+  config = {
+    ...envConf,
+    ...(raw.versions?.versions !== undefined ? { versions: raw.versions.versions } : {}),
+  } as Config;
+
+  validateOIDCConfig(config);
+  validateLdapConfig(config);
+  validateEdsConfig(config);
+  validateInternalTransportConfig(config, resolvedEnv);
+
+  return config;
+}

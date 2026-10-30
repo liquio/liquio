@@ -105,25 +105,25 @@ fi
 echo ""
 
 # Frontend services
-should_build_image "id-front" && build_image "id-front" "./id-front"
-should_build_image "admin-front" && build_image "admin-front" "./admin-front" "--build-context core=./front-core"
-should_build_image "cabinet-front" && build_image "cabinet-front" "./cabinet-front" "--build-context core=./front-core"
+should_build_image "id-front" && build_image "id-front" "./components/id-front"
+should_build_image "admin-front" && build_image "admin-front" "./components/admin-front" "--build-context core=./packages/front-core"
+should_build_image "cabinet-front" && build_image "cabinet-front" "./components/cabinet-front" "--build-context core=./packages/front-core"
 
 # API services
-should_build_image "id-api" && build_image "id-api" "./id-api"
-should_build_image "admin-api" && build_image "admin-api" "./admin-api"
-should_build_image "cabinet-api" && build_image "cabinet-api" "./cabinet-api"
-should_build_image "external-reader" && build_image "external-reader" "./external-reader"
-should_build_image "filestorage" && build_image "filestorage" "./filestorage"
+should_build_image "id-api" && build_image "id-api" "./components/id-api"
+should_build_image "admin-api" && build_image "admin-api" "./components/admin-api"
+should_build_image "cabinet-api" && build_image "cabinet-api" "./components/cabinet-api"
+should_build_image "external-reader" && build_image "external-reader" "./components/external-reader"
+should_build_image "filestorage" && build_image "filestorage" "./components/filestorage"
 
 # Core services
-should_build_image "event" && build_image "event" "./event"
-should_build_image "gateway" && build_image "gateway" "./gateway"
-should_build_image "manager" && build_image "manager" "./manager"
-should_build_image "notification" && build_image "notification" "./notification"
-should_build_image "register" && build_image "register" "./register"
-should_build_image "sign-tool" && build_image "sign-tool" "./sign-tool"
-should_build_image "task" && build_image "task" "./task"
+should_build_image "event" && build_image "event" "./components/event"
+should_build_image "gateway" && build_image "gateway" "./components/gateway"
+should_build_image "manager" && build_image "manager" "./components/manager"
+should_build_image "notification" && build_image "notification" "./components/notification"
+should_build_image "register" && build_image "register" "./components/register"
+should_build_image "sign-tool" && build_image "sign-tool" "./components/sign-tool"
+should_build_image "task" && build_image "task" "./components/task"
 
 echo ""
 echo "🎉 All images built successfully!"

@@ -1,0 +1,261 @@
+import { matchedData } from 'express-validator';
+
+import { Controller } from './controller';
+import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
+import { WorkflowBusiness } from '../businesses/workflow';
+import { PublicError } from '../lib/public_error';
+
+// Default max size of BPMN import body (50mb).
+const DEFAULT_IMPORT_MAX_BYTES = 50 * 1024 * 1024;
+
+/**
+ * BPMN workflow controller.
+ */
+export class BpmnWorkflowController extends Controller {
+  private static singleton: BpmnWorkflowController;
+
+  private bpmnWorkflowBusiness: BpmnWorkflowBusiness;
+  private workflowBusiness: WorkflowBusiness;
+
+  /**
+   * Constructor.
+   * @param {object} config Config object.
+   */
+  constructor(config) {
+    // Define singleton.
+    if (!BpmnWorkflowController.singleton) {
+      super(config);
+      this.bpmnWorkflowBusiness = new BpmnWorkflowBusiness();
+      this.workflowBusiness = new WorkflowBusiness();
+      BpmnWorkflowController.singleton = this;
+    }
+    return BpmnWorkflowController.singleton;
+  }
+
+  /**
+   * Export.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async export(req, res) {
+    const paramsData = matchedData(req, { locations: ['params'] });
+    const id = paramsData.id;
+    let bpmnWorkflow;
+
+    try {
+      bpmnWorkflow = await this.bpmnWorkflowBusiness.export(id);
+      if (!bpmnWorkflow) {
+        return this.responseError(res, 'Not found.', 404);
+      }
+    } catch (error) {
+      return this.responseError(res, error);
+    }
+
+    this.responseFile(res, bpmnWorkflow, 'application/bpmn', 'workflow.bpmn');
+  }
+
+  /**
+   * Import.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async import(req, res) {
+    const queryData = matchedData(req, { locations: ['query'] });
+    const { type = 'minor', name = 'Front does not exist.', description = 'Front does not exist.' } = matchedData(req, { locations: ['body'] });
+    const force = queryData.force || false;
+    const maxBytes = this.config?.bpmnImport?.maxBytes || DEFAULT_IMPORT_MAX_BYTES;
+
+    try {
+      const declaredLength = Number(req.headers?.['content-length']);
+      if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+        return this.rejectOversizedImport(req, res, maxBytes);
+      }
+
+      const chunks: Buffer[] = [];
+      let received = 0;
+      let oversized = false;
+      await new Promise<void>((resolve, reject) => {
+        req.on('data', (chunk) => {
+          if (oversized) return;
+          received += chunk.length;
+          if (received > maxBytes) {
+            oversized = true;
+            chunks.length = 0;
+            return resolve();
+          }
+          chunks.push(chunk);
+        });
+        req.on('end', resolve);
+        req.on('error', reject);
+      });
+
+      if (oversized) {
+        return this.rejectOversizedImport(req, res, maxBytes);
+      }
+
+      let data;
+      try {
+        data = JSON.parse(Buffer.concat(chunks).toString());
+      } catch {
+        return this.responseError(res, 'Invalid JSON in import file.', 400);
+      }
+
+      const user = {
+        ...this.getRequestUserBaseInfo(req),
+        remoteAddress: req.connection.remoteAddress,
+        xForwardedFor: req.headers['x-forwarded-for'] || null,
+        userAgent: req.headers['user-agent'] || null,
+      };
+      await this.bpmnWorkflowBusiness.import(data, force, { type, name, description, user }, false);
+    } catch (error) {
+      return this.responseError(res, error, error.httpStatusCode, error.details);
+    }
+
+    this.responseThatAccepted(res);
+  }
+
+  /**
+   * Reject oversized import: respond 413 and stop reading the request.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {number} maxBytes Max bytes.
+   */
+  private rejectOversizedImport(req, res, maxBytes: number) {
+    req.pause?.();
+    res.setHeader?.('Connection', 'close');
+    this.responseError(res, `Import file is too large. Max ${maxBytes} bytes.`, 413);
+    if (typeof res.once === 'function') {
+      res.once('finish', () => req.destroy());
+    } else {
+      req.destroy();
+    }
+  }
+
+  /**
+   * Get versions.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async getVersions(req, res) {
+    const paramsData = matchedData(req, { locations: ['params'] });
+    const id = paramsData.id;
+
+    let versions;
+    try {
+      versions = await this.bpmnWorkflowBusiness.getVersionsByWorkflowTemplateId(id);
+    } catch (error) {
+      return this.responseError(res, error);
+    }
+
+    this.responseData(res, versions);
+  }
+
+  /**
+   * Find by version.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async findByVersion(req, res) {
+    const paramsData = matchedData(req, { locations: ['params'] });
+    const { id, version } = paramsData;
+
+    let versions;
+    try {
+      versions = await this.bpmnWorkflowBusiness.findVersionByWorkflowTemplateIdAndVersion(id, version);
+    } catch (error) {
+      return this.responseError(res, error);
+    }
+
+    this.responseData(res, versions);
+  }
+
+  /**
+   * Save version.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async saveVersion(req, res) {
+    const paramsData = matchedData(req, { locations: ['params'] });
+    const { type, name, description } = matchedData(req, { locations: ['body'] });
+    const id = paramsData.id;
+
+    try {
+      const lastWorkflowHistory = await this.workflowBusiness.findLastWorkflowHistoryByWorkflowTemplateId(id);
+
+      const lastWorkflowHistoryIdHeader = req.headers['last-workflow-history-id'];
+
+      if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
+        const error = new PublicError('Header Last-Workflow-History-Id expired.');
+        (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
+        throw error;
+      }
+
+      const user = {
+        ...this.getRequestUserBaseInfo(req),
+        remoteAddress: req.connection.remoteAddress,
+        xForwardedFor: req.headers['x-forwarded-for'] || null,
+        userAgent: req.headers['user-agent'] || null,
+      };
+      const workflowHistory = await this.bpmnWorkflowBusiness.saveVersion(id, {
+        type,
+        name,
+        description,
+        user,
+      });
+      if (!workflowHistory) {
+        return this.responseError(res, 'Not found.', 404);
+      }
+      if (workflowHistory && workflowHistory.id) {
+        res.setHeader('Last-Workflow-History-Id', workflowHistory.id);
+      }
+    } catch (error) {
+      return this.responseError(res, error, error.httpStatusCode, error.details);
+    }
+
+    this.responseThatAccepted(res);
+  }
+
+  /**
+   * Copy preparation.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async copyPreparation(req, res) {
+    const { id } = matchedData(req, { locations: ['params'] });
+    let result;
+    try {
+      result = await this.bpmnWorkflowBusiness.copyPreparation(id);
+      if (!result) {
+        return this.responseError(res, 'Not found.', 404);
+      }
+    } catch (error) {
+      return this.responseError(res, error);
+    }
+
+    this.responseData(res, result);
+  }
+
+  /**
+   * Copy.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async copy(req, res) {
+    const { id: workflowTemplateId } = matchedData(req, { locations: ['params'] });
+    const { request_id: requestId, not_replacing_diff_ids: notReplacingDiffIds = [] } = matchedData(req, { locations: ['body'] });
+    const user = {
+      ...this.getRequestUserBaseInfo(req),
+      remoteAddress: req.connection.remoteAddress,
+      xForwardedFor: req.headers['x-forwarded-for'] || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    let result;
+    try {
+      result = await this.bpmnWorkflowBusiness.copy(workflowTemplateId, requestId, notReplacingDiffIds, user);
+    } catch (error) {
+      return this.responseError(res, error);
+    }
+
+    this.responseData(res, result);
+  }
+}
