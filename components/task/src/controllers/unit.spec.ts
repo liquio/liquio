@@ -1,10 +1,13 @@
 import { UnitController } from './unit';
+import { resetAppContext, setAppContext } from '../lib/context';
 
 jest.mock('../models/unit', () => ({ UnitModel: jest.fn() }));
 jest.mock('../models/unit_rules', () => ({ UnitRulesModel: jest.fn() }));
 jest.mock('../services/custom_logs', () => ({ CustomLogs: jest.fn() }));
 
 describe('UnitController', () => {
+  afterEach(() => resetAppContext());
+
   const MEMBER_ID = '61efddaa351d6219eee09043';
   const HEAD_ID = '61efddaa351d6219eee09044';
   let client: Record<string, jest.Mock>;
@@ -18,7 +21,7 @@ describe('UnitController', () => {
     client = { getUsersByIds: jest.fn() };
     controller.idApiClient = client as any;
     (controller as any).unitModel = { findById: jest.fn().mockResolvedValue({ id: 1, members: [MEMBER_ID], heads: [HEAD_ID] }) };
-    (global as any).config = {};
+    setAppContext({ config: {} });
     responseData = jest.spyOn(controller, 'responseData').mockImplementation(() => undefined as any);
     responseError = jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
   });

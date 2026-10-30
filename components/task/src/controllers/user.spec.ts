@@ -1,10 +1,13 @@
 import { IdApiError } from '@liquio/back-core';
 
 import { UserController } from './user';
+import { getLog, resetAppContext, setAppContext } from '../lib/context';
 
 jest.mock('../models/unit', () => ({ UnitModel: jest.fn() }));
 
 describe('UserController', () => {
+  afterEach(() => resetAppContext());
+
   const USER_ID = '61efddaa351d6219eee09043';
   let client: Record<string, jest.Mock>;
   let controller: UserController;
@@ -34,9 +37,9 @@ describe('UserController', () => {
     };
     controller.idApiClient = client as any;
     (controller as any).config = { user: {} };
-    (global as any).log = { save: jest.fn() };
-    (global as any).redisClient = undefined;
-    (global as any).config = { user: {} };
+    setAppContext({ log: { save: jest.fn() } as any });
+    setAppContext({ redisClient: undefined });
+    setAppContext({ config: { user: {} } });
     responseData = jest.spyOn(controller, 'responseData').mockImplementation(() => undefined as any);
     responseError = jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
     responseThatAccepted = jest.spyOn(controller, 'responseThatAccepted').mockImplementation(() => undefined as any);
@@ -111,7 +114,7 @@ describe('UserController', () => {
       jest.spyOn(controller, 'getRequestUserInfo').mockReturnValue(userInfo);
       return controller.setTwoFactorAuth({ body }, {});
     };
-    const auditCalls = (name: string) => (global as any).log.save.mock.calls.filter((c) => c[0] === `user-controller|two-factor-auth|${name}`);
+    const auditCalls = (name: string) => (getLog().save as jest.Mock).mock.calls.filter((c) => c[0] === `user-controller|two-factor-auth|${name}`);
 
     beforeEach(() => {
       jest.spyOn(controller, 'getRequestUserId').mockReturnValue(USER_ID);
@@ -172,7 +175,7 @@ describe('UserController', () => {
 
     it('should clear the cached user info after a change', async () => {
       const deleteKey = jest.fn().mockResolvedValue(undefined);
-      (global as any).redisClient = { delete: deleteKey };
+      setAppContext({ redisClient: { delete: deleteKey } });
       jest.spyOn(controller, 'getSha256Hash').mockReturnValue('hash');
       client.setTwoFactorAuth.mockResolvedValue({ success: true });
 
@@ -273,7 +276,7 @@ describe('UserController', () => {
 
       await controller.verifyPhone(req, {});
 
-      expect(JSON.stringify((global as any).log.save.mock.calls)).not.toContain('access-token');
+      expect(JSON.stringify((getLog().save as jest.Mock).mock.calls)).not.toContain('access-token');
     });
   });
 

@@ -5,6 +5,7 @@ import { Stream } from '../lib/stream';
 import type { AuthenticatedRequest } from './auth';
 import { DocumentBusiness } from '../businesses/document';
 import { PaymentLogsModel } from '../models/payment_logs';
+import { getConfig, getLog } from '../lib/context';
 
 // Constants.
 const RAW_PAYMENT_ACTION_TYPE = 'raw';
@@ -82,7 +83,7 @@ export class PaymentController extends Controller {
         userContactInfo,
       );
     } catch (error) {
-      global.log.save('calculate-payment-data-error', { error: error && error.message, documentId, payload, userId, userName }, 'error');
+      getLog().save('calculate-payment-data-error', { error: error && error.message, documentId, payload, userId, userName }, 'error');
       return this.responseError(res, error, 500, { documentId });
     }
 
@@ -101,7 +102,7 @@ export class PaymentController extends Controller {
     try {
       bodyContent = await Stream.getFileContent(req, { limit: this.config.server?.maxBodySize || DEFAULT_MAX_BODY_SIZE });
     } catch (error) {
-      global.log.save('handle-payment-status-read-body-error', { error: error && error.message, type: error && error.type }, 'error');
+      getLog().save('handle-payment-status-read-body-error', { error: error && error.message, type: error && error.type }, 'error');
       return this.responseError(
         res,
         error?.expose === true ? error.message : error,
@@ -114,11 +115,11 @@ export class PaymentController extends Controller {
     const headers = req.headers;
 
     // Get default redirect value.
-    const paymentConfig = config && this.config.payment;
+    const paymentConfig = getConfig() && this.config.payment;
     const defaultRedirect = paymentConfig && paymentConfig.defaultRedirect;
 
     // Log query data.
-    global.log.save('handle-payment-status', {
+    getLog().save('handle-payment-status', {
       query: req.query,
       params: req.params,
       headers: req.headers,
@@ -139,17 +140,17 @@ export class PaymentController extends Controller {
     try {
       isSavedRawStatus = await (this.paymentLogsModel.save as any)(rawPaymentInfo);
     } catch (error) {
-      global.log.save('save-raw-payment-logs-to-db-error', { error: error && error.message }, 'error');
+      getLog().save('save-raw-payment-logs-to-db-error', { error: error && error.message }, 'error');
     }
     if (!isSavedRawStatus) {
-      global.log.save('save-raw-payment-logs-to-db-error');
+      getLog().save('save-raw-payment-logs-to-db-error');
     }
 
     let statusData;
     try {
       statusData = await this.documentBusiness.payment.handlePaymentStatus(bodyContent, customer, status, queryParamsObject, headers);
     } catch (error) {
-      global.log.save('handle-payment-status-erorr', { error: error.toString(), cause: error.cause, stack: error.stack }, 'error');
+      getLog().save('handle-payment-status-erorr', { error: error.toString(), cause: error.cause, stack: error.stack }, 'error');
       if (defaultRedirect && !queryParamsObject.noRedirect && !paymentConfig?.[customer]?.isDisableRedirectOnErrorCallback) {
         return this.redirect(res, defaultRedirect);
       }
@@ -165,10 +166,10 @@ export class PaymentController extends Controller {
         paymentData: statusData,
       });
     } catch (error) {
-      global.log.save('save-processed-payment-logs-to-db-error', { error: error && error.message }, 'error');
+      getLog().save('save-processed-payment-logs-to-db-error', { error: error && error.message }, 'error');
     }
     if (!isSavedProcessedStatus) {
-      global.log.save('save-processed-payment-logs-to-db-error');
+      getLog().save('save-processed-payment-logs-to-db-error');
     }
 
     // Redirect or response.
@@ -191,7 +192,7 @@ export class PaymentController extends Controller {
     try {
       response = await this.documentBusiness.payment.confirmBySmsCode(code, customer, paymentControlPath, documentId, userId, userUnitIds);
     } catch (error) {
-      global.log.save('calculate-payment-data-error', { error: error && error.message }, 'error');
+      getLog().save('calculate-payment-data-error', { error: error && error.message }, 'error');
       return this.responseError(res, error);
     }
 
@@ -215,7 +216,7 @@ export class PaymentController extends Controller {
     try {
       response = await this.documentBusiness.payment.getPaymentReceiptInfo(paymentControlPath, documentId, orderId, userId, userUnitIds);
     } catch (error) {
-      global.log.save('get-payment-receipt-error', { error: error && error.message, documentId, orderId }, 'error');
+      getLog().save('get-payment-receipt-error', { error: error && error.message, documentId, orderId }, 'error');
       return this.responseError(res, error, 500, { documentId, orderId });
     }
 
@@ -238,7 +239,7 @@ export class PaymentController extends Controller {
     try {
       response = await this.documentBusiness.payment.getWithdrawalFundsStatus(paymentControlPath, documentId, orderId, userId, userUnitIds);
     } catch (error) {
-      global.log.save('get-withdrawal-status-error', { error: error && error.message, documentId, orderId }, 'error');
+      getLog().save('get-withdrawal-status-error', { error: error && error.message, documentId, orderId }, 'error');
       return this.responseError(res, error, 500, { documentId, orderId });
     }
 
@@ -263,7 +264,7 @@ export class PaymentController extends Controller {
         initiativeContext,
       });
     } catch (error) {
-      global.log.save('validate-apple-payment-session-error', { error: error.toString() }, 'error');
+      getLog().save('validate-apple-payment-session-error', { error: error.toString() }, 'error');
       return this.responseError(res, error, 500);
     }
 
@@ -284,7 +285,7 @@ export class PaymentController extends Controller {
 
       this.responseData(res, response);
     } catch (error) {
-      global.log.save('cancel-order-payment-controller-error', { error: error && error.message }, 'error');
+      getLog().save('cancel-order-payment-controller-error', { error: error && error.message }, 'error');
       return this.responseError(res, error);
     }
   }

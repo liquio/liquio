@@ -9,6 +9,7 @@ import { Entity } from '../entities/entity';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { SequelizeDbError } from '../lib/errors';
 import { isPublicError, publicError } from '../lib/public_error';
+import { getConfig, getLog, getModels } from '../lib/context';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -57,9 +58,9 @@ export class Controller {
 
     // Log.
     if (this.writeResponseObjectToLog(res.req.originalUrl)) {
-      global.log.save('http-response|data', { ...responseMeta, ...responseObject });
+      getLog().save('http-response|data', { ...responseMeta, ...responseObject });
     } else {
-      global.log.save('http-response|data', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
+      getLog().save('http-response|data', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
     }
 
     const traceMeta: any = getTraceMeta();
@@ -86,9 +87,9 @@ export class Controller {
     const method = res.req.method;
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
     if (this.writeResponseObjectToLog(res.req.originalUrl)) {
-      global.log.save('http-response|text', { ...responseMeta, text });
+      getLog().save('http-response|text', { ...responseMeta, text });
     } else {
-      global.log.save('http-response|text', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
+      getLog().save('http-response|text', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
     }
 
     // Response.
@@ -114,9 +115,9 @@ export class Controller {
 
     // Log.
     if (this.writeResponseObjectToLog(res.req.originalUrl)) {
-      global.log.save('http-response|xml', { ...responseMeta, data: responseData });
+      getLog().save('http-response|xml', { ...responseMeta, data: responseData });
     } else {
-      global.log.save('http-response|xml', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
+      getLog().save('http-response|xml', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
     }
 
     res.set(CONTENT_TYPE_HEADER, 'text/xml');
@@ -140,7 +141,7 @@ export class Controller {
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
 
     // Log.
-    global.log.save('http-response|accepted', { ...responseMeta, ...responseObject });
+    getLog().save('http-response|accepted', { ...responseMeta, ...responseObject });
 
     // Response.
     res.status(HTTP_STATUS_CODE_ACCEPTED).send(responseObject);
@@ -167,7 +168,7 @@ export class Controller {
       res.set(CONTENT_DISPOSITION_HEADER, 'attachment');
     }
 
-    global.log.save('http-response|file', { fileName, contentType });
+    getLog().save('http-response|file', { fileName, contentType });
 
     res.send(file);
   }
@@ -225,12 +226,12 @@ export class Controller {
 
     let logObject = { ...responseMeta, ...responseObject };
 
-    if (global.config.log?.stackTrace) {
+    if (getConfig().log?.stackTrace) {
       logObject = { ...logObject, error: { ...logObject.error, stack } };
     }
 
     // Log.
-    const logId = await global.log.save('http-response|error', logObject, 'error');
+    const logId = await getLog().save('http-response|error', logObject, 'error');
 
     // Handle error.
     const traceMeta = this.getTraceMeta();
@@ -246,7 +247,7 @@ export class Controller {
         );
 
         if (filteredErrorDetails.length) {
-          global.models.workflowError.create({
+          getModels().workflowError.create({
             error: message,
             details: filteredErrorDetails,
             code,
@@ -256,7 +257,7 @@ export class Controller {
           });
         }
       } else {
-        global.models.workflowError.create({
+        getModels().workflowError.create({
           error: message,
           details: errorDetails,
           code,
@@ -274,7 +275,7 @@ export class Controller {
         delete parsedMessage.requestBody;
         clientResponseObject.error.message = JSON.stringify(parsedMessage);
       } catch (error) {
-        global.log.save('try-to-parse-error-message', { message: clientResponseObject.error.message, error: error.message }, 'error');
+        getLog().save('try-to-parse-error-message', { message: clientResponseObject.error.message, error: error.message }, 'error');
       }
     }
 
@@ -293,7 +294,7 @@ export class Controller {
    */
   redirect(res, ...params) {
     // Log.
-    global.log.save('http-redirect', Array.isArray(params) && params.length === 1 ? params[0] : params);
+    getLog().save('http-redirect', Array.isArray(params) && params.length === 1 ? params[0] : params);
 
     // Redirect.
     res.redirect(...params);
@@ -563,12 +564,12 @@ export class Controller {
    * @returns boolean
    */
   writeResponseObjectToLog(route) {
-    const rules = global.config.log.skipLoggingRoutesList;
+    const rules = getConfig().log.skipLoggingRoutesList;
 
     if (!rules || typeof route !== 'string') return true;
 
     const skipByRules = rules.some((rule) => route.match(rule.pattern) !== null);
-    const logByConfig = global.config.log.responsesData && global.config.log.responsesData === true;
+    const logByConfig = getConfig().log.responsesData && getConfig().log.responsesData === true;
 
     return logByConfig && !skipByRules;
   }

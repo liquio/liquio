@@ -2,10 +2,13 @@ import { AuthController } from './auth';
 import { Token } from '../lib/token';
 import { routes } from '../services/router/routes';
 import shippedBasicAuth from '../../../../config-templates/task/basic_auth.json';
+import { getLog, getRedisClient, resetAppContext, setAppContext } from '../lib/context';
 
 jest.mock('../models/unit', () => ({ UnitModel: jest.fn() }));
 
 describe('AuthController', () => {
+  afterEach(() => resetAppContext());
+
   let client: Record<string, jest.Mock>;
   let controller: AuthController;
   let responseData: jest.SpyInstance;
@@ -56,7 +59,7 @@ describe('AuthController', () => {
       (controller as any).config = { basic_auth: { tokens: [issuedToken] } };
       jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
       jest.spyOn(controller as any, 'appendTraceMeta').mockImplementation(() => undefined);
-      (global as any).log = { save: jest.fn() };
+      setAppContext({ log: { save: jest.fn() } as any });
     });
 
     it('should reject the old default token', () => {
@@ -90,13 +93,13 @@ describe('AuthController', () => {
       (controller as any).config = { basic_auth: { tokens: [basic] } };
       jest.spyOn(controller, 'responseError').mockImplementation(() => undefined as any);
       jest.spyOn(controller as any, 'appendTraceMeta').mockImplementation(() => undefined);
-      (global as any).log = { save: jest.fn() };
+      setAppContext({ log: { save: jest.fn() } as any });
       redis = { get: jest.fn() };
-      (global as any).redisClient = redis;
+      setAppContext({ redisClient: redis });
     });
 
     afterEach(() => {
-      (global as any).redisClient = undefined;
+      setAppContext({ redisClient: undefined });
     });
 
     it('should reject a Bearer token on the basic-only route', () => {
@@ -327,8 +330,8 @@ describe('AuthController', () => {
     };
 
     beforeEach(() => {
-      (global as any).log = { save: jest.fn() };
-      (global as any).redisClient = { get: jest.fn().mockResolvedValue(JSON.stringify(cachedUserData)), set: jest.fn() };
+      setAppContext({ log: { save: jest.fn() } as any });
+      setAppContext({ redisClient: { get: jest.fn().mockResolvedValue(JSON.stringify(cachedUserData)), set: jest.fn() } });
       (controller as any).config = { auth: { allowedTestAuth: false }, test_users: { list: [] } };
       (controller as any).access = { allowableUnits: [], routeGroupsExceptions: ['public'] };
       (controller as any).userAccess = { checkAccess: jest.fn().mockResolvedValue({ isAllowed: true }) };
@@ -340,7 +343,7 @@ describe('AuthController', () => {
     });
 
     afterEach(() => {
-      delete (global as any).redisClient;
+      setAppContext({ redisClient: undefined });
     });
 
     async function run(roles: string[], groups: string[]) {
@@ -353,7 +356,7 @@ describe('AuthController', () => {
     it('should pass when the cached user has one of the needed roles', async () => {
       const { next } = await run(['individual'], []);
 
-      expect((global as any).redisClient.get).toHaveBeenCalledTimes(1);
+      expect(getRedisClient().get).toHaveBeenCalledTimes(1);
       expect(controller.responseError).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledTimes(1);
     });
@@ -361,7 +364,7 @@ describe('AuthController', () => {
     it('should decline a route that needs a role the cached user does not have', async () => {
       const { next } = await run(['monitoring'], []);
 
-      expect((global as any).redisClient.get).toHaveBeenCalledTimes(1);
+      expect(getRedisClient().get).toHaveBeenCalledTimes(1);
       expect(controller.responseError).toHaveBeenCalledWith(expect.anything(), 'User without needed role.', 401);
       expect(next).not.toHaveBeenCalled();
     });
@@ -384,13 +387,13 @@ describe('AuthController PKCE login', () => {
     const getTokens = jest.fn().mockRejectedValue(new Error('stop after token request'));
     controller.idApiClient = { getTokens };
     controller.responseError = jest.fn();
-    const previousLog = global.log;
-    global.log = { save: jest.fn() } as any;
+    const previousLog = getLog();
+    setAppContext({ log: { save: jest.fn() } as any });
     try {
       await controller.login({ body: { code: 'authorization-code', code_verifier: 'a'.repeat(43) } }, {});
       expect(getTokens).toHaveBeenCalledWith('authorization-code', { codeVerifier: 'a'.repeat(43) });
     } finally {
-      global.log = previousLog;
+      setAppContext({ log: previousLog });
     }
   });
 });

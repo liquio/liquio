@@ -1,10 +1,13 @@
 import { ExternalReaderController, sanitizeUserExtraParams } from './external_reader';
+import { resetAppContext, setAppContext } from '../lib/context';
 
 jest.mock('../lib/external_reader', () => ({
   ExternalReader: jest.fn().mockImplementation(() => ({ getDataByUser: jest.fn() })),
 }));
 
 describe('sanitizeUserExtraParams', () => {
+  afterEach(() => resetAppContext());
+
   it('drops attachment saving and sandbox keys, keeps other values', () => {
     const result = sanitizeUserExtraParams({
       isSaveAttachments: true,
@@ -64,8 +67,8 @@ describe('ExternalReaderController extraParams handling', () => {
 
   beforeEach(() => {
     (ExternalReaderController as any).singleton = undefined;
-    global.config = { external_reader: {} } as any;
-    global.log = { save: jest.fn() } as any;
+    setAppContext({ config: { external_reader: {} } });
+    setAppContext({ log: { save: jest.fn() } as any });
     controller = new ExternalReaderController({ external_reader: {} });
     getDataByUser = controller.externalReader.getDataByUser;
     getDataByUser.mockResolvedValue({ data: { ok: true } });
@@ -94,7 +97,7 @@ describe('ExternalReaderController extraParams handling', () => {
   });
 
   it('getDataAsync forwards only sanitized extraParams', async () => {
-    global.redisClient = { get: jest.fn(), set: jest.fn().mockResolvedValue(undefined) } as any;
+    setAppContext({ redisClient: { get: jest.fn(), set: jest.fn().mockResolvedValue(undefined) } });
     controller.config = { external_reader: {} };
 
     await controller.getDataAsync(buildReq({ service: 's', method: 'm', filters: {}, extraParams: dangerous }), {});

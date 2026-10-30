@@ -1,11 +1,14 @@
 import { Readable } from 'stream';
 
 import { PaymentController } from './payment';
+import { resetAppContext, setAppContext } from '../lib/context';
 
 jest.mock('../businesses/document', () => ({ DocumentBusiness: jest.fn() }));
 jest.mock('../models/payment_logs', () => ({ PaymentLogsModel: jest.fn() }));
 
 describe('PaymentController.handleStatus', () => {
+  afterEach(() => resetAppContext());
+
   let controller: PaymentController;
   let handlePaymentStatus: jest.Mock;
   let responseError: jest.SpyInstance;
@@ -20,8 +23,8 @@ describe('PaymentController.handleStatus', () => {
   };
 
   beforeEach(() => {
-    (global as any).log = { save: jest.fn() };
-    (global as any).config = {};
+    setAppContext({ log: { save: jest.fn() } as any });
+    setAppContext({ config: {} });
     controller = Object.create(PaymentController.prototype);
     (controller as any).config = { server: { maxBodySize: '1kb' }, payment: {} };
     handlePaymentStatus = jest.fn().mockResolvedValue({ transactionId: 't1' });

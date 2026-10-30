@@ -5,6 +5,7 @@ import { getIdApiClient, IdApiClient, IdApiError, IdApiUserInfo } from '@liquio/
 
 import { Controller } from './controller';
 import { UnitModel } from '../models/unit';
+import { getConfig, getLog, getRedisClient } from '../lib/context';
 
 export class UserController extends Controller {
   private static singleton: UserController;
@@ -162,7 +163,7 @@ export class UserController extends Controller {
     const existingEmail = userInfo.email;
 
     // Check gender.
-    const allowedGenders = global.config.user?.allowedGenders || ['male', 'female'];
+    const allowedGenders = getConfig().user?.allowedGenders || ['male', 'female'];
     if (gender && !allowedGenders.includes(gender)) {
       return this.responseError(res, `Can't set gender ${gender}. Allowed list: ${allowedGenders.map((v) => `"${v}"`).join(', ')}.`);
     }
@@ -212,12 +213,12 @@ export class UserController extends Controller {
     }
 
     // Clear user info cache.
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
         const sha256AccessToken = this.getSha256Hash(accessToken);
-        await global.redisClient.delete(`token.${sha256AccessToken}`);
+        await getRedisClient().delete(`token.${sha256AccessToken}`);
       } catch (error) {
-        global.log.save('user-controller|update-info|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
+        getLog().save('user-controller|update-info|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
       }
     }
 
@@ -253,7 +254,7 @@ export class UserController extends Controller {
     const currentEnabled = !!userInfo.useTwoFactorAuth;
     const auditBase = { userId, enable, previousEnabled: currentEnabled, previousType: currentType, requestedType: twoFactorType };
     const reject = (reason: string, message: string) => {
-      global.log.save('user-controller|two-factor-auth|rejected', { ...auditBase, reason }, 'warn');
+      getLog().save('user-controller|two-factor-auth|rejected', { ...auditBase, reason }, 'warn');
       return this.responseError(res, message);
     };
 
@@ -275,14 +276,14 @@ export class UserController extends Controller {
     }
 
     // Audit. No codes or secrets here.
-    global.log.save('user-controller|two-factor-auth|changed', { ...auditBase, nextType: enable ? 'phone' : currentType });
+    getLog().save('user-controller|two-factor-auth|changed', { ...auditBase, nextType: enable ? 'phone' : currentType });
 
     // Clear user info cache, so the next read shows the new state.
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
-        await global.redisClient.delete(`token.${this.getSha256Hash(accessToken)}`);
+        await getRedisClient().delete(`token.${this.getSha256Hash(accessToken)}`);
       } catch (error) {
-        global.log.save('user-controller|two-factor-auth|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
+        getLog().save('user-controller|two-factor-auth|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
       }
     }
 
@@ -319,7 +320,7 @@ export class UserController extends Controller {
     const userInfo = this.getRequestUserInfo(req);
 
     if (!userInfo || !userInfo.valid || typeof userInfo.valid.phone === 'undefined') {
-      global.log.save('userinfo-property-phone', "Phone status does't exist.", 'error');
+      getLog().save('userinfo-property-phone', "Phone status does't exist.", 'error');
       return this.responseError(res, "Phone status does't exist.");
     }
 
@@ -363,7 +364,7 @@ export class UserController extends Controller {
 
     // Check phone.
     if (!phone) {
-      global.log.save('userinfo-property-phone', { newPhone, existingPhone }, 'error');
+      getLog().save('userinfo-property-phone', { newPhone, existingPhone }, 'error');
       return this.responseError(res, "Phone does't exist.");
     }
 
@@ -371,7 +372,7 @@ export class UserController extends Controller {
     try {
       await this.idApiClient.sendSms(phone, accessToken);
     } catch (error) {
-      global.log.save('can-not-send-sms', { error: error && error.message }, 'error');
+      getLog().save('can-not-send-sms', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't send sms.");
     }
 
@@ -394,7 +395,7 @@ export class UserController extends Controller {
 
     // Check phone.
     if (!phone) {
-      global.log.save('phone-verification-wrong-params', { newPhone, existingPhone }, 'error');
+      getLog().save('phone-verification-wrong-params', { newPhone, existingPhone }, 'error');
       return this.responseError(res, "Phone does't exist.");
     }
 
@@ -406,34 +407,34 @@ export class UserController extends Controller {
       // Id-api answers a rejected code with an error status and `{ error: { message } }`, keep sending that message.
       const idApiErrorMessage = error instanceof IdApiError ? error.body?.error?.message : undefined;
       if (idApiErrorMessage) {
-        global.log.save('phone-verification-error', { phone, code, error: error.body.error }, 'error');
+        getLog().save('phone-verification-error', { phone, code, error: error.body.error }, 'error');
         return this.responseError(res, idApiErrorMessage);
       }
-      global.log.save('phone-verification-exception', { response, phone, code }, 'error');
+      getLog().save('phone-verification-exception', { response, phone, code }, 'error');
       return this.responseError(res, "Can't verity phone.");
     }
 
     // Check response.
     if (!response) {
-      global.log.save('phone-verification-without-court-id-response', { phone, code }, 'error');
+      getLog().save('phone-verification-without-court-id-response', { phone, code }, 'error');
       return this.responseError(res, 'Court ID response not exist.');
     }
     if (response.error) {
-      global.log.save('phone-verification-error', { phone, code, error: response.error }, 'error');
+      getLog().save('phone-verification-error', { phone, code, error: response.error }, 'error');
       return this.responseError(res, response.error && response.error.message);
     }
     if (!response.data) {
-      global.log.save('phone-verification-without-data', { phone, code }, 'error');
+      getLog().save('phone-verification-without-data', { phone, code }, 'error');
       return this.responseError(res, 'Court ID response do not contain data.');
     }
 
     // Clear user phone info cache.
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
         const sha256AccessToken = this.getSha256Hash(accessToken);
-        await global.redisClient.delete(`token.${sha256AccessToken}`);
+        await getRedisClient().delete(`token.${sha256AccessToken}`);
       } catch (error) {
-        global.log.save('user-controller|verify-phone|clear-user-phone-from-cache-error', { error: error && error.message }, 'error');
+        getLog().save('user-controller|verify-phone|clear-user-phone-from-cache-error', { error: error && error.message }, 'error');
       }
     }
 
@@ -453,7 +454,7 @@ export class UserController extends Controller {
     try {
       await this.idApiClient.changeEmail(email);
     } catch (error) {
-      global.log.save('can-not-send-email-code', { error: error && error.message }, 'error');
+      getLog().save('can-not-send-email-code', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't send email code.");
     }
 
@@ -475,17 +476,17 @@ export class UserController extends Controller {
     try {
       await this.idApiClient.confirmChangeEmail(email, code, accessToken);
     } catch (error) {
-      global.log.save('can-not-confirm-change-email', { error: error && error.message }, 'error');
+      getLog().save('can-not-confirm-change-email', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't confirm change email.");
     }
 
     // Clear user email info cache.
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
         const sha256AccessToken = this.getSha256Hash(accessToken);
-        await global.redisClient.delete(`token.${sha256AccessToken}`);
+        await getRedisClient().delete(`token.${sha256AccessToken}`);
       } catch (error) {
-        global.log.save('user-controller|confirm-change-email|clear-user-email-from-cache-error', { error: error && error.message }, 'error');
+        getLog().save('user-controller|confirm-change-email|clear-user-email-from-cache-error', { error: error && error.message }, 'error');
       }
     }
 
@@ -507,7 +508,7 @@ export class UserController extends Controller {
     try {
       await this.idApiClient.checkEmailConfirmationCode(email, code, accessToken);
     } catch (error) {
-      global.log.save('user-controller|check-email-confirmation-code|error', { error: error && error.message }, 'error');
+      getLog().save('user-controller|check-email-confirmation-code|error', { error: error && error.message }, 'error');
       return this.responseError(res, "Can't check email confirmaiton code.");
     }
 
@@ -528,7 +529,7 @@ export class UserController extends Controller {
     try {
       isExist = await this.idApiClient.checkEmail(email);
     } catch (error) {
-      global.log.save('can-not-define-email-existance', { error: error && error.message, email }, 'error');
+      getLog().save('can-not-define-email-existance', { error: error && error.message, email }, 'error');
       return this.responseError(res, "Can't define email existence status.");
     }
 

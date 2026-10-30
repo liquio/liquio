@@ -1,14 +1,17 @@
 import { RedirectController } from './redirect';
+import { getConfig, resetAppContext, setAppContext } from '../lib/context';
 
 describe('RedirectController', () => {
+  afterEach(() => resetAppContext());
+
   const authRedirectUrl = 'http://task.local/auth';
   let controller: RedirectController;
   let redirect: jest.SpyInstance;
 
   const build = (liquioId: Record<string, any>) => {
     (RedirectController as any).singleton = undefined;
-    (global as any).config = { auth: { authRedirectUrl, LiquioId: liquioId } };
-    controller = new RedirectController((global as any).config);
+    setAppContext({ config: { auth: { authRedirectUrl, LiquioId: liquioId } } });
+    controller = new RedirectController(getConfig());
     redirect = jest.spyOn(controller, 'redirect').mockImplementation(() => undefined as any);
   };
 
@@ -35,7 +38,7 @@ describe('RedirectController', () => {
 
   it('preserves callback query parameters and state as individual values', async () => {
     build({ front: 'https://id.example', clientId: 'task&client' });
-    (global as any).config.auth.authRedirectUrl = 'https://cabinet.example/?a=1&b=2';
+    getConfig().auth.authRedirectUrl = 'https://cabinet.example/?a=1&b=2';
     await controller.auth({ query: { state: 'state&=+' } }, {});
     const location = new URL(redirect.mock.calls[0][1]);
     expect(location.searchParams.get('redirect_uri')).toBe('https://cabinet.example/?a=1&b=2');

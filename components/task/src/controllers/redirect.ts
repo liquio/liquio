@@ -1,4 +1,5 @@
 import { Controller } from './controller';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_GET_CODE_ROUTE = '/authorise';
@@ -43,7 +44,7 @@ export class RedirectController extends Controller {
     const { front, server, routes, clientId } = this.idConfig;
     const idAuthUrl = `${front || server}${routes?.getCode || DEFAULT_GET_CODE_ROUTE}`;
     const idAuthQueryParams = `?${new URLSearchParams({
-      redirect_uri: global.config.auth.authRedirectUrl,
+      redirect_uri: getConfig().auth.authRedirectUrl,
       client_id: clientId,
       ...(state ? { state: String(state) } : {}),
     }).toString()}`;
@@ -67,7 +68,7 @@ export class RedirectController extends Controller {
     // Define params.
     const { front, server, routes } = this.idConfig;
     const idLogoutUrl = `${front || server}${routes?.logout}`;
-    const idLogoutQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}${stateQueryParam}`;
+    const idLogoutQueryParams = `?redirect_uri=${getConfig().auth.authRedirectUrl}${stateQueryParam}`;
     const redirectUrl = `${idLogoutUrl}${idLogoutQueryParams}`;
 
     // Redirect.

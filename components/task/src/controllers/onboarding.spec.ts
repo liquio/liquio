@@ -2,11 +2,14 @@ import { IdApiError } from '@liquio/back-core';
 
 import { OnboardingController } from './onboarding';
 import { Helpers } from '../lib/helpers';
+import { getLog, resetAppContext, setAppContext } from '../lib/context';
 
 jest.mock('../lib/redis_client', () => ({ RedisClient: jest.fn() }));
 jest.mock('../lib/helpers', () => ({ Helpers: { getUserUnits: jest.fn().mockReturnValue([]) } }));
 
 describe('OnboardingController', () => {
+  afterEach(() => resetAppContext());
+
   const USER_ID = '61efddaa351d6219eee09043';
   let client: Record<string, jest.Mock>;
   let controller: OnboardingController;
@@ -17,7 +20,7 @@ describe('OnboardingController', () => {
     client = { getUsersByIds: jest.fn(), updateUserOnboarding: jest.fn() };
     controller.idApiClient = client as any;
     (controller as any).config = {};
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } as any });
     (Helpers.getUserUnits as jest.Mock).mockReturnValue([]);
   });
 
@@ -35,11 +38,7 @@ describe('OnboardingController', () => {
 
       await expect(controller.updateUserOnboarding(USER_ID, { onboardingTaskId: '' })).resolves.toBeUndefined();
 
-      expect((global as any).log.save).toHaveBeenCalledWith(
-        'update-user-onboarding-error',
-        { userId: USER_ID, status: 404, error: 'Not found' },
-        'error',
-      );
+      expect(getLog().save).toHaveBeenCalledWith('update-user-onboarding-error', { userId: USER_ID, status: 404, error: 'Not found' }, 'error');
     });
 
     it('should throw a network error', async () => {

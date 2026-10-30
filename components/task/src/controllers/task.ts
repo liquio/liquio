@@ -11,8 +11,9 @@ import { TaskActivity } from '../types/task_activity';
 import { Helpers } from '../lib/helpers';
 import { ERROR_TASK_NOT_FOUND } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
+import { getBusinesses, getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
 
-/** @var {TaskBusiness} global.businesses.task */
+/** @var {TaskBusiness} getBusinesses().task */
 
 /**
  * Task controller.
@@ -68,7 +69,7 @@ export class TaskController extends Controller {
       // Try to get original task.
       try {
         // Get original task.
-        const originalTask = await global.businesses.task.findByIdAndCheckAccess(copyFrom, userId, userUnitIds, true);
+        const originalTask = await getBusinesses().task.findByIdAndCheckAccess(copyFrom, userId, userUnitIds, true);
 
         // Check is entry.
         const { isEntry, document, workflowId } = originalTask;
@@ -77,7 +78,7 @@ export class TaskController extends Controller {
         }
 
         // Get original workflow template ID.
-        const originalWorkflow = await (global.models.workflow.findById as any)(workflowId);
+        const originalWorkflow = await (getModels().workflow.findById as any)(workflowId);
         const { workflowTemplateId } = originalWorkflow;
 
         // Get original document.
@@ -91,7 +92,7 @@ export class TaskController extends Controller {
     // Create task.
     let createdTask;
     try {
-      createdTask = await global.businesses.task.create({
+      createdTask = await getBusinesses().task.create({
         workflowId,
         workflowTemplateId: workflowTemplateId || originalWorkflowTemplateId,
         taskTemplateId,
@@ -123,7 +124,7 @@ export class TaskController extends Controller {
    * @param {object} res HTTP response.
    */
   async createByOtherSystem(req, res) {
-    global.log.save('create-by-other-system-request-body', req.body);
+    getLog().save('create-by-other-system-request-body', req.body);
 
     const authorizationToken = req.headers && req.headers.authorization;
     const {
@@ -132,7 +133,7 @@ export class TaskController extends Controller {
       tasksTemplateIds,
       enableRateLimitsChecking = false,
       rateLimits = {},
-    } = (config && global.config.system_task) || {};
+    } = (getConfig() && getConfig().system_task) || {};
 
     // Define params.
     const { workflowTemplateId, taskTemplateId, parentDocumentId, initData } = req.body;
@@ -142,7 +143,7 @@ export class TaskController extends Controller {
       !allowedToCreateByTokens.includes(authorizationToken) ||
       !tasksTemplateIds.map((v) => `${v}`).includes(`${taskTemplateId}`)
     ) {
-      global.log.save('create-by-other-system-access-error', {
+      getLog().save('create-by-other-system-access-error', {
         tasksTemplateIds,
         taskTemplateId,
         isAllowedCreateByOtherSystems,
@@ -156,12 +157,12 @@ export class TaskController extends Controller {
     const appendMeta = {};
     if (enableRateLimitsChecking) {
       if (!rateLimits || typeof rateLimits !== 'object' || Array.isArray(rateLimits) || Object.keys(rateLimits).length === 0) {
-        global.log.save('create-by-other-system-rate-limits-checking-error-invalid-config', { rateLimits }, 'error');
+        getLog().save('create-by-other-system-rate-limits-checking-error-invalid-config', { rateLimits }, 'error');
         const error = new Error('RateLimitsChecking error.');
         return this.responseError(res, error, 500);
       }
       if (rateLimits[`${taskTemplateId}`] && !initData?.signatures) {
-        global.log.save('create-by-other-system-rate-limits-checking-error-init-data-without-signatures', { initData }, 'error');
+        getLog().save('create-by-other-system-rate-limits-checking-error-init-data-without-signatures', { initData }, 'error');
         const error = new Error('RateLimitsChecking error. signatures must be passed in initData.');
         return this.responseError(res, error, 400);
       }
@@ -170,7 +171,7 @@ export class TaskController extends Controller {
       try {
         checkRateLimitResult = await checkRateLimit.bind(this)({ rateLimits, initData, taskTemplateId });
       } catch (error) {
-        global.log.save(
+        getLog().save(
           'create-by-other-system-rate-limits-checking-error-function-error',
           { error: error?.message, rateLimits, initData, taskTemplateId },
           'error',
@@ -179,7 +180,7 @@ export class TaskController extends Controller {
       }
 
       if (checkRateLimitResult.isReached) {
-        global.log.save(
+        getLog().save(
           'create-by-other-system-rate-limits-checking-error-limit-reached',
           { limit: checkRateLimitResult.limit, reachedIpns: checkRateLimitResult.reachedIpns },
           'error',
@@ -227,7 +228,7 @@ export class TaskController extends Controller {
     // Create task.
     let createdTask;
     try {
-      createdTask = await global.businesses.task.create({
+      createdTask = await getBusinesses().task.create({
         workflowTemplateId: workflowTemplateId || originalWorkflowTemplateId,
         taskTemplateId,
         userId: userId || systemName,
@@ -258,7 +259,7 @@ export class TaskController extends Controller {
         return { isReached: false };
       }
       const { signatures } = initData;
-      const signaturesInfo = await global.businesses.task.getSignaturesInfo(signatures);
+      const signaturesInfo = await getBusinesses().task.getSignaturesInfo(signatures);
       const externalInitiatorIpns = signaturesInfo.map((si) => si?.signer?.ipn?.DRFO).filter(Boolean);
       const taskCreatedToday = await this.taskModel.getTaskCreatedTodayByTemplateId(taskTemplateId, { attributes: ['id', 'meta'] });
 
@@ -304,9 +305,9 @@ export class TaskController extends Controller {
 
     // Check that all users signed all files.
     try {
-      const task = await global.models.task.findById(taskId);
-      const document = await global.models.document.findById(task.document.id); // Get by document model because of json_schema.
-      await global.businesses.document.signing.checkP7SSignaturesCount(document);
+      const task = await getModels().task.findById(taskId);
+      const document = await getModels().document.findById(task.document.id); // Get by document model because of json_schema.
+      await getBusinesses().document.signing.checkP7SSignaturesCount(document);
     } catch (error) {
       return this.responseError(res, error, 500, error.details);
     }
@@ -314,7 +315,7 @@ export class TaskController extends Controller {
     let finishedTask;
     try {
       const requestMeta = this.getRequestMeta(req);
-      finishedTask = await global.businesses.task.setStatusFinished(
+      finishedTask = await getBusinesses().task.setStatusFinished(
         taskId,
         userId,
         userUnitIds,
@@ -325,7 +326,7 @@ export class TaskController extends Controller {
 
       // Send message to RabbitMQ.
       const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-      global.messageQueue.produce(message);
+      getMessageQueue().produce(message);
 
       // Response.
       this.responseData(res, message);
@@ -334,7 +335,7 @@ export class TaskController extends Controller {
     }
 
     // Send document to inboxes if need it.
-    global.businesses.userInbox.sendToInboxesIfNeedIt(finishedTask);
+    getBusinesses().userInbox.sendToInboxesIfNeedIt(finishedTask);
 
     // Save custom logs.
     this.customLogs.saveCustomLog({
@@ -357,7 +358,7 @@ export class TaskController extends Controller {
 
     const queryData = matchedData(req, { locations: ['query'] });
 
-    const sort = await global.businesses.task.mapSort(queryData.sort || {});
+    const sort = await getBusinesses().task.mapSort(queryData.sort || {});
     const filters = queryData.filters || {};
 
     const { page, count, from_created_at, to_created_at } = queryData;
@@ -366,12 +367,12 @@ export class TaskController extends Controller {
     let tasks;
     try {
       const onboardingTaskTemplateIds = [];
-      if (global.config.onboarding?.onboardingTemplate?.workflowTemplateId && global.config.onboarding?.onboardingTemplate?.taskTemplateId) {
-        onboardingTaskTemplateIds.push(global.config.onboarding.onboardingTemplate.taskTemplateId);
+      if (getConfig().onboarding?.onboardingTemplate?.workflowTemplateId && getConfig().onboarding?.onboardingTemplate?.taskTemplateId) {
+        onboardingTaskTemplateIds.push(getConfig().onboarding.onboardingTemplate.taskTemplateId);
       }
 
       // Get tasks info with pagination.
-      tasks = await global.businesses.task.getAllByUserId(
+      tasks = await getBusinesses().task.getAllByUserId(
         userId,
         userUnitIds.all,
         userUnitIds.head,
@@ -415,7 +416,7 @@ export class TaskController extends Controller {
     // Get task.
     let task;
     try {
-      task = await global.businesses.task.findByIdAndCheckAccess(id, userId, userUnitIds);
+      task = await getBusinesses().task.findByIdAndCheckAccess(id, userId, userUnitIds);
       task.setIsMeSignerAndPerformer(userId, userUnitIds.all);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
@@ -425,9 +426,9 @@ export class TaskController extends Controller {
     try {
       const { document } = task;
       const { signatures } = document;
-      task.minSignaturesLimitInfo = await (global.businesses.document.signing.handleMinSignaturesLimit as any)({ ...document, task, signatures });
+      task.minSignaturesLimitInfo = await (getBusinesses().document.signing.handleMinSignaturesLimit as any)({ ...document, task, signatures });
     } catch (error) {
-      global.log.save('signatures-limit-info-not-defined', { taskId: id, message: error && error.message });
+      getLog().save('signatures-limit-info-not-defined', { taskId: id, message: error && error.message });
     }
 
     // Response.
@@ -453,7 +454,7 @@ export class TaskController extends Controller {
     let lastTasks;
     const lastTasksWithAccess = [];
     try {
-      lastTasks = await global.models.task.getLastByCurrentTaskId(currentTaskId);
+      lastTasks = await getModels().task.getLastByCurrentTaskId(currentTaskId);
 
       lastTasks = lastTasks.filter((v) => v.documentId);
       for (const lastTask of lastTasks) {
@@ -546,7 +547,7 @@ export class TaskController extends Controller {
     let state;
     let task;
     try {
-      const deletingResult: any = await global.businesses.task.delete(taskId, userId, { force });
+      const deletingResult: any = await getBusinesses().task.delete(taskId, userId, { force });
       state = deletingResult && deletingResult.state;
       task = deletingResult && deletingResult.task;
     } catch (error) {
@@ -569,7 +570,7 @@ export class TaskController extends Controller {
     const userId = this.getRequestUserId(req);
 
     try {
-      await global.businesses.task.deletePermanent(taskId, userId);
+      await getBusinesses().task.deletePermanent(taskId, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -588,7 +589,7 @@ export class TaskController extends Controller {
 
     let state;
     try {
-      state = await global.businesses.task.recover(taskId, userId);
+      state = await getBusinesses().task.recover(taskId, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -610,7 +611,7 @@ export class TaskController extends Controller {
     // Set signer users.
     let updatedTask;
     try {
-      updatedTask = await global.businesses.task.setSignerUsers(id, signerUsers, userId, userUnitIds.all);
+      updatedTask = await getBusinesses().task.setSignerUsers(id, signerUsers, userId, userUnitIds.all);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -632,7 +633,7 @@ export class TaskController extends Controller {
     // Set performer users.
     let updatedTask;
     try {
-      updatedTask = await global.businesses.task.setPerformerUsers(id, performerUsers, userUnitIds.head, userId);
+      updatedTask = await getBusinesses().task.setPerformerUsers(id, performerUsers, userUnitIds.head, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -653,7 +654,7 @@ export class TaskController extends Controller {
     // Set due date.
     let updatedTask;
     try {
-      updatedTask = await global.businesses.task.setDueDate(id, dueDate, userUnitIds.head);
+      updatedTask = await getBusinesses().task.setDueDate(id, dueDate, userUnitIds.head);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -670,13 +671,13 @@ export class TaskController extends Controller {
     const { id } = req.params;
     const { override } = req.query;
     const { meta } = req.body;
-    global.businesses.task.removeUnsafeMetaFields(meta);
+    getBusinesses().task.removeUnsafeMetaFields(meta);
     const userId = this.getRequestUserId(req);
     const userUnitIds = this.getRequestUserUnitIds(req);
 
     let task;
     try {
-      task = await global.businesses.task.findByIdAndCheckAccess(id, userId, userUnitIds);
+      task = await getBusinesses().task.findByIdAndCheckAccess(id, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -688,7 +689,7 @@ export class TaskController extends Controller {
     // Set metadata.
     let taskWithMeta;
     try {
-      taskWithMeta = await global.businesses.task.addTaskMetadata(task, userId, override, meta);
+      taskWithMeta = await getBusinesses().task.addTaskMetadata(task, userId, override, meta);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -712,11 +713,11 @@ export class TaskController extends Controller {
     let unreadTasksCount;
     try {
       const onboardingTaskTemplateIds = [];
-      if (global.config.onboarding?.onboardingTemplate?.workflowTemplateId && global.config.onboarding?.onboardingTemplate?.taskTemplateId) {
-        onboardingTaskTemplateIds.push(global.config.onboarding.onboardingTemplate.taskTemplateId);
+      if (getConfig().onboarding?.onboardingTemplate?.workflowTemplateId && getConfig().onboarding?.onboardingTemplate?.taskTemplateId) {
+        onboardingTaskTemplateIds.push(getConfig().onboarding.onboardingTemplate.taskTemplateId);
       }
 
-      unreadTasksCount = await global.businesses.task.getUnreadTasksCount(userId, userUnitIds.all, userUnitIds.head, {
+      unreadTasksCount = await getBusinesses().task.getUnreadTasksCount(userId, userUnitIds.all, userUnitIds.head, {
         sort: sort,
         filters: filters,
         onboardingTaskTemplateIds,
@@ -744,7 +745,7 @@ export class TaskController extends Controller {
     // Get updated with signers task.
     let taskWithSigners;
     try {
-      taskWithSigners = await global.businesses.task.calcSigners(taskId, multisignerSchemaPath, userId, userUnitIds, userInfo);
+      taskWithSigners = await getBusinesses().task.calcSigners(taskId, multisignerSchemaPath, userId, userUnitIds, userInfo);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -768,7 +769,7 @@ export class TaskController extends Controller {
 
     let isAccess;
     try {
-      isAccess = await (global.businesses.task.checkUserAccessAsSigner as any)(taskId, multisignerSchemaPath, userId, userInfo, userUnitIds);
+      isAccess = await (getBusinesses().task.checkUserAccessAsSigner as any)(taskId, multisignerSchemaPath, userId, userInfo, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -811,7 +812,7 @@ export class TaskController extends Controller {
     // Get task.
     let task;
     try {
-      task = await global.businesses.task.findByIdAndCheckAccess(taskId, userId, userUnitIds);
+      task = await getBusinesses().task.findByIdAndCheckAccess(taskId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -826,7 +827,7 @@ export class TaskController extends Controller {
     }
 
     // Check optional project params.
-    if (global.config?.custom?.optionalProjectParams?.isOnlySinglePerformerUser && newPerformerUsers?.length > 1) {
+    if (getConfig()?.custom?.optionalProjectParams?.isOnlySinglePerformerUser && newPerformerUsers?.length > 1) {
       return this.responseError(res, 'Performer user can be only one.', 400);
     }
 
@@ -837,7 +838,7 @@ export class TaskController extends Controller {
     let performerUsersDiff = [...addedPerformerUsers, ...removedPerformerUsers];
 
     // But, that is strange checking with "removedPerformerUsers".
-    if (global.config?.custom?.optionalProjectParams?.userRoleUnits?.superHeadUnitId) {
+    if (getConfig()?.custom?.optionalProjectParams?.userRoleUnits?.superHeadUnitId) {
       performerUsersDiff = addedPerformerUsers;
     }
 
@@ -855,8 +856,8 @@ export class TaskController extends Controller {
 
     // Check optional project params.
     let isUserIsMemberOfSuperHeadUnit = false;
-    if (global.config?.custom?.optionalProjectParams?.userRoleUnits?.superHeadUnitId) {
-      isUserIsMemberOfSuperHeadUnit = userUnitIds.member.some((v) => v === global.config.custom.optionalProjectParams.userRoleUnits.superHeadUnitId);
+    if (getConfig()?.custom?.optionalProjectParams?.userRoleUnits?.superHeadUnitId) {
+      isUserIsMemberOfSuperHeadUnit = userUnitIds.member.some((v) => v === getConfig().custom.optionalProjectParams.userRoleUnits.superHeadUnitId);
     }
 
     if (!isUserIsMemberOfSuperHeadUnit && !isOnlyUserHeadUnitsMembersChanged && !isOnlyAddedOrRemovedHimself && !isOnlyRemoved) {
@@ -895,7 +896,7 @@ export class TaskController extends Controller {
     try {
       updatedTask = await this.taskModel.setPerformerUsers(taskId, newPerformerUsers, newPerformerUserNames);
     } catch (error) {
-      global.log.save('set-performer-users-error', {
+      getLog().save('set-performer-users-error', {
         error: error?.message,
         details: error?.details,
         taskId,
@@ -929,8 +930,8 @@ export class TaskController extends Controller {
     });
 
     // Handle activity .
-    await global.businesses.task.handleActivityTypeEvents(updatedTask, 'TASK_PERFORMERS_CHANGED');
-    if (global.config.activity_log?.isEnabled) {
+    await getBusinesses().task.handleActivityTypeEvents(updatedTask, 'TASK_PERFORMERS_CHANGED');
+    if (getConfig().activity_log?.isEnabled) {
       const activity = new TaskActivity({
         type: 'TASK_PERFORMERS_CHANGED',
         details: {
@@ -943,14 +944,14 @@ export class TaskController extends Controller {
           assignedUnits: [],
         } as any,
       });
-      const taskWithCurrentActivityLog = await global.models.task.appendActivityLog(updatedTask.id, activity);
+      const taskWithCurrentActivityLog = await getModels().task.appendActivityLog(updatedTask.id, activity);
       updatedTask.activityLog = taskWithCurrentActivityLog.activityLog;
     }
 
     this.responseData(res, updatedTask);
 
     // Inform performer users.
-    global.businesses.task.informNewPerformerUsers(task, addedPerformerUsers);
+    getBusinesses().task.informNewPerformerUsers(task, addedPerformerUsers);
   }
 
   /**
@@ -986,7 +987,7 @@ export class TaskController extends Controller {
       }
     } catch (error) {
       this.responseError(res, error, 400);
-      global.log.save('get-task-statistics-error', { error }, 'error');
+      getLog().save('get-task-statistics-error', { error }, 'error');
     }
 
     if (!statistics) return this.responseError(res, 'Tasks Not Found', 404);
@@ -1021,7 +1022,7 @@ export class TaskController extends Controller {
       list = await this.taskModel.getListByUnitId(unitId, options);
     } catch (error) {
       this.responseError(res, error, 400);
-      global.log.save('get-task-list-error', { error }, 'error');
+      getLog().save('get-task-list-error', { error }, 'error');
     }
 
     if (!list) return this.responseError(res, 'Tasks Not Found', 404);
@@ -1035,7 +1036,7 @@ export class TaskController extends Controller {
     // Delete expired drafts.
     let deleteTaskResponse;
     try {
-      deleteTaskResponse = await global.businesses.task.deleteExpiredDraftsByUserId(userId);
+      deleteTaskResponse = await getBusinesses().task.deleteExpiredDraftsByUserId(userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1060,22 +1061,22 @@ export class TaskController extends Controller {
 
     let tasks;
     try {
-      tasks = await global.models.task.getByPerformerUser(userId, {
+      tasks = await getModels().task.getByPerformerUser(userId, {
         taskTemplateIds,
         isFinished,
         isEntry,
       });
     } catch (error) {
-      global.log.save('get-tasks-by-performer-user-error', { error }, 'error');
+      getLog().save('get-tasks-by-performer-user-error', { error }, 'error');
       this.responseError(res, error);
     }
 
     let taskTemplates;
     try {
-      const taskTemplatesPromises = taskTemplateIds.map((tti) => global.models.taskTemplate.findById(tti));
+      const taskTemplatesPromises = taskTemplateIds.map((tti) => getModels().taskTemplate.findById(tti));
       taskTemplates = await Promise.all(taskTemplatesPromises);
     } catch (error) {
-      global.log.save('get-tasks-by-performer-user-error', { error }, 'error');
+      getLog().save('get-tasks-by-performer-user-error', { error }, 'error');
       this.responseError(res, error);
     }
 
