@@ -53,9 +53,12 @@ describe('HttpRequest', () => {
   });
 
   it('throws a clean error on network failure', async () => {
-    nock(BASE_URL).get('/down').replyWithError('connection refused');
-
-    await expect(HttpRequest.send({ url: `${BASE_URL}/down`, method: HttpRequest.Methods.GET })).rejects.toThrow('connection refused');
+    nock.restore();
+    try {
+      await expect(HttpRequest.send({ url: 'http://127.0.0.1:1/down', method: HttpRequest.Methods.GET })).rejects.toThrow(/ECONNREFUSED/);
+    } finally {
+      nock.activate();
+    }
   });
 
   it('exposes constants', () => {
