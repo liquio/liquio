@@ -1,22 +1,29 @@
 import { Op } from 'sequelize';
 
 import { TaskModel } from './task';
+import { setAppContext, resetAppContext } from '../lib/context';
 
 describe('TaskModel.formOptionsToGetAllByUserId scope', () => {
   const USER = 'user-1';
   let model: any;
 
   beforeAll(() => {
-    global.db = { define: () => ({ prototype: {} }) } as any;
-    global.models = {
-      document: { model: {} },
-      workflow: { model: {} },
-      workflowTemplate: { model: {} },
-      taskTemplate: { model: {} },
-      documentTemplate: { model: {} },
-    } as any;
-    global.config = { modules: {} } as any;
+    setAppContext({
+      db: { define: () => ({ prototype: {} }) },
+      models: {
+        document: { model: {} },
+        workflow: { model: {} },
+        workflowTemplate: { model: {} },
+        taskTemplate: { model: {} },
+        documentTemplate: { model: {} },
+      } as any,
+      config: { modules: {} },
+    });
     model = new TaskModel();
+  });
+
+  afterAll(() => {
+    resetAppContext();
   });
 
   const build = (filters: any) => model.formOptionsToGetAllByUserId(USER, [1], [2], 1, 10, filters, {}, null, undefined, undefined);

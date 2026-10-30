@@ -15,7 +15,6 @@ import { RouterService } from './services/router';
 import { FileGeneratorService } from './services/file_generator';
 import { StorageService } from './services/storage';
 import { Commands } from './commands';
-import * as Errors from './lib/errors';
 import typeOf from './lib/type_of';
 import { HttpClient } from './lib/http_client';
 import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses_daemon';
@@ -40,7 +39,6 @@ const DEFAULT_OPTIONS = {
   customStorageProvider: undefined,
 };
 const JEST_ENV = 'jest';
-global.JEST_ENV = JEST_ENV;
 setAppContext({ JEST_ENV });
 
 /**
@@ -111,7 +109,6 @@ export class BpmnTaskCore {
     const config: any = loadConfig(configPath);
 
     setAppContext({ config });
-    global.config = config;
 
     // Do not start with a publicly known default Basic token (or none in production).
     assertBasicAuthConfig(config);
@@ -128,12 +125,6 @@ export class BpmnTaskCore {
     // Init global http client.
     const httpClient = new HttpClient(config.http_client);
     setAppContext({ httpClient });
-    global.httpClient = httpClient;
-
-    // Init global custom error.
-    Object.entries(Errors).forEach(([ErrorName, ErrorClass]) => {
-      (global as any)[ErrorName] = ErrorClass;
-    });
 
     // Init log.
     const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, config.log);
@@ -144,8 +135,6 @@ export class BpmnTaskCore {
       log = new Log([consoleLogProvider], ['console']);
     }
     setAppContext({ log, typeOf });
-    global.log = log;
-    global.typeOf = typeOf;
 
     // Init id-api client.
     initIdApiClient({ ...config.auth?.LiquioId, authRedirectUrl: config.auth?.authRedirectUrl });
@@ -159,12 +148,10 @@ export class BpmnTaskCore {
 
     // Save moment global to use in eval.
     setAppContext({ moment });
-    global.moment = moment;
 
     // Init DB.
     const db = await Db.getInstance(config.db);
     setAppContext({ db });
-    global.db = db;
     this.db = db;
 
     // Init pgpubsub.
@@ -177,7 +164,7 @@ export class BpmnTaskCore {
 
     // Init models.
     this.models = new Models(customModels);
-    setAppContext({ models: global.models });
+    setAppContext({ models: this.models.models });
     new DictionariesModel(customDictionaryModels);
 
     // Initialize sandbox.
@@ -205,7 +192,6 @@ export class BpmnTaskCore {
 
     // Init businesses.
     const businesses: any = new Businesses(config);
-    global.businesses = businesses.businesses;
     setAppContext({ businesses: businesses.businesses });
 
     // Init BPMN Task redis.
@@ -217,7 +203,6 @@ export class BpmnTaskCore {
         })
       : undefined;
     setAppContext({ redisClient });
-    global.redisClient = redisClient;
 
     // Init common BPMN redis.
     const redisClientCommonBpmn = config?.redis?.redisCommonBpmn?.isEnabled
@@ -228,7 +213,6 @@ export class BpmnTaskCore {
         })
       : undefined;
     setAppContext({ redisClientCommonBpmn });
-    global.redisClientCommonBpmn = redisClientCommonBpmn;
 
     const taskBusiness = businesses.businesses.task;
     const documentBusiness = businesses.businesses.document;
@@ -259,7 +243,6 @@ export class BpmnTaskCore {
 
     await messageQueue.init();
     setAppContext({ messageQueue });
-    global.messageQueue = messageQueue;
 
     // Init file generator.
     new FileGeneratorService();

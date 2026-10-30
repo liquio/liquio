@@ -2,6 +2,7 @@ import fetchToCurl from 'fetch-to-curl';
 import { getTraceId } from '@liquio/back-core';
 
 import { HTTPRequestError, HTTPResponseError } from './errors';
+import { getLog } from './context';
 
 // Fix import node-fetch for CommonJS modules. https://github.com/node-fetch/node-fetch/blob/HEAD/docs/v3-UPGRADE-GUIDE.md
 const nodeFetch = (...args: any[]) => import('node-fetch').then(({ default: fetch }) => (fetch as any)(...args));
@@ -29,7 +30,7 @@ export class HttpClient {
    * @return {Promise<import('node-fetch').Response>}
    */
   async request(url, init: any = {}, meta, options: any = {}) {
-    global.log.save('http-client-request-options', { meta, url, init: { ...init, /*replace for log*/ agent: undefined } });
+    getLog().save('http-client-request-options', { meta, url, init: { ...init, /*replace for log*/ agent: undefined } });
 
     let urlWithoutQueryParameters;
     try {
@@ -71,7 +72,7 @@ export class HttpClient {
         (error as any).code = 'ETIMEDOUT';
       }
 
-      global.log.save('http-client-request-error', {
+      getLog().save('http-client-request-error', {
         meta,
         error: error.toString(),
         stack: error.stack,
@@ -92,7 +93,7 @@ export class HttpClient {
 
     if (!response.ok && !options.isDoNotCheckHTTPErrorCode) {
       const responseBody = await response.text();
-      global.log.save('http-client-response-error', {
+      getLog().save('http-client-response-error', {
         meta,
         curl: this.makeCurl(url, init),
         response: `${response.status} ${response.statusText}`,
@@ -109,10 +110,10 @@ export class HttpClient {
       });
     }
 
-    global.log.save('http-client-request-success', { meta });
+    getLog().save('http-client-request-success', { meta });
 
     response.body.on('error', (error) => {
-      global.log.save('http-client-read-response-body-stream-error', { meta, error: error.toString() });
+      getLog().save('http-client-read-response-body-stream-error', { meta, error: error.toString() });
     });
 
     return response;
@@ -129,7 +130,7 @@ export class HttpClient {
     try {
       curl = fetchToCurl(url, init);
     } catch (error) {
-      global.log.save('http-client-request-make-curl-error', error.toString());
+      getLog().save('http-client-request-make-curl-error', error.toString());
     }
     return curl;
   }

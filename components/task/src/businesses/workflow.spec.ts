@@ -39,8 +39,6 @@ describe('WorkflowBusiness', () => {
 
   beforeEach(() => {
     setAppContext({ config });
-    // Temporary: unmigrated services/storage still reads the bare global config.
-    Object.assign(global, { config });
   });
 
   afterEach(() => {

@@ -3,6 +3,7 @@ import handlebars from 'handlebars';
 
 import { RedisClient } from './redis_client';
 import { NumberTemplateModel } from '../models/number_template';
+import { getLog } from './context';
 
 export class NumberGenerator {
   private static singleton: NumberGenerator;
@@ -74,7 +75,7 @@ export class NumberGenerator {
     try {
       template = handlebars.compile(numberTemplate.template);
     } catch (error) {
-      global.log.save('handlebars-compile-error', { error: (error && error.message) || error });
+      getLog().save('handlebars-compile-error', { error: (error && error.message) || error });
       const wrapped: any = new Error('Handlebars number generator error.');
       wrapped.cause = error;
       throw wrapped;
@@ -121,7 +122,7 @@ export class NumberGenerator {
     try {
       generator = handlebars.compile(template);
     } catch (error) {
-      global.log.save('handlebars-compile-error', { error: (error && error.message) || error });
+      getLog().save('handlebars-compile-error', { error: (error && error.message) || error });
       const wrapped: any = new Error('Handlebars number generator error.');
       wrapped.cause = error;
       throw wrapped;

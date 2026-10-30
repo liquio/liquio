@@ -2,6 +2,7 @@ import PropByPath from 'prop-by-path';
 import { Sandbox } from '@liquio/back-core';
 
 import { DocumentHandler } from '../../../lib/document_handler';
+import { getLog } from '../../../lib/context';
 
 // Constants.
 const ERROR_MESSAGE_METHOD_NOT_DEFINED = 'Method should be overridden in child class.';
@@ -51,7 +52,7 @@ export class Filler {
       }
 
       // Save.
-      global.log.save('document-filler|defined-value-to-set', { path, schemaObject, successfullyDefined: true }, 'warn'); // No reason to log handledItem.
+      getLog().save('document-filler|defined-value-to-set', { path, schemaObject, successfullyDefined: true }, 'warn'); // No reason to log handledItem.
       PropByPath.set(objectToFill, path, handledItem);
     }
 

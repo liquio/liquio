@@ -2,14 +2,17 @@ import debugFactory from 'debug';
 import { Sandbox } from '@liquio/back-core';
 
 import { Provider } from './provider';
+import { setAppContext } from '../../../lib/context';
 
 const debug = debugFactory('test:log');
 
 new Sandbox();
 
-global.log = {
-  save: jest.fn().mockImplementation(debug),
-} as any;
+setAppContext({
+  log: {
+    save: jest.fn().mockImplementation(debug),
+  } as any,
+});
 
 const OVERRIDE_ERROR_MESSAGE = 'Method must be override for a specific provider.';
 

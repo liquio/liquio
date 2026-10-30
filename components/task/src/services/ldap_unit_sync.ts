@@ -4,6 +4,7 @@ import type { IdApiClient } from '@liquio/back-core';
 
 import type { UnitEntity } from '../entities/unit';
 import type { UnitModel } from '../models/unit';
+import { getLog, getModels, getRedisClient } from '../lib/context';
 
 // Constants.
 const GROUPS_EXIST_CACHE_TTL = 300;
@@ -117,17 +118,17 @@ export class LdapUnitSync {
   async syncIfChanged(userInfo: LdapUserInfo): Promise<LdapSyncResult> {
     const syncedAt = userInfo?.services?.ldap?.data?.syncedAt;
     const result = { changed: false, complete: true };
-    if (!syncedAt || !userInfo.userId || !global.redisClient) {
+    if (!syncedAt || !userInfo.userId || !getRedisClient()) {
       return result;
     }
 
     try {
-      const lastSyncedAt = await global.redisClient.get(`${SYNC_MARK_KEY_PREFIX}.${userInfo.userId}`);
+      const lastSyncedAt = await getRedisClient().get(`${SYNC_MARK_KEY_PREFIX}.${userInfo.userId}`);
       if (lastSyncedAt && !(new Date(syncedAt).getTime() > new Date(lastSyncedAt).getTime())) {
         return result;
       }
     } catch (error) {
-      global.log.save('ldap-unit-sync|error', { userId: userInfo.userId, error: error?.message }, 'error');
+      getLog().save('ldap-unit-sync|error', { userId: userInfo.userId, error: error?.message }, 'error');
       return result;
     }
 
@@ -149,7 +150,7 @@ export class LdapUnitSync {
 
     const groups = ldapService.data?.groups;
     if (!Array.isArray(groups)) {
-      global.log.save('ldap-unit-sync|groups-not-defined', { userId }, 'error');
+      getLog().save('ldap-unit-sync|groups-not-defined', { userId }, 'error');
       return { changed: false, complete: false };
     }
     const userGroups = new Set(groups.map(normalizeDn));
@@ -176,7 +177,7 @@ export class LdapUnitSync {
           }
         } catch (error) {
           result.complete = false;
-          global.log.save('ldap-unit-sync|unit-error', { userId, unitId: unit.id, error: error?.message }, 'error');
+          getLog().save('ldap-unit-sync|unit-error', { userId, unitId: unit.id, error: error?.message }, 'error');
         }
       }
 
@@ -187,11 +188,11 @@ export class LdapUnitSync {
         await this.rememberSync(userId, ldapService.data?.syncedAt);
       }
     } catch (error) {
-      global.log.save('ldap-unit-sync|error', { userId, error: error?.message }, 'error');
+      getLog().save('ldap-unit-sync|error', { userId, error: error?.message }, 'error');
       return { changed: result.changed, complete: false };
     }
 
-    global.log.save('ldap-unit-sync|done', { userId, changed: result.changed, complete: result.complete });
+    getLog().save('ldap-unit-sync|done', { userId, changed: result.changed, complete: result.complete });
     return result;
   }
 
@@ -231,7 +232,7 @@ export class LdapUnitSync {
     }
     if (verdict.missing.length > 0) {
       for (const dn of verdict.missing) {
-        global.log.save('ldap-unit-sync|group-not-found', { unitId: unit.id, dn, level }, 'warn');
+        getLog().save('ldap-unit-sync|group-not-found', { unitId: unit.id, dn, level }, 'warn');
       }
       return { changed: false, complete: false };
     }
@@ -273,7 +274,7 @@ export class LdapUnitSync {
 
     if (level === 'member') {
       await this.unitModel.removeMember(unit.id, userId);
-      await global.models.task.removePerformerUserFromTasks(userId, unit.id);
+      await getModels().task.removePerformerUserFromTasks(userId, unit.id);
     } else {
       await this.unitModel.removeHead(unit.id, userId);
     }
@@ -285,7 +286,7 @@ export class LdapUnitSync {
    * @private
    */
   private async saveHistory({ userId, userName, ipn }: SyncContext, unit: UnitEntity, operationType: string): Promise<void> {
-    await global.models.accessHistory.create({
+    await getModels().accessHistory.create({
       userId,
       userName,
       ipn,
@@ -309,7 +310,7 @@ export class LdapUnitSync {
     try {
       existing = await this.getExistingGroups(groups);
     } catch (error) {
-      global.log.save('ldap-unit-sync|group-check-failed', { unitId, error: error?.message }, 'error');
+      getLog().save('ldap-unit-sync|group-check-failed', { unitId, error: error?.message }, 'error');
       return { failed: true, missing: [] };
     }
 
@@ -325,24 +326,24 @@ export class LdapUnitSync {
     const normalized = [...new Set(groups.map(normalizeDn))].sort();
     const key = `${GROUPS_EXIST_KEY_PREFIX}.${crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex')}`;
 
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
-        const cached = await global.redisClient.get(key);
+        const cached = await getRedisClient().get(key);
         if (cached) {
           return JSON.parse(cached);
         }
       } catch (error) {
-        global.log.save('ldap-unit-sync|cache-read-error', { error: error?.message }, 'error');
+        getLog().save('ldap-unit-sync|cache-read-error', { error: error?.message }, 'error');
       }
     }
 
     const existing = await this.idApiClient.ldapGroupsExist(groups);
 
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
-        await global.redisClient.set(key, existing, GROUPS_EXIST_CACHE_TTL);
+        await getRedisClient().set(key, existing, GROUPS_EXIST_CACHE_TTL);
       } catch (error) {
-        global.log.save('ldap-unit-sync|cache-write-error', { error: error?.message }, 'error');
+        getLog().save('ldap-unit-sync|cache-write-error', { error: error?.message }, 'error');
       }
     }
 
@@ -354,14 +355,14 @@ export class LdapUnitSync {
    * @private
    */
   private async rememberSync(userId: string, syncedAt?: string): Promise<void> {
-    if (!global.redisClient || !syncedAt) {
+    if (!getRedisClient() || !syncedAt) {
       return;
     }
 
     try {
-      await global.redisClient.set(`${SYNC_MARK_KEY_PREFIX}.${userId}`, syncedAt, SYNC_MARK_TTL);
+      await getRedisClient().set(`${SYNC_MARK_KEY_PREFIX}.${userId}`, syncedAt, SYNC_MARK_TTL);
     } catch (error) {
-      global.log.save('ldap-unit-sync|error', { userId, error: error?.message }, 'error');
+      getLog().save('ldap-unit-sync|error', { userId, error: error?.message }, 'error');
     }
   }
 }

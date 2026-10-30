@@ -2,6 +2,7 @@ import PropByPath from 'prop-by-path';
 
 import { Filler } from './filler';
 import { TaskModel } from '../../../models/task';
+import { getLog } from '../../../lib/context';
 
 /**
  * Workflow documents filler.
@@ -71,7 +72,7 @@ export class WorkflowDocumentsFiller extends Filler {
           valueToSet = undefined;
         }
       } catch (error) {
-        global.log.save('workflow-document-field-filling-error', error, 'warn');
+        getLog().save('workflow-document-field-filling-error', error, 'warn');
       }
 
       // Return value to set.

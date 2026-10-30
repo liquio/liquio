@@ -4,6 +4,7 @@ import axios from 'axios';
 import { getTraceId } from '@liquio/back-core';
 
 import { EdsProvider } from './eds_provider';
+import { getLog } from '../../context';
 
 // Constants.
 const PROVIDER_NAME = 'pkcs7';
@@ -48,7 +49,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
       // Get signature info from sign-tool
       const signatureInfo = await this.getSignatureInfo(signature, undefined, false, Buffer.from(contentShouldBeSigned));
       if (!signatureInfo) {
-        global.log.save('check-signature-error', "Can't define signature info.", 'warn');
+        getLog().save('check-signature-error', "Can't define signature info.", 'warn');
         return false;
       }
 
@@ -57,19 +58,19 @@ export class Pkcs7EdsProvider extends EdsProvider {
       // Check if signed content matches expected content
       const contentString = Buffer.isBuffer(content) ? content.toString() : String(content);
       if (contentString !== contentShouldBeSigned) {
-        global.log.save('check-signature-error', 'Signed content does not match expected content.', 'warn');
+        getLog().save('check-signature-error', 'Signed content does not match expected content.', 'warn');
         return false;
       }
 
       // Check if certificate matches user's certificate (if provided)
       if (userCertPem && pem !== userCertPem) {
-        global.log.save('check-signature-error', "Signature certificate does not match user's certificate.", 'warn');
+        getLog().save('check-signature-error', "Signature certificate does not match user's certificate.", 'warn');
         return false;
       }
 
       return true;
     } catch (error) {
-      global.log.save('check-signature-error', `Error during signature verification: ${error.message}`, 'warn');
+      getLog().save('check-signature-error', `Error during signature verification: ${error.message}`, 'warn');
       return false;
     }
   }
@@ -105,7 +106,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
         errorDetails.responseData = error.response.data;
       }
 
-      global.log.save('sign-tool-error-detailed', errorDetails, 'error');
+      getLog().save('sign-tool-error-detailed', errorDetails, 'error');
 
       // Check for specific error types and provide more helpful messages
       if (error.response && error.response.status === 400) {
@@ -132,7 +133,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
    * @returns {Promise<{signer, issuer, serial, signTime, content, pem, isValid}>} Signature info promise.
    */
   async getSignatureInfo(signature, hashOrContent?, signExternal?, content?) {
-    global.log.save(
+    getLog().save(
       'pkcs7-getSignatureInfo-entry',
       {
         signatureProvided: !!signature,
@@ -147,7 +148,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
     try {
       // Check params.
       if (typeof signature !== 'string') {
-        global.log.save('get-signature-info-error', 'Signature not found.', 'warn');
+        getLog().save('get-signature-info-error', 'Signature not found.', 'warn');
         return null;
       }
 
@@ -156,7 +157,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
       try {
         // A valid PKCS#7 signature should be reasonably long (typically > 500 chars)
         if (signature.length < 100) {
-          global.log.save(
+          getLog().save(
             'pkcs7-signature-too-short',
             {
               signatureLength: signature.length,
@@ -170,7 +171,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
         // Check if it starts with typical PKCS#7 identifiers
         // PKCS#7 signatures typically start with MII when base64 encoded (ASN.1 SEQUENCE)
         if (!signature.match(/^MII[A-Za-z0-9]/)) {
-          global.log.save(
+          getLog().save(
             'pkcs7-signature-format-warning',
             {
               signatureStart: signature.substring(0, 20),
@@ -182,7 +183,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
           // Continue processing - let sign-tool try to parse it and handle the error gracefully
         }
       } catch (validationError) {
-        global.log.save(
+        getLog().save(
           'pkcs7-signature-validation-error',
           {
             error: validationError.message,
@@ -204,13 +205,13 @@ export class Pkcs7EdsProvider extends EdsProvider {
         signatureInfo = await this._callSignTool('/x509/signature-info', { sign: signature });
       } catch (error) {
         // Handle the case where sign-tool rejects the signature (e.g., raw signatures)
-        global.log.save('get-signature-info-error', `Unexpected error in getSignatureInfo: ${error.message}`, 'error');
-        global.log.save('get-signature-info-error-stack', { error: error.message, stack: error.stack }, 'error');
+        getLog().save('get-signature-info-error', `Unexpected error in getSignatureInfo: ${error.message}`, 'error');
+        getLog().save('get-signature-info-error-stack', { error: error.message, stack: error.stack }, 'error');
 
         // If this is a sign-tool rejection due to invalid signature format, return null
         // This allows the calling code to handle raw signatures gracefully
         if (error.message && error.message.includes('Sign-tool rejected signature')) {
-          global.log.save(
+          getLog().save(
             'get-signature-info-raw-signature-detected',
             {
               message: 'Signature rejected by sign-tool, treating as raw signature',
@@ -226,7 +227,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
         throw error;
       }
 
-      global.log.save(
+      getLog().save(
         'pkcs7-signtool-response',
         {
           signatureInfoReceived: !!signatureInfo,
@@ -237,7 +238,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
       );
 
       if (!signatureInfo) {
-        global.log.save('pkcs7-signtool-null-response', 'Sign-tool returned null/undefined response', 'warn');
+        getLog().save('pkcs7-signtool-null-response', 'Sign-tool returned null/undefined response', 'warn');
         return null;
       }
 
@@ -316,7 +317,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
         }
       }
 
-      global.log.save(
+      getLog().save(
         'pkcs7-ipn-extraction',
         {
           ipnDRFO,
@@ -333,7 +334,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
 
       // If we still couldn't extract IPN, log a warning but don't fail completely
       if (!ipnDRFO) {
-        global.log.save(
+        getLog().save(
           'pkcs7-ipn-extraction-failed',
           {
             message: 'Could not extract IPN from certificate subject',
@@ -362,7 +363,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
         isValid: true, // If sign-tool returned data, consider it valid
       };
 
-      global.log.save(
+      getLog().save(
         'pkcs7-final-result',
         {
           signerIpnDRFO: result.signer?.ipn?.DRFO,
@@ -372,7 +373,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
         'info',
       );
 
-      global.log.save(
+      getLog().save(
         'pkcs7-getSignatureInfo-success',
         {
           message: 'Successfully returning signature info',
@@ -388,7 +389,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
     } catch (error) {
       // Handle specific sign-tool errors
       if (error.message && error.message.includes('Sign-tool rejected signature')) {
-        global.log.save(
+        getLog().save(
           'get-signature-info-signtool-rejected',
           {
             error: error.message,
@@ -402,8 +403,8 @@ export class Pkcs7EdsProvider extends EdsProvider {
         return null;
       }
 
-      global.log.save('get-signature-info-error', `Unexpected error in getSignatureInfo: ${error.message}`, 'error');
-      global.log.save(
+      getLog().save('get-signature-info-error', `Unexpected error in getSignatureInfo: ${error.message}`, 'error');
+      getLog().save(
         'get-signature-info-error-stack',
         {
           error: error.message,
@@ -425,7 +426,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
       const signatureInfo = await this.getSignatureInfo(signature);
       return !!signatureInfo;
     } catch (error) {
-      global.log.save('verify-sign-error', `Error verifying PKCS7 signature: ${error.message}`, 'warn');
+      getLog().save('verify-sign-error', `Error verifying PKCS7 signature: ${error.message}`, 'warn');
       return false;
     }
   }
@@ -437,7 +438,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
    * @returns {Promise<Array<string>>} Array of RNOKPP numbers.
    */
   async getSignersRNOKPP(_p7sSign) {
-    global.log.save('get-signers-rnokpp-warning', 'RNOKPP extraction not implemented for PKCS7 provider.', 'warn');
+    getLog().save('get-signers-rnokpp-warning', 'RNOKPP extraction not implemented for PKCS7 provider.', 'warn');
     return [];
   }
 
@@ -447,7 +448,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
    * @returns {Promise<{}>} Empty object for PKCS7 provider.
    */
   async sendPingRequest() {
-    global.log.save('send-ping-request-warning', 'Ping request not applicable for PKCS7 provider.', 'warn');
+    getLog().save('send-ping-request-warning', 'Ping request not applicable for PKCS7 provider.', 'warn');
     return {};
   }
 
@@ -467,7 +468,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
       return result;
     }
 
-    global.log.save('hash-to-internal-signature-error', 'Failed to get response from sign-tool service.', 'warn');
+    getLog().save('hash-to-internal-signature-error', 'Failed to get response from sign-tool service.', 'warn');
     return signedHash;
   }
 
@@ -488,7 +489,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
     }
 
     // Fallback to local implementation
-    global.log.save('hash-data-fallback', 'Using local crypto implementation as fallback.', 'info');
+    getLog().save('hash-data-fallback', 'Using local crypto implementation as fallback.', 'info');
     const hash = crypto.createHash('sha256').update(data).digest();
     return isReturnAsBase64 ? hash.toString('base64') : hash;
   }
@@ -519,7 +520,7 @@ export class Pkcs7EdsProvider extends EdsProvider {
 
       return { isValid: false, message: 'No response from sign-tool service' };
     } catch (error) {
-      global.log.save('verify-hash-error', `Error calling sign-tool service: ${error.message}`, 'warn');
+      getLog().save('verify-hash-error', `Error calling sign-tool service: ${error.message}`, 'warn');
       return { isValid: false, message: `Error: ${error.message}` };
     }
   }

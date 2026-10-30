@@ -2,7 +2,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { initIdApiClient } from '../../lib/id_api';
 import { DocumentBusiness } from './index';
-import { getLog, getModels, getConfig, getHttpClient, setAppContext as setContext, resetAppContext } from '../../lib/context';
+import { getLog, getModels, getConfig, getHttpClient, setAppContext, resetAppContext } from '../../lib/context';
 
 // Characterization tests for the 7 payment-orchestration methods on DocumentBusiness.
 // PaymentService is mocked out (instance property override, matching the existing
@@ -12,12 +12,6 @@ import { getLog, getModels, getConfig, getHttpClient, setAppContext as setContex
 // propagation) — not PaymentService/provider behavior itself, which is covered elsewhere.
 new Sandbox();
 initIdApiClient({});
-
-const setAppContext = (context: Parameters<typeof setContext>[0]) => {
-  setContext(context);
-  // Unmigrated services, models and lib (T17-task-b) still read the bare globals.
-  Object.assign(global, context);
-};
 
 describe('DocumentBusiness payment methods', () => {
   let documentBusiness: any;

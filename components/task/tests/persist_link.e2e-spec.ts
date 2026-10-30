@@ -10,7 +10,6 @@ jest.mock('axios');
 const mockLog = {
   save: jest.fn(),
 };
-global.log = mockLog as any;
 setAppContext({ log: mockLog as any });
 
 // Mock global config
@@ -30,7 +29,6 @@ const mockConfig = {
     getLinkToFilestorageTimeout: 25000,
   },
 };
-global.config = mockConfig;
 setAppContext({ config: mockConfig });
 
 describe('PersistLink', () => {

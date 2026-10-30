@@ -4,6 +4,7 @@ import { Model } from './model';
 import { WorkflowTemplateCategoryEntity } from '../entities/workflow_template_category';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 600; // 10 minutes
@@ -37,7 +38,7 @@ export class WorkflowTemplateCategoryModel extends Model {
       PgPubSub.getInstance().subscribe('workflow_template_category_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        getAll: global.config.cache.workflowTemplateCategory?.getAll || DEFAULT_CACHE_TTL,
+        getAll: getConfig().cache.workflowTemplateCategory?.getAll || DEFAULT_CACHE_TTL,
       };
 
       WorkflowTemplateCategoryModel.singleton = this;

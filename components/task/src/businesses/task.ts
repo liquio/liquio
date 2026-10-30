@@ -2364,7 +2364,7 @@ export class TaskBusiness extends Business {
     );
 
     // Check required email and phone fields while onboarding
-    if (task?.taskTemplateId === config?.onboarding?.onboardingTemplate?.taskTemplateId) {
+    if (task?.taskTemplateId === getConfig()?.onboarding?.onboardingTemplate?.taskTemplateId) {
       const { userEmailRequired, userPhoneRequired } = jsonSchema;
       const emailsArr = performerUsersData.map((v) => v.email).filter(Boolean);
       const phonesArr = performerUsersData.map((v) => v.phone).filter(Boolean);
@@ -3671,7 +3671,7 @@ export class TaskBusiness extends Business {
    * @param {object} messageObject AMQP message object.
    */
   async checkCreateByOtherSystemFromMessage(message) {
-    const { isAllowedCreateByOtherSystems, tasksTemplateIds } = config?.system_task || {};
+    const { isAllowedCreateByOtherSystems, tasksTemplateIds } = getConfig()?.system_task || {};
     const { taskTemplateId } = message;
     if (!isAllowedCreateByOtherSystems || !tasksTemplateIds.map((v) => `${v}`).includes(`${taskTemplateId}`)) {
       getLog().save('create-by-other-system-from-message-check-failed', {

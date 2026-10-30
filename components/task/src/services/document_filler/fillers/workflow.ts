@@ -1,6 +1,7 @@
 import PropByPath from 'prop-by-path';
 
 import { Filler } from './filler';
+import { getLog, getModels } from '../../../lib/context';
 
 /**
  * Workflow filler.
@@ -52,7 +53,7 @@ export class WorkflowFiller extends Filler {
       // Fill current element.
       let valueToSet;
       try {
-        const workflow = await global.models.workflow.findById(workflowId);
+        const workflow = await getModels().workflow.findById(workflowId);
         if (!workflow) {
           return;
         }
@@ -63,7 +64,7 @@ export class WorkflowFiller extends Filler {
           valueToSet = undefined;
         }
       } catch (error) {
-        global.log.save('workflow-field-filling-error', error, 'warn');
+        getLog().save('workflow-field-filling-error', error, 'warn');
       }
 
       // Return value to set.

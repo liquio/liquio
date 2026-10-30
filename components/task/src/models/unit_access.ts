@@ -5,6 +5,7 @@ import { UnitAccessEntity } from '../entities/unit_access';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
 import { getArrayDifference } from '../lib/utils';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -67,7 +68,7 @@ export class UnitAccessModel extends Model {
       PgPubSub.getInstance().subscribe('unit_access_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        getAllWithCache: global.config.cache.unitAccess?.getAllWithCache || DEFAULT_CACHE_TTL,
+        getAllWithCache: getConfig().cache.unitAccess?.getAllWithCache || DEFAULT_CACHE_TTL,
       };
 
       UnitAccessModel.singleton = this;

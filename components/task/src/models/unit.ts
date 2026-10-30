@@ -4,6 +4,7 @@ import { Model } from './model';
 import { UnitEntity } from '../entities/unit';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig, getLog } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 600;
@@ -54,7 +55,7 @@ export class UnitModel extends Model {
       PgPubSub.getInstance()?.subscribe('units_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        getAll: global.config.cache?.unit?.ttl || DEFAULT_CACHE_TTL,
+        getAll: getConfig().cache?.unit?.ttl || DEFAULT_CACHE_TTL,
       };
 
       UnitModel.singleton = this;
@@ -117,7 +118,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-add-member|error', { unitId, userId });
+      getLog().save('unit-add-member|error', { unitId, userId });
       return null;
     }
 
@@ -125,7 +126,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-add-member', { unitId, userId });
+    getLog().save('unit-add-member', { unitId, userId });
 
     return unit;
   }
@@ -145,7 +146,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-add-head|error', { unitId, userId });
+      getLog().save('unit-add-head|error', { unitId, userId });
       return null;
     }
 
@@ -153,7 +154,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-add-head', { unitId, userId });
+    getLog().save('unit-add-head', { unitId, userId });
 
     return unit;
   }
@@ -173,7 +174,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-requested-member|error', { unitId, requestedMember });
+      getLog().save('unit-remove-requested-member|error', { unitId, requestedMember });
       return null;
     }
 
@@ -181,7 +182,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-requested-member', { unitId, requestedMember });
+    getLog().save('unit-remove-requested-member', { unitId, requestedMember });
 
     return unit;
   }
@@ -204,7 +205,7 @@ export class UnitModel extends Model {
     // Define and return first updated row entity.
     const [updatedUnitRaw] = unitsRaw;
     const updatedUnit = this.prepareEntity(updatedUnitRaw);
-    global.log.save('unit-remove-requested-member', { unitId, requestedMemberIpn });
+    getLog().save('unit-remove-requested-member', { unitId, requestedMemberIpn });
     return updatedUnit;
   }
 
@@ -223,7 +224,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-head-ipn|error', { unitId, ipn });
+      getLog().save('unit-remove-head-ipn|error', { unitId, ipn });
       return null;
     }
 
@@ -231,7 +232,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-head-ipn', { unitId, ipn });
+    getLog().save('unit-remove-head-ipn', { unitId, ipn });
 
     return unit;
   }
@@ -251,7 +252,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-head|error', { unitId, userId });
+      getLog().save('unit-remove-head|error', { unitId, userId });
       return null;
     }
 
@@ -259,7 +260,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-head', { unitId, userId });
+    getLog().save('unit-remove-head', { unitId, userId });
 
     return unit;
   }
@@ -289,7 +290,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-member|error', { unitId, userId });
+      getLog().save('unit-remove-member|error', { unitId, userId });
       return null;
     }
 
@@ -297,7 +298,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-member', { unitId, userId });
+    getLog().save('unit-remove-member', { unitId, userId });
 
     return unit;
   }
@@ -317,7 +318,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-member-ipn|error', { unitId, ipn });
+      getLog().save('unit-remove-member-ipn|error', { unitId, ipn });
       return null;
     }
 
@@ -325,7 +326,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-member-ipn', { unitId, ipn });
+    getLog().save('unit-remove-member-ipn', { unitId, ipn });
 
     return unit;
   }

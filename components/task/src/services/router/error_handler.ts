@@ -1,6 +1,7 @@
 import { getTraceId } from '@liquio/back-core';
 
 import { getErrorStatus, publicError } from '../../lib/public_error';
+import { getLog } from '../../lib/context';
 
 /**
  * Global Express error handler.
@@ -12,7 +13,7 @@ export function errorHandler(error: any, _req: any, res: any, _next: any): void 
   const traceId = getTraceId();
   const message = publicError(error, status, typeof error?.message === 'string' ? error.message : undefined);
 
-  global.log.save('http-response|unhandled-error', { message: error?.message, code: error?.code, status, stack: error?.stack, traceId }, 'error');
+  getLog().save('http-response|unhandled-error', { message: error?.message, code: error?.code, status, stack: error?.stack, traceId }, 'error');
 
   if (traceId) {
     res.set?.('X-Trace-Id', traceId);

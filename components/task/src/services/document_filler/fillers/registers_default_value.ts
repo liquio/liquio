@@ -1,5 +1,6 @@
 import { Filler } from './filler';
 import { RegisterService } from '../../register';
+import { getLog } from '../../../lib/context';
 
 /**
  * Registers filler.
@@ -112,13 +113,13 @@ export class RegistersDefaultValueFiller extends Filler {
               });
               normalizedRecord.label = normalizedRecord.stringified;
             } catch {
-              global.log.save('can-not-define-stringified-text', { record: v }, 'warn');
+              getLog().save('can-not-define-stringified-text', { record: v }, 'warn');
             }
             return normalizedRecord;
           });
         }
       } catch (error) {
-        global.log.save('registers-default-value-field-filling-error', { error: (error && error.message) || error }, 'warn');
+        getLog().save('registers-default-value-field-filling-error', { error: (error && error.message) || error }, 'warn');
       }
 
       // Return value to set.

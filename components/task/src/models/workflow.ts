@@ -7,6 +7,7 @@ import { Model } from './model';
 import { Entity } from '../entities/entity';
 import { WorkflowEntity } from '../entities/workflow';
 import { RedisClient } from '../lib/redis_client';
+import { getConfig, getModels } from '../lib/context';
 
 const GET_ALL_BY_USER_ID_CACHE_TTL = 600; // 10 minutes
 
@@ -92,12 +93,12 @@ export class WorkflowModel extends Model {
       },
     };
 
-    const defaultUnits = global.config.auth.defaultUnits || [];
+    const defaultUnits = getConfig().auth.defaultUnits || [];
     const userUnitsAll = userUnitIds.all.filter((v) => !defaultUnits.includes(v));
     const userUnitsHead = userUnitIds.head.filter((v) => !defaultUnits.includes(v));
 
     // Filter by created by units only if enabled.
-    if (global.config.filters?.workflowCreatedByUnits) {
+    if (getConfig().filters?.workflowCreatedByUnits) {
       if (userUnitsAll.length > 0) {
         sequelizeOptionsAndFilter[Sequelize.Op.or].created_by_units = { [Sequelize.Op.overlap]: userUnitsAll };
       }
@@ -106,7 +107,7 @@ export class WorkflowModel extends Model {
       }
     }
 
-    if (global.config.modules.main && global.config.modules.main.observerUnits && userUnitsAll.length > 0) {
+    if (getConfig().modules.main && getConfig().modules.main.observerUnits && userUnitsAll.length > 0) {
       sequelizeOptionsAndFilter[Sequelize.Op.or].observer_units = { [Sequelize.Op.overlap]: userUnitsAll };
     }
     sequelizeOptions.filters[Sequelize.Op.and].push(sequelizeOptionsAndFilter);
@@ -155,10 +156,10 @@ export class WorkflowModel extends Model {
       });
     }
 
-    sequelizeOptions.include = [{ model: global.models.workflowTemplate.model, required: true, attributes: ['data'] }];
+    sequelizeOptions.include = [{ model: getModels().workflowTemplate.model, required: true, attributes: ['data'] }];
 
     const taskModel = {
-      model: global.models.task.model,
+      model: getModels().task.model,
       required: true,
       attributes: ['id', 'is_entry', 'finished', 'finished_at', 'updated_at'],
       duplicating: false,
@@ -167,7 +168,7 @@ export class WorkflowModel extends Model {
       },
       include: [
         {
-          model: global.models.document.model,
+          model: getModels().document.model,
           required: true,
           attributes: ['id', 'created_at', 'updated_at', 'external_id'],
         },
@@ -209,7 +210,7 @@ export class WorkflowModel extends Model {
 
     if (sort.documents) {
       sequelizeOptions.sort = [
-        [{ model: global.models.task.model }, { model: global.models.document.model }, 'updated_at', sort.documents['updated_at']],
+        [{ model: getModels().task.model }, { model: getModels().document.model }, 'updated_at', sort.documents['updated_at']],
       ];
     } else {
       sort = this.prepareSort(sort);
@@ -238,9 +239,9 @@ export class WorkflowModel extends Model {
     const promises = workflows.data.map(async (item) => {
       let workflowEntity = this.prepareEntity(item);
 
-      workflowEntity.workflowTemplate = global.models.workflowTemplate.prepareEntity(item.workflowTemplate);
+      workflowEntity.workflowTemplate = getModels().workflowTemplate.prepareEntity(item.workflowTemplate);
 
-      const tasks = item.tasks.map((taskModel) => global.models.task.prepareEntity(taskModel));
+      const tasks = item.tasks.map((taskModel) => getModels().task.prepareEntity(taskModel));
 
       const entryTask = tasks.find((v) => v.isEntry === true);
       if (entryTask) {
@@ -298,10 +299,10 @@ export class WorkflowModel extends Model {
 
     sequelizeOptions.include = [
       {
-        model: global.models.workflowTemplate.model,
+        model: getModels().workflowTemplate.model,
         required: true,
         attributes: ['id', 'workflow_template_category_id', 'name', 'description', 'data'],
-        include: [{ model: global.models.workflowTemplateCategory.model }],
+        include: [{ model: getModels().workflowTemplateCategory.model }],
       },
     ];
 
@@ -349,7 +350,7 @@ export class WorkflowModel extends Model {
    */
   async findById(id, options: any = {}) {
     const workflow = await this.model.findByPk(id, {
-      include: [{ model: global.models.workflowTemplate.model, required: true }],
+      include: [{ model: getModels().workflowTemplate.model, required: true }],
     });
 
     if (!workflow) {
@@ -501,8 +502,8 @@ export class WorkflowModel extends Model {
    * @returns {Promise<object[]>}
    */
   async getWorkflowsByUpdatedAt({ date, workflowTemplateId, currentPage = 1, perPage = 15, sort }) {
-    if (perPage > global.config.model.pagination.limitPerPage) {
-      perPage = global.config.model.pagination.limitPerPage;
+    if (perPage > getConfig().model.pagination.limitPerPage) {
+      perPage = getConfig().model.pagination.limitPerPage;
     }
 
     if (currentPage < 1) {
@@ -620,13 +621,13 @@ export class WorkflowModel extends Model {
     const promises = workflows.data.map(async (item) => {
       const workflowEntity = this.prepareEntity(item);
 
-      const workflowTemplateEntity = global.models.workflowTemplate.prepareEntity(item.workflowTemplate);
+      const workflowTemplateEntity = getModels().workflowTemplate.prepareEntity(item.workflowTemplate);
 
       workflowEntity.workflowTemplate = workflowTemplateEntity;
 
       if (item.workflowTemplate && item.workflowTemplate.workflowTemplateCategory) {
         const workflowTemplateCategory = item.workflowTemplate.workflowTemplateCategory;
-        const workflowTemplateCategoryEntity = global.models.workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
+        const workflowTemplateCategoryEntity = getModels().workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
 
         workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(workflowTemplateCategoryEntity, true);
       }

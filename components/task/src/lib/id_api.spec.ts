@@ -1,16 +1,17 @@
 import { getIdApiClient, resetIdApiClient } from '@liquio/back-core';
 
 import { initIdApiClient } from './id_api';
+import { setAppContext, resetAppContext, getLog } from './context';
 
 describe('initIdApiClient', () => {
   beforeEach(() => {
     resetIdApiClient();
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } as any });
   });
 
   afterEach(() => {
     resetIdApiClient();
-    delete (global as any).log;
+    resetAppContext();
   });
 
   it('should apply the defaults for an empty config', () => {
@@ -78,7 +79,7 @@ describe('initIdApiClient', () => {
   it('should give the log of the global scope', () => {
     const client = initIdApiClient({});
 
-    expect((client as any).config.getLog()).toBe((global as any).log);
+    expect((client as any).config.getLog()).toBe(getLog());
   });
 
   it('should return the same client from getIdApiClient()', () => {

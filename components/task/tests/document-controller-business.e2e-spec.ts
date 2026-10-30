@@ -163,12 +163,10 @@ describe('Document controller flows', () => {
         set: async (key: string, value: any) => void store.set(key, JSON.stringify(value)),
         delete: async (key: string) => void store.delete(key),
       };
-      (global as any).redisClient = fakeRedis;
       setAppContext({ redisClient: fakeRedis });
     });
 
     afterAll(() => {
-      (global as any).redisClient = previousRedis;
       setAppContext({ redisClient: previousRedis });
     });
 
@@ -178,14 +176,12 @@ describe('Document controller flows', () => {
     it('answers an error when the redis client is not available', async () => {
       const task = await draft({ properties: { name: { type: 'string' }, reader: { control: 'externalReaderCheck' } } });
       const redis = getRedisClient();
-      (global as any).redisClient = undefined;
       setAppContext({ redisClient: undefined });
       const response = await as()('post', `/documents/${task.documentId}/external-reader/check/async`).send({
         path: 'reader',
         service: 'svc',
         method: 'mth',
       });
-      (global as any).redisClient = redis;
       setAppContext({ redisClient: redis });
       expect(response.status).toBe(500);
     });

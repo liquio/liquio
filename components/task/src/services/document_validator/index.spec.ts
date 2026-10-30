@@ -2,25 +2,29 @@ import { Sandbox, appendTraceMeta, runInAsyncLocalStorage } from '@liquio/back-c
 
 import { DocumentValidatorService } from './index';
 import { Keywords } from './keywords';
+import { getConfig, getLog, setAppContext } from '../../lib/context';
 
 // Suppress missing log references in validation keywords
-global.log = { save: jest.fn() } as any;
+const specLog = { save: jest.fn() } as any;
+setAppContext({ log: specLog });
 
 describe('DocumentValidatorService.check', () => {
   beforeEach(() => {
-    global.config = {
-      register: {
-        server: 'testserver',
-        port: 'testport',
-        token: 'testtoken',
-        timeout: 1000,
+    setAppContext({
+      config: {
+        register: {
+          server: 'testserver',
+          port: 'testport',
+          token: 'testtoken',
+          timeout: 1000,
+        },
       },
-    };
-    new Sandbox(global.config);
+    });
+    new Sandbox({ ...getConfig(), getLog });
     Keywords.init();
   });
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -82,10 +86,12 @@ describe('DocumentValidatorService.check with workflow template global functions
     });
 
   beforeEach(() => {
-    global.config = {
-      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
-    };
-    const sandbox = new Sandbox(global.config);
+    setAppContext({
+      config: {
+        register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+      },
+    });
+    const sandbox = new Sandbox({ ...getConfig(), getLog });
     sandbox.updateWorkflowTemplateFunctions(3, {
       isOk: '(value) => value === "ok"',
       isHidden: '(document) => document.step1.fieldA === "ok"',
@@ -94,7 +100,7 @@ describe('DocumentValidatorService.check with workflow template global functions
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -127,15 +133,17 @@ describe('DocumentValidatorService.check cleanWhenHidden', () => {
   });
 
   beforeEach(() => {
-    global.config = {
-      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
-    };
-    new Sandbox(global.config);
+    setAppContext({
+      config: {
+        register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+      },
+    });
+    new Sandbox({ ...getConfig(), getLog });
     Keywords.init();
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -200,7 +208,7 @@ describe('DocumentValidatorService.check cleanWhenHidden', () => {
 
 describe('DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', () => {
   const makeService = (schema) => {
-    new Sandbox(global.config);
+    new Sandbox({ ...getConfig(), getLog });
     return new DocumentValidatorService(schema, {}, {});
   };
 
@@ -214,14 +222,16 @@ describe('DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', 
   });
 
   beforeEach(() => {
-    global.config = {
-      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
-    };
-    new Sandbox(global.config);
+    setAppContext({
+      config: {
+        register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+      },
+    });
+    new Sandbox({ ...getConfig(), getLog });
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -341,7 +351,7 @@ describe('DocumentValidatorService.isCurrentOrParentControlsCheckReadonlyTrue', 
 
 describe('DocumentValidatorService.removeReadonlyParams', () => {
   const makeService = (schema) => {
-    new Sandbox(global.config);
+    new Sandbox({ ...getConfig(), getLog });
     return new DocumentValidatorService(schema, {}, {});
   };
 
@@ -358,14 +368,16 @@ describe('DocumentValidatorService.removeReadonlyParams', () => {
   };
 
   beforeEach(() => {
-    global.config = {
-      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
-    };
-    new Sandbox(global.config);
+    setAppContext({
+      config: {
+        register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+      },
+    });
+    new Sandbox({ ...getConfig(), getLog });
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -467,7 +479,7 @@ describe('DocumentValidatorService.removeReadonlyParams', () => {
 
 describe('DocumentValidatorService.removeReadonlyParams with readOnly object and array calcTrigger targets', () => {
   const makeService = (schema) => {
-    new Sandbox(global.config);
+    new Sandbox({ ...getConfig(), getLog });
     return new DocumentValidatorService(schema, {}, {});
   };
 
@@ -492,14 +504,16 @@ describe('DocumentValidatorService.removeReadonlyParams with readOnly object and
   };
 
   beforeEach(() => {
-    global.config = {
-      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
-    };
-    new Sandbox(global.config);
+    setAppContext({
+      config: {
+        register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+      },
+    });
+    new Sandbox({ ...getConfig(), getLog });
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 
@@ -564,18 +578,20 @@ describe('DocumentValidatorService.removeReadonlyParams with readOnly object and
 
 describe('DocumentValidatorService.isCalcTriggerTargetPath', () => {
   const makeService = (schema) => {
-    new Sandbox(global.config);
+    new Sandbox({ ...getConfig(), getLog });
     return new DocumentValidatorService(schema, {}, {});
   };
 
   beforeEach(() => {
-    global.config = {
-      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
-    };
+    setAppContext({
+      config: {
+        register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+      },
+    });
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
   });
 
   test('matches a plain target path', () => {
@@ -696,15 +712,17 @@ describe('DocumentValidatorService.check with calcTriggers', () => {
   });
 
   beforeEach(() => {
-    global.config = {
-      register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
-    };
-    new Sandbox(global.config);
+    setAppContext({
+      config: {
+        register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 },
+      },
+    });
+    new Sandbox({ ...getConfig(), getLog });
     Keywords.init();
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.clearAllMocks();
   });
 

@@ -1,6 +1,7 @@
 import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from '../lib/http_request';
+import { getConfig, getLog, getRedisClient } from '../lib/context';
 
 // Constants.
 const ROUTES = {
@@ -37,10 +38,10 @@ export class RegisterService {
   constructor() {
     // Define singleton.
     if (!RegisterService.singleton) {
-      this.server = config.register.server;
-      this.port = config.register.port;
-      this.token = config.register.token;
-      this.timeout = config.register.timeout || 30000;
+      this.server = getConfig().register.server;
+      this.port = getConfig().register.port;
+      this.token = getConfig().register.token;
+      this.timeout = getConfig().register.timeout || 30000;
 
       RegisterService.singleton = this;
     }
@@ -60,7 +61,7 @@ export class RegisterService {
   async getRegisters(params) {
     const url = this.getUrlWithQueryParams(ROUTES.getRegisters, params);
 
-    global.log.save('register-request-get-registers');
+    getLog().save('register-request-get-registers');
 
     const response = await HttpRequest.send({
       url,
@@ -114,7 +115,7 @@ export class RegisterService {
   async getKeys(params) {
     const url = this.getUrlWithQueryParams(ROUTES.getKeys, params);
 
-    global.log.save('register-request-get-keys');
+    getLog().save('register-request-get-keys');
 
     const response = await HttpRequest.send({
       url,
@@ -555,7 +556,7 @@ export class RegisterService {
         },
         fullResponse,
       );
-      global.log.save('send-ping-request-to-register', responseData);
+      getLog().save('send-ping-request-to-register', responseData);
       const body = responseData && responseData.body;
       const headers = responseData && responseData.response && responseData.response.headers;
       const version = headers && headers.version;
@@ -563,7 +564,7 @@ export class RegisterService {
       const environment = headers && headers.environment;
       return { version, customer, environment, body };
     } catch (error) {
-      global.log.save('send-ping-request-to-register', error.message);
+      getLog().save('send-ping-request-to-register', error.message);
     }
   }
 
@@ -598,8 +599,8 @@ export class RegisterService {
    * @return {Promise<number>}
    */
   async deleteCache() {
-    if (global.redisClient) {
-      return await global.redisClient.deleteMany('bpmn-register.key.*');
+    if (getRedisClient()) {
+      return await getRedisClient().deleteMany('bpmn-register.key.*');
     }
 
     // Return default count if Redis disabled.
