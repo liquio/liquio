@@ -7,6 +7,7 @@ import { Pkcs7EdsProvider } from '../src/lib/eds/providers/pkcs7';
 import { Eds } from '../src/lib/eds';
 import { Encryptor } from '../src/lib/encryptor';
 import { RemoteStaticCache } from '../src/services/remote_static_cache';
+import { getBusinesses, getConfig } from '../src/lib/context';
 
 const SIGN_TOOL = 'http://sign-tool-eds:8080';
 const FAKE_P7S = `MII${'B'.repeat(200)}`;
@@ -158,7 +159,7 @@ describe('EDS, encryptor and static cache services', () => {
     });
 
     it('is wrapped by the EDS facade of the application', async () => {
-      const eds = (global as any).businesses.document.eds;
+      const eds = getBusinesses().document.eds;
       const appSignTool = nock('http://sign-tool:8080');
       appSignTool.post('/x509/signature-info').reply(200, signatureInfo({ serialNumber: '1234567890' }));
       expect((await eds.getSignatureInfo(FAKE_P7S)).signer.ipn.DRFO).toBe('1234567890');
@@ -205,7 +206,7 @@ describe('EDS, encryptor and static cache services', () => {
 
     it('serves the previous answer and refreshes it in the background', async () => {
       (RemoteStaticCache as any).singleton = undefined;
-      const { host, port } = (global as any).config.redis;
+      const { host, port } = getConfig().redis;
       const cache = new RemoteStaticCache({ useCache: true }, { isEnabled: true, host, port });
       nock('http://static.test').get('/b.json').twice().reply(200, { version: 1 });
       expect(await cache.getAndUpdateByRemoteUrl('http://static.test/b.json', { timeout: 1000 })).toBeFalsy();

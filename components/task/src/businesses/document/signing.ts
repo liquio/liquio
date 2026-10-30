@@ -19,6 +19,7 @@ import typeOf from '../../lib/type_of';
 import { DocumentEntity } from '../../entities/document';
 import { Business } from '../business';
 import type { DocumentBusiness } from './index';
+import { getLog, getModels, getBusinesses, getConfig } from '../../lib/context';
 
 // Constants.
 const SIGNATURE_ENCODING = 'utf8';
@@ -53,7 +54,7 @@ export class DocumentSigningBusiness extends Business {
    * @param userId User ID.
    */
   async getForSignByUser(userId: string): Promise<DocumentEntity[]> {
-    return await (global.models.document as any).getForSignByUser(userId);
+    return await (getModels().document as any).getForSignByUser(userId);
   }
 
   /**
@@ -88,7 +89,7 @@ export class DocumentSigningBusiness extends Business {
   async getDataForSign(documentId: string): Promise<Array<{ fileId: string; dataForSign: string }>> {
     try {
       // Get document.
-      const document: any = await global.models.document.findById(documentId);
+      const document: any = await getModels().document.findById(documentId);
       if (!document) {
         throw new Error(ERROR_GET_DATA_FOR_SIGN);
       }
@@ -107,11 +108,11 @@ export class DocumentSigningBusiness extends Business {
       // Get document attachments files hashes.
       const {
         jsonSchema: { filterAttachmentToSign: filterAttachmentToSignFunction },
-      } = await global.models.documentTemplate.findById(document.documentTemplateId);
+      } = await getModels().documentTemplate.findById(document.documentTemplateId);
 
       const filterAttachmentToSign = this.host.sandbox.eval(filterAttachmentToSignFunction) || (() => true);
 
-      const attachments = await global.models.documentAttachment.getByDocumentId(documentId);
+      const attachments = await getModels().documentAttachment.getByDocumentId(documentId);
       const attachmentInfos = [];
       for (const attachment of attachments) {
         const attachmentFileInfo = await this.host.storageService.provider.getFileInfo(attachment.link);
@@ -141,14 +142,14 @@ export class DocumentSigningBusiness extends Business {
       if (!theSameAsicManifestFiles) {
         // Generate new ASIC manifest.
         let data = {};
-        if (global.config.asic?.manifest === true) {
+        if (getConfig().asic?.manifest === true) {
           data = document.data;
         }
         const generatedAsicManifest = await this.host.storageService.provider.createAsicManifest(filesIds, data);
         asicmanifestFileId = generatedAsicManifest.id;
 
         // Save ASIC info.
-        await global.models.document.setAsicInfo(documentId, { asicmanifestFileId, filesIds });
+        await getModels().document.setAsicInfo(documentId, { asicmanifestFileId, filesIds });
       }
 
       // Get ASIC manifest content.
@@ -158,7 +159,7 @@ export class DocumentSigningBusiness extends Business {
       try {
         asicmanifestContent = (await axios(asicManifestP7sRequestOptions)).data;
       } catch (error) {
-        global.log.save(
+        getLog().save(
           'try-to-get-asic-manifest-p7s-error',
           { asicManifestP7sRequestOptions, error: { message: error.message, stack: error.stack } },
           'warn',
@@ -174,7 +175,7 @@ export class DocumentSigningBusiness extends Business {
 
       return [asicManifestHash, ...filesHashes];
     } catch (error) {
-      global.log.save('try-to-get-asic-manifest-error', { message: error.message, stack: error.stack }, 'error');
+      getLog().save('try-to-get-asic-manifest-error', { message: error.message, stack: error.stack }, 'error');
       const wrappedError = new Error(ERROR_GET_DATA_FOR_SIGN);
       (wrappedError as any).cause = error;
       throw wrappedError;
@@ -216,9 +217,9 @@ export class DocumentSigningBusiness extends Business {
       signatureBuffer = false;
     }
 
-    const isUserAlreadySigned = !!(await (global.models.documentSignature.getByDocumentId as any)(documentId, userId))?.length;
+    const isUserAlreadySigned = !!(await (getModels().documentSignature.getByDocumentId as any)(documentId, userId))?.length;
     if (isUserAlreadySigned) {
-      global.models.workflowError.create({
+      getModels().workflowError.create({
         error: 'User already signed.',
         details: `User ${userId} tried to re-signed data. Check 'Information about sign' (Key icon).`,
         traceMeta: this.getTraceMeta(),
@@ -252,16 +253,16 @@ export class DocumentSigningBusiness extends Business {
         if (i === 0) {
           // For PKCS7 provider, always pass expected content since signatures are detached
           if (this.host.eds.provider.constructor.name === 'Pkcs7EdsProvider' || this.host.eds.provider.constructor.name === 'pkcs7') {
-            global.log.save('document-sign-using-pkcs7-path', 'Using PKCS7 detached signature path', 'info');
+            getLog().save('document-sign-using-pkcs7-path', 'Using PKCS7 detached signature path', 'info');
 
             signatureInfo = await this.host.eds.getSignatureInfo(signatureRecord, dataForSignRecord);
           } else {
-            global.log.save('document-sign-using-attached-path', 'Using attached signature path', 'info');
+            getLog().save('document-sign-using-attached-path', 'Using attached signature path', 'info');
             signatureInfo = await this.host.eds.getSignatureInfo(signatureRecord);
           }
         } else {
           if (this.host.eds.provider.constructor.name === 'Pkcs7EdsProvider' || this.host.eds.provider.constructor.name === 'pkcs7') {
-            global.log.save(
+            getLog().save(
               'document-sign-subsequent-pkcs7',
               {
                 signatureIndex: i,
@@ -324,7 +325,7 @@ export class DocumentSigningBusiness extends Business {
         if (i === 0) {
           this.checkUserInfoMatchToSignatureInfo(userInfo, signatureInfo);
         } else {
-          global.log.save(
+          getLog().save(
             'skipping-ipn-validation-for-subsequent-signature',
             {
               signatureIndex: i,
@@ -342,7 +343,7 @@ export class DocumentSigningBusiness extends Business {
             // Save ASIC manifest.
             if (i === 0) {
               const savedToFilestorageP7sSignature = await this.host.storageService.provider.addP7sSignature(fileId, signatureRecord);
-              global.log.save('save-p7s-signature-to-filestorage-result', {
+              getLog().save('save-p7s-signature-to-filestorage-result', {
                 savedToFilestorageP7sSignature: {
                   ...(savedToFilestorageP7sSignature || {}),
                   p7s: HIDE_REPLACEMENT_TEXT,
@@ -360,14 +361,14 @@ export class DocumentSigningBusiness extends Business {
                 type,
               },
             );
-            global.log.save('save-signature-to-filestorage-result', {
+            getLog().save('save-signature-to-filestorage-result', {
               savedToFilestorageSignature: {
                 ...(savedToFilestorageSignature || {}),
                 signature: HIDE_REPLACEMENT_TEXT,
               },
             });
           } catch (error) {
-            global.log.save(
+            getLog().save(
               'save-signature-to-filestorage-error',
               {
                 error: error && error.message,
@@ -386,7 +387,7 @@ export class DocumentSigningBusiness extends Business {
     // Sign.
     const mockSignatureBufferIfNeedIt = isUserSignatureCouldBeMock ? Buffer.from('SIGN_MOCK') : undefined;
     const mockPemBufferIfNeedIt = isUserPemCouldBeMock ? Buffer.from('PEM_MOCK') : undefined;
-    const isSigned = await global.models.documentSignature.create({
+    const isSigned = await getModels().documentSignature.create({
       documentId,
       createdBy: userId,
       signature: signatureBuffer || mockSignatureBufferIfNeedIt,
@@ -398,7 +399,7 @@ export class DocumentSigningBusiness extends Business {
     }
 
     // Get signed document.
-    const signedDocument: any = await global.models.document.findById(documentId);
+    const signedDocument: any = await getModels().document.findById(documentId);
     if (!signedDocument) {
       throw new Error("Can't get signed document.");
     }
@@ -407,8 +408,8 @@ export class DocumentSigningBusiness extends Business {
     await this.addMultiSignInfo(signedDocument.task, { userInfo, type: 'sign' });
 
     // Append signatures info.
-    const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
-    const documentSignatureRejections = await (global.models.documentSignatureRejection.getByDocumentId as any)(documentId);
+    const documentSignatures = await (getModels().documentSignature.getByDocumentId as any)(documentId);
+    const documentSignatureRejections = await (getModels().documentSignatureRejection.getByDocumentId as any)(documentId);
     signedDocument.signatures = documentSignatures;
     signedDocument.signatureRejections = documentSignatureRejections;
 
@@ -455,7 +456,7 @@ export class DocumentSigningBusiness extends Business {
     try {
       multisignerControl = await this.getMultisignerControl(documentTemplateId);
     } catch (error) {
-      global.log.save('sign-document-get-multisigner-control-error', error, 'error');
+      getLog().save('sign-document-get-multisigner-control-error', error, 'error');
       throw error;
     }
     if (!multisignerControl) {
@@ -514,7 +515,7 @@ export class DocumentSigningBusiness extends Business {
    */
   async getDataForSignP7s(documentId: string, attachmentId: string, userId: string): Promise<{ p7s: any; fileLink: string; fileName: string }> {
     // Get document file link.
-    const document: any = await global.models.document.findById(documentId);
+    const document: any = await getModels().document.findById(documentId);
     if (!document) {
       throw new Error(ERROR_GET_DATA_FOR_SIGN);
     }
@@ -598,14 +599,14 @@ export class DocumentSigningBusiness extends Business {
       // Save signature to file storage. Not required.
       try {
         const savedToFilestorageSignature = await this.host.storageService.provider.addP7sSignature(fileLink, p7sSignature, userInfo);
-        global.log.save('save-p7s-signature-to-filestorage-result', {
+        getLog().save('save-p7s-signature-to-filestorage-result', {
           savedToFilestorageSignature: {
             ...(savedToFilestorageSignature || {}),
             p7s: HIDE_REPLACEMENT_TEXT,
           },
         });
       } catch (error) {
-        global.log.save(
+        getLog().save(
           'save-p7s-signature-to-filestorage-error',
           {
             error: error && error.message,
@@ -642,7 +643,7 @@ export class DocumentSigningBusiness extends Business {
     userInfo: any,
     cryptCertificate: string,
   ): Promise<{ isAdditionalP7sSigned: boolean }> {
-    const document: any = await global.models.document.findById(documentId);
+    const document: any = await getModels().document.findById(documentId);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
@@ -659,7 +660,7 @@ export class DocumentSigningBusiness extends Business {
       throw new Error(ERROR_WRONG_SIGNED_RECORDS_COUNT);
     }
 
-    const existsSigns = await global.models.additionalDataSignature.model.count({
+    const existsSigns = await getModels().additionalDataSignature.model.count({
       where: {
         document_id: documentId,
         created_by: userId,
@@ -721,7 +722,7 @@ export class DocumentSigningBusiness extends Business {
 
       // Save signature to file storage. Not required.
       try {
-        const saveAdditionalSignatureResult = await (global.models.additionalDataSignature.create as any)({
+        const saveAdditionalSignatureResult = await (getModels().additionalDataSignature.create as any)({
           documentId,
           data: dataForSign,
           signature: p7sSignature,
@@ -730,9 +731,9 @@ export class DocumentSigningBusiness extends Business {
           createdBy: userId,
           meta: meta,
         });
-        global.log.save('save-additional-p7s-signature-result', { saveAdditionalSignatureResult });
+        getLog().save('save-additional-p7s-signature-result', { saveAdditionalSignatureResult });
       } catch (error) {
-        global.log.save(
+        getLog().save(
           'save-additional-p7s-signature-error',
           {
             error: error && error.message,
@@ -766,18 +767,18 @@ export class DocumentSigningBusiness extends Business {
    */
   async getAdditionalDataForSignP7s(documentId: string, withMeta = false, userInfo?: any): Promise<any[]> {
     // Get document.
-    const document: any = await global.models.document.findById(documentId);
+    const document: any = await getModels().document.findById(documentId);
     if (!document) {
       throw new Error(ERROR_GET_DATA_FOR_SIGN);
     }
 
-    const attachments = await global.models.documentAttachment.getByDocumentId(document.id);
+    const attachments = await getModels().documentAttachment.getByDocumentId(document.id);
     document.attachments = attachments;
 
     const { documentTemplateId } = document;
 
     // Get document template.
-    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
     const { additionalDataToSign: additionalDataToSignFunction } = documentTemplate;
 
     // Return if no need to sign additional data.
@@ -822,7 +823,7 @@ export class DocumentSigningBusiness extends Business {
         documentString = undefined;
       }
 
-      global.log.save('calc-additional-data-to-sign-error', {
+      getLog().save('calc-additional-data-to-sign-error', {
         error: error && error.message,
         documentTemplateId,
         additionalDataToSignFunction,
@@ -860,7 +861,7 @@ export class DocumentSigningBusiness extends Business {
       ? await this.host.storageService.provider.downloadFileRequestOptions(fileId)
       : document.fileId && (await this.host.storageService.provider.downloadFileRequestOptions(document.fileId));
     if (!downloadFileRequestOptions) {
-      global.log.save('get-file-hash-options-error', { fileId, time: Date.now() - startTime });
+      getLog().save('get-file-hash-options-error', { fileId, time: Date.now() - startTime });
       return;
     }
     const response = await axios({
@@ -869,13 +870,13 @@ export class DocumentSigningBusiness extends Business {
     });
     const file = Buffer.from(response.data);
     if (!file) {
-      global.log.save('get-file-hash-download-error', { fileId, time: Date.now() - startTime });
+      getLog().save('get-file-hash-download-error', { fileId, time: Date.now() - startTime });
       return;
     }
 
     const hash = this.getSha512Hash(file);
 
-    global.log.save('get-file-hash-success', { fileId, hash, time: Date.now() - startTime });
+    getLog().save('get-file-hash-success', { fileId, hash, time: Date.now() - startTime });
 
     return hash;
   }
@@ -950,7 +951,7 @@ export class DocumentSigningBusiness extends Business {
 
     // Handle case where certificate IPN could not be extracted
     if (signatureIPN === undefined || signatureIPN === null) {
-      global.log.save(
+      getLog().save(
         'signature-ipn-missing',
         {
           message: 'Certificate IPN could not be extracted from signature',
@@ -1029,7 +1030,7 @@ export class DocumentSigningBusiness extends Business {
     const { id: documentId, documentTemplateId } = document;
 
     // Get document JSON schema.
-    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -1049,9 +1050,9 @@ export class DocumentSigningBusiness extends Business {
       isSignAvailable = this.host.sandbox.evalWithArgs(isSignAvailableFunction, [document, user, units], {
         meta: { fn: 'isSignAvailable', documentId },
       });
-      global.log.save('sign-available-function-result', { documentId, isSignAvailableFunction, isSignAvailable });
+      getLog().save('sign-available-function-result', { documentId, isSignAvailableFunction, isSignAvailable });
     } catch (error) {
-      global.log.save('sign-available-function-error', { documentId, isSignAvailableFunction, error: error && error.message, document }, 'error');
+      getLog().save('sign-available-function-error', { documentId, isSignAvailableFunction, error: error && error.message, document }, 'error');
       const wrappedError = new Error('Sign available function error.');
       (wrappedError as any).cause = error;
       throw wrappedError;
@@ -1072,7 +1073,7 @@ export class DocumentSigningBusiness extends Business {
     const { id: documentId, documentTemplateId } = document;
 
     // Get document JSON schema.
-    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -1097,9 +1098,9 @@ export class DocumentSigningBusiness extends Business {
       isContinueSignAvailable = this.host.sandbox.evalWithArgs(isContinueSignAvailableFunction, [document, user, units], {
         meta: { fn: 'isContinueSignAvailable', documentId },
       });
-      global.log.save('continue-sign-available-function-result', { documentId, isContinueSignAvailableFunction, isContinueSignAvailable });
+      getLog().save('continue-sign-available-function-result', { documentId, isContinueSignAvailableFunction, isContinueSignAvailable });
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'continue-sign-available-function-error',
         {
           documentId,
@@ -1127,12 +1128,12 @@ export class DocumentSigningBusiness extends Business {
    */
   async declineMultisigns(signers: string[], taskId: string, documentId: string, userId: string): Promise<void> {
     // Get document.
-    const document: any = await global.models.document.findById(documentId);
+    const document: any = await getModels().document.findById(documentId);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
     }
-    const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
-    const documentSignatureRejections = await (global.models.documentSignatureRejection.getByDocumentId as any)(documentId);
+    const documentSignatures = await (getModels().documentSignature.getByDocumentId as any)(documentId);
+    const documentSignatureRejections = await (getModels().documentSignatureRejection.getByDocumentId as any)(documentId);
     document.signatures = documentSignatures;
     document.signatureRejections = documentSignatureRejections;
     const { documentTemplateId } = document;
@@ -1142,7 +1143,7 @@ export class DocumentSigningBusiness extends Business {
     try {
       multisignerControl = await this.getMultisignerControl(documentTemplateId);
     } catch (error) {
-      global.log.save('decline-multisigns-get-multisigner-control-error', error, 'error');
+      getLog().save('decline-multisigns-get-multisigner-control-error', error, 'error');
       throw error;
     }
     if (!multisignerControl) {
@@ -1155,7 +1156,7 @@ export class DocumentSigningBusiness extends Business {
     try {
       signersData = await this.host.idApiClient.getUsersByIds(signers, { withPrivateProps: privateProps });
     } catch (error) {
-      global.log.save('decline-multisigns-get-users-info-error', error, 'error');
+      getLog().save('decline-multisigns-get-users-info-error', error, 'error');
       const wrappedError = new Error(error.message);
       (wrappedError as any).cause = error;
       throw wrappedError;
@@ -1190,7 +1191,7 @@ export class DocumentSigningBusiness extends Business {
     // Send letter by user Ids.
     const sendLetterByUserIdsPromises = dataForMail.map((v) => this.host.notifier.sendToUser(v.userId, v.title, v.template));
     Promise.all(sendLetterByUserIdsPromises).catch((error) => {
-      global.log.save('send-emails-to-signers-error', { error }, 'error');
+      getLog().save('send-emails-to-signers-error', { error }, 'error');
       throw error;
     });
   }
@@ -1201,7 +1202,7 @@ export class DocumentSigningBusiness extends Business {
    */
   async getMultisignerControl(templateId: number): Promise<any> {
     // Get document JSON schema.
-    const template = await global.models.documentTemplate.findById(templateId);
+    const template = await getModels().documentTemplate.findById(templateId);
     if (!template) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -1243,12 +1244,7 @@ export class DocumentSigningBusiness extends Business {
       return; // Skip, strict sequential sign rule disabled.
     }
 
-    const signatures = await (global.models.documentSignature.getByDocumentId as any)(
-      document.id,
-      undefined,
-      ['created_by'],
-      [['created_at', 'asc']],
-    );
+    const signatures = await (getModels().documentSignature.getByDocumentId as any)(document.id, undefined, ['created_by'], [['created_at', 'asc']]);
     const alreadySignedByUsers = signatures.map((v) => v.createdBy);
     const needToBySignedByUsers = task.signerUsers;
 
@@ -1349,7 +1345,7 @@ export class DocumentSigningBusiness extends Business {
     try {
       multisignerControl = await this.getMultisignerControl(documentTemplateId);
     } catch (error) {
-      global.log.save('sign-document-get-multisigner-control-error', error, 'error');
+      getLog().save('sign-document-get-multisigner-control-error', error, 'error');
       throw error;
     }
     if (!multisignerControl || !multisignerSchemaPath) {
@@ -1358,14 +1354,14 @@ export class DocumentSigningBusiness extends Business {
 
     const calcSignersFormula = multisignerControl.calcSigners;
     if (!calcSignersFormula || typeof calcSignersFormula !== 'string' || !calcSignersFormula.startsWith('(')) {
-      global.log.save('multisigners-get-calculate-formula-error', { calcSignersFormula, taskId }, 'error');
+      getLog().save('multisigners-get-calculate-formula-error', { calcSignersFormula, taskId }, 'error');
       throw new Error('Can not find formula to calculate signers in JSON schema.');
     }
 
     // Calculate signers array.
     const signersArray = this.host.sandbox.evalWithArgs(calcSignersFormula, [document], { meta: { fn: 'calcSigners', documentId: document.id } });
     if (!signersArray) {
-      global.log.save('multisigners-calculate-signers-by-formula-error', { taskId }, 'error');
+      getLog().save('multisigners-calculate-signers-by-formula-error', { taskId }, 'error');
       throw new Error("Can't calculate signers by formula.");
     }
 
@@ -1382,7 +1378,7 @@ export class DocumentSigningBusiness extends Business {
     try {
       signersData = await this.host.idApiClient.getUsersByIds(signerNotPerformerIds, { withPrivateProps });
     } catch (error) {
-      global.log.save('send-letter-to-signers-error', error, 'error');
+      getLog().save('send-letter-to-signers-error', error, 'error');
       const wrappedError = new Error(error.message);
       (wrappedError as any).cause = error;
       throw wrappedError;
@@ -1462,7 +1458,7 @@ export class DocumentSigningBusiness extends Business {
     // Send letter by user Ids.
     const sendLetterByUserIdsPromises = dataForMail.map((v) => this.host.notifier.sendToUser(v.userId, v.title, v.template, templateId));
     Promise.all(sendLetterByUserIdsPromises).catch((error) => {
-      global.log.save('send-emails-to-signers-error', { error }, 'error');
+      getLog().save('send-emails-to-signers-error', { error }, 'error');
       throw error;
     });
 
@@ -1470,7 +1466,7 @@ export class DocumentSigningBusiness extends Business {
     const usersWithOtherEmails = dataForMail.filter((v) => v.otherEmail);
     const sendLetterByUserEmailsPromises = usersWithOtherEmails.map((v) => this.host.notifier.sendByEmails(v.email, v.title, v.template, templateId));
     Promise.all(sendLetterByUserEmailsPromises).catch((error) => {
-      global.log.save('send-emails-to-signers-error', { error }, 'error');
+      getLog().save('send-emails-to-signers-error', { error }, 'error');
       throw error;
     });
 
@@ -1484,7 +1480,7 @@ export class DocumentSigningBusiness extends Business {
    */
   async getDataToEncrypt(documentId: string, encryptionType = 'taxClaim'): Promise<string[]> {
     // Get additional data signature (to encrypt).
-    const additionalDataSignatureList = await global.models.additionalDataSignature.getByDocumentId(documentId);
+    const additionalDataSignatureList = await getModels().additionalDataSignature.getByDocumentId(documentId);
 
     // Handle all additional data signature list to get data to encrypt.
     const toEncrypt = [];
@@ -1521,7 +1517,7 @@ export class DocumentSigningBusiness extends Business {
    */
   async saveEncryptedData(documentId: string, encryptedItems: string[], encryptedDataCertificate: string): Promise<void> {
     // Define additional data signatures.
-    const additionalDataSignatureList = await global.models.additionalDataSignature.getByDocumentId(documentId);
+    const additionalDataSignatureList = await getModels().additionalDataSignature.getByDocumentId(documentId);
     const filteredAdditionalDataSignatureList = additionalDataSignatureList.filter((v) => v.cryptCertificate);
 
     // Check count.
@@ -1537,7 +1533,7 @@ export class DocumentSigningBusiness extends Business {
       const { id: additionalDataSignatureId } = additionalDataSignatureItem;
 
       // Save encrypted data.
-      await global.models.additionalDataSignature.saveEncryptedData(additionalDataSignatureId, encryptedItem, encryptedDataCertificate);
+      await getModels().additionalDataSignature.saveEncryptedData(additionalDataSignatureId, encryptedItem, encryptedDataCertificate);
     }
   }
 
@@ -1616,7 +1612,7 @@ export class DocumentSigningBusiness extends Business {
     const metaObj = {
       multiSignInfo: { rejected, signedBy, rejectedBy },
     };
-    global.businesses.task.addTaskMetadata(task, userInfo.userId, false, metaObj);
+    getBusinesses().task.addTaskMetadata(task, userInfo.userId, false, metaObj);
   }
 
   /**
@@ -1624,7 +1620,7 @@ export class DocumentSigningBusiness extends Business {
    * @param userInfo User info.
    */
   async handleStrictMultiSignCheck(document: DocumentEntity, userInfo: any): Promise<void> {
-    const documentTemplate = await global.models.documentTemplate.findById(document.documentTemplateId);
+    const documentTemplate = await getModels().documentTemplate.findById(document.documentTemplateId);
 
     const strictMultiSignCheck = documentTemplate.jsonSchema?.strictMultiSignCheck || documentTemplate.jsonSchema?.strictMultisignCheck;
     if (!strictMultiSignCheck) {
@@ -1706,7 +1702,7 @@ export class DocumentSigningBusiness extends Business {
    * @param document Document.
    */
   async checkP7SSignaturesCount(document: DocumentEntity): Promise<void> {
-    if (!global.config?.custom?.isCheckP7SSignaturesCount) {
+    if (!getConfig()?.custom?.isCheckP7SSignaturesCount) {
       // Skip if checking is not enabled in config.
       return;
     }
@@ -1780,7 +1776,7 @@ export class DocumentSigningBusiness extends Business {
           try {
             item.signature = await this.host.eds.hashToInternalSignature(item.signature, Buffer.from(item.data, 'base64'));
           } catch (error) {
-            global.log.save(
+            getLog().save(
               'create-task-hash-to-internal-signature-error',
               {
                 error: error.toString(),
@@ -1793,7 +1789,7 @@ export class DocumentSigningBusiness extends Business {
           }
         }
 
-        return await (global.models.additionalDataSignature.create as any)({
+        return await (getModels().additionalDataSignature.create as any)({
           documentId: document.id,
           data: item.data,
           signature: item.signature,

@@ -2,6 +2,7 @@ import { getIdApiClient, IdApiError } from '@liquio/back-core';
 
 import { TestApp } from './test-app';
 import { addUnit, userRequest } from './helpers/scenario';
+import { getConfig } from '../src/lib/context';
 
 const USER = 'account-user';
 
@@ -78,7 +79,7 @@ describe('User account', () => {
     });
 
     it('allows unconfirmed values by config and reports ID API failures', async () => {
-      const config = (global as any).config;
+      const config = getConfig();
       config.user = { ...config.user, allowSetUnconfirmedPhone: true, allowSetUnconfirmedEmail: true };
       const update = jest.spyOn(idApi(), 'updateUser').mockResolvedValueOnce(false);
       expect((await as()('put', '/users').send({ phone: '+380501234501', email: 'c@example.test' })).status).toBeGreaterThanOrEqual(400);

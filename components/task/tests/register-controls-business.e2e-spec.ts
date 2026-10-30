@@ -1,4 +1,5 @@
 import { TestApp } from './test-app';
+import { getBusinesses } from '../src/lib/context';
 
 const OWNER_KEY = 21;
 const LINKED_KEY = 22;
@@ -7,7 +8,7 @@ const UNIT_USER = { all: [990071], head: [], member: [990071] };
 // RegisterBusiness control handling (registerLink), strict records and record access, with a fake register service.
 describe('Register controls business', () => {
   let app: TestApp;
-  const register = () => (global as any).businesses.register;
+  const register = () => getBusinesses().register;
 
   const ownerSchema = {
     type: 'object',

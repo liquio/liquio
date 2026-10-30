@@ -1,4 +1,5 @@
 import { TestApp } from './test-app';
+import { getConfig, getModels } from '../src/lib/context';
 
 const BASIC_AUTH_TOKEN_RAW = 'cGluZzpwaW5n';
 const BASIC_AUTH_TOKEN = `Basic ${BASIC_AUTH_TOKEN_RAW}`;
@@ -80,7 +81,7 @@ describe('Ping Controller', () => {
     });
 
     it('returns pong and processPid when authenticated', async () => {
-      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      getConfig().basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
 
       await app
         .request()
@@ -95,7 +96,7 @@ describe('Ping Controller', () => {
     });
 
     it('returns the dependency flags when authenticated and health_check is requested', async () => {
-      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      getConfig().basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
 
       await app
         .request()
@@ -118,7 +119,7 @@ describe('Ping Controller', () => {
     });
 
     it('returns an aggregated ping response when authenticated', async () => {
-      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      getConfig().basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
 
       await app
         .request()
@@ -137,30 +138,30 @@ describe('Ping Controller', () => {
     });
 
     it('returns 404 instead of 500 when ping_documents is not configured', async () => {
-      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
-      delete global.config.ping_documents;
+      getConfig().basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      delete getConfig().ping_documents;
 
       await app.request().get('/test/ping/committed-documents/placeholder').set('Authorization', BASIC_AUTH_TOKEN).expect(404);
     });
 
     it('returns 400 for a template that is not in the configured map', async () => {
-      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
-      global.config.ping_documents = { committedDocumentsTemplateIdsToHoursMap: { known: 1 } };
+      getConfig().basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      getConfig().ping_documents = { committedDocumentsTemplateIdsToHoursMap: { known: 1 } };
 
       try {
         await app.request().get('/test/ping/committed-documents/placeholder').set('Authorization', BASIC_AUTH_TOKEN).expect(400);
       } finally {
-        delete global.config.ping_documents;
+        delete getConfig().ping_documents;
       }
     });
   });
 
   describe('error disclosure', () => {
     it('does not leak SQL text of a forced 5xx', async () => {
-      global.config.basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
-      global.config.ping_documents = { committedDocumentsTemplateIdsToHoursMap: { known: 1 } };
+      getConfig().basic_auth.tokens.push(BASIC_AUTH_TOKEN_RAW);
+      getConfig().ping_documents = { committedDocumentsTemplateIdsToHoursMap: { known: 1 } };
       const spy = jest
-        .spyOn(global.models.document, 'checkExists')
+        .spyOn(getModels().document, 'checkExists')
         .mockRejectedValue(new Error('SequelizeDatabaseError: relation "documents" does not exist'));
 
       try {
@@ -170,7 +171,7 @@ describe('Ping Controller', () => {
         expect(response.body.traceId).toBeDefined();
       } finally {
         spy.mockRestore();
-        delete global.config.ping_documents;
+        delete getConfig().ping_documents;
       }
     });
 

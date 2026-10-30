@@ -3,6 +3,7 @@
 import yargsFactory from 'yargs';
 
 import { BpmnTaskCore } from '../bootstrap';
+import { getLog } from '../lib/context';
 
 const bpmnTaskCore = new BpmnTaskCore();
 
@@ -13,6 +14,6 @@ const bpmnTaskCore = new BpmnTaskCore();
     await bpmnTaskCore.commands.init(yargs);
     void yargs.help().argv;
   } catch (e) {
-    global.log.save(e.message);
+    getLog().save(e.message);
   }
 })();

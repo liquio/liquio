@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { prepareFixtures, WORKFLOW_FIXTURES } from './fixtures';
+import { getConfig } from '../src/lib/context';
 
 describe('External Services', () => {
   let app: TestApp;
@@ -10,9 +11,9 @@ describe('External Services', () => {
     await TestApp.beforeAll();
     app = await TestApp.setup();
 
-    global.config.basic_auth.tokens.push(token);
-    global.config.system_task.allowedToUpdateDocumentAndCommit = [token];
-    global.config.system_task.tasksTemplateIds = ['31689003'];
+    getConfig().basic_auth.tokens.push(token);
+    getConfig().system_task.allowedToUpdateDocumentAndCommit = [token];
+    getConfig().system_task.tasksTemplateIds = ['31689003'];
 
     // Insert fixture data into the database
     await prepareFixtures(app);

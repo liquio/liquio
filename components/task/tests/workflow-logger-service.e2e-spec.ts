@@ -1,10 +1,11 @@
 import { TestApp } from './test-app';
 import { WorkflowLoggerService } from '../src/services/workflow_logger';
+import { getModels } from '../src/lib/context';
 
 // WorkflowLoggerService: builds the log of a workflow from its messages, tasks, events, gateways, errors and restarts.
 describe('Workflow logger service', () => {
   let app: TestApp;
-  const models = () => (global as any).models;
+  const models = () => getModels();
   const at = (day: number) => new Date(`2026-01-0${day}T00:00:00.000Z`);
 
   beforeAll(async () => {

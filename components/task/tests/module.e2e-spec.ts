@@ -1,4 +1,5 @@
 import { TestApp } from './test-app';
+import { getConfig } from '../src/lib/context';
 
 describe('Module Controller', () => {
   let app: TestApp;
@@ -29,7 +30,7 @@ describe('Module Controller', () => {
         .expect(200)
         .expect((response) => {
           expect(response.body).toHaveProperty('data');
-          expect(response.body.data).toEqual(global.config.modules);
+          expect(response.body.data).toEqual(getConfig().modules);
         });
     });
   });

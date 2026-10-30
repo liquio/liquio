@@ -2,6 +2,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { Business } from './business';
 import { WorkflowTemplateModel } from '../models/workflow_template';
+import { getLog } from '../lib/context';
 
 const unitIdToTemplateCategoryIds = {
   1000770: [1000], // еРезидент => Послуги для еРезидентів
@@ -103,7 +104,7 @@ export class WorkflowTemplateBusiness extends Business {
               });
             }
           } catch (error) {
-            global.log.save('entry-task-template-id-error', error.message, 'warn');
+            getLog().save('entry-task-template-id-error', error.message, 'warn');
 
             preparedEntryTaskTemplateIds.push({
               name: taskTemplateId.name || '',

@@ -4,6 +4,7 @@ import { TestApp } from './test-app';
 import { ExternalReader } from '../src/lib/external_reader';
 import { sanitizeUserExtraParams } from '../src/controllers/external_reader';
 import { seedScenario, addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { getConfig, getHttpClient } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 
@@ -71,7 +72,7 @@ describe('External reader service', () => {
       expect(await reader.getCaptchProviders()).toEqual({ data: ['p'] });
       nock(base).delete('/cache/1234567890').reply(200, { ok: 1 });
       expect(await reader.deleteCacheByUser('fake-token', { ipn: '1234567890' })).toEqual({ ok: 1 });
-      jest.spyOn((global as any).httpClient, 'request').mockResolvedValue({ json: async () => ({ data: ['k'] }) } as any);
+      jest.spyOn(getHttpClient(), 'request').mockResolvedValue({ json: async () => ({ data: ['k'] }) } as any);
       expect(await reader.getMocksKeysByUser('fake-token', ['a', 'b'])).toEqual(['k']);
       expect(await reader.getMocksKeysByUser('fake-token')).toEqual(['k']);
     });
@@ -97,7 +98,7 @@ describe('External reader service', () => {
 
     it('logs response data when it is enabled and cuts long responses', async () => {
       const getData = jest.spyOn(reader, 'getData').mockResolvedValue({ data: 'x'.repeat(100000) } as any);
-      const config = (global as any).config;
+      const config = getConfig();
       config.external_reader.logResponses = true;
       await call();
       getData.mockResolvedValue('y'.repeat(100000) as any);
@@ -190,7 +191,7 @@ describe('External reader service', () => {
       expect((await as()('post', '/external_reader').send({ service: 'svc', method: 'mth', filters: {} })).status).toBe(401);
       spy.mockRejectedValueOnce(new Error('boom'));
       expect((await as()('post', '/external_reader').send({ service: 'svc', method: 'mth', filters: {} })).status).toBe(500);
-      const config = (global as any).config;
+      const config = getConfig();
       config.external_reader.strictThroughDocumentAccess = ['svc.strict'];
       expect((await as()('post', '/external_reader').send({ service: 'svc', method: 'strict', filters: {} })).status).toBe(400);
       config.external_reader.strictThroughDocumentAccess = undefined;

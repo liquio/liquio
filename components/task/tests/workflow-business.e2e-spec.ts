@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import { TestApp } from './test-app';
+import { getBusinesses, getConfig, getModels } from '../src/lib/context';
 
 const ELASTIC = 'http://elastic.test';
 
@@ -8,7 +9,7 @@ const ELASTIC = 'http://elastic.test';
 // driven with workflow objects and a nock'ed elastic search.
 describe('Workflow business', () => {
   let app: TestApp;
-  const workflowBusiness = () => (global as any).businesses.workflow;
+  const workflowBusiness = () => getBusinesses().workflow;
 
   const steps = [
     { taskTemplateId: 1, label: 'Task step', description: 'Task description' },
@@ -118,7 +119,7 @@ describe('Workflow business', () => {
     });
 
     it('replaces the front url macro and reports broken functions', () => {
-      const config = (global as any).config;
+      const config = getConfig();
       config.mapping = { ...config.mapping, taskBusiness: { frontUrl: { template: 'FRONT', replace: 'https://front.example' } } };
       const workflow = withStatuses(
         [{ taskTemplateId: 1, calculate: '() => [{ type: "done", label: "FRONT", description: "x", isStatusesTab: false }]' }],
@@ -143,7 +144,7 @@ describe('Workflow business', () => {
     const ctx = { documents: [], events: [] };
 
     it('stores a fixed status id or a calculated status list', async () => {
-      const setStatus = jest.spyOn((global as any).models.workflow, 'setStatus').mockResolvedValue(undefined as any);
+      const setStatus = jest.spyOn(getModels().workflow, 'setStatus').mockResolvedValue(undefined as any);
       await workflowBusiness().setWorkflowStatus('w', template({}), 1, ctx);
       await workflowBusiness().setWorkflowStatus('w', template([{ taskTemplateId: 1 }]), 1, ctx);
       await workflowBusiness().setWorkflowStatus('w', template([{ taskTemplateId: 2, statusId: 1 }]), 1, ctx);
@@ -167,7 +168,7 @@ describe('Workflow business', () => {
     });
 
     it('rejects invalid calculated statuses', async () => {
-      jest.spyOn((global as any).models.workflow, 'setStatus').mockResolvedValue(undefined as any);
+      jest.spyOn(getModels().workflow, 'setStatus').mockResolvedValue(undefined as any);
       const run = (calculate: string) => workflowBusiness().setWorkflowStatus('w', template([{ taskTemplateId: 1, calculate }]), 1, ctx);
       await expect(run('() => [{ type: "unknown", label: "L", description: "D" }]')).rejects.toThrow('Invalid status.');
       await expect(run('() => [{ type: "done", label: "L", description: "D", isStatusesTab: true }]')).rejects.toThrow('Non tabed');
@@ -176,8 +177,8 @@ describe('Workflow business', () => {
 
   describe('elastic list', () => {
     const configure = () => {
-      (global as any).config.workflow = {
-        ...(global as any).config.workflow,
+      getConfig().workflow = {
+        ...getConfig().workflow,
         elastic: { protocol: 'http', host: 'elastic.test', uri: '/search', method: 'POST', headers: { a: 'b' }, template: 'workflows' },
       };
     };

@@ -2,6 +2,7 @@ import nock from 'nock';
 
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { getBusinesses, getConfig, getModels } from '../src/lib/context';
 
 const FS = 'https://filestorage.liquio.local';
 const SIGN_TOOL = 'http://sign-tool:8080';
@@ -50,7 +51,7 @@ describe('Document signing business', () => {
   beforeAll(async () => {
     await TestApp.beforeAll();
     app = await TestApp.setup();
-    (global as any).config.multisigners = { schemaControl: 'signature.multisign' };
+    getConfig().multisigners = { schemaControl: 'signature.multisign' };
     await seedScenario(app);
     await addUnit(app, { id: 990001, name: 'Signing unit', heads: [USER], members: [USER] });
   });
@@ -315,7 +316,7 @@ describe('Document signing business', () => {
 
     it('finds the signers control and checks the signing order', async () => {
       const task = await draft(multisignSchema);
-      const signing = (global as any).businesses.document.signing;
+      const signing = (getBusinesses() as any).document.signing;
       const control = await signing.getMultisignerControl(task.document.documentTemplateId);
       expect(control.minSignaturesLimit).toBe(50);
       const fullTask = await app.model('task').findByPk(task.id);
@@ -330,7 +331,7 @@ describe('Document signing business', () => {
 
     it('returns min signatures limit info for a task with signers', async () => {
       const task = await draft(multisignSchema);
-      const signing = (global as any).businesses.document.signing;
+      const signing = (getBusinesses() as any).document.signing;
       const info = await signing.handleMinSignaturesLimit({
         documentTemplateId: task.document.documentTemplateId,
         signatures: [{ createdBy: USER }],
@@ -385,8 +386,8 @@ describe('Document signing business', () => {
   });
 
   describe('direct business calls', () => {
-    const signing = () => (global as any).businesses.document.signing;
-    const document = async (task) => (global as any).models.document.findById(task.documentId);
+    const signing = () => (getBusinesses() as any).document.signing;
+    const document = async (task) => getModels().document.findById(task.documentId);
 
     it('hashes data with md5 and sha512 (with and without hmac)', () => {
       expect(signing().getMd5Hash('a')).toHaveLength(32);
@@ -466,7 +467,7 @@ describe('Document signing business', () => {
       );
       await signing().addMultiSignInfo({ signerUsers: [], meta: {}, performerUsers: [] }, { userInfo, type: 'sign' });
       const full = await app.model('task').findByPk(task.id);
-      const entity = await (global as any).models.task.findById(task.id);
+      const entity = await getModels().task.findById(task.id);
       expect(full).toBeTruthy();
       for (const type of ['sign', 'reject', 'delete_sign']) {
         await signing().addMultiSignInfo(
@@ -500,7 +501,7 @@ describe('Document signing business', () => {
     it('checks the count of P7S signatures only when enabled', async () => {
       const task = await draft({ isP7sSign: true, signRequired: true });
       const doc: any = await document(task);
-      const config = (global as any).config;
+      const config = getConfig();
       await signing().checkP7SSignaturesCount(doc);
       config.custom = { ...(config.custom || {}), isCheckP7SSignaturesCount: true };
       try {

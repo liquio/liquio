@@ -1,3 +1,4 @@
+import { getConfig } from '../../src/lib/context';
 // Seeds an active workflow template with entry task templates and gives helpers to drive
 // the task and document lifecycle over HTTP as a regular user.
 export const SCENARIO = {
@@ -119,7 +120,7 @@ export async function addUnit(app, unit: any) {
 
 // Make `jwt` a token of the config's test users (lets the sign endpoints accept mocked signatures).
 export function registerTestUser(jwt: string) {
-  const config = (global as any).config;
+  const config = getConfig();
   config.auth = { ...config.auth, allowedTestPem: true, allowedTestSign: true };
   config.test_users = { list: [{ token: jwt }] };
 }
