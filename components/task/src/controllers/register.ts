@@ -3,6 +3,7 @@ import _ from 'lodash';
 import { Sandbox } from '@liquio/back-core';
 
 import { Controller } from './controller';
+import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
 import { RegisterService } from '../services/register';
 import { ERROR_DOCUMENT_TEMPLATE_NOT_FOUND, ERROR_DOCUMENT_NOT_FOUND } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
@@ -48,7 +49,7 @@ export class RegisterController extends Controller {
     let registers;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      registers = await (global.businesses.register.getRegisters as any)(userUnitIds);
+      registers = await (getBusinesses().register.getRegisters as any)(userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -65,7 +66,7 @@ export class RegisterController extends Controller {
     let keys;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      keys = await (global.businesses.register.getKeys as any)(userUnitIds);
+      keys = await (getBusinesses().register.getKeys as any)(userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -132,7 +133,7 @@ export class RegisterController extends Controller {
 
     let records;
     try {
-      records = await global.businesses.register.getRecordsByKeyId(
+      records = await getBusinesses().register.getRecordsByKeyId(
         keyId,
         userUnitIds,
         {
@@ -169,7 +170,7 @@ export class RegisterController extends Controller {
 
       const recordKey = await this.registerService.findKeyById(keyId);
       if (!recordKey) {
-        global.log.save('register-key-not-found', { keyId }, 'error');
+        getLog().save('register-key-not-found', { keyId }, 'error');
         throw new Error('Key not found.');
       }
       const { toString: keyToString } = recordKey;
@@ -206,7 +207,7 @@ export class RegisterController extends Controller {
     const accessInfo = this.getRequestAccessInfo(req);
 
     // Check strict access.
-    const hasStrictAccess = await (global.businesses.register as any).checkStrictAccess(keyId);
+    const hasStrictAccess = await (getBusinesses().register as any).checkStrictAccess(keyId);
     if (!hasStrictAccess) {
       return this.responseError(res, 'Searching allowed only for register keys with strict access.');
     }
@@ -218,10 +219,10 @@ export class RegisterController extends Controller {
       return this.responseError(res, error);
     }
 
-    await (global.businesses.register as any).prepareData();
-    const keyInfo = global.businesses.register.keys.find((v) => v.id === keyId);
+    await (getBusinesses().register as any).prepareData();
+    const keyInfo = getBusinesses().register.keys.find((v) => v.id === keyId);
     const { toString, schema: keySchema } = keyInfo;
-    records.data = records.data.map((v) => global.businesses.register.convertToStrictRecord(v, toString, keySchema));
+    records.data = records.data.map((v) => getBusinesses().register.convertToStrictRecord(v, toString, keySchema));
 
     this.responseData(res, records, true);
   }
@@ -239,7 +240,7 @@ export class RegisterController extends Controller {
 
     let history;
     try {
-      history = await global.businesses.register.getHistoryByKeyId(keyId, userUnitIds, {
+      history = await getBusinesses().register.getHistoryByKeyId(keyId, userUnitIds, {
         offset,
         limit: Math.min(limit, HISTORY_MAX_LIMIT),
         record_data_like: recordDataLike,
@@ -265,7 +266,7 @@ export class RegisterController extends Controller {
 
     let viewingHistory;
     try {
-      viewingHistory = await global.businesses.register.getViewingHistoryByKeyId(keyId, userUnitIds, {
+      viewingHistory = await getBusinesses().register.getViewingHistoryByKeyId(keyId, userUnitIds, {
         offset,
         limit: Math.min(limit, HISTORY_MAX_LIMIT),
         created_from,
@@ -298,7 +299,7 @@ export class RegisterController extends Controller {
 
     let history;
     try {
-      history = await global.businesses.register.getHistoryByRecordId(keyId, recordId, userUnitIds, {
+      history = await getBusinesses().register.getHistoryByRecordId(keyId, recordId, userUnitIds, {
         offset,
         limit: Math.min(limit, HISTORY_MAX_LIMIT),
         operation,
@@ -326,7 +327,7 @@ export class RegisterController extends Controller {
 
     let viewingHistory;
     try {
-      viewingHistory = await global.businesses.register.getViewingHistoryByRecordId(keyId, recordId, userUnitIds, {
+      viewingHistory = await getBusinesses().register.getViewingHistoryByRecordId(keyId, recordId, userUnitIds, {
         offset,
         limit: Math.min(limit, HISTORY_MAX_LIMIT),
         created_from,
@@ -364,9 +365,9 @@ export class RegisterController extends Controller {
 
     // Check key is personal.
     try {
-      await global.businesses.register.checkRequestToKey(keyId, { control });
+      await getBusinesses().register.checkRequestToKey(keyId, { control });
     } catch (error) {
-      global.log.save('check-request-to-key-error', { error: error && error.message });
+      getLog().save('check-request-to-key-error', { error: error && error.message });
       return this.responseError(res, error, 400);
     }
 
@@ -402,7 +403,7 @@ export class RegisterController extends Controller {
       // Try to get document by id.
       let document;
       try {
-        document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+        document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
       } catch (error) {
         return this.responseError(res, error);
       }
@@ -411,7 +412,7 @@ export class RegisterController extends Controller {
       }
       // Get document_template JSON schema.
       const templateId = document.documentTemplateId;
-      const template = await global.models.documentTemplate.findById(templateId);
+      const template = await getModels().documentTemplate.findById(templateId);
       if (!template) return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND));
       const jsonSchema = template.jsonSchema;
 
@@ -428,7 +429,7 @@ export class RegisterController extends Controller {
       const controlIndexes = controlParts.filter((v) => `${parseInt(v)}` === `${v}`).map(Number);
 
       // Get step element from path.
-      elementName = global.businesses.register.getTemplatePathFromDataPath(controlParts.join('.'));
+      elementName = getBusinesses().register.getTemplatePathFromDataPath(controlParts.join('.'));
       const element = _.at(step, controlParts.join('.'))[0] || {};
       const elementTemplate = _.at(stepTemplate, elementName)[0];
 
@@ -549,7 +550,7 @@ export class RegisterController extends Controller {
         }
 
       const { search, search2, search3 } = elementTemplate || {};
-      if (search || search2 || search3) global.log.save('deprecated', { search, search2, search3 }, 'warning');
+      if (search || search2 || search3) getLog().save('deprecated', { search, search2, search3 }, 'warning');
 
       // Defined search.
       const searchFunction = elementTemplate?.searchEqual || elementTemplate?.search;
@@ -637,7 +638,7 @@ export class RegisterController extends Controller {
 
         // Check if in object.
         try {
-          tmpTemplateValue = _.at(jsonSchema, global.businesses.register.getTemplatePathFromDataPath(data[filterDataIndex]));
+          tmpTemplateValue = _.at(jsonSchema, getBusinesses().register.getTemplatePathFromDataPath(data[filterDataIndex]));
           tmpDataValue = _.at(document, data[filterDataIndex]);
           if (
             tmpTemplateValue[0] ||
@@ -659,7 +660,7 @@ export class RegisterController extends Controller {
     // Get records.
     let records;
     try {
-      records = await (global.businesses.register.getFilteredRecordsByKeyId as any)(
+      records = await (getBusinesses().register.getFilteredRecordsByKeyId as any)(
         keyId,
         userUnitIds,
         {
@@ -698,7 +699,7 @@ export class RegisterController extends Controller {
       try {
         const recordKey = await this.registerService.findKeyById(keyId);
         if (!recordKey) {
-          global.log.save('register-key-not-found', { keyId }, 'error');
+          getLog().save('register-key-not-found', { keyId }, 'error');
           throw new Error('Key not found.');
         }
         const { schema: keySchema, toString: keyToString } = recordKey;
@@ -744,13 +745,13 @@ export class RegisterController extends Controller {
               });
               normalizedRecord.label = normalizedRecord.stringified;
             } catch {
-              global.log.save('can-not-define-stringified-text', { record: v }, 'warn');
+              getLog().save('can-not-define-stringified-text', { record: v }, 'warn');
             }
             return normalizedRecord;
           });
         }
         const valueToSave = isMultiple ? valuesToSave : valuesToSave[0];
-        await (global.businesses.document.update as any)(
+        await (getBusinesses().document.update as any)(
           documentId,
           [
             {
@@ -788,7 +789,7 @@ export class RegisterController extends Controller {
 
     let records;
     try {
-      records = await global.businesses.register.getRecordsTreeByKeyIds(
+      records = await getBusinesses().register.getRecordsTreeByKeyIds(
         keyIds,
         {
           offset,
@@ -817,7 +818,7 @@ export class RegisterController extends Controller {
     let record;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      record = await global.businesses.register.findRecordById(id, userUnitIds, accessInfo);
+      record = await getBusinesses().register.findRecordById(id, userUnitIds, accessInfo);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -842,7 +843,7 @@ export class RegisterController extends Controller {
     let record;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      record = await global.businesses.register.createRecord(userUnitIds, { ...body, person }, accessInfo);
+      record = await getBusinesses().register.createRecord(userUnitIds, { ...body, person }, accessInfo);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -868,7 +869,7 @@ export class RegisterController extends Controller {
     let record;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      record = await global.businesses.register.updateRecordById(id, userUnitIds, { ...body, person }, accessInfo);
+      record = await getBusinesses().register.updateRecordById(id, userUnitIds, { ...body, person }, accessInfo);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -893,7 +894,7 @@ export class RegisterController extends Controller {
     let record;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      record = await global.businesses.register.deleteRecordById(id, userUnitIds, person, accessInfo);
+      record = await getBusinesses().register.deleteRecordById(id, userUnitIds, person, accessInfo);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -908,11 +909,11 @@ export class RegisterController extends Controller {
    */
   async getAddresses(req, res) {
     // Define params.
-    const keys = global.config.register.registerKeysForAddresses || [];
+    const keys = getConfig().register.registerKeysForAddresses || [];
 
     let addresses;
     try {
-      addresses = await (global.businesses.register.getRecordsTreeByKeyIds as any)(keys);
+      addresses = await (getBusinesses().register.getRecordsTreeByKeyIds as any)(keys);
     } catch (err) {
       return this.responseError(res, err);
     }
@@ -954,7 +955,7 @@ export class RegisterController extends Controller {
     let rollbackId;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      const startRollbackResponse = await (global.businesses.register.startRollback as any)({ keyId, timePoint }, userUnitIds, {
+      const startRollbackResponse = await (getBusinesses().register.startRollback as any)({ keyId, timePoint }, userUnitIds, {
         person,
         accessInfo,
       });
@@ -976,7 +977,7 @@ export class RegisterController extends Controller {
 
     let rollbackStatus;
     try {
-      rollbackStatus = await global.businesses.register.getRollbackStatusWithDetails(rollbackId);
+      rollbackStatus = await getBusinesses().register.getRollbackStatusWithDetails(rollbackId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1002,7 +1003,7 @@ export class RegisterController extends Controller {
     let rollbackedRecordResponse;
     try {
       const userUnitIds = this.getRequestUserUnitIds(req);
-      rollbackedRecordResponse = await (global.businesses.register.rollbackRecord as any)({ historyId, recordId, keyId }, userUnitIds, {
+      rollbackedRecordResponse = await (getBusinesses().register.rollbackRecord as any)({ historyId, recordId, keyId }, userUnitIds, {
         person,
         accessInfo,
       });

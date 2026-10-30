@@ -7,6 +7,7 @@ import { RegisterBusiness } from '../businesses/register';
 import { DocumentAttachmentModel } from '../models/document_attachment';
 import { StorageService } from '../services/storage';
 import { InvalidParamsError, ForbiddenError } from '../lib/errors';
+import { getLog } from '../lib/context';
 
 /**
  * Protected file controller.
@@ -48,7 +49,7 @@ export class ProtectedFileController extends Controller {
       const allowTokens = this.getRequestUserUnitAllowTokens(req);
 
       if (!keyId || !recordId || !path) {
-        global.log.save('protected-file-controller|invalid-parameters-error', { keyId, recordId, path });
+        getLog().save('protected-file-controller|invalid-parameters-error', { keyId, recordId, path });
         throw new InvalidParamsError('Missing required parameters: key_id, record_id, path.');
       }
 
@@ -57,7 +58,7 @@ export class ProtectedFileController extends Controller {
       const attach = PropByPath.get(record || {}, path);
       const fileId = attach?.link;
       if (!fileId) {
-        global.log.save('protected-file-controller|file-id-not-found', { path });
+        getLog().save('protected-file-controller|file-id-not-found', { path });
         throw new ForbiddenError('You are not allowed to access this file.');
       }
 
@@ -65,7 +66,7 @@ export class ProtectedFileController extends Controller {
       const stream = await axios({ ...requestOptions, responseType: 'stream' });
       stream.data.pipe(res);
     } catch (error) {
-      global.log.save('protected-file-controller|open-error', error && error.message);
+      getLog().save('protected-file-controller|open-error', error && error.message);
       return this.responseError(res, error);
     }
   }

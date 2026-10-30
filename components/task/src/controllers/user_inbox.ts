@@ -5,6 +5,7 @@ import { UserInboxModel } from '../models/user_inbox';
 import { DownloadToken } from '../lib/download_token';
 import { StorageService } from '../services/storage';
 import { Eds } from '../lib/eds';
+import { getLog, getModels } from '../lib/context';
 
 /**
  * User inbox controller.
@@ -60,7 +61,7 @@ export class UserInboxController extends Controller {
       });
       userInboxesEntities.data = this.filterResponse(userInboxesEntities.data, true);
     } catch (error) {
-      global.log.save('user-inbox-controller|get-all|get-from-db-error', { error: error?.toString(), stack: error.stack }, 'error');
+      getLog().save('user-inbox-controller|get-all|get-from-db-error', { error: error?.toString(), stack: error.stack }, 'error');
       return this.responseError(res, error);
     }
 
@@ -80,7 +81,7 @@ export class UserInboxController extends Controller {
         let documents;
         try {
           const documentsPromises = userInboxesEntities.data.map((v) =>
-            checkAllMetaInfoExists(v) ? null : global.models.document.findById(v.documentId),
+            checkAllMetaInfoExists(v) ? null : getModels().document.findById(v.documentId),
           );
           documents = (await Promise.all(documentsPromises)).filter(Boolean);
 
@@ -89,16 +90,16 @@ export class UserInboxController extends Controller {
             v.fileType = checkAllMetaInfoExists(v) ? v.meta.fileType : documents.find((d) => d.id === v.documentId).fileType;
           });
         } catch (error) {
-          global.log.save('get-file-type-error', { error: (error && error.message) || error }, 'warn');
+          getLog().save('get-file-type-error', { error: (error && error.message) || error }, 'warn');
         }
 
         const documentSignaturesPromises = userInboxesEntities.data.map((v) =>
-          checkAllMetaInfoExists(v) ? null : (global.models.documentSignature.getByDocumentId as any)(v.documentId),
+          checkAllMetaInfoExists(v) ? null : (getModels().documentSignature.getByDocumentId as any)(v.documentId),
         );
         const documentSignatures = (await Promise.all(documentSignaturesPromises)).filter(Boolean);
 
         const documentAttachmentsPromises = userInboxesEntities.data.map((v) =>
-          checkAllMetaInfoExists(v) ? null : global.models.documentAttachment.getByDocumentId(v.documentId),
+          checkAllMetaInfoExists(v) ? null : getModels().documentAttachment.getByDocumentId(v.documentId),
         );
         const documentAttachments = (await Promise.all(documentAttachmentsPromises)).filter(Boolean);
         const generatedAttachments = documentAttachments.map((v) => v.filter((a) => a.isGenerated));
@@ -123,7 +124,7 @@ export class UserInboxController extends Controller {
               const signature = signaturesInfoParse && signaturesInfoParse[0];
               signatureInfo = signature && (await this.eds.getSignatureInfo(signature));
             } catch (error) {
-              global.log.save('user-inbox-get-signature-info-error', { error: (error && error.message) || error }, 'warn');
+              getLog().save('user-inbox-get-signature-info-error', { error: (error && error.message) || error }, 'warn');
             }
             userInboxesEntities.data[i].signature = signatureInfo;
           }
@@ -163,7 +164,7 @@ export class UserInboxController extends Controller {
         }
       }
     } catch (error) {
-      global.log.save('user-inbox-controller|get-all|prepare-error', { error: error?.toString(), stack: error.stack }, 'error');
+      getLog().save('user-inbox-controller|get-all|prepare-error', { error: error?.toString(), stack: error.stack }, 'error');
       return this.responseError(res, error);
     }
 

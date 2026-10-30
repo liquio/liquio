@@ -1,11 +1,12 @@
-/** @var {ExternalServicesBusiness} global.businesses.externalServices */
-/** @var {UserInboxBusiness} global.businesses.userInbox */
-/** @var {TaskModel} global.models.task */
-/** @var {MessageQueue} global.messageQueue */
+/** @var {ExternalServicesBusiness} getBusinesses().externalServices */
+/** @var {UserInboxBusiness} getBusinesses().userInbox */
+/** @var {TaskModel} getModels().task */
+/** @var {MessageQueue} getMessageQueue() */
 
 import xml2js from 'xml2js';
 
 import { Controller } from './controller';
+import { getBusinesses, getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
 import { DocumentModel } from '../models/document';
 import { DocumentAttachmentModel } from '../models/document_attachment';
 import { DocumentTemplateModel } from '../models/document_template';
@@ -58,7 +59,7 @@ export class ExternalServicesController extends Controller {
   async updateDocumentAndCommitSoap(req, res) {
     const envelopeKey = Object.keys(req.body).find((key) => key.endsWith(':Envelope'));
     if (!envelopeKey) {
-      global.log.save('update-document-and-commit-soap-missing-envelope', { request: req.body }, 'error');
+      getLog().save('update-document-and-commit-soap-missing-envelope', { request: req.body }, 'error');
       return this.responseError(res, 'Missing SOAP envelope.', 400);
     }
     const envelope = req.body[envelopeKey];
@@ -71,7 +72,7 @@ export class ExternalServicesController extends Controller {
         .find((key) => req.body[`${soapNs}:Envelope`]['$'][key] === 'http://x-road.eu/xsd/xroad.xsd')
         .split(':')[1];
     } catch (error) {
-      global.log.save('update-document-and-commit-soap-missing-xroad-namespace', { error: error.toString() }, 'error');
+      getLog().save('update-document-and-commit-soap-missing-xroad-namespace', { error: error.toString() }, 'error');
       return this.responseError(res, 'Missing xRoad namespace.', 400);
     }
 
@@ -85,42 +86,42 @@ export class ExternalServicesController extends Controller {
         token = token._;
       }
     } catch (error) {
-      global.log.save('update-document-and-commit-soap-invalid-token', { error: error.toString() }, 'error');
+      getLog().save('update-document-and-commit-soap-invalid-token', { error: error.toString() }, 'error');
       return this.responseError(res, 'Missing or invalid authorization token.', 401);
     }
 
     if (!token) {
-      global.log.save('update-document-and-commit-soap-missing-token', { request: req.body }, 'error');
+      getLog().save('update-document-and-commit-soap-missing-token', { request: req.body }, 'error');
       return this.responseError(res, 'Missing authorization token.', 401);
     }
 
     // Check if the token is present in basic auth config
     let externalServiceUser;
-    const isAllTokenAllowed = !!global.config.basic_auth.tokens.find((item) => item === token || item === `Basic ${token}`);
+    const isAllTokenAllowed = !!getConfig().basic_auth.tokens.find((item) => item === token || item === `Basic ${token}`);
     if (!isAllTokenAllowed) {
-      global.log.save('update-document-and-commit-soap-unknown-user', { token }, 'error');
+      getLog().save('update-document-and-commit-soap-unknown-user', { token }, 'error');
       return this.responseError(res, 'Unknown user.', 401);
     } else {
       try {
         externalServiceUser = Buffer.from(token.replace('Basic ', ''), 'base64').toString('utf-8').split(':')[0];
       } catch {
-        global.log.save('update-document-and-commit-soap-invalid-token', { token }, 'error');
+        getLog().save('update-document-and-commit-soap-invalid-token', { token }, 'error');
         return this.responseError(res, 'Invalid token.', 401);
       }
     }
 
-    const { allowedToUpdateDocumentAndCommit: allowedMethodTokens, tasksTemplateIds: allowedTaskTemplateIds } = global.config.system_task;
+    const { allowedToUpdateDocumentAndCommit: allowedMethodTokens, tasksTemplateIds: allowedTaskTemplateIds } = getConfig().system_task;
 
     // Do not proceed if there is no access configuration
     if (!allowedMethodTokens) {
-      global.log.save('update-document-and-commit-soap-no-allowed-method-tokens', {}, 'error');
+      getLog().save('update-document-and-commit-soap-no-allowed-method-tokens', {}, 'error');
       return this.responseError(res, 'Method not allowed.', 401);
     }
 
     // Check if the token is allowed to call this method
     const isTokenAllowed = !!allowedMethodTokens.find((item) => item === token || item === `Basic ${token}`);
     if (!isTokenAllowed) {
-      global.log.save('update-document-and-commit-soap-unauthorized-user', {}, 'error');
+      getLog().save('update-document-and-commit-soap-unauthorized-user', {}, 'error');
       return this.responseError(res, new UnauthorizedError('Unauthorized user.'));
     }
 
@@ -129,29 +130,29 @@ export class ExternalServicesController extends Controller {
     try {
       parsedRequest = envelope[`${soapNs}:Body`][0]['ext:UpdateDocumentAndCommitIn'][0];
     } catch (error) {
-      global.log.save('update-document-and-commit-soap-missing-request', { error: error.toString() }, 'error');
+      getLog().save('update-document-and-commit-soap-missing-request', { error: error.toString() }, 'error');
       return this.responseError(res, 'Missing request body.', 400);
     }
 
     const workflowId = parsedRequest['ext:workflowId'] && parsedRequest['ext:workflowId'][0];
     if (!workflowId) {
-      global.log.save('update-document-and-commit-soap-missing-workflow-id', { parsedRequest });
+      getLog().save('update-document-and-commit-soap-missing-workflow-id', { parsedRequest });
       // return this.responseXml(res, this.formSOAPErrorMessage('Invalid request. ext:workflowId required.'), false, 400);
     }
 
     const taskTemplateId = parsedRequest['ext:taskTemplateId'] && parseInt(parsedRequest['ext:taskTemplateId'][0]);
     if (isNaN(taskTemplateId)) {
-      global.log.save('update-document-and-commit-soap-invalid-task-template-id', { parsedRequest });
+      getLog().save('update-document-and-commit-soap-invalid-task-template-id', { parsedRequest });
       return this.responseXml(res, this.formSOAPErrorMessage('Invalid request. ext:taskTemplateId should be number.'), false, 400);
     } else if (!allowedTaskTemplateIds.includes(taskTemplateId.toString())) {
-      global.log.save('update-document-and-commit-soap-unauthorized-task-template-id', { parsedRequest });
+      getLog().save('update-document-and-commit-soap-unauthorized-task-template-id', { parsedRequest });
       return this.responseXml(res, this.formSOAPErrorMessage('User is not allowed to operate on this task template'), false, 401);
     }
 
     // Decode base64 if needed.
     const base64Regex = /^(?:[A-Za-z0-9+/]{4})*?(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
     if (parsedRequest['ext:documentDataObject'][0].match(base64Regex)) {
-      global.log.save('update-document-and-commit-soap-decode-base64');
+      getLog().save('update-document-and-commit-soap-decode-base64');
       try {
         const decodedBase64 = Buffer.from(parsedRequest['ext:documentDataObject'][0], 'base64').toString('utf-8');
         parsedRequest['ext:documentDataObject'][0] = decodedBase64;
@@ -162,7 +163,7 @@ export class ExternalServicesController extends Controller {
 
     const documentDataObject = parsedRequest['ext:documentDataObject'] && JSON.parse(parsedRequest['ext:documentDataObject'][0]);
     if (!documentDataObject) {
-      global.log.save('update-document-and-commit-soap-invalid-document-data-object', { parsedRequest });
+      getLog().save('update-document-and-commit-soap-invalid-document-data-object', { parsedRequest });
       return this.responseXml(res, this.formSOAPErrorMessage('Invalid request. ext:documentDataObject should be JSON data.'), false, 400);
     }
 
@@ -170,7 +171,7 @@ export class ExternalServicesController extends Controller {
     try {
       files = parsedRequest['ext:file']?.map((item) => Buffer.from(item, 'base64'));
     } catch {
-      global.log.save('update-document-and-commit-soap-invalid-file', { parsedRequest });
+      getLog().save('update-document-and-commit-soap-invalid-file', { parsedRequest });
       return this.responseXml(res, this.formSOAPErrorMessage('Invalid request. ext:file should be base64 encoded.'), false, 400);
     }
 
@@ -178,7 +179,7 @@ export class ExternalServicesController extends Controller {
     try {
       additionalDataSignatures = parsedRequest['ext:additionalDataSignature']?.map((item) => Buffer.from(item, 'base64'));
     } catch {
-      global.log.save('update-document-and-commit-soap-invalid-additional-data-signature', { parsedRequest });
+      getLog().save('update-document-and-commit-soap-invalid-additional-data-signature', { parsedRequest });
       return this.responseXml(res, this.formSOAPErrorMessage('Invalid request. ext:additionalDataSignature should be base64 encoded.'), false, 400);
     }
 
@@ -189,7 +190,7 @@ export class ExternalServicesController extends Controller {
     try {
       attachmentsSignatures = parsedRequest['ext:attachmentsSignature']?.map((item) => Buffer.from(item, 'base64'));
     } catch {
-      global.log.save('update-document-and-commit-soap-invalid-attachments-signature', { parsedRequest });
+      getLog().save('update-document-and-commit-soap-invalid-attachments-signature', { parsedRequest });
       return this.responseXml(res, this.formSOAPErrorMessage('Invalid request. ext:attachmentsSignature should be base64 encoded.'), false, 400);
     }
 
@@ -278,14 +279,14 @@ export class ExternalServicesController extends Controller {
       externalServiceUser,
     } = params;
 
-    global.log.save('update-document-and-commit', { workflowId, taskTemplateId });
+    getLog().save('update-document-and-commit', { workflowId, taskTemplateId });
 
     // Define task and document entities.
     let taskAndDocumentEntities;
     try {
       if (!workflowId && taskTemplateId) {
         const workflowTemplateId = String(taskTemplateId).slice(0, -3);
-        const createdTask = await global.businesses.task.create({
+        const createdTask = await getBusinesses().task.create({
           workflowTemplateId,
           taskTemplateId,
           userId: externalServiceUser,
@@ -294,13 +295,13 @@ export class ExternalServicesController extends Controller {
         workflowId = createdTask.workflowId;
       }
 
-      taskAndDocumentEntities = await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
+      taskAndDocumentEntities = await (getModels().task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
     } catch (error) {
-      global.log.save('find-task-and-document-error', { workflowId, taskTemplateId, error: error && error.message }, 'error');
+      getLog().save('find-task-and-document-error', { workflowId, taskTemplateId, error: error && error.message }, 'error');
       return onError(CANT_FIND_TASK_AND_DOCUMENT_ERROR);
     }
     if (!taskAndDocumentEntities) {
-      global.log.save('find-task-or-document-not-found', { workflowId, taskTemplateId }, 'error');
+      getLog().save('find-task-or-document-not-found', { workflowId, taskTemplateId }, 'error');
       return onError(CANT_FIND_TASK_OR_DOCUMENT_ENTITIES_ERROR);
     }
     const { task, document } = taskAndDocumentEntities;
@@ -309,18 +310,18 @@ export class ExternalServicesController extends Controller {
 
     // Update document.
     try {
-      await global.businesses.document.updateByExternalService(documentId, documentDataObject, externalServiceUser);
+      await getBusinesses().document.updateByExternalService(documentId, documentDataObject, externalServiceUser);
     } catch (error) {
-      global.log.save('update-document-error', { error: error && error.message }, 'error');
+      getLog().save('update-document-error', { error: error && error.message }, 'error');
       return onError(error);
     }
 
     // Save files as document attachments (without signatures, just attachments).
     if (typeOf(files) === 'array' && files.length > 0) {
       try {
-        await (global.businesses.document.files.createAttachmentsForSystemTask as any)(files, documentId, externalServiceUser);
+        await (getBusinesses().document.files.createAttachmentsForSystemTask as any)(files, documentId, externalServiceUser);
       } catch (error) {
-        global.log.save('save-attachments-error', { error: error && error.message }, 'error');
+        getLog().save('save-attachments-error', { error: error && error.message }, 'error');
         return onError(error, error.httpStatusCode, error.details);
       }
     }
@@ -328,9 +329,9 @@ export class ExternalServicesController extends Controller {
     // Save additional data signatures.
     if (typeOf(additionalDataSignatures) === 'array' && additionalDataSignatures.length > 0) {
       try {
-        await global.businesses.document.signing.saveAdditionalDataSignatures(additionalDataSignatures, document, externalServiceUser);
+        await getBusinesses().document.signing.saveAdditionalDataSignatures(additionalDataSignatures, document, externalServiceUser);
       } catch (error) {
-        global.log.save('save-additional-data-signatures-error', { error: error && error.message }, 'error');
+        getLog().save('save-additional-data-signatures-error', { error: error && error.message }, 'error');
         return onError(error, error.httpStatusCode, error.details);
       }
     }
@@ -339,14 +340,14 @@ export class ExternalServicesController extends Controller {
     if (signature || certificatePem) {
       const signatureBuffer = Buffer.from(signature || '', 'utf8');
       const certificatePemBuffer = Buffer.from(certificatePem || '', 'utf8');
-      const isSigned = await (global.models.documentSignature.create as any)({
+      const isSigned = await (getModels().documentSignature.create as any)({
         documentId,
         createdBy: externalServiceUser,
         signature: signatureBuffer,
         certificate: certificatePemBuffer,
       });
       if (!isSigned) {
-        global.log.save('document-signature-error', {}, 'error');
+        getLog().save('document-signature-error', {}, 'error');
         return onError('Document signature error.', 400);
       }
     }
@@ -354,7 +355,7 @@ export class ExternalServicesController extends Controller {
     // Save files as document attachments (with signatures).
     if (typeOf(attachmentsSignatures) === 'array' && attachmentsSignatures.length > 0) {
       try {
-        const savedAttachments: any = await global.businesses.document.signing.saveAttachmentsP7SSignatures(
+        const savedAttachments: any = await getBusinesses().document.signing.saveAttachmentsP7SSignatures(
           attachmentsSignatures,
           document,
           externalServiceUser,
@@ -364,8 +365,8 @@ export class ExternalServicesController extends Controller {
           // Remove signatureInfo from attachment to avoid circular reference
           delete attachment.signatureInfo;
           // We need to get the updated document for correct saving attachment array.
-          const documentToUpdate = await global.models.document.findById(documentId);
-          await global.businesses.document.files.saveAttachmentToDocumentData(
+          const documentToUpdate = await getModels().document.findById(documentId);
+          await getBusinesses().document.files.saveAttachmentToDocumentData(
             attachment,
             `initData.attachmentsSignatures.${index}`,
             documentToUpdate,
@@ -377,11 +378,11 @@ export class ExternalServicesController extends Controller {
 
         for (const attachment of savedAttachments) {
           if (attachment.signatureInfo) {
-            await global.models.documentSignature.create(attachment.signatureInfo);
+            await getModels().documentSignature.create(attachment.signatureInfo);
           }
         }
       } catch (error) {
-        global.log.save('save-attachments-signatures-error', { error: error && error.message }, 'error');
+        getLog().save('save-attachments-signatures-error', { error: error && error.message }, 'error');
         return onError(error, error.httpStatusCode, error.details);
       }
     }
@@ -389,21 +390,21 @@ export class ExternalServicesController extends Controller {
     // Commit.
     let finishedTask;
     try {
-      finishedTask = await (global.businesses.task.setStatusFinished as any)(taskId, externalServiceUser);
+      finishedTask = await (getBusinesses().task.setStatusFinished as any)(taskId, externalServiceUser);
 
       // Send message to RabbitMQ.
       const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-      global.messageQueue.produce(message);
+      getMessageQueue().produce(message);
     } catch (error) {
-      global.log.save('commit-task-error', { error: error && error.message }, 'error');
+      getLog().save('commit-task-error', { error: error && error.message }, 'error');
       return onError(error, error.httpStatusCode, error.details);
     }
 
-    global.log.save('update-document-and-commit-success', { workflowId, taskId, documentId });
+    getLog().save('update-document-and-commit-success', { workflowId, taskId, documentId });
     await onSuccess(finishedTask);
 
     // Send document to inboxes if need it.
-    global.businesses.userInbox.sendToInboxesIfNeedIt(finishedTask);
+    getBusinesses().userInbox.sendToInboxesIfNeedIt(finishedTask);
   }
 
   /**
@@ -422,7 +423,7 @@ export class ExternalServicesController extends Controller {
 
     // Check access to document.
     try {
-      await (global.businesses.document.findByIdAndCheckAccess as any)(documentId, externalServiceUser, [], true);
+      await (getBusinesses().document.findByIdAndCheckAccess as any)(documentId, externalServiceUser, [], true);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -469,7 +470,7 @@ export class ExternalServicesController extends Controller {
     // Define task and document entities.
     let taskAndDocumentEntities;
     try {
-      taskAndDocumentEntities = await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
+      taskAndDocumentEntities = await (getModels().task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -482,7 +483,7 @@ export class ExternalServicesController extends Controller {
     // Update document.
     let updatedDocument;
     try {
-      updatedDocument = await global.businesses.document.updateByExternalService(documentId, documentDataObject, externalServiceUser);
+      updatedDocument = await getBusinesses().document.updateByExternalService(documentId, documentDataObject, externalServiceUser);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -491,7 +492,7 @@ export class ExternalServicesController extends Controller {
       // Add signature.
       const signatureBuffer = Buffer.from(signature, 'utf8');
       const certificatePemBuffer = Buffer.from(certificatePem, 'utf8');
-      const isSigned = await (global.models.documentSignature.create as any)({
+      const isSigned = await (getModels().documentSignature.create as any)({
         documentId,
         createdBy: externalServiceUser,
         signature: signatureBuffer,
@@ -520,7 +521,7 @@ export class ExternalServicesController extends Controller {
     // Define task and document entities.
     let taskAndDocumentEntities;
     try {
-      taskAndDocumentEntities = await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
+      taskAndDocumentEntities = await (getModels().task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -533,11 +534,11 @@ export class ExternalServicesController extends Controller {
     // Commit.
     let finishedTask;
     try {
-      finishedTask = await (global.businesses.task.setStatusFinished as any)(taskId, externalServiceUser);
+      finishedTask = await (getBusinesses().task.setStatusFinished as any)(taskId, externalServiceUser);
 
       // Send message to RabbitMQ.
       const message = { taskId: taskId };
-      global.messageQueue.produce(message);
+      getMessageQueue().produce(message);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
@@ -559,7 +560,7 @@ export class ExternalServicesController extends Controller {
     // Create task.
     let createdTask;
     try {
-      createdTask = await global.businesses.task.create({
+      createdTask = await getBusinesses().task.create({
         workflowId,
         workflowTemplateId: workflowTemplateId,
         taskTemplateId,
@@ -590,7 +591,7 @@ export class ExternalServicesController extends Controller {
 
     let documentWithPayment;
     try {
-      documentWithPayment = await (global.businesses.document.payment.calculatePayment as any)(
+      documentWithPayment = await (getBusinesses().document.payment.calculatePayment as any)(
         undefined,
         paymentControlPath,
         externalServiceUser,
@@ -619,7 +620,7 @@ export class ExternalServicesController extends Controller {
     // Check access and get document.
     let document;
     try {
-      document = await (global.businesses.document.findByWorkflowIdAndCheckAccess as any)(workflowId, taskTemplateId, externalServiceUser, [], true);
+      document = await (getBusinesses().document.findByWorkflowIdAndCheckAccess as any)(workflowId, taskTemplateId, externalServiceUser, [], true);
     } catch (error) {
       return this.responseError(res, error);
     }

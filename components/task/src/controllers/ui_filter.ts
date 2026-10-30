@@ -1,4 +1,5 @@
 import { Controller } from './controller';
+import { getModels } from '../lib/context';
 
 /**
  * UI Filter controller.
@@ -28,7 +29,7 @@ export class UIFilterController extends Controller {
     // Get ui filters.
     let uiFilters;
     try {
-      uiFilters = await global.models.uiFilter.getAll();
+      uiFilters = await getModels().uiFilter.getAll();
     } catch (error) {
       return this.responseError(res, error);
     }

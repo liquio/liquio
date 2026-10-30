@@ -1,6 +1,7 @@
 import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
+import { getBusinesses, getConfig, getLog } from '../lib/context';
 
 /**
  * Workflow controller.
@@ -35,11 +36,11 @@ export class WorkflowController extends Controller {
     let workflows;
     try {
       const onboardingWorkflowTemplateIds = [];
-      if (global.config.onboarding?.onboardingTemplate?.workflowTemplateId && global.config.onboarding?.onboardingTemplate?.taskTemplateId) {
-        onboardingWorkflowTemplateIds.push(global.config.onboarding.onboardingTemplate.workflowTemplateId);
+      if (getConfig().onboarding?.onboardingTemplate?.workflowTemplateId && getConfig().onboarding?.onboardingTemplate?.taskTemplateId) {
+        onboardingWorkflowTemplateIds.push(getConfig().onboarding.onboardingTemplate.workflowTemplateId);
       }
 
-      workflows = await global.businesses.workflow.getAllByUserId(userId, {
+      workflows = await getBusinesses().workflow.getAllByUserId(userId, {
         userUnitIds: userUnitIds,
         currentPage: page,
         perPage: count,
@@ -67,7 +68,7 @@ export class WorkflowController extends Controller {
 
     let workflow;
     try {
-      workflow = await global.businesses.workflow.findById(id, userId, userUnitIds);
+      workflow = await getBusinesses().workflow.findById(id, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -93,15 +94,15 @@ export class WorkflowController extends Controller {
     let workflows;
 
     try {
-      /** @var {WorkflowBusiness} global.businesses.workflow */
-      workflows = await global.businesses.workflow.getAllElasticFiltered({
+      /** @var {WorkflowBusiness} getBusinesses().workflow */
+      workflows = await getBusinesses().workflow.getAllElasticFiltered({
         currentPage: page,
         perPage: count,
         sort: sort,
         filters: filters,
       });
     } catch (error) {
-      global.log.save('workflow-get-all-filtered-error', { error: error && error.message }, 'error');
+      getLog().save('workflow-get-all-filtered-error', { error: error && error.message }, 'error');
       return this.responseError(res, error);
     }
 

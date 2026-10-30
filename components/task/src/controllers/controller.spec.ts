@@ -2,12 +2,15 @@ jest.mock('@liquio/back-core', () => ({ getTraceId: () => 'trace', getTraceMeta:
 
 import { Controller } from './controller';
 import { BadRequestError, ForbiddenError, SequelizeDbError } from '../lib/errors';
+import { getLog, resetAppContext, setAppContext } from '../lib/context';
 
 describe('Controller.responseFile', () => {
+  afterEach(() => resetAppContext());
+
   const run = (contentType: string, fileName?: string) => {
     const headers: Record<string, string> = {};
     const res: any = { set: jest.fn((k: string, v: string) => (headers[k] = v)), send: jest.fn() };
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } as any });
     new Controller({}).responseFile(res, Buffer.from('x'), contentType, fileName);
     return { headers, res };
   };
@@ -47,10 +50,10 @@ describe('Controller.responseFile', () => {
 describe('Controller.responseError', () => {
   const run = async (error: any, status?: number, details?: any) => {
     const res: any = { req: { originalUrl: '/x', method: 'GET' }, status: jest.fn().mockReturnThis(), send: jest.fn(), set: jest.fn() };
-    (global as any).log = { save: jest.fn().mockResolvedValue('log-id') };
-    (global as any).config = { log: {} };
+    setAppContext({ log: { save: jest.fn().mockResolvedValue('log-id') } as any });
+    setAppContext({ config: { log: {} } });
     await new Controller({}).responseError(res, error, status, details);
-    return { res, body: res.send.mock.calls[0][0], log: (global as any).log.save };
+    return { res, body: res.send.mock.calls[0][0], log: getLog().save as jest.Mock };
   };
 
   it('hides SQL text, cause and code of a non-public error on 500 but logs them', async () => {
@@ -102,8 +105,8 @@ describe('Controller.responseError', () => {
 describe('Controller.responseError keeps messages matched by front-core', () => {
   const run = async (error: any, status?: number) => {
     const res: any = { req: { originalUrl: '/x', method: 'GET' }, status: jest.fn().mockReturnThis(), send: jest.fn(), set: jest.fn() };
-    (global as any).log = { save: jest.fn().mockResolvedValue('log-id') };
-    (global as any).config = { log: {} };
+    setAppContext({ log: { save: jest.fn().mockResolvedValue('log-id') } as any });
+    setAppContext({ config: { log: {} } });
     await new Controller({}).responseError(res, error, status);
     return { status: res.status.mock.calls[0][0], message: res.send.mock.calls[0][0].error.message };
   };
