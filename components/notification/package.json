@@ -29,7 +29,7 @@
     "express": "^5.3.0",
     "moment": "^2.18.1",
     "multiconf": "^4.0.0",
-    "node-cache": "^4.1.1",
+    "node-cache": "^5.1.2",
     "node-cron": "^1.2.0",
     "nodemailer": "^10.0.15",
     "pg": "^8.20.0",
