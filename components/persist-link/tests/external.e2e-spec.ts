@@ -105,6 +105,20 @@ describe('External link provider', () => {
     expect(json.body.global.currentDate).toEqual(expect.any(String));
   });
 
+  it('should expose getFileBase64 to async jsonMap functions in the sandbox', async () => {
+    await createTemplate({
+      name: 'register',
+      method,
+      html: '<p>{{content}}</p>',
+      pdf: 'x',
+      jsonMap: { content: 'async (args) => await getFileBase64(args.recordData.file)' },
+    });
+    const hash = await createHash(options('register'));
+
+    const json = await app.request().get(`/${hash}?response_type=json`).expect(200);
+    expect(json.body.content).toBe(Buffer.from('hello').toString('base64'));
+  });
+
   it('should render a pdf with layout tags', async () => {
     await createTemplate({
       name: 'register',
