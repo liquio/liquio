@@ -7,6 +7,7 @@ import cors from 'cors';
 import proxy from 'express-http-proxy';
 import { AppInfo, asyncLocalStorageMiddleware, getTraceId } from '@liquio/back-core';
 
+import { getConfig, getLog } from './lib/context';
 import AppIdentHeaders from './lib/app_ident_headers';
 import AuthController from './controllers/auth';
 import TestController from './controllers/test';
@@ -93,13 +94,13 @@ class Router {
     // Test controller.
     app.get(
       '/test/ping',
-      bodyParser.json({ limit: (global.config as any).server.maxBodySize }),
+      bodyParser.json({ limit: getConfig().server.maxBodySize }),
       AppIdentHeaders.middleware,
       testController.ping.bind(testController),
     );
 
     // Proxy to custom APIs.
-    const { customApis = [] } = (global.config as any).discovery;
+    const { customApis = [] } = getConfig().discovery;
     for (const customApi of customApis) {
       // Define custom API params.
       const {
@@ -117,13 +118,13 @@ class Router {
 
       // Fail closed per route: skip a custom API without an explicit allow-list, keep the app running.
       if (!Array.isArray(allowedPaths) || allowedPaths.length === 0) {
-        (global.log as any).save('custom-api-invalid-config', { apiName, error: '"allowedPaths" allowlist is missing or empty' });
+        getLog().save('custom-api-invalid-config', { apiName, error: '"allowedPaths" allowlist is missing or empty' });
         continue;
       }
 
       // forwardClientToken + cabinet auth would re-leak the cabinet JWT (ID access/refresh tokens) as `token`.
       if (isAuthenticated && allowedPaths.some((allowedPath: { forwardClientToken?: boolean }) => allowedPath && allowedPath.forwardClientToken)) {
-        (global.log as any).save('custom-api-invalid-config', {
+        getLog().save('custom-api-invalid-config', {
           apiName,
           error: '"forwardClientToken" cannot be combined with sendUserData/isCheckJwtOnly',
         });
@@ -142,7 +143,7 @@ class Router {
       app.use(
         route,
         (req: Request, _res: Response, next: NextFunction) => {
-          (global.log as any).save('proxy-to', { proxyTo, route });
+          getLog().save('proxy-to', { proxyTo, route });
           next();
         },
         isAuthenticated ? authController.getAuthMiddleware({ isCheckJwtOnly }) : (req: Request, _res: Response, next: NextFunction) => next(),
@@ -240,19 +241,19 @@ class Router {
     }
 
     // Proxy other requests to main proxy.
-    if ((global.config as any).discovery.mainProxy) {
-      const { mainProxyDenyPaths, mainProxyAllowPaths } = (global.config as any).discovery;
+    if (getConfig().discovery.mainProxy) {
+      const { mainProxyDenyPaths, mainProxyAllowPaths } = getConfig().discovery;
       const proxyFilterConfig = { mainProxyDenyPaths, mainProxyAllowPaths };
       app.use(
-        proxy((global.config as any).discovery.mainProxy, {
-          limit: (global.config as any).server.maxBodySize,
+        proxy(getConfig().discovery.mainProxy, {
+          limit: getConfig().server.maxBodySize,
           filter: async (req: Request) => {
             // Internal task routes (and, in allow-list mode, everything not listed) are not reachable from outside.
             if (!isMainProxyPathAllowed(req.method, req.path, proxyFilterConfig)) {
-              (global.log as any).save('proxy-denied', { route: urlPath(req.originalUrl), method: req.method });
+              getLog().save('proxy-denied', { route: urlPath(req.originalUrl), method: req.method });
               return false;
             }
-            (global.log as any).save('proxy-to', { route: urlPath(req.originalUrl), method: req.method });
+            getLog().save('proxy-to', { route: urlPath(req.originalUrl), method: req.method });
             return true;
           },
           proxyReqOptDecorator: function (proxyReqOpts: any) {
@@ -262,7 +263,7 @@ class Router {
             return proxyReqOpts;
           },
           proxyErrorHandler: (err: Error, res: any, next: NextFunction) => {
-            (global.log as any).save(
+            getLog().save(
               'proxy-error',
               { error: { message: err.message, stack: err.stack }, route: urlPath(res.req.originalUrl), method: res.req.method },
               'error',
@@ -296,9 +297,9 @@ class Router {
   private async listen(app: Express): Promise<void> {
     return new Promise((resolve) => {
       // Start server listening.
-      const { hostname, port } = (global.config as any).server;
+      const { hostname, port } = getConfig().server;
       http.createServer({ maxHeaderSize: MAX_HEADER_SIZE }, app).listen(port, hostname, () => {
-        (global.log as any).save('api-listening-started', { url: `http://${hostname}:${port}` });
+        getLog().save('api-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });
     });
@@ -321,7 +322,7 @@ class Router {
     const userAgent = req.headers['user-agent'] || null;
 
     // Save.
-    (global.log as any).save('http-request', { url, method, headers, userAgent, userIp });
+    getLog().save('http-request', { url, method, headers, userAgent, userIp });
 
     this.attachResponseLogger(req, res);
 
@@ -330,7 +331,7 @@ class Router {
   }
 
   private jsonErrorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
-    (global.log as any).save('proxy-error', { ...safeError(err), traceId: getTraceId() });
+    getLog().save('proxy-error', { ...safeError(err), traceId: getTraceId() });
 
     let status = 500;
 
@@ -368,7 +369,7 @@ class Router {
 
     const logResponse = (body: any) => {
       if (!responseLogged) {
-        (global.log as any).save('http-response', {
+        getLog().save('http-response', {
           requestId: (req as any).requestId,
           method: req.method,
           url: redactUrl(req.url),

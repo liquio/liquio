@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import express from 'express';
 
 import Router from './router';
+import { setAppContext, resetAppContext, getConfig, getLog } from './lib/context';
 import { CABINET_FRONT_PROXY_PATHS } from './lib/proxy_filter';
 
 jest.mock('@liquio/back-core', () => ({
@@ -51,23 +52,31 @@ describe('Router custom APIs', () => {
     const proxyTo = `http://localhost:${(upstream.address() as AddressInfo).port}`;
 
     logSave = jest.fn();
-    (global as any).log = { save: logSave };
-    (global as any).config = {
-      server: { maxBodySize: '1mb' },
-      discovery: {
-        customApis: [
-          { apiName: 'secured', proxyTo, allowedPaths: [{ method: 'GET', path: '/items/:id' }] },
-          { apiName: 'public', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/listed' }] },
-          { apiName: 'authed', proxyTo, sendUserData: false, authHeader: 'Bearer configured', allowedPaths: [{ method: 'GET', path: '/x' }] },
-          { apiName: 'bearer', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/x', authorizationHeader: 'Bearer own' }] },
-          { apiName: 'fwd', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/x', forwardClientToken: true }] },
-          { apiName: 'fwd-bad', proxyTo, allowedPaths: [{ method: 'GET', path: '/x', forwardClientToken: true }] },
-          { apiName: 'cfg', proxyTo, sendUserData: false, headers: { 'Allow-Tokens': 'configured' }, allowedPaths: [{ method: 'GET', path: '/x' }] },
-          { apiName: 'broken', proxyTo, sendUserData: false },
-          { apiName: 'broken-empty', proxyTo, sendUserData: false, allowedPaths: [] },
-        ],
+    setAppContext({ log: { save: logSave } });
+    setAppContext({
+      config: {
+        server: { maxBodySize: '1mb' },
+        discovery: {
+          customApis: [
+            { apiName: 'secured', proxyTo, allowedPaths: [{ method: 'GET', path: '/items/:id' }] },
+            { apiName: 'public', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/listed' }] },
+            { apiName: 'authed', proxyTo, sendUserData: false, authHeader: 'Bearer configured', allowedPaths: [{ method: 'GET', path: '/x' }] },
+            { apiName: 'bearer', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/x', authorizationHeader: 'Bearer own' }] },
+            { apiName: 'fwd', proxyTo, sendUserData: false, allowedPaths: [{ method: 'GET', path: '/x', forwardClientToken: true }] },
+            { apiName: 'fwd-bad', proxyTo, allowedPaths: [{ method: 'GET', path: '/x', forwardClientToken: true }] },
+            {
+              apiName: 'cfg',
+              proxyTo,
+              sendUserData: false,
+              headers: { 'Allow-Tokens': 'configured' },
+              allowedPaths: [{ method: 'GET', path: '/x' }],
+            },
+            { apiName: 'broken', proxyTo, sendUserData: false },
+            { apiName: 'broken-empty', proxyTo, sendUserData: false, allowedPaths: [] },
+          ],
+        },
       },
-    };
+    });
 
     const app = express();
     new Router().initRoutes(app);
@@ -77,6 +86,7 @@ describe('Router custom APIs', () => {
   });
 
   afterAll(async () => {
+    resetAppContext();
     await Promise.all([upstream, server].map((s) => new Promise((resolve) => s.close(resolve))));
   });
 
@@ -170,7 +180,7 @@ describe('Router custom APIs', () => {
   });
 
   it('drops client User-Data/Allow-Tokens on the main proxy', async () => {
-    const config = (global as any).config.discovery;
+    const config = getConfig().discovery;
     config.mainProxy = `http://localhost:${(upstream.address() as AddressInfo).port}`;
     const mainApp = express();
     new Router().initRoutes(mainApp);
@@ -190,7 +200,7 @@ describe('Router custom APIs', () => {
   });
   describe('main proxy path filter', () => {
     const startMain = async (extra: Record<string, unknown> = {}) => {
-      const config = (global as any).config.discovery;
+      const config = getConfig().discovery;
       Object.assign(config, { mainProxy: `http://localhost:${(upstream.address() as AddressInfo).port}`, ...extra });
       const mainApp = express();
       new Router().initRoutes(mainApp);
@@ -374,8 +384,8 @@ describe('Router custom APIs', () => {
 
 describe('Router CORS', () => {
   it('exposes the renewed token header to cross-origin browsers', async () => {
-    (global as any).log = { save: jest.fn() };
-    (global as any).config = { server: { maxBodySize: '1mb' }, discovery: {} };
+    setAppContext({ log: { save: jest.fn() } });
+    setAppContext({ config: { server: { maxBodySize: '1mb' }, discovery: {} } });
     const router: any = new Router();
     let app: express.Express | undefined;
     jest.spyOn(router, 'listen').mockImplementation(async (a: any) => {
@@ -400,7 +410,7 @@ describe('Router CORS', () => {
 describe('Router jsonErrorHandler logging', () => {
   it('logs only safe error fields and still answers with the status', () => {
     const save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ log: { save } });
     const router: any = Object.create(Router.prototype);
     const err = Object.assign(new Error('Request failed with status code 401'), {
       name: 'AxiosError',
@@ -428,7 +438,7 @@ describe('Router jsonErrorHandler client response', () => {
   });
 
   const serve = async (error: any, contentType?: string) => {
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
     const router: any = Object.create(Router.prototype);
     const app = express();
     app.get('/boom', (req, res, next) => {
@@ -451,7 +461,7 @@ describe('Router jsonErrorHandler client response', () => {
         .on('error', reject);
     });
     await new Promise((resolve) => server.close(resolve));
-    return { ...response, save: (global as any).log.save as jest.Mock };
+    return { ...response, save: getLog().save as jest.Mock };
   };
 
   it.each([undefined, 'text/plain', 'application/json'])('hides SQL, error text and stack on a forced 500 (content type %s)', async (contentType) => {

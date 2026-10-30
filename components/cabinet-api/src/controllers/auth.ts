@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 import type { Express, Request, Response, NextFunction } from 'express';
 
+import { getConfig } from '../lib/context';
 import Controller from './controller';
 import Token from '../lib/token';
 import UnitModel from '../models/unit';
@@ -31,7 +32,7 @@ class AuthController extends Controller {
 
       // Auth controller config.
       this.idApiClient = getIdApiClient();
-      this.token = new Token((global.config as any).auth);
+      this.token = new Token(getConfig().auth);
       this.unitModel = new UnitModel();
 
       AuthController.singleton = this;
@@ -191,7 +192,7 @@ class AuthController extends Controller {
   async getUserUnitEntities(userId: string): Promise<{ head: UnitEntity[]; member: UnitEntity[]; all: UnitEntity[] }> {
     const units = await this.unitModel.getAll();
 
-    const defaultUnits = (global.config as any).auth.defaultUnits || [];
+    const defaultUnits = getConfig().auth.defaultUnits || [];
     const head = units.filter((v) => v.heads.includes(userId));
     const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id));
     const all = [...new Set([...head, ...member])];

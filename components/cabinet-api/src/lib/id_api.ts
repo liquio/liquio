@@ -1,6 +1,8 @@
 import CyrillicToTranslit from 'cyrillic-to-translit-js';
 import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 
+import { getLog } from './context';
+
 // Constants.
 const DEFAULT_TIMEOUT = 30000;
 
@@ -23,6 +25,6 @@ export function initIdApiClient(authConfig: Record<string, any> = {}): IdApiClie
     canDeleteUser: authConfig.canDeleteUser || false,
     legalEntityNameSource: 'company',
     ipnTransliterator: CyrillicToTranslit({ preset: 'uk' }),
-    getLog: () => global.log,
+    getLog,
   });
 }
