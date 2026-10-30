@@ -2,7 +2,7 @@
 
 import yargsFactory from 'yargs';
 
-import { BpmnTaskCore } from '../src/app';
+import { BpmnTaskCore } from '../bootstrap';
 
 const bpmnTaskCore = new BpmnTaskCore();
 

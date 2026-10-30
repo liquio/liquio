@@ -14,7 +14,7 @@ import amqp from 'amqplib';
 import jsonwebtoken from 'jsonwebtoken';
 import { resetIdApiClient } from '@liquio/back-core';
 
-import { BpmnTaskCore } from '../src/app';
+import { BpmnTaskCore } from '../src/bootstrap';
 
 // E2E tests are slow, so we increase the timeout
 // Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.

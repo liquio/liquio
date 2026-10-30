@@ -167,7 +167,7 @@ describe('Payment Controller', () => {
     // paymentTransactionId (see PayoneProvider's useTransactionBinding support) - it never
     // receives documentId/paymentControlPath directly, it resolves them itself from
     // global.models.paymentTransactions (the exact model/service a real provider is handed via
-    // its PluginContext.paymentTransactions, see src/app.ts).
+    // its PluginContext.paymentTransactions, see src/bootstrap.ts).
     paymentService.providers[PROVIDER_NAME_TRANSACTION_BINDING] = {
       handleStatus: async (_data: any, _providerOptions: any, _status: any, queryParamsObject: any) => {
         const record = await global.models.paymentTransactions.findById(queryParamsObject.paymentTransactionId);
@@ -186,7 +186,7 @@ describe('Payment Controller', () => {
 
     // Wire fixture customers to the fake providers/redirect behavior. document.ts and
     // controllers/payment.ts both read from `global.config.payment`/`this.config.payment`,
-    // which is the exact same object reference captured at app init time (see src/app.ts,
+    // which is the exact same object reference captured at app init time (see src/bootstrap.ts,
     // `loadConfig` returns `global.config`), so mutating it here is visible everywhere.
     global.config.payment = {
       defaultRedirect: DEFAULT_REDIRECT_URL,
