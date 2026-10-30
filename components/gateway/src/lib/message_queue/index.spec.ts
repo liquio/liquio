@@ -2,6 +2,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import * as amqp from 'amqplib/callback_api';
 
+import { setAppContext, getLog } from '../context';
 import { MessageQueue, pickMessageMeta } from './index';
 
 jest.mock('amqplib/callback_api', () => ({
@@ -32,9 +33,7 @@ describe('MessageQueue', () => {
   let messageQueue;
 
   beforeEach(() => {
-    global.log = {
-      save: jest.fn(),
-    };
+    setAppContext({ log: { save: jest.fn() } });
 
     messageQueue = new MessageQueue({
       amqpConnection: 'amqp://localhost',
@@ -56,7 +55,7 @@ describe('MessageQueue', () => {
 
       expect(amqp.connect).toHaveBeenCalledWith('amqp://localhost', expect.any(Function));
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalled();
+      expect(getLog().save).toHaveBeenCalled();
     });
 
     it('should resolve once a failed first connect succeeds on retry', async () => {
@@ -67,7 +66,7 @@ describe('MessageQueue', () => {
 
       expect(amqp.connect).toHaveBeenCalledTimes(2);
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('amqp-connected', true);
+      expect(getLog().save).toHaveBeenCalledWith('amqp-connected', true);
     });
   });
 
@@ -82,7 +81,7 @@ describe('MessageQueue', () => {
       expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledWith('writingQueue', Buffer.from(JSON.stringify(preparedMessage)), {
         persistent: true,
       });
-      expect(global.log.save).toHaveBeenCalledWith('amqp-message-sent', {
+      expect(getLog().save).toHaveBeenCalledWith('amqp-message-sent', {
         amqpMessageId: message.amqpMessageId,
         type: 'test',
         length: JSON.stringify(message).length,
@@ -104,7 +103,7 @@ describe('MessageQueue', () => {
       await delay(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-handled', { type: 'test' });
+      expect(getLog().save).toHaveBeenCalledWith('message-from-queue-handled', { type: 'test' });
     });
 
     it('should not handle the message and not acknowledge it if it is not successfully handled', async () => {
@@ -120,7 +119,7 @@ describe('MessageQueue', () => {
       await delay(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.nack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-not-handled', { type: 'test' });
+      expect(getLog().save).toHaveBeenCalledWith('message-from-queue-not-handled', { type: 'test' });
     });
   });
 
@@ -216,7 +215,7 @@ describe('MessageQueue', () => {
       await messageQueue.close();
 
       expect(messageQueue.connection.close).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('connection-closed-by-app');
+      expect(getLog().save).toHaveBeenCalledWith('connection-closed-by-app');
       expect(messageQueue.isClosing).toBe(false);
     });
 
@@ -229,7 +228,7 @@ describe('MessageQueue', () => {
 
       await messageQueue.close();
 
-      expect(global.log.save).toHaveBeenCalledWith('can-not-close-connection', expect.any(String));
+      expect(getLog().save).toHaveBeenCalledWith('can-not-close-connection', expect.any(String));
       expect(messageQueue.isClosing).toBe(false);
     });
   });
@@ -284,7 +283,7 @@ describe('MessageQueue', () => {
       decoratedHandler({ content: Buffer.from('invalid json') });
 
       await delay(500);
-      expect(global.log.save).toHaveBeenCalledWith(
+      expect(getLog().save).toHaveBeenCalledWith(
         'message-parse-error',
         expect.objectContaining({
           error: expect.any(String),
@@ -292,7 +291,7 @@ describe('MessageQueue', () => {
         }),
         'error',
       );
-      expect(JSON.stringify((global.log.save as jest.Mock).mock.calls)).not.toContain('invalid json"');
+      expect(JSON.stringify((getLog().save as jest.Mock).mock.calls)).not.toContain('invalid json"');
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
       expect(handler).not.toHaveBeenCalled();
     });
@@ -301,8 +300,7 @@ describe('MessageQueue', () => {
   describe('poison messages', () => {
     const consume = async (handler, content, redisClient?) => {
       if (redisClient) {
-        (global as any).redisClient = redisClient;
-        (global as any).config = { redis: { amqpMessageCache: { isEnabled: true } } };
+        setAppContext({ redisClient, config: { redis: { amqpMessageCache: { isEnabled: true } } } });
       }
       await messageQueue.init();
       messageQueue.subscribeToConsuming(handler);
@@ -314,8 +312,7 @@ describe('MessageQueue', () => {
     };
 
     afterEach(() => {
-      delete (global as any).redisClient;
-      delete (global as any).config;
+      setAppContext({ redisClient: undefined, config: undefined });
     });
 
     it.each([['not json'], ['null'], ['"str"'], ['42'], ['[]']])('should ack %s without calling the handler or requeueing', async (payload) => {
@@ -325,7 +322,7 @@ describe('MessageQueue', () => {
       expect(handler).not.toHaveBeenCalled();
       expect(messageQueue.channels.reading.ack).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.nack).not.toHaveBeenCalled();
-      expect(JSON.stringify((global.log.save as jest.Mock).mock.calls)).not.toContain(`"${payload}"`);
+      expect(JSON.stringify((getLog().save as jest.Mock).mock.calls)).not.toContain(`"${payload}"`);
     });
 
     it('should nack without requeue and not reject when the handler throws', async () => {
@@ -334,7 +331,7 @@ describe('MessageQueue', () => {
 
       expect(messageQueue.channels.reading.nack).toHaveBeenCalledWith(message, false, false);
       expect(messageQueue.channels.reading.ack).not.toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-handler-error', { workflowId: 'wf-1', error: 'boom' }, 'error');
+      expect(getLog().save).toHaveBeenCalledWith('message-from-queue-handler-error', { workflowId: 'wf-1', error: 'boom' }, 'error');
     });
 
     it('should keep nack with requeue default when the handler returns false', async () => {
@@ -348,8 +345,7 @@ describe('MessageQueue', () => {
   describe('redis dedupe', () => {
     it('should ack every repeat without calling the handler and never delete the key', async () => {
       const redisClient = { get: jest.fn().mockResolvedValue('msg-1'), set: jest.fn(), delete: jest.fn() };
-      (global as any).redisClient = redisClient;
-      (global as any).config = { redis: { amqpMessageCache: { isEnabled: true } } };
+      setAppContext({ redisClient, config: { redis: { amqpMessageCache: { isEnabled: true } } } });
       const handler = jest.fn().mockReturnValue(true);
 
       await messageQueue.init();
@@ -365,14 +361,12 @@ describe('MessageQueue', () => {
       expect(messageQueue.channels.reading.ack).toHaveBeenCalledTimes(3);
       expect(redisClient.delete).not.toHaveBeenCalled();
 
-      delete (global as any).redisClient;
-      delete (global as any).config;
+      setAppContext({ redisClient: undefined, config: undefined });
     });
 
     it('should set the key with ttl after successful handling', async () => {
       const redisClient = { get: jest.fn().mockResolvedValue(null), set: jest.fn(), delete: jest.fn() };
-      (global as any).redisClient = redisClient;
-      (global as any).config = { redis: { amqpMessageCache: { isEnabled: true } } };
+      setAppContext({ redisClient, config: { redis: { amqpMessageCache: { isEnabled: true } } } });
 
       await messageQueue.init();
       messageQueue.subscribeToConsuming(jest.fn().mockReturnValue(true));
@@ -381,8 +375,7 @@ describe('MessageQueue', () => {
 
       expect(redisClient.set).toHaveBeenCalledWith('amqp-message-id.msg-2', 'msg-2', 7200);
 
-      delete (global as any).redisClient;
-      delete (global as any).config;
+      setAppContext({ redisClient: undefined, config: undefined });
     });
   });
 

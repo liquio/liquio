@@ -1,3 +1,4 @@
+import { setAppContext, getLog, getMessageQueue } from '../lib/context';
 import { GatewayBusiness } from './gateway';
 
 const mockEval = jest.fn();
@@ -22,8 +23,7 @@ describe('GatewayBusiness', () => {
 
   beforeEach(() => {
     mockEval.mockReset();
-    (global as any).log = { save: jest.fn() };
-    (global as any).messageQueue = { produce: jest.fn() };
+    setAppContext({ log: { save: jest.fn() }, messageQueue: { produce: jest.fn() } });
     (GatewayBusiness as any).singleton = undefined;
     business = new GatewayBusiness({});
   });
@@ -74,7 +74,7 @@ describe('GatewayBusiness', () => {
       setup({ workflowTemplateId: 7 }, bpmn(5));
       await business.createFromMessage(message);
       expect(business.gatewayModel.create).toHaveBeenCalledTimes(1);
-      expect((global as any).messageQueue.produce).toHaveBeenCalledWith({ workflowId: WORKFLOW_ID, gatewayId: 99 });
+      expect(getMessageQueue().produce).toHaveBeenCalledWith({ workflowId: WORKFLOW_ID, gatewayId: 99 });
     });
 
     it('logs only identifiers of the created gateway (GW-06b)', async () => {
@@ -83,7 +83,7 @@ describe('GatewayBusiness', () => {
         create: jest.fn().mockResolvedValue({ id: 99, gatewayTypeId: 1, version: 3, data: { secretPayload: 'S' }, name: 'n' }),
       } as any;
       await business.createFromMessage(message);
-      const call = (global as any).log.save.mock.calls.find(([type]) => type === 'gateway-handling|db-instance-created');
+      const call = getLog().save.mock.calls.find(([type]) => type === 'gateway-handling|db-instance-created');
       expect(call[1]).toEqual({ workflowId: WORKFLOW_ID, gatewayTemplateId: 5, gatewayId: 99, gatewayTypeId: 1, version: 3 });
       expect(JSON.stringify(call)).not.toContain('secretPayload');
     });
@@ -96,10 +96,10 @@ describe('GatewayBusiness', () => {
       setup(workflow, xml);
       await expect(business.createFromMessage(message)).resolves.toBe(true);
       expect(business.gatewayModel.create).not.toHaveBeenCalled();
-      expect((global as any).messageQueue.produce).not.toHaveBeenCalled();
+      expect(getMessageQueue().produce).not.toHaveBeenCalled();
       expect(business.workflowErrorModel.create).not.toHaveBeenCalled();
       expect(business.workflowModel.setError).not.toHaveBeenCalled();
-      const logged = JSON.stringify((global as any).log.save.mock.calls);
+      const logged = JSON.stringify(getLog().save.mock.calls);
       expect(logged).toContain('template-workflow-mismatch');
     });
   });
@@ -110,7 +110,7 @@ describe('GatewayBusiness', () => {
         getLatestGatewayInWorkflow: jest.fn().mockResolvedValue({ id: 7, data: { sequenceIds: ['s1'], secretPayload: 'S' } }),
       } as any;
       await expect(business.getSequenceIdsFromLatestGatewayInWorkflow(5, WORKFLOW_ID)).resolves.toEqual(['s1']);
-      const call = (global as any).log.save.mock.calls.find(([type]) => type === 'get-sequence-ids-from-latest-gateway');
+      const call = getLog().save.mock.calls.find(([type]) => type === 'get-sequence-ids-from-latest-gateway');
       expect(call[1]).toEqual({ gatewayTemplateId: 5, workflowId: WORKFLOW_ID, sequenceIds: ['s1'], latestGatewayId: 7 });
       expect(JSON.stringify(call)).not.toContain('secretPayload');
     });

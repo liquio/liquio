@@ -1,5 +1,6 @@
 import express from 'express';
 
+import { getLog } from '../lib/context';
 import { PingController } from '../controllers/ping';
 import { MonitorController } from '../controllers/monitor';
 import { AppIdentHeaders } from '../lib/app_ident_headers';
@@ -40,7 +41,7 @@ export class RouterService {
     app.use(asyncLocalStorageMiddleware);
 
     // Save request info to log.
-    app.use(global.log.logRouter.bind(global.log));
+    app.use(getLog().logRouter.bind(getLog()));
 
     // App info in headers.
     AppIdentHeaders.add(app, this.config);
@@ -94,7 +95,7 @@ export class RouterService {
         if (error) {
           return reject(error);
         }
-        global.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
+        getLog().save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });
     });

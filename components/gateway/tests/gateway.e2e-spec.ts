@@ -1,5 +1,6 @@
 import { randomUUID, randomBytes } from 'node:crypto';
 
+import { getDb } from '../src/lib/context';
 import { TestApp } from './test-app';
 
 // Gateway template 988194001, seeded by this suite: a parallel-type gateway with no branching logic.
@@ -33,7 +34,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     app = await TestApp.setup();
 
     // Seed a parallel gateway template (branch-free: always forwards every incoming sequence).
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO gateway_templates (id, gateway_type_id, "name", description, json_schema, created_at, updated_at)
        VALUES (:id, 2, 'Parallel test gateway', '', '{}', NOW(), NOW())
        ON CONFLICT (id) DO NOTHING`,
@@ -41,7 +42,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     );
 
     // Seed an inclusive gateway template (branch-free: always forwards every incoming sequence).
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO gateway_templates (id, gateway_type_id, "name", description, json_schema, created_at, updated_at)
        VALUES (:id, 3, 'Inclusive test gateway', '', '{}', NOW(), NOW())
        ON CONFLICT (id) DO NOTHING`,
@@ -51,7 +52,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     // Seed workflow templates (same ids as the gateway templates) whose BPMN contains the gateway, as the
     // handler requires the gateway template to belong to the workflow's template.
     for (const id of [PARALLEL_GATEWAY_TEMPLATE_ID, INCLUSIVE_GATEWAY_TEMPLATE_ID]) {
-      await global.db.query(
+      await getDb().query(
         `INSERT INTO workflow_templates (id, "name", description, xml_bpmn_schema, "data", is_active, created_at, updated_at)
          VALUES (:id, 'Gateway test workflow', '', :xml, '{}'::json, true, NOW(), NOW())
          ON CONFLICT (id) DO NOTHING`,
@@ -82,7 +83,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const workflowId = randomUUID();
     const sequenceIds = ['Flow_parallel_a', 'Flow_parallel_b'];
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
        VALUES (:workflowId, :workflowTemplateId, false, '{}'::jsonb, 'system', 'system', NOW(), NOW())`,
       { replacements: { workflowId, workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID } },
@@ -99,7 +100,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     expect(outMessage).toMatchObject({ workflowId });
     expect(typeof outMessage.gatewayId).toBe('string');
 
-    const [gatewayRow] = await global.db.query('SELECT gateway_type_id, gateway_template_id, "data" FROM gateways WHERE id = :id', {
+    const [gatewayRow] = await getDb().query('SELECT gateway_type_id, gateway_template_id, "data" FROM gateways WHERE id = :id', {
       replacements: { id: outMessage.gatewayId },
       type: 'SELECT',
     });
@@ -111,7 +112,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const workflowId = randomUUID();
     const sequenceIds = ['Flow_inclusive_a'];
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
        VALUES (:workflowId, :workflowTemplateId, false, '{}'::jsonb, 'system', 'system', NOW(), NOW())`,
       { replacements: { workflowId, workflowTemplateId: INCLUSIVE_GATEWAY_TEMPLATE_ID } },
@@ -127,7 +128,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const outMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueName);
     expect(outMessage).toMatchObject({ workflowId });
 
-    const [gatewayRow] = await global.db.query('SELECT gateway_type_id, "data" FROM gateways WHERE id = :id', {
+    const [gatewayRow] = await getDb().query('SELECT gateway_type_id, "data" FROM gateways WHERE id = :id', {
       replacements: { id: outMessage.gatewayId },
       type: 'SELECT',
     });
@@ -141,13 +142,13 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const taskId = randomUUID();
     const sequenceIds = ['Flow_15yf3yt', 'Flow_1iyqzew']; // ['Ні', 'Так'], matching formula order.
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
        VALUES (:workflowId, 988191, false, '{}'::jsonb, 'system', 'system', NOW(), NOW())`,
       { replacements: { workflowId } },
     );
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO documents (id, document_template_id, document_state_id, owner_id, created_by, updated_by, "data", created_at, updated_at)
        VALUES (:documentId, :documentTemplateId, 1, 'system', 'system', 'system', :data::json, NOW(), NOW())`,
       {
@@ -159,7 +160,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
       },
     );
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO tasks (id, workflow_id, task_template_id, document_id, signer_users, performer_users, performer_units, tags, "data", finished, deleted, created_by, updated_by, created_at, updated_at)
        VALUES (:taskId, :workflowId, :taskTemplateId, :documentId, '{}', '{}', '{}', '{}', '{}'::json, true, false, 'system', 'system', NOW(), NOW())`,
       { replacements: { taskId, workflowId, taskTemplateId: EXCLUSIVE_TASK_TEMPLATE_ID, documentId } },
@@ -175,7 +176,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const outMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueName);
     expect(outMessage).toMatchObject({ workflowId });
 
-    const [gatewayRow] = await global.db.query('SELECT gateway_type_id, "data" FROM gateways WHERE id = :id', {
+    const [gatewayRow] = await getDb().query('SELECT gateway_type_id, "data" FROM gateways WHERE id = :id', {
       replacements: { id: outMessage.gatewayId },
       type: 'SELECT',
     });
@@ -191,7 +192,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const debugId = randomBytes(16).toString('hex');
     const sequenceIds = ['Flow_debug_a'];
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
        VALUES (:workflowId, :workflowTemplateId, false, '{}'::jsonb, 'system', 'system', NOW(), NOW())`,
       { replacements: { workflowId, workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID } },
@@ -207,7 +208,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
 
     // The debug branch doesn't log or produce a queue message, so poll for the row it writes.
     const debugRow = await waitForRow(() =>
-      global.db.query('SELECT workflow_id, service_name, "data" FROM workflow_debug WHERE id = :id', {
+      getDb().query('SELECT workflow_id, service_name, "data" FROM workflow_debug WHERE id = :id', {
         replacements: { id: debugId },
         type: 'SELECT',
       }),
@@ -219,7 +220,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
   it('acks and does not create a gateway when the gateway template is not part of the workflow template', async () => {
     const workflowId = randomUUID();
 
-    await global.db.query(
+    await getDb().query(
       `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
        VALUES (:workflowId, :workflowTemplateId, false, '{}'::jsonb, 'system', 'system', NOW(), NOW())`,
       { replacements: { workflowId, workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID } },
@@ -236,7 +237,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const [, logData] = await app.log.waitForLog('gateway-handling|template-workflow-mismatch');
     expect(logData).toMatchObject({ workflowId, gatewayTemplateId: INCLUSIVE_GATEWAY_TEMPLATE_ID });
 
-    const rows = await global.db.query('SELECT id FROM gateways WHERE workflow_id = :workflowId', { replacements: { workflowId }, type: 'SELECT' });
+    const rows = await getDb().query('SELECT id FROM gateways WHERE workflow_id = :workflowId', { replacements: { workflowId }, type: 'SELECT' });
     expect(rows).toHaveLength(0);
   });
 

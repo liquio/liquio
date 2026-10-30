@@ -15,6 +15,7 @@ import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as Multiconf from 'multiconf';
 
 import { bootstrap } from '../src/bootstrap';
+import { getConfig, getDb } from '../src/lib/context';
 
 const debug = createDebug;
 
@@ -194,7 +195,6 @@ export class TestApp {
     // Merge config with overrides.
     const config = { ...defaultConfig, ...configOverride };
     this.config = config;
-    global.config = config;
 
     const { log, gatewayBusiness, messageQueue, routerService } = await bootstrap(config);
     this.log = log;
@@ -227,7 +227,7 @@ export class TestApp {
 
   // Obtain a client instance to interact with the application.
   request() {
-    const address = `http://${global.config.server.hostname}:${global.config.server.port}`;
+    const address = `http://${getConfig().server.hostname}:${getConfig().server.port}`;
     return supertest(address);
   }
 
@@ -285,8 +285,8 @@ export class TestApp {
     if (this.messageQueue) {
       await this.messageQueue.close();
     }
-    if (global.db) {
-      await global.db.close();
+    if (getDb()) {
+      await getDb().close();
     }
     if (this.routerService?.httpServer) {
       this.routerService.httpServer.close();
