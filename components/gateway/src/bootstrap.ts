@@ -1,6 +1,6 @@
-import moment from 'moment';
 import { Sandbox } from '@liquio/back-core';
 
+import { setAppContext, getLog } from './lib/context';
 import { Db } from './lib/db';
 import { Log } from './lib/log';
 import { buildSandboxConfig } from './lib/sandbox_config';
@@ -11,10 +11,11 @@ import { GatewayBusiness } from './businesses/gateway';
 import { RedisClient } from './lib/redis_client';
 
 export async function bootstrap(config: Record<string, any>) {
-  global.config = config;
+  setAppContext({ config });
 
   // Init redis.
-  global.redisClient = global.config?.redis?.isEnabled ? new RedisClient(global.config.redis) : null;
+  const redisClient = config?.redis?.isEnabled ? new RedisClient(config.redis) : null;
+  setAppContext({ redisClient });
 
   // Init log.
   const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
@@ -22,16 +23,13 @@ export async function bootstrap(config: Record<string, any>) {
     disableDefaultRedaction: config.log.disableDefaultRedaction,
   });
   const log = new Log([consoleLogProvider], ['console']);
-  global.log = log;
+  setAppContext({ log });
 
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
-  new Sandbox(buildSandboxConfig(config.sandbox) as any);
-
-  // Save moment global to use in eval.
-  global.moment = moment;
+  new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
 
   const db = await Db.getInstance(config.db);
-  global.db = db;
+  setAppContext({ db });
 
   const gatewayBusiness = new GatewayBusiness();
   await gatewayBusiness.init();
@@ -44,7 +42,7 @@ export async function bootstrap(config: Record<string, any>) {
   });
 
   await messageQueue.init();
-  global.messageQueue = messageQueue;
+  setAppContext({ messageQueue });
 
   // Init router.
   const routerService = new RouterService(config);
