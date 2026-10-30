@@ -58,7 +58,7 @@
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.65.0"
+    "typescript-eslint": "^8.72.1"
   },
   "overrides": {
     "@istanbuljs/load-nyc-config": {
