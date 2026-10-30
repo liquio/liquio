@@ -1,5 +1,7 @@
 import { Sequelize, Options as SequelizeOptions } from 'sequelize';
 
+import { getLog } from '../context';
+
 /**
  * Database connection manager (singleton)
  */
@@ -24,28 +26,28 @@ class Db {
         const sequelize = new Sequelize(config.database as string, config.username as string, config.password as string, config);
 
         await sequelize.authenticate();
-        log.save('db-connection', 'Connection to DB has been established successfully.');
+        getLog().save('db-connection', 'Connection to DB has been established successfully.');
 
         // Register lifecycle hooks using addHook
         sequelize.addHook('beforeConnect', () => {
-          log.save('db-connection-opening');
+          getLog().save('db-connection-opening');
         });
 
         sequelize.addHook('afterConnect', () => {
-          log.save('db-connection-opened');
+          getLog().save('db-connection-opened');
         });
 
         sequelize.addHook('beforeDisconnect', () => {
-          log.save('db-connection-closing');
+          getLog().save('db-connection-closing');
         });
 
         sequelize.addHook('afterDisconnect', () => {
-          log.save('db-connection-closed');
+          getLog().save('db-connection-closed');
         });
 
         Db.singleton = sequelize;
       } catch (error) {
-        log.save('Unable to connect to the DB', error, 'error');
+        getLog().save('Unable to connect to the DB', error, 'error');
         throw error;
       }
     }

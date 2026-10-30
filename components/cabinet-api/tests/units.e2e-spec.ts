@@ -4,6 +4,7 @@ import RedisClient from '../src/lib/redis_client';
 import UnitEntity from '../src/entities/unit';
 import Entity from '../src/entities/entity';
 import { TestApp } from './test-app';
+import { getConfig } from '../src/lib/context';
 
 describe('Units (Postgres and Redis)', () => {
   let app: TestApp;
@@ -89,7 +90,7 @@ describe('Units (Postgres and Redis)', () => {
     };
 
     beforeEach(() => {
-      (global.config as any).model = { pagination: { limitPerPage: 1 } };
+      getConfig().model = { pagination: { limitPerPage: 1 } };
     });
 
     it('paginates with the per-page limit, sort and filters', async () => {

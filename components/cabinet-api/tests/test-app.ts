@@ -14,6 +14,7 @@ import multiconf from 'multiconf';
 
 import { bootstrap } from '../src/bootstrap';
 import RedisClient from '../src/lib/redis_client';
+import { getDb } from '../src/lib/context';
 
 // E2E tests are slow, so we increase the timeout.
 jest.setTimeout(60000);
@@ -236,15 +237,15 @@ export class TestApp {
 
   async sql(query, replacements = []) {
     const { QueryTypes } = require('sequelize');
-    return global.db.query(query, { replacements, type: QueryTypes.RAW });
+    return getDb().query(query, { replacements, type: QueryTypes.RAW });
   }
 
   async destroy() {
     if (this.config?.redis?.isEnabled) {
       await new RedisClient({}).close();
     }
-    if (global.db) {
-      await global.db.close();
+    if (getDb()) {
+      await getDb().close();
     }
     for (const server of this.servers) {
       server.closeAllConnections?.();

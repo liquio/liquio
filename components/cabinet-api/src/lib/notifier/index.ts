@@ -1,5 +1,6 @@
 import { getTraceId } from '@liquio/back-core';
 
+import { getConfig, getLog } from '../context';
 import HttpRequest from '../http_request';
 
 // Constants.
@@ -43,17 +44,17 @@ export default class Notifier {
   constructor() {
     // Define singleton.
     if (!Notifier.singleton) {
-      this.server = global.config.notifier.server;
-      this.port = global.config.notifier.port;
-      this.user = global.config.notifier.user;
-      this.routes = { ...ROUTES, ...(global.config.notifier.routes || {}) };
-      this.password = global.config.notifier.password;
+      this.server = getConfig().notifier.server;
+      this.port = getConfig().notifier.port;
+      this.user = getConfig().notifier.user;
+      this.routes = { ...ROUTES, ...(getConfig().notifier.routes || {}) };
+      this.password = getConfig().notifier.password;
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         Authorization: `Basic ${Buffer.from(`${this.user}:${this.password}`, 'utf8').toString('base64')}`,
       };
-      this.timeout = global.config.notifier.timeout || 30000;
+      this.timeout = getConfig().notifier.timeout || 30000;
       Notifier.singleton = this;
     }
 
@@ -88,7 +89,7 @@ export default class Notifier {
       const eventIdQueryParam = typeof eventId === 'number' ? `&event_id=${eventId}` : '';
       const messageQueryParams = `?access_token=${accessToken}&needEmails=true&showAll=true${eventIdQueryParam}${paginationQueryParams}${isReadQueryParam}${orderByDateQueryParam}${searchQueryParam}${fromCreatedAtQueryParam}${toCreatedAtQueryParam}`;
       const url = `${this.server}:${this.port}${ROUTES.getMessages}${messageQueryParams}`;
-      global.log.save('get-message-list-request', url);
+      getLog().save('get-message-list-request', url);
 
       const response = await HttpRequest.send({
         url,
@@ -96,7 +97,7 @@ export default class Notifier {
         headers: this.getHeadersWithTraceId(),
         timeout: this.timeout,
       });
-      global.log.save('get-message-list-response', response);
+      getLog().save('get-message-list-response', response);
 
       const data = {
         data: response.result,
@@ -105,7 +106,7 @@ export default class Notifier {
 
       return data;
     } catch (error: any) {
-      global.log.save('get-message-list-error', error.message);
+      getLog().save('get-message-list-error', error.message);
     }
   }
 
@@ -119,7 +120,7 @@ export default class Notifier {
     try {
       const messageQueryParams = `?access_token=${accessToken}&messages=${messageId}`;
       const url = `${this.server}:${this.port}${ROUTES.getMessages}/is_read${messageQueryParams}`;
-      global.log.save('set-message-state-isread-request', url);
+      getLog().save('set-message-state-isread-request', url);
 
       const response = await HttpRequest.send({
         url,
@@ -127,11 +128,11 @@ export default class Notifier {
         headers: this.getHeadersWithTraceId(),
         timeout: this.timeout,
       });
-      global.log.save('set-message-state-isread-response', response);
+      getLog().save('set-message-state-isread-response', response);
 
       return response;
     } catch (error: any) {
-      global.log.save('set-message-state-isread-error', error.message);
+      getLog().save('set-message-state-isread-error', error.message);
     }
   }
 
@@ -145,7 +146,7 @@ export default class Notifier {
       // Prepare params.
       const messageQueryParams = `?access_token=${accessToken}`;
       const url = `${this.server}:${this.port}${ROUTES.getImportantMessages}${messageQueryParams}`;
-      global.log.save('get-important-messages-request', url);
+      getLog().save('get-important-messages-request', url);
 
       // Do request.
       const response = await HttpRequest.send({
@@ -154,11 +155,11 @@ export default class Notifier {
         headers: this.getHeadersWithTraceId(),
         timeout: this.timeout,
       });
-      global.log.save('get-important-messages-response', response);
+      getLog().save('get-important-messages-response', response);
 
       return (response && response.data) || [];
     } catch (error: any) {
-      global.log.save('get-important-messages-error', {
+      getLog().save('get-important-messages-error', {
         error: (error && error.message) || error,
       });
       return [];
@@ -177,7 +178,7 @@ export default class Notifier {
       const route = ROUTES.hideImportantMessage.replace(MESSAGE_ID_KEY, messageId.toString());
       const messageQueryParams = `?access_token=${accessToken}&messages=${messageId}&strict_allow_hide=true`;
       const url = `${this.server}:${this.port}${route}${messageQueryParams}`;
-      global.log.save('hide-important-message-request', url);
+      getLog().save('hide-important-message-request', url);
 
       // Do request.
       const response = await HttpRequest.send({
@@ -186,11 +187,11 @@ export default class Notifier {
         headers: this.getHeadersWithTraceId(),
         timeout: this.timeout,
       });
-      global.log.save('hide-important-message-response', response);
+      getLog().save('hide-important-message-response', response);
 
       return (response && response.data) || response;
     } catch (error: any) {
-      global.log.save('hide-important-message-error', {
+      getLog().save('hide-important-message-error', {
         error: (error && error.message) || error,
         messageId,
       });
@@ -211,7 +212,7 @@ export default class Notifier {
       const route = ROUTES.decrypt.replace(MESSAGE_ID_KEY, messageId.toString());
       const messageQueryParams = `?access_token=${accessToken}&messages=${messageId}`;
       const url = `${this.server}:${this.port}${route}${messageQueryParams}`;
-      global.log.save('decrypt-request', url);
+      getLog().save('decrypt-request', url);
 
       // Do request.
       const response = await HttpRequest.send({
@@ -221,11 +222,11 @@ export default class Notifier {
         body: JSON.stringify({ decryptedBase64 }),
         timeout: this.timeout,
       });
-      global.log.save('decrypt-response', response);
+      getLog().save('decrypt-response', response);
 
       return (response && response.data) || response;
     } catch (error: any) {
-      global.log.save('decrypt-error', {
+      getLog().save('decrypt-error', {
         error: (error && error.message) || error,
         messageId,
         decryptedBase64,
@@ -243,7 +244,7 @@ export default class Notifier {
     try {
       const messageQueryParams = accessToken ? `?access_token=${accessToken}` : `?user_id=${userId}`;
       const url = `${this.server}:${this.port}${ROUTES.getCountUnreadMessages}${messageQueryParams}`;
-      global.log.save('get-count-unread-messages-request', url);
+      getLog().save('get-count-unread-messages-request', url);
 
       const response = await HttpRequest.send({
         url,
@@ -251,11 +252,11 @@ export default class Notifier {
         headers: this.getHeadersWithTraceId(),
         timeout: this.timeout,
       });
-      global.log.save('get-count-unread-messages-response', response);
+      getLog().save('get-count-unread-messages-response', response);
 
       return response;
     } catch (error: any) {
-      global.log.save('get-count-unread-messages-error', error.message);
+      getLog().save('get-count-unread-messages-error', error.message);
     }
   }
 
@@ -276,7 +277,7 @@ export default class Notifier {
         },
         fullResponse,
       );
-      global.log.save('send-ping-request-to-notify', responseData);
+      getLog().save('send-ping-request-to-notify', responseData);
       const body = responseData && responseData.body;
       const headers = responseData && responseData.response && responseData.response.headers;
       const version = headers && headers.version;
@@ -285,7 +286,7 @@ export default class Notifier {
 
       return { version, customer, environment, body };
     } catch (error: any) {
-      global.log.save('send-ping-request-to-notify', error.message);
+      getLog().save('send-ping-request-to-notify', error.message);
     }
   }
 
@@ -317,11 +318,11 @@ export default class Notifier {
         body,
         timeout: this.timeout,
       };
-      global.log.save('sending-to-user-request', { body, requestOptions });
+      getLog().save('sending-to-user-request', { body, requestOptions });
       response = await HttpRequest.send(requestOptions);
-      global.log.save('sending-to-user-response', response);
+      getLog().save('sending-to-user-response', response);
     } catch (error: any) {
-      global.log.save('sending-to-user-error', error.message);
+      getLog().save('sending-to-user-error', error.message);
     }
 
     return response && response.sendByEmail && response.sendByEmail.length ? true : false;
@@ -349,7 +350,7 @@ export default class Notifier {
 
       // Do request to send emails.
       const url = `${this.server}:${this.port}${(this.routes as any).sendToUserEmails}`;
-      global.log.save('notifier-email-sending-request', { url, body }, 'info');
+      getLog().save('notifier-email-sending-request', { url, body }, 'info');
       const response = await HttpRequest.send({
         url,
         method: HttpRequest.Methods.POST,
@@ -357,12 +358,12 @@ export default class Notifier {
         body,
         timeout: this.timeout,
       });
-      global.log.save('notifier-email-sending-response', response, 'info');
+      getLog().save('notifier-email-sending-response', response, 'info');
       return {
         response,
       };
     } catch (error: any) {
-      global.log.save('system-notifier-email-sending-error', error.message, 'error');
+      getLog().save('system-notifier-email-sending-error', error.message, 'error');
       throw error;
     }
   }

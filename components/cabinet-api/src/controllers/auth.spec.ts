@@ -1,5 +1,6 @@
 import { getIdApiClient } from '@liquio/back-core';
 
+import { setAppContext, resetAppContext } from '../lib/context';
 import AuthController from './auth';
 
 jest.mock('@liquio/back-core', () => ({ ...jest.requireActual('@liquio/back-core'), getIdApiClient: jest.fn() }));
@@ -12,9 +13,13 @@ describe('AuthController', () => {
   let responseData: jest.SpyInstance;
   let responseError: jest.SpyInstance;
 
+  afterEach(() => {
+    resetAppContext();
+  });
+
   beforeEach(() => {
     (AuthController as any).singleton = undefined;
-    (global as any).config = { auth: {} };
+    setAppContext({ config: { auth: {} } });
     client = {
       getMainUserInfo: jest.fn(),
       changePassword: jest.fn(),
