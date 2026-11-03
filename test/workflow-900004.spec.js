@@ -34,8 +34,6 @@ const NOT_CONFIGURED = 'The service is not configured';
 
 const CABINET_URL = 'http://localhost:8081';
 
-const isDocumentUpdate = (request) => request.method() === 'PUT' && /\/documents\/[^/?]+(\?|$)/.test(request.url());
-
 test.describe('Workflow 900004 (step navigation with calcTriggers)', () => {
   let context;
   let page;
@@ -156,15 +154,6 @@ test.describe('Workflow 900004 (step navigation with calcTriggers)', () => {
     return task;
   };
 
-  // Continue has done its work once the document with the trigger result is saved and the
-  // button can be pressed again.
-  const continueAndSettle = async () => {
-    const saved = page.waitForResponse((response) => isDocumentUpdate(response.request()));
-    await continueButton().click();
-    await saved;
-    await expect(continueButton()).toBeEnabled();
-  };
-
   test.describe('1 later step appears on Next', () => {
     test('opens the step that the trigger of the current step has just shown', async () => {
       const taskId = await openTaskInCabinet(TASK_TEMPLATES.LATER_STEP_APPEARS);
@@ -186,9 +175,9 @@ test.describe('Workflow 900004 (step navigation with calcTriggers)', () => {
   });
 
   test.describe('2 earlier step disappears on Next', () => {
-    // The next index is taken from the old list [s1, s2, s3] (s2 is at 1), but the new list is
-    // [s2, s3], so index 2 is past its end and the user stays where they are.
-    test('stays on the current step when the trigger hides an earlier step', async () => {
+    // The next step is looked up in the new list [s2, s3], not by the old index, so Continue
+    // opens s3.
+    test('opens the step after the current one when the trigger hides an earlier step', async () => {
       const taskId = await openTaskInCabinet(TASK_TEMPLATES.EARLIER_STEP_DISAPPEARS);
 
       await expectStepShown('s1', 'Крок 1');
@@ -197,36 +186,36 @@ test.describe('Workflow 900004 (step navigation with calcTriggers)', () => {
       await expect(stepperItem('Крок 1')).toBeVisible();
 
       await chooseRadio(YES);
-      await continueAndSettle();
+      await goNext('s3');
 
-      await expectStepShown('s2', 'Крок 2');
+      await expect(stepHeading('Крок 3')).toBeVisible();
       await expect(stepperItem('Крок 1'), 's1 is hidden after Continue').toHaveCount(0);
-      await expect(stepperItem('Крок 3')).toBeVisible();
-      expect(visitedStep('s3'), 's3 is never opened').toBe(false);
-      expect((await getDocumentData(taskId)).calculated).toEqual({ hideS1: true });
-      expect((await getTask(taskId)).finished, 'task is not finished').toBe(false);
+      await expect(stepperItem('Крок 2')).toBeVisible();
+      await expect.poll(async () => (await getDocumentData(taskId)).calculated).toEqual({ hideS1: true });
+
+      await finish();
+      await expectFinished(taskId);
     });
   });
 
   test.describe('3 current step disappears on Next', () => {
-    // The front finishes editing as soon as the trigger hides s2, while the document with the new
-    // flag is still being saved. The steps it sees next depend on which answer comes first, so the
-    // screen after the commit is not asserted - only that the task is committed and s3 is not shown.
-    test('commits the task when the trigger hides the current step', async () => {
+    // The front opens the next visible step after the hidden one instead of committing the task.
+    test('opens the next visible step when the trigger hides the current step', async () => {
       const taskId = await openTaskInCabinet(TASK_TEMPLATES.CURRENT_STEP_DISAPPEARS);
 
       await expectStepShown('s1', 'Крок 1');
       await goNext('s2');
       await expect(stepHeading('Крок 2')).toBeVisible();
 
-      await continueButton().click();
+      await goNext('s3');
 
-      await expect(async () => {
-        expect((await getTask(taskId)).finished, 'task is finished').toBe(true);
-      }).toPass({ timeout: 30000 });
-      await expect(continueButton()).toHaveCount(0);
-      await expect(stepHeading('Крок 3')).toHaveCount(0);
-      expect((await getDocumentData(taskId)).calculated).toEqual({ leftS2: true });
+      await expect(stepHeading('Крок 3')).toBeVisible();
+      await expect(stepperItem('Крок 2'), 's2 is hidden after Continue').toHaveCount(0);
+      await expect.poll(async () => (await getDocumentData(taskId)).calculated).toEqual({ leftS2: true });
+      expect((await getTask(taskId)).finished, 'task is not finished').toBe(false);
+
+      await finish();
+      await expectFinished(taskId);
     });
   });
 
