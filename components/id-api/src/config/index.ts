@@ -238,7 +238,7 @@ export interface Config {
     x509?: {
       isEnabled?: boolean;
       display?: AuthProviderDisplay;
-      /** Require the signed server-issued challenge (`token`) for /authorise/x509; otherwise a token is used when supplied. */
+      /** Require the signed server-issued challenge (`token`) for /authorise/x509. Default true; false re-enables the replayable legacy `{pkcs7}` payload. */
       requireChallenge?: boolean;
     };
     ldap?: LdapProviderConfig;
