@@ -13,7 +13,14 @@ import debug from 'debug';
 import { X509Service } from './x509.service';
 import { ConfigurationService } from '../configuration/configuration.service';
 import { LoggerService } from '../observability/logger.service';
-import { OID_COMMON_NAME, OID_ORGANIZATION_NAME, OID_COUNTRY_NAME, OID_BASIC_CONSTRAINTS, OID_PKCS7_SIGNED_DATA } from './x509.constants';
+import {
+  OID_COMMON_NAME,
+  OID_ORGANIZATION_NAME,
+  OID_COUNTRY_NAME,
+  OID_BASIC_CONSTRAINTS,
+  OID_PKCS7_SIGNED_DATA,
+  OID_SERIAL_NUMBER,
+} from './x509.constants';
 
 let ca1CertPem: string;
 let sample1P7sDer: Buffer;
@@ -507,6 +514,86 @@ describe('X509Service signature verification', () => {
     await expect(empty.getSignatureInfo(cms)).rejects.toThrow('No trusted CA certificates configured');
   });
 
+  describe('BP-01 regression: signature, signerInfo binding and chain', () => {
+    const rejectRe = /Signature verification failed|No signerInfo|Exactly one signerInfo/;
+    const expectRejected = async (cms: string) => {
+      await expect(service.getSignatureInfo(cms)).rejects.toThrow(rejectRe);
+      await expect(service.verifyHash(sha256b64(nonce), cms)).resolves.toBe(false);
+    };
+
+    it('rejects a trusted public certificate with a signerInfo carrying no signature (report reproduction)', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, noSignature: true });
+      await expectRejected(cms);
+    });
+
+    it('rejects a cert-only CMS with embedded content', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, noSignerInfos: true });
+      await expect(service.getSignatureInfo(cms)).rejects.toThrow('No signerInfo found in signature');
+      await expect(service.verifyHash(sha256b64(nonce), cms)).resolves.toBe(false);
+    });
+
+    it('rejects a tampered signingTime attribute', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, tamperSignedAttrs: 'signingTime' });
+      await expectRejected(cms);
+    });
+
+    it('rejects a tampered messageDigest attribute', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, tamperSignedAttrs: 'messageDigest' });
+      await expectRejected(cms);
+    });
+
+    it('rejects signedAttrs without messageDigest', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, tamperSignedAttrs: 'dropMessageDigest' });
+      await expectRejected(cms);
+    });
+
+    it('rejects a signature made by another key than the sid certificate', async () => {
+      const cms = await buildCms({
+        cert: person1Cert,
+        key: person2Key,
+        content: nonce,
+        sidCert: person1Cert,
+        embedCerts: [person1Cert, person2Cert],
+      });
+      await expectRejected(cms);
+    });
+
+    it('does not let a trusted certificate in the bag lend trust to an untrusted sid certificate', async () => {
+      const cms = await buildCms({
+        cert: person2Cert,
+        key: person2Key,
+        content: nonce,
+        sidCert: person2Cert,
+        embedCerts: [person1Cert, person2Cert],
+      });
+      await expectRejected(cms);
+    });
+
+    it('rejects a certificate issued by an end-entity certificate', async () => {
+      const { cert: l1, key: l1Key } = await issueCert({ caKey: ca1Key, keyUsageByte: 0x80 });
+      const { cert: l2, key: l2Key } = await issueLeafUnder(l1, l1Key, [
+        { type: OID_COMMON_NAME, value: 'Fake Person' },
+        { type: OID_SERIAL_NUMBER, value: '0000000000' },
+      ]);
+      const cms = await buildCms({ cert: l2, key: l2Key, content: nonce, embedCerts: [l2, l1] });
+      await expectRejected(cms);
+    });
+
+    it('rejects a CMS with two signerInfos', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, extraSignerInfos: 1 });
+      await expect(service.getSignatureInfo(cms)).rejects.toThrow('Exactly one signerInfo is expected');
+      await expect(service.verifyHash(sha256b64(nonce), cms)).resolves.toBe(false);
+    });
+
+    it('returns the identity of the sid certificate, not of the first embedded certificate', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, embedCerts: [person2Cert, person1Cert] });
+      const info = await service.getSignatureInfo(cms);
+      const expected = await service.getSignatureInfo(await buildCms({ cert: person1Cert, key: person1Key, content: nonce }));
+      expect(info.subject.commonName).toBe('Anna Kowalski');
+      expect(info.serial).toBe(expected.serial);
+    });
+  });
+
   describe('detached content', () => {
     it('verifies a detached signature against the supplied content', async () => {
       const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, detached: true });
@@ -551,6 +638,11 @@ async function buildCms(opts: {
   tamperContent?: string;
   garbageSignature?: boolean;
   embedCerts?: pkijs.Certificate[];
+  tamperSignedAttrs?: 'signingTime' | 'messageDigest' | 'dropMessageDigest';
+  sidCert?: pkijs.Certificate;
+  extraSignerInfos?: number;
+  noSignature?: boolean;
+  noSignerInfos?: boolean;
 }): Promise<string> {
   const contentBuf = Buffer.from(opts.content);
   const contentAb = contentBuf.buffer.slice(contentBuf.byteOffset, contentBuf.byteOffset + contentBuf.byteLength);
@@ -575,13 +667,51 @@ async function buildCms(opts: {
     signerInfos: [
       new pkijs.SignerInfo({
         version: 1,
-        sid: new pkijs.IssuerAndSerialNumber({ issuer: opts.cert.issuer, serialNumber: opts.cert.serialNumber }),
+        sid: new pkijs.IssuerAndSerialNumber({
+          issuer: (opts.sidCert ?? opts.cert).issuer,
+          serialNumber: (opts.sidCert ?? opts.cert).serialNumber,
+        }),
         signedAttrs,
       }),
     ],
     certificates: opts.embedCerts ?? [opts.cert],
   });
-  await signedData.sign(opts.key, 0, 'SHA-256', contentAb);
+  if (opts.noSignature) {
+    const si = signedData.signerInfos[0];
+    si.digestAlgorithm = new pkijs.AlgorithmIdentifier({ algorithmId: '2.16.840.1.101.3.4.2.1', algorithmParams: new asn1js.Null() });
+    si.signatureAlgorithm = new pkijs.AlgorithmIdentifier({ algorithmId: '1.2.840.113549.1.1.11', algorithmParams: new asn1js.Null() });
+    si.signature = new asn1js.OctetString({ valueHex: new ArrayBuffer(0) });
+    signedData.digestAlgorithms = [si.digestAlgorithm];
+  } else {
+    await signedData.sign(opts.key, 0, 'SHA-256', contentAb);
+  }
+
+  if (opts.tamperSignedAttrs) {
+    const other = crypto.createHash('sha256').update('other bytes').digest();
+    const attrs = signedData.signerInfos[0]
+      .signedAttrs!.attributes.filter((a) => !(opts.tamperSignedAttrs === 'dropMessageDigest' && a.type === '1.2.840.113549.1.9.4'))
+      .map((a) => {
+        if (opts.tamperSignedAttrs === 'signingTime' && a.type === '1.2.840.113549.1.9.5') {
+          return new pkijs.Attribute({ type: a.type, values: [new asn1js.UTCTime({ valueDate: new Date('2020-01-01T00:00:00Z') })] });
+        }
+        if (opts.tamperSignedAttrs === 'messageDigest' && a.type === '1.2.840.113549.1.9.4') {
+          return new pkijs.Attribute({
+            type: a.type,
+            values: [new asn1js.OctetString({ valueHex: other.buffer.slice(other.byteOffset, other.byteOffset + other.byteLength) })],
+          });
+        }
+        return a;
+      });
+    signedData.signerInfos[0].signedAttrs = new pkijs.SignedAndUnsignedAttributes({ type: 0, attributes: attrs });
+  }
+  if (opts.extraSignerInfos) {
+    for (let i = 0; i < opts.extraSignerInfos; i++) {
+      signedData.signerInfos.push(signedData.signerInfos[0]);
+    }
+  }
+  if (opts.noSignerInfos) {
+    signedData.signerInfos = [];
+  }
 
   if (opts.garbageSignature) {
     signedData.signerInfos[0].signature = new asn1js.OctetString({ valueHex: crypto.randomBytes(256) });
@@ -619,5 +749,35 @@ async function issueCert(opts: { caKey: CryptoKey; keyUsageByte: number }): Prom
   const ku = new asn1js.BitString({ valueHex: new Uint8Array([opts.keyUsageByte]).buffer, unusedBits: 0 });
   cert.extensions = [new pkijs.Extension({ extnID: '2.5.29.15', critical: true, extnValue: ku.toBER(false), parsedValue: ku })];
   await cert.sign(opts.caKey, 'SHA-256');
+  return { cert, key: keyPair.privateKey };
+}
+
+/**
+ * Issue a leaf certificate whose issuer is `issuerCert`, signed with `issuerKey`.
+ */
+async function issueLeafUnder(
+  issuerCert: pkijs.Certificate,
+  issuerKey: CryptoKey,
+  subjectAttrs: { type: string; value: string }[],
+): Promise<{ cert: pkijs.Certificate; key: CryptoKey }> {
+  const subtle = pkijs.getCrypto(true);
+  const keyPair = (await subtle.generateKey(
+    { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+    true,
+    ['sign', 'verify'],
+  )) as CryptoKeyPair;
+  const cert = new pkijs.Certificate();
+  cert.version = 2;
+  cert.serialNumber = new asn1js.Integer({ value: Date.now() + 1 });
+  cert.issuer = issuerCert.subject;
+  for (const a of subjectAttrs) {
+    cert.subject.typesAndValues.push(new pkijs.AttributeTypeAndValue({ type: a.type, value: new asn1js.Utf8String({ value: a.value }) }));
+  }
+  cert.notBefore.value = new Date('2025-12-01T00:00:00Z');
+  cert.notAfter.value = new Date('2026-12-01T00:00:00Z');
+  await cert.subjectPublicKeyInfo.importKey(keyPair.publicKey);
+  const ku = new asn1js.BitString({ valueHex: new Uint8Array([0x80]).buffer, unusedBits: 0 });
+  cert.extensions = [new pkijs.Extension({ extnID: '2.5.29.15', critical: true, extnValue: ku.toBER(false), parsedValue: ku })];
+  await cert.sign(issuerKey, 'SHA-256');
   return { cert, key: keyPair.privateKey };
 }
