@@ -282,6 +282,29 @@ Notes:
   - Sign-tool loads `x509.json` from the `sign-tool` secret (default: `<release>-sign-tool-secret-config`).
 - `infra-secrets` is an internal chart secret used by PostgreSQL and RabbitMQ pods only.
 
+### X.509 (key-file) login
+
+Enabled by default and challenge-bound: the chart renders `auth_providers.x509` with `isEnabled: true` and `requireChallenge: true`. A values override under `config.id.config.production.auth_providers.x509` is deep-merged by `liquio.renderJsonConfig`, so `requireChallenge: true` is kept unless you set it yourself. Setting `requireChallenge: false` re-enables replayable logins that need no server challenge, and id-api logs a warning at startup. Don't do it.
+
+To disable it:
+
+```yaml
+config:
+  id:
+    config:
+      production:
+        auth_providers:
+          x509:
+            isEnabled: false
+```
+
+Operating it safely:
+
+- Trust: sign-tool trusts only the `caCerts` listed in `x509.json` of the `<release>-sign-tool-secret-config` secret.
+- The init-secrets job generates a private CA (`templates/shared/init-secrets.job.yaml`) and stores its key in `<release>-ca-certs`. Anyone who can read that secret can mint login certificates. Restrict RBAC on it, or supply your own CA through `secrets.existingSecrets`.
+- Redis must be enabled (it is by default) so single-use challenges hold across replicas. Without it the replay store is per-instance only.
+- Certificate revocation (CRL/OCSP) is not checked yet.
+
 ### LDAP / Active Directory login
 
 Disabled by default. Non-secret settings go into values under `config.id.config.production.auth_providers.ldap` (see the commented example in `values.yaml`). The service-account password, and the CA if you pass it inline as PEM, go into the id secret, whose `config.json` is merged over the configmap:
