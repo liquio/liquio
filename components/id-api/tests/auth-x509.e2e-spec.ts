@@ -6,6 +6,16 @@ import { TestApp, config } from './test_app';
 describe('AuthController - x509', () => {
   let app: TestApp;
 
+  const signToolReply = (content: string) => ({
+    subject: { commonName: 'Challenge User', countryName: 'UA', serialNumber: '2222222222' },
+    issuer: { commonName: 'Liquio Test CA' },
+    serial: '01',
+    signTime: '',
+    content: Buffer.from(content).toString('base64'),
+    pem: '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----',
+  });
+  const issueToken = () => jwt.sign({ random: Math.random().toString() }, config.jwt!.secret as string, { expiresIn: 60 });
+
   beforeAll(async () => {
     await TestApp.beforeAll();
   });
@@ -33,15 +43,18 @@ describe('AuthController - x509', () => {
   });
 
   describe('PKCS#7 Certificate Authorization (x509)', () => {
-    it('should try to login with invalid credentials', async () => {
-      nock('http://sign-tool').post('/x509/signature-info').once().reply(400, {
-        cause: 'Invalid PKCS#7 certificate',
-      });
+    it('rejects a CMS without a challenge token (default requireChallenge)', async () => {
+      nock.cleanAll();
+      nock('http://sign-tool').post('/x509/signature-info').once().reply(400, { cause: 'Invalid PKCS#7 certificate' });
 
-      await app.request().post('/authorise/x509').send({ pkcs7: 'invalid' }).expect(400);
+      await app.request().post('/authorise/x509').send({ pkcs7: 'invalid' }).expect(401);
+
+      expect(nock.isDone()).toBe(false);
+      nock.cleanAll();
     });
 
     it('should try to login with valid credentials', async () => {
+      const token = issueToken();
       nock('http://sign-tool')
         .post('/x509/signature-info')
         .once()
@@ -59,8 +72,7 @@ describe('AuthController - x509', () => {
           },
           serial: '1C07D16DDAE3ECF9A031DC7F5257AD25EE541683',
           signTime: '',
-          content:
-            'ew0KICAidXNlciI6ICJ0ZXN0dXNlciIsDQogICJlbWFpbCI6ICJ0ZXN0dXNlckBleGFtcGxlLmNvbSIsDQogICJ0aW1lc3RhbXAiOiAiMjAyNC0wNy0xN1QxOTowMDowMFoiDQp9IA==',
+          content: Buffer.from(token).toString('base64'),
           pem:
             '-----BEGIN CERTIFICATE-----\n' +
             'MIIDYDCCAkigAwIBAgIUHAfRbdrj7PmgMdx/UletJe5UFoMwDQYJKoZIhvcNAQEL\n' +
@@ -88,7 +100,7 @@ describe('AuthController - x509', () => {
       await app
         .request()
         .post('/authorise/x509')
-        .send({ pkcs7: 'valid' })
+        .send({ pkcs7: 'valid', token })
         .expect(200)
         .expect((res) => {
           expect(res.body.error).toBeNull();
@@ -97,6 +109,7 @@ describe('AuthController - x509', () => {
     });
 
     it('should reject blocked user with valid x509 certificate', async () => {
+      const token = issueToken();
       await app.model('user').update(
         {
           isActive: false,
@@ -121,8 +134,7 @@ describe('AuthController - x509', () => {
           },
           serial: '1C07D16DDAE3ECF9A031DC7F5257AD25EE541683',
           signTime: '',
-          content:
-            'ew0KICAidXNlciI6ICJibG9ja2VkdXNlciIsDQogICJlbWFpbCI6ICJibG9ja2VkQGV4YW1wbGUuY29tIiwNCiAgInRpbWVzdGFtcCI6ICIyMDI0LTA3LTE3VDE5OjAwOjAwWiINCn0g',
+          content: Buffer.from(token).toString('base64'),
           pem:
             '-----BEGIN CERTIFICATE-----\n' +
             'MIIDYDCCAkigAwIBAgIUHAfRbdrj7PmgMdx/UletJe5UFoMwDQYJKoZIhvcNAQEL\n' +
@@ -150,7 +162,7 @@ describe('AuthController - x509', () => {
       await app
         .request()
         .post('/authorise/x509')
-        .send({ pkcs7: 'valid' })
+        .send({ pkcs7: 'valid', token })
         .expect(403)
         .expect((res) => {
           expect(res.body).toEqual({ error: { message: 'User has been blocked.' } });
@@ -159,16 +171,6 @@ describe('AuthController - x509', () => {
   });
 
   describe('PKCS#7 challenge flow (x509 with server-issued token)', () => {
-    const signToolReply = (content: string) => ({
-      subject: { commonName: 'Challenge User', countryName: 'UA', serialNumber: '2222222222' },
-      issuer: { commonName: 'Liquio Test CA' },
-      serial: '01',
-      signTime: '',
-      content: Buffer.from(content).toString('base64'),
-      pem: '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----',
-    });
-    const issueToken = () => jwt.sign({ random: Math.random().toString() }, config.jwt!.secret as string, { expiresIn: 60 });
-
     it('logs in when the signature is over the issued token, and rejects a replay of it', async () => {
       const token = issueToken();
       nock('http://sign-tool').post('/x509/signature-info').twice().reply(200, signToolReply(token));
@@ -209,6 +211,18 @@ describe('AuthController - x509', () => {
       const token = issueToken();
       nock('http://sign-tool').post('/x509/signature-info').once().reply(400, { cause: 'Signature verification failed' });
       await app.request().post('/authorise/x509').send({ pkcs7: 'forged', token }).expect(401);
+    });
+
+    it('rejects a tampered signerInfo / wrong signer cert refused by sign-tool, and creates no user', async () => {
+      const token = issueToken();
+      const before = await app.model('user').count();
+      nock('http://sign-tool')
+        .post('/x509/signature-info')
+        .once()
+        .reply(400, { message: 'Failed to parse or extract signature info: Signature verification failed' });
+      await app.request().post('/authorise/x509').send({ pkcs7: 'tampered', token }).expect(401);
+
+      expect(await app.model('user').count()).toBe(before);
     });
 
     it('rejects a token that was not issued by the server', async () => {

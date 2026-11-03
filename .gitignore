@@ -23,6 +23,7 @@ yarn-error.log*
 # Cache
 .eslintcache
 .nyc_output/
+coverage/
 .cache/
 .yarn/
 .npm

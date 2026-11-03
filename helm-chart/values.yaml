@@ -642,6 +642,16 @@ config:
       # id-api refuses to start when EDS is enabled with a missing or placeholder clientID,
       # clientSecret or callbackURL. Restart id-api after changing the secret.
       #
+      # X.509 (key-file) login is enabled by default with requireChallenge: true (see README).
+      # Keep requireChallenge true; false re-enables replayable logins. Example, under `production`:
+      #
+      # production:
+      #   auth_providers:
+      #     x509:
+      #       isEnabled: true
+      #       requireChallenge: true
+      #     # to disable the provider: x509: {isEnabled: false}
+      #
       # LDAP / Active Directory login (see components/id-api/docs/ldap.md).
       # Settings go under `production`. Keep bindPassword (and an inline CA) out of values:
       # put them into the id secret config (`<release>-id-secret-config`, key config.json).

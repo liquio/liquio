@@ -11,7 +11,7 @@ import { prepareLoginHistoryData } from '../lib/login_history_extractor';
 
 export interface X509StrategyOptions {
   passReqToCallback?: boolean;
-  /** Reject logins that do not carry a signed server-issued challenge (`token`). */
+  /** Reject logins that do not carry a signed server-issued challenge (`token`). Default true; set false to accept the legacy `{pkcs7}` payload (replayable, not recommended). */
   requireChallenge?: boolean;
 }
 
@@ -26,8 +26,9 @@ export type X509VerifyFunction = (req: Request, userInfo: SignatureInfoSigner, d
 
 /**
  * X509Strategy for Passport that authenticates users based on PKCS#7 (CMS) certificate data.
- * Expects a base64-encoded PKCS#7 in req.body.pkcs7. When req.body.token (a server-issued, single-use
- * challenge from GET /authorise/eds/sign) is given, the PKCS#7 must be a signature over exactly that token.
+ * Expects a base64-encoded PKCS#7 in req.body.pkcs7 and, by default, req.body.token (a server-issued, single-use
+ * challenge from GET /authorise/eds/sign): the PKCS#7 must be a signature over exactly that token.
+ * Default requireChallenge is true; set false to accept the legacy `{pkcs7}` payload (replayable, not recommended).
  * Extracts eIDAS fields from the certificate subject.
  */
 export class X509Strategy extends PassportStrategy {
@@ -40,7 +41,8 @@ export class X509Strategy extends PassportStrategy {
   constructor(options: X509StrategyOptions, verify: X509VerifyFunction) {
     super();
     this.verify = verify;
-    this.requireChallenge = Boolean(options?.requireChallenge);
+    // Challenge-bound login unless explicitly disabled (`requireChallenge: false`).
+    this.requireChallenge = options?.requireChallenge !== false;
     this.x509Service = Services.service('x509');
     this.log = Log.getInstance();
   }
@@ -48,6 +50,10 @@ export class X509Strategy extends PassportStrategy {
   async authenticate(req: Request) {
     try {
       let userInfo: SignatureInfoSigner;
+      if (this.requireChallenge && typeof req.body?.token !== 'string') {
+        this.log.save('x509-strategy|authenticate|challenge-missing', {}, 'error');
+        return this.fail({ message: 'Invalid signature or challenge' }, 401);
+      }
       if (req.body.token !== undefined || this.requireChallenge) {
         // Challenge flow: signature must be over the server-issued token, which is single-use.
         try {
@@ -106,13 +112,25 @@ export async function x509(app: Express) {
     return;
   }
 
+  const requireChallenge = app.config.auth_providers.x509?.requireChallenge;
+  if (requireChallenge === false) {
+    log.save(
+      'x509-strategy',
+      { warning: 'auth_providers.x509.requireChallenge is false: /authorise/x509 accepts CMS signatures without a server challenge (replayable)' },
+      'warn',
+    );
+  }
+  if (!app.config.redis?.isEnabled) {
+    log.save('x509-strategy', { warning: 'redis is disabled: x509 challenge replay protection is per-instance only' }, 'warn');
+  }
+
   const passport = app.passport;
 
   passport.valid['x509'] = ['last_name', 'first_name', 'edrpou', 'ipn', 'companyName'];
 
   passport.use(
     'x509',
-    new X509Strategy({ requireChallenge: app.config.auth_providers.x509?.requireChallenge }, async (req, userInfo, done) => {
+    new X509Strategy({ requireChallenge }, async (req, userInfo, done) => {
       const ipn = userInfo.serialNumber || userInfo.personIdentifier;
       log.save('x509-strategy|authenticate|verify', { ipn: maskIpn(ipn) }, 'info');
 

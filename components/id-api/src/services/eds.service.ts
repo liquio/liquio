@@ -169,7 +169,11 @@ export class EdsService extends BaseService {
     }
 
     // Log.
-    this.log.save('authenticate-eds|user-info', { signer, issuer }, 'info');
+    this.log.save(
+      'authenticate-eds|user-info',
+      { signerFields: Object.keys(signer ?? {}), issuerOrganizationName: issuer?.organizationName },
+      'info',
+    );
 
     return { signer, issuer, serial, pem };
   }
@@ -197,7 +201,11 @@ export class EdsService extends BaseService {
   async getSignatureInfoX509(signature: string): Promise<SignatureInfoResponse> {
     try {
       const certInfo = await this.service('x509').getSignatureInfo(signature);
-      this.log.save('get-signature-info-certificate-data', { ...certInfo, content: 'REDACTED', pem: 'REDACTED' }, 'info');
+      this.log.save(
+        'get-signature-info-certificate-data',
+        { subjectFields: Object.keys(certInfo?.subject ?? {}), issuerOrganizationName: certInfo?.issuer?.organizationName },
+        'info',
+      );
 
       if (typeof certInfo.pem === 'undefined') {
         throw new Error(Errors.List.CAN_NOT_FIND_CERT.message);

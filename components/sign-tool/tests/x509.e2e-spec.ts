@@ -70,6 +70,18 @@ describe('x509 (e2e)', () => {
     });
   });
 
+  describe('POST /x509/signature-info (forged CMS)', () => {
+    it('returns 400 for a CMS with a trusted certificate but no valid signature (BP-01)', async () => {
+      const sign = await buildTestCms({ noSignature: true });
+      await http().post('/x509/signature-info').send({ sign }).expect(400);
+    });
+
+    it('returns 400 for a cert-only CMS', async () => {
+      const sign = await buildTestCms({ noSignerInfos: true });
+      await http().post('/x509/signature-info').send({ sign }).expect(400);
+    });
+  });
+
   describe('POST /x509/verify-hash', () => {
     it('returns true for the correct hash', async () => {
       const hash = crypto.createHash('sha256').update(sample1).digest('base64');
@@ -80,6 +92,13 @@ describe('x509 (e2e)', () => {
     it('returns false for a wrong hash', async () => {
       const hash = crypto.createHash('sha256').update('other').digest('base64');
       const res = await http().post('/x509/verify-hash').send({ hash, sign: sign1 }).expect(201);
+      expect(res.body).toEqual({ result: false });
+    });
+
+    it('returns false for a CMS with a tampered signerInfo', async () => {
+      const sign = await buildTestCms({ tamperSigningTime: true });
+      const hash = crypto.createHash('sha256').update(CMS_CONTENT).digest('base64');
+      const res = await http().post('/x509/verify-hash').send({ hash, sign }).expect(201);
       expect(res.body).toEqual({ result: false });
     });
 
@@ -142,3 +161,58 @@ describe('x509 (e2e)', () => {
     });
   });
 });
+
+const CMS_CONTENT = 'server-issued-nonce';
+
+function toAb(buf: Buffer): ArrayBuffer {
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+}
+
+async function buildTestCms(opts: { noSignature?: boolean; noSignerInfos?: boolean; tamperSigningTime?: boolean }): Promise<string> {
+  const certDer = Buffer.from(fs.readFileSync(path.join(mocks, 'test-person-1.cert.pem'), 'utf8').replace(/-----[^-]+-----|\s+/g, ''), 'base64');
+  const cert = new pkijs.Certificate({ schema: asn1js.fromBER(toAb(certDer)).result });
+  const keyDer = Buffer.from(fs.readFileSync(path.join(mocks, 'test-person-1.key.pem'), 'utf8').replace(/-----[^-]+-----|\s+/g, ''), 'base64');
+  const key = await pkijs.getCrypto(true).importKey('pkcs8', keyDer, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, true, ['sign']);
+
+  const content = Buffer.from(CMS_CONTENT);
+  const digest = crypto.createHash('sha256').update(content).digest();
+  const mkAttrs = (signingTime: Date) =>
+    new pkijs.SignedAndUnsignedAttributes({
+      type: 0,
+      attributes: [
+        new pkijs.Attribute({ type: '1.2.840.113549.1.9.3', values: [new asn1js.ObjectIdentifier({ value: '1.2.840.113549.1.7.1' })] }),
+        new pkijs.Attribute({ type: '1.2.840.113549.1.9.5', values: [new asn1js.UTCTime({ valueDate: signingTime })] }),
+        new pkijs.Attribute({ type: '1.2.840.113549.1.9.4', values: [new asn1js.OctetString({ valueHex: toAb(digest) })] }),
+      ],
+    });
+  const signerInfo = new pkijs.SignerInfo({
+    version: 1,
+    sid: new pkijs.IssuerAndSerialNumber({ issuer: cert.issuer, serialNumber: cert.serialNumber }),
+    signedAttrs: mkAttrs(new Date()),
+  });
+  const signedData = new pkijs.SignedData({
+    version: 1,
+    encapContentInfo: new pkijs.EncapsulatedContentInfo({
+      eContentType: '1.2.840.113549.1.7.1',
+      eContent: new asn1js.OctetString({ valueHex: toAb(content) }),
+    }),
+    signerInfos: [signerInfo],
+    certificates: [cert],
+  });
+  if (opts.noSignature) {
+    signerInfo.digestAlgorithm = new pkijs.AlgorithmIdentifier({ algorithmId: '2.16.840.1.101.3.4.2.1', algorithmParams: new asn1js.Null() });
+    signerInfo.signatureAlgorithm = new pkijs.AlgorithmIdentifier({ algorithmId: '1.2.840.113549.1.1.11', algorithmParams: new asn1js.Null() });
+    signerInfo.signature = new asn1js.OctetString({ valueHex: new ArrayBuffer(0) });
+    signedData.digestAlgorithms = [signerInfo.digestAlgorithm];
+  } else {
+    await signedData.sign(key, 0, 'SHA-256', toAb(content));
+  }
+  if (opts.tamperSigningTime) {
+    signerInfo.signedAttrs = mkAttrs(new Date('2020-01-01T00:00:00Z'));
+  }
+  if (opts.noSignerInfos) {
+    signedData.signerInfos = [];
+  }
+  const contentInfo = new pkijs.ContentInfo({ contentType: '1.2.840.113549.1.7.2', content: signedData.toSchema(true) });
+  return Buffer.from(contentInfo.toSchema().toBER(false)).toString('base64');
+}
