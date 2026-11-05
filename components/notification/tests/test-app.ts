@@ -5,7 +5,6 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 
 import supertest from 'supertest';
-import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import nock from 'nock';
 import createDebug from 'debug';
@@ -112,6 +111,7 @@ export class TestApp {
 
   server: any;
   httpServer: any;
+  port: number;
   log: any;
 
   constructor() {
@@ -165,11 +165,6 @@ export class TestApp {
 
     await TestApp.applyMigrations(confOverride.db);
 
-    confOverride.port = await portfinder.getPortPromise({
-      host: 'localhost',
-      startPort: 60000 + (process.pid % 1000),
-    });
-
     nock.activate();
   }
 
@@ -213,12 +208,19 @@ export class TestApp {
   }
 
   async listen() {
-    const { port } = confOverride;
-    await new Promise((resolve) => {
+    // Port 0 lets the OS pick a free port atomically at listen time (no race between workers).
+    await new Promise((resolve, reject) => {
       // express's app.listen() returns the underlying http.Server (not the app) - keep it
       // separately, since that's what actually needs closing in destroy().
-      this.httpServer = this.server.listen(port, () => resolve(undefined));
+      const httpServer = this.server.listen(0, '127.0.0.1');
+      this.httpServer = httpServer;
+      httpServer.once('error', reject);
+      httpServer.once('listening', () => {
+        httpServer.off('error', reject);
+        resolve(undefined);
+      });
     });
+    this.port = this.httpServer.address().port;
   }
 
   // Run this before each test.
@@ -242,7 +244,7 @@ export class TestApp {
 
   // Obtain a client instance to interact with the application.
   request() {
-    return supertest(`http://localhost:${confOverride.port}`);
+    return supertest(`http://127.0.0.1:${this.port}`);
   }
 
   nock(...args: any[]) {

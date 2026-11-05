@@ -14,6 +14,7 @@ export class RouterService {
   static singleton: RouterService;
   config: any;
   controllers: any;
+  httpServer: any;
 
   /**
    * Route service constructor.
@@ -90,7 +91,7 @@ export class RouterService {
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
       // Express 5 passes listen errors (e.g. EADDRINUSE) to the callback instead of throwing.
-      app.listen(port, hostname, (error?: Error) => {
+      this.httpServer = app.listen(port, hostname, (error?: Error) => {
         if (error) {
           return reject(error);
         }

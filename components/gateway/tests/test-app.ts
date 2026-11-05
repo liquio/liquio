@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 
 import supertest from 'supertest';
-import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import amqp from 'amqplib';
 import nock from 'nock';
@@ -115,11 +114,9 @@ export class TestApp {
     configOverride.server = {
       ...defaultConfig.server,
       monitoring: { isEnabled: true, token: TestApp.MONITORING_TOKEN },
-      hostname: 'localhost',
-      port: await portfinder.getPortPromise({
-        host: 'localhost',
-        startPort: 60000 + (process.pid % 1000),
-      }),
+      // Bind explicitly to IPv4 loopback; port 0 lets the OS pick a free port atomically at listen time.
+      hostname: '127.0.0.1',
+      port: 0,
     };
 
     // Redis isn't exercised by the controllers/business under test.
@@ -237,6 +234,10 @@ export class TestApp {
     // Init router.
     this.routerService = new RouterService(this.config);
     await this.routerService.init();
+
+    // Store the real port assigned by the OS, so request() and anything reading config can reach the server.
+    const { port } = this.routerService.httpServer.address();
+    this.config.server.port = port;
   }
 
   // Run this before each test.
@@ -322,7 +323,11 @@ export class TestApp {
       await global.db.close();
     }
     if (this.routerService?.httpServer) {
-      this.routerService.httpServer.close();
+      const server = this.routerService.httpServer;
+      await new Promise((resolve) => {
+        server.close(() => resolve(undefined));
+        server.closeAllConnections?.();
+      });
     }
   }
 }
