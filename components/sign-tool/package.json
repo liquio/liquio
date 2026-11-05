@@ -18,7 +18,8 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/jest/bin/jest.js --runInBand",
-    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --verbose --coverage --config ./tests/jest-e2e.json"
+    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --verbose --coverage --config ./tests/jest-e2e.json",
+    "ci:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./tests/jest-e2e.json --ci --maxWorkers=2 --forceExit"
   },
   "dependencies": {
     "@nestjs/common": "^12.3.2",
