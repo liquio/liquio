@@ -1,13 +1,13 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   setupLogging,
   generateTestUser,
   log,
   getConfirmationPinFromNotifyDb,
-} = require('./helpers');
+} from './helpers';
 
 test('User can change email and verify with PIN confirmation', async ({ page }) => {
   log('Enabling debug logging');

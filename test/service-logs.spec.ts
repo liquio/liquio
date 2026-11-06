@@ -1,8 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const { test, expect } = require('@playwright/test');
+import * as fs from 'fs';
+import * as path from 'path';
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
@@ -10,7 +10,7 @@ const {
   getDockerComposeLogs,
   setupLogging,
   log,
-} = require('./helpers');
+} from './helpers';
 
 /*
  * Service logs contain no configuration secrets.
@@ -28,19 +28,19 @@ const MIN_PASSWORD_LENGTH = 8;
 // A user name, not a secret: it sits next to the password under an authorization key and is a normal part of request logs.
 const NOT_SECRET = new Set(['notification/config.json:production.authorization.list.0.user']);
 
-const walkJsonFiles = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+const walkJsonFiles = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
   const full = path.join(dir, entry.name);
   if (entry.isDirectory()) return walkJsonFiles(full);
   return entry.isFile() && entry.name.endsWith('.json') ? [full] : [];
 });
 
 const collectSecrets = () => {
-  const found = new Map();
-  const add = (value, where) => {
+  const found = new Map<string, { value: string; where: string }>();
+  const add = (value: string, where: string) => {
     if (!found.has(value)) found.set(value, { value, where });
   };
 
-  const checkString = (value, keyPath, secretKey, where) => {
+  const checkString = (value: string, keyPath: string[], secretKey: boolean, where: string) => {
     if (secretKey && value.length >= MIN_LENGTH) add(value, where);
     if (value.startsWith('Basic ')) {
       const encoded = value.slice('Basic '.length).trim();
@@ -59,7 +59,7 @@ const collectSecrets = () => {
     }
   };
 
-  const walk = (node, keyPath, secretKey, base) => {
+  const walk = (node: any, keyPath: string[], secretKey: boolean, base: string) => {
     if (typeof node === 'string') {
       checkString(node, keyPath, secretKey, `${base}:${keyPath.join('.')}`);
     } else if (Array.isArray(node)) {
@@ -73,7 +73,7 @@ const collectSecrets = () => {
     .filter((entry) => entry.isDirectory())
     .forEach((service) => {
       walkJsonFiles(path.join(CONFIG_DIR, service.name)).forEach((file) => {
-        let content;
+        let content: any;
         try {
           content = JSON.parse(fs.readFileSync(file, 'utf8'));
         } catch {
@@ -87,8 +87,8 @@ const collectSecrets = () => {
 };
 
 test.describe('Service logs contain no configuration secrets', () => {
-  let candidates;
-  const logs = {};
+  let candidates: { value: string; where: string }[];
+  const logs: Record<string, string> = {};
 
   test.beforeAll(async ({ browser, request }) => {
     test.setTimeout(300000);

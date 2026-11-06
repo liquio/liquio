@@ -38,7 +38,7 @@ npm run test:headed
 You can run individual test files or filter by test name:
 ```bash
 # Run a specific test file
-npx playwright test basic-workflow.spec.js
+npx playwright test basic-workflow.spec.ts
 
 # Run tests matching a pattern
 npx playwright test --grep "admin authorization"
@@ -47,18 +47,18 @@ npx playwright test --grep "admin authorization"
 npx playwright test --headed --grep "admin authorization"
 ```
 
-### LDAP login (`ldap.spec.js`)
+### LDAP login (`ldap.spec.ts`)
 
-`ldap.spec.js` covers the LDAP login (API and UI in one file). It needs an OpenLDAP container and the `ldap` provider enabled in id-api, which the default stack does not have. Without them the whole file is skipped (it checks `GET http://localhost:8100/auth_providers`).
+`ldap.spec.ts` covers the LDAP login (API and UI in one file). It needs an OpenLDAP container and the `ldap` provider enabled in id-api, which the default stack does not have. Without them the whole file is skipped (it checks `GET http://localhost:8100/auth_providers`).
 
 Start the LDAP stack from the project root (the override file adds an `openldap` service and merges `fixtures/ldap/id/config.json` over the id-api config through `SECRET_PATH`):
 ```bash
 docker compose -f compose.yaml -f test/fixtures/ldap/docker-compose.ldap.yml up -d openldap id-api
-cd test && npx playwright test ldap.spec.js
+cd test && npx playwright test ldap.spec.ts
 ```
 The spec loads the memberOf overlay and the users and groups from `fixtures/ldap/*.ldif` on the first run. It changes group membership with `docker compose exec openldap ldapmodify` and calls `POST /user/ldap/sync/:userId` of id-api with the Basic credentials from `config/id/config.json`. To get back to the default stack, run `docker compose up -d --force-recreate id-api`.
 
-### persist-link external template PDF (`persist-link-external-pdf.spec.js`)
+### persist-link external template PDF (`persist-link-external-pdf.spec.ts`)
 
 The spec renders a persist-link external template (filled from a register record) to a PDF through pdf-generator. The `external` link provider is not enabled on the default stack, so the spec is skipped unless the override is active.
 
@@ -67,18 +67,21 @@ Run from the project root (the providers JSON is built from the local, generated
 export PERSIST_LINK_TEST_PROVIDERS="$(jq -c --arg t "$(jq -r '.tokens[0]' config/register/auth.json)" \
   '. + {external: {register: {url: "http://register:8080", token: $t}}}' config/persist-link/link_providers.json)"
 docker compose -f compose.yaml -f test/fixtures/persist-link/docker-compose.persist-link.yml up -d persist-link
-cd test && npx playwright test persist-link-external-pdf.spec.js
+cd test && npx playwright test persist-link-external-pdf.spec.ts
 # back to the default stack:
 docker compose up -d --force-recreate persist-link
 ```
 
+## Lint and typecheck
+The tests are written in TypeScript and Playwright runs them directly, so there is no build step. `npm run lint` runs ESLint and `tsc --noEmit`; `npm run typecheck` runs only the type check.
+
 ## Test Structure
 
-- `basic-workflow.spec.js`: End-to-end workflow tests including register/workflow imports and task completion
-- `document-update-validation.spec.js`: validation of `PUT /documents/:id` (unsafe keys, prototype paths, template schema allow-list)
-- `document-pdf-rendering.spec.js`: PDF rendering of document data (escaping, literal single-brace placeholders, config variables over data, option and delimiter tags, no outgoing requests). Uses `fixtures/workflow-900006.bpmn`
-- `template-current-date.spec.js`: `{{currentDate}}` helper in document PDFs (default and custom format, not overridable by document data). Uses `fixtures/workflow-900006.bpmn`
-- `service-logs.spec.js`: checks that service logs (task, admin-api, event, notification, persist-link, filestorage, register) contain no secret values from the local config. Needs containers started from the current images; it reads logs since container start.
+- `basic-workflow.spec.ts`: End-to-end workflow tests including register/workflow imports and task completion
+- `document-update-validation.spec.ts`: validation of `PUT /documents/:id` (unsafe keys, prototype paths, template schema allow-list)
+- `document-pdf-rendering.spec.ts`: PDF rendering of document data (escaping, literal single-brace placeholders, config variables over data, option and delimiter tags, no outgoing requests). Uses `fixtures/workflow-900006.bpmn`
+- `template-current-date.spec.ts`: `{{currentDate}}` helper in document PDFs (default and custom format, not overridable by document data). Uses `fixtures/workflow-900006.bpmn`
+- `service-logs.spec.ts`: checks that service logs (task, admin-api, event, notification, persist-link, filestorage, register) contain no secret values from the local config. Needs containers started from the current images; it reads logs since container start.
 - `helpers/`: shared helpers (auth, workflow and register import, cabinet API client, docker logs, PDF text)
 
 ## Debugging

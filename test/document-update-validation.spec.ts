@@ -1,7 +1,8 @@
-const crypto = require('crypto');
-const { test, expect } = require('@playwright/test');
+import * as crypto from 'crypto';
+import { test, expect } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
@@ -10,7 +11,8 @@ const {
   extractPdfText,
   setupLogging,
   log,
-} = require('./helpers');
+} from './helpers';
+import type { CabinetApi, CabinetApiResponse } from './helpers';
 
 /*
  * PUT /documents/:id validation of written data:
@@ -31,13 +33,13 @@ const EXTERNAL_TARGET = 'http://register:8080/test/ping';
 const MARKUP_VALUE = `<iframe src="${EXTERNAL_TARGET}"></iframe>`;
 const RADIO_1 = 'Радіокнопка 1';
 
-const sha256 = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
+const sha256 = (value: unknown) => crypto.createHash('sha256').update(String(value)).digest('hex');
 
 test.describe('Document update validation', () => {
-  let context;
-  let page;
-  let api;
-  let since;
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
+  let since: Date;
 
   const startTask = async () => {
     const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, TASK_TEMPLATE_ID);
@@ -45,7 +47,7 @@ test.describe('Document update validation', () => {
     return body.data;
   };
 
-  const expectRejected = (response, message) => {
+  const expectRejected = (response: CabinetApiResponse, message: string) => {
     expect(response.status, JSON.stringify(response.body)).toBe(400);
     expect(response.body.error.message).toContain(message);
   };
@@ -161,10 +163,10 @@ test.describe('Document update validation', () => {
 test.describe('Document update schema allow-list', () => {
   const SCHEMA_MESSAGE = 'Property is not defined in the document schema';
 
-  let context;
-  let page;
-  let api;
-  let since;
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
+  let since: Date;
 
   const startTask = async () => {
     const { status, body } = await api.createTask(900006, 900006001);
@@ -172,12 +174,12 @@ test.describe('Document update schema allow-list', () => {
     return body.data;
   };
 
-  const expectRejected = (response, message) => {
+  const expectRejected = (response: CabinetApiResponse, message: string) => {
     expect(response.status, JSON.stringify(response.body)).toBe(400);
     expect(response.body.error.message).toContain(message);
   };
 
-  const expectAccepted = (response) => {
+  const expectAccepted = (response: CabinetApiResponse) => {
     expect(response.status, JSON.stringify(response.body)).toBe(200);
   };
 

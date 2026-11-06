@@ -1,6 +1,6 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   setupLogging,
@@ -8,7 +8,7 @@ const {
   getTraceIdsForRequest,
   log,
   debug,
-} = require('./helpers');
+} from './helpers';
 
 test('User can change profile address', async ({ page }) => {
   log('Enabling debug logging');

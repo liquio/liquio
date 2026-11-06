@@ -1,6 +1,8 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
-const { ensureAtLoginPage, loginWithPersonalKey, importWorkflow, createCabinetApi, extractPdfText, setupLogging, log } = require('./helpers');
+import { ensureAtLoginPage, loginWithPersonalKey, importWorkflow, createCabinetApi, extractPdfText, setupLogging, log } from './helpers';
+import type { CabinetApi } from './helpers';
 
 /*
  * The `{{currentDate}}` helper in the document template of workflow 900006 prints the render date
@@ -12,7 +14,7 @@ const TASK_TEMPLATE_ID = 900006001;
 
 const CABINET_URL = 'http://localhost:8081';
 
-const pad = (n) => String(n).padStart(2, '0');
+const pad = (n: number) => String(n).padStart(2, '0');
 
 // The server may use another time zone or cross midnight during the run, so accept yesterday, today and tomorrow.
 const candidates = [-1, 0, 1].map((offset) => {
@@ -23,9 +25,9 @@ const candidates = [-1, 0, 1].map((offset) => {
 const dottedDates = candidates.map((c) => c.dotted);
 const isoDates = candidates.map((c) => c.iso);
 
-const toIso = (dotted) => dotted.split('.').reverse().join('-');
+const toIso = (dotted: string) => dotted.split('.').reverse().join('-');
 
-const readDates = (text) => {
+const readDates = (text: string) => {
   const dotted = /DATE\[(\d{2}\.\d{2}\.\d{4})\]/.exec(text)?.[1];
   const iso = /ISO\[(\d{4}-\d{2}-\d{2})\]/.exec(text)?.[1];
   expect(dotted, 'DATE line is present').toBeDefined();
@@ -38,9 +40,9 @@ const readDates = (text) => {
 test.describe('currentDate template helper', () => {
   test.describe.configure({ mode: 'serial' });
 
-  let context;
-  let page;
-  let api;
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
 
   const startDocument = async () => {
     const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, TASK_TEMPLATE_ID);
@@ -48,7 +50,7 @@ test.describe('currentDate template helper', () => {
     return body.data.documentId;
   };
 
-  const renderPdf = async (documentId) => {
+  const renderPdf = async (documentId: string) => {
     const { status, buffer } = await api.createPdf(documentId);
     expect(status, 'create pdf').toBe(200);
     return (await extractPdfText(buffer)).replace(/\s+/g, '');

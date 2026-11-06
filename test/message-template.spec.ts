@@ -1,11 +1,11 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   setupLogging,
   log,
-} = require('./helpers');
+} from './helpers';
 
 const HELLO_WORLD_HTML = [
   '<!DOCTYPE html>',

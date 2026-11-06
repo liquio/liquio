@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 /**
  * Security E2E Tests - Exploitation Attempts
@@ -8,7 +8,7 @@ const { test, expect } = require('@playwright/test');
  * - Defense in Depth: Security Headers (CSP, X-Frame-Options, etc.)
  */
 
-const { log } = require('./helpers');
+import { log } from './helpers';
 
 // Test configuration
 const ID_API_URL = 'http://localhost:8100';

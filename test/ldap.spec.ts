@@ -15,9 +15,10 @@
 //   dave  - access group member, removed from and added back to the group by the revocation checks
 //   erin  - member of the access group and of the unit group, used for the unit mapping check
 
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   setupLogging,
   log,
@@ -33,28 +34,28 @@ const {
   loginWithLdapApi,
   getIdSession,
   syncLdapUser,
-} = require('./helpers');
+} from './helpers';
 
 const CABINET_URL = 'http://localhost:8081/';
 const GENERIC_ERROR = 'Invalid login or password. Please try again.';
 const GENERIC_API_ERROR = 'Invalid login or password.';
 const LDAP_UNIT_ID = 990781;
 
-const getUserIdByEmail = (email) => psql(`SELECT "userId" FROM users WHERE email = '${email}'`, 'id');
+const getUserIdByEmail = (email: string) => psql(`SELECT "userId" FROM users WHERE email = '${email}'`, 'id');
 
-async function openLdapForm(page) {
+async function openLdapForm(page: Page) {
   await page.goto(CABINET_URL);
   await ensureAtLoginPage(page);
   await page.getByRole('button', { name: /directory account/i }).click();
 }
 
-async function submitLdapForm(page, username, password) {
+async function submitLdapForm(page: Page, username: string, password: string) {
   await page.getByRole('textbox', { name: /Username/ }).fill(username);
   await page.locator('input[type="password"]').fill(password);
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
 }
 
-async function loginWithLdapUi(page, username, password) {
+async function loginWithLdapUi(page: Page, username: string, password: string) {
   await openLdapForm(page);
   await submitLdapForm(page, username, password);
 }

@@ -1,9 +1,10 @@
-const crypto = require('node:crypto');
-const fs = require('node:fs');
-const path = require('node:path');
-const { test, expect } = require('@playwright/test');
+import * as crypto from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { test, expect } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
@@ -13,7 +14,8 @@ const {
   getPdfPageSizes,
   setupLogging,
   log,
-} = require('./helpers');
+} from './helpers';
+import type { CabinetApi } from './helpers';
 
 /*
  * PDF rendering of document data (workflow 900006). The document template prints data with
@@ -34,10 +36,10 @@ const marker = () => `m${crypto.randomUUID().replace(/-/g, '')}`;
 test.describe('Document PDF rendering', () => {
   test.describe.configure({ mode: 'serial' });
 
-  let context;
-  let page;
-  let api;
-  let since;
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
+  let since: Date;
 
   const startDocument = async () => {
     const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, TASK_TEMPLATE_ID);
@@ -45,12 +47,12 @@ test.describe('Document PDF rendering', () => {
     return body.data.documentId;
   };
 
-  const write = async (documentId, properties) => {
+  const write = async (documentId: string, properties: any) => {
     const { status } = await api.updateDocument(documentId, properties);
     expect(status, 'update document').toBe(200);
   };
 
-  const renderPdf = async (documentId) => {
+  const renderPdf = async (documentId: string) => {
     const { status, buffer } = await api.createPdf(documentId);
     expect(status, 'create pdf').toBe(200);
     expect(buffer.subarray(0, 4).toString(), 'response is a PDF').toBe('%PDF');

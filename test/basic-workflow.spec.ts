@@ -1,13 +1,13 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importRegister,
   importWorkflow,
   setupLogging,
   log,
-} = require('./helpers');
+} from './helpers';
 
 test('Authorize with admin and import register/workflow', async ({ page }) => {
   await setupLogging(page);

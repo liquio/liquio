@@ -1,8 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-const { test, expect, request: playwrightRequest } = require('@playwright/test');
+import * as fs from 'fs';
+import * as path from 'path';
+import { test, expect, request as playwrightRequest } from '@playwright/test';
+import type { APIRequestContext, APIResponse } from '@playwright/test';
 
-const { extractPdfText, getPdfPageSizes, getDockerComposeLogs } = require('./helpers');
+import { extractPdfText, getPdfPageSizes, getDockerComposeLogs } from './helpers';
 
 /*
  * External link provider of persist-link: a template stored in persist-link is filled with a register record and rendered
@@ -14,9 +15,9 @@ const PERSIST_LINK_URL = 'http://localhost:3346';
 const REGISTER_URL = 'http://localhost:8103';
 const CONFIG_DIR = path.resolve(__dirname, '../config');
 
-const readToken = (service) => JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, service, 'auth.json'), 'utf8')).tokens[0];
+const readToken = (service: string) => JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, service, 'auth.json'), 'utf8')).tokens[0];
 
-const pad = (n) => String(n).padStart(2, '0');
+const pad = (n: number) => String(n).padStart(2, '0');
 
 // The server may use another time zone or cross midnight during the run, so accept yesterday, today and tomorrow.
 const candidates = [-1, 0, 1].map((offset) => {
@@ -35,21 +36,21 @@ const TEMPLATE_HTML = `<html><head><meta charset="UTF-8"></head><body>
 test.describe('persist-link external template PDF', () => {
   test.describe.configure({ mode: 'serial' });
 
-  let persistLink;
-  let register;
-  let persistLinkToken;
-  let registerToken;
-  let registerId;
-  let keyId;
-  let recordId;
-  let templateId;
-  let hash;
-  let since;
-  let pdfBuffer;
-  let pdfText;
+  let persistLink: APIRequestContext;
+  let register: APIRequestContext;
+  let persistLinkToken: string;
+  let registerToken: string;
+  let registerId: string;
+  let keyId: string;
+  let recordId: string;
+  let templateId: string;
+  let hash: string;
+  let since: Date;
+  let pdfBuffer: Buffer;
+  let pdfText: string;
 
-  const renderWindows = [];
-  const openLink = async (responseType) => {
+  const renderWindows: number[][] = [];
+  const openLink = async (responseType: string) => {
     const start = Date.now();
     try {
       return await persistLink.get(`/link/${hash}?response_type=${responseType}`);
@@ -71,7 +72,7 @@ test.describe('persist-link external template PDF', () => {
     test.skip(probe.status() === 404, 'persist-link external provider is not enabled, see test/README.md');
     expect(probe.status(), 'external provider answers template requests').toBe(400);
 
-    const created = async (promise, what) => {
+    const created = async (promise: Promise<APIResponse>, what: string) => {
       const response = await promise;
       expect(response.status(), what).toBe(200);
       return (await response.json()).data;
@@ -137,7 +138,7 @@ test.describe('persist-link external template PDF', () => {
   });
 
   test.afterAll(async () => {
-    const remove = async (client, url) => {
+    const remove = async (client: APIRequestContext, url: string) => {
       if (client && url) await client.delete(url).catch(() => {});
     };
     await remove(persistLink, templateId && `/templates/${templateId}`);

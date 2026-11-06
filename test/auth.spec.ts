@@ -1,12 +1,12 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   setupLogging,
   log,
   debug,
-} = require('./helpers');
+} from './helpers';
 
 test('Admin can login to admin panel (8082)', async ({ page }) => {
   await setupLogging(page);
