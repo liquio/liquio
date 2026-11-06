@@ -1,25 +1,14 @@
 const globals = require('globals');
 const js = require('@eslint/js');
 const tseslint = require('typescript-eslint');
+const prettierPlugin = require('eslint-plugin-prettier');
+const prettierConfig = require('eslint-config-prettier');
 
 const styleRules = {
-  'max-len': [
-    'error',
-    {
-      code: 150,
-      ignoreComments: true,
-      ignoreStrings: true,
-      ignoreTemplateLiterals: true,
-    },
-  ],
-  indent: ['error', 2, { SwitchCase: 1 }],
-  'linebreak-style': ['error', 'unix'],
-  'eol-last': ['error', 'always'],
-  quotes: ['warn', 'single'],
-  semi: ['error', 'always'],
+  ...prettierConfig.rules,
+  'prettier/prettier': 'error',
   'no-console': 'off',
   'no-var': 'error',
-  'brace-style': ['error', '1tbs', { allowSingleLine: true }],
 };
 
 module.exports = [
@@ -34,6 +23,7 @@ module.exports = [
         ...globals.node,
       },
     },
+    plugins: { prettier: prettierPlugin },
     rules: {
       ...styleRules,
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
@@ -49,6 +39,7 @@ module.exports = [
         ...globals.node,
       },
     },
+    plugins: { prettier: prettierPlugin },
     rules: {
       ...styleRules,
       'no-unused-vars': 'off',

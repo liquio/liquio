@@ -9,6 +9,7 @@ Before running the tests, ensure the following:
 1. **Install dependencies**: Run `npm install` in this directory to install Playwright and other required packages.
 
 2. **Initialize the environment**: Make sure the Liquio environment is set up by running the initialization script:
+
    ```bash
    # From the project root
    ./scripts/init.sh
@@ -23,19 +24,25 @@ Before running the tests, ensure the following:
 ## Running Tests
 
 ### Headless Mode (Default)
+
 Run all tests in headless mode (no browser UI):
+
 ```bash
 npm run test
 ```
 
 ### Headed Mode (With Browser UI)
+
 Run all tests with visible browser windows for debugging:
+
 ```bash
 npm run test:headed
 ```
 
 ### Running Specific Tests
+
 You can run individual test files or filter by test name:
+
 ```bash
 # Run a specific test file
 npx playwright test basic-workflow.spec.ts
@@ -52,10 +59,12 @@ npx playwright test --headed --grep "admin authorization"
 `ldap.spec.ts` covers the LDAP login (API and UI in one file). It needs an OpenLDAP container and the `ldap` provider enabled in id-api, which the default stack does not have. Without them the whole file is skipped (it checks `GET http://localhost:8100/auth_providers`).
 
 Start the LDAP stack from the project root (the override file adds an `openldap` service and merges `fixtures/ldap/id/config.json` over the id-api config through `SECRET_PATH`):
+
 ```bash
 docker compose -f compose.yaml -f test/fixtures/ldap/docker-compose.ldap.yml up -d openldap id-api
 cd test && npx playwright test ldap.spec.ts
 ```
+
 The spec loads the memberOf overlay and the users and groups from `fixtures/ldap/*.ldif` on the first run. It changes group membership with `docker compose exec openldap ldapmodify` and calls `POST /user/ldap/sync/:userId` of id-api with the Basic credentials from `config/id/config.json`. To get back to the default stack, run `docker compose up -d --force-recreate id-api`.
 
 ### persist-link external template PDF (`persist-link-external-pdf.spec.ts`)
@@ -63,6 +72,7 @@ The spec loads the memberOf overlay and the users and groups from `fixtures/ldap
 The spec renders a persist-link external template (filled from a register record) to a PDF through pdf-generator. The `external` link provider is not enabled on the default stack, so the spec is skipped unless the override is active.
 
 Run from the project root (the providers JSON is built from the local, generated config, so no token is committed):
+
 ```bash
 export PERSIST_LINK_TEST_PROVIDERS="$(jq -c --arg t "$(jq -r '.tokens[0]' config/register/auth.json)" \
   '. + {external: {register: {url: "http://register:8080", token: $t}}}' config/persist-link/link_providers.json)"
@@ -73,7 +83,10 @@ docker compose up -d --force-recreate persist-link
 ```
 
 ## Lint and typecheck
+
 The tests are written in TypeScript and Playwright runs them directly, so there is no build step. `npm run lint` runs ESLint and `tsc --noEmit`; `npm run typecheck` runs only the type check.
+
+`npm run format` applies prettier; `npm run lint` also runs `prettier --check`.
 
 ## Test Structure
 
@@ -89,14 +102,17 @@ The tests are written in TypeScript and Playwright runs them directly, so there 
 The tests use the `debug` package for structured logging with namespaces prefixed by `test:`.
 
 - For detailed logging, set the `DEBUG` environment variable to `test:log`:
+
   ```bash
   DEBUG=test:log npm run test:headed
   ```
 
 - For highest verbosity (all debug messages), use `DEBUG=test:*` to enable all namespaces starting with `test:`:
+
   ```bash
   DEBUG=test:* npm run test:headed
   ```
+
   This will show debug output from all test helper functions and operations, providing the most comprehensive logging for troubleshooting.
 
 - Tests run with request/response logging enabled for troubleshooting API interactions.
