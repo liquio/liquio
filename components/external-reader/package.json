@@ -36,7 +36,7 @@
     "@nestjs/swagger": "^12.0.5",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.21",
-    "altcha-lib": "^1.4.1",
+    "altcha-lib": "^2.8.0",
     "axios": "^1.20.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
