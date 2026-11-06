@@ -5,6 +5,7 @@ const { importWorkflow } = require('./workflow');
 const { generateTestUser } = require('./user');
 const { getConfirmationPinFromNotifyDb, getDockerComposeLogs } = require('./docker');
 const { createCabinetApi } = require('./cabinet_api');
+const { extractPdfText, getPdfPageSizes } = require('./pdf');
 const ldap = require('./ldap');
 
 module.exports = {
@@ -33,6 +34,10 @@ module.exports = {
 
   // Cabinet API helpers
   createCabinetApi,
+
+  // PDF helpers
+  extractPdfText,
+  getPdfPageSizes,
 
   // LDAP helpers
   ...ldap,

@@ -7,7 +7,7 @@ const CABINET_API_URL = 'http://localhost:8101';
  * cabinet's `token` from localStorage). Lets tests send payloads the UI never would -
  * e.g. tampered calcTrigger results - the same way a user could via devtools.
  * @param {import('@playwright/test').Page} page Page with a logged-in cabinet (http://localhost:8081).
- * @returns {Promise<object>} Cabinet API client.
+ * @returns {Promise<object>} Cabinet API client; each call resolves to `{ status, body, buffer }`, where `buffer` is the raw response body.
  */
 async function createCabinetApi(page) {
   debug('createCabinetApi: Waiting for cabinet token in localStorage');
@@ -24,7 +24,8 @@ async function createCabinetApi(page) {
       failOnStatusCode: false,
     });
 
-    const text = await response.text();
+    const buffer = await response.body();
+    const text = buffer.toString('utf8');
     let body;
     try {
       body = JSON.parse(text);
@@ -33,7 +34,7 @@ async function createCabinetApi(page) {
     }
     debug(`createCabinetApi: ${method} ${path} -> ${response.status()} ${text.slice(0, 500)}`);
 
-    return { status: response.status(), body };
+    return { status: response.status(), body, buffer };
   };
 
   return {

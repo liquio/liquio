@@ -7,29 +7,33 @@ const {
   importWorkflow,
   createCabinetApi,
   getDockerComposeLogs,
+  extractPdfText,
   setupLogging,
   log,
 } = require('./helpers');
 
 /*
- * Document data injection through PUT /documents/:id.
- * pdf-generator's url-guard blocks the SSRF read in CE, but the injection itself (a user-chosen
- * object key reaching the template placeholder substitution) was real. This spec pins the API
- * rejection of such keys and checks that an honest draft still produces a PDF.
+ * PUT /documents/:id validation of written data:
+ *   - object keys with template or markup metacharacters and prototype names are rejected,
+ *   - prototype path segments are rejected,
+ *   - paths and keys the template schema does not declare are rejected,
+ *   - a valid draft still produces a PDF, and pdf-generator never requests a URL that only
+ *     appeared in rejected data.
  */
 
 const WORKFLOW_TEMPLATE_ID = 900002;
 const TASK_TEMPLATE_ID = 900002001;
 const CABINET_URL = 'http://localhost:8081';
 
-const POC_KEY = 'a}|$|{b';
-const POC_TARGET = 'http://register:8080/test/ping';
-const POC_VALUE = `SSRFA<iframe src="${POC_TARGET}"></iframe>SSRFB`;
+const BRACE_KEY = 'a}|$|{b';
+const CARET_KEY = 'a}|^|{b';
+const EXTERNAL_TARGET = 'http://register:8080/test/ping';
+const MARKUP_VALUE = `<iframe src="${EXTERNAL_TARGET}"></iframe>`;
 const RADIO_1 = 'Радіокнопка 1';
 
 const sha256 = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
 
-test.describe('Document data injection', () => {
+test.describe('Document update validation', () => {
   let context;
   let page;
   let api;
@@ -89,24 +93,24 @@ test.describe('Document data injection', () => {
     await context?.close();
   });
 
-  test('rejects an object key that carries a placeholder-breaking sequence', async () => {
+  test('rejects an object key with brace and pipe characters', async () => {
     const { documentId } = await startTask();
 
     expectRejected(
-      await api.updateDocument(documentId, [{ path: 'ssrfread', value: { [POC_KEY]: POC_VALUE } }]),
+      await api.updateDocument(documentId, [{ path: 'unknownStep', value: { [BRACE_KEY]: MARKUP_VALUE } }]),
       'Invalid property key',
     );
 
     const { status, body } = await api.getDocument(documentId);
     expect(status).toBe(200);
-    expect(body.data.data.ssrfread).toBeUndefined();
+    expect(body.data.data.unknownStep).toBeUndefined();
   });
 
-  test('rejects the caret variant and nested keys', async () => {
+  test('rejects a caret key nested in an array item', async () => {
     const { documentId } = await startTask();
 
     expectRejected(
-      await api.updateDocument(documentId, [{ path: 'ssrfread', value: { nested: [{ 'a}|^|{b': POC_VALUE }] } }]),
+      await api.updateDocument(documentId, [{ path: 'unknownStep', value: { nested: [{ [CARET_KEY]: MARKUP_VALUE }] } }]),
       'Invalid property key',
     );
   });
@@ -133,7 +137,7 @@ test.describe('Document data injection', () => {
     );
   });
 
-  test('still generates a PDF for an honest draft', async () => {
+  test('still generates a PDF for a valid draft', async () => {
     const { documentId } = await startTask();
 
     const update = await api.updateDocument(documentId, [
@@ -144,10 +148,11 @@ test.describe('Document data injection', () => {
 
     const pdf = await api.createPdf(documentId);
     expect(pdf.status).toBe(200);
-    expect(typeof pdf.body === 'string' && pdf.body.startsWith('%PDF')).toBe(true);
+    expect(pdf.buffer.subarray(0, 4).toString('latin1')).toBe('%PDF');
+    expect((await extractPdfText(pdf.buffer)).length).toBeGreaterThan(0);
   });
 
-  test('pdf-generator never tries to load the injected target', async () => {
+  test('pdf-generator never requests a URL from rejected document data', async () => {
     const logs = getDockerComposeLogs('pdf-generator', since);
     expect(logs).not.toMatch(/request-blocked[^\n]*register:8080/);
   });

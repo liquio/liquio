@@ -61,7 +61,8 @@ The spec loads the memberOf overlay and the users and groups from `fixtures/ldap
 ## Test Structure
 
 - `basic-workflow.spec.js`: End-to-end workflow tests including register/workflow imports and task completion
-- `test-helpers.js`: Shared utility functions for common test operations
+- `document-update-validation.spec.js`: validation of `PUT /documents/:id` (unsafe keys, prototype paths, template schema allow-list)
+- `helpers/`: shared helpers (auth, workflow and register import, cabinet API client, docker logs, PDF text)
 
 ## Debugging
 
