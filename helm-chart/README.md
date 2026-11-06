@@ -334,10 +334,10 @@ NetworkPolicy resources are created for every service when `networkPolicy.enable
 
 | Service type | Ingress allowed from | Egress allowed to |
 |---|---|---|
-| Frontends (`id-front`, `admin-front`, `cabinet-front`) | Ingress controller | DNS only |
-| Public backends (`id-api`, `admin-api`, `cabinet-api`) | Ingress controller + Liquio pods | PostgreSQL, Redis, RabbitMQ |
-| Internal backends (all other services) | Liquio pods only | PostgreSQL, Redis, RabbitMQ |
-| Gateway | Ingress controller | All Liquio pods |
+| Frontends (`id-front`, `admin-front`, `cabinet-front`) | Ingress controller | DNS + `serviceEdges` |
+| Public backends (`id-api`, `admin-api`, `cabinet-api`) | Ingress controller + Liquio pods | PostgreSQL, Redis, RabbitMQ, `serviceEdges`, opt-in external |
+| Internal backends (all other services) | Liquio pods only | PostgreSQL, Redis, RabbitMQ, `serviceEdges`, opt-in external |
+| Gateway | Ingress controller + callers listed in `serviceEdges` | All backend pods |
 | Infrastructure (PostgreSQL, Redis, RabbitMQ) | Liquio pods | — |
 
 ```yaml
@@ -366,6 +366,46 @@ networkPolicy:
       enabled: false
       namespaceSelector: {}
 ```
+
+Service-to-service calls are denied unless listed in `networkPolicy.serviceEdges` (source -> targets, port = the target's
+`containerPort`). The defaults are derived from the service URLs in the chart configmaps:
+
+| Source | Targets |
+|---|---|
+| admin-api | filestorage, id-api, notification, register, sign-tool, task |
+| cabinet-api | id-api, task |
+| event | filestorage, id-api, manager, notification, persist-link, register, sign-tool, task |
+| id-api | notification, sign-tool |
+| id-front | id-api |
+| manager | notification |
+| notification | id-api |
+| persist-link | filestorage, pdf-generator, register |
+| register | sign-tool |
+| task | event, external-reader, filestorage, gateway, id-api, manager, notification, pdf-generator, persist-link, register, sign-tool, task |
+
+Gateway already egresses to every backend pod. An edge to `gateway` also adds the matching ingress rule to the gateway
+policy. persist-link has its own policy (ingress controller + Liquio pods). To add a call, extend the source's list in
+your values (a source's list is replaced as a whole, so repeat the defaults you keep).
+
+External destinations are opt-in per component with `networkPolicy.egress.external`:
+
+```yaml
+networkPolicy:
+  egress:
+    external:
+      filestorage: [{ cidr: 10.20.0.0/16, ports: [9000] }]
+      sign-tool: [{ cidr: 0.0.0.0/0, ports: [80, 443] }]
+```
+
+Typical needs: filestorage -> S3/MinIO, sign-tool -> OCSP/TSP/CRL, external-reader and event -> external APIs/Trembita,
+id-api -> OIDC/LDAP, admin-api and task -> Elasticsearch, persist-link -> OpenStack, pdf-generator -> allowlisted asset hosts.
+
+Link-local and cloud metadata addresses are never reachable: every IP-range rule (including the port-only rules for external
+PostgreSQL, Redis, RabbitMQ, SMTP and SMS) is `0.0.0.0/0` with `except: [169.254.0.0/16]`; an external CIDR that contains
+that range gets the same exception, and a CIDR inside 169.254.0.0/16, `fe80::/10` or equal to `fd00:ec2::254/128` makes the
+render fail. The chart does not configure IPv6 peers; for IPv6 CIDRs the guard adds `fe80::/10` and `fd00:ec2::254/128`
+exceptions when the CIDR covers them. DNS (port 53) stays port-only because node-local-dns listens on 169.254.20.10; metadata
+endpoints do not serve port 53, so this opens nothing to them.
 
 To disable NetworkPolicy entirely (e.g. if your CNI does not support it):
 
