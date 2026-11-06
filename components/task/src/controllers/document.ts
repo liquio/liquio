@@ -332,6 +332,7 @@ export class DocumentController extends Controller {
       // Update document.
       const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds, userInfo, {
         triggerPath,
+        checkSchemaAllowList: true,
       });
 
       // Check reassign trigger and handle document update log.
