@@ -300,6 +300,36 @@ describe('Document', () => {
     it('requires auth', async () => {
       await expectAuthRequired(app, 'put', '/documents/:id');
     });
+
+    const putDocument = async (body: object) => {
+      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+      app.nockId
+        .get('/user/info')
+        .query({ access_token: payload.authTokens.accessToken })
+        .once()
+        .reply(200, { userId: '61efddaa351d6219eee09043', role: 'individual', services: { eds: { data: { pem: 'PEM' } } } });
+      return app.request().put(`/documents/${DOCUMENT_FIXTURES[0].id}`).set('token', jwt).send(body);
+    };
+
+    it('rejects unsafe keys inside value (PoC)', async () => {
+      const res = await putDocument({ path: 'ssrfread', value: { 'a}|$|{b': '<iframe src="http://register:8080/test/ping"></iframe>' } });
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body)).toContain('Invalid property key');
+      expect(JSON.stringify(res.body)).not.toContain('iframe');
+    });
+
+    it('rejects prototype names in path', async () => {
+      const res = await putDocument({ properties: [{ path: '__proto__.polluted', value: 'x' }] });
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body)).toContain('Invalid property path');
+      expect(({} as any).polluted).toBeUndefined();
+    });
+
+    it('rejects prototype names in nested value keys', async () => {
+      const res = await putDocument({ properties: [{ path: 'step', value: { constructor: { prototype: { x: 1 } } } }] });
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body)).toContain('Invalid property key');
+    });
   });
 
   describe('POST /documents/:id/pdf', () => {
