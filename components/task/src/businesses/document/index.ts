@@ -252,6 +252,17 @@ export class DocumentBusiness extends Business {
     }
     const jsonSchema = template.jsonSchema;
 
+    const documentValidator = new (DocumentValidator as any)(jsonSchema, undefined, userInfo);
+
+    // Reject upfront if `triggerPath` names anything other than a genuine calcTrigger target (or a
+    // path under one) - such a path can't legitimately free a readOnly field, so treat it as a bad
+    // request rather than silently dropping it later inside `removeReadonlyParams`. Runs before the
+    // schema allow-list so a malformed trigger path gets the same error in every allow-list mode.
+    const invalidTriggerPaths = triggerPath.filter((path) => !documentValidator.isCalcTriggerTargetPath(path));
+    if (invalidTriggerPaths.length > 0) {
+      throw new InvalidParamsError('Invalid trigger path.', { cause: invalidTriggerPaths });
+    }
+
     // Reject paths and nested keys that the schema does not define.
     if (checkSchemaAllowList) {
       const mode = getSchemaAllowListMode();
@@ -271,16 +282,6 @@ export class DocumentBusiness extends Business {
     }
 
     // Remove readonly params.
-    const documentValidator = new (DocumentValidator as any)(jsonSchema, undefined, userInfo);
-
-    // Reject upfront if `triggerPath` names anything other than a genuine calcTrigger target (or a
-    // path under one) - such a path can't legitimately free a readOnly field, so treat it as a bad
-    // request rather than silently dropping it later inside `removeReadonlyParams`.
-    const invalidTriggerPaths = triggerPath.filter((path) => !documentValidator.isCalcTriggerTargetPath(path));
-    if (invalidTriggerPaths.length > 0) {
-      throw new InvalidParamsError('Invalid trigger path.', { cause: invalidTriggerPaths });
-    }
-
     const existingDocumentData = document.data;
     let documentDataObject = existingDocumentData || EMPTY_DOCUMENT_DATA;
     const propertiesWithoutReadonlyParams = await documentValidator.removeReadonlyParams(
