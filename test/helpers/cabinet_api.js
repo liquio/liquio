@@ -46,6 +46,7 @@ async function createCabinetApi(page) {
       typeof triggerPath === 'undefined' ? { properties } : { properties, triggerPath },
     ),
     validateDocument: (documentId, { commit = false } = {}) => request('POST', `documents/${documentId}/validate?commit=${commit}`, {}),
+    createPdf: (documentId) => request('POST', `documents/${documentId}/pdf`, {}),
     commitTask: (taskId) => request('POST', `tasks/${taskId}/commit`, {}),
   };
 }
