@@ -109,7 +109,7 @@ export class FileGeneratorService {
   /**
    * Create HTML from the document template with Handlebars only.
    * `{{ }}` escapes values; `{{{ }}}` inserts raw HTML and is the template author's explicit choice.
-   * Config variables and `workflow` take precedence over document data keys (SE-4087).
+   * Config variables and `workflow` take precedence over document data keys.
    * @param {object} options Options.
    * @param {WorkflowEntity} options.workflow Workflow entity.
    * @param {DocumentTemplateEntity} options.documentTemplate Document template entity.
