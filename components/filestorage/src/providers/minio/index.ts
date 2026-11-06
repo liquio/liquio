@@ -18,6 +18,18 @@ const CONTAINER_OBJECT_COUNT_HEADER = 'x-container-object-count';
 const BYTES_IN_GIGABYTES = 1000000000;
 const AUTH_CACHE_TTL = 30000;
 
+const urlForLog = (value: string): string => {
+  try {
+    const u = new URL(value);
+    u.username = '';
+    u.password = '';
+    u.search = '';
+    return u.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
+
 /**
  * Minio.
  */
@@ -105,8 +117,7 @@ export class Minio extends Provider {
     // Get and return request options.
     !global.silentUpload &&
       global.log.save('minio-file-downloading|request-options', {
-        url,
-        headers,
+        url: urlForLog(url),
         method: HttpRequest.Methods.GET,
         timeout: this.timeout,
       });
@@ -180,8 +191,7 @@ export class Minio extends Provider {
     // Get and return request options.
     !global.silentUpload &&
       global.log.save('minio-file-uploading|request-options', {
-        url,
-        headers,
+        url: urlForLog(url),
         method: HttpRequest.Methods.PUT,
         body: '***',
         timeout: this.timeout,
@@ -217,7 +227,12 @@ export class Minio extends Provider {
       const response = await axios(axiosConfig);
 
       // Check responsed body.
-      const requestOptionsToLog = { ...requestOptions, body: '***' };
+      const requestOptionsToLog = {
+        url: urlForLog(requestOptions.url),
+        method: requestOptions.method,
+        timeout: requestOptions.timeout,
+        body: '***',
+      };
       !global.silentUpload &&
         global.log.save('minio-uploading-file-response', {
           requestOptions: requestOptionsToLog,

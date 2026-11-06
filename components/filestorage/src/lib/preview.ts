@@ -64,7 +64,7 @@ export class Preview {
     try {
       url = new URL(this.config.server);
     } catch {
-      global.log?.save('preview-server-invalid-url', { server: this.config.server });
+      global.log?.save('preview-server-invalid-url', { reason: 'invalid-url' });
       return;
     }
     if (url.protocol === 'http:' && !INTERNAL_HOST_REGEXP.test(url.hostname)) {

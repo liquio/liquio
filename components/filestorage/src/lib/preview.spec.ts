@@ -667,6 +667,19 @@ describe('Preview', () => {
     });
   });
 
+  describe('Invalid server logging', () => {
+    beforeEach(() => {
+      Preview.singleton = null;
+      (global.log.save as jest.Mock).mockClear();
+    });
+
+    it('does not log the raw invalid server value', () => {
+      new Preview({ server: 'not a url secret-token' });
+      expect(global.log.save).toHaveBeenCalledWith('preview-server-invalid-url', { reason: 'invalid-url' });
+      expect(JSON.stringify((global.log.save as jest.Mock).mock.calls)).not.toContain('secret-token');
+    });
+  });
+
   describe('Configuration edge cases', () => {
     it('should handle config from config module', () => {
       // Reset singleton

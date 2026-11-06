@@ -1843,6 +1843,45 @@ describe('Minio Provider', () => {
     });
   });
 
+  describe('Request options logging', () => {
+    let minio: Minio;
+
+    beforeEach(() => {
+      global.silentUpload = false;
+      (global.log.save as jest.Mock).mockClear();
+      minio = new Minio({ server: 'http://user:pass@localhost:9000', bucket: 'b', tenantName: 't', account: 'a' });
+      jest.spyOn((minio as any).auth, 'getAuthInfo').mockReturnValue({ authorization: 'AWS fake:sig', date: 'fake-date' });
+    });
+
+    afterEach(() => {
+      global.silentUpload = true;
+    });
+
+    const loggedPayloads = () => (global.log.save as jest.Mock).mock.calls.map(([, payload]) => payload);
+
+    it('does not log headers or credentials for download', async () => {
+      const options = await minio.downloadFileRequestOptions({ filePath: 'f.txt' });
+
+      expect(options.headers.Authorization).toBe('AWS fake:sig');
+      const logged = JSON.stringify(loggedPayloads());
+      expect(logged).not.toContain('AWS fake:sig');
+      expect(logged).not.toContain('Authorization');
+      expect(logged).not.toContain('user:pass');
+      expect(loggedPayloads().some((p) => p && 'headers' in p)).toBe(false);
+    });
+
+    it('does not log headers or credentials for upload', async () => {
+      const options = await minio.uploadFileRequestOptions('f.txt', 'text/plain', 'content');
+
+      expect(options.headers.Authorization).toBe('AWS fake:sig');
+      const logged = JSON.stringify(loggedPayloads());
+      expect(logged).not.toContain('AWS fake:sig');
+      expect(logged).not.toContain('Authorization');
+      expect(logged).not.toContain('user:pass');
+      expect(loggedPayloads().some((p) => p && 'headers' in p)).toBe(false);
+    });
+  });
+
   afterEach(() => {
     // Reset singleton after each test to avoid interference
     Minio.singleton = null;
