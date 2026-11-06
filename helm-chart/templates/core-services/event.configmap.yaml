@@ -19,6 +19,7 @@ metadata:
   "downloadFileTimeout" 60000
   "getSetSignatureTimeout" 40000
   "createAsicTimeout" 60000
+  "allowInsecureTls" false
 -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
@@ -26,6 +27,7 @@ metadata:
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
   "customer" .Release.Name
   "environment" .Values.config.server.environment
+  "monitoring" (dict "isEnabled" false "token" "")
 -}}
 {{ $redisBase := dict
   "host" (include "liquio.redis.host" .)
@@ -41,6 +43,9 @@ metadata:
     "refresh_token"
     "oauth-token"
     "authorization"
+    "proxy-authorization"
+    "cookie"
+    "x-api-key"
     "Authorization"
     "secret"
     "password"
@@ -59,6 +64,7 @@ metadata:
 {{ $pingBase := dict
   "manager" (dict
     "url" (printf "http://%s-manager/test/ping" (include "liquio.fullname" .))
+    "monitoringToken" ""
   )
   "healthz" (dict
     "db" (dict
@@ -72,7 +78,7 @@ metadata:
 {{ $notifierBase := dict
   "email" (dict
     "provider" "liquio"
-    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
     "port" 80
     "routes" (dict
       "sendSms" "/message/phonesList"
@@ -92,7 +98,7 @@ metadata:
   )
   "sms" (dict
     "provider" "liquio"
-    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
     "port" 80
     "routes" (dict
       "sendSms" "/message/phonesList"
@@ -117,7 +123,7 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:80" (include "liquio.fullname" .))
+  "url" (printf "%s://%s-sign-tool:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "token" ""
 -}}
 {{ $userBase := dict
@@ -171,10 +177,7 @@ metadata:
 -}}
 {{ $httpClientBase := dict
   "requestTimeout" 60000
--}}
-{{ $logsBroadcastingBase := dict
-  "isEnabled" false
-  "port" 5000
+  "tls" (list)
 -}}
 {{ $persistLinkBase := dict
   "server" (printf "http://%s-persist-link" (include "liquio.fullname" .))
@@ -253,7 +256,7 @@ metadata:
 {{ $systemNotifierBase := dict
   "adminUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "email" (dict
-    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
     "port" 80
     "routes" (dict
       "sendEmail" "/message/emailsList"
@@ -282,7 +285,7 @@ metadata:
 -}}
 {{ $emailBase := dict
   "provider" "liquio"
-  "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+  "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "port" 80
   "routes" (dict
     "sendSms" "/message/phonesList"
@@ -365,9 +368,6 @@ data:
 
   http_client.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "http_client.json" "base" $httpClientBase) | nindent 4 }}
-
-  logs_broadcasting.json: |
-{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "logs_broadcasting.json" "base" $logsBroadcastingBase) | nindent 4 }}
 
   persist_link.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "event" "config" "persist_link.json" "base" $persistLinkBase) | nindent 4 }}

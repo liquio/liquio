@@ -13,6 +13,7 @@ metadata:
   "accessTokenLifetimeInSeconds" 28800
   "refreshTokenLifetimeInSeconds" 57600
   "secret_key" (list)
+  "enforceScopeConsent" false
   "defaults" (dict
     "client_id" "liquio-portal"
     "client_name" "Liquio Portal"
@@ -36,37 +37,53 @@ metadata:
 -}}
 {{ $authProvidersBase := dict
   "eds" (dict
+    "isEnabled" false
     "authorizationURL" "https://auth.js.sign.eu.iit.com.ua/"
     "blacklistAcsk" (list "test.gov.ua" "test.gov.ua" "test.com.ua")
     "caServerList" "https://iit.com.ua/download/productfiles/CAs.json"
     "callbackURL" (printf "%s://%s/authorise/eds/callback" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
-    "clientID" "U0000656581"
-    "clientSecret" "294c5b4cbeb537ab04c8111f6fa86aa6b29e5f15de521b556cda61ef505f6249"
     "customerURL" "https://auth.js.sign.eu.iit.com.ua/get-user-info"
     "passReqToCallback" "true"
     "showServerList" true
     "tokenURL" "https://auth.js.sign.eu.iit.com.ua/get-access-token"
   )
+  "ldap" (dict "isEnabled" false)
   "local" (dict "isEnabled" true)
   "oidc" (dict)
-  "x509" (dict "isEnabled" true)
+  "totp" (dict "requireUserToken" true)
+  "x509" (dict "isEnabled" true "requireChallenge" true)
 -}}
 {{ $x509Base := dict
-  "caCerts" (list "-----BEGIN CERTIFICATE-----\\nMIIDXzCCAkegAwIBAgIUC5/U/DSHdXbQPiCulgXQ30SIyT8wDQYJKoZIhvcNAQEL\\nBQAwPzELMAkGA1UEBhMCVUExFzAVBgNVBAoMDkxpcXVpbyBUZXN0IENBMRcwFQYD\\nVQQDDA5MaXF1aW8gVGVzdCBDQTAeFw0yNTA3MTgwOTU3MjRaFw0zNTA3MTYwOTU3\\nMjRaMD8xCzAJBgNVBAYTAlVBMRcwFQYDVQQKDA5MaXF1aW8gVGVzdCBDQTEXMBUG\\nA1UEAwwOTGlxdWlvIFRlc3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\\nAoIBAQDrNbtEdHyWqUoM5CsQO+V6GTi2J3ZflphbLqe8PrEK2ZrrOqQ2ioYJonMm\\nqvqC2FOqZotefiCFlZlxGNTQL+KBSL5GCW+QdHZ9Xqs6SH+Rv/O59Lysk82MxsyxZhH1\\nE4uohPyKk9AuTHPJnckYqyGIM67h+yOWqkbTo+KbZYkkyo+8zbhhDCQ4YE6fkF/2vQDG\\n9XwzlPmyIPrs5ObnBE38pvHYbRK2tKOQQn0X+0PFOyW8kOE5pfvMUnMEV+bhDM1XDasE\\n5vGzDnywVSLDM+CrA2I/VPpFIikFwmK3nLbdxcOWRWbaSDtD/IvoaKLvND24zx0Z/PwCHjTsJNEyjy9nAgMBAAGjUzBRMB0GA1UdDgQWBBSBz8K70XPT2o1D66btkNEUAgFrjjAfBgNVHSMEGDAWgBSBz8K70XPT2o1D66btkNEUAgFrjjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAkBXYPFIwgzI1du5lLgj6WN0GyVYXqDarmUyfho8YKYxepzf4XijYe90Gjoo81D9xDjpYeRGZEFrVQw3FZdQ27HMlDmnZZ7t+PUie5fC9VWen3frurT7aiJCrHNFTS6n3unAwBbiLXAbo57IoNeHy+B0B6xZcxKsQ4hP03BLv1SFzGcUh/QgaGpaD+sQesrQocozAHHm/49iEH6bclyaVzxTF75HQX/9f3oIHWZt+IIEqSIifqVy154xfCUovm+bMjhLJKcb/CNeCWlik1lX3mbNU+AzRTTz3P8AvKOdfHXS0d9dGjqAAHp5O3+h12+x44XeV9KrkxTrWaiKuJw6vM\\n-----END CERTIFICATE-----")
-  "externalUrl" (printf "http://%s-sign-tool:3004" (include "liquio.fullname" .))
+  "externalUrl" (printf "%s://%s-sign-tool:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
 -}}
+{{- $internalTransport := dict "allowPlainHttp" true }}
+{{- if include "liquio.internalTls.enabled" . }}
+{{- $internalTransport = mergeOverwrite (include "liquio.internalTls.clientConfig" (dict "ctx" . "clientCert" false) | fromJson) (dict "allowPlainHttp" false) }}
+{{- end }}
+{{- /*
+  internalTransport.allowPlainHttp: explicit, documented exception. By default notification and sign-tool serve plain
+  HTTP, so notify.url, pingRoutes.notify and x509.externalUrl below are http://. id-api refuses to start in production
+  with http:// internal URLs unless this flag is true. Compensating control: the chart NetworkPolicies
+  (shared/networkpolicies.yaml, liquio.networkPolicy.backendInternal) allow these services only from Liquio pods in
+  the namespace. With internalTls.enabled=true the URLs become https://, internalTransport.ca points at the mounted CA
+  and allowPlainHttp is false. Verification is never disabled.
+*/ -}}
 {{ $idProductionBase := dict
   "auth_providers" $authProvidersBase
   "confirmCodeEmailChangeHeader" "Email Confirmation"
   "confirmCodeEmailHeader" "Registration Confirmation"
+  "accountExistsEmailHeader" "Account already exists"
+  "accountExistsEmailText" "An account already exists for this email address. Log in, or reset your password if you have forgotten it."
   "confirmCodeEmailTemplate" (include "liquio.id-confirmCodeEmailTemplate" (dict "ctx" .))
   "confirmCodeRetries" 10
+  "cors" (dict "allowedOrigins" (list))
   "customer" .Release.Name
   "db" $dbBase
   "domain" ".internal"
   "enabledDeleteUser" false
   "environment" .Values.config.server.environment
   "jwt" (dict "expiresIn" 60)
+  "internalTransport" $internalTransport
   "log" (dict
     "excludeParams" (list
       "token" "authorization" "Authorization" "oauth-token"
@@ -79,7 +96,11 @@ metadata:
     "setPhoneOnlyAsNotValid" true
   )
   "notify" (dict
-    "url" (printf "http://%s-notification:80" (include "liquio.fullname" .))
+    "url" (printf "%s://%s-notification:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
+  )
+  "basic_auth" (dict
+    "allowLegacySharedSecret" true
+    "clients" (list)
   )
   "oauth" $oauthBase
   "passwordManager" (dict
@@ -88,9 +109,10 @@ metadata:
     "maxAttemptDelay" 3600
     "minPasswordLength" 8
     "rememberLastPasswords" 5
+    "allowAdminSet" true
   )
   "pingRoutes" (dict
-    "notify" (printf "http://%s-notification:80/test/ping" (include "liquio.fullname" .))
+    "notify" (printf "%s://%s-notification:80/test/ping" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   )
   "port" (toString (default 8080 .Values.services.idApi.containerPort))
   "redis" (dict
@@ -101,6 +123,10 @@ metadata:
   )
   "session" (dict)
   "swagger" false
+  "trustProxy" 1
+  "legacyGetConfirmation" true
+  "roles" (default (list "individual" "admin" "admin-liquio-portal") (get (default (dict) .Values.config.id) "assignableRoles"))
+  "users" (dict "maxLimit" 100 "maxBatch" 1000 "fullReadClients" (list "admin-api"))
   "x509" $x509Base
 -}}
 {{ $idConfigBase := dict

@@ -8,6 +8,14 @@
   "cabinet-front" 80
   "cabinet-api" 80
 -}}
+{{- /*
+  id-api public allow-list (KS-24i). When enabled, no host path that targets id-api is routed with a catch-all
+  prefix: those hosts go to a second Ingress that lists only idApiPublicAllowlist.paths (and extraPaths), so the
+  service-to-service routes (basic auth, /proxy/*) are not reachable from outside. The second Ingress has no
+  rewrite-target annotation, because a global rewrite would flatten Exact/Prefix sub-paths.
+*/ -}}
+{{- $allow := default dict .Values.ingress.idApiPublicAllowlist -}}
+{{- $restrictIdApi := default false $allow.enabled -}}
 {{- if and .Values.ingress.className (not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class")) }}
   {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
 {{- end }}
@@ -54,10 +62,17 @@ spec:
   {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
+    {{- $rulePaths := list }}
+    {{- range .paths }}
+      {{- if not (and $restrictIdApi (eq .service "id-api")) }}
+        {{- $rulePaths = append $rulePaths . }}
+      {{- end }}
+    {{- end }}
+    {{- if $rulePaths }}
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- range .paths }}
+          {{- range $rulePaths }}
           - path: {{ .path }}
             {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
             pathType: {{ .pathType }}
@@ -74,4 +89,79 @@ spec:
               {{- end }}
           {{- end }}
     {{- end }}
+    {{- end }}
+{{- if $restrictIdApi }}
+{{- $idApiHosts := list }}
+{{- range .Values.ingress.hosts }}
+  {{- $host := .host }}
+  {{- range .paths }}
+    {{- if eq .service "id-api" }}
+      {{- $idApiHosts = append $idApiHosts $host }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if $idApiHosts }}
+---
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion }}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion }}
+apiVersion: networking.k8s.io/v1beta1
+{{- else }}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  namespace: {{ include "liquio.namespace" . }}
+  name: {{ $fullName }}-id-api-public
+  labels:
+    {{- include "liquio.labels" . | nindent 4 }}
+  {{- with (omit .Values.ingress.annotations "nginx.ingress.kubernetes.io/rewrite-target") }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.selfSigned.enabled }}
+  tls:
+    - hosts:
+        {{- range $idApiHosts | uniq }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ $fullName }}-tls
+  {{- else if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range $idApiHosts | uniq }}
+    - host: {{ . | quote }}
+      http:
+        paths:
+          {{- range (concat (default list $allow.paths) (default list $allow.extraPaths)) }}
+          - path: {{ .path }}
+            {{- if semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion }}
+            pathType: {{ default "Exact" .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}-id-api
+                port:
+                  number: {{ index $serviceMap "id-api" }}
+              {{- else }}
+              serviceName: {{ $fullName }}-id-api
+              servicePort: {{ index $serviceMap "id-api" }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
 {{- end }}

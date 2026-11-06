@@ -1,0 +1,11 @@
+dn: cn=module{0},cn=config
+changetype: modify
+add: olcModuleLoad
+olcModuleLoad: /opt/bitnami/openldap/lib/openldap/memberof.so
+
+dn: olcOverlay=memberof,olcDatabase={2}mdb,cn=config
+changetype: add
+objectClass: olcOverlayConfig
+objectClass: olcMemberOf
+olcOverlay: memberof
+olcMemberOfRefint: TRUE

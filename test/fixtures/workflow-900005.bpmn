@@ -1,0 +1,145 @@
+{
+    "workflowTemplate": {
+        "id": 900005,
+        "workflowTemplateCategoryId": 29,
+        "name": "Text and numbers controls",
+        "description": "Single task, single step with the CE 'Text and numbers' controls (string, number, integer, phone, currency.input, toggle)",
+        "xmlBpmnSchema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn2:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn2=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" id=\"sample-diagram\" targetNamespace=\"http://bpmn.io/schema/bpmn\" xsi:schemaLocation=\"http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd\"><bpmn2:process id=\"Process_1\" isExecutable=\"false\"><bpmn2:startEvent id=\"StartEvent_1\"><bpmn2:outgoing>Flow_start</bpmn2:outgoing></bpmn2:startEvent><bpmn2:task id=\"task-900005001\" name=\"Text and numbers\"><bpmn2:incoming>Flow_start</bpmn2:incoming><bpmn2:outgoing>Flow_end</bpmn2:outgoing></bpmn2:task><bpmn2:endEvent id=\"end-event-1\" name=\"end-event-1\"><bpmn2:incoming>Flow_end</bpmn2:incoming></bpmn2:endEvent><bpmn2:sequenceFlow id=\"Flow_start\" sourceRef=\"StartEvent_1\" targetRef=\"task-900005001\" /><bpmn2:sequenceFlow id=\"Flow_end\" sourceRef=\"task-900005001\" targetRef=\"end-event-1\" /></bpmn2:process><bpmndi:BPMNDiagram id=\"BPMNDiagram_1\"><bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"Process_1\"><bpmndi:BPMNEdge id=\"Flow_start_di\" bpmnElement=\"Flow_start\"><di:waypoint x=\"448\" y=\"240\" /><di:waypoint x=\"500\" y=\"240\" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id=\"Flow_end_di\" bpmnElement=\"Flow_end\"><di:waypoint x=\"600\" y=\"240\" /><di:waypoint x=\"652\" y=\"240\" /></bpmndi:BPMNEdge><bpmndi:BPMNShape id=\"StartEvent_1_di\" bpmnElement=\"StartEvent_1\"><dc:Bounds x=\"412\" y=\"222\" width=\"36\" height=\"36\" /></bpmndi:BPMNShape><bpmndi:BPMNShape id=\"task_di\" bpmnElement=\"task-900005001\"><dc:Bounds x=\"500\" y=\"200\" width=\"100\" height=\"80\" /></bpmndi:BPMNShape><bpmndi:BPMNShape id=\"end_di\" bpmnElement=\"end-event-1\"><dc:Bounds x=\"652\" y=\"222\" width=\"36\" height=\"36\" /></bpmndi:BPMNShape></bpmndi:BPMNPlane></bpmndi:BPMNDiagram>\n</bpmn2:definitions>\n",
+        "data": {
+            "statuses": [],
+            "entryTaskTemplateIds": [
+                {
+                    "name": "Start",
+                    "id": "() => 900005001;",
+                    "hidden": false
+                }
+            ]
+        },
+        "isActive": true,
+        "accessUnits": [],
+        "createdAt": "2026-10-21T00:00:00.000Z",
+        "updatedAt": "2026-10-21T00:00:00.000Z",
+        "meta": {}
+    },
+    "workflowTemplateCategory": {
+        "id": 29,
+        "parentId": null,
+        "name": "testProcess",
+        "createdAt": "2022-12-02T11:32:34.679Z",
+        "updatedAt": "2022-12-02T11:32:34.679Z"
+    },
+    "taskTemplates": [
+        {
+            "id": 900005001,
+            "name": "Text and numbers",
+            "documentTemplateId": 900005001,
+            "jsonSchema": {
+                "setPermissions": [
+                    {
+                        "performerUsersIsWorkflowOwner": true
+                    }
+                ]
+            },
+            "jsonSchemaRaw": "{\n  \"setPermissions\": [\n    {\n      \"performerUsersIsWorkflowOwner\": true\n    }\n  ]\n}",
+            "htmlTemplate": "<!DOCTYPE html>\n<html lang=\"uk\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\" /><style>body {font-size: 12px;margin: 0;font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;line-height: 1;padding-right: 80px;padding-left: 80px;padding-top: 56px;padding-bottom: 56px;letter-spacing: -0.02em;}@font-face {font-family: uaFontReg;src: url(https://my.diia.gov.ua/fonts/e-Ukraine-Regular.woff);}</style></head><body style=\"font-family: uaFontReg\"></body>\n</html>",
+            "createdAt": "2026-10-21T00:00:00.000Z",
+            "updatedAt": "2026-10-21T00:00:00.000Z"
+        }
+    ],
+    "documentTemplates": [
+        {
+            "id": 900005001,
+            "name": "Text and numbers",
+            "jsonSchema": {
+                "title": "Text and numbers",
+                "type": "object",
+                "pdfRequired": false,
+                "signRequired": false,
+                "forceRedirect": true,
+                "calcTriggers": [],
+                "finalScreen": {
+                    "title": "() => `<p>👍 Thank you, the application has been sent!</p>`",
+                    "subtitle": "  "
+                },
+                "properties": {
+                    "textNumbers": {
+                        "type": "object",
+                        "description": "Text and numbers",
+                        "properties": {
+                            "textValue": {
+                                "type": "string",
+                                "description": "Text value",
+                                "checkRequired": "() => true",
+                                "minLength": 3,
+                                "maxLength": 50
+                            },
+                            "numberValue": {
+                                "type": "number",
+                                "description": "Number value",
+                                "checkRequired": "() => true",
+                                "toFixed": 2,
+                                "minimum": 1,
+                                "maximum": 1000
+                            },
+                            "integerValue": {
+                                "type": "integer",
+                                "description": "Integer value",
+                                "checkRequired": "() => true",
+                                "minimum": 1,
+                                "maximum": 100
+                            },
+                            "phone": {
+                                "type": "string",
+                                "control": "phone",
+                                "description": "Phone number",
+                                "defaultCountry": "ua",
+                                "onlyCountries": [
+                                    "ua"
+                                ],
+                                "checkRequired": "() => true",
+                                "checkValid": [
+                                    {
+                                        "isValid": "(value) => !value || value.length === 12",
+                                        "errorText": "Phone must have 12 digits"
+                                    }
+                                ]
+                            },
+                            "amount": {
+                                "type": "number",
+                                "control": "currency.input",
+                                "description": "Amount",
+                                "currencySymbol": "UAH",
+                                "checkRequired": "() => true",
+                                "minimum": 0.01,
+                                "maximum": 1000000
+                            },
+                            "agree": {
+                                "type": "boolean",
+                                "control": "toggle",
+                                "description": "Agree",
+                                "offText": "No",
+                                "onText": "Yes",
+                                "defaultValue": false
+                            }
+                        }
+                    }
+                }
+            },
+            "jsonSchemaRaw": "{\n  \"title\": \"Text and numbers\",\n  \"type\": \"object\",\n  \"pdfRequired\": false,\n  \"signRequired\": false,\n  \"forceRedirect\": true,\n  \"calcTriggers\": [],\n  \"finalScreen\": {\n    \"title\": \"() => `<p>👍 Thank you, the application has been sent!</p>`\",\n    \"subtitle\": \"  \"\n  },\n  \"properties\": {\n    \"textNumbers\": {\n      \"type\": \"object\",\n      \"description\": \"Text and numbers\",\n      \"properties\": {\n        \"textValue\": {\n          \"type\": \"string\",\n          \"description\": \"Text value\",\n          \"checkRequired\": \"() => true\",\n          \"minLength\": 3,\n          \"maxLength\": 50\n        },\n        \"numberValue\": {\n          \"type\": \"number\",\n          \"description\": \"Number value\",\n          \"checkRequired\": \"() => true\",\n          \"toFixed\": 2,\n          \"minimum\": 1,\n          \"maximum\": 1000\n        },\n        \"integerValue\": {\n          \"type\": \"integer\",\n          \"description\": \"Integer value\",\n          \"checkRequired\": \"() => true\",\n          \"minimum\": 1,\n          \"maximum\": 100\n        },\n        \"phone\": {\n          \"type\": \"string\",\n          \"control\": \"phone\",\n          \"description\": \"Phone number\",\n          \"defaultCountry\": \"ua\",\n          \"onlyCountries\": [\n            \"ua\"\n          ],\n          \"checkRequired\": \"() => true\",\n          \"checkValid\": [\n            {\n              \"isValid\": \"(value) => !value || value.length === 12\",\n              \"errorText\": \"Phone must have 12 digits\"\n            }\n          ]\n        },\n        \"amount\": {\n          \"type\": \"number\",\n          \"control\": \"currency.input\",\n          \"description\": \"Amount\",\n          \"currencySymbol\": \"UAH\",\n          \"checkRequired\": \"() => true\",\n          \"minimum\": 0.01,\n          \"maximum\": 1000000\n        },\n        \"agree\": {\n          \"type\": \"boolean\",\n          \"control\": \"toggle\",\n          \"description\": \"Agree\",\n          \"offText\": \"No\",\n          \"onText\": \"Yes\",\n          \"defaultValue\": false\n        }\n      }\n    }\n  }\n}",
+            "htmlTemplate": "<!DOCTYPE html>\n<html lang=\"uk\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\" /><style>body {font-size: 12px;margin: 0;font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;line-height: 1;padding-right: 80px;padding-left: 80px;padding-top: 56px;padding-bottom: 56px;letter-spacing: -0.02em;}@font-face {font-family: uaFontReg;src: url(https://my.diia.gov.ua/fonts/e-Ukraine-Regular.woff);}</style></head><body style=\"font-family: uaFontReg\"></body>\n</html>",
+            "accessJsonSchema": {
+                "inboxes": {
+                    "workflowCreator": false
+                },
+                "workflowFiles": {
+                    "workflowCreator": false
+                }
+            },
+            "additionalDataToSign": null,
+            "createdAt": "2026-10-21T00:00:00.000Z",
+            "updatedAt": "2026-10-21T00:00:00.000Z"
+        }
+    ],
+    "gatewayTemplates": [],
+    "eventTemplates": []
+}

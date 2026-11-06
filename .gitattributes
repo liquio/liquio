@@ -1,0 +1,2 @@
+# Vendored pdf.js worker bundles; exclude from GitHub language stats
+components/*/public/js/** linguist-vendored

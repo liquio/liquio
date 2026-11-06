@@ -8,6 +8,7 @@ set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+COMPONENTS_DIR="$PROJECT_ROOT/components"
 
 # Colors for output
 RED='\033[0;31m'
@@ -89,9 +90,9 @@ list_outdated() {
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${BLUE}Outdated Packages by Service${NC}"
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
-  
-  cd "$PROJECT_ROOT"
-  
+
+  cd "$COMPONENTS_DIR"
+
   local services=()
   for dir in */; do
     dir=${dir%/}
@@ -99,23 +100,23 @@ list_outdated() {
       services+=("$dir")
     fi
   done
-  
+
   local total_outdated=0
-  
+
   for service in "${services[@]}"; do
     if [[ ! -d "$service/node_modules" ]]; then
       continue
     fi
-    
+
     local outdated=$(cd "$service" && npm outdated 2>/dev/null | tail -n +2 | wc -l)
-    
+
     if [[ $outdated -gt 0 ]]; then
       echo -e "${YELLOW}$service:${NC} ${RED}$outdated outdated packages${NC}"
       cd "$service" && npm outdated 2>/dev/null | tail -n +2 | sed 's/^/  /'
       total_outdated=$((total_outdated + outdated))
     fi
   done
-  
+
   echo ""
   if [[ $total_outdated -eq 0 ]]; then
     echo -e "${GREEN}✓ All dependencies are up to date${NC}"
@@ -130,9 +131,9 @@ update_all_packages() {
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${BLUE}Updating All Packages${NC}"
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
-  
-  cd "$PROJECT_ROOT"
-  
+
+  cd "$COMPONENTS_DIR"
+
   local services=()
   for dir in */; do
     dir=${dir%/}
@@ -140,18 +141,18 @@ update_all_packages() {
       services+=("$dir")
     fi
   done
-  
+
   local failed=0
   local success=0
-  
+
   for service in "${services[@]}"; do
-    if [[ ! -d "$PROJECT_ROOT/$service/node_modules" ]]; then
+    if [[ ! -d "$COMPONENTS_DIR/$service/node_modules" ]]; then
       echo -e "${YELLOW}⊘ $service: Skipping (node_modules not found)${NC}"
       continue
     fi
-    
+
     echo -e "${BLUE}▶ Updating $service...${NC}"
-    if cd "$PROJECT_ROOT/$service" && npm update 2>&1 | tail -3; then
+    if cd "$COMPONENTS_DIR/$service" && npm update 2>&1 | tail -3; then
       echo -e "${GREEN}✓ $service updated${NC}\n"
       ((success++))
     else
@@ -159,7 +160,7 @@ update_all_packages() {
       ((failed++))
     fi
   done
-  
+
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${GREEN}Success: $success${NC} | ${RED}Failed: $failed${NC}"
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"

@@ -1,5 +1,0 @@
-.git
-dist/
-coverage/
-node_modules/
-config/*.json

@@ -15,11 +15,16 @@ metadata:
 {{ $authBase := dict
   "tokens" (list)
   "limitedAccess" (list)
+  "trustedCallers" (list "register")
+  "userAllowTokens" (dict)
+  "servicePermissions" (dict)
+  "strict" false
 -}}
 {{ $serverBase := dict
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
   "port" (default 8080 .Values.services.register.containerPort)
-  "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "maxBodySize" "10mb"
+  "maxBulkBodySize" "500mb"
   "customer" .Release.Name
   "environment" .Values.config.server.environment
 -}}
@@ -90,6 +95,7 @@ metadata:
 {{ $paginationBase := dict
   "maxLimit" 100000
   "maxExportLimit" 1000000
+  "maxCsvExportRecords" 1000000
   "packetLimit" 1000
 -}}
 {{ $searchBase := dict
@@ -106,9 +112,15 @@ metadata:
 -}}
 {{ $signBase := dict
   "timeout" 10000
-  "url" (printf "http://%s-sign-tool:80" (include "liquio.fullname" .))
+  "url" (printf "%s://%s-sign-tool:80" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
   "token" ""
+  "allowEmptyToken" true
+  "allowPlainHttp" true
 -}}
+{{- if include "liquio.internalTls.enabled" . }}
+{{- $_ := set $signBase "allowPlainHttp" false }}
+{{- $_ := set $signBase "tls" (include "liquio.internalTls.clientConfig" (dict "ctx" . "clientCert" true) | fromJson) }}
+{{- end -}}
 data:
   # Database configuration
   db.json: |

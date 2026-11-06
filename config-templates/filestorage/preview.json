@@ -1,5 +1,5 @@
 {
-  "server": "http://10.10.172.128:3345",
+  "server": "",
   "routes": {
     "generatePreview": "/preview",
     "ping": "/test/ping"

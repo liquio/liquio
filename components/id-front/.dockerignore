@@ -1,0 +1,15 @@
+.git
+node_modules/
+config/*.json
+build/
+Dockerfile
+
+# Local config and secrets must never enter the build context.
+.env*
+**/.env*
+*.pem
+*.key
+*.log
+.npmrc
+**/secrets*
+*.md
