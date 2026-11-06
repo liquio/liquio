@@ -747,7 +747,7 @@ secrets:
 # NetworkPolicy configuration
 # When enabled, NetworkPolicy resources are created for every service,
 # enforcing least-privilege traffic rules by tier:
-#   frontend  — ingress from ingress-controller only; egress DNS only
+#   frontend  — ingress from ingress-controller only; egress DNS + serviceEdges
 #   backend   — ingress from ingress-controller + intra-namespace Liquio pods;
 #               egress DNS + configured infra + optional SMTP/SMS
 #   gateway   — ingress from ingress-controller; egress to all backend pods
@@ -758,7 +758,28 @@ secrets:
 networkPolicy:
   # Set to false to disable all NetworkPolicy resources (e.g. CNI without NP support)
   enabled: true
+  # Service-to-service egress (source component -> target components), derived from the service URLs in the chart
+  # configmaps and secrets. Everything else between Liquio services is denied. Targets are reached on their
+  # containerPort. gateway already egresses to all backend pods, so it is not listed. An edge to gateway also adds
+  # an ingress rule to the gateway policy. Overriding a source replaces its whole list.
+  serviceEdges:
+    admin-api: [filestorage, id-api, notification, register, sign-tool, task]
+    cabinet-api: [id-api, task]
+    event: [filestorage, id-api, manager, notification, persist-link, register, sign-tool, task]
+    id-api: [notification, sign-tool]
+    id-front: [id-api]
+    manager: [notification]
+    notification: [id-api]
+    persist-link: [filestorage, pdf-generator, register]
+    register: [sign-tool]
+    task: [event, external-reader, filestorage, gateway, id-api, manager, notification, pdf-generator, persist-link, register, sign-tool, task]
   egress:
+    # Opt-in egress to IP ranges outside the cluster, per component (kebab-case name). Empty by default.
+    # Link-local space (169.254.0.0/16, fe80::/10, fd00:ec2::254/128) is always excepted, and CIDRs inside it are refused.
+    # Example:
+    #   filestorage: [{ cidr: 10.20.0.0/16, ports: [9000] }]
+    #   sign-tool: [{ cidr: 0.0.0.0/0, ports: [80, 443] }]
+    external: {}
     postgres:
       # Restrict backend egress to PostgreSQL port
       enabled: true
@@ -769,12 +790,12 @@ networkPolicy:
       # Restrict backend egress to RabbitMQ port
       enabled: true
     smtp:
-      # Allow backend egress to an SMTP relay (port-based, any IP)
+      # Allow backend egress to an SMTP relay (port-based, any IP except link-local)
       enabled: false
       host: ""
       port: 587
     sms:
-      # Allow backend egress to an SMS gateway (port-based, any IP)
+      # Allow backend egress to an SMS gateway (port-based, any IP except link-local)
       enabled: false
       host: ""
       port: 443

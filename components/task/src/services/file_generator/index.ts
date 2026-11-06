@@ -2,40 +2,23 @@ import moment from 'moment';
 import handlebars from 'handlebars';
 import qrImage from 'qr-image';
 
-import { Options } from './options';
 import typeOf from '../../lib/type_of';
 
 /**
  * File generator service.
- * @typedef {import('./options/option').Option} Option
  * @typedef {import('../../entities/document_template').DocumentTemplateEntity} DocumentTemplateEntity
  * @typedef {import('../../entities/document').DocumentEntity} DocumentEntity
  * @typedef {import('../../entities/workflow').WorkflowEntity} WorkflowEntity
  */
 export class FileGeneratorService {
   private static singleton: FileGeneratorService;
-  options: any;
 
-  /**
-   * Constructor.
-   * @param {typeof Option[]} customOptions Custom option list.
-   */
-  constructor(customOptions = []) {
+  constructor() {
     // Define singleton.
     if (!FileGeneratorService.singleton) {
-      this.initOptions(customOptions);
       FileGeneratorService.singleton = this;
     }
     return FileGeneratorService.singleton;
-  }
-
-  /**
-   * Init options.
-   * @param {typeof Option[]} customOptions Custom options.
-   * @private
-   */
-  initOptions(customOptions) {
-    this.options = new Options(customOptions);
   }
 
   /**
@@ -43,6 +26,13 @@ export class FileGeneratorService {
    */
   handlebarHelpers() {
     return {
+      // {{currentDate}} -> 'DD.MM.YYYY'; {{currentDate 'YYYY-MM-DD'}} -> custom moment format.
+      // The date is the render time (`@data.now`, set once per createHtml call), in the server's time zone.
+      currentDate: function (format, options) {
+        const opts = typeof format === 'string' ? options : format;
+        const fmt = typeof format === 'string' && format ? format : 'DD.MM.YYYY';
+        return moment(opts?.data?.now ?? new Date()).format(fmt);
+      },
       eq: function (v1, v2) {
         return v1 === v2;
       },
@@ -117,32 +107,21 @@ export class FileGeneratorService {
   }
 
   /**
-   * Create HTML.
+   * Create HTML from the document template with Handlebars only.
+   * `{{ }}` escapes values; `{{{ }}}` inserts raw HTML and is the template author's explicit choice.
+   * Config variables and `workflow` take precedence over document data keys.
    * @param {object} options Options.
    * @param {WorkflowEntity} options.workflow Workflow entity.
    * @param {DocumentTemplateEntity} options.documentTemplate Document template entity.
    * @param {DocumentEntity} options.document Document entity.
-   * @param {object} options.staticFileOptions Static file options.
+   * @param {object} [options.variables] Config variables.
    * @returns {Promise<string>} HTML content promise.
    */
-  async createHtml({ workflow, documentTemplate, document, staticFileOptions, variables = {} }) {
-    // Prepare html using Handlebars.
+  async createHtml({ workflow, documentTemplate, document, variables = {} }: any) {
     handlebars.registerHelper(this.handlebarHelpers());
-
     const template = handlebars.compile(documentTemplate.htmlTemplate);
-    documentTemplate.htmlTemplate = template({ ...variables, ...document.data, workflow });
-
-    // Define options.
-    const options = await this.options.getOptions({
-      documentTemplateSchema: documentTemplate.jsonSchema,
-      documentData: document.data,
-      staticFileOptions,
-    });
-
-    // Create document HTML.
-    const documentHtml = this.options.replaceAllKeys(documentTemplate.htmlTemplate, options);
-    const documentHtmlWithoutNotReplacesKeys = this.options.clearNotReplacedKeys(documentHtml);
-    return documentHtmlWithoutNotReplacesKeys;
+    // One timestamp per render, passed as Handlebars @data (not a global, not a context key) - see `currentDate` helper.
+    return template({ ...document.data, ...variables, workflow }, { data: { now: new Date() } });
   }
 
   /**

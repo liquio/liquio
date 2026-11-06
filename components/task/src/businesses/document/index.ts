@@ -29,6 +29,7 @@ import { DocumentFillerService as DocumentFiller } from '../../services/document
 import { VerifiedUserInfoFiller } from '../../services/document_filler/fillers/verified_user_info';
 import { DocumentValidatorService as DocumentValidator } from '../../services/document_validator';
 import { Paths } from '../../services/document_validator/paths';
+import { findPathsNotInSchema, getSchemaAllowListMode } from '../../services/document_validator/schema_allow_list';
 import { FileGeneratorService } from '../../services/file_generator';
 import { NotifierService as Notifier } from '../../services/notifier';
 import { PaymentService } from '../../services/payment';
@@ -211,6 +212,7 @@ export class DocumentBusiness extends Business {
    * @param options.isFromSystemTask
    * @param options.isKeepDocumentFile
    * @param options.triggerPath Paths of readOnly calcTrigger targets (or paths under them) legitimately recalculated and saved by this request.
+   * @param options.checkSchemaAllowList Reject paths and nested keys that the template schema does not define.
    * @returns Updated document entity promise.
    */
   async update(
@@ -223,7 +225,8 @@ export class DocumentBusiness extends Business {
       isFromSystemTask = false,
       isKeepDocumentFile = false,
       triggerPath = [],
-    }: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean; triggerPath?: string[] } = {},
+      checkSchemaAllowList = false,
+    }: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean; triggerPath?: string[]; checkSchemaAllowList?: boolean } = {},
   ): Promise<DocumentEntity> {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
@@ -249,17 +252,36 @@ export class DocumentBusiness extends Business {
     }
     const jsonSchema = template.jsonSchema;
 
-    // Remove readonly params.
     const documentValidator = new (DocumentValidator as any)(jsonSchema, undefined, userInfo);
 
     // Reject upfront if `triggerPath` names anything other than a genuine calcTrigger target (or a
     // path under one) - such a path can't legitimately free a readOnly field, so treat it as a bad
-    // request rather than silently dropping it later inside `removeReadonlyParams`.
+    // request rather than silently dropping it later inside `removeReadonlyParams`. Runs before the
+    // schema allow-list so a malformed trigger path gets the same error in every allow-list mode.
     const invalidTriggerPaths = triggerPath.filter((path) => !documentValidator.isCalcTriggerTargetPath(path));
     if (invalidTriggerPaths.length > 0) {
       throw new InvalidParamsError('Invalid trigger path.', { cause: invalidTriggerPaths });
     }
 
+    // Reject paths and nested keys that the schema does not define.
+    if (checkSchemaAllowList) {
+      const mode = getSchemaAllowListMode();
+      if (mode !== 'off') {
+        const notInSchema = findPathsNotInSchema(jsonSchema, properties);
+        if (notInSchema.length > 0) {
+          global.log.save(
+            'document-update-path-not-in-schema',
+            { documentId, documentTemplateId: templateId, paths: notInSchema, mode },
+            mode === 'enforce' ? 'warn' : 'info',
+          );
+          if (mode === 'enforce') {
+            throw new InvalidParamsError('Property is not defined in the document schema.', { cause: notInSchema });
+          }
+        }
+      }
+    }
+
+    // Remove readonly params.
     const existingDocumentData = document.data;
     let documentDataObject = existingDocumentData || EMPTY_DOCUMENT_DATA;
     const propertiesWithoutReadonlyParams = await documentValidator.removeReadonlyParams(

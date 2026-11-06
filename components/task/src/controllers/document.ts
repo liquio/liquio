@@ -7,6 +7,7 @@ import jcopy from 'jcopy';
 import { Sandbox } from '@liquio/back-core';
 
 import { JSONPath } from '../lib/jsonpath';
+import { isUnsafePathSegment, findUnsafeDataKeys } from '../lib/document_data_keys';
 import { Controller } from './controller';
 import { DocumentAttachmentEntity } from '../entities/document_attachment';
 import { DocumentModel } from '../models/document';
@@ -303,10 +304,19 @@ export class DocumentController extends Controller {
       }
 
       // Check property path.
-      const invalidPathPart = (pathPart) => pathPart === '' || !pathPart.match(/^[a-zA-Zа-яА-ЯіІїЇ0-9_]+$/);
+      const invalidPathPart = (pathPart) => pathPart === '' || !pathPart.match(/^[a-zA-Zа-яА-ЯіІїЇ0-9_]+$/) || isUnsafePathSegment(pathPart);
       const invalidPath = (path) => typeof path !== 'string' || path.split('.').some(invalidPathPart);
       if (properties.some((v) => invalidPath(v.path))) {
-        throw new InvalidParamsError('Invalid property path.', { cause: properties });
+        const invalidPaths = properties
+          .filter((v) => invalidPath(v.path))
+          .map((v) => (typeof v.path === 'string' ? v.path.slice(0, 64) : typeof v.path));
+        throw new InvalidParamsError('Invalid property path.', { cause: invalidPaths });
+      }
+
+      // Check keys inside written values: no regex/HTML metacharacters, no prototype names.
+      const unsafeKeys = properties.flatMap((v) => findUnsafeDataKeys(v.value, v.path)).slice(0, 10);
+      if (unsafeKeys.length > 0) {
+        throw new InvalidParamsError('Invalid property key.', { cause: unsafeKeys });
       }
 
       // Check trigger path.
@@ -322,6 +332,7 @@ export class DocumentController extends Controller {
       // Update document.
       const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds, userInfo, {
         triggerPath,
+        checkSchemaAllowList: true,
       });
 
       // Check reassign trigger and handle document update log.

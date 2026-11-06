@@ -41,7 +41,7 @@ warnEmptySignToken(config);
 // Basic users without a permission entry have full access (opt-in hardening, `auth.servicePermissions`).
 const unrestrictedUsers = listUnrestrictedUsers(config.auth);
 if (unrestrictedUsers.length > 0) {
-  log.save('auth-unrestricted-users', { users: unrestrictedUsers, hint: 'Set auth.servicePermissions to restrict them.' }, 'warn');
+  log.save('auth-unrestricted-users', { count: unrestrictedUsers.length, hint: 'Set auth.servicePermissions to restrict them.' }, 'warn');
 }
 
 // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).

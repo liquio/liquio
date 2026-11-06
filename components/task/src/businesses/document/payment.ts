@@ -660,11 +660,7 @@ export class DocumentPaymentBusiness extends Business {
 
     // OR transaction Id when failed payment.
     const providerTransactionId = paidOrder && paidOrder.extraData && (paidOrder.extraData.paymentId || paidOrder.extraData.externalTransactionId);
-    global.log.save(
-      'prepare-params-to-unhold-payment',
-      { paymentOptions: paymentSystemParams, transactionId: providerTransactionId, sessionId },
-      'info',
-    );
+    global.log.save('prepare-params-to-unhold-payment', { paymentCustomer, transactionId: providerTransactionId, sessionId }, 'info');
 
     let unholdPaymentRes;
     try {

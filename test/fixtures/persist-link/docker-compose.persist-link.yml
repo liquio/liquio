@@ -1,0 +1,6 @@
+# Compose override that enables persist-link's `external` link provider for persist-link-external-pdf.spec.js.
+# The default stack does not use it. See test/README.md for the export that builds the providers JSON.
+services:
+  persist-link:
+    environment:
+      LIQUIO_CFG_PERSIST_LINK_LINK_PROVIDERS: ${PERSIST_LINK_TEST_PROVIDERS:?export PERSIST_LINK_TEST_PROVIDERS first, see test/README.md}

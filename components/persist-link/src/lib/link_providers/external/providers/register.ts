@@ -5,6 +5,24 @@ import { getLog } from '../../../context';
 import Provider from './provider';
 
 /**
+ * Strip userinfo and query from a URL before logging.
+ * @param {string} url URL.
+ * @returns {string}
+ */
+const urlForLog = (url) => {
+  try {
+    const parsed = new URL(url);
+    parsed.username = '';
+    parsed.password = '';
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
+
+/**
  * Register provider.
  */
 class RegisterProvider extends Provider {
@@ -34,7 +52,7 @@ class RegisterProvider extends Provider {
       responseType: 'json',
       resolveBodyOnly: true,
     };
-    getLog().save('external-register-request', { url: requestOptions.url, recordId: filter.recordId });
+    getLog().save('external-register-request', { url: urlForLog(requestOptions.url), recordId: filter.recordId });
 
     try {
       const response = await got(requestOptions);

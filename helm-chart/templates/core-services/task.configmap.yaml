@@ -287,16 +287,6 @@ metadata:
   "variables" (dict
     "publicUrl" "http://localhost:8081"
   )
-  "persons" (dict
-    "allContentKey" "all"
-    "keyTextPrefix" "<b>"
-    "keyTextSuffix" "</b>"
-    "keysSeparator" "<br /><br />"
-    "keyAndSubkeysSeparator" "<br />"
-    "subkeysSeparator" "<br />"
-    "keys" (list)
-    "subkeys" (list)
-  )
 -}}
 {{ $pdfGeneratorBase := dict
   "url" (printf "http://%s-pdf-generator:80/pdf" (include "liquio.fullname" .))
@@ -432,6 +422,7 @@ metadata:
     ".BAK"
     ".TMP"
   )
+  "schemaAllowList" "enforce"
 -}}
 {{ $taskFinishBase := dict
   "addTaskCommiterAsPerformer" true

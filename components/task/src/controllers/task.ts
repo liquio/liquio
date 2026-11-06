@@ -137,18 +137,14 @@ export class TaskController extends Controller {
     // Define params.
     const { workflowTemplateId, taskTemplateId, parentDocumentId, initData } = req.body;
 
-    if (
-      !isAllowedCreateByOtherSystems ||
-      !allowedToCreateByTokens.includes(authorizationToken) ||
-      !tasksTemplateIds.map((v) => `${v}`).includes(`${taskTemplateId}`)
-    ) {
+    const isTokenAllowed = allowedToCreateByTokens.includes(authorizationToken);
+    const isTaskTemplateAllowed = tasksTemplateIds.map((v) => `${v}`).includes(`${taskTemplateId}`);
+    if (!isAllowedCreateByOtherSystems || !isTokenAllowed || !isTaskTemplateAllowed) {
       global.log.save('create-by-other-system-access-error', {
-        tasksTemplateIds,
         taskTemplateId,
-        isAllowedCreateByOtherSystems,
-        allowedToCreateByTokens: allowedToCreateByTokens && allowedToCreateByTokens.map((v) => `${v.substring(0, 9)}***${v.substring(v.length - 3)}`),
-        authorizationToken:
-          authorizationToken && `${authorizationToken.substring(0, 9)}***${authorizationToken.substring(authorizationToken.length - 3)}`,
+        isAllowedCreateByOtherSystems: !!isAllowedCreateByOtherSystems,
+        isTokenAllowed,
+        isTaskTemplateAllowed,
       });
       const accessError = new Error('Create system task by not user is not allowed.');
       return this.responseError(res, accessError, 403);
@@ -156,7 +152,11 @@ export class TaskController extends Controller {
     const appendMeta = {};
     if (enableRateLimitsChecking) {
       if (!rateLimits || typeof rateLimits !== 'object' || Array.isArray(rateLimits) || Object.keys(rateLimits).length === 0) {
-        global.log.save('create-by-other-system-rate-limits-checking-error-invalid-config', { rateLimits }, 'error');
+        global.log.save(
+          'create-by-other-system-rate-limits-checking-error-invalid-config',
+          { reason: 'system_task.rateLimits must be a non-empty object' },
+          'error',
+        );
         const error = new Error('RateLimitsChecking error.');
         return this.responseError(res, error, 500);
       }
@@ -170,11 +170,7 @@ export class TaskController extends Controller {
       try {
         checkRateLimitResult = await checkRateLimit.bind(this)({ rateLimits, initData, taskTemplateId });
       } catch (error) {
-        global.log.save(
-          'create-by-other-system-rate-limits-checking-error-function-error',
-          { error: error?.message, rateLimits, initData, taskTemplateId },
-          'error',
-        );
+        global.log.save('create-by-other-system-rate-limits-checking-error-function-error', { error: error?.message, taskTemplateId }, 'error');
         return this.responseError(res);
       }
 

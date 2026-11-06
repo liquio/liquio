@@ -436,3 +436,81 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
     });
   });
 });
+
+describe('DocumentBusiness.update with checkSchemaAllowList', () => {
+  const jsonSchema = { properties: { step1: { properties: { fieldA: { type: 'string' } } } } };
+  const userUnitIds = { all: [], head: [], member: [] } as any;
+  const unknownPath = [{ path: 'unknownStep', value: { a: 1 } }];
+
+  let documentBusiness: DocumentBusiness;
+  let updateData: jest.Mock;
+
+  const update = (properties, options: any = { checkSchemaAllowList: true }) =>
+    documentBusiness.update('document-id', properties, 'user-id', userUnitIds, undefined, options);
+
+  beforeEach(() => {
+    global.config = { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } };
+    new Sandbox(global.config);
+
+    documentBusiness = Object.create(DocumentBusiness.prototype);
+    documentBusiness.sandbox = Sandbox.getInstance();
+    jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue({
+      id: 'document-id',
+      documentTemplateId: 1,
+      isFinal: false,
+      data: { step1: { fieldA: 'a' } },
+      task: { id: 'task-id', taskTemplate: { jsonSchema: {} } },
+    } as any);
+
+    updateData = jest.fn().mockImplementation(async (id, _userId, data) => ({ id, data }));
+    global.models = {
+      documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
+      documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
+      document: { updateData },
+    } as any;
+    global.businesses = {
+      task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+    (global.log.save as jest.Mock).mockClear();
+  });
+
+  afterEach(() => {
+    global.config = {};
+    jest.restoreAllMocks();
+  });
+
+  it('rejects an unknown path in enforce mode and writes nothing', async () => {
+    await expect(update(unknownPath)).rejects.toMatchObject({ message: 'Property is not defined in the document schema.' });
+    expect(updateData).not.toHaveBeenCalled();
+    expect(global.log.save).toHaveBeenCalledWith(
+      'document-update-path-not-in-schema',
+      expect.objectContaining({ paths: ['unknownStep'], mode: 'enforce' }),
+      'warn',
+    );
+  });
+
+  it('logs and writes in log mode', async () => {
+    global.config.documents = { schemaAllowList: 'log' };
+    await update(unknownPath);
+    expect(global.log.save).toHaveBeenCalledWith('document-update-path-not-in-schema', expect.objectContaining({ mode: 'log' }), 'info');
+    expect(updateData).toHaveBeenCalled();
+  });
+
+  it('does not check in off mode', async () => {
+    global.config.documents = { schemaAllowList: 'off' };
+    await update(unknownPath);
+    expect(global.log.save).not.toHaveBeenCalledWith('document-update-path-not-in-schema', expect.anything(), expect.anything());
+    expect(updateData).toHaveBeenCalled();
+  });
+
+  it('does not check without the flag', async () => {
+    await update(unknownPath, {});
+    expect(global.log.save).not.toHaveBeenCalledWith('document-update-path-not-in-schema', expect.anything(), expect.anything());
+    expect(updateData).toHaveBeenCalled();
+  });
+
+  it('accepts a declared path', async () => {
+    await update([{ path: 'step1.fieldA', value: 'b' }]);
+    expect(updateData).toHaveBeenCalled();
+  });
+});

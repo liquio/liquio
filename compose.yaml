@@ -391,6 +391,7 @@ services:
     depends_on:
       - persist-link-migrations
       - postgres
+      - pdf-generator
 
   postgres:
     <<: *res-infra

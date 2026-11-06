@@ -36,7 +36,6 @@ const DEFAULT_OPTIONS = {
   customDocumentFillers: [],
   customModels: [],
   customDictionaryModels: [],
-  customFileGeneratorOptions: [],
   customStorageProvider: undefined,
 };
 const JEST_ENV = 'jest';
@@ -65,7 +64,6 @@ export class BpmnTaskCore {
    * @param {object[]} [options.customDocumentFillers] Custom document fillers.
    * @param {object[]} [options.customModels] Custom models.
    * @param {object[]} [options.customDictionaryModels] Custom dictionary models.
-   * @param {object[]} [options.customFileGeneratorOptions] Custom file generator options.
    * @param {object} [options.customStorageProvider] Custom storage provider.
    */
   constructor(options: Record<string, any> = {}) {
@@ -101,7 +99,6 @@ export class BpmnTaskCore {
       customDocumentFillers,
       customModels,
       customDictionaryModels,
-      customFileGeneratorOptions,
       customStorageProvider,
     } = this.options;
 
@@ -247,7 +244,7 @@ export class BpmnTaskCore {
     global.messageQueue = messageQueue;
 
     // Init file generator.
-    new FileGeneratorService(customFileGeneratorOptions);
+    new FileGeneratorService();
 
     // Init storage service.
     new StorageService(customStorageProvider);

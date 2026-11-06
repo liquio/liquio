@@ -60,3 +60,11 @@ The manager `/test/ping` and `/monitors/system` routes return 403 unless the
 (service-wide ping / health check), enable monitoring on the manager and set
 `ping.manager.monitoringToken` in `ping.json` to the same token. When
 `monitoringToken` is empty the header is not sent.
+
+## PDF templates
+
+PDF HTML is rendered with Handlebars only. The legacy `{step.field}` syntax was removed; such text is output literally.
+
+- `{{ }}` escapes values. `{{{ }}}` inserts raw HTML and is the template author's explicit choice.
+- Context: document data, then config `file_generator.variables`, then `workflow`. Later sources win over earlier ones.
+- Helpers: `eq`, `ne`, `dateFormat` and others registered in `FileGeneratorService.handlebarHelpers`, plus `{{currentDate [format]}}`: the render date, `DD.MM.YYYY` by default, or a moment format such as `{{currentDate 'YYYY-MM-DD'}}`. There is no `global.currentDate`.

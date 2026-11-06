@@ -10,6 +10,19 @@ import typeOf from './type_of';
 const HIDE_REPLACEMENT_TEXT = '*****';
 const MAX_LOG_LENGTH = 100e3 - 1000;
 
+// Strip userinfo and query string: a config URL may carry credentials or a token.
+export const urlForLog = (value: string): string => {
+  try {
+    const u = new URL(value);
+    u.username = '';
+    u.password = '';
+    u.search = '';
+    return u.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
+
 /**
  * External Reader.
  */
@@ -143,7 +156,7 @@ export class ExternalReader {
 
       if (error.code === 'ESOCKETTIMEDOUT' || error.cause?.code === 'ESOCKETTIMEDOUT') {
         global.log.save('external-reader-get-data-esockettimeout', {
-          url,
+          url: urlForLog(url),
           errorCode: error.code || error.cause?.code,
           error: error.message,
           service,
@@ -153,7 +166,7 @@ export class ExternalReader {
 
       if (error.code === 'ECONNRESET' || error.cause?.code === 'ECONNRESET' || error.message === 'socket hang up') {
         global.log.save('external-reader-get-data-econnreset', {
-          url,
+          url: urlForLog(url),
           errorCode: error.code || error.cause?.code,
           error: error.message,
           service,

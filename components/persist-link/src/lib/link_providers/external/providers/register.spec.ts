@@ -61,6 +61,20 @@ describe('RegisterProvider', () => {
       });
     });
 
+    it('should log the url without userinfo and query', async () => {
+      gotMock.mockResolvedValue({ data: {} });
+      const provider = new RegisterProvider({ url: 'https://user:pass@register.example.com/api?token=abc', token: 't' });
+
+      await provider.getRecord({ recordId: '1' });
+
+      const logged = JSON.stringify(logSave.mock.calls);
+      expect(logSave).toHaveBeenCalledWith('external-register-request', {
+        url: 'https://register.example.com/api',
+        recordId: '1',
+      });
+      expect(logged).not.toContain('pass');
+    });
+
     it('should not log the token or the register response body', async () => {
       gotMock.mockResolvedValue({ data: { id: '1', secretField: 'REGISTER-DATA' } });
       const provider = new RegisterProvider({ url: 'https://register.example.com', token: 'abc-secret-token' });
