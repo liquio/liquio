@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@testcontainers/postgresql": "^12.2.0",
+    "@testcontainers/postgresql": "^12.2.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.5",
     "@types/supertest": "^7.2.1",
