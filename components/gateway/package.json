@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@testcontainers/postgresql": "^12.2.0",
+    "@testcontainers/postgresql": "^12.2.1",
     "@testcontainers/rabbitmq": "^12.2.0",
     "@types/amqplib": "^0.10.8",
     "@types/express": "^5.0.6",
