@@ -72,6 +72,36 @@ describe("XroadProvider", () => {
     expect(result.request).toBeDefined();
   });
 
+  it("logs scrubbed explicit request options without spreading them", async () => {
+    mockedAxios.mockResolvedValueOnce({
+      data: "<SOAP-ENV:Envelope><SOAP-ENV:Body><PetitionExchangeAnswer><done>true</done></PetitionExchangeAnswer></SOAP-ENV:Body></SOAP-ENV:Envelope>",
+    });
+
+    const provider = new XroadProvider(context, {
+      ...baseOptions,
+      trembitaUrl: "https://user:pass@trembita.example.com/soap?token=secret",
+    });
+    await provider.send(buildData());
+
+    const call = logSave.mock.calls.find(
+      ([name]) => name === "send-to-trembita|request-options",
+    );
+    const logged = call[1].requestOptions;
+    expect(Object.keys(logged).sort()).toEqual(
+      [
+        "data",
+        "method",
+        "requestBodySizeInMB",
+        "soapAction",
+        "timeout",
+        "url",
+      ].sort(),
+    );
+    expect(logged.url).toBe("https://trembita.example.com/soap");
+    expect(JSON.stringify(call[1])).not.toContain("secret");
+    expect(JSON.stringify(call[1])).not.toContain("pass");
+  });
+
   it("omits the request from the result when debug is false", async () => {
     const responseXml =
       "<SOAP-ENV:Envelope><SOAP-ENV:Body><PetitionExchangeAnswer><done>true</done></PetitionExchangeAnswer></SOAP-ENV:Body></SOAP-ENV:Envelope>";
