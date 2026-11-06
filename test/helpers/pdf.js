@@ -6,7 +6,7 @@ const pdfParse = require('pdf-parse/lib/pdf-parse.js');
  * @returns {Promise<string>}
  */
 async function extractPdfText(buffer) {
-  const result = await pdfParse(buffer);
+  const result = await pdfParse(new Uint8Array(buffer));
   return result.text.replace(/\s+/g, ' ').trim();
 }
 
@@ -22,7 +22,7 @@ async function getPdfPageSizes(buffer) {
     sizes.push({ width: x1 - x0, height: y1 - y0 });
     return '';
   };
-  await pdfParse(buffer, { pagerender });
+  await pdfParse(new Uint8Array(buffer), { pagerender });
   return sizes;
 }
 

@@ -62,6 +62,8 @@ The spec loads the memberOf overlay and the users and groups from `fixtures/ldap
 
 - `basic-workflow.spec.js`: End-to-end workflow tests including register/workflow imports and task completion
 - `document-update-validation.spec.js`: validation of `PUT /documents/:id` (unsafe keys, prototype paths, template schema allow-list)
+- `document-pdf-rendering.spec.js`: PDF rendering of document data (escaping, literal single-brace placeholders, config variables over data, option and delimiter tags, no outgoing requests). Uses `fixtures/workflow-900006.bpmn`
+- `service-logs.spec.js`: checks that service logs (task, admin-api, event, notification, persist-link, filestorage, register) contain no secret values from the local config. Needs containers started from the current images; it reads logs since container start.
 - `helpers/`: shared helpers (auth, workflow and register import, cabinet API client, docker logs, PDF text)
 
 ## Debugging
