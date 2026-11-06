@@ -592,7 +592,7 @@ kubectl get secrets
 
 #### persist-link, pdf-generator and PDF templates
 
-persist-link renders PDFs through pdf-generator (PhantomJS was removed), so it needs `pdf_generator.json` in its Secret. The install job generates a dedicated `persist-link-pdf` token and lists it in the pdf-generator `auth.json` next to the task token; the upgrade job does the same once for existing releases and restarts pdf-generator and persist-link. Remote images, fonts and CSS in persist-link PDF templates are blocked by pdf-generator `allowedHosts`: inline them (data URIs) or add the hosts to `allowedHosts`.
+persist-link renders PDFs through pdf-generator, so it needs `pdf_generator.json` in its Secret. The install job generates a dedicated `persist-link-pdf` token and lists it in the pdf-generator `auth.json` next to the task token; the upgrade job does the same once for existing releases and restarts pdf-generator and persist-link. Remote images, fonts and CSS in persist-link PDF templates are blocked by pdf-generator `allowedHosts`: inline them (data URIs) or add the hosts to `allowedHosts`.
 
 #### Document schema allow-list
 
