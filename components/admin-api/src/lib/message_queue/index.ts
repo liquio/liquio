@@ -82,11 +82,7 @@ export class MessageQueue {
       amqp.connect(this.config.amqpConnection, (error, connection) => {
         // Check error.
         if (error) {
-          global.log.save(
-            'amqp-connection-error|cannot-create-connection',
-            { url: this.config.amqpConnection, error: error.toString(), stack: error.stack },
-            'error',
-          );
+          global.log.save('amqp-connection-error|cannot-create-connection', { error: error.toString(), stack: error.stack }, 'error');
           return this.reconnect();
         }
 

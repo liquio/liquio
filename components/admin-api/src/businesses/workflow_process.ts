@@ -55,6 +55,18 @@ function prepareUserInfoFromId(user) {
   return { userId: user.userId, name: user.name, ipn: user.ipn };
 }
 
+const urlForLog = (u) => {
+  try {
+    const x = new URL(u);
+    x.username = '';
+    x.password = '';
+    x.search = '';
+    return x.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
+
 /**
  * Workflow process business.
  */
@@ -202,21 +214,22 @@ export class WorkflowProcessBusiness {
       timeout: this.config.elastic.timeout || 30000,
       validateStatus: () => true, // Always resolve, handle errors below
     };
-    global.log.save('elastic-search-request', { request: axiosConfig });
+    const requestForLog = { method: axiosConfig.method, url: urlForLog(elasticUrl), timeout: axiosConfig.timeout };
+    global.log.save('elastic-search-request', { request: requestForLog });
     let data;
     try {
       const response = await axios(axiosConfig);
       if (response.status >= 200 && response.status < 300) {
         data = response.data;
       } else {
-        global.log.save('elactic-search-error', { error: response.statusText, status: response.status, request: axiosConfig });
+        global.log.save('elactic-search-error', { error: response.statusText, status: response.status, request: requestForLog });
         data = undefined;
       }
     } catch (error) {
-      global.log.save('elactic-search-error', { error: error?.message, request: axiosConfig });
+      global.log.save('elactic-search-error', { error: error?.message, request: requestForLog });
       data = undefined;
     }
-    global.log.save('elastic-search-response', { request: axiosConfig, response: {} });
+    global.log.save('elastic-search-response', { request: requestForLog, response: {} });
 
     let { hits: { total: { value: total } = {}, hits = [] } = {} } = data || {};
 

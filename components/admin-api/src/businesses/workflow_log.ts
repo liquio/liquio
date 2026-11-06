@@ -9,6 +9,18 @@ const USER_ID_LENGHT_LIMIT = 20;
 
 const PROCESS_TIMEOUT = 60 * 1000;
 
+const urlForLog = (u) => {
+  try {
+    const x = new URL(u);
+    x.username = '';
+    x.password = '';
+    x.search = '';
+    return x.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
+
 /**
  * Workflow log business.
  */
@@ -348,7 +360,7 @@ export class WorkflowLogBusiness {
           {
             error: response.statusText,
             status: response.status,
-            requestOptions: { ...axiosConfig, data: '***', headers: '***' },
+            requestOptions: { method: axiosConfig.method, url: urlForLog(axiosConfig.url) },
           },
           'error',
         );
@@ -358,7 +370,7 @@ export class WorkflowLogBusiness {
         'error-during-saving-to-elastic',
         {
           error: error?.message,
-          requestOptions: { ...axiosConfig, data: '***', headers: '***' },
+          requestOptions: { method: axiosConfig.method, url: urlForLog(axiosConfig.url) },
         },
         'error',
       );
