@@ -136,8 +136,11 @@ export class EventWorkflow {
 
       if (!url || !token) {
         global.log.save('create-workflow-external-error|external-system-params-not-defined', {
-          createWorkflowExternal,
-          externalSystemConfig,
+          externalSystem,
+          workflowTemplateId,
+          taskTemplateId,
+          hasUrl: !!url,
+          hasToken: !!token,
         });
         const error: any = new Error('External system params not defined in config file. Check external system name in JSON schema.');
         error.details = {
@@ -261,8 +264,11 @@ export class EventWorkflow {
 
     if (!url || !token) {
       global.log.save('send-status-external-error|external-system-params-not-defined', {
-        sendStatusExternal,
-        externalSystemConfig,
+        externalSystem,
+        workflowId,
+        taskTemplateId,
+        hasUrl: !!url,
+        hasToken: !!token,
       });
       throw new Error('External system params not defined.');
     }
