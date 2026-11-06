@@ -1,7 +1,21 @@
 import express from 'express';
 import request from 'supertest';
+import debug from 'debug';
 
 import { useCors } from '../src/middleware';
+
+const mockSave = jest.fn();
+jest.mock('@liquio/back-core', () => ({
+  ...jest.requireActual('@liquio/back-core'),
+  Log: {
+    getInstance: jest.fn(() => ({
+      save: (type: string, data: unknown, level: string) => {
+        mockSave(type, data, level);
+        debug('test:log')(`[${level}] ${type}`, data ?? '');
+      },
+    })),
+  },
+}));
 
 /**
  * CORS security: exercises the real `useCors` middleware (not a re-implementation).
@@ -45,6 +59,7 @@ describe('CORS Security - id-api (real useCors)', () => {
       .set('Origin', 'https://evil.example');
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
     expect(res.headers['access-control-allow-credentials']).toBeUndefined();
+    expect(mockSave).toHaveBeenCalledWith('cors-wildcard-origin-ignored', expect.anything(), 'error');
   });
 
   it('preflight for a listed origin succeeds, for an unlisted one carries no allow headers', async () => {

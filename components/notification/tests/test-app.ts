@@ -17,6 +17,11 @@ import { createConsoleLogProvider } from '../src/lib/console_log_provider';
 
 const debug = createDebug;
 
+// Route raw console output through debug, so e2e runs stay quiet unless DEBUG=test:* is set.
+for (const method of ['log', 'info', 'warn', 'error', 'debug']) {
+  console[method] = (...args) => debug('test:console')(...args);
+}
+
 // E2E tests are slow, so we increase the timeout.
 // Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
 jest.setTimeout(120000);

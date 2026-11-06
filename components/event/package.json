@@ -20,7 +20,7 @@
     "test:watch": "jest --watch src",
     "test:cov": "jest --coverage src",
     "test:e2e": "jest --coverage --verbose tests",
-    "ci:e2e": "jest tests --ci --maxWorkers=2",
+    "ci:e2e": "jest tests --ci --maxWorkers=2 --coverage --coverageDirectory=coverage/e2e",
     "test:build": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "plugin-installer": "liquio-plugin-installer"
   },

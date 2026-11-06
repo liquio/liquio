@@ -7,5 +7,6 @@ module.exports = {
   },
   testPathIgnorePatterns: ['/dist/'],
   testMatch: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
-  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/*.spec.ts'],
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
 };

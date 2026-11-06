@@ -11,6 +11,8 @@ const config = {
   testPathIgnorePatterns: ['/node_modules/', '/dist/', '/src/admin/'],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   watchPathIgnorePatterns: ['<rootDir>/dist/'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.d.ts'],
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
 };
 
 module.exports = config;

@@ -6,6 +6,8 @@
 /** @type {import('jest').Config} */
 const config = {
   coverageProvider: 'v8',
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.d.ts'],
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
 
   // Transforms both .js and .ts test files through ts-jest.
   preset: 'ts-jest/presets/js-with-ts',
