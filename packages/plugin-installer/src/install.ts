@@ -28,6 +28,19 @@ export interface PluginsConfig {
   allowInstallScripts?: boolean;
 }
 
+// Registry URLs may embed credentials (userinfo) or tokens in the query, so strip both before logging.
+const urlForLog = (value: string): string => {
+  try {
+    const u = new URL(value);
+    u.username = '';
+    u.password = '';
+    u.search = '';
+    return u.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
+
 export async function installPlugins(options: InstallOptions, deps: InstallDependencies): Promise<void> {
   if (!existsSync(options.configDir)) {
     deps.log('plugin-installer-no-config-dir', { configDir: options.configDir });
@@ -64,7 +77,7 @@ export async function installPlugins(options: InstallOptions, deps: InstallDepen
   const specs = plugins.map((p) => `${p.package}@${p.version}`);
   const registry = pluginsConfig.registry || options.registry;
   const allowInstallScripts = pluginsConfig.allowInstallScripts ?? false;
-  deps.log('plugin-installer-installing', { plugins: specs, registry, allowInstallScripts });
+  deps.log('plugin-installer-installing', { plugins: specs, registry: urlForLog(registry), allowInstallScripts });
 
   const npmArgs = ['install', '--omit=dev', '--registry', registry];
   if (!allowInstallScripts) {

@@ -155,6 +155,33 @@ describe('installPlugins', () => {
     expect(args).not.toContain(options.registry);
   });
 
+  it('logs the registry without userinfo and query while npm receives the original value', async () => {
+    const registry = 'https://user:secret@npm.example.test/path?token=abc';
+    const deps = createDeps({
+      loadConfig: jest.fn().mockReturnValue({
+        plugins: { plugins: [{ package: 'foo', version: '1.0.0', isEnabled: true }], registry },
+      }),
+    });
+
+    await installPlugins(options, deps);
+
+    expect(deps.log).toHaveBeenCalledWith('plugin-installer-installing', expect.objectContaining({ registry: 'https://npm.example.test/path' }));
+    const [, args] = mockedChildProcess.spawnSync.mock.calls[0];
+    expect(args).toContain(registry);
+  });
+
+  it('logs a placeholder when the registry is not a valid URL', async () => {
+    const deps = createDeps({
+      loadConfig: jest.fn().mockReturnValue({
+        plugins: { plugins: [{ package: 'foo', version: '1.0.0', isEnabled: true }], registry: 'not a url' },
+      }),
+    });
+
+    await installPlugins(options, deps);
+
+    expect(deps.log).toHaveBeenCalledWith('plugin-installer-installing', expect.objectContaining({ registry: '[invalid-url]' }));
+  });
+
   it('falls back to options.registry when plugins.json has no registry', async () => {
     const deps = createDeps({
       loadConfig: jest.fn().mockReturnValue({
