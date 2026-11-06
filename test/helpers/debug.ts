@@ -1,12 +1,15 @@
-const debugPackage = require('debug')('test');
+import createDebug from 'debug';
+import type { Page } from '@playwright/test';
+
+const debugPackage = createDebug('test');
 
 const log = debugPackage.extend('log');
 const debug = debugPackage.extend('debug');
 
 // Global map to store trace IDs by request key (method + URL)
-const requestTraceIds = new Map();
+const requestTraceIds = new Map<string, string[]>();
 
-async function setupLogging(page) {
+async function setupLogging(page: Page): Promise<void> {
   debug('setupLogging: Setting up request and response logging');
   page.on('request', (request) => {
     debug(`REQUEST: ${request.method()} ${request.url()}`);
@@ -26,14 +29,15 @@ async function setupLogging(page) {
   });
 }
 
-function getTraceIdsForRequest(method, url) {
+function getTraceIdsForRequest(method: string, url: string): string[] {
   const requestKey = `${method} ${url}`;
   return requestTraceIds.get(requestKey) || [];
 }
 
-module.exports = {
+export {
   setupLogging,
   getTraceIdsForRequest,
+  requestTraceIds,
   log,
   debug,
 };

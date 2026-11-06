@@ -1,17 +1,17 @@
-const { execFileSync, execSync } = require('child_process');
-const { debug } = require('./debug');
+import { execFileSync, execSync } from 'child_process';
+import { debug } from './debug';
 
 /**
  * Reads the 6-digit confirmation PIN of the latest email sent to an address.
  * id-api does not log message bodies, so the PIN is taken from the email that the notification service stored in its database.
  *
- * @param {string} email - Address the confirmation email was sent to
- * @param {number} maxRetries - Maximum number of retry attempts (default: 10)
- * @param {number} delayMs - Delay between retries in milliseconds (default: 500)
- * @returns {Promise<string>} The 6-digit PIN from the email body
- * @throws {Error} If no PIN is found after all retries
+ * @param email - Address the confirmation email was sent to
+ * @param maxRetries - Maximum number of retry attempts (default: 10)
+ * @param delayMs - Delay between retries in milliseconds (default: 500)
+ * @returns The 6-digit PIN from the email body
+ * @throws If no PIN is found after all retries
  */
-async function getConfirmationPinFromNotifyDb(email, maxRetries = 10, delayMs = 500) {
+async function getConfirmationPinFromNotifyDb(email: string, maxRetries = 10, delayMs = 500): Promise<string> {
   // The address goes in as a psql variable through stdin (psql -c does not interpolate variables), never spliced into the SQL.
   const query = `SELECT substring(full_message from '>\\s*([0-9]{6})\\s*</div>') FROM incomming_messages
     WHERE :'email' = ANY(list_email) ORDER BY message_id DESC LIMIT 1;`;
@@ -45,11 +45,11 @@ async function getConfirmationPinFromNotifyDb(email, maxRetries = 10, delayMs = 
 /**
  * Returns docker compose logs of a single service
  *
- * @param {string} service - Docker compose service name (e.g. 'task')
- * @param {Date} [since] - Only return logs written after this moment
- * @returns {string} Service logs
+ * @param service - Docker compose service name (e.g. 'task')
+ * @param [since] - Only return logs written after this moment
+ * @returns Service logs
  */
-function getDockerComposeLogs(service, since) {
+function getDockerComposeLogs(service: string, since?: Date): string {
   const sinceArg = since ? ` --since ${since.toISOString()}` : '';
   debug(`getDockerComposeLogs: Reading logs of ${service}${sinceArg}`);
 
@@ -60,7 +60,7 @@ function getDockerComposeLogs(service, since) {
   });
 }
 
-module.exports = {
+export {
   getConfirmationPinFromNotifyDb,
   getDockerComposeLogs,
 };

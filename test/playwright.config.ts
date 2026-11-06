@@ -1,7 +1,6 @@
-// @ts-check
-const { defineConfig } = require('@playwright/test');
+import { defineConfig } from '@playwright/test';
 
-module.exports = defineConfig({
+export default defineConfig({
   workers: 1,
   timeout: 60000,
 });

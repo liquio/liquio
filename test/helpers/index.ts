@@ -1,44 +1,28 @@
-const { setupLogging, getTraceIdsForRequest, log, debug } = require('./debug');
-const { ensureAtLoginPage, loginWithPersonalKey } = require('./auth');
-const { importRegister } = require('./register');
-const { importWorkflow } = require('./workflow');
-const { generateTestUser } = require('./user');
-const { getConfirmationPinFromNotifyDb, getDockerComposeLogs } = require('./docker');
-const { createCabinetApi } = require('./cabinet_api');
-const { extractPdfText, getPdfPageSizes } = require('./pdf');
-const ldap = require('./ldap');
+// Debug helpers
+export { setupLogging, getTraceIdsForRequest, log, debug } from './debug';
 
-module.exports = {
-  // Debug helpers
-  setupLogging,
-  getTraceIdsForRequest,
-  log,
-  debug,
+// Auth helpers
+export { ensureAtLoginPage, loginWithPersonalKey } from './auth';
 
-  // Auth helpers
-  ensureAtLoginPage,
-  loginWithPersonalKey,
+// Register helpers
+export { importRegister } from './register';
 
-  // Register helpers
-  importRegister,
+// Workflow helpers
+export { importWorkflow } from './workflow';
 
-  // Workflow helpers
-  importWorkflow,
+// User helpers
+export { generateTestUser } from './user';
+export type { TestUser } from './user';
 
-  // User helpers
-  generateTestUser,
+// Docker helpers
+export { getConfirmationPinFromNotifyDb, getDockerComposeLogs } from './docker';
 
-  // Docker helpers
-  getConfirmationPinFromNotifyDb,
-  getDockerComposeLogs,
+// Cabinet API helpers
+export { createCabinetApi } from './cabinet_api';
+export type { CabinetApi, CabinetApiResponse } from './cabinet_api';
 
-  // Cabinet API helpers
-  createCabinetApi,
+// PDF helpers
+export { extractPdfText, getPdfPageSizes } from './pdf';
 
-  // PDF helpers
-  extractPdfText,
-  getPdfPageSizes,
-
-  // LDAP helpers
-  ...ldap,
-};
+// LDAP helpers
+export * from './ldap';

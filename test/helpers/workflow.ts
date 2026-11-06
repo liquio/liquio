@@ -1,6 +1,7 @@
-const { debug } = require('./debug');
+import type { Page } from '@playwright/test';
+import { debug } from './debug';
 
-async function importWorkflow(page, filePath, isTest = false, isOverwrite = false) {
+async function importWorkflow(page: Page, filePath: string, isTest = false, isOverwrite = false): Promise<void> {
   const url = isTest
     ? 'http://localhost:8082/workflow'
     : 'http://localhost:8082/workflow_test';
@@ -35,7 +36,7 @@ async function importWorkflow(page, filePath, isTest = false, isOverwrite = fals
       && response.status() < 300,
     { timeout: 60000 },
   );
-  importAccepted.catch(() => null);
+  importAccepted.catch((): null => null);
 
   await fileChooser.setFiles(filePath);
   debug('importWorkflow: File selected');
@@ -71,6 +72,6 @@ async function importWorkflow(page, filePath, isTest = false, isOverwrite = fals
   debug('importWorkflow: Import complete');
 }
 
-module.exports = {
+export {
   importWorkflow,
 };

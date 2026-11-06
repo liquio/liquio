@@ -1,7 +1,8 @@
-const { expect } = require('@playwright/test');
-const { debug } = require('./debug');
+import { expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { debug } from './debug';
 
-async function ensureAtLoginPage(page) {
+async function ensureAtLoginPage(page: Page): Promise<void> {
   debug('ensureAtLoginPage: Make sure we are at the login page http://localhost:8080/');
   await expect(page).toHaveURL('http://localhost:8080/');
   debug('ensureAtLoginPage: At login page');
@@ -13,7 +14,7 @@ async function ensureAtLoginPage(page) {
   debug('ensureAtLoginPage: Personal key button visible');
 }
 
-async function loginWithPersonalKey(page, filePath, password) {
+async function loginWithPersonalKey(page: Page, filePath: string, password: string): Promise<void> {
   debug('loginWithPersonalKey: Make sure we are at the login page http://localhost:8080/');
   await expect(page).toHaveURL('http://localhost:8080/');
   debug('loginWithPersonalKey: At login page');
@@ -39,7 +40,7 @@ async function loginWithPersonalKey(page, filePath, password) {
   debug('loginWithPersonalKey: X509 authorization completed');
 }
 
-module.exports = {
+export {
   ensureAtLoginPage,
   loginWithPersonalKey,
 };

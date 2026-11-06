@@ -1,9 +1,19 @@
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const { debug } = require('./debug');
+import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import { debug } from './debug';
 
-async function generateTestUser() {
+interface TestUser {
+  firstName: string;
+  lastName: string;
+  serialNumber: string;
+  password: string;
+  p12Path: string;
+  jsonPath: string;
+  createdAt: string;
+}
+
+async function generateTestUser(): Promise<TestUser> {
   debug('generateTestUser: Generating random user credentials');
 
   // Generate random data
@@ -57,6 +67,7 @@ async function generateTestUser() {
   return metadata;
 }
 
-module.exports = {
+export {
   generateTestUser,
 };
+export type { TestUser };

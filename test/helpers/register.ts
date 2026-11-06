@@ -1,6 +1,7 @@
-const { debug } = require('./debug');
+import type { Page } from '@playwright/test';
+import { debug } from './debug';
 
-async function importRegister(page, filePath) {
+async function importRegister(page: Page, filePath: string): Promise<void> {
   debug('importRegister: Navigating to registry page');
   await page.goto('http://localhost:8082/registry');
   debug('importRegister: At registry page');
@@ -33,6 +34,6 @@ async function importRegister(page, filePath) {
   await page.waitForTimeout(500);
 }
 
-module.exports = {
+export {
   importRegister,
 };
