@@ -58,6 +58,20 @@ cd test && npx playwright test ldap.spec.js
 ```
 The spec loads the memberOf overlay and the users and groups from `fixtures/ldap/*.ldif` on the first run. It changes group membership with `docker compose exec openldap ldapmodify` and calls `POST /user/ldap/sync/:userId` of id-api with the Basic credentials from `config/id/config.json`. To get back to the default stack, run `docker compose up -d --force-recreate id-api`.
 
+### persist-link external template PDF (`persist-link-external-pdf.spec.js`)
+
+The spec renders a persist-link external template (filled from a register record) to a PDF through pdf-generator. The `external` link provider is not enabled on the default stack, so the spec is skipped unless the override is active.
+
+Run from the project root (the providers JSON is built from the local, generated config, so no token is committed):
+```bash
+export PERSIST_LINK_TEST_PROVIDERS="$(jq -c --arg t "$(jq -r '.tokens[0]' config/register/auth.json)" \
+  '. + {external: {register: {url: "http://register:8080", token: $t}}}' config/persist-link/link_providers.json)"
+docker compose -f compose.yaml -f test/fixtures/persist-link/docker-compose.persist-link.yml up -d persist-link
+cd test && npx playwright test persist-link-external-pdf.spec.js
+# back to the default stack:
+docker compose up -d --force-recreate persist-link
+```
+
 ## Test Structure
 
 - `basic-workflow.spec.js`: End-to-end workflow tests including register/workflow imports and task completion
