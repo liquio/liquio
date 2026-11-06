@@ -54,6 +54,8 @@ describe('MessageQueue', () => {
   });
 
   afterEach(() => {
+    // Drop any pending reconnect timer so it can't keep the process alive.
+    clearTimeout(messageQueue.reconnectTimeout);
     jest.clearAllMocks();
     (MessageQueue as any).singleton = null;
   });

@@ -12,7 +12,7 @@ describe('Service permissions (opt-in)', () => {
     const { auth } = testHarness.getConfig();
     auth.tokens.push(restrictedToken);
     auth.servicePermissions = { reader: { routes: ['GET /test/ping_with_auth', 'GET /registers'] } };
-  }, 30000);
+  }, 120000); // boots testcontainers; slow on loaded CI runners
 
   afterAll(async () => {
     await testHarness.teardown();

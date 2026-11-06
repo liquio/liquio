@@ -22,7 +22,7 @@
     "test:watch": "jest src --watch",
     "test:cov": "jest src --coverage",
     "test:e2e": "jest tests",
-    "ci:e2e": "jest tests --ci --maxWorkers=2 --forceExit"
+    "ci:e2e": "jest tests --ci --maxWorkers=2 --coverage --coverageDirectory=coverage/e2e"
   },
   "dependencies": {
     "@liquio/back-core": "^1.0.2",
@@ -57,7 +57,6 @@
     "eslint-plugin-prettier": "^5.5.6",
     "jest": "^30.5.2",
     "nock": "^14.0.17",
-    "portfinder": "^1.0.37",
     "supertest": "^7.3.1",
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",

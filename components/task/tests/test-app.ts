@@ -1,9 +1,9 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
+import type { AddressInfo } from 'node:net';
 
 import supertest from 'supertest';
-import portfinder from 'portfinder';
 import pg from 'pg';
 import nock from 'nock';
 import debug from 'debug';
@@ -15,7 +15,8 @@ import { resetIdApiClient } from '@liquio/back-core';
 import { BpmnTaskCore } from '../src/app';
 
 // E2E tests are slow, so we increase the timeout
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the RabbitMQ connection
 jest.mock('../src/lib/message_queue', () => {
@@ -74,6 +75,7 @@ const { getConfig } = require('../src/lib/config');
 const defaultConfig = getConfig();
 
 export class TestApp extends BpmnTaskCore {
+  port: number;
   static pgContainer;
   static redisContainer;
 
@@ -82,7 +84,11 @@ export class TestApp extends BpmnTaskCore {
     resetIdApiClient();
     const app = new TestApp();
     await app.init();
-    app.listen();
+    await app.listen();
+    // Port 0 lets the OS pick a free port atomically; remember the real one.
+    const { port } = (app as any).routerService.server.address() as AddressInfo;
+    app.port = port;
+    global.config.server.port = port;
     return app;
   }
 
@@ -93,11 +99,9 @@ export class TestApp extends BpmnTaskCore {
 
     configOverride.server = {
       ...defaultConfig.server,
-      host: 'localhost',
-      port: await portfinder.getPortPromise({
-        host: 'localhost',
-        startPort: 60000 + (process.pid % 1000),
-      }),
+      host: '127.0.0.1',
+      hostname: '127.0.0.1',
+      port: 0,
     };
 
     configOverride.auth = {
@@ -253,7 +257,7 @@ export class TestApp extends BpmnTaskCore {
 
   // Obtain a client instance to interact with the application
   request() {
-    const address = `http://${global.config.server.host}:${global.config.server.port}`;
+    const address = `http://127.0.0.1:${this.port}`;
     return supertest(address);
   }
 
@@ -296,6 +300,8 @@ export class TestApp extends BpmnTaskCore {
 
   // Destroy the application
   async destroy() {
+    // Drop keep-alive sockets so close() can't hang, then stop (awaits server close).
+    (this as any).routerService?.server?.closeAllConnections?.();
     await this.stop();
   }
 }

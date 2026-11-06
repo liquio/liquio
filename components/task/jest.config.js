@@ -21,7 +21,7 @@ const config = {
   // collectCoverage: false,
 
   // An array of glob patterns indicating a set of files for which coverage information should be collected
-  // collectCoverageFrom: undefined,
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.d.ts'],
 
   // The directory where Jest should output its coverage files
   // coverageDirectory: undefined,
@@ -38,12 +38,7 @@ const config = {
   preset: 'ts-jest/presets/js-with-ts',
 
   // A list of reporter names that Jest uses when writing coverage reports
-  // coverageReporters: [
-  //   "json",
-  //   "text",
-  //   "lcov",
-  //   "clover"
-  // ],
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
 
   // An object that configures minimum threshold enforcement for coverage results
   // coverageThreshold: undefined,
@@ -183,10 +178,6 @@ const config = {
 
   // This option allows use of a custom test runner
   // testRunner: "jest-circus/runner",
-
-  // Force Jest to exit after tests complete
-  // This is needed because axios/nock interactions can leave open handles
-  forceExit: true,
 
   // A map from regular expressions to paths to transformers
   // transform: undefined,

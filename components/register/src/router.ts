@@ -404,7 +404,7 @@ export default class Router {
    * @param {object} app Express app.
    */
   async listen(app: Express): Promise<Server> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
@@ -413,11 +413,14 @@ export default class Router {
       const { requestTimeout, headersTimeout } = this.config.server;
       if (typeof requestTimeout === 'number') serverInstance.requestTimeout = requestTimeout;
       if (typeof headersTimeout === 'number') serverInstance.headersTimeout = headersTimeout;
+      serverInstance.once('error', reject);
       serverInstance.listen(port, hostname, () => {
-        this.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
+        serverInstance.removeListener('error', reject);
+        const address = serverInstance.address();
+        const actualPort = typeof address === 'object' && address !== null ? address.port : port;
+        this.log.save('server-listening-started', { url: `http://${hostname}:${actualPort}` });
+        resolve(serverInstance);
       });
-
-      resolve(serverInstance);
     });
   }
 }

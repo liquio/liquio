@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 import supertest from 'supertest';
-import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
@@ -21,7 +20,8 @@ import { validateAuthConfig } from '../src/lib/config_validation';
 const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout.
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
 jest.mock('@liquio/back-core', () => {
@@ -109,12 +109,10 @@ export class TestApp {
 
     process.env[`${ENV_PREFIX}server`] = JSON.stringify({
       ...templateConfig.server,
-      hostname: 'localhost',
+      hostname: '127.0.0.1',
       maxUploadSize: 65536,
-      port: await portfinder.getPortPromise({
-        host: 'localhost',
-        startPort: 60000 + (process.pid % 1000),
-      }),
+      // Port 0: the OS assigns a free port atomically at listen time (see listen()).
+      port: 0,
     });
 
     // Templates ship an empty token list, so inject the generated test token.
@@ -232,6 +230,10 @@ export class TestApp {
     // Init router.
     this.routerService = new Router(this.config);
     await this.routerService.init();
+
+    // Publish the OS-assigned port, so request() targets the real server.
+    const address = this.routerService.httpServer.address();
+    this.config.server.port = address.port;
   }
 
   // Run this before each test.
@@ -255,8 +257,12 @@ export class TestApp {
     if (global.db) {
       await global.db.close();
     }
-    if (this.routerService?.httpServer) {
-      this.routerService.httpServer.close();
+    const server = this.routerService?.httpServer;
+    if (server?.listening) {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections?.();
+      });
     }
   }
 }

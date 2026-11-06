@@ -147,7 +147,7 @@ export default class ExportBusiness extends Business {
 
     const exportId = this.generateExportId();
     this.prepareToExport(exportId, keyId, options, access);
-    setTimeout(() => this.clearToExport(exportId), AUTO_CLEAR_INTERVAL); // Clear "to export" after 1 day.
+    setTimeout(() => this.clearToExport(exportId), AUTO_CLEAR_INTERVAL).unref?.(); // Clear "to export" after 1 day.
     return exportId;
   }
 

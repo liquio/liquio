@@ -5,7 +5,6 @@ import { join } from 'path';
 import { randomBytes } from 'crypto';
 
 import supertest = require('supertest');
-import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import nock = require('nock');
 import createDebug = require('debug');
@@ -32,7 +31,8 @@ export const TASK_TOKEN = `Basic ${Buffer.from('admin-api:test-task-secret').toS
 const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the RabbitMQ connection
 jest.mock('../src/lib/message_queue', () => {
@@ -86,7 +86,7 @@ export class TestApp {
   static async setup() {
     const app = new TestApp();
     await app.init();
-    app.listen();
+    await app.listen();
     return app;
   }
 
@@ -96,16 +96,18 @@ export class TestApp {
 
     configOverride.server = {
       ...defaultConfig.server,
-      host: 'localhost',
-      port: await portfinder.getPortPromise({
-        host: 'localhost',
-        startPort: 60000 + (process.pid % 1000),
-      }),
+      host: '127.0.0.1',
+      hostname: '127.0.0.1',
+      // Port 0: the OS assigns a free port atomically at listen time (real port is stored after listen).
+      port: 0,
       token: 'test-token',
     };
 
     configOverride.auth = {
       ...defaultConfig.auth,
+      // Specs mock id-api at http://id-api:8100 (template default port may differ).
+      server: 'http://id-api',
+      port: 8100,
       LiquioId: {
         ...defaultConfig.auth.LiquioId,
         server: 'http://id.local',
@@ -309,6 +311,13 @@ export class TestApp {
     // Init router.
     this.routerService = new RouterService(this.config);
     await this.routerService.init();
+
+    // Publish the actual port assigned by the OS.
+    const address = this.routerService.server?.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Test server is not listening');
+    }
+    this.config.server.port = address.port;
   }
 
   // Run this after each test

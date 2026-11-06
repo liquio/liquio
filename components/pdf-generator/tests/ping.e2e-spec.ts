@@ -17,6 +17,10 @@ describe('PingController (e2e)', () => {
     await app.init();
   });
 
+  afterEach(async () => {
+    await app.close();
+  });
+
   it('/test/ping (GET)', () => {
     return request(app.getHttpServer()).get('/test/ping').expect(200);
   });

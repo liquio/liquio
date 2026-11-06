@@ -22,7 +22,7 @@
     "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:debug": "node --experimental-vm-modules --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/jest/bin/jest.js --runInBand",
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --verbose --coverage --forceExit --config ./tests/jest-e2e.json",
-    "ci:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./tests/jest-e2e.json --ci --maxWorkers=2 --forceExit"
+    "ci:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./tests/jest-e2e.json --ci --maxWorkers=2"
   },
   "dependencies": {
     "@liquio/plugin-installer": "^1.0.0",
@@ -52,12 +52,14 @@
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@nestjs/testing": "^12.3.2",
+    "@types/debug": "^4.1.13",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.1",
     "@types/passport-http": "^0.3.11",
     "@types/supertest": "^7.2.1",
     "@typescript-eslint/eslint-plugin": "^8.71.1",
+    "debug": "^4.4.3",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.17.1",

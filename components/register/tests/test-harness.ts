@@ -1,6 +1,5 @@
 import { exec } from 'child_process';
 import { Server } from 'http';
-import { createServer } from 'net';
 
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
@@ -52,8 +51,9 @@ export class TestHarness {
   async setup(options: TestHarnessOptions = {}) {
     const config = this.config;
 
-    // Use unused ports to allow parallel test execution
-    config.server.port = await this.getUnusedPort();
+    // Bind port 0 on loopback so the OS assigns a free port atomically at listen time (parallel-safe).
+    config.server.hostname = '127.0.0.1';
+    config.server.port = 0;
 
     // Encryption now fails closed on an invalid key, so tests need a valid 32-byte hex key (template holds a placeholder).
     config.encryption = { ...config.encryption, key: '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff' };
@@ -105,6 +105,11 @@ export class TestHarness {
     const router = new Router(config);
     const express = await router.init();
     this.server = express;
+    const address = express.address();
+    if (!address || typeof address !== 'object') {
+      throw new Error('Test server is not listening on a TCP port');
+    }
+    config.server.port = address.port;
 
     return { express, router, db };
   }
@@ -186,6 +191,7 @@ export class TestHarness {
     if (this.server) {
       testDebug('Closing main server...');
       await new Promise<void>((resolve, reject) => {
+        this.server?.closeIdleConnections?.();
         this.server?.close((err?: Error) => {
           if (err) {
             testDebug('Error closing main server:', err);
@@ -427,18 +433,5 @@ export class TestHarness {
       testDebug(`Redis container started on port: ${this.redisContainer.getPort()}`);
       return this.redisContainer;
     }
-  }
-
-  private async getUnusedPort(): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const server = createServer();
-      server.unref();
-      server.on('error', reject);
-      server.listen(0, () => {
-        const address = server.address();
-        const port = typeof address === 'object' && address !== null ? address.port : 0;
-        server.close(() => resolve(port));
-      });
-    });
   }
 }

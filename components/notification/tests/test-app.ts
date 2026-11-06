@@ -5,7 +5,6 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 
 import supertest from 'supertest';
-import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import nock from 'nock';
 import createDebug from 'debug';
@@ -18,8 +17,14 @@ import { createConsoleLogProvider } from '../src/lib/console_log_provider';
 
 const debug = createDebug;
 
+// Route raw console output through debug, so e2e runs stay quiet unless DEBUG=test:* is set.
+for (const method of ['log', 'info', 'warn', 'error', 'debug']) {
+  console[method] = (...args) => debug('test:console')(...args);
+}
+
 // E2E tests are slow, so we increase the timeout.
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
 jest.mock('@liquio/back-core', () => {
@@ -112,6 +117,7 @@ export class TestApp {
 
   server: any;
   httpServer: any;
+  port: number;
   log: any;
 
   constructor() {
@@ -165,11 +171,6 @@ export class TestApp {
 
     await TestApp.applyMigrations(confOverride.db);
 
-    confOverride.port = await portfinder.getPortPromise({
-      host: 'localhost',
-      startPort: 60000 + (process.pid % 1000),
-    });
-
     nock.activate();
   }
 
@@ -213,12 +214,19 @@ export class TestApp {
   }
 
   async listen() {
-    const { port } = confOverride;
-    await new Promise((resolve) => {
+    // Port 0 lets the OS pick a free port atomically at listen time (no race between workers).
+    await new Promise((resolve, reject) => {
       // express's app.listen() returns the underlying http.Server (not the app) - keep it
       // separately, since that's what actually needs closing in destroy().
-      this.httpServer = this.server.listen(port, () => resolve(undefined));
+      const httpServer = this.server.listen(0, '127.0.0.1');
+      this.httpServer = httpServer;
+      httpServer.once('error', reject);
+      httpServer.once('listening', () => {
+        httpServer.off('error', reject);
+        resolve(undefined);
+      });
     });
+    this.port = this.httpServer.address().port;
   }
 
   // Run this before each test.
@@ -242,7 +250,7 @@ export class TestApp {
 
   // Obtain a client instance to interact with the application.
   request() {
-    return supertest(`http://localhost:${confOverride.port}`);
+    return supertest(`http://127.0.0.1:${this.port}`);
   }
 
   nock(...args: any[]) {

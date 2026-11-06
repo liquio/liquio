@@ -16,3 +16,5 @@ process.env.KITSOFT_PDF_GENERATOR_playwright = JSON.stringify({
   consoleLogMaxMessages: 2,
   noSandbox: false,
 });
+
+import './silence-logs';

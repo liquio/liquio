@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 
 import supertest from 'supertest';
-import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import amqp from 'amqplib';
 import nock from 'nock';
@@ -23,7 +22,8 @@ import { WorkflowBusiness } from '../src/businesses/workflow';
 const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout.
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
 jest.mock('@liquio/back-core', () => {
@@ -113,11 +113,9 @@ export class TestApp {
     configOverride.server = {
       ...defaultConfig.server,
       monitoring: { isEnabled: true, token: TestApp.MONITORING_TOKEN },
-      hostname: 'localhost',
-      port: await portfinder.getPortPromise({
-        host: 'localhost',
-        startPort: 60000 + (process.pid % 1000),
-      }),
+      // Bind to loopback IPv4 with an OS-assigned port (0), so parallel workers can't collide.
+      hostname: '127.0.0.1',
+      port: 0,
     };
 
     // Redis isn't exercised by the controllers under test.
@@ -158,7 +156,10 @@ export class TestApp {
     await TestApp.applyMigrations(configOverride.db);
 
     // Start RabbitMQ container.
-    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management').start();
+    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management')
+      // RabbitMQ boots slowly on loaded CI runners; the testcontainers default (30s) is too tight.
+      .withStartupTimeout(120000)
+      .start();
 
     configOverride.message_queue = {
       ...defaultConfig.message_queue,
@@ -227,6 +228,10 @@ export class TestApp {
     // Init router.
     this.routerService = new RouterService(this.config);
     await this.routerService.init();
+
+    // Publish the real port assigned by the OS.
+    const { port } = this.routerService.httpServer.address();
+    this.config.server.port = port;
   }
 
   // Run this before each test.
@@ -311,8 +316,12 @@ export class TestApp {
     if (global.db) {
       await global.db.close();
     }
-    if (this.routerService?.httpServer) {
-      this.routerService.httpServer.close();
+    const server = this.routerService?.httpServer;
+    if (server?.listening) {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections?.();
+      });
     }
   }
 }

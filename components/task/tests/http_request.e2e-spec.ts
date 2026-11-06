@@ -1,3 +1,6 @@
+import http from 'node:http';
+import { AddressInfo } from 'node:net';
+
 import express from 'express';
 import nock from 'nock';
 import supertest from 'supertest';
@@ -23,6 +26,13 @@ describe('HttpRequest', () => {
   afterEach(() => {
     // Ensure all nock interceptors were used
     nock.isDone();
+  });
+
+  afterAll(() => {
+    // Unpatch node:http. It is shared by every test file in this jest worker, while each file gets its
+    // own nock instance, so a later file's nock.restore() cannot undo this file's interceptor.
+    nock.cleanAll();
+    nock.restore();
   });
 
   describe('Static Properties', () => {
@@ -178,15 +188,24 @@ describe('HttpRequest', () => {
     });
 
     it('should handle request timeout', async () => {
-      nock(baseUrl).get(testEndpoint).matchHeader('x-trace-id', 'test-trace-id-123').delay(2000).reply(200, { data: 'delayed' });
+      // Use a real local server that never answers: aborting a nock-delayed reply leaves the
+      // interceptor's mock socket (and its HTTP parser) open, which jest reports as an open handle.
+      const server = http.createServer(() => {});
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const { port } = server.address() as AddressInfo;
 
-      await expect(
-        HttpRequest.send({
-          url: fullUrl,
-          method: 'GET',
-          timeout: 1000,
-        }),
-      ).rejects.toThrow();
+      try {
+        await expect(
+          HttpRequest.send({
+            url: `http://127.0.0.1:${port}/test`,
+            method: 'GET',
+            timeout: 500,
+          }),
+        ).rejects.toThrow();
+      } finally {
+        server.closeAllConnections();
+        await new Promise((resolve) => server.close(resolve));
+      }
     });
 
     it('should return body for HTTP error responses', async () => {

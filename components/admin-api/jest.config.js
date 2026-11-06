@@ -12,3 +12,5 @@ export const verbose = true;
 export const testPathIgnorePatterns = ['/dist/', '/node_modules/', '/src/controllers/test.ts'];
 export const modulePathIgnorePatterns = ['<rootDir>/dist/'];
 export const watchPathIgnorePatterns = ['<rootDir>/dist/'];
+export const collectCoverageFrom = ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.d.ts'];
+export const coverageReporters = ['text', 'text-summary', 'json-summary', 'lcov'];

@@ -1,4 +1,6 @@
 import { execSync } from 'child_process';
+import http from 'http';
+import { AddressInfo } from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
 import crypto from 'crypto';
@@ -9,7 +11,6 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers
 import debug from 'debug';
 import nock from 'nock';
 import pg from 'pg';
-import portfinder from 'portfinder';
 import supertest from 'supertest';
 
 import { Application } from '../src/application';
@@ -56,7 +57,8 @@ jest.mock('../src/config', () => {
   };
 });
 
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 export class TestApp extends Application {
   private static pgContainer: StartedPostgreSqlContainer;
@@ -64,6 +66,8 @@ export class TestApp extends Application {
   private static dexContainer: StartedTestContainer;
   private static dexConfigPath: string;
   public static dexUrl: string;
+  private static httpServer?: http.Server;
+  private static currentApp?: TestApp;
 
   constructor() {
     super(config);
@@ -84,11 +88,43 @@ export class TestApp extends Application {
     return app;
   }
 
+  // The port is held for the whole test file by a server bound to port 0 (assigned atomically by the OS),
+  // so it is known before Dex starts and cannot be taken by another jest worker.
+  private static async startHttpServer() {
+    const server = http.createServer((req, res) => {
+      const handler = this.currentApp?.expressHandler;
+      if (!handler) {
+        res.statusCode = 503;
+        res.end();
+        return;
+      }
+      handler(req, res);
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, 'localhost', () => {
+        server.off('error', reject);
+        resolve();
+      });
+    });
+    this.httpServer = server;
+    config.port = (server.address() as AddressInfo).port;
+  }
+
+  private get expressHandler(): http.RequestListener {
+    return this.express as unknown as http.RequestListener;
+  }
+
+  listen() {
+    TestApp.currentApp = this;
+    return TestApp.httpServer!;
+  }
+
   static async beforeAll() {
     // Allow testcontainers to talk to docker
     nock.restore();
 
-    config.port = await portfinder.getPortPromise({ host: 'localhost', startPort: 60000 + (process.pid % 1000) });
+    await this.startHttpServer();
 
     // Check if the database is already set up (i.e. Gitlab CI)
     if (process.env.DB_HOST) {
@@ -225,6 +261,13 @@ export class TestApp extends Application {
 
   static async afterAll() {
     nock.restore();
+    const httpServer = this.httpServer;
+    this.httpServer = undefined;
+    this.currentApp = undefined;
+    if (httpServer) {
+      httpServer.closeAllConnections();
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    }
     await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.dexContainer?.stop()]);
 
     // Clean up temporary Dex config file
@@ -240,6 +283,9 @@ export class TestApp extends Application {
 
   async destroy() {
     await this.stop();
+    if (TestApp.currentApp === this) {
+      TestApp.currentApp = undefined;
+    }
 
     // Reset the singleton instances to ensure a clean state for each test
     delete (Models as any).singleton;

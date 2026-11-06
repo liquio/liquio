@@ -10,3 +10,5 @@ export const testEnvironment = 'node';
 export const testMatch = ['**/*.spec.[tj]s?(x)', '**/*.e2e-spec.[tj]s?(x)'];
 export const verbose = true;
 export const testPathIgnorePatterns = ['/dist/', '/node_modules/', '/src/controllers/test.ts'];
+export const collectCoverageFrom = ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.d.ts'];
+export const coverageReporters = ['text', 'text-summary', 'json-summary', 'lcov'];

@@ -6,7 +6,7 @@ describe('RegistersController', () => {
   beforeAll(async () => {
     testHarness = new TestHarness();
     await testHarness.setup({ useDatabase: true });
-  }, 30000);
+  }, 120000); // boots testcontainers; slow on loaded CI runners
 
   afterAll(async () => {
     await testHarness.teardown();

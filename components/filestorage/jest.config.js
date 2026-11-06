@@ -7,6 +7,8 @@
 const config = {
   preset: 'ts-jest/presets/js-with-ts',
   coverageProvider: 'v8',
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.d.ts'],
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
   // Scoped to the actual naming convention (*.spec.[jt]s) rather than Jest's default, which also
   // matches any file literally named "test.js"/"test.ts" — a false positive on src/controllers/test.ts
   // (the Test Controller, not a test file).

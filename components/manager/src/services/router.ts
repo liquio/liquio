@@ -87,11 +87,15 @@ export class RouterService {
    * @param {object} app Express app.
    */
   async listen(app) {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
-      this.httpServer = app.listen(port, hostname, () => {
+      this.httpServer = app.listen(port, hostname, (error?: Error) => {
+        // Express 5 passes listen errors (e.g. EADDRINUSE) to the callback instead of throwing.
+        if (error) {
+          return reject(error);
+        }
         global.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });

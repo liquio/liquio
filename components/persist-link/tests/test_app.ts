@@ -3,7 +3,6 @@ import { execSync } from 'node:child_process';
 
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { Sandbox } from '@liquio/back-core';
-import portfinder from 'portfinder';
 import supertest from 'supertest';
 
 import AuthController from '../src/controllers/auth';
@@ -29,7 +28,8 @@ import baseConfig from './base.config.json';
 
 export const config: any = JSON.parse(JSON.stringify(baseConfig));
 
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 const mockLog = {
   save: jest.fn(),
@@ -39,6 +39,7 @@ const mockLog = {
 export class TestApp {
   private static pgContainer: StartedPostgreSqlContainer;
   private router: Router;
+  private port = 0;
 
   constructor() {
     this.router = new Router(config);
@@ -51,8 +52,6 @@ export class TestApp {
   }
 
   static async beforeAll() {
-    config.server.port = await portfinder.getPortPromise({ host: '127.0.0.1', startPort: 61000 + (process.pid % 1000) });
-
     this.pgContainer = await new PostgreSqlContainer('postgres:16')
       .withDatabase('persist_link')
       .withUsername('postgres')
@@ -113,11 +112,21 @@ export class TestApp {
     const models = new Models(config);
     models.initModels();
 
+    // Port 0: the OS assigns a free port atomically at listen time.
+    config.server.hostname = '127.0.0.1';
+    config.server.port = 0;
     await this.router.init();
+
+    const address = (this.router as any).server?.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('HTTP server is not listening.');
+    }
+    this.port = address.port;
+    config.server.port = address.port;
   }
 
   request() {
-    return supertest(`http://${config.server.hostname}:${config.server.port}`);
+    return supertest(`http://127.0.0.1:${this.port}`);
   }
 
   async destroy() {

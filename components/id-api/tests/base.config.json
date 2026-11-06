@@ -9,7 +9,7 @@
     "dialect": "postgres"
   },
   "host": "localhost",
-  "port": 60000,
+  "port": 0,
   "modules": {
     "denyToUpdateUserName": true,
     "denyToUpdateUserValidParams": true,
