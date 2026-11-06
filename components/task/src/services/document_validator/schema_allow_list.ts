@@ -1,3 +1,5 @@
+import { getConfig } from '../../lib/context';
+
 export const ALWAYS_ALLOWED_KEYS = ['propertiesHasOptions'];
 
 export type SchemaAllowListMode = 'enforce' | 'log' | 'off';
@@ -14,7 +16,7 @@ const hasItems = (node: any): boolean => isObject(node.items) && !Array.isArray(
  * @returns Mode from `documents.schemaAllowList` config, `enforce` by default and for unknown values.
  */
 export function getSchemaAllowListMode(): SchemaAllowListMode {
-  const mode = (global as any).config?.documents?.schemaAllowList;
+  const mode = (getConfig() as any)?.documents?.schemaAllowList;
   return mode === 'log' || mode === 'off' ? mode : 'enforce';
 }
 

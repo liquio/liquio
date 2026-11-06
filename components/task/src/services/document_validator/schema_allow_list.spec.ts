@@ -1,4 +1,5 @@
 import { findPathsNotInSchema, getSchemaAllowListMode } from './schema_allow_list';
+import { setAppContext, resetAppContext } from '../../lib/context';
 
 const schema = {
   properties: {
@@ -94,22 +95,26 @@ describe('findPathsNotInSchema', () => {
 });
 
 describe('getSchemaAllowListMode', () => {
+  afterAll(() => {
+    resetAppContext();
+  });
+
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
   });
 
   it('defaults to enforce', () => {
-    global.config = {};
+    setAppContext({ config: {} });
     expect(getSchemaAllowListMode()).toBe('enforce');
   });
 
   it('falls back to enforce for unknown values', () => {
-    global.config = { documents: { schemaAllowList: 'bogus' } };
+    setAppContext({ config: { documents: { schemaAllowList: 'bogus' } } });
     expect(getSchemaAllowListMode()).toBe('enforce');
   });
 
   it.each(['log', 'off'])('returns %s when configured', (mode) => {
-    global.config = { documents: { schemaAllowList: mode } };
+    setAppContext({ config: { documents: { schemaAllowList: mode } } });
     expect(getSchemaAllowListMode()).toBe(mode);
   });
 });

@@ -272,7 +272,7 @@ export class DocumentBusiness extends Business {
       if (mode !== 'off') {
         const notInSchema = findPathsNotInSchema(jsonSchema, properties);
         if (notInSchema.length > 0) {
-          global.log.save(
+          getLog().save(
             'document-update-path-not-in-schema',
             { documentId, documentTemplateId: templateId, paths: notInSchema, mode },
             mode === 'enforce' ? 'warn' : 'info',

@@ -1,7 +1,11 @@
-(global as any).conf = {
-  corezoidConfig: { apiLogin: 'x' },
-  db: { database: 'x', username: 'x', password: 'x', host: 'localhost', dialect: 'postgres', port: 5432 },
-};
+import { setAppContext } from '../lib/context';
+
+setAppContext({
+  conf: {
+    corezoidConfig: { apiLogin: 'x' },
+    db: { database: 'x', username: 'x', password: 'x', host: 'localhost', dialect: 'postgres', port: 5432 },
+  },
+});
 
 jest.mock('../config/config', () => ({ corezoidConfig: { apiLogin: 'x' } }));
 jest.mock('../models/authorize', () => ({
@@ -12,9 +16,8 @@ const { Message } = require('./message');
 
 describe('Message.sendMessageByPhonesList blacklist log', () => {
   it('logs the blacklist size and masked phones, not the blacklist itself', async () => {
-    (global as any).conf = { smsBlacklist: ['+7'] };
     const save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ conf: { smsBlacklist: ['+7'] }, log: { save } });
     const controller: any = Object.create(Message.prototype);
     controller.issetPhonesList = jest.fn().mockReturnValue(true);
     const res = { send: jest.fn() };

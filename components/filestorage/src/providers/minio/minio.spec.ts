@@ -2,7 +2,7 @@ import nock from 'nock';
 
 import { Minio } from './index';
 import { HttpRequest } from '../../lib/http_request';
-import { setAppContext, resetAppContext } from '../../lib/context';
+import { setAppContext, resetAppContext, getLog } from '../../lib/context';
 
 beforeAll(() => {
   setAppContext({ log: { save: jest.fn() }, silentUpload: true });
@@ -1843,17 +1843,17 @@ describe('Minio Provider', () => {
     let minio: Minio;
 
     beforeEach(() => {
-      global.silentUpload = false;
-      (global.log.save as jest.Mock).mockClear();
+      setAppContext({ log: getLog(), silentUpload: false });
+      (getLog().save as jest.Mock).mockClear();
       minio = new Minio({ server: 'http://user:pass@localhost:9000', bucket: 'b', tenantName: 't', account: 'a' });
       jest.spyOn((minio as any).auth, 'getAuthInfo').mockReturnValue({ authorization: 'AWS fake:sig', date: 'fake-date' });
     });
 
     afterEach(() => {
-      global.silentUpload = true;
+      setAppContext({ log: getLog(), silentUpload: true });
     });
 
-    const loggedPayloads = () => (global.log.save as jest.Mock).mock.calls.map(([, payload]) => payload);
+    const loggedPayloads = () => (getLog().save as jest.Mock).mock.calls.map(([, payload]) => payload);
 
     it('does not log headers or credentials for download', async () => {
       const options = await minio.downloadFileRequestOptions({ filePath: 'f.txt' });

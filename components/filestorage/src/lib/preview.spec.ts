@@ -667,13 +667,13 @@ describe('Preview', () => {
   describe('Invalid server logging', () => {
     beforeEach(() => {
       Preview.singleton = null;
-      (global.log.save as jest.Mock).mockClear();
+      (getLog().save as jest.Mock).mockClear();
     });
 
     it('does not log the raw invalid server value', () => {
       new Preview({ server: 'not a url secret-token' });
-      expect(global.log.save).toHaveBeenCalledWith('preview-server-invalid-url', { reason: 'invalid-url' });
-      expect(JSON.stringify((global.log.save as jest.Mock).mock.calls)).not.toContain('secret-token');
+      expect(getLog().save).toHaveBeenCalledWith('preview-server-invalid-url', { reason: 'invalid-url' });
+      expect(JSON.stringify((getLog().save as jest.Mock).mock.calls)).not.toContain('secret-token');
     });
   });
 
