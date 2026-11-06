@@ -28,6 +28,13 @@ describe('HttpRequest', () => {
     nock.isDone();
   });
 
+  afterAll(() => {
+    // Unpatch node:http. It is shared by every test file in this jest worker, while each file gets its
+    // own nock instance, so a later file's nock.restore() cannot undo this file's interceptor.
+    nock.cleanAll();
+    nock.restore();
+  });
+
   describe('Static Properties', () => {
     it('should expose HTTP methods', () => {
       expect(HttpRequest.Methods).toEqual({
