@@ -486,13 +486,22 @@ jq --arg key "$(generate_secret)" \
   file="config/pdf-generator/auth.json"
   echo "$file"
   token="Basic $(echo -n "$login:$password" | base64 -w0)"
-  jq --arg token "$token" \
-    '.basicAuthTokens = [$token]' \
+  plink_token="Basic $(echo -n "persist-link-pdf:$(generate_secret)" | base64 -w0)"
+  jq --arg token "$token" --arg plink "$plink_token" \
+    '.basicAuthTokens = [$token, $plink]' \
     $file > $file.tmp && mv $file.tmp $file
 
   file="config/task/pdf_generator.json"
   echo "$file"
   jq --arg token "$token" \
+    --arg port "$CONTAINER_PORT" \
+    --arg server "http://pdf-generator" \
+    '.url = $server + ":" + $port + "/pdf" | .basicAuthToken = $token | .requestTimeout = 120000' \
+    $file > $file.tmp && mv $file.tmp $file
+
+  file="config/persist-link/pdf_generator.json"
+  echo "$file"
+  jq --arg token "$plink_token" \
     --arg port "$CONTAINER_PORT" \
     --arg server "http://pdf-generator" \
     '.url = $server + ":" + $port + "/pdf" | .basicAuthToken = $token | .requestTimeout = 120000' \

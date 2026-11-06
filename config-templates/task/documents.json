@@ -50,5 +50,6 @@
     ".LOG",
     ".BAK",
     ".TMP"
-  ]
+  ],
+  "schemaAllowList": "enforce"
 }
