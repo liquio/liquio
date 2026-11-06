@@ -1,11 +1,12 @@
 const mockSendMail = jest.fn();
 jest.mock('nodemailer', () => ({ createTransport: () => ({ sendMail: (...a: any[]) => mockSendMail(...a) }) }));
 
-(global as any).conf = { smtpServer: {} };
 const save = jest.fn();
-(global as any).log = { save };
 
+import { setAppContext } from '../../lib/context';
 import { SmtpModel } from './smtpModel';
+
+setAppContext({ conf: { smtpServer: {} }, log: { save } });
 
 describe('SmtpModel logging (NT-10)', () => {
   const body = { email: 'john.doe+x@example.com', subject: 'Top secret subject', text: '<p>SECRET-BODY</p>', doNotEscapeEmail: true };

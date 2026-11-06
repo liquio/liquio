@@ -1,4 +1,5 @@
 import { Entity } from './entity';
+import { getBusinesses } from '../lib/context';
 
 /**
  * Task entity.
@@ -346,7 +347,7 @@ export class TaskEntity extends Entity {
   async hasAccess(userId, userUnitIds = { all: [], head: [], member: [] }, strict = false) {
     // Check extended access check.
     if (this.taskTemplate?.jsonSchema?.extendedAccessCheck) {
-      const disableAccessByExtendedCheck = !(await global.businesses.task.extendedAccessCheck(
+      const disableAccessByExtendedCheck = !(await getBusinesses().task.extendedAccessCheck(
         this.taskTemplate.jsonSchema.extendedAccessCheck,
         this.document,
         userId,

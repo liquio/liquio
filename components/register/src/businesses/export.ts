@@ -10,6 +10,7 @@ import RecordEntity from '../entities/record';
 import { Config } from '../lib/config';
 import { RedisClient } from '../lib/redis_client';
 import { ExportAccess, ExportKeyForbiddenError, RESTRICTED_EXPORT_ACCESS, isKeyExportable, projectRecordsForExport } from '../lib/export_access';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const AUTO_CLEAR_INTERVAL = 1000 * 60 * 60 * 24; // 1 day.
@@ -196,7 +197,7 @@ export default class ExportBusiness extends Business {
   async checkToExportStatus(exportId: string) {
     if (this.toExport[exportId]) {
       return this.toExport[exportId].status;
-    } else if (global.config?.redis?.isEnabled) {
+    } else if (getConfig()?.redis?.isEnabled) {
       try {
         const serializedData = await RedisClient.getInstance().get(['register', 'exportId', exportId]);
 
@@ -227,7 +228,7 @@ export default class ExportBusiness extends Business {
         ...this.toExport[exportId].data,
         options: this.toExport[exportId].options,
       };
-    } else if (global.config?.redis?.isEnabled) {
+    } else if (getConfig()?.redis?.isEnabled) {
       try {
         const serializedData = await RedisClient.getInstance().get(['register', 'exportId', exportId]);
         if (serializedData) {
@@ -256,7 +257,7 @@ export default class ExportBusiness extends Business {
   clearToExport(exportId: string) {
     if (exportId) {
       this.toExport[exportId] = undefined;
-      if (global.config?.redis?.isEnabled) {
+      if (getConfig()?.redis?.isEnabled) {
         try {
           RedisClient.getInstance().delete(['register', 'exportId', exportId]);
         } catch (error) {
@@ -266,7 +267,6 @@ export default class ExportBusiness extends Business {
     } else {
       this.toExport = {};
     }
-    if (global.gc) global.gc();
   }
 
   async updateToExportState(exportId: string) {
@@ -275,7 +275,7 @@ export default class ExportBusiness extends Business {
     try {
       const serializedData = JSON.stringify(this.toExport[exportId]);
 
-      if (global.config?.redis?.isEnabled) {
+      if (getConfig()?.redis?.isEnabled) {
         await RedisClient.getInstance().set(['register', 'exportId', exportId], serializedData, AUTO_CLEAR_INTERVAL / 1000);
       }
     } catch (error) {

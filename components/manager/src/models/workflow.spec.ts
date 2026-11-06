@@ -5,7 +5,8 @@ describe('WorkflowModel.appendMessage', () => {
   beforeEach(() => {
     jest.resetModules();
     query.mockReset();
-    (global as any).db = { define: jest.fn().mockReturnValue({}), query };
+    const { setAppContext } = require('../lib/context');
+    setAppContext({ db: { define: jest.fn().mockReturnValue({}), query } });
     const { WorkflowModel } = require('./workflow');
     workflowModel = new WorkflowModel();
   });

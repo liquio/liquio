@@ -40,6 +40,7 @@ import { DocumentFileBusiness } from './files';
 import { DocumentSigningBusiness } from './signing';
 import { DocumentPaymentBusiness } from './payment';
 import type { UserUnitIds } from './types';
+import { getLog, getModels, getBusinesses, getConfig, getMessageQueue } from '../../lib/context';
 
 // Constants.
 const EMPTY_DOCUMENT_DATA = '{}';
@@ -50,7 +51,7 @@ const ERROR_DOCUMENT_ACCESS = "User doesn't have any access to document.";
  * Documents business - core document CRUD/access/register/external-reader operations live
  * directly on this class; signing, file/attachment/PDF, and payment concerns are split out
  * into {@link DocumentSigningBusiness} (`signing.ts`), {@link DocumentFileBusiness} (`files.ts`),
- * and {@link DocumentPaymentBusiness} (`payment.ts`) - reached via `global.businesses.document
+ * and {@link DocumentPaymentBusiness} (`payment.ts`) - reached via `getBusinesses().document
  * .signing/.files/.payment.<method>(...)`.
  *
  * All shared services below are constructed once, here. `signing`/`files`/`payment` each receive
@@ -65,7 +66,7 @@ export class DocumentBusiness extends Business {
   // DocumentPaymentBusiness (`signing.ts`/`files.ts`/`payment.ts`), so TS `private` isn't available
   // here - those are separate classes, not subclasses. `storageService` and `paymentService` are
   // also stubbed directly in tests (e.g. `documentBusiness.storageService = {...}`), and
-  // `externalReader` is additionally read externally via `global.businesses.document.externalReader`
+  // `externalReader` is additionally read externally via `getBusinesses().document.externalReader`
   // (`businesses/task.ts`).
   storageService: StorageService;
   eds: Eds;
@@ -141,8 +142,10 @@ export class DocumentBusiness extends Business {
     doNotCheckAccess = false,
   ): Promise<DocumentEntity> {
     const [document]: any[] = await Promise.all([
-      global.models.document.findById(documentId, false, true),
-      global.models.document.getTraceMetaByDocumentId(documentId).then((meta) => this.appendTraceMeta(meta)),
+      getModels().document.findById(documentId, false, true),
+      getModels()
+        .document.getTraceMetaByDocumentId(documentId)
+        .then((meta) => this.appendTraceMeta(meta)),
     ]);
     if (!document) {
       throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
@@ -157,15 +160,15 @@ export class DocumentBusiness extends Business {
       }
 
       // Check access by inbox.
-      const hasAccessByInbox = await global.models.userInbox.getByUserIdAndDocumentId(userId, documentId);
+      const hasAccessByInbox = await getModels().userInbox.getByUserIdAndDocumentId(userId, documentId);
       if (!hasAccessByInbox) {
         throw new ForbiddenError(ERROR_DOCUMENT_ACCESS);
       }
     }
 
     // Get and return document.
-    const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
-    const documentSignatureRejections = await (global.models.documentSignatureRejection.getByDocumentId as any)(documentId);
+    const documentSignatures = await (getModels().documentSignature.getByDocumentId as any)(documentId);
+    const documentSignatureRejections = await (getModels().documentSignatureRejection.getByDocumentId as any)(documentId);
     document.signatures = documentSignatures;
     document.signatureRejections = documentSignatureRejections;
     return document;
@@ -187,7 +190,7 @@ export class DocumentBusiness extends Business {
     strict = false,
   ): Promise<DocumentEntity> {
     // Get document by workflowId and taskTemplateId.
-    const documentId = await global.models.task.findDocumentIdByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId);
+    const documentId = await getModels().task.findDocumentIdByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId);
 
     // Check access and get document.
     let document;
@@ -239,14 +242,14 @@ export class DocumentBusiness extends Business {
     }
 
     // Check if document has signers.
-    const documentSignatures = await (global.models.documentSignature.getByDocumentId as any)(documentId);
+    const documentSignatures = await (getModels().documentSignature.getByDocumentId as any)(documentId);
     if (documentSignatures && documentSignatures.length > 0) {
       throw new Error("Can't update - document contains signatures.");
     }
 
     // Get JSON schema.
     const templateId = document.documentTemplateId;
-    const template = await global.models.documentTemplate.findById(templateId);
+    const template = await getModels().documentTemplate.findById(templateId);
     if (!template) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -269,7 +272,7 @@ export class DocumentBusiness extends Business {
       if (mode !== 'off') {
         const notInSchema = findPathsNotInSchema(jsonSchema, properties);
         if (notInSchema.length > 0) {
-          global.log.save(
+          getLog().save(
             'document-update-path-not-in-schema',
             { documentId, documentTemplateId: templateId, paths: notInSchema, mode },
             mode === 'enforce' ? 'warn' : 'info',
@@ -352,7 +355,7 @@ export class DocumentBusiness extends Business {
     }
 
     // Update document.
-    const documentUpdated = await global.models.document.updateData(documentId, userId, documentDataObject, true, isKeepDocumentFile);
+    const documentUpdated = await getModels().document.updateData(documentId, userId, documentDataObject, true, isKeepDocumentFile);
     if (!documentUpdated) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
@@ -362,7 +365,7 @@ export class DocumentBusiness extends Business {
       taskTemplate: undefined,
       document: { ...documentUpdated, task: undefined },
     };
-    await global.businesses.task.calculateAndUpdateDraftExpiredAt(taskToReCalculateDraftExpiredAt, document.task.taskTemplate.jsonSchema, true);
+    await getBusinesses().task.calculateAndUpdateDraftExpiredAt(taskToReCalculateDraftExpiredAt, document.task.taskTemplate.jsonSchema, true);
 
     return documentUpdated;
   }
@@ -476,12 +479,12 @@ export class DocumentBusiness extends Business {
 
     // Check document is final.
     if (document.isFinal === true) {
-      global.log.save('update-by-external-service|document-already-committed-error', { documentId, externalServiceUser });
+      getLog().save('update-by-external-service|document-already-committed-error', { documentId, externalServiceUser });
       throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
     }
 
     // Update document.
-    const documentUpdated = await global.models.document.updateData(documentId, externalServiceUser, documentDataObject);
+    const documentUpdated = await getModels().document.updateData(documentId, externalServiceUser, documentDataObject);
     if (!documentUpdated) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
@@ -523,8 +526,8 @@ export class DocumentBusiness extends Business {
 
     // Remove missing attachment
     for (const missingId of missingIds) {
-      global.log.save('prepare-document-remove-attachment', { attachmentId: missingId });
-      await global.businesses.document.files.deleteAttachment(documentId, missingId, userId);
+      getLog().save('prepare-document-remove-attachment', { attachmentId: missingId });
+      await getBusinesses().document.files.deleteAttachment(documentId, missingId, userId);
     }
   }
 
@@ -544,7 +547,7 @@ export class DocumentBusiness extends Business {
 
     // Get JSON schema.
     const templateId = document.documentTemplateId;
-    const template = await global.models.documentTemplate.findById(templateId);
+    const template = await getModels().documentTemplate.findById(templateId);
     if (!template) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -554,7 +557,7 @@ export class DocumentBusiness extends Business {
     const documentValidator = new DocumentValidator(
       jsonSchema,
       {
-        getFilteredRecordsByKeyId: global.businesses.register.getFilteredRecordsByKeyId.bind(global.businesses.register),
+        getFilteredRecordsByKeyId: getBusinesses().register.getFilteredRecordsByKeyId.bind(getBusinesses().register),
         getFilteredRecordsByKeyIdArguments: {
           userUnitIds: userUnitIds,
         },
@@ -581,7 +584,7 @@ export class DocumentBusiness extends Business {
     // Define task and document entities.
     let taskAndDocumentEntities;
     try {
-      taskAndDocumentEntities = await (global.models.task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
+      taskAndDocumentEntities = await (getModels().task.findDocumentByWorkflowIdAndTaskTemplateId as any)(workflowId, taskTemplateId);
     } catch (error) {
       const wrappedError = new Error(error.message || String(error));
       (wrappedError as any).cause = error;
@@ -705,7 +708,7 @@ export class DocumentBusiness extends Business {
       record = await this.registerService.findRecordById(recordId);
       key = await this.registerService.findKeyById(record?.keyId);
     } catch (error) {
-      global.log.save('check-update-register-properties-get-register-record-by-id-error', error, 'error');
+      getLog().save('check-update-register-properties-get-register-record-by-id-error', error, 'error');
       const errorToResponse: any = new Error('Try to update register properties with unknown data. Record by ID not found.');
       errorToResponse.details = { recordId, documentValue };
       throw errorToResponse;
@@ -754,7 +757,7 @@ export class DocumentBusiness extends Business {
           }
         }
 
-        global.log.save('document-update|incorrect-register-record', {
+        getLog().save('document-update|incorrect-register-record', {
           recordId,
           prop,
           recordDataProp: recordData[prop],
@@ -820,7 +823,7 @@ export class DocumentBusiness extends Business {
     }
 
     // Get document template.
-    const documentTemplate = await global.models.documentTemplate.findById(document.documentTemplateId);
+    const documentTemplate = await getModels().documentTemplate.findById(document.documentTemplateId);
     if (!documentTemplate) {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
@@ -940,7 +943,7 @@ export class DocumentBusiness extends Business {
 
     extraParams.prepareAttachments = prepareAttachments;
 
-    global.log.save('check-and-save-data-from-external-reader-prepared-filter', {
+    getLog().save('check-and-save-data-from-external-reader-prepared-filter', {
       service,
       method,
       documentId,
@@ -967,7 +970,7 @@ export class DocumentBusiness extends Business {
         }
         if (isRemovePreviousResponse) {
           PropByPath.delete(documentDataObject, pathForSavingInDocument);
-          const updatedDocument = await global.models.document.updateData(documentId, userId, documentDataObject);
+          const updatedDocument = await getModels().document.updateData(documentId, userId, documentDataObject);
           if (!updatedDocument) {
             throw new Error(ERROR_UPDATE_DOCUMENT);
           }
@@ -991,7 +994,7 @@ export class DocumentBusiness extends Business {
           await Promise.all(attachments.map((v) => this.storageService.provider.deleteFile(v.link)));
         } catch (error) {
           // Do not throw error. This error should not block saving new attachments.
-          global.log.save(
+          getLog().save(
             'document-business|check-and-save-data-from-external-reader|delete-file-from-file-storage-error',
             { error: error.toString() },
             'warn',
@@ -1028,10 +1031,10 @@ export class DocumentBusiness extends Business {
     if (!externalReaderResult || typeof externalReaderResult.data === 'undefined') {
       throw new Error("Can't get external reader check data.");
     }
-    global.log.save('external-reader-check-data', { externalReaderResult });
+    getLog().save('external-reader-check-data', { externalReaderResult });
 
     // Get current document data (maybe updated during External Reader handling).
-    const documentToUpdate: any = await global.models.document.findById(documentId);
+    const documentToUpdate: any = await getModels().document.findById(documentId);
     const documentDataToUpdate = documentToUpdate.data;
 
     let responseData = externalReaderResult.data;
@@ -1066,11 +1069,11 @@ export class DocumentBusiness extends Business {
       PropByPath.set(documentDataToUpdate, pathForSavingFiltersInDocument, nonUserFilter);
     }
 
-    const updatedDocument = await global.models.document.updateData(documentId, userId, documentDataToUpdate);
+    const updatedDocument = await getModels().document.updateData(documentId, userId, documentDataToUpdate);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
-    global.log.save('updated-document-with-external-reader-check-data', { updatedDocument: { ...updatedDocument, data: HIDE_REPLACEMENT_TEXT } }); // Do not log large document.data.
+    getLog().save('updated-document-with-external-reader-check-data', { updatedDocument: { ...updatedDocument, data: HIDE_REPLACEMENT_TEXT } }); // Do not log large document.data.
 
     // Check onResponse handlers.
     if (typeOf(externalReaderCheckProperty.onResponse) === 'object') {
@@ -1136,12 +1139,12 @@ export class DocumentBusiness extends Business {
         }
 
         if (isExecute) {
-          if (!Object.keys(global.config?.message_queue?.delayedAutoCommitQueues || {})?.includes(timer)) {
+          if (!Object.keys(getConfig()?.message_queue?.delayedAutoCommitQueues || {})?.includes(timer)) {
             throw new InvalidSchemaError("externalReaderCheck.onResponse.startAutoCommitTimer. Invalid 'timer' value.");
           }
 
           const message = { taskId: documentToUpdate.task.id };
-          global.messageQueue.produce(message, 'delayedAutoCommit', `${global.config.message_queue.readingQueueName}-delayed-auto-commit-${timer}`);
+          getMessageQueue().produce(message, 'delayedAutoCommit', `${getConfig().message_queue.readingQueueName}-delayed-auto-commit-${timer}`);
         }
       }
     }
@@ -1191,7 +1194,7 @@ export class DocumentBusiness extends Business {
     });
 
     // Save document.
-    const updatedDocument = await global.models.document.updateData(documentId, userId, documentData);
+    const updatedDocument = await getModels().document.updateData(documentId, userId, documentData);
     if (!updatedDocument) {
       throw new Error(ERROR_UPDATE_DOCUMENT);
     }
@@ -1219,7 +1222,7 @@ export class DocumentBusiness extends Business {
         return path.split('.').reduce((acc, key) => acc?.[key], obj);
       }
     } catch (error) {
-      global.log.save('addCalculatedDataToUpdateLogs', error, 'error');
+      getLog().save('addCalculatedDataToUpdateLogs', error, 'error');
     }
   }
 

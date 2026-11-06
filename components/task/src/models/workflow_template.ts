@@ -5,6 +5,7 @@ import { WorkflowTemplateEntity } from '../entities/workflow_template';
 import { WorkflowTemplateCategoryModel } from './workflow_template_category';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig, getModels } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -52,8 +53,8 @@ export class WorkflowTemplateModel extends Model {
       PgPubSub.getInstance().subscribe('workflow_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache.workflowTemplate?.findById || DEFAULT_CACHE_TTL,
-        getAll: global.config.cache.workflowTemplate?.getAll || DEFAULT_CACHE_TTL,
+        findById: getConfig().cache.workflowTemplate?.findById || DEFAULT_CACHE_TTL,
+        getAll: getConfig().cache.workflowTemplate?.getAll || DEFAULT_CACHE_TTL,
       };
 
       WorkflowTemplateModel.singleton = this;
@@ -71,7 +72,7 @@ export class WorkflowTemplateModel extends Model {
       attributes: {
         exclude: ['xml_bpmn_schema'],
       },
-      include: [{ model: global.models.workflowTemplateCategory.model }],
+      include: [{ model: getModels().workflowTemplateCategory.model }],
       order: [['created_at', 'asc']],
     };
 
@@ -97,7 +98,7 @@ export class WorkflowTemplateModel extends Model {
     });
 
     // Sort.
-    const { workflowTemplates: workflowTemplatesOrder } = global.config.sort || {};
+    const { workflowTemplates: workflowTemplatesOrder } = getConfig().sort || {};
     if (workflowTemplatesOrder && Array.isArray(workflowTemplatesEntities)) {
       workflowTemplatesEntities = workflowTemplatesEntities.sort((a, b) => {
         const o = [...workflowTemplatesOrder].reverse();

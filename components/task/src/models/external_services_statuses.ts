@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { ExternalServiceStatusEntity } from '../entities/external_service_status';
+import { SequelizeDbError } from '../lib/errors';
 
 export class ExternalServicesStatusesModel extends Model {
   private static singleton: ExternalServicesStatusesModel;
@@ -58,7 +59,7 @@ export class ExternalServicesStatusesModel extends Model {
     try {
       await this.db.query(query, { replacements: { interval: `${intervalInMinutes} minutes` } });
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
   }
 
@@ -79,7 +80,7 @@ export class ExternalServicesStatusesModel extends Model {
       const [results] = await this.db.query(query, { replacements: { limit: limit } });
       statuses = results;
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return statuses.map(this.prepareEntity);
@@ -130,7 +131,7 @@ export class ExternalServicesStatusesModel extends Model {
     try {
       createdStatus = await this.model.create(this.prepareForModel(status));
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     return new ExternalServiceStatusEntity(createdStatus);

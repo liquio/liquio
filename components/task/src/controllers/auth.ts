@@ -12,6 +12,7 @@ import { TaskModel } from '../models/task';
 import { WorkflowModel } from '../models/workflow';
 import { GROUPS as ROUTE_GROUPS } from '../services/router/routes';
 import { OnboardingController } from './onboarding';
+import { getBusinesses, getConfig, getLog, getModels, getRedisClient } from '../lib/context';
 
 // Constants.
 const ROLES_SEPARATOR = ';';
@@ -108,7 +109,7 @@ export class AuthController extends Controller {
       return this.testLogin(req, res);
     }
 
-    global.log.save('auth-login-start');
+    getLog().save('auth-login-start');
 
     // Define params.
     const { code } = req.body;
@@ -118,7 +119,7 @@ export class AuthController extends Controller {
     try {
       authTokens = await this.idApiClient.getTokens(code, { codeVerifier: req.body.code_verifier });
     } catch (err) {
-      global.log.save(
+      getLog().save(
         'auth-login-error|cannot-get-tokens',
         {
           error: err.message,
@@ -129,7 +130,7 @@ export class AuthController extends Controller {
       );
       return this.responseError(res, err, 401);
     }
-    global.log.save('auth-login-tokens', authTokens);
+    getLog().save('auth-login-tokens', authTokens);
     const { accessToken, refreshToken } = authTokens;
 
     // Get user info.
@@ -149,7 +150,7 @@ export class AuthController extends Controller {
           await this.unitModel.removeHeadIpn(unit.id, headIpn);
 
           // Save to access history.
-          await global.models.accessHistory.update(unit.id, headIpn, 'added-to-head-unit', {
+          await getModels().accessHistory.update(unit.id, headIpn, 'added-to-head-unit', {
             userId: authUserInfo.userId,
             userName: userName,
           });
@@ -160,7 +161,7 @@ export class AuthController extends Controller {
             await this.unitModel.addHead(baseUnitId, authUserInfo.userId);
 
             // Save to access history.
-            await global.models.accessHistory.update(baseUnitId, headIpn, 'added-to-head-unit', {
+            await getModels().accessHistory.update(baseUnitId, headIpn, 'added-to-head-unit', {
               userId: authUserInfo.userId,
               userName: userName,
             });
@@ -173,7 +174,7 @@ export class AuthController extends Controller {
           await this.unitModel.removeMemberIpn(unit.id, memberIpn);
 
           // Save to access history.
-          await global.models.accessHistory.update(unit.id, memberIpn, 'added-to-member-unit', {
+          await getModels().accessHistory.update(unit.id, memberIpn, 'added-to-member-unit', {
             userId: authUserInfo.userId,
             userName: userName,
           });
@@ -184,7 +185,7 @@ export class AuthController extends Controller {
             await this.unitModel.addMember(baseUnitId, authUserInfo.userId);
 
             // Save to access history.
-            await global.models.accessHistory.update(baseUnitId, memberIpn, 'added-to-member-unit', {
+            await getModels().accessHistory.update(baseUnitId, memberIpn, 'added-to-member-unit', {
               userId: authUserInfo.userId,
               userName: userName,
             });
@@ -235,17 +236,17 @@ export class AuthController extends Controller {
       // Handle workflows.
       await this.workflowModel.updateCreatedBy(authUserInfo.ipn, authUserInfo.userId);
     } catch (error) {
-      global.log.save('auth-login-error|cannot-process-auth-user-info', { error: error?.message, details: error?.details }, 'error');
+      getLog().save('auth-login-error|cannot-process-auth-user-info', { error: error?.message, details: error?.details }, 'error');
       return this.responseError(res, error, 401);
     }
-    global.log.save('auth-login-user-info', authUserInfo);
+    getLog().save('auth-login-user-info', authUserInfo);
 
     // Get token.
     let token;
     try {
       token = this.token.generate({ authTokens, authUserInfo });
     } catch (err) {
-      global.log.save('auth-login-error|cannot-generate-token', { error: err?.message, details: err?.details }, 'error');
+      getLog().save('auth-login-error|cannot-generate-token', { error: err?.message, details: err?.details }, 'error');
       return this.responseError(res, err, 401);
     }
 
@@ -256,29 +257,29 @@ export class AuthController extends Controller {
       try {
         this.idApiClient.logoutOtherSessions(userId, accessToken, refreshToken);
       } catch (error) {
-        global.log.save('logout-other-sessions-error', { error, needLogoutOtherSessions }, 'warn');
+        getLog().save('logout-other-sessions-error', { error, needLogoutOtherSessions }, 'warn');
       }
     }
 
     try {
-      if (global.redisClient) {
+      if (getRedisClient()) {
         const tokenData = this.token.decrypt(token);
         const authAccessToken = tokenData.authTokens.accessToken;
         const sha256AccessToken = this.getSha256Hash(authAccessToken);
-        await global.redisClient.delete(`token.${sha256AccessToken}`);
+        await getRedisClient().delete(`token.${sha256AccessToken}`);
       }
     } catch (error) {
-      global.log.save('auth-login-error|cannot-delete-cached-user-data', { error: error.toString() }, 'error');
+      getLog().save('auth-login-error|cannot-delete-cached-user-data', { error: error.toString() }, 'error');
       return this.responseError(res, 'Cannot delete cached user data.', 500);
     }
     try {
-      await global.businesses.task.deleteExpiredDraftsByUserId(userId);
+      await getBusinesses().task.deleteExpiredDraftsByUserId(userId);
     } catch (error) {
-      global.log.save('delete-expired-drafts-by-user-id|delete-while-login-error', { userId, error: error?.message || error });
+      getLog().save('delete-expired-drafts-by-user-id|delete-while-login-error', { userId, error: error?.message || error });
     }
 
     // Response.
-    global.log.save('auth-login-success', { userId });
+    getLog().save('auth-login-success', { userId });
     this.responseData(res, { token });
   }
 
@@ -334,7 +335,7 @@ export class AuthController extends Controller {
         return isJustTry ? next() : this.responseError(res, err, 401);
       }
       if (tokenData.clientId) {
-        global.log.save('auth-user-with-client-id', { clientId: tokenData.clientId, userId: tokenData.userId, ...res.responseMeta });
+        getLog().save('auth-user-with-client-id', { clientId: tokenData.clientId, userId: tokenData.userId, ...res.responseMeta });
       }
 
       // Append auth access token to request object.
@@ -342,9 +343,9 @@ export class AuthController extends Controller {
 
       let cachedUserData;
       try {
-        if (global.redisClient && !debugUserId && !roles.includes('admin')) {
+        if (getRedisClient() && !debugUserId && !roles.includes('admin')) {
           const sha256AccessToken = this.getSha256Hash(authAccessToken);
-          cachedUserData = await global.redisClient.get(`token.${sha256AccessToken}`);
+          cachedUserData = await getRedisClient().get(`token.${sha256AccessToken}`);
         }
       } catch (error) {
         return this.responseError(res, error, 500);
@@ -460,7 +461,7 @@ export class AuthController extends Controller {
           this.appendTraceMeta({ debugUserId });
 
           // Check  access to debug user.
-          const { adminUnitId } = global.config.admin;
+          const { adminUnitId } = getConfig().admin;
           const adminUnitIds = [].concat(adminUnitId).filter(Boolean);
 
           const authUserUnitIds = this.getRequestUserUnitIds(req);
@@ -473,7 +474,7 @@ export class AuthController extends Controller {
           try {
             authDebugUserInfo = (await this.idApiClient.getUsersByIds([debugUserId], { withPrivateProps: true }))[0];
           } catch (error) {
-            global.log.save('get-debug-user-error', { error: error && error.message }, 'error');
+            getLog().save('get-debug-user-error', { error: error && error.message }, 'error');
           }
           if (!authDebugUserInfo) {
             return this.responseError(res, ERROR_MESSAGE_DEBUG_USER_NOT_FOUND, 401);
@@ -485,7 +486,7 @@ export class AuthController extends Controller {
           const userRoles = this.getUserRoles(req);
           const hasOneOfNeededRoles = this.hasOneOfNeededRoles(userRoles, roles);
           if (roles && !hasOneOfNeededRoles) {
-            global.log.save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles }, 'error');
+            getLog().save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles }, 'error');
             return this.responseError(res, ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, 401);
           }
           req.authUserRoles = userRoles;
@@ -493,9 +494,9 @@ export class AuthController extends Controller {
           req.authUserUnitEntities = authUserUnitEntities;
         }
 
-        if (global.redisClient && !authUserInfo.needOnboarding && !debugUserId) {
+        if (getRedisClient() && !authUserInfo.needOnboarding && !debugUserId) {
           const sha256AccessToken = this.getSha256Hash(authAccessToken);
-          await global.redisClient.set(
+          await getRedisClient().set(
             `token.${sha256AccessToken}`,
             {
               authUserInfo: req.authUserInfo,
@@ -549,7 +550,7 @@ export class AuthController extends Controller {
    */
   checkRequestUserRoles(req, roles?: string[]): { message: string; status: number } | null {
     if (roles && !this.hasOneOfNeededRoles(req.authUserRoles, roles)) {
-      global.log.save('user-without-needed-roles', { authUserInfo: req.authUserInfo, userRoles: req.authUserRoles, neededRoles: roles }, 'error');
+      getLog().save('user-without-needed-roles', { authUserInfo: req.authUserInfo, userRoles: req.authUserRoles, neededRoles: roles }, 'error');
       return { message: ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, status: 401 };
     }
     return null;
@@ -576,7 +577,7 @@ export class AuthController extends Controller {
       // doesn't the user belong to any of the allowable units?
       !allowableUnits.some((v) => authUserUnitIds.all.includes(v))
     ) {
-      global.log.save('user-with-restricted-units', { authUserUnitIds });
+      getLog().save('user-with-restricted-units', { authUserUnitIds });
       return { message: ERROR_MESSAGE_RESTRICTED_UNIT, status: 403 };
     }
     return null;
@@ -675,7 +676,7 @@ export class AuthController extends Controller {
     if (parsedTokenParts.length !== 2) {
       return this.responseError(res, 'Incorrect basic auth token.', 401);
     }
-    global.log.save('auth|basic-auth|client-login', parsedTokenParts[0]);
+    getLog().save('auth|basic-auth|client-login', parsedTokenParts[0]);
 
     // Get user.
     const [user] = parsedTokenParts;
@@ -705,12 +706,12 @@ export class AuthController extends Controller {
     }
 
     // Check revocation. Tokens issued before `jti` was introduced have no id and stay valid until they expire.
-    if (tokenData.jti && global.redisClient) {
+    if (tokenData.jti && getRedisClient()) {
       let isRevoked;
       try {
-        isRevoked = await global.redisClient.get(`bearer.revoked.${tokenData.jti}`);
+        isRevoked = await getRedisClient().get(`bearer.revoked.${tokenData.jti}`);
       } catch (error) {
-        global.log?.save('auth|bearer-revocation-check-failed', { error: error?.message });
+        getLog()?.save('auth|bearer-revocation-check-failed', { error: error?.message });
       }
       if (isRevoked) {
         return this.responseError(res, 'Bearer token is revoked.', 401);
@@ -782,10 +783,10 @@ export class AuthController extends Controller {
    * @param {number} [ttlSeconds] Denylist ttl, should cover the token lifetime (default 7 days).
    */
   async revokeBearerToken(jti, ttlSeconds = 7 * 24 * 60 * 60) {
-    if (!global.redisClient) {
+    if (!getRedisClient()) {
       throw new Error('Redis is required to revoke Bearer tokens.');
     }
-    await global.redisClient.set(`bearer.revoked.${jti}`, true, ttlSeconds);
+    await getRedisClient().set(`bearer.revoked.${jti}`, true, ttlSeconds);
   }
 
   /**
@@ -799,7 +800,7 @@ export class AuthController extends Controller {
         return this.responseError(res, 'External ID not defined.', 401);
       }
 
-      const isExternalIdExists = await global.models.document.isExternalIdExists(externalId);
+      const isExternalIdExists = await getModels().document.isExternalIdExists(externalId);
       if (!isExternalIdExists) {
         return this.responseError(res, 'Unknown External ID.', 401);
       }

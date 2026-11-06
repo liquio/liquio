@@ -23,21 +23,25 @@ const cron = require('node-cron');
 const axios = require('axios');
 const request = require('request');
 
+const { setAppContext } = require('../../lib/context');
+
 describe('smsQueueScheduler xmlbuilder XML generation', () => {
   let scheduleTick;
   let scheduleSendTick;
   let scheduleCheckTick;
 
   beforeAll(() => {
-    global.conf = {
-      gmsuServer: {
-        url: 'http://gmsu.test',
-        senderName: 'TestSender',
-        login: 'user',
-        password: 'pass',
-        messagesCountTick: 10,
+    setAppContext({
+      conf: {
+        gmsuServer: {
+          url: 'http://gmsu.test',
+          senderName: 'TestSender',
+          login: 'user',
+          password: 'pass',
+          messagesCountTick: 10,
+        },
       },
-    };
+    });
 
     const scheduledFns = [];
     cron.schedule.mockImplementation((_expr, fn) => {

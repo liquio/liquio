@@ -4,6 +4,7 @@ import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 import { UserResult } from './user_result';
 import { UnitRulesModel } from '../../../models/unit_rules';
 import { typeOf } from '../../../lib/type_of';
+import { getLog } from '../../../lib/context';
 
 /**
  * Event user.
@@ -122,7 +123,7 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-add-member-error', { error: exceptionMessage });
+      getLog().save('event-user-add-member-error', { error: exceptionMessage });
       throw error;
     }
 
@@ -142,13 +143,13 @@ export class EventUser {
           workflow: { id: workflowId },
         });
       } catch (error: any) {
-        global.log.save('event-user-add-member-to-base-error', { error: error && error.message });
+        getLog().save('event-user-add-member-to-base-error', { error: error && error.message });
         throw error;
       }
     }
 
     // Log user's units.
-    global.log.save('user-added-to-unit-members', { unitId, userId, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-added-to-unit-members', { unitId, userId, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -200,7 +201,7 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-add-requested-member-error', { error: exceptionMessage });
+      getLog().save('event-user-add-requested-member-error', { error: exceptionMessage });
       throw error;
     }
 
@@ -295,7 +296,7 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-add-head-error', { error: exceptionMessage });
+      getLog().save('event-user-add-head-error', { error: exceptionMessage });
       throw error;
     }
 
@@ -315,13 +316,13 @@ export class EventUser {
           workflow: { id: workflowId },
         });
       } catch (error: any) {
-        global.log.save('event-user-add-head-to-base-error', { error: error && error.message });
+        getLog().save('event-user-add-head-to-base-error', { error: error && error.message });
         throw error;
       }
     }
 
     // Log user's units.
-    global.log.save('user-added-to-unit-heads', { unitId, userId, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-added-to-unit-heads', { unitId, userId, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -394,7 +395,7 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-ipn-add-member-error', { error: exceptionMessage });
+      getLog().save('event-ipn-add-member-error', { error: exceptionMessage });
       throw error;
     }
 
@@ -414,13 +415,13 @@ export class EventUser {
           workflow: { id: workflowId },
         });
       } catch (error: any) {
-        global.log.save('event-ipn-add-member-to-base-error', { error: error && error.message });
+        getLog().save('event-ipn-add-member-to-base-error', { error: error && error.message });
         throw error;
       }
     }
 
     // Log user's units.
-    global.log.save('user-added-to-unit-member-ipns', { unitId, ipn, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-added-to-unit-member-ipns', { unitId, ipn, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -500,7 +501,7 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-ipn-add-member-error', { error: exceptionMessage });
+      getLog().save('event-ipn-add-member-error', { error: exceptionMessage });
       throw error;
     }
 
@@ -520,13 +521,13 @@ export class EventUser {
           workflow: { id: workflowId },
         });
       } catch (error: any) {
-        global.log.save('event-ipn-add-member-to-base-error', { error: error && error.message });
+        getLog().save('event-ipn-add-member-to-base-error', { error: error && error.message });
         throw error;
       }
     }
 
     // Log user's units.
-    global.log.save('user-added-to-unit-member-ipns', {
+    getLog().save('user-added-to-unit-member-ipns', {
       unitId,
       ipn: newIpnListToAdd.join(','),
       workflowId,
@@ -628,7 +629,7 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-ipn-add-head-error', { error: exceptionMessage });
+      getLog().save('event-ipn-add-head-error', { error: exceptionMessage });
       throw error;
     }
 
@@ -648,13 +649,13 @@ export class EventUser {
           workflow: { id: workflowId },
         });
       } catch (error: any) {
-        global.log.save('event-ipn-add-head-to-base-error', { error: error && error.message });
+        getLog().save('event-ipn-add-head-to-base-error', { error: error && error.message });
         throw error;
       }
     }
 
     // Log user's units.
-    global.log.save('user-added-to-unit-head-ipns', { unitId, ipn, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-added-to-unit-head-ipns', { unitId, ipn, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -681,7 +682,7 @@ export class EventUser {
     try {
       unit = await unitModel.findById(unitId);
     } catch (error: any) {
-      global.log.save('event-user-add-member-or-head-check-existing-unit-error', {
+      getLog().save('event-user-add-member-or-head-check-existing-unit-error', {
         error: error && error.message,
         unitId,
         userId,
@@ -713,7 +714,7 @@ export class EventUser {
         .filter(Boolean)
         .some((requestedMember: any) => requestedMember.ipn === ipn);
     } catch (error: any) {
-      global.log.save('event-user-add-member-or-head-check-existing-unit-error', {
+      getLog().save('event-user-add-member-or-head-check-existing-unit-error', {
         error: error && error.message,
         unitId,
         ipn,
@@ -736,7 +737,7 @@ export class EventUser {
     try {
       unit = await unitModel.findById(unitId);
     } catch (error: any) {
-      global.log.save('event-user-add-ipn-member-or-head-check-existing-unit-error', {
+      getLog().save('event-user-add-ipn-member-or-head-check-existing-unit-error', {
         error: error && error.message,
         unitId,
         ipn,
@@ -762,7 +763,7 @@ export class EventUser {
     try {
       unit = await unitModel.findById(unitId);
     } catch (error: any) {
-      global.log.save('event-user-get-unit-members-ipn-error', {
+      getLog().save('event-user-get-unit-members-ipn-error', {
         error: error && error.message,
         unitId,
         ipn: ipnList.join(','),
@@ -826,12 +827,12 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-remove-member-error', { error: exceptionMessage });
+      getLog().save('event-user-remove-member-error', { error: exceptionMessage });
       throw error;
     }
 
     // Log user's units.
-    global.log.save('user-removed-from-unit-members', { unitId, userId, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-removed-from-unit-members', { unitId, userId, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -896,12 +897,12 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-remove-member-list-error', { error: exceptionMessage });
+      getLog().save('event-user-remove-member-list-error', { error: exceptionMessage });
       throw error;
     }
 
     // Log user's units.
-    global.log.save('user-removed-from-unit-members-list', { unitId, userIdList, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-removed-from-unit-members-list', { unitId, userIdList, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -963,12 +964,12 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-remove-head-error', { error: exceptionMessage });
+      getLog().save('event-user-remove-head-error', { error: exceptionMessage });
       throw error;
     }
 
     // Log user's units.
-    global.log.save('user-removed-from-unit-heads', { unitId, userId, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-removed-from-unit-heads', { unitId, userId, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -1033,12 +1034,12 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-remove-head-list-error', { error: exceptionMessage });
+      getLog().save('event-user-remove-head-list-error', { error: exceptionMessage });
       throw error;
     }
 
     // Log user's units.
-    global.log.save('user-removed-from-unit-heads-list', { unitId, userIdList, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-removed-from-unit-heads-list', { unitId, userIdList, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -1095,12 +1096,12 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-remove-member-ipn-error', { error: exceptionMessage });
+      getLog().save('event-user-remove-member-ipn-error', { error: exceptionMessage });
       throw error;
     }
 
     // Log user's units.
-    global.log.save('user-ipn-removed-from-unit-members', { unitId, ipn, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-ipn-removed-from-unit-members', { unitId, ipn, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -1160,12 +1161,12 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-remove-member-ipn-list-error', { error: exceptionMessage });
+      getLog().save('event-user-remove-member-ipn-list-error', { error: exceptionMessage });
       throw error;
     }
 
     // Log user's units.
-    global.log.save('user-ipn-list-removed-from-unit-members', { unitId, ipnList, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-ipn-list-removed-from-unit-members', { unitId, ipnList, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -1222,12 +1223,12 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-remove-head-ipn-error', { error: exceptionMessage });
+      getLog().save('event-user-remove-head-ipn-error', { error: exceptionMessage });
       throw error;
     }
 
     // Log user's units.
-    global.log.save('user-ipn-removed-from-unit-heads', { unitId, ipn, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-ipn-removed-from-unit-heads', { unitId, ipn, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -1287,12 +1288,12 @@ export class EventUser {
       });
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-remove-head-ipn-list-error', { error: exceptionMessage });
+      getLog().save('event-user-remove-head-ipn-list-error', { error: exceptionMessage });
       throw error;
     }
 
     // Log user's units.
-    global.log.save('user-ipn-list-removed-from-unit-heads', { unitId, ipnList, workflowId, eventTemplate, userName, initUserName, initUserId });
+    getLog().save('user-ipn-list-removed-from-unit-heads', { unitId, ipnList, workflowId, eventTemplate, userName, initUserName, initUserId });
 
     // Create and return result.
     const userResult = new UserResult({
@@ -1319,12 +1320,12 @@ export class EventUser {
       const response = await this.idApiClient.updateUserById(userId, userData);
 
       // Log user's units.
-      global.log.save('user-updated', { userId, response, workflowId, eventTemplate });
+      getLog().save('user-updated', { userId, response, workflowId, eventTemplate });
 
       return response;
     } catch (error: any) {
       exceptionMessage = error && error.message;
-      global.log.save('event-user-update-user-error', { error: exceptionMessage, userId, userData });
+      getLog().save('event-user-update-user-error', { error: exceptionMessage, userId, userData });
       throw error;
     }
   }
@@ -1353,7 +1354,7 @@ export class EventUser {
         units = allUnits.filter((v: any) => unitIds.includes(v.id));
       } catch (error: any) {
         exceptionMessage = error && error.message;
-        global.log.save('event-user-search-user-unit-model-get-all-error', { error: exceptionMessage });
+        getLog().save('event-user-search-user-unit-model-get-all-error', { error: exceptionMessage });
         throw error;
       }
     }
@@ -1368,7 +1369,7 @@ export class EventUser {
         }
       } catch (error: any) {
         exceptionMessage = error && error.message;
-        global.log.save('event-user-search-user-unit-model-get-all-error', { error: exceptionMessage });
+        getLog().save('event-user-search-user-unit-model-get-all-error', { error: exceptionMessage });
         throw error;
       }
     }
@@ -1388,7 +1389,7 @@ export class EventUser {
         allNeededUsers = response.map((user: any) => this.idApiClient.getBriefUserInfo(user));
       } catch (error: any) {
         exceptionMessage = error && error.message;
-        global.log.save('event-user-search-user-get-user-info-by-id-error', { error: exceptionMessage });
+        getLog().save('event-user-search-user-get-user-info-by-id-error', { error: exceptionMessage });
         if (exceptionMessage !== '[]') throw error;
       }
     }
@@ -1400,7 +1401,7 @@ export class EventUser {
         for (const user of userData) allNeededUsers.push(this.idApiClient.getBriefUserInfo(user));
       } catch (error: any) {
         exceptionMessage = error && error.message;
-        global.log.save('event-user-search-user-get-user-by-code-error', { error: exceptionMessage });
+        getLog().save('event-user-search-user-get-user-by-code-error', { error: exceptionMessage });
         if (exceptionMessage !== '[]') throw error;
       }
     }
@@ -1410,7 +1411,7 @@ export class EventUser {
         allNeededUsers = [...allNeededUsers, ...usersData.map((user: any) => this.idApiClient.getBriefUserInfo(user))];
       } catch (error: any) {
         exceptionMessage = error && error.message;
-        global.log.save('event-user-search-user-get-user-by-edrpou-error', { error: exceptionMessage });
+        getLog().save('event-user-search-user-get-user-by-edrpou-error', { error: exceptionMessage });
         if (exceptionMessage !== '[]') throw error;
       }
     }
@@ -1525,7 +1526,7 @@ export class EventUser {
         });
       } catch (error: any) {
         exceptionMessage = error && error.message;
-        global.log.save('event-ipn-add-member-error', { error: exceptionMessage });
+        getLog().save('event-ipn-add-member-error', { error: exceptionMessage });
         throw error;
       }
 
@@ -1545,13 +1546,13 @@ export class EventUser {
             workflow: { id: workflowId },
           });
         } catch (error: any) {
-          global.log.save('event-ipn-add-member-to-base-error', { error: error && error.message });
+          getLog().save('event-ipn-add-member-to-base-error', { error: error && error.message });
           throw error;
         }
       }
 
       // Log user's units.
-      global.log.save('user-added-to-unit-member-ipns', {
+      getLog().save('user-added-to-unit-member-ipns', {
         unitId,
         newIpnListToAdd: newIpnListToAdd.join(','),
         workflowId,
@@ -1626,12 +1627,12 @@ export class EventUser {
         });
       } catch (error: any) {
         exceptionMessage = error && error.message;
-        global.log.save('event-user-remove-member-ipn-list-error', { error: exceptionMessage });
+        getLog().save('event-user-remove-member-ipn-list-error', { error: exceptionMessage });
         throw error;
       }
 
       // Log user's units.
-      global.log.save('user-ipn-list-removed-from-unit-members', {
+      getLog().save('user-ipn-list-removed-from-unit-members', {
         unitId,
         ipnListWhichWereActuallyRemoved,
         workflowId,
@@ -1706,7 +1707,7 @@ export class EventUser {
             userIdList.push(userId);
           }
         } catch (error: any) {
-          global.log.save('event-user-search-user-get-user-by-ipn-error', { error: error.toString() });
+          getLog().save('event-user-search-user-get-user-by-ipn-error', { error: error.toString() });
         }
       }
 
@@ -1743,12 +1744,12 @@ export class EventUser {
           workflow: { id: workflowId },
         });
       } catch (error: any) {
-        global.log.save('event-user-remove-member-list-error', { error: error.toString() });
+        getLog().save('event-user-remove-member-list-error', { error: error.toString() });
         throw error;
       }
 
       // Log user's units.
-      global.log.save('user-removed-from-unit-members-list', {
+      getLog().save('user-removed-from-unit-members-list', {
         unitId,
         userIdList: userIdList.join(','),
         workflowId,

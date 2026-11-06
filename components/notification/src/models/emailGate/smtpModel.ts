@@ -1,8 +1,7 @@
 import nodemailer from 'nodemailer';
 
 import { maskEmail, maskEmails } from '../../lib/mask';
-
-const { conf } = global as any;
+import { getConf, getLog } from '../../lib/context';
 
 export class SmtpModel {
   log: any;
@@ -10,8 +9,8 @@ export class SmtpModel {
   senderEmail: string;
 
   constructor() {
-    this.log = global.log;
-    this.config = conf.smtpServer || {};
+    this.log = getLog();
+    this.config = getConf().smtpServer || {};
 
     this.senderEmail = this.config.sender_email || "'noreply' <noreply@localhost>";
   }

@@ -4,23 +4,17 @@ import { Server } from 'http';
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import debug from 'debug';
-import moment from 'moment';
 import Multiconf from 'multiconf';
 import { Sequelize } from 'sequelize';
 import supertest from 'supertest';
-import { Log, ConsoleLogProvider, LogProvider, Sandbox } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, LogProvider } from '@liquio/back-core';
 
 import { insertData } from './fixtures';
 import ExportBusiness from '../src/businesses/export';
-import Afterhandler from '../src/lib/afterhandler';
+import { bootstrap } from '../src/bootstrap';
 import { Config } from '../src/lib/config';
-import Db from '../src/lib/db';
-import Encryption from '../src/lib/encryption';
-import ErrorWithDetails from '../src/lib/errors';
 import { RedisClient } from '../src/lib/redis_client';
-import typeOf from '../src/lib/typeOf';
-import Models from '../src/models';
-import Router from '../src/router';
+import { setAppContext, resetAppContext, getAfterhandler } from '../src/lib/context';
 
 type LogLevels = 'info' | 'warning' | 'error';
 
@@ -38,6 +32,7 @@ export class TestHarness {
   private server?: Server;
   private db?: Sequelize;
   private isExternalDb: boolean = false;
+  private migrated: boolean = false;
   private uniqueDbName?: string;
 
   constructor() {
@@ -61,49 +56,30 @@ export class TestHarness {
     // Override auth tokens for testing
     if (!config.auth) {
       config.auth = {
-        tokens: ['Basic dGVzdDp0ZXN0'], // test:test
+        tokens: ['Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA=='], // test:test-pass-1234
         allowRawSequelizeParamsUsers: [],
         limitedAccess: [],
       };
     } else {
-      config.auth.tokens = ['Basic dGVzdDp0ZXN0']; // test:test
+      config.auth.tokens = ['Basic dGVzdDp0ZXN0LXBhc3MtMTIzNA==']; // test:test-pass-1234
     }
 
     await this.setupLogger();
 
     if (options.useDatabase) {
       await this.setupDatabase(config);
+      // Startup guards read the keys table, so the schema must exist before bootstrap.
+      await this.runMigrations();
+      this.migrated = true;
     }
 
     if (options.useRedis) {
       await this.setupRedis(config);
     }
 
-    global.ErrorWithDetails = ErrorWithDetails;
-    global.typeOf = typeOf;
-    global.moment = moment;
-    global.config = config;
-
-    // Init sandbox, mirroring src/index.ts's boot sequence.
-    new Sandbox(config.sandbox || {});
-
-    // Init DB.
-    const db = (global.db = await Db.getInstance(config.db));
+    // Same init sequence as src/index.ts.
+    const { express, router, db } = await bootstrap(config);
     this.db = db;
-
-    // Init models.
-    const models = new Models(config);
-    models.init();
-
-    // Init afterhandler.
-    const afterhandler = new Afterhandler(config.afterhandler, models.models.afterhandler, models.models.record);
-    afterhandler.init();
-    global.afterhandler = afterhandler;
-    global.encryption = new Encryption(config.encryption);
-
-    // Start server.
-    const router = new Router(config);
-    const express = await router.init();
     this.server = express;
     const address = express.address();
     if (!address || typeof address !== 'object') {
@@ -155,7 +131,9 @@ export class TestHarness {
   }
 
   async setupFixtures() {
-    await this.runMigrations();
+    if (!this.migrated) {
+      await this.runMigrations();
+    }
     testDebug('Inserting test fixtures...');
     const fixtures = await insertData(this.db);
     testDebug('Fixtures inserted:', Object.keys(fixtures));
@@ -205,15 +183,15 @@ export class TestHarness {
     }
 
     // Stop and dispose afterhandler workers
-    if (global.afterhandler) {
+    if (getAfterhandler()) {
       testDebug('Stopping afterhandler workers...');
       // First stop all workers to exit their processing loops
-      await Promise.all(global.afterhandler.workers.map((worker: { stop: () => Promise<void> }) => worker.stop()));
+      await Promise.all(getAfterhandler().workers.map((worker: { stop: () => Promise<void> }) => worker.stop()));
       testDebug('Afterhandler workers stopped');
 
       // Then dispose of them
       testDebug('Disposing afterhandler workers...');
-      global.afterhandler.workers.forEach((worker: { dispose: () => void }) => worker.dispose());
+      getAfterhandler().workers.forEach((worker: { dispose: () => void }) => worker.dispose());
       testDebug('Afterhandler workers disposed');
     }
 
@@ -293,11 +271,7 @@ export class TestHarness {
 
     // Clean up global references to allow fresh setup in next test suite
     testDebug('Cleaning up global references...');
-    delete (global as any).config;
-    delete (global as any).db;
-    delete (global as any).afterhandler;
-    delete (global as any).encryption;
-    delete (global as any).log;
+    resetAppContext();
     testDebug('Global references cleaned up');
 
     testDebug('Teardown complete');
@@ -311,7 +285,7 @@ export class TestHarness {
       testDebug(level, type, data);
     };
 
-    global.log = log;
+    setAppContext({ log });
   }
 
   private async setupDatabase(config: Config): Promise<StartedPostgreSqlContainer | undefined> {

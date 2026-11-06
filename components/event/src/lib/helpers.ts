@@ -5,6 +5,7 @@ import _ from 'lodash';
 import { Sequelize } from 'sequelize';
 import { AxiosError } from 'axios';
 
+import { getModels } from './context';
 import { typeOf } from './type_of';
 
 const MIME_TYPES: Record<string, number[]> = {
@@ -349,7 +350,7 @@ export class Helpers {
     }
 
     // Get document signatures.
-    const documentSignatures = await global.models.documentSignature.findByDocumentId(documentId);
+    const documentSignatures = await getModels().documentSignature.findByDocumentId(documentId);
     if (!Array.isArray(documentSignatures) || documentSignatures.length === 0) {
       throw new Error('Document signatures not found.');
     }

@@ -10,20 +10,14 @@ import nock = require('nock');
 import createDebug = require('debug');
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
+import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as jsonwebtoken from 'jsonwebtoken';
 import * as Multiconf from 'multiconf';
-import { Log, ConsoleLogProvider, Sandbox, resetIdApiClient } from '@liquio/back-core';
+import { resetIdApiClient } from '@liquio/back-core';
 
-import { Db } from '../src/lib/db';
-import { RedisClient } from '../src/lib/redis_client';
 import { MessageQueue } from '../src/lib/message_queue';
-import { RouterService } from '../src/services/router';
-import { Models } from '../src/models';
-import { WorkflowHandlerBusiness } from '../src/businesses/workflow_handler';
-import { WorkflowBusiness } from '../src/businesses/workflow';
-import { HttpClient } from '../src/lib/http_client';
-import { typeOf } from '../src/lib/type_of';
-import { initIdApiClient } from '../src/lib/id_api';
+import { bootstrap } from '../src/bootstrap';
+import { getConfig, getDb, getMessageQueue, getModels, getRedis, getSlaveDb, setAppContext } from '../src/lib/context';
 
 // Token admin-api sends to task in tests (not a real credential).
 export const TASK_TOKEN = `Basic ${Buffer.from('admin-api:test-task-secret').toString('base64')}`;
@@ -34,16 +28,26 @@ const debug = createDebug;
 // Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
 jest.setTimeout(120000);
 
-// Mock the RabbitMQ connection
-jest.mock('../src/lib/message_queue', () => {
-  const MockMessageQueue = jest.fn().mockImplementation(() => {
-    return {
-      init: jest.fn(),
-      produce: jest.fn(),
-    };
-  });
-
-  return { MessageQueue: MockMessageQueue };
+// node-fetch v3 is ESM-only and cannot be loaded by the CommonJS Jest runtime: use the global (undici) fetch, which nock intercepts.
+jest.mock('node-fetch', () => {
+  const { Readable } = jest.requireActual('stream');
+  return {
+    __esModule: true,
+    // The app expects node-fetch responses: a Node.js stream in `body`.
+    default: async (...args) => {
+      const response = await fetch(...(args as [any, any]));
+      const body = response.body ? Readable.fromWeb(response.clone().body) : null;
+      return new Proxy(response, {
+        get: (target, prop) => {
+          if (prop === 'body') return body;
+          const value = Reflect.get(target, prop, target);
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+    },
+    Response: Response,
+    AbortError: DOMException,
+  };
 });
 
 // Mock the log module
@@ -76,6 +80,8 @@ const defaultConfig = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_HANDLE
 export class TestApp {
   static pgContainer;
   static redisContainer;
+  static rabbitmqContainer;
+  static amqpUrl;
 
   constructor() {
     this.app = null;
@@ -122,6 +128,11 @@ export class TestApp {
 
     configOverride.workflow_editor = {
       disabled: false,
+    };
+
+    configOverride.mass_messages_mailing = {
+      subjectMaxLength: 500,
+      fullTextMaxLength: 50000,
     };
 
     configOverride.assets = {
@@ -199,6 +210,18 @@ export class TestApp {
       };
     }
 
+    // Start RabbitMQ container.
+    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management').start();
+    this.amqpUrl = this.rabbitmqContainer.getAmqpUrl();
+    configOverride.message_queue = {
+      ...defaultConfig.message_queue,
+      amqpConnection: this.amqpUrl,
+      writingQueueManager: 'test-admin-to-manager',
+      writingQueueTask: 'test-admin-to-task',
+      writingQueueEvent: 'test-admin-to-event',
+      writingQueueGateway: 'test-admin-to-gateway',
+    };
+
     nock.activate();
   }
 
@@ -261,58 +284,18 @@ export class TestApp {
     // Merge config with overrides
     const config = { ...defaultConfig, ...configOverride };
     this.config = config;
-    global.config = config;
+    setAppContext({ config });
 
-    // Init http client.
-    global.httpClient = new HttpClient(config.http_client);
-    global.typeOf = typeOf;
-
-    // Init log.
-    const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
-    const log = new Log([consoleLogProvider], ['console']);
-    global.log = log;
-
-    // Init id-api client.
+    // Init id-api client from scratch for every app instance.
     resetIdApiClient();
-    initIdApiClient(config.auth);
 
-    // Init sandbox.
-    new Sandbox(config.sandbox || {});
-
-    global.db = await Db.getInstance(config.db);
-    this.models = new Models();
-    global.models = this.models.getModels();
-
-    if (config.db.slave) {
-      global.slaveDb = await Db.getInstance(config.db.slave, true);
-      global.slaveModels = new Models({}, global.slaveDb).getModels();
-    }
-
-    if (config?.redis?.isEnabled) {
-      const client = new RedisClient({ host: config.redis.host, port: config.redis.port });
-      await client.connect();
-      global.redis = client;
-    }
-
-    // Init message queue.
-    const messageQueue = new MessageQueue(config.message_queue);
-    await messageQueue.init();
-    global.messageQueue = messageQueue;
-
-    // Mock workflow handler business
-    new WorkflowHandlerBusiness();
-
-    global.businesses = {
-      workflow: new WorkflowBusiness(),
-    };
+    const { routerService } = await bootstrap(config);
+    this.routerService = routerService;
+    this.models = { models: getModels() };
   }
 
   async listen() {
-    // Init router.
-    this.routerService = new RouterService(this.config);
-    await this.routerService.init();
-
-    // Publish the actual port assigned by the OS.
+    // Router is initialized by bootstrap; publish the actual port assigned by the OS.
     const address = this.routerService.server?.address();
     if (!address || typeof address === 'string') {
       throw new Error('Test server is not listening');
@@ -336,12 +319,12 @@ export class TestApp {
   // Run this after all tests
   static async afterAll() {
     nock.restore();
-    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop()]);
+    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.rabbitmqContainer?.stop()]);
   }
 
   // Obtain a client instance to interact with the application
   request() {
-    const address = `http://${global.config.server.host}:${global.config.server.port}`;
+    const address = `http://${getConfig().server.host}:${getConfig().server.port}`;
     return supertest(address);
   }
 
@@ -355,7 +338,7 @@ export class TestApp {
       },
     };
     return {
-      jwt: jsonwebtoken.sign(payload, global.config.auth.jwtSecret),
+      jwt: jsonwebtoken.sign(payload, getConfig().auth.jwtSecret),
       payload,
     };
   }
@@ -370,7 +353,7 @@ export class TestApp {
    * @returns {import('nock').Scope}
    */
   get nockId() {
-    const { server, port } = global.config.auth.LiquioId;
+    const { server, port } = getConfig().auth.LiquioId;
     return nock(`${server}:${port}`);
   }
 
@@ -384,14 +367,23 @@ export class TestApp {
 
   // Destroy the application
   async destroy() {
-    if (global.redis) {
-      await global.redis.close();
+    const mq = getMessageQueue();
+    if (mq) {
+      await mq.close();
+      // Prevent reconnect timers after the connection is closed.
+      mq.isClosing = true;
+      clearTimeout(mq.reconnectTimeout);
+      MessageQueue.singleton = undefined;
+      setAppContext({ messageQueue: undefined });
     }
-    if (global.db) {
-      await global.db.close();
+    if (getRedis()) {
+      await getRedis().close();
     }
-    if (global.slaveDb) {
-      await global.slaveDb.close();
+    if (getDb()) {
+      await getDb().close();
+    }
+    if (getSlaveDb()) {
+      await getSlaveDb().close();
     }
     const { wss, server } = this.routerService || {};
     if (wss) {

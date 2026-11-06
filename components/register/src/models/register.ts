@@ -5,6 +5,7 @@ import RegisterEntity from '../entities/register';
 import KeyModel from './key';
 import { PgPubSub, PubSubCallbackData } from '../lib/pgpubsub';
 import { RedisClient } from '../lib/redis_client';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -74,8 +75,8 @@ export default class RegisterModel extends Model {
       PgPubSub.getInstance()?.subscribe('registers_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findByPk: global.config?.cache?.register?.findByPk || DEFAULT_CACHE_TTL,
-        getAll: global.config?.cache?.register?.getAll || DEFAULT_CACHE_TTL,
+        findByPk: getConfig()?.cache?.register?.findByPk || DEFAULT_CACHE_TTL,
+        getAll: getConfig()?.cache?.register?.getAll || DEFAULT_CACHE_TTL,
       };
 
       RegisterModel.singleton = this;

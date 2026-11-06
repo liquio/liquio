@@ -19,8 +19,6 @@ describe('EventBusiness - Request type events', () => {
         },
       },
     });
-
-    await app.init();
   });
 
   afterAll(async () => {

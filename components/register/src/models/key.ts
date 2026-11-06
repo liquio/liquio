@@ -5,6 +5,7 @@ import KeyEntity, { KeyMeta, KeyRaw, KeySchema } from '../entities/key';
 import { BasicFilter, ModelItemResponse, ModelListWithMetaResponse, ModelUpdateResponse } from '../lib/interfaces';
 import { PgPubSub, PubSubCallbackData } from '../lib/pgpubsub';
 import { RedisClient } from '../lib/redis_client';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -105,8 +106,8 @@ export default class KeyModel extends Model {
       PgPubSub.getInstance()?.subscribe('keys_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config?.cache?.key?.findById || DEFAULT_CACHE_TTL,
-        getAll: global.config?.cache?.key?.getAll || DEFAULT_CACHE_TTL,
+        findById: getConfig()?.cache?.key?.findById || DEFAULT_CACHE_TTL,
+        getAll: getConfig()?.cache?.key?.getAll || DEFAULT_CACHE_TTL,
       };
 
       KeyModel.singleton = this;
@@ -150,8 +151,8 @@ export default class KeyModel extends Model {
     const keysEntities = keysRaw.map((keyRaw: any) => new KeyEntity(keyRaw)) as KeyEntity[];
 
     // Append key signature properties.
-    if (global?.config?.key_signature) {
-      keysEntities.forEach((key) => (key.keySignature = global.config.key_signature[key.id]));
+    if (getConfig()?.key_signature) {
+      keysEntities.forEach((key) => (key.keySignature = getConfig().key_signature[key.id]));
     }
 
     return { data: keysEntities, meta: { count, offset, limit } };
@@ -166,7 +167,7 @@ export default class KeyModel extends Model {
     const keyEntity = new KeyEntity(keyRaw);
 
     // Append key signature properties.
-    if (global?.config?.key_signature) {
+    if (getConfig()?.key_signature) {
       (keyEntity as any).keySignature = this.config.key_signature[keyEntity.id];
     }
 

@@ -1,5 +1,6 @@
 import { OpenStack } from './openstack';
 import { Minio } from './minio';
+import { getLog } from '../lib/context';
 
 const PROVIDERS_LIST: any[] = [OpenStack, Minio];
 
@@ -39,25 +40,25 @@ export class Providers {
     // Define active provider class.
     const { activeProvider: activeProviderName } = this.config;
     if (!activeProviderName) {
-      global.log.save('provider-not-used', { activeProviderName: activeProviderName || null });
+      getLog().save('provider-not-used', { activeProviderName: activeProviderName || null });
       return;
     }
     const ActiveProvider: any = Providers.List.find((v: any) => v.ProviderName === activeProviderName);
     if (!ActiveProvider) {
-      global.log.save('provider-class-definition-error', { activeProviderName });
+      getLog().save('provider-class-definition-error', { activeProviderName });
       process.exit(1);
     }
 
     // Define consig.
     const activeProviderConfig = this.config.list[activeProviderName];
     if (!activeProviderConfig) {
-      global.log.save('provider-config-definition-error', { activeProviderName });
+      getLog().save('provider-config-definition-error', { activeProviderName });
       process.exit(1);
     }
 
     // Init active provider.
     this.activeProvider = new ActiveProvider(activeProviderConfig);
-    global.log.save('provider-initialized', { activeProviderName });
+    getLog().save('provider-initialized', { activeProviderName });
   }
 
   /**

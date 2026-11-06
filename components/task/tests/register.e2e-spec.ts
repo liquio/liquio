@@ -1,6 +1,7 @@
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';
 import { expectAuthRequired } from './helpers/auth_guard';
+import { getConfig } from '../src/lib/context';
 
 describe('Register Controller', () => {
   let app: TestApp;
@@ -144,7 +145,7 @@ describe('Register Controller', () => {
   };
 
   const mockRegisterMetadata = () => {
-    const registerBaseUrl = `${global.config.register.server}:${global.config.register.port}`;
+    const registerBaseUrl = `${getConfig().register.server}:${getConfig().register.port}`;
 
     app
       .nock(registerBaseUrl)
@@ -162,7 +163,7 @@ describe('Register Controller', () => {
     mockUserAuth(payload);
     mockRegisterMetadata();
 
-    const registerBaseUrl = `${global.config.register.server}:${global.config.register.port}`;
+    const registerBaseUrl = `${getConfig().register.server}:${getConfig().register.port}`;
 
     app
       .nock(registerBaseUrl)
@@ -201,7 +202,7 @@ describe('Register Controller', () => {
     mockUserAuth(payload);
     mockRegisterMetadata();
 
-    const registerBaseUrl = `${global.config.register.server}:${global.config.register.port}`;
+    const registerBaseUrl = `${getConfig().register.server}:${getConfig().register.port}`;
 
     app
       .nock(registerBaseUrl)

@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { Sandbox } from '@liquio/back-core';
 
 import { JSONPath } from '../../lib/jsonpath';
+import { getLog, getModels } from '../../lib/context';
 
 // Constants.
 const KEYWORD_CHECK_VALID = 'checkValid';
@@ -111,7 +112,7 @@ export class Keywords {
       }
       return '';
     } catch (error) {
-      global.log.save('json-schema-validation-exception|check-valid', { error: error && error.message });
+      getLog().save('json-schema-validation-exception|check-valid', { error: error && error.message });
       return '';
     }
   }
@@ -248,7 +249,7 @@ export class Keywords {
 
       return everyValeCharMatchMask ? '' : MASK_VALUE_ERROR;
     } catch (error) {
-      global.log.save('check-masks-validation-error', { error: error && error.message }, 'warn');
+      getLog().save('check-masks-validation-error', { error: error && error.message }, 'warn');
       return '';
     }
   }
@@ -413,7 +414,7 @@ export class Keywords {
       return '';
     }
 
-    const units = await global.models.unit.getAll();
+    const units = await getModels().unit.getAll();
     if (units.length === 0) {
       return error;
     }

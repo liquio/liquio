@@ -1,4 +1,5 @@
 import { Controller } from './controller';
+import { getDb, getModels } from '../lib/context';
 
 /**
  * Favorites controller.
@@ -20,7 +21,7 @@ export class FavoritesController extends Controller {
    * @param {string} userId User Id.
    */
   async getAll({ params, userId }) {
-    const [result] = await global.db.query(
+    const [result] = await getDb().query(
       `
       SELECT f.*, COALESCE( f.name, u.name, w.name, wt.name, '' ) entity_name FROM favorites f
       LEFT JOIN units u ON f.entity_type = 'units' AND f.entity_id = CAST(u.id as varchar)
@@ -41,7 +42,7 @@ export class FavoritesController extends Controller {
    * @param {string} userId User Id.
    */
   async getOne({ params: { entity_type, entity_id }, userId: user_id }) {
-    const [result] = await global.db.query(
+    const [result] = await getDb().query(
       `
     SELECT f.*, COALESCE( f.name, u.name, w.name, wt.name, '' ) entity_name FROM favorites f
     LEFT JOIN units u ON f.entity_type = 'units' AND f.entity_id = CAST(u.id as varchar)
@@ -65,7 +66,7 @@ export class FavoritesController extends Controller {
   async add({ params, body: { name, ...body }, userId: user_id }) {
     const entity_type = body.entity_type || params.entity_type;
     const entity_id = body.entity_id || params.entity_id;
-    return global.models.favorites.model.create({ user_id, entity_type, entity_id, name });
+    return getModels().favorites.model.create({ user_id, entity_type, entity_id, name });
   }
 
   /**
@@ -75,6 +76,6 @@ export class FavoritesController extends Controller {
    * @param {string} userId User Id.
    */
   async remove({ params: { entity_type, entity_id }, userId: user_id }) {
-    return global.models.favorites.model.destroy({ where: { user_id, entity_type, entity_id } });
+    return getModels().favorites.model.destroy({ where: { user_id, entity_type, entity_id } });
   }
 }

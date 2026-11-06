@@ -4,6 +4,7 @@ import { Model } from './model';
 import { DocumentTemplateEntity } from '../entities/document_template';
 import { beautifyJSON } from '../lib/beautifyJSON';
 import { parseJSONCSchema, validateJSONCSchema } from '../lib/jsonc_helper';
+import { getModels } from '../lib/context';
 
 export class DocumentTemplateModel extends Model {
   static singleton: DocumentTemplateModel;
@@ -47,13 +48,13 @@ export class DocumentTemplateModel extends Model {
    */
   async getAll() {
     const documentTemplates = await this.model.findAll({
-      include: [{ model: global.models.taskTemplate.model, attributes: ['id', 'name'] }],
+      include: [{ model: getModels().taskTemplate.model, attributes: ['id', 'name'] }],
       attributes: ['id', 'name'],
     });
 
     const documentTemplatesEntities = documentTemplates.map((item) => {
       let documentTemplate = this.prepareEntity(item);
-      let taskTemplate = global.models.taskTemplate.prepareEntity((item as any).taskTemplate);
+      let taskTemplate = getModels().taskTemplate.prepareEntity((item as any).taskTemplate);
       documentTemplate.taskTemplate = taskTemplate;
       return documentTemplate;
     });

@@ -1,10 +1,15 @@
 import { createIdApiClient, getIdApiClient } from '@liquio/back-core';
 
+import { getLog, resetAppContext, setAppContext } from '../lib/context';
 import { AuthController } from './auth';
 
 jest.mock('@liquio/back-core', () => ({ ...jest.requireActual('@liquio/back-core'), getIdApiClient: jest.fn() }));
 jest.mock('../businesses/unit', () => ({ UnitBusiness: jest.fn() }));
 jest.mock('../lib/token', () => ({ Token: jest.fn() }));
+
+afterEach(() => {
+  resetAppContext();
+});
 
 describe('AuthController.me', () => {
   let controller: AuthController;
@@ -43,13 +48,13 @@ describe('AuthController PKCE login', () => {
     const getTokens = jest.fn().mockRejectedValue(new Error('stop after token request'));
     controller.idApiClient = { getTokens };
     controller.responseError = jest.fn();
-    const previousLog = global.log;
-    global.log = { save: jest.fn() } as any;
+    const previousLog = getLog();
+    setAppContext({ log: { save: jest.fn() } });
     try {
       await controller.login({ body: { code: 'authorization-code', code_verifier: 'a'.repeat(43) } }, {});
       expect(getTokens).toHaveBeenCalledWith('authorization-code', { codeVerifier: 'a'.repeat(43) });
     } finally {
-      global.log = previousLog;
+      setAppContext({ log: previousLog });
     }
   });
 });
@@ -113,9 +118,9 @@ describe('AuthController.login logging', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (global as any).log = { save };
-    (global as any).models = { unit: { getAll: jest.fn().mockResolvedValue([]) } };
-    (global as any).config = { auth: { authRedirectUrl: 'http://admin.local/auth' } };
+    setAppContext({ log: { save } });
+    setAppContext({ models: { unit: { getAll: jest.fn().mockResolvedValue([]) } } });
+    setAppContext({ config: { auth: { authRedirectUrl: 'http://admin.local/auth' } } });
     (AuthController as any).singleton = undefined;
     (getIdApiClient as jest.Mock).mockReturnValue(idApi);
     controller = new AuthController({ auth: {}, server: { token: 'srv' }, access: {}, user: {} });

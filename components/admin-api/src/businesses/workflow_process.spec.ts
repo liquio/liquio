@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import { getLog, resetAppContext, setAppContext } from '../lib/context';
 import { WorkflowProcessBusiness } from './workflow_process';
 
 jest.mock('axios', () => jest.fn());
@@ -19,7 +20,11 @@ describe('WorkflowProcessBusiness.getAllElasticFiltered logging', () => {
 
   beforeEach(() => {
     save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ log: { save }, config, models: { workflow: { getAll: jest.fn().mockResolvedValue([]) } } });
+  });
+
+  afterEach(() => {
+    resetAppContext();
   });
 
   const run = async () => {
@@ -29,8 +34,8 @@ describe('WorkflowProcessBusiness.getAllElasticFiltered logging', () => {
   };
 
   const assertClean = () => {
-    expect(save).toHaveBeenCalled();
-    const logged = JSON.stringify(save.mock.calls);
+    expect(getLog().save).toHaveBeenCalled();
+    const logged = JSON.stringify(getLog().save.mock.calls);
     expect(logged).not.toMatch(/Authorization|headers|dGVzdDp0ZXN0|user:pass|token=secret/);
   };
 

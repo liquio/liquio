@@ -21,12 +21,13 @@ Object.assign(BackCoreRedisClientMock.prototype, mockMethods);
 jest.mock('@liquio/back-core', () => ({ RedisClient: BackCoreRedisClientMock }));
 
 import { RedisClient } from './redis_client';
+import { getLog, setAppContext } from './context';
 
 describe('RedisClient (register wrapper)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (RedisClient as any).singleton = undefined;
-    global.log = { save: jest.fn() } as any;
+    setAppContext({ log: { save: jest.fn() } });
   });
 
   it('configures the back-core client with this component prefix and getLog', () => {
@@ -34,7 +35,7 @@ describe('RedisClient (register wrapper)', () => {
 
     expect(constructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379, prefix: 'liquio-register' }));
     const config = constructorSpy.mock.calls[0][0];
-    expect(config.getLog()).toBe(global.log);
+    expect(config.getLog()).toBe(getLog());
   });
 
   it('is a singleton across constructions', () => {

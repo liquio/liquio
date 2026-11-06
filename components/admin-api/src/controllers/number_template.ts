@@ -5,6 +5,7 @@ import { Stream } from '../lib/stream';
 import { NumberTemplateBusiness } from '../businesses/number_template';
 import { NumberTemplateEntity } from '../entities/number_template';
 import { toLogUser } from '../lib/log_sanitize';
+import { getLog } from '../lib/context';
 
 /**
  * Number template controller.
@@ -43,7 +44,7 @@ export class NumberTemplateController extends Controller {
       savedNumberTemplateEntity = await this.numberTemplateBusiness.createOrUpdate(numberTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-created-number-template', { user: toLogUser(user), data: savedNumberTemplateEntity });
+      await getLog().save('user-created-number-template', { user: toLogUser(user), data: savedNumberTemplateEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -70,7 +71,7 @@ export class NumberTemplateController extends Controller {
       savedNumberTemplateEntity = await this.numberTemplateBusiness.createOrUpdate(numberTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-updated-number-template', { user: toLogUser(user), data: savedNumberTemplateEntity });
+      await getLog().save('user-updated-number-template', { user: toLogUser(user), data: savedNumberTemplateEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -118,7 +119,7 @@ export class NumberTemplateController extends Controller {
       await this.numberTemplateBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-number-template', { user: toLogUser(user), data: { id } });
+      await getLog().save('user-deleted-number-template', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }

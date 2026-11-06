@@ -32,6 +32,13 @@ npm run migration-clear
 npm run migration-generate --name <name>
 ```
 
+## E2E infrastructure
+
+`npm run test:e2e` (config: `jest.e2e.config.js`, coverage threshold 80% statements and lines) needs Docker: the
+suites start PostgreSQL (`postgres:16`) and RabbitMQ (`rabbitmq:3-management`) containers through testcontainers.
+To use an existing PostgreSQL instead, set `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME`
+(RabbitMQ is still started as a container). Downstream HTTP services are mocked with `nock`.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):

@@ -2,6 +2,7 @@ import PropByPath from 'prop-by-path';
 import { RedisClient } from '@liquio/back-core';
 
 import { DocumentUpdateLogEntity } from '../entities/document_update_log';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Document update log service.
@@ -17,7 +18,7 @@ export class DocumentUpdateLog {
    * @param {object} [config] Document update log config. Global config `document_update_log` used by default.
    * @param {object} [redisConfig] Redis config. Global config `redis` used by default.
    */
-  constructor(config = global.config.document_update_log, redisConfig = global.config.redis) {
+  constructor(config = getConfig().document_update_log, redisConfig = getConfig().redis) {
     // Singleton.
     if (!DocumentUpdateLog.singleton) {
       // Define params.
@@ -30,12 +31,12 @@ export class DocumentUpdateLog {
         redis: { ttl },
       } = config || { redis: { ttl: 60 } };
       this.enabled = isRedisEnabled && enabled;
-      this.client = this.enabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => global.log }) : null;
+      this.client = this.enabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog }) : null;
       this.ttl = ttl;
       if (this.client) {
-        global.log.save('document-update-log-initialized', { enabled, host, port });
+        getLog().save('document-update-log-initialized', { enabled, host, port });
       } else {
-        global.log.save('document-update-log-not-initialized', { enabled });
+        getLog().save('document-update-log-not-initialized', { enabled });
       }
 
       // Define singleton.

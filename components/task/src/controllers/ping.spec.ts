@@ -1,7 +1,10 @@
 import { PingController } from './ping';
 import { HttpRequest } from '../lib/http_request';
+import { resetAppContext, setAppContext } from '../lib/context';
 
 describe('PingController.sendPingRequest monitoring token', () => {
+  afterEach(() => resetAppContext());
+
   const makeController = (): any => {
     const controller = Object.create(PingController.prototype);
     controller.token = 'service-token';
@@ -10,7 +13,7 @@ describe('PingController.sendPingRequest monitoring token', () => {
   };
 
   beforeEach(() => {
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } as any });
     jest.spyOn(HttpRequest, 'send').mockResolvedValue({ response: {}, body: {} } as any);
   });
 

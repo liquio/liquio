@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createHttpsAgent } from './tls';
 import HttpRequest from './http_request';
 import Sign from './sign';
+import { getLog, setAppContext } from './context';
 
 const TLS_ENV = ['NODE_TLS', 'REJECT_UNAUTHORIZED'].join('_');
 const PEM = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
@@ -15,7 +16,7 @@ jest.mock('axios', () => jest.fn(async () => ({ data: '{"ok":true}' })));
 
 describe('createHttpsAgent', () => {
   beforeEach(() => {
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
   });
 
   it('returns undefined without tls config so default verifying agent is used', () => {
@@ -43,7 +44,7 @@ describe('createHttpsAgent', () => {
 
   it('disables verification only when explicitly configured, and logs it', () => {
     expect((createHttpsAgent({ rejectUnauthorized: false }, 't') as any).options.rejectUnauthorized).toBe(false);
-    expect((global as any).log.save).toHaveBeenCalledWith('tls-verification-disabled', expect.objectContaining({ target: 't' }), 'warn');
+    expect(getLog().save).toHaveBeenCalledWith('tls-verification-disabled', expect.objectContaining({ target: 't' }), 'warn');
     expect((createHttpsAgent({ rejectUnauthorized: true }) as any).options.rejectUnauthorized).toBe(true);
   });
 });
@@ -67,7 +68,7 @@ describe('register TLS wiring', () => {
 
   beforeEach(() => {
     axios.mockClear();
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
   });
 
   it('HttpRequest.send passes https agent from tls option and strips tls', async () => {

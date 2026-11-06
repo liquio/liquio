@@ -1,5 +1,6 @@
 import { WorkflowBusiness } from './workflow';
 import { XmlJsConverter } from '../lib/xml_js_converter';
+import { resetAppContext, getLog, getMessageQueue, setAppContext } from '../lib/context';
 
 const bpmnXml = (processId: string) =>
   '<?xml version="1.0" encoding="UTF-8"?>' +
@@ -8,11 +9,15 @@ const bpmnXml = (processId: string) =>
   '</bpmn2:definitions>';
 
 describe('WorkflowBusiness.findSchemaById', () => {
+  afterEach(() => {
+    resetAppContext();
+  });
+
   let workflowBusiness: any;
   let findById: jest.Mock;
 
   beforeEach(() => {
-    global.log = { save: jest.fn() } as any;
+    setAppContext({ log: { save: jest.fn() } as any });
 
     findById = jest.fn();
     workflowBusiness = Object.create(WorkflowBusiness.prototype);
@@ -37,7 +42,7 @@ describe('WorkflowBusiness.findSchemaById', () => {
     expect(schema).toMatchObject({ id: 2, name: 'imported' });
     expect(schema.schema.$.id).toBe('Process_2');
     expect(workflowBusiness.bpmnSchemes.map((item) => item.id)).toEqual([1, 2]);
-    expect(global.log.save).toHaveBeenCalledWith('bpmn-schema-loaded-on-demand', { workflowTemplateId: 2 });
+    expect(getLog().save).toHaveBeenCalledWith('bpmn-schema-loaded-on-demand', { workflowTemplateId: 2 });
   });
 
   it('serves a schema loaded on demand from the cache next time', async () => {
@@ -68,7 +73,7 @@ describe('WorkflowBusiness.findSchemaById', () => {
 
     expect(await workflowBusiness.findSchemaById(5)).toBeUndefined();
     expect(workflowBusiness.bpmnSchemes.map((item) => item.id)).toEqual([1]);
-    expect(global.log.save).toHaveBeenCalledWith('invalid-bpmn-schema', expect.anything());
+    expect(getLog().save).toHaveBeenCalledWith('invalid-bpmn-schema', expect.anything());
   });
 });
 
@@ -86,8 +91,8 @@ describe('WorkflowBusiness.createFromMessage', () => {
   let task: any;
 
   beforeEach(() => {
-    global.log = { save: jest.fn() } as any;
-    global.messageQueue = { produce: jest.fn() } as any;
+    setAppContext({ log: { save: jest.fn() } as any });
+    setAppContext({ messageQueue: { produce: jest.fn() } as any });
 
     workflow = { id: 'wf', isFinal: false, data: { messages: [] } };
     task = { id: 't1', workflowId: 'wf', taskTemplateId: 1, finished: true, workflowEntity: { workflowTemplateId: 1 } };
@@ -124,8 +129,8 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
     expect(await business.createFromMessage(message)).toBe(true);
 
-    expect(global.messageQueue.produce).toHaveBeenCalledTimes(1);
-    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', {
+    expect(getMessageQueue().produce).toHaveBeenCalledTimes(1);
+    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueTask', {
       forwardToTask: true,
       taskTemplateId: 5,
       workflowTemplateId: 1,
@@ -141,25 +146,25 @@ describe('WorkflowBusiness.createFromMessage', () => {
     expect(await business.createFromMessage({ forwardToTask: true, taskTemplateId: 5, initData: 'x' })).toBe(true);
     expect(await business.createFromMessage({ forwardToTask: true, taskTemplateId: { $ne: 1 } })).toBe(true);
 
-    expect(global.messageQueue.produce).not.toHaveBeenCalled();
-    expect(global.log.save).toHaveBeenCalledWith('forward-to-task-message-rejected', expect.any(Object));
+    expect(getMessageQueue().produce).not.toHaveBeenCalled();
+    expect(getLog().save).toHaveBeenCalledWith('forward-to-task-message-rejected', expect.any(Object));
   });
 
   it('advances a finished task once and records history', async () => {
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
-    expect(global.messageQueue.produce).toHaveBeenCalledTimes(1);
-    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 2 }));
+    expect(getMessageQueue().produce).toHaveBeenCalledTimes(1);
+    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 2 }));
     expect(workflow.data.messages.map((m) => m.type)).toEqual(['in', 'out']);
   });
 
   it('processes a re-sent message of an already finished task again (admin continue)', async () => {
     await business.createFromMessage({ workflowId: 'wf', taskId: 't1' });
-    (global.messageQueue.produce as jest.Mock).mockClear();
+    (getMessageQueue().produce as jest.Mock).mockClear();
 
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
-    expect(global.messageQueue.produce).toHaveBeenCalledTimes(1);
+    expect(getMessageQueue().produce).toHaveBeenCalledTimes(1);
     expect(workflow.data.messages.map((m) => m.type)).toEqual(['in', 'out', 'in', 'out']);
   });
 
@@ -168,7 +173,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
-    expect(global.messageQueue.produce).not.toHaveBeenCalled();
+    expect(getMessageQueue().produce).not.toHaveBeenCalled();
     expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
     expect(business.workflowModel.setError).not.toHaveBeenCalled();
   });
@@ -185,7 +190,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
     expect(await business.createFromMessage({ gatewayId: 'g1' })).toBe(true);
 
     expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
-    expect(global.messageQueue.produce).not.toHaveBeenCalled();
+    expect(getMessageQueue().produce).not.toHaveBeenCalled();
   });
 
   it('does not record history for a final workflow', async () => {
@@ -194,7 +199,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
     expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
-    expect(global.messageQueue.produce).not.toHaveBeenCalled();
+    expect(getMessageQueue().produce).not.toHaveBeenCalled();
   });
 
   it('advances after an event that failed with notFailOnError (done: false, error marker in data)', async () => {
@@ -212,7 +217,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
     await business.createFromMessage({ eventId: 'e1' });
 
-    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 4 }));
+    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 4 }));
   });
 
   it('advances a finished gateway and a done event', async () => {
@@ -224,11 +229,11 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
     await business.createFromMessage({ eventId: 'e1' });
 
-    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 3 }));
+    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 3 }));
   });
 
   it('marks the workflow as errored (no unhandled rejection) when publishing the next step fails', async () => {
-    (global.messageQueue.produce as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
+    (getMessageQueue().produce as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
 
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
@@ -240,7 +245,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
     const flows = schema.schema['bpmn:sequenceFlow'];
     const original = [...flows];
     flows.splice(0, flows.length, sequenceFlow('Flow_5', 'task-1', 'gateway-7'));
-    (global.messageQueue.produce as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
+    (getMessageQueue().produce as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
 
     try {
       await business.createFromMessage({ workflowId: 'wf', taskId: 't1' });
@@ -248,7 +253,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
       flows.splice(0, flows.length, ...original);
     }
 
-    expect(global.messageQueue.produce).toHaveBeenCalledWith('writingQueueGateway', expect.anything());
+    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueGateway', expect.anything());
     expect(business.workflowModel.setError).toHaveBeenCalledWith('wf');
   });
 

@@ -1,4 +1,5 @@
 import { TestApp } from './test-app';
+import { getConfig } from '../src/lib/context';
 
 describe('Redirect Controller', () => {
   let app: TestApp;
@@ -25,7 +26,7 @@ describe('Redirect Controller', () => {
     it('redirects to the LiquioId auth endpoint', async () => {
       const response = await app.request().get('/redirect/auth');
       expect(response.status).toBe(302);
-      expect(response.headers.location).toContain(global.config.auth.LiquioId.routes.getCode);
+      expect(response.headers.location).toContain(getConfig().auth.LiquioId.routes.getCode);
     });
   });
 
@@ -33,7 +34,7 @@ describe('Redirect Controller', () => {
     it('redirects to the LiquioId logout endpoint', async () => {
       const response = await app.request().get('/redirect/logout');
       expect(response.status).toBe(302);
-      expect(response.headers.location).toContain(global.config.auth.LiquioId.routes.logout);
+      expect(response.headers.location).toContain(getConfig().auth.LiquioId.routes.logout);
     });
   });
 });

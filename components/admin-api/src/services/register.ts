@@ -3,6 +3,7 @@ import querystring from 'querystring';
 import { getTraceId } from '@liquio/back-core';
 
 import { HttpRequest } from '../lib/http_request';
+import { getConfig, getLog } from '../lib/context';
 
 // Constants.
 const ROUTES = {
@@ -31,10 +32,10 @@ export class RegisterService {
   constructor() {
     // Define singleton.
     if (!RegisterService.singleton) {
-      this.server = global.config.register.server;
-      this.port = global.config.register.port;
-      this.token = global.config.register.token;
-      this.timeout = global.config.register.timeout || 30000;
+      this.server = getConfig().register.server;
+      this.port = getConfig().register.port;
+      this.token = getConfig().register.token;
+      this.timeout = getConfig().register.timeout || 30000;
       RegisterService.singleton = this;
     }
 
@@ -661,14 +662,14 @@ export class RegisterService {
         },
         fullResponse,
       );
-      global.log.save('send-ping-request-to-register', responseData);
+      getLog().save('send-ping-request-to-register', responseData);
       const version = responseData && responseData.response && responseData.response.headers && responseData.response.headers.version;
       const customer = responseData && responseData.response && responseData.response.headers && responseData.response.headers.customer;
       const environment = responseData && responseData.response && responseData.response.headers && responseData.response.headers.environment;
       const body = responseData && responseData.response && JSON.parse(responseData.response.body || '{}');
       return { body, version, customer, environment };
     } catch (error) {
-      global.log.save('send-ping-request-to-register-error', error.message);
+      getLog().save('send-ping-request-to-register-error', error.message);
     }
   }
 
@@ -741,7 +742,7 @@ export class RegisterService {
       message = error;
     }
 
-    global.log.save(logName, message && ((message.error && message.error.message) || message));
+    getLog().save(logName, message && ((message.error && message.error.message) || message));
     if (message.error && message.error.message) {
       const error = new Error(message.error.message);
       (error as any).details = message.error?.details;

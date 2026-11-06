@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 
+import { getLog } from '../lib/context';
 import { Model } from './model';
 import { UnitEntity } from '../entities/unit';
 import { SequelizeDbError } from '../lib/errors';
@@ -294,7 +295,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-requested-member|error', { unitId, requestedMember });
+      getLog().save('unit-remove-requested-member|error', { unitId, requestedMember });
       return null;
     }
 
@@ -302,7 +303,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-requested-member', { unitId, requestedMember });
+    getLog().save('unit-remove-requested-member', { unitId, requestedMember });
 
     return unit;
   }
@@ -637,7 +638,7 @@ export class UnitModel extends Model {
     const [{ last_value }] = curvalRaw;
     const currentUnitId = parseInt(last_value);
     const maxUnitId = await this.model.max('id');
-    global.log.save('fix-last-unit-id-if-need-it|check', { currentUnitId, maxUnitId });
+    getLog().save('fix-last-unit-id-if-need-it|check', { currentUnitId, maxUnitId });
 
     // Check and fix.
     if (maxUnitId > currentUnitId) {
@@ -645,7 +646,7 @@ export class UnitModel extends Model {
         raw: true,
         replacements: { max_unit_id: maxUnitId },
       });
-      global.log.save('fix-last-unit-id-if-need-it|set', { currentUnitId, maxUnitId, setRawResponse });
+      getLog().save('fix-last-unit-id-if-need-it|set', { currentUnitId, maxUnitId, setRawResponse });
     }
   }
 

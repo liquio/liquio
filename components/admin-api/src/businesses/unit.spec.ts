@@ -1,5 +1,6 @@
 import { getIdApiClient } from '@liquio/back-core';
 
+import { setAppContext, resetAppContext } from '../lib/context';
 import { UnitBusiness } from './unit';
 import { Exceptions } from '../exceptions';
 import { UnitEntity } from '../entities/unit';
@@ -40,12 +41,12 @@ describe('UnitBusiness.update basedOn access', () => {
       accessHistory: { save: jest.fn() },
       task: { removePerformerUserFromTasks: jest.fn() },
     };
-    (global as any).models = models;
+    setAppContext({ models });
     business = new UnitBusiness({});
   });
 
   afterEach(() => {
-    delete (global as any).models;
+    resetAppContext();
   });
 
   const expectNoWrites = () => {

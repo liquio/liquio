@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import XLSX from 'xlsx';
 
 import { Command } from '../command';
+import { getBusinesses, getLog, getModels } from '../../lib/context';
 
 /**
  * RegenerateCommand class
@@ -48,27 +49,27 @@ export class RegenerateCommand extends Command {
     }
 
     for (const file of data) {
-      const rawDocument = await global.models.document.model.findOne({
+      const rawDocument = await getModels().document.model.findOne({
         where: { file_id: file.id },
-        include: [{ model: global.models.task.model }],
+        include: [{ model: getModels().task.model }],
       });
 
       if (!rawDocument) {
-        global.log.save(`cli-command-${this.name}|document-not-found`, { file_id: file.id });
+        getLog().save(`cli-command-${this.name}|document-not-found`, { file_id: file.id });
         continue;
       }
 
       const document = {
-        ...(await global.models.document.prepareEntity(rawDocument)),
-        task: global.models.task.prepareEntity(rawDocument.task),
+        ...(await getModels().document.prepareEntity(rawDocument)),
+        task: getModels().task.prepareEntity(rawDocument.task),
       };
 
-      global.log.save(`cli-command-${this.name}|generate-pdf-start`, { file_id: file.id });
+      getLog().save(`cli-command-${this.name}|generate-pdf-start`, { file_id: file.id });
       try {
-        await global.businesses.document.files.createPdf({ document, userId: document.createdBy });
-        global.log.save(`cli-command-${this.name}|generate-pdf-end`, { file_id: file.id });
+        await getBusinesses().document.files.createPdf({ document, userId: document.createdBy });
+        getLog().save(`cli-command-${this.name}|generate-pdf-end`, { file_id: file.id });
       } catch (e) {
-        global.log.save(`cli-command-${this.name}|generate-pdf-error`, { message: e.message, file_id: file.id });
+        getLog().save(`cli-command-${this.name}|generate-pdf-error`, { message: e.message, file_id: file.id });
       }
     }
   }

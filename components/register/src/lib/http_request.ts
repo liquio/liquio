@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 import prepareAxiosErrorToLog from './prepareAxiosErrorToLog';
 import { TlsConfig, createHttpsAgent } from './tls';
 import { redactRequestOptions } from './redact_headers';
+import { getLog } from './context';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -84,7 +85,7 @@ export default class HttpRequest {
       return parseBody(responseBody);
     } catch (error) {
       // Log and rethrow error
-      global.log?.save('http-request-send-error', {
+      getLog()?.save('http-request-send-error', {
         requestOptions: redactRequestOptions(axiosOptions),
         ...prepareAxiosErrorToLog(error),
       });

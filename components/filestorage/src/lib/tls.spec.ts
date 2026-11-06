@@ -38,8 +38,8 @@ describe('createHttpsAgent', () => {
 });
 
 describe('process-wide TLS override', () => {
-  it('app.ts does not disable TLS verification', () => {
-    const source = fs.readFileSync(path.join(__dirname, '..', 'app.ts'), 'utf8');
+  it('index.ts does not disable TLS verification', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'index.ts'), 'utf8');
     expect(source).not.toContain('NODE_TLS_REJECT_UNAUTHORIZED');
   });
 });

@@ -7,8 +7,6 @@ describe('EventBusiness - Workflow type events', () => {
     await TestApp.beforeAll();
 
     app = await TestApp.setup({});
-
-    await app.init();
   });
 
   afterAll(async () => {

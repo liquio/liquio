@@ -9,26 +9,17 @@ import nock from 'nock';
 import debug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
+import { RabbitMQContainer } from '@testcontainers/rabbitmq';
+import amqp from 'amqplib';
 import jsonwebtoken from 'jsonwebtoken';
 import { resetIdApiClient } from '@liquio/back-core';
 
-import { BpmnTaskCore } from '../src/app';
+import { BpmnTaskCore } from '../src/bootstrap';
+import { getConfig, getMessageQueue } from '../src/lib/context';
 
 // E2E tests are slow, so we increase the timeout
 // Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
 jest.setTimeout(120000);
-
-// Mock the RabbitMQ connection
-jest.mock('../src/lib/message_queue', () => {
-  return {
-    MessageQueue: jest.fn().mockImplementation(() => {
-      return {
-        init: jest.fn(),
-        produce: jest.fn(),
-      };
-    }),
-  };
-});
 
 // Mock the log module
 jest.mock('@liquio/back-core', () => {
@@ -63,21 +54,24 @@ jest.mock('../src/lib/config', () => {
   return {
     getConfig: jest.fn().mockImplementation(getMerged),
     loadConfig: jest.fn().mockImplementation(() => {
-      global.config = getMerged();
-      return global.config;
+      return getMerged();
     }),
   };
 });
 
 // Obtain the default configuration object
 
-const { getConfig } = require('../src/lib/config');
-const defaultConfig = getConfig();
+const { getConfig: getTemplateConfig } = require('../src/lib/config');
+const defaultConfig = getTemplateConfig();
 
 export class TestApp extends BpmnTaskCore {
   port: number;
   static pgContainer;
   static redisContainer;
+  static rabbitmqContainer;
+
+  testAmqpConnection: any;
+  testAmqpChannel: any;
 
   static async setup() {
     // `init` creates the id-api client from this app's config, so drop the one of a previous app.
@@ -88,7 +82,7 @@ export class TestApp extends BpmnTaskCore {
     // Port 0 lets the OS pick a free port atomically; remember the real one.
     const { port } = (app as any).routerService.server.address() as AddressInfo;
     app.port = port;
-    global.config.server.port = port;
+    getConfig().server.port = port;
     return app;
   }
 
@@ -166,6 +160,18 @@ export class TestApp extends BpmnTaskCore {
         port: this.redisContainer.getMappedPort(6379),
       };
     }
+
+    // Start RabbitMQ container.
+    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management').start();
+    configOverride.message_queue = {
+      ...defaultConfig.message_queue,
+      amqpConnection: this.rabbitmqContainer.getAmqpUrl(),
+      readingQueueName: 'bpmn-task-incoming',
+      writingQueueName: 'bpmn-manager-incoming',
+      enabledReadingGeneratingPdfMessages: true,
+      delayedAutoCommitQueues: { '1s': 1 },
+      retryConnectionTime: 60 * 60 * 1000,
+    };
 
     configOverride.iit = {
       useExternal: true,
@@ -252,7 +258,7 @@ export class TestApp extends BpmnTaskCore {
   // Run this after all tests
   static async afterAll() {
     nock.restore();
-    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop()]);
+    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.rabbitmqContainer?.stop()]);
   }
 
   // Obtain a client instance to interact with the application
@@ -271,7 +277,7 @@ export class TestApp extends BpmnTaskCore {
       },
     };
     return {
-      jwt: jsonwebtoken.sign(JSON.stringify(payload), global.config.auth.jwtSecret),
+      jwt: jsonwebtoken.sign(JSON.stringify(payload), getConfig().auth.jwtSecret),
       payload,
     };
   }
@@ -286,7 +292,7 @@ export class TestApp extends BpmnTaskCore {
    * @returns {import('nock').Scope}
    */
   get nockId() {
-    const { server, port } = global.config.auth.LiquioId;
+    const { server, port } = getConfig().auth.LiquioId;
     return nock(`${server}:${port}`);
   }
 
@@ -298,8 +304,46 @@ export class TestApp extends BpmnTaskCore {
     return model;
   }
 
+  // Get (or open) the single AMQP channel reused by the test helpers below.
+  async getTestAmqpChannel() {
+    if (!this.testAmqpConnection) {
+      this.testAmqpConnection = await amqp.connect(getConfig().message_queue.amqpConnection);
+    }
+    if (!this.testAmqpChannel) {
+      this.testAmqpChannel = await this.testAmqpConnection.createChannel();
+    }
+    return this.testAmqpChannel;
+  }
+
+  // Publish a message to a queue of the app through the test channel.
+  async publishMessage(queueName: string, message: object) {
+    const channel = await this.getTestAmqpChannel();
+    await channel.assertQueue(queueName, { durable: true });
+    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), { persistent: true });
+  }
+
+  // Wait until the check returns a truthy value (no fixed sleeps).
+  async waitFor<T>(check: () => Promise<T> | T, timeoutMs = 20000, intervalMs = 200): Promise<T> {
+    const started = Date.now();
+    for (;;) {
+      const result = await check();
+      if (result) return result;
+      if (Date.now() - started > timeoutMs) throw new Error('waitFor: timeout');
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
   // Destroy the application
   async destroy() {
+    await this.testAmqpChannel?.close().catch(() => undefined);
+    await this.testAmqpConnection?.close().catch(() => undefined);
+    const messageQueue: any = getMessageQueue();
+    if (messageQueue) {
+      await messageQueue.close();
+      // Closing fires channel/connection close events which schedule a reconnect; drop it.
+      messageQueue.isClosing = true;
+      clearTimeout(messageQueue.reconnectTimeout);
+    }
     // Drop keep-alive sockets so close() can't hang, then stop (awaits server close).
     (this as any).routerService?.server?.closeAllConnections?.();
     await this.stop();

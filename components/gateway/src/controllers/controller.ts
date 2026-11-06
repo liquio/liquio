@@ -1,3 +1,4 @@
+import { getLog } from '../lib/context';
 import { getTraceId } from '../lib/async_local_storage';
 
 const HTTP_STATUS_CODE_OK = 200;
@@ -30,7 +31,7 @@ export class Controller {
     const responseObject = { data };
 
     // Log.
-    global.log.save('http-response', responseObject);
+    getLog().save('http-response', responseObject);
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
@@ -50,7 +51,7 @@ export class Controller {
     const responseObject = { error: { message }, traceId: getTraceId() };
 
     // Log.
-    global.log.save('http-response', responseObject);
+    getLog().save('http-response', responseObject);
 
     // Response.
     res.status(httpStatusCode).send(responseObject);

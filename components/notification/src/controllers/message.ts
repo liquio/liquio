@@ -19,6 +19,7 @@ import { MessageCryptTypesModel } from '../models/message_crypt_types';
 import { checkAuth, checkTestAuth, checkAdminCookie, checkSameOrigin } from './auth';
 import { resolveUserId } from './resolve_user_id';
 import { renderDecrypted } from '../lib/rule_to_show';
+import { getConf, getLog } from '../lib/context';
 import { maskPhones } from '../lib/mask';
 
 const router = Router();
@@ -191,7 +192,7 @@ export class Message extends Auth {
       if (error && error.statusCode) {
         return res.send(error.statusCode, error.error);
       }
-      global.log.save('decrypt-message-error', { messageId, error: (error && error.message) || error }, 'error');
+      getLog().save('decrypt-message-error', { messageId, error: (error && error.message) || error }, 'error');
       return res.send({ message: 'Can not decrypt message.' });
     }
 
@@ -223,7 +224,7 @@ export class Message extends Auth {
       const updatedMessage = await this.getById(messageId, { access_token: accessToken });
       return updatedMessage;
     } catch (error) {
-      global.log.save('set-decrypted-message-error', { error: (error && error.message) || error }, 'error');
+      getLog().save('set-decrypted-message-error', { error: (error && error.message) || error }, 'error');
       throw error;
     }
   }
@@ -240,7 +241,7 @@ export class Message extends Auth {
     const text = TEST_EMAIL.TEXT;
 
     // Check emails.
-    const availableEmails = (global.conf && global.conf.testService && global.conf.testService.emails) || [];
+    const availableEmails = (getConf() && getConf().testService && getConf().testService.emails) || [];
     const isEmailExist = availableEmails.includes(email);
     if (!isEmailExist) {
       return res.send({ error: { message: 'Used email not defined as test in config.' } });
@@ -269,7 +270,7 @@ export class Message extends Auth {
     const translit = TEST_SMS.MESSAGE_TRANSLIT;
 
     // Check phone number.
-    const availablePhones = (global.conf && global.conf.testService && global.conf.testService.phones) || [];
+    const availablePhones = (getConf() && getConf().testService && getConf().testService.phones) || [];
     const isPhoneExist = availablePhones.includes(phone);
     if (!isPhoneExist) {
       return res.send({ error: { message: 'Used phone not defined as test in config.' } });
@@ -300,7 +301,7 @@ export class Message extends Auth {
     const translit = TEST_SMS.MESSAGE_TRANSLIT;
 
     // Check user ID.
-    const availableUserIds = (global.conf && global.conf.testService && global.conf.testService.userIds) || [];
+    const availableUserIds = (getConf() && getConf().testService && getConf().testService.userIds) || [];
     const isUserIdExist = availableUserIds.includes(userId);
     if (!isUserIdExist) {
       return res.send({ error: { message: 'Used user ID not defined as test in config.' } });
@@ -353,7 +354,7 @@ export class Message extends Auth {
     const normalizedText = await this.normalizeComplexText(text);
 
     // Check user ID.
-    const availableUserIds = (global.conf && global.conf.testService && global.conf.testService.userIds) || [];
+    const availableUserIds = (getConf() && getConf().testService && getConf().testService.userIds) || [];
     const isUserIdExist = availableUserIds.includes(userId);
     if (!isUserIdExist) {
       return res.send({ error: { message: 'Used ID not defined as test in config.' } });
@@ -376,7 +377,7 @@ export class Message extends Auth {
     const email = user.email;
     const phoneForLogging = phone ? phone.slice(0, -2) + '**' : '';
     const emailForLogging = email ? '**' + email.slice(2, email.length) : '';
-    global.log.save('send-test-message-by-complex-option-request', { userId, phone: phoneForLogging, email: emailForLogging });
+    getLog().save('send-test-message-by-complex-option-request', { userId, phone: phoneForLogging, email: emailForLogging });
 
     const processingIdsList = [];
     for (const transfer of transfers) {
@@ -402,7 +403,7 @@ export class Message extends Auth {
       processingIdsList.push(processingId);
     }
     const isConnectionToEConsultApi = processingIdsList.some((v) => typeof v === 'string');
-    global.log.save('send-test-message-by-complex-option-response', { response: processingIdsList });
+    getLog().save('send-test-message-by-complex-option-response', { response: processingIdsList });
 
     // Response sending result.
     res.send({ data: { isConnectionToEConsultApi, processingIdsList } });
@@ -452,7 +453,7 @@ export class Message extends Auth {
     let sendByEmail = usersInfo.map((v) => v.email).filter((v) => !!v);
     let sendByEmailPromise;
     let sendBySmsPromise;
-    global.log.save('send-message-by-user-request', { phones: sendBySms, emails: sendByEmail });
+    getLog().save('send-message-by-user-request', { phones: sendBySms, emails: sendByEmail });
 
     usersMessages = await UsersMessages.bulkCreate(
       usersInfo.map((v) => {
@@ -474,7 +475,7 @@ export class Message extends Auth {
     // Check if need to send by SMS.
     if (this.isValidShortMessageTranslit(body) && this.isValidShortMessage(body) && !not_send) {
       // Check phones prefix in SMS blacklist.
-      const smsBlacklist = (global.conf && global.conf.smsBlacklist) || [];
+      const smsBlacklist = (getConf() && getConf().smsBlacklist) || [];
       const phonesToSend = sendBySms;
       const allowedPhones = [];
       const blockedPhones = [];
@@ -488,7 +489,7 @@ export class Message extends Auth {
       }
       if (blockedPhones.length > 0) {
         // Inform SMS can not be sent.
-        global.log.save('send-message-by-user-blocked-by-blacklist', {
+        getLog().save('send-message-by-user-blocked-by-blacklist', {
           blockedPhones: maskPhones(blockedPhones),
           allowedPhones: maskPhones(allowedPhones),
           smsBlacklistSize: smsBlacklist.length,
@@ -575,7 +576,7 @@ export class Message extends Auth {
     // Define params.
     const { body } = req;
     const { workflowId, transfers, destination, options, text } = body || {};
-    global.log.save('send-message-by-complex-option-request');
+    getLog().save('send-message-by-complex-option-request');
 
     // Check main params.
     const errors = this.getComplexParamsErrors(workflowId, transfers, destination, options, text);
@@ -613,7 +614,7 @@ export class Message extends Auth {
     const phoneToSend = ['sms', 'push'].some((v) => transfers.includes(v)) ? validPhone : undefined;
     const emailForLogging = emailToSend ? '**' + emailToSend.slice(2, email.length) : '';
     const phoneForLogging = phoneToSend ? phoneToSend.slice(0, -2) + '**' : '';
-    global.log.save('send-message-by-complex-option-request-body', { email: emailForLogging, phone: phoneForLogging });
+    getLog().save('send-message-by-complex-option-request-body', { email: emailForLogging, phone: phoneForLogging });
 
     // Define user name.
     const lastName = (userInfo && userInfo.last_name) || undefined;
@@ -621,7 +622,7 @@ export class Message extends Auth {
     const middleName = (userInfo && userInfo.middle_name) || undefined;
 
     // Define phone prefix in SMS blacklist.
-    const smsBlacklist = (global.conf && global.conf.smsBlacklist) || [];
+    const smsBlacklist = (getConf() && getConf().smsBlacklist) || [];
     const isSmsBlacklistIncludesPhone = phoneToSend && smsBlacklist.some((v) => phoneToSend.startsWith(v));
 
     // Get options.
@@ -639,11 +640,11 @@ export class Message extends Auth {
     const rawResponsesList = [];
     for (const transfer of transfers) {
       // Log destination params.
-      global.log.save('send-message-by-complex-option-transfer', { transfer, emailToSend, phoneToSend });
+      getLog().save('send-message-by-complex-option-transfer', { transfer, emailToSend, phoneToSend });
 
       // Check id it's SMS transfer and do not send if phone denied by blacklist.
       if (transfer === 'sms' && isSmsBlacklistIncludesPhone) {
-        global.log.save('denied-by-sms-blacklist', {
+        getLog().save('denied-by-sms-blacklist', {
           routeType: 'send-via-complex-options',
           transfer,
           phoneToSend: maskPhones([phoneToSend])[0],
@@ -722,7 +723,7 @@ export class Message extends Auth {
 
     // Response.
     const response = { processingIds: processingIdsList, rawResponses: rawResponsesList };
-    global.log.save('send-message-by-complex-option-response', { response });
+    getLog().save('send-message-by-complex-option-response', { response });
     res.send(response);
   }
 
@@ -770,16 +771,16 @@ export class Message extends Auth {
    */
   async sendToEConsultingComplexService(sendingOptionsObject: any): Promise<any> {
     // Prepare E-Consulting service options.
-    const eConsultingConf = (global.conf && global.conf.eConsultingService) || {};
+    const eConsultingConf = (getConf() && getConf().eConsultingService) || {};
     const { sendComplexMessageUrl, Authorization, logAll } = eConsultingConf;
 
     if (!sendComplexMessageUrl) {
       const error = { message: 'E-Consulting service URL not defined.' };
-      global.log.save('econsulting-complex-service-error', error, 'error');
+      getLog().save('econsulting-complex-service-error', error, 'error');
       return { error };
     }
 
-    global.log.save('econsulting-complex-service-request', { sendToEConsultingComplexService: logAll ? sendingOptionsObject : '***' });
+    getLog().save('econsulting-complex-service-request', { sendToEConsultingComplexService: logAll ? sendingOptionsObject : '***' });
     const requestSendingOptions = {
       url: sendComplexMessageUrl,
       method: 'POST',
@@ -797,7 +798,7 @@ export class Message extends Auth {
 
     // Log and return response.
     const response = { processingId: rawResponse && rawResponse.MessageID, rawResponse };
-    global.log.save('econsulting-complex-service-response', { response });
+    getLog().save('econsulting-complex-service-response', { response });
     return response;
   }
 
@@ -819,7 +820,7 @@ export class Message extends Auth {
    */
   async getAttachLink(attachItem) {
     // Prepare persist link options.
-    const persistLinkConf = (global.conf && global.conf.persistLink) || {};
+    const persistLinkConf = (getConf() && getConf().persistLink) || {};
     const { createLinkUrl, openStackServerName, token } = persistLinkConf;
     const requestPersistLinkOptions = {
       url: createLinkUrl || 'http://0.0.0.0:3346/link',
@@ -848,7 +849,7 @@ export class Message extends Auth {
    */
   async getStaticLink(link) {
     // Prepare persist link options.
-    const persistLinkConf = (global.conf && global.conf.persistLink) || {};
+    const persistLinkConf = (getConf() && getConf().persistLink) || {};
     const { createLinkUrl, token } = persistLinkConf;
     const requestPersistLinkOptions = {
       url: createLinkUrl || 'http://0.0.0.0:3346/link',
@@ -897,7 +898,7 @@ export class Message extends Auth {
     }
 
     // Set links to documents.
-    const persistLinkConf = (global.conf && global.conf.persistLink) || {};
+    const persistLinkConf = (getConf() && getConf().persistLink) || {};
     const { documentLinkPrefix } = persistLinkConf;
     while (normalizedText.indexOf('{document=') !== -1) {
       // Define replacing params.
@@ -991,14 +992,14 @@ export class Message extends Auth {
     const { body } = req;
     let result;
 
-    global.log.save('send-message-by-phone-request', { list_phone: body.list_phone });
+    getLog().save('send-message-by-phone-request', { list_phone: body.list_phone });
 
     if (!this.issetPhonesList(body)) {
       return res.send(400, { message: 'Phones list empty' });
     }
 
     // Check phones prefix in SMS blacklist.
-    const smsBlacklist = (global.conf && global.conf.smsBlacklist) || [];
+    const smsBlacklist = (getConf() && getConf().smsBlacklist) || [];
     const phonesToSend = Array.isArray(body.list_phone) ? body.list_phone : [body.list_phone];
 
     const allowedPhones = [];
@@ -1012,7 +1013,7 @@ export class Message extends Auth {
       }
     }
     if (blockedPhones.length > 0) {
-      global.log.save('send-message-by-phone-blocked-by-blacklist', {
+      getLog().save('send-message-by-phone-blocked-by-blacklist', {
         blockedPhones: maskPhones(blockedPhones),
         allowedPhones: maskPhones(allowedPhones),
         smsBlacklistSize: smsBlacklist.length,
@@ -1020,7 +1021,7 @@ export class Message extends Auth {
       return res.send(500, { error: 'Some phones denied by blacklist.', blockedPhones });
     }
 
-    const sendSmsByNotifyhubAPI = global.conf && global.conf.sendSmsByNotifyhubAPI;
+    const sendSmsByNotifyhubAPI = getConf() && getConf().sendSmsByNotifyhubAPI;
     if (sendSmsByNotifyhubAPI) {
       const phone = allowedPhones && allowedPhones[0];
       // Define body for e-consulting service.
@@ -1151,7 +1152,7 @@ export class Message extends Auth {
         const error = {
           message: e?.message || 'Can not get messages.',
         };
-        global.log.save('get-messages-error', { statusCode, error }, 'error');
+        getLog().save('get-messages-error', { statusCode, error }, 'error');
         return res.send(statusCode, { error });
       }
     } else {
@@ -1198,7 +1199,7 @@ export class Message extends Auth {
       ],
       order: [['date_create', 'desc']],
     };
-    global.log.save('get-all-messages-query-options', { queryOptions });
+    getLog().save('get-all-messages-query-options', { queryOptions });
     const messages = await IncommingMessages.findAll(queryOptions);
 
     return messages.map((v) => {
@@ -1713,7 +1714,7 @@ export class Message extends Auth {
       if (error && error.statusCode) {
         return res.send(error.statusCode, error.error);
       }
-      global.log.save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
+      getLog().save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
 
@@ -2129,7 +2130,7 @@ export class Message extends Auth {
     try {
       msg = await IncommingMessages.create({ ...body });
     } catch (err) {
-      global.log.save('send-msg-to-all-create-incomming-message-error', { error: err }, 'error');
+      getLog().save('send-msg-to-all-create-incomming-message-error', { error: err }, 'error');
       return res.send(500, err);
     }
 
@@ -2141,7 +2142,7 @@ export class Message extends Auth {
         show_to_all: true,
       });
     } catch (err) {
-      global.log.save('send-msg-to-all-create-user-message-error', { error: err }, 'error');
+      getLog().save('send-msg-to-all-create-user-message-error', { error: err }, 'error');
       return res.send(500, err);
     }
 
@@ -2169,7 +2170,7 @@ export class Message extends Auth {
         order: [[IncommingMessages, 'date_create', orderByDateType]],
       });
     } catch (error) {
-      global.log.save('get-messages-to-all-users-error', { error: (error && error.message) || error }, 'error');
+      getLog().save('get-messages-to-all-users-error', { error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
 
@@ -2209,7 +2210,7 @@ export class Message extends Auth {
         await IncommingMessages.destroy({ where: { message_id: id }, transaction });
       });
     } catch (error) {
-      global.log.save('delete-msg-to-all-error', { error }, 'error');
+      getLog().save('delete-msg-to-all-error', { error }, 'error');
       return res.send(500, error);
     }
 
@@ -2315,7 +2316,7 @@ export class Message extends Auth {
 
       return res.send({ data: messages });
     } catch (error) {
-      global.log.save('get-important-messages-error', { error: (error && error.message) || error }, 'error');
+      getLog().save('get-important-messages-error', { error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
   }
@@ -2371,7 +2372,7 @@ export class Message extends Auth {
       if (error && error.statusCode) {
         return res.send(error.statusCode, error.error);
       }
-      global.log.save('set-unimportant-message-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
+      getLog().save('set-unimportant-message-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
   }

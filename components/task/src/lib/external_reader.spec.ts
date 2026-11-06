@@ -4,6 +4,7 @@ import { Sandbox } from '@liquio/back-core';
 import { ExternalReader } from './external_reader';
 import { StorageService } from '../services/storage';
 import { DocumentAttachmentModel } from '../models/document_attachment';
+import { setAppContext, resetAppContext } from './context';
 
 // Mock dependencies
 jest.mock('../services/storage');
@@ -18,8 +19,8 @@ jest.mock('@liquio/back-core', () => ({
   Sandbox: { getInstance: jest.fn() },
 }));
 
-// Mock global objects
-global.config = {
+// Mock app context objects
+const mockConfig: any = {
   external_reader: {
     url: 'https://external-reader.example.com',
     urlTemplate: 'https://template.example.com/<service>/<method>',
@@ -28,15 +29,23 @@ global.config = {
   },
 };
 
-global.log = {
+const mockLog: any = {
   save: jest.fn(),
-} as any;
+};
 
-global.httpClient = {
+const mockHttpClient: any = {
   request: jest.fn(),
-} as any;
+};
 
 describe('ExternalReader', () => {
+  beforeEach(() => {
+    setAppContext({ config: mockConfig, log: mockLog, httpClient: mockHttpClient });
+  });
+
+  afterEach(() => {
+    resetAppContext();
+  });
+
   let externalReader;
   let mockStorageService;
   let mockDocumentAttachmentModel;
@@ -393,7 +402,7 @@ describe('ExternalReader', () => {
     it('should not log response body, filters or ipn/edrpou by default', async () => {
       await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user, { secret: 'nonUserValue' });
 
-      const call = (global.log.save as jest.Mock).mock.calls.find(([name]) => name === 'external-reader-raw-data-response');
+      const call = (mockLog.save as jest.Mock).mock.calls.find(([name]) => name === 'external-reader-raw-data-response');
       expect(call).toBeDefined();
       const payload = call[1];
       expect(payload).toEqual(expect.objectContaining({ service, method, userFilter: '*****', nonUserFilter: '*****' }));
@@ -407,16 +416,16 @@ describe('ExternalReader', () => {
 
     describe('external_reader.logResponses enabled', () => {
       beforeEach(() => {
-        global.config.external_reader.logResponses = true;
+        mockConfig.external_reader.logResponses = true;
       });
       afterEach(() => {
-        delete global.config.external_reader.logResponses;
+        delete mockConfig.external_reader.logResponses;
       });
 
       it('should log response data with filters redacted', async () => {
         await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
 
-        expect(global.log.save).toHaveBeenCalledWith(
+        expect(mockLog.save).toHaveBeenCalledWith(
           'external-reader-raw-data-response',
           expect.objectContaining({
             service,
@@ -434,7 +443,7 @@ describe('ExternalReader', () => {
 
         await externalReader.getDataByUser(service, method, captchaPayload, oauthToken, user);
 
-        expect(global.log.save).toHaveBeenCalledWith(
+        expect(mockLog.save).toHaveBeenCalledWith(
           'external-reader-raw-data-response',
           expect.objectContaining({
             data: expect.stringContaining('<...cut>'),
@@ -688,7 +697,7 @@ describe('ExternalReader', () => {
 
   describe('getMocksKeysByUser', () => {
     beforeEach(() => {
-      (global.httpClient.request as any).mockResolvedValue({
+      (mockHttpClient.request as any).mockResolvedValue({
         json: jest.fn().mockResolvedValue({ data: { mocks: ['mock1', 'mock2'] } }),
       });
     });
@@ -696,7 +705,7 @@ describe('ExternalReader', () => {
     it('should get mocks keys successfully', async () => {
       const result = await externalReader.getMocksKeysByUser('auth-token', ['reader1', 'reader2']);
 
-      expect(global.httpClient.request).toHaveBeenCalledWith(
+      expect(mockHttpClient.request).toHaveBeenCalledWith(
         'https://external-reader.example.com/mocks-keys-by-user?readers=reader1&readers=reader2',
         {
           method: 'GET',
@@ -716,7 +725,7 @@ describe('ExternalReader', () => {
     it('should handle empty readers array', async () => {
       await externalReader.getMocksKeysByUser('auth-token', []);
 
-      expect(global.httpClient.request).toHaveBeenCalledWith(
+      expect(mockHttpClient.request).toHaveBeenCalledWith(
         'https://external-reader.example.com/mocks-keys-by-user',
         expect.any(Object),
         expect.any(String),
@@ -727,7 +736,7 @@ describe('ExternalReader', () => {
     it('should handle undefined readers', async () => {
       await externalReader.getMocksKeysByUser('auth-token');
 
-      expect(global.httpClient.request).toHaveBeenCalledWith(
+      expect(mockHttpClient.request).toHaveBeenCalledWith(
         'https://external-reader.example.com/mocks-keys-by-user',
         expect.any(Object),
         expect.any(String),
@@ -859,7 +868,7 @@ describe('ExternalReader', () => {
 
         externalReader.appendExternalReaderErrors('Error message');
 
-        expect(global.log.save).toHaveBeenCalledWith('external-reader-errors|trace-meta-not-found', {
+        expect(mockLog.save).toHaveBeenCalledWith('external-reader-errors|trace-meta-not-found', {
           traceId: 'test-trace-id',
           externalReaderError: 'Error message',
         });

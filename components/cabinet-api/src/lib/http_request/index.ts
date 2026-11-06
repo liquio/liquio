@@ -3,6 +3,7 @@ import * as bodyParser from 'body-parser';
 import * as formData from 'express-form-data';
 import * as xmlparser from 'express-xml-bodyparser';
 
+import { getLog } from '../context';
 import Helpers from '../helpers';
 
 // Constants.
@@ -102,7 +103,7 @@ class HttpRequest {
       const bodyObject = parseBody(response.data);
       return fullResponse ? { response: createSerializableResponse(response), body: bodyObject } : bodyObject;
     } catch (error) {
-      log?.save(
+      getLog()?.save(
         'http-request-send-error',
         {
           requestOptions: axiosOptions,
@@ -132,7 +133,7 @@ class HttpRequest {
       const response = await axios(axiosOptions);
       return response.headers[headerName.toLowerCase()];
     } catch (error) {
-      log?.save(
+      getLog()?.save(
         'http-request-send-head-request-error',
         {
           requestOptions: axiosOptions,

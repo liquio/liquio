@@ -8,6 +8,7 @@ import { RegisterService } from '../services/register';
 import { JSONPath } from '../lib/jsonpath';
 import { RedisClient } from '../lib/redis_client';
 import { InvalidParamsError, ForbiddenError, NotFoundError } from '../lib/errors';
+import { getConfig, getLog } from '../lib/context';
 
 // Constants.
 const ALLOW_CREATE = 'create';
@@ -645,8 +646,8 @@ export class RegisterBusiness extends Business {
    */
   async prepareData() {
     const [registers, keys, unitAccess] = await Promise.all([
-      this.registerService.getRegisters({ limit: global.config.register.limit }),
-      this.registerService.getKeys({ limit: global.config.register.limit }),
+      this.registerService.getRegisters({ limit: getConfig().register.limit }),
+      this.registerService.getKeys({ limit: getConfig().register.limit }),
       this.unitAccessModel.getAllWithCache(),
     ]);
 
@@ -818,7 +819,7 @@ export class RegisterBusiness extends Business {
     try {
       stringified = this.sandbox.evalWithArgs(toString, [record], { meta: { fn: 'convertToStrictRecord', recordId: record.id } });
     } catch (error) {
-      global.log.save('convert-to-strict-record-error', { error: error && error.message, record, keySchema }, 'warn');
+      getLog().save('convert-to-strict-record-error', { error: error && error.message, record, keySchema }, 'warn');
     }
 
     // Define strict record.
@@ -918,7 +919,7 @@ export class RegisterBusiness extends Business {
     }));
 
     // Get from config.
-    const accessFromConfig = global.config.register.access.filter((v) => unitIds.includes(v.unit));
+    const accessFromConfig = getConfig().register.access.filter((v) => unitIds.includes(v.unit));
 
     // Merge and return.
     const access = unitIds
@@ -969,7 +970,7 @@ export class RegisterBusiness extends Business {
     const { data: { strictAccess: { keys: strictAccessKeysFromDb = [] } = {} } = {} } = accessToRegisterForAllUnits || {};
 
     // Get from config.
-    const { strictAccess: { keys: strictAccessKeysFromConfig = [] } = {} } = global.config.register;
+    const { strictAccess: { keys: strictAccessKeysFromConfig = [] } = {} } = getConfig().register;
 
     // Merge and return.
     const strictAccessKeys = [...new Set([...strictAccessKeysFromDb, ...strictAccessKeysFromConfig])];
@@ -1159,7 +1160,7 @@ export class RegisterBusiness extends Business {
         const linkedRecord = await this.registerService.getRecords(params);
 
         if (!linkedRecord.data || !linkedRecord.data.length) {
-          global.log.save(
+          getLog().save(
             'register-businesses|handle-control-update|record-to-link-not-found',
             { record, control: keyProperties[keyProperty], params },
             'error',
@@ -1231,7 +1232,7 @@ export class RegisterBusiness extends Business {
         const linkedRecord = await this.registerService.getRecords(params);
 
         if (!linkedRecord.data || !linkedRecord.data.length) {
-          global.log.save(
+          getLog().save(
             'register-businesses|handle-control-create|record-to-link-not-found',
             { record, control: keyProperties[keyProperty], params },
             'error',

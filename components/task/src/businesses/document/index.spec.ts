@@ -6,45 +6,50 @@ import { Sandbox } from '@liquio/back-core';
 import { initIdApiClient } from '../../lib/id_api';
 import { DocumentValidatorService } from '../../services/document_validator';
 import { DocumentBusiness } from './index';
+import { getLog, getConfig, setAppContext, resetAppContext } from '../../lib/context';
 
 new Sandbox();
 initIdApiClient({});
 
 describe('DocumentBusiness', () => {
-  global.config = {
-    storage: {},
-    filestorage: {},
-    eds: {
-      timeout: 30000,
-      pkcs7: {
+  setAppContext({
+    config: {
+      storage: {},
+      filestorage: {},
+      eds: {
         timeout: 30000,
-        signToolUrl: 'http://localhost:3004',
+        pkcs7: {
+          timeout: 30000,
+          signToolUrl: 'http://localhost:3004',
+        },
       },
+      download_token: { jwtSecret: 'YourJWTSecretKey' },
+      external_reader: {},
+      register: {},
+      auth: {
+        LiquioId: {},
+      },
+      notifier: {},
     },
-    download_token: { jwtSecret: 'YourJWTSecretKey' },
-    external_reader: {},
-    register: {},
-    auth: {
-      LiquioId: {},
+  });
+  setAppContext({
+    db: {
+      define: jest.fn().mockReturnValue({ prototype: {} }),
+      sync: jest.fn(),
+      authenticate: jest.fn(),
+      transaction: jest.fn(),
+      query: jest.fn(),
+      close: jest.fn(),
     },
-    notifier: {},
-  };
-  global.db = {
-    define: jest.fn().mockReturnValue({ prototype: {} }),
-    sync: jest.fn(),
-    authenticate: jest.fn(),
-    transaction: jest.fn(),
-    query: jest.fn(),
-    close: jest.fn(),
-  };
+  });
 
   it('should initialize', () => {
-    const documentBusiness = new DocumentBusiness(global.config);
+    const documentBusiness = new DocumentBusiness(getConfig());
     expect(documentBusiness).toBeDefined();
   });
 
   describe('getSha512Hash', () => {
-    const documentBusiness = new DocumentBusiness(global.config);
+    const documentBusiness = new DocumentBusiness(getConfig());
 
     it('should return a sha512 hash without HMAC', () => {
       const data = 'test data';
@@ -76,12 +81,14 @@ describe('DocumentBusiness', () => {
     beforeEach(() => {
       // Create fresh instance for each test
       (DocumentBusiness as any).singleton = null;
-      documentBusiness = new DocumentBusiness(global.config);
+      documentBusiness = new DocumentBusiness(getConfig());
 
-      // Mock global.log to avoid logging during tests
-      global.log = {
-        save: jest.fn(),
-      } as any;
+      // Mock getLog() to avoid logging during tests
+      setAppContext({
+        log: {
+          save: jest.fn(),
+        } as any,
+      });
     });
 
     afterEach(() => {
@@ -118,7 +125,7 @@ describe('DocumentBusiness', () => {
 
       expect(result).toBe(expectedHash);
       expect(documentBusiness.storageService.provider.downloadFileRequestOptions).toHaveBeenCalledWith(fileId);
-      expect(global.log.save).toHaveBeenCalledWith(
+      expect(getLog().save).toHaveBeenCalledWith(
         'get-file-hash-success',
         expect.objectContaining({
           fileId,
@@ -152,7 +159,7 @@ describe('DocumentBusiness', () => {
 
       expect(result).toBe(expectedHash);
       expect(documentBusiness.storageService.provider.downloadFileRequestOptions).toHaveBeenCalledWith(documentFileId);
-      expect(global.log.save).toHaveBeenCalledWith(
+      expect(getLog().save).toHaveBeenCalledWith(
         'get-file-hash-success',
         expect.objectContaining({
           fileId: undefined,
@@ -176,7 +183,7 @@ describe('DocumentBusiness', () => {
       const result = await documentBusiness.signing.getFileHash(document, fileId);
 
       expect(result).toBeUndefined();
-      expect(global.log.save).toHaveBeenCalledWith('get-file-hash-options-error', expect.objectContaining({ fileId }));
+      expect(getLog().save).toHaveBeenCalledWith('get-file-hash-options-error', expect.objectContaining({ fileId }));
     });
 
     it('should return undefined when document has no fileId and no fileId is provided', async () => {
@@ -190,7 +197,7 @@ describe('DocumentBusiness', () => {
       const result = await documentBusiness.signing.getFileHash(document);
 
       expect(result).toBeUndefined();
-      expect(global.log.save).toHaveBeenCalledWith(
+      expect(getLog().save).toHaveBeenCalledWith(
         'get-file-hash-options-error',
         expect.objectContaining({
           fileId: undefined,
@@ -244,7 +251,7 @@ describe('DocumentBusiness', () => {
       const result = await documentBusiness.signing.getFileHash(document, fileId);
 
       expect(result).toBe(expectedHash);
-      expect(global.log.save).toHaveBeenCalledWith(
+      expect(getLog().save).toHaveBeenCalledWith(
         'get-file-hash-success',
         expect.objectContaining({
           fileId,
@@ -308,12 +315,14 @@ describe('DocumentBusiness', () => {
     beforeEach(() => {
       // Create fresh instance for each test
       (DocumentBusiness as any).singleton = null;
-      documentBusiness = new DocumentBusiness(global.config);
+      documentBusiness = new DocumentBusiness(getConfig());
 
-      // Mock global.log to avoid logging during tests
-      global.log = {
-        save: jest.fn(),
-      } as any;
+      // Mock getLog() to avoid logging during tests
+      setAppContext({
+        log: {
+          save: jest.fn(),
+        } as any,
+      });
     });
 
     afterEach(() => {
@@ -507,12 +516,12 @@ describe('DocumentBusiness', () => {
     afterEach(() => jest.restoreAllMocks());
 
     it('throws a public error so the client gets the validation details', async () => {
-      const documentBusiness = new DocumentBusiness(global.config);
+      const documentBusiness = new DocumentBusiness(getConfig());
       const validationErrors = [{ dataPath: 'step.field', message: 'should be string' }];
       jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue({ documentTemplateId: 1, data: {} } as any);
       jest.spyOn(DocumentValidatorService.prototype, 'check').mockResolvedValue(validationErrors as any);
-      global.models = { documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) } } as any;
-      global.businesses = { register: { getFilteredRecordsByKeyId: jest.fn() } } as any;
+      setAppContext({ models: { documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) } } as any });
+      setAppContext({ businesses: { register: { getFilteredRecordsByKeyId: jest.fn() } } as any });
 
       await expect(documentBusiness.validate('document-id', { userId: 'user-id' }, {} as any, true)).rejects.toMatchObject({
         message: 'Validation error.',
@@ -521,4 +530,8 @@ describe('DocumentBusiness', () => {
       });
     });
   });
+});
+
+afterAll(() => {
+  resetAppContext();
 });

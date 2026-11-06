@@ -1,3 +1,5 @@
+import { getLog } from '../lib/context';
+
 /**
  * Command base class
  */
@@ -20,14 +22,14 @@ export class Command {
     yards.command(this.name, this.name, this.describe(yards), async (args) => {
       try {
         const startTime = new Date().getTime();
-        global.log.save(`cli-command-start|${this.name}`, { time: startTime, args });
+        getLog().save(`cli-command-start|${this.name}`, { time: startTime, args });
         const options = this.prepare ? await this.prepare(args) : args;
-        global.log.save(`cli-command-options|${this.name}`, { options });
+        getLog().save(`cli-command-options|${this.name}`, { options });
         await this.execute(options);
         const endTime = new Date().getTime();
-        global.log.save(`cli-stop-command|${this.name}`, { date: endTime, spendTime: endTime - startTime });
+        getLog().save(`cli-stop-command|${this.name}`, { date: endTime, spendTime: endTime - startTime });
       } catch (e) {
-        global.log.save(`cli-command-error|${this.name}`, { error: e.message });
+        getLog().save(`cli-command-error|${this.name}`, { error: e.message });
         console.error(`Error: ${e.message}, ${e.stack}`);
         process.exit(1);
       }

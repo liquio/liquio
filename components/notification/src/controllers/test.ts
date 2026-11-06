@@ -4,6 +4,7 @@ import { Router } from 'express';
 
 import { checkAuth } from './auth';
 import { conf } from '../config/config';
+import { getLog } from '../lib/context';
 
 const router = Router();
 
@@ -180,7 +181,7 @@ export class TestController {
     const serviceVersionInfo = (conf as any) && (conf as any).versions && (conf as any).versions.services.find((v: any) => v.name === serviceName);
     const serviceMinVersion = (serviceVersionInfo && serviceVersionInfo.minVersion) || DEFAULT_VERSION;
     if (!serviceMinVersion || !serviceVersion) {
-      global.log.save('can-not-find-service-min-version');
+      getLog().save('can-not-find-service-min-version');
       return false;
     }
 

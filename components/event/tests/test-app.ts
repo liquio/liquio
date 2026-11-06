@@ -10,26 +10,16 @@ import { merge } from 'lodash';
 import { resetIdApiClient } from '@liquio/back-core';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
+import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 
-import { App } from '../src/app';
+import { App } from '../src/bootstrap';
 import { Db } from '../src/lib/db';
+import { MessageQueue } from '../src/lib/message_queue';
 import { prepareFixtures } from './fixtures';
 
 // E2E tests are slow, so we increase the timeout
 // Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
 jest.setTimeout(120000);
-
-// Mock the RabbitMQ connection
-jest.mock('../src/lib/message_queue', () => {
-  return {
-    MessageQueue: jest.fn().mockImplementation(() => {
-      return {
-        init: jest.fn(),
-        produce: jest.fn(),
-      };
-    }),
-  };
-});
 
 // Mock the log module
 jest.mock('@liquio/back-core', () => {
@@ -72,8 +62,9 @@ jest.mock('../src/lib/config', () => {
   return {
     getConfig: jest.fn().mockImplementation(getMerged),
     loadConfig: jest.fn().mockImplementation(() => {
-      global.config = getMerged();
-      return global.config;
+      const merged = getMerged();
+      require('../src/lib/context').setAppContext({ config: merged });
+      return merged;
     }),
   };
 });
@@ -144,6 +135,7 @@ const defaultConfig = getConfig();
 class TestApp extends App {
   static pgContainer;
   static redisContainer;
+  static rabbitmqContainer;
 
   // Initialize the application
   static async setup(configOverrides = {}) {
@@ -302,6 +294,13 @@ class TestApp extends App {
         port: this.redisContainer.getMappedPort(6379),
       };
     }
+    // Start RabbitMQ container
+    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management').start();
+    configOverride.message_queue = {
+      ...defaultConfig.message_queue,
+      amqpConnection: this.rabbitmqContainer.getAmqpUrl(),
+    };
+
     // Activate nock to intercept HTTP requests
     nock.activate();
   }
@@ -338,7 +337,7 @@ class TestApp extends App {
     nock.restore();
 
     // Stop containers
-    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop()]);
+    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.rabbitmqContainer?.stop()]);
   }
 
   model(modelName) {
@@ -362,7 +361,6 @@ class TestApp extends App {
   }
 
   async init() {
-    this.useGlobalErrors();
     this.useGlobalTypeOf();
     this.useLog();
     resetIdApiClient();
@@ -372,12 +370,27 @@ class TestApp extends App {
     this.useModels();
     this.useEventService();
     this.useEventBusiness();
-    this.useMessageQueue();
+    await this.useMessageQueue();
   }
 
   // Destroy the application
   async destroy() {
     this.eventBusiness.stopDaemon();
+
+    // Close the message queue connection and stop its reconnect timer
+    const messageQueue = this.messageQueue;
+    if (messageQueue) {
+      clearTimeout(messageQueue.reconnectTimeout);
+      messageQueue.isClosing = true;
+      if (messageQueue.connection) {
+        await messageQueue.close();
+      }
+      // close() resets isClosing and the close event may schedule a reconnect; cancel both.
+      messageQueue.isClosing = true;
+      clearTimeout(messageQueue.reconnectTimeout);
+      MessageQueue.singleton = undefined;
+    }
+
     await this.db?.close();
     Db.singleton = undefined;
   }

@@ -10,6 +10,7 @@ import { TaskTemplateEntity } from '../entities/task_template';
 import { DocumentTemplateEntity } from '../entities/document_template';
 import { toLogUser } from '../lib/log_sanitize';
 import { PublicError } from '../lib/public_error';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Task controller.
@@ -46,7 +47,7 @@ export class TaskController extends Controller {
     let savedTaskGroupEntities = [];
     let newLastWorkflowHistoryId;
     try {
-      if (global.config.workflow_editor.disabled === true) {
+      if (getConfig().workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -77,7 +78,7 @@ export class TaskController extends Controller {
 
         const savedTaskGroupEntity = await this.taskBusiness.createOrUpdate(taskGroupEntity);
         savedTaskGroupEntities.push(savedTaskGroupEntity);
-        global.log.save('user-created-updated-task-group', { user: toLogUser(user), data: { savedTaskGroupEntity } });
+        getLog().save('user-created-updated-task-group', { user: toLogUser(user), data: { savedTaskGroupEntity } });
 
         // Auto save workflow process.
         const workflowHistory = await this.bpmnWorkflowBusiness.autoSaveVersion(workflowTemplateId, { user });
@@ -105,14 +106,14 @@ export class TaskController extends Controller {
     const id = paramsData.id;
 
     try {
-      if (global.config.workflow_editor.disabled === true) {
+      if (getConfig().workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
       await this.taskBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-task-group', { user: toLogUser(user), data: { id } });
+      await getLog().save('user-deleted-task-group', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

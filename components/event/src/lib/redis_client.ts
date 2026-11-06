@@ -1,8 +1,10 @@
 import { RedisClient as BackCoreRedisClient } from '@liquio/back-core';
 
+import { getLog, getConfig } from './context';
+
 /**
  * Event's redis client: a thin, singleton-per-process binding of `@liquio/back-core`'s
- * `RedisClient`, reading its config from `global.config.redis` (matching this component's
+ * `RedisClient`, reading its config from `getConfig().redis` (matching this component's
  * existing zero-arg `new RedisClient()` call site) and preserving the static call-site API
  * (`RedisClient.getOrSet(...)`, `RedisClient.createKey(...)`) used throughout its models.
  */
@@ -15,8 +17,8 @@ export class RedisClient extends BackCoreRedisClient {
       return RedisClient.singleton;
     }
 
-    const { host, port, ttl, enabled } = global.config.redis || {};
-    super({ host, port, defaultTtl: ttl, isEnabled: enabled, prefix: RedisClient.prefix, getLog: () => global.log });
+    const { host, port, ttl, enabled } = getConfig().redis || {};
+    super({ host, port, defaultTtl: ttl, isEnabled: enabled, prefix: RedisClient.prefix, getLog });
 
     RedisClient.singleton = this;
   }

@@ -2,6 +2,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { DocumentBusiness } from './index';
 import { DocumentValidatorService } from '../../services/document_validator';
+import { getLog, getConfig, setAppContext, resetAppContext } from '../../lib/context';
 
 // Wrap the real validator so constructor arguments can be asserted while its behaviour stays real.
 jest.mock('../../services/document_validator', () => {
@@ -12,7 +13,7 @@ jest.mock('../../services/document_validator', () => {
   };
 });
 
-global.log = { save: jest.fn() } as any;
+setAppContext({ log: { save: jest.fn() } as any });
 
 describe('DocumentBusiness.update', () => {
   const jsonSchema = {
@@ -32,8 +33,8 @@ describe('DocumentBusiness.update', () => {
   let updateData: jest.Mock;
 
   beforeEach(() => {
-    global.config = { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } };
-    new Sandbox(global.config);
+    setAppContext({ config: { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } } });
+    new Sandbox(getConfig());
 
     // Bypass the singleton constructor: `update` only needs the sandbox and its own helper methods.
     documentBusiness = Object.create(DocumentBusiness.prototype);
@@ -49,20 +50,24 @@ describe('DocumentBusiness.update', () => {
     jest.spyOn(documentBusiness, 'findByIdAndCheckAccess').mockResolvedValue(document);
 
     updateData = jest.fn().mockImplementation(async (id, _userId, data) => ({ id, data }));
-    global.models = {
-      documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
-      documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
-      document: { updateData },
-    } as any;
-    global.businesses = {
-      task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
-    } as any;
+    setAppContext({
+      models: {
+        documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
+        documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
+        document: { updateData },
+      } as any,
+    });
+    setAppContext({
+      businesses: {
+        task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
+      } as any,
+    });
 
     (DocumentValidatorService as unknown as jest.Mock).mockClear();
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.restoreAllMocks();
   });
 
@@ -190,8 +195,8 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
   const writtenData = () => updateData.mock.calls[0][2];
 
   beforeEach(() => {
-    global.config = { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } };
-    new Sandbox(global.config);
+    setAppContext({ config: { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } } });
+    new Sandbox(getConfig());
 
     documentBusiness = Object.create(DocumentBusiness.prototype);
     documentBusiness.sandbox = Sandbox.getInstance();
@@ -207,19 +212,23 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
 
     updateData = jest.fn().mockImplementation(async (id, _userId, data) => ({ id, data }));
     findTemplateById = jest.fn();
-    global.models = {
-      documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
-      documentTemplate: { findById: findTemplateById },
-      document: { updateData },
-    } as any;
-    global.businesses = {
-      task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
-    } as any;
-    (global.log.save as jest.Mock).mockClear();
+    setAppContext({
+      models: {
+        documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
+        documentTemplate: { findById: findTemplateById },
+        document: { updateData },
+      } as any,
+    });
+    setAppContext({
+      businesses: {
+        task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
+      } as any,
+    });
+    (getLog().save as jest.Mock).mockClear();
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.restoreAllMocks();
   });
 
@@ -270,8 +279,8 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
         ],
         ['calc.result'],
       ).catch(() => undefined);
-      expect(global.log.save).toHaveBeenCalledWith('calc-triggers-validation-mismatch', { target: 'calc.result', source: 'calc.input' }, 'warn');
-      expect(JSON.stringify((global.log.save as jest.Mock).mock.calls)).not.toContain('TAMPERED');
+      expect(getLog().save).toHaveBeenCalledWith('calc-triggers-validation-mismatch', { target: 'calc.result', source: 'calc.input' }, 'warn');
+      expect(JSON.stringify((getLog().save as jest.Mock).mock.calls)).not.toContain('TAMPERED');
     });
 
     it('drops a readOnly target written without triggerPath and does not check it', async () => {
@@ -449,8 +458,8 @@ describe('DocumentBusiness.update with checkSchemaAllowList', () => {
     documentBusiness.update('document-id', properties, 'user-id', userUnitIds, undefined, options);
 
   beforeEach(() => {
-    global.config = { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } };
-    new Sandbox(global.config);
+    setAppContext({ config: { register: { server: 'testserver', port: 'testport', token: 'testtoken', timeout: 1000 } } });
+    new Sandbox(getConfig());
 
     documentBusiness = Object.create(DocumentBusiness.prototype);
     documentBusiness.sandbox = Sandbox.getInstance();
@@ -463,26 +472,30 @@ describe('DocumentBusiness.update with checkSchemaAllowList', () => {
     } as any);
 
     updateData = jest.fn().mockImplementation(async (id, _userId, data) => ({ id, data }));
-    global.models = {
-      documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
-      documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
-      document: { updateData },
-    } as any;
-    global.businesses = {
-      task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
-    } as any;
-    (global.log.save as jest.Mock).mockClear();
+    setAppContext({
+      models: {
+        documentSignature: { getByDocumentId: jest.fn().mockResolvedValue([]) },
+        documentTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema }) },
+        document: { updateData },
+      } as any,
+    });
+    setAppContext({
+      businesses: {
+        task: { calculateAndUpdateDraftExpiredAt: jest.fn().mockResolvedValue(undefined) },
+      } as any,
+    });
+    (getLog().save as jest.Mock).mockClear();
   });
 
   afterEach(() => {
-    global.config = {};
+    setAppContext({ config: {} });
     jest.restoreAllMocks();
   });
 
   it('rejects an unknown path in enforce mode and writes nothing', async () => {
     await expect(update(unknownPath)).rejects.toMatchObject({ message: 'Property is not defined in the document schema.' });
     expect(updateData).not.toHaveBeenCalled();
-    expect(global.log.save).toHaveBeenCalledWith(
+    expect(getLog().save).toHaveBeenCalledWith(
       'document-update-path-not-in-schema',
       expect.objectContaining({ paths: ['unknownStep'], mode: 'enforce' }),
       'warn',
@@ -490,22 +503,22 @@ describe('DocumentBusiness.update with checkSchemaAllowList', () => {
   });
 
   it('logs and writes in log mode', async () => {
-    global.config.documents = { schemaAllowList: 'log' };
+    getConfig().documents = { schemaAllowList: 'log' };
     await update(unknownPath);
-    expect(global.log.save).toHaveBeenCalledWith('document-update-path-not-in-schema', expect.objectContaining({ mode: 'log' }), 'info');
+    expect(getLog().save).toHaveBeenCalledWith('document-update-path-not-in-schema', expect.objectContaining({ mode: 'log' }), 'info');
     expect(updateData).toHaveBeenCalled();
   });
 
   it('does not check in off mode', async () => {
-    global.config.documents = { schemaAllowList: 'off' };
+    getConfig().documents = { schemaAllowList: 'off' };
     await update(unknownPath);
-    expect(global.log.save).not.toHaveBeenCalledWith('document-update-path-not-in-schema', expect.anything(), expect.anything());
+    expect(getLog().save).not.toHaveBeenCalledWith('document-update-path-not-in-schema', expect.anything(), expect.anything());
     expect(updateData).toHaveBeenCalled();
   });
 
   it('does not check without the flag', async () => {
     await update(unknownPath, {});
-    expect(global.log.save).not.toHaveBeenCalledWith('document-update-path-not-in-schema', expect.anything(), expect.anything());
+    expect(getLog().save).not.toHaveBeenCalledWith('document-update-path-not-in-schema', expect.anything(), expect.anything());
     expect(updateData).toHaveBeenCalled();
   });
 
@@ -513,4 +526,8 @@ describe('DocumentBusiness.update with checkSchemaAllowList', () => {
     await update([{ path: 'step1.fieldA', value: 'b' }]);
     expect(updateData).toHaveBeenCalled();
   });
+});
+
+afterAll(() => {
+  resetAppContext();
 });

@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { UnitEntity } from '../entities/unit';
+import { getLog } from '../lib/context';
 
 export class UnitModel extends Model {
   static singleton: UnitModel;
@@ -460,7 +461,7 @@ export class UnitModel extends Model {
     const [{ last_value }] = curvalRaw;
     const currentUnitId = parseInt(last_value);
     const maxUnitId: number = await this.model.max('id');
-    global.log.save('fix-last-unit-id-if-need-it|check', { currentUnitId, maxUnitId });
+    getLog().save('fix-last-unit-id-if-need-it|check', { currentUnitId, maxUnitId });
 
     // Check and fix.
     if (maxUnitId > currentUnitId) {
@@ -468,7 +469,7 @@ export class UnitModel extends Model {
         raw: true,
         replacements: { max_unit_id: maxUnitId },
       });
-      global.log.save('fix-last-unit-id-if-need-it|set', { currentUnitId, maxUnitId, setRawResponse });
+      getLog().save('fix-last-unit-id-if-need-it|set', { currentUnitId, maxUnitId, setRawResponse });
     }
   }
 
@@ -537,7 +538,7 @@ export class UnitModel extends Model {
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-requested-member|error', { unitId, requestedMember });
+      getLog().save('unit-remove-requested-member|error', { unitId, requestedMember });
       return null;
     }
 
@@ -545,7 +546,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-requested-member', { unitId, requestedMember });
+    getLog().save('unit-remove-requested-member', { unitId, requestedMember });
 
     return unit;
   }
@@ -568,7 +569,7 @@ export class UnitModel extends Model {
     // Define and return first updated row entity.
     const [updatedUnitRaw] = unitsRaw;
     const updatedUnit = this.prepareEntity(updatedUnitRaw);
-    global.log.save('unit-remove-requested-member', { unitId, requestedMemberIpn });
+    getLog().save('unit-remove-requested-member', { unitId, requestedMemberIpn });
     return updatedUnit;
   }
 

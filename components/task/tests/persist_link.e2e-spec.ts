@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { PersistLink } from '../src/lib/persist_link';
+import { setAppContext } from '../src/lib/context';
 
 // Mock axios
 jest.mock('axios');
@@ -9,7 +10,7 @@ jest.mock('axios');
 const mockLog = {
   save: jest.fn(),
 };
-global.log = mockLog as any;
+setAppContext({ log: mockLog as any });
 
 // Mock global config
 const mockConfig = {
@@ -28,7 +29,7 @@ const mockConfig = {
     getLinkToFilestorageTimeout: 25000,
   },
 };
-global.config = mockConfig;
+setAppContext({ config: mockConfig });
 
 describe('PersistLink', () => {
   let persistLink;

@@ -1,5 +1,6 @@
 import { Controller } from './controller';
 import { NotifierService } from '../services/notifier';
+import { getRedisClient } from '../lib/context';
 
 /**
  * Message controller.
@@ -69,8 +70,8 @@ export class MessageController extends Controller {
     let result;
     try {
       const key = `count.unread.messages.${userId}`;
-      if (global.redisClient) {
-        const cachedResult = await global.redisClient.get(key);
+      if (getRedisClient()) {
+        const cachedResult = await getRedisClient().get(key);
         if (cachedResult) {
           return this.responseData(res, JSON.parse(cachedResult));
         }
@@ -78,8 +79,8 @@ export class MessageController extends Controller {
 
       result = await this.notifierService.getCountUnreadMessages(undefined, userId);
 
-      if (global.redisClient && result) {
-        await global.redisClient.set(key, result, 60);
+      if (getRedisClient() && result) {
+        await getRedisClient().set(key, result, 60);
       }
     } catch (error) {
       return this.responseError(res, error);

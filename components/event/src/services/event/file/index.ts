@@ -6,6 +6,8 @@ import { Sandbox } from '@liquio/back-core';
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../../../constants/common';
 import { ERROR_WRONG_METHOD } from '../../../constants/error';
 import { Helpers } from '../../../lib/helpers';
+import { EvaluateSchemaFunctionError } from '../../../lib/errors';
+import { getLog } from '../../../lib/context';
 
 /**
  * Event file.
@@ -41,11 +43,11 @@ export class EventFile {
             meta: { fn: 'map', caller: 'EventFile.execute' },
           });
         } catch (error: any) {
-          global.log.save('file-csv-generate|exception', {
+          getLog().save('file-csv-generate|exception', {
             error: error?.message,
           });
 
-          throw new (global as any).EvaluateSchemaFunctionError(error.toString());
+          throw new EvaluateSchemaFunctionError(error.toString());
         }
 
         return await this.generateCsv(executedData, options);
@@ -55,11 +57,11 @@ export class EventFile {
             meta: { fn: 'map', caller: 'EventFile.execute' },
           });
         } catch (error: any) {
-          global.log.save('file-xlsx-generate|exception', {
+          getLog().save('file-xlsx-generate|exception', {
             error: error?.message,
           });
 
-          throw new (global as any).EvaluateSchemaFunctionError(error.toString());
+          throw new EvaluateSchemaFunctionError(error.toString());
         }
 
         return await this.generateXlsx(executedData, options);
@@ -86,7 +88,7 @@ export class EventFile {
         .join('\n');
       fileBuffer = Buffer.from(csv);
     } catch (error: any) {
-      global.log.save('file-csv-generate|exception', {
+      getLog().save('file-csv-generate|exception', {
         error: error?.message,
         data: { workflowId },
       });
@@ -101,7 +103,7 @@ export class EventFile {
     try {
       fileInfo = await filestorage.uploadFileFromStream(Readable.from(fileBuffer), fileName, undefined, 'text/csv', undefined, true);
     } catch (error: any) {
-      global.log.save('file-csv-filestorage-upload|exception', {
+      getLog().save('file-csv-filestorage-upload|exception', {
         error: error?.message,
         requestUrl: error?.details?.requestUrl,
         responseStatusCode: error?.response?.statusCode,
@@ -120,7 +122,7 @@ export class EventFile {
 
     // Check that is correct content type.
     if ('text/csv' !== contentType) {
-      global.log.save('file-csv-filestorage-error|wrong-content-type', { contentType });
+      getLog().save('file-csv-filestorage-error|wrong-content-type', { contentType });
       throw new Error('File upload failed. Incorrect content type from external service.');
     }
 
@@ -135,7 +137,7 @@ export class EventFile {
         fileType: contentType,
       });
     } catch (error: any) {
-      global.log.save('file-csv-document-save|exception', {
+      getLog().save('file-csv-document-save|exception', {
         error: error && error.message,
         data: { workflowId },
       });
@@ -184,7 +186,7 @@ export class EventFile {
       // Save workbook.
       fileBuffer = await workbook.xlsx.writeBuffer();
     } catch (error: any) {
-      global.log.save('file-xlsx-generate|exception', {
+      getLog().save('file-xlsx-generate|exception', {
         error: error?.message,
         data: { workflowId },
       });
@@ -206,7 +208,7 @@ export class EventFile {
         true,
       );
     } catch (error: any) {
-      global.log.save('file-xlsx-filestorage-upload|exception', {
+      getLog().save('file-xlsx-filestorage-upload|exception', {
         error: error?.message,
         requestUrl: error?.details?.requestUrl,
         responseStatusCode: error?.response?.statusCode,
@@ -225,7 +227,7 @@ export class EventFile {
 
     // Check that is correct content type.
     if ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' !== contentType) {
-      global.log.save('file-xlsx-filestorage-error|wrong-content-type', { contentType });
+      getLog().save('file-xlsx-filestorage-error|wrong-content-type', { contentType });
       throw new Error('File upload failed. Incorrect content type from external service.');
     }
 
@@ -240,7 +242,7 @@ export class EventFile {
         fileType: contentType,
       });
     } catch (error: any) {
-      global.log.save('file-xlsx-document-save|exception', {
+      getLog().save('file-xlsx-document-save|exception', {
         error: error && error.message,
         data: { workflowId },
       });

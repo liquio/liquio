@@ -1,5 +1,7 @@
 import { Sandbox } from '@liquio/back-core';
 
+import { getLog } from './context';
+
 const MAX_RULE_LENGTH = 4096;
 
 // Default `message_crypt_types.rule_to_show` value, handled natively because `Buffer` is not available in the sandbox.
@@ -11,7 +13,7 @@ function getSandbox(): Sandbox {
   if (!sandbox) {
     sandbox = new Sandbox({
       isolationLevel: 'isolated-vm' as any,
-      getLog: () => (global as any).log || { save: () => undefined },
+      getLog: () => getLog() || { save: () => undefined },
     });
   }
   return sandbox;

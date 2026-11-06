@@ -3,6 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import amqp from 'amqplib/callback_api';
 
 import { MessageQueue } from './index';
+import { setAppContext, resetAppContext, getLog } from '../context';
 
 jest.mock('amqplib/callback_api', () => ({
   connect: jest.fn((url, callback) => {
@@ -40,9 +41,11 @@ describe('MessageQueue', () => {
   let messageQueue;
 
   beforeEach(() => {
-    global.log = {
-      save: jest.fn(),
-    } as any;
+    setAppContext({
+      log: {
+        save: jest.fn(),
+      } as any,
+    });
 
     messageQueue = new MessageQueue({
       amqpConnection: 'amqp://localhost',
@@ -57,6 +60,7 @@ describe('MessageQueue', () => {
     // Drop any pending reconnect timer so it can't keep the process alive.
     clearTimeout(messageQueue.reconnectTimeout);
     jest.clearAllMocks();
+    resetAppContext();
     (MessageQueue as any).singleton = null;
   });
 
@@ -165,7 +169,7 @@ describe('MessageQueue', () => {
       expect(amqp.connect).toHaveBeenCalledWith('amqp://localhost', expect.any(Function));
       expect(messageQueue.connection.createChannel).toHaveBeenCalled();
       expect(messageQueue.channels).toBeDefined();
-      expect(global.log.save).toHaveBeenCalled();
+      expect(getLog().save).toHaveBeenCalled();
     });
 
     it('should call onInit callback if provided', async () => {
@@ -204,7 +208,7 @@ describe('MessageQueue', () => {
       expect(sentMessage.type).toBe('test');
       expect(sentMessage.amqpMessageId).toBeDefined();
 
-      expect(global.log.save).toHaveBeenCalledWith('amqp-message-sent', expect.any(Object));
+      expect(getLog().save).toHaveBeenCalledWith('amqp-message-sent', expect.any(Object));
     });
 
     it('should support producing to custom channel and queue', async () => {
@@ -234,7 +238,7 @@ describe('MessageQueue', () => {
       await producePromise;
 
       expect(messageQueue.channels.writing.sendToQueue).toHaveBeenCalledTimes(2);
-      expect(global.log.save).toHaveBeenCalledWith('amqp-message-try-to-send-again', expect.any(Object));
+      expect(getLog().save).toHaveBeenCalledWith('amqp-message-try-to-send-again', expect.any(Object));
 
       jest.useRealTimers();
     });
@@ -254,7 +258,7 @@ describe('MessageQueue', () => {
       await delay(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.ack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-handled', {
+      expect(getLog().save).toHaveBeenCalledWith('message-from-queue-handled', {
         messageString: JSON.stringify(message),
       });
     });
@@ -272,7 +276,7 @@ describe('MessageQueue', () => {
       await delay(500);
       expect(handler).toHaveBeenCalledWith(message);
       expect(messageQueue.channels.reading.nack).toHaveBeenCalled();
-      expect(global.log.save).toHaveBeenCalledWith('message-from-queue-not-handled', {
+      expect(getLog().save).toHaveBeenCalledWith('message-from-queue-not-handled', {
         messageString: JSON.stringify(message),
       });
     });
@@ -295,7 +299,7 @@ describe('MessageQueue', () => {
 
       expect(messageQueue.connection.close).toHaveBeenCalled();
       expect(messageQueue.isClosing).toBe(false);
-      expect(global.log.save).toHaveBeenCalledWith('connection-closed-by-app');
+      expect(getLog().save).toHaveBeenCalledWith('connection-closed-by-app');
     });
 
     it('should handle error when closing connection', async () => {
@@ -307,14 +311,14 @@ describe('MessageQueue', () => {
 
       await messageQueue.close();
 
-      expect(global.log.save).toHaveBeenCalledWith('can-not-close-connection', 'Close failed');
+      expect(getLog().save).toHaveBeenCalledWith('can-not-close-connection', 'Close failed');
     });
 
     it('should handle closing when no connection exists', async () => {
       messageQueue.connection = null;
       await messageQueue.close();
 
-      expect(global.log.save).toHaveBeenCalledWith('connection-has-already-been-closed');
+      expect(getLog().save).toHaveBeenCalledWith('connection-has-already-been-closed');
       expect(messageQueue.isClosing).toBe(false);
     });
   });
@@ -340,7 +344,7 @@ describe('MessageQueue', () => {
     });
 
     it('should not reconnect if already reconnecting', async () => {
-      messageQueue.reconnectTimeout = global.setTimeout(() => {}, 10000);
+      messageQueue.reconnectTimeout = setTimeout(() => {}, 10000);
 
       const closeSpy = jest.spyOn(messageQueue, 'close');
       messageQueue.reconnect();

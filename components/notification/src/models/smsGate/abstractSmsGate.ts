@@ -4,6 +4,10 @@ import * as conf from '../../config/config';
 import { createHttpsAgent } from '../../lib/tls';
 import { maskPhone, maskPhones, redactMessage, summarizeError } from '../../lib/mask';
 import { SmsQueueModel } from '../sms_queue';
+import { getLog } from '../../lib/context';
+
+// Node's global `crypto` (assigned the node:crypto module in tests), not an import: keeps the existing runtime lookup.
+declare const crypto: any;
 
 const SmsQueue = new SmsQueueModel().SmsQueue;
 
@@ -37,7 +41,7 @@ export class AbstractGate {
 
     if (!this.isEnabled) {
       const result = phones.map((phone) => this.getDisabledResult(phone));
-      global.log.save('send-sms-skipped', { phones: maskPhones(phones), text: redactMessage(text), reason: 'SMS is disabled in config.' }, 'info');
+      getLog().save('send-sms-skipped', { phones: maskPhones(phones), text: redactMessage(text), reason: 'SMS is disabled in config.' }, 'info');
       return result;
     }
 
@@ -52,7 +56,7 @@ export class AbstractGate {
           tel: phones,
           // msgid,//if OTP => msgid = undefined
           text,
-          pass: (global as any).crypto
+          pass: crypto
             .createHash('md5')
             .update(`${text}SaLt${phones.join(',')}`)
             .digest('hex'),
@@ -85,7 +89,7 @@ export class AbstractGate {
             tel: item,
             // msgid,//if OTP => msgid = undefined
             text,
-            pass: (global as any).crypto
+            pass: crypto
               .createHash('md5')
               .update(`${text}SaLt${item.join(',')}`)
               .digest('hex'),
@@ -107,7 +111,7 @@ export class AbstractGate {
 
     if (!this.isEnabled) {
       const result = this.getDisabledResult(phone);
-      global.log.save('send-one-sms-skipped', { phone: maskPhone(phone), text: redactMessage(text), reason: result.reason }, 'info');
+      getLog().save('send-one-sms-skipped', { phone: maskPhone(phone), text: redactMessage(text), reason: result.reason }, 'info');
       return result;
     }
 
@@ -120,7 +124,7 @@ export class AbstractGate {
       tel: phone,
       // msgid,//if OTP => msgid = undefined
       text,
-      pass: (global as any).crypto.createHash('md5').update(`${text}SaLt${phone}`).digest('hex'),
+      pass: crypto.createHash('md5').update(`${text}SaLt${phone}`).digest('hex'),
     };
     const t = await this.sendRequest(this.options);
     return t;

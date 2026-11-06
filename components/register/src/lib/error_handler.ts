@@ -2,6 +2,7 @@ import { getTraceId } from '@liquio/back-core';
 import type { Request, Response } from 'express';
 
 import { publicError } from './public_error';
+import { getLog } from './context';
 
 /**
  * Final error handler. The client gets a generic body with the trace id, whatever the Content-Type.
@@ -14,7 +15,7 @@ export const errorHandler = (error: any, req: Request & { traceId?: string }, re
     status = 500;
   }
 
-  global.log.save('error', { error: error?.message, stack: error?.stack, status, traceId }, 'error');
+  getLog().save('error', { error: error?.message, stack: error?.stack, status, traceId }, 'error');
 
   if (res.headersSent) {
     return next(error);

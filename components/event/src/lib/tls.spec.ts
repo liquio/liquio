@@ -50,8 +50,8 @@ describe('tls', () => {
     });
   });
 
-  it('app.ts does not disable TLS verification process-wide', () => {
-    const source = fs.readFileSync(path.join(__dirname, '..', 'app.ts'), 'utf8');
+  it('bootstrap.ts does not disable TLS verification process-wide', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'bootstrap.ts'), 'utf8');
     expect(source).not.toContain('NODE_TLS_REJECT_UNAUTHORIZED');
   });
 });

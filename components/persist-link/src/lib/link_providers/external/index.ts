@@ -119,7 +119,7 @@ class ExternalLinkProvider extends LinkProvider {
           if (value.startsWith('async (') || value.startsWith('(')) {
             preparedData[key] = await this.sandbox.evalWithArgs(value, [{ recordData: data }], {
               isAsync: true,
-              global: { getFileBase64: this.getFileBase64.bind(this) },
+              global: { getFileBase64: async (link) => this.getFileBase64(link) },
               meta: { fn: key, caller: 'ExternalLinkProvider.open' },
             });
           } else {

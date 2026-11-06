@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 
+import { getConfig } from '../lib/context';
 import { Model } from './model';
 import { WorkflowTemplateEntity } from '../entities/workflow_template';
 import { RedisClient } from '../lib/redis_client';
@@ -40,8 +41,8 @@ export class WorkflowTemplateModel extends Model {
       );
 
       this.cacheTtl = {
-        findAll: global.config.cache?.workflowTemplate?.findAll || 60, // 1 minute
-        findByIdCached: global.config.cache?.findByIdCached || 60, // 1 minute
+        findAll: getConfig().cache?.workflowTemplate?.findAll || 60, // 1 minute
+        findByIdCached: getConfig().cache?.findByIdCached || 60, // 1 minute
       };
 
       WorkflowTemplateModel.singleton = this;

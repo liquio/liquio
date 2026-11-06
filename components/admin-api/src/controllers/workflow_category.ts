@@ -4,6 +4,7 @@ import { Controller } from './controller';
 import { WorkflowCategoryBusiness } from '../businesses/workflow_category';
 import { WorkflowTemplateCategoryEntity } from '../entities/workflow_template_category';
 import { toLogUser } from '../lib/log_sanitize';
+import { getLog } from '../lib/context';
 
 /**
  * Workflow category controller.
@@ -42,7 +43,7 @@ export class WorkflowCategoryController extends Controller {
       savedWorkflowTemplateCategoryEntity = await this.workflowCategoryBusiness.createOrUpdate(workflowTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-created-workflow-category', { user: toLogUser(user), data: savedWorkflowTemplateCategoryEntity });
+      await getLog().save('user-created-workflow-category', { user: toLogUser(user), data: savedWorkflowTemplateCategoryEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -69,7 +70,7 @@ export class WorkflowCategoryController extends Controller {
       savedWorkflowTemplateCategoryEntity = await this.workflowCategoryBusiness.createOrUpdate(workflowTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-updated-workflow-category', { user: toLogUser(user), data: savedWorkflowTemplateCategoryEntity });
+      await getLog().save('user-updated-workflow-category', { user: toLogUser(user), data: savedWorkflowTemplateCategoryEntity });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -117,7 +118,7 @@ export class WorkflowCategoryController extends Controller {
       await this.workflowCategoryBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-workflow-category', { user: toLogUser(user), data: { id } });
+      await getLog().save('user-deleted-workflow-category', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }

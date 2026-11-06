@@ -1,6 +1,7 @@
 import { RedisClient, Sandbox } from '@liquio/back-core';
 
 import { CustomLogEntity } from '../entities/custom_log';
+import { getConfig, getLog, getModels } from '../lib/context';
 
 /**
  * Custom logs.
@@ -18,19 +19,19 @@ export class CustomLogs {
    * Custom logs constructor.
    * @param {object} [config] Document update log config. Global config `custom_logs` used by default.
    */
-  constructor(config = global.config.custom_logs) {
+  constructor(config = getConfig().custom_logs) {
     // Singleton.
     if (!CustomLogs.singleton) {
       // Save params.
       const { cacheEnabled, redis: { host, port, ttl } = {} } = config;
       this.cacheEnabled = !!cacheEnabled;
-      this.client = this.cacheEnabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog: () => global.log }) : null;
+      this.client = this.cacheEnabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog }) : null;
       this.ttl = ttl;
       this.sandbox = Sandbox.getInstance();
       if (this.client) {
-        global.log.save('custom-logs-cache-initialized', { cacheEnabled, host, port });
+        getLog().save('custom-logs-cache-initialized', { cacheEnabled, host, port });
       } else {
-        global.log.save('custom-logs-cache-not-initialized', { cacheEnabled });
+        getLog().save('custom-logs-cache-not-initialized', { cacheEnabled });
       }
 
       // Define singleton.
@@ -55,9 +56,9 @@ export class CustomLogs {
       const { documentTemplateId } = document;
 
       // Get custom log templates.
-      customLogTemplates = await global.models.customLogTemplate.getByOperationTypeAndDocumentTemplateIdWithCache(operationType, documentTemplateId);
+      customLogTemplates = await getModels().customLogTemplate.getByOperationTypeAndDocumentTemplateIdWithCache(operationType, documentTemplateId);
     } else {
-      customLogTemplates = await global.models.customLogTemplate.getByOperationType(operationType);
+      customLogTemplates = await getModels().customLogTemplate.getByOperationType(operationType);
     }
 
     // Check if no need to handle.
@@ -77,9 +78,9 @@ export class CustomLogs {
       let customParams;
       try {
         customParams = this.sandbox.evalWithArgs(schema, [{ document, unitBefore, unitAfter }]); // Returns `{ type, custom: { someProperty: { name, value }, ... } }`.
-        global.log.save('custom-log-params-calculation-result', { schema, customParams });
+        getLog().save('custom-log-params-calculation-result', { schema, customParams });
       } catch (error) {
-        global.log.save('custom-log-params-calculation-error', { error: error && error.message, schema, document, unitBefore, unitAfter });
+        getLog().save('custom-log-params-calculation-error', { error: error && error.message, schema, document, unitBefore, unitAfter });
       }
 
       // Do not save if custom params equals `null`.
@@ -93,14 +94,14 @@ export class CustomLogs {
       if (this.cacheEnabled) {
         const cacheExist = await this.isCacheExist(logParams);
         if (cacheExist) {
-          global.log.save('custom-log-not-created-accordance-to-cache', { logParams });
+          getLog().save('custom-log-not-created-accordance-to-cache', { logParams });
           return;
         }
       }
 
       // Create custom log.
-      const customLog = await global.models.customLog.create(logParams);
-      global.log.save('custom-log-created', { customLogId: (customLog && customLog.id) || null });
+      const customLog = await getModels().customLog.create(logParams);
+      getLog().save('custom-log-created', { customLogId: (customLog && customLog.id) || null });
 
       // Save to cache.
       if (this.cacheEnabled) {

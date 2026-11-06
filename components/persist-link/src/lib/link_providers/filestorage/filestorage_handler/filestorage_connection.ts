@@ -5,7 +5,7 @@ import { PassThrough } from 'node:stream';
 import axios from 'axios';
 
 import { getLog } from '../../../context';
-import { prepareAxiosErrorToLog } from '../../../helpers';
+import Helpers from '../../../helpers';
 import { redact } from '../../../log_redact';
 import HttpRequest from './http_request';
 
@@ -151,7 +151,7 @@ class FileStorageConnection {
       }
       return response.data;
     } catch (error) {
-      saveLog('filestorage-download-file-without-stream|error', prepareAxiosErrorToLog(error), 'error');
+      saveLog('filestorage-download-file-without-stream|error', Helpers.prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }

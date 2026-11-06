@@ -1,6 +1,7 @@
 import { parse as parseJsonc } from 'jsonc-parser';
 import { Sandbox } from '@liquio/back-core';
 
+import { getLog, getMessageQueue } from '../lib/context';
 import { pickMessageMeta } from '../lib/message_queue';
 import { SystemNotifier } from '../lib/system_notifier';
 import { GatewayTypeEntity } from '../entities/gateway_type';
@@ -113,7 +114,7 @@ export class GatewayBusiness {
         // Await the result: an async formula returns a Promise, which is always truthy if not awaited.
         conditionResult = await this.sandbox.evalWithArgs(condition, [documents, events], { isAsync: true });
       } catch (error: any) {
-        global.log.save('condition-calculation-error', {
+        getLog().save('condition-calculation-error', {
           workflowId: logMeta.workflowId,
           gatewayTemplateId: logMeta.gatewayTemplateId,
           condition,
@@ -189,7 +190,7 @@ export class GatewayBusiness {
       }
 
       // Log.
-      global.log.save('gateway-handling|message-parsed', { workflowId, gatewayTemplateId, sequenceIds });
+      getLog().save('gateway-handling|message-parsed', { workflowId, gatewayTemplateId, sequenceIds });
 
       // Define gateway options.
       const gatewayTemplate = await this.gatewayTemplateModel.findById(gatewayTemplateId);
@@ -197,7 +198,7 @@ export class GatewayBusiness {
       // The gateway template must belong to the template of the workflow. Ack and drop forged/mismatched messages
       // without recording a workflow error (that would let a forged message mark a foreign workflow as errored).
       if (!(await this.isGatewayTemplateInWorkflow(gatewayTemplateId, workflowId))) {
-        global.log.save('gateway-handling|template-workflow-mismatch', pickMessageMeta(messageObject));
+        getLog().save('gateway-handling|template-workflow-mismatch', pickMessageMeta(messageObject));
         return true;
       }
       const gatewayTypeId = gatewayTemplate.gatewayTypeId;
@@ -257,7 +258,7 @@ export class GatewayBusiness {
         }
 
         // Log.
-        global.log.save('gateway-handling|db-instance-created', {
+        getLog().save('gateway-handling|db-instance-created', {
           workflowId,
           gatewayTemplateId,
           gatewayId: createdGateway.id,
@@ -268,12 +269,12 @@ export class GatewayBusiness {
         // Send message to RabbitMQ.
         const outMessage = { workflowId, gatewayId: createdGateway.id };
 
-        global.messageQueue.produce(outMessage);
+        getMessageQueue().produce(outMessage);
       }
 
       // Inform about handling status.
     } catch (error: any) {
-      global.log.save('document-creating-by-message-from-queue-error', { ...pickMessageMeta(messageObject), error: error && error.message });
+      getLog().save('document-creating-by-message-from-queue-error', { ...pickMessageMeta(messageObject), error: error && error.message });
 
       // If enabled debug model.
       if (typeof messageObject.debugId !== 'undefined' && messageObject && messageObject.workflowId) {
@@ -288,7 +289,7 @@ export class GatewayBusiness {
           await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject });
           await this.workflowModel.setError(messageObject.workflowId);
         } catch (error: any) {
-          global.log.save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
+          getLog().save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
         }
 
         try {
@@ -304,7 +305,7 @@ export class GatewayBusiness {
             error: error?.message,
           });
         } catch (error: any) {
-          global.log.save('system-notifier-error', error.message);
+          getLog().save('system-notifier-error', error.message);
         }
       }
     }
@@ -316,7 +317,7 @@ export class GatewayBusiness {
     const latestGatewayInWorkflow = await this.gatewayModel.getLatestGatewayInWorkflow(gatewayTemplateId, workflowId);
     const sequenceIds = latestGatewayInWorkflow?.data?.sequenceIds || [];
 
-    global.log.save('get-sequence-ids-from-latest-gateway', {
+    getLog().save('get-sequence-ids-from-latest-gateway', {
       gatewayTemplateId,
       workflowId,
       sequenceIds,

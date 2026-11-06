@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import { getLog, getConfig } from './context';
 import { Helpers } from './helpers';
 
 const { prepareAxiosErrorToLog } = Helpers;
@@ -31,7 +32,7 @@ export class PersistLink {
    * Persist link constructor.
    * @param {object} persistLinkConfig Persist Link config.
    */
-  constructor(persistLinkConfig: any = global.config.persist_link) {
+  constructor(persistLinkConfig: any = getConfig().persist_link) {
     // Define singleton.
     if (!PersistLink.singleton) {
       this.config = { ...DEFAULT_CONFIG, ...persistLinkConfig };
@@ -66,15 +67,15 @@ export class PersistLink {
         small: true,
       },
     };
-    global.log.save('get-persist-link-to-document-request-params', Helpers.redactRequestOptions(options));
+    getLog().save('get-persist-link-to-document-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const responseData = (await axios(options)).data;
       const qrAndLink = responseData.data;
-      global.log.save('get-persist-link-to-document-response', qrAndLink);
+      getLog().save('get-persist-link-to-document-response', qrAndLink);
       return qrAndLink;
     } catch (error: any) {
-      global.log.save('get-persist-link-to-document-response-error', prepareAxiosErrorToLog(error), 'error');
+      getLog().save('get-persist-link-to-document-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -101,15 +102,15 @@ export class PersistLink {
         small: true,
       },
     };
-    global.log.save('get-persist-link-to-case-request-params', Helpers.redactRequestOptions(options));
+    getLog().save('get-persist-link-to-case-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const responseData = (await axios(options)).data;
       const qrAndLink = responseData.data;
-      global.log.save('get-persist-link-to-case-response', qrAndLink);
+      getLog().save('get-persist-link-to-case-response', qrAndLink);
       return qrAndLink;
     } catch (error: any) {
-      global.log.save('get-persist-link-to-case-response-error', prepareAxiosErrorToLog(error), 'error');
+      getLog().save('get-persist-link-to-case-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -136,15 +137,15 @@ export class PersistLink {
         small: true,
       },
     };
-    global.log.save('get-persist-link-to-permission-request-params', Helpers.redactRequestOptions(options));
+    getLog().save('get-persist-link-to-permission-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const responseData = (await axios(options)).data;
       const qrAndLink = responseData.data;
-      global.log.save('get-persist-link-to-permission-response', qrAndLink);
+      getLog().save('get-persist-link-to-permission-response', qrAndLink);
       return qrAndLink;
     } catch (error: any) {
-      global.log.save('get-persist-link-to-permission-response-error', prepareAxiosErrorToLog(error), 'error');
+      getLog().save('get-persist-link-to-permission-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -207,15 +208,15 @@ export class PersistLink {
         small: true,
       },
     };
-    global.log.save('get-persist-link-to-static-file-request-params', Helpers.redactRequestOptions(options));
+    getLog().save('get-persist-link-to-static-file-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const { data: responseData } = (await axios(options)).data;
       const generatedQr = responseData.qrCode;
-      global.log.save('get-persist-link-to-static-file-response', generatedQr);
+      getLog().save('get-persist-link-to-static-file-response', generatedQr);
       return generatedQr;
     } catch (error: any) {
-      global.log.save('get-persist-link-to-static-file-response-error', prepareAxiosErrorToLog(error), 'error');
+      getLog().save('get-persist-link-to-static-file-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }
@@ -247,16 +248,16 @@ export class PersistLink {
       },
       timeout: this.getLinkToFilestorageTimeout,
     };
-    global.log.save('get-persist-link-to-static-file-request-params', Helpers.redactRequestOptions(options));
+    getLog().save('get-persist-link-to-static-file-request-params', Helpers.redactRequestOptions(options));
 
     try {
       const { data: responseData } = (await axios(options)).data;
       const generatedLink = responseData.link;
-      global.log.save('get-persist-link-to-static-file-response', generatedLink);
+      getLog().save('get-persist-link-to-static-file-response', generatedLink);
       return generatedLink;
     } catch (error: any) {
       const preparedError = prepareAxiosErrorToLog(error);
-      global.log.save('get-persist-link-to-static-file-response-error', preparedError, 'error');
+      getLog().save('get-persist-link-to-static-file-response-error', preparedError, 'error');
       const wrapped = new Error(getPersistLinkErrorMessage(preparedError));
       (wrapped as any).cause = error;
       throw wrapped;
@@ -286,7 +287,7 @@ export class PersistLink {
         body: responseData?.data,
       };
     } catch (error: any) {
-      global.log.save('send-ping-request-response-error', prepareAxiosErrorToLog(error), 'error');
+      getLog().save('send-ping-request-response-error', prepareAxiosErrorToLog(error), 'error');
       throw error;
     }
   }

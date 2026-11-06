@@ -1,3 +1,5 @@
+import { getModels } from '../lib/context';
+
 /**
  * Workflow category business.
  */
@@ -27,7 +29,7 @@ export class WorkflowCategoryBusiness {
    * @returns {Promise<WorkflowTemplateCategoryEntity>}
    */
   async createOrUpdate(workflowTemplateCategoryEntity) {
-    return await global.models.workflowTemplateCategory.create(workflowTemplateCategoryEntity);
+    return await getModels().workflowTemplateCategory.create(workflowTemplateCategoryEntity);
   }
 
   /**
@@ -35,7 +37,7 @@ export class WorkflowCategoryBusiness {
    * @returns {Promise<WorkflowTemplateCategoryEntity[]>}
    */
   async getWorkflowCategories(params) {
-    return await global.models.workflowTemplateCategory.getAllWithPagination({
+    return await getModels().workflowTemplateCategory.getAllWithPagination({
       ...params,
     });
   }
@@ -46,7 +48,7 @@ export class WorkflowCategoryBusiness {
    * @returns {Promise<WorkflowTemplateCategoryEntity>}
    */
   async deleteById(id) {
-    return await global.models.workflowTemplateCategory.deleteById(id);
+    return await getModels().workflowTemplateCategory.deleteById(id);
   }
 
   /**
@@ -55,6 +57,6 @@ export class WorkflowCategoryBusiness {
    * @returns {Promise<WorkflowTemplateCategoryEntity>}
    */
   async findById(id) {
-    return await global.models.workflowTemplateCategory.findById(id);
+    return await getModels().workflowTemplateCategory.findById(id);
   }
 }

@@ -1,5 +1,6 @@
 import { Controller } from './controller';
 import { SignatureModel } from '../models/signature';
+import { getLog } from '../lib/context';
 
 /**
  * Signatures controller.
@@ -45,7 +46,7 @@ export class SignaturesController extends Controller {
         filter,
       });
     } catch (error) {
-      global.log.save('get-signatures-error', { error: error && error.message });
+      getLog().save('get-signatures-error', { error: error && error.message });
     }
     const { data: signatures, meta } = signaturesModelResponse || {};
 
@@ -67,7 +68,7 @@ export class SignaturesController extends Controller {
     try {
       signatureModelResponse = await this.signatureModel.findById(id);
     } catch (error) {
-      global.log.save('get-signature-by-id-error', { error: error && error.message });
+      getLog().save('get-signature-by-id-error', { error: error && error.message });
     }
     const { data: signature } = signatureModelResponse || {};
 
@@ -95,7 +96,7 @@ export class SignaturesController extends Controller {
     try {
       signatureModelResponse = await this.signatureModel.create({ fileId, signedData, signature, certificate, meta, user });
     } catch (error) {
-      global.log.save('create-signature-error', { error: error && error.message });
+      getLog().save('create-signature-error', { error: error && error.message });
     }
     const { data: createdSignature } = signatureModelResponse || {};
 
@@ -124,7 +125,7 @@ export class SignaturesController extends Controller {
     try {
       signatureModelResponse = await this.signatureModel.update(id, { fileId, signedData, signature, certificate, meta, user });
     } catch (error) {
-      global.log.save('update-signature-error', { error: error && error.message });
+      getLog().save('update-signature-error', { error: error && error.message });
     }
     const { data: updatedSignature } = signatureModelResponse || {};
 
@@ -151,7 +152,7 @@ export class SignaturesController extends Controller {
     try {
       deletedRowsCountModelResponse = await this.signatureModel.delete(id);
     } catch (error) {
-      global.log.save('delete-signature-error', { error: error && error.message });
+      getLog().save('delete-signature-error', { error: error && error.message });
     }
     const { data: deletedRowsCount } = deletedRowsCountModelResponse || {};
 
@@ -178,7 +179,7 @@ export class SignaturesController extends Controller {
     try {
       deletedRowsCountModelResponse = await this.signatureModel.deleteByFileId(fileId);
     } catch (error) {
-      global.log.save('delete-signature-by-file-id-error', { error: error && error.message });
+      getLog().save('delete-signature-by-file-id-error', { error: error && error.message });
     }
     const { data: deletedRowsCount } = deletedRowsCountModelResponse || {};
 

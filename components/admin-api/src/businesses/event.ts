@@ -1,4 +1,5 @@
 import { Exceptions } from '../exceptions';
+import { getModels } from '../lib/context';
 
 // Constants.
 const SEQUELIZE_CONSTRAINT_ERROR = 'SequelizeForeignKeyConstraintError';
@@ -32,7 +33,7 @@ export class EventBusiness {
    * @returns {Promise<EventEntity>}
    */
   async createOrUpdate(eventEntity) {
-    return global.models.eventTemplate.create(eventEntity);
+    return getModels().eventTemplate.create(eventEntity);
   }
 
   /**
@@ -42,7 +43,7 @@ export class EventBusiness {
    */
   async deleteById(id) {
     try {
-      return await global.models.eventTemplate.deleteById(id);
+      return await getModels().eventTemplate.deleteById(id);
     } catch (error) {
       if (error.name === SEQUELIZE_CONSTRAINT_ERROR) {
         throw new Exceptions.WORKFLOW(Exceptions.WORKFLOW.Messages.CONSTRAINT);
@@ -58,7 +59,7 @@ export class EventBusiness {
    * @returns {Promise<EventEntity>}
    */
   async findById(id) {
-    return await global.models.eventTemplate.findById(id);
+    return await getModels().eventTemplate.findById(id);
   }
 
   /**
@@ -67,6 +68,6 @@ export class EventBusiness {
    * @returns {Promise<EventEntity>}
    */
   async updateById(id, event) {
-    return await global.models.event.updateById(id, event);
+    return await getModels().event.updateById(id, event);
   }
 }

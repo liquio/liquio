@@ -1,4 +1,5 @@
 // const DictionariesModel = require('./dictionaries');
+import { setAppContext } from '../lib/context';
 import { WorkflowModel } from './workflow';
 import { WorkflowTemplateCategoryModel } from './workflow_template_category';
 import { WorkflowTemplateModel } from './workflow_template';
@@ -160,7 +161,7 @@ export class Models {
         {},
       );
 
-    global.models = this.models;
+    setAppContext({ models: this.models });
   }
 
   /**

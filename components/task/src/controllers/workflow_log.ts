@@ -2,6 +2,7 @@ import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
 import { WorkflowLoggerService } from '../services/workflow_logger';
+import { getModels } from '../lib/context';
 
 /**
  * Workflow log controller.
@@ -51,7 +52,7 @@ export class WorkflowLogController extends Controller {
 
     let workflows;
     try {
-      workflows = await global.models.workflow.getAll({
+      workflows = await getModels().workflow.getAll({
         workflowTemplateId: workflow_template_id,
         fromCreatedAt: from_created_at,
         toCreatedAt: to_created_at,
@@ -75,7 +76,7 @@ export class WorkflowLogController extends Controller {
 
     let workflows;
     try {
-      workflows = await global.models.workflow.getWorkflowsByUpdatedAt({
+      workflows = await getModels().workflow.getWorkflowsByUpdatedAt({
         date,
         workflowTemplateId,
         currentPage: page,

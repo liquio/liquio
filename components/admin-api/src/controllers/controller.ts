@@ -7,6 +7,7 @@ import { Entity } from '../entities/entity';
 import { File } from '../types/file';
 import { Stream } from '../lib/stream';
 import { isPublicError, publicError } from '../lib/public_error';
+import { getLog } from '../lib/context';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -50,7 +51,7 @@ export class Controller {
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
 
     // Log.
-    global.log.save('http-response', { meta: responseMeta });
+    getLog().save('http-response', { meta: responseMeta });
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
@@ -75,9 +76,9 @@ export class Controller {
     const message = isErrorInstance ? publicError(error, httpStatusCode) : (error && error.message) || error;
 
     // Full details stay in the log only.
-    global.log.save('stack', error.stack);
+    getLog().save('stack', error.stack);
     if (!isPublic) {
-      global.log.save('response-error-hidden', { message: error.message, stack: error.stack, traceId: getTraceId() });
+      getLog().save('response-error-hidden', { message: error.message, stack: error.stack, traceId: getTraceId() });
     }
 
     // Define response object.
@@ -106,7 +107,7 @@ export class Controller {
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
 
     // Log.
-    global.log.save('http-response', { meta: responseMeta, error: responseObject });
+    getLog().save('http-response', { meta: responseMeta, error: responseObject });
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
@@ -126,7 +127,7 @@ export class Controller {
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
 
     // Log.
-    global.log.save('http-response', { meta: responseMeta });
+    getLog().save('http-response', { meta: responseMeta });
 
     // Response.
     res.status(HTTP_STATUS_CODE_ACCEPTED).send(responseObject);
@@ -139,7 +140,7 @@ export class Controller {
    */
   redirect(res, ...params) {
     // Log.
-    global.log.save('http-redirect', Array.isArray(params) && params.length === 1 ? params[0] : params);
+    getLog().save('http-redirect', Array.isArray(params) && params.length === 1 ? params[0] : params);
 
     // Redirect.
     res.redirect(...params);
@@ -296,7 +297,7 @@ export class Controller {
         }
         this.responseData(res, result);
       } catch (error) {
-        global.log.save('controller-error', { methodName, error: error.toString(), cause: error.cause, stack: error.stack });
+        getLog().save('controller-error', { methodName, error: error.toString(), cause: error.cause, stack: error.stack });
         return this.responseError(res, error);
       }
     };

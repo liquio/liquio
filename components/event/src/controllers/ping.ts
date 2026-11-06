@@ -1,3 +1,4 @@
+import { getConfig, getDb, getLog } from '../lib/context';
 import { Controller } from './controller';
 import { EventNotifier as Notifier } from '../services/event/notifier';
 import { RegistersRequester as Register } from '../services/event/requester/registers';
@@ -79,7 +80,7 @@ export class PingController extends Controller {
       try {
         smsNotifierResponse = await this.notifier.smsNotifier.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-sms-notifier-service-error', { error: error && error.message });
+        getLog().save('test-ping-sms-notifier-service-error', { error: error && error.message });
       }
       const smsNotifyPongMsg = smsNotifierResponse && smsNotifierResponse.body && smsNotifierResponse.body.message === MESSAGE_PONG;
       const smsNotifyWideCheck = this.wideCheck(smsNotifierResponse, SMS_NOTIFY_SERVICE_NAME, smsNotifyPongMsg);
@@ -98,7 +99,7 @@ export class PingController extends Controller {
       try {
         emailNotifierResponse = await this.notifier.emailNotifier.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-email-notifier-service-error', { error: error && error.message });
+        getLog().save('test-ping-email-notifier-service-error', { error: error && error.message });
       }
       const emailNotifyPongMsg = emailNotifierResponse && emailNotifierResponse.body && emailNotifierResponse.body.message === MESSAGE_PONG;
       const emailNotifyWideCheck = this.wideCheck(emailNotifierResponse, EMAIL_NOTIFY_SERICE_NAME, emailNotifyPongMsg);
@@ -117,7 +118,7 @@ export class PingController extends Controller {
       try {
         registerResponse = await this.register.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-register-service-error', { error: error && error.message });
+        getLog().save('test-ping-register-service-error', { error: error && error.message });
       }
       const registerPongMsg =
         registerResponse && registerResponse.body && registerResponse.body.data && registerResponse.body.data.message === MESSAGE_PONG;
@@ -137,7 +138,7 @@ export class PingController extends Controller {
       try {
         pLinkResponse = await this.persistLink.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-persist-link-service-error', { error: error && error.message });
+        getLog().save('test-ping-persist-link-service-error', { error: error && error.message });
       }
       const pLinkPongMsg = pLinkResponse && pLinkResponse.body && pLinkResponse.body.message === MESSAGE_PONG;
       const pLinkWideCheck = this.wideCheck(pLinkResponse, PLINK_SERVICE_NAME, pLinkPongMsg);
@@ -152,7 +153,7 @@ export class PingController extends Controller {
       try {
         fileStorageServiceResponse = await this.filestorage.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-filestorage-service-error', { error: error && error.message });
+        getLog().save('test-ping-filestorage-service-error', { error: error && error.message });
       }
       const filestoragePongMsg =
         fileStorageServiceResponse && fileStorageServiceResponse.body && fileStorageServiceResponse.body.message === MESSAGE_PONG;
@@ -170,9 +171,9 @@ export class PingController extends Controller {
       // Check manager.
       let managerServiceResponse;
       try {
-        managerServiceResponse = await this.sendPingRequest(global.config.ping.manager.url, true, global.config.ping.manager.monitoringToken);
+        managerServiceResponse = await this.sendPingRequest(getConfig().ping.manager.url, true, getConfig().ping.manager.monitoringToken);
       } catch (error) {
-        global.log.save('test-ping-manager-service-error', { error: error && error.message }, 'warn');
+        getLog().save('test-ping-manager-service-error', { error: error && error.message }, 'warn');
       }
       const managerPongMsg = managerServiceResponse && managerServiceResponse.message === MESSAGE_PONG;
       const managerWideCheckRes = this.wideCheck(managerServiceResponse, MANAGER_SERVICE_NAME, managerPongMsg);
@@ -191,19 +192,19 @@ export class PingController extends Controller {
         try {
           blockchainResponse = await this.blockchainRequester.register();
         } catch (error) {
-          global.log.save('test-ping-blockchain-service-error', { error: error && error.message });
+          getLog().save('test-ping-blockchain-service-error', { error: error && error.message });
         }
         responseData.blockchainResponse = blockchainResponse?.message?.includes(BLOCKCHAIN_EMPTY_BODY_MESSAGE) ? true : false;
       }
 
       // Check trembita.
       const checkTrembita = req.query.trembita || false;
-      if (checkTrembita && global.config.ping.trembita) {
+      if (checkTrembita && getConfig().ping.trembita) {
         let trembitaResponse;
         try {
-          trembitaResponse = await this.sendPingRequest(global.config.ping.trembita.url, false);
+          trembitaResponse = await this.sendPingRequest(getConfig().ping.trembita.url, false);
         } catch (error) {
-          global.log.save('test-ping-trembita-service-error', { error: error && error.message });
+          getLog().save('test-ping-trembita-service-error', { error: error && error.message });
         }
         responseData.trembitaResponse = !!(trembitaResponse?.body?.length > 100);
       }
@@ -215,7 +216,7 @@ export class PingController extends Controller {
         try {
           digestNotifierResponse = await this.notifier.digestNotifier.sendPingRequest();
         } catch (error) {
-          global.log.save('test-ping-digest-notifier-service-error', { error: error && error.message });
+          getLog().save('test-ping-digest-notifier-service-error', { error: error && error.message });
         }
         responseData.digestNotifierResponse = digestNotifierResponse && digestNotifierResponse.bounce_rate ? true : false;
       }
@@ -226,7 +227,7 @@ export class PingController extends Controller {
         try {
           statusesRepositoryResponse = await this.servicesRepository.sendPingRequest();
         } catch (error) {
-          global.log.save('test-ping-statuses-repository-service-error', { error: error && error.message });
+          getLog().save('test-ping-statuses-repository-service-error', { error: error && error.message });
         }
         responseData.repositoryResponse =
           statusesRepositoryResponse &&
@@ -253,7 +254,7 @@ export class PingController extends Controller {
     try {
       trembitaResponse = await this.externalService.send({ providerName: 'trembita', documents: [], events: [], documentTemplateId: 'listMethods' });
     } catch (error) {
-      global.log.save('test-ping-trembita-service-error', { error: error && error.message });
+      getLog().save('test-ping-trembita-service-error', { error: error && error.message });
     }
     const responseText = trembitaResponse && trembitaResponse.sendingResult && trembitaResponse.sendingResult.isDone ? 'true' : 'false';
 
@@ -271,7 +272,7 @@ export class PingController extends Controller {
     try {
       statusesRepositoryResponse = await this.servicesRepository.sendPingRequest();
     } catch (error) {
-      global.log.save('test-ping-statuses-repository-service-error', { error: error && error.message });
+      getLog().save('test-ping-statuses-repository-service-error', { error: error && error.message });
     }
     const responseText =
       statusesRepositoryResponse &&
@@ -295,7 +296,7 @@ export class PingController extends Controller {
     try {
       digestNotifierResponse = await this.notifier.digestNotifier.sendPingRequest();
     } catch (error) {
-      global.log.save('test-ping-digest-notifier-service-error', { error: error && error.message });
+      getLog().save('test-ping-digest-notifier-service-error', { error: error && error.message });
     }
     const responseText = digestNotifierResponse && digestNotifierResponse.bounce_rate ? 'true' : 'false';
 
@@ -309,10 +310,10 @@ export class PingController extends Controller {
    * @param {string} serviceVersion Service version.
    */
   checkServiceVersion(serviceName, serviceVersion) {
-    const serviceVersionInfo = global.config.versions && global.config.versions.services.find((v) => v.name === serviceName);
+    const serviceVersionInfo = getConfig().versions && getConfig().versions.services.find((v) => v.name === serviceName);
     const serviceMinVersion = (serviceVersionInfo && serviceVersionInfo.minVersion) || DEFAULT_VERSION;
     if (!serviceMinVersion || !serviceVersion) {
-      global.log.save('can-not-find-service-min-version');
+      getLog().save('can-not-find-service-min-version');
       return false;
     }
 
@@ -349,9 +350,9 @@ export class PingController extends Controller {
    * @param {string} partnerServiceCustomer Partner service customer.
    */
   checkCustomer(partnerServiceCustomer) {
-    const curentServiceCustomer = (global.config.server && global.config.server.customer) || DEFAULT_CUSTOMER;
+    const curentServiceCustomer = (getConfig().server && getConfig().server.customer) || DEFAULT_CUSTOMER;
     if (!partnerServiceCustomer || !curentServiceCustomer) {
-      global.log.save('ping-can-not-check-services-customer');
+      getLog().save('ping-can-not-check-services-customer');
       return false;
     }
     return curentServiceCustomer === partnerServiceCustomer;
@@ -363,9 +364,9 @@ export class PingController extends Controller {
    * @param {string} partnerServiceEnvironment Partner service environment.
    */
   checkEnvironment(partnerServiceEnvironment) {
-    const curentServiceEnvironment = (global.config.server && global.config.server.environment) || DEFAULT_ENVIRONMENT;
+    const curentServiceEnvironment = (getConfig().server && getConfig().server.environment) || DEFAULT_ENVIRONMENT;
     if (!partnerServiceEnvironment || !curentServiceEnvironment) {
-      global.log.save('ping-can-not-check-services-environment');
+      getLog().save('ping-can-not-check-services-environment');
       return false;
     }
     return curentServiceEnvironment === partnerServiceEnvironment;
@@ -429,7 +430,7 @@ export class PingController extends Controller {
 
       return preparedData;
     } catch (error) {
-      global.log.save('test-ping-services-error', { error: error && error.message }, 'error');
+      getLog().save('test-ping-services-error', { error: error && error.message }, 'error');
     }
   }
 
@@ -487,7 +488,7 @@ export class PingController extends Controller {
    * Check database connect
    */
   async checkDataBase() {
-    const result = await global.db.query('select true');
+    const result = await getDb().query('select true');
     return result;
   }
 }

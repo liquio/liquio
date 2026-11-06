@@ -1,18 +1,19 @@
 import { strict as assert } from 'assert';
 
 import { Model } from './model';
+import { setAppContext, resetAppContext } from '../lib/context';
 
 describe('Model', () => {
   let model;
 
-  // Mock global.db
+  // Mock app context db
   beforeAll(() => {
-    global.db = {};
+    setAppContext({ db: {} });
     model = new Model();
   });
 
   afterAll(() => {
-    delete global.db;
+    resetAppContext();
   });
 
   describe('prepareSort', () => {

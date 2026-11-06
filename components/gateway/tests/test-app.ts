@@ -12,15 +12,9 @@ import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as Multiconf from 'multiconf';
-import moment from 'moment';
-import { Sandbox } from '@liquio/back-core';
 
-import { Db } from '../src/lib/db';
-import { Log } from '../src/lib/log';
-import { ConsoleLogProvider } from '../src/lib/log/providers/console';
-import { MessageQueue } from '../src/lib/message_queue';
-import { RouterService } from '../src/services/router';
-import { GatewayBusiness } from '../src/businesses/gateway';
+import { bootstrap } from '../src/bootstrap';
+import { getConfig, getDb } from '../src/lib/context';
 
 const debug = createDebug;
 
@@ -202,44 +196,16 @@ export class TestApp {
     // Merge config with overrides.
     const config = { ...defaultConfig, ...configOverride };
     this.config = config;
-    global.config = config;
 
-    global.redisClient = null;
-
-    // Init log.
-    const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
-    const log = new Log([consoleLogProvider], ['console']);
+    const { log, gatewayBusiness, messageQueue, routerService } = await bootstrap(config);
     this.log = log;
-    global.log = log;
-
-    // Init sandbox, mirroring src/index.ts's boot sequence.
-    new Sandbox(config.sandbox || {});
-
-    // Save moment global to use in eval, mirroring src/index.ts's boot sequence.
-    global.moment = moment;
-
-    global.db = await Db.getInstance(config.db);
-
-    // Init gateway business.
-    this.gatewayBusiness = new GatewayBusiness();
-    await this.gatewayBusiness.init();
-
-    // Init message queue, mirroring src/index.ts's boot sequence.
-    this.messageQueue = new MessageQueue(config.message_queue, {
-      onInit: () => {
-        this.messageQueue.subscribeToConsuming(this.gatewayBusiness.createFromMessage.bind(this.gatewayBusiness));
-      },
-    });
-    await this.messageQueue.init();
-    global.messageQueue = this.messageQueue;
+    this.gatewayBusiness = gatewayBusiness;
+    this.messageQueue = messageQueue;
+    this.routerService = routerService;
   }
 
   async listen() {
-    // Init router.
-    this.routerService = new RouterService(this.config);
-    await this.routerService.init();
-
-    // Store the real port assigned by the OS, so request() and anything reading config can reach the server.
+    // Router is started by bootstrap; store the real port assigned by the OS, so request() and anything reading config can reach the server.
     const { port } = this.routerService.httpServer.address();
     this.config.server.port = port;
   }
@@ -265,7 +231,7 @@ export class TestApp {
 
   // Obtain a client instance to interact with the application.
   request() {
-    const address = `http://${global.config.server.hostname}:${global.config.server.port}`;
+    const address = `http://${getConfig().server.hostname}:${getConfig().server.port}`;
     return supertest(address);
   }
 
@@ -323,8 +289,8 @@ export class TestApp {
     if (this.messageQueue) {
       await this.messageQueue.close();
     }
-    if (global.db) {
-      await global.db.close();
+    if (getDb()) {
+      await getDb().close();
     }
     if (this.routerService?.httpServer) {
       const server = this.routerService.httpServer;

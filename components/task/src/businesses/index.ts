@@ -7,6 +7,7 @@ import { RegisterBusiness } from './register';
 import { UserInboxBusiness } from './user_inbox';
 import { ExternalServicesBusiness } from './external_services';
 import { CabinetMenuBusiness } from './cabinet_menu';
+import { setAppContext } from '../lib/context';
 
 // Constants.
 const BUSINESSES_CLASSES_LIST = [
@@ -83,6 +84,6 @@ export class Businesses {
         {},
       );
 
-    global.businesses = this.businesses;
+    setAppContext({ businesses: this.businesses as any });
   }
 }

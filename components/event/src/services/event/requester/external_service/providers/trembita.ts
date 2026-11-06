@@ -3,6 +3,7 @@ import PropByPath from 'prop-by-path';
 import axios from 'axios';
 
 import { Provider } from './provider';
+import { getConfig, getLog } from '../../../../../lib/context';
 const MAX_LOG_LENGTH = 100e3 - 1000;
 
 /**
@@ -67,7 +68,7 @@ export class TrembitaProvider extends Provider {
     const ending = '<...cut>';
     const soapMessageCutToLog = soapMessage.length > MAX_LOG_LENGTH ? soapMessage.substring(0, MAX_LOG_LENGTH - ending.length) + ending : soapMessage;
 
-    global.log.save('send-to-trembita|request-options', {
+    getLog().save('send-to-trembita|request-options', {
       requestOptions: {
         ...requestOptions,
         data: this.debug ? soapMessageCutToLog : soapMessageForLog,
@@ -80,7 +81,7 @@ export class TrembitaProvider extends Provider {
 
     // Do request.
     const { data: response } = await axios(requestOptions);
-    global.log.save('send-to-trembita|response', { response });
+    getLog().save('send-to-trembita|response', { response });
 
     // Check external service response.
     const responseSoapMessage = await this.prepareResponseSoapMessage(response);
@@ -89,7 +90,7 @@ export class TrembitaProvider extends Provider {
     try {
       parsedResponse = await this.convertXmlToJsObject(responseSoapMessage);
     } catch (error) {
-      global.log.save('send-to-trembita|parse-response-error', { error: error && error.message, response, responseSoapMessage });
+      getLog().save('send-to-trembita|parse-response-error', { error: error && error.message, response, responseSoapMessage });
       parsedResponse = {};
     }
 
@@ -112,7 +113,7 @@ export class TrembitaProvider extends Provider {
       isFault = true;
     }
 
-    global.log.save('send-to-trembita|parsed-response', { response, isFault });
+    getLog().save('send-to-trembita|parsed-response', { response, isFault });
     if (!isFault) {
       const responseDoneParams: Record<string, boolean> = {};
       let responseParam;
@@ -127,7 +128,7 @@ export class TrembitaProvider extends Provider {
 
       isDone = Object.keys(responseDoneParams).length > 0;
     } else {
-      global.log.save('send-to-trembita|parsed-response|error', { response, isDone: false });
+      getLog().save('send-to-trembita|parsed-response|error', { response, isDone: false });
       const error: any = new Error(response);
       error.details = { requestOptions: this.debug ? requestOptions : { ...requestOptions, body: '***' } };
       throw error;
@@ -183,7 +184,7 @@ export class TrembitaProvider extends Provider {
           trembita: { trembitaHeader, serviceList = {} },
         },
       },
-    } = global.config;
+    } = getConfig();
 
     // Get specific or default service config.
     const serviceConfig = serviceList[service] || trembitaHeader.service;

@@ -2,6 +2,7 @@ import _ from 'lodash';
 
 import { Decorator } from './decorator';
 import { typeOf } from '../../../../../lib/type_of';
+import { getConfig } from '../../../../../lib/context';
 
 // Constants.
 const BODY_WORKFLOW_ID_AND_TIMESTAMP_SEPARATOR = '|';
@@ -321,7 +322,7 @@ export class DecoratorTrembita extends Decorator {
           trembita: { trembitaHeader, serviceList = {} },
         },
       },
-    } = global.config;
+    } = getConfig();
 
     // Get specific or default service config.
     const serviceConfig = serviceList[service] || trembitaHeader.service;

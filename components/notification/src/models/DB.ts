@@ -1,5 +1,7 @@
 import { Sequelize, Op, DataTypes } from 'sequelize';
-const { conf } = global as any;
+
+import { getConf } from '../lib/context';
+const conf = getConf();
 process.setMaxListeners(0);
 const connection = new Sequelize(conf.db.database, conf.db.username, conf.db.password, {
   host: conf.db.host,

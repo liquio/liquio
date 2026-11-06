@@ -1,5 +1,6 @@
 import { Controller } from './controller';
 import { KycService } from '../services/kyc';
+import { getLog } from '../lib/context';
 
 /**
  * KYC controller.
@@ -40,7 +41,7 @@ export class KycController extends Controller {
       const result = await this.service.createSession(provider, userId, returnUrl);
       this.responseData(res, result);
     } catch (error) {
-      global.log.save('kyc-create-session-error', { error: error && error.message, provider, userId, returnUrl }, 'error');
+      getLog().save('kyc-create-session-error', { error: error && error.message, provider, userId, returnUrl }, 'error');
       this.responseError(res, 'Unable to create a session', 503);
     }
   }
@@ -59,7 +60,7 @@ export class KycController extends Controller {
       const result = await this.service.updateSession(provider, userId, id);
       this.responseData(res, result);
     } catch (error) {
-      global.log.save('kyc-update-session-error', { error: error && error.message, provider, userId, id }, 'error');
+      getLog().save('kyc-update-session-error', { error: error && error.message, provider, userId, id }, 'error');
       this.responseError(res, 'Unable to update the session', 503);
     }
   }
@@ -78,7 +79,7 @@ export class KycController extends Controller {
       const result = await this.service.getSession(provider, userId, id);
       this.responseData(res, result);
     } catch (error) {
-      global.log.save('kyc-get-session-error', { error: error && error.message, provider, userId, id }, 'error');
+      getLog().save('kyc-get-session-error', { error: error && error.message, provider, userId, id }, 'error');
       this.responseError(res, 'Unable to get the session', 503);
     }
   }

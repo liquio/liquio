@@ -1,5 +1,7 @@
 import { RedisClient as BackCoreRedisClient, RedisClientConfig } from '@liquio/back-core';
 
+import { getLog } from './context';
+
 export type RedisConfig = Omit<RedisClientConfig, 'getLog' | 'prefix'>;
 
 interface CacheResult<T> {
@@ -25,7 +27,7 @@ class RedisClient extends BackCoreRedisClient {
     }
 
     const prefix = process.env.npm_package_name || 'cabinet-api';
-    super({ ...config, prefix, getLog: () => global.log });
+    super({ ...config, prefix, getLog });
 
     RedisClient.singleton = this;
     RedisClient.prefix = prefix;

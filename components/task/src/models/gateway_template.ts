@@ -5,6 +5,7 @@ import { Model } from './model';
 import { GatewayTemplateEntity } from '../entities/gateway_template';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -43,7 +44,7 @@ export class GatewayTemplateModel extends Model {
       PgPubSub.getInstance().subscribe('gateway_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache.gatewayTemplate?.findById || DEFAULT_CACHE_TTL,
+        findById: getConfig().cache.gatewayTemplate?.findById || DEFAULT_CACHE_TTL,
       };
 
       GatewayTemplateModel.singleton = this;

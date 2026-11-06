@@ -23,7 +23,16 @@ npm run lint:fix
 npm test
 npm run test:watch
 npm run test:cov
+npm run test:e2e
 ```
+
+## E2E infrastructure
+
+`npm run test:e2e` (config: `jest.e2e.config.js`, coverage threshold 85% statements, lines and functions) needs Docker: the
+suites start PostgreSQL (`postgres:16`) and, for the units suites, Redis (`redis:8`) containers through testcontainers.
+There are no migrations: the harness creates the `units` table. To use an existing PostgreSQL instead, set `DB_HOST`,
+`DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME`; to use an existing Redis, set `REDIS_HOST` and `REDIS_PORT`.
+id-api, task, notifier and custom APIs are mocked with `nock`.
 
 ## Custom API proxies
 

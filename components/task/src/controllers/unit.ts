@@ -4,6 +4,7 @@ import { Controller } from './controller';
 import { UnitModel } from '../models/unit';
 import { CustomLogs } from '../services/custom_logs';
 import { UnitRulesModel } from '../models/unit_rules';
+import { getConfig, getModels } from '../lib/context';
 
 // Constants.
 const UNIT_EXCLUSIVE_RULE_TYPE = 'exclusive';
@@ -137,8 +138,8 @@ export class UnitController extends Controller {
     unit.membersUsers = unit.members.map((m) => allNeededUsers.find((nu) => nu.userId === m));
 
     // Check optional project params.
-    if (global.config?.custom?.optionalProjectParams?.userRoleUnits?.superHeadUnitId) {
-      const { superHeadUnitId } = global.config.custom.optionalProjectParams.userRoleUnits;
+    if (getConfig()?.custom?.optionalProjectParams?.userRoleUnits?.superHeadUnitId) {
+      const { superHeadUnitId } = getConfig().custom.optionalProjectParams.userRoleUnits;
 
       // Remove super head unit members from allowed user list.
       const units = await this.unitModel.getAll();
@@ -246,7 +247,7 @@ export class UnitController extends Controller {
         updatedUnit = await this.unitModel.addMember(unitId, userId);
 
         // Save to access history.
-        await global.models.accessHistory.save({
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'added-to-member-unit',
           user: {
@@ -261,7 +262,7 @@ export class UnitController extends Controller {
 
           // Save to access history.
           const baseUnit = await this.unitModel.findById(baseUnitId);
-          await global.models.accessHistory.save({
+          await getModels().accessHistory.save({
             currentUser: currentUser,
             operationType: 'added-to-member-unit',
             user: {
@@ -367,10 +368,10 @@ export class UnitController extends Controller {
         updatedUnit = await this.unitModel.removeMember(unitId, userId);
 
         // Remove performer user from tasks.
-        await global.models.task.removePerformerUserFromTasks(userId, unitId);
+        await getModels().task.removePerformerUserFromTasks(userId, unitId);
 
         // Save to access history.
-        await global.models.accessHistory.save({
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'deleted-from-member-unit',
           user: {
@@ -398,7 +399,7 @@ export class UnitController extends Controller {
 
           // Save to access history.
           const baseUnit = await this.unitModel.findById(basedOnUnitId);
-          await global.models.accessHistory.save({
+          await getModels().accessHistory.save({
             currentUser: currentUser,
             operationType: 'deleted-from-member-unit',
             user: {
@@ -423,10 +424,10 @@ export class UnitController extends Controller {
         const { firstName: userFirstName, middleName: userMiddleName, lastName: userLastName } = user || {};
 
         // Remove performer user from tasks.
-        await global.models.task.removePerformerUserFromTasks(user.userId, unitId);
+        await getModels().task.removePerformerUserFromTasks(user.userId, unitId);
 
         // Save to access history.
-        await global.models.accessHistory.save({
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'deleted-from-member-unit',
           user: {

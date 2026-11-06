@@ -8,6 +8,7 @@ import KeyModel from '../models/key';
 import RecordModel from '../models/record';
 import { RedisClient } from '../lib/redis_client';
 import JsonSchema from '../lib/json_schema';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const AUTO_CLEAR_INTERVAL = 1000 * 60 * 60 * 24; // 1 day.
@@ -414,7 +415,7 @@ export default class ImportBusiness extends Business {
 
     if (this.toImport[importId]) {
       ({ status, details } = this.toImport[importId]);
-    } else if (global.config?.redis?.isEnabled) {
+    } else if (getConfig()?.redis?.isEnabled) {
       try {
         const serializedData = await RedisClient.getInstance().get(['register', 'importId', importId]);
         ({ status, details } = JSON.parse(serializedData));
@@ -506,7 +507,6 @@ export default class ImportBusiness extends Business {
     } else {
       this.toImport = {};
     }
-    if (global.gc) global.gc();
   }
 
   async updateToImportState(importId) {
@@ -514,7 +514,7 @@ export default class ImportBusiness extends Business {
 
     const serializedData = JSON.stringify(this.toImport[importId]);
 
-    if (global.config?.redis?.isEnabled) {
+    if (getConfig()?.redis?.isEnabled) {
       await RedisClient.getInstance().set(['register', 'importId', importId], serializedData, AUTO_CLEAR_INTERVAL / 1000);
     }
   }

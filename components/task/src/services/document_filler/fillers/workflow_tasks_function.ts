@@ -1,5 +1,6 @@
 import { Filler } from './filler';
 import { TaskModel } from '../../../models/task';
+import { getLog } from '../../../lib/context';
 
 /**
  * Workflow tasks function filler.
@@ -55,7 +56,7 @@ export class WorkflowTasksFunctionFiller extends Filler {
           valueToSet = undefined;
         }
       } catch (error) {
-        global.log.save('workflow-tasks-function-field-filling-error', error, 'warn');
+        getLog().save('workflow-tasks-function-field-filling-error', error, 'warn');
       }
 
       // Return value to set.

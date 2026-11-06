@@ -6,6 +6,7 @@ import { Sandbox } from '@liquio/back-core';
 
 import { JSONPath } from '../../lib/jsonpath';
 import { Paths } from './paths';
+import { getLog } from '../../lib/context';
 
 // Constants.
 const MISMATCH_LOG_TYPE = 'calc-triggers-validation-mismatch';
@@ -106,7 +107,7 @@ export class CalcTriggersValidator {
           await this.checkCalcTriggerValue(trigger, objectToCheck, undefined, undefined, errors);
         }
       } catch (error) {
-        global.log.save('json-schema-validation-exception|check-calc-triggers', { error: error.message, target: trigger.target }, 'warn');
+        getLog().save('json-schema-validation-exception|check-calc-triggers', { error: error.message, target: trigger.target }, 'warn');
       }
     }
 
@@ -145,7 +146,7 @@ export class CalcTriggersValidator {
         message: `calcTrigger recalculation mismatch${context}`,
       });
 
-      global.log.save(
+      getLog().save(
         MISMATCH_LOG_TYPE,
         {
           target: trigger.target,
@@ -362,7 +363,7 @@ export class CalcTriggersValidator {
         });
         return Array.isArray(result) ? result : [];
       } catch (error) {
-        global.log.save('json-schema-validation-exception', error.message, 'warn');
+        getLog().save('json-schema-validation-exception', error.message, 'warn');
         return [];
       }
     }

@@ -4,6 +4,7 @@ import { Controller } from './controller';
 import { UserBusiness } from '../businesses/user';
 import { UNIT_ADMIN_UNIT, SECURITY_ADMIN_UNIT, SYSTEM_ADMIN_UNIT, READONLY_SECURITY_ADMIN_UNIT, READONLY_SYSTEM_ADMIN_UNIT } from '../constants/unit';
 import { toLogUser } from '../lib/log_sanitize';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * User controller.
@@ -114,7 +115,7 @@ export class UserController extends Controller {
         return this.responseThatAccepted(res);
       }
 
-      await global.log.save('user-updated-user', {
+      await getLog().save('user-updated-user', {
         user: toLogUser(this.getRequestUserBaseInfo(req)),
         data: data,
       });
@@ -140,7 +141,7 @@ export class UserController extends Controller {
         return this.responseThatAccepted(res);
       }
 
-      await global.log.save('user-blocked-user', {
+      await getLog().save('user-blocked-user', {
         user: toLogUser(this.getRequestUserBaseInfo(req)),
         data: { id },
       });
@@ -166,7 +167,7 @@ export class UserController extends Controller {
         return this.responseThatAccepted(res);
       }
 
-      await global.log.save('user-unblocked-user', {
+      await getLog().save('user-unblocked-user', {
         user: toLogUser(this.getRequestUserBaseInfo(req)),
         data: { id },
       });
@@ -184,7 +185,7 @@ export class UserController extends Controller {
    */
   async setAdmin(req, res) {
     // Define params.
-    const { isCurrentAuthClientDefault } = global.config.auth;
+    const { isCurrentAuthClientDefault } = getConfig().auth;
     const paramsData = matchedData(req, { locations: ['params', 'body'] });
     const { id, isCurrentAuthClient = isCurrentAuthClientDefault } = paramsData;
 
@@ -198,7 +199,7 @@ export class UserController extends Controller {
       }
 
       // Log.
-      await global.log.save('user-enabled-role-admin', {
+      await getLog().save('user-enabled-role-admin', {
         user: toLogUser(currentUser),
         data: { id, isCurrentAuthClient },
       });
@@ -218,7 +219,7 @@ export class UserController extends Controller {
    */
   async unsetAdmin(req, res) {
     // Define params.
-    const { isCurrentAuthClientDefault } = global.config.auth;
+    const { isCurrentAuthClientDefault } = getConfig().auth;
     const paramsData = matchedData(req, { locations: ['params', 'body'] });
     const { id, isCurrentAuthClient = isCurrentAuthClientDefault } = paramsData;
 
@@ -232,7 +233,7 @@ export class UserController extends Controller {
       }
 
       // Log.
-      await global.log.save('user-disabled-role-admin', {
+      await getLog().save('user-disabled-role-admin', {
         user: toLogUser(currentUser),
         data: { id, isCurrentAuthClient },
       });
@@ -261,7 +262,7 @@ export class UserController extends Controller {
         return this.responseThatAccepted(res);
       }
 
-      await global.log.save('user-deleted-user', { user: toLogUser(this.getRequestUserBaseInfo(req)), data: { id } });
+      await getLog().save('user-deleted-user', { user: toLogUser(this.getRequestUserBaseInfo(req)), data: { id } });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -276,7 +277,7 @@ export class UserController extends Controller {
    */
   async sendMessageToAllUsers(req, res) {
     const body = matchedData(req, { locations: ['body'] });
-    global.log.save('send-message-to-all', { body });
+    getLog().save('send-message-to-all', { body });
 
     let result;
     try {

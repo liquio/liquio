@@ -1,12 +1,17 @@
+import { resetAppContext, setAppContext } from '../lib/context';
 import { Controller } from './controller';
 import { PublicError } from '../lib/public_error';
 import { Exceptions } from '../exceptions';
+
+afterEach(() => {
+  resetAppContext();
+});
 
 describe('Controller.responseFile', () => {
   const run = (contentType: string, fileName?: string) => {
     const headers: Record<string, string> = {};
     const res: any = { set: jest.fn((k: string, v: string) => (headers[k] = v)), send: jest.fn() };
-    (global as any).log = { save: jest.fn() };
+    setAppContext({ log: { save: jest.fn() } });
     new Controller({}).responseFile(res, Buffer.from('x'), contentType, fileName);
     return { headers, res };
   };
@@ -47,7 +52,7 @@ describe('Controller.responseError disclosure', () => {
   const run = (error: any, status?: number, details?: any) => {
     const res: any = { req: { originalUrl: '/x', method: 'GET' }, status: jest.fn().mockReturnThis(), send: jest.fn() };
     const save = jest.fn();
-    (global as any).log = { save };
+    setAppContext({ log: { save } });
     new Controller({}).responseError(res, error, status, details);
     return { res, body: res.send.mock.calls[0][0], save };
   };

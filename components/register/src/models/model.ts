@@ -1,5 +1,7 @@
 import { Op, Sequelize } from 'sequelize';
 
+import { getDb } from '../lib/context';
+
 export interface ModelFilter {
   created_at?: any;
   updated_at?: any;
@@ -34,7 +36,7 @@ export default class Model {
    * @param {{models}} options Options.
    */
   constructor(config?: any, options?: { models: any }) {
-    this.db = global.db;
+    this.db = getDb();
     this.config = config;
     this.models = options.models;
   }

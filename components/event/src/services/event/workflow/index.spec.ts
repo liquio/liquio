@@ -3,14 +3,21 @@ jest.mock('../../../lib/filestorage', () => ({ FileStorage: jest.fn() }));
 jest.mock('@liquio/back-core', () => ({ Sandbox: { getInstance: jest.fn() } }));
 
 import { EventWorkflow } from './index';
+import { setAppContext, resetAppContext } from '../../../lib/context';
 
 describe('EventWorkflow external system params not defined', () => {
   const save = jest.fn();
 
   beforeEach(() => {
     save.mockClear();
-    (global as any).log = { save };
-    (global as any).config = { external_bpmn: { sys: { url: '', token: 'fake-token' } } };
+    setAppContext({
+      log: { save },
+      config: { external_bpmn: { sys: { url: '', token: 'fake-token' } } },
+    });
+  });
+
+  afterEach(() => {
+    resetAppContext();
   });
 
   const expectSafePayload = (payload: any) => {

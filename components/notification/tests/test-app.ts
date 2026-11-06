@@ -12,8 +12,9 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import * as Multiconf from 'multiconf';
 import { Log, resetIdApiClient } from '@liquio/back-core';
 
-import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
+import { buildAdapters } from '../src/bootstrap';
 import { createConsoleLogProvider } from '../src/lib/console_log_provider';
+import { setAppContext } from '../src/lib/context';
 
 const debug = createDebug;
 
@@ -190,27 +191,27 @@ export class TestApp {
   }
 
   async init() {
-    // Merge config with overrides, mirroring src/app.ts's `{conf, env}` shape.
+    // Merge config with overrides, mirroring src/bootstrap.ts's `{conf, env}` shape.
     const conf = { ...defaultConf, ...confOverride };
     const config = { conf, env: defaultEnv };
 
-    // Init log the same way src/index.ts does, before anything that might read global.log.
+    // Init log the same way src/index.ts does, before anything that might read the context log.
     const consoleLogProvider = createConsoleLogProvider(conf.log);
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
-    global.log = log;
+    setAppContext({ log });
 
-    // Deferred require: src/app.ts's start() sets global.conf/env/adminStaticDir/extensions and
+    // Deferred require: src/bootstrap.ts's start() sets the app context conf/env/adminStaticDir/extensions and
     // only then requires src/server.ts (and, transitively, every model's DB connection) - importing
-    // it statically here would run that boot sequence before global.log/global.conf are ready.
+    // it statically here would run that boot sequence before the context log/conf are ready.
 
     // Each app gets an id-api client built from its own config (start() inits it).
     resetIdApiClient();
 
-    const start = require('../src/app').default;
+    const start = require('../src/bootstrap').default;
     // Mirror src/index.ts's real adapter wiring: config's defaultMessenger ("testConsoleSmsAdapter")
     // routes through CustomGate to this adapter, which just logs and returns a canned response.
-    this.server = start(config, undefined, { sms: testConsoleSmsAdapter });
+    this.server = start(config, undefined, buildAdapters(conf, log));
   }
 
   async listen() {
