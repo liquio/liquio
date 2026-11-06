@@ -19,6 +19,7 @@ import { MessageCryptTypesModel } from '../models/message_crypt_types';
 import { checkAuth, checkTestAuth, checkAdminCookie, checkSameOrigin } from './auth';
 import { resolveUserId } from './resolve_user_id';
 import { renderDecrypted } from '../lib/rule_to_show';
+import { maskPhones } from '../lib/mask';
 
 const router = Router();
 const adminRouter = Router();
@@ -487,7 +488,11 @@ export class Message extends Auth {
       }
       if (blockedPhones.length > 0) {
         // Inform SMS can not be sent.
-        global.log.save('send-message-by-user-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
+        global.log.save('send-message-by-user-blocked-by-blacklist', {
+          blockedPhones: maskPhones(blockedPhones),
+          allowedPhones: maskPhones(allowedPhones),
+          smsBlacklistSize: smsBlacklist.length,
+        });
         sendBySms = { error: 'Some phones denied by blacklist.', blockedPhones };
         sendBySmsPromise = Promise.resolve(sendBySms);
       } else {
@@ -638,7 +643,12 @@ export class Message extends Auth {
 
       // Check id it's SMS transfer and do not send if phone denied by blacklist.
       if (transfer === 'sms' && isSmsBlacklistIncludesPhone) {
-        global.log.save('denied-by-sms-blacklist', { routeType: 'send-via-complex-options', transfer, phoneToSend, smsBlacklist });
+        global.log.save('denied-by-sms-blacklist', {
+          routeType: 'send-via-complex-options',
+          transfer,
+          phoneToSend: maskPhones([phoneToSend])[0],
+          smsBlacklistSize: smsBlacklist.length,
+        });
         processingIdsList.push('User phone denied by blacklist.');
         rawResponsesList.push(null);
         continue;
@@ -1002,7 +1012,11 @@ export class Message extends Auth {
       }
     }
     if (blockedPhones.length > 0) {
-      global.log.save('send-message-by-phone-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
+      global.log.save('send-message-by-phone-blocked-by-blacklist', {
+        blockedPhones: maskPhones(blockedPhones),
+        allowedPhones: maskPhones(allowedPhones),
+        smsBlacklistSize: smsBlacklist.length,
+      });
       return res.send(500, { error: 'Some phones denied by blacklist.', blockedPhones });
     }
 
