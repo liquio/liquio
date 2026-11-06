@@ -26,18 +26,12 @@ module.exports = [
   { ignores: ['node_modules/', 'test-results/', 'playwright-report/', 'data/'] },
   js.configs.recommended,
   {
-    files: ['**/*.js'],
+    files: ['eslint.config.js'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'module',
+      sourceType: 'commonjs',
       globals: {
         ...globals.node,
-        ...globals.jest,
-        config: 'readonly',
-        db: 'readonly',
-        log: 'readonly',
-        models: 'readonly',
-        businesses: 'readonly',
       },
     },
     rules: {

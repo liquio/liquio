@@ -1,12 +1,12 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
   setupLogging,
   log,
-} = require('./helpers');
+} from './helpers';
 
 test.describe('Workflow 1001 (Notification Event)', () => {
   test('import, run from cabinet, and verify workflow journal', async ({ page }) => {
@@ -74,7 +74,7 @@ test.describe('Workflow 1001 (Notification Event)', () => {
       await homeButton.click();
     }
 
-    let workflowId;
+    let workflowId: string;
 
     const extractWorkflowIdFromUrl = () => {
       const match = page.url().match(/\/workflow\/([^/?#]+)/i);

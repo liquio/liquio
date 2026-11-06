@@ -1,7 +1,8 @@
-const crypto = require('crypto');
-const { test, expect } = require('@playwright/test');
+import * as crypto from 'crypto';
+import type { BrowserContext, Page, Request } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
@@ -9,7 +10,9 @@ const {
   getDockerComposeLogs,
   setupLogging,
   log,
-} = require('./helpers');
+  type CabinetApi,
+  type CabinetApiResponse,
+} from './helpers';
 
 /*
  * Server-side calcTriggers validation (`validate: true`) and `triggerPath` on PUT /documents/:id.
@@ -67,13 +70,13 @@ const INVALID_TRIGGER_PATH = 'Invalid trigger path';
 
 const CABINET_URL = 'http://localhost:8081';
 
-const isDocumentUpdate = (request) => request.method() === 'PUT' && /\/documents\/[^/?]+(\?|$)/.test(request.url());
+const isDocumentUpdate = (request: Request) => request.method() === 'PUT' && /\/documents\/[^/?]+(\?|$)/.test(request.url());
 const MISMATCH_LOG_TYPE = 'calc-triggers-validation-mismatch';
 
-const sha256 = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
+const sha256 = (value: any) => crypto.createHash('sha256').update(String(value)).digest('hex');
 
 // Values the 1.1 / 1.2 `allStarsInfo` triggers calculate from the radio value.
-const allStarsResults = (radio) => ({
+const allStarsResults = (radio: string) => ({
   resultNumber: Number(radio.replace(/\D/g, '')),
   resultBoolean: Boolean(radio),
   resultObject: { stringOne: `${radio}(1)`, stringTwo: `${radio}(2)` },
@@ -84,40 +87,40 @@ const allStarsResults = (radio) => ({
   ],
 });
 
-const allStarsProperties = (radio, overrides = {}) => Object.entries({ radio, ...allStarsResults(radio), ...overrides })
+const allStarsProperties = (radio: string, overrides = {}) => Object.entries({ radio, ...allStarsResults(radio), ...overrides })
   .map(([key, value]) => ({ path: `allStarsInfo.${key}`, value }));
 
 test.describe('Workflow 900002 (calcTriggers validation)', () => {
-  let context;
-  let page;
-  let api;
-  let validateResponses = [];
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
+  let validateResponses: { status: number; body: any }[] = [];
 
-  const startTask = async (taskTemplateId) => {
+  const startTask = async (taskTemplateId: number) => {
     const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, taskTemplateId);
     expect(status, `create task ${taskTemplateId}`).toBe(200);
     return body.data;
   };
 
-  const getDocumentData = async (documentId) => {
+  const getDocumentData = async (documentId: string) => {
     const { status, body } = await api.getDocument(documentId);
     expect(status).toBe(200);
     return body.data.data;
   };
 
   // Paths reported by /validate (or commit) as calcTrigger recalculation mismatches.
-  const mismatchPaths = (body) => (body?.error?.details || [])
-    .filter((detail) => MISMATCH_ON_VALIDATE.test(detail.message))
-    .map((detail) => detail.dataPath);
+  const mismatchPaths = (body: any) => (body?.error?.details || [])
+    .filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message))
+    .map((detail: any) => detail.dataPath);
 
-  const validateMismatchPaths = async (documentId) => mismatchPaths((await api.validateDocument(documentId)).body);
+  const validateMismatchPaths = async (documentId: string) => mismatchPaths((await api.validateDocument(documentId)).body);
 
-  const expectRejectedAsMismatch = (response) => {
+  const expectRejectedAsMismatch = (response: CabinetApiResponse) => {
     expect(response.status, JSON.stringify(response.body)).toBe(400);
     expect(response.body.error.message).toContain(MISMATCH_ON_PUT);
   };
 
-  const expectAccepted = (response) => {
+  const expectAccepted = (response: CabinetApiResponse) => {
     expect(response.status, JSON.stringify(response.body)).toBe(200);
   };
 
@@ -160,7 +163,7 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     // Every /validate answer the front got (validate before the PDF, or validate?commit=true).
     page.on('response', async (response) => {
       if (/\/documents\/[^/]+\/validate/.test(response.url())) {
-        validateResponses.push({ status: response.status(), body: await response.json().catch(() => null) });
+        validateResponses.push({ status: response.status(), body: await response.json().catch((): null => null) });
       }
     });
     log('✓ Cabinet ready');
@@ -622,28 +625,28 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
       validateResponses = [];
     });
 
-    const openTaskInCabinet = async (taskTemplateId) => {
+    const openTaskInCabinet = async (taskTemplateId: number) => {
       await page.goto(`${CABINET_URL}/tasks/create/${WORKFLOW_TEMPLATE_ID}/${taskTemplateId}`);
       await page.waitForURL(/\/tasks\/[a-f0-9-]+\/[^/]+$/i);
       return page.url().match(/\/tasks\/([a-f0-9-]+)\//i)[1];
     };
 
-    const expectStep = async (stepId) => {
+    const expectStep = async (stepId: string) => {
       await expect(page).toHaveURL(new RegExp(`/tasks/[a-f0-9-]+/${stepId}$`));
     };
 
-    const chooseRadio = async (name) => {
+    const chooseRadio = async (name: string) => {
       await page.getByRole('radio', { name }).check();
     };
 
     const continueButton = () => page.getByRole('button', { name: 'Continue', exact: true });
 
-    const goNext = async (nextStepId) => {
+    const goNext = async (nextStepId: string) => {
       await continueButton().click();
       await expectStep(nextStepId);
     };
 
-    const fillDate = async (index, value) => {
+    const fillDate = async (index: number, value: any) => {
       const input = page.getByRole('textbox', { name: 'Вкажіть дату народження' }).nth(index);
       await input.click();
       await input.pressSequentially(value.replace(/\D/g, ''));
@@ -662,14 +665,14 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     };
 
 
-    const getTask = async (taskId) => {
+    const getTask = async (taskId: string) => {
       const { status, body } = await api.getTask(taskId);
       expect(status).toBe(200);
       return body.data;
     };
 
 
-    const expectFinished = async (taskId) => {
+    const expectFinished = async (taskId: string) => {
       const completionDialog = page.getByRole('dialog');
       await completionDialog.waitFor({ timeout: 30000 });
       await expect(completionDialog).toContainText(/Success|submitted|sent|Thank you/i);
@@ -692,8 +695,8 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
       test.fixme('an honest user finishes the task without a calcTrigger mismatch', async () => {});
 
       test('keeps an honest user on the first step because its required radio is readOnly', async () => {
-        const updates = [];
-        const onRequest = (request) => {
+        const updates: any[] = [];
+        const onRequest = (request: Request) => {
           if (isDocumentUpdate(request)) updates.push(request.postDataJSON());
         };
         page.on('request', onRequest);

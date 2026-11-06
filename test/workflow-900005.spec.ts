@@ -1,13 +1,16 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
+import type { BrowserContext, Locator, Page, Request } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
   createCabinetApi,
   setupLogging,
   log,
-} = require('./helpers');
+  type CabinetApi,
+  type CabinetApiResponse,
+} from './helpers';
 
 /*
  * "Text and numbers" form controls on a single step (`textNumbers`) of workflow 900005:
@@ -33,7 +36,7 @@ const STEP = 'textNumbers';
 
 const CABINET_URL = 'http://localhost:8081';
 
-const VALID = {
+const VALID: Record<string, any> = {
   textValue: 'Valid text value',
   numberValue: 123.45,
   integerValue: 42,
@@ -45,10 +48,10 @@ const VALID = {
 test.describe('Workflow 900005 (Text and numbers controls)', () => {
   test.describe.configure({ mode: 'serial' });
 
-  let context;
-  let page;
-  let api;
-  let taskId;
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
+  let taskId: string;
 
   const fields = () => ({
     textValue: page.getByLabel('Text value'),
@@ -61,15 +64,15 @@ test.describe('Workflow 900005 (Text and numbers controls)', () => {
 
   // Each field has its own top-level wrapper on the step; the error is its MUI helper text
   // (a <p> for string and integer, a <div> for the others).
-  const errorFor = (locator) => locator.evaluate((input) => {
-    const helper = input.closest('main > div')?.querySelector('.MuiFormHelperText-root.Mui-error');
+  const errorFor = (locator: Locator) => locator.evaluate((input: HTMLElement) => {
+    const helper = input.closest('main > div')?.querySelector<HTMLElement>('.MuiFormHelperText-root.Mui-error');
     return helper ? helper.innerText.split('\n')[0].trim() : null;
   });
 
   // Clicks "Finish" and checks that the document was not committed.
   const finishExpectingErrors = async () => {
-    const commits = [];
-    const onRequest = (request) => {
+    const commits: any[] = [];
+    const onRequest = (request: Request) => {
       if (/\/documents\/[^/]+\/validate\?commit=true/.test(request.url())) commits.push(request.url());
     };
     page.on('request', onRequest);
@@ -221,14 +224,14 @@ test.describe('Workflow 900005 (Text and numbers controls)', () => {
   });
 
   test.describe('server-side validation', () => {
-    let documentId;
-    let apiTaskId;
+    let documentId: string;
+    let apiTaskId: string;
 
-    const put = (values) => api.updateDocument(
+    const put = (values: Record<string, any>) => api.updateDocument(
       documentId,
       Object.entries(values).map(([key, value]) => ({ path: `${STEP}.${key}`, value })),
     );
-    const details = (response) => (response.body?.error?.details || []).map((detail) => `${detail.dataPath} | ${detail.message}`);
+    const details = (response: CabinetApiResponse) => (response.body?.error?.details || []).map((detail: any) => `${detail.dataPath} | ${detail.message}`);
 
     test.beforeAll(async () => {
       const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, TASK_TEMPLATE_ID);
@@ -254,7 +257,7 @@ test.describe('Workflow 900005 (Text and numbers controls)', () => {
     });
 
     // One invalid field at a time: Ajv reports only the first schema error.
-    const INVALID = [
+    const INVALID: [string, any, string][] = [
       ['textValue', 'ab', 'should NOT be shorter than 3 characters'],
       ['textValue', 'x'.repeat(51), 'should NOT be longer than 50 characters'],
       ['textValue', 123, 'should be string'],

@@ -1,13 +1,16 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
+import type { BrowserContext, Page, Request } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
   createCabinetApi,
   setupLogging,
   log,
-} = require('./helpers');
+  type CabinetApi,
+  type CabinetApiResponse,
+} from './helpers';
 
 /*
  * Server-side calcTriggers validation (`validate: true`) edge cases, one entry task per case:
@@ -43,45 +46,45 @@ const INVALID_TRIGGER_PATH = 'Invalid trigger path';
 
 const CABINET_URL = 'http://localhost:8081';
 
-const isDocumentUpdate = (request) => request.method() === 'PUT' && /\/documents\/[^/?]+(\?|$)/.test(request.url());
+const isDocumentUpdate = (request: Request) => request.method() === 'PUT' && /\/documents\/[^/?]+(\?|$)/.test(request.url());
 
 test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
-  let context;
-  let page;
-  let api;
-  let documentUpdates = [];
-  let validateResponses = [];
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
+  let documentUpdates: any[] = [];
+  let validateResponses: { status: number; body: any }[] = [];
 
-  const startTask = async (taskTemplateId) => {
+  const startTask = async (taskTemplateId: number) => {
     const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, taskTemplateId);
     expect(status, `create task ${taskTemplateId}`).toBe(200);
     return body.data;
   };
 
-  const getDocumentData = async (documentId) => {
+  const getDocumentData = async (documentId: string) => {
     const { status, body } = await api.getDocument(documentId);
     expect(status).toBe(200);
     return body.data.data;
   };
 
   // Paths reported by /validate (or commit) as calcTrigger recalculation mismatches.
-  const mismatchPaths = (body) => (body?.error?.details || [])
-    .filter((detail) => MISMATCH_ON_VALIDATE.test(detail.message))
-    .map((detail) => detail.dataPath);
+  const mismatchPaths = (body: any) => (body?.error?.details || [])
+    .filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message))
+    .map((detail: any) => detail.dataPath);
 
-  const validateMismatchPaths = async (documentId) => mismatchPaths((await api.validateDocument(documentId)).body);
+  const validateMismatchPaths = async (documentId: string) => mismatchPaths((await api.validateDocument(documentId)).body);
 
-  const expectRejectedAsMismatch = (response) => {
+  const expectRejectedAsMismatch = (response: CabinetApiResponse) => {
     expect(response.status, JSON.stringify(response.body)).toBe(400);
     expect(response.body.error.message).toContain(MISMATCH_ON_PUT);
   };
 
-  const expectRejectedAsInvalidTriggerPath = (response) => {
+  const expectRejectedAsInvalidTriggerPath = (response: CabinetApiResponse) => {
     expect(response.status, JSON.stringify(response.body)).toBe(400);
     expect(response.body.error.message).toContain(INVALID_TRIGGER_PATH);
   };
 
-  const expectAccepted = (response) => {
+  const expectAccepted = (response: CabinetApiResponse) => {
     expect(response.status, JSON.stringify(response.body)).toBe(200);
   };
 
@@ -127,7 +130,7 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
         documentUpdates.push({ status: response.status(), body: response.request().postDataJSON() });
       }
       if (/\/documents\/[^/]+\/validate/.test(response.url())) {
-        validateResponses.push({ status: response.status(), body: await response.json().catch(() => null) });
+        validateResponses.push({ status: response.status(), body: await response.json().catch((): null => null) });
       }
     });
     log('✓ Cabinet ready');
@@ -147,13 +150,13 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
     };
 
     // What the front sends once the trigger recalculated the readOnly target.
-    const recalculatedProperties = (userId) => [
+    const recalculatedProperties = (userId: string) => [
       { path: 'userStep.input', value: 'value' },
       { path: 'userStep.userId', value: userId },
     ];
 
     // A parent object write is not checked on PUT, so a wrong value can reach /validate and commit.
-    const storeWrongUserId = async (documentId) => {
+    const storeWrongUserId = async (documentId: string) => {
       expectAccepted(await api.updateDocument(documentId, [{ path: 'userStep', value: { input: 'value', userId: 'another-user-id' } }]));
     };
 
@@ -289,7 +292,7 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
     const OBJECT_TRIGGER_PATHS = ['calc.resultObject.name', 'calc.resultObject.len'];
 
     // First fill: the front sends every target as a whole value.
-    const firstFill = async (documentId, input) => {
+    const firstFill = async (documentId: string, input: any) => {
       expectAccepted(await api.updateDocument(documentId, [
         { path: 'calc.input', value: input },
         { path: 'calc.upper', value: input.toUpperCase() },
@@ -421,32 +424,32 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       return page.url().match(/\/tasks\/([a-f0-9-]+)\//i)[1];
     };
 
-    const typeSource = async (value) => {
+    const typeSource = async (value: any) => {
       const input = page.getByRole('textbox', { name: 'Джерело' });
       await input.fill(value);
       await input.blur();
     };
 
     // Waits for the PUT that saved `value` of `calc.input` and returns its body.
-    const waitForSourceSaved = (value) => page.waitForResponse((response) => isDocumentUpdate(response.request())
+    const waitForSourceSaved = (value: any) => page.waitForResponse((response) => isDocumentUpdate(response.request())
       && (response.request().postDataJSON()?.properties || [])
-        .some(({ path, value: sent }) => path === 'calc.input' && sent === value));
+        .some(({ path, value: sent }: { path: string; value: any }) => path === 'calc.input' && sent === value));
 
 
-    const getTask = async (taskId) => {
+    const getTask = async (taskId: string) => {
       const { status, body } = await api.getTask(taskId);
       expect(status).toBe(200);
       return body.data;
     };
 
-    const expectFinished = async (taskId) => {
+    const expectFinished = async (taskId: string) => {
       const completionDialog = page.getByRole('dialog');
       await completionDialog.waitFor({ timeout: 30000 });
       await expect(completionDialog).toContainText(/Success|submitted|sent|Thank you/i);
 
       expect(validateResponses.length, 'the front validated the document').toBeGreaterThan(0);
       for (const { status, body } of validateResponses) {
-        expect((body?.error?.details || []).filter((detail) => MISMATCH_ON_VALIDATE.test(detail.message)), JSON.stringify(body)).toEqual([]);
+        expect((body?.error?.details || []).filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message)), JSON.stringify(body)).toEqual([]);
         expect(status, JSON.stringify(body)).toBe(200);
       }
 
@@ -494,7 +497,7 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
 
       // The front sends only the parts that changed: leaf paths of the object, the new array item.
       const body = response.request().postDataJSON();
-      expect(body.properties.map(({ path, value }) => ({ path, value }))).toEqual(expect.arrayContaining([
+      expect(body.properties.map(({ path, value }: { path: string; value: any }) => ({ path, value }))).toEqual(expect.arrayContaining([
         { path: 'calc.input', value: 'abc' },
         { path: 'calc.upper', value: 'ABC' },
         { path: 'calc.resultObject.name', value: 'abc' },

@@ -1,15 +1,15 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
   setupLogging,
   log,
-} = require('./helpers');
+} from './helpers';
 
 test.describe('Workflow 900001 (Attention Notice)', () => {
-  let workflowId;
+  let workflowId: string;
 
   test('import workflow as an admin', async ({ page }) => {
     await setupLogging(page);
@@ -84,7 +84,7 @@ test.describe('Workflow 900001 (Attention Notice)', () => {
       }
     }
 
-    await page.waitForLoadState('networkidle').catch(() => null);
+    await page.waitForLoadState('networkidle').catch((): null => null);
 
     log('Workflow instance loaded, waiting for Order service button to appear');
     await page.getByRole('button', { name: 'Order service' }).waitFor();

@@ -1,13 +1,15 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
-const {
+import {
   ensureAtLoginPage,
   loginWithPersonalKey,
   importWorkflow,
   createCabinetApi,
   setupLogging,
   log,
-} = require('./helpers');
+  type CabinetApi,
+} from './helpers';
 
 /*
  * Cabinet step navigation when a trigger that runs on Continue changes which steps are shown.
@@ -35,10 +37,10 @@ const NOT_CONFIGURED = 'The service is not configured';
 const CABINET_URL = 'http://localhost:8081';
 
 test.describe('Workflow 900004 (step navigation with calcTriggers)', () => {
-  let context;
-  let page;
-  let api;
-  let visitedUrls = [];
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
+  let visitedUrls: string[] = [];
 
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(240000);
@@ -91,38 +93,38 @@ test.describe('Workflow 900004 (step navigation with calcTriggers)', () => {
     visitedUrls = [];
   });
 
-  const openTaskInCabinet = async (taskTemplateId) => {
+  const openTaskInCabinet = async (taskTemplateId: number) => {
     await page.goto(`${CABINET_URL}/tasks/create/${WORKFLOW_TEMPLATE_ID}/${taskTemplateId}`);
     await page.waitForURL(/\/tasks\/[a-f0-9-]+\/[^/]+$/i);
     return page.url().match(/\/tasks\/([a-f0-9-]+)\//i)[1];
   };
 
-  const stepUrl = (stepId) => new RegExp(`/tasks/[a-f0-9-]+/${stepId}$`);
+  const stepUrl = (stepId: string) => new RegExp(`/tasks/[a-f0-9-]+/${stepId}$`);
 
-  const expectStep = async (stepId) => {
+  const expectStep = async (stepId: string) => {
     await expect(page).toHaveURL(stepUrl(stepId));
   };
 
   // The step form's heading is the step description.
-  const stepHeading = (description) => page.getByRole('heading', { level: 2, name: description, exact: true });
+  const stepHeading = (description: string) => page.getByRole('heading', { level: 2, name: description, exact: true });
 
   // The stepper lists the steps currently in the step list.
-  const stepperItem = (description) => page.getByRole('button', { name: new RegExp(`^Step \\d+ ${description}$`) });
+  const stepperItem = (description: string) => page.getByRole('button', { name: new RegExp(`^Step \\d+ ${description}$`) });
 
-  const expectStepShown = async (stepId, description) => {
+  const expectStepShown = async (stepId: string, description: string) => {
     await expectStep(stepId);
     await expect(stepHeading(description)).toBeVisible();
   };
 
-  const visitedStep = (stepId) => visitedUrls.some((url) => stepUrl(stepId).test(url));
+  const visitedStep = (stepId: string) => visitedUrls.some((url) => stepUrl(stepId).test(url));
 
-  const chooseRadio = async (name) => {
+  const chooseRadio = async (name: string) => {
     await page.getByRole('radio', { name }).check();
   };
 
   const continueButton = () => page.getByRole('button', { name: 'Continue', exact: true });
 
-  const goNext = async (nextStepId) => {
+  const goNext = async (nextStepId: string) => {
     await continueButton().click();
     await expectStep(nextStepId);
   };
@@ -131,20 +133,20 @@ test.describe('Workflow 900004 (step navigation with calcTriggers)', () => {
     await page.getByRole('button', { name: 'Finish', exact: true }).click();
   };
 
-  const getTask = async (taskId) => {
+  const getTask = async (taskId: string) => {
     const { status, body } = await api.getTask(taskId);
     expect(status).toBe(200);
     return body.data;
   };
 
-  const getDocumentData = async (taskId) => {
+  const getDocumentData = async (taskId: string) => {
     const { documentId } = await getTask(taskId);
     const { status, body } = await api.getDocument(documentId);
     expect(status).toBe(200);
     return body.data.data;
   };
 
-  const expectFinished = async (taskId) => {
+  const expectFinished = async (taskId: string) => {
     const completionDialog = page.getByRole('dialog');
     await completionDialog.waitFor({ timeout: 30000 });
     await expect(completionDialog).toContainText(/Success|submitted|sent|Thank you/i);
