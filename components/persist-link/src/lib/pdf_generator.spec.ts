@@ -85,6 +85,20 @@ describe('pdf_generator', () => {
       expect(JSON.stringify(logSave.mock.calls)).not.toContain('Basic');
     });
 
+    it('should accept any 2xx status from pdf-generator and reject others', async () => {
+      postMock.mockResolvedValue({ data: new ArrayBuffer(1) });
+
+      await renderPdf('<p/>', {});
+
+      const { validateStatus } = postMock.mock.calls[0][2];
+      expect(validateStatus(200)).toBe(true);
+      expect(validateStatus(201)).toBe(true);
+      expect(validateStatus(204)).toBe(true);
+      expect(validateStatus(302)).toBe(false);
+      expect(validateStatus(400)).toBe(false);
+      expect(validateStatus(500)).toBe(false);
+    });
+
     it('should propagate request errors', async () => {
       postMock.mockRejectedValue(new Error('Request failed with status code 500'));
 

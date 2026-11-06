@@ -71,7 +71,7 @@ export async function renderPdf(html: string, input: Record<string, any>): Promi
       timeout: requestTimeout || DEFAULT_TIMEOUT,
       maxBodyLength: MAX_BODY_SIZE,
       maxContentLength: MAX_BODY_SIZE,
-      validateStatus: (status) => status === 200,
+      validateStatus: (status) => status >= 200 && status < 300,
     },
   );
 
