@@ -60,7 +60,4 @@ function getDockerComposeLogs(service: string, since?: Date): string {
   });
 }
 
-export {
-  getConfirmationPinFromNotifyDb,
-  getDockerComposeLogs,
-};
+export { getConfirmationPinFromNotifyDb, getDockerComposeLogs };

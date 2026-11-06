@@ -123,7 +123,9 @@ test.describe('persist-link external template PDF', () => {
     ).id;
 
     const link = await created(
-      persistLink.post('/link', { data: { type: 'external', small: true, options: { templateName: 'register', templateMethod: METHOD, filter: { recordId } } } }),
+      persistLink.post('/link', {
+        data: { type: 'external', small: true, options: { templateName: 'register', templateMethod: METHOD, filter: { recordId } } },
+      }),
       'create link',
     );
     const url = typeof link === 'string' ? link : link.link;
@@ -162,8 +164,14 @@ test.describe('persist-link external template PDF', () => {
     const text = pdfText.replace(/\s+/g, '');
     const dotted = /DATE\[(\d{2}\.\d{2}\.\d{4})\]/.exec(text)?.[1];
     const iso = /ISO\[(\d{4}-\d{2}-\d{2})\]/.exec(text)?.[1];
-    expect(candidates.map((c) => c.dotted), 'DATE is a current date').toContain(dotted);
-    expect(candidates.map((c) => c.iso), 'ISO is a current date').toContain(iso);
+    expect(
+      candidates.map((c) => c.dotted),
+      'DATE is a current date',
+    ).toContain(dotted);
+    expect(
+      candidates.map((c) => c.iso),
+      'ISO is a current date',
+    ).toContain(iso);
     expect(dotted.split('.').reverse().join('-'), 'DATE and ISO are the same day').toBe(iso);
     expect(text, 'mapped currentDate does not override the helper').not.toContain('1999');
   });

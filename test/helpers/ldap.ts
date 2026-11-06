@@ -67,7 +67,22 @@ function ldapModify(
  */
 function ldapEntryExists(dn: string): boolean {
   try {
-    execInService(['openldap', 'ldapsearch', '-x', '-H', 'ldap://localhost:1389', '-D', ADMIN_DN, '-w', ADMIN_PASSWORD, '-b', dn, '-s', 'base', 'dn']);
+    execInService([
+      'openldap',
+      'ldapsearch',
+      '-x',
+      '-H',
+      'ldap://localhost:1389',
+      '-D',
+      ADMIN_DN,
+      '-w',
+      ADMIN_PASSWORD,
+      '-b',
+      dn,
+      '-s',
+      'base',
+      'dn',
+    ]);
     return true;
   } catch {
     return false;

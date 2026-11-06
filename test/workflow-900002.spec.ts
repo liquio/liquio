@@ -87,8 +87,8 @@ const allStarsResults = (radio: string) => ({
   ],
 });
 
-const allStarsProperties = (radio: string, overrides = {}) => Object.entries({ radio, ...allStarsResults(radio), ...overrides })
-  .map(([key, value]) => ({ path: `allStarsInfo.${key}`, value }));
+const allStarsProperties = (radio: string, overrides = {}) =>
+  Object.entries({ radio, ...allStarsResults(radio), ...overrides }).map(([key, value]) => ({ path: `allStarsInfo.${key}`, value }));
 
 test.describe('Workflow 900002 (calcTriggers validation)', () => {
   let context: BrowserContext;
@@ -109,9 +109,8 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
   };
 
   // Paths reported by /validate (or commit) as calcTrigger recalculation mismatches.
-  const mismatchPaths = (body: any) => (body?.error?.details || [])
-    .filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message))
-    .map((detail: any) => detail.dataPath);
+  const mismatchPaths = (body: any) =>
+    (body?.error?.details || []).filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message)).map((detail: any) => detail.dataPath);
 
   const validateMismatchPaths = async (documentId: string) => mismatchPaths((await api.validateDocument(documentId)).body);
 
@@ -177,11 +176,13 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('accepts honestly calculated targets of every type', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringSha256Info.radio', value: RADIO_1 },
-        { path: 'stringSha256Info.result', value: sha256(RADIO_1) },
-        ...allStarsProperties(RADIO_1),
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringSha256Info.radio', value: RADIO_1 },
+          { path: 'stringSha256Info.result', value: sha256(RADIO_1) },
+          ...allStarsProperties(RADIO_1),
+        ]),
+      );
 
       const data = await getDocumentData(task.documentId);
       expect(data.allStarsInfo).toEqual({ radio: RADIO_1, ...allStarsResults(RADIO_1) });
@@ -198,10 +199,12 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('rejects an unhashed value for a useSha256 target', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'stringSha256Info.radio', value: RADIO_1 },
-        { path: 'stringSha256Info.result', value: RADIO_1 },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringSha256Info.radio', value: RADIO_1 },
+          { path: 'stringSha256Info.result', value: RADIO_1 },
+        ]),
+      );
     });
 
     test('rejects a tampered number target', async () => {
@@ -219,26 +222,41 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('rejects a tampered object target', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, allStarsProperties(RADIO_1, {
-        resultObject: { stringOne: `${RADIO_1}(1)`, stringTwo: TAMPERED },
-      })));
+      expectRejectedAsMismatch(
+        await api.updateDocument(
+          task.documentId,
+          allStarsProperties(RADIO_1, {
+            resultObject: { stringOne: `${RADIO_1}(1)`, stringTwo: TAMPERED },
+          }),
+        ),
+      );
     });
 
     test('rejects a tampered array-of-strings target', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, allStarsProperties(RADIO_1, {
-        resultArrayOfStrings: [`${RADIO_1}(1)`, TAMPERED],
-      })));
+      expectRejectedAsMismatch(
+        await api.updateDocument(
+          task.documentId,
+          allStarsProperties(RADIO_1, {
+            resultArrayOfStrings: [`${RADIO_1}(1)`, TAMPERED],
+          }),
+        ),
+      );
     });
 
     test('rejects a tampered array-of-objects target', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
       const [first, second] = allStarsResults(RADIO_1).resultArrayOfObjects;
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, allStarsProperties(RADIO_1, {
-        resultArrayOfObjects: [first, { ...second, stringTwo: TAMPERED }],
-      })));
+      expectRejectedAsMismatch(
+        await api.updateDocument(
+          task.documentId,
+          allStarsProperties(RADIO_1, {
+            resultArrayOfObjects: [first, { ...second, stringTwo: TAMPERED }],
+          }),
+        ),
+      );
     });
 
     test('rejects a tampered object target sent as leaf sub-paths listed in triggerPath (like the front does on recalculation)', async () => {
@@ -246,11 +264,17 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
       expectAccepted(await api.updateDocument(task.documentId, allStarsProperties(RADIO_1)));
 
       // Leaf sub-paths the client names as recalculated targets are checked on PUT, not only on /validate.
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'allStarsInfo.radio', value: RADIO_2 },
-        { path: 'allStarsInfo.resultObject.stringOne', value: `${RADIO_2}(1)` },
-        { path: 'allStarsInfo.resultObject.stringTwo', value: TAMPERED },
-      ], ['allStarsInfo.resultObject.stringOne', 'allStarsInfo.resultObject.stringTwo']));
+      expectRejectedAsMismatch(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'allStarsInfo.radio', value: RADIO_2 },
+            { path: 'allStarsInfo.resultObject.stringOne', value: `${RADIO_2}(1)` },
+            { path: 'allStarsInfo.resultObject.stringTwo', value: TAMPERED },
+          ],
+          ['allStarsInfo.resultObject.stringOne', 'allStarsInfo.resultObject.stringTwo'],
+        ),
+      );
     });
 
     test('accepts a leaf sub-path edit of an object target without triggerPath on PUT and flags it on /validate', async () => {
@@ -258,9 +282,7 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
       expectAccepted(await api.updateDocument(task.documentId, allStarsProperties(RADIO_1)));
 
       // A plain edit under a target is left to /validate and commit, so the user's edit isn't lost on save.
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'allStarsInfo.resultObject.stringTwo', value: TAMPERED },
-      ]));
+      expectAccepted(await api.updateDocument(task.documentId, [{ path: 'allStarsInfo.resultObject.stringTwo', value: TAMPERED }]));
       expect(await validateMismatchPaths(task.documentId)).toContain('allStarsInfo.resultObject');
     });
 
@@ -272,12 +294,14 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
       expectAccepted(await api.updateDocument(task.documentId, [{ path: 'allStarsInfo.radio', value: RADIO_2 }]));
 
       const paths = await validateMismatchPaths(task.documentId);
-      expect(paths).toEqual(expect.arrayContaining([
-        'allStarsInfo.resultNumber',
-        'allStarsInfo.resultObject',
-        'allStarsInfo.resultArrayOfStrings',
-        'allStarsInfo.resultArrayOfObjects',
-      ]));
+      expect(paths).toEqual(
+        expect.arrayContaining([
+          'allStarsInfo.resultNumber',
+          'allStarsInfo.resultObject',
+          'allStarsInfo.resultArrayOfStrings',
+          'allStarsInfo.resultArrayOfObjects',
+        ]),
+      );
       // Boolean(radio) is `true` for both radio values, so this one is still correct.
       expect(paths).not.toContain('allStarsInfo.resultBoolean');
     });
@@ -285,42 +309,48 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('ignores a tampered target whose source step is hidden by checkStepHidden', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stepHiddenInfo.radio', value: RADIO_1 },
-        { path: 'stepHiddenInfo.result', value: TAMPERED },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stepHiddenInfo.radio', value: RADIO_1 },
+          { path: 'stepHiddenInfo.result', value: TAMPERED },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).not.toContain('stepHiddenInfo.result');
     });
 
     test('ignores a tampered target whose source field is hidden by checkHidden', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'hiddenFieldInfo.radio', value: RADIO_1 },
-        { path: 'hiddenFieldInfo.result', value: TAMPERED },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'hiddenFieldInfo.radio', value: RADIO_1 },
+          { path: 'hiddenFieldInfo.result', value: TAMPERED },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).not.toContain('hiddenFieldInfo.result');
     });
 
     test('ignores a tampered target of a trigger with validate: false', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'indexInfo.resultArray', value: [{ fullName: TAMPERED }] },
-      ]));
+      expectAccepted(await api.updateDocument(task.documentId, [{ path: 'indexInfo.resultArray', value: [{ fullName: TAMPERED }] }]));
       expect(await validateMismatchPaths(task.documentId)).not.toContain('indexInfo.resultArray');
     });
 
     test('accepts an honest ${index} target sent with triggerPath', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'indexInfo.resultArray', value: [{ fullName: 'A' }, { fullName: 'B' }] },
-      ]));
+      expectAccepted(await api.updateDocument(task.documentId, [{ path: 'indexInfo.resultArray', value: [{ fullName: 'A' }, { fullName: 'B' }] }]));
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'indexInfo.resultArray.0.date', value: '01.01.1990' },
-        { path: 'indexInfo.resultArray.0.result', value: '01.01.1990 р.н.' },
-      ], ['indexInfo.resultArray.0.result']));
+      expectAccepted(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'indexInfo.resultArray.0.date', value: '01.01.1990' },
+            { path: 'indexInfo.resultArray.0.result', value: '01.01.1990 р.н.' },
+          ],
+          ['indexInfo.resultArray.0.result'],
+        ),
+      );
 
       const data = await getDocumentData(task.documentId);
       expect(data.indexInfo.resultArray[0]).toEqual({ fullName: 'A', date: '01.01.1990', result: '01.01.1990 р.н.' });
@@ -328,29 +358,35 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
 
     test('rejects a tampered ${index} target sent with triggerPath', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'indexInfo.resultArray', value: [{ fullName: 'A' }, { fullName: 'B' }] },
-      ]));
+      expectAccepted(await api.updateDocument(task.documentId, [{ path: 'indexInfo.resultArray', value: [{ fullName: 'A' }, { fullName: 'B' }] }]));
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'indexInfo.resultArray.1.date', value: '02.02.1992' },
-        { path: 'indexInfo.resultArray.1.result', value: TAMPERED },
-      ], ['indexInfo.resultArray.1.result']));
+      expectRejectedAsMismatch(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'indexInfo.resultArray.1.date', value: '02.02.1992' },
+            { path: 'indexInfo.resultArray.1.result', value: TAMPERED },
+          ],
+          ['indexInfo.resultArray.1.result'],
+        ),
+      );
     });
 
     test('flags only the tampered array item of an ${index} target on /validate', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_CHECK_STEP_HIDDEN);
 
       // Writing the whole array doesn't touch the `${index}` target paths, so it isn't checked on PUT.
-      expectAccepted(await api.updateDocument(task.documentId, [
-        {
-          path: 'indexInfo.resultArray',
-          value: [
-            { fullName: 'A', date: '01.01.1990', result: '01.01.1990 р.н.' },
-            { fullName: 'B', date: '02.02.1992', result: TAMPERED },
-          ],
-        },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          {
+            path: 'indexInfo.resultArray',
+            value: [
+              { fullName: 'A', date: '01.01.1990', result: '01.01.1990 р.н.' },
+              { fullName: 'B', date: '02.02.1992', result: TAMPERED },
+            ],
+          },
+        ]),
+      );
 
       const paths = await validateMismatchPaths(task.documentId);
       expect(paths).toContain('indexInfo.resultArray.1.result');
@@ -362,28 +398,34 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('accepts an honest target on a step listed in stepOrders', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_STEP_ORDERS);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: RADIO_1 },
-        { path: 'stringInfo.result', value: RADIO_1 },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: RADIO_1 },
+          { path: 'stringInfo.result', value: RADIO_1 },
+        ]),
+      );
     });
 
     test('rejects a tampered target on a step listed in stepOrders', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_STEP_ORDERS);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: RADIO_1 },
-        { path: 'stringInfo.result', value: TAMPERED },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: RADIO_1 },
+          { path: 'stringInfo.result', value: TAMPERED },
+        ]),
+      );
     });
 
     test('ignores a tampered target on a step missing from stepOrders', async () => {
       const task = await startTask(TASK_TEMPLATES.SOURCE_STEP_ORDERS);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stepHiddenInfo.radio', value: RADIO_1 },
-        { path: 'stepHiddenInfo.result', value: TAMPERED },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stepHiddenInfo.radio', value: RADIO_1 },
+          { path: 'stepHiddenInfo.result', value: TAMPERED },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).not.toContain('stepHiddenInfo.result');
     });
   });
@@ -392,30 +434,36 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('rejects a tampered target of a visible step', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_CHECK_STEP_HIDDEN);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'stringInfo.result', value: NO },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'stringInfo.result', value: NO },
+        ]),
+      );
     });
 
     test('rejects a tampered target of a step shown by checkStepHidden', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_CHECK_STEP_HIDDEN);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'stringInfo.result', value: YES },
-        { path: 'hiddenStepResultInfo.result', value: TAMPERED },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'stringInfo.result', value: YES },
+          { path: 'hiddenStepResultInfo.result', value: TAMPERED },
+        ]),
+      );
     });
 
     test('ignores a tampered target of a step hidden by checkStepHidden', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_CHECK_STEP_HIDDEN);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: NO },
-        { path: 'stringInfo.result', value: NO },
-        { path: 'hiddenStepResultInfo.result', value: TAMPERED },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: NO },
+          { path: 'stringInfo.result', value: NO },
+          { path: 'hiddenStepResultInfo.result', value: TAMPERED },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).not.toContain('hiddenStepResultInfo.result');
     });
   });
@@ -424,22 +472,26 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('accepts honest targets of steps listed in stepOrders', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_STEP_ORDERS);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'stringInfo.result', value: YES },
-        { path: 'hiddenStepResultInfo.result', value: 'value' },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'stringInfo.result', value: YES },
+          { path: 'hiddenStepResultInfo.result', value: 'value' },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).toEqual([]);
     });
 
     test('rejects a tampered target of a step listed in stepOrders regardless of the answer', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_STEP_ORDERS);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: NO },
-        { path: 'stringInfo.result', value: NO },
-        { path: 'hiddenStepResultInfo.result', value: TAMPERED },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: NO },
+          { path: 'stringInfo.result', value: NO },
+          { path: 'hiddenStepResultInfo.result', value: TAMPERED },
+        ]),
+      );
     });
   });
 
@@ -462,19 +514,23 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('rejects a tampered target when pdfRequired evaluates to true', async () => {
       const task = await startTask(TASK_TEMPLATES.BEFORE_PDF_PDF_REQUIRED_FUNCTION);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'emptyStepInfo.radio', value: YES },
-        { path: 'calculated.result', value: TAMPERED },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'emptyStepInfo.radio', value: YES },
+          { path: 'calculated.result', value: TAMPERED },
+        ]),
+      );
     });
 
     test('ignores a tampered target when pdfRequired evaluates to false', async () => {
       const task = await startTask(TASK_TEMPLATES.BEFORE_PDF_PDF_REQUIRED_FUNCTION);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'emptyStepInfo.radio', value: NO },
-        { path: 'calculated.result', value: TAMPERED },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'emptyStepInfo.radio', value: NO },
+          { path: 'calculated.result', value: TAMPERED },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).not.toContain('calculated.result');
     });
   });
@@ -483,19 +539,23 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('rejects a tampered target when more than one step is shown', async () => {
       const task = await startTask(TASK_TEMPLATES.SILENT_CHECK_STEP_HIDDEN);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'calculated.result', value: TAMPERED },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'calculated.result', value: TAMPERED },
+        ]),
+      );
     });
 
     test('ignores a tampered target when only one step is shown', async () => {
       const task = await startTask(TASK_TEMPLATES.SILENT_CHECK_STEP_HIDDEN);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: NO },
-        { path: 'calculated.result', value: TAMPERED },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: NO },
+          { path: 'calculated.result', value: TAMPERED },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).not.toContain('calculated.result');
     });
   });
@@ -504,19 +564,23 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
     test('rejects a tampered target when more than one step is shown', async () => {
       const task = await startTask(TASK_TEMPLATES.SILENT_STEP_ORDERS);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'calculated.result', value: TAMPERED },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'calculated.result', value: TAMPERED },
+        ]),
+      );
     });
 
     test('ignores a tampered target when only one step is shown', async () => {
       const task = await startTask(TASK_TEMPLATES.SILENT_STEP_ORDERS);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: NO },
-        { path: 'calculated.result', value: TAMPERED },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: NO },
+          { path: 'calculated.result', value: TAMPERED },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).not.toContain('calculated.result');
     });
   });
@@ -551,11 +615,13 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
   test.describe('commit', () => {
     test('commits a task with honest targets via POST /tasks/:id/commit', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_STEP_ORDERS);
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'stringInfo.result', value: YES },
-        { path: 'hiddenStepResultInfo.result', value: 'value' },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'stringInfo.result', value: YES },
+          { path: 'hiddenStepResultInfo.result', value: 'value' },
+        ]),
+      );
 
       expectAccepted(await api.commitTask(task.id));
       expect((await api.getTask(task.id)).body.data.finished).toBe(true);
@@ -563,11 +629,13 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
 
     test('refuses to commit a task with a stale target via POST /tasks/:id/commit', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_STEP_ORDERS);
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'stringInfo.result', value: YES },
-        { path: 'hiddenStepResultInfo.result', value: 'value' },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'stringInfo.result', value: YES },
+          { path: 'hiddenStepResultInfo.result', value: 'value' },
+        ]),
+      );
       expectAccepted(await api.updateDocument(task.documentId, [{ path: 'stringInfo.radio', value: NO }]));
 
       const response = await api.commitTask(task.id);
@@ -578,11 +646,13 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
 
     test('commits a task with honest targets via POST /documents/:id/validate?commit=true', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_CHECK_STEP_HIDDEN);
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'stringInfo.result', value: YES },
-        { path: 'hiddenStepResultInfo.result', value: 'value' },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'stringInfo.result', value: YES },
+          { path: 'hiddenStepResultInfo.result', value: 'value' },
+        ]),
+      );
 
       expectAccepted(await api.validateDocument(task.documentId, { commit: true }));
       expect((await api.getTask(task.id)).body.data.finished).toBe(true);
@@ -590,11 +660,13 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
 
     test('refuses to commit a task with a stale target via POST /documents/:id/validate?commit=true', async () => {
       const task = await startTask(TASK_TEMPLATES.STEP_CHECK_STEP_HIDDEN);
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'stringInfo.radio', value: YES },
-        { path: 'stringInfo.result', value: YES },
-        { path: 'hiddenStepResultInfo.result', value: 'value' },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'stringInfo.radio', value: YES },
+          { path: 'stringInfo.result', value: YES },
+          { path: 'hiddenStepResultInfo.result', value: 'value' },
+        ]),
+      );
       expectAccepted(await api.updateDocument(task.documentId, [{ path: 'stringInfo.radio', value: NO }]));
 
       const response = await api.validateDocument(task.documentId, { commit: true });
@@ -664,13 +736,11 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
       await expect(page.getByRole('button', { name: 'Print' })).toBeVisible({ timeout: 60000 });
     };
 
-
     const getTask = async (taskId: string) => {
       const { status, body } = await api.getTask(taskId);
       expect(status).toBe(200);
       return body.data;
     };
-
 
     const expectFinished = async (taskId: string) => {
       const completionDialog = page.getByRole('dialog');
@@ -730,13 +800,12 @@ test.describe('Workflow 900002 (calcTriggers validation)', () => {
         await goNext('allStarsInfo');
 
         await chooseRadio(RADIO_1);
-        await expect(page.getByRole('textbox', { name: 'Результат розрахунку рядка в масиві рядків' }).first())
-          .toHaveValue(`${RADIO_1}(1)`);
+        await expect(page.getByRole('textbox', { name: 'Результат розрахунку рядка в масиві рядків' }).first()).toHaveValue(`${RADIO_1}(1)`);
         await goNext('hiddenFieldInfo');
 
         // Leaving hiddenFieldInfo runs its step trigger, which creates the two array items.
         await goNext('indexInfo');
-        await expect(page.getByRole('textbox', { name: 'Повне ім\'я' }).nth(1)).toHaveValue('Тестовий Петро Васильович');
+        await expect(page.getByRole('textbox', { name: "Повне ім'я" }).nth(1)).toHaveValue('Тестовий Петро Васильович');
       };
 
       test('an honest user finishes the task without a calcTrigger mismatch', async () => {

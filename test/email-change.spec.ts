@@ -1,13 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  setupLogging,
-  generateTestUser,
-  log,
-  getConfirmationPinFromNotifyDb,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, setupLogging, generateTestUser, log, getConfirmationPinFromNotifyDb } from './helpers';
 
 test('User can change email and verify with PIN confirmation', async ({ page }) => {
   log('Enabling debug logging');
@@ -117,7 +110,7 @@ test('User can change email and verify with PIN confirmation', async ({ page }) 
   log('Logging out via Exit menu item');
   await page.getByRole('menuitem', { name: 'Exit' }).click();
 
-  log('Ensuring that we\'ve been redirected to login page after logout');
+  log("Ensuring that we've been redirected to login page after logout");
   await ensureAtLoginPage(page);
 
   log('Test completed successfully - user email was changed and verified with PIN confirmation');

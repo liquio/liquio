@@ -34,6 +34,4 @@ async function importRegister(page: Page, filePath: string): Promise<void> {
   await page.waitForTimeout(500);
 }
 
-export {
-  importRegister,
-};
+export { importRegister };

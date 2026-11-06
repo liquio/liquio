@@ -64,10 +64,11 @@ test.describe('Workflow 900005 (Text and numbers controls)', () => {
 
   // Each field has its own top-level wrapper on the step; the error is its MUI helper text
   // (a <p> for string and integer, a <div> for the others).
-  const errorFor = (locator: Locator) => locator.evaluate((input: HTMLElement) => {
-    const helper = input.closest('main > div')?.querySelector<HTMLElement>('.MuiFormHelperText-root.Mui-error');
-    return helper ? helper.innerText.split('\n')[0].trim() : null;
-  });
+  const errorFor = (locator: Locator) =>
+    locator.evaluate((input: HTMLElement) => {
+      const helper = input.closest('main > div')?.querySelector<HTMLElement>('.MuiFormHelperText-root.Mui-error');
+      return helper ? helper.innerText.split('\n')[0].trim() : null;
+    });
 
   // Clicks "Finish" and checks that the document was not committed.
   const finishExpectingErrors = async () => {
@@ -227,11 +228,13 @@ test.describe('Workflow 900005 (Text and numbers controls)', () => {
     let documentId: string;
     let apiTaskId: string;
 
-    const put = (values: Record<string, any>) => api.updateDocument(
-      documentId,
-      Object.entries(values).map(([key, value]) => ({ path: `${STEP}.${key}`, value })),
-    );
-    const details = (response: CabinetApiResponse) => (response.body?.error?.details || []).map((detail: any) => `${detail.dataPath} | ${detail.message}`);
+    const put = (values: Record<string, any>) =>
+      api.updateDocument(
+        documentId,
+        Object.entries(values).map(([key, value]) => ({ path: `${STEP}.${key}`, value })),
+      );
+    const details = (response: CabinetApiResponse) =>
+      (response.body?.error?.details || []).map((detail: any) => `${detail.dataPath} | ${detail.message}`);
 
     test.beforeAll(async () => {
       const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, TASK_TEMPLATE_ID);
@@ -244,9 +247,11 @@ test.describe('Workflow 900005 (Text and numbers controls)', () => {
       const response = await api.validateDocument(documentId);
       expect(response.status).not.toBe(200);
       expect(response.body.error.message).toBe('Error: Validation error.');
-      expect(details(response)).toEqual(expect.arrayContaining(
-        ['textValue', 'numberValue', 'integerValue', 'phone', 'amount'].map((field) => `${STEP}.${field} | checkRequired error.`),
-      ));
+      expect(details(response)).toEqual(
+        expect.arrayContaining(
+          ['textValue', 'numberValue', 'integerValue', 'phone', 'amount'].map((field) => `${STEP}.${field} | checkRequired error.`),
+        ),
+      );
     });
 
     test('accepts valid values', async () => {

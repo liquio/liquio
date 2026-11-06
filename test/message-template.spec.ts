@@ -1,11 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  setupLogging,
-  log,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, setupLogging, log } from './helpers';
 
 const HELLO_WORLD_HTML = [
   '<!DOCTYPE html>',

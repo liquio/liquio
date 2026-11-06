@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * Security E2E Tests - Exploitation Attempts
- * 
+ *
  * These tests verify that OWASP A01 vulnerabilities have been properly fixed:
  * - A01: Broken Access Control (CORS, Host Header)
  * - Defense in Depth: Security Headers (CSP, X-Frame-Options, etc.)
@@ -15,9 +15,7 @@ const ID_API_URL = 'http://localhost:8100';
 const ADMIN_FRONT = 'http://localhost:8082';
 
 test.describe('Security - CORS Misconfiguration (Should Reject)', () => {
-  test('CORS: Reject cross-origin requests from unauthorized origins', async ({
-    page,
-  }) => {
+  test('CORS: Reject cross-origin requests from unauthorized origins', async ({ page }) => {
     // Attempt to make a CORS request from unauthorized origin
     const response = await page.evaluate(async () => {
       try {
@@ -44,20 +42,15 @@ test.describe('Security - CORS Misconfiguration (Should Reject)', () => {
     }
   });
 
-  test('CORS: Preflight request with malicious origin should be rejected or blocked', async ({
-    context,
-  }) => {
+  test('CORS: Preflight request with malicious origin should be rejected or blocked', async ({ context }) => {
     // Use fetch API for OPTIONS since context.request.options doesn't exist
-    const response = await context.request.fetch(
-      `${ID_API_URL}/api/auth/status`,
-      {
-        method: 'OPTIONS',
-        headers: {
-          Origin: 'https://evil.example.com',
-          'Access-Control-Request-Method': 'POST',
-        },
-      }
-    );
+    const response = await context.request.fetch(`${ID_API_URL}/api/auth/status`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://evil.example.com',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
 
     const headers = response.headers();
     const corsHeader = headers['access-control-allow-origin'];
@@ -79,20 +72,14 @@ test.describe('Security - CORS Misconfiguration (Should Reject)', () => {
     }
   });
 
-  test('CORS: Credentials should not be exposed to unauthorized origins', async ({
-    context,
-  }) => {
-    const response = await context.request.get(
-      `${ID_API_URL}/api/auth/status`,
-      {
-        headers: {
-          Origin: 'https://unauthorized-domain.com',
-        },
-      }
-    );
+  test('CORS: Credentials should not be exposed to unauthorized origins', async ({ context }) => {
+    const response = await context.request.get(`${ID_API_URL}/api/auth/status`, {
+      headers: {
+        Origin: 'https://unauthorized-domain.com',
+      },
+    });
 
-    const allowCredentials =
-      response.headers()['access-control-allow-credentials'];
+    const allowCredentials = response.headers()['access-control-allow-credentials'];
     const corsOrigin = response.headers()['access-control-allow-origin'];
 
     // Key requirement: CORS must use allowlist, not wildcard
@@ -109,9 +96,7 @@ test.describe('Security - CORS Misconfiguration (Should Reject)', () => {
 });
 
 test.describe('Security - Host Header Injection (Should Reject)', () => {
-  test('Host Header: Reject requests with malicious Host header', async ({
-    context,
-  }) => {
+  test('Host Header: Reject requests with malicious Host header', async ({ context }) => {
     const response = await context.request.get(`${ADMIN_FRONT}/`, {
       headers: {
         Host: 'attacker.com',
@@ -125,9 +110,7 @@ test.describe('Security - Host Header Injection (Should Reject)', () => {
     expect(html).not.toContain('attacker.com');
   });
 
-  test('Host Header: Nginx should use hardcoded backend hostname', async ({
-    context,
-  }) => {
+  test('Host Header: Nginx should use hardcoded backend hostname', async ({ context }) => {
     // Make request and check for cache poisoning prevention
     const response = await context.request.get(`${ADMIN_FRONT}/api/health`, {
       headers: {
@@ -146,9 +129,7 @@ test.describe('Security - Host Header Injection (Should Reject)', () => {
     }
   });
 
-  test('Host Header: Cache poisoning via Host header should fail', async ({
-    context,
-  }) => {
+  test('Host Header: Cache poisoning via Host header should fail', async ({ context }) => {
     // Request 1: Normal request
     const resp1 = await context.request.get(`${ADMIN_FRONT}/`, {
       headers: { Host: 'localhost:8082' },
@@ -165,52 +146,42 @@ test.describe('Security - Host Header Injection (Should Reject)', () => {
     // Both should return legitimate content or error consistently
     // Shouldn't have attacker domain injected in response
     expect(content2).not.toContain('attacker-cache.com');
-    
+
     // Responses should be identical (from same backend)
     expect(content1 === content2 || (resp1.status() !== 200 && resp2.status() !== 200)).toBeTruthy();
   });
 });
 
 test.describe('Security - H2C Smuggling (Should Reject)', () => {
-  test('H2C Smuggling: Upgrade header should not allow arbitrary protocol switching',
-    async ({ context }) => {
-      const response = await context.request.get(
-        `${ADMIN_FRONT}/api/health`,
-        {
-          headers: {
-            Connection: 'upgrade',
-            Upgrade: 'h2c',
-          },
-        }
-      );
+  test('H2C Smuggling: Upgrade header should not allow arbitrary protocol switching', async ({ context }) => {
+    const response = await context.request.get(`${ADMIN_FRONT}/api/health`, {
+      headers: {
+        Connection: 'upgrade',
+        Upgrade: 'h2c',
+      },
+    });
 
-      const upgrade = response.headers()['upgrade'];
-      const connection = response.headers()['connection'];
+    const upgrade = response.headers()['upgrade'];
+    const connection = response.headers()['connection'];
 
-      // Should not upgrade to h2c
-      if (upgrade) {
-        expect(upgrade.toLowerCase()).not.toBe('h2c');
-      }
-
-      // Should either close or keep-alive, not upgrade
-      if (connection) {
-        expect(connection.toLowerCase()).not.toContain('upgrade');
-      }
+    // Should not upgrade to h2c
+    if (upgrade) {
+      expect(upgrade.toLowerCase()).not.toBe('h2c');
     }
-  );
 
-  test('H2C Smuggling: WebSocket upgrade should be controlled', async ({
-    context,
-  }) => {
-    const response = await context.request.get(
-      `${ADMIN_FRONT}/api/health`,
-      {
-        headers: {
-          Connection: 'upgrade',
-          Upgrade: 'websocket',
-        },
-      }
-    );
+    // Should either close or keep-alive, not upgrade
+    if (connection) {
+      expect(connection.toLowerCase()).not.toContain('upgrade');
+    }
+  });
+
+  test('H2C Smuggling: WebSocket upgrade should be controlled', async ({ context }) => {
+    const response = await context.request.get(`${ADMIN_FRONT}/api/health`, {
+      headers: {
+        Connection: 'upgrade',
+        Upgrade: 'websocket',
+      },
+    });
 
     // Should either:
     // 1. Allow WebSocket only to specific endpoints (not /api/health)
@@ -218,12 +189,7 @@ test.describe('Security - H2C Smuggling (Should Reject)', () => {
     const upgrade = response.headers()['upgrade'];
 
     // /api/health should not upgrade to websocket
-    expect(
-      upgrade === undefined ||
-        upgrade.toLowerCase() !== 'websocket' ||
-        response.status() === 400 ||
-        response.status() === 426
-    ).toBeTruthy();
+    expect(upgrade === undefined || upgrade.toLowerCase() !== 'websocket' || response.status() === 400 || response.status() === 426).toBeTruthy();
   });
 });
 
@@ -233,46 +199,31 @@ test.describe('Security - Defense in Depth', () => {
     const headers = response.headers();
 
     // CSP should be present
-    const csp =
-      headers['content-security-policy'] ||
-      headers['content-security-policy-report-only'];
+    const csp = headers['content-security-policy'] || headers['content-security-policy-report-only'];
 
     // CSP should be configured to restrict script execution
     expect(csp).toBeTruthy();
-    expect(
-      csp.includes('script-src') ||
-        csp.includes('default-src')
-    ).toBeTruthy();
+    expect(csp.includes('script-src') || csp.includes('default-src')).toBeTruthy();
   });
 
-  test('Security Headers: X-Frame-Options should prevent clickjacking', async ({
-    context,
-  }) => {
+  test('Security Headers: X-Frame-Options should prevent clickjacking', async ({ context }) => {
     const response = await context.request.get(`${ADMIN_FRONT}/`);
     const xFrameOptions = response.headers()['x-frame-options'];
 
     // Should restrict framing
     expect(xFrameOptions).toBeTruthy();
-    expect(
-      xFrameOptions === 'DENY' ||
-        xFrameOptions === 'SAMEORIGIN' ||
-        xFrameOptions.includes('ALLOW-FROM')
-    ).toBeTruthy();
+    expect(xFrameOptions === 'DENY' || xFrameOptions === 'SAMEORIGIN' || xFrameOptions.includes('ALLOW-FROM')).toBeTruthy();
   });
 
-  test('Security Headers: X-Content-Type-Options should prevent MIME sniffing',
-    async ({ context }) => {
-      const response = await context.request.get(`${ADMIN_FRONT}/`);
-      const xContentType = response.headers()['x-content-type-options'];
+  test('Security Headers: X-Content-Type-Options should prevent MIME sniffing', async ({ context }) => {
+    const response = await context.request.get(`${ADMIN_FRONT}/`);
+    const xContentType = response.headers()['x-content-type-options'];
 
-      // Must be set to nosniff to prevent MIME type sniffing
-      expect(xContentType).toBe('nosniff');
-    }
-  );
+    // Must be set to nosniff to prevent MIME type sniffing
+    expect(xContentType).toBe('nosniff');
+  });
 
-  test('Security Headers: Strict-Transport-Security should enforce HTTPS', async ({
-    context,
-  }) => {
+  test('Security Headers: Strict-Transport-Security should enforce HTTPS', async ({ context }) => {
     const response = await context.request.get(`${ADMIN_FRONT}/`);
     const hsts = response.headers()['strict-transport-security'];
 

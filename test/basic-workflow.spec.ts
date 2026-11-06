@@ -1,13 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  importRegister,
-  importWorkflow,
-  setupLogging,
-  log,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, importRegister, importWorkflow, setupLogging, log } from './helpers';
 
 test('Authorize with admin and import register/workflow', async ({ page }) => {
   await setupLogging(page);
@@ -15,7 +8,7 @@ test('Authorize with admin and import register/workflow', async ({ page }) => {
   log('Going to http://localhost:8082/');
   await page.goto('http://localhost:8082/');
 
-  log('Ensuring that we\'ve been redirected to login page');
+  log("Ensuring that we've been redirected to login page");
   await ensureAtLoginPage(page);
 
   log('Logging in with personal key (admin.p12)');
@@ -38,27 +31,9 @@ test('Authorize with admin and import register/workflow', async ({ page }) => {
     await expect(page.locator('tbody tr')).toHaveCount(3);
 
     // Additionally, verify the specific register keys are present in the descriptions
-    await expect(
-      page
-        .locator('tbody')
-        .getByText(
-          'Students. This register contains information about students'
-        )
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('tbody')
-        .getByText(
-          'Institutions. This register contains information about educational institutions'
-        )
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('tbody')
-        .getByText(
-          'Groups. This register contains information about educational groups'
-        )
-    ).toBeVisible();
+    await expect(page.locator('tbody').getByText('Students. This register contains information about students')).toBeVisible();
+    await expect(page.locator('tbody').getByText('Institutions. This register contains information about educational institutions')).toBeVisible();
+    await expect(page.locator('tbody').getByText('Groups. This register contains information about educational groups')).toBeVisible();
   }
 
   {
@@ -77,7 +52,7 @@ test('Authorize with end user and pass the workflow', async ({ page }) => {
   log('Going to http://localhost:8081/');
   await page.goto('http://localhost:8081/');
 
-  log('Ensuring that we\'ve been redirected to login page');
+  log("Ensuring that we've been redirected to login page");
   await ensureAtLoginPage(page);
 
   log('Logging in with personal key (demo.p12)');
@@ -102,10 +77,8 @@ test('Authorize with end user and pass the workflow', async ({ page }) => {
     log('Verifying page title changed to Student editing task');
     await expect(page).toHaveTitle(/^Student editing: Educational institution/);
 
-    log('Verify that we\'re at the instituionInfo step');
-    await expect(page).toHaveURL(
-      /^http:\/\/localhost:8081\/tasks\/[a-f0-9-]{36}\/institutionInfo$/
-    );
+    log("Verify that we're at the instituionInfo step");
+    await expect(page).toHaveURL(/^http:\/\/localhost:8081\/tasks\/[a-f0-9-]{36}\/institutionInfo$/);
 
     log('Clicking on Educational institution control');
     await page.getByRole('button', { name: 'Open list' }).click();
@@ -128,9 +101,7 @@ test('Authorize with end user and pass the workflow', async ({ page }) => {
     log('Waiting for the next step');
     await page.waitForTimeout(2000);
 
-    log('Verify that we\'re at the studentInfo step');
-    await expect(page).toHaveURL(
-      /^http:\/\/localhost:8081\/tasks\/[a-f0-9-]{36}\/studentInfo$/
-    );
+    log("Verify that we're at the studentInfo step");
+    await expect(page).toHaveURL(/^http:\/\/localhost:8081\/tasks\/[a-f0-9-]{36}\/studentInfo$/);
   }
 });

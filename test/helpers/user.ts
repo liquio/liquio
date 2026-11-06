@@ -58,7 +58,7 @@ async function generateTestUser(): Promise<TestUser> {
     password,
     p12Path: path.relative(path.join(__dirname, '..'), p12Path),
     jsonPath: path.relative(path.join(__dirname, '..'), jsonPath),
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
 
   fs.writeFileSync(jsonPath, JSON.stringify(metadata, null, 2));
@@ -67,7 +67,5 @@ async function generateTestUser(): Promise<TestUser> {
   return metadata;
 }
 
-export {
-  generateTestUser,
-};
+export { generateTestUser };
 export type { TestUser };

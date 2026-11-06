@@ -68,9 +68,8 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
   };
 
   // Paths reported by /validate (or commit) as calcTrigger recalculation mismatches.
-  const mismatchPaths = (body: any) => (body?.error?.details || [])
-    .filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message))
-    .map((detail: any) => detail.dataPath);
+  const mismatchPaths = (body: any) =>
+    (body?.error?.details || []).filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message)).map((detail: any) => detail.dataPath);
 
   const validateMismatchPaths = async (documentId: string) => mismatchPaths((await api.validateDocument(documentId)).body);
 
@@ -228,19 +227,21 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
     test('silently drops a checkReadonly: true field written without triggerPath', async () => {
       const task = await startTask(TASK_TEMPLATES.CHECK_READONLY);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'lockStep.input', value: 'value' },
-        { path: 'lockStep.locked', value: TAMPERED },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'lockStep.input', value: 'value' },
+          { path: 'lockStep.locked', value: TAMPERED },
+        ]),
+      );
       expect((await getDocumentData(task.documentId)).lockStep).toEqual({ input: 'value' });
     });
 
     test('rejects a triggerPath naming a checkReadonly: true field that is not a calcTrigger target', async () => {
       const task = await startTask(TASK_TEMPLATES.CHECK_READONLY);
 
-      expectRejectedAsInvalidTriggerPath(await api.updateDocument(task.documentId, [
-        { path: 'lockStep.locked', value: TAMPERED },
-      ], ['lockStep.locked']));
+      expectRejectedAsInvalidTriggerPath(
+        await api.updateDocument(task.documentId, [{ path: 'lockStep.locked', value: TAMPERED }], ['lockStep.locked']),
+      );
       expect((await getDocumentData(task.documentId)).lockStep?.locked).toBeUndefined();
     });
 
@@ -248,10 +249,16 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       const task = await startTask(TASK_TEMPLATES.CHECK_READONLY);
 
       // triggerPath only lifts `readOnly`; `checkReadonly` keeps the field closed to the client.
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'lockStep.input', value: 'value' },
-        { path: 'lockStep.lockedTarget', value: 'value' },
-      ], ['lockStep.lockedTarget']));
+      expectAccepted(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'lockStep.input', value: 'value' },
+            { path: 'lockStep.lockedTarget', value: 'value' },
+          ],
+          ['lockStep.lockedTarget'],
+        ),
+      );
       expect((await getDocumentData(task.documentId)).lockStep).toEqual({ input: 'value' });
     });
   });
@@ -260,10 +267,12 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
     test('rejects a tampered cleanWhenHidden target hidden by checkHidden when it is written directly', async () => {
       const task = await startTask(TASK_TEMPLATES.CLEAN_WHEN_HIDDEN);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'hideStep.input', value: 'value' },
-        { path: 'hideStep.result', value: TAMPERED },
-      ]));
+      expectRejectedAsMismatch(
+        await api.updateDocument(task.documentId, [
+          { path: 'hideStep.input', value: 'value' },
+          { path: 'hideStep.result', value: TAMPERED },
+        ]),
+      );
     });
 
     test('still reports a tampered cleanWhenHidden target hidden by checkHidden on /validate', async () => {
@@ -271,19 +280,19 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
 
       // Written through its parent object, so it isn't checked on PUT. The cleanWhenHidden filter
       // only drops keyword errors: a calcTrigger mismatch is still reported.
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'hideStep', value: { input: 'value', result: TAMPERED } },
-      ]));
+      expectAccepted(await api.updateDocument(task.documentId, [{ path: 'hideStep', value: { input: 'value', result: TAMPERED } }]));
       expect(await validateMismatchPaths(task.documentId)).toEqual(['hideStep.result']);
     });
 
     test('reports no mismatch for an honest cleanWhenHidden target hidden by checkHidden on /validate', async () => {
       const task = await startTask(TASK_TEMPLATES.CLEAN_WHEN_HIDDEN);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'hideStep.input', value: 'value' },
-        { path: 'hideStep.result', value: 'value!' },
-      ]));
+      expectAccepted(
+        await api.updateDocument(task.documentId, [
+          { path: 'hideStep.input', value: 'value' },
+          { path: 'hideStep.result', value: 'value!' },
+        ]),
+      );
       expect(await validateMismatchPaths(task.documentId)).toEqual([]);
     });
   });
@@ -293,40 +302,64 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
 
     // First fill: the front sends every target as a whole value.
     const firstFill = async (documentId: string, input: any) => {
-      expectAccepted(await api.updateDocument(documentId, [
-        { path: 'calc.input', value: input },
-        { path: 'calc.upper', value: input.toUpperCase() },
-        { path: 'calc.resultObject', value: { name: input, len: input.length } },
-        { path: 'calc.resultArray', value: input.split('') },
-      ], ['calc.upper', 'calc.resultObject', 'calc.resultArray']));
+      expectAccepted(
+        await api.updateDocument(
+          documentId,
+          [
+            { path: 'calc.input', value: input },
+            { path: 'calc.upper', value: input.toUpperCase() },
+            { path: 'calc.resultObject', value: { name: input, len: input.length } },
+            { path: 'calc.resultArray', value: input.split('') },
+          ],
+          ['calc.upper', 'calc.resultObject', 'calc.resultArray'],
+        ),
+      );
     };
 
     test('accepts an honest scalar target', async () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'calc.input', value: 'ab' },
-        { path: 'calc.upper', value: 'AB' },
-      ], ['calc.upper']));
+      expectAccepted(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'calc.input', value: 'ab' },
+            { path: 'calc.upper', value: 'AB' },
+          ],
+          ['calc.upper'],
+        ),
+      );
       expect((await getDocumentData(task.documentId)).calc.upper).toBe('AB');
     });
 
     test('rejects a tampered scalar target', async () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'calc.input', value: 'ab' },
-        { path: 'calc.upper', value: TAMPERED },
-      ], ['calc.upper']));
+      expectRejectedAsMismatch(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'calc.input', value: 'ab' },
+            { path: 'calc.upper', value: TAMPERED },
+          ],
+          ['calc.upper'],
+        ),
+      );
     });
 
     test('accepts the first fill of an object target and stores it as sent', async () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'calc.input', value: 'ab' },
-        { path: 'calc.resultObject', value: { name: 'ab', len: 2 } },
-      ], ['calc.resultObject']));
+      expectAccepted(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'calc.input', value: 'ab' },
+            { path: 'calc.resultObject', value: { name: 'ab', len: 2 } },
+          ],
+          ['calc.resultObject'],
+        ),
+      );
       expect((await getDocumentData(task.documentId)).calc.resultObject).toEqual({ name: 'ab', len: 2 });
     });
 
@@ -334,13 +367,19 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
       await firstFill(task.documentId, 'ab');
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'calc.input', value: 'abc' },
-        { path: 'calc.upper', value: 'ABC' },
-        { path: 'calc.resultObject.name', value: 'abc' },
-        { path: 'calc.resultObject.len', value: 3 },
-        { path: 'calc.resultArray.2', value: 'c' },
-      ], ['calc.upper', ...OBJECT_TRIGGER_PATHS, 'calc.resultArray.2']));
+      expectAccepted(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'calc.input', value: 'abc' },
+            { path: 'calc.upper', value: 'ABC' },
+            { path: 'calc.resultObject.name', value: 'abc' },
+            { path: 'calc.resultObject.len', value: 3 },
+            { path: 'calc.resultArray.2', value: 'c' },
+          ],
+          ['calc.upper', ...OBJECT_TRIGGER_PATHS, 'calc.resultArray.2'],
+        ),
+      );
       expect((await getDocumentData(task.documentId)).calc).toEqual({
         input: 'abc',
         upper: 'ABC',
@@ -354,11 +393,17 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
       await firstFill(task.documentId, 'ab');
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'calc.input', value: 'abc' },
-        { path: 'calc.resultObject.name', value: 'abc' },
-        { path: 'calc.resultObject.len', value: 99 },
-      ], OBJECT_TRIGGER_PATHS));
+      expectRejectedAsMismatch(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'calc.input', value: 'abc' },
+            { path: 'calc.resultObject.name', value: 'abc' },
+            { path: 'calc.resultObject.len', value: 99 },
+          ],
+          OBJECT_TRIGGER_PATHS,
+        ),
+      );
       expect((await getDocumentData(task.documentId)).calc.resultObject).toEqual({ name: 'ab', len: 2 });
     });
 
@@ -366,10 +411,16 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
       await firstFill(task.documentId, 'ab');
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'calc.input', value: 'abc' },
-        { path: 'calc.resultArray.2', value: 'c' },
-      ], ['calc.resultArray.2']));
+      expectAccepted(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'calc.input', value: 'abc' },
+            { path: 'calc.resultArray.2', value: 'c' },
+          ],
+          ['calc.resultArray.2'],
+        ),
+      );
       expect((await getDocumentData(task.documentId)).calc.resultArray).toEqual(['a', 'b', 'c']);
     });
 
@@ -377,19 +428,31 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
       await firstFill(task.documentId, 'ab');
 
-      expectRejectedAsMismatch(await api.updateDocument(task.documentId, [
-        { path: 'calc.input', value: 'abc' },
-        { path: 'calc.resultArray.2', value: TAMPERED },
-      ], ['calc.resultArray.2']));
+      expectRejectedAsMismatch(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'calc.input', value: 'abc' },
+            { path: 'calc.resultArray.2', value: TAMPERED },
+          ],
+          ['calc.resultArray.2'],
+        ),
+      );
     });
 
     test('accepts the first fill of an array target and stores it as sent', async () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'calc.input', value: 'ab' },
-        { path: 'calc.resultArray', value: ['a', 'b'] },
-      ], ['calc.resultArray']));
+      expectAccepted(
+        await api.updateDocument(
+          task.documentId,
+          [
+            { path: 'calc.input', value: 'ab' },
+            { path: 'calc.resultArray', value: ['a', 'b'] },
+          ],
+          ['calc.resultArray'],
+        ),
+      );
       expect((await getDocumentData(task.documentId)).calc.resultArray).toEqual(['a', 'b']);
     });
 
@@ -397,18 +460,16 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
       await firstFill(task.documentId, 'ab');
 
-      expectAccepted(await api.updateDocument(task.documentId, [
-        { path: 'calc.resultObject.name', value: TAMPERED },
-      ]));
+      expectAccepted(await api.updateDocument(task.documentId, [{ path: 'calc.resultObject.name', value: TAMPERED }]));
       expect((await getDocumentData(task.documentId)).calc.resultObject).toEqual({ name: 'ab', len: 2 });
     });
 
     test('rejects a triggerPath naming a sibling that shares the target name as a prefix', async () => {
       const task = await startTask(TASK_TEMPLATES.READONLY_OBJECT_AND_ARRAY);
 
-      expectRejectedAsInvalidTriggerPath(await api.updateDocument(task.documentId, [
-        { path: 'calc.resultObjectX', value: TAMPERED },
-      ], ['calc.resultObjectX']));
+      expectRejectedAsInvalidTriggerPath(
+        await api.updateDocument(task.documentId, [{ path: 'calc.resultObjectX', value: TAMPERED }], ['calc.resultObjectX']),
+      );
     });
   });
 
@@ -431,10 +492,14 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
     };
 
     // Waits for the PUT that saved `value` of `calc.input` and returns its body.
-    const waitForSourceSaved = (value: any) => page.waitForResponse((response) => isDocumentUpdate(response.request())
-      && (response.request().postDataJSON()?.properties || [])
-        .some(({ path, value: sent }: { path: string; value: any }) => path === 'calc.input' && sent === value));
-
+    const waitForSourceSaved = (value: any) =>
+      page.waitForResponse(
+        (response) =>
+          isDocumentUpdate(response.request()) &&
+          (response.request().postDataJSON()?.properties || []).some(
+            ({ path, value: sent }: { path: string; value: any }) => path === 'calc.input' && sent === value,
+          ),
+      );
 
     const getTask = async (taskId: string) => {
       const { status, body } = await api.getTask(taskId);
@@ -449,7 +514,10 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
 
       expect(validateResponses.length, 'the front validated the document').toBeGreaterThan(0);
       for (const { status, body } of validateResponses) {
-        expect((body?.error?.details || []).filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message)), JSON.stringify(body)).toEqual([]);
+        expect(
+          (body?.error?.details || []).filter((detail: any) => MISMATCH_ON_VALIDATE.test(detail.message)),
+          JSON.stringify(body),
+        ).toEqual([]);
         expect(status, JSON.stringify(body)).toBe(200);
       }
 
@@ -467,12 +535,14 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       expect(response.status()).toBe(200);
 
       const body = response.request().postDataJSON();
-      expect(body.properties).toEqual(expect.arrayContaining([
-        { path: 'calc.input', value: 'ab' },
-        { path: 'calc.upper', value: 'AB' },
-        { path: 'calc.resultObject', value: { name: 'ab', len: 2 } },
-        { path: 'calc.resultArray', value: ['a', 'b'] },
-      ]));
+      expect(body.properties).toEqual(
+        expect.arrayContaining([
+          { path: 'calc.input', value: 'ab' },
+          { path: 'calc.upper', value: 'AB' },
+          { path: 'calc.resultObject', value: { name: 'ab', len: 2 } },
+          { path: 'calc.resultArray', value: ['a', 'b'] },
+        ]),
+      );
       expect([...body.triggerPath].sort()).toEqual(['calc.resultArray', 'calc.resultObject', 'calc.upper']);
 
       expect((await getDocumentData(task.documentId)).calc).toEqual({
@@ -497,19 +567,16 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
 
       // The front sends only the parts that changed: leaf paths of the object, the new array item.
       const body = response.request().postDataJSON();
-      expect(body.properties.map(({ path, value }: { path: string; value: any }) => ({ path, value }))).toEqual(expect.arrayContaining([
-        { path: 'calc.input', value: 'abc' },
-        { path: 'calc.upper', value: 'ABC' },
-        { path: 'calc.resultObject.name', value: 'abc' },
-        { path: 'calc.resultObject.len', value: 3 },
-        { path: 'calc.resultArray.2', value: 'c' },
-      ]));
-      expect([...body.triggerPath].sort()).toEqual([
-        'calc.resultArray.2',
-        'calc.resultObject.len',
-        'calc.resultObject.name',
-        'calc.upper',
-      ]);
+      expect(body.properties.map(({ path, value }: { path: string; value: any }) => ({ path, value }))).toEqual(
+        expect.arrayContaining([
+          { path: 'calc.input', value: 'abc' },
+          { path: 'calc.upper', value: 'ABC' },
+          { path: 'calc.resultObject.name', value: 'abc' },
+          { path: 'calc.resultObject.len', value: 3 },
+          { path: 'calc.resultArray.2', value: 'c' },
+        ]),
+      );
+      expect([...body.triggerPath].sort()).toEqual(['calc.resultArray.2', 'calc.resultObject.len', 'calc.resultObject.name', 'calc.upper']);
 
       expect((await getDocumentData(task.documentId)).calc).toEqual({
         input: 'abc',
@@ -531,7 +598,10 @@ test.describe('Workflow 900003 (calcTriggers validation edge cases)', () => {
       await page.getByRole('button', { name: 'Finish', exact: true }).click();
 
       await expectFinished(taskId);
-      expect(documentUpdates.every(({ status }) => status === 200), JSON.stringify(documentUpdates)).toBe(true);
+      expect(
+        documentUpdates.every(({ status }) => status === 200),
+        JSON.stringify(documentUpdates),
+      ).toBe(true);
     });
   });
 });

@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  importWorkflow,
-  setupLogging,
-  log,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, importWorkflow, setupLogging, log } from './helpers';
 
 test.describe('Workflow 1001 (Notification Event)', () => {
   test('import, run from cabinet, and verify workflow journal', async ({ page }) => {
@@ -122,39 +116,32 @@ test.describe('Workflow 1001 (Notification Event)', () => {
     await page.waitForLoadState('networkidle');
 
     // 7) Observe results.
-    const processNotCompletedChip = page.locator('div').filter({ hasText: /^Process not completed$/ }).first();
-    await expect(
-      processNotCompletedChip,
-      'Workflow journal is marked with Process not completed'
-    ).not.toBeVisible();
+    const processNotCompletedChip = page
+      .locator('div')
+      .filter({ hasText: /^Process not completed$/ })
+      .first();
+    await expect(processNotCompletedChip, 'Workflow journal is marked with Process not completed').not.toBeVisible();
 
-    const processCompleteChip = page.locator('div').filter({ hasText: /^Process complete$/ }).first();
-    await expect(
-      processCompleteChip,
-      'Workflow journal is marked with Process complete'
-    ).toBeVisible();
+    const processCompleteChip = page
+      .locator('div')
+      .filter({ hasText: /^Process complete$/ })
+      .first();
+    await expect(processCompleteChip, 'Workflow journal is marked with Process complete').toBeVisible();
 
-    const unresolvedErrorChip = page.locator('div').filter({ hasText: /^Unresolved error$/ }).first();
-    await expect(
-      unresolvedErrorChip,
-      'Workflow journal is marked with Unresolved error'
-    ).not.toBeVisible();
+    const unresolvedErrorChip = page
+      .locator('div')
+      .filter({ hasText: /^Unresolved error$/ })
+      .first();
+    await expect(unresolvedErrorChip, 'Workflow journal is marked with Unresolved error').not.toBeVisible();
 
     const rows = page.locator('table tbody tr');
     await rows.first().waitFor({ timeout: 15000 });
 
-    const eventRow = rows
-      .filter({ hasText: /Send Notification Event|Event 1001001/i })
-      .first();
+    const eventRow = rows.filter({ hasText: /Send Notification Event|Event 1001001/i }).first();
     await expect(eventRow).toBeVisible();
 
-    const errorRow = rows
-      .filter({ hasText: /\bError\b|AxiosError|status code 401/i })
-      .first();
-    await expect(
-      errorRow,
-      'Workflow journal contains an error entry for notification event'
-    ).not.toBeVisible();
+    const errorRow = rows.filter({ hasText: /\bError\b|AxiosError|status code 401/i }).first();
+    await expect(errorRow, 'Workflow journal contains an error entry for notification event').not.toBeVisible();
 
     const detailsByRole = eventRow.getByRole('button', { name: /Details/i });
     const detailsByAria = eventRow.locator('button[aria-label="Details"]');

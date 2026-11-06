@@ -98,10 +98,7 @@ test.describe('Document update validation', () => {
   test('rejects an object key with brace and pipe characters', async () => {
     const { documentId } = await startTask();
 
-    expectRejected(
-      await api.updateDocument(documentId, [{ path: 'unknownStep', value: { [BRACE_KEY]: MARKUP_VALUE } }]),
-      'Invalid property key',
-    );
+    expectRejected(await api.updateDocument(documentId, [{ path: 'unknownStep', value: { [BRACE_KEY]: MARKUP_VALUE } }]), 'Invalid property key');
 
     const { status, body } = await api.getDocument(documentId);
     expect(status).toBe(200);
@@ -120,10 +117,7 @@ test.describe('Document update validation', () => {
   test('rejects prototype path segments', async () => {
     const { documentId } = await startTask();
 
-    expectRejected(
-      await api.updateDocument(documentId, [{ path: '__proto__.polluted', value: 'x' }]),
-      'Invalid property path',
-    );
+    expectRejected(await api.updateDocument(documentId, [{ path: '__proto__.polluted', value: 'x' }]), 'Invalid property path');
   });
 
   test('rejects paths that the template schema does not declare', async () => {
@@ -239,10 +233,7 @@ test.describe('Document update schema allow-list', () => {
   test('rejects an undeclared key inside an array item', async () => {
     const { documentId } = await startTask();
 
-    expectRejected(
-      await api.updateDocument(documentId, [{ path: 'profile.items', value: [{ name: 'a', extra: 'x' }] }]),
-      SCHEMA_MESSAGE,
-    );
+    expectRejected(await api.updateDocument(documentId, [{ path: 'profile.items', value: [{ name: 'a', extra: 'x' }] }]), SCHEMA_MESSAGE);
 
     const { body } = await api.getDocument(documentId);
     expect(body.data.data.profile?.items).toBeUndefined();
@@ -257,9 +248,7 @@ test.describe('Document update schema allow-list', () => {
   test('accepts any content below a free-form field', async () => {
     const { documentId } = await startTask();
 
-    expectAccepted(await api.updateDocument(documentId, [
-      { path: 'freeForm', value: { any: { deep: [{ x: 1 }] }, other: 'y' } },
-    ]));
+    expectAccepted(await api.updateDocument(documentId, [{ path: 'freeForm', value: { any: { deep: [{ x: 1 }] }, other: 'y' } }]));
     expectAccepted(await api.updateDocument(documentId, [{ path: 'freeForm.any.added', value: 'z' }]));
 
     const { body } = await api.getDocument(documentId);
@@ -272,10 +261,7 @@ test.describe('Document update schema allow-list', () => {
     const { documentId } = await startTask();
 
     expectRejected(await api.updateDocument(documentId, [{ path: 'freeForm', value: { 'a<b': 1 } }]), 'Invalid property key');
-    expectRejected(
-      await api.updateDocument(documentId, [{ path: 'freeForm', value: { nested: { constructor: 1 } } }]),
-      'Invalid property key',
-    );
+    expectRejected(await api.updateDocument(documentId, [{ path: 'freeForm', value: { nested: { constructor: 1 } } }]), 'Invalid property key');
   });
 
   test('accepts undeclared keys where the schema allows additional properties', async () => {
@@ -301,14 +287,8 @@ test.describe('Document update schema allow-list', () => {
   test('rejects prototype segments in the trigger path', async () => {
     const { documentId } = await startTask();
 
-    expectRejected(
-      await api.updateDocument(documentId, [{ path: 'profile.fullName', value: 'x' }], ['__proto__.polluted']),
-      'Invalid trigger path',
-    );
-    expectRejected(
-      await api.updateDocument(documentId, [{ path: 'profile.fullName', value: 'x' }], ['profile.constructor']),
-      'Invalid trigger path',
-    );
+    expectRejected(await api.updateDocument(documentId, [{ path: 'profile.fullName', value: 'x' }], ['__proto__.polluted']), 'Invalid trigger path');
+    expectRejected(await api.updateDocument(documentId, [{ path: 'profile.fullName', value: 'x' }], ['profile.constructor']), 'Invalid trigger path');
   });
 
   test('does not echo rejected values in the response or the task log', async () => {

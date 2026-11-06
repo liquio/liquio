@@ -2,9 +2,7 @@ import type { Page } from '@playwright/test';
 import { debug } from './debug';
 
 async function importWorkflow(page: Page, filePath: string, isTest = false, isOverwrite = false): Promise<void> {
-  const url = isTest
-    ? 'http://localhost:8082/workflow'
-    : 'http://localhost:8082/workflow_test';
+  const url = isTest ? 'http://localhost:8082/workflow' : 'http://localhost:8082/workflow_test';
 
   debug('importWorkflow: Navigating to workflows page');
   await page.goto(url);
@@ -31,9 +29,7 @@ async function importWorkflow(page: Page, filePath: string, isTest = false, isOv
   // workflow is rejected until the overwrite is confirmed). Without waiting for that, a caller
   // navigating away right after a new workflow's import aborts the upload.
   const importAccepted = page.waitForResponse(
-    (response) => response.request().method() === 'POST'
-      && response.url().includes('/bpmn-workflows/import')
-      && response.status() < 300,
+    (response) => response.request().method() === 'POST' && response.url().includes('/bpmn-workflows/import') && response.status() < 300,
     { timeout: 60000 },
   );
   importAccepted.catch((): null => null);
@@ -72,6 +68,4 @@ async function importWorkflow(page: Page, filePath: string, isTest = false, isOv
   debug('importWorkflow: Import complete');
 }
 
-export {
-  importWorkflow,
-};
+export { importWorkflow };

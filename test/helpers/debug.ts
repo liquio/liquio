@@ -34,10 +34,4 @@ function getTraceIdsForRequest(method: string, url: string): string[] {
   return requestTraceIds.get(requestKey) || [];
 }
 
-export {
-  setupLogging,
-  getTraceIdsForRequest,
-  requestTraceIds,
-  log,
-  debug,
-};
+export { setupLogging, getTraceIdsForRequest, requestTraceIds, log, debug };

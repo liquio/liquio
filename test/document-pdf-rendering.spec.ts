@@ -166,10 +166,12 @@ test.describe('Document PDF rendering', () => {
   test('pdf-generator never requests a URL that only appears in document data', async () => {
     const m = marker();
     const documentId = await startDocument();
-    await write(documentId, [{
-      path: 'profile.note',
-      value: `<img src="http://${m}.example.invalid/a.png"><iframe src="http://register:8080/test/ping?${m}"></iframe>`,
-    }]);
+    await write(documentId, [
+      {
+        path: 'profile.note',
+        value: `<img src="http://${m}.example.invalid/a.png"><iframe src="http://register:8080/test/ping?${m}"></iframe>`,
+      },
+    ]);
     await renderPdf(documentId);
     const logs = getDockerComposeLogs('pdf-generator', since);
     const blocked = logs.split('\n').filter((line) => line.includes('request-blocked') && line.includes(m));

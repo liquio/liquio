@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  importWorkflow,
-  setupLogging,
-  log,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, importWorkflow, setupLogging, log } from './helpers';
 
 test.describe('Workflow 900001 (Attention Notice)', () => {
   let workflowId: string;
@@ -18,7 +12,7 @@ test.describe('Workflow 900001 (Attention Notice)', () => {
     log('Going to http://localhost:8082/');
     await page.goto('http://localhost:8082/');
 
-    log('Ensuring that we\'ve been redirected to login page');
+    log("Ensuring that we've been redirected to login page");
     await ensureAtLoginPage(page);
 
     log('Logging in with personal key (admin.p12)');
@@ -66,18 +60,18 @@ test.describe('Workflow 900001 (Attention Notice)', () => {
     log('Looking for workflow 900001 (Attention Notice) to start');
     // Wait for the workflow list to load
     await page.waitForLoadState('networkidle');
-    
+
     // Try to find the workflow by text or element
     const workflowElements = page.locator('text=Attention Notice');
     const count = await workflowElements.count();
-    
+
     if (count > 0) {
       log(`Found ${count} workflow element(s) with text "Attention Notice"`);
       await workflowElements.first().click();
     } else {
       log('Workflow not found by text, looking for button or card');
       const workflowButton = page.locator('[class*="workflow"], [class*="card"], button').filter({ hasText: /Attention|900001/ });
-      if (await workflowButton.count() > 0) {
+      if ((await workflowButton.count()) > 0) {
         await workflowButton.first().click();
       } else {
         log('Warning: Could not locate workflow element');
@@ -115,7 +109,10 @@ test.describe('Workflow 900001 (Attention Notice)', () => {
     await page.getByRole('button', { name: 'Finish' }).click();
 
     log('Waiting for completion dialog to appear');
-    await page.getByRole('dialog').filter({ hasText: /Thank you|application has been sent/ }).waitFor();
+    await page
+      .getByRole('dialog')
+      .filter({ hasText: /Thank you|application has been sent/ })
+      .waitFor();
     await expect(page.getByRole('dialog')).toContainText(/Thank you|application has been sent/);
     log('✓ Workflow task completed successfully, completion dialog shown');
     log('Completion dialog found, clicking Home button');
@@ -156,7 +153,7 @@ test.describe('Workflow 900001 (Attention Notice)', () => {
     log('Going to http://localhost:8082/');
     await page.goto('http://localhost:8082/');
 
-    log('Ensuring that we\'ve been redirected to login page');
+    log("Ensuring that we've been redirected to login page");
     await ensureAtLoginPage(page);
 
     log('Logging in with personal key (admin.p12)');

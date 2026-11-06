@@ -8,9 +8,7 @@ async function ensureAtLoginPage(page: Page): Promise<void> {
   debug('ensureAtLoginPage: At login page');
 
   debug('ensureAtLoginPage: Checking personal key button is visible');
-  await expect(
-    page.getByRole('button', { name: 'Personal key' })
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Personal key' })).toBeVisible();
   debug('ensureAtLoginPage: Personal key button visible');
 }
 
@@ -40,7 +38,4 @@ async function loginWithPersonalKey(page: Page, filePath: string, password: stri
   debug('loginWithPersonalKey: X509 authorization completed');
 }
 
-export {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-};
+export { ensureAtLoginPage, loginWithPersonalKey };

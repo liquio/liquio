@@ -1,14 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  setupLogging,
-  generateTestUser,
-  getTraceIdsForRequest,
-  log,
-  debug,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, setupLogging, generateTestUser, getTraceIdsForRequest, log, debug } from './helpers';
 
 test('User can change profile address', async ({ page }) => {
   log('Enabling debug logging');
@@ -59,11 +51,13 @@ test('User can change profile address', async ({ page }) => {
 
   log('Verifying address field still contains the saved value');
   const addressInputAfterReload = page.locator('input[name="address"]');
-  await expect(addressInputAfterReload).toHaveValue('Kyiv region, Kyiv district, Kyiv city, Khreshchatyk street, building 1, apartment 1, postal code 01001');
+  await expect(addressInputAfterReload).toHaveValue(
+    'Kyiv region, Kyiv district, Kyiv city, Khreshchatyk street, building 1, apartment 1, postal code 01001',
+  );
 
   log('Logging out via Exit menu item');
   await page.getByRole('menuitem', { name: 'Exit' }).click();
 
-  log('Ensuring that we\'ve been redirected to login page after logout');
+  log("Ensuring that we've been redirected to login page after logout");
   await ensureAtLoginPage(page);
 });

@@ -48,12 +48,10 @@ async function createCabinetApi(page: Page) {
     createTask: (workflowTemplateId: number, taskTemplateId: number) => request('POST', 'tasks', { workflowTemplateId, taskTemplateId }),
     getTask: (taskId: string) => request('GET', `tasks/${taskId}`),
     getDocument: (documentId: string) => request('GET', `documents/${documentId}`),
-    updateDocument: (documentId: string, properties: unknown, triggerPath?: unknown) => request(
-      'PUT',
-      `documents/${documentId}`,
-      typeof triggerPath === 'undefined' ? { properties } : { properties, triggerPath },
-    ),
-    validateDocument: (documentId: string, { commit = false }: { commit?: boolean } = {}) => request('POST', `documents/${documentId}/validate?commit=${commit}`, {}),
+    updateDocument: (documentId: string, properties: unknown, triggerPath?: unknown) =>
+      request('PUT', `documents/${documentId}`, typeof triggerPath === 'undefined' ? { properties } : { properties, triggerPath }),
+    validateDocument: (documentId: string, { commit = false }: { commit?: boolean } = {}) =>
+      request('POST', `documents/${documentId}/validate?commit=${commit}`, {}),
     createPdf: (documentId: string) => request('POST', `documents/${documentId}/pdf`, {}),
     commitTask: (taskId: string) => request('POST', `tasks/${taskId}/commit`, {}),
   };
@@ -61,6 +59,4 @@ async function createCabinetApi(page: Page) {
 
 export type CabinetApi = Awaited<ReturnType<typeof createCabinetApi>>;
 
-export {
-  createCabinetApi,
-};
+export { createCabinetApi };

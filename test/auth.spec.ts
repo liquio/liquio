@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  setupLogging,
-  log,
-  debug,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, setupLogging, log, debug } from './helpers';
 
 test('Admin can login to admin panel (8082)', async ({ page }) => {
   await setupLogging(page);
@@ -64,9 +58,12 @@ test('Demo cannot login to admin panel (8082)', async ({ page }) => {
   debug(`Page content after failed demo login: ${pageContent.substring(0, 500)}...`);
 
   // Check if there's an authorization error message
-  const hasAuthError = pageContent.includes('not authorized') || pageContent.includes('not allowed') || 
-                      pageContent.includes('access denied') || pageContent.includes('forbidden') ||
-                      pageContent.includes('does not have access rights');
+  const hasAuthError =
+    pageContent.includes('not authorized') ||
+    pageContent.includes('not allowed') ||
+    pageContent.includes('access denied') ||
+    pageContent.includes('forbidden') ||
+    pageContent.includes('does not have access rights');
   debug(`Page contains authorization error: ${hasAuthError}`);
   expect(hasAuthError).toBe(true);
 

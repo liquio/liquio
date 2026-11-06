@@ -232,8 +232,8 @@ test.describe('LDAP login', () => {
     await setupLogging(page);
     psql('DELETE FROM units WHERE id = ' + LDAP_UNIT_ID);
     psql(
-      'INSERT INTO units (id, name, description, data, created_at, updated_at) VALUES ('
-      + `${LDAP_UNIT_ID}, 'LDAP test unit', 'LDAP test unit', '${JSON.stringify({ ldap: { memberGroups: [UNIT_GROUP] } })}', now(), now())`,
+      'INSERT INTO units (id, name, description, data, created_at, updated_at) VALUES (' +
+        `${LDAP_UNIT_ID}, 'LDAP test unit', 'LDAP test unit', '${JSON.stringify({ ldap: { memberGroups: [UNIT_GROUP] } })}', now(), now())`,
     );
 
     await loginWithLdapUi(page, 'erin', 'erinpw');

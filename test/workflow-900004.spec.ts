@@ -1,15 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { BrowserContext, Page } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  importWorkflow,
-  createCabinetApi,
-  setupLogging,
-  log,
-  type CabinetApi,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, importWorkflow, createCabinetApi, setupLogging, log, type CabinetApi } from './helpers';
 
 /*
  * Cabinet step navigation when a trigger that runs on Continue changes which steps are shown.

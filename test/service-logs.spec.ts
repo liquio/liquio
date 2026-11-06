@@ -2,15 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { test, expect } from '@playwright/test';
 
-import {
-  ensureAtLoginPage,
-  loginWithPersonalKey,
-  importWorkflow,
-  createCabinetApi,
-  getDockerComposeLogs,
-  setupLogging,
-  log,
-} from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, importWorkflow, createCabinetApi, getDockerComposeLogs, setupLogging, log } from './helpers';
 
 /*
  * Service logs contain no configuration secrets.
@@ -28,11 +20,12 @@ const MIN_PASSWORD_LENGTH = 8;
 // A user name, not a secret: it sits next to the password under an authorization key and is a normal part of request logs.
 const NOT_SECRET = new Set(['notification/config.json:production.authorization.list.0.user']);
 
-const walkJsonFiles = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-  const full = path.join(dir, entry.name);
-  if (entry.isDirectory()) return walkJsonFiles(full);
-  return entry.isFile() && entry.name.endsWith('.json') ? [full] : [];
-});
+const walkJsonFiles = (dir: string): string[] =>
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return walkJsonFiles(full);
+    return entry.isFile() && entry.name.endsWith('.json') ? [full] : [];
+  });
 
 const collectSecrets = () => {
   const found = new Map<string, { value: string; where: string }>();
