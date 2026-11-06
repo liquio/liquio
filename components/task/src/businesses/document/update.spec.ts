@@ -440,7 +440,7 @@ describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {
 describe('DocumentBusiness.update with checkSchemaAllowList', () => {
   const jsonSchema = { properties: { step1: { properties: { fieldA: { type: 'string' } } } } };
   const userUnitIds = { all: [], head: [], member: [] } as any;
-  const unknownPath = [{ path: 'ssrfread', value: { a: 1 } }];
+  const unknownPath = [{ path: 'unknownStep', value: { a: 1 } }];
 
   let documentBusiness: DocumentBusiness;
   let updateData: jest.Mock;
@@ -484,7 +484,7 @@ describe('DocumentBusiness.update with checkSchemaAllowList', () => {
     expect(updateData).not.toHaveBeenCalled();
     expect(global.log.save).toHaveBeenCalledWith(
       'document-update-path-not-in-schema',
-      expect.objectContaining({ paths: ['ssrfread'], mode: 'enforce' }),
+      expect.objectContaining({ paths: ['unknownStep'], mode: 'enforce' }),
       'warn',
     );
   });

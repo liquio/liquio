@@ -46,7 +46,7 @@ describe('findPathsNotInSchema', () => {
 
   describe('rejected', () => {
     it('unknown step', () => {
-      expect(find([{ path: 'ssrfread', value: { a: 1 } }])).toEqual(['ssrfread']);
+      expect(find([{ path: 'unknownStep', value: { a: 1 } }])).toEqual(['unknownStep']);
     });
 
     it('unknown field', () => {

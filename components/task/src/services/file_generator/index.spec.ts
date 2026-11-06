@@ -11,11 +11,11 @@ const render = (htmlTemplate: string, data: any = {}, variables: any = {}, workf
 describe('FileGeneratorService.createHtml', () => {
   afterEach(() => jest.useRealTimers());
 
-  it.each(['a}|$|{b', 'a}|^|{b'])('does not inject through data key %s', async (key) => {
-    const html = await render('<p>SSRFA</p><p>{{ssrfread.x}}</p><p>SSRFB</p>', {
-      ssrfread: { [key]: '<iframe src="http://register:8080/test/ping"></iframe>', x: 'ok' },
+  it.each(['a}|$|{b', 'a}|^|{b'])('renders nothing from a data key with brace characters (%s)', async (key) => {
+    const html = await render('<p>BEFORE</p><p>{{unknownStep.x}}</p><p>AFTER</p>', {
+      unknownStep: { [key]: '<iframe src="http://register:8080/test/ping"></iframe>', x: 'ok' },
     });
-    expect(html).toBe('<p>SSRFA</p><p>ok</p><p>SSRFB</p>');
+    expect(html).toBe('<p>BEFORE</p><p>ok</p><p>AFTER</p>');
     expect(html).not.toContain('iframe');
   });
 

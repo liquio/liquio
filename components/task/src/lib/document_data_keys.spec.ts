@@ -46,8 +46,8 @@ describe('document_data_keys', () => {
       expect(findUnsafeDataKeys(undefined, 'p')).toEqual([]);
     });
 
-    it('detects the PoC key', () => {
-      expect(findUnsafeDataKeys({ 'a}|$|{b': '<iframe>' }, 'ssrfread')).toEqual(['ssrfread.a}|$|{b']);
+    it('detects a key with brace and pipe characters', () => {
+      expect(findUnsafeDataKeys({ 'a}|$|{b': '<iframe>' }, 'unknownStep')).toEqual(['unknownStep.a}|$|{b']);
     });
 
     it('walks objects in arrays', () => {

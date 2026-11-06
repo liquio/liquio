@@ -311,8 +311,8 @@ describe('Document', () => {
       return app.request().put(`/documents/${DOCUMENT_FIXTURES[0].id}`).set('token', jwt).send(body);
     };
 
-    it('rejects unsafe keys inside value (PoC)', async () => {
-      const res = await putDocument({ path: 'ssrfread', value: { 'a}|$|{b': '<iframe src="http://register:8080/test/ping"></iframe>' } });
+    it('rejects unsafe keys inside value', async () => {
+      const res = await putDocument({ path: 'unknownStep', value: { 'a}|$|{b': '<iframe src="http://register:8080/test/ping"></iframe>' } });
       expect(res.status).toBe(400);
       expect(JSON.stringify(res.body)).toContain('Invalid property key');
       expect(JSON.stringify(res.body)).not.toContain('iframe');
