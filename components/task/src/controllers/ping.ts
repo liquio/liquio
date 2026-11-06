@@ -153,7 +153,7 @@ export class PingController extends Controller {
     }
     const hours = committedDocumentsTemplateIdsToHoursMap[documentTemplateId];
     if (!hours) {
-      global.log.save('ping-committed-document-not-available', { documentTemplateId, committedDocumentsTemplateIdsToHoursMap });
+      global.log.save('ping-committed-document-not-available', { documentTemplateId });
       return this.responseText(res, 'not-available', 400);
     }
 

@@ -3675,9 +3675,8 @@ export class TaskBusiness extends Business {
     const { taskTemplateId } = message;
     if (!isAllowedCreateByOtherSystems || !tasksTemplateIds.map((v) => `${v}`).includes(`${taskTemplateId}`)) {
       global.log.save('create-by-other-system-from-message-check-failed', {
-        tasksTemplateIds,
         taskTemplateId,
-        isAllowedCreateByOtherSystems,
+        isAllowedCreateByOtherSystems: !!isAllowedCreateByOtherSystems,
       });
       return false;
     }

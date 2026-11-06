@@ -559,7 +559,6 @@ export class DocumentFileBusiness extends Business {
       throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
     }
 
-    global.log.save('create-pdf', { cfg: global.config });
     const { variables, ...staticFileOptions } = global.config.file_generator;
 
     // Define file HTMLs.
