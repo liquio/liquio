@@ -569,7 +569,6 @@ export class DocumentFileBusiness extends Business {
       workflow,
       documentTemplate,
       document,
-      staticFileOptions,
       variables,
     });
     const { htmlTemplateDelimiter, htmlTemplateDelimiterEnd } = staticFileOptions;
