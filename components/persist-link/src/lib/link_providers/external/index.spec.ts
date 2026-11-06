@@ -26,8 +26,8 @@ jest.mock('../filestorage/filestorage_handler', () => filestorageHandlerMock);
 const registerProviderMock = jest.fn();
 jest.mock('./providers/register', () => registerProviderMock);
 
-const pdfCreate = jest.fn();
-jest.mock('html-pdf', () => ({ create: pdfCreate }));
+const renderPdfMock = jest.fn();
+jest.mock('../../pdf_generator', () => ({ renderPdf: renderPdfMock }));
 
 import { Sandbox } from '@liquio/back-core';
 
@@ -214,9 +214,7 @@ describe('ExternalLinkProvider', () => {
       await provider.open(options, res, 'json');
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Alice', global: expect.objectContaining({ currentDate: expect.any(String) }) }),
-      );
+      expect(res.send).toHaveBeenCalledWith({ name: 'Alice' });
       expect(res.set).not.toHaveBeenCalled();
     });
 
@@ -227,23 +225,61 @@ describe('ExternalLinkProvider', () => {
         jsonMap: { name: 'record.name' },
       });
       provider.provider.register.getRecord.mockResolvedValue({ record: { name: 'Alice' } });
-      const pipe = jest.fn();
-      pdfCreate.mockReturnValue({ toStream: (cb: any) => cb(null, { pipe }) });
+      const pdfBuffer = Buffer.from('pdf');
+      renderPdfMock.mockResolvedValue(pdfBuffer);
       const res = createRes();
 
       await provider.open(options, res, 'pdf');
 
       expect(res.set).toHaveBeenCalledWith('Content-Type', 'application/pdf');
       expect(res.set).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
-      expect(pdfCreate).toHaveBeenCalledWith('<p>Alice</p>', expect.objectContaining({ orientation: 'portrait' }));
-      expect(pipe).toHaveBeenCalledWith(res);
+      expect(renderPdfMock).toHaveBeenCalledWith('<p>Alice</p>', expect.objectContaining({ orientation: 'portrait' }));
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith(pdfBuffer);
+    });
+
+    it('should render currentDate helper in the html branch', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2024, 4, 7, 12));
+      try {
+        const provider = createProvider();
+        provider.templateModel.findByNameAndMethod.mockResolvedValue({
+          html: '<p>{{currentDate}}|{{currentDate "YYYY"}}</p>',
+        });
+        provider.provider.register.getRecord.mockResolvedValue({});
+        const res = createRes();
+
+        await provider.open(options, res);
+
+        expect(res.send).toHaveBeenCalledWith('<p>07.05.2024|2024</p>');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('should not let a jsonMap key override the currentDate helper', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2024, 4, 7, 12));
+      try {
+        const provider = createProvider();
+        provider.templateModel.findByNameAndMethod.mockResolvedValue({
+          html: '<p>{{currentDate}}</p>',
+          jsonMap: { currentDate: 'record.name' },
+        });
+        provider.provider.register.getRecord.mockResolvedValue({ record: { name: 'fake' } });
+        const res = createRes();
+
+        await provider.open(options, res);
+
+        expect(res.send).toHaveBeenCalledWith('<p>07.05.2024</p>');
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('should respond with 500 when pdf generation fails', async () => {
       const provider = createProvider();
       provider.templateModel.findByNameAndMethod.mockResolvedValue({ pdf: '<p>ok</p>' });
       provider.provider.register.getRecord.mockResolvedValue({});
-      pdfCreate.mockReturnValue({ toStream: (cb: any) => cb(new Error('boom'), null) });
+      renderPdfMock.mockRejectedValue(new Error('boom'));
       const res = createRes();
 
       await provider.open(options, res, 'pdf');

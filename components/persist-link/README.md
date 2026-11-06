@@ -47,3 +47,11 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
 - `task` → `persist-link` (creates links)
 - `event` → `persist-link` (uses)
 - `persist-link` → PostgreSQL (`persist_link` database)
+
+## External link templates
+
+External link templates (`template.html`, `template.pdf`) are Handlebars templates (`{{ }}` escapes, `{{{ }}}` is raw output and is the template author's choice). The context is the results of the template `jsonMap`.
+
+Helpers: `eq`, `ne`, `includes`, `contains`, `increment`, `sum`, `dateFormat`, `generateQr` and `{{currentDate [format]}}`. `currentDate` prints the render date, `DD.MM.YYYY` by default. `global.currentDate` was removed; use `{{currentDate}}`.
+
+PDFs are rendered by pdf-generator (`pdf_generator.json` config: `url`, `basicAuthToken`, `requestTimeout`). Remote assets (images, fonts, CSS) are blocked unless they are inlined as data URIs or the host is allowlisted in pdf-generator. Only the `timeout`, `format`, `orientation`, `border`, `width` and `height` options apply; other `pdfOptions` keys are ignored.

@@ -3,9 +3,6 @@ FROM node:24-slim@sha256:91acba91b842bec0bf7ea6f5e09c644c7ccad72c4996ed9616d861d
 
 WORKDIR /build/components/persist-link
 
-# Native deps need a toolchain to unpack (bzip2)
-RUN apt-get update && apt-get install -y --no-install-recommends bzip2 && rm -rf /var/lib/apt/lists/*
-
 # Copy package.json and package-lock.json
 COPY package*.json .
 
@@ -37,9 +34,6 @@ ENV CONFIG_PATH=/var/www/config
 
 # Run in production mode
 ENV NODE_ENV=production
-
-# PhantomJS (used by html-pdf) needs fontconfig at runtime
-RUN apt-get update && apt-get install -y --no-install-recommends libfontconfig1 && rm -rf /var/lib/apt/lists/*
 
 # Strip package managers (npm, corepack, yarn, apt, dpkg) and setuid/setgid bits:
 # the runtime only needs node. /var/lib/dpkg is kept so image scanners still see the OS packages
