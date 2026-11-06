@@ -37,7 +37,7 @@
     "moment": "^2.30.1",
     "multiconf": "^4.2.2",
     "object-path": "^0.11.8",
-    "pg": "^8.20.0",
+    "pg": "^8.23.1",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8",
     "sequelize-cli": "^6.6.2"
@@ -49,7 +49,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "25.3.3",
     "@types/object-path": "0.11.4",
-    "@types/pg": "8.18.0",
+    "@types/pg": "8.23.1",
     "@types/supertest": "7.2.1",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
