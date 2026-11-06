@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@liquio/back-core": "^1.0.2",
-    "@liquio/plugin-installer": "^1.0.0",
+    "@liquio/plugin-installer": "^1.0.2",
     "@liquio/plugin-sdk": "^1.0.0",
     "ajv": "^6.12.6",
     "amqplib": "^0.10.9",

@@ -25,7 +25,7 @@
     "ci:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./tests/jest-e2e.json --ci --maxWorkers=2"
   },
   "dependencies": {
-    "@liquio/plugin-installer": "^1.0.0",
+    "@liquio/plugin-installer": "^1.0.2",
     "@liquio/plugin-sdk": "^1.0.0",
     "@nestjs/cli": "^12.0.11",
     "@nestjs/common": "^12.3.2",
