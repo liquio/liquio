@@ -15,7 +15,8 @@ import { resetIdApiClient } from '@liquio/back-core';
 import { BpmnTaskCore } from '../src/app';
 
 // E2E tests are slow, so we increase the timeout
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the RabbitMQ connection
 jest.mock('../src/lib/message_queue', () => {

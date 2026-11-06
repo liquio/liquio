@@ -184,10 +184,6 @@ const config = {
   // This option allows use of a custom test runner
   // testRunner: "jest-circus/runner",
 
-  // Force Jest to exit after tests complete
-  // This is needed because axios/nock interactions can leave open handles
-  forceExit: true,
-
   // A map from regular expressions to paths to transformers
   // transform: undefined,
 

@@ -22,7 +22,8 @@ import { WorkflowBusiness } from '../src/businesses/workflow';
 const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout.
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
 jest.mock('@liquio/back-core', () => {
@@ -155,7 +156,10 @@ export class TestApp {
     await TestApp.applyMigrations(configOverride.db);
 
     // Start RabbitMQ container.
-    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management').start();
+    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management')
+      // RabbitMQ boots slowly on loaded CI runners; the testcontainers default (30s) is too tight.
+      .withStartupTimeout(120000)
+      .start();
 
     configOverride.message_queue = {
       ...defaultConfig.message_queue,

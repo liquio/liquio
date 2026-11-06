@@ -158,6 +158,7 @@ export class BpmnTaskCore {
     // Init DB.
     const db = await Db.getInstance(config.db);
     global.db = db;
+    this.db = db;
 
     // Init pgpubsub.
     const pgpubsub = new PgPubSub(config.db);

@@ -87,7 +87,7 @@ export default class RollbackBusiness extends Business {
 
     const rollbackId = this.generateRollbackId();
     this.rollback(rollbackId, { keyId, timePoint }, { user, accessInfo });
-    setTimeout(() => this.clearToRollback(rollbackId), AUTO_CLEAR_INTERVAL);
+    setTimeout(() => this.clearToRollback(rollbackId), AUTO_CLEAR_INTERVAL).unref?.();
     return rollbackId;
   }
 

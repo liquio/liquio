@@ -26,7 +26,7 @@ describe('RollbackController (SE-3930 RG-27)', () => {
     recordId = created.body.data.id;
     const history = await testHarness.request().get(`/records/${recordId}/history`).set('Authorization', validAuth).expect(200);
     historyId = history.body.data[0].id;
-  }, 30000);
+  }, 120000); // boots testcontainers; slow on loaded CI runners
 
   beforeEach(() => {
     savedAuth = { ...testHarness.getConfig().auth };

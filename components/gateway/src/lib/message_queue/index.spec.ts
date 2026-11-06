@@ -217,7 +217,7 @@ describe('MessageQueue', () => {
 
       expect(messageQueue.connection.close).toHaveBeenCalled();
       expect(global.log.save).toHaveBeenCalledWith('connection-closed-by-app');
-      expect(messageQueue.isClosing).toBe(false);
+      expect(messageQueue.isClosing).toBe(true);
     });
 
     it('should handle close errors gracefully', async () => {

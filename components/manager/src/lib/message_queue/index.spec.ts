@@ -375,7 +375,7 @@ describe('MessageQueue', () => {
       await messageQueue.init();
       await messageQueue.close();
 
-      expect(messageQueue.isClosing).toBe(false);
+      expect(messageQueue.isClosing).toBe(true);
       expect(messageQueue.connection.close).toHaveBeenCalled();
       expect(global.log.save).toHaveBeenCalledWith('connection-closed-by-app');
     });

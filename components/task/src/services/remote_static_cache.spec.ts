@@ -26,6 +26,15 @@ global.log = {
 } as any;
 
 describe('RemoteStaticCache', () => {
+  beforeAll(() => {
+    // Background updates are fire-and-forget; never let them reach the real network.
+    nock.disableNetConnect();
+  });
+
+  afterAll(() => {
+    nock.enableNetConnect();
+  });
+
   beforeEach(() => {
     // Clear singleton between tests
     (RemoteStaticCache as any).singleton = null;
@@ -41,7 +50,11 @@ describe('RemoteStaticCache', () => {
     nock.cleanAll();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Let the fire-and-forget background request consume its interceptor and settle before cleanup.
+    for (let i = 0; i < 100 && nock.pendingMocks().length > 0; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
     nock.cleanAll();
   });
 
@@ -174,7 +187,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request to fail
-      nock('https://api.example.com').get('/data').replyWithError(new Error('Network error'));
+      nock('https://api.example.com').get('/data').reply(500, { error: 'Network error' });
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 

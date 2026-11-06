@@ -159,7 +159,7 @@ export default class ImportBusiness extends Business {
     this.import(importId, { key, register, records, options }, removeOldRecords, user, accessInfo).catch((error) =>
       this.log.save('import-failed', { importId, error: error?.message }, 'error'),
     );
-    setTimeout(() => this.clearToImport(importId), AUTO_CLEAR_INTERVAL);
+    setTimeout(() => this.clearToImport(importId), AUTO_CLEAR_INTERVAL).unref?.();
     return importId;
   }
 

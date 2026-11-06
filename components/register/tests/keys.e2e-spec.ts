@@ -9,7 +9,7 @@ describe('KeysController', () => {
     testHarness = new TestHarness();
     await testHarness.setup({ useDatabase: true, useRedis: true });
     await testHarness.setupFixtures();
-  }, 30000);
+  }, 120000); // boots testcontainers; slow on loaded CI runners
 
   afterAll(async () => {
     await testHarness.teardown();

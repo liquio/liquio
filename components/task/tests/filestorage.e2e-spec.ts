@@ -534,6 +534,8 @@ describe('FileStorage', () => {
       // result is a request object which has stream-like properties
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
+      // Release the unconsumed response so its socket/timeout don't outlive the test.
+      result.destroy?.();
     });
   });
 
@@ -913,6 +915,7 @@ describe('FileStorage', () => {
 
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
+      result.destroy?.();
     });
 
     it('downloadFilePreview should return a request object', async () => {
@@ -920,6 +923,7 @@ describe('FileStorage', () => {
 
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
+      result.destroy?.();
     });
 
     it('downloadZip should return a request object', async () => {
@@ -928,6 +932,7 @@ describe('FileStorage', () => {
 
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
+      result.destroy?.();
     });
 
     it('uploadFile should return a request object', async () => {
@@ -940,6 +945,7 @@ describe('FileStorage', () => {
 
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
+      result.destroy?.();
     });
 
     it('createAsic should return a request object', async () => {
@@ -950,6 +956,7 @@ describe('FileStorage', () => {
 
       expect(result).toBeDefined();
       expect(typeof result.pipe).toBe('function');
+      result.destroy?.();
     });
   });
 
@@ -965,7 +972,7 @@ describe('FileStorage', () => {
       expect(fileStorage.uploadFileFromStream.length).toBe(5); // Should take 5 parameters
     });
 
-    it('should return a promise from uploadFileFromStream', () => {
+    it('should return a promise from uploadFileFromStream', async () => {
       // Create a real readable stream
       const mockStream = new Readable({
         read() {
@@ -986,14 +993,13 @@ describe('FileStorage', () => {
           },
         });
 
-      // Test that it returns a promise
-      const result = fileStorage.uploadFileFromStream(mockStream, name, description, contentType, contentLength);
+      // Test that it returns a promise. The declared length must match the 'test data' payload,
+      // otherwise the upload waits for the missing bytes and never settles.
+      const result = fileStorage.uploadFileFromStream(mockStream, name, description, contentType, Buffer.byteLength('test data'));
       expect(result).toBeInstanceOf(Promise);
 
-      // Clean up the promise to avoid hanging tests - just ignore any errors
-      result.catch(() => {
-        // Expected to fail since it's a mock, but this prevents unhandled rejection warnings
-      });
+      // Settle the promise (ignoring errors) so the in-flight request doesn't outlive the test.
+      await result.catch(() => undefined);
     });
 
     it.skip('should handle network errors during upload', async () => {

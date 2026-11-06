@@ -99,8 +99,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # ci:e2e runs without --forceExit: leaked handles must surface, not be hidden.
+      # The step timeout is a backstop in case a leak hangs jest's main process.
       - name: Run e2e tests
-        run: npm run ci:e2e
+        timeout-minutes: 30
+        run: |
+          set -o pipefail
+          npm run ci:e2e 2>&1 | tee "$RUNNER_TEMP/e2e.log"
+
+      # Jest force-kills a worker that keeps handles open after its test file and only
+      # prints a warning (exit code stays 0), so turn that warning into a failure.
+      - name: Fail on leaked handles
+        if: ${{ !cancelled() }}
+        run: |
+          if grep -E "failed to exit gracefully|did not exit one second after|open handles? potentially keeping Jest from exiting" "$RUNNER_TEMP/e2e.log"; then
+            echo "::error title=Leaked handles in ${{ matrix.name }}::Jest reported resources left open after tests (improper teardown). Reproduce with: npx jest <e2e args> --runInBand --detectOpenHandles"
+            exit 1
+          fi
 
       - name: Dump leftover containers on failure
         if: failure()

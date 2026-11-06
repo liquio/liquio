@@ -12,10 +12,12 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 
 import { App } from '../src/app';
+import { Db } from '../src/lib/db';
 import { prepareFixtures } from './fixtures';
 
 // E2E tests are slow, so we increase the timeout
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the RabbitMQ connection
 jest.mock('../src/lib/message_queue', () => {
@@ -376,6 +378,8 @@ class TestApp extends App {
   // Destroy the application
   async destroy() {
     this.eventBusiness.stopDaemon();
+    await this.db?.close();
+    Db.singleton = undefined;
   }
 
   // Load test fixtures into the database

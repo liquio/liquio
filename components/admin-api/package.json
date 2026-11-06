@@ -18,7 +18,7 @@
     "test:watch": "jest --watch src",
     "test:cov": "jest --coverage src",
     "test:e2e": "jest tests",
-    "ci:e2e": "jest tests --ci --maxWorkers=2 --forceExit"
+    "ci:e2e": "jest tests --ci --maxWorkers=2"
   },
   "dependencies": {
     "@liquio/back-core": "^1.0.2",

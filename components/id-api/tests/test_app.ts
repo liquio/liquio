@@ -57,7 +57,8 @@ jest.mock('../src/config', () => {
   };
 });
 
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 export class TestApp extends Application {
   private static pgContainer: StartedPostgreSqlContainer;

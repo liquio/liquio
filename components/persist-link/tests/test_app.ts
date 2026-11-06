@@ -28,7 +28,8 @@ import baseConfig from './base.config.json';
 
 export const config: any = JSON.parse(JSON.stringify(baseConfig));
 
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 const mockLog = {
   save: jest.fn(),

@@ -20,7 +20,8 @@ import { validateAuthConfig } from '../src/lib/config_validation';
 const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout.
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
 jest.mock('@liquio/back-core', () => {

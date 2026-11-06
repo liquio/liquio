@@ -388,7 +388,6 @@ export class MessageQueue {
         }
 
         global.log.save('connection-closed-by-app');
-        this.isClosing = false;
         return resolve();
       });
     });

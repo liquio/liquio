@@ -89,7 +89,8 @@ export const JSONPath = (objOrPath, jsonDocument?) => {
 
   if (!cache[cacheKey]) {
     cache[cacheKey] = 1;
-    timeouts.push(setTimeout(() => delete cache[cacheKey], 1000 * 10));
+    // Cache expiry must not keep the process alive.
+    timeouts.push(setTimeout(() => delete cache[cacheKey], 1000 * 10).unref());
   }
 
   const executionTime = (Date.now() - startTime) / 1000;
