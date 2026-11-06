@@ -47,6 +47,11 @@ metadata:
   "hostname" "0.0.0.0"
   "port" (default 8080 .Values.services.persistLink.containerPort)
 -}}
+{{ $pdfGeneratorBase := dict
+  "url" (printf "http://%s-pdf-generator:80/pdf" (include "liquio.fullname" .))
+  "basicAuthToken" "Basic <REDACTED>"
+  "requestTimeout" 120000
+-}}
 {{ $versionsBase := dict
   "customer" 1
   "environment" 0
@@ -62,6 +67,8 @@ data:
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "link_providers.json" "base" $linkProvidersBase) | nindent 4 }}
   log.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "log.json" "base" $logBase) | nindent 4 }}
+  pdf_generator.json: |
+{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "pdf_generator.json" "base" $pdfGeneratorBase) | nindent 4 }}
   server.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "persist-link" "config" "server.json" "base" $serverBase) | nindent 4 }}
   versions.json: |
