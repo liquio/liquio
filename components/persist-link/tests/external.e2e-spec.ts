@@ -85,7 +85,7 @@ describe('External link provider', () => {
     await createTemplate({
       name: 'register',
       method,
-      html: '<p>{{number}}|{{title}}|{{sum1}}|{{#if (eq number "N-42")}}eq{{/if}}|{{increment 1}}|{{sum 1 2 ""}}|{{dateFormat "2020-01-02" "YYYY"}}</p>',
+      html: '<p>{{number}}|{{title}}|{{sum1}}|{{#if (eq number "N-42")}}eq{{/if}}|{{increment 1}}|{{sum 1 2 ""}}|{{dateFormat "2020-01-02" "YYYY"}}|{{currentDate}}</p>',
       pdf: '<p>{{number}}</p>',
       jsonMap: {
         number: 'number',
@@ -98,11 +98,11 @@ describe('External link provider', () => {
     const html = await app.request().get(`/${hash}`);
     expect(html.headers['content-type']).toContain('text/html');
     expect(html.headers['content-security-policy']).toBe('sandbox');
-    expect(html.text).toContain('N-42|Fake|3|eq|2|3|2020');
+    expect(html.text).toMatch(/N-42\|Fake\|3\|eq\|2\|3\|2020\|\d{2}\.\d{2}\.\d{4}<\/p>/);
 
     const json = await app.request().get(`/${hash}?response_type=json`).expect(200);
     expect(json.body).toMatchObject({ number: 'N-42', title: 'Fake', sum1: 3 });
-    expect(json.body.global.currentDate).toEqual(expect.any(String));
+    expect(json.body).not.toHaveProperty('global');
   });
 
   it('should expose getFileBase64 to async jsonMap functions in the sandbox', async () => {
