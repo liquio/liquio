@@ -1473,10 +1473,12 @@ export class DocumentController extends Controller {
     const { preview, asics, p7s } = req.query;
 
     // Define file link.
+    const userId = this.getRequestUserId(req);
     let fileLink;
     try {
-      fileLink = this.downloadToken.decrypt(downloadToken);
+      fileLink = this.downloadToken.decrypt(downloadToken, userId);
     } catch (error) {
+      getLog().save('download-token-rejected', { userId }, 'warn');
       return this.responseError(res, error);
     }
 

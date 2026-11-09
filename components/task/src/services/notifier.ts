@@ -62,9 +62,10 @@ export class NotifierService {
    * @param {string} accessToken Access token.
    * @param {number} [eventId] Event ID.
    * @param {object} [queryParams] Query params.
+   * @param {string} [userId] ID of the user the attachment download tokens are issued to.
    * @returns {Promise<object[]>}
    */
-  async getMessages(accessToken, eventId, queryParams) {
+  async getMessages(accessToken, eventId, queryParams, userId?) {
     const paginationQueryParams =
       queryParams && queryParams.start && queryParams.count && !isNaN(parseInt(queryParams.start)) && !isNaN(parseInt(queryParams.count))
         ? `&start=${queryParams.start}&count=${queryParams.count}`
@@ -103,7 +104,9 @@ export class NotifierService {
       // Append download token to attachments.
       for (const result of responseResult) {
         if (result?.meta?.attachments?.length) {
-          result.meta.attachments = result.meta.attachments.map((v) => ({ ...v, downloadToken: this.downloadToken.generate(v.fileId) }));
+          result.meta.attachments = result.meta.attachments.map((v) =>
+            userId ? { ...v, downloadToken: this.downloadToken.generate(v.fileId, userId) } : { ...v },
+          );
         }
       }
 

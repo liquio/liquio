@@ -136,6 +136,7 @@ export class DocumentFileBusiness extends Business {
    * @param task Task.
    * @param isDirect Is direct files indicator.
    * @param isNotOnlyCurrent Only current tasks indicator.
+   * @param userId User ID the download tokens are issued to; no tokens are attached without it.
    * @returns Promise of files info list - each item's shape depends on the document template's
    * JSON schema (`documentTemplateAccess`, etc.), so it's left as `any[]` rather than modeled precisely.
    */
@@ -146,6 +147,7 @@ export class DocumentFileBusiness extends Business {
     task?: any,
     isDirect = false,
     isNotOnlyCurrent = false,
+    userId?: string,
   ): Promise<any[]> {
     // Define step schema.
     const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
@@ -301,7 +303,9 @@ export class DocumentFileBusiness extends Business {
           getLog().save('file-name-generating-error', { error: error.message, fileNameFunc, documentIds, workflowId });
         }
       }
-      fileInfo.downloadToken = this.host.downloadToken.generate(fileLink);
+      if (userId) {
+        fileInfo.downloadToken = this.host.downloadToken.generate(fileLink, userId);
+      }
     }
 
     if (typeof filterFunction === 'string') {
@@ -342,7 +346,7 @@ export class DocumentFileBusiness extends Business {
     const { workflowId } = task;
 
     // Get and return files to preview.
-    const filesToPreview = await this.getFilesToPreview(workflowId, documentTemplateId, stepOrPath, task, isDirect);
+    const filesToPreview = await this.getFilesToPreview(workflowId, documentTemplateId, stepOrPath, task, isDirect, false, userId);
     const documentIds = [...new Set(filesToPreview.map((v) => v.documentId).filter(Boolean))];
 
     const documentSignaturesPromises = documentIds.map((documentId) => (getModels().documentSignature.getByDocumentId as any)(documentId));

@@ -1,6 +1,12 @@
+import jwt from 'jsonwebtoken';
+import nock from 'nock';
+
 import { TestApp } from './test-app';
 import { prepareFixtures, DOCUMENT_FIXTURES } from './fixtures';
 import { expectAuthRequired } from './helpers/auth_guard';
+import { userRequest } from './helpers/scenario';
+import { DownloadToken } from '../src/lib/download_token';
+import { getBusinesses } from '../src/lib/context';
 
 describe('Document', () => {
   let app: TestApp;
@@ -467,6 +473,71 @@ describe('Document', () => {
   describe('GET /files/:download_token', () => {
     it('requires auth', async () => {
       await expectAuthRequired(app, 'get', '/files/:download_token');
+    });
+
+    describe('token binding', () => {
+      const USER_A = 'download-user-a';
+      const USER_B = 'download-user-b';
+      const provider = () => (getBusinesses() as any).document.files.host.storageService.provider;
+      const METHODS = [
+        'downloadFileRequestOptions',
+        'downloadFilePreviewRequestOptions',
+        'getP7sSignatureRequestOptions',
+        'downloadFileAsicsRequestOptions',
+      ];
+      const spies = () => {
+        const result: Record<string, jest.SpyInstance> = {};
+        for (const name of METHODS) {
+          result[name] = jest.spyOn(provider(), name).mockResolvedValue({ url: 'http://filestorage.test/files/f', method: 'GET' } as any);
+        }
+        return result;
+      };
+      const token = (userId = USER_A) => new DownloadToken().generate('f', userId);
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('returns the file to the user the token was issued to', async () => {
+        const s = spies();
+        nock('http://filestorage.test').get('/files/f').reply(200, 'BYTES');
+        const res = await userRequest(app, USER_A)('get', `/files/${token()}`);
+        expect(res.status).toBe(200);
+        expect(res.text).toBe('BYTES');
+        expect(s.downloadFileRequestOptions).toHaveBeenCalledWith('f');
+      });
+
+      it('rejects another user without reaching the storage', async () => {
+        const s = spies();
+        const res = await userRequest(app, USER_B)('get', `/files/${token()}`);
+        expect(res.status).toBe(403);
+        expect(res.text).not.toContain('BYTES');
+        expect(s.downloadFileRequestOptions).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        ['preview', 'downloadFilePreviewRequestOptions'],
+        ['p7s', 'getP7sSignatureRequestOptions'],
+        ['asics', 'downloadFileAsicsRequestOptions'],
+      ])('enforces the binding for ?%s=true', async (query, method) => {
+        const s = spies();
+        nock('http://filestorage.test').get('/files/f').reply(200, 'BYTES');
+        const ok = await userRequest(app, USER_A)('get', `/files/${token()}?${query}=true`);
+        expect(ok.status).toBe(200);
+        expect(s[method]).toHaveBeenCalledTimes(1);
+        s[method].mockClear();
+        const denied = await userRequest(app, USER_B)('get', `/files/${token()}?${query}=true`);
+        expect(denied.status).toBe(403);
+        for (const name of METHODS) expect(s[name]).not.toHaveBeenCalled();
+      });
+
+      it('rejects a legacy token without userId', async () => {
+        const s = spies();
+        const legacy = jwt.sign({ fileId: 'f' }, 'e2e-download-token-secret-0123456789');
+        const res = await userRequest(app, USER_A)('get', `/files/${legacy}`);
+        expect(res.status).toBe(403);
+        expect(s.downloadFileRequestOptions).not.toHaveBeenCalled();
+      });
     });
   });
 

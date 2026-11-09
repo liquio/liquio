@@ -9,6 +9,7 @@ export const ERROR_TASK_TEMPLATE_NOT_FOUND = 'Task template not found.';
 export const ERROR_TASK_NOT_FOUND = 'Task not found.';
 export const ERROR_CREATE_TASK_ACCESS = "User doesn't have access to create task.";
 export const ERROR_DOCUMENT_TEMPLATE_NOT_FOUND = 'Document template not found.';
+export const ERROR_DOWNLOAD_TOKEN_INVALID = 'Download token is invalid or expired.';
 export const ERROR_DOCUMENT_NOT_FOUND = 'Document not found.';
 
 export const ERROR_WORKFLOW_ACCESS = "User doesn't have any access to workflow.";
