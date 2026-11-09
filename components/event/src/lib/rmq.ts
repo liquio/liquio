@@ -450,6 +450,7 @@ export class Rmq {
         const message = getRedisClient() ? await getRedisClient().getObject(id) : this.incomingMessages.get(id);
         if (message) {
           clearInterval(getInterval);
+          clearTimeout(dropTimeout);
           resolve(message);
           if (getRedisClient()) {
             await getRedisClient().delete(id);
@@ -460,7 +461,7 @@ export class Rmq {
       }, this.options.getIncomingMessageInterval);
 
       // Drop after timeout.
-      setTimeout(() => {
+      const dropTimeout = setTimeout(() => {
         if (!getInterval || (getInterval as any)._destroyed) {
           return;
         }
