@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 import supertest from 'supertest';
+import nock from 'nock';
 import * as pg from 'pg';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
@@ -15,6 +16,17 @@ import { bootstrap } from '../src/bootstrap';
 import { setAppContext, getDb } from '../src/lib/context';
 
 const debug = createDebug;
+
+/** Runs fn with nock's http interception off, so testcontainers can reach the Docker socket; restores the previous state. */
+async function withoutNock<T>(fn: () => Promise<T>): Promise<T> {
+  const wasActive = nock.isActive();
+  if (wasActive) nock.restore();
+  try {
+    return await fn();
+  } finally {
+    if (wasActive) nock.activate();
+  }
+}
 
 // E2E tests are slow, so we increase the timeout.
 // Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
@@ -150,7 +162,7 @@ export class TestApp {
       };
     } else {
       // Start PostgreSQL container.
-      this.pgContainer = await TestApp.startPostgres();
+      this.pgContainer = await withoutNock(() => TestApp.startPostgres());
 
       // Inject database credentials into the config.
       dbConfig = {
@@ -169,7 +181,7 @@ export class TestApp {
     await TestApp.applyMigrations(dbConfig);
   }
 
-  // testcontainers sporadically fails the port-wait exec with "write EPIPE" right after the container starts; retry.
+  // "write EPIPE" came from nock intercepting the Docker socket (now bypassed via withoutNock); the retry is a backstop.
   static async startPostgres(attempts = 3) {
     for (let attempt = 1; ; attempt++) {
       try {
@@ -241,7 +253,12 @@ export class TestApp {
 
   // Run this after all tests.
   static async afterAll() {
-    await this.pgContainer?.stop();
+    await withoutNock(async () => {
+      await this.pgContainer?.stop();
+    });
+
+    // nock activates on import and patches the shared http module; leave it off so it can't leak into the next file in this worker.
+    nock.restore();
   }
 
   // Obtain a client instance to interact with the application.
