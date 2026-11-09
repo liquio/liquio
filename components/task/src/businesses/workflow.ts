@@ -316,7 +316,7 @@ export class WorkflowBusiness extends Business {
    * @return {{messages: object[], steps: object[]}}
    */
   getTimelineStepsAndMessages(workflow) {
-    const workflowMessages = _.get(workflow, 'data.messages', []);
+    const workflowMessages = _.get(workflow, 'data.messages', []) as { type?: string; sequences?: { sourceRef?: string }[] }[];
     const steps = _.get(workflow.workflowTemplate, 'data.timeline.steps', []);
 
     if (!workflowMessages.length || !steps.length) {

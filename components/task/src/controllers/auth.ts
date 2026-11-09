@@ -263,7 +263,7 @@ export class AuthController extends Controller {
 
     try {
       if (getRedisClient()) {
-        const tokenData = this.token.decrypt(token);
+        const tokenData = this.token.decrypt(token) as { authTokens: { accessToken: string } };
         const authAccessToken = tokenData.authTokens.accessToken;
         const sha256AccessToken = this.getSha256Hash(authAccessToken);
         await getRedisClient().delete(`token.${sha256AccessToken}`);

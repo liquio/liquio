@@ -9,6 +9,28 @@ import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 import typeOf from '../lib/type_of';
 
+interface RegisterElementTemplate {
+  control?: string;
+  keyId?: string | number;
+  whiteList?: (string | number)[];
+  setDefined?: unknown;
+  multiple?: unknown;
+  withLinkedObjects?: unknown;
+  additionalFilter?: unknown;
+  filters?: unknown;
+  filtersType?: unknown;
+  sortBy?: unknown;
+  search?: unknown;
+  search2?: unknown;
+  search3?: unknown;
+  searchEqual?: unknown;
+  searchEqual2?: unknown;
+  searchEqual3?: unknown;
+  searchLike?: unknown;
+  searchLike2?: unknown;
+  searchLike3?: unknown;
+}
+
 // Constants.
 const RECORDS_DEFAULT_LIMIT = 10;
 const RECORDS_MAX_LIMIT = 5000;
@@ -431,7 +453,7 @@ export class RegisterController extends Controller {
       // Get step element from path.
       elementName = getBusinesses().register.getTemplatePathFromDataPath(controlParts.join('.'));
       const element = _.at(step, controlParts.join('.'))[0] || {};
-      const elementTemplate = _.at(stepTemplate, elementName)[0];
+      const elementTemplate = _.at(stepTemplate, elementName)[0] as RegisterElementTemplate | undefined;
 
       // Check if incorrect option control or keyId.
       if (!elementTemplate) return this.responseError(res, "Document template doesn't have passed control.", 400, { control });
