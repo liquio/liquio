@@ -23,7 +23,7 @@ import { assertBasicAuthConfig, assertDownloadTokenConfig, assertTestAuthConfig,
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
 import { initIdApiClient } from './lib/id_api';
-import { setAppContext, getModels, getConfig, getLog } from './lib/context';
+import { setAppContext, getModels, getConfig, getLog, getRedisClient, getRedisClientCommonBpmn } from './lib/context';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/task';
 
@@ -273,6 +273,10 @@ export class BpmnTaskCore {
     await this.routerService?.stop();
     await this.db?.close();
     await this.pgpubsub?.cleanup?.();
+    const redisClients = new Set([getRedisClient(), getRedisClientCommonBpmn()].filter(Boolean));
+    for (const client of redisClients) {
+      await client.close().catch((error) => getLog()?.save('redis-close-error', { error: error?.message }, 'warn'));
+    }
     await this.prometheus?.stop();
     JSONPath.cleanTimeouts();
   }
