@@ -34,8 +34,6 @@ describe('GovID strategy (group D)', () => {
   };
 
   beforeAll(async () => {
-    await TestApp.beforeAll();
-    await TestApp.beforeEach();
     config.confirmCodeLength = 6;
     config.auth_providers = config.auth_providers || {};
     config.auth_providers.govid = {
@@ -44,12 +42,14 @@ describe('GovID strategy (group D)', () => {
       clientSecret: 'csecret',
       redirectUrl: 'http://localhost/authorise/govid',
     } as any;
+    await TestApp.beforeAll();
+    await TestApp.beforeEach();
     app = await TestApp.setup();
     baseUrl = `http://localhost:${config.port}`;
   });
 
   afterAll(async () => {
-    delete (config.auth_providers as any).govid;
+    if (config.auth_providers) delete (config.auth_providers as any).govid;
     if (app) await app.destroy();
     await TestApp.afterAll();
   });
@@ -57,8 +57,11 @@ describe('GovID strategy (group D)', () => {
   afterEach(() => {
     nock.cleanAll();
     jest.restoreAllMocks();
-    delete govidCfg().useEncryption;
-    delete govidCfg().authType;
+    const cfg = config.auth_providers?.govid as any;
+    if (cfg) {
+      delete cfg.useEncryption;
+      delete cfg.authType;
+    }
   });
 
   describe('HTTP login', () => {
