@@ -3,7 +3,7 @@ import { PassThrough, Readable } from 'node:stream';
 import _ from 'lodash';
 import nodeHtmlParser from 'node-html-parser';
 
-import { ERROR_DOCUMENT_NOT_FOUND, ERROR_DOCUMENT_TEMPLATE_NOT_FOUND, ERROR_WORKFLOW_NOT_FOUND } from '../../constants/error';
+import { ErrorMessage } from '../../constants/error';
 import { DocumentAttachmentEntity } from '../../entities/document_attachment';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../lib/errors';
 import { Business } from '../business';
@@ -554,13 +554,13 @@ export class DocumentFileBusiness extends Business {
     const documentId = document.id;
     const workflow = await getModels().workflow.findById(document.task.workflowId);
     if (!workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
 
     // Get template data.
     const documentTemplate = await getModels().documentTemplate.findById(document.documentTemplateId);
     if (!documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
 
     const { variables, ...staticFileOptions } = getConfig().file_generator;
@@ -782,7 +782,7 @@ export class DocumentFileBusiness extends Business {
     try {
       const document: any = await getModels().document.findById(messageObject.documentId);
       if (!document) {
-        throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+        throw new NotFoundError(ErrorMessage.DocumentNotFound);
       }
       const documentSignatures = await (getModels().documentSignature.getByDocumentId as any)(messageObject.documentId);
       const documentSignatureRejections = await (getModels().documentSignatureRejection.getByDocumentId as any)(messageObject.documentId);

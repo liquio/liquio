@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 import { DownloadToken } from './download_token';
 import { ForbiddenError } from './errors';
-import { ERROR_DOWNLOAD_TOKEN_INVALID } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 
 const GOOD_SECRET = 'Zk3p9QwLm2Xv8RtYh5Nc7Bd1';
 
@@ -27,7 +27,7 @@ describe('DownloadToken', () => {
       } catch (error: any) {
         expect(error).toBeInstanceOf(ForbiddenError);
         expect(error.httpStatusCode).toBe(403);
-        expect(error.message).toBe(ERROR_DOWNLOAD_TOKEN_INVALID);
+        expect(error.message).toBe(ErrorMessage.DownloadTokenInvalid);
         return;
       }
       throw new Error('Expected to throw');

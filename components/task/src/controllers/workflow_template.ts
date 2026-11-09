@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { ERROR_WORKFLOW_TEMPLATE_NOT_FOUND } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 import { getBusinesses, getConfig } from '../lib/context';
 
@@ -72,7 +72,7 @@ export class WorkflowTemplateController extends Controller {
       return this.responseError(res, error);
     }
     if (!workflowTemplate) {
-      return this.responseError(res, new NotFoundError(ERROR_WORKFLOW_TEMPLATE_NOT_FOUND));
+      return this.responseError(res, new NotFoundError(ErrorMessage.WorkflowTemplateNotFound));
     }
 
     this.responseData(res, this.filterResponse(workflowTemplate));

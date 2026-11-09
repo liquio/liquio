@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 
 import PropByPath from 'prop-by-path';
 
-import { ERROR_DOCUMENT_NOT_FOUND, ERROR_DOCUMENT_TEMPLATE_NOT_FOUND, ERROR_UPDATE_DOCUMENT } from '../../constants/error';
+import { ErrorMessage } from '../../constants/error';
 import { DocumentEntity } from '../../entities/document';
 import { ForbiddenError, InvalidConfigError, InvalidSchemaError, NotFoundError } from '../../lib/errors';
 import { Helpers } from '../../lib/helpers';
@@ -150,7 +150,7 @@ export class DocumentPaymentBusiness extends Business {
       ? await this.host.findByIdAndCheckAccess(documentId, userId, userUnitIds, true)
       : await this.host.getDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId as any);
     if (!document || !document.task) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
     const { paymentControlPath, extraData } = payload;
     const paymentDocumentPath = paymentControlPath.replace(/.properties./g, '.');
@@ -159,7 +159,7 @@ export class DocumentPaymentBusiness extends Business {
     const templateId = document.documentTemplateId;
     const documentTemplate = await getModels().documentTemplate.findById(templateId);
     if (!documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const { jsonSchema } = documentTemplate;
 
@@ -236,7 +236,7 @@ export class DocumentPaymentBusiness extends Business {
         true,
       );
       const currentDocument = await getModels().document.findById(resolvedDocumentId);
-      if (!currentDocument) throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      if (!currentDocument) throw new NotFoundError(ErrorMessage.DocumentNotFound);
       controlPaymentData = PropByPath.get(currentDocument.data, paymentDocumentPath);
       if (alreadyPaid() || statusInfo?.status?.isSuccess) {
         await checkouts.markPaid(resolvedDocumentId, paymentDocumentPath, alreadyPaid() || statusInfo);
@@ -288,14 +288,14 @@ export class DocumentPaymentBusiness extends Business {
 
   private async storeCalculatedPayment(documentId: string, path: string, calculated: any, userId?: string): Promise<any> {
     const document = await getModels().document.findById(documentId);
-    if (!document) throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+    if (!document) throw new NotFoundError(ErrorMessage.DocumentNotFound);
     const control = PropByPath.get(document.data, path) || {};
     if (control.calculated?.transactionId === calculated.transactionId) return document.data;
     const history = Array.isArray(control.calculatedHistory) ? control.calculatedHistory : [];
     if (!history.some((entry) => entry.transactionId === calculated.transactionId)) history.push(calculated);
     PropByPath.set(document.data, path, { ...control, calculated, calculatedHistory: history });
     const updated = await getModels().document.updateData(documentId, userId, document.data);
-    if (!updated) throw new Error(ERROR_UPDATE_DOCUMENT);
+    if (!updated) throw new Error(ErrorMessage.UpdateDocument);
     return updated.data;
   }
 
@@ -347,7 +347,7 @@ export class DocumentPaymentBusiness extends Business {
 
     const document: any = await getModels().document.findById(documentId);
     if (!document || !document.task) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
     getLog().save('get-document-to-handle-payment-status', {
       document: { ...document, data: HIDE_REPLACEMENT_TEXT, documentTemplate: HIDE_REPLACEMENT_TEXT },
@@ -396,7 +396,7 @@ export class DocumentPaymentBusiness extends Business {
 
     const updatedDocument = await getModels().document.updateData(documentId, undefined, documentDataObject);
     if (!updatedDocument) {
-      throw new Error(ERROR_UPDATE_DOCUMENT);
+      throw new Error(ErrorMessage.UpdateDocument);
     }
     getLog().save('updated-document-with-payment-status', { documentId, controlPaymentData });
 
@@ -408,7 +408,7 @@ export class DocumentPaymentBusiness extends Business {
         documentId,
         taskId: task.id,
       });
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const paymentSchemaControl = PropByPath.get(template.jsonSchema.properties, paymentControlPath) || {};
 
@@ -562,7 +562,7 @@ export class DocumentPaymentBusiness extends Business {
     // Get document.
     const document: any = await this.host.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
 
     // Get payment options.
@@ -593,7 +593,7 @@ export class DocumentPaymentBusiness extends Business {
     // Get document again, in case there are changes about payment status.
     const documentNewVersion = await this.host.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!documentNewVersion) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
     const documentDataObjectUpdated = documentNewVersion.data;
     PropByPath.set(documentDataObjectUpdated, `${paymentDocumentPath}.${CONFIRM_CODE_INFO_PATH}`, confirmCodeResObj);
@@ -601,7 +601,7 @@ export class DocumentPaymentBusiness extends Business {
     // Update document.
     const updatedDocument = await getModels().document.updateData(documentId, undefined, documentDataObjectUpdated);
     if (!updatedDocument) {
-      throw new Error(ERROR_UPDATE_DOCUMENT);
+      throw new Error(ErrorMessage.UpdateDocument);
     }
     getLog().save('updated-document-with-payment-status', { updatedDocument });
 
@@ -691,7 +691,7 @@ export class DocumentPaymentBusiness extends Business {
     // Update document.
     const updatedDocument = await getModels().document.updateData(documentId, userId, documentData);
     if (!updatedDocument) {
-      throw new Error(ERROR_UPDATE_DOCUMENT);
+      throw new Error(ErrorMessage.UpdateDocument);
     }
     getLog().save('update-document-with-payment-data', { updatedDocument });
 
@@ -775,14 +775,14 @@ export class DocumentPaymentBusiness extends Business {
     // Get document.
     const document: any = await this.host.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document || !document.task) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
 
     // Get document template.
     const templateId = document.documentTemplateId;
     const documentTemplate = await getModels().documentTemplate.findById(templateId);
     if (!documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const { jsonSchema } = documentTemplate;
 

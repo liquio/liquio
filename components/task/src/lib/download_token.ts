@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-import { ERROR_DOWNLOAD_TOKEN_INVALID } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { checkDownloadTokenSecret } from './config_validation';
 import { ForbiddenError } from './errors';
 
@@ -73,7 +73,7 @@ export class DownloadToken {
     try {
       payload = jwt.verify(token, this.jwtSecret);
     } catch {
-      throw new ForbiddenError(ERROR_DOWNLOAD_TOKEN_INVALID);
+      throw new ForbiddenError(ErrorMessage.DownloadTokenInvalid);
     }
 
     if (
@@ -84,11 +84,11 @@ export class DownloadToken {
       typeof payload.userId !== 'string' ||
       !payload.userId
     ) {
-      throw new ForbiddenError(ERROR_DOWNLOAD_TOKEN_INVALID);
+      throw new ForbiddenError(ErrorMessage.DownloadTokenInvalid);
     }
 
     if (!userId || payload.userId !== String(userId)) {
-      throw new ForbiddenError(ERROR_DOWNLOAD_TOKEN_INVALID);
+      throw new ForbiddenError(ErrorMessage.DownloadTokenInvalid);
     }
 
     return payload.fileId;

@@ -9,7 +9,7 @@ import { Eds } from '../lib/eds';
 import { StorageService } from '../services/storage';
 import typeOf from '../lib/type_of';
 import { EvaluateSchemaFunctionError, NotFoundError, ForbiddenError } from '../lib/errors';
-import { ERROR_WORKFLOW_NOT_FOUND, ERROR_WORKFLOW_ACCESS } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
 
 const ELASTIC_FIELDS_SEARCH_MAP = {
@@ -110,13 +110,13 @@ export class WorkflowBusiness extends Business {
     // Get workflow.
     let workflow: any = await getModels().workflow.findById(id, { with: ['tasks', 'events'] });
     if (!workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
 
     // Check access.
     const hasAccess = workflow.hasAccess(userId, userUnitIds);
     if (!hasAccess) {
-      throw new ForbiddenError(ERROR_WORKFLOW_ACCESS);
+      throw new ForbiddenError(ErrorMessage.WorkflowAccess);
     }
 
     // Append extra data to workflow.

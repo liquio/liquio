@@ -1,7 +1,7 @@
 import { WorkflowLoggerRecordEntity } from './entities/workflow_logger_record';
 import { WorkflowLoggerEntity } from './entities/workflow_logger';
 import { ForbiddenError, NotFoundError } from '../../lib/errors';
-import { ERROR_WORKFLOW_NOT_FOUND } from '../../constants/error';
+import { ErrorMessage } from '../../constants/error';
 import { getModels } from '../../lib/context';
 
 // Constants.
@@ -43,7 +43,7 @@ export class WorkflowLoggerService {
       with: ['tasks', 'events', 'gateways', 'workflowErrors', 'workflowRestarts'],
     });
     if (!workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
 
     const workflowLoggerEntity = new WorkflowLoggerEntity(id);

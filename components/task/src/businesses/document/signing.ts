@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 
 import axios from 'axios';
 
-import { ERROR_DOCUMENT_ALREADY_COMMITTED, ERROR_DOCUMENT_NOT_FOUND, ERROR_DOCUMENT_TEMPLATE_NOT_FOUND } from '../../constants/error';
+import { ErrorMessage } from '../../constants/error';
 import {
   BadRequestError,
   EvaluateSchemaFunctionError,
@@ -645,10 +645,10 @@ export class DocumentSigningBusiness extends Business {
   ): Promise<{ isAdditionalP7sSigned: boolean }> {
     const document: any = await getModels().document.findById(documentId);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
     if (document.isFinal === true) {
-      throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
+      throw new BadRequestError(ErrorMessage.DocumentAlreadyCommitted);
     }
 
     // Get data for sign P7S.
@@ -1032,7 +1032,7 @@ export class DocumentSigningBusiness extends Business {
     // Get document JSON schema.
     const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
     if (!documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const { jsonSchema: documentJsonSchema } = documentTemplate;
 
@@ -1075,7 +1075,7 @@ export class DocumentSigningBusiness extends Business {
     // Get document JSON schema.
     const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
     if (!documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const { jsonSchema: documentJsonSchema } = documentTemplate;
 
@@ -1130,7 +1130,7 @@ export class DocumentSigningBusiness extends Business {
     // Get document.
     const document: any = await getModels().document.findById(documentId);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
     const documentSignatures = await (getModels().documentSignature.getByDocumentId as any)(documentId);
     const documentSignatureRejections = await (getModels().documentSignatureRejection.getByDocumentId as any)(documentId);
@@ -1204,7 +1204,7 @@ export class DocumentSigningBusiness extends Business {
     // Get document JSON schema.
     const template = await getModels().documentTemplate.findById(templateId);
     if (!template) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const jsonSchema = template.jsonSchema;
 

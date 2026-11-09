@@ -3,12 +3,7 @@ import _ from 'lodash';
 import PropByPath from 'prop-by-path';
 import { getIdApiClient, IdApiClient, Sandbox } from '@liquio/back-core';
 
-import {
-  ERROR_DOCUMENT_ALREADY_COMMITTED,
-  ERROR_DOCUMENT_NOT_FOUND,
-  ERROR_DOCUMENT_TEMPLATE_NOT_FOUND,
-  ERROR_UPDATE_DOCUMENT,
-} from '../../constants/error';
+import { ErrorMessage } from '../../constants/error';
 import { DocumentEntity } from '../../entities/document';
 import {
   BadRequestError,
@@ -148,7 +143,7 @@ export class DocumentBusiness extends Business {
         .then((meta) => this.appendTraceMeta(meta)),
     ]);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
 
     // Check access.
@@ -234,11 +229,11 @@ export class DocumentBusiness extends Business {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
 
     if (document.isFinal === true) {
-      throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
+      throw new BadRequestError(ErrorMessage.DocumentAlreadyCommitted);
     }
 
     // Check if document has signers.
@@ -251,7 +246,7 @@ export class DocumentBusiness extends Business {
     const templateId = document.documentTemplateId;
     const template = await getModels().documentTemplate.findById(templateId);
     if (!template) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const jsonSchema = template.jsonSchema;
 
@@ -357,7 +352,7 @@ export class DocumentBusiness extends Business {
     // Update document.
     const documentUpdated = await getModels().document.updateData(documentId, userId, documentDataObject, true, isKeepDocumentFile);
     if (!documentUpdated) {
-      throw new Error(ERROR_UPDATE_DOCUMENT);
+      throw new Error(ErrorMessage.UpdateDocument);
     }
     // Calculate draftExpiredAt and update task if need.
     const taskToReCalculateDraftExpiredAt = {
@@ -474,19 +469,19 @@ export class DocumentBusiness extends Business {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, externalServiceUser, undefined, undefined, doNotCheckAccess);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
 
     // Check document is final.
     if (document.isFinal === true) {
       getLog().save('update-by-external-service|document-already-committed-error', { documentId, externalServiceUser });
-      throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
+      throw new BadRequestError(ErrorMessage.DocumentAlreadyCommitted);
     }
 
     // Update document.
     const documentUpdated = await getModels().document.updateData(documentId, externalServiceUser, documentDataObject);
     if (!documentUpdated) {
-      throw new Error(ERROR_UPDATE_DOCUMENT);
+      throw new Error(ErrorMessage.UpdateDocument);
     }
 
     // Return updated document.
@@ -503,11 +498,11 @@ export class DocumentBusiness extends Business {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
 
     if (document.isFinal === true) {
-      throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
+      throw new BadRequestError(ErrorMessage.DocumentAlreadyCommitted);
     }
 
     // Get all values by key name 'id'
@@ -542,14 +537,14 @@ export class DocumentBusiness extends Business {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userInfo.userId, userUnitIds, true);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
 
     // Get JSON schema.
     const templateId = document.documentTemplateId;
     const template = await getModels().documentTemplate.findById(templateId);
     if (!template) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const jsonSchema = template.jsonSchema;
 
@@ -804,10 +799,10 @@ export class DocumentBusiness extends Business {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
     if (document.isFinal === true) {
-      throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
+      throw new BadRequestError(ErrorMessage.DocumentAlreadyCommitted);
     }
 
     let pathForSavingInDocument = path.replace(/.properties./g, '.');
@@ -825,7 +820,7 @@ export class DocumentBusiness extends Business {
     // Get document template.
     const documentTemplate = await getModels().documentTemplate.findById(document.documentTemplateId);
     if (!documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const { jsonSchema } = documentTemplate;
 
@@ -972,7 +967,7 @@ export class DocumentBusiness extends Business {
           PropByPath.delete(documentDataObject, pathForSavingInDocument);
           const updatedDocument = await getModels().document.updateData(documentId, userId, documentDataObject);
           if (!updatedDocument) {
-            throw new Error(ERROR_UPDATE_DOCUMENT);
+            throw new Error(ErrorMessage.UpdateDocument);
           }
         }
       }
@@ -1071,7 +1066,7 @@ export class DocumentBusiness extends Business {
 
     const updatedDocument = await getModels().document.updateData(documentId, userId, documentDataToUpdate);
     if (!updatedDocument) {
-      throw new Error(ERROR_UPDATE_DOCUMENT);
+      throw new Error(ErrorMessage.UpdateDocument);
     }
     getLog().save('updated-document-with-external-reader-check-data', { updatedDocument: { ...updatedDocument, data: HIDE_REPLACEMENT_TEXT } }); // Do not log large document.data.
 
@@ -1171,16 +1166,16 @@ export class DocumentBusiness extends Business {
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
-      throw new NotFoundError(ERROR_DOCUMENT_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentNotFound);
     }
 
     if (document.isFinal === true) {
-      throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
+      throw new BadRequestError(ErrorMessage.DocumentAlreadyCommitted);
     }
 
     // Get document template.
     if (!document.documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const { jsonSchema } = document.documentTemplate || {};
 
@@ -1196,7 +1191,7 @@ export class DocumentBusiness extends Business {
     // Save document.
     const updatedDocument = await getModels().document.updateData(documentId, userId, documentData);
     if (!updatedDocument) {
-      throw new Error(ERROR_UPDATE_DOCUMENT);
+      throw new Error(ErrorMessage.UpdateDocument);
     }
 
     return updatedDocument;

@@ -5,7 +5,7 @@ import { Sandbox } from '@liquio/back-core';
 import { Controller } from './controller';
 import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
 import { RegisterService } from '../services/register';
-import { ERROR_DOCUMENT_TEMPLATE_NOT_FOUND, ERROR_DOCUMENT_NOT_FOUND } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 import typeOf from '../lib/type_of';
 
@@ -408,12 +408,12 @@ export class RegisterController extends Controller {
         return this.responseError(res, error);
       }
       if (!document) {
-        return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_NOT_FOUND));
+        return this.responseError(res, new NotFoundError(ErrorMessage.DocumentNotFound));
       }
       // Get document_template JSON schema.
       const templateId = document.documentTemplateId;
       const template = await getModels().documentTemplate.findById(templateId);
-      if (!template) return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND));
+      if (!template) return this.responseError(res, new NotFoundError(ErrorMessage.DocumentTemplateNotFound));
       const jsonSchema = template.jsonSchema;
 
       // Get document step from path.

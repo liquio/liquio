@@ -28,7 +28,7 @@ import { PersistLink } from '../lib/persist_link';
 import { NotifierService as Notifier } from '../services/notifier';
 import { CustomLogs } from '../services/custom_logs';
 import { InvalidParamsError, BadRequestError, NotFoundError } from '../lib/errors';
-import { ERROR_DOCUMENT_ALREADY_COMMITTED, ERROR_DRAFT_EXPIRED, ERROR_CAN_NOT_DELETE, ERROR_DOCUMENT_NOT_FOUND } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 
 // Constants.
 const QUERY_INDICATOR_TRUE = 'true';
@@ -125,7 +125,7 @@ export class DocumentController extends Controller {
     try {
       const [document] = await this.documentModel.getByIds(documentId);
       if (!document) {
-        return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_NOT_FOUND));
+        return this.responseError(res, new NotFoundError(ErrorMessage.DocumentNotFound));
       }
 
       const {
@@ -250,7 +250,7 @@ export class DocumentController extends Controller {
       return this.responseError(res, error);
     }
     if (!document) {
-      return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_NOT_FOUND));
+      return this.responseError(res, new NotFoundError(ErrorMessage.DocumentNotFound));
     }
 
     // Check access for Basic auth.
@@ -327,7 +327,7 @@ export class DocumentController extends Controller {
 
       // Check draft expired.
       if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
 
       // Update document.
@@ -442,7 +442,7 @@ export class DocumentController extends Controller {
     // Check draft expired.
     try {
       if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -501,7 +501,7 @@ export class DocumentController extends Controller {
     // Check draft expired.
     try {
       if (getBusinesses().task.checkDraftExpired(task)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -601,7 +601,7 @@ export class DocumentController extends Controller {
       // Check document already commited.
       const { isFinal } = document;
       if (isFinal) {
-        throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
+        throw new BadRequestError(ErrorMessage.DocumentAlreadyCommitted);
       }
 
       if (req.query.large_file) {
@@ -872,7 +872,7 @@ export class DocumentController extends Controller {
     try {
       document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
       if (document.isFinal) {
-        throw new Error(ERROR_CAN_NOT_DELETE);
+        throw new Error(ErrorMessage.CanNotDelete);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -966,7 +966,7 @@ export class DocumentController extends Controller {
       // Check draft expired.
       try {
         if (getBusinesses().task.checkDraftExpired(task)) {
-          throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+          throw new BadRequestError(ErrorMessage.DraftExpired);
         }
       } catch (error) {
         return this.responseError(res, error);
@@ -1102,7 +1102,7 @@ export class DocumentController extends Controller {
     // Check draft expired.
     try {
       if (getBusinesses().task.checkDraftExpired(task)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1210,7 +1210,7 @@ export class DocumentController extends Controller {
     // Check draft expired.
     try {
       if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1637,7 +1637,7 @@ export class DocumentController extends Controller {
     // Check draft expired.
     try {
       if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1716,7 +1716,7 @@ export class DocumentController extends Controller {
     // Check draft expired.
     try {
       if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1803,7 +1803,7 @@ export class DocumentController extends Controller {
     try {
       taskToCheck = await getModels().task.findByDocumentId(documentId);
       if (getBusinesses().task.checkDraftExpired(taskToCheck)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1914,7 +1914,7 @@ export class DocumentController extends Controller {
     try {
       const [document] = await this.documentModel.getByIds(documentId);
       if (!document) {
-        return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_NOT_FOUND));
+        return this.responseError(res, new NotFoundError(ErrorMessage.DocumentNotFound));
       }
 
       const {
