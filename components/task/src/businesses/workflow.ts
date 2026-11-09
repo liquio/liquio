@@ -9,7 +9,7 @@ import { Eds } from '../lib/eds';
 import { StorageService } from '../services/storage';
 import typeOf from '../lib/type_of';
 import { EvaluateSchemaFunctionError, NotFoundError, ForbiddenError } from '../lib/errors';
-import { ERROR_WORKFLOW_NOT_FOUND, ERROR_WORKFLOW_ACCESS } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
 
 const ELASTIC_FIELDS_SEARCH_MAP = {
@@ -110,13 +110,13 @@ export class WorkflowBusiness extends Business {
     // Get workflow.
     let workflow: any = await getModels().workflow.findById(id, { with: ['tasks', 'events'] });
     if (!workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
 
     // Check access.
     const hasAccess = workflow.hasAccess(userId, userUnitIds);
     if (!hasAccess) {
-      throw new ForbiddenError(ERROR_WORKFLOW_ACCESS);
+      throw new ForbiddenError(ErrorMessage.WorkflowAccess);
     }
 
     // Append extra data to workflow.
@@ -127,7 +127,7 @@ export class WorkflowBusiness extends Business {
       workflow.documents = await (getModels().document.getAllByWorkflowId as any)({ workflowId: workflow.id });
       workflow.statuses = this.calculateReserveStatuses(workflow);
     }
-    const allFiles = await getBusinesses().document.files.getFilesToPreview(id, undefined, undefined, undefined, undefined, true);
+    const allFiles = await getBusinesses().document.files.getFilesToPreview(id, undefined, undefined, undefined, undefined, true, userId);
     const { workflowFilesFilter = '(item) => true' } = getConfig().files_filter || {};
     const workflowFilesFilterFunction = this.sandbox.eval(workflowFilesFilter);
     workflow.files = allFiles
@@ -316,7 +316,7 @@ export class WorkflowBusiness extends Business {
    * @return {{messages: object[], steps: object[]}}
    */
   getTimelineStepsAndMessages(workflow) {
-    const workflowMessages = _.get(workflow, 'data.messages', []);
+    const workflowMessages = _.get(workflow, 'data.messages', []) as { type?: string; sequences?: { sourceRef?: string }[] }[];
     const steps = _.get(workflow.workflowTemplate, 'data.timeline.steps', []);
 
     if (!workflowMessages.length || !steps.length) {

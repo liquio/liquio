@@ -1,4 +1,6 @@
 import { TestApp } from './test-app';
+import { HttpRequest } from '../src/lib/http_request';
+import { DownloadToken } from '../src/lib/download_token';
 import { expectAuthRequired } from './helpers/auth_guard';
 
 describe('Message Controller', () => {
@@ -49,6 +51,20 @@ describe('Message Controller', () => {
         .expect((response) => {
           expect(response.body).toHaveProperty('data');
         });
+    });
+  });
+
+  describe('GET /messages attachments', () => {
+    it('issues attachment download tokens bound to the requesting user', async () => {
+      const { jwt, payload } = app.generateUserToken(TEST_USER_ID);
+      mockUserAuth(payload);
+      jest.spyOn(HttpRequest, 'send').mockResolvedValue({ result: [{ id: 1, meta: { attachments: [{ fileId: 'att-1' }] } }], meta: {} } as any);
+
+      const response = await app.request().get('/messages').set('token', jwt).expect(200);
+
+      const { downloadToken } = response.body.data[0].meta.attachments[0];
+      expect(new DownloadToken().decrypt(downloadToken, TEST_USER_ID)).toBe('att-1');
+      expect(() => new DownloadToken().decrypt(downloadToken, 'another-user')).toThrow();
     });
   });
 

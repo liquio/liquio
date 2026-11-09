@@ -1221,7 +1221,7 @@ export class TaskModel extends Model {
         task_template_id: filters.task_template_id,
       });
     } else if (_.has(filters, 'task_template_id_list')) {
-      const parsedTaskTemplateIdList = filters.task_template_id_list.map((v) => parseInt(v)).filter((v) => !isNaN(v));
+      const parsedTaskTemplateIdList = (_.get(filters, 'task_template_id_list') as string[]).map((v) => parseInt(v)).filter((v) => !isNaN(v));
       sequelizeOptions.filters[Sequelize.Op.and].push({
         task_template_id: { [Sequelize.Op.in]: parsedTaskTemplateIdList },
       });

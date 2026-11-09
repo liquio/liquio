@@ -37,17 +37,7 @@ import {
   InternalServerError,
   InvalidParamsError,
 } from '../lib/errors';
-import {
-  ERROR_DRAFT_EXPIRED,
-  ERROR_WORKFLOW_TEMPLATE_NOT_FOUND,
-  ERROR_WORKFLOW_NOT_FOUND,
-  ERROR_WORKFLOW_ACCESS,
-  ERROR_TASK_TEMPLATE_NOT_FOUND,
-  ERROR_TASK_NOT_FOUND,
-  ERROR_DOCUMENT_TEMPLATE_NOT_FOUND,
-  ERROR_CAN_NOT_DELETE,
-  ERROR_CREATE_TASK_ACCESS,
-} from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { getBusinesses, getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
 
 // Constants.
@@ -860,19 +850,19 @@ export class TaskBusiness extends Business {
     // Create workflow.
     const workflowTemplate: any = await getModels().workflowTemplate.findById(workflowTemplateId);
     if (!workflowTemplate || workflowTemplate.isActive === false) {
-      throw new NotFoundError(ERROR_WORKFLOW_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowTemplateNotFound);
     }
 
     // Get task template.
     const taskTemplate = await getModels().taskTemplate.findById(taskTemplateId);
     if (!taskTemplate) {
-      throw new NotFoundError(ERROR_TASK_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.TaskTemplateNotFound);
     }
 
     // Check if the task is a system task being created by a system user.
     // The `userInfo` param is present when the task is created via a browser call (TaskController.create).
     if (taskTemplate.jsonSchema?.isSystem === true && userInfo?.userId) {
-      throw new ForbiddenError(ERROR_CREATE_TASK_ACCESS);
+      throw new ForbiddenError(ErrorMessage.CreateTaskAccess);
     }
 
     // Check task "isAIAssistant" really created by 'POST /tasks/by-other-system' route calling with passing regular user token.
@@ -882,7 +872,7 @@ export class TaskBusiness extends Business {
 
     // Check task created by 'POST /tasks/by-other-system' with regular user token has "isAIAssistant: true" setting.
     if (isForwardedFromRegularUser && !taskTemplate.jsonSchema?.isAIAssistant) {
-      throw new ForbiddenError(ERROR_CREATE_TASK_ACCESS);
+      throw new ForbiddenError(ErrorMessage.CreateTaskAccess);
     }
 
     if (!workflowId) {
@@ -992,7 +982,7 @@ export class TaskBusiness extends Business {
     if (!workflow) {
       workflow = await getModels().workflow.findById(workflowId);
       if (!workflow) {
-        throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+        throw new NotFoundError(ErrorMessage.WorkflowNotFound);
       }
       if (Number(workflow.workflowTemplateId) !== Number(workflowTemplateId)) {
         throw new BadRequestError("Param workflowTemplateId does not match workflow's actual template.");
@@ -1001,7 +991,7 @@ export class TaskBusiness extends Business {
       if (!isCreateByOtherSystem && !isCreateFromRmqMessage) {
         const hasWorkflowAccess = workflow.hasAccess(userId, unitIds || { all: [], head: [], member: [] });
         if (!hasWorkflowAccess) {
-          throw new ForbiddenError(ERROR_WORKFLOW_ACCESS);
+          throw new ForbiddenError(ErrorMessage.WorkflowAccess);
         }
       }
     }
@@ -1209,7 +1199,7 @@ export class TaskBusiness extends Business {
       const documentTemplateId = taskTemplate.documentTemplateId;
       const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
       if (!documentTemplate) {
-        throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+        throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
       }
       const documentTemplateJsonSchema = documentTemplate.jsonSchema;
 
@@ -1732,7 +1722,7 @@ export class TaskBusiness extends Business {
   async update(id, userId, userUnitIds, properties) {
     const task: any = await this.findByIdAndCheckAccess(id, userId, userUnitIds, true);
     if (!task) {
-      throw new NotFoundError(ERROR_TASK_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.TaskNotFound);
     }
 
     if (task.finished === true) {
@@ -1830,10 +1820,10 @@ export class TaskBusiness extends Business {
       withWorkflowTemplate: ['is_active'], // we only need to check if workflow template is active
     });
     if (!task) {
-      throw new NotFoundError(ERROR_TASK_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.TaskNotFound);
     }
     if (!task.workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
     if (task.workflow.workflowTemplate.isActive === false && task.finished === false) {
       throw new BadRequestError('Workflow template is not active.');
@@ -1951,7 +1941,7 @@ export class TaskBusiness extends Business {
     // Get task.
     const task: any = await getModels().task.findByDocumentId(documentId);
     if (!task) {
-      throw new NotFoundError(ERROR_TASK_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.TaskNotFound);
     }
 
     // Check user is signer.
@@ -2065,7 +2055,7 @@ export class TaskBusiness extends Business {
     // Get document JSON schema.
     const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
     if (!documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
     const { jsonSchema: documentJsonSchema } = documentTemplate;
 
@@ -2114,7 +2104,7 @@ export class TaskBusiness extends Business {
     // Get task.
     const task: any = await getModels().task.findById(id);
     if (!task || task.finished === true) {
-      throw new NotFoundError(ERROR_TASK_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.TaskNotFound);
     }
 
     // Check access.
@@ -2148,7 +2138,7 @@ export class TaskBusiness extends Business {
       }
 
       if (this.checkDraftExpired(task)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     }
 
@@ -2168,7 +2158,7 @@ export class TaskBusiness extends Business {
       const templateId = document.documentTemplateId;
       const template = await getModels().documentTemplate.findById(templateId);
       if (!template) {
-        throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+        throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
       }
       jsonSchema = template.jsonSchema;
 
@@ -2605,7 +2595,7 @@ export class TaskBusiness extends Business {
 
     const workflow: any = await getModels().workflow.findById(task.workflowId);
     if (!workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
 
     if (typeof workflow.data.messages !== 'undefined') {
@@ -2615,7 +2605,7 @@ export class TaskBusiness extends Business {
     // Get document JSON schema.
     const documentTemplate = await getModels().documentTemplate.findById(task.document.documentTemplateId);
     if (!documentTemplate) {
-      throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
     }
 
     // Check if the task has payment.
@@ -2673,11 +2663,11 @@ export class TaskBusiness extends Business {
 
     const workflow: any = await getModels().workflow.findById(task.workflowId);
     if (!workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
 
     if (task.deleted === false || typeof workflow.data.messages !== 'undefined') {
-      throw new ForbiddenError(ERROR_CAN_NOT_DELETE);
+      throw new ForbiddenError(ErrorMessage.CanNotDelete);
     }
 
     try {
@@ -2710,7 +2700,7 @@ export class TaskBusiness extends Business {
 
     const workflow: any = await getModels().workflow.findById(task.workflowId);
     if (!workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
 
     if (typeof workflow.data.messages !== 'undefined') {
@@ -2742,7 +2732,7 @@ export class TaskBusiness extends Business {
 
     await getModels().taskTemplate.findById(task.taskTemplateId);
     if (this.checkDraftExpired(task)) {
-      throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      throw new BadRequestError(ErrorMessage.DraftExpired);
     }
 
     // Set signer users.
@@ -2818,7 +2808,7 @@ export class TaskBusiness extends Business {
     // Get task.
     const task: any = await getModels().task.findById(id);
     if (!task || task.finished === true) {
-      throw new NotFoundError(ERROR_TASK_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.TaskNotFound);
     }
 
     // Check access.
@@ -2878,7 +2868,7 @@ export class TaskBusiness extends Business {
     // Get task and check access.
     const task: any = await this.findByIdAndCheckAccess(taskId, userId, userUnitIds);
     if (!task) {
-      throw new NotFoundError(ERROR_TASK_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.TaskNotFound);
     }
     const userIpn = userInfo.ipn;
 
@@ -2889,12 +2879,12 @@ export class TaskBusiness extends Business {
       const templateId = document.documentTemplateId;
       const template = await getModels().documentTemplate.findById(templateId);
       if (!template) {
-        throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+        throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
       }
       jsonSchema = template.jsonSchema;
     }
     if (this.checkDraftExpired(task)) {
-      throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      throw new BadRequestError(ErrorMessage.DraftExpired);
     }
 
     // Get formula to calculate signers.
@@ -3020,7 +3010,7 @@ export class TaskBusiness extends Business {
     // Get task.
     const task: any = await getModels().task.findById(taskId);
     if (!task) {
-      throw new NotFoundError(ERROR_TASK_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.TaskNotFound);
     }
 
     // Get document by JSON schema.
@@ -3031,7 +3021,7 @@ export class TaskBusiness extends Business {
       const templateId = document.documentTemplateId;
       const template = await getModels().documentTemplate.findById(templateId);
       if (!template) {
-        throw new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND);
+        throw new NotFoundError(ErrorMessage.DocumentTemplateNotFound);
       }
       jsonSchema = template.jsonSchema;
     }

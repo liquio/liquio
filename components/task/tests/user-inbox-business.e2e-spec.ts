@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, userRequest, SCENARIO } from './helpers/scenario';
+import { DownloadToken } from '../src/lib/download_token';
 import { getBusinesses } from '../src/lib/context';
 
 const CREATOR = SCENARIO.userId;
@@ -103,6 +104,9 @@ describe('User inbox', () => {
       expect(first.status).toBe(200);
       expect(first.body.data[0]).toMatchObject({ fileType: 'application/pdf', hasP7sSignature: true });
       expect(first.body.data[0].generatedAttachments[0].downloadToken).toBeTruthy();
+      const inboxToken = first.body.data[0].downloadToken;
+      expect(new DownloadToken().decrypt(inboxToken, CREATOR)).toBeTruthy();
+      expect(() => new DownloadToken().decrypt(inboxToken, OTHER)).toThrow();
       await app.waitFor(async () => (await app.model('userInbox').findOne({ where: { document_id: task.documentId } })).meta.fileId === 'inbox-file');
       const second = await as()('get', '/user-inboxes').query({ page: 1, count: 10 });
       expect(second.status).toBe(200);

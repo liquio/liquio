@@ -1,5 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
+import { DownloadToken } from '../src/lib/download_token';
 import { getBusinesses, getMessageQueue, getModels } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
@@ -106,9 +107,21 @@ describe('Document files business', () => {
         );
       await attach(task.documentId, 'file-c', { labels: ['x'] });
       await app.model('task').update({ finished: true }, { where: { id: task.id } });
-      const list = await files().getFilesToPreview(task.workflowId, templateId, 'preview', { finished: true, updatedAt: new Date() }, false, true);
+      const list = await files().getFilesToPreview(
+        task.workflowId,
+        templateId,
+        'preview',
+        { finished: true, updatedAt: new Date() },
+        false,
+        true,
+        USER,
+      );
       expect(list.map((v) => v.fileLink)).toEqual(expect.arrayContaining(['main-file', 'file-c']));
       expect(list.every((v) => typeof v.downloadToken === 'string')).toBe(true);
+      expect(new DownloadToken().decrypt(list[0].downloadToken, USER)).toBe(list[0].fileLink);
+      const noUser = await files().getFilesToPreview(task.workflowId, templateId, 'preview', { finished: true, updatedAt: new Date() }, false, true);
+      expect(noUser.length).toBeGreaterThan(0);
+      expect(noUser.every((v) => v.downloadToken === undefined)).toBe(true);
     });
 
     it('lists the direct document files, applies filters and custom attachment functions', async () => {

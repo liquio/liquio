@@ -27,12 +27,13 @@ export class MessageController extends Controller {
    */
   async getAll(req, res) {
     const accessToken = this.getRequestUserAccessToken(req);
+    const userId = this.getRequestUserId(req);
     const eventId = req.query.event_id && parseInt(req.query.event_id);
     const queryParams = req.query;
 
     let messages;
     try {
-      messages = await this.notifierService.getMessages(accessToken, eventId, queryParams);
+      messages = await this.notifierService.getMessages(accessToken, eventId, queryParams, userId);
     } catch (error) {
       return this.responseError(res, error);
     }

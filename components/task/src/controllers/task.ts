@@ -9,7 +9,7 @@ import { UnitModel } from '../models/unit';
 import { CustomLogs } from '../services/custom_logs';
 import { TaskActivity } from '../types/task_activity';
 import { Helpers } from '../lib/helpers';
-import { ERROR_TASK_NOT_FOUND } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 import { getBusinesses, getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
 
@@ -678,7 +678,7 @@ export class TaskController extends Controller {
       return this.responseError(res, error);
     }
     if (!task) {
-      const notFoundError = new NotFoundError(ERROR_TASK_NOT_FOUND);
+      const notFoundError = new NotFoundError(ErrorMessage.TaskNotFound);
       return this.responseError(res, notFoundError);
     }
 
@@ -813,7 +813,7 @@ export class TaskController extends Controller {
       return this.responseError(res, error, error.httpStatusCode);
     }
     if (!task) {
-      return this.responseError(res, new NotFoundError(ERROR_TASK_NOT_FOUND));
+      return this.responseError(res, new NotFoundError(ErrorMessage.TaskNotFound));
     }
 
     // Check task already finished.

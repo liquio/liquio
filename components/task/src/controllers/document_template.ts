@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { DocumentTemplateModel } from '../models/document_template';
 import { RedisClient as redisClient } from '../lib/redis_client';
-import { ERROR_DOCUMENT_TEMPLATE_NOT_FOUND } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 
 /**
@@ -65,7 +65,7 @@ export class DocumentTemplateController extends Controller {
       return this.responseError(res, error);
     }
     if (!documentTemplate) {
-      return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND));
+      return this.responseError(res, new NotFoundError(ErrorMessage.DocumentTemplateNotFound));
     }
 
     this.responseData(res, documentTemplate);

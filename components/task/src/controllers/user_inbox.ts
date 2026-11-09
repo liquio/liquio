@@ -134,6 +134,7 @@ export class UserInboxController extends Controller {
 
           userInboxesEntities.data[i].downloadToken = this.downloadToken.generate(
             userInboxesEntities.data[i].meta.fileId || documents.find((d) => d.id === userInboxesEntities.data[i].documentId).fileId,
+            userId,
           );
 
           userInboxesEntities.data[i].generatedAttachments =
@@ -145,7 +146,7 @@ export class UserInboxController extends Controller {
             if (typeof generatedAttachment.hasP7sSignature === 'undefined') {
               generatedAttachment.hasP7sSignature = p7sMeta.some((v) => v.file_id === generatedAttachment.link);
             }
-            generatedAttachment.downloadToken = this.downloadToken.generate(generatedAttachment.link);
+            generatedAttachment.downloadToken = this.downloadToken.generate(generatedAttachment.link, userId);
           }
 
           // Update meta if need it.

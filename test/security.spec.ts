@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import type { Browser, Page } from '@playwright/test';
 
 /**
  * Security E2E Tests - Exploitation Attempts
@@ -8,7 +9,7 @@ import { test, expect } from '@playwright/test';
  * - Defense in Depth: Security Headers (CSP, X-Frame-Options, etc.)
  */
 
-import { log } from './helpers';
+import { ensureAtLoginPage, loginWithPersonalKey, importWorkflow, setupLogging, log } from './helpers';
 
 // Test configuration
 const ID_API_URL = 'http://localhost:8100';
@@ -231,6 +232,97 @@ test.describe('Security - Defense in Depth', () => {
     // May not be present in localhost development
     if (hsts) {
       expect(hsts).toContain('max-age');
+    }
+  });
+});
+
+test.describe('Security - File download token (Should Reject Other Users)', () => {
+  const CABINET_URL = 'http://localhost:8081';
+  const CABINET_API_URL = 'http://localhost:8101';
+
+  const loginToCabinet = async (browser: Browser, p12: string, password: string): Promise<{ page: Page; token: string }> => {
+    const page = await (await browser.newContext()).newPage();
+    await setupLogging(page);
+    page.setDefaultTimeout(15000);
+    await page.goto(`${CABINET_URL}/`);
+    await page.waitForLoadState('networkidle');
+    // The redirect to the login page can come after the network is idle, so wait for either outcome.
+    await page.waitForFunction(() => globalThis.location.port === '8080' || !!localStorage.getItem('token'), null, { timeout: 30000 });
+    if (page.url().includes('localhost:8080')) {
+      await ensureAtLoginPage(page);
+      await loginWithPersonalKey(page, p12, password);
+    }
+    await expect(page).toHaveURL(/^http:\/\/localhost:8081/);
+    await page.waitForFunction(() => !!localStorage.getItem('token'));
+    const token = await page.evaluate(() => localStorage.getItem('token'));
+    return { page, token };
+  };
+
+  test('File download token: another user must not read the file', async ({ browser }) => {
+    test.setTimeout(240000);
+
+    log('Importing workflow 940081 as an admin');
+    const adminPage = await (await browser.newContext()).newPage();
+    await setupLogging(adminPage);
+    adminPage.setDefaultTimeout(15000);
+    await adminPage.goto('http://localhost:8082/');
+    await ensureAtLoginPage(adminPage);
+    await loginWithPersonalKey(adminPage, '../config/admin.p12', 'admin');
+    await expect(adminPage).toHaveURL(/^http:\/\/localhost:8082\//);
+    await importWorkflow(adminPage, './fixtures/workflow-940081.bpmn', false, true);
+    // The server accepts an import before it has saved it, so reload until the workflow is there.
+    await expect(async () => {
+      await adminPage.goto('http://localhost:8082/workflow/940081');
+      await expect(adminPage).toHaveTitle(/file preview access/, { timeout: 3000 });
+    }).toPass({ timeout: 30000 });
+    await adminPage.context().close();
+
+    const victim = await loginToCabinet(browser, '../config/admin.p12', 'admin');
+    const attacker = await loginToCabinet(browser, '../config/demo.p12', 'demo');
+
+    try {
+      const call = (who: { page: Page; token: string }, method: string, path: string, options: object = {}) =>
+        who.page.request.fetch(`${CABINET_API_URL}/${path}`, { method, headers: { token: who.token }, failOnStatusCode: false, ...options });
+
+      const secret = Buffer.from(`victim file ${Date.now()} ${Math.random()}\n`);
+
+      const created = await call(victim, 'POST', 'tasks', { data: { workflowTemplateId: 940081, taskTemplateId: 940081001 } });
+      expect(created.status(), 'create task').toBe(200);
+      const { id: taskId, documentId } = (await created.json()).data;
+
+      const upload = await call(victim, 'POST', `documents/${documentId}/attachments?file_name=victim.pdf`, {
+        headers: { token: victim.token, 'content-type': 'application/pdf' },
+        data: secret,
+      });
+      expect(upload.status(), 'upload attachment').toBe(200);
+
+      const commit = await call(victim, 'POST', `tasks/${taskId}/commit`, { data: {} });
+      expect(commit.status(), 'commit task').toBe(200);
+
+      let downloadToken: string;
+      // The file is listed once the committed document is final, which is not immediate.
+      await expect(async () => {
+        const files = await call(victim, 'GET', `documents/${documentId}/workflow_files?step=filesPreview`);
+        expect(files.status(), 'list workflow files').toBe(200);
+        const { data } = await files.json();
+        expect(data).toHaveLength(1);
+        downloadToken = data[0].downloadToken;
+      }).toPass({ timeout: 30000 });
+      expect(downloadToken).toBeTruthy();
+
+      // Sanity: the owner can download the file with the token
+      const own = await call(victim, 'GET', `files/${downloadToken}`);
+      expect(own.status()).toBe(200);
+      expect((await own.body()).equals(secret)).toBeTruthy();
+
+      // Another authenticated user holding the token must be denied and must not receive the bytes
+      const foreign = await call(attacker, 'GET', `files/${downloadToken}`);
+      const foreignBody = await foreign.body();
+      expect(foreign.status()).toBe(403);
+      expect(foreignBody.equals(secret)).toBeFalsy();
+    } finally {
+      await victim.page.context().close();
+      await attacker.page.context().close();
     }
   });
 });

@@ -313,11 +313,9 @@ export class Keywords {
       return '';
     }
 
-    let dataClone = Array.isArray(propertyData) ? _.cloneDeep(propertyData) : [_.cloneDeep(propertyData)];
+    const dataCloneSource = Array.isArray(propertyData) ? _.cloneDeep(propertyData) : [_.cloneDeep(propertyData)];
 
-    dataClone = JSONPath('$..[?(@.keyId && @.registerId && @.id)]', dataClone);
-
-    dataClone = dataClone[0];
+    const dataClone = JSONPath('$..[?(@.keyId && @.registerId && @.id)]', dataCloneSource)[0];
     if (!dataClone) {
       return error;
     }

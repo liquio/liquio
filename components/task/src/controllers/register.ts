@@ -5,9 +5,31 @@ import { Sandbox } from '@liquio/back-core';
 import { Controller } from './controller';
 import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
 import { RegisterService } from '../services/register';
-import { ERROR_DOCUMENT_TEMPLATE_NOT_FOUND, ERROR_DOCUMENT_NOT_FOUND } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 import typeOf from '../lib/type_of';
+
+interface RegisterElementTemplate {
+  control?: string;
+  keyId?: string | number;
+  whiteList?: (string | number)[];
+  setDefined?: unknown;
+  multiple?: unknown;
+  withLinkedObjects?: unknown;
+  additionalFilter?: unknown;
+  filters?: unknown;
+  filtersType?: unknown;
+  sortBy?: unknown;
+  search?: unknown;
+  search2?: unknown;
+  search3?: unknown;
+  searchEqual?: unknown;
+  searchEqual2?: unknown;
+  searchEqual3?: unknown;
+  searchLike?: unknown;
+  searchLike2?: unknown;
+  searchLike3?: unknown;
+}
 
 // Constants.
 const RECORDS_DEFAULT_LIMIT = 10;
@@ -408,12 +430,12 @@ export class RegisterController extends Controller {
         return this.responseError(res, error);
       }
       if (!document) {
-        return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_NOT_FOUND));
+        return this.responseError(res, new NotFoundError(ErrorMessage.DocumentNotFound));
       }
       // Get document_template JSON schema.
       const templateId = document.documentTemplateId;
       const template = await getModels().documentTemplate.findById(templateId);
-      if (!template) return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_TEMPLATE_NOT_FOUND));
+      if (!template) return this.responseError(res, new NotFoundError(ErrorMessage.DocumentTemplateNotFound));
       const jsonSchema = template.jsonSchema;
 
       // Get document step from path.
@@ -431,7 +453,7 @@ export class RegisterController extends Controller {
       // Get step element from path.
       elementName = getBusinesses().register.getTemplatePathFromDataPath(controlParts.join('.'));
       const element = _.at(step, controlParts.join('.'))[0] || {};
-      const elementTemplate = _.at(stepTemplate, elementName)[0];
+      const elementTemplate = _.at(stepTemplate, elementName)[0] as RegisterElementTemplate | undefined;
 
       // Check if incorrect option control or keyId.
       if (!elementTemplate) return this.responseError(res, "Document template doesn't have passed control.", 400, { control });
