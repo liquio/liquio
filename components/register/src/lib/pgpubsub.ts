@@ -21,7 +21,7 @@ const RETRY_CONNECTION_TIME = 10 * 1000; // 10 seconds
  * Pub/Sub.
  */
 export class PgPubSub {
-  private static singleton: PgPubSub;
+  private static singleton: PgPubSub | undefined;
 
   private readonly config: PgPubSubConfig;
 
@@ -32,6 +32,8 @@ export class PgPubSub {
   private reconnectAttempts: number;
 
   private isReconnecting: boolean;
+
+  private isClosing = false;
 
   private subscriptions: Map<string, PubSubCallback[]> = new Map();
 
@@ -55,7 +57,7 @@ export class PgPubSub {
    * Get the initialized singleton instance.
    * @returns {PgPubSub}
    */
-  static getInstance(): PgPubSub {
+  static getInstance(): PgPubSub | undefined {
     return PgPubSub.singleton;
   }
 
@@ -92,6 +94,8 @@ export class PgPubSub {
         isReconnecting: this.isReconnecting,
       });
 
+      if (this.isClosing) return;
+
       if (!this.isReconnecting) {
         this.reconnect();
       }
@@ -99,6 +103,8 @@ export class PgPubSub {
 
     client.on('end', () => {
       this.log.save('pgpubsub-connection-ended', { isReconnecting: this.isReconnecting });
+
+      if (this.isClosing) return;
 
       if (!this.isReconnecting && !this.client) {
         this.reconnect();
@@ -115,7 +121,7 @@ export class PgPubSub {
    * Handles reconnection logic.
    */
   async reconnect(): Promise<void> {
-    if (this.reconnectTimer) return;
+    if (this.reconnectTimer || this.isClosing) return;
 
     this.isReconnecting = true;
 
@@ -131,6 +137,12 @@ export class PgPubSub {
     }
 
     this.reconnectTimer = setInterval(async () => {
+      if (this.isClosing) {
+        clearInterval(this.reconnectTimer);
+        this.reconnectTimer = null;
+        return;
+      }
+
       try {
         this.log.save('pgpubsub-starting-to-reconnect', {
           reconnectAttempts: this.reconnectAttempts,
@@ -164,6 +176,36 @@ export class PgPubSub {
         });
       }
     }, this.config.retryConnectionTime || RETRY_CONNECTION_TIME);
+  }
+
+  /**
+   * Close the connection, stop reconnecting and release the singleton.
+   */
+  async close(): Promise<void> {
+    this.isClosing = true;
+
+    if (this.reconnectTimer) {
+      clearInterval(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.isReconnecting = false;
+    this.reconnectAttempts = 0;
+
+    try {
+      await this.client?.end();
+    } catch (error) {
+      this.log.save('pgpubsub-close-error', { error: error.message });
+    } finally {
+      this.client = null;
+    }
+
+    this.subscriptions.clear();
+
+    if (PgPubSub.singleton === this) {
+      PgPubSub.singleton = undefined;
+    }
+
+    this.log.save('pgpubsub-closed', {});
   }
 
   /**
