@@ -1,11 +1,22 @@
 import _ from 'lodash';
-import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
+import { getRegisterApiClient, RegisterApiClient, RegisterApiError } from '@liquio/back-core';
 import xlsx from 'node-xlsx';
 
 import { Exceptions } from '../exceptions';
-import { callRegisterLegacy } from '../lib/register_api';
 import { PublicError } from '../lib/public_error';
 import { getConfig, getLog } from '../lib/context';
+
+/**
+ * Reduce error to loggable fields (no response body, headers, query or token).
+ * @param {unknown} error Error.
+ * @returns {unknown}
+ */
+function toSafeLogError(error: any): unknown {
+  if (error instanceof RegisterApiError) {
+    return { status: error.status, message: error.message };
+  }
+  return error;
+}
 
 /**
  * Register business.
@@ -14,7 +25,7 @@ export class RegisterBusiness {
   private static singleton: RegisterBusiness;
 
   public config: any;
-  private registerService: RegisterApiClient;
+  private readonly registerService: RegisterApiClient;
   private importXlsxBatchSize: number;
 
   /**
@@ -44,11 +55,7 @@ export class RegisterBusiness {
    * @returns {Promise<object[]>}
    */
   async getRegistersWithPagination({ id, key_id, name, offset, limit }) {
-    const registers = await callRegisterLegacy(
-      'register-request-get-registers-error',
-      () => this.registerService.getRegisters({ id, key_id, name, offset, limit }),
-      'body',
-    );
+    const registers = await this.registerService.getRegisters({ id, key_id, name, offset, limit });
 
     return registers;
   }
@@ -58,28 +65,22 @@ export class RegisterBusiness {
    * @returns {Promise<object[]>}
    */
   async getRegisters() {
-    let registers = await callRegisterLegacy(
-      'register-request-get-registers-error',
-      () => this.registerService.getRegisters({ offset: 0, limit: 1000 }),
-      'body',
-    );
+    const registers = await this.registerService.getRegisters({ offset: 0, limit: 1000 });
 
-    if (registers && registers.data) {
-      registers = registers.data.map((v) => {
-        return {
-          id: v.id,
-          name: v.name,
-          parentId: v.parentId,
-          description: v.description,
-          createdAt: v.createdAt,
-          updatedAt: v.updatedAt,
-        };
-      });
-    } else {
-      registers = [];
+    if (!registers?.data) {
+      return [];
     }
 
-    return registers;
+    return registers.data.map((v) => {
+      return {
+        id: v.id,
+        name: v.name,
+        parentId: v.parentId,
+        description: v.description,
+        createdAt: v.createdAt,
+        updatedAt: v.updatedAt,
+      };
+    });
   }
 
   /**
@@ -87,8 +88,8 @@ export class RegisterBusiness {
    * @param {number} id ID.
    * @returns {Promise<object>}
    */
-  async findRegisterById(id) {
-    const register = await callRegisterLegacy('register-request-get-register-error', () => this.registerService.findRegisterById(id), 'undefined');
+  async findRegisterById(id): Promise<any> {
+    const register = await this.registerService.findRegisterById(id);
 
     return register;
   }
@@ -100,11 +101,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async createRegister(data, accessInfo) {
-    const register = await callRegisterLegacy(
-      'register-request-post-register-error',
-      () => this.registerService.createRegister(data, { accessInfo }),
-      'undefined',
-    );
+    const register = await this.registerService.createRegister(data, { accessInfo });
 
     return register;
   }
@@ -117,11 +114,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async updateRegisterById(id, data, accessInfo) {
-    const register = await callRegisterLegacy(
-      'register-request-put-register-error',
-      () => this.registerService.updateRegisterById(id, data, { accessInfo }),
-      'undefined',
-    );
+    const register = await this.registerService.updateRegisterById(id, data, { accessInfo });
 
     return register;
   }
@@ -133,11 +126,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async deleteRegisterById(id, accessInfo) {
-    const register = await callRegisterLegacy(
-      'register-request-delete-register-error',
-      () => this.registerService.deleteRegisterById(id, { accessInfo }),
-      'undefined',
-    );
+    const register = await this.registerService.deleteRegisterById(id, { accessInfo });
 
     return register;
   }
@@ -151,11 +140,7 @@ export class RegisterBusiness {
    * @returns {Promise<object[]>}
    */
   async getKeysWithPagination({ register_id, offset, limit }) {
-    const keys = await callRegisterLegacy(
-      'register-request-get-keys-error',
-      () => this.registerService.getKeys({ register_id, offset, limit }),
-      'body',
-    );
+    const keys = await this.registerService.getKeys({ register_id, offset, limit });
 
     return keys;
   }
@@ -167,30 +152,24 @@ export class RegisterBusiness {
    * @returns {Promise<object[]>}
    */
   async getKeys({ register_id }) {
-    let keys = await callRegisterLegacy(
-      'register-request-get-keys-error',
-      () => this.registerService.getKeys({ register_id, offset: 0, limit: 1000 }),
-      'body',
-    );
+    const keys = await this.registerService.getKeys({ register_id, offset: 0, limit: 1000 });
 
-    if (keys && keys.data) {
-      keys = keys.data.map((v) => {
-        return {
-          id: v.id,
-          registerId: v.registerId,
-          name: v.name,
-          parentId: v.parentId,
-          description: v.description,
-          createdAt: v.createdAt,
-          updatedAt: v.updatedAt,
-          keySignature: v.keySignature,
-        };
-      });
-    } else {
-      keys = [];
+    if (!keys?.data) {
+      return [];
     }
 
-    return keys;
+    return keys.data.map((v) => {
+      return {
+        id: v.id,
+        registerId: v.registerId,
+        name: v.name,
+        parentId: v.parentId,
+        description: v.description,
+        createdAt: v.createdAt,
+        updatedAt: v.updatedAt,
+        keySignature: v.keySignature,
+      };
+    });
   }
 
   /**
@@ -198,8 +177,8 @@ export class RegisterBusiness {
    * @param {number} id ID.
    * @returns {Promise<object>}
    */
-  async findKeyById(id) {
-    const key = await callRegisterLegacy('register-request-get-keys-error', () => this.registerService.findKeyById(id), 'undefined');
+  async findKeyById(id): Promise<any> {
+    const key = await this.registerService.findKeyById(id);
 
     return key;
   }
@@ -211,11 +190,7 @@ export class RegisterBusiness {
    * @returns
    */
   async updateIndexMapping(keyId, mapping) {
-    return callRegisterLegacy(
-      'register-request-put-key-index-mapping-error',
-      () => this.registerService.updateKeyIndexMapping(keyId, mapping),
-      'undefined',
-    );
+    return this.registerService.updateKeyIndexMapping(keyId, mapping);
   }
 
   /**
@@ -224,7 +199,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async getSyncedKeys(ids) {
-    const keys = await callRegisterLegacy('register-request-get-synced-keys-error', () => this.registerService.getSyncedKeys(ids), 'undefined');
+    const keys = await this.registerService.getSyncedKeys(ids);
 
     return keys;
   }
@@ -234,7 +209,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async getAllSyncedKeys() {
-    const keys = await callRegisterLegacy('register-request-get-keys-error', () => this.registerService.getAllSyncedKeys(), 'undefined');
+    const keys = await this.registerService.getAllSyncedKeys();
 
     return keys;
   }
@@ -246,7 +221,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async createKey(data, accessInfo) {
-    const key = await callRegisterLegacy('register-request-post-key-error', () => this.registerService.createKey(data, { accessInfo }), 'undefined');
+    const key = await this.registerService.createKey(data, { accessInfo });
 
     return key;
   }
@@ -259,11 +234,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async updateKeyById(id, data, accessInfo) {
-    const key = await callRegisterLegacy(
-      'register-request-put-key-error',
-      () => this.registerService.updateKeyById(id, data, { accessInfo }),
-      'undefined',
-    );
+    const key = await this.registerService.updateKeyById(id, data, { accessInfo });
 
     return key;
   }
@@ -275,11 +246,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async deleteKeyById(id, accessInfo) {
-    const key = await callRegisterLegacy(
-      'register-request-delete-key-error',
-      () => this.registerService.deleteKeyById(id, { accessInfo }),
-      'undefined',
-    );
+    const key = await this.registerService.deleteKeyById(id, { accessInfo });
 
     return key;
   }
@@ -294,11 +261,7 @@ export class RegisterBusiness {
    * @returns {Promise<object[]>}
    */
   async getRecords({ register_id, key_id, offset, limit }) {
-    const keys = await callRegisterLegacy(
-      'register-request-get-records-error',
-      () => this.registerService.getRecords({ register_id, key_id, offset, limit, allow_see_all_records: true }),
-      'body',
-    );
+    const keys = await this.registerService.getRecords({ register_id, key_id, offset, limit, allow_see_all_records: true });
 
     return keys;
   }
@@ -309,7 +272,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async findRecordById(id) {
-    const record = await callRegisterLegacy('register-request-get-record-by-id-error', () => this.registerService.findRecordById(id), 'undefined');
+    const record = await this.registerService.findRecordById(id);
 
     return record;
   }
@@ -321,11 +284,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async createRecord(data, accessInfo) {
-    const record = await callRegisterLegacy(
-      'register-request-post-record-error',
-      () => this.registerService.createRecord(data, { accessInfo }),
-      'undefined',
-    );
+    const record = await this.registerService.createRecord(data, { accessInfo });
 
     return record;
   }
@@ -338,11 +297,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async importBulkRecords(params, records, accessInfo) {
-    const record = await callRegisterLegacy(
-      'register-request-post-record-error',
-      () => this.registerService.importBulkRecords({ ...params, records }, { accessInfo }),
-      'undefined',
-    );
+    const record = await this.registerService.importBulkRecords({ ...params, records }, { accessInfo });
 
     return record;
   }
@@ -355,11 +310,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async updateRecordById(id, data, accessInfo) {
-    const record = await callRegisterLegacy(
-      'register-request-put-record-error',
-      () => this.registerService.updateRecordById(id, data, { accessInfo }),
-      'undefined',
-    );
+    const record = await this.registerService.updateRecordById(id, data, { accessInfo });
 
     return record;
   }
@@ -371,11 +322,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async deleteRecordById(id, accessInfo) {
-    const record = await callRegisterLegacy(
-      'register-request-delete-record-error',
-      () => this.registerService.deleteRecordById(id, { accessInfo, body: {} }),
-      'undefined',
-    );
+    const record = await this.registerService.deleteRecordById(id, { accessInfo, body: {} });
 
     return record;
   }
@@ -395,14 +342,10 @@ export class RegisterBusiness {
       if (file) {
         register = await this.registerService.exportRegisterFile(id, { withData, keyIds }, { timeout: 0 });
       } else {
-        register = await callRegisterLegacy(
-          'register-request-export-error',
-          () => this.registerService.exportRegister(id, { withData, keyIds }, { timeout: 0 }),
-          'body',
-        );
+        register = await this.registerService.exportRegister(id, { withData, keyIds }, { timeout: 0 });
       }
     } catch (error) {
-      getLog().save('register-export-error', error);
+      getLog().save('register-export-error', toSafeLogError(error));
       throw error;
     }
 
@@ -427,13 +370,9 @@ export class RegisterBusiness {
         return await this.registerService.importRegisterFile({ force, rewriteSchema, clearRecords, addData }, data, { accessInfo, timeout: 0 });
       }
       data = JSON.parse(data);
-      return await callRegisterLegacy(
-        'register-request-import-error',
-        () => this.registerService.importRegister({ force, rewriteSchema, clearRecords, addData }, data, { accessInfo, timeout: 0 }),
-        'undefined',
-      );
+      return await this.registerService.importRegister({ force, rewriteSchema, clearRecords, addData }, data, { accessInfo, timeout: 0 });
     } catch (error) {
-      getLog().save('register-import-error', error);
+      getLog().save('register-import-error', toSafeLogError(error));
       if (error && error.message && error.message === '"Register already exists."') {
         throw new Exceptions.COMMITED(Exceptions.COMMITED.Messages.REGISTER);
       }
@@ -454,7 +393,7 @@ export class RegisterBusiness {
     try {
       register = await this.export(id, { withData, file });
     } catch (error) {
-      getLog().save('register-export-error', error);
+      getLog().save('register-export-error', toSafeLogError(error));
       throw error;
     }
 
@@ -522,23 +461,14 @@ export class RegisterBusiness {
           );
 
           if (unique) {
-            const { data: records } = await callRegisterLegacy(
-              'register-request-get-records-error',
-              () =>
-                this.registerService.getRecords({
-                  key_id: keyId,
-                  [`data[${unique}]`]: item[unique],
-                  limit: 1,
-                  allow_see_all_records: true,
-                }),
-              'body',
-            );
+            const { data: records } = await this.registerService.getRecords({
+              key_id: keyId,
+              [`data[${unique}]`]: item[unique],
+              limit: 1,
+              allow_see_all_records: true,
+            });
             if (records && records.length > 0) {
-              const { id: recordId } = await callRegisterLegacy(
-                'register-request-put-record-error',
-                () => this.registerService.updateRecordById(records[0].id, { registerId, keyId, data: item }, { accessInfo }),
-                'undefined',
-              );
+              const { id: recordId } = await this.registerService.updateRecordById(records[0].id, { registerId, keyId, data: item }, { accessInfo });
 
               loadedRecords.push(recordId);
               getLog().save('register-import-xlsx-item-updated', item);
@@ -575,16 +505,12 @@ export class RegisterBusiness {
       await Promise.all(batchResults);
 
       if (clearRecords && loadedRecords.length) {
-        const result = await callRegisterLegacy(
-          'register-request-delete-record-error',
-          () => this.registerService.deleteBulkRecords({ registerId, keyId, skipRecordIds: loadedRecords }, { accessInfo }),
-          'undefined',
-        );
+        const result = await this.registerService.deleteBulkRecords({ registerId, keyId, skipRecordIds: loadedRecords }, { accessInfo });
 
         getLog().save('register-import-xlsx-clear-records', result);
       }
     } catch (error) {
-      getLog().save('register-import-xlsx-error', error);
+      getLog().save('register-import-xlsx-error', toSafeLogError(error));
       throw error;
     }
 
@@ -600,21 +526,16 @@ export class RegisterBusiness {
    * @returns {Promise<string[]>} Imported records IDs.
    */
   async importXlsxBatch({ registerId, keyId }, batch, accessInfo) {
-    const { importedRecords } = await callRegisterLegacy(
-      'register-request-post-record-error',
-      () =>
-        this.registerService.importBulkRecords(
-          {
-            registerId,
-            keyId,
-            background: false,
-            isCalculateSearchStrings: true,
-            isReturnCreatedRecords: true,
-            records: batch.map((r) => ({ data: r })),
-          },
-          { accessInfo },
-        ),
-      'undefined',
+    const { importedRecords } = await this.registerService.importBulkRecords(
+      {
+        registerId,
+        keyId,
+        background: false,
+        isCalculateSearchStrings: true,
+        isReturnCreatedRecords: true,
+        records: batch.map((r) => ({ data: r })),
+      },
+      { accessInfo },
     );
 
     getLog().save('register-import-xlsx-batch-imported', { batchSize: batch.length });
@@ -632,7 +553,7 @@ export class RegisterBusiness {
   async exportXlsx({ res, registerId, keyId }) {
     try {
       let data = [];
-      const key = await callRegisterLegacy('register-request-get-keys-error', () => this.registerService.findKeyById(keyId), 'undefined');
+      const key = await this.registerService.findKeyById(keyId);
       if (!key) {
         return;
       }
@@ -643,22 +564,19 @@ export class RegisterBusiness {
       res.set('Content-Disposition', 'attachment; filename="register.xlsx"');
 
       let allRecords = [];
-      const { data: records, meta } = await callRegisterLegacy(
-        'register-request-get-records-error',
-        () => this.registerService.getRecords({ register_id: registerId, key_id: keyId, allow_see_all_records: true }),
-        'body',
-      );
+      const { data: records, meta } = await this.registerService.getRecords({ register_id: registerId, key_id: keyId, allow_see_all_records: true });
       allRecords = allRecords.concat(records);
 
       if (records) {
         const pages = Math.max(Math.ceil(meta.count / meta.limit), 1);
         for (let currentPage = 1; currentPage <= pages; currentPage++) {
           const offset = currentPage * meta.limit;
-          const { data: records } = await callRegisterLegacy(
-            'register-request-get-records-error',
-            () => this.registerService.getRecords({ register_id: registerId, key_id: keyId, offset, allow_see_all_records: true }),
-            'body',
-          );
+          const { data: records } = await this.registerService.getRecords({
+            register_id: registerId,
+            key_id: keyId,
+            offset,
+            allow_see_all_records: true,
+          });
           allRecords = allRecords.concat(records);
           res.write('');
         }
@@ -688,7 +606,7 @@ export class RegisterBusiness {
 
       return res.end();
     } catch (error) {
-      getLog().save('register-export-xlsx-error', error);
+      getLog().save('register-export-xlsx-error', toSafeLogError(error));
       throw error;
     }
   }
@@ -699,7 +617,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async reindexByKeyId(keyId) {
-    const response = await callRegisterLegacy('register-request-post-keys-reindex-error', () => this.registerService.reindexKey(keyId), 'undefined');
+    const response = await this.registerService.reindexKey(keyId);
 
     return response;
   }
@@ -711,11 +629,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async afterHandlersReindexByKeyId(keyId, data) {
-    const response = await callRegisterLegacy(
-      'register-request-post-keys-afterhandlers-reindex-error',
-      () => this.registerService.afterHandlersReindexKey(keyId, data),
-      'undefined',
-    );
+    const response = await this.registerService.afterHandlersReindexKey(keyId, data);
 
     return response;
   }

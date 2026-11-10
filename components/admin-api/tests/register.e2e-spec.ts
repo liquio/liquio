@@ -252,7 +252,7 @@ describe('Register Controller', () => {
       expect(response.body.data.description).toBe('Test Description');
     });
 
-    it('should return empty data when register not found', async () => {
+    it('should return 404 when register not found', async () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
 
       // Mock auth check - the admin-api calls id-api service
@@ -278,9 +278,9 @@ describe('Register Controller', () => {
           },
         });
 
-      const response = await app.request().get('/registers/999').set('token', jwt).expect(200);
+      const response = await app.request().get('/registers/999').set('token', jwt).expect(404);
 
-      expect(response.body).toEqual({ data: {} });
+      expect(response.body).toHaveProperty('error');
     });
   });
 
@@ -385,7 +385,7 @@ describe('Register Controller', () => {
         description: 'Updated Test Description',
       };
 
-      const response = await app.request().put('/registers/999').set('token', jwt).send(requestBody).expect(500);
+      const response = await app.request().put('/registers/999').set('token', jwt).send(requestBody).expect(404);
 
       expect(response.body).toHaveProperty('error');
       expect(response.body).toHaveProperty('traceId');
@@ -435,7 +435,7 @@ describe('Register Controller', () => {
       expect(response.body).toHaveProperty('data');
     });
 
-    it('should return empty data when trying to delete a register that does not exist', async () => {
+    it('should return 404 when trying to delete a register that does not exist', async () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
 
       // Mock auth check - the admin-api calls id-api service
@@ -461,9 +461,9 @@ describe('Register Controller', () => {
           },
         });
 
-      const response = await app.request().delete('/registers/999').set('token', jwt).expect(200);
+      const response = await app.request().delete('/registers/999').set('token', jwt).expect(404);
 
-      expect(response.body).toEqual({ data: {} });
+      expect(response.body).toHaveProperty('error');
     });
   });
 
@@ -1643,7 +1643,7 @@ describe('Register Controller', () => {
       expect(response.body.data.createdBy).toHaveProperty('userId', '61efddaa351d6219eee09043');
     });
 
-    it('should return empty data when record not found', async () => {
+    it('should return 404 when record not found', async () => {
       const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
 
       // Mock auth check - the admin-api calls id-api service
@@ -1669,9 +1669,9 @@ describe('Register Controller', () => {
           },
         });
 
-      const response = await app.request().get('/registers/keys/1/records/999').set('token', jwt).expect(200);
+      const response = await app.request().get('/registers/keys/1/records/999').set('token', jwt).expect(404);
 
-      expect(response.body).toEqual({ data: {} });
+      expect(response.body).toHaveProperty('error');
     });
   });
 

@@ -130,7 +130,7 @@ describe('Register routes: upstream errors, files and xlsx', () => {
       expect(response.status).toBe(500);
     });
 
-    it('accepts the import when register answers with an error status', async () => {
+    it('passes the register error status through on import', async () => {
       app
         .nock(REGISTER)
         .post('/registers/import')
@@ -141,8 +141,7 @@ describe('Register routes: upstream errors, files and xlsx', () => {
         .set('Content-Type', 'application/octet-stream')
         .send(Buffer.from(JSON.stringify({ id: 1 })));
 
-      // HttpRequest returns error bodies instead of throwing (see BUGS.md), so the conflict mapping never fires.
-      expect(response.status).toBe(202);
+      expect(response.status).toBe(400);
     });
   });
 

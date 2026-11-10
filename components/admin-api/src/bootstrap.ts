@@ -1,4 +1,4 @@
-import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox, getRegisterApiClient } from '@liquio/back-core';
 
 import { Db } from './lib/db';
 import { RedisClient } from './lib/redis_client';
@@ -11,7 +11,6 @@ import { WorkflowBusiness } from './businesses/workflow';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
-import { initRegisterApiClient } from './lib/register_api';
 import { warnPlainHttpInternalUrls } from './lib/internal_transport';
 import { buildSandboxConfig } from './lib/sandbox_config';
 import { setAppContext, getLog } from './lib/context';
@@ -46,7 +45,13 @@ export async function bootstrap(config: Record<string, any>, options: { placehol
 
   // Init id-api client (shared by the whole process, see `getIdApiClient()`).
   initIdApiClient(config.auth);
-  initRegisterApiClient(config.register);
+  getRegisterApiClient({
+    server: config.register?.server,
+    port: config.register?.port,
+    token: config.register?.token,
+    timeout: config.register?.timeout,
+    getLog,
+  });
 
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
   new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);

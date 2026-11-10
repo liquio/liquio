@@ -1,20 +1,10 @@
 import { matchedData } from 'express-validator';
-import { RegisterApiError } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
 import { RegisterBusiness } from '../businesses/register';
 import { TaskService } from '../services/task';
 import { PublicError } from '../lib/public_error';
-
-/**
- * Convert a register client error to a plain error, so only its message reaches the response.
- * @param {any} error Error.
- * @returns {any}
- */
-function toPlainError(error: any): any {
-  return error instanceof RegisterApiError ? new Error(error.message) : error;
-}
 
 /**
  * Register controller.
@@ -621,7 +611,7 @@ export class RegisterController extends Controller {
         return this.responseError(res, 'Not found.', 404);
       }
     } catch (error) {
-      return this.responseError(res, toPlainError(error));
+      return this.responseError(res, error);
     }
 
     this.responseFile(res, register, 'application/bpmn', 'register.bpmn');
@@ -678,8 +668,7 @@ export class RegisterController extends Controller {
           accessInfo,
         );
       }
-    } catch (rawError) {
-      const error = toPlainError(rawError);
+    } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
 
@@ -705,7 +694,7 @@ export class RegisterController extends Controller {
         return this.responseError(res, 'Not found.', 404);
       }
     } catch (error) {
-      return this.responseError(res, toPlainError(error));
+      return this.responseError(res, error);
     }
     if (file) {
       return this.responseFile(res, register, 'application/bpmn', `register-${register.data.id}.dat`);
@@ -724,8 +713,7 @@ export class RegisterController extends Controller {
       const accessInfo = this.getRequestAccessInfo(req);
       const register = await this.registerBusiness.streamImport(clearRecords, req, accessInfo);
       return register.stream.pipe(res);
-    } catch (rawError) {
-      const error = toPlainError(rawError);
+    } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
   }
@@ -795,8 +783,7 @@ export class RegisterController extends Controller {
         },
         accessInfo,
       );
-    } catch (rawError) {
-      const error = toPlainError(rawError);
+    } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
 

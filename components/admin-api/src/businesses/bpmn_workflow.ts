@@ -8,7 +8,6 @@ import moment from 'moment';
 import { Exceptions } from '../exceptions';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { isFunctionString } from '../lib/function_string';
-import { callRegisterLegacy } from '../lib/register_api';
 import { WorkflowTemplateEntity } from '../entities/workflow_template';
 import { WorkflowTemplateCategoryEntity } from '../entities/workflow_template_category';
 import { TaskTemplateEntity } from '../entities/task_template';
@@ -31,7 +30,7 @@ export class BpmnWorkflowBusiness {
 
   public config: any;
   private xmlJsConverter: XmlJsConverter;
-  private registerService: RegisterApiClient;
+  private readonly registerService: RegisterApiClient;
 
   /**
    * Constructor.
@@ -117,12 +116,8 @@ export class BpmnWorkflowBusiness {
 
     try {
       let registerErrors = [];
-      let registerKeys = await callRegisterLegacy(
-        'register-request-get-keys-error',
-        () => this.registerService.getKeys({ limit: getConfig().register.limit }),
-        'body',
-      );
-      registerKeys = (registerKeys.data && registerKeys.data.map((v) => v.id)) || [];
+      const registerKeysResponse = await this.registerService.getKeys({ limit: getConfig().register.limit });
+      const registerKeys: any[] = (registerKeysResponse.data && registerKeysResponse.data.map((v) => v.id)) || [];
 
       // Import workflow template category.
       if (data.workflowTemplateCategory) {

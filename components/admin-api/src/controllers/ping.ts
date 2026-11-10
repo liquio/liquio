@@ -22,7 +22,7 @@ export class PingController extends Controller {
   private static singleton: PingController;
 
   private idApiClient: IdApiClient;
-  private registerService: RegisterApiClient;
+  private readonly registerService: RegisterApiClient;
   private taskService: TaskService;
   private notifyService: NotifierService;
 
