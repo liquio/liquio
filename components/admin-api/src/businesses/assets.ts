@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
+
 import { Sign } from '../services/sign';
-import { RegisterService } from '../services/register';
 import { TaskService } from '../services/task';
 import { getLog, getModels } from '../lib/context';
 
@@ -17,7 +18,7 @@ export class AssetsBusiness {
   public config: any;
   private cache: Map<string, any>;
   private sign: Sign;
-  private register: RegisterService;
+  private readonly register: RegisterApiClient;
   private task: TaskService;
 
   /**
@@ -30,7 +31,7 @@ export class AssetsBusiness {
       this.config = config;
       this.cache = new Map();
       this.sign = new Sign(config.sign);
-      this.register = new RegisterService();
+      this.register = getRegisterApiClient();
       this.task = new TaskService();
       AssetsBusiness.singleton = this;
     }

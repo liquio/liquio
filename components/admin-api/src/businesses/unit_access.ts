@@ -1,7 +1,7 @@
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
 import _ from 'lodash';
 
 import { TaskService } from '../services/task';
-import { RegisterService } from '../services/register';
 import { PublicError } from '../lib/public_error';
 
 /**
@@ -12,7 +12,7 @@ export class UnitAccessBusiness {
 
   public config: object;
   public taskService: TaskService;
-  public registerService: RegisterService;
+  private readonly registerService: RegisterApiClient;
 
   /**
    * Constructor.
@@ -23,7 +23,7 @@ export class UnitAccessBusiness {
     if (!UnitAccessBusiness.singleton) {
       this.config = config;
       this.taskService = new TaskService();
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       UnitAccessBusiness.singleton = this;
     }
 
@@ -76,7 +76,7 @@ export class UnitAccessBusiness {
       const newKeys = _.difference(data.data.strictAccess.keys, previousUnitAccess?.data?.strictAccess?.keys || []);
       if (newKeys.length > 0) {
         for (const newKey of newKeys) {
-          const key = await this.registerService.findKeyById(newKey);
+          const key: any = await this.registerService.findKeyById(newKey as string | number);
 
           // Check if the key is personal.
           if (key?.meta?.isPersonal) {

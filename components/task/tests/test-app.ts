@@ -13,7 +13,7 @@ import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import { getContainerRuntimeClient, getReaper } from 'testcontainers';
 import amqp from 'amqplib';
 import jsonwebtoken from 'jsonwebtoken';
-import { resetIdApiClient } from '@liquio/back-core';
+import { resetIdApiClient, resetRegisterApiClient } from '@liquio/back-core';
 
 import { BpmnTaskCore } from '../src/bootstrap';
 import { getConfig, getMessageQueue } from '../src/lib/context';
@@ -93,6 +93,7 @@ export class TestApp extends BpmnTaskCore {
   static async setup() {
     // `init` creates the id-api client from this app's config, so drop the one of a previous app.
     resetIdApiClient();
+    resetRegisterApiClient();
     const app = new TestApp();
     await app.init();
     await app.listen();

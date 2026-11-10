@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
 
 import nock from 'nock';
-import { Sandbox } from '@liquio/back-core';
+import { Sandbox, runInAsyncLocalStorage } from '@liquio/back-core';
 
 import { LiquioProvider } from '../src/services/event/requester/registers/providers/liquio';
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../src/constants/common';
@@ -17,7 +17,7 @@ describe('Group C - liquio registers provider', () => {
     await TestApp.beforeAll();
     app = await TestApp.setup({});
     LiquioProvider.singleton = undefined as any;
-    provider = new LiquioProvider({ url: REG, token: 'fake-token', apiMethods: { ping: '/ping2' } });
+    provider = new LiquioProvider({ url: REG, token: 'fake-token' });
   });
   afterAll(async () => {
     await TestApp.afterAll(app);
@@ -48,18 +48,21 @@ describe('Group C - liquio registers provider', () => {
   });
   const decodeAccessInfo = (value: string) => JSON.parse(Buffer.from(value, 'base64').toString('utf8'));
 
-  it('is a singleton, merging api methods and headers', () => {
+  it('is a singleton using default routes', async () => {
     expect(new LiquioProvider({ url: 'http://other' })).toBe(provider);
-    expect(provider.apiMethods.ping).toBe('/ping2');
-    expect(provider.apiMethods.getRecord).toBe('/records');
-    expect(provider.headers).toEqual({ 'Content-Type': 'application/json', token: 'fake-token' });
+    const scope = nock(REG)
+      .get('/records/r1')
+      .matchHeader('token', 'fake-token')
+      .reply(200, { data: { id: 'r1' } });
+    await provider.getRecord('r1');
+    expect(scope.isDone()).toBe(true);
   });
 
   describe('query helpers', () => {
-    it('getIndexFieldsQueryParams joins only set fields', () => {
-      expect(provider.getIndexFieldsQueryParams({})).toBe('');
+    it('getIndexFieldsQuery returns only set fields', () => {
+      expect(provider.getIndexFieldsQuery({})).toEqual({});
       expect(
-        provider.getIndexFieldsQueryParams({
+        provider.getIndexFieldsQuery({
           searchEqual: 'a',
           searchEqual2: 'b',
           searchEqual3: 'c',
@@ -67,12 +70,7 @@ describe('Group C - liquio registers provider', () => {
           searchLike2: 'e',
           searchLike3: 'f',
         }),
-      ).toBe('&search_equal=a&search_equal_2=b&search_equal_3=c&search=d&search_2=e&search_3=f');
-    });
-
-    it('getHeadersWithTraceId adds a trace id header', () => {
-      expect(provider.getHeadersWithTraceId()).toMatchObject({ token: 'fake-token' });
-      expect(Object.keys(provider.getHeadersWithTraceId())).toContain('x-trace-id');
+      ).toEqual({ search_equal: 'a', search_equal_2: 'b', search_equal_3: 'c', search: 'd', search_2: 'e', search_3: 'f' });
     });
 
     it('getAccessInfo and additionalFilter throw a TypeError for string functions because the sandbox is never assigned', async () => {
@@ -90,17 +88,6 @@ describe('Group C - liquio registers provider', () => {
       const f = provider.getAccessInfo(ctx({ documents: [1] }, { accessInfo: '(documents, events) => ({ count: documents.length })' }));
       expect(f).toMatchObject({ count: 1, workflowId: 'wf-1' });
       expect(provider.getAccessInfo(ctx())).toMatchObject({ workflowId: 'wf-1' });
-    });
-
-    it('getHeadersWithAccessInfo encodes access info as base64 json', () => {
-      const headers = provider.getHeadersWithAccessInfo(ctx({}, { accessInfo: { x: 1 } }));
-      expect(decodeAccessInfo(headers['access-info'])).toMatchObject({ x: 1, workflowId: 'wf-1' });
-    });
-
-    it('prepareResponse returns data, throws error message, or nothing', () => {
-      expect(provider.prepareResponse({ data: [1] })).toEqual([1]);
-      expect(() => provider.prepareResponse({ error: { message: 'bad' } })).toThrow('bad');
-      expect(provider.prepareResponse({})).toBeUndefined();
     });
   });
 
@@ -207,10 +194,21 @@ describe('Group C - liquio registers provider', () => {
       );
     });
 
-    it('logs and rethrows http errors with the response body as message', async () => {
+    it('logs and rethrows http errors with a status-only message', async () => {
       nock(REG).get('/records').query(true).reply(500, { error: 'boom' });
-      await expect(provider.getRecords({ registerId: 1, keyId: 2 }, ctx())).rejects.toThrow('boom');
+      await expect(provider.getRecords({ registerId: 1, keyId: 2 }, ctx())).rejects.toThrow('Request failed with status code 500');
       expect(app.log.logs.find((l) => l.type === 'get-records-from-registers|error')).toBeDefined();
+    });
+
+    it('includes only the register error message, truncated, and keeps cause', async () => {
+      nock(REG)
+        .get('/records')
+        .query(true)
+        .reply(500, { message: 'x'.repeat(300), ipn: '1234567890' });
+      const err: any = await provider.getRecords({ registerId: 1, keyId: 2 }, ctx()).catch((e) => e);
+      expect(err.message).toBe(`Request failed with status code 500: ${'x'.repeat(200)}`);
+      expect(err.message).not.toContain('1234567890');
+      expect(err.cause).toBeDefined();
     });
 
     it('countRecords returns meta.count', async () => {
@@ -222,29 +220,42 @@ describe('Group C - liquio registers provider', () => {
     });
   });
 
-  describe('findRecords / getRecord / getKeyById', () => {
-    it('findRecords: stringifies query, sends body and returns data', async () => {
-      nock(REG)
-        .get('/records')
-        .query({ a: '1', 'b[c]': '2' })
-        .reply(200, { data: [1] });
-      expect(await provider.findRecords({ a: 1, b: { c: 2 } }, undefined)).toEqual({ data: [1] });
-    });
-
-    it('findRecords: logs and rethrows errors', async () => {
-      nock(REG).get('/records').query(true).reply(500, {});
-      await expect(provider.findRecords({ a: 1 }, undefined)).rejects.toThrow('500');
-      expect(app.log.logs.find((l) => l.type === 'liquio-register-provider|find-records|error')).toBeDefined();
-    });
-
+  describe('getRecord / getKeyById', () => {
     it('getRecord returns data or rethrows', async () => {
       nock(REG)
         .get('/records/r1')
         .reply(200, { data: { id: 'r1' } });
       expect(await provider.getRecord('r1')).toEqual({ id: 'r1' });
       nock(REG).get('/records/r2').reply(404, { error: 'missing' });
-      await expect(provider.getRecord('r2')).rejects.toThrow('missing');
+      await expect(provider.getRecord('r2')).rejects.toThrow('Request failed with status code 404');
       expect(app.log.logs.find((l) => l.type === 'get-from-registers|error')).toBeDefined();
+    });
+
+    it('sends the trace id header', async () => {
+      const scope = nock(REG)
+        .get('/records/r1')
+        .matchHeader('x-trace-id', (v) => typeof v === 'string' && v.length > 0)
+        .reply(200, { data: {} });
+      await new Promise<void>((resolve, reject) => runInAsyncLocalStorage(() => provider.getRecord('r1').then(() => resolve(), reject)));
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('applies registers.timeout when configured, else the client default', async () => {
+      LiquioProvider.singleton = undefined as any;
+      const slow = new LiquioProvider({ url: REG, token: 't', timeout: 50 });
+      nock(REG)
+        .get('/records/slow')
+        .reply(() => new Promise(() => undefined));
+      await expect(slow.getRecord('slow')).rejects.toBeDefined();
+      LiquioProvider.singleton = undefined as any;
+      const noTimeout = new LiquioProvider({ url: REG, token: 't' });
+      nock(REG)
+        .get('/records/r1')
+        .delay(300)
+        .reply(200, { data: { id: 'r1' } });
+      expect(await noTimeout.getRecord('r1')).toEqual({ id: 'r1' });
+      LiquioProvider.singleton = undefined as any;
+      provider = new LiquioProvider({ url: REG, token: 'fake-token' });
     });
 
     it('getKeyById returns data or rethrows', async () => {
@@ -253,7 +264,7 @@ describe('Group C - liquio registers provider', () => {
         .reply(200, { data: { id: 'k1' } });
       expect(await provider.getKeyById('k1')).toEqual({ id: 'k1' });
       nock(REG).get('/keys/k2').reply(404, { error: 'nokey' });
-      await expect(provider.getKeyById('k2')).rejects.toThrow('nokey');
+      await expect(provider.getKeyById('k2')).rejects.toThrow('Request failed with status code 404');
       expect(app.log.logs.find((l) => l.type === 'get-key-from-registers|error')).toBeDefined();
     });
   });
@@ -272,7 +283,7 @@ describe('Group C - liquio registers provider', () => {
 
     it('createRecord logs and rethrows', async () => {
       nock(REG).post('/records').reply(500, { error: 'cr' });
-      await expect(provider.createRecord({ a: 1 }, ctx())).rejects.toThrow('cr');
+      await expect(provider.createRecord({ a: 1 }, ctx())).rejects.toThrow('Request failed with status code 500');
       expect(app.log.logs.find((l) => l.type === 'save-to-registers|error')).toBeDefined();
     });
 
@@ -302,7 +313,7 @@ describe('Group C - liquio registers provider', () => {
         .get('/records/r1')
         .reply(200, { data: { data: { a: 1 } } });
       nock(REG).put('/records/r1').reply(500, { error: 'put-bad' });
-      await expect(provider.updateRecord('r1', { data: { b: 2 } }, ctx())).rejects.toThrow('put-bad');
+      await expect(provider.updateRecord('r1', { data: { b: 2 } }, ctx())).rejects.toThrow('Request failed with status code 500');
       expect(app.log.logs.find((l) => l.type === 'update-in-registers|error')).toBeDefined();
     });
 
@@ -310,19 +321,22 @@ describe('Group C - liquio registers provider', () => {
       nock(REG).delete('/records/r1').reply(200, { data: 'deleted' });
       expect(await provider.deleteRecord('r1', ctx())).toEqual({ data: 'deleted' });
       nock(REG).delete('/records/r2').reply(500, { error: 'del-bad' });
-      await expect(provider.deleteRecord('r2', ctx())).rejects.toThrow('del-bad');
+      await expect(provider.deleteRecord('r2', ctx())).rejects.toThrow('Request failed with status code 500');
       expect(app.log.logs.find((l) => l.type === 'delete-from-registers|error')).toBeDefined();
     });
   });
 
   describe('sendPingRequest', () => {
     it('returns version info from response headers', async () => {
-      nock(REG).get('/ping2').reply(200, { pong: true }, { version: '1.2.3', customer: 'cust', environment: 'test' });
+      nock(REG)
+        .get('/test/ping')
+        .matchHeader('token', (v) => v === undefined)
+        .reply(200, { pong: true }, { version: '1.2.3', customer: 'cust', environment: 'test' });
       expect(await provider.sendPingRequest()).toEqual({ version: '1.2.3', customer: 'cust', environment: 'test', body: { pong: true } });
     });
 
     it('returns undefined and logs when the request fails', async () => {
-      nock(REG).get('/ping2').reply(500, {});
+      nock(REG).get('/test/ping').reply(500, {});
       expect(await provider.sendPingRequest()).toBeUndefined();
       expect(app.log.logs.find((l) => l.type === 'send-ping-request-to-register')).toBeDefined();
     });
@@ -362,7 +376,7 @@ describe('Group C - liquio registers provider', () => {
             allow_see_all_records: 'true',
             'data[a.b]': 'x',
             search_equal: 'se',
-            additional_filter: encodeURIComponent(Buffer.from('(r) => true').toString('base64')),
+            additional_filter: Buffer.from('(r) => true').toString('base64'),
             'sort[name]': 'desc',
             csv_map: '{"a":"b"}',
             no_limit: 'true',

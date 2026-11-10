@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
 import nock from 'nock';
-import { Sandbox } from '@liquio/back-core';
+import { Sandbox, getRegisterApiClient } from '@liquio/back-core';
 
 import { initIdApiClient } from '../../lib/id_api';
 import { DocumentValidatorService } from '../../services/document_validator';
@@ -10,6 +10,7 @@ import { getLog, getConfig, setAppContext, resetAppContext } from '../../lib/con
 
 new Sandbox();
 initIdApiClient({});
+getRegisterApiClient({});
 
 describe('DocumentBusiness', () => {
   setAppContext({

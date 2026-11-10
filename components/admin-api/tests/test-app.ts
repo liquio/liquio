@@ -13,7 +13,7 @@ import { RedisContainer } from '@testcontainers/redis';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as jsonwebtoken from 'jsonwebtoken';
 import * as Multiconf from 'multiconf';
-import { resetIdApiClient } from '@liquio/back-core';
+import { resetIdApiClient, resetRegisterApiClient } from '@liquio/back-core';
 
 import { MessageQueue } from '../src/lib/message_queue';
 import { bootstrap } from '../src/bootstrap';
@@ -288,6 +288,7 @@ export class TestApp {
 
     // Init id-api client from scratch for every app instance.
     resetIdApiClient();
+    resetRegisterApiClient();
 
     const { routerService } = await bootstrap(config);
     this.routerService = routerService;

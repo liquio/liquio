@@ -1,10 +1,22 @@
 import _ from 'lodash';
+import { getRegisterApiClient, RegisterApiClient, RegisterApiError } from '@liquio/back-core';
 import xlsx from 'node-xlsx';
 
 import { Exceptions } from '../exceptions';
-import { RegisterService } from '../services/register';
 import { PublicError } from '../lib/public_error';
 import { getConfig, getLog } from '../lib/context';
+
+/**
+ * Reduce error to loggable fields (no response body, headers, query or token).
+ * @param {unknown} error Error.
+ * @returns {unknown}
+ */
+function toSafeLogError(error: any): unknown {
+  if (error instanceof RegisterApiError) {
+    return { status: error.status, message: error.message };
+  }
+  return error;
+}
 
 /**
  * Register business.
@@ -13,7 +25,7 @@ export class RegisterBusiness {
   private static singleton: RegisterBusiness;
 
   public config: any;
-  private registerService: RegisterService;
+  private readonly registerService: RegisterApiClient;
   private importXlsxBatchSize: number;
 
   /**
@@ -24,7 +36,7 @@ export class RegisterBusiness {
     // Define singleton.
     if (!RegisterBusiness.singleton) {
       this.config = config;
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       this.importXlsxBatchSize = getConfig().register?.importXlsx?.batchSize || 256;
       RegisterBusiness.singleton = this;
     }
@@ -53,24 +65,22 @@ export class RegisterBusiness {
    * @returns {Promise<object[]>}
    */
   async getRegisters() {
-    let registers = await this.registerService.getRegisters({ offset: 0, limit: 1000 });
+    const registers = await this.registerService.getRegisters({ offset: 0, limit: 1000 });
 
-    if (registers && registers.data) {
-      registers = registers.data.map((v) => {
-        return {
-          id: v.id,
-          name: v.name,
-          parentId: v.parentId,
-          description: v.description,
-          createdAt: v.createdAt,
-          updatedAt: v.updatedAt,
-        };
-      });
-    } else {
-      registers = [];
+    if (!registers?.data) {
+      return [];
     }
 
-    return registers;
+    return registers.data.map((v) => {
+      return {
+        id: v.id,
+        name: v.name,
+        parentId: v.parentId,
+        description: v.description,
+        createdAt: v.createdAt,
+        updatedAt: v.updatedAt,
+      };
+    });
   }
 
   /**
@@ -78,7 +88,7 @@ export class RegisterBusiness {
    * @param {number} id ID.
    * @returns {Promise<object>}
    */
-  async findRegisterById(id) {
+  async findRegisterById(id): Promise<any> {
     const register = await this.registerService.findRegisterById(id);
 
     return register;
@@ -91,7 +101,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async createRegister(data, accessInfo) {
-    const register = await this.registerService.createRegister(data, accessInfo);
+    const register = await this.registerService.createRegister(data, { accessInfo });
 
     return register;
   }
@@ -104,7 +114,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async updateRegisterById(id, data, accessInfo) {
-    const register = await this.registerService.updateRegisterById(id, data, accessInfo);
+    const register = await this.registerService.updateRegisterById(id, data, { accessInfo });
 
     return register;
   }
@@ -116,7 +126,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async deleteRegisterById(id, accessInfo) {
-    const register = await this.registerService.deleteRegisterById(id, accessInfo);
+    const register = await this.registerService.deleteRegisterById(id, { accessInfo });
 
     return register;
   }
@@ -142,26 +152,24 @@ export class RegisterBusiness {
    * @returns {Promise<object[]>}
    */
   async getKeys({ register_id }) {
-    let keys = await this.registerService.getKeys({ register_id, offset: 0, limit: 1000 });
+    const keys = await this.registerService.getKeys({ register_id, offset: 0, limit: 1000 });
 
-    if (keys && keys.data) {
-      keys = keys.data.map((v) => {
-        return {
-          id: v.id,
-          registerId: v.registerId,
-          name: v.name,
-          parentId: v.parentId,
-          description: v.description,
-          createdAt: v.createdAt,
-          updatedAt: v.updatedAt,
-          keySignature: v.keySignature,
-        };
-      });
-    } else {
-      keys = [];
+    if (!keys?.data) {
+      return [];
     }
 
-    return keys;
+    return keys.data.map((v) => {
+      return {
+        id: v.id,
+        registerId: v.registerId,
+        name: v.name,
+        parentId: v.parentId,
+        description: v.description,
+        createdAt: v.createdAt,
+        updatedAt: v.updatedAt,
+        keySignature: v.keySignature,
+      };
+    });
   }
 
   /**
@@ -169,7 +177,7 @@ export class RegisterBusiness {
    * @param {number} id ID.
    * @returns {Promise<object>}
    */
-  async findKeyById(id) {
+  async findKeyById(id): Promise<any> {
     const key = await this.registerService.findKeyById(id);
 
     return key;
@@ -182,7 +190,7 @@ export class RegisterBusiness {
    * @returns
    */
   async updateIndexMapping(keyId, mapping) {
-    return this.registerService.updateIndexMapping(keyId, mapping);
+    return this.registerService.updateKeyIndexMapping(keyId, mapping);
   }
 
   /**
@@ -213,7 +221,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async createKey(data, accessInfo) {
-    const key = await this.registerService.createKey(data, accessInfo);
+    const key = await this.registerService.createKey(data, { accessInfo });
 
     return key;
   }
@@ -226,7 +234,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async updateKeyById(id, data, accessInfo) {
-    const key = await this.registerService.updateKeyById(id, data, accessInfo);
+    const key = await this.registerService.updateKeyById(id, data, { accessInfo });
 
     return key;
   }
@@ -238,7 +246,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async deleteKeyById(id, accessInfo) {
-    const key = await this.registerService.deleteKeyById(id, accessInfo);
+    const key = await this.registerService.deleteKeyById(id, { accessInfo });
 
     return key;
   }
@@ -253,7 +261,7 @@ export class RegisterBusiness {
    * @returns {Promise<object[]>}
    */
   async getRecords({ register_id, key_id, offset, limit }) {
-    const keys = await this.registerService.getRecords({ register_id, key_id, offset, limit });
+    const keys = await this.registerService.getRecords({ register_id, key_id, offset, limit, allow_see_all_records: true });
 
     return keys;
   }
@@ -276,7 +284,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async createRecord(data, accessInfo) {
-    const record = await this.registerService.createRecord(data, accessInfo);
+    const record = await this.registerService.createRecord(data, { accessInfo });
 
     return record;
   }
@@ -289,7 +297,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async importBulkRecords(params, records, accessInfo) {
-    const record = await this.registerService.importBulkRecords(params, records, accessInfo);
+    const record = await this.registerService.importBulkRecords({ ...params, records }, { accessInfo });
 
     return record;
   }
@@ -302,7 +310,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async updateRecordById(id, data, accessInfo) {
-    const record = await this.registerService.updateRecordById(id, data, accessInfo);
+    const record = await this.registerService.updateRecordById(id, data, { accessInfo });
 
     return record;
   }
@@ -314,7 +322,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async deleteRecordById(id, accessInfo) {
-    const record = await this.registerService.deleteRecordById(id, {}, accessInfo);
+    const record = await this.registerService.deleteRecordById(id, { accessInfo, body: {} });
 
     return record;
   }
@@ -330,9 +338,14 @@ export class RegisterBusiness {
   async export(id, params) {
     let register;
     try {
-      register = await this.registerService.export(id, params);
+      const { withData, file, keyIds } = params;
+      if (file) {
+        register = await this.registerService.exportRegisterFile(id, { withData, keyIds }, { timeout: 0 });
+      } else {
+        register = await this.registerService.exportRegister(id, { withData, keyIds }, { timeout: 0 });
+      }
     } catch (error) {
-      getLog().save('register-export-error', error);
+      getLog().save('register-export-error', toSafeLogError(error));
       throw error;
     }
 
@@ -353,12 +366,13 @@ export class RegisterBusiness {
    */
   async import({ force, rewriteSchema, clearRecords, addData, file }, data, accessInfo) {
     try {
-      if (!file) {
-        data = JSON.parse(data);
+      if (file) {
+        return await this.registerService.importRegisterFile({ force, rewriteSchema, clearRecords, addData }, data, { accessInfo, timeout: 0 });
       }
-      return await this.registerService.import({ force, rewriteSchema, clearRecords, addData, file }, data, accessInfo);
+      data = JSON.parse(data);
+      return await this.registerService.importRegister({ force, rewriteSchema, clearRecords, addData }, data, { accessInfo, timeout: 0 });
     } catch (error) {
-      getLog().save('register-import-error', error);
+      getLog().save('register-import-error', toSafeLogError(error));
       if (error && error.message && error.message === '"Register already exists."') {
         throw new Exceptions.COMMITED(Exceptions.COMMITED.Messages.REGISTER);
       }
@@ -377,9 +391,9 @@ export class RegisterBusiness {
   async streamExport(id, { withData, file }) {
     let register;
     try {
-      register = await this.registerService.export(id, { withData, file } as any);
+      register = await this.export(id, { withData, file });
     } catch (error) {
-      getLog().save('register-export-error', error);
+      getLog().save('register-export-error', toSafeLogError(error));
       throw error;
     }
 
@@ -390,11 +404,12 @@ export class RegisterBusiness {
    * Stream import register.
    * @param {object} params Params.
    * @param {boolean} params.clearRecords Clear Records.
+   * @param {object} body Request stream.
    * @param {object} accessInfo Access info.
    * @returns {Promise<object>}
    */
-  async streamImport(clearRecords, accessInfo) {
-    return this.registerService.streamImport(clearRecords, accessInfo);
+  async streamImport(clearRecords, body, accessInfo) {
+    return this.registerService.streamImportRegister({ clearRecords }, body, { accessInfo, timeout: 0 });
   }
 
   /**
@@ -450,17 +465,10 @@ export class RegisterBusiness {
               key_id: keyId,
               [`data[${unique}]`]: item[unique],
               limit: 1,
+              allow_see_all_records: true,
             });
             if (records && records.length > 0) {
-              const { id: recordId } = await this.registerService.updateRecordById(
-                records[0].id,
-                {
-                  registerId,
-                  keyId,
-                  data: item,
-                },
-                accessInfo,
-              );
+              const { id: recordId } = await this.registerService.updateRecordById(records[0].id, { registerId, keyId, data: item }, { accessInfo });
 
               loadedRecords.push(recordId);
               getLog().save('register-import-xlsx-item-updated', item);
@@ -497,12 +505,12 @@ export class RegisterBusiness {
       await Promise.all(batchResults);
 
       if (clearRecords && loadedRecords.length) {
-        const result = await this.registerService.deleteBulkRecords({ registerId, keyId, skipRecordIds: loadedRecords }, accessInfo);
+        const result = await this.registerService.deleteBulkRecords({ registerId, keyId, skipRecordIds: loadedRecords }, { accessInfo });
 
         getLog().save('register-import-xlsx-clear-records', result);
       }
     } catch (error) {
-      getLog().save('register-import-xlsx-error', error);
+      getLog().save('register-import-xlsx-error', toSafeLogError(error));
       throw error;
     }
 
@@ -525,9 +533,9 @@ export class RegisterBusiness {
         background: false,
         isCalculateSearchStrings: true,
         isReturnCreatedRecords: true,
+        records: batch.map((r) => ({ data: r })),
       },
-      batch.map((r) => ({ data: r })),
-      accessInfo,
+      { accessInfo },
     );
 
     getLog().save('register-import-xlsx-batch-imported', { batchSize: batch.length });
@@ -556,10 +564,7 @@ export class RegisterBusiness {
       res.set('Content-Disposition', 'attachment; filename="register.xlsx"');
 
       let allRecords = [];
-      const { data: records, meta } = await this.registerService.getRecords({
-        register_id: registerId,
-        key_id: keyId,
-      });
+      const { data: records, meta } = await this.registerService.getRecords({ register_id: registerId, key_id: keyId, allow_see_all_records: true });
       allRecords = allRecords.concat(records);
 
       if (records) {
@@ -570,6 +575,7 @@ export class RegisterBusiness {
             register_id: registerId,
             key_id: keyId,
             offset,
+            allow_see_all_records: true,
           });
           allRecords = allRecords.concat(records);
           res.write('');
@@ -600,7 +606,7 @@ export class RegisterBusiness {
 
       return res.end();
     } catch (error) {
-      getLog().save('register-export-xlsx-error', error);
+      getLog().save('register-export-xlsx-error', toSafeLogError(error));
       throw error;
     }
   }
@@ -611,7 +617,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async reindexByKeyId(keyId) {
-    const response = await this.registerService.reindexByKeyId(keyId);
+    const response = await this.registerService.reindexKey(keyId);
 
     return response;
   }
@@ -623,7 +629,7 @@ export class RegisterBusiness {
    * @returns {Promise<object>}
    */
   async afterHandlersReindexByKeyId(keyId, data) {
-    const response = await this.registerService.afterHandlersReindexByKeyId(keyId, data);
+    const response = await this.registerService.afterHandlersReindexKey(keyId, data);
 
     return response;
   }

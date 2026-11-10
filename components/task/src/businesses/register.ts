@@ -1,10 +1,11 @@
 import _ from 'lodash';
 import { Sandbox } from '@liquio/back-core';
+import { getRegisterApiClient } from '@liquio/back-core';
 
 import { Business } from './business';
 import { UnitAccessModel } from '../models/unit_access';
 import { UnitAccessEntity } from '../entities/unit_access';
-import { RegisterService } from '../services/register';
+import { withDefaultRecordsSort } from '../services/register';
 import { JSONPath } from '../lib/jsonpath';
 import { RedisClient } from '../lib/redis_client';
 import { InvalidParamsError, ForbiddenError, NotFoundError } from '../lib/errors';
@@ -31,7 +32,7 @@ export class RegisterBusiness extends Business {
   private static singleton: RegisterBusiness;
 
   unitAccessModel: any;
-  registerService: any;
+  readonly registerService: any;
   sandbox: any;
   registers: any;
   keys: any;
@@ -47,7 +48,7 @@ export class RegisterBusiness extends Business {
     if (!RegisterBusiness.singleton) {
       super(config);
       this.unitAccessModel = new UnitAccessModel();
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       this.sandbox = Sandbox.getInstance();
       this.registers = [];
       this.keys = [];
@@ -178,7 +179,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get records.
-    const records = await this.registerService.getRecords(params, accessInfo);
+    const records = await this.registerService.getRecords(withDefaultRecordsSort(params), { accessInfo });
 
     // Define and return record ID and stringified text for strict access.
     if (strict) {
@@ -212,7 +213,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get history.
-    const history = await this.registerService.getHistoryByKeyId(keyId, params);
+    const history = await this.registerService.getKeyHistory(keyId, params);
 
     // Return history info.
     return history;
@@ -234,7 +235,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get and return viewing history.
-    return this.registerService.getViewingHistoryByKeyId(keyId, params);
+    return this.registerService.getAccessLog({ key_id: keyId, ...params });
   }
 
   /**
@@ -254,7 +255,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get history.
-    const history = await this.registerService.getHistoryByRecordId(recordId, params);
+    const history = await this.registerService.getRecordHistory(recordId, params);
     if (history && Array.isArray(history.data) && history.data.some((v) => v.keyId !== keyId)) {
       throw new ForbiddenError(ERROR_REGISTER_RECORD_ACCESS);
     }
@@ -280,7 +281,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get viewing history.
-    const viewingHistory = await this.registerService.getViewingHistoryByRecordId(recordId, params);
+    const viewingHistory = await this.registerService.getAccessLog({ record_id: recordId, ...params });
     if (viewingHistory && Array.isArray(viewingHistory.data) && viewingHistory.data.some((v) => v.keyId !== keyId)) {
       throw new ForbiddenError(ERROR_REGISTER_RECORD_ACCESS);
     }
@@ -298,10 +299,12 @@ export class RegisterBusiness extends Business {
   async getRecordsByKeyIdFullAccess(keyId, params: any = {}) {
     // Get records.
     if (!params.key_id) params.key_id = keyId;
-    const records = await this.registerService.getRecords({
-      ...params,
-      allow_see_all_records: true,
-    });
+    const records = await this.registerService.getRecords(
+      withDefaultRecordsSort({
+        ...params,
+        allow_see_all_records: true,
+      }),
+    );
 
     // Return records info.
     return records;
@@ -338,7 +341,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get records.
-    const records = await this.registerService.getFilteredRecords(params, body, accessInfo);
+    const records = await this.registerService.getFilteredRecords(params, body, { accessInfo });
 
     // Define and return record ID and stringified text for strict access.
     if (strict) {
@@ -366,7 +369,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get records.
-    const records = await this.registerService.getRecords({ ...params, key_id: keyId }, accessInfo);
+    const records = await this.registerService.getRecords(withDefaultRecordsSort({ ...params, key_id: keyId }), { accessInfo });
 
     // Define and return record ID and stringified text.
     await this.prepareData();
@@ -495,7 +498,7 @@ export class RegisterBusiness extends Business {
       key_id: keyId,
       allow_tokens: allowTokens,
     };
-    const response = await this.registerService.getRecords(params, accessInfo);
+    const response = await this.registerService.getRecords(withDefaultRecordsSort(params), { accessInfo });
     const record = response?.data?.[0];
 
     if (!record) {
@@ -513,7 +516,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object>}
    */
   async findRecordById(id, userUnitIds, accessInfo) {
-    const record = await this.registerService.findRecordById(id, accessInfo);
+    const record = await this.registerService.findRecordById(id, { accessInfo });
 
     if (!record) {
       throw new ForbiddenError(ERROR_REGISTER_RECORD_ACCESS);
@@ -547,7 +550,7 @@ export class RegisterBusiness extends Business {
     // Handle key schema controls.
     const handledData = await this.handleControlsCreate(data);
 
-    return await this.registerService.createRecord(handledData, accessInfo);
+    return await this.registerService.createRecord(handledData, { accessInfo });
   }
 
   /**
@@ -573,7 +576,7 @@ export class RegisterBusiness extends Business {
       throw new ForbiddenError('Key contains fields with allowTokens option.');
     }
 
-    return await this.registerService.updateRecordById(id, handledData, accessInfo);
+    return await this.registerService.updateRecordById(id, handledData, { accessInfo });
   }
 
   /**
@@ -598,7 +601,7 @@ export class RegisterBusiness extends Business {
       throw new ForbiddenError(ERROR_REGISTER_RECORD_ACCESS);
     }
 
-    return await this.registerService.deleteRecordById(id, person, accessInfo);
+    return await this.registerService.deleteRecordById(id, { person, accessInfo });
   }
 
   /**
@@ -1047,7 +1050,7 @@ export class RegisterBusiness extends Business {
           search_2: linkIndex === 2 ? linkIndexList : undefined,
           search_3: linkIndex === 3 ? linkIndexList : undefined,
         };
-        const recordListToLink = await this.registerService.getRecords(params);
+        const recordListToLink = await this.registerService.getRecords(withDefaultRecordsSort(params));
 
         function linkRecords(a, b) {
           const aS = a.sort((a, b) => a.data[keyProperty] - b.data[keyProperty]);
@@ -1157,7 +1160,7 @@ export class RegisterBusiness extends Business {
           search_2: linkIndex === 2 ? linkedIndex : undefined,
           search_3: linkIndex === 3 ? linkedIndex : undefined,
         };
-        const linkedRecord = await this.registerService.getRecords(params);
+        const linkedRecord = await this.registerService.getRecords(withDefaultRecordsSort(params));
 
         if (!linkedRecord.data || !linkedRecord.data.length) {
           getLog().save(
@@ -1229,7 +1232,7 @@ export class RegisterBusiness extends Business {
           search_2: linkIndex === 2 ? linkedIndex : undefined,
           search_3: linkIndex === 3 ? linkedIndex : undefined,
         };
-        const linkedRecord = await this.registerService.getRecords(params);
+        const linkedRecord = await this.registerService.getRecords(withDefaultRecordsSort(params));
 
         if (!linkedRecord.data || !linkedRecord.data.length) {
           getLog().save(
@@ -1297,7 +1300,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object>}
    */
   async getRollbackStatusWithDetails(rollbackId) {
-    return await this.registerService.getRollbackStatusWithDetails(rollbackId);
+    return await this.registerService.getRollbackStatus(rollbackId);
   }
 
   /**

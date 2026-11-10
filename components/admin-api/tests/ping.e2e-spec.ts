@@ -97,6 +97,25 @@ describe('Ping Controller', () => {
           expect(response.body.data).toHaveProperty('notifyServiceResponse');
         });
     });
+
+    it('should report the register as healthy when it answers pong with matching headers', async () => {
+      const { jwt, payload } = app.generateUserToken(TEST_USER_ID);
+      mockAuth(payload);
+      app
+        .nock('http://register:8103')
+        .get('/test/ping_with_auth')
+        .optionally()
+        .reply(200, { data: { message: 'pong' } }, { version: '99.0.0', customer: 'liquio', environment: 'dev' });
+
+      await app
+        .request()
+        .get('/test/ping_with_auth?health_check=true')
+        .set('token', jwt)
+        .expect(200)
+        .expect((response: SupertestResponse) => {
+          expect(response.body.data).toMatchObject({ registerServiceResponse: true });
+        });
+    });
   });
   describe('GET /test/ping/services', () => {
     it('should require authentication', async () => {

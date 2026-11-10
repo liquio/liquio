@@ -1,6 +1,6 @@
 import moment from 'moment';
 import { PluginLoader } from '@liquio/plugin-sdk';
-import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox, getRegisterApiClient } from '@liquio/back-core';
 
 import { Db } from './lib/db';
 import { PgPubSub } from './lib/pgpubsub';
@@ -138,6 +138,7 @@ export class BpmnTaskCore {
 
     // Init id-api client.
     initIdApiClient({ ...config.auth?.LiquioId, authRedirectUrl: config.auth?.authRedirectUrl });
+    getRegisterApiClient({ ...config.register, getLog });
 
     // Log unhandled rejections.
     process.on('unhandledRejection', (error: any) => {

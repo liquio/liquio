@@ -1,5 +1,6 @@
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
+
 import { Filler } from './filler';
-import { RegisterService } from '../../register';
 import { getLog } from '../../../lib/context';
 
 /**
@@ -7,7 +8,7 @@ import { getLog } from '../../../lib/context';
  */
 export class RegistersFiller extends Filler {
   private static singleton: RegistersFiller;
-  registerService: any;
+  private readonly registerService: RegisterApiClient;
 
   /**
    * Registers filler constructor.
@@ -17,7 +18,7 @@ export class RegistersFiller extends Filler {
       // Init parent constructor.
       super();
 
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       RegistersFiller.singleton = this;
     }
     return RegistersFiller.singleton;

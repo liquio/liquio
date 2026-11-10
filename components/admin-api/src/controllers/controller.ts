@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import * as transliteration from 'transliteration';
 import { matchedData } from 'express-validator';
-import { getTraceId } from '@liquio/back-core';
+import { getTraceId, RegisterApiError } from '@liquio/back-core';
 
 import { Entity } from '../entities/entity';
 import { File } from '../types/file';
@@ -68,6 +68,9 @@ export class Controller {
     // Set error status code if exists.
     if (error.httpStatusCode) {
       httpStatusCode = error.httpStatusCode;
+    } else if (error instanceof RegisterApiError && error.code === 'HTTP_ERROR' && error.status) {
+      // Register answered with an error status: keep it.
+      httpStatusCode = error.status;
     }
 
     // Error instances are hidden unless they are intentional (public) errors; strings and plain objects are trusted constants.

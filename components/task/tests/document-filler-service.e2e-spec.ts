@@ -39,7 +39,7 @@ describe('Document filler service', () => {
     it('fills a field with records found by filters and search functions', async () => {
       const filler = new RegistersFiller();
       const spy = jest
-        .spyOn(filler.registerService, 'getFilteredRecords')
+        .spyOn((filler as any).registerService, 'getFilteredRecords')
         .mockResolvedValue({ data: [{ id: 'r1', registerId: 1, keyId: 5, data: { code: 'A' } }] } as any);
       const objectToFill: any = { name: 'x' };
       const jsonSchema = schema({
@@ -77,7 +77,7 @@ describe('Document filler service', () => {
 
     it('ignores broken functions, missing user info and register errors', async () => {
       const filler = new RegistersFiller();
-      const spy = jest.spyOn(filler.registerService, 'getFilteredRecords').mockResolvedValue({ data: [] } as any);
+      const spy = jest.spyOn((filler as any).registerService, 'getFilteredRecords').mockResolvedValue({ data: [] } as any);
       const broken = '() => { throw new Error("x"); }';
       const objectToFill: any = {};
       await filler.fill(

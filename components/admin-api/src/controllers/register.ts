@@ -1,5 +1,4 @@
 import { matchedData } from 'express-validator';
-import axios from 'axios';
 
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
@@ -606,13 +605,7 @@ export class RegisterController extends Controller {
     try {
       register = await this.registerBusiness.export(id, { withData, file });
       if (file) {
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return response.data.pipe(res);
+        return register.stream.pipe(res);
       }
       if (!register) {
         return this.responseError(res, 'Not found.', 404);
@@ -648,16 +641,10 @@ export class RegisterController extends Controller {
             addData,
             file,
           },
-          undefined,
+          req,
           accessInfo,
         );
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return req.pipe(response.data).pipe(res);
+        return register.stream.pipe(res);
       } else {
         let fileContentBuffer;
         let chunks = [];
@@ -701,13 +688,7 @@ export class RegisterController extends Controller {
     try {
       register = await this.registerBusiness.export(id, { withData, file, keyIds });
       if (file) {
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return response.data.pipe(res);
+        return register.stream.pipe(res);
       }
       if (!register) {
         return this.responseError(res, 'Not found.', 404);
@@ -730,14 +711,8 @@ export class RegisterController extends Controller {
     const { clear_records: clearRecords = false } = matchedData(req, { locations: ['query'] });
     try {
       const accessInfo = this.getRequestAccessInfo(req);
-      const register = await this.registerBusiness.streamImport(clearRecords, accessInfo);
-      const response = await axios({
-        method: register.method,
-        url: register.url,
-        headers: register.headers,
-        responseType: 'stream',
-      });
-      return req.pipe(response.data).pipe(res);
+      const register = await this.registerBusiness.streamImport(clearRecords, req, accessInfo);
+      return register.stream.pipe(res);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
