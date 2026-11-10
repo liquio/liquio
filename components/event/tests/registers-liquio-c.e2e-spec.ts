@@ -17,7 +17,7 @@ describe('Group C - liquio registers provider', () => {
     await TestApp.beforeAll();
     app = await TestApp.setup({});
     LiquioProvider.singleton = undefined as any;
-    provider = new LiquioProvider({ url: REG, token: 'fake-token', apiMethods: { ping: '/ping2' } });
+    provider = new LiquioProvider({ url: REG, token: 'fake-token' });
   });
   afterAll(async () => {
     await TestApp.afterAll(app);
@@ -48,10 +48,8 @@ describe('Group C - liquio registers provider', () => {
   });
   const decodeAccessInfo = (value: string) => JSON.parse(Buffer.from(value, 'base64').toString('utf8'));
 
-  it('is a singleton, merging api methods', async () => {
+  it('is a singleton using default routes', async () => {
     expect(new LiquioProvider({ url: 'http://other' })).toBe(provider);
-    expect(provider.apiMethods.ping).toBe('/ping2');
-    expect(provider.apiMethods.getRecord).toBe('/records');
     const scope = nock(REG)
       .get('/records/r1')
       .matchHeader('token', 'fake-token')
@@ -231,25 +229,7 @@ describe('Group C - liquio registers provider', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('honours custom api methods', async () => {
-      const original = { ...provider.apiMethods };
-      LiquioProvider.singleton = undefined as any;
-      const custom = new LiquioProvider({ url: REG, token: 'fake-token', apiMethods: { getRecord: '/r2', updateRecord: '/u2' } });
-      try {
-        const scope = nock(REG)
-          .get('/r2/x1')
-          .reply(200, { data: { data: { a: 1 } } })
-          .put('/u2/x1')
-          .reply(200, { data: { ok: true } });
-        expect(await custom.updateRecord('x1', { data: { b: 2 } }, ctx())).toEqual({ data: { ok: true } });
-        expect(scope.isDone()).toBe(true);
-      } finally {
-        LiquioProvider.singleton = undefined as any;
-        provider = new LiquioProvider({ url: REG, token: 'fake-token', apiMethods: { ping: original.ping } });
-      }
-    });
-
-    it('applies registers.timeout only when configured', async () => {
+    it('applies registers.timeout when configured, else the client default', async () => {
       LiquioProvider.singleton = undefined as any;
       const slow = new LiquioProvider({ url: REG, token: 't', timeout: 50 });
       nock(REG)
@@ -264,7 +244,7 @@ describe('Group C - liquio registers provider', () => {
         .reply(200, { data: { id: 'r1' } });
       expect(await noTimeout.getRecord('r1')).toEqual({ id: 'r1' });
       LiquioProvider.singleton = undefined as any;
-      provider = new LiquioProvider({ url: REG, token: 'fake-token', apiMethods: { ping: '/ping2' } });
+      provider = new LiquioProvider({ url: REG, token: 'fake-token' });
     });
 
     it('getKeyById returns data or rethrows', async () => {
@@ -338,14 +318,14 @@ describe('Group C - liquio registers provider', () => {
   describe('sendPingRequest', () => {
     it('returns version info from response headers', async () => {
       nock(REG)
-        .get('/ping2')
+        .get('/test/ping')
         .matchHeader('token', (v) => v === undefined)
         .reply(200, { pong: true }, { version: '1.2.3', customer: 'cust', environment: 'test' });
       expect(await provider.sendPingRequest()).toEqual({ version: '1.2.3', customer: 'cust', environment: 'test', body: { pong: true } });
     });
 
     it('returns undefined and logs when the request fails', async () => {
-      nock(REG).get('/ping2').reply(500, {});
+      nock(REG).get('/test/ping').reply(500, {});
       expect(await provider.sendPingRequest()).toBeUndefined();
       expect(app.log.logs.find((l) => l.type === 'send-ping-request-to-register')).toBeDefined();
     });

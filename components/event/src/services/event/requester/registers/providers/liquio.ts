@@ -1,42 +1,11 @@
 import PropByPath from 'prop-by-path';
-import { createRegisterApiClient, RegisterApiClient, RegisterApiError, RegisterApiRoutes } from '@liquio/back-core';
+import { createRegisterApiClient, RegisterApiClient, RegisterApiError } from '@liquio/back-core';
 
 import { Provider } from './provider';
 import { Helpers } from '../../../../../lib/helpers';
 const { prepareAxiosErrorToLog } = Helpers;
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../../../../../constants/common';
 import { getLog } from '../../../../../lib/context';
-
-// Constants.
-const API_METHODS: Record<string, string> = {
-  getKey: '/keys',
-  getRecord: '/records',
-  getRecordPost: '/records-by-post',
-  getRecordsFiltered: '/records/filter',
-  createRecord: '/records',
-  updateRecord: '/records',
-  deleteRecord: '/records',
-  ping: '/test/ping',
-};
-
-/**
- * Map configurable api methods to register client routes.
- * @param {Record<string, string>} m Api methods.
- * @returns {Partial<RegisterApiRoutes>}
- */
-function mapApiMethodsToRoutes(m: Record<string, string>): Partial<RegisterApiRoutes> {
-  return {
-    findKeyById: `${m.getKey}/:id`,
-    getRecords: m.getRecord,
-    findRecordById: `${m.getRecord}/:id`,
-    getRecordsByPost: m.getRecordPost,
-    getFilteredRecords: m.getRecordsFiltered,
-    createRecord: m.createRecord,
-    updateRecordById: `${m.updateRecord}/:id`,
-    deleteRecordById: `${m.deleteRecord}/:id`,
-    ping: m.ping,
-  };
-}
 
 /**
  * Liquio provider.
@@ -47,7 +16,6 @@ export class LiquioProvider extends Provider {
 
   config: any;
   url: any;
-  apiMethods: Record<string, string>;
   client: RegisterApiClient;
   sandbox: any;
 
@@ -55,7 +23,6 @@ export class LiquioProvider extends Provider {
    * Constructor.
    * @param {object} config Config.
    * @param {string} config.url API URL.
-   * @param {{createRecord, updateRecord, deleteRecord}} config.apiMethods API methods.
    * @param {string} config.token Request auth token.
    */
   constructor(config: any) {
@@ -64,14 +31,12 @@ export class LiquioProvider extends Provider {
     // Define singleton.
     if (!LiquioProvider.singleton) {
       this.config = config;
-      const { url, apiMethods, token } = config;
+      const { url, token, timeout } = config;
       this.url = url;
-      this.apiMethods = { ...API_METHODS, ...apiMethods };
       this.client = createRegisterApiClient({
         url,
         token,
-        timeout: config.timeout || 0,
-        routes: mapApiMethodsToRoutes(this.apiMethods),
+        timeout,
         getLog,
       });
       LiquioProvider.singleton = this;
