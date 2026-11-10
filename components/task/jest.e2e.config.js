@@ -8,6 +8,8 @@ const baseConfig = require('./jest.config');
 const config = {
   ...baseConfig,
   testMatch: ['<rootDir>/tests/**/*.e2e-spec.[tj]s?(x)'],
+  // Collects the previous test file's garbage before V8 coverage starts for the next one (see the file).
+  setupFiles: ['<rootDir>/tests/helpers/collect-garbage.ts'],
   collectCoverage: true,
   collectCoverageFrom: [
     'src/**/*.{ts,js}',

@@ -1,6 +1,6 @@
 import { TestApp } from './test-app';
 import { prepareFixtures, TASK_FIXTURES, DOCUMENT_FIXTURES } from './fixtures';
-import { getLog } from '../src/lib/context';
+import { getLog, getMessageQueue } from '../src/lib/context';
 
 const READING_QUEUE = 'bpmn-task-incoming';
 const PDF_QUEUE = 'bpmn-task-incoming-generating-pdf';
@@ -68,9 +68,13 @@ describe('Task RabbitMQ consumers', () => {
   it('delayedAutoCommitFromMessage finishes the task', async () => {
     const taskId = TASK_FIXTURES[0].id;
     expect((await app.model('task').findByPk(taskId)).finished).toBe(false);
+    const produce = jest.spyOn(getMessageQueue() as any, 'produce');
 
     await app.publishMessage(DELAYED_QUEUE, { taskId });
 
     await app.waitFor(async () => (await app.model('task').findByPk(taskId)).finished === true);
+    // The handler keeps querying the DB after it finishes the task; wait for its last step so teardown
+    // does not close the DB under it.
+    await app.waitFor(() => produce.mock.calls.some(([message]: any[]) => message?.taskId === taskId));
   });
 });
