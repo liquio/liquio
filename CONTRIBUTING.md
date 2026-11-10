@@ -135,18 +135,25 @@ For Kubernetes development and testing:
 
 ### Branch Strategy
 
-- `main` - Stable, production-ready code
-- `develop` - Integration branch for features
-- `feature/*` - New features
-- `bugfix/*` - Bug fixes
-- `hotfix/*` - Critical production fixes
+All work branches off `main` and returns through a pull request.
 
-### Creating a Feature Branch
+- `main`: the integration branch. Every change lands here through a PR. Nothing is published from `main` except npm packages (`packages/*`).
+- Work branches, cut from `main`:
+  - `feat/*` for features
+  - `fix/*` for bug fixes
+  - `refactor/*` for refactoring
+  - `chore/*` for maintenance
+  - or a branch named after the tracker ticket (for example `SE-1234`)
+- `release/vX.Y.Z`: release branches, cut from `main` by maintainers. Only releases publish component Docker images and the Helm chart (see [Releases](#releases)).
+- `publish/*`: package publish branches, for publishing updates of the npm packages in `packages/*`.
+- `dependabot/*`: opened automatically by Dependabot.
+
+### Creating a Branch
 
 ```bash
-git checkout develop
-git pull upstream develop
-git checkout -b feature/your-feature-name
+git checkout main
+git pull upstream main
+git checkout -b feat/your-feature-name
 ```
 
 ### Making Changes
@@ -204,8 +211,24 @@ test(task): add integration tests for workflow execution
 
 ```bash
 git fetch upstream
-git rebase upstream/develop
+git rebase upstream/main
 ```
+
+### Releases
+
+Maintainers cut releases. A release is a branch `release/vX.Y.Z`, where `X.Y.Z` is the new Helm chart version, cut from `main`:
+
+1. Shared npm packages (`back-core`, `plugin-installer`, …) that changed are version-bumped and published from `main` first. Consuming components then update their dependency.
+2. On the release branch, each component changed since its last release gets a patch version bump. The chart `version` and the image tags in `helm-chart/templates/shared/_service-helpers.tpl` are updated to match.
+3. Pushing the branch starts the **Release** workflow (`.github/workflows/release.yml`), in order:
+   1. full Code Quality on every component and package, and the full E2E suite;
+   2. a check that the chart image tags match the component versions;
+   3. building and pushing `ghcr.io/liquio/<service>:<version>` for each version not yet published;
+   4. linting and publishing the Helm chart.
+
+   Each stage runs only if the previous one passed. Fixes go on the release branch.
+4. The green release commit is tagged `vX.Y.Z` with a short changelog.
+5. A PR `Release vX.Y.Z` merges the release branch back into `main` with a merge commit (not squash). The release branch is kept for hotfixes.
 
 ## Coding Standards
 
@@ -427,16 +450,16 @@ These scripts are designed to be used in CI/CD pipelines. Example for GitHub Act
 4. ✅ Code is properly formatted
 5. ✅ Documentation is updated
 6. ✅ Commit messages follow conventions
-7. ✅ Branch is up to date with `develop`
+7. ✅ Branch is up to date with `main`
 
 ### Submitting a Pull Request
 
 1. Push your branch to your fork:
    ```bash
-   git push origin feature/your-feature-name
+   git push origin feat/your-feature-name
    ```
 
-2. Open a Pull Request on GitHub against the `develop` branch
+2. Open a Pull Request on GitHub against the `main` branch
 
 3. Fill out the PR template with:
    - Clear description of changes
@@ -467,8 +490,8 @@ feat(service-name): add feature description
 - Delete your feature branch
 - Update your local repository:
   ```bash
-  git checkout develop
-  git pull upstream develop
+  git checkout main
+  git pull upstream main
   ```
 
 ## Reporting Issues
