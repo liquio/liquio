@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
 import _ from 'lodash';
 import jp from 'jsonpath';
 import moment from 'moment';
@@ -7,7 +8,7 @@ import moment from 'moment';
 import { Exceptions } from '../exceptions';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { isFunctionString } from '../lib/function_string';
-import { RegisterService } from '../services/register';
+import { callRegisterLegacy } from '../lib/register_api';
 import { WorkflowTemplateEntity } from '../entities/workflow_template';
 import { WorkflowTemplateCategoryEntity } from '../entities/workflow_template_category';
 import { TaskTemplateEntity } from '../entities/task_template';
@@ -30,7 +31,7 @@ export class BpmnWorkflowBusiness {
 
   public config: any;
   private xmlJsConverter: XmlJsConverter;
-  private registerService: RegisterService;
+  private registerService: RegisterApiClient;
 
   /**
    * Constructor.
@@ -41,7 +42,7 @@ export class BpmnWorkflowBusiness {
     if (!BpmnWorkflowBusiness.singleton) {
       this.config = config;
       this.xmlJsConverter = new XmlJsConverter();
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       BpmnWorkflowBusiness.singleton = this;
     }
 
@@ -116,7 +117,11 @@ export class BpmnWorkflowBusiness {
 
     try {
       let registerErrors = [];
-      let registerKeys = await this.registerService.getKeys({ limit: getConfig().register.limit });
+      let registerKeys = await callRegisterLegacy(
+        'register-request-get-keys-error',
+        () => this.registerService.getKeys({ limit: getConfig().register.limit }),
+        'body',
+      );
       registerKeys = (registerKeys.data && registerKeys.data.map((v) => v.id)) || [];
 
       // Import workflow template category.

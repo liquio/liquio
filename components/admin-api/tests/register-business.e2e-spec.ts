@@ -91,6 +91,39 @@ describe('Register routes: upstream errors, files and xlsx', () => {
       expect([200, 404]).toContain(response.status);
     });
 
+    it('sends the request body to the register on a file import and pipes the answer back', async () => {
+      const payload = Buffer.from('register-file-bytes');
+      let received: Buffer | undefined;
+      app
+        .nock(REGISTER)
+        .post('/registers/import')
+        .query({ force: 'false', rewrite_schema: 'false', clear_records: 'false', add_data: 'false', file: 'true' })
+        .matchHeader('content-type', 'application/octet-stream')
+        .reply(200, function (_uri, requestBody) {
+          received = Buffer.from(requestBody as any);
+          return 'register-answer';
+        });
+
+      const response = await asAdmin(app, 'post', '/registers/import?file=true')
+        .set('Content-Type', 'application/octet-stream')
+        .send(payload)
+        .buffer(true)
+        .parse(textParser);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toBe('register-answer');
+      expect(received?.toString()).toBe('register-file-bytes');
+    });
+
+    it('answers 500 with an error when the register fails a file export', async () => {
+      app.nock(REGISTER).get('/registers/1/export').query(true).reply(500, { error: 'boom' });
+
+      const response = await asAdmin(app, 'get', '/registers/1/export?file=true');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('error');
+    });
+
     it('rejects a malformed JSON import with 500', async () => {
       const response = await asAdmin(app, 'post', '/registers/import').set('Content-Type', 'application/octet-stream').send(Buffer.from('not json'));
 

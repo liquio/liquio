@@ -1,11 +1,20 @@
 import { matchedData } from 'express-validator';
-import axios from 'axios';
+import { RegisterApiError } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
 import { RegisterBusiness } from '../businesses/register';
 import { TaskService } from '../services/task';
 import { PublicError } from '../lib/public_error';
+
+/**
+ * Convert a register client error to a plain error, so only its message reaches the response.
+ * @param {any} error Error.
+ * @returns {any}
+ */
+function toPlainError(error: any): any {
+  return error instanceof RegisterApiError ? new Error(error.message) : error;
+}
 
 /**
  * Register controller.
@@ -606,19 +615,13 @@ export class RegisterController extends Controller {
     try {
       register = await this.registerBusiness.export(id, { withData, file });
       if (file) {
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return response.data.pipe(res);
+        return register.stream.pipe(res);
       }
       if (!register) {
         return this.responseError(res, 'Not found.', 404);
       }
     } catch (error) {
-      return this.responseError(res, error);
+      return this.responseError(res, toPlainError(error));
     }
 
     this.responseFile(res, register, 'application/bpmn', 'register.bpmn');
@@ -648,16 +651,10 @@ export class RegisterController extends Controller {
             addData,
             file,
           },
-          undefined,
+          req,
           accessInfo,
         );
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return req.pipe(response.data).pipe(res);
+        return register.stream.pipe(res);
       } else {
         let fileContentBuffer;
         let chunks = [];
@@ -681,7 +678,8 @@ export class RegisterController extends Controller {
           accessInfo,
         );
       }
-    } catch (error) {
+    } catch (rawError) {
+      const error = toPlainError(rawError);
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
 
@@ -701,19 +699,13 @@ export class RegisterController extends Controller {
     try {
       register = await this.registerBusiness.export(id, { withData, file, keyIds });
       if (file) {
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return response.data.pipe(res);
+        return register.stream.pipe(res);
       }
       if (!register) {
         return this.responseError(res, 'Not found.', 404);
       }
     } catch (error) {
-      return this.responseError(res, error);
+      return this.responseError(res, toPlainError(error));
     }
     if (file) {
       return this.responseFile(res, register, 'application/bpmn', `register-${register.data.id}.dat`);
@@ -730,15 +722,10 @@ export class RegisterController extends Controller {
     const { clear_records: clearRecords = false } = matchedData(req, { locations: ['query'] });
     try {
       const accessInfo = this.getRequestAccessInfo(req);
-      const register = await this.registerBusiness.streamImport(clearRecords, accessInfo);
-      const response = await axios({
-        method: register.method,
-        url: register.url,
-        headers: register.headers,
-        responseType: 'stream',
-      });
-      return req.pipe(response.data).pipe(res);
-    } catch (error) {
+      const register = await this.registerBusiness.streamImport(clearRecords, req, accessInfo);
+      return register.stream.pipe(res);
+    } catch (rawError) {
+      const error = toPlainError(rawError);
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
   }
@@ -808,7 +795,8 @@ export class RegisterController extends Controller {
         },
         accessInfo,
       );
-    } catch (error) {
+    } catch (rawError) {
+      const error = toPlainError(rawError);
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
 

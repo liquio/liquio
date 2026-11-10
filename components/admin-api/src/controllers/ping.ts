@@ -1,7 +1,6 @@
-import { IdApiClient, getIdApiClient } from '@liquio/back-core';
+import { IdApiClient, getIdApiClient, RegisterApiClient, getRegisterApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
-import { RegisterService } from '../services/register';
 import { TaskService } from '../services/task';
 import { NotifierService } from '../services/notifier';
 import { getConfig, getLog } from '../lib/context';
@@ -23,7 +22,7 @@ export class PingController extends Controller {
   private static singleton: PingController;
 
   private idApiClient: IdApiClient;
-  private registerService: RegisterService;
+  private registerService: RegisterApiClient;
   private taskService: TaskService;
   private notifyService: NotifierService;
 
@@ -36,7 +35,7 @@ export class PingController extends Controller {
     if (!PingController.singleton) {
       super(config);
       this.idApiClient = getIdApiClient();
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       this.taskService = new TaskService();
       this.notifyService = new NotifierService();
       PingController.singleton = this;

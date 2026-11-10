@@ -2230,7 +2230,6 @@ describe('Register Controller', () => {
         .get('/registers/1/export')
         .query({
           with_data: 'false',
-          file: 'false',
         })
         .once()
         .reply(200, bpmnContent);
@@ -2317,7 +2316,6 @@ describe('Register Controller', () => {
             rewrite_schema: 'false',
             clear_records: 'false',
             add_data: 'true',
-            file: 'false',
           })
           .once()
           .reply(202, {
@@ -2379,7 +2377,6 @@ describe('Register Controller', () => {
         .get('/registers/1/export')
         .query({
           with_data: 'false',
-          file: 'false',
         })
         .once()
         .reply(200, {
@@ -2451,7 +2448,6 @@ describe('Register Controller', () => {
           rewrite_schema: 'false',
           clear_records: 'false',
           add_data: 'false',
-          file: 'false',
         })
         .reply(202, { data: { isAccepted: true } });
 

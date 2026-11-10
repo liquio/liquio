@@ -11,6 +11,7 @@ import { WorkflowBusiness } from './businesses/workflow';
 import { HttpClient } from './lib/http_client';
 import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
+import { initRegisterApiClient } from './lib/register_api';
 import { warnPlainHttpInternalUrls } from './lib/internal_transport';
 import { buildSandboxConfig } from './lib/sandbox_config';
 import { setAppContext, getLog } from './lib/context';
@@ -45,6 +46,7 @@ export async function bootstrap(config: Record<string, any>, options: { placehol
 
   // Init id-api client (shared by the whole process, see `getIdApiClient()`).
   initIdApiClient(config.auth);
+  initRegisterApiClient(config.register);
 
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
   new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);

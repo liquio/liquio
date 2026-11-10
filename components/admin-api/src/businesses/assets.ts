@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
 
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
+
 import { Sign } from '../services/sign';
-import { RegisterService } from '../services/register';
+import { callRegisterLegacy } from '../lib/register_api';
 import { TaskService } from '../services/task';
 import { getLog, getModels } from '../lib/context';
 
@@ -17,7 +19,7 @@ export class AssetsBusiness {
   public config: any;
   private cache: Map<string, any>;
   private sign: Sign;
-  private register: RegisterService;
+  private register: RegisterApiClient;
   private task: TaskService;
 
   /**
@@ -30,7 +32,7 @@ export class AssetsBusiness {
       this.config = config;
       this.cache = new Map();
       this.sign = new Sign(config.sign);
-      this.register = new RegisterService();
+      this.register = getRegisterApiClient();
       this.task = new TaskService();
       AssetsBusiness.singleton = this;
     }
@@ -104,7 +106,7 @@ export class AssetsBusiness {
 
     let getKeysResult;
     try {
-      getKeysResult = await this.register.getKeys({ limit: 1000000 });
+      getKeysResult = await callRegisterLegacy('register-request-get-keys-error', () => this.register.getKeys({ limit: 1000000 }), 'body');
     } catch (error) {
       getLog().save('assets-get-to-registers-get-keys-error', { error: error?.message }, 'error');
       throw error;
