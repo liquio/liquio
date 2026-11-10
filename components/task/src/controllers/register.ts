@@ -5,7 +5,7 @@ import { getRegisterApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
-import { deleteRegisterCache } from '../lib/register_api';
+import { deleteRegisterCache } from '../services/register';
 import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 import typeOf from '../lib/type_of';
@@ -46,7 +46,7 @@ const HISTORY_MAX_LIMIT = 1000;
 export class RegisterController extends Controller {
   private static singleton: RegisterController;
 
-  registerService: any;
+  private readonly registerService: any;
   sandbox: any;
 
   /**

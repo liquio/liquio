@@ -1,38 +1,13 @@
-import { resetRegisterApiClient } from '@liquio/back-core';
+import { withDefaultRecordsSort, deleteRegisterCache } from './register';
+import { setAppContext, resetAppContext } from '../lib/context';
 
-import { initRegisterApiClient, withDefaultRecordsSort, deleteRegisterCache } from './register_api';
-import { setAppContext, resetAppContext } from './context';
-
-describe('register_api', () => {
+describe('register service helpers', () => {
   beforeEach(() => {
-    resetRegisterApiClient();
     setAppContext({ log: { save: jest.fn() } as any });
   });
 
   afterEach(() => {
-    resetRegisterApiClient();
     resetAppContext();
-  });
-
-  describe('initRegisterApiClient', () => {
-    it('should apply the default timeout', () => {
-      const client = initRegisterApiClient({ server: 'http://register.local', port: 8200, token: 'fake-token' });
-
-      expect((client as any).config).toMatchObject({ timeout: 30000, token: 'fake-token' });
-      expect(client.baseUrl).toBe('http://register.local:8200');
-    });
-
-    it('should work without a config', () => {
-      const client = initRegisterApiClient();
-
-      expect((client as any).config).toMatchObject({ timeout: 30000 });
-    });
-
-    it('should pass the timeout through', () => {
-      const client = initRegisterApiClient({ server: 'http://register.local', port: 8200, timeout: 5000 });
-
-      expect((client as any).config).toMatchObject({ timeout: 5000 });
-    });
   });
 
   describe('withDefaultRecordsSort', () => {

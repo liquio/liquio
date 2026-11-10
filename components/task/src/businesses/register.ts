@@ -5,7 +5,7 @@ import { getRegisterApiClient } from '@liquio/back-core';
 import { Business } from './business';
 import { UnitAccessModel } from '../models/unit_access';
 import { UnitAccessEntity } from '../entities/unit_access';
-import { withDefaultRecordsSort } from '../lib/register_api';
+import { withDefaultRecordsSort } from '../services/register';
 import { JSONPath } from '../lib/jsonpath';
 import { RedisClient } from '../lib/redis_client';
 import { InvalidParamsError, ForbiddenError, NotFoundError } from '../lib/errors';
@@ -32,7 +32,7 @@ export class RegisterBusiness extends Business {
   private static singleton: RegisterBusiness;
 
   unitAccessModel: any;
-  registerService: any;
+  readonly registerService: any;
   sandbox: any;
   registers: any;
   keys: any;

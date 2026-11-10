@@ -8,7 +8,7 @@ import { getLog } from '../../../lib/context';
  */
 export class RegistersDefaultValueFiller extends Filler {
   private static singleton: RegistersDefaultValueFiller;
-  registerService: RegisterApiClient;
+  readonly registerService: RegisterApiClient;
 
   /**
    * Registers filler constructor.

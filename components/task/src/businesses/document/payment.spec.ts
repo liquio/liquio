@@ -1,7 +1,6 @@
-import { Sandbox } from '@liquio/back-core';
+import { Sandbox, getRegisterApiClient } from '@liquio/back-core';
 
 import { initIdApiClient } from '../../lib/id_api';
-import { initRegisterApiClient } from '../../lib/register_api';
 import { DocumentBusiness } from './index';
 import { getLog, getModels, getConfig, getHttpClient, setAppContext, resetAppContext } from '../../lib/context';
 
@@ -13,7 +12,7 @@ import { getLog, getModels, getConfig, getHttpClient, setAppContext, resetAppCon
 // propagation) — not PaymentService/provider behavior itself, which is covered elsewhere.
 new Sandbox();
 initIdApiClient({});
-initRegisterApiClient({});
+getRegisterApiClient({});
 
 describe('DocumentBusiness payment methods', () => {
   let documentBusiness: any;

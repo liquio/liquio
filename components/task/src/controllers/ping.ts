@@ -30,7 +30,7 @@ export class PingController extends Controller {
   idApiClient: IdApiClient;
   eds: any;
   notifierService: any;
-  registerService: RegisterApiClient;
+  private readonly registerService: RegisterApiClient;
   fileStorage: any;
   PaymentService: any;
   token: any;

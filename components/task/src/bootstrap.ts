@@ -1,6 +1,6 @@
 import moment from 'moment';
 import { PluginLoader } from '@liquio/plugin-sdk';
-import { Log, ConsoleLogProvider, Sandbox } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, Sandbox, getRegisterApiClient } from '@liquio/back-core';
 
 import { Db } from './lib/db';
 import { PgPubSub } from './lib/pgpubsub';
@@ -23,7 +23,6 @@ import { assertBasicAuthConfig, assertDownloadTokenConfig, assertTestAuthConfig,
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
 import { initIdApiClient } from './lib/id_api';
-import { initRegisterApiClient } from './lib/register_api';
 import { setAppContext, getModels, getConfig, getLog, getRedisClient, getRedisClientCommonBpmn } from './lib/context';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/task';
@@ -139,7 +138,7 @@ export class BpmnTaskCore {
 
     // Init id-api client.
     initIdApiClient({ ...config.auth?.LiquioId, authRedirectUrl: config.auth?.authRedirectUrl });
-    initRegisterApiClient(config.register);
+    getRegisterApiClient({ ...config.register, getLog });
 
     // Log unhandled rejections.
     process.on('unhandledRejection', (error: any) => {

@@ -69,7 +69,7 @@ export class DocumentBusiness extends Business {
   paymentService: PaymentService;
   idApiClient: IdApiClient;
   notifier: Notifier;
-  registerService: RegisterApiClient;
+  readonly registerService: RegisterApiClient;
   fileGeneratorService: FileGeneratorService;
   externalReader: ExternalReader;
   documentAttachmentModel: DocumentAttachmentModel;

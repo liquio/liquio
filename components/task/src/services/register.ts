@@ -1,26 +1,7 @@
-import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
-
-import { getLog, getRedisClient } from './context';
+import { getRedisClient } from '../lib/context';
 
 // Constants.
-const DEFAULT_TIMEOUT = 30000;
 const REGISTER_CACHE_KEYS_PATTERN = 'bpmn-register.key.*';
-
-/**
- * Init the shared register client from the `register` config section. Call once on startup,
- * after the global log is set. Everywhere else use `getRegisterApiClient()` without arguments.
- * @param {object} registerConfig Register config section (`config.register`).
- * @returns {RegisterApiClient}
- */
-export function initRegisterApiClient(registerConfig: Record<string, any> = {}): RegisterApiClient {
-  return getRegisterApiClient({
-    server: registerConfig.server,
-    port: registerConfig.port,
-    token: registerConfig.token,
-    timeout: registerConfig.timeout || DEFAULT_TIMEOUT,
-    getLog: () => getLog(),
-  });
-}
 
 /**
  * Set the default records sort (newest first) when the params have none. Mutates and returns the same object.
