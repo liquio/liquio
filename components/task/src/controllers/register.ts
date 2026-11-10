@@ -1,10 +1,11 @@
 import { matchedData } from 'express-validator';
 import _ from 'lodash';
 import { Sandbox } from '@liquio/back-core';
+import { getRegisterApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
-import { RegisterService } from '../services/register';
+import { deleteRegisterCache } from '../lib/register_api';
 import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 import typeOf from '../lib/type_of';
@@ -55,7 +56,7 @@ export class RegisterController extends Controller {
     // Define singleton.
     if (!RegisterController.singleton) {
       super();
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       this.sandbox = Sandbox.getInstance();
       RegisterController.singleton = this;
     }
@@ -236,7 +237,10 @@ export class RegisterController extends Controller {
 
     let records;
     try {
-      records = await this.registerService.search(keyId, normalizedText, accessInfo, Math.min(limit, RECORDS_MAX_LIMIT), offset);
+      records = await this.registerService.searchRecords(
+        { keyId, text: normalizedText, limit: Math.min(limit, RECORDS_MAX_LIMIT), offset },
+        { accessInfo },
+      );
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -744,7 +748,7 @@ export class RegisterController extends Controller {
           search_equal_3: searchEqual3,
           allow_tokens: allowTokens,
         };
-        const records = await this.registerService.getFilteredRecords(registerParams, body, accessInfo);
+        const records = await this.registerService.getFilteredRecords(registerParams, body, { accessInfo });
         if (Array.isArray(records.data)) {
           valuesToSave = records.data.map((v) => {
             const normalizedRecord: any = {
@@ -952,7 +956,7 @@ export class RegisterController extends Controller {
   async deleteCache(req, res) {
     let deletedKeys;
     try {
-      deletedKeys = await this.registerService.deleteCache();
+      deletedKeys = await deleteRegisterCache();
     } catch (error) {
       return this.responseError(res, error);
     }

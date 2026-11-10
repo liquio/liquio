@@ -1,6 +1,5 @@
 import { Filler } from './filler';
 import { ExternalReader } from '../../../lib/external_reader';
-import { RegisterService } from '../../register';
 import { getLog } from '../../../lib/context';
 
 /**
@@ -9,7 +8,6 @@ import { getLog } from '../../../lib/context';
 export class VerifiedUserInfoFiller extends Filler {
   private static singleton: VerifiedUserInfoFiller;
   externalReader: any;
-  registerService: any;
 
   constructor() {
     if (!VerifiedUserInfoFiller.singleton) {
@@ -17,7 +15,6 @@ export class VerifiedUserInfoFiller extends Filler {
       super();
 
       this.externalReader = new ExternalReader();
-      this.registerService = new RegisterService();
       VerifiedUserInfoFiller.singleton = this;
     }
     return VerifiedUserInfoFiller.singleton;

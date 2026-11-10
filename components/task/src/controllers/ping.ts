@@ -1,8 +1,8 @@
 import { AppInfo, getIdApiClient, IdApiClient } from '@liquio/back-core';
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { NotifierService } from '../services/notifier';
-import { RegisterService } from '../services/register';
 import { Eds } from '../lib/eds';
 import { FileStorage } from '../lib/filestorage';
 import { HttpRequest } from '../lib/http_request';
@@ -30,7 +30,7 @@ export class PingController extends Controller {
   idApiClient: IdApiClient;
   eds: any;
   notifierService: any;
-  registerService: any;
+  registerService: RegisterApiClient;
   fileStorage: any;
   PaymentService: any;
   token: any;
@@ -46,7 +46,7 @@ export class PingController extends Controller {
       this.idApiClient = getIdApiClient();
       this.eds = new Eds(config.eds);
       this.notifierService = new NotifierService();
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       this.fileStorage = new FileStorage(config.fileStorage);
       this.PaymentService = new PaymentService(config.payment);
       PingController.singleton = this;

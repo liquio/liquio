@@ -8,7 +8,6 @@ import { DocumentHandler } from '../../lib/document_handler';
 import { Keywords } from './keywords';
 import { ValidatorError } from './validator_error';
 import { Paths } from './paths';
-import { RegisterService } from '../../services/register';
 import { CalcTriggersValidator } from './calc_triggers_validator';
 import { getLog } from '../../lib/context';
 
@@ -25,7 +24,6 @@ export class DocumentValidatorService {
   calcTriggersValidator: CalcTriggersValidator;
   externalFunctions: any;
   jsonSchema: any;
-  registerService: any;
   sandbox: any;
   userInfo: any;
   validation: any;
@@ -42,7 +40,6 @@ export class DocumentValidatorService {
     this.userInfo = userInfo;
     this.externalFunctions = externalFunctions;
     this.validation = this.ajv.compile(this.jsonSchema);
-    this.registerService = new RegisterService();
     this.sandbox = Sandbox.getInstance();
     this.calcTriggersValidator = new CalcTriggersValidator(jsonSchema, userInfo);
   }

@@ -4,12 +4,14 @@ import nock from 'nock';
 import { Sandbox } from '@liquio/back-core';
 
 import { initIdApiClient } from '../../lib/id_api';
+import { initRegisterApiClient } from '../../lib/register_api';
 import { DocumentValidatorService } from '../../services/document_validator';
 import { DocumentBusiness } from './index';
 import { getLog, getConfig, setAppContext, resetAppContext } from '../../lib/context';
 
 new Sandbox();
 initIdApiClient({});
+initRegisterApiClient({});
 
 describe('DocumentBusiness', () => {
   setAppContext({

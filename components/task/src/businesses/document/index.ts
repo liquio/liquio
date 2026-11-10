@@ -2,6 +2,7 @@ import flattening from 'flattening';
 import _ from 'lodash';
 import PropByPath from 'prop-by-path';
 import { getIdApiClient, IdApiClient, Sandbox } from '@liquio/back-core';
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
 
 import { ErrorMessage } from '../../constants/error';
 import { DocumentEntity } from '../../entities/document';
@@ -28,7 +29,6 @@ import { findPathsNotInSchema, getSchemaAllowListMode } from '../../services/doc
 import { FileGeneratorService } from '../../services/file_generator';
 import { NotifierService as Notifier } from '../../services/notifier';
 import { PaymentService } from '../../services/payment';
-import { RegisterService } from '../../services/register';
 import { StorageService } from '../../services/storage';
 import { Business } from '../business';
 import { DocumentFileBusiness } from './files';
@@ -69,7 +69,7 @@ export class DocumentBusiness extends Business {
   paymentService: PaymentService;
   idApiClient: IdApiClient;
   notifier: Notifier;
-  registerService: RegisterService;
+  registerService: RegisterApiClient;
   fileGeneratorService: FileGeneratorService;
   externalReader: ExternalReader;
   documentAttachmentModel: DocumentAttachmentModel;
@@ -104,7 +104,7 @@ export class DocumentBusiness extends Business {
       this.paymentService = new PaymentService(config.payment);
       this.idApiClient = getIdApiClient();
       this.notifier = new Notifier();
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       this.fileGeneratorService = new FileGeneratorService();
       this.externalReader = new ExternalReader();
       this.documentAttachmentModel = new DocumentAttachmentModel();
