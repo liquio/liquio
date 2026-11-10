@@ -429,18 +429,19 @@ To enable Dependabot:
 
 ## Continuous Integration
 
-These scripts are designed to be used in CI/CD pipelines. Example for GitHub Actions:
+CI runs on GitHub Actions (`.github/workflows/`):
 
-```yaml
-- name: Run linting
-  run: ./scripts/lint.sh
+| Workflow | Runs on | What it does |
+|---|---|---|
+| **Code Quality** (`code-quality.yml`) | PRs to `main` and pushes to `main` | Lint, unit tests, typecheck and frontend build, only for the components and packages a change touches. Skipped for PRs from `release/*` branches, which the Release workflow already checks in full. |
+| **E2E Tests** (`e2e.yml`) | Nightly, and by hand | Each component's e2e suite (`npm run ci:e2e`), with Postgres, Redis, RabbitMQ and the other services run through testcontainers. Fails on leaked handles too. |
+| **Release** (`release.yml`) | Pushes to `release/**` | Full Code Quality and E2E, a chart tag check, then the component images and the Helm chart. See [Releases](#releases). |
+| **Build and Push Images** (`docker-build.yml`) | Release workflow, or by hand | Builds and pushes `ghcr.io/liquio/<service>:<version>` for each version not yet published. |
+| **Helm** (`helm.yml`) | Pushes to `main` touching `helm-chart/`, and the Release workflow | Lints the chart (helm lint, kubeconform, kube-linter). Publishes it only when called from the Release workflow. |
+| **Publish to NPM** (`publish-npm.yml`) | After Code Quality passes on `main` | Publishes each `packages/*` package whose version isn't on npm yet. |
+| **GitLab mirror** (`gitlab-mirror.yml`) | Pushes to `main` | Mirrors `main` to GitLab. |
 
-- name: Run tests
-  run: ./scripts/test.sh
-
-- name: Run security audit
-  run: ./scripts/audit.sh --production
-```
+A PR needs a green Code Quality run before it is merged. Run the same checks locally first (see [Quality Control Scripts](#quality-control-scripts)).
 
 ### Before Submitting
 
