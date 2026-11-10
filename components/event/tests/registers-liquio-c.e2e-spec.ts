@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
 
 import nock from 'nock';
-import { Sandbox } from '@liquio/back-core';
+import { Sandbox, runInAsyncLocalStorage } from '@liquio/back-core';
 
 import { LiquioProvider } from '../src/services/event/requester/registers/providers/liquio';
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../src/constants/common';
@@ -48,18 +48,23 @@ describe('Group C - liquio registers provider', () => {
   });
   const decodeAccessInfo = (value: string) => JSON.parse(Buffer.from(value, 'base64').toString('utf8'));
 
-  it('is a singleton, merging api methods and headers', () => {
+  it('is a singleton, merging api methods', async () => {
     expect(new LiquioProvider({ url: 'http://other' })).toBe(provider);
     expect(provider.apiMethods.ping).toBe('/ping2');
     expect(provider.apiMethods.getRecord).toBe('/records');
-    expect(provider.headers).toEqual({ 'Content-Type': 'application/json', token: 'fake-token' });
+    const scope = nock(REG)
+      .get('/records/r1')
+      .matchHeader('token', 'fake-token')
+      .reply(200, { data: { id: 'r1' } });
+    await provider.getRecord('r1');
+    expect(scope.isDone()).toBe(true);
   });
 
   describe('query helpers', () => {
-    it('getIndexFieldsQueryParams joins only set fields', () => {
-      expect(provider.getIndexFieldsQueryParams({})).toBe('');
+    it('getIndexFieldsQuery returns only set fields', () => {
+      expect(provider.getIndexFieldsQuery({})).toEqual({});
       expect(
-        provider.getIndexFieldsQueryParams({
+        provider.getIndexFieldsQuery({
           searchEqual: 'a',
           searchEqual2: 'b',
           searchEqual3: 'c',
@@ -67,12 +72,7 @@ describe('Group C - liquio registers provider', () => {
           searchLike2: 'e',
           searchLike3: 'f',
         }),
-      ).toBe('&search_equal=a&search_equal_2=b&search_equal_3=c&search=d&search_2=e&search_3=f');
-    });
-
-    it('getHeadersWithTraceId adds a trace id header', () => {
-      expect(provider.getHeadersWithTraceId()).toMatchObject({ token: 'fake-token' });
-      expect(Object.keys(provider.getHeadersWithTraceId())).toContain('x-trace-id');
+      ).toEqual({ search_equal: 'a', search_equal_2: 'b', search_equal_3: 'c', search: 'd', search_2: 'e', search_3: 'f' });
     });
 
     it('getAccessInfo and additionalFilter throw a TypeError for string functions because the sandbox is never assigned', async () => {
@@ -90,17 +90,6 @@ describe('Group C - liquio registers provider', () => {
       const f = provider.getAccessInfo(ctx({ documents: [1] }, { accessInfo: '(documents, events) => ({ count: documents.length })' }));
       expect(f).toMatchObject({ count: 1, workflowId: 'wf-1' });
       expect(provider.getAccessInfo(ctx())).toMatchObject({ workflowId: 'wf-1' });
-    });
-
-    it('getHeadersWithAccessInfo encodes access info as base64 json', () => {
-      const headers = provider.getHeadersWithAccessInfo(ctx({}, { accessInfo: { x: 1 } }));
-      expect(decodeAccessInfo(headers['access-info'])).toMatchObject({ x: 1, workflowId: 'wf-1' });
-    });
-
-    it('prepareResponse returns data, throws error message, or nothing', () => {
-      expect(provider.prepareResponse({ data: [1] })).toEqual([1]);
-      expect(() => provider.prepareResponse({ error: { message: 'bad' } })).toThrow('bad');
-      expect(provider.prepareResponse({})).toBeUndefined();
     });
   });
 
@@ -222,21 +211,7 @@ describe('Group C - liquio registers provider', () => {
     });
   });
 
-  describe('findRecords / getRecord / getKeyById', () => {
-    it('findRecords: stringifies query, sends body and returns data', async () => {
-      nock(REG)
-        .get('/records')
-        .query({ a: '1', 'b[c]': '2' })
-        .reply(200, { data: [1] });
-      expect(await provider.findRecords({ a: 1, b: { c: 2 } }, undefined)).toEqual({ data: [1] });
-    });
-
-    it('findRecords: logs and rethrows errors', async () => {
-      nock(REG).get('/records').query(true).reply(500, {});
-      await expect(provider.findRecords({ a: 1 }, undefined)).rejects.toThrow('500');
-      expect(app.log.logs.find((l) => l.type === 'liquio-register-provider|find-records|error')).toBeDefined();
-    });
-
+  describe('getRecord / getKeyById', () => {
     it('getRecord returns data or rethrows', async () => {
       nock(REG)
         .get('/records/r1')
@@ -245,6 +220,51 @@ describe('Group C - liquio registers provider', () => {
       nock(REG).get('/records/r2').reply(404, { error: 'missing' });
       await expect(provider.getRecord('r2')).rejects.toThrow('missing');
       expect(app.log.logs.find((l) => l.type === 'get-from-registers|error')).toBeDefined();
+    });
+
+    it('sends the trace id header', async () => {
+      const scope = nock(REG)
+        .get('/records/r1')
+        .matchHeader('x-trace-id', (v) => typeof v === 'string' && v.length > 0)
+        .reply(200, { data: {} });
+      await new Promise<void>((resolve, reject) => runInAsyncLocalStorage(() => provider.getRecord('r1').then(() => resolve(), reject)));
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('honours custom api methods', async () => {
+      const original = { ...provider.apiMethods };
+      LiquioProvider.singleton = undefined as any;
+      const custom = new LiquioProvider({ url: REG, token: 'fake-token', apiMethods: { getRecord: '/r2', updateRecord: '/u2' } });
+      try {
+        const scope = nock(REG)
+          .get('/r2/x1')
+          .reply(200, { data: { data: { a: 1 } } })
+          .put('/u2/x1')
+          .reply(200, { data: { ok: true } });
+        expect(await custom.updateRecord('x1', { data: { b: 2 } }, ctx())).toEqual({ data: { ok: true } });
+        expect(scope.isDone()).toBe(true);
+      } finally {
+        LiquioProvider.singleton = undefined as any;
+        provider = new LiquioProvider({ url: REG, token: 'fake-token', apiMethods: { ping: original.ping } });
+      }
+    });
+
+    it('applies registers.timeout only when configured', async () => {
+      LiquioProvider.singleton = undefined as any;
+      const slow = new LiquioProvider({ url: REG, token: 't', timeout: 50 });
+      nock(REG)
+        .get('/records/slow')
+        .reply(() => new Promise(() => undefined));
+      await expect(slow.getRecord('slow')).rejects.toBeDefined();
+      LiquioProvider.singleton = undefined as any;
+      const noTimeout = new LiquioProvider({ url: REG, token: 't' });
+      nock(REG)
+        .get('/records/r1')
+        .delay(300)
+        .reply(200, { data: { id: 'r1' } });
+      expect(await noTimeout.getRecord('r1')).toEqual({ id: 'r1' });
+      LiquioProvider.singleton = undefined as any;
+      provider = new LiquioProvider({ url: REG, token: 'fake-token', apiMethods: { ping: '/ping2' } });
     });
 
     it('getKeyById returns data or rethrows', async () => {
@@ -317,7 +337,10 @@ describe('Group C - liquio registers provider', () => {
 
   describe('sendPingRequest', () => {
     it('returns version info from response headers', async () => {
-      nock(REG).get('/ping2').reply(200, { pong: true }, { version: '1.2.3', customer: 'cust', environment: 'test' });
+      nock(REG)
+        .get('/ping2')
+        .matchHeader('token', (v) => v === undefined)
+        .reply(200, { pong: true }, { version: '1.2.3', customer: 'cust', environment: 'test' });
       expect(await provider.sendPingRequest()).toEqual({ version: '1.2.3', customer: 'cust', environment: 'test', body: { pong: true } });
     });
 
@@ -362,7 +385,7 @@ describe('Group C - liquio registers provider', () => {
             allow_see_all_records: 'true',
             'data[a.b]': 'x',
             search_equal: 'se',
-            additional_filter: encodeURIComponent(Buffer.from('(r) => true').toString('base64')),
+            additional_filter: Buffer.from('(r) => true').toString('base64'),
             'sort[name]': 'desc',
             csv_map: '{"a":"b"}',
             no_limit: 'true',

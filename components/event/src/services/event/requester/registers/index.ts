@@ -64,15 +64,6 @@ export class RegistersRequester {
   }
 
   /**
-   * @param {Object} queryParams
-   * @param {Object} body
-   * @return {Promise<Object>}
-   */
-  async findRecords(queryParams: any, body: any): Promise<any> {
-    return await this.provider.findRecords(queryParams, body);
-  }
-
-  /**
    * Create record.
    * @param {object} record Data.
    * @param {string} record.registerId Register ID.
