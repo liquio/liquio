@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
+    inputs:
+      all:
+        description: 'Lint and test every component and package'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   detect:
@@ -20,8 +27,13 @@ jobs:
 
       - name: Build service matrix from changed paths
         id: build-matrix
+        env:
+          INPUT_ALL: ${{ inputs.all }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "$INPUT_ALL" = "true" ]; then
+            CHANGED=""
+            LINT_ALL=true
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
             CHANGED=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")
             LINT_ALL=false
           elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then

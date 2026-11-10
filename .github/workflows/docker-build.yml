@@ -1,14 +1,11 @@
 name: Build and Push Images
 
 on:
-  workflow_run:
-    workflows: [Code Quality]
-    types: [completed]
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
     inputs:
       service:
-        description: 'Service directory name under components/ to build (leave empty for all changed/unpublished services)'
+        description: 'Service directory name under components/ to build (leave empty for all unpublished services)'
         required: false
         type: string
 
@@ -16,11 +13,8 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  # ── Detect which services have changed ────────────────────────────────────
+  # ── Detect which services are unpublished ────────────────────────────────────
   detect:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
@@ -28,33 +22,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Build service matrix from changed paths
+      - name: Build service matrix from unpublished versions
         id: build-matrix
         env:
           FORCE_SERVICE: ${{ inputs.service }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            # Build only after the exact commit that passed lint.
-            BASE="${{ github.event.workflow_run.head_sha }}^"
-            HEAD="${{ github.event.workflow_run.head_sha }}"
-            CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
-          else
-            # Manual dispatch has no single "changed since" commit to diff against.
-            CHANGED=""
-          fi
-          BUILD_ALL=false
-
-          echo "Changed files:"
-          echo "${CHANGED:-<all>}"
-
-          # Special triggers
-          FRONT_CORE=$(echo "$CHANGED" | grep -c '^packages/front-core/' || true)
-          WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/docker-build\.yml' || true)
-
           # Returns 0 (true) if ghcr.io/liquio/<svc>:<ver> already exists
           is_published() {
             local svc=$1 ver=$2
@@ -75,12 +48,6 @@ jobs:
             if [ -n "$FORCE_SERVICE" ]; then
               [ "$svc" = "$FORCE_SERVICE" ] && return 0
               return 1
-            fi
-            [ "$BUILD_ALL" = "true" ] && return 0
-            [ "$WORKFLOW" -gt 0 ] && return 0
-            echo "$CHANGED" | grep -q "^components/${svc}/" && return 0
-            if [ "$FRONT_CORE" -gt 0 ]; then
-              { [ "$svc" = "admin-front" ] || [ "$svc" = "cabinet-front" ]; } && return 0
             fi
             local ver
             ver=$(jq -r .version "components/${svc}/package.json")
@@ -107,7 +74,7 @@ jobs:
           done
 
           if [ "${#INCLUDES[@]}" -eq 0 ]; then
-            echo "No service changes detected — skipping build."
+            echo "No unpublished service versions — skipping build."
             echo "matrix={\"include\":[]}" >> "$GITHUB_OUTPUT"
             echo "any=false" >> "$GITHUB_OUTPUT"
           else
@@ -116,7 +83,7 @@ jobs:
             echo "any=true" >> "$GITHUB_OUTPUT"
           fi
 
-  # ── Build and push only the changed services ──────────────────────────────
+  # ── Build and push the unpublished services ──────────────────────────────
   build:
     needs: detect
     if: needs.detect.outputs.any == 'true'
