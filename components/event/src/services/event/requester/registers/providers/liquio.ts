@@ -640,15 +640,13 @@ export class LiquioProvider extends Provider {
    */
   private toProviderError(error: any): any {
     if (error instanceof RegisterApiError && error.code === 'HTTP_ERROR') {
-      const hasBody =
-        error.body !== undefined && error.body !== null && error.body !== '' && !(typeof error.body === 'object' && !Object.keys(error.body).length);
-      let result: Error;
-      if (hasBody) {
-        const prepared = Helpers.prepareResponseDataToLog(error.body);
-        result = new Error(typeof prepared === 'string' ? prepared : JSON.stringify(prepared));
-      } else {
-        result = new Error(`Request failed with status code ${error.status}`);
+      const body = error.body;
+      const text = body?.message ?? body?.error?.message;
+      let message = `Request failed with status code ${error.status}`;
+      if (typeof text === 'string' && text) {
+        message += `: ${text.slice(0, 200)}`;
       }
+      const result: Error = new Error(message);
       (result as any).cause = error;
       return result;
     }

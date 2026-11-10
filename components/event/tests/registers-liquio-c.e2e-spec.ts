@@ -194,10 +194,21 @@ describe('Group C - liquio registers provider', () => {
       );
     });
 
-    it('logs and rethrows http errors with the response body as message', async () => {
+    it('logs and rethrows http errors with a status-only message', async () => {
       nock(REG).get('/records').query(true).reply(500, { error: 'boom' });
-      await expect(provider.getRecords({ registerId: 1, keyId: 2 }, ctx())).rejects.toThrow('boom');
+      await expect(provider.getRecords({ registerId: 1, keyId: 2 }, ctx())).rejects.toThrow('Request failed with status code 500');
       expect(app.log.logs.find((l) => l.type === 'get-records-from-registers|error')).toBeDefined();
+    });
+
+    it('includes only the register error message, truncated, and keeps cause', async () => {
+      nock(REG)
+        .get('/records')
+        .query(true)
+        .reply(500, { message: 'x'.repeat(300), ipn: '1234567890' });
+      const err: any = await provider.getRecords({ registerId: 1, keyId: 2 }, ctx()).catch((e) => e);
+      expect(err.message).toBe(`Request failed with status code 500: ${'x'.repeat(200)}`);
+      expect(err.message).not.toContain('1234567890');
+      expect(err.cause).toBeDefined();
     });
 
     it('countRecords returns meta.count', async () => {
@@ -216,7 +227,7 @@ describe('Group C - liquio registers provider', () => {
         .reply(200, { data: { id: 'r1' } });
       expect(await provider.getRecord('r1')).toEqual({ id: 'r1' });
       nock(REG).get('/records/r2').reply(404, { error: 'missing' });
-      await expect(provider.getRecord('r2')).rejects.toThrow('missing');
+      await expect(provider.getRecord('r2')).rejects.toThrow('Request failed with status code 404');
       expect(app.log.logs.find((l) => l.type === 'get-from-registers|error')).toBeDefined();
     });
 
@@ -253,7 +264,7 @@ describe('Group C - liquio registers provider', () => {
         .reply(200, { data: { id: 'k1' } });
       expect(await provider.getKeyById('k1')).toEqual({ id: 'k1' });
       nock(REG).get('/keys/k2').reply(404, { error: 'nokey' });
-      await expect(provider.getKeyById('k2')).rejects.toThrow('nokey');
+      await expect(provider.getKeyById('k2')).rejects.toThrow('Request failed with status code 404');
       expect(app.log.logs.find((l) => l.type === 'get-key-from-registers|error')).toBeDefined();
     });
   });
@@ -272,7 +283,7 @@ describe('Group C - liquio registers provider', () => {
 
     it('createRecord logs and rethrows', async () => {
       nock(REG).post('/records').reply(500, { error: 'cr' });
-      await expect(provider.createRecord({ a: 1 }, ctx())).rejects.toThrow('cr');
+      await expect(provider.createRecord({ a: 1 }, ctx())).rejects.toThrow('Request failed with status code 500');
       expect(app.log.logs.find((l) => l.type === 'save-to-registers|error')).toBeDefined();
     });
 
@@ -302,7 +313,7 @@ describe('Group C - liquio registers provider', () => {
         .get('/records/r1')
         .reply(200, { data: { data: { a: 1 } } });
       nock(REG).put('/records/r1').reply(500, { error: 'put-bad' });
-      await expect(provider.updateRecord('r1', { data: { b: 2 } }, ctx())).rejects.toThrow('put-bad');
+      await expect(provider.updateRecord('r1', { data: { b: 2 } }, ctx())).rejects.toThrow('Request failed with status code 500');
       expect(app.log.logs.find((l) => l.type === 'update-in-registers|error')).toBeDefined();
     });
 
@@ -310,7 +321,7 @@ describe('Group C - liquio registers provider', () => {
       nock(REG).delete('/records/r1').reply(200, { data: 'deleted' });
       expect(await provider.deleteRecord('r1', ctx())).toEqual({ data: 'deleted' });
       nock(REG).delete('/records/r2').reply(500, { error: 'del-bad' });
-      await expect(provider.deleteRecord('r2', ctx())).rejects.toThrow('del-bad');
+      await expect(provider.deleteRecord('r2', ctx())).rejects.toThrow('Request failed with status code 500');
       expect(app.log.logs.find((l) => l.type === 'delete-from-registers|error')).toBeDefined();
     });
   });
