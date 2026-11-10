@@ -10,12 +10,15 @@ import debug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
+import { getContainerRuntimeClient, getReaper } from 'testcontainers';
 import amqp from 'amqplib';
 import jsonwebtoken from 'jsonwebtoken';
 import { resetIdApiClient } from '@liquio/back-core';
 
 import { BpmnTaskCore } from '../src/bootstrap';
 import { getConfig, getMessageQueue } from '../src/lib/context';
+
+const httpCommon = require('node:_http_common');
 
 // E2E tests are slow, so we increase the timeout
 // Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
@@ -63,6 +66,20 @@ jest.mock('../src/lib/config', () => {
 
 const { getConfig: getTemplateConfig } = require('../src/lib/config');
 const defaultConfig = getTemplateConfig();
+
+// nock (through @mswjs/interceptors) parses mocked requests with its own HTTP parsers and only frees them, never
+// closes them. A freed parser stays alive natively and keeps the async context of the Jest test that made the
+// request, which pins this file's whole module graph (app included) for the rest of the worker's life. Track the
+// parsers created while this file runs (Node's own HTTP modules captured the class at load, so only late readers
+// like the interceptor get the subclass) and close them in afterAll.
+const OriginalHTTPParser = httpCommon.HTTPParser;
+const mockHttpParsers = new Set<any>();
+httpCommon.HTTPParser = class extends OriginalHTTPParser {
+  constructor(...args) {
+    super(...args);
+    mockHttpParsers.add(this);
+  }
+};
 
 export class TestApp extends BpmnTaskCore {
   port: number;
@@ -258,7 +275,22 @@ export class TestApp extends BpmnTaskCore {
   // Run this after all tests
   static async afterAll() {
     nock.restore();
+    const started = [this.pgContainer, this.redisContainer, this.rabbitmqContainer].some(Boolean);
     await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.rabbitmqContainer?.stop()]);
+    if (started) await TestApp.closeReaperConnection();
+    httpCommon.HTTPParser = OriginalHTTPParser;
+    for (const parser of mockHttpParsers) parser.close();
+    mockHttpParsers.clear();
+  }
+
+  // Each test file loads its own testcontainers copy, which opens its own unref'd socket to the shared Ryuk
+  // container and never closes it. Opened inside a Jest hook, that socket keeps the hook's async context, so
+  // it pins this file's whole module graph (app included) for the rest of the worker's life. Workers then grow
+  // to several GB and exit too slowly for Jest ("A worker process has failed to exit gracefully").
+  // Our containers are already stopped, and Ryuk keeps running for the other connections and the next file.
+  static async closeReaperConnection() {
+    const reaper: any = await getReaper(await getContainerRuntimeClient());
+    reaper.socket?.destroy();
   }
 
   // Obtain a client instance to interact with the application
@@ -347,5 +379,9 @@ export class TestApp extends BpmnTaskCore {
     // Drop keep-alive sockets so close() can't hang, then stop (awaits server close).
     (this as any).routerService?.server?.closeAllConnections?.();
     await this.stop();
+    // The sandbox isolate is never disposed by stop() and keeps native handles to host functions of this test
+    // file, which pins its whole module graph for the rest of the worker's life. A later app in the same file
+    // gets a new isolate (the engine recreates a disposed one).
+    (this.sandbox as any)?.isolatedEngine?.isolate?.dispose();
   }
 }

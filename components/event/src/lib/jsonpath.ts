@@ -88,7 +88,7 @@ export const JSONPath = (objOrPath: any, jsonDocument?: any): any => {
   // if(!cache[cacheKey]) cache[cacheKey] = JSONPathOrigin({ path, json });
   if (!cache[cacheKey]) {
     cache[cacheKey] = 1;
-    setTimeout(() => delete cache[cacheKey], 1000 * 10);
+    setTimeout(() => delete cache[cacheKey], 1000 * 10).unref();
   }
 
   const executionTime = (Date.now() - startTime) / 1000;

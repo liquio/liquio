@@ -13,6 +13,7 @@ const config = {
   coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
   coverageDirectory: 'coverage',
   bail: false,
+  setupFilesAfterEnv: ['<rootDir>/tests/helpers/restore-nock.ts'],
   coverageThreshold: { global: { statements: 80, lines: 80 } },
 };
 

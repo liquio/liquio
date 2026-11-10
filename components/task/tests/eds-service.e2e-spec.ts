@@ -208,14 +208,21 @@ describe('EDS, encryptor and static cache services', () => {
       (RemoteStaticCache as any).singleton = undefined;
       const { host, port } = getConfig().redis;
       const cache = new RemoteStaticCache({ useCache: true }, { isEnabled: true, host, port });
-      nock('http://static.test').get('/b.json').twice().reply(200, { version: 1 });
-      expect(await cache.getAndUpdateByRemoteUrl('http://static.test/b.json', { timeout: 1000 })).toBeFalsy();
-      await app.waitFor(async () => (await cache.client.get(cache.formKeyFromUrl('http://static.test/b.json'))) !== null);
-      expect(await cache.getAndUpdateByRemoteUrl('http://static.test/b.json', {})).toEqual({ version: 1 });
-      await app.waitFor(() => nock.isDone());
-      nock('http://static.test').get('/c.json').reply(500, {});
-      await cache.getAndUpdateByRemoteUrl('http://static.test/c.json', {});
-      await app.waitFor(() => nock.isDone());
+      try {
+        nock('http://static.test').get('/b.json').twice().reply(200, { version: 1 });
+        expect(await cache.getAndUpdateByRemoteUrl('http://static.test/b.json', { timeout: 1000 })).toBeFalsy();
+        await app.waitFor(async () => (await cache.client.get(cache.formKeyFromUrl('http://static.test/b.json'))) !== null);
+        expect(await cache.getAndUpdateByRemoteUrl('http://static.test/b.json', {})).toEqual({ version: 1 });
+        await app.waitFor(() => nock.isDone());
+        nock('http://static.test').get('/c.json').reply(500, {});
+        await cache.getAndUpdateByRemoteUrl('http://static.test/c.json', {});
+        await app.waitFor(() => nock.isDone());
+      } finally {
+        // This client is not the app's one, so stop() won't close it; an open client keeps reconnecting
+        // after the Redis container stops and keeps the Jest worker alive.
+        await cache.client.close();
+        (RemoteStaticCache as any).singleton = undefined;
+      }
     });
   });
 });

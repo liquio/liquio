@@ -268,12 +268,15 @@ export class TestApp extends Application {
       httpServer.closeAllConnections();
       await new Promise<void>((resolve) => httpServer.close(() => resolve()));
     }
-    await Promise.all([this.pgContainer?.stop(), this.redisContainer?.stop(), this.dexContainer?.stop()]);
+    const results = await Promise.allSettled([this.pgContainer?.stop(), this.redisContainer?.stop(), this.dexContainer?.stop()]);
 
     // Clean up temporary Dex config file
     if (this.dexConfigPath && fs.existsSync(this.dexConfigPath)) {
       fs.unlinkSync(this.dexConfigPath);
     }
+
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (failed) throw failed.reason;
   }
 
   request() {
@@ -282,14 +285,17 @@ export class TestApp extends Application {
   }
 
   async destroy() {
-    await this.stop();
-    if (TestApp.currentApp === this) {
-      TestApp.currentApp = undefined;
-    }
+    try {
+      await this.stop();
+    } finally {
+      if (TestApp.currentApp === this) {
+        TestApp.currentApp = undefined;
+      }
 
-    // Reset the singleton instances to ensure a clean state for each test
-    delete (Models as any).singleton;
-    delete (Services as any).singleton;
-    delete (AuthMiddleware as any).singleton;
+      // Reset the singleton instances to ensure a clean state for each test
+      delete (Models as any).singleton;
+      delete (Services as any).singleton;
+      delete (AuthMiddleware as any).singleton;
+    }
   }
 }

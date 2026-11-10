@@ -213,6 +213,8 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
 
         publishRaw(readingQueue, JSON.stringify(body));
         await waitFor(async () => fakeRedis.store.has('amqp-message-id.amqp-id-a-1'));
+        // The wip marker is never cleared by the consumer; drop it so the duplicate takes the cache path instead of the 5 minute wip wait.
+        fakeRedis.store.delete('amqp-message-id.amqp-id-a-1.wip');
         publishRaw(readingQueue, JSON.stringify(body));
         await waitFor(async () => app.messageQueue.consumingCount === 0);
         await sleep(500);

@@ -13,6 +13,7 @@ import { insertData } from './fixtures';
 import ExportBusiness from '../src/businesses/export';
 import { bootstrap } from '../src/bootstrap';
 import { Config } from '../src/lib/config';
+import { PgPubSub } from '../src/lib/pgpubsub';
 import { RedisClient } from '../src/lib/redis_client';
 import { setAppContext, resetAppContext, getAfterhandler } from '../src/lib/context';
 
@@ -194,6 +195,8 @@ export class TestHarness {
       getAfterhandler().workers.forEach((worker: { dispose: () => void }) => worker.dispose());
       testDebug('Afterhandler workers disposed');
     }
+
+    await PgPubSub.getInstance()?.close();
 
     // Clear all export timers to prevent Jest from hanging
     testDebug('Clearing export timers...');

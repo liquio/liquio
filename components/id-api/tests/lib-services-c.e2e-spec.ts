@@ -27,11 +27,18 @@ const SIGN_TOOL = 'http://sign-tool';
 const EMOJI = String.fromCodePoint(0x1f600);
 
 describe('Lib and services coverage (group C)', () => {
+  let app: TestApp | undefined;
+
   beforeAll(async () => {
     await TestApp.beforeAll();
     await TestApp.beforeEach();
     config.confirmCodeLength = 6;
-    await TestApp.setup();
+    app = await TestApp.setup();
+  });
+
+  afterAll(async () => {
+    if (app) await app.destroy();
+    await TestApp.afterAll();
   });
 
   afterEach(() => {
