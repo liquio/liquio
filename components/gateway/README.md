@@ -1,5 +1,7 @@
 # gateway
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=gateway)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=gateway)
+
 BPMN gateway node processor — evaluates parallel/exclusive gateway logic
 within workflow execution, consuming the `bpmn-gateway-incoming` RabbitMQ
 queue. Despite the name, it is not an API/WebSocket gateway. See the full

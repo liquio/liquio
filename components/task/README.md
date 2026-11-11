@@ -1,5 +1,7 @@
 # task
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=task)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=task)
+
 Core business-logic engine: runs BPMN task instances, forms, signing, and
 register/document integration. The backend that `admin-api` and
 `cabinet-api` proxy user requests to. See the full system context in

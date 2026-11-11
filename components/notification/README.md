@@ -1,5 +1,7 @@
 # notification
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=notification)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=notification)
+
 Notification dispatch (email/SMS/push) and templates. See the full system
 context in [ARCHITECTURE.md](../../ARCHITECTURE.md).
 

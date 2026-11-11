@@ -1,5 +1,7 @@
 # pdf-generator
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=pdf-generator)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=pdf-generator)
+
 HTML → PDF rendering service (Playwright-based). See the full system
 context in [ARCHITECTURE.md](../../ARCHITECTURE.md).
 

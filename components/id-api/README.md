@@ -1,5 +1,7 @@
 # id-api
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=id-api)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=id-api)
+
 Identity provider — accounts, authentication, sessions. Issues the tokens
 that every other API in the platform verifies. See the full system context
 in [ARCHITECTURE.md](../../ARCHITECTURE.md).
