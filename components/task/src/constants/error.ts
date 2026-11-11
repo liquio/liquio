@@ -13,5 +13,6 @@ export enum ErrorMessage {
   DownloadTokenInvalid = 'Download token is invalid or expired.',
   DocumentNotFound = 'Document not found.',
 
+  InvalidRecordsQuery = 'Invalid records query.',
   WorkflowAccess = "User doesn't have any access to workflow.",
 }

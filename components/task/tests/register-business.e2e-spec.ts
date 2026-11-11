@@ -119,6 +119,76 @@ describe('Register business', () => {
       expect(response.body.data[0].stringified).toBe('1');
     });
 
+    const asList = (value: any): string[] => (value === undefined ? [] : Array.isArray(value) ? value : [value]);
+    const capture = () => {
+      const holder: { query?: any } = {};
+      register()
+        .get('/records')
+        .query((q) => {
+          holder.query = q;
+          return true;
+        })
+        .reply(200, { data: [record], meta: { count: 1 } });
+      return holder;
+    };
+
+    it('does not forward empty identities as allow tokens', async () => {
+      const holder = capture();
+      const response = await userRequest(app, USER, { ipn: '1234567890' })('get', `/registers/keys/${KEY}/records`);
+      expect(response.status).toBe(200);
+      const tokens = asList(holder.query['allow_tokens[]']);
+      expect(tokens).toContain('rnokpp:1234567890');
+      expect(tokens.some((t) => t.startsWith('edrpou:'))).toBe(false);
+      expect(tokens.some((t) => t.endsWith(':null') || t.endsWith(':undefined'))).toBe(false);
+    });
+
+    it('drops allow_see_all_records and allow_tokens supplied by the client', async () => {
+      const holder = capture();
+      const response = await as()('get', `/registers/keys/${KEY}/records?allow_see_all_records=true&allow_tokens[]=rnokpp:0000000001`);
+      expect(response.status).toBe(200);
+      expect(holder.query).not.toHaveProperty('allow_see_all_records');
+      expect(asList(holder.query['allow_tokens[]'])).not.toContain('rnokpp:0000000001');
+    });
+
+    it('keeps a hostile sort key as one register parameter', async () => {
+      const holder = capture();
+      await as()('get', `/registers/keys/${KEY}/records?sort[created_at%255D%3Dasc%26allow_see_all_records%3D1%26z]=asc`);
+      expect(holder.query).toBeDefined();
+      expect(holder.query).not.toHaveProperty('allow_see_all_records');
+      const sortKeys = Object.keys(holder.query).filter((k) => k.startsWith('sort['));
+      expect(sortKeys).toHaveLength(1);
+      expect(sortKeys[0]).toContain('allow_see_all_records');
+    });
+
+    it('answers 400 when the register rejects the records query', async () => {
+      register()
+        .get('/records')
+        .query(true)
+        .reply(400, { error: { message: 'Invalid sort parameter.' } });
+      const response = await as()('get', `/registers/keys/${KEY}/records?sort[nope]=asc`);
+      expect(response.status).toBe(400);
+      expect(response.body.error.message).toBe('Invalid records query.');
+    });
+
+    it('answers 400 when the register rejects the filtered records query', async () => {
+      register()
+        .post('/records/filter')
+        .query(true)
+        .reply(400, { error: { message: 'Invalid sort parameter.' } });
+      const response = await as()('post', `/registers/keys/${KEY}/records/filter?sort[nope]=asc`).send({});
+      expect(response.status).toBe(400);
+      expect(response.body.error.message).toBe('Invalid records query.');
+    });
+
+    it('keeps the status 500 for other register failures', async () => {
+      register()
+        .get('/records')
+        .query(true)
+        .reply(500, { error: { message: 'boom' } });
+      const response = await as()('get', `/registers/keys/${KEY}/records`);
+      expect(response.status).toBe(500);
+    });
+
     it('rejects records of a key the user may not read', async () => {
       const response = await as(OUTSIDER)('get', `/registers/keys/${KEY}/records`);
       expect(response.status).toBeGreaterThanOrEqual(400);

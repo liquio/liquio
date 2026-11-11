@@ -134,3 +134,39 @@ describe('Controller.responseError keeps messages matched by front-core', () => 
     expect((await run(new BadRequestError('Draft is already expired.'))).message).toBe('BadRequestError: Draft is already expired.');
   });
 });
+
+describe('Controller.getRequestUserUnitAllowTokens', () => {
+  const controller = new Controller({});
+  const mkReq = (info: any, unitTokens: any[] = [], withUnits = true): any => ({
+    authUserInfo: info,
+    ...(withUnits ? { authUserUnitEntities: { all: unitTokens.length ? [{ allowTokens: unitTokens }] : [] } } : {}),
+  });
+
+  it('returns unit tokens first, then rnokpp and edrpou', () => {
+    expect(controller.getRequestUserUnitAllowTokens(mkReq({ ipn: '1234567890', edrpou: '12345678' }, ['unit:a']))).toEqual([
+      'unit:a',
+      'rnokpp:1234567890',
+      'edrpou:12345678',
+    ]);
+  });
+
+  it.each([undefined, null, '', 'null', 'undefined', '  '])('omits the edrpou token for %p', (edrpou) => {
+    expect(controller.getRequestUserUnitAllowTokens(mkReq({ ipn: '1234567890', edrpou }))).toEqual(['rnokpp:1234567890']);
+  });
+
+  it.each([undefined, null, '', 'null', 'undefined', '  '])('omits the rnokpp token for %p', (ipn) => {
+    expect(controller.getRequestUserUnitAllowTokens(mkReq({ ipn, edrpou: '12345678' }))).toEqual(['edrpou:12345678']);
+  });
+
+  it('returns an empty list without identities and unit tokens', () => {
+    expect(controller.getRequestUserUnitAllowTokens(mkReq({}))).toEqual([]);
+  });
+
+  it('flattens, filters and de-duplicates unit tokens', () => {
+    expect(controller.getRequestUserUnitAllowTokens(mkReq({}, [null, '', '  ', ['unit:b', 'unit:b']]))).toEqual(['unit:b']);
+  });
+
+  it('does not throw without unit entities', () => {
+    expect(controller.getRequestUserUnitAllowTokens(mkReq({ ipn: '1234567890' }, [], false))).toEqual(['rnokpp:1234567890']);
+  });
+});

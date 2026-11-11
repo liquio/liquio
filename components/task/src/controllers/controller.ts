@@ -25,6 +25,22 @@ const DEFAULT_ERROR_MESSAGE = 'Server error.';
 const RESPONSE_REPLACEMENT_TEXT = '*****';
 
 /**
+ * Check that identity value is present.
+ * @param {*} value Identity value.
+ * @returns {boolean} Is present indicator.
+ */
+function isPresentIdentity(value: unknown): boolean {
+  if (typeof value === 'number') {
+    return true;
+  }
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized !== '' && normalized !== 'null' && normalized !== 'undefined';
+}
+
+/**
  * Controller.
  */
 export class Controller {
@@ -458,15 +474,21 @@ export class Controller {
   /**
    * Get request user unit allow tokens.
    * @param {object} req HTTP request.
-   * @returns {{allowTokens: string[]}} Allow Tokens.
+   * @returns {string[]} Allow Tokens.
    */
-  getRequestUserUnitAllowTokens(req): any {
-    const units = this.getRequestUserUnitEntities(req);
-    const { all } = units;
-    const ipn = this.getRequestUserIpn(req);
-    const edrpou = this.getRequestUserEdrpou(req);
+  getRequestUserUnitAllowTokens(req): string[] {
+    const { all = [] } = this.getRequestUserUnitEntities(req) || {};
+    const unitTokens = (_.flattenDeep(all.map((v) => v?.allowTokens ?? [])) as unknown[]).filter(
+      (t): t is string => typeof t === 'string' && t.trim() !== '',
+    );
+    const identityTokens: string[] = [
+      ['rnokpp', this.getRequestUserIpn(req)],
+      ['edrpou', this.getRequestUserEdrpou(req)],
+    ]
+      .filter(([, value]) => isPresentIdentity(value))
+      .map(([type, value]) => `${type}:${`${value}`.trim()}`);
 
-    return [...new Set(_.flattenDeep(all.map((v) => v.allowTokens))), `rnokpp:${ipn}`, `edrpou:${edrpou}`];
+    return [...new Set([...unitTokens, ...identityTokens])];
   }
 
   /**
