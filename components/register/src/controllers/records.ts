@@ -11,7 +11,7 @@ import Controller from './controller';
 import SearchBusiness from '../businesses/search';
 import AccessLogBusiness from '../businesses/access_log';
 import HistoryBusiness from '../businesses/history';
-import RecordModel, { PatchValidationError } from '../models/record';
+import RecordModel, { InvalidSortError, PatchValidationError } from '../models/record';
 import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import HistoryModel from '../models/history';
@@ -481,6 +481,10 @@ export default class RecordsController extends Controller {
       if (error instanceof KeyNotReadableError) {
         return this.responseError(res, 'Key records are not readable.', 403, { keyId: error.keyId });
       }
+      if (error instanceof InvalidSortError) {
+        this.log.save('get-records-invalid-sort', { field: String(error.field ?? '').slice(0, 100) }, 'warning');
+        return this.responseError(res, 'Invalid sort parameter.', 400);
+      }
       this.log.save('get-records-error', { error: error && error.message });
       return this.responseError(res, error, 500);
     }
@@ -734,6 +738,10 @@ export default class RecordsController extends Controller {
           }
         }
       } catch (error) {
+        if (error instanceof InvalidSortError) {
+          this.log.save('get-records-invalid-sort', { field: String(error.field ?? '').slice(0, 100) }, 'warning');
+          return this.responseError(res, 'Invalid sort parameter.', 400);
+        }
         this.log.save('get-records-error', { error: error && error.message });
         return this.responseError(res, error, 500);
       }

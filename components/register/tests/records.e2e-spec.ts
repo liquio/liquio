@@ -1263,4 +1263,80 @@ describe('RecordsController', () => {
       await testHarness.request().get('/records?register_id=200&limit=1000').set('Authorization', validAuth).expect(200);
     });
   });
+
+  describe('sort parameter whitelist', () => {
+    let savedAuth: any;
+    const smuggled = [
+      'sort%5Bcreated_at%5D%3Dasc%26allow_see_all_records%3Dtrue%26z%5D=asc',
+      'sort%5Bcreated_at%255D%3Dasc%26allow_see_all_records%3D1%26z%5D=asc',
+    ];
+
+    beforeEach(() => {
+      savedAuth = { ...testHarness.getConfig().auth };
+    });
+
+    afterEach(() => {
+      testHarness.getConfig().auth = savedAuth;
+    });
+
+    it('returns 400 for an unknown sort key without echoing it', async () => {
+      const response = await testHarness.request().get('/records?key_id=2001&sort[nope]=asc').set('Authorization', validAuth).expect(400);
+      expect(response.body.error.message).toBe('Invalid sort parameter.');
+      expect(JSON.stringify(response.body)).not.toContain('nope');
+    });
+
+    it('accepts whitelisted and data.* sort keys', async () => {
+      for (const query of ['sort[data.name]=asc', 'sort[created_at]=desc', 'sort[data.nope]=asc']) {
+        await testHarness.request().get(`/records?key_id=2001&${query}`).set('Authorization', validAuth).expect(200);
+      }
+    });
+
+    it('returns 400 for an unknown sort key on POST endpoints', async () => {
+      await testHarness
+        .request()
+        .post('/records-by-post')
+        .set('Authorization', validAuth)
+        .send({ key_id: 2001, sort: { nope: 'asc' } })
+        .expect(400);
+      await testHarness
+        .request()
+        .post('/records/filter')
+        .set('Authorization', validAuth)
+        .send({ key_id: 2001, sort: { nope: 'asc' } })
+        .expect(400);
+      await testHarness
+        .request()
+        .post('/records/filter')
+        .set('Authorization', validAuth)
+        .send({ key_id: 2001, sort: { 'data.name': 'asc' } })
+        .expect(200);
+    });
+
+    it('rejects a smuggled key from a trusted caller', async () => {
+      testHarness.getConfig().auth.trustedCallers = ['test'];
+      const created = await testHarness
+        .request()
+        .post('/records')
+        .set('Authorization', validAuth)
+        .send({ registerId: 200, keyId: 2001, data: { name: 'Smuggle' }, allowTokens: ['other-token'] })
+        .expect(200);
+      try {
+        const [single, double] = smuggled;
+        const parsed = await testHarness
+          .request()
+          .get(`/records?key_id=2001&allow_tokens[]=own-token&${single}`)
+          .set('Authorization', validAuth)
+          .expect(200);
+        expect(parsed.body.data.map((r) => r.id)).not.toContain(created.body.data.id);
+        const rejected = await testHarness
+          .request()
+          .get(`/records?key_id=2001&allow_tokens[]=own-token&${double}`)
+          .set('Authorization', validAuth)
+          .expect(400);
+        expect(rejected.body.data).toBeUndefined();
+      } finally {
+        await testHarness.request().delete(`/records/${created.body.data.id}`).set('Authorization', validAuth);
+      }
+    });
+  });
 });

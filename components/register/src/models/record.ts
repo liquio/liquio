@@ -8,8 +8,21 @@ import HistoryModel from './history';
 import { BasicFilter, ModelListResponse, ModelListWithMetaResponse, ModelItemResponse, ModelUpdateResponse } from '../lib/interfaces';
 import { getAfterhandler, getEncryption } from '../lib/context';
 
-const ERROR_ORDER_FIELD_VALIDATION = 'Order field path is not valid.';
-const DB_FIELD_NAME_REGEX = '[a-zA-Z0-9_-]+';
+const SORTABLE_COLUMNS = [
+  'id',
+  'register_id',
+  'key_id',
+  'created_at',
+  'updated_at',
+  'created_by',
+  'updated_by',
+  'search_string',
+  'search_string_2',
+  'search_string_3',
+];
+const SORT_JSON_ROOT = 'data';
+const SORT_PATH_SEGMENT_REGEX = /^[a-zA-Z0-9_-]+$/;
+const MAX_SORT_ENTRIES = 20;
 const ENCRYPTED_FIELD_NAME = '$encrypted';
 const JOIN_FIELD_REGEX = /^[a-zA-Z0-9_-]+$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -18,6 +31,13 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export class PatchValidationError extends Error {
   constructor(public readonly validatorErrors: any[]) {
     super('JSON schema validation error.');
+  }
+}
+
+/** The `sort` parameter has an unknown column, an invalid path or an invalid shape. */
+export class InvalidSortError extends Error {
+  constructor(public readonly field?: string) {
+    super('Invalid sort parameter.');
   }
 }
 
@@ -662,45 +682,60 @@ export default class RecordModel extends Model {
   }
 
   /**
-   * Build literal sort query for nested json number fields.
+   * Build sort entries for the Sequelize `order` option.
+   * Allowed fields: the whitelisted record columns and `data.<path>` JSON paths.
    * @param {Object} sort = { "data.sumGov": "asc", "created_at": "asc", ... }
-   * @return {Promise<[]>} = [ { "val": "\"record\".\"data\"->'sumGov' ASC" }, [ "created_at", "asc" ], ... ]
+   * @return {Promise<[]>} = [ { "val": "\"record\".\"data\"->'sumGov' ASC" }, [ "created_at", "ASC" ], ... ]
+   * @throws {InvalidSortError} When the sort has an unknown field, invalid path or invalid shape.
    */
   async getSortEntriesAsArray(sort: any) {
-    /** @var sortEntries = [ [ "data.sumGov", "asc" ], [ "created_at", "asc" ] , ... ]; */
-    const sortEntries = sort.constructor === Object ? Object.entries(sort) : sort;
-
-    if (sort === 'null') {
+    if (sort === 'null' || sort === undefined || sort === null) {
       return [];
     }
 
-    for (const entry in sortEntries) {
-      const orderFieldJsonPath = sortEntries[entry][0];
-      const orderValue = sortEntries[entry][1].toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-      const isNestedJsonField = orderFieldJsonPath.indexOf('.') >= 0;
-      if (isNestedJsonField) {
-        const orderFieldJsonPathParts = orderFieldJsonPath.split('.');
-
-        // Validate field name path
-        const pathIsValid = orderFieldJsonPathParts.every((fieldName) => {
-          const match = fieldName.match(DB_FIELD_NAME_REGEX);
-          return match && match[0] === fieldName;
-        });
-        if (!pathIsValid) {
-          throw new Error(ERROR_ORDER_FIELD_VALIDATION);
-        }
-
-        const databaseFieldName = orderFieldJsonPathParts.shift();
-
-        let orderFieldSqlPrepared = `"${this.model.name}"."${databaseFieldName}"`;
-        const sqlJsonPath = orderFieldJsonPathParts.map((element) => `'${element}'`).join('->');
-        if (sqlJsonPath) orderFieldSqlPrepared += `->${sqlJsonPath}`;
-        delete sort[orderFieldJsonPath];
-        sortEntries[entry] = Sequelize.literal(orderFieldSqlPrepared + ' ' + orderValue);
+    let entries: any[];
+    if (Object.prototype.toString.call(sort) === '[object Object]') {
+      entries = Object.entries(sort);
+    } else if (Array.isArray(sort)) {
+      if (!sort.every((entry) => Array.isArray(entry) && entry.length === 2)) {
+        throw new InvalidSortError();
       }
+      entries = sort;
+    } else {
+      throw new InvalidSortError();
     }
 
-    return sortEntries;
+    if (entries.length > MAX_SORT_ENTRIES) {
+      throw new InvalidSortError();
+    }
+
+    const result: any[] = [];
+    for (const [field, direction] of entries) {
+      if (typeof field !== 'string' || typeof direction !== 'string') {
+        throw new InvalidSortError(String(field));
+      }
+      const orderValue = direction.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+      if (field.indexOf('.') < 0) {
+        if (!SORTABLE_COLUMNS.includes(field)) {
+          throw new InvalidSortError(field);
+        }
+        result.push([field, orderValue]);
+        continue;
+      }
+
+      const parts = field.split('.');
+      if (parts[0] !== SORT_JSON_ROOT || parts.length < 2 || !parts.every((part) => SORT_PATH_SEGMENT_REGEX.test(part))) {
+        throw new InvalidSortError(field);
+      }
+      const sqlJsonPath = parts
+        .slice(1)
+        .map((element) => `'${element}'`)
+        .join('->');
+      result.push(Sequelize.literal(`"${this.model.name}"."${SORT_JSON_ROOT}"->${sqlJsonPath} ${orderValue}`));
+    }
+
+    return result;
   }
 
   /**

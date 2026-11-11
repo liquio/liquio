@@ -165,7 +165,7 @@ describe('Records, keys, auth, history, access log (GITHUB-887 T08 B)', () => {
       const r = await post('/records/filter', { key_id: keyId, data: { f: 'gamma' }, limit: 5 });
       expect(r.status).toBe(200);
       const r2 = await post('/records/filter', { key_id: keyId, search: 'gam', sort: { f: 'asc' }, additional_filter: {} });
-      expect(r2.status).toBe(500); // current behaviour, see BUGS.md
+      expect(r2.status).toBe(400);
     });
     it('find by id, with paths and 404', async () => {
       const r = await get(`/records/${ids[0]}`).expect(200);

@@ -1,7 +1,7 @@
 import { matchedData } from 'express-validator';
 import _ from 'lodash';
 import { Sandbox } from '@liquio/back-core';
-import { getRegisterApiClient } from '@liquio/back-core';
+import { getRegisterApiClient, RegisterApiError } from '@liquio/back-core';
 
 import { Controller } from './controller';
 import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
@@ -211,6 +211,9 @@ export class RegisterController extends Controller {
         }
       }
     } catch (error) {
+      if (error instanceof RegisterApiError && error.status === 400) {
+        return this.responseError(res, ErrorMessage.InvalidRecordsQuery, 400);
+      }
       return this.responseError(res, error);
     }
 
@@ -711,6 +714,9 @@ export class RegisterController extends Controller {
         withLinkedObjects,
       );
     } catch (error) {
+      if (error instanceof RegisterApiError && error.status === 400) {
+        return this.responseError(res, ErrorMessage.InvalidRecordsQuery, 400);
+      }
       return this.responseError(res, error);
     }
 
