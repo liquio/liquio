@@ -137,7 +137,7 @@ jobs:
 
       - name: Upload e2e coverage to Codecov
         if: ${{ !cancelled() && steps.lcov.outputs.found == 'true' }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: components/${{ matrix.name }}/coverage/e2e/lcov.info
           flags: ${{ matrix.name }}
