@@ -124,6 +124,27 @@ jobs:
             exit 1
           fi
 
+      # lcov SF paths are relative to the component dir; Codecov needs repo-root paths.
+      - name: Prefix lcov paths with component dir
+        id: lcov
+        if: ${{ !cancelled() }}
+        run: |
+          f=coverage/e2e/lcov.info
+          if [ -f "$f" ]; then
+            sed -i -E 's#^SF:([^/])#SF:components/${{ matrix.name }}/\1#' "$f"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload e2e coverage to Codecov
+        if: ${{ !cancelled() && steps.lcov.outputs.found == 'true' }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: components/${{ matrix.name }}/coverage/e2e/lcov.info
+          flags: ${{ matrix.name }}
+          name: e2e-${{ matrix.name }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
       - name: Dump leftover containers on failure
         if: failure()
         run: docker ps -a --format 'table {{.Image}}\t{{.Status}}\t{{.Names}}'

@@ -1,5 +1,7 @@
 # filestorage
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=filestorage)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=filestorage)
+
 File upload/storage service. Backed by PostgreSQL by default, or by an
 S3-compatible object store (MinIO / OpenStack Swift), selected via a
 single `activeProvider` config flag — see

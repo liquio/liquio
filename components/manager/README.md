@@ -1,5 +1,7 @@
 # manager
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=manager)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=manager)
+
 BPMN orchestration hub — the sole consumer of the `bpmn-manager-incoming`
 RabbitMQ queue, routing workflow messages between `task`, `event`, and
 `gateway`. See the full system context in

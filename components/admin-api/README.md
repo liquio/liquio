@@ -1,5 +1,7 @@
 # admin-api
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=admin-api)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=admin-api)
+
 Back-office API: workflow (BPMN) designer, user/register management,
 notifications config, stats, localization. Proxies selectively to `task`
 (specific routes, not a catch-all like `cabinet-api`). See the full system

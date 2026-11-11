@@ -1,5 +1,7 @@
 # register
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=register)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=register)
+
 Registry / reference-data storage service: structured records, search,
 import/export. See the full system context in
 [ARCHITECTURE.md](../../ARCHITECTURE.md).

@@ -1,5 +1,7 @@
 # external-reader
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=external-reader)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=external-reader)
+
 Plugin-based reader/aggregator for external systems and registries,
 reached either directly or via X-Road. See the full system context in
 [ARCHITECTURE.md](../../ARCHITECTURE.md).

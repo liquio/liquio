@@ -1,5 +1,7 @@
 # persist-link
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=persist-link)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=persist-link)
+
 Generates and stores persistent, shareable document links. One of the few
 internal services also exposed externally, via the `plink.liquio.local`
 ingress host. See the full system context in

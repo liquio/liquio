@@ -1,5 +1,7 @@
 # sign-tool
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=sign-tool)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=sign-tool)
+
 Digital signature / cryptographic (x509) operations. See the full system
 context in [ARCHITECTURE.md](../../ARCHITECTURE.md).
 

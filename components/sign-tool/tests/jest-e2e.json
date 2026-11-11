@@ -10,7 +10,7 @@
   "setupFiles": ["<rootDir>/tests/setup-env.ts"],
   "collectCoverage": true,
   "collectCoverageFrom": ["src/**/*.ts", "!src/**/*.spec.ts", "!src/**/__mocks__/**", "!src/main.ts"],
-  "coverageDirectory": "<rootDir>/tests/coverage",
+  "coverageDirectory": "<rootDir>/coverage",
   "coverageReporters": ["text", "text-summary", "json-summary", "lcov"],
   "coverageThreshold": {
     "global": {
