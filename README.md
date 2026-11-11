@@ -1,5 +1,7 @@
 # **Platform Overview**
 
+[![codecov](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?token=94G1UAG2B0)](https://codecov.io/gh/liquio/liquio)
+
 Liquio is an innovative GovTech platform that leverages artificial intelligence and a low-code approach to drive the digital transformation of public services. It enables rapid creation, configuration, and deployment of a wide range of IT solutions, and web and mobile applications for government agencies and local governments.
 
 Liquio is recognized internationally and listed in the GovStack Global Software Catalogue, meeting global standards for government digital transformation.
