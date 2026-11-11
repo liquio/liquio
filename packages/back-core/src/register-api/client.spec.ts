@@ -363,6 +363,41 @@ describe('RegisterApiClient', () => {
       expect(parsed().params.get('q')).toBe(value);
       expect(parsed().params.get('data[k]')).toBe(value);
     });
+
+    // parameter smuggling through object keys
+    it('keeps a hostile key of a bracket object inside one parameter', async () => {
+      const keys = ['created_at]=asc&allow_see_all_records=true&z', 'created_at%5D=asc&allow_see_all_records=1&z'];
+
+      for (const key of keys) {
+        mockResponse(200, { data: [] });
+        await client.getRecords({ key_id: 1, sort: { [key]: 'asc' } });
+
+        const { params } = parsed();
+        expect(params.has('allow_see_all_records')).toBe(false);
+        expect([...params.keys()].filter((k) => k.startsWith('sort['))).toEqual([`sort[${key}]`]);
+        expect(params.get(`sort[${key}]`)).toBe('asc');
+
+        const { search } = new URL(lastCall().url);
+        expect(search).not.toContain('&allow_see_all_records');
+        expect(search).toContain('%26allow_see_all_records%3D');
+      }
+    });
+
+    it('encodes hostile keys of every bracket object', async () => {
+      for (const name of ['data', 'data_like', 'data_date_from', 'data_date_to']) {
+        mockResponse(200, { data: [] });
+        await client.getRecords({ key_id: 1, [name]: { 'x]=1&allow_see_all_records=true&y': 'v' } });
+
+        expect(parsed().params.has('allow_see_all_records')).toBe(false);
+      }
+    });
+
+    it('does not add allow_tokens for an empty array', async () => {
+      mockResponse(200, { data: [] });
+      await client.getRecords({ key_id: 1, allow_tokens: [] });
+
+      expect(new URL(lastCall().url).search).not.toContain('allow_tokens');
+    });
   });
 
   describe('timeouts', () => {
