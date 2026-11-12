@@ -227,14 +227,28 @@ export class UserService extends BaseService {
     }
   }
 
-  parseEmailForGetUsersQuery(query: any, email?: string): void {
-    if (typeof email === 'string' && email.includes(',')) {
-      query.email = { [Op.in]: email.split(',').map((e) => e.trim().toLowerCase()) };
-    } else if (Array.isArray(email)) {
-      query.email = { [Op.in]: email.map((e) => e.toString().toLowerCase()) };
-    } else if (email) {
-      query.email = { [Op.iLike]: `${email}%` };
+  parseEmailForGetUsersQuery(query: any, email?: string | string[]): void {
+    const raw = Array.isArray(email) ? email : typeof email === 'string' ? email.split(',') : [];
+    const list = [
+      ...new Set(
+        raw
+          .filter((e) => typeof e === 'string')
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.length > 0),
+      ),
+    ];
+    if (list.length) {
+      query.email = { [Op.in]: list };
     }
+  }
+
+  // When `email` is also sent, the exact match already set on the query wins and the prefix is ignored.
+  parseEmailPrefixForGetUsersQuery(query: any, emailPrefix?: string): void {
+    if (typeof emailPrefix !== 'string' || query.email) return;
+    const value = emailPrefix.trim().toLowerCase();
+    if (!value) return;
+    const escaped = value.replace(/[\\%_]/g, '\\$&');
+    query.email = { [Op.iLike]: `${escaped}%` };
   }
 
   parseIpnCollectionForGetUsersQuery(query: any, ipn?: any): void {

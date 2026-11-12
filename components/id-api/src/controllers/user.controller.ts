@@ -139,6 +139,7 @@ export class UserController extends BaseController {
         query('limit').optional().isInt({ min: 0 }).toInt(),
         query('id').optional().isString(),
         query('email').optional().isString(),
+        query('emailPrefix').optional().isString(),
         query('phone').optional().isString(),
         query('ipn').optional().isString(),
         query('role').optional().isString(),
@@ -581,6 +582,7 @@ export class UserController extends BaseController {
       const {
         id,
         email,
+        emailPrefix,
         phone,
         ipn,
         role,
@@ -593,7 +595,7 @@ export class UserController extends BaseController {
       const policy = getUsersReadPolicy(this.config);
       const limit = clampLimit(rawLimit, 20, policy.maxLimit);
       const offset = toNonNegativeInt(rawOffset, 0);
-      const filterKeys = Object.entries({ id, email, phone, ipn, role, search })
+      const filterKeys = Object.entries({ id, email, emailPrefix, phone, ipn, role, search })
         .filter(([, value]) => typeof value === 'string' && value.trim() !== '')
         .map(([key]) => key);
 
@@ -601,6 +603,15 @@ export class UserController extends BaseController {
       if (!filterKeys.length && !hasFullRead(req.serviceClient, policy)) {
         this.log.save('get-users-unfiltered-rejected', { client: req.serviceClient?.name }, 'warn');
         res.status(403).send('A filter is required');
+        return;
+      }
+      if (typeof email === 'string' && email.length > 1000) {
+        res.status(400).send('email is too long');
+        return;
+      }
+      if (typeof email === 'string' && this.isBatchTooLarge(res, email.split(','))) return;
+      if (typeof emailPrefix === 'string' && emailPrefix.trim() !== '' && emailPrefix.trim().length < 3) {
+        res.status(400).send('emailPrefix must be at least 3 characters');
         return;
       }
       const query: WhereOptions<UserAttributes> = {};
@@ -611,6 +622,7 @@ export class UserController extends BaseController {
 
       this.service('user').parseNameForGetUsersQuery(query, search);
       this.service('user').parseEmailForGetUsersQuery(query, email);
+      this.service('user').parseEmailPrefixForGetUsersQuery(query, emailPrefix);
       this.service('user').parseIpnCollectionForGetUsersQuery(query, ipn);
 
       if (phone) {

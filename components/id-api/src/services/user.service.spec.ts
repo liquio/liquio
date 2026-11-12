@@ -132,3 +132,48 @@ describe('UserService.extractUpdateUserInfoParams (token scope, GI-20)', () => {
     expect(() => extract({}, [])).not.toThrow();
   });
 });
+
+describe('UserService email filters for GET /user', () => {
+  const service = new UserService({ modules: {} } as any, {} as any, {} as any);
+  const { Op } = require('sequelize');
+
+  it('matches a scalar email exactly', () => {
+    const q: any = {};
+    service.parseEmailForGetUsersQuery(q, 'a@b.c');
+    expect(q.email[Op.in]).toEqual(['a@b.c']);
+    expect(q.email[Op.iLike]).toBeUndefined();
+  });
+
+  it('normalises case and spaces, handles lists and arrays, dedupes', () => {
+    const q: any = {};
+    service.parseEmailForGetUsersQuery(q, ' A@B.c , x@y.z,a@b.c,');
+    expect(q.email[Op.in]).toEqual(['a@b.c', 'x@y.z']);
+    const q2: any = {};
+    service.parseEmailForGetUsersQuery(q2, ['A@b.c', 7 as any, ' ']);
+    expect(q2.email[Op.in]).toEqual(['a@b.c']);
+  });
+
+  it('leaves email unset for empty or blank input', () => {
+    for (const v of [undefined, '', '  ', ',', []] as any[]) {
+      const q: any = {};
+      service.parseEmailForGetUsersQuery(q, v);
+      expect(q.email).toBeUndefined();
+    }
+  });
+
+  it('builds an escaped, lower-cased prefix pattern', () => {
+    const q: any = {};
+    service.parseEmailPrefixForGetUsersQuery(q, ' A%b_c\\D ');
+    expect(q.email[Op.iLike]).toBe('a\\%b\\_c\\\\d%');
+  });
+
+  it('ignores the prefix when email is set or prefix is blank', () => {
+    const q: any = {};
+    service.parseEmailForGetUsersQuery(q, 'a@b.c');
+    service.parseEmailPrefixForGetUsersQuery(q, 'abc');
+    expect(q.email[Op.in]).toEqual(['a@b.c']);
+    const q2: any = {};
+    service.parseEmailPrefixForGetUsersQuery(q2, '  ');
+    expect(q2.email).toBeUndefined();
+  });
+});
