@@ -569,12 +569,67 @@ describe('IdApiClient', () => {
     });
 
     it('returns a list for an array of emails', async () => {
-      mockResponse(200, [{ userId: 'u1' }, { userId: 'u2' }]);
+      mockResponse(200, [
+        { userId: 'u1', email: 'a@b.c' },
+        { userId: 'u2', email: 'd@e.f' },
+      ]);
 
       const users = (await client.getUserByEmail(['a@b.c', 'd@e.f'])) as any[];
 
       expect(users).toHaveLength(2);
       expect(lastCall().url).toBe('http://id.test:8100/user?email=a%40b.c%2Cd%40e.f');
+    });
+
+    it('keeps only the exact owner when the response holds prefix siblings', async () => {
+      mockResponse(200, [
+        { userId: 'u2', email: 'a@b.c.evil.example' },
+        { userId: 'u1', email: 'a@b.c' },
+      ]);
+      await expect(client.getUserByEmail('a@b.c')).resolves.toMatchObject({ userId: 'u1' });
+
+      mockResponse(200, [
+        { userId: 'u2', email: 'a@b.c.evil.example' },
+        { userId: 'u1', email: 'a@b.c' },
+      ]);
+      const users = (await client.getUserByEmail(['a@b.c'])) as any[];
+      expect(users).toHaveLength(1);
+      expect(users[0]).toMatchObject({ userId: 'u1' });
+    });
+
+    it('normalises case and whitespace', async () => {
+      mockResponse(200, [{ userId: 'u1', email: 'A@B.C' }]);
+
+      const user = await client.getUserByEmail(' A@B.C ');
+
+      expect(user).toMatchObject({ userId: 'u1' });
+      expect(lastCall().url).toBe('http://id.test:8100/user?email=a%40b.c');
+    });
+
+    it('sends a one-element array as a single email and returns a list of one', async () => {
+      mockResponse(200, [{ userId: 'u1', email: 'a@b.c' }]);
+
+      const users = (await client.getUserByEmail(['a@b.c'])) as any[];
+
+      expect(users).toHaveLength(1);
+      expect(lastCall().url).toBe('http://id.test:8100/user?email=a%40b.c');
+    });
+
+    it('makes no request for an empty list or a blank string', async () => {
+      const spy = jest.spyOn(global, 'fetch');
+      spy.mockClear();
+
+      await expect(client.getUserByEmail([])).resolves.toEqual([]);
+      await expect(client.getUserByEmail('  ')).resolves.toBeNull();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('returns an empty result when the response has only prefix siblings', async () => {
+      mockResponse(200, [{ userId: 'u2', email: 'a@b.c.evil.example' }]);
+      await expect(client.getUserByEmail('a@b.c')).resolves.toBeNull();
+
+      mockResponse(200, [{ userId: 'u2', email: 'a@b.c.evil.example' }]);
+      await expect(client.getUserByEmail(['a@b.c'])).resolves.toEqual([]);
     });
 
     it('throws when the response is not an array', async () => {
