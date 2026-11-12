@@ -94,14 +94,14 @@ export class MassMessagesMailingController extends Controller {
       }
 
       responseByUserEmail = (await Promise.all(emailsList.map((email) => this.idApiClient.getUsers({ email, limit: emailsList.length, offset: 0 }))))
-        .map((users) => users[0])
+        .map((users, i) => users.find((u) => u.email?.trim().toLowerCase() === emailsList[i].trim().toLowerCase()))
         .filter(Boolean);
     } catch (error) {
       return this.responseError(res, error);
     }
     if (responseByUserEmail.length < emailsList.length) {
-      const existingUserEmails = responseByUserEmail.map(({ email }) => email);
-      const notExistingUserEmails = emailsList.filter((email) => !existingUserEmails.includes(email));
+      const existingUserEmails = responseByUserEmail.map(({ email }) => email.trim().toLowerCase());
+      const notExistingUserEmails = emailsList.filter((email) => !existingUserEmails.includes(email.trim().toLowerCase()));
       const error = new PublicError(`Passed not existing user emails: ${notExistingUserEmails.join(', ')}`);
       return this.responseError(res, error);
     }

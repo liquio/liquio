@@ -54,6 +54,37 @@ describe('MassMessagesMailingController.send', () => {
     expect(business.sendByEmailsAndUserIds).not.toHaveBeenCalled();
   });
 
+  it('should ignore a prefix sibling and still send for the exact email', async () => {
+    idApiClient.getUsersByIds.mockResolvedValue([{ userId: USER_ID }]);
+    idApiClient.getUsers.mockResolvedValue([{ email: 'a@b.com.evil.example' }, { email: 'a@b.com' }]);
+
+    await controller.send({ authUserId: 'init' }, res);
+
+    expect(business.sendByEmailsAndUserIds).toHaveBeenCalledWith(expect.objectContaining({ emailsList: ['a@b.com'] }));
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('should respond 500 when only a prefix sibling is returned', async () => {
+    idApiClient.getUsersByIds.mockResolvedValue([{ userId: USER_ID }]);
+    idApiClient.getUsers.mockResolvedValue([{ email: 'a@b.com.evil.example' }]);
+
+    await controller.send({}, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ error: { message: 'Passed not existing user emails: a@b.com' } }));
+    expect(business.sendByEmailsAndUserIds).not.toHaveBeenCalled();
+  });
+
+  it('should find the user when id-api returns a different case', async () => {
+    idApiClient.getUsersByIds.mockResolvedValue([{ userId: USER_ID }]);
+    idApiClient.getUsers.mockResolvedValue([{ email: 'A@B.com' }]);
+
+    await controller.send({}, res);
+
+    expect(business.sendByEmailsAndUserIds).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
   it('should respond 500 when an id is not found', async () => {
     idApiClient.getUsersByIds.mockResolvedValue([]);
 

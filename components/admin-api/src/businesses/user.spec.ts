@@ -50,6 +50,26 @@ describe('UserBusiness', () => {
       expect(result.data[0].units).toEqual({ heads: [1], members: [1], all: [1] });
     });
 
+    it('should pass the email as emailPrefix and not as email', async () => {
+      idApiClient.getUsersPage.mockResolvedValue({ status: 200, headers: { total: '0' }, body: [] });
+
+      await business.getUsers({ email: 'ab@x', limit: 20, offset: 0 } as any);
+
+      const arg = idApiClient.getUsersPage.mock.calls[0][0];
+      expect(arg.emailPrefix).toBe('ab@x');
+      expect(arg).not.toHaveProperty('email');
+    });
+
+    it('should send neither email nor emailPrefix for an empty email', async () => {
+      idApiClient.getUsersPage.mockResolvedValue({ status: 200, headers: { total: '0' }, body: [] });
+
+      await business.getUsers({ email: '', limit: 20, offset: 0 } as any);
+
+      const arg = idApiClient.getUsersPage.mock.calls[0][0];
+      expect(arg.emailPrefix).toBeUndefined();
+      expect(arg).not.toHaveProperty('email');
+    });
+
     it('should return an empty page without users', async () => {
       idApiClient.getUsersPage.mockResolvedValue({ status: 200, headers: { total: '0' }, body: [] });
 
