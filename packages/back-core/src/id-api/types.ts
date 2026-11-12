@@ -178,7 +178,10 @@ export interface IdApiTokens {
 
 export interface IdApiUsersQuery {
   id?: string;
+  /** Exact match, comma-separated list allowed. */
   email?: string;
+  /** Prefix search, at least 3 characters. */
+  emailPrefix?: string;
   phone?: string;
   search?: string;
   ipn?: string;

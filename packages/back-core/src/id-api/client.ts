@@ -224,7 +224,7 @@ export class IdApiClient {
   // ---------------------------------------------------------------------------
 
   /**
-   * Get the users list. `GET /user` (basic auth).
+   * Get the users list. `GET /user` (basic auth). `query.email` is an exact match (comma-separated list allowed); `query.emailPrefix` is a prefix search.
    * @param {IdApiUsersQuery} [query] Query.
    * @returns {Promise<IdApiUser[]>}
    */
@@ -386,20 +386,38 @@ export class IdApiClient {
   }
 
   /**
-   * Get the user by email. `GET /user?email=` (basic auth).
-   * @param {string | string[]} email Email (or a list, sent comma-joined).
+   * Get the user by email. `GET /user?email=` (basic auth). Emails are normalised (trimmed, lower-cased), sent comma-joined, and the response is verified: only users whose email equals a requested one are returned.
+   * @param {string | string[]} email Email (or a list).
    * @param {IdApiUserLookupOptions} [options] Options.
    * @returns {Promise<IdApiUserInfo | IdApiUserInfo[] | null>} The first user (or `null`) for a single email, the list for an array.
    */
   async getUserByEmail(email: string | string[], options: IdApiUserLookupOptions = {}): Promise<IdApiUserInfo | IdApiUserInfo[] | null> {
-    this.log('user-find-by-email-request', { email });
-    const { body } = await this.request({ method: 'GET', route: this.routes.getUsers, query: { email: String(email) }, basicAuth: true });
+    const requested = [
+      ...new Set(
+        (Array.isArray(email) ? email : [email])
+          .filter((e) => typeof e === 'string')
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ];
+    this.log('user-find-by-email-request', { count: requested.length });
+
+    if (requested.length === 0) {
+      return Array.isArray(email) ? [] : null;
+    }
+
+    const { body } = await this.request({ method: 'GET', route: this.routes.getUsers, query: { email: requested.join(',') }, basicAuth: true });
 
     if (!Array.isArray(body)) {
       throw new Error(IdApiErrorMessage.UserNotResponsed);
     }
 
-    const users = body.map((user) => this.getMainUserInfo(user, options.withPrivateProps) as IdApiUserInfo);
+    const matched = body.filter((u) => typeof u?.email === 'string' && requested.includes(u.email.trim().toLowerCase()));
+    if (matched.length !== body.length) {
+      this.log('user-find-by-email-mismatch', { returned: body.length, kept: matched.length }, 'warn');
+    }
+
+    const users = matched.map((user) => this.getMainUserInfo(user, options.withPrivateProps) as IdApiUserInfo);
     return Array.isArray(email) ? users : (users[0] ?? null);
   }
 
