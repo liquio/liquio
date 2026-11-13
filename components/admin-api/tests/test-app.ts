@@ -15,9 +15,8 @@ import * as jsonwebtoken from 'jsonwebtoken';
 import * as Multiconf from 'multiconf';
 import { resetIdApiClient, resetRegisterApiClient } from '@liquio/back-core';
 
-import { MessageQueue } from '../src/lib/message_queue';
 import { bootstrap } from '../src/bootstrap';
-import { getConfig, getDb, getMessageQueue, getModels, getRedis, getSlaveDb, setAppContext } from '../src/lib/context';
+import { getConfig, getDb, getMessageBus, getModels, getRedis, getSlaveDb, setAppContext } from '../src/lib/context';
 
 // Token admin-api sends to task in tests (not a real credential).
 export const TASK_TOKEN = `Basic ${Buffer.from('admin-api:test-task-secret').toString('base64')}`;
@@ -82,6 +81,7 @@ export class TestApp {
   static redisContainer;
   static rabbitmqContainer;
   static amqpUrl;
+  routerService: any;
 
   constructor() {
     this.app = null;
@@ -220,6 +220,7 @@ export class TestApp {
       writingQueueTask: 'test-admin-to-task',
       writingQueueEvent: 'test-admin-to-event',
       writingQueueGateway: 'test-admin-to-gateway',
+      retryConnectionTime: 100,
     };
 
     nock.activate();
@@ -368,15 +369,8 @@ export class TestApp {
 
   // Destroy the application
   async destroy() {
-    const mq = getMessageQueue();
-    if (mq) {
-      await mq.close();
-      // Prevent reconnect timers after the connection is closed.
-      mq.isClosing = true;
-      clearTimeout(mq.reconnectTimeout);
-      MessageQueue.singleton = undefined;
-      setAppContext({ messageQueue: undefined });
-    }
+    await getMessageBus()?.close();
+    setAppContext({ messageBus: undefined });
     if (getRedis()) {
       await getRedis().close();
     }

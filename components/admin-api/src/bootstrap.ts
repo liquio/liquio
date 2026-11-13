@@ -2,7 +2,7 @@ import { Log, ConsoleLogProvider, Sandbox, getRegisterApiClient } from '@liquio/
 
 import { Db } from './lib/db';
 import { RedisClient } from './lib/redis_client';
-import { MessageQueue } from './lib/message_queue';
+import { createAdminApiMessageBus } from './lib/message_bus';
 import { RouterService } from './services/router';
 import { Models } from './models';
 import { WorkflowHandlerBusiness } from './businesses/workflow_handler';
@@ -82,10 +82,10 @@ export async function bootstrap(config: Record<string, any>, options: { placehol
     getLog().save("elastic-search-template-didn't-update", { templateName, reason });
   }
 
-  // Init message queue.
-  const messageQueue = new MessageQueue(config.message_queue);
-  await messageQueue.init();
-  setAppContext({ messageQueue });
+  // Init message bus.
+  const messageBus = createAdminApiMessageBus(config);
+  await messageBus.init();
+  setAppContext({ messageBus });
 
   // Init router.
   const routerService = new RouterService(config);
@@ -93,5 +93,5 @@ export async function bootstrap(config: Record<string, any>, options: { placehol
 
   setAppContext({ businesses: { workflow: new WorkflowBusiness() } });
 
-  return { messageQueue, routerService, elasticBusiness };
+  return { messageBus, routerService, elasticBusiness };
 }

@@ -1978,6 +1978,27 @@ export class RouterService {
   }
 
   /**
+   * Stop accepting connections and close the WebSocket server.
+   */
+  async stop() {
+    const server = this.server;
+    if (!server?.listening) {
+      return;
+    }
+    if (this.wss) {
+      const clients = [...this.wss.clients];
+      this.wss.close();
+      for (const client of clients) {
+        client.terminate();
+      }
+    }
+    await new Promise<void>((resolve, reject) => {
+      server.close((error?: Error) => (error ? reject(error) : resolve()));
+      server.closeIdleConnections?.();
+    });
+  }
+
+  /**
    * Listen.
    * @private
    * @param {object} app Express app.
