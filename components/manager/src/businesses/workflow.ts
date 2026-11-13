@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { pickMessageMeta } from '../lib/message_queue';
+import { errorRef } from '@liquio/back-core';
+
+import { DESTINATION_TASK, DESTINATION_GATEWAY, managerMessageLogContext, resolveEventDestination } from '../lib/message_bus';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { SystemNotifier } from '../lib/system_notifier';
 import { WorkflowErrorModel } from '../models/workflow_error';
@@ -11,7 +13,7 @@ import { GatewayModel } from '../models/gateway';
 import { EventModel } from '../models/event';
 import { TaskEntity } from '../entities/task';
 import { EventEntity } from '../entities/event';
-import { getLog, getMessageQueue } from '../lib/context';
+import { getConfig, getLog, getMessageBus } from '../lib/context';
 
 // Constants.
 const SYSTEM_USER = 'system';
@@ -205,10 +207,10 @@ export class WorkflowBusiness {
         case Object.prototype.hasOwnProperty.call(messageObject, 'forwardToTask'): {
           const forwardedMessage = pickForwardToTaskMessage(messageObject);
           if (!forwardedMessage) {
-            getLog().save('forward-to-task-message-rejected', pickMessageMeta(messageObject));
+            getLog().save('forward-to-task-message-rejected', managerMessageLogContext(messageObject));
             return true;
           }
-          await getMessageQueue().produce('writingQueueTask', forwardedMessage);
+          await getMessageBus().publish(DESTINATION_TASK, forwardedMessage);
           return true;
         }
         case Object.prototype.hasOwnProperty.call(messageObject, 'taskId'): {
@@ -300,7 +302,7 @@ export class WorkflowBusiness {
 
       // Premature message: the step is not finished yet. Ack and drop it, it must not advance the flow.
       if (notFinishedReason) {
-        getLog().save('workflow-message-dropped', { reason: notFinishedReason, ...pickMessageMeta(messageObject) });
+        getLog().save('workflow-message-dropped', { reason: notFinishedReason, ...managerMessageLogContext(messageObject) });
         return true;
       }
 
@@ -312,7 +314,7 @@ export class WorkflowBusiness {
 
       // Finished workflow: nothing to advance and nothing to record.
       if (workflow.isFinal !== false) {
-        getLog().save('workflow-message-dropped', { reason: 'workflow-final', ...pickMessageMeta(messageObject) });
+        getLog().save('workflow-message-dropped', { reason: 'workflow-final', ...managerMessageLogContext(messageObject) });
         return true;
       }
 
@@ -377,7 +379,7 @@ export class WorkflowBusiness {
 
             // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
             // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
-            await getMessageQueue().produce('writingQueueTask', preparedMessageForQueue);
+            await getMessageBus().publish(DESTINATION_TASK, preparedMessageForQueue, { messageId: preparedMessageForQueue.amqpMessageId });
           } else if (currentSequence['$']['targetRef'].search(/^gateway-[0-9]+$/i) !== -1) {
             const nextGatewayId = parseInt(currentSequence['$']['targetRef'].replace(/gateway-/i, ''));
             if (!nextGatewayId) {
@@ -432,7 +434,7 @@ export class WorkflowBusiness {
 
             // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
             // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
-            await getMessageQueue().produce('writingQueueGateway', preparedMessageForQueue);
+            await getMessageBus().publish(DESTINATION_GATEWAY, preparedMessageForQueue, { messageId: preparedMessageForQueue.amqpMessageId });
           } else if (currentSequence['$']['targetRef'].search(/^event-[0-9]+$/i) !== -1) {
             const nextEventId = parseInt(currentSequence['$']['targetRef'].replace(/event-/i, ''));
             if (!nextEventId) {
@@ -459,32 +461,36 @@ export class WorkflowBusiness {
 
             // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
             // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
-            await getMessageQueue().produce('writingQueueEvent', preparedMessageForQueue);
+            await getMessageBus().publish(resolveEventDestination(getConfig().message_queue, preparedMessageForQueue), preparedMessageForQueue, {
+              messageId: preparedMessageForQueue.amqpMessageId,
+            });
           }
         }
       }
     } catch (error) {
-      getLog().save('workflow-processing-by-message-from-queue-error', {
-        ...pickMessageMeta(messageObject),
-        error: { message: error && error.message, stack: error.stack },
-      });
+      let errorId: number | undefined;
 
       try {
         // `workflowId` is trusted only when it was resolved from the task/event/gateway entity. The message value
         // is attacker-controllable and must never be used to mark a workflow as failed.
-        await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject, workflowId });
+        errorId = await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject, workflowId });
+        getLog().save('workflow-processing-by-message-from-queue-error', {
+          ...managerMessageLogContext(messageObject),
+          error: errorRef(error),
+          errorId,
+        });
         if (workflowId) {
           await this.workflowModel.setError(workflowId);
         }
       } catch (error) {
-        getLog().save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
+        getLog().save('workflow-id-not-found-error', { ...managerMessageLogContext(messageObject), error: errorRef(error) });
       }
 
       try {
         const workflowTemplate = await this.workflowTemplateModel.findById(workflowTemplateId);
         await this.systemNotifier.sendEmails(workflowId, workflowTemplate && workflowTemplate.name, error?.message);
       } catch (error) {
-        getLog().save('system-notifier-error', error.message);
+        getLog().save('system-notifier-error', { error: errorRef(error) });
       }
     }
 

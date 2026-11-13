@@ -72,6 +72,9 @@ const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_MAN
 // Obtain the default configuration object.
 const defaultConfig = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
 
+// Workflow template routed to a specific event queue; seeded by the routing e2e test.
+export const SPECIAL_WORKFLOW_TEMPLATE_ID = 988192;
+
 export class TestApp {
   static pgContainer;
   static rabbitmqContainer;
@@ -79,7 +82,7 @@ export class TestApp {
   config: any;
   log: any;
   routerService: any;
-  messageQueue: any;
+  messageBus: any;
   workflowBusiness: any;
   testAmqpConnection: any;
   testAmqpChannel: any;
@@ -88,7 +91,7 @@ export class TestApp {
     this.config = null;
     this.log = null;
     this.routerService = null;
-    this.messageQueue = null;
+    this.messageBus = null;
     this.workflowBusiness = null;
     this.testAmqpConnection = null;
     this.testAmqpChannel = null;
@@ -161,6 +164,7 @@ export class TestApp {
     configOverride.message_queue = {
       ...defaultConfig.message_queue,
       amqpConnection: this.rabbitmqContainer.getAmqpUrl(),
+      specificWritingQueuesEvent: { special: [SPECIAL_WORKFLOW_TEMPLATE_ID] },
     };
 
     nock.activate();
@@ -196,10 +200,10 @@ export class TestApp {
     const config = { ...defaultConfig, ...configOverride };
     this.config = config;
 
-    const { workflowBusiness, messageQueue, routerService } = await bootstrap(config);
+    const { workflowBusiness, messageBus, routerService } = await bootstrap(config);
     this.log = getLog();
     this.workflowBusiness = workflowBusiness;
-    this.messageQueue = messageQueue;
+    this.messageBus = messageBus;
     this.routerService = routerService;
   }
 
@@ -285,8 +289,8 @@ export class TestApp {
     if (this.testAmqpConnection) {
       await this.testAmqpConnection.close();
     }
-    if (this.messageQueue) {
-      await this.messageQueue.close();
+    if (this.messageBus) {
+      await this.messageBus.close();
     }
     if (getDb()) {
       await getDb().close();

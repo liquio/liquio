@@ -4,6 +4,7 @@ import Multiconf from 'multiconf';
 
 import { bootstrap } from './bootstrap';
 import { getLog } from './lib/context';
+import { registerShutdown } from './lib/shutdown';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/manager';
@@ -27,11 +28,13 @@ module.exports = (async () => {
     process.exit(1);
   });
 
-  const { workflowBusiness } = await bootstrap(config);
+  const { workflowBusiness, messageBus, routerService } = await bootstrap(config);
 
   // Reload BPMN schemas with interval.
   // TODO: Change later next reloading interval.
-  setInterval(() => {
+  const reloadInterval = setInterval(() => {
     workflowBusiness.init();
   }, config.cache.reloadBpmnSchemasInterval);
+
+  registerShutdown({ routerService, messageBus, reloadInterval });
 })();

@@ -42,8 +42,10 @@ export class WorkflowErrorModel extends Model {
   /**
    * Create.
    * @param {object} data Data object.
+   * @returns {Promise<number>} Created row id.
    */
   async create(data) {
-    await this.model.create({ workflow_id: data.workflowId, service_name: 'manager', data });
+    const row: any = await this.model.create({ workflow_id: data.workflowId, service_name: 'manager', data });
+    return row.id;
   }
 }

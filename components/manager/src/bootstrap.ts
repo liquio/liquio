@@ -1,7 +1,7 @@
 import { Log, ConsoleLogProvider } from '@liquio/back-core';
 
 import { Db } from './lib/db';
-import { MessageQueue } from './lib/message_queue';
+import { createManagerMessageBus, DESTINATION_MANAGER, recordHandlerFailure } from './lib/message_bus';
 import { RouterService } from './services/router';
 import { WorkflowBusiness } from './businesses/workflow';
 import { RedisClient } from './lib/redis_client';
@@ -32,19 +32,18 @@ export async function bootstrap(config: Record<string, any>) {
   const workflowBusiness = new WorkflowBusiness();
   await workflowBusiness.init();
 
-  // Init message queue.
-  const messageQueue = new MessageQueue(config.message_queue, {
-    onInit: () => {
-      messageQueue.subscribeToConsuming(workflowBusiness.createFromMessage.bind(workflowBusiness));
-    },
+  // Init message bus.
+  const messageBus = createManagerMessageBus(config);
+  await messageBus.subscribe(DESTINATION_MANAGER, workflowBusiness.createFromMessage.bind(workflowBusiness), {
+    concurrency: config.message_queue.maxHandlingMessages || 1,
+    onFailure: recordHandlerFailure,
   });
-
-  await messageQueue.init();
-  setAppContext({ messageQueue });
+  await messageBus.init();
+  setAppContext({ messageBus });
 
   // Init router.
   const routerService = new RouterService(config);
   await routerService.init();
 
-  return { workflowBusiness, messageQueue, routerService };
+  return { workflowBusiness, messageBus, routerService };
 }

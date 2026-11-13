@@ -102,4 +102,18 @@ export class RouterService {
       });
     });
   }
+
+  /**
+   * Stop accepting HTTP connections.
+   */
+  async stop() {
+    const server = this.httpServer;
+    if (!server?.listening) {
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      server.close((error?: Error) => (error ? reject(error) : resolve()));
+      server.closeIdleConnections?.();
+    });
+  }
 }
