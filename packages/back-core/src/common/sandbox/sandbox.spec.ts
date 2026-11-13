@@ -1415,11 +1415,11 @@ describe.each(Object.values(SandboxIsolationLevel))('Sandbox (isolationLevel: %s
     });
 
     describe('CPU limits', () => {
-      // Each payload stops by itself after ~2 s, so a level without a timeout fails the check instead of hanging. Known gap
+      // Each payload stops by itself after ~2 s (the regex one after ~30 s), so a level without a timeout fails the check instead of hanging. Known gap
       // of the `function` level, marked `failing`: code runs on the service thread, which nothing can interrupt.
       (isFunctionLevel ? it.failing : it).each([
         ['a busy loop', '() => { const t = Date.now(); while (Date.now() - t < 2000); return "finished"; }'],
-        ['catastrophic regex backtracking', '() => /^(a+)+$/.test("a".repeat(25) + "!")'],
+        ['catastrophic regex backtracking', '() => /^(a+)+$/.test("a".repeat(30) + "!")'],
         ['an await loop', 'async () => { const t = Date.now(); while (Date.now() - t < 2000) await null; return "finished"; }'],
       ])(
         'should stop %s by timeout',

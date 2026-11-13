@@ -9,3 +9,6 @@ export * from './common/sandbox';
 export * from './common/redis_client';
 export * from './id-api';
 export * from './register-api';
+export * from './message-bus';
+export * from './bpmn-messages';
+export * from './common/graceful_shutdown';
