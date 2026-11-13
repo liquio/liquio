@@ -7,6 +7,7 @@ metadata:
     {{- include "liquio.labels" . | nindent 4 }}
 {{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson -}}
 {{ $messageQueueBase := dict
+  "provider" "rabbitmq"
   "maxHandlingMessages" 2
   "readingQueueName" "bpmn-event-incoming"
   "writingQueueName" "bpmn-manager-incoming"

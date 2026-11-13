@@ -15,6 +15,7 @@ metadata:
   "monitoring" (dict "isEnabled" false "token" "")
 -}}
 {{ $messageQueueBase := dict
+  "provider" "rabbitmq"
   "maxHandlingMessages" 2
   "readingQueueName" "bpmn-gateway-incoming"
   "writingQueueName" "bpmn-manager-incoming"

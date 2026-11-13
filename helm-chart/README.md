@@ -142,6 +142,22 @@ Each service can be individually enabled/disabled and configured:
 | `config.rabbitmq.host` | External RabbitMQ host when `rabbitmq.enabled=false` | `liquio-test-rabbitmq` |
 | `config.rabbitmq.port` | External RabbitMQ port | `5672` |
 
+Each BPMN service's `message_queue.json` carries `"provider": "rabbitmq"`. The
+other keys (`amqpConnection` from the generated secret, queue names,
+`maxHandlingMessages`, `retryConnectionTime`, `queueParams`,
+`delayedAutoCommitQueues`) are unchanged. See
+`packages/back-core/src/message-bus/README.md` for the full key reference.
+
+`rabbitmq` is the only provider for deployments. The in-memory `memory`
+provider exists for development and tests only, and a component configured
+with it refuses to start when `NODE_ENV=production`. Never set it in Helm
+values or production config.
+
+The optional `message_queue.shutdownDrainTimeoutMs` (default `25000` ms) sets
+how long a component waits for in-flight messages on SIGTERM. It must stay
+below the pod's `terminationGracePeriodSeconds` (Kubernetes default 30 s; the
+chart sets none).
+
 ### Cache Configuration
 
 | Parameter | Description | Default |

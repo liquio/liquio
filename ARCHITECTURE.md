@@ -82,7 +82,12 @@ so a deployment can point at externally managed instances instead:
   `bpmn-event-incoming`, `bpmn-gateway-incoming`) are consumed/produced by
   `manager`, `task`, `event`, `gateway`, and `admin-api`, with `manager` as
   the sole consumer of `bpmn-manager-incoming` and fan-out point to the
-  others.
+  others. These components reach RabbitMQ only through the shared message
+  bus in `@liquio/back-core` (`packages/back-core/src/message-bus`). The
+  provider is chosen by `message_queue.provider` (default and only
+  production value `rabbitmq`; the test-only `memory` provider refuses to
+  start under `NODE_ENV=production`). Queue names and message format are
+  unchanged.
 - **Redis / Dragonfly** — caching/session store for `id-api`, `admin-api`,
   `cabinet-api`, `manager`, `event`, `gateway` (disabled by default for
   `task` and `register`). The chart ships a vanilla `redis` image, but
@@ -161,8 +166,8 @@ service/router source. Synchronous HTTP unless noted.
 - `external-reader` → external APIs / registries, either directly or via
   **X-Road**
 - `filestorage` → external object storage (MinIO / OpenStack), when enabled
-- RabbitMQ (async, BPMN bus): `admin-api`, `manager`, `task`, `event`,
-  `gateway` all publish/consume `bpmn-*-incoming` queues, with `manager` as
+- RabbitMQ (async, BPMN bus, via the back-core message bus): `admin-api`,
+  `manager`, `task`, `event`, `gateway` all publish/consume `bpmn-*-incoming` queues, with `manager` as
   the central router
 - `admin-api` → `admin-front`: an authenticated WebSocket debug-log
   stream (`/ws/ws` in `components/admin-api/src/services/router.ts`) — not a

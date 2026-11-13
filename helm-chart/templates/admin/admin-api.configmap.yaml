@@ -20,6 +20,7 @@ metadata:
   (dict "pool" (dict "acquire" 60000 "idle" 30000 "max" 5 "min" 0))
 -}}
 {{ $messageQueueBase := dict
+  "provider" "rabbitmq"
   "maxHandlingMessages" 2
   "writingQueueManager" "bpmn-manager-incoming"
   "writingQueueTask" "bpmn-task-incoming"
